@@ -56,12 +56,24 @@ float3 SampleSpecularIBL_Ref(
 
 float3 SampleTransmittedSpecularIBL_Ref(
     float3 normal, float3 viewDirection,
-    SpecularParameters specParam, TextureCube tex,
+    SpecularParameters specParam, float surfaceIOR, TextureCube tex,
     uint passSampleCount, uint passIndex, uint passCount)
 {
-    float iorIncident = 1.f;
-    float iorOutgoing = SpecularTransmissionIndexOfRefraction;
     float3 ot = viewDirection;
+
+    // In our scheme, the camera is always within the substance with ior=iorOutgoing
+    // Also, the normal should point towards the substance with the lower ior (usually air)
+    // So, depending on the type of refraction we want to achieve, we must sometimes
+    // flip the normal.
+    #if 0
+        float iorIncident = 1.f;
+        float iorOutgoing = surfaceIOR;
+        float flipNormal = -1.f;
+    #else
+        float iorIncident = surfaceIOR;
+        float iorOutgoing = 1.f;
+        float flipNormal = 1.f;
+    #endif
 
         // This is a reference implementation of transmitted IBL specular.
         // We're going to follow the same method and microfacet distribution as
@@ -71,7 +83,7 @@ float3 SampleTransmittedSpecularIBL_Ref(
     for (uint s=0; s<passSampleCount; ++s) {
         // using the same distribution of half-vectors that we use for reflection
         // (except we flip the normal because of the way the equation is built)
-        precise float3 H = SampleMicrofacetNormalGGX(s*passCount+passIndex, passSampleCount*passCount, -normal, alphad);
+        precise float3 H = SampleMicrofacetNormalGGX(s*passCount+passIndex, passSampleCount*passCount, flipNormal * normal, alphad);
 
         // following Walter07 here, we need to build "i", the incoming direction.
         // Actually Walter builds the outgoing direction -- but we need to reverse the
@@ -79,6 +91,9 @@ float3 SampleTransmittedSpecularIBL_Ref(
         float3 i;
         if (!CalculateTransmissionIncident(i, ot, H, iorIncident, iorOutgoing))
             continue;
+
+        float3 test = CalculateTransmissionOutgoing(i, H, iorIncident, iorOutgoing);
+        if (abs(length(test - ot)) > 0.001f) return float3(1,0,0);
 
         // ok, we've got our incoming vector. We can do the cube map lookup
         // Note that when we call "CalculateSpecular", it's going to recalculate
@@ -122,16 +137,17 @@ float3 SampleTransmittedSpecularIBL_Ref(
         bsdf *= abs(dot(i, H)) * abs(dot(ot, H));
         bsdf /= abs(dot(i, normal)) * abs(dot(ot, normal));
 
-        bsdf *= GGXTransmissionFresnel(
-            i, viewDirection, specParam.F0.g,
-            iorIncident, iorOutgoing);
+            // todo -- these needs to be fixed for flipped mode!
+        //bsdf *= GGXTransmissionFresnel(
+        //    i, viewDirection, specParam.F0.g,
+        //    iorIncident, iorOutgoing);
 
-        bsdf *= -dot(i, normal);
+        bsdf *= flipNormal * -dot(i, normal);
 
         // We have to apply the distribution weight. Since our half vectors are distributed
         // in the same fashion as the reflection case, we should have the same weight.
         // (But we need to consider the flipping that occurs)
-        float pdfWeight = InversePDFWeight(H, -normal, viewDirection, alphad);
+        float pdfWeight = InversePDFWeight(H, flipNormal * normal, viewDirection, alphad);
 
         result += lightColor * bsdf * pdfWeight;
     }

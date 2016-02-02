@@ -9,6 +9,7 @@
 
 #include "../CommonResources.h"
 #include "../Utility/MathConstants.h"
+#include "../Utility/Misc.h"
 
 float Square(float x) { return x*x; }
 
@@ -16,6 +17,12 @@ float RefractiveIndexToF0(float refractiveIndex)
 {
         // (note -- the 1.f here assumes one side of the interface is air)
 	return Square((refractiveIndex - 1.f) / (refractiveIndex + 1.f));
+}
+
+float F0ToRefractiveIndex(float F0)
+{
+	float sqrx = sqrt(F0);
+	return (-F0-1.f) / (F0-1.f) - 2.f * sqrx / (-1.f + sqrx) / (1.f + sqrx);
 }
 
 float SchlickFresnelCore(float VdotH)
@@ -298,24 +305,32 @@ bool CalculateTransmissionIncident(out float3 i, float3 ot, float3 m, float iorI
     // -m * l - iorOutgoing * o = iorIncident * i
     // i = -m * l / iorIncident - iorOutgoing / iorIncident * o
 
-    float c = dot(ot, -m);
+#if 1
+	float flip = (iorIncident > iorOutgoing)?-1:1;
+    float c = dot(ot, (-1.f * flip) * m);
     float b = iorOutgoing * c;
     // if (c < 0.f || c >= 1.f) return false; // return float3(0,1,0);
 
     // float a = sqrt(iorOutgoing*iorOutgoing - b*b);
     // float a = sqrt(iorOutgoing*iorOutgoing - iorOutgoing*iorOutgoing*c*c);
     // float a = iorOutgoing * sqrt(1.f - c*c);
-    float asq = iorOutgoing*iorOutgoing*(1.f - c*c);
-
-        // some half vectors have no transmission solution. Maybe these
-        // result in internal reflection?
-    if (asq >= iorIncident*iorIncident) return false;
+    // float asq = iorOutgoing*iorOutgoing*(1.f - c*c);
+    // if (asq >= iorIncident*iorIncident) return false;
     // float e = sqrt(iorIncident*iorIncident - asq);
     // float e = sqrt(iorIncident*iorIncident - iorOutgoing*iorOutgoing*(1.f - c*c));
-    float etaSq = (iorOutgoing*iorOutgoing) / (iorIncident*iorIncident);
+    float etaSq = Sq(iorOutgoing/iorIncident);
     // float e = sqrt(iorIncident*iorIncident*(1.f - etaSq*(1.f - c*c)));
-    float e = iorIncident*sqrt(1.f - etaSq + etaSq*c*c);
-    float l = b - e;
+    // float e = iorIncident*sqrt(1.f - etaSq + etaSq*c*c);
+	float k = 1.f + etaSq*(c*c-1.f);
+	if (k < 0.f) return false;
+	float e = iorIncident*sqrt(k);
+    float l = flip * (b - e);
+#else
+	float b = iorOutgoing * dot(ot, m);
+	float a = sqrt(iorOutgoing*iorOutgoing - b*b);
+	float e = sqrt(iorIncident*iorIncident - a*a);
+	float l = e - b;
+#endif
 
     i = -m * l / iorIncident - iorOutgoing / iorIncident * ot;
     return true;
@@ -325,8 +340,13 @@ float3 CalculateTransmissionOutgoing(float3 i, float3 m, float iorIncident, floa
 {
 	float c = dot(i, m);
 	float eta = iorIncident / iorOutgoing;
-	float s = 1.f; // sign(dot(i, n))
-	return (eta * c - s * sqrt(1.f + eta * (c*c - 1.f))) * m - eta * i;
+	float s = (iorIncident > iorOutgoing)?-1:1; // sign(dot(i, n))
+	// return (eta * c - s * sqrt(1.f + eta * (c*c - 1.f))) * m - eta * i;
+
+	// there maybe a small error in the Walter07 paper... Expecting eta^2 here --
+	float k = 1.f + eta*eta*(c*c - 1.f);
+	// if (k < 0.f) return 0.0.xxx;	(risk of a nan if our parameters can cause total internal refraction)
+	return (eta * c - s * sqrt(k)) * m - eta * i;
 }
 
 

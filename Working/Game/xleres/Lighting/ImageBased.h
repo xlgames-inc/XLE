@@ -27,6 +27,7 @@ TextureCube SpecularTransIBL : register(t30);
 
 // #define RECALC_SPLIT_TERM
 // #define RECALC_FILTERED_TEXTURE
+// #define REF_IBL
 
 float3 IBLPrecalc_SampleInputTexture(float3 direction)
 {
@@ -168,13 +169,33 @@ float3 SampleSpecularIBLTrans_SplitSum(
 {
     float NdotV = saturate(dot(normal, viewDirection));
 
-    // calculate the refraction when m==n
-    const float iorIncident = 1.f;
-    const float iorOutgoing = SpecularTransmissionIndexOfRefraction;
-    float3 i = refract(-viewDirection, normal, iorOutgoing/iorIncident);
-    float3 envMapDir = i;
+    // This is a little tricky because we are performing refraction based on
+    // the surface normal here, and we will consider refraction based on microfacet
+    // detail later.
+    // Our microfacet simulation will take into account focusing of light and
+    // brighten the refraction appropriately. But we're not simulating that same
+    // focusing when it comes to the surface normal refraction.
+    // It's a little strange because we're doing 2 separate refraction simulations.
+    // Also, the index of refraction we use here will vary depending on the material,
+    // while the refraction we do on the microfacet level uses a fixed ior.
 
+    float iorIncident = F0ToRefractiveIndex(specParam.F0.g);
+    float iorOutgoing = 1.f;
+
+    // float3 i = refract(-viewDirection, normal, 1.f/ior); // iorOutgoing/iorIncident);
+    // if (dot(i, i) <= 0.f) return 0.0.xxx;
+    // float3 i = CalculateTransmissionOutgoing(viewDirection, -normal, iorIncident, iorOutgoing);
+
+    float3 i;
+    if (!CalculateTransmissionIncident(i, viewDirection, normal, iorIncident, iorOutgoing))
+        return 0.0.xxx;
+
+    float3 envMapDir = i;
     float3 prefilteredColor = SplitSumIBLTrans_PrefilterEnvMap(specParam.roughness, envMapDir, dither);
+    // float q = SchlickFresnelCore(NdotV);
+    // float r = specParam.F0.g + (1.f - specParam.F0.g) * q;
+    // return prefilteredColor * (1.f - r);
+
     float envBRDF = SplitSumIBLTrans_IntegrateBRDF(specParam.roughness, NdotV, dither);
     return specParam.transmission * prefilteredColor * ((1.f - specParam.F0.g) * envBRDF);
 }
@@ -186,7 +207,10 @@ float3 SampleSpecularIBLTrans(
     uint dither = DitherPatternInt(lsd.pixelCoords);
     #if defined(REF_IBL)
         const uint sampleCount = 64;
-        return specParam.transmission * SampleTransmittedSpecularIBL_Ref(normal, viewDirection, specParam, SkyReflectionTexture, sampleCount, dither&0xf, 16);
+        float ior = F0ToRefractiveIndex(specParam.F0.g);
+        return specParam.transmission * SampleTransmittedSpecularIBL_Ref(
+            normal, viewDirection, specParam, ior,
+            SkyReflectionTexture, sampleCount, dither&0xf, 16);
     #else
         return SampleSpecularIBLTrans_SplitSum(normal, viewDirection, specParam, dither);
     #endif

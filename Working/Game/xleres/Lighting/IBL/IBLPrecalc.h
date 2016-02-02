@@ -394,7 +394,7 @@ float3 CalculateFilteredTextureTrans(
         float weight = idh * SmithG(idh, alphag) / (idn * ndh);
 #endif
 
-#if 1
+#if 0
         float weight = abs(dot(i, H));// * InversePDFWeight(H, -normal, 0.0.xxx, alphad);
 #endif
 
@@ -402,7 +402,24 @@ float3 CalculateFilteredTextureTrans(
         float weight = 1.f;
 #endif
 
-        // weight = min(weight, 100.f);
+#if 1
+        float bsdf;
+        bsdf = 1.f;
+        bsdf *= SmithG(abs(dot( i,  normal)), RoughnessToGAlpha(roughness));
+        bsdf *= SmithG(abs(dot(ot,  normal)), RoughnessToGAlpha(roughness));
+        bsdf *= TrowReitzD(abs(dot( H, normal)), alphad);
+        bsdf *= Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+        bsdf *= abs(dot(i, H)) * abs(dot(ot, H));
+        bsdf /= abs(dot(i, normal)) * abs(dot(ot, normal));
+        //bsdf *= GGXTransmissionFresnel(
+        //    i, viewDirection, specParam.F0.g,
+        //    iorIncident, iorOutgoing);
+
+        bsdf *= -dot(i, normal);
+
+        float weight = bsdf * InversePDFWeight(H, -normal, 0.0.xxx, alphad);
+#endif
+
         result += lightColor * weight;
         totalWeight += weight;
     }
