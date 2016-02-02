@@ -24,7 +24,7 @@ namespace Assets
         typedef std::shared_ptr<std::vector<uint8>> BlockAndSize;
 
         void            Commit(uint64 id, BlockAndSize&& data, const std::string& attachedString, std::function<void()>&& onFlush);
-        BlockAndSize    OpenFromCache(uint64 id);
+        BlockAndSize    TryOpenFromCache(uint64 id);
         bool            HasItem(uint64 id) const;
         void            FlushToDisk();
         
@@ -95,7 +95,7 @@ namespace Assets
 
         mutable std::vector<ArchiveDirectoryBlock> _cachedBlockList;
         mutable bool _cachedBlockListValid;
-        const std::vector<ArchiveDirectoryBlock>& GetBlockList() const;
+        const std::vector<ArchiveDirectoryBlock>* GetBlockList() const;
     };
 
 

@@ -116,10 +116,13 @@ namespace Assets
         }
     }
 
-    static std::vector<ArchiveDirectoryBlock> LoadBlockList(const char filename[])
+    static bool LoadBlockList(const char filename[], std::vector<ArchiveDirectoryBlock>& blocks)
     {
         using namespace Serialization::ChunkFile;
-        BasicFile directoryFile(filename, "rb");
+        BasicFile directoryFile;
+        if (directoryFile.TryOpen(filename, "rb") != BasicFile::Reason::Success)
+            return false;
+
         auto chunkTable = LoadChunkTable(directoryFile);
         auto chunk = FindChunk(filename, chunkTable, ChunkType_ArchiveDirectory, 0);
 
@@ -127,23 +130,26 @@ namespace Assets
         directoryFile.Seek(chunk._fileOffset, SEEK_SET);
         directoryFile.Read(&dirHdr, sizeof(dirHdr), 1);
 
-        std::vector<ArchiveDirectoryBlock> blocks;  // note -- use a fixed size vector here?
+        // we're going to remove any previous contents of "blocks"
+        blocks.clear();
         blocks.resize(dirHdr._blockCount);
         directoryFile.Read(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
-
-        return std::move(blocks);
+        return true;
     }
 
-    auto ArchiveCache::GetBlockList() const -> const std::vector<ArchiveDirectoryBlock>&
+    auto ArchiveCache::GetBlockList() const -> const std::vector<ArchiveDirectoryBlock>*
     {
         if (!_cachedBlockListValid) {
-            _cachedBlockList = LoadBlockList(_directoryFileName.c_str());
+            // note that on failure, we will continue to attempt to open the file each time
+            if (!LoadBlockList(_directoryFileName.c_str(), _cachedBlockList))
+                return nullptr;
+
             _cachedBlockListValid = true;
         }
-        return _cachedBlockList;
+        return &_cachedBlockList;
     }
 
-    auto ArchiveCache::OpenFromCache(uint64 id) -> BlockAndSize
+    auto ArchiveCache::TryOpenFromCache(uint64 id) -> BlockAndSize
     {
             // first, check our pending commits
             // if it's not there, we have to lock and open the file
@@ -160,16 +166,19 @@ namespace Assets
             // flush to complete.
 
         {
-            const auto& blocks = GetBlockList();
-                // we maintain the blocks array sorted by id to make this check faster...
-            auto bi = std::lower_bound(blocks.begin(), blocks.end(), id, DirectoryChunk::CompareBlock());
-            if (bi != blocks.end() && bi->_id == id) {
-                BasicFile dataFile(_mainFileName.c_str(), "rb");
-                dataFile.Seek(bi->_start, SEEK_SET);
+            const auto* blocks = GetBlockList();
+            if (!blocks) return nullptr;
 
-                auto result = std::make_shared<std::vector<uint8>>(bi->_size);
-                dataFile.Read(AsPointer(result->begin()), 1, bi->_size);
-                return result;
+                // we maintain the blocks array sorted by id to make this check faster...
+            auto bi = std::lower_bound(blocks->begin(), blocks->end(), id, DirectoryChunk::CompareBlock());
+            if (bi != blocks->end() && bi->_id == id) {
+                BasicFile dataFile;
+                if (dataFile.TryOpen(_mainFileName.c_str(), "rb") == BasicFile::Reason::Success) {
+                    dataFile.Seek(bi->_start, SEEK_SET);
+                    auto result = std::make_shared<std::vector<uint8>>(bi->_size);
+                    dataFile.Read(AsPointer(result->begin()), 1, bi->_size);
+                    return result;
+                }
             }
         }
 
@@ -185,9 +194,9 @@ namespace Assets
         }
 
         TRY {
-            const auto& blocks = GetBlockList();
-            auto bi = std::lower_bound(blocks.begin(), blocks.end(), id, DirectoryChunk::CompareBlock());
-            return (bi != blocks.end() && bi->_id == id);
+            const auto* blocks = GetBlockList();
+            auto bi = std::lower_bound(blocks->begin(), blocks->end(), id, DirectoryChunk::CompareBlock());
+            return (bi != blocks->end() && bi->_id == id);
         } CATCH (...) {
             return false;
         } CATCH_END
@@ -222,23 +231,24 @@ namespace Assets
             BasicFile directoryFile;
             bool directoryFileOpened = false;
 
-            TRY {
-                directoryFile = BasicFile(_directoryFileName.c_str(), "r+b");
+            // using a soft "TryOpen" to prevent annoying exception messages when the file is being created for the first time
+            if (directoryFile.TryOpen(_directoryFileName.c_str(), "r+b") == BasicFile::Reason::Success) {
+                TRY {
+                    auto chunkTable = LoadChunkTable(directoryFile);
+                    auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveDirectory, 0);
 
-                auto chunkTable = LoadChunkTable(directoryFile);
-                auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveDirectory, 0);
+                    directoryFile.Seek(chunk._fileOffset, SEEK_SET);
+                    directoryFile.Read(&dirHdr, sizeof(dirHdr), 1);
 
-                directoryFile.Seek(chunk._fileOffset, SEEK_SET);
-                directoryFile.Read(&dirHdr, sizeof(dirHdr), 1);
-
-                blocks.resize(dirHdr._blockCount);
-                directoryFile.Read(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
-                flattenedSpanningHeap = std::make_unique<uint8[]>(dirHdr._spanningHeapSize);
-                directoryFile.Read(flattenedSpanningHeap.get(), 1, dirHdr._spanningHeapSize);
-                directoryFileOpened = true;
-            } CATCH (...) {
-                    // any exceptions indicate the current file is empty
-            } CATCH_END
+                    blocks.resize(dirHdr._blockCount);
+                    directoryFile.Read(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
+                    flattenedSpanningHeap = std::make_unique<uint8[]>(dirHdr._spanningHeapSize);
+                    directoryFile.Read(flattenedSpanningHeap.get(), 1, dirHdr._spanningHeapSize);
+                    directoryFileOpened = true;
+                } CATCH (...) {
+                    // We can get format errors while reading. In this case, will just overwrite the file
+                } CATCH_END
+            }
 
             if (!directoryFileOpened) {
                 directoryFile = BasicFile();
@@ -311,14 +321,9 @@ namespace Assets
                 [](const PendingCommit& lhs, const PendingCommit& rhs) { return lhs._pendingCommitPtr < rhs._pendingCommitPtr; });
             {
                 BasicFile dataFile;
-                bool good = false;
-                TRY {
-                    dataFile = BasicFile(_mainFileName.c_str(), "r+b");
-                    good = true;
-                } CATCH (...) {} CATCH_END
-                if (!good) {
+                bool good = dataFile.TryOpen(_mainFileName.c_str(), "r+b") == BasicFile::Reason::Success;
+                if (!good)
                     dataFile = BasicFile(_mainFileName.c_str(), "wb");
-                }
                 for (auto i=_pendingBlocks.begin(); i!=_pendingBlocks.end(); ++i) {
                     dataFile.Seek(i->_pendingCommitPtr, SEEK_SET);
                     dataFile.Write(AsPointer(i->_data->cbegin()), 1, i->_data->size());
@@ -366,8 +371,11 @@ namespace Assets
                 XlCombineString(debugFilename, dimof(debugFilename), _mainFileName.c_str(), ".debug");
                     
                 std::vector<std::pair<uint64, std::string>> attachedStrings;
-                TRY {
-                    BasicFile debugFile(debugFilename, "rb");
+
+                // try to open an existing file -- but if there are any errors, we can just discard the
+                // old contents
+                BasicFile debugFile;
+                if (debugFile.TryOpen(debugFilename, "rb") == BasicFile::Reason::Success) {
                     auto chunkTable = LoadChunkTable(debugFile);
                     auto chunk = FindChunk(debugFilename, chunkTable, ChunkType_ArchiveAttachments, 0);
 
@@ -385,8 +393,7 @@ namespace Assets
                         debugFile.Read(AsPointer(t.begin()), 1, b->_size);
                         attachedStrings.push_back(std::make_pair(b->_id, t));
                     }
-                } CATCH (...) {
-                } CATCH_END
+                }
 
                         // merge in the new strings
                 for (auto i=_pendingBlocks.begin(); i!=_pendingBlocks.end(); ++i) {

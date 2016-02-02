@@ -50,8 +50,9 @@ namespace RenderCore
             if (i) _stage = AsShaderStage(i+1);
 
             if (existing._dependencyValidation && existing._dependencyValidation->GetValidationIndex() == 0) {
-                _shader = existing._archive->OpenFromCache(existing._sourceID1);
-                _validationCallback = std::move(existing._dependencyValidation);
+                _shader = existing._archive->TryOpenFromCache(existing._sourceID1);
+                if (_shader)
+                    _validationCallback = std::move(existing._dependencyValidation);
             } 
 
             if (!_shader) {
@@ -143,11 +144,11 @@ namespace RenderCore
                 //  Find that file, and get the completed shader.
                 //  Note that this might hit the disk currently...?
             if (loc._archive) {
-                TRY {
-                    _shader = loc._archive->OpenFromCache(loc._sourceID1);
-                } CATCH (...) {
+                _shader = loc._archive->TryOpenFromCache(loc._sourceID1);
+                if (!_shader) {
                     LogWarning << "Compilation marker is finished, but shader couldn't be opened from cache (" << loc._sourceID0 << ":" <<loc._sourceID1 << ")";
-                } CATCH_END
+                    // caller should throw InvalidAsset in this case
+                }
             }
         }
 

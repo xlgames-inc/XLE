@@ -78,7 +78,8 @@ namespace Utility
             typedef unsigned BitField;
         };
 
-        Exceptions::IOException::Reason TryOpen(const char filename[], const char openMode[], ShareMode::BitField shareMode = ShareMode::Read) never_throws;
+        using Reason = Exceptions::IOException::Reason;
+        Reason TryOpen(const char filename[], const char openMode[], ShareMode::BitField shareMode = ShareMode::Read) never_throws;
 
         BasicFile(const char filename[], const char openMode[], ShareMode::BitField shareMode = ShareMode::Read);
         BasicFile(BasicFile&& moveFrom) never_throws;
