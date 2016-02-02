@@ -22,6 +22,15 @@ float3 LightResolve_Diffuse_NdotL(
 	float NdotL,
 	LightDesc light)
 {
+		// If we use specular light from both sides, we must also use diffuse from both sides
+		// Otherwise we can get situations where a pixel gets specular light, but no diffuse
+		//		-- which ends up appearing gray for diaeletrics
+	#if MAT_DOUBLE_SIDED_LIGHTING
+		NdotL = abs(NdotL);
+	#else
+		NdotL = saturate(NdotL);
+	#endif
+
 	float rawDiffuse = CalculateDiffuse(
 		sample.worldSpaceNormal, directionToEye, negativeLightDirection,
 		DiffuseParameters_Roughness(Material_GetRoughness(sample), light.DiffuseWideningMin, light.DiffuseWideningMax));
@@ -39,7 +48,7 @@ float3 LightResolve_Diffuse(
 	float3 negativeLightDirection,
 	LightDesc light)
 {
-	float NdotL = saturate(dot(sample.worldSpaceNormal, negativeLightDirection));
+	float NdotL = dot(sample.worldSpaceNormal, negativeLightDirection);
 	return LightResolve_Diffuse_NdotL(sample, directionToEye, negativeLightDirection, NdotL, light);
 }
 
@@ -51,15 +60,6 @@ float3 LightResolve_Specular(
 	float screenSpaceOcclusion = 1.f,
 	bool mirrorSpecular = false)
 {
-		// Getting lots of problems with specular for normals pointing away
-		// from the camera. We have to avoid this case. (but we flip the
-		// normal when double sided lighting enabled, so have to consider that)
-	float NdotV = dot(sample.worldSpaceNormal, directionToEye);
-	#if MAT_DOUBLE_SIDED_LIGHTING
-		NdotV *= sign(dot(sample.worldSpaceNormal, negativeLightDirection));
-	#endif
-	if (NdotV < 0.f) return 0.0.xxx;
-
 		// HACK! preventing problems at very low roughness values
 	float roughnessValue = max(0.03f, Material_GetRoughness(sample));
 
@@ -87,6 +87,10 @@ float3 LightResolve_Specular(
 	float specularOcclusion = screenSpaceOcclusion * sample.cookedLightOcclusion;
 	const bool viewDependentOcclusion = true;
 	if (viewDependentOcclusion) {
+		float NdotV = dot(sample.worldSpaceNormal, directionToEye);
+		#if MAT_DOUBLE_SIDED_LIGHTING
+			NdotV *= sign(dot(sample.worldSpaceNormal, negativeLightDirection));
+		#endif
 		specularOcclusion = TriAceSpecularOcclusion(NdotV, specularOcclusion);
 	}
 

@@ -30,8 +30,6 @@ float DiffuseMethod_Disney(
 
 	float cosThetaL = dot(normal, negativeLightDirection);
 	float cosThetaV = dot(normal, directionToEye);
-    cosThetaL = saturate(cosThetaL);
-    cosThetaV = saturate(cosThetaV);
 
         // Note that we're using the half vector as a parameter to the fresnel
         // equation. See also "Physically Based Lighting in Call of Duty: Black Ops"
@@ -43,7 +41,19 @@ float DiffuseMethod_Disney(
         // (disney calls this the "difference angle")
 	float3 halfVector = lerp(negativeLightDirection, directionToEye, .5f);
     // halfVector = normalize(halfVector); // (note that in theory we should have a normalize here.. but it doesn't seem to matter)
-	float cosThetaD = max(dot(halfVector, negativeLightDirection), 0);
+	float cosThetaD = dot(halfVector, negativeLightDirection);
+
+    #if MAT_DOUBLE_SIDED_LIGHTING
+        float sndl = sign(cosThetaL);
+        cosThetaL *= sndl;
+        cosThetaV *= sndl;
+        cosThetaD *= sndl;
+        if (cosThetaV <= 0.f) return 0.f;
+    #else
+        cosThetaL = saturate(cosThetaL);
+        cosThetaV = saturate(cosThetaV);
+        cosThetaD = max(cosThetaD, 0.f);
+    #endif
 
         // The following factor controls how broad the diffusing effect is
         // at grazing angles. The problem is, with high levels of "roughness"

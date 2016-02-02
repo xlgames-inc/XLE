@@ -87,11 +87,19 @@ float TrowReitzD(float NdotH, float alpha)
     // variable.
     // They call it "GTR"
 
-    float alphaSqr = alpha * alpha;
-    float denom = 1.f + (alphaSqr - 1.f) * NdotH * NdotH;
-    return alphaSqr / (pi * denom * denom);
-
-    #if 0
+    #if 1
+        float alphaSqr = alpha * alpha;
+        float denom = 1.f + (alphaSqr - 1.f) * NdotH * NdotH;
+        // note --  When roughness is 0 and NdotH is 1, denum will be 0
+        //          This is causes a singularity in D around +infinity
+        //          This makes sense, because in this case the microfacet
+        //          normal has a 100% chance to be parallel to the surface
+        //          normal. But it really screws with our calculations. We
+        //          could clamp here -- or otherwise we could clamp the
+        //          minimum roughness value.
+        // denom = max(denom, 1e-3f);
+        return alphaSqr / (pi * denom * denom);
+    #else
         // This the version of D as it appears exactly in
         // Walter07 paper (Only correct when NdotH > 0.f)
         // It's just the same, but expressed differently
@@ -231,6 +239,7 @@ float3 ReferenceSpecularGGX(
         // It seems to be fairly subtle difference, but might be interesting
         // to investigate.
     float alphag = RoughnessToGAlpha(roughness);
+
     precise float G = SmithG(NdotL, alphag) * SmithG(NdotV, alphag);
 
     /////////// Fresnel ///////////
@@ -329,8 +338,9 @@ float GGXTransmissionFresnel(float3 i, float3 ot, float F0, float iorIncident, f
     // Outgoing makes more sense, because this will more closely match the calculation we use
     // for the reflection case. Actually; couldn't we just reuse the result we got with the
     // reflection case?
-    // Walter07 paper uses i and Ht
-    float HdotI = abs(dot(CalculateHt(i, ot, iorIncident, iorOutgoing), i));
+    // Walter07 paper uses i and Ht. He also uses abs() here, but that produces very strange results.
+    // float HdotI = max(0, dot(CalculateHt(i, ot, iorIncident, iorOutgoing), i));
+    float HdotI = max(0, dot(CalculateHt(i, ot, iorIncident, iorOutgoing), i));
     // return 1.f - lerp(F0, 1.f, SchlickFresnelCore(HdotI));
     // return lerp(1.f - F0, 0.f, SchlickFresnelCore(HdotI));
     return (1.f - F0) * (1.f - SchlickFresnelCore(HdotI));
@@ -387,7 +397,12 @@ float3 CalculateSpecular(
                 negativeLightDirection, directionToEye, parameters.F0.g,
                 iorIncident, iorOutgoing);
 
-            transmitted *= dot(negativeLightDirection, -normal);
+            #if MAT_DOUBLE_SIDED_LIGHTING
+                transmitted *= abs(dot(negativeLightDirection, -normal));
+            #else
+                transmitted *= max(0, dot(negativeLightDirection, -normal));
+            #endif
+            
         #endif
 
         return reflected + parameters.transmission * transmitted;

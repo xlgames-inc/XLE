@@ -231,7 +231,7 @@ float3 Resolve_Rectangle(
 
         // We can just do the rest of the diffuse calculation in light space, also...
         // If it's just lambert, it's trivial.
-    float NdotL = saturate(dot(sampleNormal, lightNegDir));
+    float NdotL = dot(sampleNormal, lightNegDir);
     float3 diffuse = LightResolve_Diffuse_NdotL(sample, viewDirectionLight, lightNegDir, NdotL, light);
 
         // "cosThetaLightPlane" is the angle between the light normal the
