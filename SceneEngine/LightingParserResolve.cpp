@@ -509,10 +509,13 @@ namespace SceneEngine
                                 const LightingResolveContext& resolveContext,
                                 bool debugging)
     {
-        Metal::GPUProfiler::DebugAnnotation anno(context, L"Lights");
-
         const unsigned samplingCount = resolveContext.GetSamplingCount();
         const bool useMsaaSamplers = resolveContext.UseMsaaSamplers();
+
+        auto lightCount = parserContext.GetSceneParser()->GetLightCount();
+        if (!lightCount) return;
+
+        Metal::GPUProfiler::DebugAnnotation anno(context, L"Lights");
 
         using CB = LightingResolveShaders::CB;
         using SR = LightingResolveShaders::SR;
@@ -549,7 +552,6 @@ namespace SceneEngine
         const bool allowOrthoShadowResolve = Tweakable("AllowOrthoShadowResolve", true);
 
             //-------- do lights --------
-        auto lightCount = parserContext.GetSceneParser()->GetLightCount();
         for (unsigned l=0; l<lightCount; ++l) {
             auto& i = parserContext.GetSceneParser()->GetLightDesc(l);
             constantBufferPackets[1] = BuildLightConstants(i);

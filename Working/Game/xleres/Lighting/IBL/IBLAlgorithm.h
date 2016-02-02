@@ -72,6 +72,12 @@ float3 SampleMicrofacetNormalGGX(uint i, uint sampleCount, float3 normal, float 
         //
         // These functions are designed to work with GGX specifically.
         // The probability function is p(m) = D(M) * abs(dot(m, n))
+        //
+        // Note that the math here is actually mathematically identical to
+        //      float cosTheta = sqrt((1.f - xi.x) / (1.f + (alphad*alphad - 1.f) * xi.x));
+        // However, the above form is not evaluating correctly in some cases. Since this
+        // is only used for reference and precalculation steps, let's just use the unoptimized
+        // form below.
         float q = alphad * sqrt(xi.x) / sqrt(1.f - xi.x);
         float cosTheta = 1.f / sqrt(1.f + q*q);
     #else
