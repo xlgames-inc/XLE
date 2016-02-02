@@ -371,9 +371,7 @@ namespace Assets
 
         bool InvalidAsset::CustomReport() const
         {
-            LogAlwaysError 
-                << "Invalid asset (" << Initializer() << ") More information:" 
-                << std::endl << what();
+            LogAlwaysError << "Invalid asset (" << Initializer() << "):" << what();
             return true;
         }
 
@@ -385,7 +383,9 @@ namespace Assets
 
         bool PendingAsset::CustomReport() const
         {
-            LogAlwaysWarning << "Pending asset: " << Initializer();
+            // "pending asset" exceptions occur very frequently. It may be better to suppress
+            // any logging information.
+            // LogAlwaysWarning << "Pending asset: " << Initializer();
             return true;
         }
 

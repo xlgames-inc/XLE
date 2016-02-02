@@ -11,6 +11,8 @@
     //      handle types (like HINSTANCE, HBRUSH, etc).
 
 #if !defined(_WINDOWS_)
+#pragma push_macro("LOG")
+#pragma push_macro("ERROR")
 #define WIN32_LEAN_AND_MEAN
 #define WIN32_EXTRA_LEAN
 #define STRICT              // (note; if you get a compile error here, it means windows.h is being included from somewhere else (eg, TBB or DirectX)
@@ -19,7 +21,9 @@
 #undef min
 #undef DrawText
 #undef GetObject
-#undef ERROR        // causes problems with easylogging++
+#undef ERROR
+#pragma pop_macro("ERROR")
+#pragma pop_macro("LOG")
 #endif
 
 
