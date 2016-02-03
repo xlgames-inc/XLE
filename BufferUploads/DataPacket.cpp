@@ -336,8 +336,17 @@ namespace BufferUploads
 
             // we need to use a "typeless" format for any pixel formats that can
             // cast to to SRGB or linear versions. This allows the caller to use
-            // both SRGB and linear ShaderResourceView(s)
-        desc._nativePixelFormat = (unsigned)RenderCore::Metal::AsTypelessFormat((RenderCore::Metal::NativeFormat::Enum)metadata.format);
+            // both SRGB and linear ShaderResourceView(s).
+            // But, we don't want to do this for all formats that can become typeless
+            // because we need to retain that information on the resource. For example,
+            // if we made R32_** formats typeless here, when we create the shader resource
+            // view there would be no way to know if it was originally a R32_FLOAT, or a R32_UINT (etc)
+        auto srcFormat = (RenderCore::Metal::NativeFormat::Enum)metadata.format;
+        if (RenderCore::Metal::HasLinearAndSRGBFormats(srcFormat)) {
+            desc._nativePixelFormat = (unsigned)RenderCore::Metal::AsTypelessFormat(srcFormat);
+        } else {
+            desc._nativePixelFormat = (unsigned)srcFormat;
+        }
 
         using namespace DirectX;
         switch (metadata.dimension) {
