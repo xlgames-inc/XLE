@@ -106,6 +106,7 @@ float2 GenerateSplitTerm(
 
 float GenerateSplitTermTrans(
     float NdotV, float roughness,
+    float iorIncident, float iorOutgoing,
     uint passSampleCount, uint passIndex, uint passCount)
 {
     // This is for generating the split-term lookup for specular transmission
@@ -120,8 +121,6 @@ float GenerateSplitTermTrans(
     float3 normal = float3(0.0f, 0.0f, 1.0f);
     float3 V = float3(sqrt(1.0f - NdotV * NdotV), 0.0f, NdotV);
 
-    const float iorIncident = 1.f;
-    const float iorOutgoing = SpecularTransmissionIndexOfRefraction;
     float3 ot = V;
 
     float alphad = RoughnessToDAlpha(roughness);
@@ -131,7 +130,7 @@ float GenerateSplitTermTrans(
     [loop] for (uint s=0; s<passSampleCount; ++s) {
 
         precise float3 H = SampleMicrofacetNormalGGX(
-            s*passCount+passIndex, passSampleCount*passCount, -normal, alphad);
+            s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
 
         float3 i;
         if (!CalculateTransmissionIncident(i, ot, H, iorIncident, iorOutgoing))
@@ -144,10 +143,10 @@ float GenerateSplitTermTrans(
         // the pdf afterwards.
 
         float bsdf;
-        #if 1
-            GGXTransmission(        // todo -- fresnel calculation is going to get in the way
+        #if 0
+            GGXTransmission(
                 roughness, iorIncident, iorOutgoing,
-                i, ot, -normal,
+                i, ot, normal,
                 bsdf);
         #else
             bsdf = 1.f;
@@ -163,18 +162,16 @@ float GenerateSplitTermTrans(
 
         bsdf *= -dot(i, normal);
 
-        float pdfWeight = InversePDFWeight(H, -normal, V, alphad);
+        float pdfWeight = InversePDFWeight(H, normal, V, alphad);
 
-        float VdotH = abs(dot(V, H));
-        precise float F = 1.f - SchlickFresnelCore(VdotH);
+        precise float F = 1.f - SchlickFresnelCore(abs(dot(V, H)));
 
-        float normalizedSpecular = bsdf * pdfWeight;
-        A += F * normalizedSpecular;
+        A += F * bsdf * pdfWeight;
 
         goodSampleCount++;
     }
 
-    return A / (float(goodSampleCount) + 1e-6f);
+    return A / float(passSampleCount);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -304,13 +301,11 @@ float3 SampleNormal(float3 core, uint s, uint sampleCount)
 
 float3 CalculateFilteredTextureTrans(
     float3 cubeMapDirection, float roughness,
+    float iorIncident, float iorOutgoing,
     uint passSampleCount, uint passIndex, uint passCount)
 {
     float3 corei = cubeMapDirection;
-    // return IBLPrecalc_SampleInputTexture(corei);
-
-    const float iorIncident = 1.f;
-    const float iorOutgoing = SpecularTransmissionIndexOfRefraction;
+    float3 coreNormal = (iorIncident < iorOutgoing) ? corei : -corei;
 
     // Very small roughness values break this equation, because D converges to infinity
     // when NdotH is 1.f. We must clamp roughness, or this convergence produces bad
@@ -337,13 +332,15 @@ float3 CalculateFilteredTextureTrans(
         // It will also effect the value for "ot" that we get... But we want
         // the minimize the effect of "ot" in this calculation.
 
-        float3 normal = SampleNormal(-cubeMapDirection, s, passSampleCount);
+        float3 normal = SampleNormal(coreNormal, s, passSampleCount);
 
         // There seems to be a problem with this line...? This refraction step
         // is causing too much blurring, and "normal" doesn't seem to have much
         // effect
-        float3 ot = refract(-corei, -normal, iorIncident/iorOutgoing);
-        if (dot(ot, ot) == 0.0f) continue;      // ("refract" didn't find a solution)
+        // float3 ot = refract(-corei, -normal, iorIncident/iorOutgoing);
+
+        float3 ot = CalculateTransmissionOutgoing(corei, normal, iorIncident, iorOutgoing);
+        if (dot(ot, ot) == 0.0f) continue;      // no refraction solution
 
         //float3 test = refract(-ot, normal, iorOutgoing/iorIncident);
         //if (length(test - corei) > 0.001f)
@@ -352,7 +349,7 @@ float3 CalculateFilteredTextureTrans(
 #if 1
         precise float3 H = SampleMicrofacetNormalGGX(
             s*passCount+passIndex, passSampleCount*passCount,
-            -normal, alphad);
+            normal, alphad);
 
         // float3 ot = CalculateTransmissionOutgoing(i, H, iorIncident, iorOutgoing);
         float3 i;
@@ -365,42 +362,6 @@ float3 CalculateFilteredTextureTrans(
 #endif
 
         float3 lightColor = IBLPrecalc_SampleInputTexture(i);
-
-        // We want to adjust the filtering to achieve a blurring that is
-        // similar to the shape of the BTDF.
-
-#if 0
-        float idh = abs(dot(i, H));
-        float idn = abs(dot(i, normal));
-        float odh = abs(dot(ot, H));
-        float odn = abs(dot(ot, normal));
-        precise float G2 = SmithG(idh, alphag);
-        float demon = Sq(iorIncident * idh + iorOutgoing * -odh);
-        float weight = dot(H, -normal) * idh * odh / (idn*odn) * iorOutgoing*iorOutgoing * G2 / demon;
-#endif
-
-#if 0
-        float weight = dot(H, -normal);
-        float idh = abs(dot(i, H));
-        float odh = abs(dot(ot, H));
-        float demon = Sq(iorIncident * idh + iorOutgoing * -odh);
-        weight /= demon;
-#endif
-
-#if 0
-        float idh = abs(dot(i, H));
-        float idn = abs(dot(i, normal));
-        float ndh = abs(dot(H, normal));
-        float weight = idh * SmithG(idh, alphag) / (idn * ndh);
-#endif
-
-#if 0
-        float weight = abs(dot(i, H));// * InversePDFWeight(H, -normal, 0.0.xxx, alphad);
-#endif
-
-#if 0
-        float weight = 1.f;
-#endif
 
 #if 1
         float bsdf;
@@ -415,9 +376,10 @@ float3 CalculateFilteredTextureTrans(
         //    i, viewDirection, specParam.F0.g,
         //    iorIncident, iorOutgoing);
 
+        bsdf *= 1.0f - SchlickFresnelCore(abs(dot(ot, H)));
         bsdf *= -dot(i, normal);
 
-        float weight = bsdf * InversePDFWeight(H, -normal, 0.0.xxx, alphad);
+        float weight = bsdf * InversePDFWeight(H, normal, 0.0.xxx, alphad);
 #endif
 
         result += lightColor * weight;

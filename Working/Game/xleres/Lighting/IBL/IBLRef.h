@@ -56,24 +56,12 @@ float3 SampleSpecularIBL_Ref(
 
 float3 SampleTransmittedSpecularIBL_Ref(
     float3 normal, float3 viewDirection,
-    SpecularParameters specParam, float surfaceIOR, TextureCube tex,
+    SpecularParameters specParam,
+    float iorIncident, float iorOutgoing,
+    TextureCube tex,
     uint passSampleCount, uint passIndex, uint passCount)
 {
     float3 ot = viewDirection;
-
-    // In our scheme, the camera is always within the substance with ior=iorOutgoing
-    // Also, the normal should point towards the substance with the lower ior (usually air)
-    // So, depending on the type of refraction we want to achieve, we must sometimes
-    // flip the normal.
-    #if 0
-        float iorIncident = 1.f;
-        float iorOutgoing = surfaceIOR;
-        float flipNormal = -1.f;
-    #else
-        float iorIncident = surfaceIOR;
-        float iorOutgoing = 1.f;
-        float flipNormal = 1.f;
-    #endif
 
         // This is a reference implementation of transmitted IBL specular.
         // We're going to follow the same method and microfacet distribution as
@@ -83,7 +71,7 @@ float3 SampleTransmittedSpecularIBL_Ref(
     for (uint s=0; s<passSampleCount; ++s) {
         // using the same distribution of half-vectors that we use for reflection
         // (except we flip the normal because of the way the equation is built)
-        precise float3 H = SampleMicrofacetNormalGGX(s*passCount+passIndex, passSampleCount*passCount, flipNormal * normal, alphad);
+        precise float3 H = SampleMicrofacetNormalGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
 
         // following Walter07 here, we need to build "i", the incoming direction.
         // Actually Walter builds the outgoing direction -- but we need to reverse the
@@ -92,8 +80,8 @@ float3 SampleTransmittedSpecularIBL_Ref(
         if (!CalculateTransmissionIncident(i, ot, H, iorIncident, iorOutgoing))
             continue;
 
-        float3 test = CalculateTransmissionOutgoing(i, H, iorIncident, iorOutgoing);
-        if (abs(length(test - ot)) > 0.001f) return float3(1,0,0);
+        // float3 test = CalculateTransmissionOutgoing(i, H, iorIncident, iorOutgoing);
+        // if (abs(length(test - ot)) > 0.001f) return float3(1,0,0);
 
         // ok, we've got our incoming vector. We can do the cube map lookup
         // Note that when we call "CalculateSpecular", it's going to recalculate
@@ -128,10 +116,20 @@ float3 SampleTransmittedSpecularIBL_Ref(
         // reversed). This new equation equals "4" when iorIncident == iorOutgoing, and I think
         // that 4 might have been factored out with the "4" in the denominator in the microfacet
         // equation.
+        //
+        // However, on further inspection, this "4" is causing problems.
+        // When iorOutgoing == iorIncident == 1 and dot(i, H) = -dot(ot, H) = +/-1, this term
+        // must equal 1 (meaning all light is refracted in a straight line, with no focusing).
+        // The unmodified equation comes to 1.f/4.f. So we have to compensate for the 4 in the numerator.
+        // Actually, Walter07 comments that situations where the indicies of refraction are equal are
+        // ill-defined... However, it seems reasonable that this equation should converge on 1.
+        //
+        // With the factor of 4, the brightness at different indices of refraction at least appear to
+        // be
         #if 0
             bsdf *= Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) + iorOutgoing * dot(ot, H));
         #else
-            bsdf *= Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+            bsdf *= 4.f * Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
         #endif
 
         bsdf *= abs(dot(i, H)) * abs(dot(ot, H));
@@ -142,12 +140,17 @@ float3 SampleTransmittedSpecularIBL_Ref(
         //    i, viewDirection, specParam.F0.g,
         //    iorIncident, iorOutgoing);
 
-        bsdf *= flipNormal * -dot(i, normal);
+        // calculating the fresnel effect to match the reflection case
+        float q = SchlickFresnelCore(abs(dot(viewDirection, H)));
+        // bsdf *= 1.f - lerp(specParam.F0.g, 1.f, q);
+        bsdf *= (1.f - specParam.F0.g) * (1.f - q);
+
+        bsdf *= -dot(i, normal);
 
         // We have to apply the distribution weight. Since our half vectors are distributed
         // in the same fashion as the reflection case, we should have the same weight.
         // (But we need to consider the flipping that occurs)
-        float pdfWeight = InversePDFWeight(H, flipNormal * normal, viewDirection, alphad);
+        float pdfWeight = InversePDFWeight(H, normal, viewDirection, alphad);
 
         result += lightColor * bsdf * pdfWeight;
     }

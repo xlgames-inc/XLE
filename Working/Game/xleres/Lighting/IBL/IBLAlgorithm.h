@@ -32,6 +32,9 @@ float VanderCorputRadicalInverse(uint bits)
 
 float2 HammersleyPt(uint i, uint N)
 {
+    // note --  we can avoid the M==N case by using the equation below. Since
+    //          M==N can lead to singularities, perhaps this give better sampling?
+    // return float2(float(i+1)/float(N+1), VanderCorputRadicalInverse(i));
     return float2(float(i)/float(N), VanderCorputRadicalInverse(i));
 }
 
