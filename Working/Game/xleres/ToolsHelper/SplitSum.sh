@@ -7,6 +7,7 @@
 #define FORCE_GGX_REF
 
 #include "../Lighting/SpecularMethods.h"
+#include "../Lighting/MaterialQuery.h"
 
 Texture2D Input;
 
@@ -22,6 +23,12 @@ float3 IBLPrecalc_SampleInputTexture(float3 direction)
 
 static const uint PassSampleCount = 256;
 
+cbuffer SubResourceId
+{
+    uint ArrayIndex, MipIndex;
+    uint PassIndex, PassCount;
+}
+
 float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
     float NdotV = texCoord.x;
@@ -35,16 +42,14 @@ float4 main_trans(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : 
     float NdotV = texCoord.x;
     float roughness = 1.f-texCoord.y;
     const uint sampleCount = 64 * 1024;
-    return float4(GenerateSplitTermTrans(NdotV, roughness, sampleCount, 0, 1), 0, 0, 1);
+
+    float specular = saturate(0.05f + ArrayIndex / 32.f);
+    float iorIncident = F0ToRefractiveIndex(Material_SpecularToF0(specular));
+    float iorOutgoing = 1.f;
+    return float4(GenerateSplitTermTrans(NdotV, roughness, iorIncident, iorOutgoing, sampleCount, 0, 1), 0, 0, 1);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-cbuffer SubResourceId
-{
-    uint ArrayIndex, MipIndex;
-    uint PassIndex, PassCount;
-}
 
 // See DirectX documentation:
 // https://msdn.microsoft.com/en-us/library/windows/desktop/bb204881(v=vs.85).aspx
@@ -119,6 +124,11 @@ float4 EquiRectFilterGlossySpecularTrans(float4 position : SV_Position, float2 t
     cubeMapDirection = float3(-cubeMapDirection.x, -cubeMapDirection.y, cubeMapDirection.z);
 
     float roughness = MipmapToRoughness(MipIndex);
-    float3 r = CalculateFilteredTextureTrans(cubeMapDirection, roughness, PassSampleCount, PassIndex, PassCount);
+    float iorIncident = SpecularTransmissionIndexOfRefraction;
+    float iorOutgoing = 1.f;
+    float3 r = CalculateFilteredTextureTrans(
+        cubeMapDirection, roughness,
+        iorIncident, iorOutgoing,
+        PassSampleCount, PassIndex, PassCount);
     return float4(r / float(PassCount), 1.f);
 }

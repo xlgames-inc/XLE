@@ -21,13 +21,13 @@
 TextureCube DiffuseIBL  : register(t19);
 TextureCube SpecularIBL : register(t20);
 Texture2D<float2> GlossLUT : register(t21);        // this is the look up table used in the split-sum IBL glossy reflections
-Texture2D<float> GlossTransLUT : register(t22);
+Texture2DArray<float> GlossTransLUT : register(t22);
 
 TextureCube SpecularTransIBL : register(t30);
 
-#define RECALC_SPLIT_TERM
-#define RECALC_FILTERED_TEXTURE
-#define REF_IBL
+// #define RECALC_SPLIT_TERM
+// #define RECALC_FILTERED_TEXTURE
+// #define REF_IBL
 
 float3 IBLPrecalc_SampleInputTexture(float3 direction)
 {
@@ -140,10 +140,25 @@ float3 SampleSpecularIBL(float3 normal, float3 viewDirection, SpecularParameters
 
 /////////////////// T R A N S M I T T E D   S P E C U L A R ///////////////////
 
-float SplitSumIBLTrans_IntegrateBRDF(float roughness, float NdotV, float iorIncident, float iorOutgoing, uint dither)
+float SplitSumIBLTrans_IntegrateBTDF(float roughness, float NdotV, float F0, float iorIncident, float iorOutgoing, uint dither)
 {
     #if !defined(RECALC_SPLIT_TERM)
-        return GlossTransLUT.SampleLevel(ClampingSampler, float2(NdotV, 1.f - roughness), 0);
+        // Currently our split term solution for specular transmission uses a 3D texture. It's seems
+        // reasonably ok, but there is an easy way to switch it to 2D -- by just fixing the IOR to a single
+        // value for all objects.
+        // We could also try to find a parametric simplification... But the surface in 3D space is fairly complex.
+        // I think we can afford to be much less accuracy for refraction (when compared to reflections) because it's
+        // a somewhat less important effect.
+        const float minF0 = RefractiveIndexToF0(RefractiveIndexMin);
+        const float maxF0 = RefractiveIndexToF0(RefractiveIndexMax);
+        float specular = (F0 - minF0) / (maxF0 - minF0);
+        // Note --
+        //      Fixed array count for GlossTransLUT here
+        //      Also, we're not doing any linear interpolation on "arrayIndex" -- that's probably
+        //      ok, but it may cause banding if "specular" varies greatly across an object (though that
+        //      would probably also cause some very wierd refractions)
+        float arrayIndex = 32.f * specular;
+        return GlossTransLUT.SampleLevel(ClampingSampler, float3(NdotV, 1.f - roughness, arrayIndex), 0);
     #else
         const uint sampleCount = 64;
         return GenerateSplitTermTrans(NdotV, roughness, iorIncident, iorOutgoing, sampleCount, dither&0xf, 16);
@@ -184,10 +199,6 @@ float3 SampleSpecularIBLTrans_SplitSum(
     // Also, the index of refraction we use here will vary depending on the material,
     // while the refraction we do on the microfacet level uses a fixed ior.
 
-    // float3 i = refract(-viewDirection, normal, 1.f/ior); // iorOutgoing/iorIncident);
-    // if (dot(i, i) <= 0.f) return 0.0.xxx;
-    // float3 i = CalculateTransmissionOutgoing(viewDirection, -normal, iorIncident, iorOutgoing);
-
     float3 i;
     if (!CalculateTransmissionIncident(i, viewDirection, normal, iorIncident, iorOutgoing))
         return 0.0.xxx;
@@ -196,8 +207,8 @@ float3 SampleSpecularIBLTrans_SplitSum(
         specParam.roughness, i,
         iorIncident, iorOutgoing, dither);
 
-    float envBRDF = SplitSumIBLTrans_IntegrateBRDF(specParam.roughness, NdotV, iorIncident, iorOutgoing, dither);
-    return specParam.transmission * prefilteredColor * ((1.f - specParam.F0.g) * envBRDF);
+    float envBTDF = SplitSumIBLTrans_IntegrateBTDF(specParam.roughness, NdotV, specParam.F0.g, iorIncident, iorOutgoing, dither);
+    return specParam.transmission * prefilteredColor * ((1.f - specParam.F0.g) * envBTDF);
 }
 
 float3 SampleSpecularIBLTrans(

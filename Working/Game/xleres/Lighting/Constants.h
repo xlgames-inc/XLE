@@ -24,10 +24,12 @@ static const float ReflectionBlurrinessFromRoughness = 5.f;
 
 //  For reference -- here are some "F0" values taken from
 //  https://seblagarde.wordpress.com/2011/08/17/feeding-a-physical-based-lighting-mode/
-//      F0(1. ) = 0
+//      F0(1.0) = 0
 //      F0(1.8) = 0.082
 //      F0(2.0) = 0.111
 //      F0(2.2) = 0.141
+//      F0(2.5) = 0.184
+//      F0(3.0) = 0.25
 // Quartz    0.045593921
 // ice       0.017908907
 // Water     0.020373188
@@ -55,6 +57,6 @@ static const float ReflectionBlurrinessFromRoughness = 5.f;
 
 // Note -- maybe this should vary with the "specular" parameter. The point where there
 // is no refraction solution should match the point where the lighting becomes 100% reflection
-static const float SpecularTransmissionIndexOfRefraction = 1.05f; // 1.33f;
+static const float SpecularTransmissionIndexOfRefraction = 1.5f;
 
 #endif

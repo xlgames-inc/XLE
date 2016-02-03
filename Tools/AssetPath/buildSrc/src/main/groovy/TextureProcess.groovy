@@ -211,13 +211,16 @@ class GenericTextureGen extends TextureTransformStep
 
     @Input
     int width = 256;
-    int height = 256;
+    @Input
+	int height = 256;
+	@Input
+	int arrayCount = 1;
 
 	Iterable<?> getCommandLine(File input, File output)
 	{
 		return makeCommandLine(
 			output, shader,
-			"Dims={${width}, ${height}}; Format=${format}");
+			"Dims={${width}, ${height}}; ArrayCount=${arrayCount}; Format=${format}");
 	}
 }
 
@@ -283,6 +286,23 @@ class SpecularIBLFilter extends TextureTransformStep
 	}
 }
 
+class SpecularTransIBLFilter extends TextureTransformStep
+{
+    @Input
+    String format = "R32G32B32A32_FLOAT"
+
+	@Input
+    int faceSize = 512
+
+	Iterable<?> getCommandLine(File input, File output)
+	{
+		return makeCommandLine(output,
+			"ToolsHelper/SplitSum.sh:EquiRectFilterGlossySpecularTrans",
+			"MipCount=${(int)(Math.log(faceSize)/Math.log(2.0f))}; ArrayCount=6; PassCount=128; Input=${input}; Dims={${faceSize}, ${faceSize}}; Format=${format}");
+	}
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // 4bpp RGB default compression (with optional 1 bit alpha)
@@ -335,6 +355,12 @@ class EquiRectEnv extends TextureTask
 		steps.add(new SpecularIBLFilter(isIntermediate:true));
 		stepInputs[6] = 0;
 		steps.add(new CompressWithTextureTransform(format: "BC6H_UF16", outputNamePostfix:"_specular"));
+
+			// Use TextureTransform to create the specular IBL transmissions
+			// Then compress the result into BC6H_UF16 format
+		steps.add(new SpecularTransIBLFilter(isIntermediate:true));
+		stepInputs[8] = 0;
+		steps.add(new CompressWithTextureTransform(format: "BC6H_UF16", outputNamePostfix:"_speculartrans"));
 	}
 }
 

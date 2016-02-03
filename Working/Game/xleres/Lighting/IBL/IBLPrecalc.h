@@ -44,6 +44,7 @@ float2 GenerateSplitTerm(
         // good, however... Because without it, low roughness get a clear
         // halo around their edges. This doesn't happen so much with the
         // runtime specular. So it actually seems better with the this remapping.
+    roughness = max(roughness, MinSamplingRoughness);
     float alphag = RoughnessToGAlpha(roughness);
     float alphad = RoughnessToDAlpha(roughness);
     float G2 = SmithG(NdotV, alphag);
@@ -123,6 +124,7 @@ float GenerateSplitTermTrans(
 
     float3 ot = V;
 
+    roughness = max(roughness, MinSamplingRoughness);
     float alphad = RoughnessToDAlpha(roughness);
 
     uint goodSampleCount = 0;
@@ -155,6 +157,7 @@ float GenerateSplitTermTrans(
             bsdf *= TrowReitzD(abs(dot( H, normal)), alphad);
 
             bsdf *= Sq(iorOutgoing + iorIncident) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+            // bsdf *= Sq(iorIncident/iorOutgoing);
             #if 0
             // This is an equation from Stam's paper
             //  "An Illumination Model for a Skin Layer Bounded by Rough Surfaces"
@@ -162,8 +165,8 @@ float GenerateSplitTermTrans(
             {
                 float eta = iorIncident/iorOutgoing;
                 float cosO = abs(dot(i, H));
-                // float mut = abs(dot(ot, H));
-                float mut = sqrt(cosO*cosO + Sq(1.f/eta) - 1.f);
+                float mut = abs(dot(ot, H));
+                // float mut = sqrt(cosO*cosO + Sq(1.f/eta) - 1.f);
                 // float mut = sqrt(1.f + eta*eta*(cosO*cosO - 1.f));
                 // float mut = sqrt(1.f - Sq(eta)*(1.f - cosO*cosO));
                 bsdf *= (eta * mut) / Sq(cosO - mut);
