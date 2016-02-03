@@ -123,13 +123,20 @@ float3 SampleTransmittedSpecularIBL_Ref(
         // The unmodified equation comes to 1.f/4.f. So we have to compensate for the 4 in the numerator.
         // Actually, Walter07 comments that situations where the indicies of refraction are equal are
         // ill-defined... However, it seems reasonable that this equation should converge on 1.
+        // Indeed, other renderers behave as if this term is converging on one.
         //
-        // With the factor of 4, the brightness at different indices of refraction at least appear to
-        // be
+        // I've tried a few variations on this equation, and eventually taken a guess at an equation
+        // that looks right. But this is just a guess! I need to do some further research on this.
         #if 0
             bsdf *= Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) + iorOutgoing * dot(ot, H));
         #else
-            bsdf *= 4.f * Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+            bsdf *= Sq(iorOutgoing + iorIncident) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+
+            // bsdf *= Sq(Sq(dot(i, H)) + abs(dot(ot, H))) / (iorOutgoing/iorIncident*abs(dot(ot, H)));
+            // float eta = iorIncident/iorOutgoing;
+            // float cosO = abs(dot(i, H));
+            // float mut = sqrt(cosO + eta*eta - 1.f);
+            // bsdf *= (eta * mut) / Sq(cosO - mut);
         #endif
 
         bsdf *= abs(dot(i, H)) * abs(dot(ot, H));

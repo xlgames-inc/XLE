@@ -344,6 +344,7 @@ float3 CalculateTransmissionOutgoing(float3 i, float3 m, float iorIncident, floa
 	// return (eta * c - s * sqrt(1.f + eta * (c*c - 1.f))) * m - eta * i;
 
 	// there maybe a small error in the Walter07 paper... Expecting eta^2 here --
+	// float k = 1.f + eta*eta*(c*c - 1.f);
 	float k = 1.f + eta*eta*(c*c - 1.f);
 	if (k < 0.f) return 0.0.xxx;
 	return (eta * c - s * sqrt(k)) * m - eta * i;

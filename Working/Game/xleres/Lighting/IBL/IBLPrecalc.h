@@ -154,7 +154,21 @@ float GenerateSplitTermTrans(
             bsdf *= SmithG(abs(dot(ot,  normal)), RoughnessToGAlpha(roughness));
             bsdf *= TrowReitzD(abs(dot( H, normal)), alphad);
 
-            bsdf *= Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+            bsdf *= Sq(iorOutgoing + iorIncident) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+            #if 0
+            // This is an equation from Stam's paper
+            //  "An Illumination Model for a Skin Layer Bounded by Rough Surfaces"
+            // it's solving a similar problem, but the math is very different.
+            {
+                float eta = iorIncident/iorOutgoing;
+                float cosO = abs(dot(i, H));
+                // float mut = abs(dot(ot, H));
+                float mut = sqrt(cosO*cosO + Sq(1.f/eta) - 1.f);
+                // float mut = sqrt(1.f + eta*eta*(cosO*cosO - 1.f));
+                // float mut = sqrt(1.f - Sq(eta)*(1.f - cosO*cosO));
+                bsdf *= (eta * mut) / Sq(cosO - mut);
+            }
+            #endif
 
             bsdf *= abs(dot(i, H)) * abs(dot(ot, H));
             bsdf /= abs(dot(i, normal)) * abs(dot(ot, normal));
