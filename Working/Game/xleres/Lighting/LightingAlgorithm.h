@@ -354,6 +354,41 @@ bool CalculateTransmissionIncident(out float3 i, float3 ot, float3 m, float iorI
     return true;
 }
 
+float RefractionIncidentAngleDerivative2(float odotm, float iorIncident, float iorOutgoing)
+{
+	// Similar to RefractionIncidentAngleDerivative, except now we're looking at
+	// the relationship between odotm and odoti. Here O, the outgoing direction is
+	// fixed, but M and I can change.
+	//
+	// idoto = l * odotm - eta
+	//		 = (eta * c - sqrt(k)) * odotm - eta
+	// where c=odotm && k=1+Sq(eta)*(c*c-1)
+	// idoto = (eta * c - sqrt(1 + Sq(eta)*(c*c-1))) * c - eta
+	//		 = eta*c*c - c*sqrt(1+Sq(eta)*(c*c-1)) - eta
+	//		 = eta*c*c - c*sqrt(Sq(eta)*Sq(c)-Sq(eta)+1) - eta
+	// 		 = eta*c*c - sqrt(Sq(eta)*c^4-Sq(eta)*Sq(c)+Sq(c)) - eta
+	//		 = a*(x^2-1) - sqrt(a^2*x^4-a^2*x^2+x^2)
+	// acos(a*(cos(x)^2-1) - sqrt(a^2*cos(x)^4-a^2*cos(x)^2+cos(x)^2))
+	//
+	// dev:
+	// (a sin(2 x)-(sin(2 x) (a^2 cos(2 x)+1))/(sqrt(2) sqrt(cos^2(x) (a^2 cos(2 x)-a^2+2))))/sqrt(1-(sqrt(cos^2(x) (a^2 cos^2(x)-a^2+1))-a cos^2(x)+a)^2)
+	// approx:
+	// (a sin(2 x)-(0.707107 sin(2 x) (a^2 cos(2 x)+1))/(cos^2(x) (a^2 cos(2 x)-a^2+2))^0.5)/(1-((cos^2(x) (a^2 cos^2(x)-a^2+1))^0.5-a cos^2(x)+a)^2)^0.5
+
+	float eta = iorOutgoing/iorIncident;
+	float a = eta;
+	float cosx = odotm;
+	float sinx = sqrt(1.f - cosx*cosx);
+	float sin2x = 2.f*cosx*sinx;
+	float cos2x = Sq(cosx) - Sq(sinx);
+	float sqr2 = sqrt(2.f);
+
+	float A = sin2x * (a*a*cos2x+1) / (sqr2 * sqrt(Sq(cosx)*(a*a*cos2x-a*a+2)));
+	float B = sqrt(1.f - Sq(sqrt(Sq(cosx)*(a*a*Sq(cosx)-a*a+1))-a*Sq(cosx)+a));
+	float angleDev = (a * sin2x - A) / B;
+	return -angleDev;
+}
+
 float RefractionIncidentAngleDerivative(float odotm, float iorIncident, float iorOutgoing)
 {
 	// We want to find the rate of change of the incident angle as
@@ -391,7 +426,7 @@ float RefractionIncidentAngleDerivative(float odotm, float iorIncident, float io
 	// float angleDev = a * cotx * sinx / sqrt(1.f - Sq(a) * sinxSq);
 	float k = sqrt(1.f + Sq(a) * (Sq(odotm) - 1.f));
 	float angleDev = a * odotm / k;
-	return flip * angleDev;
+	return flip * 2.f * angleDev;		// here, 2.f is a fudge factor because this is an approximation
 }
 
 float3 CalculateTransmissionOutgoing(float3 i, float3 m, float iorIncident, float iorOutgoing)
