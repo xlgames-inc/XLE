@@ -305,35 +305,93 @@ bool CalculateTransmissionIncident(out float3 i, float3 ot, float3 m, float iorI
     // -m * l - iorOutgoing * o = iorIncident * i
     // i = -m * l / iorIncident - iorOutgoing / iorIncident * o
 
-#if 1
-	float flip = (iorIncident > iorOutgoing)?-1:1;
-    float c = dot(ot, (-1.f * flip) * m);
-    float b = iorOutgoing * c;
-    // if (c < 0.f || c >= 1.f) return false; // return float3(0,1,0);
+#if 0
+	#if 1
+		float flip = (iorIncident > iorOutgoing)?-1:1;
+	    float c = dot(ot, (-1.f * flip) * m);
+	    float b = iorOutgoing * c;
+	    // if (c < 0.f || c >= 1.f) return false; // return float3(0,1,0);
 
-    // float a = sqrt(iorOutgoing*iorOutgoing - b*b);
-    // float a = sqrt(iorOutgoing*iorOutgoing - iorOutgoing*iorOutgoing*c*c);
-    // float a = iorOutgoing * sqrt(1.f - c*c);
-    // float asq = iorOutgoing*iorOutgoing*(1.f - c*c);
-    // if (asq >= iorIncident*iorIncident) return false;
-    // float e = sqrt(iorIncident*iorIncident - asq);
-    // float e = sqrt(iorIncident*iorIncident - iorOutgoing*iorOutgoing*(1.f - c*c));
-    float etaSq = Sq(iorOutgoing/iorIncident);
-    // float e = sqrt(iorIncident*iorIncident*(1.f - etaSq*(1.f - c*c)));
-    // float e = iorIncident*sqrt(1.f - etaSq + etaSq*c*c);
-	float k = 1.f + etaSq*(c*c-1.f);
-	if (k < 0.f) return false;
-	float e = iorIncident*sqrt(k);
-    float l = flip * (b - e);
+	    // float a = sqrt(iorOutgoing*iorOutgoing - b*b);
+	    // float a = sqrt(iorOutgoing*iorOutgoing - iorOutgoing*iorOutgoing*c*c);
+	    // float a = iorOutgoing * sqrt(1.f - c*c);
+	    // float asq = iorOutgoing*iorOutgoing*(1.f - c*c);
+	    // if (asq >= iorIncident*iorIncident) return false;
+	    // float e = sqrt(iorIncident*iorIncident - asq);
+	    // float e = sqrt(iorIncident*iorIncident - iorOutgoing*iorOutgoing*(1.f - c*c));
+	    float etaSq = Sq(iorOutgoing/iorIncident);
+	    // float e = sqrt(iorIncident*iorIncident*(1.f - etaSq*(1.f - c*c)));
+	    // float e = iorIncident*sqrt(1.f - etaSq + etaSq*c*c);
+		float k = 1.f + etaSq*(c*c-1.f);
+		if (k < 0.f) return false;
+		float e = iorIncident*sqrt(k);
+	    float l = flip * (b - e);
+	#else
+		float b = iorOutgoing * dot(ot, m);
+		float a = sqrt(iorOutgoing*iorOutgoing - b*b);
+		float e = sqrt(iorIncident*iorIncident - a*a);
+		float l = e - b;
+	#endif
+
+	i = -m * l / iorIncident - iorOutgoing / iorIncident * ot;
 #else
-	float b = iorOutgoing * dot(ot, m);
-	float a = sqrt(iorOutgoing*iorOutgoing - b*b);
-	float e = sqrt(iorIncident*iorIncident - a*a);
-	float l = e - b;
+	float flip = (iorIncident > iorOutgoing)?1:-1;
+	float c = dot(ot, m);
+
+	float eta = iorOutgoing/iorIncident;
+	float k = 1.f + Sq(eta)*(c*c-1.f);
+	if (k < 0.f) return false;
+
+    float l = eta * c - flip * sqrt(k);
+	i = m * l - eta * ot;
+
+	// Note that it's identical to CalculateTransmissionOutgoing (as should really
+	// be expected), except with the parmeters swapped. We could generalize this
+	// in a single function
+
 #endif
 
-    i = -m * l / iorIncident - iorOutgoing / iorIncident * ot;
     return true;
+}
+
+float RefractionIncidentAngleDerivative(float odotm, float iorIncident, float iorOutgoing)
+{
+	// We want to find the rate of change of the incident angle as
+	// the microfacet normal changes. In this case, we are assuming that
+	// the outgoing direction is constant.
+	// One way to do this is to look at the derivative of idotm with
+	// respect to odotm. Given that o is constant, changes in odotm
+	// represent changes in the microfacet normal.
+	// Of course, the angle between I and M isn't actually what we need,
+	// because both I and M are moving.
+	// However, there is a simple relationship between these, so it makes
+	// the calculations easy. And maybe it's a good approximation.
+	//
+	// We can relate idotm to odotm...
+	// idotm = l - eta * c;
+	// 		 = eta * c - flip * sqrt(k) - eta * c
+	//		 = -flip * sqrt(1.f + Sq(eta)*(Sq(odotm)-1.f))
+	//
+	// WolframAlpha derivative:
+	// (d)/(dx)(sqrt(1+a^2 (-1+x^2))) = (a^2 x)/sqrt(a^2 (x^2-1)+1)
+	//
+	// Derivative of angle (as opposed to dot product,
+	// assuming x > 0 && a > 0:
+	// (a cot(x) abs(sin(x)))/sqrt(1-a^2 sin^2(x))
+	// where cos(x) is odotm
+
+	float eta = iorOutgoing/iorIncident;
+	float flip = (iorIncident > iorOutgoing)?1:-1;
+
+	float cosx = odotm;
+	float sinxSq = 1.f - cosx*cosx;
+	float sinx = sqrt(sinxSq);
+	float cotx = cosx/sinx;
+	float a = eta;
+	// float angleDev = a * cotx * sinx / sqrt(1.f - Sq(a) * sinxSq);
+	float k = sqrt(1.f + Sq(a) * (Sq(odotm) - 1.f));
+	float angleDev = a * odotm / k;
+	return flip * angleDev;
 }
 
 float3 CalculateTransmissionOutgoing(float3 i, float3 m, float iorIncident, float iorOutgoing)
@@ -345,7 +403,7 @@ float3 CalculateTransmissionOutgoing(float3 i, float3 m, float iorIncident, floa
 
 	// there maybe a small error in the Walter07 paper... Expecting eta^2 here --
 	// float k = 1.f + eta*eta*(c*c - 1.f);
-	float k = 1.f + eta*eta*(c*c - 1.f);
+	float k = 1.f + Sq(eta)*(c*c - 1.f);
 	if (k < 0.f) return 0.0.xxx;
 	return (eta * c - s * sqrt(k)) * m - eta * i;
 }

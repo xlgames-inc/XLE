@@ -156,8 +156,9 @@ float GenerateSplitTermTrans(
             bsdf *= SmithG(abs(dot(ot,  normal)), RoughnessToGAlpha(roughness));
             bsdf *= TrowReitzD(abs(dot( H, normal)), alphad);
 
-            bsdf *= Sq(iorOutgoing + iorIncident) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+            // bsdf *= Sq(iorOutgoing + iorIncident) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
             // bsdf *= Sq(iorIncident/iorOutgoing);
+            bsdf *= RefractionIncidentAngleDerivative(dot(ot, H), iorIncident, iorOutgoing);
             #if 0
             // This is an equation from Stam's paper
             //  "An Illumination Model for a Skin Layer Bounded by Rough Surfaces"
