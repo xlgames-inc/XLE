@@ -23,7 +23,9 @@ TextureCube SpecularIBL : register(t20);
 Texture2D<float2> GlossLUT : register(t21);        // this is the look up table used in the split-sum IBL glossy reflections
 Texture2DArray<float> GlossTransLUT : register(t22);
 
-TextureCube SpecularTransIBL : register(t30);
+#if MAT_SEPARATE_REFRACTION_MAP
+    TextureCube SpecularTransIBL : register(t30);
+#endif
 
 // #define RECALC_SPLIT_TERM
 // #define RECALC_FILTERED_TEXTURE
@@ -165,14 +167,43 @@ float SplitSumIBLTrans_IntegrateBTDF(float roughness, float NdotV, float F0, flo
     #endif
 }
 
+float3 SplitSumIBLTrans_PrefilterEnvMap2(
+    float roughness, float3 dir, float3 viewDirection, float3 normal,
+    float iorIncident, float iorOutgoing, uint dither)
+{
+    // This is an approximation that attempts to calculate the correct blurriness for
+    // the refracted image. The blurriness is based on the roughness and the derivative
+    // of the incident ray (with respect to the microfacet normal). This has the effect of
+    // making the image more blurry in areas where the image is shrunk, and more sharp in
+    // areas where the image is expanded.
+    // The calculations below aren't based on any physical theory; but they are just balanced
+    // by eye.
+    // This causes the refracted image on the edges of a sphere to appear more blurry; which
+    // helps it blend more nicely into the reflection (because the impression of the refraction
+    // is lessened in those areas). It's a subtle effect, but the end result is a big improvement
+    // over having just a constant blurriness over the whole sphere.
+    float angularBlurriness = RefractionIncidentAngleDerivative2(
+        dot(viewDirection, normal), iorIncident, iorOutgoing);
+    float A = 2.f * roughness * pow(angularBlurriness, 1.5f);
+    return SpecularIBL.SampleLevel(
+        DefaultSampler, AdjSkyCubeMapCoords(dir),
+        RoughnessToMipmap(saturate(A))).rgb;
+}
+
 float3 SplitSumIBLTrans_PrefilterEnvMap(
-    float roughness, float3 dir,
+    float roughness, float3 dir, float3 viewDirection, float3 normal,
     float iorIncident, float iorOutgoing, uint dither)
 {
     #if !defined(RECALC_FILTERED_TEXTURE)
-        return SpecularTransIBL.SampleLevel(
-            DefaultSampler, AdjSkyCubeMapCoords(dir),
-            RoughnessToMipmap(roughness)).rgb;
+        #if MAT_SEPARATE_REFRACTION_MAP
+            return SpecularTransIBL.SampleLevel(
+                DefaultSampler, AdjSkyCubeMapCoords(dir),
+                RoughnessToMipmap(roughness)).rgb;
+        #else
+            return SplitSumIBLTrans_PrefilterEnvMap2(
+                roughness, dir, viewDirection, normal,
+                iorIncident, iorOutgoing, dither);
+        #endif
     #else
         const uint sampleCount = 64;
         return CalculateFilteredTextureTrans(
@@ -204,11 +235,10 @@ float3 SampleSpecularIBLTrans_SplitSum(
         return 0.0.xxx;
 
     float3 prefilteredColor = SplitSumIBLTrans_PrefilterEnvMap(
-        specParam.roughness, i,
+        specParam.roughness, i, viewDirection, normal,
         iorIncident, iorOutgoing, dither);
-
     float envBTDF = SplitSumIBLTrans_IntegrateBTDF(specParam.roughness, NdotV, specParam.F0.g, iorIncident, iorOutgoing, dither);
-    return specParam.transmission * prefilteredColor * ((1.f - specParam.F0.g) * envBTDF);
+    return prefilteredColor * ((1.f - specParam.F0.g) * envBTDF);
 }
 
 float3 SampleSpecularIBLTrans(
@@ -239,7 +269,9 @@ float3 SampleSpecularIBLTrans(
             iorIncident, iorOutgoing,
             SkyReflectionTexture, sampleCount, dither&0xf, 16);
     #else
-        return SampleSpecularIBLTrans_SplitSum(normal, viewDirection, specParam, iorIncident, iorOutgoing, dither);
+        return specParam.transmission * SampleSpecularIBLTrans_SplitSum(
+            normal, viewDirection, specParam,
+            iorIncident, iorOutgoing, dither);
     #endif
 }
 

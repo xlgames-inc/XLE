@@ -6,5 +6,5 @@ task texGloss(type:xle.TextureTask) {
 
 task texGlossTrans(type:xle.TextureTask) {
 	output = file("glosstranslut.dds");
-	steps.add(new xle.GenericTextureGen(format: "R16_FLOAT", width: 32, height: 32, arrayCount: 32, shader: "ToolsHelper/SplitSum.sh:main_trans"))
+	steps.add(new xle.GenericTextureGen(format: "R16_FLOAT", width: 64, height: 64, arrayCount: 32, shader: "ToolsHelper/SplitSum.sh:main_trans"))
 }

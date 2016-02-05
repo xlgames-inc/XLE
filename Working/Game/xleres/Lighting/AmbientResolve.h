@@ -224,8 +224,9 @@ float3 LightResolve_Ambient(
             SpecularParameters_RoughF0(sample.material.roughness, F0), lsd);
 
         #if MAT_TRANSMITTED_SPECULAR==1
+            float3 transmissionNormal = sign(dot(sample.worldSpaceNormal, directionToEye)) * sample.worldSpaceNormal;
             skyReflections += SampleSpecularIBLTrans(
-                sample.worldSpaceNormal, directionToEye,
+                transmissionNormal, directionToEye,
                 SpecularParameters_RoughF0Transmission(sample.material.roughness, F0, sample.transmission), lsd);
         #endif
     #else

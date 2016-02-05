@@ -377,15 +377,26 @@ float RefractionIncidentAngleDerivative2(float odotm, float iorIncident, float i
 
 	float eta = iorOutgoing/iorIncident;
 	float a = eta;
-	float cosx = odotm;
-	float sinx = sqrt(1.f - cosx*cosx);
-	float sin2x = 2.f*cosx*sinx;
-	float cos2x = Sq(cosx) - Sq(sinx);
+	float cosx = min(odotm, 0.99f);			// c
+
+	float sinx = sqrt(1.f - cosx*cosx);		// b
+	float sin2x = 2.f*cosx*sinx;			// d
+	float cos2x = Sq(cosx) - Sq(sinx);		// f
 	float sqr2 = sqrt(2.f);
 
 	float A = sin2x * (a*a*cos2x+1) / (sqr2 * sqrt(Sq(cosx)*(a*a*cos2x-a*a+2)));
 	float B = sqrt(1.f - Sq(sqrt(Sq(cosx)*(a*a*Sq(cosx)-a*a+1))-a*Sq(cosx)+a));
 	float angleDev = (a * sin2x - A) / B;
+
+	const bool useApproximation = true;
+	if (useApproximation) {
+		// This is an approximation of the full equation
+		// It was matched by hand. It's not a perfect approximation. But it's
+		// pretty close. The error seems visually negligable.
+		float p = pow(1.f-a, -.35f);
+		float W = 1.f - pow(1.f-cosx, p);
+		angleDev = W * a - 1.f;
+	}
 	return -angleDev;
 }
 

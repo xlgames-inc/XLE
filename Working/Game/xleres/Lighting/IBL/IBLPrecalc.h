@@ -156,9 +156,10 @@ float GenerateSplitTermTrans(
             bsdf *= SmithG(abs(dot(ot,  normal)), RoughnessToGAlpha(roughness));
             bsdf *= TrowReitzD(abs(dot( H, normal)), alphad);
 
-            // bsdf *= Sq(iorOutgoing + iorIncident) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+            // bsdf *= Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
             // bsdf *= Sq(iorIncident/iorOutgoing);
-            bsdf /= RefractionIncidentAngleDerivative2(dot(ot, H), iorIncident, iorOutgoing);
+            bsdf /= max(0.005f, 4.f * RefractionIncidentAngleDerivative2(dot(ot, H), iorIncident, iorOutgoing));
+            // bsdf /= 2.f * RefractionIncidentAngleDerivative(dot(ot, H), iorIncident, iorOutgoing);
             #if 0
             // This is an equation from Stam's paper
             //  "An Illumination Model for a Skin Layer Bounded by Rough Surfaces"
@@ -182,10 +183,13 @@ float GenerateSplitTermTrans(
 
         float pdfWeight = InversePDFWeight(H, normal, V, alphad);
 
-        precise float F = 1.f - SchlickFresnelCore(abs(dot(V, H)));
+        // We have to use "saturate" here, not "abs" -- this gives us a better black edge around the outside
+        // Using "abs" is too tolerant and edge never drops off to zero.
+        precise float F = 1.f - SchlickFresnelCore(saturate(dot(V, H)));
 
         // bsdf = 1.f / RefractionIncidentAngleDerivative(dot(ot, H), iorIncident, iorOutgoing);
-        // bsdf = 1.f / RefractionIncidentAngleDerivative2(dot(ot, H), iorIncident, iorOutgoing);
+        // bsdf = 1.f / max(0.005f, RefractionIncidentAngleDerivative2(dot(ot, H), iorIncident, iorOutgoing));
+        // bsdf = Sq(iorOutgoing + iorIncident) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
         // F = 1.f;
 
         A += F * bsdf * pdfWeight;
@@ -391,17 +395,18 @@ float3 CalculateFilteredTextureTrans(
         bsdf *= SmithG(abs(dot( i,  normal)), RoughnessToGAlpha(roughness));
         bsdf *= SmithG(abs(dot(ot,  normal)), RoughnessToGAlpha(roughness));
         bsdf *= TrowReitzD(abs(dot( H, normal)), alphad);
-        bsdf *= Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+        // bsdf *= Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+        bsdf /= max(0.005f, 4.f * RefractionIncidentAngleDerivative2(dot(ot, H), iorIncident, iorOutgoing));
         bsdf *= abs(dot(i, H)) * abs(dot(ot, H));
         bsdf /= abs(dot(i, normal)) * abs(dot(ot, normal));
         //bsdf *= GGXTransmissionFresnel(
         //    i, viewDirection, specParam.F0.g,
         //    iorIncident, iorOutgoing);
 
-        bsdf *= 1.0f - SchlickFresnelCore(abs(dot(ot, H)));
+        bsdf *= 1.0f - SchlickFresnelCore(saturate(dot(ot, H)));
         bsdf *= -dot(i, normal);
 
-        float weight = bsdf * InversePDFWeight(H, normal, 0.0.xxx, alphad);
+        float weight = bsdf * InversePDFWeight(H, coreNormal, 0.0.xxx, alphad);
 #endif
 
         result += lightColor * weight;
