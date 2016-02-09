@@ -295,7 +295,7 @@ namespace ConsoleRig
         void    DebuggerConsoleOutput::Write(StringSection<ucs2> str)
         {
             OutputDebugStringW(
-                Conversion::Convert<std::wstring>(str.AsString()).c_str());
+                (const wchar_t*)Conversion::Convert<std::basic_string<utf16>>(str.AsString()).c_str());
         }
 
         void    DebuggerConsoleOutput::Write(StringSection<ucs4> str)

@@ -25,21 +25,21 @@ namespace Utility
 
         ////////////   S T R I N G   T O O L S   ////////////
             // (note that counts are array length in number of chars or unichars)
-    XL_UTILITY_API size_t   XlStringSize        (const char* str);
+    inline		   size_t   XlStringSize        (const char* str) { return std::strlen(str); }
     XL_UTILITY_API size_t   XlStringSizeSafe    (const char* str, const char* end);
-    XL_UTILITY_API size_t   XlStringLen         (const char* str);
+    inline		   size_t   XlStringLen         (const char* str) { return std::strlen(str); }
     XL_UTILITY_API size_t   XlStringSize        (const utf8* str);
     XL_UTILITY_API size_t   XlStringLen         (const utf8* str);
 
     XL_UTILITY_API void     XlCopyString        (char* dst, size_t size, const char* src);
     XL_UTILITY_API void     XlCopyNString       (char* dst, size_t count, const char* src, size_t length);
-    XL_UTILITY_API void     XlCopySafeUtf       (char* dst, size_t size, const char* src);
-    XL_UTILITY_API void     XlCopySafeUtfN      (char* dst, size_t size, const char* src, const uint32 numSeq);
+    XL_UTILITY_API void     XlCopySafeUtf       (utf8* dst, size_t size, const utf8* src);
+    XL_UTILITY_API void     XlCopySafeUtfN      (utf8* dst, size_t size, const utf8* src, const uint32 numSeq);
 
     XL_UTILITY_API void     XlCatString         (char* dst, size_t size, const char* src);
     XL_UTILITY_API void     XlCatNString        (char* dst, size_t size, const char* src, size_t length);
     XL_UTILITY_API void     XlCatString         (char* dst, size_t size, char src);
-    XL_UTILITY_API void     XlCatSafeUtf        (char* dst, size_t size, const char* src);
+    XL_UTILITY_API void     XlCatSafeUtf        (utf8* dst, size_t size, const utf8* src);
 
     XL_UTILITY_API void     XlCombineString     (char dst[], size_t size, const char zero[], const char one[]);
 
@@ -104,8 +104,8 @@ namespace Utility
             return StringSection<CharType>(nullTerm);
         }
 
-    template<typename CharType>
-        inline StringSection<CharType> MakeStringSection(const std::basic_string<CharType>& str)
+    template<typename CharType, typename T, typename A>
+        inline StringSection<CharType> MakeStringSection(const std::basic_string<CharType, T, A>& str)
         {
             return StringSection<CharType>(AsPointer(str.cbegin()), AsPointer(str.cend()));
         }
@@ -164,10 +164,16 @@ namespace Utility
         ////////////   U T F 8   O V E R R I D E S   ////////////
     XL_UTILITY_API void     XlCopyString        (utf8* dst, size_t size, const utf8* src);
     XL_UTILITY_API void     XlCopyNString       (utf8* dst, size_t count, const utf8*src, size_t length);
+	XL_UTILITY_API void     XlCatString			(utf8* dst, size_t size, const utf8* src);
     XL_UTILITY_API int      XlComparePrefix     (const utf8* x, const utf8* y, size_t size);
     XL_UTILITY_API int      XlComparePrefixI    (const utf8* x, const utf8* y, size_t size);
     XL_UTILITY_API int      XlCompareString     (const utf8* x, const utf8* y);
     XL_UTILITY_API int      XlCompareStringI    (const utf8* x, const utf8* y);
+
+		////////////   U T F 1 6   O V E R R I D E S   ////////////
+	// XL_UTILITY_API void     XlCopyString(utf16* dst, size_t size, const utf16* src);
+	// XL_UTILITY_API void     XlCopyNString(utf16* dst, size_t count, const utf16*src, size_t length);
+	// XL_UTILITY_API size_t   XlStringSize(const utf16* str);
 
         ////////////   U C S 2   O V E R R I D E S   ////////////
     XL_UTILITY_API void     XlCopyString        (ucs2* dst, size_t size, const ucs2* src);
@@ -365,6 +371,12 @@ namespace Utility
         {
             XlCopyNString(destination, Count, source._start, source.Length());
         }
+
+	template <typename CharType>
+		void XlCopyString(CharType destination[], size_t destinationCount, const StringSection<CharType>& source)
+		{
+			XlCopyNString(destination, destinationCount, source._start, source.Length());
+		}
 
     template <int Count, typename CharType>
         void XlCopyString(CharType (&destination)[Count], const std::basic_string<CharType>& source)

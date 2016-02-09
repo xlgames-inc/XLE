@@ -47,18 +47,21 @@
         //  If we drop VS2010 support, this would be the best option
 
     #include <mutex>
+    #include <condition_variable>
+	#include <shared_mutex>
 
     namespace Utility { namespace Threading
     {
         using Mutex = std::mutex;
         using RecursiveMutex = std::recursive_mutex;
-        using ReadWriteMutex = std::mutex;      // C++11 doesn't have a read/write lock (coming in C++14, apparently)
+        using ReadWriteMutex = std::shared_timed_mutex;
+        using Conditional = std::condition_variable;
     }}
     using namespace Utility;
 
-    #define ScopedLock(x)            std::unique_lock<std::mutex> _autoLockA(x)
-    #define ScopedReadLock(x)        std::unique_lock<std::mutex> _autoLockB(x)
-    #define ScopedModifyLock(x)      std::unique_lock<std::mutex> _autoLockC(x)
+    #define ScopedLock(x)            std::unique_lock<decltype(x)> _autoLockA(x)
+    #define ScopedReadLock(x)        std::unique_lock<decltype(x)> _autoLockB(x)
+    #define ScopedModifyLock(x)      std::unique_lock<decltype(x)> _autoLockC(x)
 
 #endif
 

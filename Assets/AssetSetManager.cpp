@@ -21,7 +21,7 @@ namespace Assets
     {
     public:
         std::vector<std::pair<size_t, std::unique_ptr<IAssetSet>>> _sets;
-        unsigned _boundThreadId;
+        Threading::ThreadId _boundThreadId;
         Threading::Mutex _lock;
     };
 

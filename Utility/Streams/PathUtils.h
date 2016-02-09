@@ -109,7 +109,7 @@ namespace Utility
 	};
 
     template<typename CharType> FileNameSplitter<CharType> MakeFileNameSplitter(const CharType rawString[])                     { return FileNameSplitter<CharType>(rawString); }
-    template<typename CharType> FileNameSplitter<CharType> MakeFileNameSplitter(const std::basic_string<CharType>& rawString)   { return FileNameSplitter<CharType>(rawString); }
+    template<typename CharType, typename T, typename A> FileNameSplitter<CharType> MakeFileNameSplitter(const std::basic_string<CharType, T, A>& rawString)   { return FileNameSplitter<CharType>(MakeStringSection(rawString)); }
     template<typename CharType> FileNameSplitter<CharType> MakeFileNameSplitter(StringSection<CharType> rawString)              { return FileNameSplitter<CharType>(rawString); }
 
 	//////////////////////////////////////////////////////////////////////////////
@@ -170,6 +170,10 @@ namespace Utility
             bool beginsWithSeparator, bool endsWithSeparator, 
             Section drive);
 	};
+
+	template<typename CharType> SplitPath<CharType> MakeSplitPath(const CharType rawString[]) { return SplitPath<CharType>(rawString); }
+	template<typename CharType, typename T, typename A> SplitPath<CharType> MakeSplitPath(const std::basic_string<CharType, T, A>& rawString) { return SplitPath<CharType>(MakeStringSection(rawString)); }
+	template<typename CharType> SplitPath<CharType> MakeSplitPath(StringSection<CharType> rawString) { return SplitPath<CharType>(rawString); }
 
     template<typename CharType>
     	std::basic_string<CharType>	MakeRelativePath(

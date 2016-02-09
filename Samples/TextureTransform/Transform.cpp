@@ -332,7 +332,7 @@ namespace TextureTransform
             // using DirectXTex to save to disk...
             // This provides a nice layer over a number of underlying formats
         auto ext = MakeFileNameSplitter(destinationFile).Extension();
-        auto fn = Conversion::Convert<std::wstring>(std::string(destinationFile));
+        auto fn = Conversion::Convert<std::basic_string<utf16>>(std::string(destinationFile));
 
         bool singleSubresource = (_mipCount <= 1) && (_arrayCount <= 1);
         if (singleSubresource) {
@@ -346,7 +346,7 @@ namespace TextureTransform
             
             HRESULT hresult;
             if (XlEqStringI(ext, "tga")) {
-                hresult = DirectX::SaveToTGAFile(image, fn.c_str());
+                hresult = DirectX::SaveToTGAFile(image, (const wchar_t*)fn.c_str());
             } else if (XlEqStringI(ext, "dds")) {
 				DirectX::TexMetadata mdata;
 				memset( &mdata, 0, sizeof(mdata) );
@@ -365,7 +365,7 @@ namespace TextureTransform
 					flags |= DirectX::DDS_FLAGS_FORCE_DX10_EXT;	// DX10 header required to mark it as a 1D texture
 				}
 
-                hresult = DirectX::SaveToDDSFile(&image, 1, mdata, flags, fn.c_str());
+                hresult = DirectX::SaveToDDSFile(&image, 1, mdata, flags, (const wchar_t*)fn.c_str());
             } else {
                 const GUID GUID_ContainerFormatTiff = 
                     { 0x163bcc30, 0xe2e9, 0x4f0b, { 0x96, 0x1d, 0xa3, 0xe9, 0xfd, 0xb7, 0x88, 0xa3 }};
@@ -382,7 +382,7 @@ namespace TextureTransform
                 hresult = DirectX::SaveToWICFile(
                     image, DirectX::WIC_FLAGS_NONE,
                     GUID_ContainerFormatTiff,
-                    fn.c_str());
+					(const wchar_t*)fn.c_str());
             }
 
             if (!SUCCEEDED(hresult))
@@ -403,7 +403,7 @@ namespace TextureTransform
             auto hresult = DirectX::SaveToDDSFile(
                 AsPointer(images.cbegin()), images.size(), 
                 metaData,
-                DirectX::DDS_FLAGS_NONE, fn.c_str());
+                DirectX::DDS_FLAGS_NONE, (const wchar_t*)fn.c_str());
 
             if (!SUCCEEDED(hresult))
                 Throw(::Exceptions::BasicLabel("Failure while written output image"));

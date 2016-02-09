@@ -272,13 +272,11 @@ template<typename BufferType> StreamBuf<BufferType>::StreamBuf() {}
 template<typename BufferType> StreamBuf<BufferType>::~StreamBuf() {}
 
 template class StreamBuf<Internal::ResizeableMemoryBuffer<char>>;
-template class StreamBuf<Internal::ResizeableMemoryBuffer<wchar_t>>;
 template class StreamBuf<Internal::ResizeableMemoryBuffer<utf8>>;
 template class StreamBuf<Internal::ResizeableMemoryBuffer<ucs2>>;
 template class StreamBuf<Internal::ResizeableMemoryBuffer<ucs4>>;
 
 template class StreamBuf<Internal::FixedMemoryBuffer2<char>>;
-template class StreamBuf<Internal::FixedMemoryBuffer2<wchar_t>>;
 template class StreamBuf<Internal::FixedMemoryBuffer2<utf8>>;
 template class StreamBuf<Internal::FixedMemoryBuffer2<ucs2>>;
 template class StreamBuf<Internal::FixedMemoryBuffer2<ucs4>>;

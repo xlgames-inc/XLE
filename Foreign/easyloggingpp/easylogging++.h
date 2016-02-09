@@ -1049,6 +1049,7 @@ static inline void msleep(int ms) {
 #if ELPP_ASYNC_LOGGING
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 #endif  // ELPP_ASYNC_LOGGING
+    (void)ms;
 }
 typedef std::mutex Mutex;
 typedef std::lock_guard<std::mutex> ScopedLock;

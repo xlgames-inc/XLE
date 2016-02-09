@@ -131,14 +131,10 @@ namespace ShaderFragmentArchive
     ShaderFragmentChangeCallback::~ShaderFragmentChangeCallback()
     {}
 
-    static void RegisterFileDependency(std::shared_ptr<Utility::OnChangeCallback> validationIndex, const char filename[])
+    static void RegisterFileDependency(std::shared_ptr<Utility::OnChangeCallback> validationIndex, const utf8 filename[])
     {
-        char directoryName[MaxPath], baseName[MaxPath];
-        XlDirname(directoryName, dimof(directoryName), filename);
-        auto len = XlStringLen(directoryName);
-        if (len > 0) { directoryName[len-1] = '\0'; }
-        XlBasename(baseName, dimof(baseName), filename);
-        Utility::AttachFileSystemMonitor(StringSection<char>(directoryName), StringSection<char>(baseName), validationIndex);
+		auto splitter = MakeFileNameSplitter(filename);
+        Utility::AttachFileSystemMonitor(splitter.DriveAndPath(), splitter.FileAndExtension(), validationIndex);
     }
 
     void ShaderFragment::OnChange(Object^obj)
@@ -207,7 +203,7 @@ namespace ShaderFragmentArchive
 
         std::shared_ptr<ShaderFragmentChangeCallback> changeCallback(
             new ShaderFragmentChangeCallback(this, System::Threading::SynchronizationContext::Current));
-        RegisterFileDependency(changeCallback, marshalString<E_UTF8>(sourceFile).c_str());
+        RegisterFileDependency(changeCallback, (const utf8*)marshalString<E_UTF8>(sourceFile).c_str());
         _fileChangeCallback = changeCallback;
     }
 

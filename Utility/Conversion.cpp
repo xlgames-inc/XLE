@@ -7,6 +7,7 @@
 #include "Conversion.h"
 #include "StringUtils.h"
 #include "PtrUtils.h"
+#include "../Core/SelectConfiguration.h"
 #include <algorithm>
 
 namespace Conversion
@@ -77,16 +78,6 @@ namespace Conversion
         utf8_2_ucs4(
             AsPointer(input.begin()), input.size(),
             AsPointer(result.begin()), result.size());
-        return std::move(result);
-    }
-
-    template<> std::basic_string<wchar_t> Convert(const std::basic_string<utf8>& input)
-    {
-        std::basic_string<wchar_t> result;
-        result.resize(input.size());
-        utf8_2_ucs2(
-            AsPointer(input.begin()), input.size(),
-            (ucs2*)AsPointer(result.begin()), result.size());
         return std::move(result);
     }
 
@@ -169,6 +160,98 @@ namespace Conversion
     {
         return reinterpret_cast<const std::basic_string<wchar_t>&>(input);
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	template<> std::basic_string<ucs2> Convert(StringSection<utf8> input)
+	{
+		std::basic_string<ucs2> result;
+		result.resize(input.Length());
+		utf8_2_ucs2(
+			AsPointer(input.begin()), input.Length(),
+			AsPointer(result.begin()), result.size());
+		return std::move(result);
+	}
+
+	template<> std::basic_string<ucs4> Convert(StringSection<utf8> input)
+	{
+		std::basic_string<ucs4> result;
+		result.resize(input.Length());
+		utf8_2_ucs4(
+			AsPointer(input.begin()), input.Length(),
+			AsPointer(result.begin()), result.size());
+		return std::move(result);
+	}
+
+	template<> std::basic_string<utf8> Convert(StringSection<ucs2> input)
+	{
+		std::basic_string<utf8> result;
+		result.resize(input.Length());
+		ucs2_2_utf8(
+			AsPointer(input.begin()), input.Length(),
+			AsPointer(result.begin()), result.size());
+		return std::move(result);
+	}
+
+	template<> std::basic_string<ucs4> Convert(StringSection<ucs2> input)
+	{
+		std::basic_string<ucs4> result;
+		result.resize(input.Length());
+		ucs2_2_ucs4(
+			AsPointer(input.begin()), input.Length(),
+			AsPointer(result.begin()), result.size());
+		return std::move(result);
+	}
+
+	template<> std::basic_string<char> Convert(StringSection<ucs2> input)
+	{
+		std::basic_string<char> result;
+		result.resize(input.Length());
+		ucs2_2_utf8(
+			AsPointer(input.begin()), input.Length(),
+			(utf8*)AsPointer(result.begin()), result.size());
+		return std::move(result);
+	}
+
+	template<> std::basic_string<utf8> Convert(StringSection<ucs4> input)
+	{
+		std::basic_string<utf8> result;
+		result.resize(input.Length());
+		ucs4_2_utf8(
+			AsPointer(input.begin()), input.Length(),
+			AsPointer(result.begin()), result.size());
+		return std::move(result);
+	}
+
+	template<> std::basic_string<ucs2> Convert(StringSection<ucs4> input)
+	{
+		std::basic_string<ucs2> result;
+		result.resize(input.Length());
+		ucs4_2_ucs2(
+			AsPointer(input.begin()), input.Length(),
+			AsPointer(result.begin()), result.size());
+		return std::move(result);
+	}
+
+	template<> std::basic_string<char> Convert(StringSection<ucs4> input)
+	{
+		std::basic_string<char> result;
+		result.resize(input.Length());
+		ucs4_2_utf8(
+			AsPointer(input.begin()), input.Length(),
+			(utf8*)AsPointer(result.begin()), result.size());
+		return std::move(result);
+	}
+
+	template<> std::basic_string<wchar_t> Convert(StringSection<ucs4> input)
+	{
+		std::basic_string<wchar_t> result;
+		result.resize(input.Length());
+		ucs4_2_ucs2(
+			AsPointer(input.begin()), input.Length(),
+			(ucs2*)AsPointer(result.begin()), result.size());
+		return std::move(result);
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -141,7 +141,7 @@ namespace UnitTests
 
                 WIN32_FILE_ATTRIBUTE_DATA fileAttrib;
                 GetFileAttributesEx(
-                    Conversion::Convert<std::wstring>(std::string(sampleAsset)).c_str(), 
+                    (const wchar_t*)Conversion::Convert<std::basic_string<utf16>>(std::string(sampleAsset)).c_str(), 
                     GetFileExInfoStandard, &fileAttrib);
                 uint64 bytes = uint64(fileAttrib.nFileSizeHigh)<<32 | fileAttrib.nFileSizeLow;
 

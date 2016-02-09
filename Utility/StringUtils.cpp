@@ -135,11 +135,6 @@ const char* XlGetLocaleString(Locale::Enum locale)
     return localeStr[locale];
 }
 
-size_t XlStringSize(const char* str)
-{
-    return strlen(str);
-}
-
 size_t XlStringSizeSafe(const char* str, const char* end)
 {
     const char* p;
@@ -163,21 +158,21 @@ size_t XlStringSizeSafe(const ucs4* str, const ucs4* end)
     return p - str;
 }
 
-inline bool IsUtfMultibyte(uint8 c)
+inline bool IsUtfMultibyte(utf8 c)
 {
     return ((c & 0xc0) == 0x80);
 }
 
-inline bool CheckUtfMultibytes(size_t count, const char* s)
+inline bool CheckUtfMultibytes(size_t count, const utf8* s)
 {
-    while (count && IsUtfMultibyte((uint8)*s)) {
+    while (count && IsUtfMultibyte(*s)) {
         ++s;
         --count;
     }
     return (count == 0);
 }
 
-size_t XlStringLen(const char* s)
+size_t XlStringLen(const utf8* s)
 {
     size_t l = 0;
 
@@ -197,15 +192,26 @@ size_t XlStringLen(const char* s)
     return l;
 }
 
-size_t XlStringLen(const utf8* s)
-{
-    return XlStringLen((const char*)s);
-}
-
 size_t XlStringSize(const utf8* s)
 {
     return XlStringSize((const char*)s);
 }
+
+size_t XlStringSize(const ucs2* str)
+{
+	// string size returns the number of fixed sized "utf16" elements in the string
+	// (even if this is not the same as the number of characters)
+	auto* i = str;
+	while (*i) ++i;
+	return i - str;
+}
+
+#if 0
+size_t XlStringSize(const utf16* str)
+{
+	return XlStringSize((const ucs2*)str);
+}
+#endif
 
 size_t XlStringLen(const ucs4* str)
 {
@@ -255,15 +261,15 @@ void XlCopyNString(char* dst, size_t count, const char* src, size_t length)
 }
 
 #pragma warning(disable:4706)       // warning C4706: assignment within conditional expression
-void XlCopySafeUtf(char* dst, size_t size, const char* src)
+void XlCopySafeUtf(utf8* dst, size_t size, const utf8* src)
 {
     if (!size)
         return;
 
     --size; // reserve null
 
-    uint8 c;
-    while ((c = (uint8)*src)) {
+    utf8 c;
+    while ((c = *src)) {
         int seq = XlCountUtfSequence(c);
         if (seq == 0) {
             break;
@@ -282,16 +288,16 @@ void XlCopySafeUtf(char* dst, size_t size, const char* src)
     *dst = 0;
 }
 
-void XlCopySafeUtfN(char* dst, size_t size, const char* src, const uint32 numSeq)
+void XlCopySafeUtfN(utf8* dst, size_t size, const utf8* src, const uint32 numSeq)
 {
     if (!size)
         return;
 
     --size; // reserve null
 
-    uint8 c;
+	utf8 c;
     uint32 n = 0;
-    while ((c = (uint8)*src)) {
+    while ((c = *src)) {
         if (n >= numSeq) {
             break;
         }
@@ -316,6 +322,10 @@ void XlCopySafeUtfN(char* dst, size_t size, const char* src, const uint32 numSeq
     *dst = 0;
 }
 
+// TODO -- can we find better implementations of these?
+//	UTF8 implementations should be just the same as basic char implementations, except
+//	when a multi byte character is chopped off by the buffer size!
+
 void     XlCopyString        (utf8* dst, size_t size, const utf8* src)
 {
     XlCopyString((char*)dst, size, (const char*)src);
@@ -324,6 +334,11 @@ void     XlCopyString        (utf8* dst, size_t size, const utf8* src)
 void     XlCopyNString        (utf8* dst, size_t count, const utf8*src, size_t length)
 {
     XlCopyNString((char*)dst, count, (const char*)src, length);
+}
+
+void     XlCatString(utf8* dst, size_t size, const utf8* src)
+{
+	XlCatString((char*)dst, size, (const char*)src);
 }
 
 int      XlCompareString     (const utf8* x, const utf8* y)
@@ -350,14 +365,17 @@ int      XlComparePrefixI    (const utf8* x, const utf8* y, size_t size)
 
     #pragma warning(disable: 4995)
 
+	// DavidJ -- note -- I'm not sure if this is correct, because it's not clear if the
+	//	wcscpy_s, etc, functions are going to treat the string as ucs2 or UTF-16
+
     void XlCopyString(wchar_t* dst, size_t size, const wchar_t* src)
     {
-        wcscpy_s((wchar_t*)dst, size, (const wchar_t*)src);
+        wcscpy_s(dst, size, src);
     }
 
     void XlCopyNString(wchar_t* dst, size_t count, const wchar_t*src, size_t length)
     {
-        wcsncpy_s((wchar_t*)dst, count, (const wchar_t*)src, length);
+        wcsncpy_s(dst, count, src, length);
     }
 
     void XlCopyString(ucs2* dst, size_t count, const ucs2* src)
@@ -370,6 +388,18 @@ int      XlComparePrefixI    (const utf8* x, const utf8* y, size_t size)
         wcsncpy_s((wchar_t*)dst, count, (const wchar_t*)src, length);
     }
 
+	#if 0
+		void XlCopyString(utf16* dst, size_t count, const utf16* src)
+		{
+			wcscpy_s((wchar_t*)dst, count, (const wchar_t*)src);
+		}
+
+		void XlCopyNString(utf16* dst, size_t count, const utf16*src, size_t length)
+		{
+			wcsncpy_s((wchar_t*)dst, count, (const wchar_t*)src, length);
+		}
+	#endif
+
     void XlCatString(ucs2* dst, size_t size, const ucs2* src)
     {
         wcscat_s((wchar_t*)dst, size, (const wchar_t*)src);
@@ -378,11 +408,6 @@ int      XlComparePrefixI    (const utf8* x, const utf8* y, size_t size)
     void XlCatNString(ucs2* dst, size_t size, const ucs2* src, size_t length)
     {
         wcsncat_s((wchar_t*)dst, size, (const wchar_t*)src, length);
-    }
-
-    size_t XlStringSize(const ucs2* str)
-    {
-        return wcslen((const wchar_t*)str);
     }
 
     size_t XlStringLen(const ucs2* str)
@@ -466,7 +491,7 @@ void XlCatNString(char* dst, size_t size, const char* src, size_t length)
     dst[size - 1] = 0;
 }
 
-void XlCatSafeUtf(char* dst, size_t size, const char* src)
+void XlCatSafeUtf(utf8* dst, size_t size, const utf8* src)
 {
     for (size_t i = 0; i < size - 1; ++i) {
         if (dst[i] == 0) {

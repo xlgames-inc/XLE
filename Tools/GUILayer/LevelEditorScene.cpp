@@ -116,7 +116,7 @@ namespace GUILayer
                 auto p = GetFirst(initializers);
                 if (p._src)
                     geoType = Conversion::Convert<std::string>(
-                        std::wstring((const wchar_t*)p._src, &((const wchar_t*)p._src)[p._arrayCount]));
+                        std::basic_string<utf16>((const utf16*)p._src, &((const utf16*)p._src)[p._arrayCount]));
                 
                 _scene->_placeholders->AddAnnotation(mappedId, geoType);
             }

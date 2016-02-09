@@ -126,11 +126,11 @@ namespace Assets { namespace IntermediateAssets
 
             // propagate change messages...
             // (duplicating processing from RegisterFileDependency)
-        ResChar directoryName[MaxPath];
-        FileNameSplitter<ResChar> splitter(filename);
-        SplitPath<ResChar>(splitter.DriveAndPath()).Simplify().Rebuild(directoryName);
+        utf8 directoryName[MaxPath];
+        FileNameSplitter<utf8> splitter((const utf8*)filename);
+        SplitPath<utf8>(splitter.DriveAndPath()).Simplify().Rebuild(directoryName);
         
-        FakeFileChange(StringSection<ResChar>(directoryName), splitter.FileAndExtension());
+        FakeFileChange(MakeStringSection(directoryName), splitter.FileAndExtension());
 
         record->OnChange();
     }

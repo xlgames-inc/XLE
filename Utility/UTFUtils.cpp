@@ -12,6 +12,18 @@
 
 namespace Utility
 {
+	#define UTF_REPLACEMENT_CHAR    (ucs4)0x0000FFFD
+	#define UTF_MAX_BMP             (ucs4)0x0000FFFF
+	#define UTF_MAX_UTF16           (ucs4)0x0010FFFF
+	#define UTF_MAX_UTF32           (ucs4)0x7FFFFFFF
+	#define UTF_MAX_LEGAL_UTF32     (ucs4)0x0010FFFF
+
+	enum ucs_conv_error {
+		UCE_OK = 0,
+		UCE_SRC_EXHAUSTED = -1,
+		UCE_DST_EXHAUSTED = -2,
+		UCE_ILLEGAL = -2
+	};
 
 // is c the start of a utf8 sequence ?
 #define isutf(c) (((c)&0xC0) != 0x80)
@@ -583,6 +595,22 @@ ucs4 utf8_nextchar(const utf8* s, size_t* i)
     ch -= _offsets_magic[l - 1];
 
     return ch;
+}
+
+ucs4 utf8_nextchar(utf8 const*& iterator, utf8 const* end)
+{
+	ucs4 ch = 0;
+	size_t l = 0;
+
+	do {
+		ch <<= 6;
+		ch += *iterator;
+		l++;
+	} while (iterator < end && !isutf(*iterator));
+
+	ch -= _offsets_magic[l - 1];
+
+	return ch;
 }
 
 size_t utf8_strlen(const utf8* s)

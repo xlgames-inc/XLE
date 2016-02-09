@@ -2,13 +2,13 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets">
     <Import Project="EnableExceptions.props" />
-	<Import Project="UserDebugSettings.props" />
-	<Import Project="BuildDLL.props" />
+    <Import Project="UserDebugSettings.props" />
+    <Import Project="BuildDLL.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <OutDir>$(SolutionDir)..\Finals_$(RawConfiguration)$(PlatformArchitecture)\</OutDir>
-	<TargetName>$(ProjectName)$(GfxConfiguration)</TargetName>
+    <TargetName>$(ProjectName)$(GfxConfiguration)</TargetName>
   </PropertyGroup>
   <PropertyGroup>
     <IntDir>$(SolutionDir)..\Output\$(RawConfiguration)$(PlatformArchitecture)\$(ProjectName)\</IntDir>
@@ -29,7 +29,6 @@
     <Link>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>

@@ -78,6 +78,8 @@ namespace Utility
         template<> TypeDesc TypeOf<UInt4>()         { return TypeDesc(TypeCat::UInt32, 4, TypeHint::Vector); }
         template<> TypeDesc TypeOf<const char*>()   { return TypeDesc(TypeCat::UInt8, (uint16)~uint16(0), TypeHint::String); }
         template<> TypeDesc TypeOf<const utf8*>()   { return TypeDesc(TypeCat::UInt8, (uint16)~uint16(0), TypeHint::String); }
+		template<> TypeDesc TypeOf<const utf16*>()	{ return TypeDesc(TypeCat::UInt16, (uint16)~uint16(0), TypeHint::String); }
+		template<> TypeDesc TypeOf<utf16>()			{ return TypeDesc(TypeCat::UInt16); }
 
         TypeDesc TypeOf(const char expression[]) 
         {
@@ -462,7 +464,7 @@ namespace Utility
                     return std::string((const char*)data, (const char*)PtrAdd(data, desc._arrayCount * sizeof(char)));
                 }
                 if (desc._type == TypeCat::UInt16 || desc._type == TypeCat::Int16) {
-                    return Conversion::Convert<std::string>(std::basic_string<wchar_t>((const wchar_t*)data, (const wchar_t*)PtrAdd(data, desc._arrayCount * sizeof(wchar_t))));
+                    return Conversion::Convert<std::string>(std::basic_string<utf16>((const utf16*)data, (const utf16*)PtrAdd(data, desc._arrayCount * sizeof(utf16))));
                 }
             }
 
@@ -783,7 +785,7 @@ namespace Utility
         }
 
         if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
-            std::basic_string<wchar_t> wideResult;
+            std::basic_string<utf16> wideResult;
             wideResult.resize((unsigned)type._arrayCount);
             GetParameter(name, AsPointer(wideResult.begin()), type);
             return Conversion::Convert<std::basic_string<CharType>>(wideResult);
@@ -809,7 +811,7 @@ namespace Utility
         }
 
         if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
-            std::basic_string<wchar_t> intermediate;
+            std::basic_string<utf16> intermediate;
             intermediate.resize((unsigned)type._arrayCount);
             GetParameter(name, AsPointer(intermediate.begin()), type);
 
@@ -867,15 +869,15 @@ namespace Utility
     template std::pair<bool, UInt4> ParameterBox::GetParameter(ParameterName name) const;
 
     template std::basic_string<char> ParameterBox::GetString(ParameterName name) const;
-    template std::basic_string<wchar_t> ParameterBox::GetString(ParameterName name) const;
     template std::basic_string<utf8> ParameterBox::GetString(ParameterName name) const;
-    template std::basic_string<ucs2> ParameterBox::GetString(ParameterName name) const;
+	template std::basic_string<utf16> ParameterBox::GetString(ParameterName name) const;
+	template std::basic_string<ucs2> ParameterBox::GetString(ParameterName name) const;
     template std::basic_string<ucs4> ParameterBox::GetString(ParameterName name) const;
 
     template bool ParameterBox::GetString(ParameterName name, char dest[], size_t destCount) const;
-    template bool ParameterBox::GetString(ParameterName name, wchar_t dest[], size_t destCount) const;
     template bool ParameterBox::GetString(ParameterName name, utf8 dest[], size_t destCount) const;
-    template bool ParameterBox::GetString(ParameterName name, ucs2 dest[], size_t destCount) const;
+	template bool ParameterBox::GetString(ParameterName name, utf16 dest[], size_t destCount) const;
+	template bool ParameterBox::GetString(ParameterName name, ucs2 dest[], size_t destCount) const;
     template bool ParameterBox::GetString(ParameterName name, ucs4 dest[], size_t destCount) const;
 
     uint64      ParameterBox::CalculateParameterNamesHash() const

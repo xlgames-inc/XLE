@@ -18,8 +18,14 @@ namespace Conversion
     template<typename Type> const Type& Convert(const Type& input) { return input; }
 
     template<typename Output> Output Convert(const std::basic_string<utf8>& input);
+	template<typename Output> Output Convert(const std::basic_string<utf16>& input);
     template<typename Output> Output Convert(const std::basic_string<ucs2>& input);
     template<typename Output> Output Convert(const std::basic_string<ucs4>& input);
+
+	template<typename Output> Output Convert(StringSection<utf8> input);
+	template<typename Output> Output Convert(StringSection<utf16> input);
+	template<typename Output> Output Convert(StringSection<ucs2> input);
+	template<typename Output> Output Convert(StringSection<ucs4> input);
 
     template<typename OutputElement, typename InputElement>
         ptrdiff_t Convert(
@@ -48,20 +54,14 @@ namespace Conversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-        // We want "char" and "wchar_t" to behave as "utf8" and "uc2", respectively
+        // We want "char" to be interchangeable with "utf8", for convenience's sake
 
     template<typename Output> Output Convert(const std::basic_string<char>& input)
     {
         return Convert<Output>(reinterpret_cast<const std::basic_string<utf8>&>(input));
     }
 
-    template<typename Output> Output Convert(const std::basic_string<wchar_t>& input)
-    {
-        return Convert<Output>(reinterpret_cast<const std::basic_string<ucs2>&>(input));
-    }
-
     template<> inline std::basic_string<char> Convert(const std::basic_string<char>& input) { return input; }
-    template<> inline std::basic_string<wchar_t> Convert(const std::basic_string<wchar_t>& input) { return input; }
     template<> inline std::basic_string<utf8> Convert(const std::basic_string<utf8>& input) { return input; }
     template<> inline std::basic_string<ucs2> Convert(const std::basic_string<ucs2>& input) { return input; }
     template<> inline std::basic_string<ucs4> Convert(const std::basic_string<ucs4>& input) { return input; }

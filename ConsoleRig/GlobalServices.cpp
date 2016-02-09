@@ -25,19 +25,16 @@ namespace ConsoleRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void GetAssetRoot(nchar_t workingDir[], size_t workingDirSize)
+    static std::basic_string<utf8> GetAssetRoot()
     {
             //
             //      For convenience, set the working directory to be ../Working 
             //              (relative to the application path)
             //
-        nchar_t appPath     [MaxPath];
-        nchar_t appDir      [MaxPath];
-
-        XlGetProcessPath    (appPath, dimof(appPath));
-        XlDirname           (appDir, dimof(appDir), appPath);
-        const auto* fn = a2n("..\\Working");
-        XlConcatPath        (workingDir, (int)workingDirSize, appDir, fn, XlStringEnd(fn));
+        utf8 appPath[MaxPath];
+        XlGetProcessPath(appPath, dimof(appPath));
+		auto splitter = MakeFileNameSplitter(appPath);
+        return splitter.DriveAndPath().AsString() + u("/../Working");
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,6 +62,12 @@ namespace ConsoleRig
         serv.Add<uint64()>(
             Fn_GuidGen, [guidGen](){ return (*guidGen)(); });
 
+		auto assetRoot = GetAssetRoot();
+        if (cfg._setWorkingDir)
+			XlChDir(assetRoot.c_str());
+
+		serv.Add<std::basic_string<utf8>()>(Fn_GetAssetRoot, [assetRoot](){ return assetRoot; });
+
             //
             //      We need to initialize logging output.
             //      The "int" directory stands for "intermediate." We cache processed 
@@ -74,14 +77,6 @@ namespace ConsoleRig
             //      Note that we overwrite the log file every time, destroying previous data.
             //
         CreateDirectoryRecursive("int");
-
-		nchar_t assetRoot[MaxPath];
-		GetAssetRoot(assetRoot, dimof(assetRoot));
-        if (cfg._setWorkingDir)
-			XlChDir(assetRoot);
-
-		std::string assetRootString = Conversion::Convert<std::string>(std::basic_string<nchar_t>(assetRoot));
-		serv.Add<std::string()>(Fn_GetAssetRoot, [assetRootString](){ return assetRootString; });
     }
 
     StartupConfig::StartupConfig()

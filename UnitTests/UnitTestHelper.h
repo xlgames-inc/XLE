@@ -38,13 +38,9 @@ namespace UnitTests
             //      we'll find the working directory relative to
             //      that.
     	    //
-    	nchar_t appDir[MaxPath];
-    	nchar_t workingDir[MaxPath];
-    
+    	char appDir[MaxPath];
     	XlGetCurrentDirectory(dimof(appDir), appDir);
-         auto* catPath = a2n("..\\Working");
-    	XlConcatPath(workingDir, dimof(workingDir), appDir, catPath, XlStringEnd(catPath));
-    	XlChDir(workingDir);
+    	XlChDir((const utf8*)(std::basic_string<char>(appDir) + "\\..\\Working").c_str());
     }
     
 }

@@ -34,15 +34,10 @@ namespace GUILayer
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     void EngineDevice::SetDefaultWorkingDirectory()
     {
-        nchar_t appPath     [MaxPath];
-        nchar_t appDir      [MaxPath];
-        nchar_t workingDir  [MaxPath];
-
-        XlGetProcessPath    (appPath, dimof(appPath));
-        XlDirname           (appDir, dimof(appDir), appPath);
-        const auto* fn = a2n("..\\Working");
-        XlConcatPath        (workingDir, dimof(workingDir), appDir, fn, XlStringEnd(fn));
-        XlChDir             (workingDir);
+        utf8 appPath[MaxPath];
+        XlGetProcessPath(appPath, dimof(appPath));
+		auto splitter = MakeFileNameSplitter(appPath);
+		XlChDir((splitter.DriveAndPath().AsString() + u("/../Working")).c_str());
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

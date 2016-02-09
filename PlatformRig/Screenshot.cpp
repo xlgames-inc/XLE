@@ -49,7 +49,7 @@ namespace PlatformRig
             Metal::AsDXGIFormat(format),
             rowPitch, rowPitch * dimensions[1],
             (uint8_t*)imageData };
-        auto fn = Conversion::Convert<std::wstring>(std::string(destinationFile));
+        auto fn = Conversion::Convert<std::basic_string<utf16>>(std::string(destinationFile));
 
         // DirectX::SaveToDDSFile(image, DirectX::DDS_FLAGS_NONE, fn.c_str());
 
@@ -58,7 +58,7 @@ namespace PlatformRig
         auto hresult = DirectX::SaveToWICFile(
             image, DirectX::WIC_FLAGS_NONE,
             GUID_ContainerFormatTiff,
-            fn.c_str());
+            (const wchar_t*)fn.c_str());
         (void)hresult;
         assert(SUCCEEDED(hresult));
     }

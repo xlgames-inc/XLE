@@ -10,6 +10,12 @@
 #include "../../Core/Prefix.h"
 #include "../../Core/Types.h"
 
+// Currently we have a problem including <thread> into C++/CLR files
+// This makes it difficult to use the standard library functions for things like CurrentThreadId()
+#if defined(USE_STANDARD_THREAD_UTILS)
+	#include <thread>
+#endif
+
 /// \namespace Utility::Interlocked
 ///
 /// This namespace provides low-level utility functions for atomic operations.
@@ -244,10 +250,20 @@ using namespace Utility;
     #pragma intrinsic(_mm_pause)
 
     namespace Utility { namespace Threading {
-        inline void YieldTimeSlice()            { SwitchToThread(); }
-        inline void Pause()                     { _mm_pause(); }
-        inline void Sleep(uint32 milliseconds)  { ::Sleep(milliseconds); }
-        inline unsigned CurrentThreadId()       { return ::GetCurrentThreadId(); }
+
+		#if !defined(USE_STANDARD_THREAD_UTILS)
+			inline void YieldTimeSlice()            { SwitchToThread(); }
+			inline void Sleep(uint32 milliseconds)	{ ::Sleep(milliseconds); }
+			using ThreadId = unsigned;
+			inline unsigned CurrentThreadId()		{ return ::GetCurrentThreadId(); }
+		#else
+			inline void YieldTimeSlice()			{ std::this_thread::yield(); }
+			inline void Sleep(uint32 milliseconds)	{ std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds)); }
+			using ThreadId = std::thread::id;
+			inline ThreadId CurrentThreadId()		{ return std::this_thread::get_id(); }
+		#endif
+        
+		inline void Pause() { _mm_pause(); }
     }}
 
 #else
