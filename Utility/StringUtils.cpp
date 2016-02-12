@@ -325,6 +325,9 @@ void XlCopySafeUtfN(utf8* dst, size_t size, const utf8* src, const uint32 numSeq
 // TODO -- can we find better implementations of these?
 //	UTF8 implementations should be just the same as basic char implementations, except
 //	when a multi byte character is chopped off by the buffer size!
+//
+// see UTFCPP; potentially a good replacement for our UTF implementation
+//	http://sourceforge.net/projects/utfcpp/
 
 void     XlCopyString        (utf8* dst, size_t size, const utf8* src)
 {
@@ -915,15 +918,6 @@ int XlExtractInt(const char* buf, int* arr, size_t length)
 
     return int(index);
 }
-
-template<typename CharType>
-    StringSection<CharType>::StringSection(const std::basic_string<CharType>& str) 
-: _start(AsPointer(str.cbegin())), _end(AsPointer(str.cend())) {}
-
-template class StringSection<char>;
-template class StringSection<utf8>;
-template class StringSection<ucs2>;
-template class StringSection<ucs4>;
 
 bool XlSafeAtoi(const char* str, int* n)
 {

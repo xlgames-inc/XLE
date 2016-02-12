@@ -58,19 +58,26 @@ namespace Utility
 
     namespace Internal
     {
-        template<int SizeInBytes>
-            struct FixedMemoryBuffer : public std::streambuf 
+        template<int SizeInBytes, typename CharType=char>
+            struct FixedMemoryBuffer : public std::basic_streambuf<CharType>
         {
             uint8 _buffer[SizeInBytes];
             FixedMemoryBuffer(size_t charSize)
             {
-                this->setp((char*)_buffer, (char*)PtrAdd(_buffer, sizeof(_buffer) - charSize));
+                this->setp((CharType*)_buffer, (CharType*)PtrAdd(_buffer, sizeof(_buffer) - charSize));
                 std::fill_n(_buffer, dimof(_buffer), 0);
             }
 
             const void* begin() const { return pbase(); }
             const void* end() const { return pptr(); }
         };
+
+		template<typename CharType> struct DemoteCharType { using Value = CharType; };
+		template<> struct DemoteCharType<uint8> { using Value = char; };
+		template<> struct DemoteCharType<uint16> { using Value = wchar_t; };
+		template<> struct DemoteCharType<char16_t> { using Value = wchar_t; };
+		template<> struct DemoteCharType<uint32> { using Value = char; }; 
+		template<> struct DemoteCharType<char32_t> { using Value = wchar_t; };
     }
 
     /// <summary>Dynamic string formatting utility<summary>
@@ -86,7 +93,8 @@ namespace Utility
     template<int Count, typename CharType=char> class StringMeld
     {
     public:
-        mutable std::ostream _stream;
+		using DemotedType = typename Internal::DemoteCharType<CharType>::Value;
+        mutable std::basic_ostream<DemotedType> _stream;
         
         StringMeld() : _stream(&_buffer), _buffer(sizeof(CharType)) {}
 
@@ -99,7 +107,7 @@ namespace Utility
         operator StringSection<CharType>() const { return AsStringSection(); }
 
     protected:
-        Internal::FixedMemoryBuffer<Count*sizeof(CharType)> _buffer;
+        Internal::FixedMemoryBuffer<Count*sizeof(CharType), DemotedType> _buffer;
 
         StringMeld(const StringMeld&);
         StringMeld& operator=(const StringMeld&);
@@ -113,17 +121,42 @@ namespace Utility
                 meld._stream << type;
                 return meld;
             }
+
+		template<int Count, typename CharType>
+			const StringMeld<Count, CharType>& operator<<(const StringMeld<Count, CharType>& meld, const std::basic_string<CharType>& str)
+			{
+				// Awkward, but necessary hack!
+				// Visual Studio standard libraries only provide implementations of std::basic_ostream (etc) for
+				// built-in character types (eg, char, wchar_t). It seems that even char16_t and char32_t run into problems.
+				// Furthermore, when using DLL linking of the CRT, we can't even provide our own implementation of the
+				// missing parts (due to dll linking declarations within the template classes).
+				// We can use custom std::basic_ostream for some things (like piping in a string), but more complex operations
+				// tend to introduce problems.
+				// However, we can seek to get around this by using only the built-in char types (called the "demoted" char types)
+				// with the streams, and doing a rough cast of the inputs here.
+				meld._stream << *reinterpret_cast<const std::basic_string<typename Internal::DemoteCharType<CharType>::Value>*>(&str);
+				return meld;
+			}
+
+		template<int Count, typename CharType>
+			const StringMeld<Count, CharType>& operator<<(const StringMeld<Count, CharType>& meld, StringSection<CharType> section)
+			{
+				using Demoted = typename Internal::DemoteCharType<CharType>::Value;
+				meld._stream.write((const Demoted*)section.begin(), section.size());
+				return meld;
+			}
     }
     using namespace Operators;
 
     namespace Internal
     {
-        class StreamBufInPlace : public std::streambuf
+		template<typename CharType = char>
+			class StreamBufInPlace : public std::basic_streambuf<CharType>
         {
         public:
             StreamBufInPlace(uint8* start, uint8* end, size_t charSize) 
             { 
-                this->setp((char*)start, (char*)PtrAdd(end, -ptrdiff_t(charSize))); 
+                this->setp((CharType*)start, (CharType*)PtrAdd(end, -ptrdiff_t(charSize)));
                 XlSetMemory(start, 0, end-start);
             }
             ~StreamBufInPlace() {}
@@ -156,7 +189,8 @@ namespace Utility
         template<typename CharType> class StringMeldInPlace
         {
         public:
-            mutable std::ostream _stream;
+			using DemotedType = typename Internal::DemoteCharType<CharType>::Value;
+            mutable std::basic_ostream<DemotedType> _stream;
 
             operator const CharType*() const    { return (const CharType*)_buffer._buffer; }
             const CharType* get() const         { return (const CharType*)_buffer._buffer; }
@@ -184,7 +218,7 @@ namespace Utility
             }
 
         protected:
-            StreamBufInPlace _buffer;
+            StreamBufInPlace<DemotedType> _buffer;
 
             StringMeldInPlace(const StringMeldInPlace&) = delete;
             StringMeldInPlace& operator=(const StringMeldInPlace&) = delete;
@@ -200,6 +234,22 @@ namespace Utility
                 meld._stream << type;
                 return meld;
             }
+
+		template<typename CharType>
+			const Internal::StringMeldInPlace<CharType>& operator<<(const Internal::StringMeldInPlace<CharType>& meld, const std::basic_string<CharType>& str)
+			{
+				// See the StringMeld case for details about what is happening here
+				meld._stream << *reinterpret_cast<const std::basic_string<typename Internal::DemoteCharType<CharType>::Value>*>(&str);
+				return meld;
+			}
+
+		template<typename CharType>
+			const Internal::StringMeldInPlace<CharType>& operator<<(const Internal::StringMeldInPlace<CharType>& meld, StringSection<CharType> section)
+			{
+				using Demoted = typename Internal::DemoteCharType<CharType>::Value;
+				meld._stream.write((const Demoted*)section.begin(), section.size());
+				return meld;
+			}
     }
     
     template<typename CharType, int Count>

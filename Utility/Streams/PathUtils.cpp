@@ -7,11 +7,13 @@
 #include "PathUtils.h"
 #include "../PtrUtils.h"
 #include "../IteratorUtils.h"
+#include "../MemoryUtils.h"
 #include "../../Core/SelectConfiguration.h"
 #include <utility>
 #include <sstream>
 #include <algorithm>
 #include <assert.h>
+#include <cctype>
 
 namespace Utility
 {
@@ -914,6 +916,62 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
     char ConvertPathChar(char input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
     utf8 ConvertPathChar(utf8 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
     ucs2 ConvertPathChar(ucs2 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
+
+	template<>
+		uint64 HashFilename(StringSection<utf16> filename, const FilenameRules& rules)
+	{
+		// Note -- see also an interesting hashing for filenames in the linux source /fs/ folder.
+		//		it does a simple 32 bit hash, but does 4 characters at a time.
+		//
+		// We're going to apply "tolower" to the filename, as if were ucs2. Given
+		// the format of utf16, this seems like it should be ok...?
+		// However, just using basic "tolower" behaviour here... it's not clear
+		// if it matches the way the underlying OS ignore case exactly. It should be
+		// ok for ASCII chars; but some cases may not be accounted for correctly.
+		if (rules.IsCaseSensitive())
+			return Hash64(filename.begin(), filename.end());
+
+		utf16 buffer[MaxPath];
+		const auto *i = filename._start;
+		const auto *iend = filename._end;
+		auto* b = buffer;
+		while (i != iend && b != ArrayEnd(buffer)) {
+			*b = (utf16)std::tolower(*i); ++i; ++b;
+		}
+		return Hash64(buffer, b);
+	}
+
+	template<>
+		uint64 HashFilename(StringSection<utf8> filename, const FilenameRules& rules)
+	{
+		// Implemented so we get the same hash for utf8 and utf16 versions
+		// of the same string
+		if (rules.IsCaseSensitive()) {
+
+			utf16 buffer[MaxPath];
+			const auto *i = filename._start;
+			const auto *iend = filename._end;
+			auto* b = buffer;
+			while (i != iend && b != ArrayEnd(buffer)) {
+				auto chr = utf8_nextchar(i, iend);
+				*b++ = (utf16)chr;	// note -- shortening occurs here
+			}
+			return Hash64(buffer, b);
+
+		} else {
+
+			utf16 buffer[MaxPath];
+			const auto *i = filename._start;
+			const auto *iend = filename._end;
+			auto* b = buffer;
+			while (i != iend && b != ArrayEnd(buffer)) {
+				auto chr = utf8_nextchar(i, iend);
+				*b++ = (utf16)std::tolower(chr);	// note -- shortening occurs here
+			}
+			return Hash64(buffer, b);
+
+		}
+	}
 
     #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
         FilenameRules s_defaultFilenameRules('/', false);

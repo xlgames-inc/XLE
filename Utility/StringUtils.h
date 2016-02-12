@@ -9,6 +9,7 @@
 #include "Detail/API.h"
 #include "../Core/Types.h"
 #include "UTFUtils.h"
+#include "PtrUtils.h"	// for AsPointer
 #include <string>
 #include <assert.h>
 
@@ -83,13 +84,16 @@ namespace Utility
 
         const CharType* begin() const   { return _start; }
         const CharType* end() const     { return _end; }
+		size_t size() const				{ return Length(); }
 
         const CharType& operator[](size_t index) const { assert(index < Length()); return _start[index]; }
 
         StringSection(const CharType* start, const CharType* end) : _start(start), _end(end) {}
         StringSection() : _start(nullptr), _end(nullptr) {}
         StringSection(const CharType* nullTerm) : _start(nullTerm), _end(XlStringEnd(_start)) {}
-        explicit StringSection(const std::basic_string<CharType>& str);
+        
+		template<typename CT, typename A>
+			StringSection(const std::basic_string<CharType, CT, A>& str) : _start(AsPointer(str.cbegin())), _end(AsPointer(str.cend())) {}
     };
 
     template<typename CharType>
@@ -104,24 +108,24 @@ namespace Utility
             return StringSection<CharType>(nullTerm);
         }
 
-    template<typename CharType, typename T, typename A>
-        inline StringSection<CharType> MakeStringSection(const std::basic_string<CharType, T, A>& str)
+    template<typename CharType, typename CT, typename A>
+        inline StringSection<CharType> MakeStringSection(const std::basic_string<CharType, CT, A>& str)
         {
             return StringSection<CharType>(AsPointer(str.cbegin()), AsPointer(str.cend()));
         }
 
-    template<typename CharType>
+    template<typename CharType, typename CT, typename A>
         inline StringSection<CharType> MakeStringSection(
-            const typename std::basic_string<CharType>::const_iterator& begin,
-            const typename std::basic_string<CharType>::const_iterator& end)
+            const typename std::basic_string<CharType, CT, A>::const_iterator& begin,
+            const typename std::basic_string<CharType, CT, A>::const_iterator& end)
         {
             return StringSection<CharType>(AsPointer(begin), AsPointer(end));
         }
 
-    template<typename CharType>
+    template<typename CharType, typename CT, typename A>
         inline StringSection<CharType> MakeStringSection(
-            const typename std::basic_string<CharType>::iterator& begin,
-            const typename std::basic_string<CharType>::iterator& end)
+            const typename std::basic_string<CharType, CT, A>::iterator& begin,
+            const typename std::basic_string<CharType, CT, A>::iterator& end)
         {
             return StringSection<CharType>(AsPointer(begin), AsPointer(end));
         }

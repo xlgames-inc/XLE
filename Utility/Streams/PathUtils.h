@@ -43,6 +43,15 @@ namespace Utility
     XL_UTILITY_API void XlBasename(char* dst, int count, const char* path);
     XL_UTILITY_API const char* XlBasename(const char* path);
 
+	//////////////////////////////////////////////////////////////////////////////
+	/// <summary>Defines some rules for working with filenames</summary>
+	/// These rules define how a filesystem or some other system handles filenames.
+	/// Most importantly, it defines if the filesystem is case sensitive or not.
+	///
+	/// Note that GetSeparator() returns the default separator to use when building
+	/// a filename string (such as in SplitPath::Rebuild). However, when parsing filenames,
+	/// we support either "/" or "\" as separators (eg, Windows style), regardless of
+	/// the result of GetSeparator().
     class FilenameRules
     {
     public:
@@ -184,5 +193,11 @@ namespace Utility
     char ConvertPathChar(char input, const FilenameRules& rules = s_defaultFilenameRules);
     utf8 ConvertPathChar(utf8 input, const FilenameRules& rules = s_defaultFilenameRules);
     ucs2 ConvertPathChar(ucs2 input, const FilenameRules& rules = s_defaultFilenameRules);
+
+	template<typename CharType>
+		uint64 HashFilename(StringSection<CharType> filename, const FilenameRules& rules = s_defaultFilenameRules);
+
+	template<typename CharType>
+		uint64 HashFilenameAndPath(StringSection<CharType> filename, const FilenameRules& rules = s_defaultFilenameRules);
 
 }

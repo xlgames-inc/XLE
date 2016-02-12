@@ -26,6 +26,7 @@ namespace Conversion
 	template<typename Output> Output Convert(StringSection<utf16> input);
 	template<typename Output> Output Convert(StringSection<ucs2> input);
 	template<typename Output> Output Convert(StringSection<ucs4> input);
+	template<typename Output> Output Convert(StringSection<char> input);
 
     template<typename OutputElement, typename InputElement>
         ptrdiff_t Convert(

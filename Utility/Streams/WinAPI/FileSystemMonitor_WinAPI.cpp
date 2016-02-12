@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "../PathUtils.h"
 #include "../../../Core/Prefix.h"
 #include "../FileSystemMonitor.h"
 #include "../../../Core/Types.h"
@@ -90,37 +91,15 @@ namespace Utility
         }
         CloseHandle(_overlapped.hEvent);
     }
-
-    uint64 MonitoredDirectory::HashFilename(StringSection<utf16> filename)
+	
+	uint64 MonitoredDirectory::HashFilename(StringSection<utf16> filename)
     {
-		// We're going to apply "tolower" to the filename, as if were ucs2. Given
-		// the format of utf16, this seems like it should be ok...?
-		// However, just using basic "tolower" behaviour here... it's not clear
-		// if it matches the way the underlying OS ignore case exactly. But maybe it
-		// should be ok for ascii chars.
-		utf16 buffer[MaxPath];
-        const auto *i = filename._start;
-        const auto *iend = filename._end;
-        auto* b = buffer;
-        while (i!=iend && b!=ArrayEnd(buffer)) {
-            *b = (utf16)std::tolower(*i); ++i; ++b;
-        }
-        return Hash64(buffer, b);
+		return Utility::HashFilename(filename);
     }
 
 	uint64 MonitoredDirectory::HashFilename(StringSection<utf8> filename)
 	{
-		// implemented so we get the same hash for utf8 and utf16 versions
-		// of the same string
-		utf16 buffer[MaxPath];
-		const auto *i = filename._start;
-		const auto *iend = filename._end;
-		auto* b = buffer;
-		while (i != iend && b != ArrayEnd(buffer)) {
-			auto chr = utf8_nextchar(i, iend);
-			*b++ = (utf16)std::tolower(chr);	// note -- shortening occurs here
-		}
-		return Hash64(buffer, b);
+		return Utility::HashFilename(filename);
 	}
 
     void MonitoredDirectory::AttachCallback(
