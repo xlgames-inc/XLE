@@ -19,7 +19,7 @@
 //
 
 static const float RefractiveIndexMin = 1.0f;
-static const float RefractiveIndexMax = 1.8f;
+static const float RefractiveIndexMax = 3.0f;
 static const float ReflectionBlurrinessFromRoughness = 5.f;
 
 //  For reference -- here are some "F0" values taken from

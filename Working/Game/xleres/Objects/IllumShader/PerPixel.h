@@ -83,7 +83,7 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
     #endif
 
     #if (SKIP_MATERIAL_DIFFUSE!=1)
-        result.diffuseAlbedo *= MaterialDiffuse;
+        result.diffuseAlbedo *= SRGBToLinear(MaterialDiffuse);
     #endif
 
     #if (OUTPUT_COLOUR==1)
