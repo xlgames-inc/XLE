@@ -7,6 +7,7 @@
 #pragma once
 
 #include "CLIXAutoPtr.h"
+#include "EngineDevice.h"
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include <memory>
 
@@ -19,7 +20,7 @@ namespace GUILayer
 {
 	class IWindowRig;
 	class EngineControlPimpl;
-	public ref class EngineControl abstract
+    public ref class EngineControl abstract : public IOnEngineShutdown
 	{
 	public:
         bool Render();
@@ -31,6 +32,7 @@ namespace GUILayer
         EngineControl(Control^ control);
 		~EngineControl();
         !EngineControl();
+        virtual void OnEngineShutdown();
 
     protected:
         void Evnt_KeyDown(Object^, KeyEventArgs^ e);

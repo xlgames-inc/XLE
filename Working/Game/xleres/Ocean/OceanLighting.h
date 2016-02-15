@@ -268,7 +268,8 @@ void CalculateSkyReflection(inout OceanLightingParts parts,
             //          mirror reflections (as least some of the time)
         parts.skyReflection = LightResolve_Ambient(
             BuildGBufferValues(oceanSurface),
-            parameters.worldViewDirection, BasicAmbient, parameters.pixelPosition.xy, 0,
+            parameters.worldViewDirection, BasicAmbient,
+            LightScreenDest_Create(parameters.pixelPosition.xy, 0),
             AmbientResolveHelpers_Default(),
             true);
 

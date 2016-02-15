@@ -129,11 +129,18 @@ namespace GUILayer
         _pimpl->GetBufferUploads()->Update(*_pimpl->GetImmediateContext());
     }
 
-	void EngineDevice::PrepareForShutdown()
-	{
-		    // it's a good idea to force a GC collect here...
-            // it will help flush out managed references to native objects
-            // before we go through the shutdown steps
+    void EngineDevice::PrepareForShutdown()
+    {
+        for each(auto i in _shutdownCallbacks) {
+            auto callback = dynamic_cast<IOnEngineShutdown^>(i->Target);
+            if (callback)
+                callback->OnEngineShutdown();
+        }
+        _shutdownCallbacks->Clear();
+
+        // It's a good idea to force a GC collect here...
+        // it will help flush out managed references to native objects
+        // before we go through the shutdown steps
         System::GC::Collect();
         System::GC::WaitForPendingFinalizers();
         DelayedDeleteQueue::FlushQueue();
@@ -142,11 +149,19 @@ namespace GUILayer
         RenderOverlays::CleanupFontSystem();
         if (_pimpl->GetAssetServices())
             _pimpl->GetAssetServices()->GetAssetSets().Clear();
-	}
+    }
+
+    void EngineDevice::AddOnShutdown(IOnEngineShutdown^ callback)
+    {
+        // It will be nicer to do this with delegates, but we can't create a 
+        // delegate with captures in C++/CLR
+        _shutdownCallbacks->Add(gcnew System::WeakReference(callback));
+    }
     
     EngineDevice::EngineDevice()
     {
         assert(s_instance == nullptr);
+        _shutdownCallbacks = gcnew System::Collections::Generic::List<System::WeakReference^>();
         _pimpl = new NativeEngineDevice;
         RenderOverlays::InitFontSystem(_pimpl->GetRenderDevice().get(), _pimpl->GetBufferUploads());
         s_instance = this;
@@ -157,7 +172,7 @@ namespace GUILayer
         assert(s_instance == this);
         s_instance = nullptr;
 
-		PrepareForShutdown();
+        PrepareForShutdown();
         Assets::Dependencies_Shutdown();
         delete _pimpl;
         _pimpl = nullptr;

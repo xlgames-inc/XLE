@@ -16,6 +16,11 @@ namespace GUILayer
 {
     class NativeEngineDevice;
 
+    public interface class IOnEngineShutdown 
+    {
+        virtual void OnEngineShutdown();
+    };
+
     /// <summary>CLI layer to represent a rendering device</summary>
     ///
     /// This class manages the construction/destruction and access of some global 
@@ -38,13 +43,16 @@ namespace GUILayer
         void ForegroundUpdate();
 
         void AttachDefaultCompilers();
-		void PrepareForShutdown();
+        void PrepareForShutdown();
+
+        void AddOnShutdown(IOnEngineShutdown^ callback);
 
         EngineDevice();
         ~EngineDevice();
         !EngineDevice();
     protected:
         NativeEngineDevice* _pimpl;
+        System::Collections::Generic::IList<System::WeakReference^>^ _shutdownCallbacks;
 
         static EngineDevice^ s_instance;
     };

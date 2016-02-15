@@ -190,25 +190,37 @@ namespace GUILayer
             return false;
         }
     }
+    
+    void EngineControl::OnEngineShutdown()
+    {
+        // Drop the "EngineControlPimpl", because this contains references to native stuff
+        _pimpl.reset();
+    }
 
     EngineControl::EngineControl(Control^ control)
     {
         _pimpl.reset(new EngineControlPimpl);
-        _pimpl->_windowRig = EngineDevice::GetInstance()->GetNative().CreateWindowRig(control->Handle.ToPointer());
+        auto engineDevice = EngineDevice::GetInstance();
+        _pimpl->_windowRig = engineDevice->GetNative().CreateWindowRig(control->Handle.ToPointer());
         _pimpl->_inputTranslator = std::make_unique<PlatformRig::InputTranslator>();
         _pimpl->_inputTranslator->AddListener(_pimpl->_windowRig->GetFrameRig().GetMainOverlaySystem()->GetInputListener());
 
-        control->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &EngineControl::Evnt_KeyDown);
-        control->KeyUp += gcnew System::Windows::Forms::KeyEventHandler(this, &EngineControl::Evnt_KeyUp);
-        control->KeyPress += gcnew System::Windows::Forms::KeyPressEventHandler(this, &EngineControl::Evnt_KeyPress);
-        control->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseMove);
-        control->MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseDown);
-        control->MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseUp);
+        control->KeyDown    += gcnew System::Windows::Forms::KeyEventHandler(this, &EngineControl::Evnt_KeyDown);
+        control->KeyUp      += gcnew System::Windows::Forms::KeyEventHandler(this, &EngineControl::Evnt_KeyUp);
+        control->KeyPress   += gcnew System::Windows::Forms::KeyPressEventHandler(this, &EngineControl::Evnt_KeyPress);
+        control->MouseMove  += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseMove);
+        control->MouseDown  += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseDown);
+        control->MouseUp    += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseUp);
         control->MouseWheel += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseWheel);
         control->MouseDoubleClick += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_DoubleClick);
-        control->GotFocus += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_FocusChange);
-        control->LostFocus += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_FocusChange);
-        control->Resize += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_Resize);
+        control->GotFocus   += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_FocusChange);
+        control->LostFocus  += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_FocusChange);
+        control->Resize     += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_Resize);
+
+        // We can't guarantee when the destructor or finalizer will be called. But we need to make sure
+        // that the native objects are released before the device is destroyed. The only way to do that
+        // is to install a callback in the engine device itself, 
+        engineDevice->AddOnShutdown(this);
     }
 
     EngineControl::~EngineControl()
