@@ -233,6 +233,9 @@ namespace LevelEditorCore
             }
         }
 
+        [DefaultValue(TerrainAlignmentMode.WorldUp)]
+        public TerrainAlignmentMode TerrainAlignment { get; set; }
+
         #endregion
 
         /// <summary>

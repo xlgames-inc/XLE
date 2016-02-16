@@ -137,6 +137,12 @@ namespace SceneEngine
         ITerrainFormat& ioFormat, const TerrainConfig& cfg, 
         const TerrainCoordinateSystem& coords, Float2 queryPosition);
 
+    /// <summary>Like GetTerrainHeight, but also returns the normal</summary>
+    bool GetTerrainHeightAndNormal(
+        float& height, Float3& normal,
+        ITerrainFormat& ioFormat, const TerrainConfig& cfg, 
+        const TerrainCoordinateSystem& coords, Float2 queryPosition);
+
     class TerrainCell;
     class TerrainCellTexture;
     class TerrainUberSurfaceGeneric;

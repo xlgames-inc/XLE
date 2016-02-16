@@ -64,17 +64,16 @@ namespace LevelEditorCore.Commands
         /// <returns>true, if client can do the command</returns>
         public bool CanDoCommand(object commandTag)
         {
-            
-            
             bool cando = (commandTag is IManipulator) || commandTag.Equals(Command.Select);
             if(!cando && commandTag is Command)
             {
-
                 switch ((Command)commandTag)
                 {
                     case Command.Select:                        
                     case Command.SnapToVertex:                        
                     case Command.RotateOnSnap:
+                    case Command.AlignToTerrainUp:
+                    case Command.AlignToWorldUp:
                         cando = true;
                         break;
                 }
@@ -98,7 +97,6 @@ namespace LevelEditorCore.Commands
             {
                 switch ((Command)commandTag)
                 {
-                                     
                     case Command.Select:
                         m_designView.Manipulator = null; 
                         break;
@@ -111,6 +109,19 @@ namespace LevelEditorCore.Commands
                         snapSettings.RotateOnSnap = !snapSettings.RotateOnSnap;
                         break;
 
+                    case Command.AlignToTerrainUp:
+                        if (snapSettings.TerrainAlignment == TerrainAlignmentMode.TerrainUp)
+                            snapSettings.TerrainAlignment = TerrainAlignmentMode.None;
+                        else
+                            snapSettings.TerrainAlignment = TerrainAlignmentMode.TerrainUp;
+                        break;
+
+                    case Command.AlignToWorldUp:
+                        if (snapSettings.TerrainAlignment == TerrainAlignmentMode.WorldUp)
+                            snapSettings.TerrainAlignment = TerrainAlignmentMode.None;
+                        else
+                            snapSettings.TerrainAlignment = TerrainAlignmentMode.WorldUp;
+                        break;
                 }
             }
         }
@@ -144,6 +155,13 @@ namespace LevelEditorCore.Commands
                         state.Check = snapSettings.RotateOnSnap;
                         break;
 
+                    case Command.AlignToTerrainUp:
+                        state.Check = snapSettings.TerrainAlignment == TerrainAlignmentMode.TerrainUp;
+                        break;
+
+                    case Command.AlignToWorldUp:
+                        state.Check = snapSettings.TerrainAlignment == TerrainAlignmentMode.WorldUp;
+                        break;
                 }
             }
         }
@@ -155,6 +173,8 @@ namespace LevelEditorCore.Commands
             Select,                        
             SnapToVertex,
             RotateOnSnap,
+            AlignToTerrainUp,
+            AlignToWorldUp
         }
 
         // The order of these enums determines the order of the command groups in a menu.
@@ -199,6 +219,27 @@ namespace LevelEditorCore.Commands
                 CommandVisibility.All,
                 this);
 
+            m_commandService.RegisterCommand(
+                Command.AlignToTerrainUp,
+                StandardMenu.Modify,
+                CommandGroup.Manipulators,
+                "Align To Terrain Up".Localize(),
+                "Align To Terrain Up".Localize(),
+                Keys.None,
+                null,
+                CommandVisibility.All,
+                this);
+
+            m_commandService.RegisterCommand(
+                Command.AlignToWorldUp,
+                StandardMenu.Modify,
+                CommandGroup.Manipulators,
+                "Align To World Up".Localize(),
+                "Align To World Up".Localize(),
+                Keys.None,
+                null,
+                CommandVisibility.All,
+                this);
             
              // Register comboBoxes for snap-from-mode and reference-coordinate-system, in the edit
             //  menu's toolbar

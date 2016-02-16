@@ -222,15 +222,32 @@ namespace GUILayer
         }
 
         static bool GetTerrainHeight(
-            [Out] float% result,
+            [Out] float% height,
             IntersectionTestSceneWrapper^ testScene,
             float worldX, float worldY)
         {
             auto& terrain = *testScene->GetNative().GetTerrain();
-            result = SceneEngine::GetTerrainHeight(
+            height = SceneEngine::GetTerrainHeight(
                 *terrain.GetFormat().get(), terrain.GetConfig(), terrain.GetCoords(),
                 Float2(worldX, worldY));
             return true;
+        }
+
+        static bool GetTerrainHeightAndNormal(
+            [Out] float% height, [Out] Vector3% normal,
+            IntersectionTestSceneWrapper^ testScene,
+            float worldX, float worldY)
+        {
+            auto& terrain = *testScene->GetNative().GetTerrain();
+            Float3 nativeNormal;
+            float nativeHeight;
+            bool queryResult = SceneEngine::GetTerrainHeightAndNormal(
+                nativeHeight, nativeNormal,
+                *terrain.GetFormat().get(), terrain.GetConfig(), terrain.GetCoords(),
+                Float2(worldX, worldY));
+            height = nativeHeight;
+            normal = AsVector3(nativeNormal);
+            return queryResult;
         }
 
         static bool GetTerrainUnderCursor(

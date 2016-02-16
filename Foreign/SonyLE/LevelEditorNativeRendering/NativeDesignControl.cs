@@ -226,10 +226,30 @@ namespace RenderingInterop
                 //  calculate basic insertion position
             Vec3F terrainHit;
             if (GetTerrainCollision(out terrainHit, PointToClient(new Point(drgevent.X, drgevent.Y)))) {
+                ISnapSettings snapSettings = (ISnapSettings)DesignView;
                 foreach (var ghost in m_ghosts) {
                     var gameObject = ghost.As<ITransformable>();
                     if (gameObject != null) {
                         gameObject.Translation = terrainHit;
+
+                        // When if terrain alignment mode, we need to query the terrain collision model
+                        // for a terrain normal associated with this point. The 
+                        if (snapSettings.TerrainAlignment == TerrainAlignmentMode.TerrainUp)
+                        {
+                            using (var intersectionScene = GameEngine.GetEditorSceneManager().GetIntersectionScene())
+                            {
+                                float terrainHeight;
+                                GUILayer.Vector3 terrainNormal;
+                                if (GUILayer.EditorInterfaceUtils.GetTerrainHeightAndNormal(
+                                    out terrainHeight, out terrainNormal,
+                                    intersectionScene, terrainHit.X, terrainHit.Y))
+                                {
+                                    gameObject.Rotation = TransformUtils.RotateToVector(
+                                        gameObject.Rotation, new Vec3F(terrainNormal.X, terrainNormal.Y, terrainNormal.Z),
+                                        Sce.Atf.Rendering.Dom.AxisSystemType.ZIsUp);
+                                }
+                            }
+                        }
                     }
                 }
 

@@ -171,19 +171,22 @@ namespace RenderingInterop
 
             using (var intersectionScene = GameEngine.GetEditorSceneManager().GetIntersectionScene())
             {
-                Vec3F intersectionPt;
+                PickResult intersectionPt;
                 if (!CalculateTerrainIntersection(vc, rayV, intersectionScene, out intersectionPt)) 
                     return;
 
                 if (m_pendingStartPt)
                 {
-                    m_startPt = intersectionPt;
+                    m_startPt = intersectionPt._pt.Value;
                     m_pendingStartPt = false;
                 }
                 else
                 {
+                    ISnapSettings snapSettings = (ISnapSettings)DesignView;
+
                     bool clampToSurface = Control.ModifierKeys == Keys.Shift;
-                    Vec3F translate = new Vec3F(intersectionPt.X - m_startPt.X, intersectionPt.Y - m_startPt.Y, 0.0f);
+                    var pt = intersectionPt._pt.Value;
+                    Vec3F translate = new Vec3F(pt.X - m_startPt.X, pt.Y - m_startPt.Y, 0.0f);
                     for (int i = 0; i < m_activeOp.NodeList.Count; i++)
                     {
                         ITransformable node = m_activeOp.NodeList[i];
@@ -195,13 +198,43 @@ namespace RenderingInterop
 
                         Vec3F newWorldPos = m_originalTranslations[i] + translate;
                         float terrainHeight = 0.0f;
-                        if (GUILayer.EditorInterfaceUtils.GetTerrainHeight(
-                            out terrainHeight, intersectionScene, newWorldPos.X, newWorldPos.Y)) {
-
+                        GUILayer.Vector3 terrainNormal;
+                        if (GUILayer.EditorInterfaceUtils.GetTerrainHeightAndNormal(
+                            out terrainHeight, out terrainNormal, 
+                            intersectionScene, newWorldPos.X, newWorldPos.Y))
+                        {
                             newWorldPos.Z = terrainHeight + (clampToSurface ? 0.0f : m_originalHeights[i]);
                             Vec3F localTranslation;
                             parentWorldToLocal.TransformVector(newWorldPos, out localTranslation);
                             node.Translation = localTranslation;
+
+                            // There are two ways to orient the "up" vector of the object.
+                            // One way is to decompose the 3x3 rotation matrix into a up vector + a rotation around
+                            // that vector. Then we retain the rotation, and just move the up vector.
+                            // Another way is to take the 3x3 matrix, and adjust it's up vector. Then just perform
+                            // the Gram–Schmidt algorithm to re-orthogonalize it.
+                            // We'll use the code from the SCEE level editor. This isn't the ideal math (there's a
+                            // lot of room for floating point creep) but it should work.
+                            var currentUp = node.Transform.ZAxis; 
+                            if (snapSettings.TerrainAlignment == TerrainAlignmentMode.TerrainUp)
+                            {
+                                node.Rotation = TransformUtils.RotateToVector(
+                                    node.Rotation, new Vec3F(terrainNormal.X, terrainNormal.Y, terrainNormal.Z),
+                                    AxisSystemType.ZIsUp);
+                            }
+                            else
+                            if (snapSettings.TerrainAlignment == TerrainAlignmentMode.WorldUp)
+                            {
+                                // Prevent the change if the normal is already very close to straight up
+                                if (Math.Abs(currentUp.X - 0.0f) > 1e-4f ||  Math.Abs(currentUp.Y - 0.0f) > 1e-4f || Math.Abs(currentUp.Z - 1.0f) > 1e-4f)
+                                {
+                                    node.Rotation = TransformUtils.RotateToVector(
+                                        node.Rotation, new Vec3F(0.0f, 0.0f, 1.0f),
+                                        AxisSystemType.ZIsUp);
+                                }
+                            }
+
+                            node.UpdateTransform();
                         }
                     }
                 }
@@ -263,19 +296,25 @@ namespace RenderingInterop
             m_originalHeights = null;
         }
 
-        private bool CalculateTerrainIntersection(ViewControl vc, Ray3F ray, GUILayer.IntersectionTestSceneWrapper testScene, out Vec3F result)
+        private struct PickResult
+        {
+            internal Vec3F? _pt;
+            internal PickResult(Vec3F? pt = null) { _pt = pt; }
+        };
+
+        private bool CalculateTerrainIntersection(ViewControl vc, Ray3F ray, GUILayer.IntersectionTestSceneWrapper testScene, out PickResult result)
         {
             var nativeVC = vc as NativeDesignControl;
-            if (nativeVC == null) { result = Vec3F.ZeroVector; return false; }
+            if (nativeVC == null) { result = new PickResult(); return false; }
 
             var pick = XLEBridgeUtils.Picking.RayPick(nativeVC.Adapter, ray, XLEBridgeUtils.Picking.Flags.Terrain);
             if (pick != null && pick.Length > 0)
             {
-                result = pick[0].hitPt;
+                result = new PickResult(pick[0].hitPt);
                 return true;
             }
 
-            result = Vec3F.ZeroVector;
+            result = new PickResult();
             return false;
         }
 

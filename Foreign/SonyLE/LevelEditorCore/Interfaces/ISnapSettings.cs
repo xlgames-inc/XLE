@@ -51,8 +51,13 @@ namespace LevelEditorCore
             get;
             set;
         }
-    }
 
+        TerrainAlignmentMode TerrainAlignment
+        {
+            get;
+            set;
+        }
+    }
 
     /// <summary>
     /// Enums that correspond to the strings in TransformUtils.SnapFromModes</summary>
@@ -66,5 +71,16 @@ namespace LevelEditorCore
         BackCenter,
         LeftCenter,
         RightCenter,
+    }
+
+    /// <summary>
+    /// Alignment settings for objects placed on the terrain. This controls the alignment of objects
+    /// created on the terrain, or moved about it. Normally, objects are aligned with the world up. 
+    /// However, sometimes objects must be aligned with terrain up.</summary>
+    public enum TerrainAlignmentMode
+    {
+        WorldUp,
+        TerrainUp,
+        None
     }
 }
