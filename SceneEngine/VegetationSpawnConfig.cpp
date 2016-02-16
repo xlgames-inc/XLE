@@ -15,8 +15,9 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::VegetationSpawnConfig
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("BaseGridSpacing"), DefaultGet(Obj, _baseGridSpacing),  DefaultSet(Obj, _baseGridSpacing));
-        props.Add(u("JitterAmount"),    DefaultGet(Obj, _jitterAmount),     DefaultSet(Obj, _jitterAmount));
+        props.Add(u("BaseGridSpacing"),     DefaultGet(Obj, _baseGridSpacing),  DefaultSet(Obj, _baseGridSpacing));
+        props.Add(u("JitterAmount"),        DefaultGet(Obj, _jitterAmount),     DefaultSet(Obj, _jitterAmount));
+        props.Add(u("AlignToTerrainUp"),    DefaultGet(Obj, _alignToTerrainUp), DefaultSet(Obj, _alignToTerrainUp));
 
         props.AddChildList<Obj::Material>(
             u("Material"),
@@ -110,6 +111,7 @@ namespace SceneEngine
     {
         _baseGridSpacing = 1.f;
         _jitterAmount = 1.f;
+        _alignToTerrainUp = false;
     }
 
     VegetationSpawnConfig::~VegetationSpawnConfig() {}

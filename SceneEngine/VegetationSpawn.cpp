@@ -43,6 +43,8 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
+    extern bool g_TerrainVegetationSpawn_AlignToTerrainUp;
+
     class IndirectDrawBuffer
     {
     public:
@@ -76,7 +78,9 @@ namespace SceneEngine
         {
         public:
             unsigned _bufferCount;
-            Desc(unsigned bufferCount) : _bufferCount(bufferCount) {}
+            unsigned _alignToTerrainUp;
+            Desc(unsigned bufferCount, bool alignToTerrainUp) 
+            : _bufferCount(bufferCount), _alignToTerrainUp(alignToTerrainUp) {}
         };
 
         Metal::VertexBuffer         _streamOutputBuffers[2];
@@ -84,8 +88,8 @@ namespace SceneEngine
         intrusive_ptr<ID3D::Query>  _streamOutputCountsQuery;
 
         using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
-        ResLocator  _clearedTypesResource;
-        ResLocator  _streamOutputResources[2];
+        ResLocator          _clearedTypesResource;
+        ResLocator          _streamOutputResources[2];
 
         using UAV = Metal::UnorderedAccessView;
         using SRV = Metal::ShaderResourceView;
@@ -94,6 +98,7 @@ namespace SceneEngine
         IndirectDrawBuffer  _indirectDrawBuffer;
         bool                _isPrepared;
         unsigned            _objectTypeCount;
+        bool                _alignToTerrainUp;
 
         VegetationSpawnResources(const Desc&);
     };
@@ -101,7 +106,8 @@ namespace SceneEngine
     static const auto StreamOutputMaxCount = 16u*1024u;
     static const auto InstanceBufferMaxCount = 16u*1024u;
     static const auto Stream0VertexSize = 4*4;
-    static const auto Stream1VertexSize = 4;
+    static const auto Stream1VertexSize_NoAlign = 4;
+    static const auto Stream1VertexSize_TerrainAlign = 3*4;
 
     VegetationSpawnResources::VegetationSpawnResources(const Desc& desc)
     {
@@ -117,7 +123,8 @@ namespace SceneEngine
             "SpawningInstancesBuffer");
         auto so0r = uploads.Transaction_Immediate(bufferDesc);
 
-        bufferDesc._linearBufferDesc = LinearBufferDesc::Create(Stream1VertexSize*StreamOutputMaxCount, Stream1VertexSize);
+        auto stream1VertexSize = desc._alignToTerrainUp ? Stream1VertexSize_TerrainAlign : Stream1VertexSize_NoAlign;
+        bufferDesc._linearBufferDesc = LinearBufferDesc::Create(stream1VertexSize*StreamOutputMaxCount, stream1VertexSize);
         auto so1r = uploads.Transaction_Immediate(bufferDesc);
 
         auto clearedBufferData = BufferUploads::CreateEmptyPacket(bufferDesc);
@@ -131,7 +138,7 @@ namespace SceneEngine
             //      Note that it might be ideal if these were vertex buffers! But we can't make a buffer that is both a vertex buffer and structured buffer
             //      We want to write to an append structure buffer. So let's make it a shader resource, and read from it using Load int the vertex shader
         bufferDesc._bindFlags = BindFlag::UnorderedAccess | BindFlag::StructuredBuffer | BindFlag::ShaderResource;
-        bufferDesc._linearBufferDesc._structureByteSize = 4*4+2*4;
+        bufferDesc._linearBufferDesc._structureByteSize = 4*4 + (desc._alignToTerrainUp ? 3*3*4 : 2*4);
         bufferDesc._linearBufferDesc._sizeInBytes = bufferDesc._linearBufferDesc._structureByteSize*InstanceBufferMaxCount;
         
 
@@ -160,6 +167,7 @@ namespace SceneEngine
         _instanceBufferUAVs = std::move(instanceBufferUAVs);
         _instanceBufferSRVs = std::move(instanceBufferSRVs);
         _objectTypeCount = desc._bufferCount;
+        _alignToTerrainUp = !!desc._alignToTerrainUp;
     }
 
     static RenderCore::Techniques::ProjectionDesc AdjustProjDesc(
@@ -271,13 +279,26 @@ namespace SceneEngine
                 Metal::InputElementDesc("INSTANCEPARAM", 0, Metal::NativeFormat::R32_UINT, 1)
             };
 
+            static const Metal::InputElementDesc elesTerrainNormal[] = {
+                Metal::InputElementDesc("INSTANCEPOS", 0, Metal::NativeFormat::R32G32B32A32_FLOAT),
+                Metal::InputElementDesc("INSTANCEPARAM", 0, Metal::NativeFormat::R32G32B32_FLOAT, 1)
+            };
+
                 //  How do we clear an SO buffer? We can't make it an unorderedaccess view or render target.
                 //  The only obvious way is to use CopyResource, and copy from a prepared "cleared" buffer
             Metal::Copy(*context, res._streamOutputResources[1]->GetUnderlying(), res._clearedTypesResource->GetUnderlying());
 
-            unsigned strides[2] = { Stream0VertexSize, Stream1VertexSize };
-            Metal::GeometryShader::SetDefaultStreamOutputInitializers(
-                Metal::GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, 2));
+            const bool alignToTerrainUp = res._alignToTerrainUp;
+            if (alignToTerrainUp) {
+                unsigned strides[2] = { Stream0VertexSize, Stream1VertexSize_TerrainAlign };
+                Metal::GeometryShader::SetDefaultStreamOutputInitializers(
+                    Metal::GeometryShader::StreamOutputInitializers(elesTerrainNormal, dimof(elesTerrainNormal), strides, 2));
+            } else {
+                unsigned strides[2] = { Stream0VertexSize, Stream1VertexSize_NoAlign };
+                Metal::GeometryShader::SetDefaultStreamOutputInitializers(
+                    Metal::GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, 2));
+            }
+            g_TerrainVegetationSpawn_AlignToTerrainUp = alignToTerrainUp;
 
             SceneParseSettings parseSettings(
                 SceneParseSettings::BatchFilter::General,
@@ -296,9 +317,7 @@ namespace SceneEngine
             LightingParser_SetGlobalTransform(*context, parserContext, newProjDesc);
 
             context->BindSO(MakeResourceList(res._streamOutputBuffers[0], res._streamOutputBuffers[1]));
-
             parserContext.GetSceneParser()->ExecuteScene(context, parserContext, parseSettings, 5);
-
             context->UnbindSO();
 
                 //  After the scene execute, we need to use a compute shader to separate the 
@@ -347,10 +366,14 @@ namespace SceneEngine
                     ++premapBinCount;
                 }
             }
+
             for (unsigned c=premapBinCount; c<dimof(instanceSeparateConstants._binThresholds); ++c)
                 shaderParams << "OUTPUT_BUFFER_MAP" << c << "=0;";
 
             shaderParams << "INSTANCE_BIN_COUNT=" << premapBinCount;
+
+            if (alignToTerrainUp)
+                shaderParams << ";TERRAIN_NORMAL=1";
 
             context->BindCS(MakeResourceList(
                 parserContext.GetGlobalTransformCB(),
@@ -591,6 +614,7 @@ namespace SceneEngine
             context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
         auto& state = parserContext.GetTechniqueContext()._runtimeState;
         state.SetParameter(u("SPAWNED_INSTANCE"), 1);
+        state.SetParameter(u("GEO_INSTANCE_ALIGN_UP"), unsigned(_pimpl->_resources->_alignToTerrainUp));
         auto cleanup = MakeAutoCleanup(
             [&state]() { state.SetParameter(u("SPAWNED_INSTANCE"), 0); });
 
@@ -623,7 +647,9 @@ namespace SceneEngine
         _pimpl->_drawCallSets.clear();
         _pimpl->_drawCallSetDepVals.clear();
         _pimpl->_resources = std::make_unique<VegetationSpawnResources>(
-            VegetationSpawnResources::Desc((unsigned)cfg._objectTypes.size()));
+            VegetationSpawnResources::Desc(
+                (unsigned)cfg._objectTypes.size(), 
+                cfg._alignToTerrainUp));
     }
 
     void VegetationSpawnManager::Reset()

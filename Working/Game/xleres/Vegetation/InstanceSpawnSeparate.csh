@@ -12,7 +12,11 @@ ByteAddressBuffer	InstanceTypes;
 struct InstanceDef
 {
 	float4 posAndShadowing;
-	float2 sinCosTheta;
+	#if (TERRAIN_NORMAL==1)
+		row_major float3x3 rotationMatrix;
+	#else
+		float2 sinCosTheta;
+	#endif
 };
 
 static const uint MaxInstanceBinCount = 16;
@@ -41,7 +45,14 @@ bool CheckAppend(uint index, uint mappedIndex, uint typeValue, InstanceDef def)
 [numthreads(256, 1, 1)]
 	void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-	uint params = InstanceTypes.Load(4*dispatchThreadId.x);
+	#if (TERRAIN_NORMAL==1)
+		float2 dhdxy = float2(
+			asfloat(InstanceTypes.Load(dispatchThreadId.x*12+0)),
+			asfloat(InstanceTypes.Load(dispatchThreadId.x*12+4)));
+		uint params = InstanceTypes.Load(dispatchThreadId.x*12+8);
+	#else
+		uint params = InstanceTypes.Load(dispatchThreadId.x*4);
+	#endif
 	uint type = params & 0xffff;
 	uint sh0 = params >> 16;
 
@@ -53,7 +64,34 @@ bool CheckAppend(uint index, uint mappedIndex, uint typeValue, InstanceDef def)
 		sh0 / float(0xffff));
 
 	float rotationAngle = asfloat(InstancePositions.Load(dispatchThreadId.x*16+12));
-	sincos(rotationAngle, def.sinCosTheta.x, def.sinCosTheta.y);
+	#if (TERRAIN_NORMAL==1)
+		// We have an up vector, and a rotation around that up vector. We're going to
+		// use the up-vector to initialize +Z, and then set +X to a rotation around (0,0,1)
+		//
+		// Then we'll use the Gram-Schmidt process to make an orthogonal rotation matrix.
+		// This might produce some distortion in some cases, but should be efficient.
+		// Note that the storage space required for the output buffer is significantly higher
+		// that when TERRAIN_NORMAL!=0. It's recommended to only enable this feature when it's
+		// absolutely needed.
+		//
+		// There are other options here; like using a quaternion or euler angles to represent
+		// the object orientation. That would shift some of the calculation from this point onto
+		// the vertex shader for per-vertex work. But it would reduce the size of the buffers.
+		float3 Z = float3(-dhdxy.xy, 1.f);
+		float3 X = float3(1,0,0);
+		sincos(rotationAngle, X.y, X.x);
+		float3 Y = cross(Z, X);
+		X = cross(Y, Z);
+		X = normalize(X);
+		Y = normalize(Y);
+		Z = normalize(Z);
+		def.rotationMatrix = float3x3(
+			float3(X.x, Y.x, Z.x),
+			float3(X.y, Y.y, Z.y),
+			float3(X.z, Y.z, Z.z));
+	#else
+		sincos(rotationAngle, def.sinCosTheta.x, def.sinCosTheta.y);
+	#endif
 
 	if (type == 0) return;	// blanked out parts should just be zero
 

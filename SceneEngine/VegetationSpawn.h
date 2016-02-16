@@ -57,6 +57,7 @@ namespace SceneEngine
 
         float _baseGridSpacing;
         float _jitterAmount;
+        bool _alignToTerrainUp;
         std::vector<Material> _materials;
         std::vector<ObjectType> _objectTypes;
 

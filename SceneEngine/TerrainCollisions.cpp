@@ -69,6 +69,7 @@ namespace SceneEngine
         auto uaxis = Float3(1.f, 0.f, dhdx);
         auto vaxis = Float3(0.f, 1.f, dhdy);
         // auto n = Cross(uaxis, vaxis);
+        // n = Float3(u[1]*v[2] - u[2]*v[1], u[2]*v[0] - u[0]*v[2], u[0]*v[1] - u[1]*v[0]);
         auto n = Float3(-uaxis[2], -vaxis[2], 1.f);
 
         normal = Normalize(n);

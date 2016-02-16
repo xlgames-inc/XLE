@@ -128,6 +128,7 @@ namespace SceneEngine
             bool _doExtraSmoothing, _noisyTerrain;
             bool _drawWireframe;
             bool _encodedGradientFlags;
+            bool _vegetationAlignToTerrainUp;
             unsigned _strataCount;
             TerrainCoverageId _visLayer;
 
@@ -138,6 +139,7 @@ namespace SceneEngine
                     const TerrainCoverageId* coverageIdsBegin, const TerrainCoverageId* coverageIdsEnd,
                     const CoverageFormat* coverageFmtsBegin, const CoverageFormat* coverageFmtsEnd,
                     bool doExtraSmoothing, bool noisyTerrain, bool encodedGradientFlags,
+                    bool vegetationAlignToTerrainUp,
                     bool drawWireframe, unsigned strataCount,
                     TerrainCoverageId visLayer)
             {
@@ -146,6 +148,7 @@ namespace SceneEngine
                 _doExtraSmoothing = doExtraSmoothing;
                 _noisyTerrain = noisyTerrain;
                 _encodedGradientFlags = encodedGradientFlags;
+                _vegetationAlignToTerrainUp = vegetationAlignToTerrainUp;
                 _drawWireframe = drawWireframe;
                 _strataCount = strataCount;
                 _visLayer = visLayer;
@@ -233,6 +236,7 @@ namespace SceneEngine
                 GeometryShader::StreamOutputInitializers(eles, dimof(eles), &strides, 1));
             gs = "game/xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*";
         } else if (desc._mode == TerrainRenderingContext::Mode_VegetationPrepare) {
+            definesBuffer << ";TERRAIN_NORMAL=" << unsigned(desc._vegetationAlignToTerrainUp);
             ps = "";
             gs = "game/xleres/Vegetation/InstanceSpawn.gsh:main:gs_*";
         } else if (desc._drawWireframe) {
@@ -272,6 +276,8 @@ namespace SceneEngine
         _validationCallback = std::move(validationCallback);
     }
 
+    bool g_TerrainVegetationSpawn_AlignToTerrainUp = false;
+
     void        TerrainRenderingContext::EnterState(DeviceContext* context, LightingParserContext& parserContext, const TerrainMaterialTextures& texturing, UInt2 elementSize, Mode mode)
     {
         _dynamicTessellation = Tweakable("TerrainDynamicTessellation", true);
@@ -282,10 +288,11 @@ namespace SceneEngine
             const auto visLayer = Tweakable("TerrainVisCoverage", 0);
 
             auto& box = Techniques::FindCachedBoxDep2<TerrainRenderingResources>(
-                mode, 
-                _coverageLayerIds, &_coverageLayerIds[_coverageLayerCount],
+                mode, _coverageLayerIds, &_coverageLayerIds[_coverageLayerCount],
                 _coverageFmts, &_coverageFmts[_coverageLayerCount],
-                doExtraSmoothing, noisyTerrain, _encodedGradientFlags, drawWireframe, texturing._strataCount,
+                doExtraSmoothing, noisyTerrain, _encodedGradientFlags, 
+                g_TerrainVegetationSpawn_AlignToTerrainUp,
+                drawWireframe, texturing._strataCount,
                 visLayer);
 
             if (box._shaderProgram->DynamicLinkingEnabled()) {

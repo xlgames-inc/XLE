@@ -256,9 +256,11 @@
         <LeGe.NativeType nativeName="VegetationSpawnConfig"/>
         <LeGe.NativeProperty name="BaseGridSpacing" nativeName="BaseGridSpacing"/>
         <LeGe.NativeProperty name="JitterAmount" nativeName="JitterAmount"/>
+        <LeGe.NativeProperty name="AlignToTerrainUp" nativeName="AlignToTerrainUp"/>
         
         <scea.dom.editors.attribute name="BaseGridSpacing" displayName="Base Grid Spacing" description="Spacing between objects (before position jittering)" category="General"/>
         <scea.dom.editors.attribute name="JitterAmount" displayName="Jitter Amount" description="Randomness applied to positions. Higher numbers mean objects are more randomly scattered." category="General"/>
+        <scea.dom.editors.attribute name="AlignToTerrainUp" displayName="Align To Terrain Up" description="Align objects to terrain up (instead of world up)" category="General"/>
 
         <scea.dom.editors name="VegetationSpawnConfig" category="Terrain" image="LevelEditorCore.Resources.gameObject.png" menuText="VegetationSpawnConfig" description="VegetationSpawnConfig"/>
       </xs:appinfo>
@@ -268,6 +270,7 @@
     </xs:sequence>
     <xs:attribute name="BaseGridSpacing" type="xs:float" default="1"/>
     <xs:attribute name="JitterAmount" type="xs:float" default="1"/>
+    <xs:attribute name="AlignToTerrainUp" type="xs:boolean" default="false"/>
   </xs:complexType>
   
   <!-- ......................................................................... -->

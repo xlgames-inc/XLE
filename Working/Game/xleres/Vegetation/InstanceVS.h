@@ -11,7 +11,12 @@
     struct InstanceDef
     {
         float4 posAndShadowing;
-        float2 sinCosTheta;
+
+        #if GEO_INSTANCE_ALIGN_UP==1
+            row_major float3x3 rotationMatrix;
+        #else
+            float2 sinCosTheta;
+        #endif
     };
 
     StructuredBuffer<InstanceDef> InstanceOffsets : register(t15);
@@ -26,16 +31,23 @@
         localPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
 
         objectCentreWorld = InstanceOffsets[input.instanceId].posAndShadowing.xyz;
-        float2 sc = InstanceOffsets[input.instanceId].sinCosTheta;
-        float2x2 rotMat = float2x2(float2(sc.y, -sc.x), float2(sc.x, sc.y));
-        float scale = .75f + .25f * sc.x;       // add cheap scale component (directly related to rotation)
-
         float3 localNormal = VSIn_GetLocalNormal(input);
-        worldNormal = float3(mul(rotMat, localNormal.xy), localNormal.z);
 
-        return float3(
-            objectCentreWorld.xy + scale * mul(rotMat, localPosition.xy),
-            objectCentreWorld.z +  scale * localPosition.z);
+        #if GEO_INSTANCE_ALIGN_UP==1
+            float3x3 rotMat = InstanceOffsets[input.instanceId].rotationMatrix;
+            float scale = .75f + .25f * rotMat[0].x;
+            worldNormal = mul(rotMat, localNormal.xyz);
+            return objectCentreWorld + scale * mul(rotMat, localPosition.xyz);
+        #else
+            float2 sc = InstanceOffsets[input.instanceId].sinCosTheta;
+            float2x2 rotMat = float2x2(float2(sc.y, -sc.x), float2(sc.x, sc.y));
+            float scale = .75f + .25f * sc.x;       // add cheap scale component (directly related to rotation)
+
+            worldNormal = float3(mul(rotMat, localNormal.xy), localNormal.z);
+            return float3(
+                objectCentreWorld.xy + scale * mul(rotMat, localPosition.xy),
+                objectCentreWorld.z +  scale * localPosition.z);
+        #endif
     }
 
     float GetInstanceShadowing(VSInput input)

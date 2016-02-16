@@ -23,8 +23,12 @@ struct WorkingTriangle
 
 struct GSOutput
 {
-	float4 position		: INSTANCEPOS;		// world space position & rotation value
-	uint instanceParam	: INSTANCEPARAM;	// instance type & shadowing
+	float4 position				: INSTANCEPOS;		// world space position & rotation value
+	#if (TERRAIN_NORMAL==1)
+		float3 instanceParam	: INSTANCEPARAM;	// terrain dhdxy & instance type & shadowing
+	#else
+		uint instanceParam		: INSTANCEPARAM;	// instance type & shadowing
+	#endif
 };
 
 cbuffer InstanceSpawn : register(b5)
@@ -45,7 +49,7 @@ static const uint MaxOutputVertices = 112;
 void Swap(inout float3 A, inout float3 B) 		{ float3 x = A; A = B; B = x; }
 
 void WriteInstance(
-	float3 instancePosition, float2 tc, float dhdxy,
+	float3 instancePosition, float2 tc, float2 dhdxy,
 	inout uint outputVertices, inout PointStream<GSOutput> outputStream)
 {
 	if (outputVertices>=MaxOutputVertices)
@@ -110,7 +114,12 @@ void WriteInstance(
 		float shadowing = 1.f;
 	#endif
 
-	output.instanceParam = (instanceType) | ((uint(float(0xffff) * shadowing)) << 16);
+	uint basicInstanceParam = (instanceType) | ((uint(float(0xffff) * shadowing)) << 16);
+	#if (TERRAIN_NORMAL==1)
+		output.instanceParam = float3(dhdxy, asfloat(basicInstanceParam));
+	#else
+		output.instanceParam = basicInstanceParam;
+	#endif
 
 	outputStream.Append(output);
 	++outputVertices;
@@ -118,7 +127,7 @@ void WriteInstance(
 
 void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 							float2 tc00, float2 tc01, float2 tc10, float2 tc11,
-							float dhdxy,
+							float2 dhdxy,
 							inout uint outputVertices, float spacing,
 							inout PointStream<GSOutput> outputStream)
 {
@@ -153,8 +162,7 @@ void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 			float2 tc = lerp(spantc0, spantc1, ax);
 
 			WriteInstance(
-				float3(x, y, z), tc,
-				dhdxy,
+				float3(x, y, z), tc, dhdxy,
 				outputVertices, outputStream);
 
 		}

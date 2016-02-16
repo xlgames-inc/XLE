@@ -27,6 +27,7 @@
     ~Parameters
         ~Runtime
             SPAWNED_INSTANCE
+            GEO_INSTANCE_ALIGN_UP
 ~System
     ~Parameters
         ~GlobalEnvironment
