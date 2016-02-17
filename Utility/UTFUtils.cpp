@@ -604,7 +604,7 @@ ucs4 utf8_nextchar(utf8 const*& iterator, utf8 const* end)
 
 	do {
 		ch <<= 6;
-		ch += *iterator;
+		ch += *iterator++;
 		l++;
 	} while (iterator < end && !isutf(*iterator));
 

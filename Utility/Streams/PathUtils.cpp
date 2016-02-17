@@ -917,6 +917,41 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
     utf8 ConvertPathChar(utf8 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
     ucs2 ConvertPathChar(ucs2 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
 
+	static const uint64 s_FNV_init64 =  0xcbf29ce484222325ULL;
+
+	static uint64 FNVHash64(const void* start, const void* end, uint64 hval = s_FNV_init64)
+	{
+		auto* b = (unsigned char*)start;
+		auto* e = (unsigned char*)end;
+
+		while (b<e) {
+			hval ^= (uint64)*b++;
+			hval += 
+				(hval << 1) + (hval << 4) + (hval << 5) +
+				(hval << 7) + (hval << 8) + (hval << 40);
+		}
+		return hval;
+	}
+
+	static uint64 FNVHash64(uint16 chr, uint64 hval)
+	{
+		// FNV always works with 8 bit values entering the machine
+		//	-- so we have to split this value up into 2, and do it twice.
+		// However, since we're using this for UTF16 filenames, the upper
+		// 8 bits will very frequently be zero. Maybe it would be best to
+		// actually skip the second hash part when that is the case?
+		hval ^= (uint64)(chr & 0xff);
+		hval +=
+			(hval << 1) + (hval << 4) + (hval << 5) +
+			(hval << 7) + (hval << 8) + (hval << 40);
+
+		hval ^= (uint64)(chr >> 8);
+		hval +=
+			(hval << 1) + (hval << 4) + (hval << 5) +
+			(hval << 7) + (hval << 8) + (hval << 40);
+		return hval;
+	}
+
 	template<>
 		uint64 HashFilename(StringSection<utf16> filename, const FilenameRules& rules)
 	{
@@ -928,17 +963,18 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 		// However, just using basic "tolower" behaviour here... it's not clear
 		// if it matches the way the underlying OS ignore case exactly. It should be
 		// ok for ASCII chars; but some cases may not be accounted for correctly.
+		//
+		// To make this function simple and efficient, we'll use the FNV-1a algorithm.
+		// See details here: http://isthe.com/chongo/tech/comp/fnv/
+		//
+		// This method is just well suited to our needs in this case
 		if (rules.IsCaseSensitive())
-			return Hash64(filename.begin(), filename.end());
+			return FNVHash64(filename.begin(), filename.end());
 
-		utf16 buffer[MaxPath];
-		const auto *i = filename._start;
-		const auto *iend = filename._end;
-		auto* b = buffer;
-		while (i != iend && b != ArrayEnd(buffer)) {
-			*b = (utf16)std::tolower(*i); ++i; ++b;
-		}
-		return Hash64(buffer, b);
+		uint64 hval = s_FNV_init64;
+		for (auto i:filename)
+			hval = FNVHash64((utf16)std::tolower(i), hval);		// note -- potentially non-ideal tolower usage here...?
+		return hval;
 	}
 
 	template<>
@@ -946,31 +982,92 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 	{
 		// Implemented so we get the same hash for utf8 and utf16 versions
 		// of the same string
+		uint64 hval = s_FNV_init64;
 		if (rules.IsCaseSensitive()) {
 
-			utf16 buffer[MaxPath];
-			const auto *i = filename._start;
-			const auto *iend = filename._end;
-			auto* b = buffer;
-			while (i != iend && b != ArrayEnd(buffer)) {
-				auto chr = utf8_nextchar(i, iend);
-				*b++ = (utf16)chr;	// note -- shortening occurs here
+			for (auto i = filename.begin(); i<filename.end();) {
+				auto chr = (utf16)utf8_nextchar(i, filename.end());
+				hval = FNVHash64(chr, hval);
 			}
-			return Hash64(buffer, b);
 
 		} else {
 
-			utf16 buffer[MaxPath];
-			const auto *i = filename._start;
-			const auto *iend = filename._end;
-			auto* b = buffer;
-			while (i != iend && b != ArrayEnd(buffer)) {
-				auto chr = utf8_nextchar(i, iend);
-				*b++ = (utf16)std::tolower(chr);	// note -- shortening occurs here
+			for (auto i = filename.begin(); i<filename.end();) {
+				auto chr = (utf16)std::tolower(utf8_nextchar(i, filename.end()));
+				hval = FNVHash64(chr, hval);
 			}
-			return Hash64(buffer, b);
 
 		}
+		return hval;
+	}
+
+	static inline bool IsSeparator(utf16 chr)	{ return chr == '/' || chr == '\\'; }
+	static inline bool IsSeparator(utf8 chr)	{ return chr == '/' || chr == '\\'; }
+
+	template<>
+		uint64 HashFilenameAndPath(StringSection<utf16> filename, const FilenameRules& rules)
+	{
+		// This is a special version of HashFilenameAndPath where we assume there may be path
+		// separators in the filename. Whenever we find any sequence of either type of path
+		// separator, we hash a single '/'
+
+		uint64 hval = s_FNV_init64; 
+		if (rules.IsCaseSensitive()) {
+			for (auto i = filename.begin(); i<filename.end();) {
+				if (IsSeparator(*i)) {
+					++i;
+					while (i < filename.end() && IsSeparator(*i)) ++i;	// skip over additionals
+					hval = FNVHash64('/', hval);
+				} else {
+					hval = FNVHash64(*i++, hval);
+				}
+			}
+		} else {
+			for (auto i = filename.begin(); i<filename.end();) {
+				if (IsSeparator(*i)) {
+					++i;
+					while (i < filename.end() && IsSeparator(*i)) ++i;	// skip over additionals
+					hval = FNVHash64('/', hval);
+				} else {
+					hval = FNVHash64((utf16)std::tolower(*i++), hval);
+				}
+			}
+		}
+
+		return hval;
+	}
+
+	template<>
+		uint64 HashFilenameAndPath(StringSection<utf8> filename, const FilenameRules& rules)
+	{
+		// This is a special version of HashFilenameAndPath where we assume there may be path
+		// separators in the filename. Whenever we find any sequence of either type of path
+		// separator, we hash a single '/'
+
+		uint64 hval = s_FNV_init64; 
+		if (rules.IsCaseSensitive()) {
+			for (auto i = filename.begin(); i<filename.end();) {
+				if (IsSeparator(*i)) {
+					++i;
+					while (i < filename.end() && IsSeparator(*i)) ++i;	// skip over additionals
+					hval = FNVHash64('/', hval);
+				} else {
+					hval = FNVHash64((utf16)utf8_nextchar(i, filename.end()), hval);
+				}
+			}
+		} else {
+			for (auto i = filename.begin(); i<filename.end();) {
+				if (IsSeparator(*i)) {
+					++i;
+					while (i < filename.end() && IsSeparator(*i)) ++i;	// skip over additionals
+					hval = FNVHash64('/', hval);
+				} else {
+					hval = FNVHash64((utf16)std::tolower(utf8_nextchar(i, filename.end())), hval);
+				}
+			}
+		}
+
+		return hval;
 	}
 
     #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
