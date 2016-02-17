@@ -183,6 +183,14 @@ namespace LevelEditorXLE.Terrain
             return false;
         }
 
+        protected override void OnNodeSet()
+        {
+            // This should be called after the node is fully created and the
+            // terrain is ready to be loaded. We can call Reload() to build
+            // the native terrain from here.
+            if (!m_isLoaded) Reload();
+        }
+
         #region IExportable
         public string CacheExportTarget { get { return CellsDirectory + "/cached.dat"; } }
         public string ExportCategory { get { return "Terrain"; } }
