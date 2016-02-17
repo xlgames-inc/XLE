@@ -31,6 +31,8 @@ namespace RenderCore { namespace Assets
         std::shared_ptr<RenderCore::Assets::IModelFormat> _format;
         std::unique_ptr<SharedStateSet> _sharedStateSet;
 
+        uint32 _reloadId;
+
         Pimpl(const ModelCache::Config& cfg);
         ~Pimpl();
 
@@ -46,9 +48,8 @@ namespace RenderCore { namespace Assets
     : _modelScaffolds(cfg._modelScaffoldCount)
     , _materialScaffolds(cfg._materialScaffoldCount)
     , _modelRenderers(cfg._rendererCount)
-    , _supplements(100)
-    {
-    }
+    , _supplements(100), _reloadId(0)
+    {}
 
     ModelCache::Pimpl::~Pimpl() {}
 
@@ -94,6 +95,8 @@ namespace RenderCore { namespace Assets
         }
     }
 
+    uint32 ModelCache::GetReloadId() { return _pimpl->_reloadId; }
+
     auto ModelCache::GetScaffolds(
         const ResChar modelFilename[], 
         const ResChar materialFilename[]) -> Scaffolds
@@ -104,6 +107,9 @@ namespace RenderCore { namespace Assets
         if (!result._model || result._model->GetDependencyValidation()->GetValidationIndex() > 0) {
             auto model = Internal::CreateModelScaffold(modelFilename, *_pimpl->_format);
             _pimpl->_modelScaffolds.Insert(result._hashedModelName, model);
+                // we upload the "_reloadId" value when change one of our pointers from a previous
+                // valid value to something new
+            if (result._model) ++_pimpl->_reloadId;
             result._model = model.get();
         }
 
@@ -118,6 +124,7 @@ namespace RenderCore { namespace Assets
             if (!result._material || result._material->GetDependencyValidation()->GetValidationIndex() > 0) {
                 auto mat = Internal::CreateMaterialScaffold(modelFilename, matNamePtr, *_pimpl->_format);
                 _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, mat);
+                if (result._material) ++_pimpl->_reloadId;
                 result._material = mat.get();
             }
         } else if (resolveResult == ::Assets::AssetState::Invalid) {
@@ -156,6 +163,7 @@ namespace RenderCore { namespace Assets
             auto hashName = HashCombine(HashCombine(Hash64(modelFilename), Hash64(materialFilename)), *s);
             auto supp = _supplements.Get(hashName);
             if (!supp || supp->GetDependencyValidation()->GetValidationIndex() > 0) {
+                if (supp) { ++_reloadId; }
                 supp = Internal::CreateSupplement(*s, modelFilename, materialFilename);
                 if (supp)
                     _supplements.Insert(hashName, supp);
@@ -190,6 +198,7 @@ namespace RenderCore { namespace Assets
             auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
             searchRules.AddSearchDirectoryFromFilename(materialFilename);
             auto suppScaff = _pimpl->LoadSupplementScaffolds(modelFilename, materialFilename, supplements);
+            if (renderer) { ++_pimpl->_reloadId; }
             renderer = std::make_shared<ModelRenderer>(
                 std::ref(*scaffold._model), std::ref(*scaffold._material), 
                 MakeIteratorRange(suppScaff),
@@ -226,6 +235,7 @@ namespace RenderCore { namespace Assets
         auto* result = _pimpl->_modelScaffolds.Get(hashedModelName).get();
         if (!result || result->GetDependencyValidation()->GetValidationIndex() > 0) {
             auto model = Internal::CreateModelScaffold(modelFilename, *_pimpl->_format);
+            if (result) { ++_pimpl->_reloadId; }
             _pimpl->_modelScaffolds.Insert(hashedModelName, model);
             result = model.get();
         }

@@ -26,14 +26,14 @@ namespace RenderCore { namespace Assets
         class Model
         {
         public:
-            ModelRenderer* _renderer;
+            ModelRenderer*  _renderer;
             SharedStateSet* _sharedStateSet;
-            ModelScaffold* _model;
+            ModelScaffold*  _model;
             std::pair<Float3, Float3> _boundingBox;
-            uint64 _hashedModelName;
-            uint64 _hashedMaterialName;
-            unsigned _selectedLOD;
-            unsigned _maxLOD;
+            uint64          _hashedModelName;
+            uint64          _hashedMaterialName;
+            unsigned        _selectedLOD;
+            unsigned        _maxLOD;
 
             Model()
             : _renderer(nullptr), _sharedStateSet(nullptr)
@@ -44,10 +44,10 @@ namespace RenderCore { namespace Assets
         class Scaffolds
         {
         public:
-            ModelScaffold* _model;
-            MaterialScaffold* _material;
-            uint64 _hashedModelName;
-            uint64 _hashedMaterialName;
+            ModelScaffold*      _model;
+            MaterialScaffold*   _material;
+            uint64              _hashedModelName;
+            uint64              _hashedMaterialName;
         };
 
         class Config
@@ -57,7 +57,9 @@ namespace RenderCore { namespace Assets
             unsigned _materialScaffoldCount;
             unsigned _rendererCount;
 
-            Config() : _modelScaffoldCount(2000), _materialScaffoldCount(2000), _rendererCount(100) {}
+            Config()
+            : _modelScaffoldCount(2000), _materialScaffoldCount(2000)
+            , _rendererCount(100) {}
         };
 
         using ResChar = ::Assets::ResChar;
@@ -73,9 +75,10 @@ namespace RenderCore { namespace Assets
             const ResChar modelFilename[], 
             const ResChar materialFilename[]);
 
-        ModelScaffold* GetModelScaffold(const ResChar modelFilename[]);
+        ModelScaffold*      GetModelScaffold(const ResChar modelFilename[]);
+        SharedStateSet&     GetSharedStateSet();
 
-        SharedStateSet& GetSharedStateSet();
+        uint32              GetReloadId();
 
         ModelCache(const Config& cfg = Config(), std::shared_ptr<IModelFormat> format = nullptr);
         ~ModelCache();

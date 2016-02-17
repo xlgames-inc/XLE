@@ -519,6 +519,8 @@ namespace SceneEngine
         std::vector<RenderCore::Assets::DelayedDrawCallSet> _drawCallSets;
         std::vector<DepVal> _drawCallSetDepVals;
 
+        uint32 _modelCacheReloadId;
+
         void FillInDrawCallSets();
     };
 
@@ -573,6 +575,13 @@ namespace SceneEngine
     {
         auto& cache = *_modelCache;
         auto& sharedStates = cache.GetSharedStateSet();
+
+        // if we got a reload event in the model cache, we need to reset and start again
+        if (cache.GetReloadId() != _modelCacheReloadId) {
+            _drawCallSets.clear();
+            _drawCallSetDepVals.clear();
+            _modelCacheReloadId = cache.GetReloadId();
+        }
 
         if (_drawCallSets.size() != _cfg._objectTypes.size()) {
             _drawCallSets.resize(
@@ -674,6 +683,7 @@ namespace SceneEngine
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_modelCache = std::move(modelCache);
+        _pimpl->_modelCacheReloadId = _pimpl->_modelCache->GetReloadId();
         _pimpl->_parserPlugin = std::make_shared<VegetationSpawnPlugin>(*_pimpl);
     }
 
