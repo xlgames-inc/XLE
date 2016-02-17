@@ -94,10 +94,14 @@ float3 DecompressGBufferNormal(float3 gBufferNormalSample)
     }
 
     float lengthSq = dot(rangeAdj, rangeAdj);
-    // if (lengthSq < 0.001f)
-    //     return rangeAdj;
 
-    return rangeAdj * rsqrt(lengthSq);
+    // note -- we're getting issues with zero length normals in the gbuffer
+    //          this can occur when the texture mapping bends around geometry
+    //          in an extreme way.
+    float mult;
+    [flatten] if (lengthSq < 1e-4f) mult = 1.f;
+    else mult = rsqrt(lengthSq);
+    return rangeAdj * mult;
 }
 
 #if GBUFFER_TYPE & 1

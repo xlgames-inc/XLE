@@ -228,6 +228,11 @@ float3 ReferenceSpecularGGX(
         if (NdotH <= 0.f || NdotL <= 0.f) return 0.0.xxx;
     #endif
 
+    // Note that when N or H contain NaNs, this calculation is doomed to also result
+    // in a NaN. This will cause black boxes in the output image. So we need to be careful
+    // to avoid this case.
+    // if (isnan(NdotH)) return 0.0.xxx;
+
     /////////// Shadowing factor ///////////
         // As per the Disney model, rescaling roughness to
         // values 0.5f -> 1.f for SmithG alpha, and squaring
@@ -236,8 +241,11 @@ float3 ReferenceSpecularGGX(
         // we should use HdotL and HdotV here, instead of NdotL
         // and NdotV. Walter07 mentions this -- I assume the N
         // is standing in for the average of all microfacet normals.
-        // It seems to be fairly subtle difference, but might be interesting
-        // to investigate.
+        // After consideration, it seems like that only makes sense
+        // when there are multiple microfacet normals sampled (ie, for
+        // a ray tracer). When we are using the half-vector for the
+        // microfacet normal, NdotL and NdotV will be identical, so it
+        // doesn't make much sense)
     float alphag = RoughnessToGAlpha(roughness);
 
     precise float G = SmithG(NdotL, alphag) * SmithG(NdotV, alphag);
@@ -263,7 +271,7 @@ float3 ReferenceSpecularGGX(
 
     // note that the NdotL part here is for scaling down the incident light
     // (and so not part of the general BRDF equation)
-    return NdotL * G * D * F / denom;
+    return F * (NdotL * G * D / denom);
 }
 
 float3 CalculateSpecular_GGX(
@@ -367,7 +375,7 @@ float3 CalculateSpecular(
         // properly, we really need to know the thickness of the object. That will
         // determine how much the light actually bends. If we know the thickness,
         // we can calculate an approximate bending due to refaction. But for now, ignore
-        // thank.
+        // thickness.
         //
         // It may be ok to consider the microfacet distribution only on a single
         // interface.
@@ -402,7 +410,7 @@ float3 CalculateSpecular(
             #else
                 transmitted *= max(0, dot(negativeLightDirection, -normal));
             #endif
-            
+
         #endif
 
         return reflected + parameters.transmission * transmitted;

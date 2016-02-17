@@ -78,7 +78,16 @@ float3 LightResolve_Specular(
 	//			granularity (particularly for distant objects). Calculating on
 	//			a per-vertex level might not be beneficial in the long run, but
 	//			perhaps on a per-object level for distant objects and distant lights...?
-	float3 halfVector = normalize(negativeLightDirection + directionToEye);
+	float3 halfVector = negativeLightDirection + directionToEye;
+
+	// note -- 	What would happen if negativeLightDirection and directionToEye were
+	//			exactly the opposite? We could increase the length of one so that
+	//			the half vector always has length.
+	// float hvlsq = dot(halfVector, halfVector);
+	// [flatten] if (hvlsq<1e-4f) return 0.0.xxx;		// (uncommon case)
+	// halfVector *= rsqrt(hvlsq);
+	halfVector = normalize(halfVector);
+
 	float3 spec0 = CalculateSpecular(
 		sample.worldSpaceNormal, directionToEye,
 		negativeLightDirection, halfVector,
