@@ -69,11 +69,15 @@ float3 SampleNormalMap(Texture2D normalMap, SamplerState samplerObject, bool dxt
 float3 NormalMapAlgorithm(  Texture2D normalMap, SamplerState samplerObject, bool dxtFormatNormalMap,
                             float2 texCoord, TangentFrameStruct tangentFrame)
 {
-    float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
+    row_major float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
     float3 normalTextureSample = SampleNormalMap(normalMap, samplerObject, dxtFormatNormalMap, texCoord);
-		// Note -- matrix multiply opposite from normal
+		// Note -- matrix multiply opposite from typical
         //          (so we can initialise normalsTextureToWorld easily)
 	return mul(normalTextureSample, normalsTextureToWorld);
+    //return
+    //      normalTextureSample.x * tangentFrame.tangent.xyz
+    //    + normalTextureSample.y * tangentFrame.bitangent
+    //    + normalTextureSample.z * tangentFrame.normal;
 }
 
 void AlphaTestAlgorithm(Texture2D textureObject, SamplerState samplerObject,

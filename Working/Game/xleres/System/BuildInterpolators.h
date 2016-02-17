@@ -82,6 +82,16 @@ VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 		#endif
 	#endif
 
+	float3 worldViewVector = BuildInterpolator_WORLDVIEWVECTOR(input);
+	float3 localNormal = VSIn_GetLocalNormal(input);
+
+	#if (MAT_DOUBLE_SIDED_LIGHTING==1)
+		if (dot(worldNormal, worldViewVector) < 0.f) {
+			worldNormal *= -1.f;
+			localNormal *= -1.f;
+		}
+	#endif
+
 	#if (OUTPUT_NORMAL==1)
 		output.normal = worldNormal;
 	#endif
@@ -98,7 +108,7 @@ VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 	#endif
 
 	#if (OUTPUT_LOCAL_NORMAL==1)
-		output.localNormal = VSIn_GetLocalNormal(input);
+		output.localNormal = localNormal;
 	#endif
 
 	#if OUTPUT_LOCAL_VIEW_VECTOR==1
@@ -106,7 +116,7 @@ VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 	#endif
 
 	#if OUTPUT_WORLD_VIEW_VECTOR==1
-		output.worldViewVector = BuildInterpolator_WORLDVIEWVECTOR(input);
+		output.worldViewVector = worldViewVector;
 	#endif
 
 	#if OUTPUT_WORLD_POSITION==1

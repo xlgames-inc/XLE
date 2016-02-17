@@ -141,10 +141,6 @@ struct VSInput //////////////////////////////////////////////////////
     #define OUTPUT_WORLD_VIEW_VECTOR 1       // (need world view vector for the fresnel calculation)
 #endif
 
-#if MAT_DOUBLE_SIDED_LIGHTING
-    #define OUTPUT_WORLD_VIEW_VECTOR 1
-#endif
-
 #if MAT_BLEND_FOG
     #define OUTPUT_FOG_COLOR 1
 #endif

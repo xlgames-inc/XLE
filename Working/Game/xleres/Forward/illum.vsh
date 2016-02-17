@@ -52,6 +52,22 @@ VSOutput main(VSInput input)
 		#endif
 	#endif
 
+	float3 worldViewVector = WorldSpaceView.xyz - worldPosition.xyz;
+	float3 localNormal = VSIn_GetLocalNormal(input);
+
+	// Flip the normal here, if we have to. Note that we only flip the normal, not the
+	// tangent/bitangent. This will have a different effect to if we flip the final normal,
+	// after reading the normal map. In effect, the shape described by double sided normals
+	// maps is made slightly different.
+	// Also, we could get some wierd effects on "smooth" shaded geometry with MAT_DOUBLE_SIDED_LIGHTING
+	// enabled, because the flipping point will move with the camera. 
+	#if (MAT_DOUBLE_SIDED_LIGHTING==1)
+		if (dot(worldNormal, worldViewVector) < 0.f) {
+			worldNormal *= -1.f;
+			localNormal *= -1.f;
+		}
+	#endif
+
 	#if (OUTPUT_NORMAL==1)
 		output.normal = worldNormal;
 	#endif
@@ -66,7 +82,7 @@ VSOutput main(VSInput input)
 	#endif
 
 	#if (OUTPUT_LOCAL_NORMAL==1)
-		output.localNormal = VSIn_GetLocalNormal(input);
+		output.localNormal = localNormal;
 	#endif
 
 	#if OUTPUT_LOCAL_VIEW_VECTOR==1
@@ -74,7 +90,7 @@ VSOutput main(VSInput input)
 	#endif
 
 	#if OUTPUT_WORLD_VIEW_VECTOR==1
-		output.worldViewVector = WorldSpaceView.xyz - worldPosition.xyz;
+		output.worldViewVector = worldViewVector;
 	#endif
 
 	#if OUTPUT_WORLD_POSITION==1
