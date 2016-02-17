@@ -59,8 +59,8 @@ namespace GUILayer
         }
 
         ///////////////////////////////////////////////////////////////////////
-        bool hasPendingResources = lightingParserContext.HasPendingAssets() || lightingParserContext.HasInvalidAssets() || lightingParserContext.HasErrorString();
-        if (hasPendingResources) {
+        bool hasPendingMessage = lightingParserContext.HasPendingAssets() || lightingParserContext.HasInvalidAssets() || lightingParserContext.HasErrorString();
+        if (hasPendingMessage) {
             auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
             auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
             DrawPendingResources(metalContext.get(), lightingParserContext, defaultFont0.get());
@@ -71,7 +71,7 @@ namespace GUILayer
             overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());
         }
 
-        return PlatformRig::FrameRig::RenderResult(hasPendingResources);
+        return PlatformRig::FrameRig::RenderResult(lightingParserContext.HasPendingAssets());
     }
 
     bool LayerControl::Render(RenderCore::IThreadContext& threadContext, IWindowRig& windowRig)

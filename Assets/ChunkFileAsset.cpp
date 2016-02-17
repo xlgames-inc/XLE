@@ -75,6 +75,7 @@ namespace Assets
     : _assetTypeName(assetTypeName)
     {
         _pendingResolveOp._fn = nullptr;
+        _completedState = ::Assets::AssetState::Pending;
     }
 
     void ChunkFileAsset::ExecuteResolve(
@@ -97,18 +98,19 @@ namespace Assets
 
     void ChunkFileAsset::Prepare(const ResChar filename[], const ResolveOp& op)
     {
-        assert(!_pendingCompile && !_pendingResolveOp._fn);
+        assert(!_pendingCompile && !_pendingResolveOp._fn && _completedState == ::Assets::AssetState::Pending);
         _filename = filename;
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         RegisterFileDependency(_validationCallback, filename);
         auto pendingResult = LoadRawData(filename, op._requests);
         ExecuteResolve(op._fn, this, MakeIteratorRange(pendingResult), filename, _assetTypeName);
+        _completedState = ::Assets::AssetState::Ready;
     }
     
     void ChunkFileAsset::Prepare(::Assets::ICompileMarker& marker, const ResolveOp& op)
     {
-        assert(!_pendingCompile && !_pendingResolveOp._fn);
+        assert(!_pendingCompile && !_pendingResolveOp._fn && _completedState == ::Assets::AssetState::Pending);
 
         // If we have an existing marker, we will try to load it here.
         // If the load fails, we can either mark the asset as invalid; or
@@ -123,6 +125,7 @@ namespace Assets
                 (*op._fn)(this, MakeIteratorRange(pendingResult));
                 _filename = existing._sourceID0;
                 _validationCallback = existing._dependencyValidation;
+                _completedState = ::Assets::AssetState::Ready;
                 return;
             }
 
@@ -157,6 +160,7 @@ namespace Assets
     , _pendingCompile(moveFrom._pendingCompile)
     , _validationCallback(std::move(moveFrom._validationCallback))
     , _assetTypeName(moveFrom._assetTypeName)
+    , _completedState(moveFrom._completedState)
     {}
 
     ChunkFileAsset& ChunkFileAsset::operator=(ChunkFileAsset&& moveFrom) never_throws
@@ -166,6 +170,7 @@ namespace Assets
         _pendingCompile = moveFrom._pendingCompile;
         _validationCallback = std::move(moveFrom._validationCallback);
         _assetTypeName = moveFrom._assetTypeName;
+        _completedState = moveFrom._completedState;
         return *this;
     }
 
@@ -174,11 +179,8 @@ namespace Assets
     void ChunkFileAsset::Resolve() const
     {
         if (_pendingCompile) {
-            if (_pendingCompile->GetAssetState() == ::Assets::AssetState::Invalid) {
-                Throw(::Assets::Exceptions::InvalidAsset(
-                    _pendingCompile->Initializer(), 
-                    StringMeld<256>() << "Pending compile failed in ChunkFileAsset (type: " << _assetTypeName << ")"));
-            } else if (_pendingCompile->GetAssetState() == ::Assets::AssetState::Pending) {
+            auto markerState = _pendingCompile->GetAssetState();
+            if (markerState == ::Assets::AssetState::Pending) {
                     // we need to throw immediately on pending resource
                     // this object is useless while it's pending.
                 Throw(::Assets::Exceptions::PendingAsset(
@@ -192,44 +194,58 @@ namespace Assets
             const_cast<ChunkFileAsset*>(this)->CompleteFromMarker(*_pendingCompile);
             _pendingCompile.reset();
         }
+
+        if (_completedState == ::Assets::AssetState::Invalid)
+            Throw(::Assets::Exceptions::InvalidAsset(
+                _filename.c_str(), 
+                StringMeld<256>() << "Pending compile failed in ChunkFileAsset (type: " << _assetTypeName << ")"));
     }
 
     ::Assets::AssetState ChunkFileAsset::TryResolve() const
     {
         if (_pendingCompile) {
             auto markerState = _pendingCompile->GetAssetState();
-            if (markerState != ::Assets::AssetState::Ready) return markerState;
+            if (markerState == ::Assets::AssetState::Pending) return markerState;
             const_cast<ChunkFileAsset*>(this)->CompleteFromMarker(*_pendingCompile);
             _pendingCompile.reset();
         }
 
-        return ::Assets::AssetState::Ready;
+        return _completedState;
     }
 
     ::Assets::AssetState ChunkFileAsset::StallAndResolve() const
     {
         if (_pendingCompile) {
             auto markerState = _pendingCompile->StallWhilePending();
-            if (markerState != ::Assets::AssetState::Ready) return markerState;
+            if (markerState == ::Assets::AssetState::Pending) return markerState;
             const_cast<ChunkFileAsset*>(this)->CompleteFromMarker(*_pendingCompile);
             _pendingCompile.reset();
         }
 
-        return ::Assets::AssetState::Ready;
+        return _completedState;
     }
 
     void ChunkFileAsset::CompleteFromMarker(::Assets::PendingCompileMarker& marker)
     {
+        assert(_completedState == Assets::AssetState::Pending);
+        _completedState = marker.GetAssetState();
+        assert(_completedState != Assets::AssetState::Pending);
+
         auto locator = marker.GetLocator();
 
-        if (!_validationCallback) _validationCallback = locator._dependencyValidation;
-        else ::Assets::RegisterAssetDependency(_validationCallback, locator._dependencyValidation);
+        if (locator._dependencyValidation) {
+            if (!_validationCallback) { _validationCallback = locator._dependencyValidation; }
+            else { ::Assets::RegisterAssetDependency(_validationCallback, locator._dependencyValidation); }
+        }
         
         _filename = locator._sourceID0;
-        auto chunks = LoadRawData(locator._sourceID0, _pendingResolveOp._requests);
-        if (_pendingResolveOp._fn) {
-            ExecuteResolve(_pendingResolveOp._fn, this, MakeIteratorRange(chunks), _filename.c_str(), _assetTypeName);
-            _pendingResolveOp._fn = nullptr;
+
+        if (_completedState == Assets::AssetState::Ready) {
+            auto chunks = LoadRawData(locator._sourceID0, _pendingResolveOp._requests);
+            if (_pendingResolveOp._fn) {
+                ExecuteResolve(_pendingResolveOp._fn, this, MakeIteratorRange(chunks), _filename.c_str(), _assetTypeName);
+                _pendingResolveOp._fn = nullptr;
+            }
         }
     }
 

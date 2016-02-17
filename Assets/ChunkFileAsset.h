@@ -90,12 +90,13 @@ namespace Assets
         void Prepare(const ::Assets::ResChar filename[], const ResolveOp& op);
         void Prepare(::Assets::ICompileMarker& marker, const ResolveOp& op);
     private:
-        rstring                                         _filename;
-        std::shared_ptr<DependencyValidation>           _validationCallback;
+        rstring _filename;
+        std::shared_ptr<DependencyValidation> _validationCallback;
         const char* _assetTypeName;
 
         mutable std::shared_ptr<PendingCompileMarker> _pendingCompile;
         ResolveOp _pendingResolveOp;
+        ::Assets::AssetState _completedState;
 
         void CompleteFromMarker(::Assets::PendingCompileMarker& marker);
         static void ExecuteResolve(

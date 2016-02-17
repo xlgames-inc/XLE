@@ -222,74 +222,85 @@ namespace RenderCore { namespace Assets
                     XlCatString(colladaFile, dimof(colladaFile), ".dae");
                 XlCopyString(rootNode, splitName.Parameters());
 
-                const auto* destinationFile = op.GetLocator()._sourceID0;
-                ::Assets::ResChar temp[MaxPath];
-                if (op._typeCode == Type_RawMat) {
-                        // When building rawmat, a material name could be on the op._sourceID0
-                        // string. But we need to remove it from the path to find the real output
-                        // name.
-                    XlCopyString(temp, MakeFileNameSplitter(op.GetLocator()._sourceID0).AllExceptParameters());
-                    destinationFile = temp;
-                }
-
-                if (_newPathOk) {
-
-                    auto model = (*_createColladaScaffold)(colladaFile);
-                    switch (op._typeCode) {
-                    case Type_Model:
-                        SerializeToFile(
-                            (*_serializeSkinFunction)(*model, rootNode),
-                            destinationFile, libVersionDesc);
-
-                            // Note that we could fall through to write rawmat as a freebee
-                            // But it has problems because the .deps file will only be written
-                            // for the model file (not the rawmat file)
-                        break;
-
-                    case Type_RawMat:
-                        SerializeToFileJustChunk(
-                            (*_serializeMaterialsFunction)(*model, rootNode), 
-                            destinationFile, libVersionDesc);
-                        break;
-
-                    case Type_Skeleton:
-                        SerializeToFile(
-                            (*_serializeSkeletonFunction)(*model, rootNode),
-                            destinationFile, libVersionDesc);
-                        break;
+                TRY 
+                {
+                    const auto* destinationFile = op.GetLocator()._sourceID0;
+                    ::Assets::ResChar temp[MaxPath];
+                    if (op._typeCode == Type_RawMat) {
+                            // When building rawmat, a material name could be on the op._sourceID0
+                            // string. But we need to remove it from the path to find the real output
+                            // name.
+                        XlCopyString(temp, MakeFileNameSplitter(op.GetLocator()._sourceID0).AllExceptParameters());
+                        destinationFile = temp;
                     }
 
-                } else {
+                    if (_newPathOk) {
 
-                    if (!_oldPathOk)
-                        Throw(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
+                        auto model = (*_createColladaScaffold)(colladaFile);
+                        switch (op._typeCode) {
+                        case Type_Model:
+                            SerializeToFile(
+                                (*_serializeSkinFunction)(*model, rootNode),
+                                destinationFile, libVersionDesc);
 
-                    #if defined(SUPPORT_OLD_PATH)
-                        if (op._typeCode == Type_Model) {
-                            auto model = (*_ocCreateModel)(colladaFile);
-                            SerializeToFile(*model, _ocSerializeSkinFunction, destinationFile, libVersionDesc);
+                                // Note that we could fall through to write rawmat as a freebee
+                                // But it has problems because the .deps file will only be written
+                                // for the model file (not the rawmat file)
+                            break;
 
-                            char matName[MaxPath];
-                            op._destinationStore->MakeIntermediateName(matName, dimof(matName), op._initializer0);
-                            XlChopExtension(matName);
-                            XlCatString(matName, dimof(matName), "-rawmat");
-                            SerializeToFileJustChunk(*model, _ocSerializeMaterialsFunction, matName, libVersionDesc);
-                        } else {
-                            auto model = (*_ocCreateModel)(colladaFile);
-                            SerializeToFile(*model, _ocSerializeSkeletonFunction, destinationFile, libVersionDesc);
+                        case Type_RawMat:
+                            SerializeToFileJustChunk(
+                                (*_serializeMaterialsFunction)(*model, rootNode), 
+                                destinationFile, libVersionDesc);
+                            break;
+
+                        case Type_Skeleton:
+                            SerializeToFile(
+                                (*_serializeSkeletonFunction)(*model, rootNode),
+                                destinationFile, libVersionDesc);
+                            break;
                         }
-                    #endif
 
-                }
+                    } else {
 
-                    // write new dependencies
-                std::vector<::Assets::DependentFileState> deps;
-                deps.push_back(op._destinationStore->GetDependentFileState(colladaFile));
-                op.GetLocator()._dependencyValidation = op._destinationStore->WriteDependencies(destinationFile, splitName.DriveAndPath(), MakeIteratorRange(deps));
+                        if (!_oldPathOk)
+                            Throw(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
+
+                        #if defined(SUPPORT_OLD_PATH)
+                            if (op._typeCode == Type_Model) {
+                                auto model = (*_ocCreateModel)(colladaFile);
+                                SerializeToFile(*model, _ocSerializeSkinFunction, destinationFile, libVersionDesc);
+
+                                char matName[MaxPath];
+                                op._destinationStore->MakeIntermediateName(matName, dimof(matName), op._initializer0);
+                                XlChopExtension(matName);
+                                XlCatString(matName, dimof(matName), "-rawmat");
+                                SerializeToFileJustChunk(*model, _ocSerializeMaterialsFunction, matName, libVersionDesc);
+                            } else {
+                                auto model = (*_ocCreateModel)(colladaFile);
+                                SerializeToFile(*model, _ocSerializeSkeletonFunction, destinationFile, libVersionDesc);
+                            }
+                        #endif
+
+                    }
+
+                        // write new dependencies
+                    std::vector<::Assets::DependentFileState> deps;
+                    deps.push_back(op._destinationStore->GetDependentFileState(colladaFile));
+                    op.GetLocator()._dependencyValidation = op._destinationStore->WriteDependencies(destinationFile, splitName.DriveAndPath(), MakeIteratorRange(deps));
         
-                op.SetState(::Assets::AssetState::Ready);
-            }
+                    op.SetState(::Assets::AssetState::Ready);
 
+                } CATCH(...) {
+                    if (!op.GetLocator()._dependencyValidation) {
+                        op.GetLocator()._dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
+                        ::Assets::RegisterFileDependency(op.GetLocator()._dependencyValidation, colladaFile);
+                    }
+                    throw;
+                } CATCH_END
+
+            } 
+            else 
             if (op._typeCode == Type_AnimationSet) {
                     //  source for the animation set should actually be a directory name, and
                     //  we'll use all of the dae files in that directory as animation inputs

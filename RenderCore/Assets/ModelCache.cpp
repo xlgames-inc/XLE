@@ -172,7 +172,7 @@ namespace RenderCore { namespace Assets
         unsigned LOD) -> Model
     {
         auto scaffold = GetScaffolds(modelFilename, materialFilename);
-        if (!scaffold._model)
+        if (!scaffold._model || !scaffold._material)
             Throw(::Assets::Exceptions::PendingAsset(modelFilename, "Scaffolds still pending in ModelCache"));
 
         auto maxLOD = scaffold._model->GetMaxLOD();
