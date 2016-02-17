@@ -85,7 +85,7 @@ namespace Assets { namespace IntermediateAssets
     static std::vector<std::pair<uint64, std::shared_ptr<RetainedFileRecord>>> RetainedRecords;
     static Threading::Mutex RetainedRecordsLock;
 
-    static std::shared_ptr<RetainedFileRecord>& GetRetainedFileRecord(StringSection<ResChar> filename)
+    static std::shared_ptr<RetainedFileRecord> GetRetainedFileRecord(StringSection<ResChar> filename)
     {
             //  We should normalize to avoid problems related to
             //  case insensitivity and slash differences
@@ -106,18 +106,19 @@ namespace Assets { namespace IntermediateAssets
             RegisterFileDependency(newRecord, assetName._fn);
             newRecord->_state._timeMarker = GetFileModificationTime(assetName._fn);
 
-            return RetainedRecords.insert(i, std::make_pair(hash, std::move(newRecord)))->second;
+            RetainedRecords.insert(i, std::make_pair(hash, newRecord));
+            return std::move(newRecord);
         }
     }
 
-    const DependentFileState& Store::GetDependentFileState(StringSection<ResChar> filename)
+    DependentFileState Store::GetDependentFileState(StringSection<ResChar> filename)
     {
         return GetRetainedFileRecord(filename)->_state;
     }
 
     void Store::ShadowFile(const ResChar filename[])
     {
-        auto& record = GetRetainedFileRecord(filename);
+        auto record = GetRetainedFileRecord(filename);
         record->_state._status = DependentFileState::Status::Shadowed;
 
             // propagate change messages...
@@ -158,17 +159,14 @@ namespace Assets { namespace IntermediateAssets
                 auto dateLow = (unsigned)dependency->IntAttribute("ModTimeL");
                 auto dateHigh = (unsigned)dependency->IntAttribute("ModTimeH");
                     
-                const RetainedFileRecord* record;
+                std::shared_ptr<RetainedFileRecord> record;
                 if (basePath && basePath[0]) {
                     XlConcatPath(buffer, dimof(buffer), basePath, depName, XlStringEnd(depName));
-                    auto& ptr = GetRetainedFileRecord(buffer);
-                    RegisterAssetDependency(validation, ptr);
-                    record = ptr.get();
-                } else {
-                    auto& ptr = GetRetainedFileRecord(depName);
-                    RegisterAssetDependency(validation, ptr);
-                    record = ptr.get();
-                }
+                    record = GetRetainedFileRecord(buffer);
+                } else
+                    record = GetRetainedFileRecord(depName);
+
+                RegisterAssetDependency(validation, record);
 
                 if (record->_state._status == DependentFileState::Status::Shadowed) {
                     LogInfo << "Asset (" << intermediateFileName << ") is invalidated because dependency (" << depName << ") is marked shadowed";
