@@ -431,11 +431,18 @@ namespace ToolsRig
 
                 switch (sampleFormat) {
                 case SAMPLEFORMAT_UINT:
-                case SAMPLEFORMAT_INT:
-                    result._sourceFormat = TerrainImportOp::SourceFormat::Quantized;
+					result._sourceFormat = TerrainImportOp::SourceFormat::Quantized;
                     if (bitsPerPixel == 8)          { result._sourceHeightRange = Float2(0.f, float(0xff)); result._importCoverageFormat = (unsigned)ImpliedTyping::TypeCat::UInt8; }
                     else if (bitsPerPixel == 16)    { result._sourceHeightRange = Float2(0.f, float(0xffff)); result._importCoverageFormat = (unsigned)ImpliedTyping::TypeCat::UInt16; }
                     else if (bitsPerPixel == 32)    { result._sourceHeightRange = Float2(0.f, float(0xffffffff)); result._importCoverageFormat = (unsigned)ImpliedTyping::TypeCat::UInt32; }
+                    else                            { result._warnings.push_back("Bad bits per pixel"); return result; }
+                    break;
+
+                case SAMPLEFORMAT_INT:
+                    result._sourceFormat = TerrainImportOp::SourceFormat::Quantized;
+                    if (bitsPerPixel == 8)          { result._sourceHeightRange = Float2(float( INT8_MIN), float( INT8_MAX)); result._importCoverageFormat = (unsigned)ImpliedTyping::TypeCat::UInt8; }
+                    else if (bitsPerPixel == 16)    { result._sourceHeightRange = Float2(float(INT16_MIN), float(INT16_MAX)); result._importCoverageFormat = (unsigned)ImpliedTyping::TypeCat::UInt16; }
+                    else if (bitsPerPixel == 32)    { result._sourceHeightRange = Float2(float(INT32_MIN), float(INT32_MAX)); result._importCoverageFormat = (unsigned)ImpliedTyping::TypeCat::UInt32; }
                     else                            { result._warnings.push_back("Bad bits per pixel"); return result; }
                     break;
 
@@ -477,13 +484,15 @@ namespace ToolsRig
     }
 
     template<typename InputType>
-        static void SimpleConvertGen(void* dest, const ImpliedTyping::TypeDesc& dstType, const InputType* input, size_t count, float offset, float scale)
+        static void SimpleConvertGen(void* dest, const ImpliedTyping::TypeDesc& dstType, const InputType* input, size_t count, double offset, double scale)
     {
             // note --  the implied typing cast here is quite expensive! But it's 
             //          reliable
         auto dstSize = dstType.GetSize();
         for (unsigned c=0; c<count; ++c) {
-            auto midway = float(input[c]) * scale + offset;
+			// good idea to use the increased precision of "doubles" here, particularly when
+			// loading from 32 bit integer formats
+            auto midway = float(double(input[c]) * scale + offset);
             ImpliedTyping::Cast(
                 PtrAdd(dest, c*dstSize),
                 dstSize, dstType,
@@ -496,19 +505,13 @@ namespace ToolsRig
         return half_float::detail::half2float(input);
     }
 
-    // static void ConvertFloat16(float dest[], const uint16* input, size_t count, float offset, float scale)
-    // {
-    //     for (unsigned c=0; c<count; ++c)
-    //         dest[c] = Float16AsFloat32(input[c]) * scale + offset;
-    // }
-
-    static void ConvertFloat16Gen(void* dest, const ImpliedTyping::TypeDesc& dstType, const uint16* input, size_t count, float offset, float scale)
+    static void ConvertFloat16Gen(void* dest, const ImpliedTyping::TypeDesc& dstType, const uint16* input, size_t count, double offset, double scale)
     {
             // note --  the implied typing cast here is quite expensive! But it's 
             //          reliable
         auto dstSize = dstType.GetSize();
         for (unsigned c=0; c<count; ++c) {
-            auto midway = Float16AsFloat32(input[c]) * scale + offset;
+            auto midway = float(double(Float16AsFloat32(input[c])) * scale + offset);
             ImpliedTyping::Cast(
                 PtrAdd(dest, c*dstSize),
                 dstSize, dstType,
@@ -656,14 +659,20 @@ namespace ToolsRig
             auto stripBuffer = std::make_unique<char[]>(stripSize);
             XlSetMemory(stripBuffer.get(), 0, stripSize);
 
-            typedef void ConversionFn(void*, const ImpliedTyping::TypeDesc&, const void*, size_t, float, float);
+            typedef void ConversionFn(void*, const ImpliedTyping::TypeDesc&, const void*, size_t, double, double);
             ConversionFn* convFn;
             switch (sampleFormat) {
             case SAMPLEFORMAT_UINT:
-            case SAMPLEFORMAT_INT:
-                if (bitsPerPixel == 8)          convFn = (ConversionFn*)&SimpleConvertGen<uint8>;
+				if (bitsPerPixel == 8)          convFn = (ConversionFn*)&SimpleConvertGen<uint8>;
                 else if (bitsPerPixel == 16)    convFn = (ConversionFn*)&SimpleConvertGen<uint16>;
                 else if (bitsPerPixel == 32)    convFn = (ConversionFn*)&SimpleConvertGen<uint32>;
+                else Throw(::Exceptions::BasicLabel("Unknown input format.", op._sourceFile.c_str()));
+                break;
+
+            case SAMPLEFORMAT_INT:
+                if (bitsPerPixel == 8)          convFn = (ConversionFn*)&SimpleConvertGen<int8>;
+                else if (bitsPerPixel == 16)    convFn = (ConversionFn*)&SimpleConvertGen<int16>;
+                else if (bitsPerPixel == 32)    convFn = (ConversionFn*)&SimpleConvertGen<int32>;
                 else Throw(::Exceptions::BasicLabel("Unknown input format.", op._sourceFile.c_str()));
                 break;
 
@@ -677,8 +686,8 @@ namespace ToolsRig
                 Throw(::Exceptions::BasicLabel("Unknown input format.", op._sourceFile.c_str()));
             }
 
-            float valueScale = (op._importHeightRange[1] - op._importHeightRange[0]) / (op._sourceHeightRange[1] - op._sourceHeightRange[0]);
-            float valueOffset = op._importHeightRange[0] - op._sourceHeightRange[0] * valueScale;
+            double valueScale = (double(op._importHeightRange[1]) - double(op._importHeightRange[0])) / (double(op._sourceHeightRange[1]) - double(op._sourceHeightRange[0]));
+            double valueOffset = double(op._importHeightRange[0]) - double(op._sourceHeightRange[0]) * valueScale;
                 
             for (tstrip_t strip = 0; strip < stripCount; strip++) {
                 auto readResult = TIFFReadEncodedStrip(tif, strip, stripBuffer.get(), stripSize);
@@ -687,7 +696,7 @@ namespace ToolsRig
 					// Sometimes the very last strip is truncated. This occurs if the height
 					// is not an even multiple of the strip size
 					// In this case, we just blank out the remaining part
-					if (readResult < stripSize && (strip+1 == stripCount)) {
+					if (readResult > 0 && readResult < stripSize && (strip+1 == stripCount)) {
 						std::memset(PtrAdd(stripBuffer.get(), readResult), 0x0, stripSize - readResult);
 					} else {
 						Throw(::Exceptions::BasicLabel(
@@ -702,8 +711,8 @@ namespace ToolsRig
                         (*convFn)(
                             PtrAdd(outputArray, ((y - op._importMins[1]) * finalDims[0]) * dstSampleSize),
                             ImpliedTyping::TypeDesc(dstType),
-                            PtrAdd(stripBuffer.get(), op._importMins[0]*8/bitsPerPixel),
-                            std::min(op._sourceDims[0], op._importMaxs[0]),
+                            PtrAdd(stripBuffer.get(), op._importMins[0]*bitsPerPixel/8),
+                            std::min(op._sourceDims[0], op._importMaxs[0]) - op._importMins[0],
                             valueOffset, valueScale);
                     }
                 }
