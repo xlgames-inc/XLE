@@ -356,8 +356,7 @@ namespace RenderingInterop
             
             if (clearBeforeDraw) {
                     // disable depth write and depth read
-                GUILayer.RenderingUtil.ClearDepthBuffer(context);
-                context.InitState(true, true);
+                context.InitState(false, false);
             }
 
             mani.Render(context, this);

@@ -37,6 +37,7 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Math/Transformations.h"
 #include "../../ConsoleRig/Console.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Core/Exceptions.h"
 
 #include <string>

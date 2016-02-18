@@ -19,7 +19,7 @@ namespace RenderCore { namespace Assets
     #pragma pack(push)
     #pragma pack(1)
 
-    class AnimationSet : noncopyable
+    class AnimationSet
     {
     public:
             /////   A N I M A T I O N   D R I V E R   /////
@@ -73,6 +73,9 @@ namespace RenderCore { namespace Assets
         const OutputInterface&  GetOutputInterface() const { return _outputInterface; }
 
         ~AnimationSet();
+
+		AnimationSet(const AnimationSet&) = delete;
+		AnimationSet& operator=(const AnimationSet&) = delete;
     private:
         AnimationDriver*    _animationDrivers;
         size_t              _animationDriverCount;

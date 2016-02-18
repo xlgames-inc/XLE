@@ -761,6 +761,17 @@ namespace Utility
         return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Void, 0);
     }
 
+	const void* ParameterBox::GetParameterRawValue(ParameterName name) const
+	{
+		auto i = std::lower_bound(_hashNames.cbegin(), _hashNames.cend(), name._hash);
+		if (i != _hashNames.cend() && *i == name._hash) {
+			size_t index = std::distance(_hashNames.cbegin(), i);
+			auto offset = _offsets[index];
+			return ValueTableOffset(_values, offset.second);
+		}
+		return nullptr;
+	}
+
     template<typename CharType> std::basic_string<CharType> ParameterBox::GetString(ParameterName name) const
     {
         auto type = GetParameterType(name);

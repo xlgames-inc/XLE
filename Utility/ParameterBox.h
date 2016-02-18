@@ -143,6 +143,7 @@ namespace Utility
         bool            GetParameter(ParameterName name, void* dest, const TypeDesc& destType) const;
         bool            HasParameter(ParameterName name) const;
         TypeDesc        GetParameterType(ParameterName name) const;
+		const void*		GetParameterRawValue(ParameterName name) const;
 
         T1(CharType) std::basic_string<CharType> GetString(ParameterName name) const;
         T1(CharType) bool   GetString(ParameterName name, CharType dest[], size_t destCount) const;

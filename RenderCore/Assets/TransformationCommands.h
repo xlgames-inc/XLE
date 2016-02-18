@@ -7,9 +7,7 @@
 #pragma once
 
 #include "../../Assets/BlockSerializer.h"
-#include "../../ConsoleRig/Log.h"
 #include "../../Math/Transformations.h"
-#include "../../Utility/Mixins.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/IteratorUtils.h"
 #include <vector>
@@ -64,7 +62,7 @@ namespace RenderCore { namespace Assets
 
             //////////////////////////////////////////////////////////
 
-    class TransformationParameterSet : noncopyable
+    class TransformationParameterSet
     {
     public:
         struct Type { enum Enum { Float1, Float3, Float4, Float4x4 }; };

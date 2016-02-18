@@ -8,6 +8,9 @@
 #include "ExportedNativeTypes.h"
 #include "../EntityInterface/RetainedEntities.h"
 #include "../ToolsRig/VisualisationGeo.h"
+#include "../../RenderCore/Assets/ModelScaffoldInternal.h"
+#include "../../RenderCore/Assets/ModelRunTime.h"
+#include "../../RenderCore/Assets/ModelImmutableData.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
@@ -24,6 +27,7 @@
 #include "../../Math/Transformations.h"
 #include "../../Math/Geometry.h"
 #include "../../Utility/StringUtils.h"
+#include "../../Utility/Streams/FileUtils.h"
 
 namespace GUILayer
 {
@@ -37,6 +41,110 @@ namespace GUILayer
         static const auto Visible = ParameterBox::MakeParameterNameHash("Visible");
         static const auto ShowMarker = ParameterBox::MakeParameterNameHash("ShowMarker");
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class SimpleModel
+	{
+	public:
+		void Render(
+			Metal::DeviceContext& devContext,
+			ParsingContext& parserContext,
+			Metal::ConstantBufferPacket localTransform,
+			unsigned techniqueIndex, const ::Assets::ResChar techniqueConfig[],
+			const ParameterBox& materialParams) const;
+
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+
+		SimpleModel(const RenderCore::Assets::RawGeometry& geo, const ::Assets::ResChar filename[], unsigned largeBlocksOffset);
+		SimpleModel(const ::Assets::ResChar filename[]);
+		~SimpleModel();
+	private:
+		Metal::VertexBuffer _vb;
+		Metal::IndexBuffer _ib;
+		std::vector<RenderCore::Assets::DrawCallDesc> _drawCalls;
+		TechniqueMaterial _material;
+		unsigned _vbStride;
+		Metal::NativeFormat::Enum _ibFormat;
+		::Assets::DepValPtr _depVal;
+
+		void Build(const RenderCore::Assets::RawGeometry& geo, const ::Assets::ResChar filename[], unsigned largeBlocksOffset);
+	};
+
+	void SimpleModel::Render(
+		Metal::DeviceContext& devContext,
+		ParsingContext& parserContext,
+		Metal::ConstantBufferPacket localTransform,
+		unsigned techniqueIndex, const ::Assets::ResChar techniqueConfig[],
+		const ParameterBox& materialParams) const
+	{
+		auto shader = _material.FindVariation(parserContext, techniqueIndex, techniqueConfig);
+		if (shader._shader._shaderProgram) {
+			auto matParams0 = shader._cbLayout->BuildCBDataAsPkt(materialParams);
+			Float3 col0 = Float3(.66f, 0.2f, 0.f);
+			Float3 col1 = Float3(0.44f, 0.6f, 0.1f);
+			static float time = 0.f;
+			time += 3.14159f / 3.f / 60.f;
+			ParameterBox p; p.SetParameter(u("MaterialDiffuse"), LinearInterpolate(col0, col1, 0.5f + 0.5f * XlCos(time)));
+			auto matParams1 = shader._cbLayout->BuildCBDataAsPkt(p);
+
+			devContext.Bind(MakeResourceList(_vb), _vbStride, 0);
+			devContext.Bind(_ib, _ibFormat, 0);
+
+			if (_drawCalls.size() >= 2) {
+				shader._shader.Apply(devContext, parserContext, { localTransform, matParams0 });
+				devContext.DrawIndexed(_drawCalls[0]._indexCount, _drawCalls[0]._firstIndex, _drawCalls[0]._firstVertex);
+
+				shader._shader.Apply(devContext, parserContext, { localTransform, matParams1 });
+				devContext.DrawIndexed(_drawCalls[1]._indexCount, _drawCalls[1]._firstIndex, _drawCalls[1]._firstVertex);
+			}
+		}
+	}
+
+	template<typename T> static T ReadFromFile(BasicFile& file, size_t size, size_t offset)
+	{
+		file.Seek(offset, SEEK_SET);
+		auto data = std::make_unique<uint8[]>(size);
+		file.Read(data.get(), size, 1);
+		return T(data.get(), size);
+	}
+
+	SimpleModel::SimpleModel(const RenderCore::Assets::RawGeometry& geo, const ::Assets::ResChar filename[], unsigned largeBlocksOffset)
+	{
+		Build(geo, filename, largeBlocksOffset);
+	}
+
+	SimpleModel::SimpleModel(const ::Assets::ResChar filename[])
+	{
+		auto& scaffold = ::Assets::GetAssetComp<RenderCore::Assets::ModelScaffold>(filename);
+		if (scaffold.ImmutableData()._geoCount > 0)
+			Build(*scaffold.ImmutableData()._geos, scaffold.Filename().c_str(), scaffold.LargeBlocksOffset());
+		_depVal = scaffold.GetDependencyValidation();
+	}
+
+	void SimpleModel::Build(const RenderCore::Assets::RawGeometry& geo, const ::Assets::ResChar filename[], unsigned largeBlocksOffset)
+	{
+		// load the vertex buffer & index buffer from the geo input, and copy draw calls data
+		BasicFile file(filename, "rb");
+		_vb = ReadFromFile<Metal::VertexBuffer>(file, geo._vb._size, geo._vb._offset + largeBlocksOffset);
+		_ib = ReadFromFile<Metal::IndexBuffer>(file, geo._ib._size, geo._ib._offset + largeBlocksOffset);
+		_drawCalls.insert(_drawCalls.begin(), geo._drawCalls.cbegin(), geo._drawCalls.cend());
+		_vbStride = geo._vb._ia._vertexStride;
+		_ibFormat = Metal::NativeFormat::Enum(geo._ib._format);
+
+		// also construct a technique material for the geometry format
+		std::vector<Metal::InputElementDesc> eles;
+		for (const auto&i:geo._vb._ia._elements)
+			eles.push_back(Metal::InputElementDesc(i._semanticName, i._semanticIndex, Metal::NativeFormat::Enum(i._nativeFormat), 0, i._alignedByteOffset));
+		_material = TechniqueMaterial(
+			std::make_pair(AsPointer(eles.cbegin()), eles.size()),
+			{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants }, ParameterBox());
+
+		_depVal = std::make_shared<::Assets::DependencyValidation>();
+		::Assets::RegisterFileDependency(_depVal, filename);
+	}
+
+	SimpleModel::~SimpleModel() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -98,24 +206,25 @@ namespace GUILayer
     }
 
     static void DrawObject(
-        Metal::DeviceContext& devContext,
-        ParsingContext& parserContext,
-        const VisGeoBox& visBox,
-        const TechniqueMaterial::Variation& shader, const RetainedEntity& obj)
+        Metal::DeviceContext& devContext, ParsingContext& parserContext, const VisGeoBox& visBox,
+        const TechniqueMaterial::Variation& shader, Metal::ConstantBufferPacket localTransform,
+		unsigned techniqueIndex, const ::Assets::ResChar technique[], const ParameterBox& matParams)
     {
-        if (!Tweakable("DrawMarkers", true)) return;
-        if (!obj._properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(obj)) return;
+		
+		TRY
+		{
+			auto& asset = ::Assets::GetAssetDep<SimpleModel>("game/model/simple/spherestandin.dae");
+			asset.Render(devContext, parserContext, localTransform, techniqueIndex, technique, matParams);
+			return;
+		} 
+		CATCH(const ::Assets::Exceptions::AssetException&) {}
+		CATCH_END
 
-        shader._shader.Apply(devContext, parserContext,
-            {
-                MakeLocalTransformPacket(
-                    GetTransform(obj),
-                    ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                shader._cbLayout->BuildCBDataAsPkt(ParameterBox())
-            });
-        
-        devContext.Bind(MakeResourceList(visBox._cubeVB), visBox._cubeVBStride, 0);
-        devContext.Draw(visBox._cubeVBCount);
+		if (shader._shader._shaderProgram) {
+			shader._shader.Apply(devContext, parserContext, { localTransform, shader._cbLayout->BuildCBDataAsPkt(matParams) } );
+			devContext.Bind(MakeResourceList(visBox._cubeVB), visBox._cubeVBStride, 0);
+			devContext.Draw(visBox._cubeVBCount);
+		}
     }
 
     static void DrawTriMeshMarker(
@@ -180,15 +289,29 @@ namespace GUILayer
         unsigned techniqueIndex)
     {
         auto& visBox = FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
-        auto shader = visBox._material.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/illum.tech");
-        if (shader._shader._shaderProgram) {
-            for (auto a=_cubeAnnotations.cbegin(); a!=_cubeAnnotations.cend(); ++a) {
-                auto objects = _objects->FindEntitiesOfType(a->_typeId);
-                for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {
-                    DrawObject(metalContext, parserContext, visBox, shader, **o);
-                }
-            }
-        }
+
+		if (Tweakable("DrawMarkers", true)) {
+			auto* baseTechnique = "game/xleres/techniques/illum.tech";
+			auto shader = visBox._material.FindVariation(parserContext, techniqueIndex, baseTechnique);
+			for (auto a=_cubeAnnotations.cbegin(); a!=_cubeAnnotations.cend(); ++a) {
+				auto objects = _objects->FindEntitiesOfType(a->_typeId);
+				for (const auto&o:objects) {
+					if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
+
+					auto localTransform = MakeLocalTransformPacket(
+						GetTransform(*o), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
+
+					ParameterBox matParams;
+
+					// bit of a hack -- copy from the "Diffuse" parameter to the "MaterialDiffuse" shader constant
+					auto diffuseName = ParameterBox::MakeParameterNameHash(u("Diffuse"));
+					unsigned c = o->_properties.GetParameter(diffuseName, ~0u);
+					matParams.SetParameter(u("MaterialDiffuse"), Float3(((c>>16)&0xff)/255.f, ((c>>8)&0xff)/255.f, ((c>>0)&0xff)/255.f));
+
+					DrawObject(metalContext, parserContext, visBox, shader, localTransform, techniqueIndex, baseTechnique, matParams);
+				}
+			}
+		}
 
         auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/meshmarker.tech");
         if (shaderP._shader._shaderProgram) {

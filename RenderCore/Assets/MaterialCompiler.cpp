@@ -23,6 +23,7 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/ExceptionLogging.h"
 #include "../../Utility/Conversion.h"
+#include "../../Utility/IteratorUtils.h"
 
 namespace RenderCore { extern char VersionString[]; extern char BuildDateString[]; }
 

@@ -14,6 +14,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/OutputStream.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/Streams/Stream.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Streams/FileUtils.h"

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TransformationCommands.h"
+#include "../../ConsoleRig/Log.h"
 
 #pragma warning(disable:4127)
 #pragma warning(disable:4505)       // unreferenced function removed

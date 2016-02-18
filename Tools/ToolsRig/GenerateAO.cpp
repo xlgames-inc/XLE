@@ -17,6 +17,7 @@
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/MeshDatabase.h"
 #include "../../RenderCore/Assets/CompilationThread.h"
+#include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Metal/ShaderResource.h"
 #include "../../RenderCore/Metal/RenderTargetView.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -36,6 +37,7 @@
 
 #include "../../Assets/ChunkFile.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 
 #include <queue>

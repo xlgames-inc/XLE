@@ -9,12 +9,12 @@
 #include "ModelScaffoldInternal.h"
 #include "SkeletonScaffoldInternal.h"
 #include "AnimationScaffoldInternal.h"
-#include "Material.h"
 #include <vector>
 #include <utility>
 
 namespace RenderCore { namespace Assets
 {
+	class ResolvedMaterial;
         
     #pragma pack(push)
     #pragma pack(1)
