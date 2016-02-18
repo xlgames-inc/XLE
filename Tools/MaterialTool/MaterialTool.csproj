@@ -77,9 +77,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActiveMaterialContext.cs" />
-    <Compile Include="Controls\DiagramControl.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Include="Controls\DiagramControl.cs" />
     <Compile Include="Controls\DiagramLister.cs" />
     <Compile Include="DiagramCommands.cs" />
     <Compile Include="DiagramControlRegistry.cs" />
