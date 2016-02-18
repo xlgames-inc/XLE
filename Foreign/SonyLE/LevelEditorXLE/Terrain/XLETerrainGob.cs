@@ -440,6 +440,32 @@ namespace LevelEditorXLE.Terrain
             Reload();
         }
 
+        internal void DoExportHeights()
+        {
+            var fileDlg = new SaveFileDialog();
+            fileDlg.Filter = "Tiff files|*.tiff;*.tif";
+            if (fileDlg.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    Unload();
+                    using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+                    {
+                        GUILayer.EditorInterfaceUtils.ExecuteTerrainExport(
+                            fileDlg.FileName,
+                            BuildEngineConfig(),
+                            UberSurfaceDirectory,
+                            1, progress);
+                    }
+                    Reload();
+                }
+                catch (Exception e)
+                {
+                    Show(e, "Terrain export to tiff");
+                }
+            }
+        }
+
         #region ICommandClient Members
         bool ICommandClient.CanDoCommand(object commandTag)
         {
@@ -456,6 +482,7 @@ namespace LevelEditorXLE.Terrain
                     case Command.RebuildCellFiles:
                     case Command.Reload:
                     case Command.AddGenericCoverage:
+                    case Command.ExportToTiff:
                         return true;
 
                     case Command.AddShadows:
@@ -532,6 +559,10 @@ namespace LevelEditorXLE.Terrain
                         break;
                     }
 
+                case Command.ExportToTiff:
+                    DoExportHeights();
+                    break;
+
                 case Command.AddShadows:
                 case Command.AddAO:
                 case Command.AddBaseMaterialCoverage:
@@ -599,6 +630,7 @@ namespace LevelEditorXLE.Terrain
             [Description("Rebuild cell files")] RebuildCellFiles,
             [Description("Unload terrain")] Unload,
             [Description("Reload terrain")] Reload,
+            [Description("Export to TIFF")] ExportToTiff,
 
             [Description("Add Shadows")] AddShadows,
             [Description("Add Ambient Occlusion")] AddAO,
@@ -805,7 +837,7 @@ namespace LevelEditorXLE.Terrain
                 }
                 catch (Exception e) 
                 {
-                    XLETerrainGob.Show(e, "Terrain export operation");
+                    XLETerrainGob.Show(e, "Terrain export to tiff");
                 }
             }
         }
