@@ -132,7 +132,8 @@ namespace ToolsRig
     void RenderRectangleHighlight(
         RenderCore::IThreadContext& threadContext, 
         RenderCore::Techniques::ParsingContext& parserContext,
-        const Float3& mins, const Float3& maxs)
+        const Float3& mins, const Float3& maxs,
+		RectangleHighlightType type)
     {
         using namespace RenderCore::Metal;
         auto& metalContext = *DeviceContext::Get(threadContext);
@@ -153,7 +154,9 @@ namespace ToolsRig
                 // note -- we might need access to the MSAA defines for this shader
             auto& shaderProgram = Assets::GetAssetDep<ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
-                "game/xleres/ui/terrainmanipulators.sh:ps_rectanglehighlight:ps_*");
+                (type == RectangleHighlightType::Tool)
+					? "game/xleres/ui/terrainmanipulators.sh:ps_rectanglehighlight:ps_*"
+					: "game/xleres/ui/terrainmanipulators.sh:ps_lockedareahighlight:ps_*");
             
             struct HighlightParameters
             {

@@ -182,15 +182,20 @@ namespace SceneEngine
         } CATCH_END
     }
 
-    void    TerrainCellRenderer::ShortCircuit(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd)
-    {
+	auto TerrainCellRenderer::FindIntersectingNodes(
+		uint64 cellHash, TerrainCoverageId layerId,
+		UInt2 cellOrigin, UInt2 cellMax, 
+		UInt2 areaMins, UInt2 areaMaxs) -> std::vector<FoundNode>
+	{
+		std::vector<FoundNode> result;
+
             //      We need to find the CellRenderInfo objects associated with the terrain cell with this name.
             //      Then, for any completed height map tiles within that object, we must copy in the data
             //      from our update information (sometimes doing the downsample along the way).
             //      This will update the tiles with new data, without hitting the disk or requiring a re-upload
 
         auto i = LowerBound(_renderInfos, cellHash);
-        if (i == _renderInfos.end() || i->first != cellHash) return;
+        if (i == _renderInfos.end() || i->first != cellHash) return result;
 
         auto& cri = *i->second;
         auto& sourceCell = *i->second->_sourceCell;
@@ -205,14 +210,14 @@ namespace SceneEngine
         } else {
             for (unsigned c=0; c<_coverageIds.size(); ++c)
                 if (_coverageIds[c] == layerId) { coverageLayerIndex = c; break; }
-            if (coverageLayerIndex >= unsigned(_coverageTileSet.size())) return;
+            if (coverageLayerIndex >= unsigned(_coverageTileSet.size())) return result;
             tileSet = _coverageTileSet[coverageLayerIndex].get();
             tiles = &cri._coverage[coverageLayerIndex]._tiles;
         }
 
-        if (!tileSet || !tiles) return;
+        if (!tileSet || !tiles) return result;
 
-            //  Got a match. Find all with completed tiles (ignoring the pending tiles) and 
+		    //  Got a match. Find all with completed tiles (ignoring the pending tiles) and 
             //  write over that data.
         for (auto ni=tiles->begin(); ni!=tiles->end(); ++ni) {
 
@@ -239,21 +244,80 @@ namespace SceneEngine
                     (unsigned)LinearInterpolate(float(cellOrigin[1]), float(cellMax[1]), nodeMaxInCell[1]));
 
                 const int overlap = 1;
-                if (    (int(nodeMin[0])-overlap) <= int(upd._updateAreaMaxs[0]) && (int(nodeMax[0])+overlap) >= int(upd._updateAreaMins[0])
-                    &&  (int(nodeMin[1])-overlap) <= int(upd._updateAreaMaxs[1]) && (int(nodeMax[1])+overlap) >= int(upd._updateAreaMins[1])) {
+                if (    (int(nodeMin[0])-overlap) <= int(areaMaxs[0]) && (int(nodeMax[0])+overlap) >= int(areaMins[0])
+                    &&  (int(nodeMin[1])-overlap) <= int(areaMaxs[1]) && (int(nodeMax[1])+overlap) >= int(areaMins[1])) {
 
-                        // downsampling required depends on which field we're in.
-                    auto fi = std::find_if(sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
-                        [=](const TerrainCell::NodeField& field) { return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
-                    size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
-                    unsigned downsample = unsigned(4-fieldIndex);
+					auto fi = std::find_if(sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
+						[=](const TerrainCell::NodeField& field) { return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
+					size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
 
-                    ShortCircuitTileUpdate(ni->_tile, coverageLayerIndex, nodeMin, nodeMax, downsample, sourceCell.EncodedGradientFlags(), sourceNode->_localToCell, upd);
+					result.push_back(
+						FoundNode { 
+							AsPointer(ni), unsigned(fieldIndex), 
+							nodeMin, nodeMax,
+							&sourceNode->_localToCell });
+				}
+			}
+		}
 
-                }
-            }
+		return result;
+	}
+
+    void    TerrainCellRenderer::ShortCircuit(
+		uint64 cellHash, TerrainCoverageId layerId, 
+		UInt2 cellOrigin, UInt2 cellMax, 
+		const ShortCircuitUpdate& upd)
+    {
+		auto i = LowerBound(_renderInfos, cellHash);
+        if (i == _renderInfos.end() || i->first != cellHash) return;
+        auto& sourceCell = *i->second->_sourceCell;
+		
+		unsigned coverageLayerIndex = ~unsigned(0);
+		if (layerId != CoverageId_Heights) {
+            for (unsigned c=0; c<_coverageIds.size(); ++c)
+                if (_coverageIds[c] == layerId) { coverageLayerIndex = c; break; }
+            if (coverageLayerIndex >= unsigned(_coverageTileSet.size())) return;
+        }
+
+		auto nodes = FindIntersectingNodes(
+			cellHash, layerId, cellOrigin, cellMax,
+			upd._updateAreaMins, upd._updateAreaMaxs);
+
+		for (const auto& n:nodes) {
+			
+                // downsampling required depends on which field we're in.
+            
+            unsigned downsample = unsigned(4-n._fieldIndex);
+
+            ShortCircuitTileUpdate(
+				n._node->_tile, coverageLayerIndex, 
+				n._nodeMin, n._nodeMax, downsample, 
+				sourceCell.EncodedGradientFlags(), 
+				*n._localToCell, upd);
+
         }
     }
+
+	void    TerrainCellRenderer::AbandonShortCircuitData(
+		uint64 cellHash, TerrainCoverageId layerId, 
+		UInt2 cellOrigin, UInt2 cellMax, 
+		UInt2 abandonMins, UInt2 abandonMaxs)
+    {
+		// Find the tiles that would have been effected by short circuit operations in
+		// this area.
+		// We will dump their data, so that they get reloaded from disk.
+		auto nodes = FindIntersectingNodes(
+			cellHash, layerId, cellOrigin, cellMax,
+			abandonMins, abandonMaxs);
+		for (const auto& n:nodes) {
+			// We only need to blank out the tile data to force a reload
+			// Any pending operations can be allowed to complete as is.
+			// The old tile is now invalid, so we could explicitly remove it
+			// from the TextureTileSet... However, this isn't really necessarily
+			// because the LRU scheme will eventually overwrite it.
+			n._node->_tile = TextureTile();
+		}
+	}
 
 
     void DoShortCircuitUpdate(
@@ -264,5 +328,14 @@ namespace SceneEngine
         if (r)
             r->ShortCircuit(cellHash, layerId, uberAddress._mins, uberAddress._maxs, upd);
     }
+
+	void DoAbandonShortCircuitData(
+		uint64 cellHash, TerrainCoverageId layerId, std::weak_ptr<TerrainCellRenderer> renderer,
+        TerrainCellId::UberSurfaceAddress uberAddress, UInt2 mins, UInt2 maxs)
+	{
+		auto r = renderer.lock();
+        if (r)
+            r->AbandonShortCircuitData(cellHash, layerId, uberAddress._mins, uberAddress._maxs, mins, maxs);
+	}
 }
 

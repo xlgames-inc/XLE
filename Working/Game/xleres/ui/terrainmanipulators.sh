@@ -111,3 +111,42 @@ float4 ps_rectanglehighlight(	float4 position : SV_Position,
 
 	return float4(hatch * 1.0.xxx*max(max(max(a3.x, a3.y), a3.z), a3.w), hatch?0.5f:0.25f);
 }
+
+
+float4 ps_lockedareahighlight(	float4 position : SV_Position,
+								float2 texCoord : TEXCOORD0,
+								float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
+								SystemInputs sys) : SV_Target0
+{
+	int2 pixelCoords = position.xy;
+
+	float linear0To1Depth = GetLinear0To1Depth(pixelCoords, GetSampleIndex(sys));
+	if (linear0To1Depth == 1.f) discard;
+	float3 worldPosition = CalculateWorldPosition(
+		viewFrustumVector, linear0To1Depth, WorldSpaceView);
+
+	float distances[4] =
+		{ 	worldPosition.x - Mins.x, worldPosition.y - Mins.y,
+			Maxs.x - worldPosition.x, Maxs.y - worldPosition.y };
+	float minDist = min(min(min(distances[0], distances[1]), distances[2]), distances[3]);
+
+	float2 b2 = float2(
+		(worldPosition.x - Mins.x) / (Maxs.x - Mins.x),
+		(worldPosition.y - Mins.y) / (Maxs.y - Mins.y));
+
+	float2 d = fwidth(b2);
+	d = clamp(d, -0.001.xx, 0.001.xx);
+	float4 A = float4(b2, 1.0.xx-b2);
+	float4 a3 = 1.f - smoothstep(0.0.xxxx, d.xyxy*2.f, A);
+	float a4 = max(max(max(a3.x, a3.y), a3.z), a3.w);
+
+	float2 B = float2(worldPosition.xy - Mins.xy);
+	bool hatch = frac((B.x + B.y) / 2.f) < .5f;
+
+	if (minDist > 0.f) {
+		if (a4 > 0.1f) return float4(a4.xxx * float3(0, .25, 1.f), 0.f);
+		discard;
+	}
+
+	return float4(0.0.xxx, hatch ? 0.35f : 0.0f);
+}

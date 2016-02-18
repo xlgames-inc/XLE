@@ -42,10 +42,12 @@ namespace ToolsRig
         RenderCore::Techniques::ParsingContext& parserContext,
         const Float3& centre, float radius);
 
+	enum class RectangleHighlightType { Tool, LockedArea };
     void RenderRectangleHighlight(
         RenderCore::IThreadContext& threadContext, 
         RenderCore::Techniques::ParsingContext& parserContext,
-        const Float3& mins, const Float3& maxs);
+        const Float3& mins, const Float3& maxs,
+		RectangleHighlightType type = RectangleHighlightType::Tool);
 
     void DrawQuadDirect(
         RenderCore::IThreadContext& threadContext, 

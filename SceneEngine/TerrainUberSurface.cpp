@@ -145,6 +145,7 @@ namespace SceneEngine
             unsigned _overlap;
             std::string _filename;
             std::function<void(const ShortCircuitUpdate&)> _shortCircuitUpdate;
+            std::function<void(UInt2, UInt2)> _abandonShortCircuitData;
         };
 
         std::vector<RegisteredCell>     _registeredCells;
@@ -274,7 +275,39 @@ namespace SceneEngine
         bool SurfaceHeightsProvider::IsFloatFormat() const { return true; }
     }
 
-    void    GenericUberSurfaceInterface::FlushGPUCache()
+	std::pair<UInt2, UInt2> GenericUberSurfaceInterface::GetLock() const
+	{
+		if (_pimpl->_gpucache[0])
+			return std::make_pair(_pimpl->_gpuCacheMins, _pimpl->_gpuCacheMaxs);
+		return std::make_pair(UInt2(0,0), UInt2(0,0));
+	}
+
+	void	GenericUberSurfaceInterface::AbandonLock()
+	{
+		if (_pimpl->_gpucache[0]) {
+			auto oldCacheMins = _pimpl->_gpuCacheMins;
+			auto oldCacheMaxs = _pimpl->_gpuCacheMaxs;
+			_pimpl->_gpucache[0].reset();
+			_pimpl->_gpucache[1].reset();
+			_pimpl->_gpuCacheMins = _pimpl->_gpuCacheMaxs = UInt2(0,0);
+
+			// Our rendered probably has short-curcuit updates for the cells intersecting the
+			// lock area. We need to reload these cells from disk to abandon the updated data.
+			TRY 
+			{
+				using namespace RenderCore::Metal;
+				for (auto i=_pimpl->_registeredCells.cbegin(); i!=_pimpl->_registeredCells.cend(); ++i) {
+					if (oldCacheMaxs[0] < i->_mins[0] || oldCacheMaxs[1] < i->_mins[1]) continue;
+					if (oldCacheMins[0] > i->_maxs[0] || oldCacheMins[1] > i->_maxs[1]) continue;
+					i->_abandonShortCircuitData(oldCacheMins, oldCacheMaxs);
+				}
+			}
+			CATCH (...) {}
+			CATCH_END
+		}
+	}
+
+    void    GenericUberSurfaceInterface::FlushLockToDisk()
     {
         if (_pimpl->_gpucache[0]) {
                 // readback data from the gpu asset (often requires a staging-style resource)
@@ -331,7 +364,7 @@ namespace SceneEngine
             //  if there's an existing GPU cache, we need to flush it out, and copy
             //  the results back to system memory
         if (_pimpl->_gpucache[0]) {
-            FlushGPUCache();
+            FlushLockToDisk();
         }
 
         using namespace BufferUploads;
@@ -368,7 +401,7 @@ namespace SceneEngine
         return bufferUploads.Transaction_Immediate(desc, pkt.get());
     }
 
-    void    GenericUberSurfaceInterface::PrepareCache(UInt2 adjMins, UInt2 adjMaxs)
+    bool GenericUberSurfaceInterface::PrepareCache(UInt2 adjMins, UInt2 adjMaxs)
     {
         unsigned fieldWidth = _pimpl->_uberSurface->GetWidth();
         unsigned fieldHeight = _pimpl->_uberSurface->GetHeight();
@@ -377,9 +410,8 @@ namespace SceneEngine
         if (_pimpl->_gpucache[0]) {
             bool within =   adjMins[0] >= _pimpl->_gpuCacheMins[0] && adjMins[1] >= _pimpl->_gpuCacheMins[1]
                         &&  adjMaxs[0] <= _pimpl->_gpuCacheMaxs[0] && adjMaxs[1] <= _pimpl->_gpuCacheMaxs[1];
-            if (!within) {
-                FlushGPUCache();    // flush out and build new gpu cache
-            }
+            if (!within)
+                return false;
         }
 
         if (!_pimpl->_gpucache[0]) {
@@ -396,16 +428,18 @@ namespace SceneEngine
 
             BuildGPUCache(cacheMins, cacheMaxs);
         }
+
+		return true;
     }
 
     void GenericUberSurfaceInterface::CancelActiveOperations()
     {}
 
-    void    GenericUberSurfaceInterface::ApplyTool(
+    auto GenericUberSurfaceInterface::ApplyTool(
         RenderCore::IThreadContext& threadContext,
         UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
         Float2 center, float radius, float adjustment, 
-        std::tuple<uint64, void*, size_t> extraPackets[], unsigned extraPacketCount)
+        std::tuple<uint64, void*, size_t> extraPackets[], unsigned extraPacketCount) -> ApplyToolResult
     {
         CancelActiveOperations();
         TRY 
@@ -465,8 +499,12 @@ namespace SceneEngine
 
             DoShortCircuitUpdate(threadContext, adjMins, adjMaxs);
         }
-        CATCH (...) {}
+		CATCH (::Assets::Exceptions::InvalidAsset&) { return ApplyToolResult::InvalidAsset; }
+        CATCH (::Assets::Exceptions::PendingAsset&) { return ApplyToolResult::PendingAsset; }
+		CATCH (...) { return ApplyToolResult::Error; }
         CATCH_END
+
+		return ApplyToolResult::Success;
     }
 
     void    GenericUberSurfaceInterface::DoShortCircuitUpdate(
@@ -526,7 +564,8 @@ namespace SceneEngine
 
     void    GenericUberSurfaceInterface::RegisterCell(
                     const char destinationFile[], UInt2 mins, UInt2 maxs, unsigned overlap,
-                    std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate)
+                    std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate,
+                    std::function<void(UInt2, UInt2)> abandonShortCircuitData)
     {
             //      Register the given cell... When there are any modifications, 
             //      we'll write over this cell's cached file
@@ -537,6 +576,7 @@ namespace SceneEngine
         registeredCell._overlap = overlap;
         registeredCell._filename = destinationFile;
         registeredCell._shortCircuitUpdate = shortCircuitUpdate;
+		registeredCell._abandonShortCircuitData = abandonShortCircuitData;
         _pimpl->_registeredCells.push_back(registeredCell);
     }
 
@@ -577,17 +617,18 @@ namespace SceneEngine
 
     #define baseShader "game/xleres/ui/terrainmodification.sh:"
 
-    void    HeightsUberSurfaceInterface::AdjustHeights(RenderCore::IThreadContext& threadContext, Float2 center, float radius, float adjustment, float powerValue)
+    auto HeightsUberSurfaceInterface::AdjustHeights(RenderCore::IThreadContext& threadContext, Float2 center, float radius, float adjustment, float powerValue) -> ApplyToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return;
+            return ApplyToolResult::Error;
 
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - radius)),
                         (unsigned)std::max(0.f, XlFloor(center[1] - radius)));
         UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->GetWidth()-1, (unsigned)XlCeil(center[0] + radius)),
                         std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + radius)));
 
-        PrepareCache(adjMins, adjMaxs);
+        if (!PrepareCache(adjMins, adjMaxs))
+			return ApplyToolResult::OutsideLock;
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
         struct RaiseLowerParameters
@@ -601,37 +642,39 @@ namespace SceneEngine
             std::make_tuple(Hash64("RaiseLowerParameters"), &raiseLowerParameters, sizeof(RaiseLowerParameters))
         };
 
-        ApplyTool(threadContext, adjMins, adjMaxs, baseShader "RaiseLower", center, radius, adjustment, extraPackets, dimof(extraPackets));
+        return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "RaiseLower", center, radius, adjustment, extraPackets, dimof(extraPackets));
     }
 
-    void    HeightsUberSurfaceInterface::AddNoise(RenderCore::IThreadContext& threadContext, Float2 center, float radius, float adjustment)
+    auto HeightsUberSurfaceInterface::AddNoise(RenderCore::IThreadContext& threadContext, Float2 center, float radius, float adjustment) -> ApplyToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return;
+            return ApplyToolResult::Error;
 
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - radius)),
                         (unsigned)std::max(0.f, XlFloor(center[1] - radius)));
         UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->GetWidth()-1, (unsigned)XlCeil(center[0] + radius)),
                         std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + radius)));
 
-        PrepareCache(adjMins, adjMaxs);
+        if (!PrepareCache(adjMins, adjMaxs))
+			return ApplyToolResult::OutsideLock;
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
 
-        ApplyTool(threadContext, adjMins, adjMaxs, baseShader "AddNoise", center, radius, adjustment, nullptr, 0);
+        return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "AddNoise", center, radius, adjustment, nullptr, 0);
     }
 
-    void    HeightsUberSurfaceInterface::CopyHeight(RenderCore::IThreadContext& threadContext, Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags)
+    auto HeightsUberSurfaceInterface::CopyHeight(RenderCore::IThreadContext& threadContext, Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags) -> ApplyToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return;
+            return ApplyToolResult::Error;
 
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - radius)),
                         (unsigned)std::max(0.f, XlFloor(center[1] - radius)));
         UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->GetWidth()-1, (unsigned)XlCeil(center[0] + radius)),
                         std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + radius)));
 
-        PrepareCache(adjMins, adjMaxs);
+        if (!PrepareCache(adjMins, adjMaxs))
+			return ApplyToolResult::OutsideLock;
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
         struct CopyHeightParameters
@@ -646,13 +689,13 @@ namespace SceneEngine
             std::make_tuple(Hash64("CopyHeightParameters"), &copyHeightParameters, sizeof(CopyHeightParameters))
         };
 
-        ApplyTool(threadContext, adjMins, adjMaxs, baseShader "CopyHeight", center, radius, adjustment, extraPackets, dimof(extraPackets));
+        return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "CopyHeight", center, radius, adjustment, extraPackets, dimof(extraPackets));
     }
 
-    void    HeightsUberSurfaceInterface::Rotate(RenderCore::IThreadContext& threadContext, Float2 center, float radius, Float3 rotationAxis, float rotationAngle)
+    auto HeightsUberSurfaceInterface::Rotate(RenderCore::IThreadContext& threadContext, Float2 center, float radius, Float3 rotationAxis, float rotationAngle) -> ApplyToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return;
+            return ApplyToolResult::Error;
 
         const float extend = 1.2f;
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - extend * radius)),
@@ -660,7 +703,8 @@ namespace SceneEngine
         UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->GetWidth()-1, (unsigned)XlCeil(center[0] + extend * radius)),
                         std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + extend * radius)));
 
-        PrepareCache(adjMins, adjMaxs);
+        if (!PrepareCache(adjMins, adjMaxs))
+			return ApplyToolResult::OutsideLock;
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
         assert(rotationAxis[2] == 0.f);
@@ -676,13 +720,13 @@ namespace SceneEngine
             std::make_tuple(Hash64("RotateParameters"), &rotateParameters, sizeof(RotateParamaters))
         };
 
-        ApplyTool(threadContext, adjMins, adjMaxs, baseShader "Rotate", center, radius, 1.f, extraPackets, dimof(extraPackets));
+        return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "Rotate", center, radius, 1.f, extraPackets, dimof(extraPackets));
     }
 
-    void    HeightsUberSurfaceInterface::Smooth(RenderCore::IThreadContext& threadContext, Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags)
+    auto HeightsUberSurfaceInterface::Smooth(RenderCore::IThreadContext& threadContext, Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags) -> ApplyToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return;
+            return ApplyToolResult::Error;
 
         auto fieldWidth = _pimpl->_uberSurface->GetWidth()-1;
         auto fieldHeight = _pimpl->_uberSurface->GetHeight()-1;
@@ -692,9 +736,10 @@ namespace SceneEngine
         UInt2 adjMaxs(  std::min(fieldWidth, (unsigned)XlCeil(center[0] + radius)),
                         std::min(fieldHeight, (unsigned)XlCeil(center[1] + radius)));
 
-        PrepareCache(
+        if (!PrepareCache(
             UInt2(std::max(0u, adjMins[0]-filterRadius), std::max(0u, adjMins[1]-filterRadius)),
-            UInt2(std::min(fieldWidth, adjMaxs[0]+filterRadius), std::min(fieldHeight, adjMins[1]+filterRadius)));
+            UInt2(std::min(fieldWidth, adjMaxs[0]+filterRadius), std::min(fieldHeight, adjMins[1]+filterRadius))))
+			return ApplyToolResult::OutsideLock;
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
 
@@ -719,20 +764,21 @@ namespace SceneEngine
             std::make_tuple(Hash64("GaussianParameters"), &blurParameters, sizeof(BlurParameters))
         };
             
-        ApplyTool(threadContext, adjMins, adjMaxs, baseShader "Smooth", center, radius, strength, extraPackets, dimof(extraPackets));
+        return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "Smooth", center, radius, strength, extraPackets, dimof(extraPackets));
     }
 
-    void    HeightsUberSurfaceInterface::FillWithNoise(RenderCore::IThreadContext& threadContext, Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail)
+    auto HeightsUberSurfaceInterface::FillWithNoise(RenderCore::IThreadContext& threadContext, Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail) -> ApplyToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return;
+            return ApplyToolResult::Error;
 
         auto fieldWidth = _pimpl->_uberSurface->GetWidth()-1;
         auto fieldHeight = _pimpl->_uberSurface->GetHeight()-1;
 
         UInt2 adjMins((unsigned)std::max(0.f, mins[0]), (unsigned)std::max(0.f, mins[1]));
         UInt2 adjMaxs(std::min(fieldWidth, (unsigned)maxs[0]), std::min(fieldHeight, (unsigned)maxs[1]));
-        PrepareCache(adjMins, adjMaxs);
+        if (!PrepareCache(adjMins, adjMaxs))
+			return ApplyToolResult::OutsideLock;
 
         struct FillWithNoiseParameters
         {
@@ -745,7 +791,7 @@ namespace SceneEngine
             std::make_tuple(Hash64("FillWithNoiseParameters"), &fillWithNoiseParameters, sizeof(FillWithNoiseParameters))
         };
             
-        ApplyTool(threadContext, adjMins, adjMaxs, baseShader "FillWithNoise", LinearInterpolate(mins, maxs, 0.5f), 1.f, 1.f, extraPackets, dimof(extraPackets));
+        return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "FillWithNoise", LinearInterpolate(mins, maxs, 0.5f), 1.f, 1.f, extraPackets, dimof(extraPackets));
     }
 
     void    HeightsUberSurfaceInterface::Erosion_Begin(

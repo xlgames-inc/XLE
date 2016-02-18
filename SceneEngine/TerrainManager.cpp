@@ -386,7 +386,9 @@ namespace SceneEngine
                     _uberSurfaceInterface->RegisterCell(
                         c->_heightMapFilename, c->_heightsToUber._mins, c->_heightsToUber._maxs, cfg.NodeOverlap(),
                         std::bind(&DoShortCircuitUpdate, c->BuildHash(), CoverageId_Heights, 
-                        _renderer, c->_heightsToUber, std::placeholders::_1));
+							_renderer, c->_heightsToUber, std::placeholders::_1),
+						std::bind(&DoAbandonShortCircuitData, c->BuildHash(), CoverageId_Heights, 
+							_renderer, c->_heightsToUber, std::placeholders::_1, std::placeholders::_2));
                 }
             }
         }
@@ -412,7 +414,10 @@ namespace SceneEngine
                         cell->_coverageFilename[c], cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs, l._overlap,
                         std::bind(
                             &DoShortCircuitUpdate, cell->BuildHash(), l._id, _renderer, 
-                            cell->_coverageToUber[c], std::placeholders::_1));
+                            cell->_coverageToUber[c], std::placeholders::_1),
+						std::bind(
+                            &DoAbandonShortCircuitData, cell->BuildHash(), l._id, _renderer, 
+                            cell->_coverageToUber[c], std::placeholders::_1, std::placeholders::_2));
                 }
             }
 
@@ -434,13 +439,13 @@ namespace SceneEngine
             _pimpl->_renderer.reset();
 
             if (_pimpl->_uberSurfaceInterface) {
-                _pimpl->_uberSurfaceInterface->FlushGPUCache();
+                _pimpl->_uberSurfaceInterface->FlushLockToDisk();
                 if (step) step->Advance();
             }
 
             for (auto& i:_pimpl->_coverageInterfaces) {
                 if (step && step->IsCancelled()) break;
-                i._interface->FlushGPUCache();
+                i._interface->FlushLockToDisk();
                 if (step) step->Advance();
             }
 

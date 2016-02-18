@@ -12,6 +12,7 @@
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include "../Core/Types.h"
 
 namespace SceneEngine
@@ -95,6 +96,7 @@ namespace SceneEngine
         const TerrainRendererConfig& GetConfig() const      { return _cfg; }
 
         void ShortCircuit(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
+		void AbandonShortCircuitData(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, UInt2 abandonMins, UInt2 abandonMaxs);
         const bool IsShortCircuitAllowed() const { return _shortCircuitAllowed; }
 
         void UnloadCachedData();
@@ -191,6 +193,12 @@ namespace SceneEngine
         void    ShortCircuitTileUpdate(const TextureTile& tile, unsigned layerIndex, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, bool encodedGradientFlags, Float4x4& localToCell, const ShortCircuitUpdate& upd);
 
         auto    BuildQueuedNodeFlags(const CellRenderInfo& cellRenderInfo, unsigned nodeIndex, unsigned lodField) const -> unsigned;
+
+		struct FoundNode { NodeCoverageInfo* _node; unsigned _fieldIndex; UInt2 _nodeMin; UInt2 _nodeMax; Float4x4* _localToCell; };
+		std::vector<FoundNode> FindIntersectingNodes(
+			uint64 cellHash, TerrainCoverageId layerId,
+			UInt2 cellOrigin, UInt2 cellMax, 
+			UInt2 areaMins, UInt2 areaMaxs);
 
         TerrainCellRenderer(const TerrainCellRenderer&);
         TerrainCellRenderer& operator=(const TerrainCellRenderer&);
@@ -318,5 +326,9 @@ namespace SceneEngine
     void DoShortCircuitUpdate(
         uint64 cellHash, TerrainCoverageId layerId, std::weak_ptr<TerrainCellRenderer> renderer,
         TerrainCellId::UberSurfaceAddress uberAddress, const ShortCircuitUpdate& upd);
+
+	void DoAbandonShortCircuitData(
+		uint64 cellHash, TerrainCoverageId layerId, std::weak_ptr<TerrainCellRenderer> renderer,
+        TerrainCellId::UberSurfaceAddress uberAddress, UInt2 mins, UInt2 maxs);
 }
 

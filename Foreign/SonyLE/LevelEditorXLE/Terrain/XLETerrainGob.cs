@@ -321,12 +321,15 @@ namespace LevelEditorXLE.Terrain
                 var newCellCount = new GUILayer.VectorUInt2(0, 0);
                 using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
                 {
+                    bool rebuildCellFiles = false;
+
                     // if there is a source DEM file specified then we should
                     // attempt to build the starter uber surface.
                     if (cfg.Import == TerrainConfig.Config.ImportType.DEMFile
                         && cfg.SourceDEMFile != null && cfg.SourceDEMFile.Length > 0)
                     {
                         cfg.ImportOp.ExecuteForHeights(cfg.UberSurfaceDirectory, progress);
+                        rebuildCellFiles = true;
                     } 
                     else if (cfg.Import == TerrainConfig.Config.ImportType.NewBlankTerrain
                         && cfg.NewCellCountX != 0 && cfg.NewCellCountY != 0)
@@ -335,6 +338,7 @@ namespace LevelEditorXLE.Terrain
                             cfg.UberSurfaceDirectory, cfg.NewCellCountX, cfg.NewCellCountY,
                             cfg.NodeDimensions, cfg.CellTreeDepth,
                             progress);
+                        rebuildCellFiles = true;
                     }
 
                     var engineCfg = BuildEngineConfig(cfg);
@@ -346,7 +350,7 @@ namespace LevelEditorXLE.Terrain
                     GUILayer.EditorInterfaceUtils.GenerateMissingUberSurfaceFiles(
                         engineCfg, cfg.UberSurfaceDirectory, progress); 
                     GUILayer.EditorInterfaceUtils.GenerateCellFiles(
-                        engineCfg, cfg.UberSurfaceDirectory, false,
+                        engineCfg, cfg.UberSurfaceDirectory, rebuildCellFiles,
                         cfg.SlopeThreshold0, cfg.SlopeThreshold1, cfg.SlopeThreshold2,
                         progress);
                 }

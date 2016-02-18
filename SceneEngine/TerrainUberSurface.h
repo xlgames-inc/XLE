@@ -111,10 +111,20 @@ namespace SceneEngine
 
         void    RegisterCell(
                     const char destinationFile[], UInt2 mins, UInt2 maxs, unsigned overlap,
-                    std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate);
+                    std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate,
+                    std::function<void(UInt2, UInt2)> abandonShortCircuitData);
         void    RenderDebugging(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& context);
 
-        void    FlushGPUCache();
+		enum class ApplyToolResult
+		{
+			Success, OutsideLock, 
+			PendingAsset, InvalidAsset,
+			Error
+		};
+
+		std::pair<UInt2, UInt2> GetLock() const;
+        void    FlushLockToDisk();
+		void	AbandonLock();
 
         intrusive_ptr<BufferUploads::ResourceLocator> CopyToGPU(UInt2 topLeft, UInt2 bottomRight);
 
@@ -127,8 +137,8 @@ namespace SceneEngine
         std::unique_ptr<Pimpl> _pimpl;
         
         void    BuildGPUCache(UInt2 mins, UInt2 maxs);
-        void    PrepareCache(UInt2 adjMin, UInt2 adjMax);
-        void    ApplyTool(
+        bool    PrepareCache(UInt2 adjMin, UInt2 adjMax);
+        ApplyToolResult    ApplyTool(
             RenderCore::IThreadContext& threadContext,
             UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
             Float2 center, float radius, float adjustment, 
@@ -142,13 +152,13 @@ namespace SceneEngine
     class HeightsUberSurfaceInterface : public GenericUberSurfaceInterface
     {
     public:
-        void    AdjustHeights(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment, float powerValue);
-        void    Smooth(RenderCore::IThreadContext& context, Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags);
-        void    AddNoise(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment);
-        void    CopyHeight(RenderCore::IThreadContext& context, Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags);
-        void    Rotate(RenderCore::IThreadContext& context, Float2 center, float radius, Float3 rotationAxis, float rotationAngle);
+        ApplyToolResult    AdjustHeights(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment, float powerValue);
+        ApplyToolResult    Smooth(RenderCore::IThreadContext& context, Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags);
+        ApplyToolResult    AddNoise(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment);
+        ApplyToolResult    CopyHeight(RenderCore::IThreadContext& context, Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags);
+        ApplyToolResult    Rotate(RenderCore::IThreadContext& context, Float2 center, float radius, Float3 rotationAxis, float rotationAngle);
 
-        void    FillWithNoise(RenderCore::IThreadContext& context, Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail);
+        ApplyToolResult    FillWithNoise(RenderCore::IThreadContext& context, Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail);
 
         void    Erosion_Begin(RenderCore::IThreadContext& context, Float2 mins, Float2 maxs, const TerrainConfig& cfg);
         void    Erosion_Tick(RenderCore::IThreadContext& context, const ErosionSimulation::Settings& params);

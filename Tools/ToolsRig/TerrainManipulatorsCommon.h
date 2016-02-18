@@ -27,6 +27,8 @@ namespace ToolsRig
         float WorldSpaceDistanceToTerrainCoords(float input) const;
         Float2 WorldSpaceToCoverage(unsigned layerId, const Float2& input) const;
         float WorldSpaceToCoverageDistance(unsigned layerId, float input) const;
+
+		virtual void    Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
     };
 
     class CommonManipulator : public TerrainManipulatorBase

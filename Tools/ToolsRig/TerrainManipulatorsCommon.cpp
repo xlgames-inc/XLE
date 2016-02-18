@@ -13,6 +13,7 @@
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainConfig.h"
+#include "../../SceneEngine/TerrainUberSurface.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/TimeUtils.h"
 
@@ -75,7 +76,7 @@ namespace ToolsRig
 
     float TerrainManipulatorBase::WorldSpaceToCoverageDistance(unsigned layerId, float input) const
     {
-            // huge amount of redundant math involved here; to do just a simple thing
+            // Huge amount of redundant math involved here; to do just a simple thing
             // but, even still, it should be ok...?
         auto& coords = _terrainManager->GetCoords();
         auto& cfg = _terrainManager->GetConfig();
@@ -84,6 +85,28 @@ namespace ToolsRig
         float scale = .5f * (worldToConver(0,0) + worldToConver(1,1));
         return input * scale;
     }
+
+	void TerrainManipulatorBase::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+	{
+		// If there is a "lock" for the currently visualised layer, we should draw a rectangle to visualize it
+
+		if (!_terrainManager) return;
+		auto* heightsInterface = _terrainManager->GetHeightsInterface();
+		if (!heightsInterface) return;
+
+		auto lock = heightsInterface->GetLock();
+		if (lock.second[0] <= lock.first[0] || lock.second[1] <= lock.first[1])
+			return;
+
+        Float2 faWorld = TerrainToWorldSpace(lock.first);
+        Float2 fsWorld = TerrainToWorldSpace(lock.second);
+
+        RenderRectangleHighlight(
+            context, parserContext,
+            Float3(std::min(faWorld[0], fsWorld[0]), std::min(faWorld[1], fsWorld[1]), 0.f),
+            Float3(std::max(faWorld[0], fsWorld[0]), std::max(faWorld[1], fsWorld[1]), 0.f),
+			RectangleHighlightType::LockedArea);
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -141,6 +164,7 @@ namespace ToolsRig
                     RenderCore::IThreadContext& context, 
                     SceneEngine::LightingParserContext& parserContext)
     {
+		TerrainManipulatorBase::Render(context, parserContext);
             //  Draw a highlight on the area that we're going to modify. Since we want this to behave like a decal, 
             //  it's best to do this rendering after the gbuffer is fully prepared, and we should render onto the
             //  lighting buffer.
@@ -217,6 +241,8 @@ namespace ToolsRig
 
     void    RectangleManipulator::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
     {
+		TerrainManipulatorBase::Render(context, parserContext);
+
             //  while dragging, we should draw a rectangle highlight on the terrain
         using namespace RenderCore::Metal;
         if (_isDragging && _secondAnchor.second) {

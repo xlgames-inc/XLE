@@ -62,6 +62,7 @@ namespace ControlsLibrary
                         _dlg._stepLabel.Text = name;
                         _dlg._bar.Maximum = (int)progressMax;
                         _dlg._bar.Step = 1;
+                        _dlg._bar.Value = 0;
                         _dlg.Cancelled = false;
                         _dlg._cancelBtn.Enabled = cancellable;
                     });
