@@ -40,13 +40,15 @@ namespace LevelEditorXLE.Manipulators
         {
             m_controls = new XLEManipCtrls();
 
-                // We could use another MEF container system to initialise the
-                // tab pages for this control... But for now, this is a simple
-                // way to get the behaviour we want.
+            // We could use another MEF container system to initialise the
+            // tab pages for this control... But for now, this is a simple
+            // way to get the behaviour we want.
             var manipulators = Globals.MEFContainer.GetExportedValues<IManipulator>();
-            foreach (var m in manipulators) {
+            foreach (var m in manipulators)
+            {
                 var t = m as Terrain.TerrainManipulator;
-                if (t!=null) {
+                if (t != null)
+                {
                     var terrainCtrls = new XLENativeManipControls();
                     terrainCtrls.Dock = DockStyle.Fill;
                     terrainCtrls.SetActiveContext(t.ManipulatorContext);
@@ -58,7 +60,8 @@ namespace LevelEditorXLE.Manipulators
                 }
 
                 var s = m as Placements.ScatterPlaceManipulator;
-                if (s != null) {
+                if (s != null)
+                {
                     var properties = new XLEScatterPlaceControls();
                     properties.Dock = DockStyle.Fill;
                     properties.Object = s.ManipulatorContext;
@@ -82,13 +85,13 @@ namespace LevelEditorXLE.Manipulators
                                 if (settings != null)
                                     settings.LoadModelList(fn);
 
-                                    // Hack! Problem when refreshing properties after a change
-                                    // So we need to change the object to something else, and then
-                                    // change it back.
-                                    // Note that this creates a hidden cyclic dependency
-                                    //      -- because we're keeping a reference on the "properties"
-                                    //          variable here
-                                properties.Object = new Placements.ScatterPlaceManipulator.ManipulatorSettings(); 
+                                // Hack! Problem when refreshing properties after a change
+                                // So we need to change the object to something else, and then
+                                // change it back.
+                                // Note that this creates a hidden cyclic dependency
+                                //      -- because we're keeping a reference on the "properties"
+                                //          variable here
+                                properties.Object = new Placements.ScatterPlaceManipulator.ManipulatorSettings();
                                 properties.Object = settings;
                             }
                             catch { MessageBox.Show("Error while loading model list"); }
@@ -101,6 +104,14 @@ namespace LevelEditorXLE.Manipulators
                 }
             }
 
+            {
+                var page = new TabPage("Locked Area");
+                var lockedAreaCtrls = new Terrain.TerrainContextControls(m_contextRegistry);
+                lockedAreaCtrls.Dock = DockStyle.Fill;
+                page.Controls.Add(lockedAreaCtrls);
+                m_controls.m_tabControl.TabPages.Add(page);
+            }
+
             m_controlHostService.RegisterControl(
                 m_controls,
                 new ControlInfo("Manipulator Controls", "Properties for the active manipulator", StandardControlGroup.Right),
@@ -108,6 +119,7 @@ namespace LevelEditorXLE.Manipulators
         }
 
         [Import(AllowDefault = false)] IControlHostService m_controlHostService;
+        [Import(AllowDefault = false)] IContextRegistry m_contextRegistry;
         XLEManipCtrls m_controls;
     }
 }

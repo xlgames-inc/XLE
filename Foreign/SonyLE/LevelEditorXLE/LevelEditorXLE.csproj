@@ -98,6 +98,12 @@
     <Compile Include="Placements\XLEPlacementsDocument.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Schema\Schema.cs" />
+    <Compile Include="Terrain\TerrainContextControls.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Terrain\TerrainContextControls.Designer.cs">
+      <DependentUpon>TerrainContextControls.cs</DependentUpon>
+    </Compile>
     <Compile Include="Terrain\TerrainCoverageConfig.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -124,6 +130,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Placements\PlacementsConfig.resx">
       <DependentUpon>PlacementsConfig.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Terrain\TerrainContextControls.resx">
+      <DependentUpon>TerrainContextControls.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Terrain\TerrainCoverageConfig.resx">
       <DependentUpon>TerrainCoverageConfig.cs</DependentUpon>

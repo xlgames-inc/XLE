@@ -67,10 +67,11 @@ namespace ToolsRig
 
     ManipulatorsInterface::ManipulatorsInterface(
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+        std::shared_ptr<TerrainManipulatorContext> terrainManipulatorContext,
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext)
     {
         _activeManipulatorIndex = 0;
-        _manipulators = CreateTerrainManipulators(terrainManager);
+        _manipulators = CreateTerrainManipulators(terrainManager, terrainManipulatorContext);
 
         auto intersectionTestScene = std::make_shared<SceneEngine::IntersectionTestScene>(terrainManager);
 

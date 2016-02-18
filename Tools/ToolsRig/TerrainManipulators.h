@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../../SceneEngine/TerrainCoverageId.h"
 #include <vector>
 #include <memory>
 
@@ -14,6 +15,16 @@ namespace ToolsRig
 {
     class IManipulator;
 
+    class TerrainManipulatorContext
+    {
+    public:
+        SceneEngine::TerrainCoverageId  _activeLayer;
+        bool _showLockedArea;
+
+        TerrainManipulatorContext();
+    };
+
     std::vector<std::unique_ptr<IManipulator>> CreateTerrainManipulators(
-        std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
 }

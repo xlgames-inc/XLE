@@ -6,6 +6,7 @@
 
 #include "TerrainOverlaySystem.h"
 #include "../../Tools/ToolsRig/TerrainManipulatorsInterface.h"
+#include "../../Tools/ToolsRig/TerrainManipulators.h"
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include <memory>
@@ -24,7 +25,8 @@ namespace Sample
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
             std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext)
         {
-            _manipulatorsInterface = std::make_shared<::ToolsRig::ManipulatorsInterface>(terrainManager, intersectionContext);
+            _terrainManipulatorContext = std::make_shared<::ToolsRig::TerrainManipulatorContext>();
+            _manipulatorsInterface = std::make_shared<::ToolsRig::ManipulatorsInterface>(terrainManager, _terrainManipulatorContext, intersectionContext);
             _terrainManipulators = std::make_shared<::ToolsRig::ManipulatorsDisplay>(_manipulatorsInterface);
             _manipInputListener = _manipulatorsInterface->CreateInputListener();
 
@@ -64,6 +66,7 @@ namespace Sample
         std::shared_ptr<::ToolsRig::ManipulatorsDisplay> _terrainManipulators;
         std::shared_ptr<DebugScreensSystem> _screens;
         std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> _manipInputListener;
+        std::shared_ptr<::ToolsRig::TerrainManipulatorContext> _terrainManipulatorContext;
     };
 
     std::shared_ptr<PlatformRig::IOverlaySystem> CreateTerrainEditorOverlaySystem(

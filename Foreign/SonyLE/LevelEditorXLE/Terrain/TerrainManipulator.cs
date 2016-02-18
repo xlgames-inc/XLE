@@ -90,18 +90,22 @@ namespace LevelEditorXLE.Terrain
 
         private void OnActiveContextChanged(object obj, EventArgs args)
         {
-            GUILayer.EditorSceneManager sceneMan = null; 
+            GUILayer.EditorSceneManager sceneMan = null;
+            GUILayer.TerrainManipulatorContext maniContext = null;
             
             IContextRegistry registry = obj as IContextRegistry;
             if (registry != null)
             {
                 var gameExt = registry.GetActiveContext<Game.GameExtensions>();
                 if (gameExt != null)
+                {
                     sceneMan = gameExt.SceneManager;
+                    maniContext = gameExt.TerrainManipulatorContext;
+                }
             }
 
-            if (sceneMan != null) {
-                _manipContext.ManipulatorSet = sceneMan.CreateTerrainManipulators();
+            if (sceneMan != null && maniContext != null) {
+                _manipContext.ManipulatorSet = sceneMan.CreateTerrainManipulators(maniContext);
             } else {
                 _manipContext.ManipulatorSet = null;
             }

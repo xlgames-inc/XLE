@@ -34,11 +34,14 @@ namespace GUILayer
 		return result;
 	}
 
-    TerrainManipulators::TerrainManipulators(std::shared_ptr<SceneEngine::TerrainManager> terrain)
+    TerrainManipulators::TerrainManipulators(
+        std::shared_ptr<SceneEngine::TerrainManager> terrain, 
+        std::shared_ptr<ToolsRig::TerrainManipulatorContext> context)
     {
         _pimpl.reset(new TerrainManipulatorsPimpl);
+        _context = gcnew TerrainManipulatorContext(context);
 
-        auto manip = ToolsRig::CreateTerrainManipulators(terrain);
+        auto manip = ToolsRig::CreateTerrainManipulators(terrain, context);
         for (auto& t : manip) {
             _pimpl->_terrainManipulators.push_back(
                 TerrainManipulatorsPimpl::RegisteredManipulator(t->GetName(), std::move(t)));
@@ -48,7 +51,40 @@ namespace GUILayer
     TerrainManipulators::~TerrainManipulators() 
     {
         _pimpl.reset();
+        delete _context; _context = nullptr;
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    unsigned TerrainManipulatorContext::ActiveLayer::get()
+    {
+        return unsigned(_native->_activeLayer);
+    }
+    
+    void TerrainManipulatorContext::ActiveLayer::set(unsigned value)
+    {
+        _native->_activeLayer = (SceneEngine::TerrainCoverageId)value;
+    }
+
+    bool TerrainManipulatorContext::ShowLockedArea::get()
+    {
+        return _native->_showLockedArea;
+    }
+
+    void TerrainManipulatorContext::ShowLockedArea::set(bool value)
+    {
+        _native->_showLockedArea = value;
+    }
+
+    TerrainManipulatorContext::TerrainManipulatorContext(std::shared_ptr<ToolsRig::TerrainManipulatorContext> native)
+    : _native(std::move(native)) {}
+
+    TerrainManipulatorContext::TerrainManipulatorContext()
+    {
+        _native = std::make_shared<ToolsRig::TerrainManipulatorContext>();
+    }
+
+    TerrainManipulatorContext::~TerrainManipulatorContext() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

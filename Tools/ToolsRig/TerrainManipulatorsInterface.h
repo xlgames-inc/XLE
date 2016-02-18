@@ -15,6 +15,7 @@ namespace SceneEngine { class LightingParserContext; class TerrainManager; class
 namespace ToolsRig
 {
     class IManipulator;
+    class TerrainManipulatorContext;
 
     class ManipulatorsInterface : public std::enable_shared_from_this<ManipulatorsInterface>
     {
@@ -30,6 +31,7 @@ namespace ToolsRig
 
         ManipulatorsInterface(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+            std::shared_ptr<TerrainManipulatorContext> terrainManipulatorContext,
             std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext);
         ~ManipulatorsInterface();
     private:

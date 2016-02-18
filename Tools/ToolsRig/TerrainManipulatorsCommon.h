@@ -16,11 +16,13 @@ namespace SceneEngine
 
 namespace ToolsRig
 {
+    class TerrainManipulatorContext;
+
     class TerrainManipulatorBase : public IManipulator
     {
     protected:
-        TerrainManipulatorBase(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
-        std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
+        std::shared_ptr<SceneEngine::TerrainManager>    _terrainManager;
+        std::shared_ptr<TerrainManipulatorContext>      _manipulatorContext;
 
         Float2 TerrainToWorldSpace(const Float2& input) const;
         Float2 WorldSpaceToTerrain(const Float2& input) const;
@@ -29,6 +31,10 @@ namespace ToolsRig
         float WorldSpaceToCoverageDistance(unsigned layerId, float input) const;
 
 		virtual void    Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
+
+        TerrainManipulatorBase(
+            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+            std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
     };
 
     class CommonManipulator : public TerrainManipulatorBase
@@ -45,7 +51,9 @@ namespace ToolsRig
         virtual void    SetActivationState(bool) {}
         virtual std::string GetStatusText() const { return std::string(); }
 
-        CommonManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+        CommonManipulator(
+            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+            std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
 
     protected:
         std::pair<Float3, bool> _currentWorldSpaceTarget;
@@ -74,7 +82,9 @@ namespace ToolsRig
         virtual void SetActivationState(bool) {}
         virtual std::string GetStatusText() const { return std::string(); }
 
-        RectangleManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+        RectangleManipulator(
+            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+            std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
 
     protected:
         Float3  _firstAnchor;

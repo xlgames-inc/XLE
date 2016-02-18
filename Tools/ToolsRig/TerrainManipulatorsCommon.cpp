@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TerrainManipulatorsCommon.h"
+#include "TerrainManipulators.h"
 #include "ManipulatorsUtil.h"
 #include "ManipulatorsRender.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
@@ -38,8 +39,10 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    TerrainManipulatorBase::TerrainManipulatorBase(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : _terrainManager(terrainManager)
+    TerrainManipulatorBase::TerrainManipulatorBase(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+    : _terrainManager(std::move(terrainManager)), _manipulatorContext(std::move(manipulatorContext))
     {}
 
     Float2 TerrainManipulatorBase::WorldSpaceToTerrain(const Float2& input) const
@@ -88,24 +91,29 @@ namespace ToolsRig
 
 	void TerrainManipulatorBase::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
 	{
-		// If there is a "lock" for the currently visualised layer, we should draw a rectangle to visualize it
+        if (_manipulatorContext && _manipulatorContext->_showLockedArea) {
+            // If there is a "lock" for the currently visualised layer, we should draw a rectangle to visualize it
+		    if (!_terrainManager) return;
+            SceneEngine::GenericUberSurfaceInterface* interf = nullptr;
+            if (_manipulatorContext->_activeLayer == SceneEngine::CoverageId_Heights) {
+		        interf = _terrainManager->GetHeightsInterface();
+            } else 
+                interf = _terrainManager->GetCoverageInterface(_manipulatorContext->_activeLayer);
+		    if (!interf) return;
 
-		if (!_terrainManager) return;
-		auto* heightsInterface = _terrainManager->GetHeightsInterface();
-		if (!heightsInterface) return;
+		    auto lock = interf->GetLock();
+		    if (lock.second[0] <= lock.first[0] || lock.second[1] <= lock.first[1])
+			    return;
 
-		auto lock = heightsInterface->GetLock();
-		if (lock.second[0] <= lock.first[0] || lock.second[1] <= lock.first[1])
-			return;
+            Float2 faWorld = TerrainToWorldSpace(lock.first);
+            Float2 fsWorld = TerrainToWorldSpace(lock.second);
 
-        Float2 faWorld = TerrainToWorldSpace(lock.first);
-        Float2 fsWorld = TerrainToWorldSpace(lock.second);
-
-        RenderRectangleHighlight(
-            context, parserContext,
-            Float3(std::min(faWorld[0], fsWorld[0]), std::min(faWorld[1], fsWorld[1]), 0.f),
-            Float3(std::max(faWorld[0], fsWorld[0]), std::max(faWorld[1], fsWorld[1]), 0.f),
-			RectangleHighlightType::LockedArea);
+            RenderRectangleHighlight(
+                context, parserContext,
+                Float3(std::min(faWorld[0], fsWorld[0]), std::min(faWorld[1], fsWorld[1]), 0.f),
+                Float3(std::max(faWorld[0], fsWorld[0]), std::max(faWorld[1], fsWorld[1]), 0.f),
+			    RectangleHighlightType::LockedArea);
+        }
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -175,8 +183,10 @@ namespace ToolsRig
 		++FrameRenderCount;
     }
 
-    CommonManipulator::CommonManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : TerrainManipulatorBase(std::move(terrainManager))
+    CommonManipulator::CommonManipulator(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+    : TerrainManipulatorBase(std::move(terrainManager), std::move(manipulatorContext))
     {
         _currentWorldSpaceTarget = std::make_pair(Float3(0,0,0), false);
         _targetOnMouseDown = std::make_pair(Float3(0,0,0), false);
@@ -262,8 +272,10 @@ namespace ToolsRig
         }
     }
 
-    RectangleManipulator::RectangleManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : TerrainManipulatorBase(terrainManager)
+    RectangleManipulator::RectangleManipulator(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+    : TerrainManipulatorBase(std::move(terrainManager), std::move(manipulatorContext))
     {
         _isDragging = false;
     }

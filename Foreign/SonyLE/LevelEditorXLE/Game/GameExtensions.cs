@@ -116,6 +116,11 @@ namespace LevelEditorXLE.Game
             set { SetChild(Schema.xleGameType.placementsChild, value); }
         }
 
+        public Terrain.XLETerrainGob Terrain
+        {
+            get { return DomNode.GetChild(Schema.xleGameType.terrainChild).As<Terrain.XLETerrainGob>(); }
+        }
+
         public string ExportDirectory
         {
             get { return GetAttribute<string>(Schema.xleGameType.ExportDirectoryAttribute); }
@@ -125,6 +130,11 @@ namespace LevelEditorXLE.Game
         public GUILayer.EditorSceneManager SceneManager
         {
             get { return XLEBridgeUtils.Utils.GlobalSceneManager; }
+        }
+
+        public GUILayer.TerrainManipulatorContext TerrainManipulatorContext
+        {
+            get { return m_terrainManipulatorContext; }
         }
 
         #region Context Menu Commands
@@ -157,7 +167,7 @@ namespace LevelEditorXLE.Game
                     {
                         if (DomNode.GetChild(Schema.xleGameType.terrainChild) == null)
                         {
-                            var newNode = Terrain.XLETerrainGob.CreateWithConfigure();
+                            var newNode = LevelEditorXLE.Terrain.XLETerrainGob.CreateWithConfigure();
                             if (newNode != null)
                                 DomNode.SetChild(Schema.xleGameType.terrainChild, newNode);
                         }
@@ -212,6 +222,8 @@ namespace LevelEditorXLE.Game
                 yield return command;
         }
         #endregion
+
+        private GUILayer.TerrainManipulatorContext m_terrainManipulatorContext = new GUILayer.TerrainManipulatorContext();
     }
 
     class XLEGameObjectsFolder : DomNodeAdapter, IExportable

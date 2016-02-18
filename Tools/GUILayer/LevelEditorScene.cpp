@@ -21,6 +21,7 @@
 #include "../EntityInterface/VegetationSpawnEntities.h"
 #include "../EntityInterface/GameObjects.h"
 #include "../ToolsRig/PlacementsManipulators.h"     // just needed for destructors referenced in PlacementGobInterface.h
+#include "../ToolsRig/TerrainManipulators.h"        // for TerrainManipulatorContext
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
@@ -125,9 +126,9 @@ namespace GUILayer
         return *_scene->_flexObjects;
     }
 
-    IManipulatorSet^ EditorSceneManager::CreateTerrainManipulators() 
+    IManipulatorSet^ EditorSceneManager::CreateTerrainManipulators(TerrainManipulatorContext^ context) 
     { 
-        return gcnew TerrainManipulators(_scene->_terrainManager);
+        return gcnew TerrainManipulators(_scene->_terrainManager, context->GetNative());
     }
 
     IManipulatorSet^ EditorSceneManager::CreatePlacementManipulators(

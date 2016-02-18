@@ -8,13 +8,14 @@
 
 #include "ManipulatorUtils.h"
 #include "DelayedDeleteQueue.h"
+#include "../ToolsRig/PlacementsManipulators.h"
 #include "CLIXAutoPtr.h"
 #include <string>
 #include <memory>
 #include <vector>
 
 namespace SceneEngine { class TerrainManager; class PlacementsEditor; }
-namespace ToolsRig { class IPlacementManipulatorSettings; }
+namespace ToolsRig { class IPlacementManipulatorSettings; class TerrainManipulatorContext; }
 
 namespace GUILayer
 {
@@ -37,16 +38,36 @@ namespace GUILayer
 		std::vector<RegisteredManipulator> _terrainManipulators;
     };
 
+    public ref class TerrainManipulatorContext
+    {
+    public:
+        property unsigned ActiveLayer { unsigned get(); void set(unsigned value); }
+        property bool ShowLockedArea { bool get(); void set(bool value); }
+
+        std::shared_ptr<::ToolsRig::TerrainManipulatorContext> GetNative() { return _native; }
+
+        TerrainManipulatorContext(std::shared_ptr<::ToolsRig::TerrainManipulatorContext> native);
+        TerrainManipulatorContext();
+        ~TerrainManipulatorContext();
+    private:
+        clix::shared_ptr<::ToolsRig::TerrainManipulatorContext> _native;
+    };
+
     ref class TerrainManipulators : public IManipulatorSet
     {
     public:
+        property TerrainManipulatorContext^ Context { TerrainManipulatorContext^ get() { return _context; } }
+
         virtual clix::shared_ptr<ToolsRig::IManipulator> GetManipulator(System::String^ name) override;
 		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() override;
 
-        TerrainManipulators(std::shared_ptr<SceneEngine::TerrainManager> terrain);
+        TerrainManipulators(
+            std::shared_ptr<SceneEngine::TerrainManager> terrain, 
+            std::shared_ptr<ToolsRig::TerrainManipulatorContext> context);
         ~TerrainManipulators();
     protected:
         clix::auto_ptr<TerrainManipulatorsPimpl> _pimpl;
+        TerrainManipulatorContext^ _context;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

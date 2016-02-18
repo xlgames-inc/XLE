@@ -11,6 +11,7 @@
 #include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include "../EntityInterface/EntityInterface.h"
+#include "ManipulatorsLayer.h"      // for TerrainManipulators::Context
 #include <memory>
 #include <functional>
 
@@ -27,6 +28,7 @@ namespace SceneEngine
     class DynamicImposters;
 }
 namespace Tools { class IManipulator; }
+namespace ToolsRig { class TerrainManipulatorContext; }
 
 namespace EntityInterface 
 { 
@@ -45,6 +47,7 @@ namespace GUILayer
     ref class PlacementsEditorWrapper;
     ref class ObjectSet;
     ref class TerrainConfig;
+    ref class TerrainManipulatorContext;
     class TerrainGob;
     class ObjectPlaceholders;
 
@@ -59,8 +62,8 @@ namespace GUILayer
         std::shared_ptr<SceneEngine::ShallowSurfaceManager>     _shallowSurfaceManager;
         std::shared_ptr<SceneEngine::DynamicImposters>          _dynamicImposters;
         std::shared_ptr<EntityInterface::RetainedEntities>      _flexObjects;
-        std::shared_ptr<ObjectPlaceholders>     _placeholders;
-        std::vector<std::function<void()>>      _prepareSteps;
+        std::shared_ptr<ObjectPlaceholders>                     _placeholders;
+        std::vector<std::function<void()>>                      _prepareSteps;
 
         void    IncrementTime(float increment) { _currentTime += increment; }
         float   _currentTime;
@@ -134,7 +137,7 @@ namespace GUILayer
 
             //// //// ////   A C C E S S O R S   //// //// ////
 
-        IManipulatorSet^ CreateTerrainManipulators();
+        IManipulatorSet^ CreateTerrainManipulators(TerrainManipulatorContext^ context);
         IManipulatorSet^ CreatePlacementManipulators(IPlacementManipulatorSettingsLayer^ context);
         IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera, EditorSceneRenderSettings^ renderSettings);
 		IntersectionTestSceneWrapper^ GetIntersectionScene();

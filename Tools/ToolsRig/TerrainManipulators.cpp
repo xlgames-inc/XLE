@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "TerrainManipulators.h"
 #include "TerrainManipulatorsCommon.h"
 #include "ManipulatorsUtil.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
@@ -54,7 +55,9 @@ namespace ToolsRig
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
         virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
 
-        RaiseLowerManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+        RaiseLowerManipulator(
+            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+            std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
     private:
         float _powerValue;
     };
@@ -86,8 +89,8 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    RaiseLowerManipulator::RaiseLowerManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : CommonManipulator(std::move(terrainManager))
+    RaiseLowerManipulator::RaiseLowerManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+        : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _powerValue = 1.f/8.f;
 		_strength = 10.f;
@@ -105,7 +108,9 @@ namespace ToolsRig
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
         virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
 
-        SmoothManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+        SmoothManipulator(
+            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+            std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
     private:
         float _standardDeviation;
         float _filterRadius;
@@ -147,8 +152,8 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    SmoothManipulator::SmoothManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : CommonManipulator(std::move(terrainManager))
+    SmoothManipulator::SmoothManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+        : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _standardDeviation = 3.f;
         _filterRadius = 16.f;
@@ -167,7 +172,7 @@ namespace ToolsRig
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
         virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
 
-        NoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+        NoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
     };
 
     void    NoiseManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
@@ -192,8 +197,8 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    NoiseManipulator::NoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : CommonManipulator(std::move(terrainManager))
+    NoiseManipulator::NoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+        : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
 		_strength = 7.f;
 	}
@@ -210,7 +215,7 @@ namespace ToolsRig
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
         virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
 
-        CopyHeight(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+        CopyHeight(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
     private:
         float _powerValue;
         unsigned _flags;
@@ -250,8 +255,8 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    CopyHeight::CopyHeight(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : CommonManipulator(std::move(terrainManager))
+    CopyHeight::CopyHeight(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+        : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _powerValue = 1.f/8.f;
         _flags = 0x3;
@@ -269,7 +274,7 @@ namespace ToolsRig
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
         virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
 
-        FillNoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+        FillNoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
 
     private:
         float _baseHeight, _noiseHeight, _roughness, _fractalDetail;
@@ -299,8 +304,8 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    FillNoiseManipulator::FillNoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : RectangleManipulator(terrainManager)
+    FillNoiseManipulator::FillNoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+        : RectangleManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _baseHeight = 250.0f;
         _noiseHeight = 500.f;
@@ -320,7 +325,7 @@ namespace ToolsRig
         virtual std::pair<IntParameter*, size_t>   GetIntParameters() const;
         virtual void SetActivationState(bool newState);
 
-        PaintCoverageManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+        PaintCoverageManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
 
     private:
         unsigned _coverageLayer;
@@ -370,8 +375,8 @@ namespace ToolsRig
         Tweakable("TerrainVisCoverage", 0) = newState ? _coverageLayer : 0;
     }
 
-    PaintCoverageManipulator::PaintCoverageManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : CommonManipulator(terrainManager)
+    PaintCoverageManipulator::PaintCoverageManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+        : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _coverageLayer = 1000;
         _paintValue = 1;
@@ -390,7 +395,7 @@ namespace ToolsRig
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
         virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
         
-        ErosionManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+        ErosionManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
 
     private:
         Float2  _activeMins;
@@ -477,8 +482,8 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    ErosionManipulator::ErosionManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : RectangleManipulator(terrainManager)
+    ErosionManipulator::ErosionManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+        : RectangleManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _flags = 0;
         _activeMins = _activeMaxs = Float2(0.f, 0.f);
@@ -495,7 +500,7 @@ namespace ToolsRig
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
         virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
-        RotateManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+        RotateManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
 
     private:
         float _rotationDegrees;
@@ -527,25 +532,32 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    RotateManipulator::RotateManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : RectangleManipulator(terrainManager)
+    RotateManipulator::RotateManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+        : RectangleManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _rotationDegrees = 10.f;
     }
 
     std::vector<std::unique_ptr<IManipulator>> CreateTerrainManipulators(
-        std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
     {
         std::vector<std::unique_ptr<IManipulator>> result;
-        result.emplace_back(std::make_unique<RaiseLowerManipulator>(terrainManager));
-        result.emplace_back(std::make_unique<SmoothManipulator>(terrainManager));
-        result.emplace_back(std::make_unique<NoiseManipulator>(terrainManager));
-        result.emplace_back(std::make_unique<FillNoiseManipulator>(terrainManager));
-        result.emplace_back(std::make_unique<CopyHeight>(terrainManager));
-        result.emplace_back(std::make_unique<RotateManipulator>(terrainManager));
-        result.emplace_back(std::make_unique<ErosionManipulator>(terrainManager));
-        result.emplace_back(std::make_unique<PaintCoverageManipulator>(terrainManager));
+        result.emplace_back(std::make_unique<RaiseLowerManipulator>(terrainManager, manipulatorContext));
+        result.emplace_back(std::make_unique<SmoothManipulator>(terrainManager, manipulatorContext));
+        result.emplace_back(std::make_unique<NoiseManipulator>(terrainManager, manipulatorContext));
+        result.emplace_back(std::make_unique<FillNoiseManipulator>(terrainManager, manipulatorContext));
+        result.emplace_back(std::make_unique<CopyHeight>(terrainManager, manipulatorContext));
+        result.emplace_back(std::make_unique<RotateManipulator>(terrainManager, manipulatorContext));
+        result.emplace_back(std::make_unique<ErosionManipulator>(terrainManager, manipulatorContext));
+        result.emplace_back(std::make_unique<PaintCoverageManipulator>(terrainManager, manipulatorContext));
         return result;
+    }
+
+    TerrainManipulatorContext::TerrainManipulatorContext()
+    {
+        _activeLayer = SceneEngine::CoverageId_Heights;
+        _showLockedArea = true;
     }
 }
 
