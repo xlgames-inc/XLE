@@ -84,6 +84,7 @@
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
     <ClCompile Include="..\EntityLayer.cpp" />
+    <ClCompile Include="..\Exceptions.cpp" />
     <ClCompile Include="..\GUILayerUtil.cpp" />
     <ClCompile Include="..\IterativeSystemDebugger.cpp" />
     <ClCompile Include="..\LayerControl.cpp" />
@@ -108,6 +109,7 @@
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\EngineControl.h" />
     <ClInclude Include="..\EntityLayer.h" />
+    <ClInclude Include="..\Exceptions.h" />
     <ClInclude Include="..\ExportedNativeTypes.h" />
     <ClInclude Include="..\GUILayerUtil.h" />
     <ClInclude Include="..\IOverlaySystem.h" />

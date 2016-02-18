@@ -210,5 +210,18 @@ namespace LevelEditorXLE.Terrain
             m_config.ImportOp.ImportHeightRange =
                 new GUILayer.Vector2(m_config.ImportOp.ImportHeightRange.X, newRangeMax);
         }
+
+        private void m_importWarnings_Click(object sender, EventArgs e)
+        {
+            var builder = new StringBuilder();
+            for (uint c = 0; c < m_config.ImportOp.WarningCount; ++c)
+                builder.AppendLine(m_config.ImportOp.Warning(c));
+
+            using (var dlg = new ControlsLibrary.BasicControls.TextWindow())
+            {
+                dlg.Text = builder.ToString();
+                dlg.ShowDialog();
+            }
+        }
     }
 }

@@ -68,6 +68,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BasicControls\ExceptionReport.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="BasicControls\ExceptionReport.Designer.cs">
+      <DependentUpon>ExceptionReport.cs</DependentUpon>
+    </Compile>
     <Compile Include="BasicControls\TextWindow.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -140,6 +146,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="BasicControls\ExceptionReport.resx">
+      <DependentUpon>ExceptionReport.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="BasicControls\TextWindow.resx">
       <DependentUpon>TextWindow.cs</DependentUpon>
     </EmbeddedResource>

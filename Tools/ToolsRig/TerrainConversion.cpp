@@ -681,11 +681,20 @@ namespace ToolsRig
             float valueOffset = op._importHeightRange[0] - op._sourceHeightRange[0] * valueScale;
                 
             for (tstrip_t strip = 0; strip < stripCount; strip++) {
-                auto readResult = TIFFReadEncodedStrip(
-                    tif, strip, stripBuffer.get(), stripSize);
+                auto readResult = TIFFReadEncodedStrip(tif, strip, stripBuffer.get(), stripSize);
 
-                if (readResult != stripSize)
-                    Throw(::Exceptions::BasicLabel("Error while reading from tiff file. File may be truncated or otherwise corrupted.", op._sourceFile.c_str()));
+                if (readResult != stripSize) {
+					// Sometimes the very last strip is truncated. This occurs if the height
+					// is not an even multiple of the strip size
+					// In this case, we just blank out the remaining part
+					if (readResult < stripSize && (strip+1 == stripCount)) {
+						std::memset(PtrAdd(stripBuffer.get(), readResult), 0x0, stripSize - readResult);
+					} else {
+						Throw(::Exceptions::BasicLabel(
+							"Error while reading from tiff file. File may be truncated or otherwise corrupted.", 
+							op._sourceFile.c_str()));
+					}
+				}
 
                 for (unsigned r=0; r<rowsperstrip; ++r) {
                     auto y = strip * rowsperstrip + r;

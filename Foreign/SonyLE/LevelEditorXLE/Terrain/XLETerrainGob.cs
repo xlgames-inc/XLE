@@ -304,7 +304,12 @@ namespace LevelEditorXLE.Terrain
             return BuildEngineConfig(BuildDialogConfig());
         }
 
-        internal void Reconfigure(TerrainConfig.Config cfg)
+        static internal void Show(Exception e, string whileMessage)
+        {
+            ControlsLibrary.BasicControls.ExceptionReport.Show(e, whileMessage);
+        }
+
+        internal bool Reconfigure(TerrainConfig.Config cfg)
         {
             cfg.NodeDimensions = ClampNodeDimensions(cfg.NodeDimensions);
             cfg.CellTreeDepth = ClampCellTreeDepth(cfg.CellTreeDepth);
@@ -350,12 +355,17 @@ namespace LevelEditorXLE.Terrain
                 CommitDialogConfig(cfg);
                 CellCount = new uint[2] { newCellCount.X, newCellCount.Y };
             }
-            catch { }
+            catch (Exception e)
+            {
+                Show(e, "terrain configure operation");
+                return false;   // this will prevent reload on exception. Terrain will remain in an unloaded state
+            }
 
             Reload();
+            return true;
         }
 
-        internal void Reconfigure() { Reconfigure(BuildDialogConfig()); }
+        internal bool Reconfigure() { return Reconfigure(BuildDialogConfig()); }
 
         internal bool DoModalConfigure()
         {
@@ -365,10 +375,7 @@ namespace LevelEditorXLE.Terrain
                 dlg.Value = BuildDialogConfig();
                 var result = dlg.ShowDialog();
                 if (result == System.Windows.Forms.DialogResult.OK)
-                {
-                    Reconfigure(dlg.Value);
-                    return true;
-                }
+                    return Reconfigure(dlg.Value);
             }
             return false;
         }
@@ -396,7 +403,10 @@ namespace LevelEditorXLE.Terrain
                         progress);
                 }
             }
-            catch {}
+            catch (Exception e)
+            {
+                Show(e, "shadow generation operation");
+            }
 
             Reload();
         }
@@ -422,7 +432,10 @@ namespace LevelEditorXLE.Terrain
                         GradFlagSlopeThreshold0, GradFlagSlopeThreshold1, GradFlagSlopeThreshold2, progress);
                 }
             }
-            catch {}
+            catch (Exception e)
+            {
+                Show(e, "rebuilding cell files");
+            }
 
             Reload();
         }
@@ -740,8 +753,9 @@ namespace LevelEditorXLE.Terrain
                     // todo -- create new blank coverage with the given format
                 }
             }
-            catch 
+            catch (Exception e)
             {
+                XLETerrainGob.Show(e, "Terrain import operation");
                 return false;
             }
 
@@ -789,12 +803,9 @@ namespace LevelEditorXLE.Terrain
                     }
                     terrain.Reload();
                 }
-                catch 
+                catch (Exception e) 
                 {
-                    MessageBox.Show(
-                        "Export operation failed", "Terrain coverage export",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
+                    XLETerrainGob.Show(e, "Terrain export operation");
                 }
             }
         }
@@ -814,7 +825,10 @@ namespace LevelEditorXLE.Terrain
                         LayerId, progress);
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                XLETerrainGob.Show(e, "Rebuilding cell files");
+            }
 
             terrain.Reload();
         }

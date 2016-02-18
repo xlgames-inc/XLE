@@ -7,6 +7,7 @@
 #include "TerrainLayer.h"
 #include "GUILayerUtil.h"
 #include "MarshalString.h"
+#include "Exceptions.h"
 #include "../ToolsRig/TerrainConversion.h"
 
 using namespace System;
@@ -200,23 +201,31 @@ namespace GUILayer
         void Execute(String^ outputDir, unsigned layerId, unsigned typeCat, IProgress^ progress)
         {
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
-            ToolsRig::ExecuteTerrainImport(
-                *_native, 
-                clix::marshalString<clix::E_UTF8>(outputDir).c_str(),
-                _destNodeDims, _destCellTreeDepth, 
-                layerId, (ImpliedTyping::TypeCat)typeCat,
-                nativeProgress.get());
+			try {
+				ToolsRig::ExecuteTerrainImport(
+					*_native, 
+					clix::marshalString<clix::E_UTF8>(outputDir).c_str(),
+					_destNodeDims, _destCellTreeDepth, 
+					layerId, (ImpliedTyping::TypeCat)typeCat,
+					nativeProgress.get());
+			} catch (const std::exception& e) {
+				throw Marshal(e);		// marshal the exception so that we keep the error message
+			}
         }
 
         void ExecuteForHeights(String^ outputDir, IProgress^ progress)
         {
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
-            ToolsRig::ExecuteTerrainImport(
-                *_native, 
-                clix::marshalString<clix::E_UTF8>(outputDir).c_str(),
-                _destNodeDims, _destCellTreeDepth, 
-                SceneEngine::CoverageId_Heights, ImpliedTyping::TypeCat::Float,
-                nativeProgress.get());
+            try {
+				ToolsRig::ExecuteTerrainImport(
+					*_native, 
+					clix::marshalString<clix::E_UTF8>(outputDir).c_str(),
+					_destNodeDims, _destCellTreeDepth, 
+					SceneEngine::CoverageId_Heights, ImpliedTyping::TypeCat::Float,
+					nativeProgress.get());
+			} catch (const std::exception& e) {
+				throw Marshal(e);		// marshal the exception so that we keep the error message
+			}
         }
 
         TerrainImportOp(String^ input, unsigned destNodeDims, unsigned destCellTreeDepth)

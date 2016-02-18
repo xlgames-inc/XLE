@@ -59,6 +59,7 @@
     <ClCompile Include="..\NativeManipulators.cpp">
       <Filter>LevelEditor</Filter>
     </ClCompile>
+    <ClCompile Include="..\Exceptions.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -128,6 +129,7 @@
     <ClInclude Include="..\NativeManipulators.h">
       <Filter>LevelEditor</Filter>
     </ClInclude>
+    <ClInclude Include="..\Exceptions.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="BasicControls">
