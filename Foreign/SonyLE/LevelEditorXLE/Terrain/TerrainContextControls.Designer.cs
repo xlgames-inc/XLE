@@ -64,6 +64,7 @@
             this._saveButton.TabIndex = 3;
             this._saveButton.Text = "Save";
             this._saveButton.UseVisualStyleBackColor = true;
+            this._saveButton.Click += new System.EventHandler(this._saveButton_Click);
             // 
             // _abandonButton
             // 
@@ -74,6 +75,7 @@
             this._abandonButton.TabIndex = 4;
             this._abandonButton.Text = "Abandon";
             this._abandonButton.UseVisualStyleBackColor = true;
+            this._abandonButton.Click += new System.EventHandler(this._abandonButton_Click);
             // 
             // _historyBox
             // 

@@ -13,6 +13,7 @@
 #include "ManipulatorsLayer.h"
 #include "TerrainLayer.h"
 #include "UITypesBinding.h" // for VisCameraSettings
+#include "Exceptions.h"
 #include "ExportedNativeTypes.h"
 #include "../EntityInterface/PlacementEntities.h"
 #include "../EntityInterface/TerrainEntities.h"
@@ -31,6 +32,7 @@
 #include "../../SceneEngine/VolumetricFog.h"
 #include "../../SceneEngine/ShallowSurface.h"
 #include "../../SceneEngine/DynamicImposters.h"
+#include "../../SceneEngine/TerrainUberSurface.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -124,6 +126,40 @@ namespace GUILayer
     const EntityInterface::RetainedEntities& EditorSceneManager::GetFlexObjects()
     {
         return *_scene->_flexObjects;
+    }
+
+    void EditorSceneManager::SaveTerrainLock(uint layerId)
+    {
+        if (!_scene->_terrainManager) return;
+
+        SceneEngine::GenericUberSurfaceInterface* interf = nullptr;
+        if (layerId == SceneEngine::CoverageId_Heights) {
+            interf = _scene->_terrainManager->GetHeightsInterface();
+        } else {
+            interf = _scene->_terrainManager->GetCoverageInterface(layerId);
+        }
+        if (!interf) return;
+
+        TRY { interf->FlushLockToDisk(); } 
+        CATCH (const std::exception& e) { Throw(Marshal(e)); }
+        CATCH_END
+    }
+
+    void EditorSceneManager::AbandonTerrainLock(uint layerId)
+    {
+        if (!_scene->_terrainManager) return;
+
+        SceneEngine::GenericUberSurfaceInterface* interf = nullptr;
+        if (layerId == SceneEngine::CoverageId_Heights) {
+            interf = _scene->_terrainManager->GetHeightsInterface();
+        } else {
+            interf = _scene->_terrainManager->GetCoverageInterface(layerId);
+        }
+        if (!interf) return;
+
+        TRY { interf->AbandonLock(); }
+        CATCH (const std::exception& e) { Throw(Marshal(e)); }
+        CATCH_END
     }
 
     IManipulatorSet^ EditorSceneManager::CreateTerrainManipulators(TerrainManipulatorContext^ context) 

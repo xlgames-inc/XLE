@@ -148,6 +148,9 @@ namespace GUILayer
             uint typeId, System::String^ annotationName, 
             IEnumerable<EntityLayer::PropertyInitializer>^ initializers);
 
+        void SaveTerrainLock(uint layerId);
+        void AbandonTerrainLock(uint layerId);
+
             //// //// ////   U T I L I T Y   //// //// ////
 
         const EntityInterface::RetainedEntities& GetFlexObjects();

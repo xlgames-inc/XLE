@@ -86,6 +86,7 @@ namespace LevelEditorXLE.Terrain
 
         private GUILayer.TerrainManipulatorContext _attached;
         private WeakReference _attachedTerrain;
+        private WeakReference _attachedSceneManager;
 
         private void BuildLayerList(XLETerrainGob terrain)
         {
@@ -120,6 +121,7 @@ namespace LevelEditorXLE.Terrain
                 {
                     Context = gameExt.TerrainManipulatorContext;
                     Terrain = gameExt.Terrain;
+                    _attachedSceneManager = new WeakReference(gameExt.SceneManager);
                 }
             }
         }
@@ -139,6 +141,38 @@ namespace LevelEditorXLE.Terrain
                     var pair = (KeyValuePair<uint, string>)_coverageLayer.Items[_coverageLayer.SelectedIndex];
                     _attached.ActiveLayer = pair.Key;
                 }
+            }
+        }
+
+        private void _saveButton_Click(object sender, EventArgs e)
+        {
+            if (_attachedSceneManager == null || _attached == null) return;
+            var sceneManager = _attachedSceneManager.Target as GUILayer.EditorSceneManager;
+            if (sceneManager == null) return;
+
+            try
+            {
+                sceneManager.SaveTerrainLock(_attached.ActiveLayer);
+            } 
+            catch (Exception ex)
+            {
+                ControlsLibrary.BasicControls.ExceptionReport.Show(ex, "Saving terrain lock");
+            }
+        }
+
+        private void _abandonButton_Click(object sender, EventArgs e)
+        {
+            if (_attachedSceneManager == null || _attached == null) return;
+            var sceneManager = _attachedSceneManager.Target as GUILayer.EditorSceneManager;
+            if (sceneManager == null) return;
+
+            try
+            {
+                sceneManager.AbandonTerrainLock(_attached.ActiveLayer);
+            }
+            catch (Exception ex)
+            {
+                ControlsLibrary.BasicControls.ExceptionReport.Show(ex, "Abandoning terrain lock");
             }
         }
     }
