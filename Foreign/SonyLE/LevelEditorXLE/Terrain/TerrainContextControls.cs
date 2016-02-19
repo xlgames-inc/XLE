@@ -39,12 +39,16 @@ namespace LevelEditorXLE.Terrain
                 _attached = value;
                 if (_attached != null)
                 {
+                    _showLockedArea.Enabled = true;
+                    _showCoverage.Enabled = true;
                     _showLockedArea.CheckState = _attached.ShowLockedArea ? CheckState.Checked : CheckState.Unchecked;
+                    _showCoverage.CheckState = _attached.ShowCoverage ? CheckState.Checked : CheckState.Unchecked;
                     SyncActiveLayer();
                 }
                 else
                 {
-                    _showLockedArea.CheckState = CheckState.Unchecked;
+                    _showLockedArea.Enabled = false;
+                    _showCoverage.Enabled = false;
                 }
             }
             get { return _attached; }
@@ -130,6 +134,12 @@ namespace LevelEditorXLE.Terrain
         {
             if (_attached != null)
                 _attached.ShowLockedArea = _showLockedArea.CheckState == CheckState.Checked;
+        }
+
+        private void _visualizeCoverage_CheckedChanged(object sender, EventArgs e)
+        {
+            if (_attached != null)
+                _attached.ShowCoverage = _showCoverage.CheckState == CheckState.Checked;
         }
 
         private void _coverageLayer_SelectedIndexChanged(object sender, EventArgs e)

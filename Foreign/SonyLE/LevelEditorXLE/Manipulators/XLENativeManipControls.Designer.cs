@@ -35,9 +35,6 @@ namespace LevelEditorXLE.Manipulators
         private void InitializeComponent()
         {
             this.manipulatorSelection = new System.Windows.Forms.ListBox();
-            /*this.manipulatorProperties = new Sce.Atf.Controls.PropertyEditing.PropertyGrid(
-                Sce.Atf.Controls.PropertyEditing.PropertyGridMode.DisableSearchControls       causes a crash within ATF currently... null ptr exception whenever an option is selected
-                | Sce.Atf.Controls.PropertyEditing.PropertyGridMode.HideResetAllButton);*/
             this.manipulatorProperties = new Sce.Atf.Controls.PropertyEditing.PropertyGrid();
             this.SuspendLayout();
             // 
@@ -47,9 +44,12 @@ namespace LevelEditorXLE.Manipulators
             | System.Windows.Forms.AnchorStyles.Left)));
             this.manipulatorSelection.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.manipulatorSelection.FormattingEnabled = true;
-            this.manipulatorSelection.Location = new System.Drawing.Point(3, 3);
+            this.manipulatorSelection.IntegralHeight = false;
+            this.manipulatorSelection.ItemHeight = 16;
+            this.manipulatorSelection.Location = new System.Drawing.Point(0, 0);
+            this.manipulatorSelection.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.manipulatorSelection.Name = "manipulatorSelection";
-            this.manipulatorSelection.Size = new System.Drawing.Size(149, 182);
+            this.manipulatorSelection.Size = new System.Drawing.Size(203, 246);
             this.manipulatorSelection.TabIndex = 0;
             this.manipulatorSelection.SelectedIndexChanged += new System.EventHandler(this.manipulatorSelection_SelectedIndexChanged);
             // 
@@ -58,21 +58,27 @@ namespace LevelEditorXLE.Manipulators
             this.manipulatorProperties.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            // this.manipulatorProperties.HelpVisible = false;
-            this.manipulatorProperties.Location = new System.Drawing.Point(158, 3);
+            this.manipulatorProperties.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.manipulatorProperties.Location = new System.Drawing.Point(211, 0);
+            this.manipulatorProperties.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.manipulatorProperties.Name = "manipulatorProperties";
-            this.manipulatorProperties.Size = new System.Drawing.Size(341, 188);
+            this.manipulatorProperties.PropertySorting = ((Sce.Atf.Controls.PropertyEditing.PropertySorting)(((Sce.Atf.Controls.PropertyEditing.PropertySorting.Categorized | Sce.Atf.Controls.PropertyEditing.PropertySorting.Alphabetical) 
+            | Sce.Atf.Controls.PropertyEditing.PropertySorting.CategoryAlphabetical)));
+            this.manipulatorProperties.SelectedPropertyDescriptor = null;
+            this.manipulatorProperties.Settings = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?><PropertyView PropertySort" +
+    "ing=\"ByCategory\" />";
+            this.manipulatorProperties.Size = new System.Drawing.Size(458, 246);
             this.manipulatorProperties.TabIndex = 1;
-            // this.manipulatorProperties.ToolbarVisible = false;
             // 
-            // TerrainManipControls
+            // XLENativeManipControls
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.manipulatorProperties);
             this.Controls.Add(this.manipulatorSelection);
-            this.Name = "TerrainManipControls";
-            this.Size = new System.Drawing.Size(502, 200);
+            this.Margin = new System.Windows.Forms.Padding(0);
+            this.Name = "XLENativeManipControls";
+            this.Size = new System.Drawing.Size(669, 246);
             this.ResumeLayout(false);
 
         }

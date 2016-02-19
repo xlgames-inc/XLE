@@ -32,6 +32,7 @@ namespace ToolsRig
     public:
         SceneEngine::TerrainCoverageId  _activeLayer;
         bool _showLockedArea;
+		bool _showCoverage;
 
         TerrainManipulatorContext();
     };

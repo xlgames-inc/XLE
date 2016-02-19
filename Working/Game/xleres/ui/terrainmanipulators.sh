@@ -137,16 +137,19 @@ float4 ps_lockedareahighlight(	float4 position : SV_Position,
 	float2 d = fwidth(b2);
 	d = clamp(d, -0.001.xx, 0.001.xx);
 	float4 A = float4(b2, 1.0.xx-b2);
-	float4 a3 = 1.f - smoothstep(0.0.xxxx, d.xyxy*2.f, A);
-	float a4 = max(max(max(a3.x, a3.y), a3.z), a3.w);
 
 	float2 B = float2(worldPosition.xy - Mins.xy);
 	bool hatch = frac((B.x + B.y) / 2.f) < .5f;
 
-	if (minDist > 0.f) {
-		if (a4 > 0.1f) return float4(a4.xxx * float3(0, .25, 1.f), 0.f);
-		discard;
+	float4 c = A / d.xyxy;
+	float m = min(min(min(c.x, c.y), c.z), c.w);
+	if (m < 0.f && m > -3.f) {
+		if (frac(worldPosition.x) < 0.5f && frac(worldPosition.y) < 0.5f)
+			return float4(0.f, .25, 1.f, 0.f);
 	}
+
+	if (minDist > 0.f)
+		discard;
 
 	return float4(0.0.xxx, hatch ? 0.35f : 0.0f);
 }

@@ -43,6 +43,7 @@ namespace GUILayer
     public:
         property unsigned ActiveLayer { unsigned get(); void set(unsigned value); }
         property bool ShowLockedArea { bool get(); void set(bool value); }
+		property bool ShowCoverage { bool get(); void set(bool value); }
 
         std::shared_ptr<::ToolsRig::TerrainManipulatorContext> GetNative() { return _native; }
 

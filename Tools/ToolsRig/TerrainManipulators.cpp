@@ -366,35 +366,32 @@ namespace ToolsRig
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
         virtual std::pair<IntParameter*, size_t>   GetIntParameters() const;
         virtual void SetActivationState(bool newState);
+		virtual void Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
 
         PaintCoverageManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
 
     private:
-        unsigned _coverageLayer;
         unsigned _paintValue;
     };
 
-    // unsigned FindLayerIndex(const SceneEngine::TerrainConfig& cfg, SceneEngine::TerrainCoverageId layerId)
-    // {
-    //     for (unsigned c = 0; c<cfg.GetCoverageLayerCount(); ++c)
-    //         if (cfg.GetCoverageLayer(c)._id == layerId) return c;
-    //     return ~unsigned(0x0);
-    // }
-
     void PaintCoverageManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
     {
-        auto* i = _terrainManager->GetCoverageInterface(_coverageLayer);
+		auto coverageLayer = _manipulatorContext->_activeLayer;
+		if (coverageLayer == SceneEngine::CoverageId_Heights)
+			Throw(::Exceptions::BasicLabel("Select a valid coverage layer. Currently the heights layer is selected"));
+
+        auto* i = _terrainManager->GetCoverageInterface(coverageLayer);
         if (i) {
             auto result = i->Paint(
                 context,
-                WorldSpaceToCoverage(_coverageLayer, Truncate(worldSpacePosition)), 
-                WorldSpaceToCoverageDistance(_coverageLayer, size),
+                WorldSpaceToCoverage(coverageLayer, Truncate(worldSpacePosition)), 
+                WorldSpaceToCoverageDistance(coverageLayer, size),
                 _paintValue);
 
             if (result != SceneEngine::TerrainToolResult::Success)
                 Throw(TerrainManipulatorException(result));
         } else {
-            Throw(::Exceptions::BasicLabel("Incorrect coverage layer selected"));
+            Throw(::Exceptions::BasicLabel("Could not lock this coverage layer"));
         }
     }
 
@@ -402,8 +399,7 @@ namespace ToolsRig
     {
         static IntParameter parameters[] = 
         {
-            IntParameter(ManipulatorParameterOffset(&PaintCoverageManipulator::_coverageLayer), 0i32, INT32_MAX, IntParameter::Linear, "CoverageLayer"),
-            IntParameter(ManipulatorParameterOffset(&PaintCoverageManipulator::_paintValue), 0i32, INT32_MAX, IntParameter::Linear, "PaintValue"),
+            IntParameter(ManipulatorParameterOffset(&PaintCoverageManipulator::_paintValue), 0i32, INT32_MAX, IntParameter::Linear, "PaintValue")
         };
         return std::make_pair(parameters, dimof(parameters));
     }
@@ -419,15 +415,39 @@ namespace ToolsRig
 
     void PaintCoverageManipulator::SetActivationState(bool newState)
     {
-        Tweakable("TerrainVisCoverage", 0) = newState ? _coverageLayer : 0;
+		auto coverageLayer = _manipulatorContext->_activeLayer;
+		if (coverageLayer == SceneEngine::CoverageId_Heights)
+			coverageLayer = 0;
+		if (!_manipulatorContext->_showCoverage)
+			coverageLayer = 0;
+        Tweakable("TerrainVisCoverage", 0) = newState ? coverageLayer : 0;
     }
+
+	void PaintCoverageManipulator::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+	{
+		auto coverageLayer = _manipulatorContext->_activeLayer;
+		if (coverageLayer == SceneEngine::CoverageId_Heights)
+			coverageLayer = 0;
+
+		// Update the tweakable hack with the coverage layer we're looking at
+		// It's a bit of a hack. Ideally we need a mechanism for rendering a 
+		// second "visualization" pass over the terrain, and use the _manipulatorContext
+		// to drive that. However, that is pending improvements to the ISceneParser
+		// interface for a more formal "scene prepare" step... So just a simple (but
+		// robust) hack for now.
+		if (_manipulatorContext->_showCoverage) {
+			Tweakable("TerrainVisCoverage", 0) = coverageLayer;
+		} else 
+			Tweakable("TerrainVisCoverage", 0) = 0;
+
+		CommonManipulator::Render(context, parserContext);
+	}
 
     PaintCoverageManipulator::PaintCoverageManipulator(
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
         std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
     : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
-        _coverageLayer = 1000;
         _paintValue = 1;
     }
 
@@ -613,6 +633,7 @@ namespace ToolsRig
     {
         _activeLayer = SceneEngine::CoverageId_Heights;
         _showLockedArea = true;
+		_showCoverage = true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

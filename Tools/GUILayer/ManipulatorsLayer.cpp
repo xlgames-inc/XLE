@@ -76,6 +76,16 @@ namespace GUILayer
         _native->_showLockedArea = value;
     }
 
+	bool TerrainManipulatorContext::ShowCoverage::get()
+    {
+        return _native->_showCoverage;
+    }
+
+    void TerrainManipulatorContext::ShowCoverage::set(bool value)
+    {
+        _native->_showCoverage = value;
+    }
+
     TerrainManipulatorContext::TerrainManipulatorContext(std::shared_ptr<ToolsRig::TerrainManipulatorContext> native)
     : _native(std::move(native)) {}
 

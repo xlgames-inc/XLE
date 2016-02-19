@@ -348,7 +348,24 @@ namespace TextureTransform
             if (XlEqStringI(ext, "tga")) {
                 hresult = DirectX::SaveToTGAFile(image, fn.c_str());
             } else if (XlEqStringI(ext, "dds")) {
-                hresult = DirectX::SaveToDDSFile(image, DirectX::DDS_FLAGS_NONE, fn.c_str());
+				DirectX::TexMetadata mdata;
+				memset( &mdata, 0, sizeof(mdata) );
+				mdata.width = image.width;
+				mdata.height = image.height;
+				mdata.depth = 1;
+				mdata.arraySize = 1;
+				mdata.mipLevels = 1;
+				mdata.format = image.format;
+				mdata.dimension = DirectX::TEX_DIMENSION_TEXTURE2D;
+				
+				// Assume that a single image with height=1 is a 1D texture;
+				unsigned flags = DirectX::DDS_FLAGS_NONE;
+				if (image.height == 1) {
+					mdata.dimension = DirectX::TEX_DIMENSION_TEXTURE1D;
+					flags |= DirectX::DDS_FLAGS_FORCE_DX10_EXT;	// DX10 header required to mark it as a 1D texture
+				}
+
+                hresult = DirectX::SaveToDDSFile(&image, 1, mdata, flags, fn.c_str());
             } else {
                 const GUID GUID_ContainerFormatTiff = 
                     { 0x163bcc30, 0xe2e9, 0x4f0b, { 0x96, 0x1d, 0xa3, 0xe9, 0xfd, 0xb7, 0x88, 0xa3 }};

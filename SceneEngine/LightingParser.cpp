@@ -134,8 +134,9 @@ namespace SceneEngine
         context.BindVS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
         context.BindPS(RenderCore::MakeResourceList(6, samplerWrapU));
 
-        auto normalsFittingResource = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/normalsfitting.dds:LT").GetShaderResource();
-        context.BindPS(RenderCore::MakeResourceList(14, normalsFittingResource));
+        const auto& normalsFittingResource = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/normalsfitting.dds:LT").GetShaderResource();
+		const auto& distintColors = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/distinctcolors.dds:T").GetShaderResource();
+        context.BindPS(RenderCore::MakeResourceList(14, normalsFittingResource, distintColors));
         context.BindCS(RenderCore::MakeResourceList(14, normalsFittingResource));
 
             // perlin noise resources in standard slots

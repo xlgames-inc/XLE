@@ -66,8 +66,7 @@ float4 HighlightByStencil(float4 position : SV_Position, float2 texCoord : TEXCO
 	uint marker = Marker(uint2(position.xy));
 	if (marker == DummyMarker) { discard; }
 
-	uint3 c = ColourList[marker%ColourListCount];
-	return float4(.5f*c.r/255.f, .5f*c.g/255.f, .5f*c.b/255.f, .5f*1.f);
+	return float4(.5f*GetDistinctFloatColour(marker), .5f*1.f);
 }
 
 float4 OutlineByStencil(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
