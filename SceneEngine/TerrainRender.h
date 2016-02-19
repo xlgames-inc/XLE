@@ -17,6 +17,8 @@
 
 #define TERRAIN_ENABLE_EDITING
 
+namespace RenderCore { namespace Techniques { class  ProjectionDesc; }}
+
 namespace SceneEngine
 {
     class LightingParserContext;
@@ -83,7 +85,7 @@ namespace SceneEngine
     class TerrainCellRenderer
     {
     public:
-        void CullNodes( RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
+        void CullNodes( const RenderCore::Techniques::ProjectionDesc& projDesc, 
                         TerrainRenderingContext& terrainContext, TerrainCollapseContext& collapseContext,
                         const TerrainCellId& cell);
         void WriteQueuedNodes(TerrainRenderingContext& renderingContext, TerrainCollapseContext& collapseContext);
@@ -193,7 +195,7 @@ namespace SceneEngine
         friend class TerrainCollapseContext;
         friend class TerrainSurfaceHeightsProvider;
 
-        void    CullNodes(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, TerrainRenderingContext& terrainContext, CellRenderInfo& cellRenderInfo, const Float4x4& localToWorld);
+        void    CullNodes(const RenderCore::Techniques::ProjectionDesc& projDesc, TerrainRenderingContext& terrainContext, CellRenderInfo& cellRenderInfo, const Float4x4& localToWorld);
         void    RenderNode(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, TerrainRenderingContext& terrainContext, CellRenderInfo& cellRenderInfo, unsigned absNodeIndex, int8 neighbourLodDiffs[4]);
 
         void    CullNodes(

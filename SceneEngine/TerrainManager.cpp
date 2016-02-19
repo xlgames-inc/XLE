@@ -270,7 +270,7 @@ namespace SceneEngine
         std::unique_ptr<TerrainMaterialTextures> _textures;
 
         void CullNodes(
-            Metal::DeviceContext* context, LightingParserContext& parserContext, 
+            const RenderCore::Techniques::ProjectionDesc& parserContext, 
             TerrainRenderingContext& terrainContext);
 
         void AddCells(const TerrainConfig& cfg, UInt2 cellMin, UInt2 cellMax);
@@ -558,19 +558,16 @@ namespace SceneEngine
     }
 
     void TerrainManager::Pimpl::CullNodes(
-        Metal::DeviceContext* context, 
-        LightingParserContext& parserContext, TerrainRenderingContext& terrainContext)
+        const RenderCore::Techniques::ProjectionDesc& projDesc, TerrainRenderingContext& terrainContext)
     {
         TerrainCollapseContext collapseContext;
         collapseContext._startLod = Tweakable("TerrainMinLOD", 1);
         collapseContext._screenSpaceEdgeThreshold = Tweakable("TerrainEdgeThreshold", 256.f);
-        for (auto i=_cells.begin(); i!=_cells.end(); i++) {
-            _renderer->CullNodes(context, parserContext, terrainContext, collapseContext, *i);
-        }
+        for (const auto& c:_cells)
+            _renderer->CullNodes(projDesc, terrainContext, collapseContext, c);
 
-        for (unsigned c=collapseContext._startLod; c<(TerrainCollapseContext::MaxLODLevels-1); ++c) {
+        for (unsigned c=collapseContext._startLod; c<(TerrainCollapseContext::MaxLODLevels-1); ++c)
             collapseContext.AttemptLODPromote(c, terrainContext);
-        }
 
         _renderer->WriteQueuedNodes(terrainContext, collapseContext);
     }
@@ -581,8 +578,13 @@ namespace SceneEngine
         auto* renderer = _pimpl->_renderer.get();
         if (!renderer) return;
 
-            //  we need to enable the rendering state once, for all cells. The state should be
+            //  We need to enable the rendering state once, for all cells. The state should be
             //  more or less the same for every cell, so we don't need to do it every time
+			//
+			//	We can setup multi-pass rendering for the terrain by reorganising this function
+			//	a little bit. The Cull step only needs to be done once per frame. So it can be
+			//	prepared early in the frame calculations, and then reused in multiple subsequent
+			//	render steps.
         TerrainRenderingContext state(
             renderer->GetCoverageIds(), 
             renderer->GetCoverageFmts(), renderer->GetCoverageLayersCount(), 
@@ -590,7 +592,8 @@ namespace SceneEngine
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
         state._currentViewport = Metal::ViewportDesc(*context);
-        _pimpl->CullNodes(context, parserContext, state);
+        const auto& projDesc = parserContext.GetProjectionDesc();
+		_pimpl->CullNodes(projDesc, state);
 
         renderer->CompletePendingUploads();
         renderer->QueueUploads(state);
@@ -671,7 +674,8 @@ namespace SceneEngine
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
         state._currentViewport = Metal::ViewportDesc(*context);        // (accurate viewport is required to get the lodding right)
-        _pimpl->CullNodes(context, parserContext, state);
+        const auto& projDesc = parserContext.GetProjectionDesc();
+		_pimpl->CullNodes(projDesc, state);
 
         const unsigned compressedHeightMask = 
             CompressedHeightMask(state._encodedGradientFlags);

@@ -370,7 +370,7 @@ namespace SceneEngine
 
     //////////////////////////////////////////////////////////////////////////////////////////
     static std::vector<TerrainCellTexture const*> BuildMappedCoverageTextures(
-        LightingParserContext& parserContext, const TerrainCellId& cell, 
+        const TerrainCellId& cell, 
         const std::vector<TerrainCoverageId>& ids, const ITerrainFormat& ioFormat)
     {
         std::vector<TerrainCellTexture const*> tex;
@@ -379,11 +379,7 @@ namespace SceneEngine
             auto end = &cell._coverageIds[dimof(cell._coverageIds)];
             auto i = std::find(cell._coverageIds, end, ids[c]);
             if (i != end) {
-                TRY {
-                    tex[c] = &ioFormat.LoadCoverage(cell._coverageFilename[i-cell._coverageIds]);
-                } CATCH (const ::Assets::Exceptions::InvalidAsset& e) {
-                    parserContext.Process(e);
-                } CATCH_END
+                tex[c] = &ioFormat.LoadCoverage(cell._coverageFilename[i-cell._coverageIds]);
             }
         }
         return std::move(tex);
@@ -391,14 +387,14 @@ namespace SceneEngine
 
     //////////////////////////////////////////////////////////////////////////////////////////
     void    TerrainCellRenderer::CullNodes( 
-        DeviceContext* context, LightingParserContext& parserContext, 
+        const RenderCore::Techniques::ProjectionDesc& projDesc, 
         TerrainRenderingContext& terrainContext, TerrainCollapseContext& collapseContext,
         const TerrainCellId& cell)
     {
             // Cull on a cell level (prevent loading of distance cell resources)
             //      todo -- if we knew the cell min/max height, we could do this more accurately
         if (CullAABB_Aligned(
-            AsFloatArray(parserContext.GetProjectionDesc()._worldToProjection), 
+            AsFloatArray(projDesc._worldToProjection), 
             cell._aabbMin, cell._aabbMax))
             return;
 
@@ -430,7 +426,7 @@ namespace SceneEngine
                     _pendingUploads.end());
                 i->second.reset();
 
-                auto tex = BuildMappedCoverageTextures(parserContext, cell, _coverageIds, *_ioFormat);
+                auto tex = BuildMappedCoverageTextures(cell, _coverageIds, *_ioFormat);
                 i->second = std::make_unique<CellRenderInfo>(
                     std::ref(_ioFormat->LoadHeights(cell._heightMapFilename)), 
                     AsPointer(tex.cbegin()), AsPointer(tex.cend()));
@@ -440,7 +436,7 @@ namespace SceneEngine
 
         } else {
 
-            auto tex = BuildMappedCoverageTextures(parserContext, cell, _coverageIds, *_ioFormat);
+            auto tex = BuildMappedCoverageTextures(cell, _coverageIds, *_ioFormat);
             auto newRenderInfo = std::make_unique<CellRenderInfo>(
                 std::ref(_ioFormat->LoadHeights(cell._heightMapFilename)), 
                 AsPointer(tex.cbegin()), AsPointer(tex.cend()));
@@ -454,13 +450,13 @@ namespace SceneEngine
         static bool useNewCulling = true;
         if (!useNewCulling) {
             CullNodes(
-                context, parserContext, terrainContext, 
+                projDesc, terrainContext, 
                 *renderInfo, cell._cellToWorld);
         } else {
             CullNodes(
                 terrainContext, collapseContext,
-                parserContext.GetProjectionDesc()._worldToProjection,
-                ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld),
+                projDesc._worldToProjection,
+                ExtractTranslation(projDesc._cameraToWorld),
                 *renderInfo, cell._cellToWorld);
         }
     }
@@ -919,7 +915,7 @@ namespace SceneEngine
     }
 
     void TerrainCellRenderer::CullNodes( 
-        DeviceContext* context, LightingParserContext& parserContext, TerrainRenderingContext& terrainContext,
+        const RenderCore::Techniques::ProjectionDesc& projDesc, TerrainRenderingContext& terrainContext,
         CellRenderInfo& cellRenderInfo, const Float4x4& localToWorld)
     {
         if (cellRenderInfo._heightTiles.empty())
@@ -929,8 +925,8 @@ namespace SceneEngine
         if (cellRenderInfo._heightMapStreamingFilePtr == INVALID_HANDLE_VALUE)
             return;
 
-        auto cellToProjection = Combine(localToWorld, parserContext.GetProjectionDesc()._worldToProjection);
-        Float3 cellPositionMinusViewPosition = ExtractTranslation(localToWorld) - ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
+        auto cellToProjection = Combine(localToWorld, projDesc._worldToProjection);
+        Float3 cellPositionMinusViewPosition = ExtractTranslation(localToWorld) - ExtractTranslation(projDesc._cameraToWorld);
 
         auto& sourceCell = *cellRenderInfo._sourceCell;
         const unsigned startLod = Tweakable("TerrainMinLOD", 1);
