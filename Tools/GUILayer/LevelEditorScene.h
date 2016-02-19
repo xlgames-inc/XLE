@@ -150,6 +150,7 @@ namespace GUILayer
 
         void SaveTerrainLock(uint layerId);
         void AbandonTerrainLock(uint layerId);
+        bool HasTerrainLock(uint layerId);
 
             //// //// ////   U T I L I T Y   //// //// ////
 

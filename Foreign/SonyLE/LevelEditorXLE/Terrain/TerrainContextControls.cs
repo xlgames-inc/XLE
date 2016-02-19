@@ -163,7 +163,7 @@ namespace LevelEditorXLE.Terrain
             try
             {
                 sceneManager.SaveTerrainLock(_attached.ActiveLayer);
-            } 
+            }
             catch (Exception ex)
             {
                 ControlsLibrary.BasicControls.ExceptionReport.Show(ex, "Saving terrain lock");

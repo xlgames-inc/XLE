@@ -31,7 +31,10 @@ namespace LevelEditorXLE.Terrain
             catch (Exception e)
             {
                 // we want to report this error as a hover message above "srcPt" in the view control
-                vc.ShowHoverMessage(e.Message, scrPt);
+                Point msgPt = scrPt;
+                msgPt.X += 20;
+                msgPt.Y -= 20;
+                vc.ShowHoverMessage(e.Message, msgPt);
             }
         }
 

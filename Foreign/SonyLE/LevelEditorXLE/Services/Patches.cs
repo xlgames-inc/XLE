@@ -15,6 +15,7 @@ using Sce.Atf;
 using Sce.Atf.Dom;
 using Sce.Atf.Adaptation;
 using Sce.Atf.Controls.PropertyEditing;
+using Sce.Atf.Applications;
 
 using LevelEditorCore;
 
@@ -92,6 +93,38 @@ namespace LevelEditorXLE
                     doc.Save(cellRef.Uri, schemaLoader);
                 }
             }
+        }
+
+        public static bool ConfirmClose(IDocument document, IFileDialogService fileDialogService)
+        {
+            var game = document.As<Game.GameExtensions>();
+            if (game == null) return true;
+            var terrain = game.Terrain;
+            var sceneManager = game.SceneManager;
+            if (terrain == null || sceneManager == null) return true;
+
+            var layerIds = terrain.GetAllLayerIds();
+            bool hasActiveLocks = false;
+            foreach (var l in layerIds)
+                hasActiveLocks |= sceneManager.HasTerrainLock(l);
+
+            if (hasActiveLocks)
+            {
+                string message = "You still have active terrain locks. These are unsaved areas of terrain."
+                    + System.Environment.NewLine + "Do you want to save all active terrain locks?";
+                FileDialogResult result = fileDialogService.ConfirmFileClose(message);
+                if (result == FileDialogResult.Yes)
+                {
+                    foreach (var l in layerIds)
+                        sceneManager.SaveTerrainLock(l);
+                }
+                else if (result == FileDialogResult.Cancel)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public static void SelectNameForReferencedDocuments(IAdaptable gameNode)

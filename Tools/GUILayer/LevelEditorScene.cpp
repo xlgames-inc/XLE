@@ -162,6 +162,25 @@ namespace GUILayer
         CATCH_END
     }
 
+    static bool HasLock(const SceneEngine::GenericUberSurfaceInterface& interf)
+    {
+        auto lock = interf.GetLock();
+        return (lock.first[0] < lock.second[0]) && (lock.first[1] < lock.second[1]);
+    }
+
+    bool EditorSceneManager::HasTerrainLock(uint layerId)
+    {
+        if (!_scene->_terrainManager) return false;
+
+        SceneEngine::GenericUberSurfaceInterface* interf = nullptr;
+        if (layerId == SceneEngine::CoverageId_Heights) {
+            interf = _scene->_terrainManager->GetHeightsInterface();
+        } else {
+            interf = _scene->_terrainManager->GetCoverageInterface(layerId);
+        }
+        return interf && HasLock(*interf);
+    }
+
     IManipulatorSet^ EditorSceneManager::CreateTerrainManipulators(TerrainManipulatorContext^ context) 
     { 
         return gcnew TerrainManipulators(_scene->_terrainManager, context->GetNative());
@@ -452,6 +471,18 @@ namespace GUILayer
 
     void EditorSceneManager::UnloadTerrain()
     {
+        // Check for active "locks" before we unload. If we find any, throw an exception back
+        bool hasLock = false;
+        auto* heightsIntrf = _scene->_terrainManager->GetHeightsInterface();
+        hasLock |= (heightsIntrf && HasLock(*heightsIntrf));
+        auto cfg = _scene->_terrainManager->GetConfig();
+        for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l) {
+            auto * intrf = _scene->_terrainManager->GetCoverageInterface(cfg.GetCoverageLayer(l)._id);
+            hasLock |= (intrf && HasLock(*intrf));
+        }
+        if (hasLock)
+            throw gcnew System::Exception("Cannot unload the terrain because there are active terrain locks. Save or abandon the terrain lock before performing this operation.");
+
         _terrainInterface->UnloadTerrain();
     }
 

@@ -75,6 +75,11 @@ namespace LevelEditor.Commands
 
         protected override bool ConfirmClose(IDocument document)
         {
+            // <<XLE
+            if (!LevelEditorXLE.Patches.ConfirmClose(document, FileDialogService))
+                return false;
+            // XLE>>
+
             GameDocument gameDcument = document as GameDocument;
             if (gameDcument == null)
                 return base.ConfirmClose(document);

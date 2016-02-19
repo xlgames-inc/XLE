@@ -191,6 +191,15 @@ namespace LevelEditorXLE.Terrain
             if (!m_isLoaded) Reload();
         }
 
+        internal IEnumerable<uint> GetAllLayerIds()
+        {
+            List<uint> result = new List<uint>();
+            result.Add(1);
+            foreach (var l in CoverageLayers)
+                result.Add(l.LayerId);
+            return result;
+        }
+
         #region IExportable
         public string CacheExportTarget { get { return CellsDirectory + "/cached.dat"; } }
         public string ExportCategory { get { return "Terrain"; } }
@@ -211,8 +220,15 @@ namespace LevelEditorXLE.Terrain
         #region Internal Low Level
         internal void Unload()
         {
-            this.GetSceneManager().UnloadTerrain();
-            m_isLoaded = false;
+            try
+            {
+                this.GetSceneManager().UnloadTerrain();
+                m_isLoaded = false;
+            } 
+            catch (Exception e)
+            {
+                ControlsLibrary.BasicControls.ExceptionReport.Show(e, "Unloading terrain");
+            }
         }
 
         internal void Reload()
@@ -688,7 +704,8 @@ namespace LevelEditorXLE.Terrain
             {
                 switch (LayerId)
                 {
-                case 0: return "Heights";
+                case 0: 
+                case 1: return "Heights";
                 case 2: return "Shadows";
                 case 3: return "AO";
                 case 1000: return "Base Material";
