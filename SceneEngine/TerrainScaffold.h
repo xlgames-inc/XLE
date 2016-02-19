@@ -36,8 +36,6 @@ namespace SceneEngine
             Float4x4    _localToCell;
             size_t      _heightMapFileOffset;
             size_t      _heightMapFileSize;
-            size_t      _secondaryCacheOffset;
-            size_t      _secondaryCacheSize;
             unsigned    _widthInElements;
             Node(const Float4x4& localToCell, size_t heightMapFileOffset, size_t heightMapFileSize, unsigned widthInElements);
 
@@ -69,7 +67,6 @@ namespace SceneEngine
         bool                _encodedGradientFlags;
 
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
-        std::vector<uint8>      BuildHeightMapData(unsigned nodeIndex, Utility::BasicFile& sourceFile, Utility::BasicFile& secondaryCache);
 
     private:
         TerrainCell(const TerrainCell&);

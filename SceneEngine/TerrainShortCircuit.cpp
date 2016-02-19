@@ -55,7 +55,7 @@ namespace SceneEngine
     void TerrainCellRenderer::ShortCircuitTileUpdate(
         const TextureTile& tile, unsigned coverageLayerIndex, 
         UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, bool encodedGradientFlags,
-        Float4x4& localToCell, const ShortCircuitUpdate& upd)
+        NodeCoverageInfo& coverageInfo, const ShortCircuitUpdate& upd)
     {
         TRY 
         {
@@ -94,7 +94,7 @@ namespace SceneEngine
                 float elementSpacing; float heightOffsetValue;
                 unsigned dummy[2];
             } tileCoords = { 
-                localToCell(2, 3), localToCell(2, 2), 
+                coverageInfo._heightOffset, coverageInfo._heightScale, 
                 *reinterpret_cast<unsigned*>(&temp), 0x0u,
                 elementSpacing, heightOffsetValue,
                 0, 0
@@ -164,8 +164,8 @@ namespace SceneEngine
                 if (readbackData) {
                     float newHeightOffset = readbackData[2] - heightOffsetValue;
                     float newHeightScale = (readbackData[3] - readbackData[2]) / float(compressedHeightMask);
-                    localToCell(2,2) = newHeightScale;
-                    localToCell(2,3) = newHeightOffset;
+					coverageInfo._heightOffset = newHeightOffset;
+					coverageInfo._heightScale = newHeightScale;
                 }
             } else {
                     // just write directly
@@ -254,8 +254,7 @@ namespace SceneEngine
 					result.push_back(
 						FoundNode { 
 							AsPointer(ni), unsigned(fieldIndex), 
-							nodeMin, nodeMax,
-							&sourceNode->_localToCell });
+							nodeMin, nodeMax });
 				}
 			}
 		}
@@ -284,17 +283,13 @@ namespace SceneEngine
 			upd._updateAreaMins, upd._updateAreaMaxs);
 
 		for (const auto& n:nodes) {
-			
                 // downsampling required depends on which field we're in.
-            
             unsigned downsample = unsigned(4-n._fieldIndex);
-
             ShortCircuitTileUpdate(
 				n._node->_tile, coverageLayerIndex, 
 				n._nodeMin, n._nodeMax, downsample, 
 				sourceCell.EncodedGradientFlags(), 
-				*n._localToCell, upd);
-
+				*n._node, upd);
         }
     }
 

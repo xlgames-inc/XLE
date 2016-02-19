@@ -500,12 +500,16 @@ namespace SceneEngine
             unsigned n = i->_absNodeIndex;
             if (i->_flags & Flags::NeedsHeightMapUpload) {
                 auto& sourceCell = *cellRenderInfo._sourceCell;
-                auto& sourceNode = sourceCell._nodes[n];
+                auto& sourceNode = *sourceCell._nodes[n];
 
                 auto& heightTile = cellRenderInfo._heightTiles[n];
+				#if defined(TERRAIN_ENABLE_EDITING)
+					heightTile._heightScale = sourceNode._localToCell(2,2);
+					heightTile._heightOffset = sourceNode._localToCell(2,3);
+				#endif
                 heightTile.Queue(
                     *_heightMapTileSet, cellRenderInfo._heightMapStreamingFilePtr,
-                    unsigned(sourceNode->_heightMapFileOffset), unsigned(sourceNode->_heightMapFileSize));
+                    unsigned(sourceNode._heightMapFileOffset), unsigned(sourceNode._heightMapFileSize));
                 ++uploadsThisFrame;
 
                 _pendingUploads.push_back(UploadPair(&cellRenderInfo, n));
@@ -635,8 +639,8 @@ namespace SceneEngine
                         //  nodes are off-screen
                     for (unsigned c=0; c<dimof(newNodes); ++c) {
                         assert(newNodes[c]._id._nodeId != ~unsigned(0x0));
-                        auto& sourceNode = sourceCell._nodes[newNodes[c]._id._nodeId];
-                        __declspec(align(16)) auto localToProjection = Combine(sourceNode->_localToCell, cellToProjection);
+						auto localToCell = _cells[n->_id._cellId]->NodeToCell(newNodes[c]._id._nodeId);
+                        __declspec(align(16)) auto localToProjection = Combine(localToCell, cellToProjection);
 
                             // once a parent node is entirely within the frustum, so to must be all children
                         if (n->_entirelyWithinFrustum) {
@@ -782,19 +786,18 @@ namespace SceneEngine
                 if (n->_lodPromoted) { continue; }        // collapsed into larger LOD
 
                 auto& cellRenderInfo = *collapseContext._cells[n->_id._cellId];
-                auto& sourceCell = *cellRenderInfo._sourceCell;
-                auto& sourceNode = sourceCell._nodes[n->_id._nodeId];
 
                 auto flags = BuildQueuedNodeFlags(cellRenderInfo, n->_id._nodeId, n->_id._lodField);
 
                 auto& minusViewPosition = collapseContext._cellPositionMinusViewPosition[n->_id._cellId];
                 auto& cellToWorld = collapseContext._cellToWorlds[n->_id._cellId];
+				auto nodeToCell = cellRenderInfo.NodeToCell(n->_id._nodeId);
 
                 TerrainRenderingContext::QueuedNode queuedNode;
                 queuedNode._cell = &cellRenderInfo;
                 queuedNode._fieldIndex = n->_id._lodField;
                 queuedNode._absNodeIndex = n->_id._nodeId;
-                auto worldSpaceMean = Truncate(cellToWorld * (sourceNode->_localToCell * Float4(0.5f, 0.5f, 0.f, 1.f)));
+                auto worldSpaceMean = Truncate(cellToWorld * (nodeToCell * Float4(0.5f, 0.5f, 0.f, 1.f)));
                 queuedNode._priority = MagnitudeSquared(worldSpaceMean + minusViewPosition);
                 queuedNode._flags = flags;
                 queuedNode._cellToWorld = cellToWorld;    // note -- it's a pity we have to store this for every node (it's a per-cell property)
@@ -855,14 +858,15 @@ namespace SceneEngine
         const unsigned compressedHeightMask = CompressedHeightMask(terrainContext._encodedGradientFlags);
 
         for (unsigned n=field._nodeBegin; n<field._nodeEnd; ++n) {
-            auto& sourceNode = sourceCell._nodes[n];
+			auto& sourceNode = sourceCell._nodes[n];
+			auto nodeToCell = cellRenderInfo.NodeToCell(n);
 
             const unsigned expectedDataSize = sourceNode->_widthInElements*sourceNode->_widthInElements*2;
-            if (std::max(sourceNode->_heightMapFileSize, sourceNode->_secondaryCacheSize) < expectedDataSize) {
+            if (sourceNode->_heightMapFileSize < expectedDataSize) {
                     // some nodes have "holes". We have to ignore them.
                 cullResults[n - field._nodeBegin] = AABBIntersection::Culled;
             } else {
-                __declspec(align(16)) auto localToProjection = Combine(sourceNode->_localToCell, cellToProjection);
+                __declspec(align(16)) auto localToProjection = Combine(nodeToCell, cellToProjection);
                 cullResults[n - field._nodeBegin] = TestAABB_Aligned(AsFloatArray(localToProjection), Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(compressedHeightMask)));
                 if (cullResults[n - field._nodeBegin] != AABBIntersection::Culled) {
                     screenSpaceEdgeLengths[n - field._nodeBegin] = CalculateScreenSpaceEdgeLength(
@@ -946,11 +950,12 @@ namespace SceneEngine
             auto& field = sourceCell._nodeFields[nodeRef.first];
             unsigned n = field._nodeBegin + nodeRef.second;
 
-            auto& sourceNode = sourceCell._nodes[n];
+			auto& sourceNode = sourceCell._nodes[n];
+			auto nodeToCell = cellRenderInfo.NodeToCell(n);
 
                 //  do a culling step first... If the node is completely outside
                 //  of the frustum, let's cull it quickly
-            const __declspec(align(16)) auto localToProjection = Combine(sourceNode->_localToCell, cellToProjection);
+            const __declspec(align(16)) auto localToProjection = Combine(nodeToCell, cellToProjection);
             if (CullAABB_Aligned(AsFloatArray(localToProjection), Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(compressedHeightMask)))) {
                 continue;
             }
@@ -980,7 +985,7 @@ namespace SceneEngine
             }
             
             const unsigned expectedDataSize = sourceNode->_widthInElements*sourceNode->_widthInElements*2;
-            if (std::max(sourceNode->_heightMapFileSize, sourceNode->_secondaryCacheSize) < expectedDataSize)
+            if (sourceNode->_heightMapFileSize < expectedDataSize)
                 continue;   // some nodes have "holes". We have to ignore them.
 
                 //  we should check for valid data & required uploads. Mark the flags now, and we'll 
@@ -991,7 +996,7 @@ namespace SceneEngine
             queuedNode._cell = &cellRenderInfo;
             queuedNode._fieldIndex = nodeRef.first;
             queuedNode._absNodeIndex = n;
-            queuedNode._priority = MagnitudeSquared(ExtractTranslation(sourceNode->_localToCell) + cellPositionMinusViewPosition);
+            queuedNode._priority = MagnitudeSquared(ExtractTranslation(nodeToCell) + cellPositionMinusViewPosition);
             queuedNode._flags = flags;
             queuedNode._cellToWorld = localToWorld;    // note -- it's a pity we have to store this for every node (it's a per-cell property)
             queuedNode._neighbourLODDiff[0] = queuedNode._neighbourLODDiff[1] = 
@@ -1056,8 +1061,6 @@ namespace SceneEngine
         CellRenderInfo& cellRenderInfo, unsigned absNodeIndex,
         int8 neighbourLodDiffs[4])
     {
-        auto& sourceCell = *cellRenderInfo._sourceCell;
-        auto& sourceNode = sourceCell._nodes[absNodeIndex];
         auto& heightTile = cellRenderInfo._heightTiles[absNodeIndex]._tile;
 
         /////////////////////////////////////////////////////////////////////////////
@@ -1067,7 +1070,7 @@ namespace SceneEngine
 
         TileConstants tileConstants;
         XlSetMemory(&tileConstants, 0, sizeof(tileConstants));
-        tileConstants._localToCell = sourceNode->_localToCell;
+        tileConstants._localToCell = cellRenderInfo.NodeToCell(absNodeIndex);
         tileConstants._heightMapOrigin = Int3(heightTile._x, heightTile._y, heightTile._arrayIndex);
 
         for (unsigned covIndex=0; covIndex<cellRenderInfo._coverage.size(); ++covIndex) {
@@ -1171,6 +1174,13 @@ namespace SceneEngine
             std::vector<NodeCoverageInfo> heightTiles;
             heightTiles.resize(nodeCount);
 
+			#if defined(TERRAIN_ENABLE_EDITING)
+				for (unsigned c=0; c<nodeCount; ++c) {
+					heightTiles[c]._heightScale = cell._nodes[c]->_localToCell(2,2);
+					heightTiles[c]._heightOffset = cell._nodes[c]->_localToCell(2,3);
+				}
+			#endif
+
                 //  we also need to open a file for streaming access. 
                 //  we should open this file here, and keep it open permanently.
                 //  we don't want to have to open and close it for each streaming
@@ -1214,6 +1224,27 @@ namespace SceneEngine
         }
     }
 
+	#if defined(TERRAIN_ENABLE_EDITING)
+		Float4x4 TerrainCellRenderer::CellRenderInfo::NodeToCell(unsigned nodeId) const
+		{
+			// note --	When terrain editing is enabled, we sometimes override the some
+			//			elements of the node-to-cell transform (because the height range can change).
+			//			This should only happen in the editor, however
+			assert(_sourceCell && nodeId < _sourceCell->_nodes.size() && nodeId < _heightTiles.size());
+			auto base = _sourceCell->_nodes[nodeId]->_localToCell;
+			const auto& h = _heightTiles[nodeId];
+			base(2,2) = h._heightScale;
+			base(2,3) = h._heightOffset;
+			return base;
+		}
+	#else
+		const Float4x4& TerrainCellRenderer::CellRenderInfo::NodeToCell(unsigned nodeId) const
+		{
+			assert(_sourceCell && nodeId < _sourceCell->_nodes.size() && nodeId < _heightTiles.size());
+			return _sourceCell->_nodes[nodeId]->_localToCell;
+		}
+	#endif
+
     TerrainCellRenderer::CellRenderInfo::CellRenderInfo(CellRenderInfo&& moveFrom) never_throws
 	:	_heightTiles(std::move(moveFrom._heightTiles))
 	,	_sourceCell(std::move(moveFrom._sourceCell))
@@ -1229,7 +1260,6 @@ namespace SceneEngine
         _sourceCell = std::move(moveFrom._sourceCell);
         _heightMapStreamingFilePtr = std::move(moveFrom._heightMapStreamingFilePtr);
         _coverage = std::move(moveFrom._coverage);
-
         moveFrom._heightMapStreamingFilePtr = INVALID_HANDLE_VALUE;
         return *this;
     }
@@ -1331,17 +1361,30 @@ namespace SceneEngine
     }
 
     TerrainCellRenderer::NodeCoverageInfo::NodeCoverageInfo()
-    {}
+    {
+		#if defined(TERRAIN_ENABLE_EDITING)
+			_heightScale = _heightOffset = 0.f;
+		#endif
+	}
 
     TerrainCellRenderer::NodeCoverageInfo::NodeCoverageInfo(NodeCoverageInfo&& moveFrom) never_throws
 	: _tile(std::move(moveFrom._tile))
 	, _pendingTile(std::move(moveFrom._pendingTile))
-    {}
+    {
+		#if defined(TERRAIN_ENABLE_EDITING)
+			_heightScale = moveFrom._heightScale;
+			_heightOffset = moveFrom._heightOffset;
+		#endif
+	}
 
     auto TerrainCellRenderer::NodeCoverageInfo::operator=(NodeCoverageInfo&& moveFrom) never_throws -> NodeCoverageInfo&
     {
         _tile = std::move(moveFrom._tile);
         _pendingTile = std::move(moveFrom._pendingTile);
+		#if defined(TERRAIN_ENABLE_EDITING)
+			_heightScale = moveFrom._heightScale;
+			_heightOffset = moveFrom._heightOffset;
+		#endif
         return *this;
     }
 

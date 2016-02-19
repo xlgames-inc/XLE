@@ -15,6 +15,8 @@
 #include "../Utility/IteratorUtils.h"
 #include "../Core/Types.h"
 
+#define TERRAIN_ENABLE_EDITING
+
 namespace SceneEngine
 {
     class LightingParserContext;
@@ -113,6 +115,9 @@ namespace SceneEngine
         public:
             TextureTile _tile;
             TextureTile _pendingTile;
+			#if defined(TERRAIN_ENABLE_EDITING)
+				float _heightScale, _heightOffset;
+			#endif
 
             void Queue(TextureTileSet& coverageTileSet, const void* filePtr, unsigned fileOffset, unsigned fileSize);
             bool CompleteUpload(BufferUploads::IManager& bufferUploads);
@@ -138,6 +143,12 @@ namespace SceneEngine
                 // height map
             const void* _heightMapStreamingFilePtr;
             std::vector<NodeCoverageInfo> _heightTiles;
+
+			#if defined(TERRAIN_ENABLE_EDITING)
+				Float4x4 NodeToCell(unsigned nodeId) const;
+			#else
+				const Float4x4& NodeToCell(unsigned nodeId) const;
+			#endif
 
                 // coverage layers
             class CoverageLayer
@@ -190,11 +201,11 @@ namespace SceneEngine
             const Float4x4& worldToProjection, const Float3& viewPositionWorld,
             CellRenderInfo& cellRenderInfo, const Float4x4& cellToWorld);
 
-        void    ShortCircuitTileUpdate(const TextureTile& tile, unsigned layerIndex, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, bool encodedGradientFlags, Float4x4& localToCell, const ShortCircuitUpdate& upd);
+        void    ShortCircuitTileUpdate(const TextureTile& tile, unsigned layerIndex, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, bool encodedGradientFlags, NodeCoverageInfo& coverageInfo, const ShortCircuitUpdate& upd);
 
         auto    BuildQueuedNodeFlags(const CellRenderInfo& cellRenderInfo, unsigned nodeIndex, unsigned lodField) const -> unsigned;
 
-		struct FoundNode { NodeCoverageInfo* _node; unsigned _fieldIndex; UInt2 _nodeMin; UInt2 _nodeMax; Float4x4* _localToCell; };
+		struct FoundNode { NodeCoverageInfo* _node; unsigned _fieldIndex; UInt2 _nodeMin; UInt2 _nodeMax; };
 		std::vector<FoundNode> FindIntersectingNodes(
 			uint64 cellHash, TerrainCoverageId layerId,
 			UInt2 cellOrigin, UInt2 cellMax, 
