@@ -10,6 +10,7 @@
 #include "ScaffoldParsingUtil.h"
 #include "../Assets/Assets.h"
 #include "../Utility/IteratorUtils.h"
+#include "../ConsoleRig/Log.h"
 
 namespace RenderCore { namespace ColladaConversion
 {

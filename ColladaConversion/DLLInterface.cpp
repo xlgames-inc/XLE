@@ -22,12 +22,14 @@
 
 #include "../RenderCore/Assets/ModelImmutableData.h"      // just for RenderCore::Assets::SkeletonBinding
 #include "../RenderCore/Assets/AssetUtils.h"
+#include "../RenderCore/Assets/Material.h"
 
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/XmlStreamFormatter.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/Streams/StreamTypes.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Streams/FileSystemMonitor.h"
 #include "../Utility/PtrUtils.h"
 #include "../ConsoleRig/OutputStream.h"
 #include <memory>
