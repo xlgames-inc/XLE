@@ -439,7 +439,7 @@ namespace SceneEngine
         RenderCore::IThreadContext& threadContext,
         UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
         Float2 center, float radius, float adjustment, 
-        std::tuple<uint64, void*, size_t> extraPackets[], unsigned extraPacketCount) -> ApplyToolResult
+        std::tuple<uint64, void*, size_t> extraPackets[], unsigned extraPacketCount) -> TerrainToolResult
     {
         CancelActiveOperations();
         TRY 
@@ -499,12 +499,12 @@ namespace SceneEngine
 
             DoShortCircuitUpdate(threadContext, adjMins, adjMaxs);
         }
-		CATCH (::Assets::Exceptions::InvalidAsset&) { return ApplyToolResult::InvalidAsset; }
-        CATCH (::Assets::Exceptions::PendingAsset&) { return ApplyToolResult::PendingAsset; }
-		CATCH (...) { return ApplyToolResult::Error; }
+		CATCH (::Assets::Exceptions::InvalidAsset&) { return TerrainToolResult::InvalidAsset; }
+        CATCH (::Assets::Exceptions::PendingAsset&) { return TerrainToolResult::PendingAsset; }
+		CATCH (...) { return TerrainToolResult::Error; }
         CATCH_END
 
-		return ApplyToolResult::Success;
+		return TerrainToolResult::Success;
     }
 
     void    GenericUberSurfaceInterface::DoShortCircuitUpdate(
@@ -617,10 +617,10 @@ namespace SceneEngine
 
     #define baseShader "game/xleres/ui/terrainmodification.sh:"
 
-    auto HeightsUberSurfaceInterface::AdjustHeights(RenderCore::IThreadContext& threadContext, Float2 center, float radius, float adjustment, float powerValue) -> ApplyToolResult
+    auto HeightsUberSurfaceInterface::AdjustHeights(RenderCore::IThreadContext& threadContext, Float2 center, float radius, float adjustment, float powerValue) -> TerrainToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return ApplyToolResult::Error;
+            return TerrainToolResult::Error;
 
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - radius)),
                         (unsigned)std::max(0.f, XlFloor(center[1] - radius)));
@@ -628,7 +628,7 @@ namespace SceneEngine
                         std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + radius)));
 
         if (!PrepareCache(adjMins, adjMaxs))
-			return ApplyToolResult::OutsideLock;
+			return TerrainToolResult::OutsideLock;
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
         struct RaiseLowerParameters
@@ -645,10 +645,10 @@ namespace SceneEngine
         return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "RaiseLower", center, radius, adjustment, extraPackets, dimof(extraPackets));
     }
 
-    auto HeightsUberSurfaceInterface::AddNoise(RenderCore::IThreadContext& threadContext, Float2 center, float radius, float adjustment) -> ApplyToolResult
+    auto HeightsUberSurfaceInterface::AddNoise(RenderCore::IThreadContext& threadContext, Float2 center, float radius, float adjustment) -> TerrainToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return ApplyToolResult::Error;
+            return TerrainToolResult::Error;
 
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - radius)),
                         (unsigned)std::max(0.f, XlFloor(center[1] - radius)));
@@ -656,17 +656,17 @@ namespace SceneEngine
                         std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + radius)));
 
         if (!PrepareCache(adjMins, adjMaxs))
-			return ApplyToolResult::OutsideLock;
+			return TerrainToolResult::OutsideLock;
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
 
         return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "AddNoise", center, radius, adjustment, nullptr, 0);
     }
 
-    auto HeightsUberSurfaceInterface::CopyHeight(RenderCore::IThreadContext& threadContext, Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags) -> ApplyToolResult
+    auto HeightsUberSurfaceInterface::CopyHeight(RenderCore::IThreadContext& threadContext, Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags) -> TerrainToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return ApplyToolResult::Error;
+            return TerrainToolResult::Error;
 
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - radius)),
                         (unsigned)std::max(0.f, XlFloor(center[1] - radius)));
@@ -674,7 +674,7 @@ namespace SceneEngine
                         std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + radius)));
 
         if (!PrepareCache(adjMins, adjMaxs))
-			return ApplyToolResult::OutsideLock;
+			return TerrainToolResult::OutsideLock;
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
         struct CopyHeightParameters
@@ -692,10 +692,10 @@ namespace SceneEngine
         return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "CopyHeight", center, radius, adjustment, extraPackets, dimof(extraPackets));
     }
 
-    auto HeightsUberSurfaceInterface::Rotate(RenderCore::IThreadContext& threadContext, Float2 center, float radius, Float3 rotationAxis, float rotationAngle) -> ApplyToolResult
+    auto HeightsUberSurfaceInterface::Rotate(RenderCore::IThreadContext& threadContext, Float2 center, float radius, Float3 rotationAxis, float rotationAngle) -> TerrainToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return ApplyToolResult::Error;
+            return TerrainToolResult::Error;
 
         const float extend = 1.2f;
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - extend * radius)),
@@ -704,7 +704,7 @@ namespace SceneEngine
                         std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + extend * radius)));
 
         if (!PrepareCache(adjMins, adjMaxs))
-			return ApplyToolResult::OutsideLock;
+			return TerrainToolResult::OutsideLock;
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
         assert(rotationAxis[2] == 0.f);
@@ -723,10 +723,10 @@ namespace SceneEngine
         return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "Rotate", center, radius, 1.f, extraPackets, dimof(extraPackets));
     }
 
-    auto HeightsUberSurfaceInterface::Smooth(RenderCore::IThreadContext& threadContext, Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags) -> ApplyToolResult
+    auto HeightsUberSurfaceInterface::Smooth(RenderCore::IThreadContext& threadContext, Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags) -> TerrainToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return ApplyToolResult::Error;
+            return TerrainToolResult::Error;
 
         auto fieldWidth = _pimpl->_uberSurface->GetWidth()-1;
         auto fieldHeight = _pimpl->_uberSurface->GetHeight()-1;
@@ -739,7 +739,7 @@ namespace SceneEngine
         if (!PrepareCache(
             UInt2(std::max(0u, adjMins[0]-filterRadius), std::max(0u, adjMins[1]-filterRadius)),
             UInt2(std::min(fieldWidth, adjMaxs[0]+filterRadius), std::min(fieldHeight, adjMins[1]+filterRadius))))
-			return ApplyToolResult::OutsideLock;
+			return TerrainToolResult::OutsideLock;
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
 
@@ -767,10 +767,10 @@ namespace SceneEngine
         return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "Smooth", center, radius, strength, extraPackets, dimof(extraPackets));
     }
 
-    auto HeightsUberSurfaceInterface::FillWithNoise(RenderCore::IThreadContext& threadContext, Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail) -> ApplyToolResult
+    auto HeightsUberSurfaceInterface::FillWithNoise(RenderCore::IThreadContext& threadContext, Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail) -> TerrainToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return ApplyToolResult::Error;
+            return TerrainToolResult::Error;
 
         auto fieldWidth = _pimpl->_uberSurface->GetWidth()-1;
         auto fieldHeight = _pimpl->_uberSurface->GetHeight()-1;
@@ -778,7 +778,7 @@ namespace SceneEngine
         UInt2 adjMins((unsigned)std::max(0.f, mins[0]), (unsigned)std::max(0.f, mins[1]));
         UInt2 adjMaxs(std::min(fieldWidth, (unsigned)maxs[0]), std::min(fieldHeight, (unsigned)maxs[1]));
         if (!PrepareCache(adjMins, adjMaxs))
-			return ApplyToolResult::OutsideLock;
+			return TerrainToolResult::OutsideLock;
 
         struct FillWithNoiseParameters
         {
@@ -923,17 +923,18 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void CoverageUberSurfaceInterface::Paint(RenderCore::IThreadContext& context, Float2 centre, float radius, unsigned paintValue)
+    TerrainToolResult CoverageUberSurfaceInterface::Paint(RenderCore::IThreadContext& context, Float2 centre, float radius, unsigned paintValue)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
-            return;
+            return TerrainToolResult::Error;
 
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(centre[0] - radius)),
                         (unsigned)std::max(0.f, XlFloor(centre[1] - radius)));
         UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->GetWidth()-1, (unsigned)XlCeil(centre[0] + radius)),
                         std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(centre[1] + radius)));
 
-        PrepareCache(adjMins, adjMaxs);
+        if (!PrepareCache(adjMins, adjMaxs))
+            return TerrainToolResult::OutsideLock;
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
         struct PaintParameters
@@ -947,7 +948,7 @@ namespace SceneEngine
             std::make_tuple(Hash64("PaintParameters"), &params, sizeof(params))
         };
 
-        ApplyTool(context, adjMins, adjMaxs, "game/xleres/ui/terrainmodification_int.sh:Paint", centre, radius, 0.f, extraPackets, dimof(extraPackets));
+        return ApplyTool(context, adjMins, adjMaxs, "game/xleres/ui/terrainmodification_int.sh:Paint", centre, radius, 0.f, extraPackets, dimof(extraPackets));
     }
 
     void CoverageUberSurfaceInterface::CancelActiveOperations()

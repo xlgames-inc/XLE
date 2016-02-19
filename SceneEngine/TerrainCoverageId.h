@@ -15,4 +15,11 @@ namespace SceneEngine
     static const TerrainCoverageId CoverageId_AngleBasedShadows = 2;
     static const TerrainCoverageId CoverageId_AmbientOcclusion = 3;
     static const TerrainCoverageId CoverageId_ArchiveHeights = 100;
+
+    enum class TerrainToolResult
+	{
+		Success, OutsideLock, 
+		PendingAsset, InvalidAsset,
+		Error
+	};
 }

@@ -72,6 +72,7 @@ namespace RenderCore { namespace Assets
 
         const OutputInterface&  GetOutputInterface() const { return _outputInterface; }
 
+        AnimationSet();
         ~AnimationSet();
 
 		AnimationSet(const AnimationSet&) = delete;
@@ -97,6 +98,7 @@ namespace RenderCore { namespace Assets
         RawAnimationCurve*  _curves;
         size_t              _curvesCount;
 
+        AnimationImmutableData();
         ~AnimationImmutableData();
     };
 

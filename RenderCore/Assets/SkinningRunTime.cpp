@@ -871,11 +871,13 @@ namespace RenderCore { namespace Assets
         return ~unsigned(0x0);
     }
 
+    AnimationSet::AnimationSet() {}
     AnimationSet::~AnimationSet()
     {
         DestroyArray(_animationDrivers,         &_animationDrivers[_animationDriverCount]);
     }
 
+    AnimationImmutableData::AnimationImmutableData() {}
     AnimationImmutableData::~AnimationImmutableData()
     {
         DestroyArray(_curves, &_curves[_curvesCount]);

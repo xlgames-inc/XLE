@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Erosion.h"
+#include "TerrainCoverageId.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../Utility/ParameterBox.h"        // for ImpliedTyping::TypeDesc
@@ -115,13 +116,6 @@ namespace SceneEngine
                     std::function<void(UInt2, UInt2)> abandonShortCircuitData);
         void    RenderDebugging(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& context);
 
-		enum class ApplyToolResult
-		{
-			Success, OutsideLock, 
-			PendingAsset, InvalidAsset,
-			Error
-		};
-
 		std::pair<UInt2, UInt2> GetLock() const;
         void    FlushLockToDisk();
 		void	AbandonLock();
@@ -138,7 +132,7 @@ namespace SceneEngine
         
         void    BuildGPUCache(UInt2 mins, UInt2 maxs);
         bool    PrepareCache(UInt2 adjMin, UInt2 adjMax);
-        ApplyToolResult    ApplyTool(
+        TerrainToolResult    ApplyTool(
             RenderCore::IThreadContext& threadContext,
             UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
             Float2 center, float radius, float adjustment, 
@@ -152,13 +146,13 @@ namespace SceneEngine
     class HeightsUberSurfaceInterface : public GenericUberSurfaceInterface
     {
     public:
-        ApplyToolResult    AdjustHeights(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment, float powerValue);
-        ApplyToolResult    Smooth(RenderCore::IThreadContext& context, Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags);
-        ApplyToolResult    AddNoise(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment);
-        ApplyToolResult    CopyHeight(RenderCore::IThreadContext& context, Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags);
-        ApplyToolResult    Rotate(RenderCore::IThreadContext& context, Float2 center, float radius, Float3 rotationAxis, float rotationAngle);
+        TerrainToolResult    AdjustHeights(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment, float powerValue);
+        TerrainToolResult    Smooth(RenderCore::IThreadContext& context, Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags);
+        TerrainToolResult    AddNoise(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment);
+        TerrainToolResult    CopyHeight(RenderCore::IThreadContext& context, Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags);
+        TerrainToolResult    Rotate(RenderCore::IThreadContext& context, Float2 center, float radius, Float3 rotationAxis, float rotationAngle);
 
-        ApplyToolResult    FillWithNoise(RenderCore::IThreadContext& context, Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail);
+        TerrainToolResult    FillWithNoise(RenderCore::IThreadContext& context, Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail);
 
         void    Erosion_Begin(RenderCore::IThreadContext& context, Float2 mins, Float2 maxs, const TerrainConfig& cfg);
         void    Erosion_Tick(RenderCore::IThreadContext& context, const ErosionSimulation::Settings& params);
@@ -184,7 +178,7 @@ namespace SceneEngine
     class CoverageUberSurfaceInterface : public GenericUberSurfaceInterface
     {
     public:
-        void Paint(RenderCore::IThreadContext& context, Float2 centre, float radius, unsigned paintValue);
+        TerrainToolResult Paint(RenderCore::IThreadContext& context, Float2 centre, float radius, unsigned paintValue);
 
         CoverageUberSurfaceInterface(
             TerrainUberSurfaceGeneric& uberSurface,

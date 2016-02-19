@@ -7,19 +7,6 @@
         /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary> 
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-
         #region Component Designer generated code
 
         /// <summary> 
@@ -46,6 +33,7 @@
             this._coverageLayer.Name = "_coverageLayer";
             this._coverageLayer.Size = new System.Drawing.Size(273, 21);
             this._coverageLayer.TabIndex = 0;
+            this._coverageLayer.SelectedIndexChanged += new System.EventHandler(this._coverageLayer_SelectedIndexChanged);
             // 
             // _showLockedArea
             // 

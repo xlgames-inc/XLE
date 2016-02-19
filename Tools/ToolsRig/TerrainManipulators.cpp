@@ -41,6 +41,8 @@ namespace ToolsRig
     using SceneEngine::IntersectionTestContext;
     using SceneEngine::IntersectionTestScene;
 
+    static const char HeightsLayerError[] = "This tool only works on heights values. Select the terrain heights layer.";
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //      M A N I P U L A T O R S             //
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -64,17 +66,23 @@ namespace ToolsRig
 
     void    RaiseLowerManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
     {
+        if (_manipulatorContext->_activeLayer != SceneEngine::CoverageId_Heights)
+            Throw(::Exceptions::BasicLabel(HeightsLayerError));
+
             //
             //      Use the uber surface interface to change these values
             //          -- this will make sure all of the cells get updated as needed
             //
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
-            i->AdjustHeights(
+            auto result = i->AdjustHeights(
                 context,
                 WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
                 WorldSpaceDistanceToTerrainCoords(size), 
                 .05f * strength, _powerValue);
+
+            if (result != SceneEngine::TerrainToolResult::Success)
+                Throw(TerrainManipulatorException(result));
         }
     }
 
@@ -89,8 +97,10 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    RaiseLowerManipulator::RaiseLowerManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
-        : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
+    RaiseLowerManipulator::RaiseLowerManipulator(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+    : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _powerValue = 1.f/8.f;
 		_strength = 10.f;
@@ -119,14 +129,20 @@ namespace ToolsRig
 
     void    SmoothManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
     {
+        if (_manipulatorContext->_activeLayer != SceneEngine::CoverageId_Heights)
+            Throw(::Exceptions::BasicLabel(HeightsLayerError));
+
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
-            i->Smooth(
+            auto result = i->Smooth(
                 context,
                 WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
                 WorldSpaceDistanceToTerrainCoords(size),
                 unsigned(_filterRadius), 
                 _standardDeviation, _strength, _flags);
+
+            if (result != SceneEngine::TerrainToolResult::Success)
+                Throw(TerrainManipulatorException(result));
         }
     }
 
@@ -152,8 +168,10 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    SmoothManipulator::SmoothManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
-        : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
+    SmoothManipulator::SmoothManipulator(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+    : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _standardDeviation = 3.f;
         _filterRadius = 16.f;
@@ -177,13 +195,19 @@ namespace ToolsRig
 
     void    NoiseManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
     {
+        if (_manipulatorContext->_activeLayer != SceneEngine::CoverageId_Heights)
+            Throw(::Exceptions::BasicLabel(HeightsLayerError));
+
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
-            i->AddNoise(
+            auto result = i->AddNoise(
                 context,
                 WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
                 WorldSpaceDistanceToTerrainCoords(size), 
                 .05f * strength);
+
+            if (result != SceneEngine::TerrainToolResult::Success)
+                Throw(TerrainManipulatorException(result));
         }
     }
 
@@ -197,8 +221,10 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    NoiseManipulator::NoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
-        : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
+    NoiseManipulator::NoiseManipulator(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+    : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
 		_strength = 7.f;
 	}
@@ -223,14 +249,20 @@ namespace ToolsRig
 
     void CopyHeight::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
     {
+        if (_manipulatorContext->_activeLayer != SceneEngine::CoverageId_Heights)
+            Throw(::Exceptions::BasicLabel(HeightsLayerError));
+
         auto *i = _terrainManager->GetHeightsInterface();
         if (i && _targetOnMouseDown.second) {
-            i->CopyHeight(
+            auto result = i->CopyHeight(
                 context,
                 WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
                 WorldSpaceToTerrain(Truncate(_targetOnMouseDown.first)), 
                 WorldSpaceDistanceToTerrainCoords(size), 
                 strength, _powerValue, _flags);
+
+            if (result != SceneEngine::TerrainToolResult::Success)
+                Throw(TerrainManipulatorException(result));
         }
     }
 
@@ -255,8 +287,10 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    CopyHeight::CopyHeight(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
-        : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
+    CopyHeight::CopyHeight(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+    : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _powerValue = 1.f/8.f;
         _flags = 0x3;
@@ -282,13 +316,19 @@ namespace ToolsRig
 
     void    FillNoiseManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1)
     {
+        if (_manipulatorContext->_activeLayer != SceneEngine::CoverageId_Heights)
+            Throw(::Exceptions::BasicLabel(HeightsLayerError));
+
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
-            i->FillWithNoise(
+            auto result = i->FillWithNoise(
                 context,
                 WorldSpaceToTerrain(Truncate(anchor0)), 
                 WorldSpaceToTerrain(Truncate(anchor1)), 
                 _baseHeight, _noiseHeight, _roughness, _fractalDetail);
+
+            if (result != SceneEngine::TerrainToolResult::Success)
+                Throw(TerrainManipulatorException(result));
         }
     }
 
@@ -304,8 +344,10 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    FillNoiseManipulator::FillNoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
-        : RectangleManipulator(std::move(terrainManager), std::move(manipulatorContext))
+    FillNoiseManipulator::FillNoiseManipulator(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+    : RectangleManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _baseHeight = 250.0f;
         _noiseHeight = 500.f;
@@ -343,11 +385,16 @@ namespace ToolsRig
     {
         auto* i = _terrainManager->GetCoverageInterface(_coverageLayer);
         if (i) {
-            i->Paint(
+            auto result = i->Paint(
                 context,
                 WorldSpaceToCoverage(_coverageLayer, Truncate(worldSpacePosition)), 
                 WorldSpaceToCoverageDistance(_coverageLayer, size),
                 _paintValue);
+
+            if (result != SceneEngine::TerrainToolResult::Success)
+                Throw(TerrainManipulatorException(result));
+        } else {
+            Throw(::Exceptions::BasicLabel("Incorrect coverage layer selected"));
         }
     }
 
@@ -375,8 +422,10 @@ namespace ToolsRig
         Tweakable("TerrainVisCoverage", 0) = newState ? _coverageLayer : 0;
     }
 
-    PaintCoverageManipulator::PaintCoverageManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
-        : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
+    PaintCoverageManipulator::PaintCoverageManipulator(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+    : CommonManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _coverageLayer = 1000;
         _paintValue = 1;
@@ -482,8 +531,10 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    ErosionManipulator::ErosionManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
-        : RectangleManipulator(std::move(terrainManager), std::move(manipulatorContext))
+    ErosionManipulator::ErosionManipulator(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+    : RectangleManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _flags = 0;
         _activeMins = _activeMaxs = Float2(0.f, 0.f);
@@ -519,7 +570,9 @@ namespace ToolsRig
             float radius = Magnitude(rotationOrigin - farPoint);
             Float2 A(farPoint[0] - rotationOrigin[0], farPoint[1] - rotationOrigin[1]);
             Float3 rotationAxis = Normalize(Float3(A[1], -A[0], 0.f));
-            i->Rotate(context, rotationOrigin, radius, rotationAxis, float(_rotationDegrees * M_PI / 180.f));
+            auto result = i->Rotate(context, rotationOrigin, radius, rotationAxis, float(_rotationDegrees * M_PI / 180.f));
+            if (result != SceneEngine::TerrainToolResult::Success)
+                throw TerrainManipulatorException(result);
         }
     }
 
@@ -532,8 +585,10 @@ namespace ToolsRig
         return std::make_pair(parameters, dimof(parameters));
     }
 
-    RotateManipulator::RotateManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
-        : RectangleManipulator(std::move(terrainManager), std::move(manipulatorContext))
+    RotateManipulator::RotateManipulator(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager, 
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext)
+    : RectangleManipulator(std::move(terrainManager), std::move(manipulatorContext))
     {
         _rotationDegrees = 10.f;
     }
@@ -559,5 +614,23 @@ namespace ToolsRig
         _activeLayer = SceneEngine::CoverageId_Heights;
         _showLockedArea = true;
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    const char* TerrainManipulatorException::what() const
+    {
+        switch (_errorCode) {
+        case SceneEngine::TerrainToolResult::OutsideLock:   return "Outside of locked area";
+        case SceneEngine::TerrainToolResult::PendingAsset:  return "Shader compile still pending";
+        case SceneEngine::TerrainToolResult::InvalidAsset:  return "Shader compile failed";
+        default: return "Unknown error";
+        }
+    }
+
+    SceneEngine::TerrainToolResult TerrainManipulatorException::GetErrorCode() const { return _errorCode; }
+
+    TerrainManipulatorException::TerrainManipulatorException(SceneEngine::TerrainToolResult errorCode)
+    : _errorCode(errorCode) {}
+    TerrainManipulatorException::~TerrainManipulatorException() {}
 }
 

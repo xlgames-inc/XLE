@@ -236,7 +236,72 @@ namespace LevelEditorCore
         }
         
         private readonly Camera m_camera;  // only camera object.
-        private CameraController m_cameraController;        
+        private CameraController m_cameraController;
+
+        private class HoverClient : IDisposable
+        {
+            private Sce.Atf.Controls.HoverLabel _form = new Sce.Atf.Controls.HoverLabel("");
+            private System.Threading.Timer _timer;
+            private System.Threading.SynchronizationContext _syncContext;
+
+            internal HoverClient() 
+            {
+                _syncContext = System.Threading.SynchronizationContext.Current;
+            }
+
+            internal void ShowHoverMessage(string msg, Point scrPt)
+            {
+                if (_form == null || _form.IsDisposed)
+                    _form = new Sce.Atf.Controls.HoverLabel("");
+                _form.Label = msg;
+                _form.Location = scrPt;
+                _form.ShowWithoutFocus();
+
+                if (_timer == null)
+                {
+                    _timer = new System.Threading.Timer(
+                        (t) =>
+                        {
+                            var hoverClient = ((WeakReference)t).Target as HoverClient;
+                            if (hoverClient != null) {
+                                hoverClient._syncContext.Post(new System.Threading.SendOrPostCallback(OnTimeout), hoverClient);
+                            }
+                        }, 
+                        new WeakReference(this), 5000, System.Threading.Timeout.Infinite);
+                }
+                else
+                {
+                    _timer.Change(5000, System.Threading.Timeout.Infinite);
+                }
+            }
+
+            private static void OnTimeout(object client)
+            {
+                ((HoverClient)client)._form.Dispose();
+                ((HoverClient)client)._form = null;
+            }
+
+            public void Dispose() 
+            {
+                if (_form != null) { _form.Dispose(); _form = null; }
+                if (_timer != null) { _timer.Dispose(); _timer = null; }
+            }
+        }
+
+        private HoverClient _hoverClient = new HoverClient();
+        public void ShowHoverMessage(string msg, Point scrPt)
+        {
+            _hoverClient.ShowHoverMessage(msg, PointToScreen(scrPt));
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _hoverClient.Dispose(); _hoverClient = null;
+            }
+            base.Dispose(disposing);
+        }
     }
 
 }

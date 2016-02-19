@@ -22,7 +22,19 @@ namespace LevelEditorXLE.Terrain
     {
         public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc as GUILayer.IViewContext, scrPt); }
         public void OnBeginDrag()                                              { _nativeManip.OnBeginDrag(); }
-        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc as GUILayer.IViewContext, scrPt); }
+        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    
+        {
+            try
+            {
+                _nativeManip.OnDragging(vc as GUILayer.IViewContext, scrPt);
+            }
+            catch (Exception e)
+            {
+                // we want to report this error as a hover message above "srcPt" in the view control
+                vc.ShowHoverMessage(e.Message, scrPt);
+            }
+        }
+
         public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt) 
 		{
             _nativeManip.OnEndDrag(vc as GUILayer.IViewContext, scrPt);

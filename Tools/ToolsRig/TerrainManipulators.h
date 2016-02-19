@@ -15,6 +15,18 @@ namespace ToolsRig
 {
     class IManipulator;
 
+    class TerrainManipulatorException : public std::exception
+    {
+    public:
+        virtual const char* what() const;
+        SceneEngine::TerrainToolResult GetErrorCode() const;
+
+        TerrainManipulatorException(SceneEngine::TerrainToolResult);
+        ~TerrainManipulatorException();
+    private:
+        SceneEngine::TerrainToolResult _errorCode;
+    };
+
     class TerrainManipulatorContext
     {
     public:

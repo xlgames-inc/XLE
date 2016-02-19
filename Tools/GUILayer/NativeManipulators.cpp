@@ -12,11 +12,13 @@
 #include "SimpleRenderingContext.h"
 #include "GUILayerUtil.h"
 #include "LevelEditorScene.h"       // for getting the intersection scene from the IViewContext
+#include "MarshalString.h"
 #include "NativeEngineDevice.h"
 #include "../ToolsRig/IManipulator.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../PlatformRig/BasicSceneParser.h"
+#include <msclr/auto_handle.h>
 
 extern "C" __declspec(dllimport) short __stdcall GetKeyState(int nVirtKey);
 
@@ -110,18 +112,30 @@ namespace GUILayer
 		auto underlying = _manipContext->GetNativeManipulator();
         if (!underlying) return false;
 
-		auto hitTestContext = CreateIntersectionTestContext(
-			vc->EngineDevice, nullptr,
-			vc->Camera, vc->ViewportSize.Width, vc->ViewportSize.Height);
+		msclr::auto_handle<IntersectionTestContextWrapper> hitTestContext = 
+            CreateIntersectionTestContext(
+			    vc->EngineDevice, nullptr,
+			    vc->Camera, vc->ViewportSize.Width, vc->ViewportSize.Height);
 
         // Only way to get the intersection scene is via the SceneManager
         // But what if we don't want to use a SceneManager. Is there a better
         // way to get the intersection scene?
-		auto hitTestScene = vc->SceneManager->GetIntersectionScene();
+		msclr::auto_handle<IntersectionTestSceneWrapper> hitTestScene = vc->SceneManager->GetIntersectionScene();
 
-		underlying->OnInputEvent(evnt, hitTestContext->GetNative(), hitTestScene->GetNative());
-		delete hitTestContext;
-		delete hitTestScene;
+        TRY
+        {
+		    underlying->OnInputEvent(evnt, hitTestContext->GetNative(), hitTestScene->GetNative());
+        } 
+        // We need to translate the exceptions that can be raised by native manipulators into something that
+        // the .net editors can use here. C# code can't extract any of the C++ details from the except class,
+        // so this is the only place to do it.
+        // We're going to translate them into messages that can be reported to the user here.
+        CATCH (const std::exception& e)
+        {
+            throw gcnew System::Exception(clix::marshalString<clix::E_UTF8>(e.what()));
+        }
+        CATCH_END
+
 		return true;
 	}
 

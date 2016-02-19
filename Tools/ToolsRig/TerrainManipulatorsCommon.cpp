@@ -155,10 +155,7 @@ namespace ToolsRig
                 // perform action -- (like raising or lowering the terrain)
             if (_currentWorldSpaceTarget.second && (Millisecond_Now() - _lastPerform) > 33 && (FrameRenderCount > _lastRenderCount1)) {
 
-                TRY {
-                    PerformAction(*hitTestContext.GetThreadContext(), _currentWorldSpaceTarget.first, _size, shiftHeld?(-_strength):_strength);
-                } CATCH (...) {
-                } CATCH_END
+                PerformAction(*hitTestContext.GetThreadContext(), _currentWorldSpaceTarget.first, _size, shiftHeld?(-_strength):_strength);
                 
                 _lastPerform = Millisecond_Now();
                 _lastRenderCount1 = FrameRenderCount;
@@ -237,10 +234,7 @@ namespace ToolsRig
                     Float2 faWorld = TerrainToWorldSpace(RoundDownToInteger(terrainCoordsMins));
                     Float2 fsWorld = TerrainToWorldSpace(RoundUpToInteger(terrainCoordsMaxs));
 
-                    TRY {
-                        PerformAction(*hitTestContext.GetThreadContext(), Expand(faWorld, 0.f), Expand(fsWorld, 0.f));
-                    } CATCH(...) {
-                    } CATCH_END
+                    PerformAction(*hitTestContext.GetThreadContext(), Expand(faWorld, 0.f), Expand(fsWorld, 0.f));
                 }
             }
 
