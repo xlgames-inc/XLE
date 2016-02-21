@@ -26,15 +26,14 @@
         <scea.dom.editors.attribute category="Sky" name="SkyTexture" displayName="Sky Texture"
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" 
           converter="LevelEditorXLE.AssetNameConverter,LevelEditorXLE"/>
-        <scea.dom.editors.attribute category="Sky" name="SkyTextureType" displayName="Type" description="Mapping mode for the sky texture. HemiCube is the upper half of a cubemap. HemiEquirectangular is the upper half of a paranoramic map."
+        <scea.dom.editors.attribute category="Sky" name="SkyTextureType" displayName="Type" 
+          description="Mapping mode for the sky texture. HemiCube is the upper half of a cubemap. HemiEquirectangular is the upper half of a paranoramic map."
           editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:HemiCube=0,Cube=1,Equirectangular=2,HemiEquirectangular=3"
           converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:HemiCube=0,Cube=1,Equirectangular=2,HemiEquirectangular=3"/>
         <scea.dom.editors.attribute category="Sky" name="SkyReflectionScale" displayName="Sky Reflection Scale" description="Scale for the reflection of the static sky image"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
-        <scea.dom.editors.attribute category="Sky" name="SkyReflectionBlurriness" displayName="Sky Reflection Blurriness" description="Blurriness of the reflection of the sky"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,6"/>
         <scea.dom.editors.attribute category="Sky" name="SkyBrightness" displayName="Brightness of the sky"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,200"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
 
         <scea.dom.editors.attribute category="RangeFog" name="RangeFogInscatter" displayName="Inscatter"
           description="Color of inscattered light. This should be similar to the color of the sky (ie, blue)"
@@ -86,12 +85,12 @@
       </xs:appinfo>
     </xs:annotation>
     <xs:attribute name="AmbientLight" type="xs:int" default="-1"/>
-    <xs:attribute name="AmbientBrightness" type="xs:float" default="1"/>
+    <xs:attribute name="AmbientBrightness" type="xs:float" default="0"/>
     <xs:attribute name="DiffuseIBL" type="xs:string"/>
     <xs:attribute name="SpecularIBL" type="xs:string"/>
     
     <xs:attribute name="SkyTexture" type="xs:string"/>
-    <xs:attribute name="SkyTextureType" type="xs:int" default="0"/>
+    <xs:attribute name="SkyTextureType" type="xs:int" default="1"/>
     <xs:attribute name="SkyReflectionScale" type="xs:float" default="1"/>
     <xs:attribute name="SkyReflectionBlurriness" type="xs:float" default="2"/>
     <xs:attribute name="SkyBrightness" type="xs:float" default="1"/>

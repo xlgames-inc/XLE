@@ -12,6 +12,7 @@
 #include "../Math/ProjectionMath.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/ParameterBox.h"
+#include "../Utility/Streams/PathUtils.h"
 
 namespace SceneEngine
 {
@@ -272,6 +273,24 @@ namespace SceneEngine
         props.GetString(skyTextureHash, _skyTexture, dimof(_skyTexture));
         props.GetString(diffuseIBLHash, _diffuseIBL, dimof(_diffuseIBL));
         props.GetString(specularIBLHash, _specularIBL, dimof(_specularIBL));
+
+		// If we don't have a diffuse IBL texture, or specular IBL texture, then attempt to build
+		// the filename from the sky texture
+		if ((!_diffuseIBL[0] || !_specularIBL[0]) && _skyTexture[0]) {
+			auto splitter = MakeFileNameSplitter(_skyTexture);
+
+			if (!_diffuseIBL[0]) {
+				XlCopyString(_diffuseIBL, MakeStringSection(splitter.DriveAndPath().begin(), splitter.File().end()));
+				XlCatString(_diffuseIBL, "_diffuse");
+				XlCatString(_diffuseIBL, splitter.ExtensionWithPeriod());
+			}
+
+			if (!_specularIBL[0]) {
+				XlCopyString(_specularIBL, MakeStringSection(splitter.DriveAndPath().begin(), splitter.File().end()));
+				XlCatString(_specularIBL, "_specular");
+				XlCatString(_specularIBL, splitter.ExtensionWithPeriod());
+			}
+		}
     }
 
     ShadowProjectionDesc::ShadowProjectionDesc()
