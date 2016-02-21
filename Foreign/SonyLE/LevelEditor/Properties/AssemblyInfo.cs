@@ -9,9 +9,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("LevelEditor")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Sony Computer Entertainment")]
+[assembly: AssemblyCompany("XL Games")]
 [assembly: AssemblyProduct("LevelEditor")]
-[assembly: AssemblyCopyright("Copyright © 2014 Sony Computer Entertainment America LLC")]
+[assembly: AssemblyCopyright("Copyright © 2016 XL Games Inc. (with parts by Sony Computer Entertainment America LLC)")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
