@@ -337,7 +337,9 @@ SpecularParameters SpecularParameters_RoughF0Transmission(float roughness, float
     return result;
 }
 
-#include "Diagrams/GGXTransmission.sh"
+#if MAT_TRANSMITTED_SPECULAR==1
+    #include "Diagrams/GGXTransmission.sh"
+#endif
 
 float GGXTransmissionFresnel(float3 i, float3 ot, float F0, float iorIncident, float iorOutgoing)
 {
