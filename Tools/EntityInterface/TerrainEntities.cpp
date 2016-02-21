@@ -39,7 +39,6 @@ namespace EntityInterface
 		const PropertyInitializer initializers[], size_t initializerCount)
 	{
 		if (id.ObjectType() == ObjectType_Terrain) {
-		    _terrainManager->Reset();
             _terrainManager->SetWorldSpaceOrigin(Float3(0.f, 0.f, 0.f));
             for (size_t c=0; c<initializerCount; ++c)
                 SetTerrainProperty(initializers[c]);
@@ -52,7 +51,6 @@ namespace EntityInterface
 		const Identifier& id)
 	{
 		if (id.ObjectType() == ObjectType_Terrain) {
-		    _terrainManager->Reset();
             _uberSurfaceDir = ::Assets::rstring();
     		return true;
         }
@@ -131,20 +129,10 @@ namespace EntityInterface
 		return 0;
 	}
 
-    void TerrainEntities::UnloadTerrain()
+	void TerrainEntities::OnTerrainReload()
     {
-        _terrainManager->Reset();
-    }
-
-    void TerrainEntities::ReloadTerrain()
-    {
-        TRY
-        {
-            if (!_uberSurfaceDir.empty())
-                _terrainManager->LoadUberSurface(_uberSurfaceDir.c_str());
-        } CATCH (...) {
-            _terrainManager->Reset();
-        } CATCH_END
+        if (!_uberSurfaceDir.empty())
+            _terrainManager->LoadUberSurface(_uberSurfaceDir.c_str());
     }
 
 	TerrainEntities::TerrainEntities(

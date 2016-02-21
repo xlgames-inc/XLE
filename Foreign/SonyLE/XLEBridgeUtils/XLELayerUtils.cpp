@@ -26,6 +26,14 @@ namespace XLEBridgeUtils
         property EntityInterface::DocumentId NativeDocumentId { EntityInterface::DocumentId get(); }
     };
 
+	public interface class INativeObjectAdapter
+	{
+	public:
+		void OnAddToDocument(INativeDocumentAdapter^ doc);
+		void OnRemoveFromDocument(INativeDocumentAdapter^ doc);
+		void OnSetParent(INativeObjectAdapter^ newParent, int insertionPosition);
+	};
+
     GUILayer::CameraDescWrapper^ Utils::AsCameraDesc(Sce::Atf::Rendering::Camera^ camera)
     {
         ToolsRig::VisCameraSettings visCam;

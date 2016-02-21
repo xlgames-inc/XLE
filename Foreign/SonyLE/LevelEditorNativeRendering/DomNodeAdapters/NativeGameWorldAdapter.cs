@@ -20,12 +20,12 @@ namespace RenderingInterop
             ManageNativeObjectLifeTime = true;
             foreach (var subnode in node.Subtree)
             {
-                NativeObjectAdapter childObject = subnode.As<NativeObjectAdapter>();
+                var childObject = subnode.As<XLEBridgeUtils.INativeObjectAdapter>();
                 if (childObject != null)
                 {
                     childObject.OnAddToDocument(this);
 
-                    NativeObjectAdapter parentObject = subnode.Parent.As<NativeObjectAdapter>();
+                    var parentObject = subnode.Parent.As<XLEBridgeUtils.INativeObjectAdapter>();
                     if (parentObject != null)
                         childObject.OnSetParent(parentObject, -1);
                 }
@@ -45,7 +45,7 @@ namespace RenderingInterop
             {
                 foreach (var subnode in node.Children)
                 {
-                    NativeObjectAdapter childObject = subnode.As<NativeObjectAdapter>();
+                    var childObject = subnode.As<XLEBridgeUtils.INativeObjectAdapter>();
                     if (childObject != null)
                         childObject.OnRemoveFromDocument(this);
                 }
@@ -64,12 +64,12 @@ namespace RenderingInterop
 
         private void node_ChildInserted_Internal(object child, object parent, int insertionPoint)
         {
-            NativeObjectAdapter childObject = child.As<NativeObjectAdapter>();
+            var childObject = child.As<XLEBridgeUtils.INativeObjectAdapter>();
             if (childObject != null)
             {
                 childObject.OnAddToDocument(this);
 
-                NativeObjectAdapter parentObject = parent.As<NativeObjectAdapter>();
+                var parentObject = parent.As<XLEBridgeUtils.INativeObjectAdapter>();
                 if (parentObject != null)
                 {
                     childObject.OnSetParent(parentObject, insertionPoint);

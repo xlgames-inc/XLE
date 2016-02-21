@@ -483,14 +483,14 @@ namespace GUILayer
         if (hasLock)
             throw gcnew System::Exception("Cannot unload the terrain because there are active terrain locks. Save or abandon the terrain lock before performing this operation.");
 
-        _terrainInterface->UnloadTerrain();
+		_scene->_terrainManager->Reset();
     }
 
     void EditorSceneManager::ReloadTerrain(TerrainConfig^ cfg)
     {
         auto nativeCfg = cfg->GetNative();
         _scene->_terrainManager->Load(nativeCfg, Int2(0,0), nativeCfg._cellCount, true);
-        _terrainInterface->ReloadTerrain();
+        _terrainInterface->OnTerrainReload();
         EntityInterface::ReloadTerrainFlexObjects(*_scene->_flexObjects, *_scene->_terrainManager);
     }
 

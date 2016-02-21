@@ -19,7 +19,7 @@ namespace RenderingInterop
     /// <summary>
     /// Adapter for DomNode that have runtime counterpart.
     /// It hold native object id and pushes dom changes to native object</summary>
-    public class NativeObjectAdapter : DomNodeAdapter, INativeObject
+    public class NativeObjectAdapter : DomNodeAdapter, INativeObject, XLEBridgeUtils.INativeObjectAdapter
     {
         protected override void OnNodeSet()
         {
@@ -42,7 +42,7 @@ namespace RenderingInterop
             // XLE>>
         }
 
-        public void OnRemoveFromDocument(NativeDocumentAdapter doc)
+        public void OnRemoveFromDocument(XLEBridgeUtils.INativeDocumentAdapter doc)
         {
             OnRemoveFromDocument_NonHier(doc);
 
@@ -61,7 +61,7 @@ namespace RenderingInterop
             }
         }
 
-        private void OnRemoveFromDocument_NonHier(NativeDocumentAdapter doc)
+        private void OnRemoveFromDocument_NonHier(XLEBridgeUtils.INativeDocumentAdapter doc)
         {
             if (DomNode == null || m_instanceId == 0) return;
 
@@ -73,7 +73,7 @@ namespace RenderingInterop
             ReleaseNativeHandle();
         }
 
-        public void OnAddToDocument(NativeDocumentAdapter doc)
+        public void OnAddToDocument(XLEBridgeUtils.INativeDocumentAdapter doc)
         {
             var node = DomNode;
             var docTest = (node != null) ? node.GetRoot().As<NativeDocumentAdapter>() : null;
@@ -81,13 +81,15 @@ namespace RenderingInterop
             CreateNativeObject();
         }
 
-        public void OnSetParent(NativeObjectAdapter newParent, int insertionPosition)
+        public void OnSetParent(XLEBridgeUtils.INativeObjectAdapter newParent, int insertionPosition)
         {
-            if (newParent != null) {
+            var p = newParent as NativeObjectAdapter;
+            if (p != null)
+            {
                 GameEngine.SetObjectParent(
                     m_documentId,
                     InstanceId, TypeId,
-                    newParent.InstanceId, newParent.TypeId, insertionPosition);
+                    p.InstanceId, p.TypeId, insertionPosition);
             }
             else
             {

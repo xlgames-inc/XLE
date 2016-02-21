@@ -31,7 +31,7 @@ namespace LevelEditorXLE.Terrain
         }
     }
 
-    class XLETerrainGob : DomNodeAdapter, IListable, ICommandClient, IContextMenuCommandProvider, IExportable, IHierarchical
+    class XLETerrainGob : DomNodeAdapter, IListable, ICommandClient, IContextMenuCommandProvider, IExportable, IHierarchical, XLEBridgeUtils.INativeObjectAdapter
     {
         public XLETerrainGob() {}
         public void GetInfo(ItemInfo info)
@@ -183,14 +183,6 @@ namespace LevelEditorXLE.Terrain
             return false;
         }
 
-        protected override void OnNodeSet()
-        {
-            // This should be called after the node is fully created and the
-            // terrain is ready to be loaded. We can call Reload() to build
-            // the native terrain from here.
-            if (!m_isLoaded) Reload();
-        }
-
         internal IEnumerable<uint> GetAllLayerIds()
         {
             List<uint> result = new List<uint>();
@@ -199,6 +191,24 @@ namespace LevelEditorXLE.Terrain
                 result.Add(l.LayerId);
             return result;
         }
+
+        #region NativeObjectAdapter
+        // protected override void OnNodeSet() {}
+        public void OnAddToDocument(XLEBridgeUtils.INativeDocumentAdapter doc)
+        {
+            // This should be called after the node is fully created and the
+            // terrain is ready to be loaded. We can call Reload() to build
+            // the native terrain from here.
+            if (!m_isLoaded) Reload();
+        }
+        public void OnRemoveFromDocument(XLEBridgeUtils.INativeDocumentAdapter doc)
+        {
+            // Note --  potential issues here if there are currently locks on the
+            //          terrain. The unload won't succeed in that case.
+            if (m_isLoaded) Unload();
+        }
+        public void OnSetParent(XLEBridgeUtils.INativeObjectAdapter newParent, int insertionPosition) { }
+        #endregion
 
         #region IExportable
         public string CacheExportTarget { get { return CellsDirectory + "/cached.dat"; } }
@@ -233,8 +243,15 @@ namespace LevelEditorXLE.Terrain
 
         internal void Reload()
         {
-            this.GetSceneManager().ReloadTerrain(BuildEngineConfig());
-            m_isLoaded = true;
+            try
+            {
+                this.GetSceneManager().ReloadTerrain(BuildEngineConfig());
+                m_isLoaded = true;
+            }
+            catch (Exception e)
+            {
+                ControlsLibrary.BasicControls.ExceptionReport.Show(e, "Unloading terrain");
+            }
         }
 
         private GUILayer.TerrainConfig BuildEngineConfig(TerrainConfig.Config cfg)
@@ -394,7 +411,7 @@ namespace LevelEditorXLE.Terrain
             {
                 dlg.Value = BuildDialogConfig();
                 var result = dlg.ShowDialog();
-                if (result == System.Windows.Forms.DialogResult.OK)
+                if (result == DialogResult.OK)
                     return Reconfigure(dlg.Value);
             }
             return false;
