@@ -7,10 +7,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.IO;
+using System.ComponentModel;
 
-using Sce.Atf;
 using Sce.Atf.Adaptation;
 using Sce.Atf.Applications;
 using Sce.Atf.Dom;
@@ -20,7 +18,7 @@ using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Environment
 {
-    public class XLEEnvSettings : DomNodeAdapter, IHierarchical, IListable
+    public class XLEEnvSettings : DomNodeAdapter, IHierarchical, IListable, ICommandClient, IContextMenuCommandProvider
     {
         public bool CanAddChild(object child)
         {
@@ -98,6 +96,99 @@ namespace LevelEditorXLE.Environment
             var result = new DomNode(Schema.envSettingsType.Type);
             result.SetAttribute(Schema.envSettingsType.NameAttribute, name);
             return result;
+        }
+
+        bool ICommandClient.CanDoCommand(object commandTag)
+        {
+            if (!(commandTag is Command)) return false;
+
+            switch ((Command)commandTag)
+            {
+                case Command.AddAmbientSettings:
+                    return GetChild<DomNode>(Schema.envSettingsType.ambientChild) == null;
+
+                case Command.AddToneMapSettings:
+                    return GetChild<DomNode>(Schema.envSettingsType.tonemapChild) == null;
+
+                case Command.AddSun:
+                    return FindObjectByName("Sun") == null;
+
+                case Command.AddAreaLight:
+                case Command.AddDirectionalLight:
+                    return true;
+            }
+
+            return false;
+        }
+
+        void ICommandClient.DoCommand(object commandTag)
+        {
+            if (!(commandTag is Command)) return;
+
+            switch ((Command)commandTag)
+            {
+                case Command.AddAmbientSettings:
+                    ApplicationUtil.Insert(
+                        DomNode.GetRoot(), this,
+                        new DomNode(Schema.ambientSettingsType.Type),
+                        "Add Ambient Settings", null);
+                    break;
+
+                case Command.AddToneMapSettings:
+                    ApplicationUtil.Insert(
+                        DomNode.GetRoot(), this,
+                        new DomNode(Schema.toneMapSettingsType.Type),
+                        "Add Tone Map Settings", null);
+                    break;
+
+                case Command.AddSun:
+                    {
+                            // the "Sun" is just a directional light with the name "Sun"
+                        var sun = new DomNode(Schema.directionalLightType.Type);
+                        sun.SetAttribute(Schema.gameObjectType.nameAttribute, "Sun");
+                        ApplicationUtil.Insert(DomNode.GetRoot(), this, sun, "Add Sun", null);
+                        ApplicationUtil.Insert(
+                            DomNode.GetRoot(), this,
+                            new DomNode(Schema.envUtilityType.Type),
+                            "Add Environment Utility", null);
+                        break;
+                    }
+
+                case Command.AddAreaLight:
+                    ApplicationUtil.Insert(
+                        DomNode.GetRoot(), this,
+                        new DomNode(Schema.areaLightType.Type),
+                        "Add Area Light", null);
+                    break;
+
+                case Command.AddDirectionalLight:
+                    ApplicationUtil.Insert(
+                        DomNode.GetRoot(), this,
+                        new DomNode(Schema.directionalLightType.Type),
+                        "Add Directional Light", null);
+                    break;
+            }
+        }
+
+        void ICommandClient.UpdateCommand(object commandTag, CommandState commandState)
+        {
+        }
+
+        private enum Command
+        {
+            [Description("Add ambient settings")] AddAmbientSettings,
+            [Description("Add tone map settings")] AddToneMapSettings,
+            [Description("Add Sun")] AddSun,
+            [Description("Add Directional Light")] AddDirectionalLight,
+            [Description("Add Area Light")] AddAreaLight
+        }
+
+        IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)
+        {
+            foreach (Command command in Enum.GetValues(typeof(Command)))
+            {
+                yield return command;
+            }
         }
     }
 

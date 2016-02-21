@@ -125,7 +125,10 @@ namespace LevelEditorXLE
             ambientSettingsType.Type = getNodeType("gap", "ambientSettingsType");
             ambientSettingsType.AmbientLightAttribute = ambientSettingsType.Type.GetAttributeInfo("AmbientLight");
             ambientSettingsType.AmbientBrightnessAttribute = ambientSettingsType.Type.GetAttributeInfo("AmbientBrightness");
+            ambientSettingsType.DiffuseIBLAttribute = ambientSettingsType.Type.GetAttributeInfo("DiffuseIBL");
+            ambientSettingsType.SpecularIBLAttribute = ambientSettingsType.Type.GetAttributeInfo("SpecularIBL");
             ambientSettingsType.SkyTextureAttribute = ambientSettingsType.Type.GetAttributeInfo("SkyTexture");
+            ambientSettingsType.SkyTextureTypeAttribute = ambientSettingsType.Type.GetAttributeInfo("SkyTextureType");
             ambientSettingsType.SkyReflectionScaleAttribute = ambientSettingsType.Type.GetAttributeInfo("SkyReflectionScale");
             ambientSettingsType.SkyReflectionBlurrinessAttribute = ambientSettingsType.Type.GetAttributeInfo("SkyReflectionBlurriness");
             ambientSettingsType.SkyBrightnessAttribute = ambientSettingsType.Type.GetAttributeInfo("SkyBrightness");
@@ -176,6 +179,24 @@ namespace LevelEditorXLE
             envSettingsFolderType.ExportEnabledAttribute = envSettingsFolderType.Type.GetAttributeInfo("ExportEnabled");
             envSettingsFolderType.settingsChild = envSettingsFolderType.Type.GetChildInfo("settings");
 
+            staticLightType.Type = getNodeType("gap", "staticLightType");
+            staticLightType.transformAttribute = staticLightType.Type.GetAttributeInfo("transform");
+            staticLightType.translateAttribute = staticLightType.Type.GetAttributeInfo("translate");
+            staticLightType.rotateAttribute = staticLightType.Type.GetAttributeInfo("rotate");
+            staticLightType.scaleAttribute = staticLightType.Type.GetAttributeInfo("scale");
+            staticLightType.pivotAttribute = staticLightType.Type.GetAttributeInfo("pivot");
+            staticLightType.transformationTypeAttribute = staticLightType.Type.GetAttributeInfo("transformationType");
+            staticLightType.nameAttribute = staticLightType.Type.GetAttributeInfo("name");
+            staticLightType.visibleAttribute = staticLightType.Type.GetAttributeInfo("visible");
+            staticLightType.lockedAttribute = staticLightType.Type.GetAttributeInfo("locked");
+            staticLightType.DiffuseAttribute = staticLightType.Type.GetAttributeInfo("Diffuse");
+            staticLightType.DiffuseBrightnessAttribute = staticLightType.Type.GetAttributeInfo("DiffuseBrightness");
+            staticLightType.DiffuseModelAttribute = staticLightType.Type.GetAttributeInfo("DiffuseModel");
+            staticLightType.DiffuseWideningMinAttribute = staticLightType.Type.GetAttributeInfo("DiffuseWideningMin");
+            staticLightType.DiffuseWideningMaxAttribute = staticLightType.Type.GetAttributeInfo("DiffuseWideningMax");
+            staticLightType.SpecularAttribute = staticLightType.Type.GetAttributeInfo("Specular");
+            staticLightType.SpecularBrightnessAttribute = staticLightType.Type.GetAttributeInfo("SpecularBrightness");
+
             directionalLightType.Type = getNodeType("gap", "directionalLightType");
             directionalLightType.transformAttribute = directionalLightType.Type.GetAttributeInfo("transform");
             directionalLightType.translateAttribute = directionalLightType.Type.GetAttributeInfo("translate");
@@ -193,9 +214,27 @@ namespace LevelEditorXLE
             directionalLightType.DiffuseWideningMaxAttribute = directionalLightType.Type.GetAttributeInfo("DiffuseWideningMax");
             directionalLightType.SpecularAttribute = directionalLightType.Type.GetAttributeInfo("Specular");
             directionalLightType.SpecularBrightnessAttribute = directionalLightType.Type.GetAttributeInfo("SpecularBrightness");
-            directionalLightType.SpecularNonMetalBrightnessAttribute = directionalLightType.Type.GetAttributeInfo("SpecularNonMetalBrightness");
             directionalLightType.FlagsAttribute = directionalLightType.Type.GetAttributeInfo("Flags");
             directionalLightType.ShadowResolveModelAttribute = directionalLightType.Type.GetAttributeInfo("ShadowResolveModel");
+
+            areaLightType.Type = getNodeType("gap", "areaLightType");
+            areaLightType.transformAttribute = areaLightType.Type.GetAttributeInfo("transform");
+            areaLightType.translateAttribute = areaLightType.Type.GetAttributeInfo("translate");
+            areaLightType.rotateAttribute = areaLightType.Type.GetAttributeInfo("rotate");
+            areaLightType.scaleAttribute = areaLightType.Type.GetAttributeInfo("scale");
+            areaLightType.pivotAttribute = areaLightType.Type.GetAttributeInfo("pivot");
+            areaLightType.transformationTypeAttribute = areaLightType.Type.GetAttributeInfo("transformationType");
+            areaLightType.nameAttribute = areaLightType.Type.GetAttributeInfo("name");
+            areaLightType.visibleAttribute = areaLightType.Type.GetAttributeInfo("visible");
+            areaLightType.lockedAttribute = areaLightType.Type.GetAttributeInfo("locked");
+            areaLightType.DiffuseAttribute = areaLightType.Type.GetAttributeInfo("Diffuse");
+            areaLightType.DiffuseBrightnessAttribute = areaLightType.Type.GetAttributeInfo("DiffuseBrightness");
+            areaLightType.DiffuseModelAttribute = areaLightType.Type.GetAttributeInfo("DiffuseModel");
+            areaLightType.DiffuseWideningMinAttribute = areaLightType.Type.GetAttributeInfo("DiffuseWideningMin");
+            areaLightType.DiffuseWideningMaxAttribute = areaLightType.Type.GetAttributeInfo("DiffuseWideningMax");
+            areaLightType.SpecularAttribute = areaLightType.Type.GetAttributeInfo("Specular");
+            areaLightType.SpecularBrightnessAttribute = areaLightType.Type.GetAttributeInfo("SpecularBrightness");
+            areaLightType.ShapeAttribute = areaLightType.Type.GetAttributeInfo("Shape");
 
             shadowFrustumSettings.Type = getNodeType("gap", "shadowFrustumSettings");
             shadowFrustumSettings.NameAttribute = shadowFrustumSettings.Type.GetAttributeInfo("Name");
@@ -205,9 +244,12 @@ namespace LevelEditorXLE
             shadowFrustumSettings.FrustumSizeFactorAttribute = shadowFrustumSettings.Type.GetAttributeInfo("FrustumSizeFactor");
             shadowFrustumSettings.FocusDistanceAttribute = shadowFrustumSettings.Type.GetAttributeInfo("FocusDistance");
             shadowFrustumSettings.TextureSizeAttribute = shadowFrustumSettings.Type.GetAttributeInfo("TextureSize");
-            shadowFrustumSettings.ShadowSlopeScaledBiasAttribute = shadowFrustumSettings.Type.GetAttributeInfo("ShadowSlopeScaledBias");
-            shadowFrustumSettings.ShadowDepthBiasClampAttribute = shadowFrustumSettings.Type.GetAttributeInfo("ShadowDepthBiasClamp");
-            shadowFrustumSettings.ShadowRasterDepthBiasAttribute = shadowFrustumSettings.Type.GetAttributeInfo("ShadowRasterDepthBias");
+            shadowFrustumSettings.SingleSidedSlopeScaledBiasAttribute = shadowFrustumSettings.Type.GetAttributeInfo("SingleSidedSlopeScaledBias");
+            shadowFrustumSettings.SingleSidedDepthBiasClampAttribute = shadowFrustumSettings.Type.GetAttributeInfo("SingleSidedDepthBiasClamp");
+            shadowFrustumSettings.SingleSidedRasterDepthBiasAttribute = shadowFrustumSettings.Type.GetAttributeInfo("SingleSidedRasterDepthBias");
+            shadowFrustumSettings.DoubleSidedSlopeScaledBiasAttribute = shadowFrustumSettings.Type.GetAttributeInfo("DoubleSidedSlopeScaledBias");
+            shadowFrustumSettings.DoubleSidedDepthBiasClampAttribute = shadowFrustumSettings.Type.GetAttributeInfo("DoubleSidedDepthBiasClamp");
+            shadowFrustumSettings.DoubleSidedRasterDepthBiasAttribute = shadowFrustumSettings.Type.GetAttributeInfo("DoubleSidedRasterDepthBias");
             shadowFrustumSettings.WorldSpaceResolveBiasAttribute = shadowFrustumSettings.Type.GetAttributeInfo("WorldSpaceResolveBias");
             shadowFrustumSettings.BlurAngleDegreesAttribute = shadowFrustumSettings.Type.GetAttributeInfo("BlurAngleDegrees");
             shadowFrustumSettings.MinBlurSearchAttribute = shadowFrustumSettings.Type.GetAttributeInfo("MinBlurSearch");
@@ -345,6 +387,25 @@ namespace LevelEditorXLE
             placementObjectType.materialAttribute = placementObjectType.Type.GetAttributeInfo("material");
             placementObjectType.supplementsAttribute = placementObjectType.Type.GetAttributeInfo("supplements");
 
+            dynamicImpostersConfig.Type = getNodeType("gap", "dynamicImpostersConfig");
+            dynamicImpostersConfig.transformAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("transform");
+            dynamicImpostersConfig.translateAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("translate");
+            dynamicImpostersConfig.rotateAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("rotate");
+            dynamicImpostersConfig.scaleAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("scale");
+            dynamicImpostersConfig.pivotAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("pivot");
+            dynamicImpostersConfig.transformationTypeAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("transformationType");
+            dynamicImpostersConfig.nameAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("name");
+            dynamicImpostersConfig.visibleAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("visible");
+            dynamicImpostersConfig.lockedAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("locked");
+            dynamicImpostersConfig.ThresholdDistanceAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("ThresholdDistance");
+            dynamicImpostersConfig.AngleQuantAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("AngleQuant");
+            dynamicImpostersConfig.CalibrationDistanceAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("CalibrationDistance");
+            dynamicImpostersConfig.CalibrationFovAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("CalibrationFov");
+            dynamicImpostersConfig.CalibrationPixelsAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("CalibrationPixels");
+            dynamicImpostersConfig.MinDimsAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("MinDims");
+            dynamicImpostersConfig.MaxDimsAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("MaxDims");
+            dynamicImpostersConfig.AltasSizeAttribute = dynamicImpostersConfig.Type.GetAttributeInfo("AltasSize");
+
             abstractTerrainMaterialDescType.Type = getNodeType("gap", "abstractTerrainMaterialDescType");
             abstractTerrainMaterialDescType.MaterialIdAttribute = abstractTerrainMaterialDescType.Type.GetAttributeInfo("MaterialId");
 
@@ -406,6 +467,7 @@ namespace LevelEditorXLE
             vegetationSpawnConfigType.Type = getNodeType("gap", "vegetationSpawnConfigType");
             vegetationSpawnConfigType.BaseGridSpacingAttribute = vegetationSpawnConfigType.Type.GetAttributeInfo("BaseGridSpacing");
             vegetationSpawnConfigType.JitterAmountAttribute = vegetationSpawnConfigType.Type.GetAttributeInfo("JitterAmount");
+            vegetationSpawnConfigType.AlignToTerrainUpAttribute = vegetationSpawnConfigType.Type.GetAttributeInfo("AlignToTerrainUp");
             vegetationSpawnConfigType.materialChild = vegetationSpawnConfigType.Type.GetChildInfo("material");
 
             terrainCoverageLayer.Type = getNodeType("gap", "terrainCoverageLayer");
@@ -652,7 +714,10 @@ namespace LevelEditorXLE
             public static DomNodeType Type;
             public static AttributeInfo AmbientLightAttribute;
             public static AttributeInfo AmbientBrightnessAttribute;
+            public static AttributeInfo DiffuseIBLAttribute;
+            public static AttributeInfo SpecularIBLAttribute;
             public static AttributeInfo SkyTextureAttribute;
+            public static AttributeInfo SkyTextureTypeAttribute;
             public static AttributeInfo SkyReflectionScaleAttribute;
             public static AttributeInfo SkyReflectionBlurrinessAttribute;
             public static AttributeInfo SkyBrightnessAttribute;
@@ -719,6 +784,27 @@ namespace LevelEditorXLE
             public static ChildInfo settingsChild;
         }
 
+        public static class staticLightType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static AttributeInfo DiffuseAttribute;
+            public static AttributeInfo DiffuseBrightnessAttribute;
+            public static AttributeInfo DiffuseModelAttribute;
+            public static AttributeInfo DiffuseWideningMinAttribute;
+            public static AttributeInfo DiffuseWideningMaxAttribute;
+            public static AttributeInfo SpecularAttribute;
+            public static AttributeInfo SpecularBrightnessAttribute;
+        }
+
         public static class directionalLightType
         {
             public static DomNodeType Type;
@@ -738,9 +824,30 @@ namespace LevelEditorXLE
             public static AttributeInfo DiffuseWideningMaxAttribute;
             public static AttributeInfo SpecularAttribute;
             public static AttributeInfo SpecularBrightnessAttribute;
-            public static AttributeInfo SpecularNonMetalBrightnessAttribute;
             public static AttributeInfo FlagsAttribute;
             public static AttributeInfo ShadowResolveModelAttribute;
+        }
+
+        public static class areaLightType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static AttributeInfo DiffuseAttribute;
+            public static AttributeInfo DiffuseBrightnessAttribute;
+            public static AttributeInfo DiffuseModelAttribute;
+            public static AttributeInfo DiffuseWideningMinAttribute;
+            public static AttributeInfo DiffuseWideningMaxAttribute;
+            public static AttributeInfo SpecularAttribute;
+            public static AttributeInfo SpecularBrightnessAttribute;
+            public static AttributeInfo ShapeAttribute;
         }
 
         public static class shadowFrustumSettings
@@ -753,9 +860,12 @@ namespace LevelEditorXLE
             public static AttributeInfo FrustumSizeFactorAttribute;
             public static AttributeInfo FocusDistanceAttribute;
             public static AttributeInfo TextureSizeAttribute;
-            public static AttributeInfo ShadowSlopeScaledBiasAttribute;
-            public static AttributeInfo ShadowDepthBiasClampAttribute;
-            public static AttributeInfo ShadowRasterDepthBiasAttribute;
+            public static AttributeInfo SingleSidedSlopeScaledBiasAttribute;
+            public static AttributeInfo SingleSidedDepthBiasClampAttribute;
+            public static AttributeInfo SingleSidedRasterDepthBiasAttribute;
+            public static AttributeInfo DoubleSidedSlopeScaledBiasAttribute;
+            public static AttributeInfo DoubleSidedDepthBiasClampAttribute;
+            public static AttributeInfo DoubleSidedRasterDepthBiasAttribute;
             public static AttributeInfo WorldSpaceResolveBiasAttribute;
             public static AttributeInfo BlurAngleDegreesAttribute;
             public static AttributeInfo MinBlurSearchAttribute;
@@ -921,6 +1031,28 @@ namespace LevelEditorXLE
             public static AttributeInfo supplementsAttribute;
         }
 
+        public static class dynamicImpostersConfig
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static AttributeInfo ThresholdDistanceAttribute;
+            public static AttributeInfo AngleQuantAttribute;
+            public static AttributeInfo CalibrationDistanceAttribute;
+            public static AttributeInfo CalibrationFovAttribute;
+            public static AttributeInfo CalibrationPixelsAttribute;
+            public static AttributeInfo MinDimsAttribute;
+            public static AttributeInfo MaxDimsAttribute;
+            public static AttributeInfo AltasSizeAttribute;
+        }
+
         public static class abstractTerrainMaterialDescType
         {
             public static DomNodeType Type;
@@ -1008,6 +1140,7 @@ namespace LevelEditorXLE
             public static DomNodeType Type;
             public static AttributeInfo BaseGridSpacingAttribute;
             public static AttributeInfo JitterAmountAttribute;
+            public static AttributeInfo AlignToTerrainUpAttribute;
             public static ChildInfo materialChild;
         }
 
