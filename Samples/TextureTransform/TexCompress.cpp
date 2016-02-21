@@ -202,13 +202,13 @@ namespace TextureTransform
                 auto* srcData = pkt.GetData(subRes);
                 auto srcPitches = pkt.GetPitches(subRes);
                 auto* dstImage = result.GetImage(m, a, 0);
-                unsigned mipHeight = std::max(4u, srcDesc._height >> m);
+                unsigned mipHeight = std::max(1u, srcDesc._height >> m);
 
                 for (unsigned s=0; s<std::max(1u, mipHeight/rowsPerStrip); ++s) {
                     rgba_surface src 
                     {
                         (uint8_t*)PtrAdd(srcData, s*rowsPerStrip*srcPitches._rowPitch), 
-                        std::max(4u, srcDesc._width >> m),
+                        std::max(1u, srcDesc._width >> m),
                         std::min((s+1)*rowsPerStrip, mipHeight) - s*rowsPerStrip,
                         srcPitches._rowPitch
                     };
