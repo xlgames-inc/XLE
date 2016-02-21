@@ -45,8 +45,9 @@ namespace Assets
         void Add(const std::shared_ptr<IPollingAsyncProcess>& pollingProcess);
         void Add(std::unique_ptr<IThreadPump>&& threadPump);
 
-        IntermediateAssets::Store&       GetIntermediateStore();
-        IntermediateAssets::CompilerSet& GetIntermediateCompilers();
+        IntermediateAssets::Store&			GetIntermediateStore();
+        IntermediateAssets::CompilerSet&	GetIntermediateCompilers();
+		IntermediateAssets::Store&			GetShadowingStore();
 
         CompileAndAsyncManager();
         ~CompileAndAsyncManager();

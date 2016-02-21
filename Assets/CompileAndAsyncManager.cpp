@@ -32,6 +32,7 @@ namespace Assets
 	{
 	public:
 		std::unique_ptr<IntermediateAssets::Store> _intStore;
+		std::unique_ptr<IntermediateAssets::Store> _shadowingStore;
         std::unique_ptr<IntermediateAssets::CompilerSet> _intMan;
 		std::vector<std::shared_ptr<IPollingAsyncProcess>> _pollingProcesses;
 		std::unique_ptr<IThreadPump> _threadPump;
@@ -88,6 +89,11 @@ namespace Assets
 		return *_pimpl->_intMan.get();
     }
 
+	IntermediateAssets::Store& CompileAndAsyncManager::GetShadowingStore()
+	{
+		return *_pimpl->_shadowingStore.get();
+	}
+
     void CompileAndAsyncManager::Add(std::unique_ptr<IThreadPump>&& threadPump)
     {
 		assert(!_pimpl->_threadPump);
@@ -119,13 +125,12 @@ namespace Assets
                 const char storeVersionString[] = "0.0.0r";
             #endif
         #endif
-        auto intStore = std::make_unique<IntermediateAssets::Store>("Int", storeVersionString);
 
-        auto intMan = std::make_unique<IntermediateAssets::CompilerSet>();
 		_pimpl = std::make_unique<Pimpl>();
+		_pimpl->_intStore = std::make_unique<IntermediateAssets::Store>("Int", storeVersionString);
+		_pimpl->_shadowingStore = std::make_unique<IntermediateAssets::Store>("Int", storeVersionString, true);
 
-        _pimpl->_intMan = std::move(intMan);
-        _pimpl->_intStore = std::move(intStore);
+		_pimpl->_intMan = std::make_unique<IntermediateAssets::CompilerSet>();
     }
 
     CompileAndAsyncManager::~CompileAndAsyncManager()

@@ -240,84 +240,92 @@ namespace Assets { namespace IntermediateAssets
         return result;
     }
 
-    Store::Store(const ResChar baseDirectory[], const ResChar versionString[])
+    Store::Store(const ResChar baseDirectory[], const ResChar versionString[], bool universal)
     {
             //  First, we need to find an output directory to use.
             //  We want a directory that isn't currently being used, and
             //  that matches the version string.
 
-        char buffer[MaxPath];
-        _snprintf_s(buffer, _TRUNCATE, "%s/d*", baseDirectory);
+		ResChar buffer[MaxPath];
 
-        std::string goodBranchDir;
+		if (!universal) {
+			_snprintf_s(buffer, _TRUNCATE, "%s/d*", baseDirectory);
 
-        {
-                //  Look for existing directories that could match the version
-                //  string we have. 
-            WIN32_FIND_DATAA findData;
-            XlZeroMemory(findData);
-            HANDLE findHandle = FindFirstFileA(buffer, &findData);
-            if (findHandle != INVALID_HANDLE_VALUE) {
-                do {
-                    if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                        _snprintf_s(buffer, _TRUNCATE, "%s/%s/.store", baseDirectory, findData.cFileName);
-                        TRY 
-                        {
-                                // Note --  Ideally we want to prevent two different instances of the
-                                //          same app from using the same intermediate assets store.
-                                //          We can do this by use a "non-shareable" file mode when
-                                //          we load these files. 
-                            BasicFile markerFile(buffer, "r+b");
-                            auto fileSize = markerFile.GetSize();
-                            if (fileSize != 0) {
-                                auto rawData = std::unique_ptr<uint8[]>(new uint8[int(fileSize)]);
-                                markerFile.Read(rawData.get(), 1, size_t(fileSize));
+			std::string goodBranchDir;
 
-                                Data data;
-                                data.Load((const char*)rawData.get(), (int)fileSize);
-                                auto* compareVersion = data.StrAttribute("VersionString");
-                                if (!_stricmp(versionString, compareVersion)) {
-                                    // this branch is already present, and is good... so use it
-                                    goodBranchDir = std::string(baseDirectory) + "/" + findData.cFileName;
-                                    break;
-                                }
+			{
+					//  Look for existing directories that could match the version
+					//  string we have. 
+				WIN32_FIND_DATAA findData;
+				XlZeroMemory(findData);
+				HANDLE findHandle = FindFirstFileA(buffer, &findData);
+				if (findHandle != INVALID_HANDLE_VALUE) {
+					do {
+						if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+							_snprintf_s(buffer, _TRUNCATE, "%s/%s/.store", baseDirectory, findData.cFileName);
+							TRY 
+							{
+									// Note --  Ideally we want to prevent two different instances of the
+									//          same app from using the same intermediate assets store.
+									//          We can do this by use a "non-shareable" file mode when
+									//          we load these files. 
+								BasicFile markerFile(buffer, "r+b");
+								auto fileSize = markerFile.GetSize();
+								if (fileSize != 0) {
+									auto rawData = std::unique_ptr<uint8[]>(new uint8[int(fileSize)]);
+									markerFile.Read(rawData.get(), 1, size_t(fileSize));
 
-                                // it's a store for some other version of the executable. Try the next one
-                                continue;
-                            }
-                        } 
-                        CATCH (...) {}
-                        CATCH_END
-                    }
-                } while (FindNextFileA(findHandle, &findData));
+									Data data;
+									data.Load((const char*)rawData.get(), (int)fileSize);
+									auto* compareVersion = data.StrAttribute("VersionString");
+									if (!_stricmp(versionString, compareVersion)) {
+										// this branch is already present, and is good... so use it
+										goodBranchDir = std::string(baseDirectory) + "/" + findData.cFileName;
+										break;
+									}
 
-                FindClose(findHandle);
-            }
-        }
+									// it's a store for some other version of the executable. Try the next one
+									continue;
+								}
+							} 
+							CATCH (...) {}
+							CATCH_END
+						}
+					} while (FindNextFileA(findHandle, &findData));
 
-        if (goodBranchDir.empty()) {
-                // if we didn't find an existing folder we can use, we need to create a new one
-                // search through to find the first unused directory
-            for (unsigned d=0;;++d) {
-                _snprintf_s(buffer, _TRUNCATE, "%s/d%i", baseDirectory, d);
-                DWORD dwAttrib = GetFileAttributes(buffer);
-                if (dwAttrib != INVALID_FILE_ATTRIBUTES) {
-                    continue;
-                }
+					FindClose(findHandle);
+				}
+			}
 
-                CreateDirectoryRecursive(buffer);
-                goodBranchDir = buffer;
+			if (goodBranchDir.empty()) {
+					// if we didn't find an existing folder we can use, we need to create a new one
+					// search through to find the first unused directory
+				for (unsigned d=0;;++d) {
+					_snprintf_s(buffer, _TRUNCATE, "%s/d%i", baseDirectory, d);
+					DWORD dwAttrib = GetFileAttributes(buffer);
+					if (dwAttrib != INVALID_FILE_ATTRIBUTES) {
+						continue;
+					}
 
-                _snprintf_s(buffer, _TRUNCATE, "%s/d%i/.store", baseDirectory, d);
+					CreateDirectoryRecursive(buffer);
+					goodBranchDir = buffer;
 
-                Data newData;
-                newData.SetAttribute("VersionString", versionString);
-                newData.Save(buffer);
-                break;
-            }
-        }
+					_snprintf_s(buffer, _TRUNCATE, "%s/d%i/.store", baseDirectory, d);
 
-        _baseDirectory = goodBranchDir;
+					Data newData;
+					newData.SetAttribute("VersionString", versionString);
+					newData.Save(buffer);
+					break;
+				}
+			}
+
+			_baseDirectory = goodBranchDir;
+		} else {
+			// This is the "universal" store directory. A single directory is used by all
+			// versions of the game.
+			_snprintf_s(buffer, _TRUNCATE, "%s/u", baseDirectory);
+			_baseDirectory = buffer;
+		}
     }
 
     Store::~Store() 

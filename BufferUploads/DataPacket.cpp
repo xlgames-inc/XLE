@@ -390,26 +390,44 @@ namespace BufferUploads
                 decltype(this->_returnPointer) releaseReference = std::move(this->_returnPointer);
 
                 HRESULT hresult = -1;
-                const auto* filename = this->_filename;
-                auto fmt = GetTexFmt((const ucs2*)filename);
+				bool loadedDDSFormat = false;
+				
+					// The filename can actually contain multiple alternatives. We're going
+					// to test each one until we find one that works. Scan forward until we
+					// find 2 null characters in a row, or the end of the array
+				const auto* filename = this->_filename;
+				const auto *iend = &this->_filename[dimof(this->_filename)];
+				while (*filename && filename < iend) {
+					auto fmt = GetTexFmt((const ucs2*)filename);
                 
-                if (fmt == TexFmt::DDS) {
-                    hresult = LoadFromDDSFile(filename, DDS_FLAGS_NONE, &_texMetadata, _image);
-                } else if (fmt == TexFmt::TGA) {
-                    hresult = LoadFromTGAFile(filename, &_texMetadata, _image);
-                } else if (fmt == TexFmt::WIC) {
-                    hresult = LoadFromWICFile(filename, WIC_FLAGS_NONE, &_texMetadata, _image);
-                } else {
-                    LogWarning << "Texture format not apparent from filename (" << filename << ")";
-                }
+					if (fmt == TexFmt::DDS) {
+						hresult = LoadFromDDSFile(filename, DDS_FLAGS_NONE, &_texMetadata, _image);
+					} else if (fmt == TexFmt::TGA) {
+						hresult = LoadFromTGAFile(filename, &_texMetadata, _image);
+					} else if (fmt == TexFmt::WIC) {
+						hresult = LoadFromWICFile(filename, WIC_FLAGS_NONE, &_texMetadata, _image);
+					} else {
+						LogWarning << "Texture format not apparent from filename (" << filename << ")";
+					}
+
+					if (SUCCEEDED(hresult)) { loadedDDSFormat = fmt == TexFmt::DDS; break; }
+
+					while (filename < iend && *filename != L'\0') ++filename;
+					if (filename < iend) ++filename;	// skip over this null, and there might be another filename
+				}
 
                 if (SUCCEEDED(hresult)) {
                     auto& desc = this->_marker->_desc;
                     desc._type = BufferDesc::Type::Texture;
                     desc._textureDesc = BuildTextureDesc(_texMetadata);
 
+					// note --	When loading from a .dds file, never generate the mipmaps. Typically we want mipmaps to be
+					//			pre-generated and stored on disk. If we come across a dds file without mipmaps, we'll assume
+					//			that it was intended to be that way.
                     if (   (this->_texMetadata.mipLevels <= 1) && (this->_texMetadata.arraySize <= 1) 
-                        && (this->_flags & TextureLoadFlags::GenerateMipmaps)) {
+                        && (this->_flags & TextureLoadFlags::GenerateMipmaps) && !loadedDDSFormat) {
+
+						LogInfo << "Building mipmaps for texture: " << filename;
                         DirectX::ScratchImage newImage;
                         auto mipmapHresult = GenerateMipMaps(*this->_image.GetImage(0,0,0), (DWORD)TEX_FILTER_DEFAULT, 0, newImage);
                         if (SUCCEEDED(mipmapHresult)) {
@@ -438,7 +456,12 @@ namespace BufferUploads
     : _flags(flags)
     {
         XlZeroMemory(_texMetadata);
+		XlZeroMemory(_filename);
         Conversion::Convert(_filename, dimof(_filename), filename, filenameEnd);
+
+		// replace semicolon dividers with null chars
+		for (auto* i=_filename; *i; ++i)
+			if (*i == L';') *i = L'\0';
     }
 
     StreamingTexture::~StreamingTexture()

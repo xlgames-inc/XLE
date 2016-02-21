@@ -103,7 +103,7 @@ namespace Assets { namespace IntermediateAssets
         static auto GetDependentFileState(const StringSection<ResChar> filename) -> DependentFileState;
         static void ShadowFile(const ResChar filename[]);
 
-        Store(const ResChar baseDirectory[], const ResChar versionString[]);
+        Store(const ResChar baseDirectory[], const ResChar versionString[], bool universal = false);
         ~Store();
         Store(const Store&) = delete;
         Store& operator=(const Store&) = delete;

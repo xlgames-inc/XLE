@@ -11,6 +11,9 @@
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/DataPacket.h"
 #include "../../BufferUploads/ResourceLocator.h"
+#include "../../Assets/AssetServices.h"
+#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Threading/CompletionThreadPool.h"
@@ -117,6 +120,23 @@ namespace RenderCore { namespace Assets
         }
     }
 
+	static bool CheckShadowingFile(const FileNameSplitter<::Assets::ResChar>& splitter)
+	{
+		return !XlEqStringI(splitter.Extension(), "dds");
+	}
+
+	template<int Count>
+		static void BuildRequestString(
+			::Assets::ResChar (&buffer)[Count],
+			const FileNameSplitter<::Assets::ResChar>& splitter)
+	{
+		auto& store = ::Assets::Services::GetAsyncMan().GetShadowingStore();
+		store.MakeIntermediateName(
+			buffer, Count, MakeStringSection(splitter.DriveAndPath().begin(), splitter.File().end()));
+		XlCatString(buffer, Count, ".dds;");
+		XlCatString(buffer, Count, splitter.AllExceptParameters());
+	}
+
     DeferredShaderResource::DeferredShaderResource(const ResChar initializer[])
     {
         DEBUG_ONLY(XlCopyString(_initializer, dimof(_initializer), initializer);)
@@ -129,6 +149,7 @@ namespace RenderCore { namespace Assets
         _pimpl->_colSpaceRequestString = init._colSpaceRequestString;
         _pimpl->_colSpaceDefault = init._colSpaceDefault;
 
+		::Assets::ResChar filename[MaxPath];
         if (_pimpl->_colSpaceRequestString == SourceColorSpace::Unspecified) {
                 // No color space explicitly requested. We need to calculate the default
                 // color space for this texture...
@@ -145,7 +166,6 @@ namespace RenderCore { namespace Assets
 
                 // trigger a load of the metadata file (which should proceed in the background)
             
-            ::Assets::ResChar filename[MaxPath];
             XlCopyString(filename, init._splitter.AllExceptParameters());
             XlCatString(filename, ".metadata");
             RegisterFileDependency(_validationCallback, filename);
@@ -156,7 +176,19 @@ namespace RenderCore { namespace Assets
 
         using namespace BufferUploads;
         TextureLoadFlags::BitField flags = init._generateMipmaps ? TextureLoadFlags::GenerateMipmaps : 0;
-        auto pkt = CreateStreamingTextureSource(init._splitter.AllExceptParameters(), flags);
+
+		// We're going to check for the existance of a "shadowing" file first. We'll write onto "filename"
+		// two names -- a possible shadowing file, and the original file as well. But don't do this for
+		// DDS files. We'll assume they do not have a shadowing file.
+		intrusive_ptr<DataPacket> pkt;
+		const bool checkForShadowingFile = CheckShadowingFile(init._splitter);
+		if (checkForShadowingFile) {
+			BuildRequestString(filename, init._splitter);
+			pkt = CreateStreamingTextureSource(MakeStringSection(filename), flags);
+		} else {
+			pkt = CreateStreamingTextureSource(init._splitter.AllExceptParameters(), flags);
+		}
+
         _pimpl->_transaction = Services::GetBufferUploads().Transaction_Begin(
             CreateDesc(
                 BindFlag::ShaderResource,
@@ -307,7 +339,16 @@ namespace RenderCore { namespace Assets
     Metal::NativeFormat::Enum DeferredShaderResource::LoadFormat(const ::Assets::ResChar initializer[])
     {
         DecodedInitializer init(initializer);
-        auto result = (Metal::NativeFormat::Enum)BufferUploads::LoadTextureFormat(init._splitter.AllExceptParameters())._nativePixelFormat;
+
+		Metal::NativeFormat::Enum result;
+		const bool checkForShadowingFile = CheckShadowingFile(init._splitter);
+		if (checkForShadowingFile) {
+			::Assets::ResChar filename[MaxPath];
+			BuildRequestString(filename, init._splitter);
+			result = (Metal::NativeFormat::Enum)BufferUploads::LoadTextureFormat(MakeStringSection(filename))._nativePixelFormat;
+		} else
+			result = (Metal::NativeFormat::Enum)BufferUploads::LoadTextureFormat(init._splitter.AllExceptParameters())._nativePixelFormat;
+
         return ResolveFormatImmediate(result, init);
     }
 
@@ -317,7 +358,16 @@ namespace RenderCore { namespace Assets
 
         using namespace BufferUploads;
         TextureLoadFlags::BitField flags = init._generateMipmaps ? TextureLoadFlags::GenerateMipmaps : 0;
-        auto pkt = CreateStreamingTextureSource(init._splitter.AllExceptParameters(), flags);
+
+		intrusive_ptr<DataPacket> pkt;
+		const bool checkForShadowingFile = CheckShadowingFile(init._splitter);
+		if (checkForShadowingFile) {
+			::Assets::ResChar filename[MaxPath];
+			BuildRequestString(filename, init._splitter);
+			pkt = CreateStreamingTextureSource(MakeStringSection(filename), flags);
+		} else
+			pkt = CreateStreamingTextureSource(init._splitter.AllExceptParameters(), flags);
+
         auto result = Services::GetBufferUploads().Transaction_Immediate(
             CreateDesc(
                 BindFlag::ShaderResource,
