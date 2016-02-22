@@ -134,6 +134,12 @@ namespace LevelEditorXLE.Terrain
             set { DomNode.SetChild(TerrainST.baseTextureChild, value); }
         }
 
+        public DomNode VegetationSpawn
+        {
+            get { return DomNode.GetChild(TerrainST.VegetationSpawnChild); }
+            set { DomNode.SetChild(TerrainST.VegetationSpawnChild, value); }
+        }
+
         public IList<XLETerrainCoverage> CoverageLayers
         {
             get
@@ -161,6 +167,7 @@ namespace LevelEditorXLE.Terrain
             if (domNode == null) return false;
             return  IsDerivedFrom(domNode, Schema.vegetationSpawnConfigType.Type)
                 ||  IsDerivedFrom(domNode, Schema.abstractTerrainMaterialDescType.Type)
+                ||  IsDerivedFrom(domNode, Schema.terrainBaseTextureType.Type)
                 ;
         }
         public bool AddChild(object child)
@@ -169,6 +176,12 @@ namespace LevelEditorXLE.Terrain
             if (domNode != null && IsDerivedFrom(domNode, Schema.vegetationSpawnConfigType.Type))
             {
                 SetChild(Schema.terrainType.VegetationSpawnChild, domNode);
+                return true;
+            }
+
+            if (domNode != null && IsDerivedFrom(domNode, Schema.terrainBaseTextureType.Type))
+            {
+                SetChild(Schema.terrainType.baseTextureChild, domNode);
                 return true;
             }
 
@@ -513,6 +526,9 @@ namespace LevelEditorXLE.Terrain
                     case Command.CreateBaseTexture:
                         return BaseTexture == null;
 
+                    case Command.CreateVegetationSpawn:
+                        return VegetationSpawn == null;
+
                     case Command.Configure:
                     case Command.GenerateShadows:
                     case Command.FlushToDisk:
@@ -555,8 +571,17 @@ namespace LevelEditorXLE.Terrain
             {
                 case Command.CreateBaseTexture:
                     {
-                        if (BaseTexture == null)
-                            BaseTexture = new DomNode(Schema.terrainBaseTextureType.Type);
+                        ApplicationUtil.Insert(
+                            DomNode.GetRoot(), this, new DomNode(Schema.terrainBaseTextureType.Type), 
+                            "Create Terrain Texturing", null);
+                        break;
+                    }
+
+                case Command.CreateVegetationSpawn:
+                    {
+                        ApplicationUtil.Insert(
+                            DomNode.GetRoot(), this, new DomNode(Schema.vegetationSpawnConfigType.Type),
+                            "Create Vegetation Config", null);
                         break;
                     }
 
@@ -660,7 +685,9 @@ namespace LevelEditorXLE.Terrain
 
         private enum Command
         {
-            [Description("Create Base Texture")] CreateBaseTexture,
+            [Description("Add Texturing Settings")] CreateBaseTexture,
+            [Description("Add Vegetation Spawn")] CreateVegetationSpawn,
+
             [Description("Configure Terrain...")] Configure,
             [Description("Generate Shadows")] GenerateShadows,
             [Description("Commit to disk")] FlushToDisk,

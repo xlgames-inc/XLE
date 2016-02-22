@@ -57,9 +57,9 @@ namespace LevelEditorXLE
         }
     }
 
-    public class AssetNameNoExtConverter : TypeConverter
+    public class AssetNameNoExtConverter : AssetNameConverter
     {
-        protected virtual string UriToAssetName(Uri uri)
+        protected override string UriToAssetName(Uri uri)
         {
             var resService = LevelEditorCore.Globals.MEFContainer.GetExportedValue<IXLEAssetService>();
             return resService.StripExtension(resService.AsAssetName(uri));

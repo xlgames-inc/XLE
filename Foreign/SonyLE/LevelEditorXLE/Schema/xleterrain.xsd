@@ -39,9 +39,9 @@
     <xs:sequence>
       <xs:element name="material" type="abstractTerrainMaterialDescType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
-    <xs:attribute name="diffusedims" type="vector3Type" default="512 512 1"/>
-    <xs:attribute name="normaldims" type="vector3Type" default="512 512 1"/>
-    <xs:attribute name="paramdims" type="vector3Type" default="512 512 1"/>
+    <xs:attribute name="diffusedims" type="vector3Type" default="2048 2048 1"/>
+    <xs:attribute name="normaldims" type="vector3Type" default="2048 2048 1"/>
+    <xs:attribute name="paramdims" type="vector3Type" default="2048 2048 1"/>
   </xs:complexType>
 
   <!-- ......................................................................... -->
@@ -100,7 +100,6 @@
     <xs:annotation>
       <xs:appinfo>
         <LeGe.NativeType nativeName="TerrainGradFlagMaterial"/>
-        <LeGe.OpaqueListable label="Material"/>
 
         <LeGe.NativeProperty name="FlatTexture" nativeName="Texture[0]"/>
         <LeGe.NativeProperty name="SlopeTexture0" nativeName="Texture[1]"/>
@@ -158,7 +157,6 @@
     <xs:annotation>
       <xs:appinfo>
         <LeGe.NativeType nativeName="TerrainProcTexture"/>
-        <LeGe.OpaqueListable label="ProcTexture"/>
 
         <LeGe.NativeProperty name="Name" nativeName="Name"/>
         <LeGe.NativeProperty name="Texture0" nativeName="Texture[0]"/>
@@ -203,8 +201,12 @@
         <LeGe.NativeProperty name="Material" nativeName="Material"/>
         <LeGe.NativeProperty name="FrequencyWeight" nativeName="FrequencyWeight"/>
 
-        <scea.dom.editors.attribute name="Model" displayName="Model" description="Model" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.AssetNameNoExtConverter,LevelEditorXLE"/>
-        <scea.dom.editors.attribute name="Material" displayName="Material" description="Material" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.AssetNameNoExtConverter,LevelEditorXLE"/>
+        <scea.dom.editors.attribute 
+          name="Model" displayName="Model" description="Model" category="General" 
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.AssetNameNoExtConverter,LevelEditorXLE"/>
+        <scea.dom.editors.attribute 
+          name="Material" displayName="Material" description="Material" category="General" 
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.AssetNameNoExtConverter,LevelEditorXLE"/>
         <scea.dom.editors.attribute name="MaxDrawDistance" displayName="Max Draw Distance" description="Maximum draw distance for this type of object" category="General"/>
         <scea.dom.editors.attribute name="FrequencyWeight" displayName="Frequency Weight" description="Higher numbers mean this object will appear more frequently" category="General"/>
       </xs:appinfo>
@@ -235,7 +237,6 @@
         <scea.dom.editors.attribute name="MaterialId" displayName="MaterialId" description="Id for this material (must be unique and contiguous)" category="General"/>
 
         <scea.dom.editors name="VegetationSpawnMaterial" category="Terrain" image="LevelEditorCore.Resources.gameObject.png" menuText="VegetationSpawnMaterial" description="VegetationSpawnMaterial"/>
-        <LeGe.OpaqueListable label="Material"/>
       </xs:appinfo>
     </xs:annotation>
     
@@ -247,7 +248,7 @@
     <xs:attribute name="SuppressionNoise" type="xs:float" default="8.1872"/>
     <xs:attribute name="SuppressionGain" type="xs:float" default="0.935"/>
     <xs:attribute name="SuppressionLacunarity" type="xs:float" default="2.0192"/>
-    <xs:attribute name="MaterialId" type="xs:unsignedInt" default="0"/>
+    <xs:attribute name="MaterialId" type="xs:int" default="0"/>
   </xs:complexType>
   
   <xs:complexType name="vegetationSpawnConfigType">

@@ -18,7 +18,7 @@ using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Terrain
 {
-    class VegetationSpawnConfigGob : DomNodeAdapter, IHierarchical, IListable, IExportable
+    class VegetationSpawnConfigGob : DomNodeAdapter, IHierarchical, IListable, IExportable, ICommandClient, IContextMenuCommandProvider
     {
         public bool CanAddChild(object child)
         {
@@ -43,7 +43,26 @@ namespace LevelEditorXLE.Terrain
         public void GetInfo(ItemInfo info)
         {
             info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
-            info.Label = "VegetationSpawnConfig";
+            info.Label = "Vegetation Spawn";
+        }
+
+        public IEnumerable<int> GetMaterialIds()
+        {
+            var children = GetChildList<DomNode>(Schema.vegetationSpawnConfigType.materialChild);
+            foreach (var i in children)
+            {
+                var id = i.GetAttribute(Schema.vegetationSpawnMaterialType.MaterialIdAttribute);
+                if (id is int)
+                    yield return (int)id;
+            }
+        }
+
+        public int GetNextMaterialId()
+        {
+            var maxId = -1;
+            foreach (var id in GetMaterialIds())
+                maxId = Math.Max(maxId, id);
+            return maxId + 1;
         }
 
         #region IExportable
@@ -70,7 +89,70 @@ namespace LevelEditorXLE.Terrain
         }
         #endregion
 
+        #region ICommandClient Members
+        bool ICommandClient.CanDoCommand(object commandTag)
+        {
+            if (!(commandTag is Command)) return false;
+
+            switch ((Command)commandTag)
+            {
+                case Command.AddVegetationSpawnMaterial:
+                    return true;
+            }
+            return false;
+        }
+
+        void ICommandClient.DoCommand(object commandTag)
+        {
+            if (!(commandTag is Command)) return;
+
+            switch ((Command)commandTag)
+            {
+                case Command.AddVegetationSpawnMaterial:
+                    {
+                        var mat = new DomNode(Schema.vegetationSpawnMaterialType.Type);
+                        mat.SetAttribute(Schema.vegetationSpawnMaterialType.MaterialIdAttribute, GetNextMaterialId());
+                        ApplicationUtil.Insert(DomNode.GetRoot(), this, mat, "Add Vegetation Spawn Material", null);
+                    }
+                    break;
+            }
+        }
+
+        void ICommandClient.UpdateCommand(object commandTag, CommandState commandState)
+        { }
+        #endregion
+
+        private enum Command
+        {
+            [Description("Add Vegetation Material")] AddVegetationSpawnMaterial
+        }
+
+        IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)
+        {
+            foreach (Command command in Enum.GetValues(typeof(Command)))
+            {
+                yield return command;
+            }
+        }
+
         public VegetationSpawnConfigGob() { }
+    }
+
+    class VegetationSpawnMaterialItem : DomNodeAdapter, IListable
+    {
+        public int Id
+        {
+            get
+            {
+                return GetAttribute<int>(Schema.vegetationSpawnMaterialType.MaterialIdAttribute);
+            }
+        }
+
+        public void GetInfo(ItemInfo info)
+        {
+            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
+            info.Label = "Material: " + Id;
+        }
     }
 }
 

@@ -30,12 +30,14 @@ namespace LevelEditorXLE
             Schema.placementObjectType.Type.Define(new ExtensionInfo<XLEPlacementObject>());
             Schema.terrainType.Type.Define(new ExtensionInfo<XLETerrainGob>());
             Schema.terrainCoverageLayer.Type.Define(new ExtensionInfo<XLETerrainCoverage>());
-            Schema.terrainBaseTextureType.Type.Define(new ExtensionInfo<TerrainMaterial>());
+            Schema.terrainBaseTextureType.Type.Define(new ExtensionInfo<TerrainBaseTexture>());
+            Schema.abstractTerrainMaterialDescType.Type.Define(new ExtensionInfo<TerrainMaterialItem>());
             Schema.envSettingsFolderType.Type.Define(new ExtensionInfo<XLEEnvSettingsFolder>());
             Schema.envSettingsType.Type.Define(new ExtensionInfo<XLEEnvSettings>());
             Schema.xleGameType.Type.Define(new ExtensionInfo<GameExtensions>());
             Schema.envUtilityType.Type.Define(new ExtensionInfo<EnvUtility>());
             Schema.vegetationSpawnConfigType.Type.Define(new ExtensionInfo<VegetationSpawnConfigGob>());
+            Schema.vegetationSpawnMaterialType.Type.Define(new ExtensionInfo<VegetationSpawnMaterialItem>());
             Schema.triMeshMarkerType.Type.Define(new ExtensionInfo<Markers.TriMeshMarker>());
             Schema.markerPointType.Type.Define(new ExtensionInfo<Markers.PointMarker>());
             Schema.gameObjectFolderType.Type.Define(new ExtensionInfo<XLEGameObjectsFolder>());
