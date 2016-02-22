@@ -16,6 +16,10 @@
 
 namespace Assets { class DependencyValidation; class DependentFileState; class PendingCompileMarker; class ICompileMarker; }
 
+// We need to store the shader initializer in order to get the "pending assets" type 
+// messages while shaders are compiling. But it shouldn't be required in the normal game run-time.
+#define STORE_SHADER_INITIALIZER
+
 namespace RenderCore
 {
     /// Container for ShaderStage::Enum
@@ -211,7 +215,9 @@ namespace RenderCore
         mutable std::shared_ptr<ShaderService::IPendingMarker> _compileHelper;
         mutable std::shared_ptr<::Assets::PendingCompileMarker> _marker;
 
-        DEBUG_ONLY(char _initializer[512];)
+        #if defined(STORE_SHADER_INITIALIZER)
+            char _initializer[512];
+        #endif
 
         void ResolveFromCompileMarker() const;
     };

@@ -40,10 +40,14 @@ namespace RenderCore
             // no way to know the shader stage in this mode...
             //  Maybe the shader stage should be encoded in the intermediate file name
         _stage = ShaderStage::Null;
-        DEBUG_ONLY(_initializer[0] = '\0');
+        #if defined(STORE_SHADER_INITIALIZER)
+            _initializer[0] = '\0';
+        #endif
 
         if (marker) {
-            DEBUG_ONLY(XlCopyString(_initializer, marker->Initializer());)
+            #if defined(STORE_SHADER_INITIALIZER)
+                XlCopyString(_initializer, marker->Initializer());
+            #endif
             auto existing = marker->GetExistingAsset();
 
             auto i = strrchr(existing._sourceID0, '-');
@@ -71,7 +75,9 @@ namespace RenderCore
         _stage = ShaderStage::Null;
         auto validationCallback = std::make_shared<Assets::DependencyValidation>();
         std::shared_ptr<ShaderService::IPendingMarker> compileHelper;
-        DEBUG_ONLY(XlCopyString(_initializer, initializer);)
+        #if defined(STORE_SHADER_INITIALIZER)
+            XlCopyString(_initializer, initializer);
+        #endif
 
         if (initializer && initializer[0] != '\0' && XlCompareStringI(initializer, "null")!=0) {
             compileHelper = 
@@ -94,7 +100,9 @@ namespace RenderCore
     {
         _stage = AsShaderStage(shaderModel);
         auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-        DEBUG_ONLY(XlCopyString(_initializer, "ShaderInMemory");)
+        #if defined(STORE_SHADER_INITIALIZER)
+            XlCopyString(_initializer, "ShaderInMemory");
+        #endif
         auto compileHelper = 
             ShaderService::GetInstance().CompileFromMemory(
                 shaderInMemory, entryPoint, shaderModel, definesTable);
@@ -105,7 +113,9 @@ namespace RenderCore
 
     CompiledShaderByteCode::CompiledShaderByteCode(std::shared_ptr<ShaderService::IPendingMarker>&& marker)
     {
-        DEBUG_ONLY(XlCopyString(_initializer, "ManualShader");)
+        #if defined(STORE_SHADER_INITIALIZER)
+            XlCopyString(_initializer, "ManualShader");
+        #endif
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         _stage = marker->GetStage();
         _compileHelper = std::move(marker);
@@ -245,10 +255,10 @@ namespace RenderCore
 
     const char* CompiledShaderByteCode::Initializer() const
     {
-        #if defined(_DEBUG)
+        #if defined(STORE_SHADER_INITIALIZER)
             return _initializer;
         #else
-            return "";
+            return "<<unknown shader>>";
         #endif
     }
 
@@ -259,7 +269,7 @@ namespace RenderCore
     , _compileHelper(std::move(moveFrom._compileHelper))
     , _marker(std::move(moveFrom._marker))
     {
-        #if defined(_DEBUG)
+        #if defined(STORE_SHADER_INITIALIZER)
             XlCopyString(_initializer, moveFrom._initializer);
         #endif
     }
@@ -271,7 +281,7 @@ namespace RenderCore
         _validationCallback = std::move(moveFrom._validationCallback);
         _compileHelper = std::move(moveFrom._compileHelper);
         _marker = std::move(moveFrom._marker);
-        #if defined(_DEBUG)
+        #if defined(STORE_SHADER_INITIALIZER)
             XlCopyString(_initializer, moveFrom._initializer);
         #endif
         return *this;

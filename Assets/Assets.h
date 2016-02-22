@@ -17,9 +17,7 @@
 #include <string>
 #include <sstream>
 
-#if defined(_DEBUG)
-    #define ASSETS_STORE_NAMES
-#endif
+#define ASSETS_STORE_NAMES
 #define ASSETS_STORE_DIVERGENT		// divergent assets are intended for tools (not in-game). But we can't selectively disable this feature
 #define ASSETS_MULTITHREADED        // allow GetAsset, GetAssetComp (and variants) to be used from multiple threads
 
@@ -560,7 +558,8 @@ namespace Assets
                         return i->second;
                     return std::string();
                 #else
-                    return std::string();
+                    static std::string s_errorName("<<asset names disabled>>");
+                    return s_errorName;
                 #endif
             }
     }
