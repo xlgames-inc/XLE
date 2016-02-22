@@ -32,14 +32,15 @@ namespace LevelEditor.Commands
             string appName = productName + " " + v;
 
             var credits = new List<string>();
-            credits.Add(appName + " by Alan Beckus, Ron Little, Matt Mahony, and Max Elliott. " + copyright);
+            credits.Add(
+                "XLE World Building Tool by David Jewsbury. Based on earlier work by Alan Beckus, Ron Little, Matt Mahony, and Max Elliott at Sony Worldwide Studios. " + copyright);
 
             RichTextBox richTextBox = new RichTextBox();
             richTextBox.BorderStyle = BorderStyle.None;
             richTextBox.ReadOnly = true;
             richTextBox.Text = appName;
 
-            string appURL = "http://wiki.ship.scea.com/confluence/display/WWSSDKLEVELEDITOR/LevelEditor";
+            string appURL = "https://github.com/xlgames-inc/XLE";
             AboutDialog dialog = new AboutDialog(productName, appURL, richTextBox, null, credits, true);
             dialog.ShowDialog();
         }
