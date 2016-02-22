@@ -13,6 +13,9 @@ cbuffer TerrainLighting : register(b6)
 {
 	float SunAngle;				// should be a value between -1.f and 1.f representing angles between -.5 * pi and .5 * pi
 	float ShadowSoftness;		// (around 50.f)
+	float TerrainSpecularParameter;
+	float TerrainRoughnessMin;
+	float TerrainRoughnessMax;
 }
 
 static const uint MaxCoverageLayers = 5;

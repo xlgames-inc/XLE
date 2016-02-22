@@ -18,6 +18,11 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::TerrainMaterialConfig
         props.Add(u("NormalDims"),  DefaultGet(Obj, _normalDims),   DefaultSet(Obj, _normalDims));
         props.Add(u("ParamDims"),   DefaultGet(Obj, _paramDims),    DefaultSet(Obj, _paramDims));
 
+        props.Add(u("Specular"),        DefaultGet(Obj, _specularParameter),    DefaultSet(Obj, _specularParameter));
+        props.Add(u("RoughnessMin"),    DefaultGet(Obj, _roughnessMin),         DefaultSet(Obj, _roughnessMin));
+        props.Add(u("RoughnessMax"),    DefaultGet(Obj, _roughnessMax),         DefaultSet(Obj, _roughnessMax));
+        props.Add(u("ShadowSoftness"),  DefaultGet(Obj, _shadowSoftness),       DefaultSet(Obj, _shadowSoftness));
+
         props.AddChildList<Obj::GradFlagMaterial>(
             u("GradFlagMaterial"),
             DefaultCreate(Obj, _gradFlagMaterials),
@@ -96,6 +101,10 @@ namespace SceneEngine
     TerrainMaterialConfig::TerrainMaterialConfig()
     {
         _diffuseDims = _normalDims = _paramDims = UInt2(32, 32);
+        _specularParameter = 0.05f;
+        _shadowSoftness = 15.f;
+        _roughnessMin = 0.7f;
+        _roughnessMax = 1.f;
     }
 
     TerrainMaterialConfig::TerrainMaterialConfig(

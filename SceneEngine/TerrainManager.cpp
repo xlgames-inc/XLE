@@ -607,7 +607,7 @@ namespace SceneEngine
         context->BindPS(MakeResourceList(8, 
             _pimpl->_textures->_srv[TerrainMaterialTextures::Diffuse], 
             _pimpl->_textures->_srv[TerrainMaterialTextures::Normal], 
-            _pimpl->_textures->_srv[TerrainMaterialTextures::Specularity]));
+            _pimpl->_textures->_srv[TerrainMaterialTextures::Roughness]));
 
         auto mode = 
             (techniqueIndex==5)
@@ -629,9 +629,16 @@ namespace SceneEngine
             sunDirectionAngle = XlATan2(transDirection[0], transDirection[2]);
         }
 
-        auto shadowSoftness = Tweakable("ShadowSoftness", 15.f);
         const float expansionConstant = 1.5f;
-        float terrainLightingConstants[] = { sunDirectionAngle / float(.5f * expansionConstant * M_PI), shadowSoftness, 0.f, 0.f };
+        float terrainLightingConstants[] = 
+        {
+            sunDirectionAngle / float(.5f * expansionConstant * M_PI), 
+            _pimpl->_matCfg._shadowSoftness,
+            _pimpl->_matCfg._specularParameter,
+            _pimpl->_matCfg._roughnessMin,
+            _pimpl->_matCfg._roughnessMax,
+            0.f, 0.f, 0.f
+        };
         Metal::ConstantBuffer lightingConstantsBuffer(terrainLightingConstants, sizeof(terrainLightingConstants));
         context->BindPS(MakeResourceList(5, _pimpl->_textures->_texturingConstants, lightingConstantsBuffer, _pimpl->_textures->_procTexContsBuffer));
         if (mode == TerrainRenderingContext::Mode_VegetationPrepare) {

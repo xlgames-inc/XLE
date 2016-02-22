@@ -62,12 +62,16 @@ namespace SceneEngine
             ProcTextureSetting();
         };
 
-        UInt2 _diffuseDims;
-        UInt2 _normalDims;
-        UInt2 _paramDims;
+        UInt2   _diffuseDims;
+        UInt2   _normalDims;
+        UInt2   _paramDims;
         std::vector<StrataMaterial>     _strataMaterials;
         std::vector<GradFlagMaterial>   _gradFlagMaterials;
         std::vector<ProcTextureSetting> _procTextures;
+
+        float _specularParameter;
+        float _roughnessMin, _roughnessMax;
+        float _shadowSoftness;
 
         ::Assets::DirectorySearchRules  _searchRules;
 

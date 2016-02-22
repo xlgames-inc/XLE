@@ -18,7 +18,7 @@ namespace SceneEngine
     class TerrainMaterialTextures
     {
     public:
-        enum Resources { Diffuse, Normal, Specularity, ResourceCount };
+        enum Resources { Diffuse, Normal, Roughness, ResourceCount };
         using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
         ResLocator _textureArray[ResourceCount];
         RenderCore::Metal::ShaderResourceView _srv[ResourceCount];

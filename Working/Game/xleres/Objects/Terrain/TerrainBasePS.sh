@@ -167,7 +167,7 @@ struct TerrainPixel
 {
     float3 diffuseAlbedo;
     float3 worldSpaceNormal;
-    float specularity;
+    PerPixelMaterialParam material;
 
     float cookedAmbientOcclusion;
     float mainLightOcclusion;
@@ -189,9 +189,14 @@ TerrainPixel CalculateTerrainPixel(PSInput geo)
     TerrainPixel output;
     output.diffuseAlbedo = resultDiffuse;
     output.worldSpaceNormal = TerrainResolve_CalculateWorldSpaceNormal(geo, baseTexturing.tangentSpaceNormal);
-    output.specularity = baseTexturing.specularity;
     output.cookedAmbientOcclusion = TerrainResolve_AmbientOcclusion(geo);
     output.mainLightOcclusion = TerrainResolve_AngleBasedShadows(geo);
+
+    // Get the material settings from shader constants. These end up fixed over the entire terrain.
+    // It might be helpful to create another altas for the "roughness" values.
+    output.material = PerPixelMaterialParam_Default();
+    output.material.roughness = lerp(TerrainRoughnessMin, TerrainRoughnessMax, baseTexturing.roughness);
+    output.material.specular = TerrainSpecularParameter;
 
     return output;
 }
@@ -215,9 +220,7 @@ TerrainPixel CalculateTerrainPixel(PSInput geo)
     GBufferValues output = GBufferValues_Default();
     output.diffuseAlbedo = p.diffuseAlbedo;
     output.worldSpaceNormal = p.worldSpaceNormal;
-    output.material.specular = p.specularity;
-    output.material.roughness = 0.7f;
-    output.material.metal = 0.f;
+    output.material = p.material;
     output.cookedAmbientOcclusion = p.cookedAmbientOcclusion;
     output.cookedLightOcclusion = p.mainLightOcclusion;
 

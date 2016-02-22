@@ -29,10 +29,9 @@
         uint strataIndex, float3 worldPosition,
         float slopeFactor, float2 textureCoord, float noiseValue0)
     {
-        TerrainTextureOutput result;
+        TerrainTextureOutput result = TerrainTextureOutput_Blank();
         result.diffuseAlbedo = 1.0.xxx;
         result.tangentSpaceNormal = float3(0.5,0.5,1);
-        result.specularity = 1.0f;
         return result;
     }
 #else
@@ -54,10 +53,12 @@
         return DiffuseAtlas.Sample(MaybeAnisotropicSampler, AsAtlasCoord(tc, strata, textureType)).rgb;
     }
 
-    float StrataSpecularSample(float2 tc, uint strata, uint textureType)
-    {
-        return SRGBLuminance(SpecularityAtlas.Sample(MaybeAnisotropicSampler, AsAtlasCoord(tc, strata, textureType)).rgb);
-    }
+    #if 0
+        float StrataSpecularSample(float2 tc, uint strata, uint textureType)
+        {
+            return SRGBLuminance(SpecularityAtlas.Sample(MaybeAnisotropicSampler, AsAtlasCoord(tc, strata, textureType)).rgb);
+        }
+    #endif
 
     static const bool UseNormalsAtlas = false;
     static const bool UseStrataSpecular = false;
@@ -86,13 +87,15 @@
             result.tangentSpaceNormal = float3(0.5,0.5,1);
         }
 
-        if (UseStrataSpecular) {
-            float As = StrataSpecularSample(tc0, strataIndex, 0);
-            float Bs = StrataSpecularSample(tc1, strataIndex, 1);
-            result.specularity = lerp(As, Bs, alpha);
-        } else {
-            result.specularity = 1;
-        }
+        #if 0
+            if (UseStrataSpecular) {
+                float As = StrataSpecularSample(tc0, strataIndex, 0);
+                float Bs = StrataSpecularSample(tc1, strataIndex, 1);
+                result.specularity = lerp(As, Bs, alpha);
+            } else {
+                result.specularity = 1;
+            }
+        #endif
 
         const float slopeStart = .7f; // .55f;
         const float slopeSoftness = 7.f; // 3.f;
@@ -114,25 +117,25 @@
             float arrayIdx = strataIndex*3+2;
             float3 S = DiffuseAtlasSample(tcS0, strataIndex, 2);
             float3 Sn = NormalsAtlas.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
-            float Ss = StrataSpecularSample(tcS0, strataIndex, 2);
+            // float Ss = StrataSpecularSample(tcS0, strataIndex, 2);
 
             tcS0.x = worldPosition.y * TextureFrequency[strataIndex].z;
             float3 S2 = DiffuseAtlasSample(tcS0, strataIndex, 2);
             float3 Sn2 = NormalsAtlas.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
-            float Ss2 = StrataSpecularSample(tcS0, strataIndex, 2);
+            // float Ss2 = StrataSpecularSample(tcS0, strataIndex, 2);
 
             float A = a / (a+b);
             float B = b / (a+b);
             S = S * A + S2 * B;
             Sn = Sn * A + Sn2 * B;
-            Ss = Ss * A + Ss2 * B;
+            // Ss = Ss * A + Ss2 * B;
 
             result.diffuseAlbedo = lerp(result.diffuseAlbedo, slopeDarkness * S, slopeAlpha);
             if (UseNormalsAtlas)
                 result.tangentSpaceNormal = lerp(result.tangentSpaceNormal, Sn, slopeAlpha);
 
-            if (UseStrataSpecular)
-                result.specularity = lerp(result.specularity, Ss, slopeAlpha);
+            // if (UseStrataSpecular)
+            //    result.specularity = lerp(result.specularity, Ss, slopeAlpha);
         }
 
         return result;
@@ -183,7 +186,7 @@ TerrainTextureOutput StrataMaterial::Calculate(float3 worldPosition, float2 dhdx
     TerrainTextureOutput result;
     result.diffuseAlbedo = lerp(value0.diffuseAlbedo, value1.diffuseAlbedo, strataAlpha);
     result.tangentSpaceNormal = lerp(value0.tangentSpaceNormal, value1.tangentSpaceNormal, strataAlpha);
-    result.specularity = lerp(value0.specularity, value1.specularity, strataAlpha);
+    // result.specularity = lerp(value0.specularity, value1.specularity, strataAlpha);
 
     float2 nxy = 2.f * result.tangentSpaceNormal.xy - 1.0.xx;
     result.tangentSpaceNormal = float3(nxy, sqrt(saturate(1.f + dot(nxy, -nxy))));

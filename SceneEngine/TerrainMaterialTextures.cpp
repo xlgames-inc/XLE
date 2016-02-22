@@ -157,16 +157,19 @@ namespace SceneEngine
         }
     }
 
-    static void FillWhite(Metal::DeviceContext& context, ID3D::Resource* destinationArray, ID3D::Resource* sourceResource, unsigned arrayIndex)
+    static void CopyDummy(
+        Metal::DeviceContext& context, ID3D::Resource* destinationArray, ID3D::Resource* sourceResource, 
+        unsigned arrayIndex, bool blockCompressed)
     {
             // copy dummy white data into all of the mip levels of the given array index in the
             // destination resource
         Metal::TextureDesc2D destinationDesc(destinationArray);
         const auto mipCount = destinationDesc.MipLevels;
 
-        for (unsigned m=0; m<mipCount; ++m) {
-            const unsigned mipWidth = std::max(destinationDesc.Width >> m, 4u);
-            const unsigned mipHeight = std::max(destinationDesc.Height >> m, 4u);
+        auto minDims = blockCompressed ? 4u : 1u;
+        for (auto m=0u; m<mipCount; ++m) {
+            const auto mipWidth = std::max(destinationDesc.Width >> m, minDims);
+            const auto mipHeight = std::max(destinationDesc.Height >> m, minDims);
             Metal::CopyPartial(
                 context,
                 Metal::CopyPartial_Dest(destinationArray, D3D11CalcSubresource(m, arrayIndex, mipCount)),
@@ -195,7 +198,7 @@ namespace SceneEngine
     class ResolvedTextureFiles
     {
     public:
-        ::Assets::ResolvedAssetFile _diffuse, _normals, _params;
+        ::Assets::ResolvedAssetFile _diffuse, _normals, _roughness;
 
         ResolvedTextureFiles(
             const ::Assets::ResChar baseName[],
@@ -215,14 +218,14 @@ namespace SceneEngine
         auto marker = XlFindString(baseName, "_*");
         if (marker) {
             auto* markerEnd = marker+2;
-            const ::Assets::ResChar d[] = "_df", n[] = "_ddn", p[] = "_sp";
+            const ::Assets::ResChar d[] = "_df", n[] = "_ddn", p[] = "_r";
             PatchFilename(_diffuse, baseName, marker, markerEnd, d);
             PatchFilename(_normals, baseName, marker, markerEnd, n);
-            PatchFilename(_params, baseName, marker, markerEnd, p);
+            PatchFilename(_roughness, baseName, marker, markerEnd, p);
 
             searchRules.ResolveFile(_diffuse._fn, dimof(_diffuse._fn), _diffuse._fn);
             searchRules.ResolveFile(_normals._fn, dimof(_normals._fn), _normals._fn);
-            searchRules.ResolveFile(_params._fn, dimof(_params._fn), _params._fn);
+            searchRules.ResolveFile(_roughness._fn, dimof(_roughness._fn), _roughness._fn);
         } else {
             searchRules.ResolveFile(_diffuse._fn, dimof(_diffuse._fn), baseName);
         }
@@ -267,6 +270,7 @@ namespace SceneEngine
         *std::min(i, iend-1) = '\0';
     }
 
+#if 0
     static intrusive_ptr<BufferUploads::ResourceLocator> BC1Dummy(const BufferUploads::BufferDesc& desc, uint16 blankColor)
     {
         auto tempBuffer = CreateEmptyPacket(desc);
@@ -280,6 +284,7 @@ namespace SceneEngine
 
         return GetBufferUploads().Transaction_Immediate(desc, tempBuffer.get());
     }
+#endif
 
     static intrusive_ptr<BufferUploads::ResourceLocator> BC5Dummy(const BufferUploads::BufferDesc& desc, uint8 x, uint8 y)
     {
@@ -299,6 +304,13 @@ namespace SceneEngine
         auto data = (BC5Block*)tempBuffer->GetData();
         for (unsigned c=0; c<blockCount; ++c) data[c] = block;
 
+        return GetBufferUploads().Transaction_Immediate(desc, tempBuffer.get());
+    }
+
+    static intrusive_ptr<BufferUploads::ResourceLocator> R8Dummy(const BufferUploads::BufferDesc& desc, uint8 value)
+    {
+        auto tempBuffer = CreateEmptyPacket(desc);
+        std::memset(tempBuffer->GetData(), 0x0, tempBuffer->GetDataSize());
         return GetBufferUploads().Transaction_Immediate(desc, tempBuffer.get());
     }
 
@@ -444,13 +456,13 @@ namespace SceneEngine
         auto bc5Dummy = BC5Dummy(desc, 0x80, 0x80);
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
-            scaffold._paramDims[0], scaffold._paramDims[1], Metal::NativeFormat::BC1_UNORM, 
+            scaffold._paramDims[0], scaffold._paramDims[1], Metal::NativeFormat::R8_UNORM, 
             (uint8)IntegerLog2(std::max(scaffold._paramDims[0], scaffold._paramDims[1]))-1, uint8(atlasTextureNames.size()));
-        auto specularityTextureArray = GetBufferUploads().Transaction_Immediate(desc);
+        auto roughnessTextureArray = GetBufferUploads().Transaction_Immediate(desc);
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
-            scaffold._paramDims[0], scaffold._paramDims[1], Metal::NativeFormat::BC1_UNORM);
-        auto bc1Dummy = BC1Dummy(desc, ((0x1f/2) << 11) | ((0x3f/2) << 5) | (0x1f/2));
+            scaffold._paramDims[0], scaffold._paramDims[1], Metal::NativeFormat::R8_UNORM);
+        auto r8Dummy = R8Dummy(desc, 0);
         
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -481,22 +493,22 @@ namespace SceneEngine
             CATCH_END
 
                 // --- Specular params --->
-            bool fillInWhiteSpecular = true;
+            bool fillInBlackRoughness = true;
             auto index = (unsigned)std::distance(atlasTextureNames.cbegin(), i);
             TRY {
-                if (texFiles._params.get()[0]) {
-                    LoadTextureIntoArray(metalContext, normalTextureArray->GetUnderlying(), texFiles._params.get(), index);
-                    RegisterFileDependency(_validationCallback, texFiles._params.get());
-                    fillInWhiteSpecular = false;
+                if (texFiles._roughness.get()[0]) {
+                    LoadTextureIntoArray(metalContext, normalTextureArray->GetUnderlying(), texFiles._roughness.get(), index);
+                    RegisterFileDependency(_validationCallback, texFiles._roughness.get());
+                    fillInBlackRoughness = false;
                 }
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
             } CATCH_END
 
                 // on exception or missing files, we should fill in default
             if (fillInDummyNormals)
-                FillWhite(metalContext, normalTextureArray->GetUnderlying(), bc5Dummy->GetUnderlying(), index);
-            if (fillInWhiteSpecular)
-                FillWhite(metalContext, specularityTextureArray->GetUnderlying(), bc1Dummy->GetUnderlying(), index);
+                CopyDummy(metalContext, normalTextureArray->GetUnderlying(), bc5Dummy->GetUnderlying(), index, true);
+            if (fillInBlackRoughness)
+                CopyDummy(metalContext, roughnessTextureArray->GetUnderlying(), r8Dummy->GetUnderlying(), index, false);
         }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -511,13 +523,13 @@ namespace SceneEngine
 
         _srv[Diffuse] = Metal::ShaderResourceView(diffuseTextureArray->GetUnderlying());
         _srv[Normal] = Metal::ShaderResourceView(normalTextureArray->GetUnderlying());
-        _srv[Specularity] = Metal::ShaderResourceView(specularityTextureArray->GetUnderlying());
+        _srv[Roughness] = Metal::ShaderResourceView(roughnessTextureArray->GetUnderlying());
         _texturingConstants = Metal::ConstantBuffer(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
         _procTexContsBuffer = Metal::ConstantBuffer(AsPointer(procTextureConstants.cbegin()), procTextureConstants.size());
 
         _textureArray[Diffuse] = std::move(diffuseTextureArray);
         _textureArray[Normal] = std::move(normalTextureArray);
-        _textureArray[Specularity] = std::move(specularityTextureArray);
+        _textureArray[Roughness] = std::move(roughnessTextureArray);
     }
 
     TerrainMaterialTextures::~TerrainMaterialTextures() {}

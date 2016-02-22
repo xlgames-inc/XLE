@@ -39,7 +39,6 @@ TerrainTextureOutput LoadRawTexSample(uint remappedTexIndex, float2 coord, float
     TerrainTextureOutput result;
     result.diffuseAlbedo = DiffuseAtlas.SampleGrad(MaybeAnisotropicSampler, float3(coord, remappedTexIndex), duvdx, duvdy).rgb;
     result.tangentSpaceNormal.xy = NormalsAtlas.SampleGrad(MaybeAnisotropicSampler, float3(coord, remappedTexIndex), duvdx, duvdy).xy;
-    result.specularity = 0.05f;
 
     result.tangentSpaceNormal.xy = 2.f * result.tangentSpaceNormal.xy - 1.0.xx;
     result.tangentSpaceNormal =
@@ -47,6 +46,7 @@ TerrainTextureOutput LoadRawTexSample(uint remappedTexIndex, float2 coord, float
             result.tangentSpaceNormal.xy,
             sqrt(saturate(1.f + dot(result.tangentSpaceNormal.xy, -result.tangentSpaceNormal.xy))));
 
+    result.roughness = RoughnessAtlas.SampleGrad(MaybeAnisotropicSampler, float3(coord, remappedTexIndex), duvdx, duvdy).x;
     return result;
 }
 
@@ -177,7 +177,7 @@ TerrainTextureOutput GradFlagTexturing::Calculate(
             }
 
             result.diffuseAlbedo /= max(1e-5f, weightTotal);
-            result.specularity /= max(1e-5f, weightTotal);
+            result.roughness /= max(1e-5f, weightTotal);
 
                 // we can find the edging like this --
                 //      This allows blending in a transition texture between the repeating textures

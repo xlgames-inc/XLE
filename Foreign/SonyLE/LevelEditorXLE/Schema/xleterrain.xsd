@@ -25,14 +25,32 @@
     <xs:annotation>
       <xs:appinfo>
         <LeGe.NativeType nativeName="TerrainBaseTexture"/>
-        <LeGe.NativeProperty name="diffusedims" nativeName="DiffuseDims" nativeType="Float2" access="set"/>
-        <LeGe.NativeProperty name="normaldims" nativeName="NormalDims" nativeType="Float2" access="set"/>
-        <LeGe.NativeProperty name="paramdims" nativeName="ParamDims" nativeType="Float2" access="set"/>
+        <LeGe.NativeProperty name="diffusedims" nativeName="DiffuseDims"/>
+        <LeGe.NativeProperty name="normaldims" nativeName="NormalDims"/>
+        <LeGe.NativeProperty name="paramdims" nativeName="ParamDims"/>
+        
+        <LeGe.NativeProperty name="Specular" nativeName="Specular"/>
+        <LeGe.NativeProperty name="RoughnessMin" nativeName="RoughnessMin"/>
+        <LeGe.NativeProperty name="RoughnessMax" nativeName="RoughnessMax"/>
+        <LeGe.NativeProperty name="ShadowSoftness" nativeName="ShadowSoftness"/>
 
         <LeGe.OpaqueListable label="Texturing"/>
         <scea.dom.editors.attribute name="diffusedims" displayName="Diffuse Dims" description="Diffuse texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
         <scea.dom.editors.attribute name="normaldims" displayName="Normal Dims" description="Normal texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
         <scea.dom.editors.attribute name="paramdims" displayName="Parameter Dims" description="Parameter texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+
+        <scea.dom.editors.attribute 
+          name="Specular" displayName="Specular" description="Specular parameter for the terrain surface (usually around 0.05)" category="Material"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute 
+          name="RoughnessMin" displayName="Roughness Min" description="Minimum value for the roughness parameter" category="Material"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute 
+          name="RoughnessMax" displayName="Roughness Max" description="Maximum value for the roughness parameter" category="Material"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute 
+          name="ShadowSoftness" displayName="Shadow Softness" description="Controls the blurring applied to the terrain shadows, making them appear softer or harder" 
+          category="Material" editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,30"/>
       </xs:appinfo>
     </xs:annotation>
 
@@ -42,6 +60,10 @@
     <xs:attribute name="diffusedims" type="vector3Type" default="2048 2048 1"/>
     <xs:attribute name="normaldims" type="vector3Type" default="2048 2048 1"/>
     <xs:attribute name="paramdims" type="vector3Type" default="2048 2048 1"/>
+    <xs:attribute name="Specular" type="xs:float" default="0.05"/>
+    <xs:attribute name="RoughnessMin" type="xs:float" default=".7"/>
+    <xs:attribute name="RoughnessMax" type="xs:float" default="1"/>
+    <xs:attribute name="ShadowSoftness" type="xs:float" default="15"/>
   </xs:complexType>
 
   <!-- ......................................................................... -->
