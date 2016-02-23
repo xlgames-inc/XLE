@@ -56,7 +56,7 @@ namespace RenderCore { namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// <summary>Structural data describing a model<summary>
+    /// <summary>Structural data describing a model</summary>
     /// The "scaffold" of a model contains the structural data of a model, without the large
     /// assets and without any platform-api resources.
     ///
@@ -83,7 +83,7 @@ namespace RenderCore { namespace Assets
         const ModelImmutableData&       ImmutableData() const;
         const TransformationMachine&    EmbeddedSkeleton() const;
         std::pair<Float3, Float3>       GetStaticBoundingBox(unsigned lodIndex = 0) const;
-        unsigned                        GetMaxLOD() const { return 0; }
+        unsigned                        GetMaxLOD() const;
 
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
 
@@ -117,15 +117,15 @@ namespace RenderCore { namespace Assets
         MeshToModel(const ModelScaffold&);
     };
 
-    /// <summary>Creates platform resources and renders a model<summary>
+    /// <summary>Creates platform resources and renders a model</summary>
     /// ModelRenderer is used to render a model. Though the two classes work together, it is 
     /// a more heavy-weight object than ModelScaffold. When the ModelRenderer is created, it
     /// will allocate the platform api resources (including index and vertex buffers).
     ///
     /// Normally animation is applied to a model with a 2-step process.
     ///     <list>
-    ///         <item> PrepareAnimation applies the vertex animation and generates a temporary vertex buffer
-    ///         <item> Render will render the model into the scene (or shadows, or off-screen buffer, etc)
+    ///         <item> PrepareAnimation applies the vertex animation and generates a temporary vertex buffer </item>
+    ///         <item> Render will render the model into the scene (or shadows, or off-screen buffer, etc) </item>
     ///     </list>
     ///
     /// <seealso cref="ModelScaffold" />
@@ -229,7 +229,7 @@ namespace RenderCore { namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////////////////
     
-    /// <summary>Supplemental vertex data associated with a model<summary>
+    /// <summary>Supplemental vertex data associated with a model</summary>
     /// Some techniques require adding extra vertex data onto a model.
     /// For example, internal model static ambient occlusion might add another
     /// vertex element for each vertex.
@@ -269,7 +269,7 @@ namespace RenderCore { namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// <summary>Structural data for a skeleton<summary>
+    /// <summary>Structural data for a skeleton</summary>
     /// Represents the skeleton of a model.
     ///
     /// Animated models are split into 3 parts:
@@ -313,7 +313,7 @@ namespace RenderCore { namespace Assets
         const TransformationMachine*   TryImmutableData() const;
     };
 
-    /// <summary>Structural data for animation<summary>
+    /// <summary>Structural data for animation</summary>
     /// Represents a set of animation that can potentially be applied to a skeleton.
     ///
     /// See SkeletonScaffold for more information.
@@ -338,7 +338,7 @@ namespace RenderCore { namespace Assets
         const AnimationImmutableData*   TryImmutableData() const;
     };
 
-    /// <summary>Bind together a model, animation set and skeleton for rendering<summary>
+    /// <summary>Bind together a model, animation set and skeleton for rendering</summary>
     /// Before we can apply animation to a model, we need to first bind together the
     /// model, animation set and skeleton.
     ///
@@ -355,15 +355,15 @@ namespace RenderCore { namespace Assets
     ///
     /// So, for a fully rendered character, we need 3 scaffolds:
     ///     <list>
-    ///         <item> AnimationSetScaffold
-    ///         <item> SkeletonScaffold
-    ///         <item> ModelScaffold (skin)
+    ///         <item> AnimationSetScaffold </item>
+    ///         <item> SkeletonScaffold </item>
+    ///         <item> ModelScaffold (skin) </item>
     ///     </list>
     ///
     /// And we also need our 2 "run-time" classes:
     ///     <list>
-    ///         <item> ModelRenderer
-    ///         <item> SkinPrepareMachine
+    ///         <item> ModelRenderer </item>
+    ///         <item> SkinPrepareMachine </item>
     ///     </list>
     ///
     /// So final rendering of a skinned model will look a little like this:

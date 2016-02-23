@@ -399,12 +399,20 @@ namespace RenderCore { namespace ColladaConversion
         return std::move(inputInterface);
     }
 
+    unsigned NascentModelCommandStream::GetMaxLOD() const
+    {
+        unsigned maxLOD = 0u;
+        for (const auto&i:_geometryInstances) maxLOD = std::max(i._levelOfDetail, maxLOD);
+        for (const auto&i:_skinControllerInstances) maxLOD = std::max(i._levelOfDetail, maxLOD);
+        return maxLOD;
+    }
+
     std::ostream& operator<<(std::ostream& stream, const NascentModelCommandStream& cmdStream)
     {
         stream << " --- Geometry instances:" << std::endl;
         unsigned c=0;
         for (const auto& i:cmdStream._geometryInstances) {
-            stream << "  [" << c++ << "] GeoId: " << i._id << " Transform: " << i._localToWorldId << std::endl;
+            stream << "  [" << c++ << "] GeoId: " << i._id << " Transform: " << i._localToWorldId << " LOD: " << i._levelOfDetail << std::endl;
             stream << "     Materials: " << std::hex;
             for (size_t q=0; q<i._materials.size(); ++q) {
                 if (q != 0) stream << ", ";

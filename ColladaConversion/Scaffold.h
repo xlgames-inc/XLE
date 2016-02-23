@@ -531,7 +531,8 @@ namespace ColladaConversion
         const VisualScene& GetScene() const             { return *_scene; }
 
             // ------------ Utilities --------------
-        Node FindBreadthFirst(std::function<bool(const Node&)>&& predicate);
+        Node FindBreadthFirst(std::function<bool(const Node&)>&& predicate) const;
+        std::vector<Node> FindAllBreadthFirst(std::function<bool(const Node&)>&& predicate) const;
         
         operator bool() const;
         bool operator!() const;

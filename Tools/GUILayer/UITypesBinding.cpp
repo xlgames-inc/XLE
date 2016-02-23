@@ -98,6 +98,12 @@ namespace GUILayer
         _object->_changeEvent.Trigger(); 
     }
 
+    void ModelVisSettings::LevelOfDetail::set(unsigned value)
+    {
+        _object->_levelOfDetail = value;
+        _object->_changeEvent.Trigger(); 
+    }
+
     void ModelVisSettings::EnvSettingsFile::set(String^ value)
     {
         _object->_envSettingsFile = clix::marshalString<clix::E_UTF8>(value);

@@ -38,6 +38,9 @@ namespace RenderCore { namespace ColladaConversion
 {
     using namespace ::ColladaConversion;
 
+    static const unsigned ModelScaffoldVersion = 1;
+    static const unsigned ModelScaffoldLargeBlocksVersion = 0;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class ColladaScaffold
@@ -249,17 +252,20 @@ namespace RenderCore { namespace ColladaConversion
         NascentGeometryObjects _geoObjects;
         NascentSkeleton _skeleton;
 
-        PreparedSkinFile(const ColladaScaffold&, const VisualScene&, const Node&);
+        PreparedSkinFile(const ColladaScaffold&, const VisualScene&, StringSection<utf8>);
     };
 
-    PreparedSkinFile::PreparedSkinFile(const ColladaScaffold& input, const VisualScene& scene, const Node& rootNode)
+    PreparedSkinFile::PreparedSkinFile(const ColladaScaffold& input, const VisualScene& scene, StringSection<utf8> rootNode)
     {
         using namespace RenderCore::ColladaConversion;
 
         SkeletonRegistry jointRefs;
 
         ReferencedGeometries refGeos;
-        refGeos.Gather(rootNode, jointRefs);
+        bool gatherSuccess = refGeos.Gather(scene.GetRootNode(), rootNode, jointRefs);
+
+        if (!gatherSuccess)
+            Throw(::Assets::Exceptions::FormatError("Could not find root node: %s", rootNode.AsString().c_str()));
 
             // The skeleton joints won't be included in the skeleton
             // until we call FindSkinJoints. We don't really need the
@@ -283,7 +289,7 @@ namespace RenderCore { namespace ColladaConversion
 
             // When extracting an internal node, we ignore the transform 
             // on that internal node
-        BuildSkeleton(_skeleton, rootNode, jointRefs, (rootNode == scene.GetRootNode())?0:1, false);
+        BuildSkeleton(_skeleton, scene.GetRootNode(), rootNode, jointRefs, false);
         _skeleton.GetTransformationMachine().Pop(topLevelPops);
 
             // For each output matrix, we want to know if we can merge a transformation into it.
@@ -309,6 +315,7 @@ namespace RenderCore { namespace ColladaConversion
                     RenderCore::ColladaConversion::InstantiateGeometry(
                         scene.GetInstanceGeometry(c._objectIndex),
                         c._outputMatrixIndex, optimizer.GetMergedOutputMatrix(c._outputMatrixIndex),
+                        c._levelOfDetail,
                         input._resolveContext, _geoObjects, jointRefs,
                         input._cfg));
             } CATCH(const std::exception& e) {
@@ -326,6 +333,7 @@ namespace RenderCore { namespace ColladaConversion
                     RenderCore::ColladaConversion::InstantiateController(
                         scene.GetInstanceController(c._objectIndex),
                         c._outputMatrixIndex,
+                        c._levelOfDetail,
                         input._resolveContext, _geoObjects, jointRefs,
                         input._cfg));
                 skinSuccessful = true;
@@ -347,7 +355,7 @@ namespace RenderCore { namespace ColladaConversion
                     _cmdStream.Add(
                         RenderCore::ColladaConversion::InstantiateGeometry(
                             scene.GetInstanceController(c._objectIndex),
-                            c._outputMatrixIndex, Identity<Float4x4>(),
+                            c._outputMatrixIndex, Identity<Float4x4>(), c._levelOfDetail, 
                             input._resolveContext, _geoObjects, jointRefs,
                             input._cfg));
                 } CATCH(const std::exception& e) {
@@ -455,7 +463,7 @@ namespace RenderCore { namespace ColladaConversion
         stream << "============== Transformation Machine ==============" << std::endl;
         StreamOperator(stream, skinFile._skeleton.GetTransformationMachine());
     }
-      
+
     NascentChunkArray SerializeSkin(const ColladaScaffold& model, const char startingNode[])
     {
         Serialization::NascentBlockSerializer serializer;
@@ -466,17 +474,9 @@ namespace RenderCore { namespace ColladaConversion
         if (!scene)
             Throw(::Assets::Exceptions::FormatError("No visual scene found"));
 
-        auto rootNode = scene->GetRootNode();
-        if (startingNode && *startingNode) {
-                // Search for the given node, and use that as a root node.
-                // if it doesn't exist, we have to throw an exception
-            rootNode = rootNode.FindBreadthFirst(
-                [startingNode](const Node& node) { return XlEqString(node.GetName(), (const utf8*)startingNode); });
-            if (!rootNode)
-                Throw(::Assets::Exceptions::FormatError("Could not find root node: %s", startingNode));
-        }
-
-        PreparedSkinFile skinFile(model, *scene, rootNode);
+        StringSection<utf8> startingNodeName;
+        if (startingNode) startingNodeName = (const utf8*)startingNode;
+        PreparedSkinFile skinFile(model, *scene, startingNodeName);
 
             // Serialize the prepared skin file data to a BlockSerializer
 
@@ -501,9 +501,10 @@ namespace RenderCore { namespace ColladaConversion
             serializer.SerializeValue(size_t(defaultPoseData._defaultTransforms.size()));
             ::Serialize(serializer, defaultPoseData._boundingBox.first);
             ::Serialize(serializer, defaultPoseData._boundingBox.second);
-
-            // immData->~ModelImmutableData();
         }
+
+            // Find the max LOD value, and serialize that
+        ::Serialize(serializer, skinFile._cmdStream.GetMaxLOD());
 
             // Serialize human-readable metrics information
         std::stringstream metricsStream;
@@ -513,9 +514,9 @@ namespace RenderCore { namespace ColladaConversion
         auto metricsBlock = AsVector(metricsStream);
 
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_ModelScaffold, 0, model._name.c_str(), unsigned(scaffoldBlock.size()));
+            RenderCore::Assets::ChunkType_ModelScaffold, ModelScaffoldVersion, model._name.c_str(), unsigned(scaffoldBlock.size()));
         Serialization::ChunkFile::ChunkHeader largeBlockChunk(
-            RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, 0, model._name.c_str(), (unsigned)largeResourcesBlock.size());
+            RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, model._name.c_str(), (unsigned)largeResourcesBlock.size());
         Serialization::ChunkFile::ChunkHeader metricsChunk(
             RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock.size());
 
@@ -546,7 +547,7 @@ namespace RenderCore { namespace ColladaConversion
 
         using namespace RenderCore::ColladaConversion;
         SkeletonRegistry jointRefs;
-        BuildSkeleton(_skeleton, scene->GetRootNode(), jointRefs, 0, true);
+        BuildSkeleton(_skeleton, scene->GetRootNode(), StringSection<utf8>(), jointRefs, true);
         RegisterNodeBindingNames(_skeleton, jointRefs);
         TransMachineOptimizer optimizer;
         _skeleton.GetTransformationMachine().Optimize(optimizer);

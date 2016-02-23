@@ -37,6 +37,7 @@ namespace RenderCore { namespace Assets
         size_t                      _defaultTransformCount;        
 
         std::pair<Float3, Float3>   _boundingBox;
+        unsigned                    _maxLOD;
 
         ModelImmutableData() = delete;
         ~ModelImmutableData();

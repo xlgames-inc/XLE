@@ -2341,7 +2341,7 @@ namespace ColladaConversion
         return _scene->_nodes[_index]._sid;
     }
 
-    Node Node::FindBreadthFirst(std::function<bool(const Node&)>&& predicate)
+    Node Node::FindBreadthFirst(std::function<bool(const Node&)>&& predicate) const
     {
         // Search through the child nodes to look for a node with a 
         // "sid" that matches the given.
@@ -2362,7 +2362,25 @@ namespace ColladaConversion
 
         return Node();
     }
-        
+
+    std::vector<Node> Node::FindAllBreadthFirst(std::function<bool(const Node&)>&& predicate) const
+    {
+        std::vector<Node> result;
+        std::queue<VisualScene::IndexIntoNodes> workingQueue;
+        workingQueue.push(_index);
+
+        while (!workingQueue.empty()) {
+            Node front(*_scene, workingQueue.front());
+            workingQueue.pop();
+            if (predicate(front))
+                result.push_back(front);
+            for (auto child = front.GetFirstChild(); child; child = child.GetNextSibling())
+                workingQueue.push(child._index);
+        }
+
+        return result;
+    }
+
     Node::operator bool() const
     {
         return _index != VisualScene::IndexIntoNodes_Invalid;

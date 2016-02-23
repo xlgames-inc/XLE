@@ -38,11 +38,42 @@ namespace RenderCore { namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void BuildSkeleton(
+    struct LODDesc
+    {
+    public:
+        unsigned                _lod;
+        bool                    _isLODRoot;
+        StringSection<utf8>     _remainingName;
+    };
+
+    static LODDesc GetLevelOfDetail(const ::ColladaConversion::Node& node)
+    {
+        // We're going assign a level of detail to this node based on naming conventions. We'll
+        // look at the name of the node (rather than the name of the geometry object) and look
+        // for an indicator that it includes a LOD number.
+        // We're looking for something like "$lod" or "_lod". This should be followed by an integer,
+        // and with an underscore following.
+        if (    XlBeginsWithI(node.GetName(), MakeStringSection(u("_lod")))
+            ||  XlBeginsWithI(node.GetName(), MakeStringSection(u("$lod")))) {
+
+            auto nextSection = MakeStringSection(node.GetName().begin()+4, node.GetName().end());
+            uint32 lod = 0;
+            auto* parseEnd = FastParseElement(lod, nextSection.begin(), nextSection.end());
+            if (parseEnd < nextSection.end() && *parseEnd == '_')
+                return LODDesc { lod, true, MakeStringSection(parseEnd+1, node.GetName().end()) };
+            LogWarning << "Node name (" << Conversion::Convert<std::string>(node.GetName().AsString()) << ") looks like it contains a lod index, but parse failed. Defaulting to lod 0.";
+        }
+        return LODDesc { 0, false, StringSection<utf8>() };
+    }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static void BuildSkeleton(
         NascentSkeleton& skeleton,
         const Node& node,
         SkeletonRegistry& skeletonReferences,
-        int ignoreTransforms, bool fullSkeleton)
+        int ignoreTransforms, bool terminateOnLODNodes, bool fullSkeleton)
     {
         if (!fullSkeleton && !IsUseful(node, skeletonReferences)) return;
 
@@ -75,16 +106,70 @@ namespace RenderCore { namespace ColladaConversion
 
         auto child = node.GetFirstChild();
         while (child) {
-            BuildSkeleton(skeleton, child, skeletonReferences, ignoreTransforms-1, fullSkeleton);
+            if (terminateOnLODNodes && GetLevelOfDetail(child)._isLODRoot) { child = child.GetNextSibling(); continue; }
+
+            BuildSkeleton(skeleton, child, skeletonReferences, ignoreTransforms-1, terminateOnLODNodes, fullSkeleton);
             child = child.GetNextSibling();
         }
 
         skeleton.GetTransformationMachine().Pop(pushCount);
     }
 
+    void BuildSkeleton(
+        NascentSkeleton& skeleton,
+        const ::ColladaConversion::Node& sceneRoot,
+        StringSection<utf8> rootNode,
+        SkeletonRegistry& skeletonReferences,
+        bool fullSkeleton)
+    {
+        if (rootNode.Empty()) {
+            BuildSkeleton(skeleton, sceneRoot, skeletonReferences, 0, false, fullSkeleton);
+        } else {
+            // Scan through look for a node that matches the name exactly, or is an 
+            // LOD of that node.
+            auto roots = sceneRoot.FindAllBreadthFirst(
+                [rootNode](const Node& n)
+                {
+                    if (XlEqString(n.GetName(), rootNode)) return true;
+                    auto desc = GetLevelOfDetail(n);
+                    return desc._isLODRoot && XlEqString(desc._remainingName, rootNode);
+                });
+
+            for (const auto&r:roots)
+                BuildSkeleton(skeleton, r, skeletonReferences, 1, true, fullSkeleton);
+        }
+    }
+
+    bool ReferencedGeometries::Gather(
+        const ::ColladaConversion::Node& sceneRoot,
+        StringSection<utf8> rootNode,
+        SkeletonRegistry& nodeRefs)
+    {
+        if (rootNode.Empty()) {
+            Gather(sceneRoot, nodeRefs);
+            return true;
+        } else {
+            // Scan through look for a node that matches the name exactly, or is an 
+            // LOD of that node.
+            auto roots = sceneRoot.FindAllBreadthFirst(
+                [rootNode](const Node& n)
+                {
+                    if (XlEqString(n.GetName(), rootNode)) return true;
+                    auto desc = GetLevelOfDetail(n);
+                    return desc._isLODRoot && XlEqString(desc._remainingName, rootNode);
+                });
+            if (roots.empty()) return false;
+
+            for (const auto&r:roots)
+                Gather(r, nodeRefs, true);
+            return true;
+        }
+    }
+
     void ReferencedGeometries::Gather(
         const ::ColladaConversion::Node& node,
-        SkeletonRegistry& nodeRefs)
+        SkeletonRegistry& nodeRefs,
+        bool terminateOnLODNodes)
     {
             // Just collect all of the instanced geometries and instanced controllers
             // that hang off this node (or any children).
@@ -93,13 +178,13 @@ namespace RenderCore { namespace ColladaConversion
         const auto& scene = node.GetScene();
         for (unsigned c=0; c<scene.GetInstanceGeometryCount(); ++c)
             if (scene.GetInstanceGeometry_Attach(c).GetIndex() == node.GetIndex()) {
-                _meshes.push_back(AttachedObject{nodeRefs.GetOutputMatrixIndex(nodeAsGuid), c});
+                _meshes.push_back(AttachedObject{nodeRefs.GetOutputMatrixIndex(nodeAsGuid), c, GetLevelOfDetail(node)._lod});
                 gotAttachment = true;
             }
 
         for (unsigned c=0; c<scene.GetInstanceControllerCount(); ++c)
             if (scene.GetInstanceController_Attach(c).GetIndex() == node.GetIndex()) {
-                _skinControllers.push_back(AttachedObject{nodeRefs.GetOutputMatrixIndex(nodeAsGuid), c});
+                _skinControllers.push_back(AttachedObject{nodeRefs.GetOutputMatrixIndex(nodeAsGuid), c, GetLevelOfDetail(node)._lod});
                 gotAttachment = true;
             }
 
@@ -111,7 +196,9 @@ namespace RenderCore { namespace ColladaConversion
 
         auto child = node.GetFirstChild();
         while (child) {
-            Gather(child, nodeRefs);
+            if (terminateOnLODNodes && GetLevelOfDetail(child)._isLODRoot) { child = child.GetNextSibling(); continue; }
+
+            Gather(child, nodeRefs, terminateOnLODNodes);
             child = child.GetNextSibling();
         }
     }
@@ -224,6 +311,7 @@ namespace RenderCore { namespace ColladaConversion
     NascentModelCommandStream::GeometryInstance InstantiateGeometry(
         const ::ColladaConversion::InstanceGeometry& instGeo,
         unsigned outputTransformIndex, const Float4x4& mergedTransform,
+        unsigned levelOfDetail,
         const URIResolveContext& resolveContext,
         NascentGeometryObjects& objects,
         SkeletonRegistry& nodeRefs,
@@ -273,7 +361,7 @@ namespace RenderCore { namespace ColladaConversion
             objects._rawGeos[geo].second._matBindingSymbols, resolveContext);
 
         return NascentModelCommandStream::GeometryInstance(
-            geo, outputTransformIndex, std::move(materials), 0);
+            geo, outputTransformIndex, std::move(materials), levelOfDetail);
     }
 
     static DynamicArray<uint16> BuildJointArray(
@@ -323,7 +411,7 @@ namespace RenderCore { namespace ColladaConversion
 
     NascentModelCommandStream::SkinControllerInstance InstantiateController(
         const ::ColladaConversion::InstanceController& instGeo,
-        unsigned outputTransformIndex,
+        unsigned outputTransformIndex, unsigned levelOfDetail,
         const URIResolveContext& resolveContext,
         NascentGeometryObjects& objects,
         SkeletonRegistry& nodeRefs,
@@ -377,7 +465,7 @@ namespace RenderCore { namespace ColladaConversion
 
         return NascentModelCommandStream::SkinControllerInstance(
             (unsigned)(objects._skinnedGeos.size()-1), 
-            outputTransformIndex, std::move(materials), 0);
+            outputTransformIndex, std::move(materials), levelOfDetail);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

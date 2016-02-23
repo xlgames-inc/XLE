@@ -122,6 +122,14 @@ namespace GUILayer
             void set(String^ value);
         }
 
+        [Category("Model")]
+        [Description("Level Of Detail")]
+        property unsigned LevelOfDetail
+        {
+            unsigned get() { return _object->_levelOfDetail; }
+            void set(unsigned value);
+        }
+
         [Category("Environment")]
         [Description("Environment settings name")]
         property String^ EnvSettingsFile

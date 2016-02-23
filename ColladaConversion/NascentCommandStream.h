@@ -203,6 +203,7 @@ namespace RenderCore { namespace ColladaConversion
         unsigned FindTransformationMachineOutput(ObjectGuid nodeId) const;
 
         std::vector<uint64> GetInputInterface() const;
+        unsigned GetMaxLOD() const;
 
         NascentModelCommandStream();
         ~NascentModelCommandStream();

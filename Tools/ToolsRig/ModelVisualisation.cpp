@@ -216,12 +216,39 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static ModelCache::Model GetModel(
+        ModelCache& cache,
+        ModelVisSettings& settings)
+    {
+        std::vector<ModelCache::SupplementGUID> supplements;
+        {
+            const auto& s = settings._supplements;
+            size_t offset = 0;
+            for (;;) {
+                auto comma = s.find_first_of(',', offset);
+                if (comma == std::string::npos) comma = s.size();
+                if (offset == comma) break;
+                auto hash = ConstHash64FromString(AsPointer(s.begin()) + offset, AsPointer(s.begin()) + comma);
+                supplements.push_back(hash);
+                offset = comma;
+            }
+        }
+
+        return cache.GetModel(
+            settings._modelName.c_str(), 
+            settings._materialName.c_str(),
+            MakeIteratorRange(supplements),
+            settings._levelOfDetail);
+    }
+
     class ModelVisLayer::Pimpl
     {
     public:
         std::shared_ptr<ModelCache> _cache;
         std::shared_ptr<ModelVisSettings> _settings;
         std::shared_ptr<VisEnvSettings> _envSettings;
+
+        ModelCache::Model GetModel() { return ToolsRig::GetModel(*_cache, *_settings); }
     };
 
     auto ModelVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>
@@ -235,24 +262,7 @@ namespace ToolsRig
     {
         using namespace SceneEngine;
 
-        std::vector<ModelCache::SupplementGUID> supplements;
-        {
-            const auto& s = _pimpl->_settings->_supplements;
-            size_t offset = 0;
-            for (;;) {
-                auto comma = s.find_first_of(',', offset);
-                if (comma == std::string::npos) comma = s.size();
-                if (offset == comma) break;
-                auto hash = ConstHash64FromString(AsPointer(s.begin()) + offset, AsPointer(s.begin()) + comma);
-                supplements.push_back(hash);
-                offset = comma;
-            }
-        }
-
-        auto model = _pimpl->_cache->GetModel(
-            _pimpl->_settings->_modelName.c_str(), 
-            _pimpl->_settings->_materialName.c_str(),
-            MakeIteratorRange(supplements));
+        auto model = _pimpl->GetModel();
         assert(model._renderer && model._sharedStateSet);
 
         if (_pimpl->_settings->_pendingCameraAlignToModel) {
@@ -350,7 +360,7 @@ namespace ToolsRig
                     //  and material binding index. The shader reads a draw call index from the 
                     //  stencil buffer and remaps that into a material index using this table.
                 if (_pimpl->_cache) {
-                    auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str(), _pimpl->_settings->_materialName.c_str());
+                    auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
                     assert(model._renderer && model._sharedStateSet);
 
                     auto bindingVec = model._renderer->DrawCallToMaterialBinding();
@@ -384,14 +394,14 @@ namespace ToolsRig
                 using namespace RenderCore;
                 auto metalContext = Metal::DeviceContext::Get(*context);
 
-                auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str(), _pimpl->_settings->_materialName.c_str());
+                auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
                 assert(model._renderer && model._sharedStateSet);
 
                 RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
                 if (model._sharedStateSet)
                     captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
-                const auto techniqueIndex = 8u;
+                const auto techniqueIndex = RenderCore::Techniques::TechniqueIndex::VisWireframe;
 
                 RenderWithEmbeddedSkeleton(
                     RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
@@ -405,14 +415,14 @@ namespace ToolsRig
                 using namespace RenderCore;
                 auto metalContext = Metal::DeviceContext::Get(*context);
 
-                auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str(), _pimpl->_settings->_materialName.c_str());
+                auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
                 assert(model._renderer && model._sharedStateSet);
 
                 RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
                 if (model._sharedStateSet)
                     captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
-                const auto techniqueIndex = 7u;
+                const auto techniqueIndex = RenderCore::Techniques::TechniqueIndex::VisNormals;
 
                 RenderWithEmbeddedSkeleton(
                     RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
@@ -472,7 +482,7 @@ namespace ToolsRig
     {
         using namespace SceneEngine;
 
-        auto model = _cache->GetModel(_settings->_modelName.c_str(), _settings->_materialName.c_str());
+        auto model = GetModel(*_cache, *_settings);
         assert(model._renderer && model._sharedStateSet);
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
@@ -657,6 +667,7 @@ namespace ToolsRig
         _modelName = "game/model/galleon/galleon.dae";
         _materialName = "game/model/galleon/galleon.material";
         _envSettingsFile = "defaultenv.txt:environment";
+        _levelOfDetail = 0;
         _pendingCameraAlignToModel = true;
         _doHighlightWireframe = false;
         _highlightRay = std::make_pair(Zero<Float3>(), Zero<Float3>());

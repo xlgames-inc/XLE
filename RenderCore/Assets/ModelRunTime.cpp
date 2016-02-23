@@ -51,6 +51,9 @@ namespace RenderCore { namespace Assets
 {
     using ::Assets::ResChar;
 
+    static const unsigned ModelScaffoldVersion = 1;
+    static const unsigned ModelScaffoldLargeBlocksVersion = 0;
+
     /// <summary>Internal namespace with utilities for constructing models</summary>
     /// These functions are normally used within the constructor of ModelRenderer
     namespace ModelConstruction
@@ -1737,11 +1740,12 @@ namespace RenderCore { namespace Assets
     const ModelCommandStream&       ModelScaffold::CommandStream() const                { return ImmutableData()._visualScene; }
     const TransformationMachine&    ModelScaffold::EmbeddedSkeleton() const             { return ImmutableData()._embeddedSkeleton; }
     std::pair<Float3, Float3>       ModelScaffold::GetStaticBoundingBox(unsigned) const { return ImmutableData()._boundingBox; }
+    unsigned                        ModelScaffold::GetMaxLOD() const                    { return ImmutableData()._maxLOD; }
 
     static const ::Assets::AssetChunkRequest ModelScaffoldChunkRequests[]
     {
-        ::Assets::AssetChunkRequest { "Scaffold", ChunkType_ModelScaffold, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
-        ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, 0, ::Assets::AssetChunkRequest::DataType::DontLoad }
+        ::Assets::AssetChunkRequest { "Scaffold", ChunkType_ModelScaffold, ModelScaffoldVersion, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
+        ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, ::Assets::AssetChunkRequest::DataType::DontLoad }
     };
     
     ModelScaffold::ModelScaffold(const ::Assets::ResChar filename[])

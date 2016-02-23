@@ -7,6 +7,7 @@
 #pragma once
 
 #include "NascentCommandStream.h"
+#include "../Utility/StringUtils.h"
 
 namespace ColladaConversion { class Node; class VisualScene; class URIResolveContext; class InstanceGeometry; class InstanceController; }
 
@@ -20,9 +21,10 @@ namespace RenderCore { namespace ColladaConversion
 
     void BuildSkeleton(
         NascentSkeleton& skeleton,
-        const ::ColladaConversion::Node& node,
+        const ::ColladaConversion::Node& sceneRoot,
+        StringSection<utf8> rootNode,
         SkeletonRegistry& skeletonReferences,
-        int ignoreTransforms, bool fullSkeleton);
+        bool fullSkeleton);
 
     class NascentGeometryObjects
     {
@@ -45,6 +47,7 @@ namespace RenderCore { namespace ColladaConversion
     NascentModelCommandStream::GeometryInstance InstantiateGeometry(
         const ::ColladaConversion::InstanceGeometry& instGeo,
         unsigned outputTransformIndex, const Float4x4& mergedTransform,
+        unsigned levelOfDetail,
         const ::ColladaConversion::URIResolveContext& resolveContext,
         NascentGeometryObjects& objects,
         SkeletonRegistry& nodeRefs,
@@ -52,7 +55,7 @@ namespace RenderCore { namespace ColladaConversion
 
     NascentModelCommandStream::SkinControllerInstance InstantiateController(
         const ::ColladaConversion::InstanceController& instGeo,
-        unsigned outputTransformIndex,
+        unsigned outputTransformIndex, unsigned levelOfDetail,
         const ::ColladaConversion::URIResolveContext& resolveContext,
         NascentGeometryObjects& objects,
         SkeletonRegistry& nodeRefs,
@@ -66,15 +69,20 @@ namespace RenderCore { namespace ColladaConversion
         public:
             unsigned    _outputMatrixIndex;
             unsigned    _objectIndex;
+            unsigned    _levelOfDetail;
         };
         std::vector<AttachedObject>   _meshes;
         std::vector<AttachedObject>   _skinControllers;
 
-        void Gather(const ::ColladaConversion::Node& node, SkeletonRegistry& nodeRefs);
+        bool Gather(const ::ColladaConversion::Node& sceneRoot, StringSection<utf8> rootNode, SkeletonRegistry& nodeRefs);
+
         void FindSkinJoints(
             const ::ColladaConversion::VisualScene& scene, 
             const ::ColladaConversion::URIResolveContext& resolveContext, 
             SkeletonRegistry& nodeRefs);
+
+    private:
+        void Gather(const ::ColladaConversion::Node& node, SkeletonRegistry& nodeRefs, bool terminateOnLODNodes = false);
     };
 
     void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
