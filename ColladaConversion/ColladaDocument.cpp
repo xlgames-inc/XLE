@@ -133,7 +133,28 @@ namespace ColladaConversion
     };
 
 
-    
+    static bool TryParseAssetDescElement(AssetDesc&desc, Formatter& formatter, Formatter::InteriorSection eleName)
+    {
+        if (Is(eleName, u("unit"))) {
+            // Utility::Document<Formatter> doc(formatter);
+            // _metersPerUnit = doc(u("meter"), _metersPerUnit);
+            auto meter = ExtractSingleAttribute(formatter, u("meter"));
+            desc._metersPerUnit = Parse(meter, desc._metersPerUnit);
+            return true;
+        } else if (Is(eleName, u("up_axis"))) {
+            if (formatter.TryCharacterData(eleName)) {
+                if ((eleName._end - eleName._start) >= 1) {
+                    switch (std::tolower(*eleName._start)) {
+                    case 'x': desc._upAxis = AssetDesc::UpAxis::X; break;
+                    case 'y': desc._upAxis = AssetDesc::UpAxis::Y; break;
+                    case 'z': desc._upAxis = AssetDesc::UpAxis::Z; break;
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
 
     AssetDesc::AssetDesc()
     {
@@ -145,24 +166,8 @@ namespace ColladaConversion
         : AssetDesc()
     {
         ON_ELEMENT
-            if (Is(eleName, u("unit"))) {
-                // Utility::Document<Formatter> doc(formatter);
-                // _metersPerUnit = doc(u("meter"), _metersPerUnit);
-                auto meter = ExtractSingleAttribute(formatter, u("meter"));
-                _metersPerUnit = Parse(meter, _metersPerUnit);
-            } else if (Is(eleName, u("up_axis"))) {
-                if (formatter.TryCharacterData(eleName)) {
-                    if ((eleName._end - eleName._start) >= 1) {
-                        switch (std::tolower(*eleName._start)) {
-                        case 'x': _upAxis = UpAxis::X; break;
-                        case 'y': _upAxis = UpAxis::Y; break;
-                        case 'z': _upAxis = UpAxis::Z; break;
-                        }
-                    }
-                }
-            } else
+            if (!TryParseAssetDescElement(*this, formatter, eleName))
                 formatter.SkipElement();
-
         ON_ATTRIBUTE
         PARSE_END
     }
@@ -192,6 +197,9 @@ namespace ColladaConversion
                                 found = true;
                                 break;
                             }
+
+                        if (!found)
+                            found = TryParseAssetDescElement(_rootAsset, formatter, ele);
 
                         if (!found) {
                             LogWarning << "Skipping element " << ele << " at " << formatter.GetLocation();
