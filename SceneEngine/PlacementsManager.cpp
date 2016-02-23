@@ -702,7 +702,15 @@ namespace SceneEngine
                 //      may cause problems with models with multiple LOD, because
                 //      it may mean rapidly switching back and forth between 
                 //      renderers (which can be expensive)
-            auto LOD = unsigned(distanceSq / (150.f*150.f));
+
+            // todo -- we need to improve this in 2 critical ways:
+            //      1) more complex metric for selecting the LOD (eg, considering size on screen, maybe triangle density)
+            //              - also consider best approach for selecting LOD for very large objects
+            //      2) we need to record the result from last frame, so we can do transitions (eg, using a dither based fade)
+            //
+            // However, that functionality should probably be combined with a change to the scene parser that 
+            // to add a more formal "prepare" step. So it will have to wait for now.
+            auto LOD = unsigned(distanceSq / (75.f*75.f));
 
             if (    modelHash != _currentModel || materialHash != _currentMaterial 
                 ||  obj._supplementsOffset != _currentSupplements
