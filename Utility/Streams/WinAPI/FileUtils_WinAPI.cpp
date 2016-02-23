@@ -187,6 +187,59 @@ namespace Utility
         return *this;
     }
 
+    BasicFile::BasicFile(const BasicFile& copyFrom) never_throws
+    {
+        _file = INVALID_HANDLE_VALUE;
+        auto currentProc = GetCurrentProcess();
+        auto hresult = DuplicateHandle(
+            currentProc, copyFrom._file,
+            currentProc, &_file,
+            0, FALSE,
+            DUPLICATE_SAME_ACCESS);
+
+        if (!SUCCEEDED(hresult)) {
+            LPVOID lpMsgBuf;
+            DWORD dw = GetLastError(); 
+            FormatMessage(
+                FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                (LPTSTR) &lpMsgBuf, 0, NULL);
+            Exceptions::IOException except(
+                AsExceptionReason(dw), 
+                "Failure while attempting to duplicate file handle. Error string: (%s)", lpMsgBuf);
+            LocalFree(lpMsgBuf);
+            Throw(except);
+        }
+    }
+
+    BasicFile& BasicFile::operator=(const BasicFile& copyFrom) never_throws
+    {
+        if (_file != INVALID_HANDLE_VALUE)
+            CloseHandle(_file);
+        _file = INVALID_HANDLE_VALUE;
+        auto currentProc = GetCurrentProcess();
+        auto hresult = DuplicateHandle(
+            currentProc, copyFrom._file,
+            currentProc, &_file,
+            0, FALSE,
+            DUPLICATE_SAME_ACCESS);
+
+        if (!SUCCEEDED(hresult)) {
+            LPVOID lpMsgBuf;
+            DWORD dw = GetLastError(); 
+            FormatMessage(
+                FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                (LPTSTR) &lpMsgBuf, 0, NULL);
+            Exceptions::IOException except(
+                AsExceptionReason(dw), 
+                "Failure while attempting to duplicate file handle. Error string: (%s)", lpMsgBuf);
+            LocalFree(lpMsgBuf);
+            Throw(except);
+        }
+        return *this;
+    }
+
     BasicFile::BasicFile()
     {
         _file = INVALID_HANDLE_VALUE;

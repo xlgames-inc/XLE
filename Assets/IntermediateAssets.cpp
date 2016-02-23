@@ -15,6 +15,9 @@
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/Data.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/Streams/StreamDOM.h"
+#include "../Utility/Streams/Stream.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/PtrUtils.h"
@@ -240,7 +243,7 @@ namespace Assets { namespace IntermediateAssets
         return result;
     }
 
-    Store::Store(const ResChar baseDirectory[], const ResChar versionString[], bool universal)
+    Store::Store(const ResChar baseDirectory[], const ResChar versionString[], const ResChar configString[], bool universal)
     {
             //  First, we need to find an output directory to use.
             //  We want a directory that isn't currently being used, and
@@ -249,59 +252,60 @@ namespace Assets { namespace IntermediateAssets
 		ResChar buffer[MaxPath];
 
 		if (!universal) {
-			_snprintf_s(buffer, _TRUNCATE, "%s/d*", baseDirectory);
+			_snprintf_s(buffer, _TRUNCATE, "%s/%s_*", baseDirectory, configString);
 
 			std::string goodBranchDir;
 
-			{
-					//  Look for existing directories that could match the version
-					//  string we have. 
-				WIN32_FIND_DATAA findData;
-				XlZeroMemory(findData);
-				HANDLE findHandle = FindFirstFileA(buffer, &findData);
-				if (findHandle != INVALID_HANDLE_VALUE) {
-					do {
-						if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-							_snprintf_s(buffer, _TRUNCATE, "%s/%s/.store", baseDirectory, findData.cFileName);
-							TRY 
-							{
-									// Note --  Ideally we want to prevent two different instances of the
-									//          same app from using the same intermediate assets store.
-									//          We can do this by use a "non-shareable" file mode when
-									//          we load these files. 
-								BasicFile markerFile(buffer, "r+b");
-								auto fileSize = markerFile.GetSize();
-								if (fileSize != 0) {
-									auto rawData = std::unique_ptr<uint8[]>(new uint8[int(fileSize)]);
-									markerFile.Read(rawData.get(), 1, size_t(fileSize));
+				//  Look for existing directories that could match the version
+				//  string we have. 
+			WIN32_FIND_DATAA findData;
+			XlZeroMemory(findData);
+			HANDLE findHandle = FindFirstFileA(buffer, &findData);
+			if (findHandle != INVALID_HANDLE_VALUE) {
+				do {
+					if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+						_snprintf_s(buffer, _TRUNCATE, "%s/%s/.store", baseDirectory, findData.cFileName);
+						TRY 
+						{
+								// Note --  Ideally we want to prevent two different instances of the
+								//          same app from using the same intermediate assets store.
+								//          We can do this by use a "non-shareable" file mode when
+								//          we load these files. 
+							BasicFile markerFile(buffer, "rb", 0);
+							auto fileSize = markerFile.GetSize();
+							if (fileSize != 0) {
+								auto rawData = std::unique_ptr<uint8[]>(new uint8[int(fileSize)]);
+								markerFile.Read(rawData.get(), 1, size_t(fileSize));
 
-									Data data;
-									data.Load((const char*)rawData.get(), (int)fileSize);
-									auto* compareVersion = data.StrAttribute("VersionString");
-									if (!_stricmp(versionString, compareVersion)) {
-										// this branch is already present, and is good... so use it
-										goodBranchDir = std::string(baseDirectory) + "/" + findData.cFileName;
-										break;
-									}
+                                InputStreamFormatter<utf8> formatter(
+                                    MemoryMappedInputStream(rawData.get(), PtrAdd(rawData.get(), fileSize)));
+                                Document<InputStreamFormatter<utf8>> doc(formatter);
 
-									// it's a store for some other version of the executable. Try the next one
-									continue;
+								auto compareVersion = doc.Attribute(u("VersionString")).Value();
+								if (XlEqString(compareVersion, (const utf8*)versionString)) {
+									// this branch is already present, and is good... so use it
+									goodBranchDir = std::string(baseDirectory) + "/" + findData.cFileName;
+                                    _markerFile = std::move(markerFile);
+									break;
 								}
-							} 
-							CATCH (...) {}
-							CATCH_END
-						}
-					} while (FindNextFileA(findHandle, &findData));
 
-					FindClose(findHandle);
-				}
+								// it's a store for some other version of the executable. Try the next one
+								continue;
+							}
+						}
+						CATCH (...) {}  // on any kind of error, we just check the next directory
+						CATCH_END
+					}
+				} while (FindNextFileA(findHandle, &findData));
+
+				FindClose(findHandle);
 			}
 
 			if (goodBranchDir.empty()) {
 					// if we didn't find an existing folder we can use, we need to create a new one
 					// search through to find the first unused directory
 				for (unsigned d=0;;++d) {
-					_snprintf_s(buffer, _TRUNCATE, "%s/d%i", baseDirectory, d);
+					_snprintf_s(buffer, _TRUNCATE, "%s/%s_%i", baseDirectory, configString, d);
 					DWORD dwAttrib = GetFileAttributes(buffer);
 					if (dwAttrib != INVALID_FILE_ATTRIBUTES) {
 						continue;
@@ -310,11 +314,15 @@ namespace Assets { namespace IntermediateAssets
 					CreateDirectoryRecursive(buffer);
 					goodBranchDir = buffer;
 
-					_snprintf_s(buffer, _TRUNCATE, "%s/d%i/.store", baseDirectory, d);
+					_snprintf_s(buffer, _TRUNCATE, "%s/%s_%i/.store", baseDirectory, configString, d);
 
-					Data newData;
-					newData.SetAttribute("VersionString", versionString);
-					newData.Save(buffer);
+                        // Opening without sharing to prevent other instances of XLE apps from using
+                        // the same directory.
+                    _markerFile = BasicFile(buffer, "wb", 0);
+					auto stream = OpenFileOutput(_markerFile);
+                    OutputStreamFormatter formatter(*stream);
+                    formatter.WriteAttribute(u("VersionString"), (const utf8*)versionString);
+                    formatter.Flush();
 					break;
 				}
 			}

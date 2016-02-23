@@ -8,6 +8,7 @@
 
 #include "Assets.h"
 #include "AssetUtils.h"
+#include "../Utility/Streams/FileUtils.h"
 
 namespace Assets 
 {
@@ -103,13 +104,14 @@ namespace Assets { namespace IntermediateAssets
         static auto GetDependentFileState(const StringSection<ResChar> filename) -> DependentFileState;
         static void ShadowFile(const ResChar filename[]);
 
-        Store(const ResChar baseDirectory[], const ResChar versionString[], bool universal = false);
+        Store(const ResChar baseDirectory[], const ResChar versionString[], const ResChar configString[], bool universal = false);
         ~Store();
         Store(const Store&) = delete;
         Store& operator=(const Store&) = delete;
 
     protected:
         std::string _baseDirectory;
+        BasicFile _markerFile;
     };
 
     class IAssetCompiler

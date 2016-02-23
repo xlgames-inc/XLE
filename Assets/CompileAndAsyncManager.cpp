@@ -112,23 +112,24 @@ namespace Assets
             //          run an old version of the engine, and we don't want it to
             //          conflict with more recent work, even if there have been
             //          major changes in the meantime.
+        const char storeVersionString[] = "0.0.0";
         #if defined(_DEBUG)
             #if TARGET_64BIT
-                const char storeVersionString[] = "0.0.0d64";
+                const char storeConfigString[] = "d64";
             #else
-                const char storeVersionString[] = "0.0.0d";
+                const char storeConfigString[] = "d";
             #endif
         #else
             #if TARGET_64BIT
-                const char storeVersionString[] = "0.0.0r64";
+                const char storeConfigString[] = "r64";
             #else
-                const char storeVersionString[] = "0.0.0r";
+                const char storeConfigString[] = "r";
             #endif
         #endif
 
 		_pimpl = std::make_unique<Pimpl>();
-		_pimpl->_intStore = std::make_unique<IntermediateAssets::Store>("Int", storeVersionString);
-		_pimpl->_shadowingStore = std::make_unique<IntermediateAssets::Store>("Int", storeVersionString, true);
+		_pimpl->_intStore = std::make_unique<IntermediateAssets::Store>("Int", storeVersionString, storeConfigString);
+		_pimpl->_shadowingStore = std::make_unique<IntermediateAssets::Store>("Int", storeVersionString, storeConfigString, true);
 
 		_pimpl->_intMan = std::make_unique<IntermediateAssets::CompilerSet>();
     }

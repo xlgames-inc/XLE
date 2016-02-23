@@ -84,14 +84,13 @@ namespace Utility
         BasicFile(const char filename[], const char openMode[], ShareMode::BitField shareMode = ShareMode::Read);
         BasicFile(BasicFile&& moveFrom) never_throws;
         BasicFile& operator=(BasicFile&& moveFrom) never_throws;
+        BasicFile(const BasicFile& copyFrom) never_throws;
+        BasicFile& operator=(const BasicFile& copyFrom) never_throws;
         BasicFile();
         ~BasicFile();
 
     private:
         void* _file;
-
-        BasicFile(const BasicFile& cloneFrom) never_throws;
-        BasicFile& operator=(const BasicFile& cloneFrom) never_throws;
     };
 
     class MemoryMappedFile

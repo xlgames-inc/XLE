@@ -16,6 +16,7 @@
 
 namespace Utility
 {
+    class BasicFile;
 
     enum StreamSeekType {
         SST_CUR
@@ -48,6 +49,7 @@ namespace Utility
     };
 
     std::unique_ptr<OutputStream>   OpenFileOutput(const char* path, const char* mode);
+    std::unique_ptr<OutputStream>   OpenFileOutput(const BasicFile&);
 
 }
 

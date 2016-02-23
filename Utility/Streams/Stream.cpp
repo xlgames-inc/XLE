@@ -59,8 +59,6 @@ bool FileInputStream::Seek(StreamSeekType type, int64 offset)
 class FileOutputStream : public OutputStream, noncopyable
 {
 public:
-    FileOutputStream(const char filename[], const char openMode[]);
-
     virtual size_type Tell();
     virtual void Write(const void* p, size_type len);
 
@@ -73,14 +71,19 @@ public:
 
     virtual void Flush();
 
+    FileOutputStream(const char filename[], const char openMode[]);
+    FileOutputStream(const BasicFile& copyFrom);
 private:
     BasicFile _file;
 };
 
 FileOutputStream::FileOutputStream(const char filename[], const char openMode[]) 
 : _file(filename, openMode)
-{
-}
+{}
+
+FileOutputStream::FileOutputStream(const BasicFile& copyFrom)
+: _file(copyFrom)
+{}
 
 auto FileOutputStream::Tell() -> size_type
 {
@@ -134,6 +137,11 @@ void FileOutputStream::Flush()
 std::unique_ptr<OutputStream> OpenFileOutput(const char* path, const char* mode)
 {
     return std::make_unique<FileOutputStream>(path, mode);
+}
+
+std::unique_ptr<OutputStream> OpenFileOutput(const BasicFile& copyFrom)
+{
+    return std::make_unique<FileOutputStream>(copyFrom);
 }
 
 // --------------------------------------------------------------------------
