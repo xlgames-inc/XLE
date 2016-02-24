@@ -434,6 +434,13 @@ namespace GUILayer
             terr->FlushToDisk(nativeProgress.get());
         }
 
+        static void SetShortCircuitSettings(EditorSceneManager^ sceneMan, bool gradFlagEnable, float gradFlagSpacing, float gradFlagThreshold0, float gradFlagThreshold1, float gradFlagThreshold2)
+        {
+            auto terr = sceneMan->GetScene()._terrainManager;
+            if (!terr) return;
+            terr->SetShortCircuitSettings(SceneEngine::GradientFlagsSettings(gradFlagEnable, gradFlagSpacing, gradFlagThreshold0, gradFlagThreshold1, gradFlagThreshold2));
+        }
+
         static void GenerateCellFiles(
             TerrainConfig^ cfg, String^ uberSurfaceDir, 
             bool overwriteExisting, 

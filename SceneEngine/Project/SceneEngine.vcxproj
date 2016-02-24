@@ -267,6 +267,7 @@
     <ClInclude Include="..\FluidAdvection.h" />
     <ClInclude Include="..\FluidHelper.h" />
     <ClInclude Include="..\GestaltResource.h" />
+    <ClInclude Include="..\GradientFlagSettings.h" />
     <ClInclude Include="..\IntersectionTest.h" />
     <ClInclude Include="..\LightingTargets.h" />
     <ClInclude Include="..\LightingParserContext.h" />

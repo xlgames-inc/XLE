@@ -342,8 +342,8 @@
     <xs:attribute name="Offset" type="vector3Type" default="0 0 0"/>
 
     <xs:attribute name="HasEncodedGradientFlags" type="xs:boolean" default="true" />
-    <xs:attribute name="GradFlagSlopeThreshold0" type="xs:float" default=".5" />
-    <xs:attribute name="GradFlagSlopeThreshold1" type="xs:float" default="1.125" />
+    <xs:attribute name="GradFlagSlopeThreshold0" type="xs:float" default="0.08" />
+    <xs:attribute name="GradFlagSlopeThreshold1" type="xs:float" default="0.4" />
     <xs:attribute name="GradFlagSlopeThreshold2" type="xs:float" default="1.75" />
 
     <xs:attribute name="SunPathAngle" type="xs:float" default="0"/>

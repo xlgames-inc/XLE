@@ -800,6 +800,12 @@ namespace SceneEngine
         }
     }
 
+    void TerrainManager::SetShortCircuitSettings(const GradientFlagsSettings& gradientFlagsSettings)
+    {
+        if (_pimpl->_renderer)
+            _pimpl->_renderer->SetShortCircuitSettings(gradientFlagsSettings);
+    }
+
     const TerrainCoordinateSystem&  TerrainManager::GetCoords() const                       { return _pimpl->_coords; }
     HeightsUberSurfaceInterface* TerrainManager::GetHeightsInterface()                      { return _pimpl->_uberSurfaceInterface.get(); }
     std::shared_ptr<ISurfaceHeightsProvider> TerrainManager::GetHeightsProvider()    { return _pimpl->_heightsProvider; }

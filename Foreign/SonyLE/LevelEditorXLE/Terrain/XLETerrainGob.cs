@@ -260,6 +260,11 @@ namespace LevelEditorXLE.Terrain
             {
                 this.GetSceneManager().ReloadTerrain(BuildEngineConfig());
                 m_isLoaded = true;
+
+                GUILayer.EditorInterfaceUtils.SetShortCircuitSettings(
+                    this.GetSceneManager(),
+                    HasEncodedGradientFlags, Spacing,
+                    GradFlagSlopeThreshold0, GradFlagSlopeThreshold1, GradFlagSlopeThreshold2);
             }
             catch (Exception e)
             {

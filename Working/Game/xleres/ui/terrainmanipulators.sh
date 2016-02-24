@@ -121,7 +121,7 @@ float4 ps_lockedareahighlight(	float4 position : SV_Position,
 	int2 pixelCoords = position.xy;
 
 	float linear0To1Depth = GetLinear0To1Depth(pixelCoords, GetSampleIndex(sys));
-	if (linear0To1Depth == 1.f) discard;
+	if (linear0To1Depth >= 0.99999f) discard;
 	float3 worldPosition = CalculateWorldPosition(
 		viewFrustumVector, linear0To1Depth, WorldSpaceView);
 

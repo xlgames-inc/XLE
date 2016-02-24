@@ -39,7 +39,9 @@ float2 CalculateDHDXY(int2 coord)
     return dhdp;
 }
 
-uint CalculateRawGradientFlags(int2 baseCoord, float spacing)
+uint CalculateRawGradientFlags(
+    int2 baseCoord, float spacing,
+    float slope0Threshold, float slope1Threshold, float slope2Threshold)
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -71,9 +73,9 @@ uint CalculateRawGradientFlags(int2 baseCoord, float spacing)
     // dot(dhdxy[3], dhdxy[5]) >= 1.f;
 
     float slope = max(abs(dhdxy[4].x), abs(dhdxy[4].y));
-    if (slope < .5f*1.f)    return 0;
-    if (slope < .5f*2.25f)  return 1;
-    if (slope < .5f*3.5f)   return 2;
+    if (slope < slope0Threshold) return 0;
+    if (slope < slope1Threshold) return 1;
+    if (slope < slope2Threshold) return 2;
     return 3;
 
 #if 0

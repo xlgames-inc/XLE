@@ -13,6 +13,9 @@ cbuffer Parameters : register(b0)
 	int3 DstTileAddress;
 	int SampleArea;
 	uint2 TileSize;
+	uint2 Dummy;
+	float GradFlagSpacing;
+	float GradFlagThresholds0, GradFlagThresholds1, GradFlagThresholds2;
 }
 
 struct TileCoords
@@ -49,10 +52,8 @@ RWTexture2D<uint> 		MidwayMaterialFlags : register(u2);
 	Texture2DArray<uint>			OldHeights : register(t1);
 	RWStructuredBuffer<TileCoords>	TileCoordsBuffer : register(u3);
 
-	float GetElementSpacing() { return TileCoordsBuffer[0].ElementSpacing; }
 	float GetHeightOffsetValue() { return TileCoordsBuffer[0].HeightOffsetValue; }
 #else
-	float GetElementSpacing() { return 2.f; }
 	float GetHeightOffsetValue() { return 0.f; }
 #endif
 
@@ -102,7 +103,7 @@ ValueType CalculateNewValue(uint3 dispatchThreadId)
 	#endif
 }
 
-uint CalculateGradientFlags_TopLOD(int2 baseCoord, float spacing);
+uint CalculateGradientFlags_TopLOD(int2 baseCoord, float spacing, float threshold0, float threshold1, float threshold2);
 
 uint CalculateGradientFlags(uint2 dispatchThreadId)
 {
@@ -123,7 +124,8 @@ uint CalculateGradientFlags(uint2 dispatchThreadId)
 		for (int y=0; y<SampleArea; ++y)
 			for (int x=0; x<SampleArea; ++x)
 				sampleTotal += CalculateGradientFlags_TopLOD(
-					origin + int2(x,y), GetElementSpacing());
+					origin + int2(x,y),
+					GradFlagSpacing, GradFlagThresholds0, GradFlagThresholds1, GradFlagThresholds2);
 		sampleTotal /= SampleArea * SampleArea;
 
 		return sampleTotal;
@@ -250,7 +252,7 @@ float GetHeight(int2 coord)
 
 #include "../Objects/Terrain/GradientFlags.h"
 
-uint CalculateGradientFlags_TopLOD(int2 baseCoord, float spacing)
+uint CalculateGradientFlags_TopLOD(int2 baseCoord, float spacing, float threshold0, float threshold1, float threshold2)
 {
-	return CalculateRawGradientFlags(baseCoord, spacing);
+	return CalculateRawGradientFlags(baseCoord, spacing, threshold0, threshold1, threshold2);
 }

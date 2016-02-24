@@ -281,5 +281,5 @@ bool CoordIsValid(int2 coord) { return true; }
 
 uint DynamicGradientFlag(int2 coord)
 {
-    return CalculateRawGradientFlags(coord, 2.f);
+    return CalculateRawGradientFlags(coord, 2.f, .5f*1.f, .5f*2.25f, .5f*3.5f);
 }

@@ -314,6 +314,9 @@
     <ClInclude Include="..\DynamicImposters.h">
       <Filter>Lighting And Processing</Filter>
     </ClInclude>
+    <ClInclude Include="..\GradientFlagSettings.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

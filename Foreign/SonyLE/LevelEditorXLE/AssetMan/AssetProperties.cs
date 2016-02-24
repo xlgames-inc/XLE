@@ -137,7 +137,7 @@ namespace LevelEditorXLE
                 // textures in that dialog -- and it feels more natural to the user. Other patterns
                 // won't match any files
             var pattern = new
-                System.Text.RegularExpressions.Regex("(_[dD][fF])|(_[dD][dD][nN])|(_[sS][pP])");
+                System.Text.RegularExpressions.Regex("(_[dD][fF])|(_[dD][dD][nN])|(_[sS][pP])|(_[rR])");
             return pattern.Replace(input, "_*");
         }
     };

@@ -134,36 +134,44 @@ namespace LevelEditorCore
                 return;
             }
 
-            IFileSystemResourceFolder folder = m_treeContext.GetLastSelected<IFileSystemResourceFolder>();
-            string selectedFolder = folder == null ? string.Empty : GetNormalizedName(folder.FullPath);
-            string parentDirName = Path.GetDirectoryName(e.FullPath);
-            parentDirName = GetNormalizedName(parentDirName);
-            string itemName = GetNormalizedName(e.FullPath);
-            if ((e.ChangeType & WatcherChangeTypes.Created) == WatcherChangeTypes.Created)
+            try
             {
-                
-                var attr = File.GetAttributes(e.FullPath);
-                bool isDirectory = (attr & FileAttributes.Directory) == FileAttributes.Directory;
-                if (isDirectory)
+                IFileSystemResourceFolder folder = m_treeContext.GetLastSelected<IFileSystemResourceFolder>();
+                string selectedFolder = folder == null ? string.Empty : GetNormalizedName(folder.FullPath);
+                string parentDirName = Path.GetDirectoryName(e.FullPath);
+                parentDirName = GetNormalizedName(parentDirName);
+                string itemName = GetNormalizedName(e.FullPath);
+                if ((e.ChangeType & WatcherChangeTypes.Created) == WatcherChangeTypes.Created)
+                {
+
+                    var attr = File.GetAttributes(e.FullPath);
+                    bool isDirectory = (attr & FileAttributes.Directory) == FileAttributes.Directory;
+                    if (isDirectory)
+                    {
+                        m_treeControlAdapter.Refresh(m_treeContext.RootFolder);
+                    }
+                    else if (parentDirName == selectedFolder)
+                    {
+                        TreeSelectionChanged(m_treeContext, EventArgs.Empty);
+                    }
+                }
+                else if ((e.ChangeType & WatcherChangeTypes.Deleted) == WatcherChangeTypes.Deleted)
                 {
                     m_treeControlAdapter.Refresh(m_treeContext.RootFolder);
+                    if (parentDirName == selectedFolder)
+                    {
+                        TreeSelectionChanged(m_treeContext, EventArgs.Empty);
+                    }
+                    else if (itemName == selectedFolder)
+                    {
+                        m_treeContext.Clear();
+                    }
                 }
-                else if (parentDirName == selectedFolder)
-                {
-                    TreeSelectionChanged(m_treeContext, EventArgs.Empty);
-                }                             
             }
-            else if ((e.ChangeType & WatcherChangeTypes.Deleted) == WatcherChangeTypes.Deleted)
+            catch (System.IO.IOException)
             {
-                m_treeControlAdapter.Refresh(m_treeContext.RootFolder);
-                if (parentDirName == selectedFolder)
-                {
-                    TreeSelectionChanged(m_treeContext, EventArgs.Empty);
-                }
-                else if (itemName == selectedFolder)
-                {
-                    m_treeContext.Clear();
-                }
+                // catch and suppress IO exceptions. This can occur often if (for example) we can't access the file because
+                // of sharing priviledges
             }
         }
 

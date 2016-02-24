@@ -6,6 +6,7 @@
 
 #include "TerrainCoverageId.h"
 #include "TextureTileSet.h"
+#include "GradientFlagSettings.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/State.h"
@@ -102,6 +103,7 @@ namespace SceneEngine
         void ShortCircuit(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
 		void AbandonShortCircuitData(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, UInt2 abandonMins, UInt2 abandonMaxs);
         const bool IsShortCircuitAllowed() const { return _shortCircuitAllowed; }
+        void SetShortCircuitSettings(const GradientFlagsSettings& gradientFlagsSettings);
 
         void UnloadCachedData();
 
@@ -190,6 +192,7 @@ namespace SceneEngine
         TerrainRendererConfig           _cfg;
 
         bool                            _shortCircuitAllowed;
+        GradientFlagsSettings           _gradientFlagsSettings;
 
         friend class TerrainRenderingContext;
         friend class TerrainCollapseContext;
@@ -203,7 +206,7 @@ namespace SceneEngine
             const Float4x4& worldToProjection, const Float3& viewPositionWorld,
             CellRenderInfo& cellRenderInfo, const Float4x4& cellToWorld);
 
-        void    ShortCircuitTileUpdate(const TextureTile& tile, unsigned layerIndex, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, bool encodedGradientFlags, NodeCoverageInfo& coverageInfo, const ShortCircuitUpdate& upd);
+        void    ShortCircuitTileUpdate(const TextureTile& tile, unsigned layerIndex, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, NodeCoverageInfo& coverageInfo, const ShortCircuitUpdate& upd);
 
         auto    BuildQueuedNodeFlags(const CellRenderInfo& cellRenderInfo, unsigned nodeIndex, unsigned lodField) const -> unsigned;
 

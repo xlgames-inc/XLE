@@ -27,6 +27,7 @@ namespace SceneEngine
     class TerrainConfig;
     class TerrainCoordinateSystem;
     class TerrainMaterialConfig;
+    class GradientFlagsSettings;
 
     /// <summary>Top-level manager for terrain assets</summary>
     /// Internally, the manager coordinates many class that perform the rendering,
@@ -81,6 +82,7 @@ namespace SceneEngine
         const TerrainMaterialConfig&    GetMaterialConfig() const;
         const std::shared_ptr<ITerrainFormat>& GetFormat() const;
         void SetWorldSpaceOrigin(const Float3& origin);
+        void SetShortCircuitSettings(const GradientFlagsSettings& gradientFlagsSettings);
 
         /// <summary>Loads a new terrain, removing the old one</summary>
         ///

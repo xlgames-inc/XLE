@@ -54,7 +54,7 @@ namespace SceneEngine
 
     void TerrainCellRenderer::ShortCircuitTileUpdate(
         const TextureTile& tile, unsigned coverageLayerIndex, 
-        UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, bool encodedGradientFlags,
+        UInt2 nodeMin, UInt2 nodeMax, unsigned downsample,
         NodeCoverageInfo& coverageInfo, const ShortCircuitUpdate& upd)
     {
         TRY 
@@ -76,6 +76,7 @@ namespace SceneEngine
             const ::Assets::ResChar secondPassShader[] = "game/xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
             StringMeld<64, char> defines; 
             defines << "VALUE_FORMAT=" << format << ";FILTER_TYPE=" << filterType;
+            auto encodedGradientFlags = _gradientFlagsSettings._enable;
             if (encodedGradientFlags) defines << ";ENCODED_GRADIENT_FLAGS=1";
             const auto compressedHeightMask = CompressedHeightMask(encodedGradientFlags);
 
@@ -114,13 +115,18 @@ namespace SceneEngine
                 int _sampleArea;
                 UInt2 _tileSize;
                 unsigned _dummy[2];
+                float _gradFlagSpacing;
+                float _gradFlagThresholds[3];
             } parameters = {
                 Int2(upd._resourceMins) - Int2(nodeMin),
                 Int2(upd._resourceMaxs) - Int2(nodeMin),
                 Int2(upd._updateAreaMins) - Int2(nodeMin),
                 Int2(upd._updateAreaMaxs) - Int2(nodeMin),
                 Int3(tile._x, tile._y, tile._arrayIndex),
-                1<<downsample, Int2(tile._width, tile._height)
+                1<<downsample, Int2(tile._width, tile._height),
+                {0,0},
+                _gradientFlagsSettings._elementSpacing,
+                { _gradientFlagsSettings._slopeThresholds[0], _gradientFlagsSettings._slopeThresholds[1], _gradientFlagsSettings._slopeThresholds[2] }
             };
             Metal::ConstantBufferPacket pkts[] = { RenderCore::MakeSharedPkt(parameters) };
             const Metal::ShaderResourceView* srv[] = { upd._srv.get(), &tileSet->GetShaderResource() };
@@ -267,10 +273,6 @@ namespace SceneEngine
 		UInt2 cellOrigin, UInt2 cellMax, 
 		const ShortCircuitUpdate& upd)
     {
-		auto i = LowerBound(_renderInfos, cellHash);
-        if (i == _renderInfos.end() || i->first != cellHash) return;
-        auto& sourceCell = *i->second->_sourceCell;
-		
 		unsigned coverageLayerIndex = ~unsigned(0);
 		if (layerId != CoverageId_Heights) {
             for (unsigned c=0; c<_coverageIds.size(); ++c)
@@ -288,7 +290,6 @@ namespace SceneEngine
             ShortCircuitTileUpdate(
 				n._node->_tile, coverageLayerIndex, 
 				n._nodeMin, n._nodeMax, downsample, 
-				sourceCell.EncodedGradientFlags(), 
 				*n._node, upd);
         }
     }
@@ -313,6 +314,11 @@ namespace SceneEngine
 			n._node->_tile = TextureTile();
 		}
 	}
+
+    void TerrainCellRenderer::SetShortCircuitSettings(const GradientFlagsSettings& gradientFlagsSettings)
+    {
+        _gradientFlagsSettings = gradientFlagsSettings;
+    }
 
 
     void DoShortCircuitUpdate(
