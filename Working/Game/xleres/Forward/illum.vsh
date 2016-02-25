@@ -60,7 +60,7 @@ VSOutput main(VSInput input)
 	// after reading the normal map. In effect, the shape described by double sided normals
 	// maps is made slightly different.
 	// Also, we could get some wierd effects on "smooth" shaded geometry with MAT_DOUBLE_SIDED_LIGHTING
-	// enabled, because the flipping point will move with the camera. 
+	// enabled, because the flipping point will move with the camera.
 	#if (MAT_DOUBLE_SIDED_LIGHTING==1)
 		if (dot(worldNormal, worldViewVector) < 0.f) {
 			worldNormal *= -1.f;
@@ -102,8 +102,8 @@ VSOutput main(VSInput input)
 		output.fogColor = float4(0.0.xxx, 1.f);
 	#endif
 
-	#if (OUTPUT_PER_VERTEX_AO==1) && (GEO_HAS_INSTANCE_ID==1)
-		output.ambientOcclusion = GetInstanceShadowing(input);
+	#if (OUTPUT_PER_VERTEX_MLO==1) && (GEO_HAS_INSTANCE_ID==1)
+		output.mainLightOcclusion = GetInstanceShadowing(input);
 	#endif
 
 	#if (OUTPUT_INSTANCE_ID==1) && (GEO_HAS_INSTANCE_ID==1)

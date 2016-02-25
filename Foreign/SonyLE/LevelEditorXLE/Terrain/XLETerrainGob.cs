@@ -691,7 +691,7 @@ namespace LevelEditorXLE.Terrain
         private enum Command
         {
             [Description("Add Texturing Settings")] CreateBaseTexture,
-            [Description("Add Vegetation Spawn")] CreateVegetationSpawn,
+            [Description("Add Decoration Settings")] CreateVegetationSpawn,
 
             [Description("Configure Terrain...")] Configure,
             [Description("Generate Shadows")] GenerateShadows,

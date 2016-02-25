@@ -106,6 +106,7 @@ void WriteInstance(
 		//	accurate for large objects (particularlly tall plants, etc). But it should
 		//	work well for grass and small things. And it should be much more efficient
 		//	than doing extra shadowing work per-vertex or per-pixel.
+		// todo -- we could also lookup ambient occlusion!
 	#if defined(COVERAGE_2)
 		uint2 shadowTexCoord = lerp(CoverageCoordMins[COVERAGE_2].xy, CoverageCoordMaxs[COVERAGE_2].xy, tc.xy);
 		float2 shadowSample = MakeCoverageTileSet(COVERAGE_2).Load(uint4(shadowTexCoord, CoverageOrigin[COVERAGE_2].z, 0)).r;

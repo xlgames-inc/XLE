@@ -32,6 +32,8 @@ namespace GUILayer
         property IManipulatorSet^ ManipulatorSet    { IManipulatorSet^ get(); void set(IManipulatorSet^); }
         property String^ ActiveManipulator          { String^ get(); void set(String^); }
 
+        void RaisePropertyChange();
+
         event EventHandler^ OnActiveManipulatorChange;
         event EventHandler^ OnManipulatorSetChange;
 

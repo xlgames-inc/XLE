@@ -24,8 +24,12 @@ namespace LevelEditorXLE.Manipulators
     { 
         public XLEManipCtrls()
         {
+            Margin = new Padding(0);
+            Padding = new Padding(0);
             m_tabControl = new TabControl();
             m_tabControl.Dock = DockStyle.Fill;
+            m_tabControl.Margin = new Padding(0);
+            m_tabControl.Padding = new System.Drawing.Point(0, 0);
             Controls.Add(m_tabControl);
         }
 
@@ -111,6 +115,8 @@ namespace LevelEditorXLE.Manipulators
                 page.Controls.Add(lockedAreaCtrls);
                 m_controls.m_tabControl.TabPages.Add(page);
             }
+
+            m_controls.PerformLayout();
 
             m_controlHostService.RegisterControl(
                 m_controls,

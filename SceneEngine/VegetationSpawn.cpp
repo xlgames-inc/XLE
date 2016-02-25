@@ -351,7 +351,7 @@ namespace SceneEngine
             unsigned premapBinCount = 0;
             for (unsigned mi=0; mi<cfg._materials.size(); ++mi) {
                 const auto& m = cfg._materials[mi];
-                float combinedWeight = 0.f; // m._noSpawnWeight;
+                float combinedWeight = m._noSpawnWeight;
                 for (const auto& b:m._buckets) combinedWeight += b._frequencyWeight;
 
                 unsigned weightIterator = 0;

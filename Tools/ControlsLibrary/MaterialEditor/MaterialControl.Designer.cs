@@ -35,7 +35,7 @@ namespace ControlsLibrary.MaterialEditor
         /// </summary>
         private void InitializeComponent()
         {
-            this._pages = new System.Windows.Forms.CustomTabControl();
+            this._pages = new System.Windows.Forms.TabControl();
             this._resourcesPage = new System.Windows.Forms.TabPage();
             this._resourceBindings = new System.Windows.Forms.DataGridView();
             this._constantsPage = new System.Windows.Forms.TabPage();
@@ -67,20 +67,20 @@ namespace ControlsLibrary.MaterialEditor
             // 
             // 
             // 
-            this._pages.DisplayStyleProvider.BorderColor = System.Drawing.SystemColors.ControlDark;
-            this._pages.DisplayStyleProvider.BorderColorHot = System.Drawing.SystemColors.ControlDark;
-            this._pages.DisplayStyleProvider.BorderColorSelected = System.Drawing.Color.FromArgb(((int)(((byte)(127)))), ((int)(((byte)(157)))), ((int)(((byte)(185)))));
-            this._pages.DisplayStyleProvider.CloserColor = System.Drawing.Color.Empty;
-            this._pages.DisplayStyleProvider.FocusTrack = true;
-            this._pages.DisplayStyleProvider.HotTrack = true;
-            this._pages.DisplayStyleProvider.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this._pages.DisplayStyleProvider.Opacity = 1F;
-            this._pages.DisplayStyleProvider.Overlap = 0;
-            this._pages.DisplayStyleProvider.Padding = new System.Drawing.Point(6, 3);
-            this._pages.DisplayStyleProvider.ShowTabCloser = false;
-            this._pages.DisplayStyleProvider.TextColor = System.Drawing.SystemColors.ControlText;
-            this._pages.DisplayStyleProvider.TextColorDisabled = System.Drawing.SystemColors.ControlDark;
-            this._pages.DisplayStyleProvider.TextColorSelected = System.Drawing.SystemColors.ControlText;
+            // this._pages.DisplayStyleProvider.BorderColor = System.Drawing.SystemColors.ControlDark;
+            // this._pages.DisplayStyleProvider.BorderColorHot = System.Drawing.SystemColors.ControlDark;
+            // this._pages.DisplayStyleProvider.BorderColorSelected = System.Drawing.Color.FromArgb(((int)(((byte)(127)))), ((int)(((byte)(157)))), ((int)(((byte)(185)))));
+            // this._pages.DisplayStyleProvider.CloserColor = System.Drawing.Color.Empty;
+            // this._pages.DisplayStyleProvider.FocusTrack = true;
+            // this._pages.DisplayStyleProvider.HotTrack = true;
+            // this._pages.DisplayStyleProvider.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // this._pages.DisplayStyleProvider.Opacity = 1F;
+            // this._pages.DisplayStyleProvider.Overlap = 0;
+            // this._pages.DisplayStyleProvider.Padding = new System.Drawing.Point(6, 3);
+            // this._pages.DisplayStyleProvider.ShowTabCloser = false;
+            // this._pages.DisplayStyleProvider.TextColor = System.Drawing.SystemColors.ControlText;
+            // this._pages.DisplayStyleProvider.TextColorDisabled = System.Drawing.SystemColors.ControlDark;
+            // this._pages.DisplayStyleProvider.TextColorSelected = System.Drawing.SystemColors.ControlText;
             this._pages.HotTrack = true;
             this._pages.Location = new System.Drawing.Point(0, 0);
             this._pages.Margin = new System.Windows.Forms.Padding(0);
@@ -241,7 +241,7 @@ namespace ControlsLibrary.MaterialEditor
         private System.Windows.Forms.DataGridView _shaderConstants;
         private System.Windows.Forms.DataGridView _materialParameterBox;
         private System.Windows.Forms.DataGridView _resourceBindings;
-        private System.Windows.Forms.CustomTabControl _pages;
+        private System.Windows.Forms.TabControl _pages;
         private System.Windows.Forms.TabPage _constantsPage;
         private System.Windows.Forms.ComboBox _blendMode;
         private System.Windows.Forms.TabPage _resourcesPage;

@@ -24,8 +24,9 @@
 
 #if (SPAWNED_INSTANCE==1)
     #define GEO_HAS_INSTANCE_ID 1
-    #if (PER_INSTANCE_AO==1)
-        #define OUTPUT_PER_VERTEX_AO 1
+    #define PER_INSTANCE_MLO 1
+    #if (PER_INSTANCE_MLO==1)
+        #define OUTPUT_PER_VERTEX_MLO 1
     #endif
 #endif
 
@@ -206,6 +207,10 @@ struct VSOutput /////////////////////////////////////////////////////
 
     #if (OUTPUT_PER_VERTEX_AO==1)
         float ambientOcclusion : AMBIENTOCCLUSION;
+    #endif
+
+    #if (OUTPUT_PER_VERTEX_MLO==1)
+        float mainLightOcclusion : MAINLIGHTOCCLUSION;
     #endif
 
     #if (OUTPUT_INSTANCE_ID==1)

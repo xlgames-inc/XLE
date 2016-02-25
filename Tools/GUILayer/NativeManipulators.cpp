@@ -167,6 +167,11 @@ namespace GUILayer
         }
     }
 
+    void ActiveManipulatorContext::RaisePropertyChange()
+    {
+        OnActiveManipulatorChange(this, EventArgs::Empty);
+    }
+
     ActiveManipulatorContext::ActiveManipulatorContext()
     {
         _manipulatorSet = nullptr;

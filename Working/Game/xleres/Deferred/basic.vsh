@@ -80,9 +80,12 @@ VSOutput main(VSInput input)
 		#if (GEO_HAS_PER_VERTEX_AO==1)
 			output.ambientOcclusion = input.ambientOcclusion;
 		#endif
+	#endif
 
+	#if (OUTPUT_PER_VERTEX_MLO==1)
+		output.mainLightOcclusion =  1.f;
 		#if (GEO_HAS_INSTANCE_ID==1)
-			output.ambientOcclusion *= GetInstanceShadowing(input);
+			output.mainLightOcclusion *= GetInstanceShadowing(input);
 		#endif
 	#endif
 

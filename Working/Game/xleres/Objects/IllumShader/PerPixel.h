@@ -116,6 +116,10 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         result.cookedLightOcclusion *= geo.ambientOcclusion;
     #endif
 
+    #if (OUTPUT_PER_VERTEX_MLO==1)
+        result.cookedLightOcclusion *= geo.mainLightOcclusion;
+    #endif
+
     #if (MAT_AO_IN_NORMAL_BLUE!=0) && (RES_HAS_NormalsTexture!=0) && (RES_HAS_NormalsTexture_DXT==0) && (OUTPUT_TEXCOORD==1)
             // some pipelines put a AO term in the blue channel of the normal map
             // we can factor it in here...

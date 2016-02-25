@@ -689,8 +689,7 @@ namespace SceneEngine
 
             //  second pass -- remove nodes that don't intersect the ray
         for (auto i=state._queuedNodes.begin(); i!=state._queuedNodes.end();) {
-            auto sourceNode = i->_cell->_sourceCell->_nodes[i->_absNodeIndex].get();
-            auto localToWorld = Combine(sourceNode->_localToCell, i->_cellToWorld);
+            auto localToWorld = Combine(i->_cell->NodeToCell(i->_absNodeIndex), i->_cellToWorld);
             auto result = true;
             if (Equivalent(localToWorld(2,2), 0.f, 1e-7f)) {
                     // If all of the heights in the terrain are equal, we end up with a zero-volume

@@ -969,6 +969,9 @@ namespace ToolsRig
             //  http://hydra.nat.uni-magdeburg.de/packing/cci/cci.html
         const float expectedDensity = 0.65f;
 
+        // prevent "count" from getting too high, because these loops can end up very expensive
+        count = std::min(count, 1000u);
+
         const float bigCircleArea = gPI * radius * radius;
         const float littleCircleArea = bigCircleArea * expectedDensity / float(count);
         const float littleCircleRadius = sqrt(littleCircleArea / gPI);

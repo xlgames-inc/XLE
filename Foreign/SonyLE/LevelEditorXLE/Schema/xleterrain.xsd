@@ -286,6 +286,7 @@
         <scea.dom.editors.attribute name="AlignToTerrainUp" displayName="Align To Terrain Up" description="Align objects to terrain up (instead of world up)" category="General"/>
 
         <scea.dom.editors name="VegetationSpawnConfig" category="Terrain" image="LevelEditorCore.Resources.gameObject.png" menuText="VegetationSpawnConfig" description="VegetationSpawnConfig"/>
+        <LeGe.OpaqueListable label="Decoration Settings"/>
       </xs:appinfo>
     </xs:annotation>
     <xs:sequence>

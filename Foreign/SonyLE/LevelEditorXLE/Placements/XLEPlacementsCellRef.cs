@@ -189,18 +189,19 @@ namespace LevelEditorXLE.Placements
                 if (doc != null && Globals.MEFContainer.GetExportedValue<IDocumentService>().IsUntitled(doc))
                 {
                     // This is an untitled document.
-                    // We should use the resources root as a base, because the document uri
-                    // is unreliable. It's a bit awkward, because it means this method of
+                    // We have to use the absolute filename for the reference. 
+                    // It's a bit awkward, because it means this method of
                     // uri resolution can't work reliably until the root document has been saved.
                     // (and if the user changes the directory of the root document, does that mean
                     // they want the resource references to be updated, also?)
-                    baseUri = Globals.ResourceRoot;
+                    RawReference = new Uri(dlg.FileName).AbsolutePath;
                 }
                 else
+                {
                     baseUri = root.Cast<IResource>().Uri;
-
-                var relURI = baseUri.MakeRelativeUri(new Uri(dlg.FileName));
-                RawReference = relURI.OriginalString;
+                    var relURI = baseUri.MakeRelativeUri(new Uri(dlg.FileName));
+                    RawReference = relURI.OriginalString;
+                }
                 Target.Dirty = true;
             }
         }

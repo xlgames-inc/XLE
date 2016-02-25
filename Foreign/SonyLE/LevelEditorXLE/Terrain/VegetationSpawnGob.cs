@@ -18,7 +18,7 @@ using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Terrain
 {
-    class VegetationSpawnConfigGob : DomNodeAdapter, IHierarchical, IListable, IExportable, ICommandClient, IContextMenuCommandProvider
+    class VegetationSpawnConfigGob : DomNodeAdapter, IHierarchical, IExportable, ICommandClient, IContextMenuCommandProvider
     {
         public bool CanAddChild(object child)
         {
@@ -38,12 +38,6 @@ namespace LevelEditorXLE.Terrain
             }
 
             return false;
-        }
-
-        public void GetInfo(ItemInfo info)
-        {
-            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
-            info.Label = "Vegetation Spawn";
         }
 
         public IEnumerable<int> GetMaterialIds()
@@ -112,7 +106,7 @@ namespace LevelEditorXLE.Terrain
                     {
                         var mat = new DomNode(Schema.vegetationSpawnMaterialType.Type);
                         mat.SetAttribute(Schema.vegetationSpawnMaterialType.MaterialIdAttribute, GetNextMaterialId());
-                        ApplicationUtil.Insert(DomNode.GetRoot(), this, mat, "Add Vegetation Spawn Material", null);
+                        ApplicationUtil.Insert(DomNode.GetRoot(), this, mat, "Add Decoration Material", null);
                     }
                     break;
             }
@@ -124,7 +118,7 @@ namespace LevelEditorXLE.Terrain
 
         private enum Command
         {
-            [Description("Add Vegetation Material")] AddVegetationSpawnMaterial
+            [Description("Add Decoration Material")] AddVegetationSpawnMaterial
         }
 
         IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)

@@ -22,8 +22,8 @@
     <xs:attribute name="ref" type="xs:string" />
     <xs:attribute name="ExportTarget" type="xs:string" default="finals/placements.plc" />
     <xs:attribute name="name" type="xs:string" />
-    <xs:attribute name="captureMins" type="vector3Type" default="-1000 -1000 -1000"/>
-    <xs:attribute name="captureMaxs" type="vector3Type" default="1000 1000 1000"/>
+    <xs:attribute name="captureMins" type="vector3Type" default="-10000 -10000 -5000"/>
+    <xs:attribute name="captureMaxs" type="vector3Type" default="10000 10000 5000"/>
     <xs:attribute name="offset" type="vector3Type" default="0 0 0"/>
     <xs:attribute name="ExportEnabled" type="xs:boolean" default="true"/>
     <xs:attribute name="cachedCellMins" type="vector3Type" default="0 0 0"/>
@@ -45,7 +45,7 @@
     <xs:attribute name="baseExportPath" type="xs:string" default="finals/placements/" />
     <xs:attribute name="CellCount" type="int2Type" default="0 0" />
     <xs:attribute name="CellsOrigin" type="vector2Type" default="0 0" />
-    <xs:attribute name="CellSize" type="xs:float" default="512" />
+    <xs:attribute name="CellSize" type="xs:float" default="16384" />
     <xs:attribute name="ExportTarget" type="xs:string" default="finals/placements.cfg" />
     <xs:attribute name="ExportEnabled" type="xs:boolean" default="true"/>
   </xs:complexType>

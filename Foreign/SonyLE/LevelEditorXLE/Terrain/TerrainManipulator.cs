@@ -20,8 +20,29 @@ namespace LevelEditorXLE.Terrain
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class TerrainManipulator : LevelEditorCore.IManipulator, XLEBridgeUtils.IShutdownWithEngine, IDisposable, XLEBridgeUtils.IManipulatorExtra
     {
-        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc as GUILayer.IViewContext, scrPt); }
-        public void OnBeginDrag()                                              { _nativeManip.OnBeginDrag(); }
+        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          
+        {
+            try
+            {
+                return _nativeManip.MouseMove(vc as GUILayer.IViewContext, scrPt);
+            }
+            catch (Exception e)
+            {
+                Outputs.Write(OutputMessageType.Warning, "Suppressing error in TerrainManipulator: " + e.Message);
+                return false;
+            }
+        }
+        public void OnBeginDrag()                                              
+        { 
+            try
+            {
+                _nativeManip.OnBeginDrag();
+            }
+            catch (Exception e)
+            {
+                Outputs.Write(OutputMessageType.Warning, "Suppressing error in TerrainManipulator: " + e.Message);
+            }
+        }
         public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    
         {
             try
@@ -40,7 +61,18 @@ namespace LevelEditorXLE.Terrain
 
         public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt) 
 		{
-            _nativeManip.OnEndDrag(vc as GUILayer.IViewContext, scrPt);
+            try
+            {
+                _nativeManip.OnEndDrag(vc as GUILayer.IViewContext, scrPt);
+            }
+            catch (Exception e)
+            {
+                // we want to report this error as a hover message above "srcPt" in the view control
+                Point msgPt = scrPt;
+                msgPt.X += 20;
+                msgPt.Y -= 20;
+                vc.ShowHoverMessage(e.Message, msgPt);
+            }
 
 			// we need to create operations and turn them into a transaction:
 			// string transName = string.Format("Apply {0} brush", brush.Name);
@@ -54,7 +86,20 @@ namespace LevelEditorXLE.Terrain
 			// }, transName);
 			// m_tmpOps.Clear();
 		}
-        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc as GUILayer.IViewContext, scrPt, delta); }
+        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) 
+        {
+            try
+            {
+                _nativeManip.OnMouseWheel(vc as GUILayer.IViewContext, scrPt, delta);
+                // Scrolling the mouse wheel will often change the properties... We need to raise
+                // an event to make sure the new property values are reflected in the interface.
+                _manipContext.RaisePropertyChange();
+            }
+            catch (Exception e)
+            {
+                Outputs.Write(OutputMessageType.Warning, "Suppressing error in TerrainManipulator: " + e.Message);
+            }
+        }
 
         public void Render(object opaqueContext, LevelEditorCore.ViewControl vc) 
         {

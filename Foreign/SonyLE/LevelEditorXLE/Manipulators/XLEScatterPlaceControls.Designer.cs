@@ -30,8 +30,8 @@
         {
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this._properties = new Sce.Atf.Controls.PropertyEditing.PropertyGrid();
-            this._loadModelList = new System.Windows.Forms.Button();
             this._saveModelList = new System.Windows.Forms.Button();
+            this._loadModelList = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -54,44 +54,47 @@
             this.splitContainer1.Panel2.Controls.Add(this._saveModelList);
             this.splitContainer1.Panel2.Controls.Add(this._loadModelList);
             this.splitContainer1.Panel2MinSize = 32;
-            this.splitContainer1.Size = new System.Drawing.Size(448, 331);
-            this.splitContainer1.SplitterDistance = 298;
+            this.splitContainer1.Size = new System.Drawing.Size(313, 254);
+            this.splitContainer1.SplitterDistance = 218;
             this.splitContainer1.TabIndex = 0;
             // 
             // _properties
             // 
-            // this._properties.CategoryForeColor = System.Drawing.SystemColors.InactiveCaptionText;
             this._properties.Dock = System.Windows.Forms.DockStyle.Fill;
-            // this._properties.HelpVisible = false;
+            this._properties.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._properties.Location = new System.Drawing.Point(0, 0);
             this._properties.Name = "_properties";
-            this._properties.Size = new System.Drawing.Size(448, 298);
+            this._properties.PropertySorting = ((Sce.Atf.Controls.PropertyEditing.PropertySorting)(((Sce.Atf.Controls.PropertyEditing.PropertySorting.Categorized | Sce.Atf.Controls.PropertyEditing.PropertySorting.Alphabetical) 
+            | Sce.Atf.Controls.PropertyEditing.PropertySorting.CategoryAlphabetical)));
+            this._properties.SelectedPropertyDescriptor = null;
+            this._properties.Settings = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?><PropertyView PropertySort" +
+    "ing=\"ByCategory\" />";
+            this._properties.Size = new System.Drawing.Size(313, 218);
             this._properties.TabIndex = 0;
-            // this._properties.ToolbarVisible = false;
-            // 
-            // _loadModelList
-            // 
-            this._loadModelList.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this._loadModelList.Location = new System.Drawing.Point(170, 3);
-            this._loadModelList.Name = "_loadModelList";
-            this._loadModelList.Size = new System.Drawing.Size(135, 24);
-            this._loadModelList.TabIndex = 0;
-            this._loadModelList.Text = "Load Model List";
-            this._loadModelList.UseVisualStyleBackColor = true;
-            this._loadModelList.Click += new System.EventHandler(this._loadModelList_Click);
             // 
             // _saveModelList
             // 
             this._saveModelList.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this._saveModelList.Location = new System.Drawing.Point(311, 3);
+            this._saveModelList.Location = new System.Drawing.Point(200, 3);
             this._saveModelList.Name = "_saveModelList";
-            this._saveModelList.Size = new System.Drawing.Size(130, 24);
+            this._saveModelList.Size = new System.Drawing.Size(106, 23);
             this._saveModelList.TabIndex = 1;
             this._saveModelList.Text = "Save Model List";
             this._saveModelList.UseVisualStyleBackColor = true;
             this._saveModelList.Click += new System.EventHandler(this._saveModelList_Click);
+            // 
+            // _loadModelList
+            // 
+            this._loadModelList.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this._loadModelList.Location = new System.Drawing.Point(90, 3);
+            this._loadModelList.Name = "_loadModelList";
+            this._loadModelList.Size = new System.Drawing.Size(104, 23);
+            this._loadModelList.TabIndex = 0;
+            this._loadModelList.Text = "Load Model List";
+            this._loadModelList.UseVisualStyleBackColor = true;
+            this._loadModelList.Click += new System.EventHandler(this._loadModelList_Click);
             // 
             // XLEScatterPlaceControls
             // 
@@ -99,7 +102,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.splitContainer1);
             this.Name = "XLEScatterPlaceControls";
-            this.Size = new System.Drawing.Size(448, 331);
+            this.Size = new System.Drawing.Size(313, 254);
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();

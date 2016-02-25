@@ -132,7 +132,8 @@ namespace GUILayer
 
                 auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
                 for (auto i:delaySteps)
-                    if (_editorScene->_placementsManager->HasPrepared(i))
+                    if (    _editorScene->_placementsManager->HasPrepared(i)
+                        ||  _editorScene->_vegetationSpawnManager->HasContent(i))
                         return true;
             }
             return false;

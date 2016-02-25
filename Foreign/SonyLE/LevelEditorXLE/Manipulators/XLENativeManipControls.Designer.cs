@@ -45,11 +45,9 @@ namespace LevelEditorXLE.Manipulators
             this.manipulatorSelection.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.manipulatorSelection.FormattingEnabled = true;
             this.manipulatorSelection.IntegralHeight = false;
-            this.manipulatorSelection.ItemHeight = 16;
             this.manipulatorSelection.Location = new System.Drawing.Point(0, 0);
-            this.manipulatorSelection.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.manipulatorSelection.Name = "manipulatorSelection";
-            this.manipulatorSelection.Size = new System.Drawing.Size(203, 246);
+            this.manipulatorSelection.Size = new System.Drawing.Size(152, 200);
             this.manipulatorSelection.TabIndex = 0;
             this.manipulatorSelection.SelectedIndexChanged += new System.EventHandler(this.manipulatorSelection_SelectedIndexChanged);
             // 
@@ -59,26 +57,25 @@ namespace LevelEditorXLE.Manipulators
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.manipulatorProperties.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.manipulatorProperties.Location = new System.Drawing.Point(211, 0);
-            this.manipulatorProperties.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.manipulatorProperties.Location = new System.Drawing.Point(158, 0);
             this.manipulatorProperties.Name = "manipulatorProperties";
             this.manipulatorProperties.PropertySorting = ((Sce.Atf.Controls.PropertyEditing.PropertySorting)(((Sce.Atf.Controls.PropertyEditing.PropertySorting.Categorized | Sce.Atf.Controls.PropertyEditing.PropertySorting.Alphabetical) 
             | Sce.Atf.Controls.PropertyEditing.PropertySorting.CategoryAlphabetical)));
             this.manipulatorProperties.SelectedPropertyDescriptor = null;
             this.manipulatorProperties.Settings = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?><PropertyView PropertySort" +
     "ing=\"ByCategory\" />";
-            this.manipulatorProperties.Size = new System.Drawing.Size(458, 246);
+            this.manipulatorProperties.Size = new System.Drawing.Size(344, 200);
             this.manipulatorProperties.TabIndex = 1;
             // 
             // XLENativeManipControls
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.manipulatorProperties);
             this.Controls.Add(this.manipulatorSelection);
             this.Margin = new System.Windows.Forms.Padding(0);
             this.Name = "XLENativeManipControls";
-            this.Size = new System.Drawing.Size(669, 246);
+            this.Size = new System.Drawing.Size(502, 200);
             this.ResumeLayout(false);
 
         }
