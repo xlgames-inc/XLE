@@ -206,11 +206,14 @@ namespace SceneEngine
             const Float4x4& worldToProjection, const Float3& viewPositionWorld,
             CellRenderInfo& cellRenderInfo, const Float4x4& cellToWorld);
 
-        void    ShortCircuitTileUpdate(const TextureTile& tile, unsigned layerIndex, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, NodeCoverageInfo& coverageInfo, const ShortCircuitUpdate& upd);
+        void    ShortCircuitTileUpdate(
+            RenderCore::Metal::DeviceContext& metalContext, const TextureTile& tile, 
+            unsigned layerIndex, UInt2 nodeMin, unsigned downsample, 
+            NodeCoverageInfo& coverageInfo, const ShortCircuitUpdate& upd);
 
         auto    BuildQueuedNodeFlags(const CellRenderInfo& cellRenderInfo, unsigned nodeIndex, unsigned lodField) const -> unsigned;
 
-		struct FoundNode { NodeCoverageInfo* _node; unsigned _fieldIndex; UInt2 _nodeMin; UInt2 _nodeMax; };
+		struct FoundNode { NodeCoverageInfo* _node; unsigned _fieldIndex; UInt2 _nodeMin; };
 		std::vector<FoundNode> FindIntersectingNodes(
 			uint64 cellHash, TerrainCoverageId layerId,
 			UInt2 cellOrigin, UInt2 cellMax, 

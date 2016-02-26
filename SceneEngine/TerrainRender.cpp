@@ -469,6 +469,22 @@ namespace SceneEngine
         auto i = std::remove_if(
             _pendingUploads.begin(), _pendingUploads.end(),
             [=](const UploadPair& p) { return p.first->CompleteUpload(p.second, _heightMapTileSet->GetBufferUploads()); });
+
+            // Each of the uploads between i and _pendingUploads.end() are completed this frame. 
+            // We can search through them to see if any need to be touched by a short-circuit 
+            // from the uber surface.
+        // for (auto i2=i; i2!=_pendingUploads.end(); ++i2) {
+        //     const auto& srcCell = *i2->first->_sourceCell;
+        //     const auto& node = *srcCell._nodes[i2->second];
+        //     const auto& nodeToCell = node._localToCell;
+        // 
+        //     Float3 nodeMinInCell = TransformPoint(nodeToCell, Float3(0.f, 0.f, 0.f));
+        //     Float3 nodeMaxInCell = TransformPoint(nodeToCell, Float3(1.f, 1.f, 1.f));
+        //     const auto* cellFile = srcCell.SourceFile().c_str();
+        //     // we can compare this region against the list of registered cells in
+        //     // the uber surfaces to see if we need to perform a short-circuit here.
+        // }
+
         _pendingUploads.erase(i, _pendingUploads.end());
     }
 

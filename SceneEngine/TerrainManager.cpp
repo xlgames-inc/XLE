@@ -241,14 +241,14 @@ namespace SceneEngine
         std::shared_ptr<ITerrainFormat> _ioFormat;
 
         std::unique_ptr<TerrainUberHeightsSurface> _uberSurface;
-        std::unique_ptr<HeightsUberSurfaceInterface> _uberSurfaceInterface;
+        std::shared_ptr<HeightsUberSurfaceInterface> _uberSurfaceInterface;
 
         class CoverageInterface
         {
         public:
             TerrainCoverageId _id;
             std::unique_ptr<TerrainUberSurfaceGeneric> _uberSurface;
-            std::unique_ptr<CoverageUberSurfaceInterface> _interface;
+            std::shared_ptr<CoverageUberSurfaceInterface> _interface;
 
             CoverageInterface() {}
             CoverageInterface(CoverageInterface&& moveFrom) : _id(moveFrom._id), _uberSurface(std::move(moveFrom._uberSurface)), _interface(std::move(moveFrom._interface)) {}
@@ -377,18 +377,23 @@ namespace SceneEngine
             TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, CoverageId_Heights);
 
             _uberSurface = std::make_unique<TerrainUberHeightsSurface>(uberSurfaceFile);
-            _uberSurfaceInterface = std::make_unique<HeightsUberSurfaceInterface>(std::ref(*_uberSurface), _ioFormat);
+            _uberSurfaceInterface = std::make_shared<HeightsUberSurfaceInterface>(std::ref(*_uberSurface));
 
             if (constant_expression<registerShortCircuit>::result()) {
+                auto bridge = std::make_shared<ShortCircuitBridge>(_uberSurfaceInterface);
+                _uberSurfaceInterface->SetShortCircuitBridge(bridge);
+
                     //  Register cells for short-circuit update... Do we need to do this for every single cell
                     //  or just those that are within the limited area we're going to load?
                 for (auto c=_cells.cbegin(); c!=_cells.cend(); ++c) {
-                    _uberSurfaceInterface->RegisterCell(
-                        c->_heightMapFilename, c->_heightsToUber._mins, c->_heightsToUber._maxs, cfg.NodeOverlap(),
-                        std::bind(&DoShortCircuitUpdate, c->BuildHash(), CoverageId_Heights, 
-							_renderer, c->_heightsToUber, std::placeholders::_1),
-						std::bind(&DoAbandonShortCircuitData, c->BuildHash(), CoverageId_Heights, 
-							_renderer, c->_heightsToUber, std::placeholders::_1, std::placeholders::_2));
+                    // _uberSurfaceInterface->RegisterCell(
+                    //     c->_heightMapFilename, c->_heightsToUber._mins, c->_heightsToUber._maxs, cfg.NodeOverlap(),
+                    //     std::bind(&DoShortCircuitUpdate, c->BuildHash(), CoverageId_Heights, 
+					// 		_renderer, c->_heightsToUber, std::placeholders::_1),
+					// 	std::bind(&DoAbandonShortCircuitData, c->BuildHash(), CoverageId_Heights, 
+					// 		_renderer, c->_heightsToUber, std::placeholders::_1, std::placeholders::_2));
+
+                    bridge->RegisterCell(c->BuildHash(), c->_heightsToUber._mins, c->_heightsToUber._maxs, nullptr);
                 }
             }
         }
@@ -404,20 +409,24 @@ namespace SceneEngine
             ci._id = l._id;
                 
             ci._uberSurface = std::make_unique<TerrainUberSurfaceGeneric>(uberSurfaceFile);
-            ci._interface = std::make_unique<CoverageUberSurfaceInterface>(std::ref(*ci._uberSurface), _ioFormat);
+            ci._interface = std::make_shared<CoverageUberSurfaceInterface>(std::ref(*ci._uberSurface));
 
             if (constant_expression<registerShortCircuit>::result()) {
+                auto bridge = std::make_shared<ShortCircuitBridge>(ci._interface);
+                ci._interface->SetShortCircuitBridge(bridge);
+
                     //  Register cells for short-circuit update... Do we need to do this for every single cell
                     //  or just those that are within the limited area we're going to load?
                 for (auto cell=_cells.cbegin(); cell!=_cells.cend(); ++cell) {
-                    ci._interface->RegisterCell(
-                        cell->_coverageFilename[c], cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs, l._overlap,
-                        std::bind(
-                            &DoShortCircuitUpdate, cell->BuildHash(), l._id, _renderer, 
-                            cell->_coverageToUber[c], std::placeholders::_1),
-						std::bind(
-                            &DoAbandonShortCircuitData, cell->BuildHash(), l._id, _renderer, 
-                            cell->_coverageToUber[c], std::placeholders::_1, std::placeholders::_2));
+                    // ci._interface->RegisterCell(
+                    //     cell->_coverageFilename[c], cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs, l._overlap,
+                    //     std::bind(
+                    //         &DoShortCircuitUpdate, cell->BuildHash(), l._id, _renderer, 
+                    //         cell->_coverageToUber[c], std::placeholders::_1),
+					// 	std::bind(
+                    //         &DoAbandonShortCircuitData, cell->BuildHash(), l._id, _renderer, 
+                    //         cell->_coverageToUber[c], std::placeholders::_1, std::placeholders::_2));
+                    bridge->RegisterCell(cell->BuildHash(), cell->_heightsToUber._mins, cell->_heightsToUber._maxs, nullptr);
                 }
             }
 

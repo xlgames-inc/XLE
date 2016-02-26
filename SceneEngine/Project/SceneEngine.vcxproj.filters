@@ -317,6 +317,9 @@
     <ClInclude Include="..\GradientFlagSettings.h">
       <Filter>Objects\Terrain</Filter>
     </ClInclude>
+    <ClInclude Include="..\TerrainShortCircuit.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

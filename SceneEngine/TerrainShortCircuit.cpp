@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "TerrainShortCircuit.h"
 #include "TerrainRender.h"
 #include "TextureTileSet.h"
 #include "TerrainUberSurface.h"
@@ -53,8 +54,9 @@ namespace SceneEngine
     }
 
     void TerrainCellRenderer::ShortCircuitTileUpdate(
+        RenderCore::Metal::DeviceContext& metalContext,
         const TextureTile& tile, unsigned coverageLayerIndex, 
-        UInt2 nodeMin, UInt2 nodeMax, unsigned downsample,
+        UInt2 nodeMin, unsigned downsample,
         NodeCoverageInfo& coverageInfo, const ShortCircuitUpdate& upd)
     {
         TRY 
@@ -87,18 +89,16 @@ namespace SceneEngine
 
             float temp = FLT_MAX;
             const float heightOffsetValue = 5000.f; // (height values are shifted by this constant in the shader to get around issues with negative heights
-            const float elementSpacing = 2.f;       // used when calculating the gradient flags; represents the distance between grid elements in world space units
             struct TileCoords
             {
                 float minHeight, heightScale;
                 unsigned workingMinHeight, workingMaxHeight;
-                float elementSpacing; float heightOffsetValue;
-                unsigned dummy[2];
+                float heightOffsetValue;
+                unsigned dummy[3];
             } tileCoords = { 
                 coverageInfo._heightOffset, coverageInfo._heightScale, 
                 *reinterpret_cast<unsigned*>(&temp), 0x0u,
-                elementSpacing, heightOffsetValue,
-                0, 0
+                heightOffsetValue, 0, 0, 0
             };
 
             auto& uploads = tileSet->GetBufferUploads();
@@ -111,10 +111,8 @@ namespace SceneEngine
             {
                 Int2 _sourceMin, _sourceMax;
                 Int2 _updateMin, _updateMax;
-                Int3 _dstTileAddress;
-                int _sampleArea;
-                UInt2 _tileSize;
-                unsigned _dummy[2];
+                Int3 _dstTileAddress; int _sampleArea;
+                UInt2 _tileSize; unsigned _dummy[2];
                 float _gradFlagSpacing;
                 float _gradFlagThresholds[3];
             } parameters = {
@@ -131,12 +129,10 @@ namespace SceneEngine
             Metal::ConstantBufferPacket pkts[] = { RenderCore::MakeSharedPkt(parameters) };
             const Metal::ShaderResourceView* srv[] = { upd._srv.get(), &tileSet->GetShaderResource() };
 
-            auto context = RenderCore::Metal::DeviceContext::Get(*upd._context);
-
             Metal::BoundUniforms boundLayout(byteCode);
             boundLayout.BindConstantBuffers(1, {"Parameters"});
             boundLayout.BindShaderResources(1, {"Input", "OldHeights"});
-            boundLayout.Apply(*context, Metal::UniformsStream(), Metal::UniformsStream(pkts, srv));
+            boundLayout.Apply(metalContext, Metal::UniformsStream(), Metal::UniformsStream(pkts, srv));
 
             const unsigned threadGroupWidth = 6;
             if (format == 0) {
@@ -149,18 +145,20 @@ namespace SceneEngine
                     RWTexture2DDesc(tile._width, tile._height, Metal::NativeFormat::R32_UINT))->AdoptUnderlying();
                 Metal::UnorderedAccessView midwayGradFlagsBufferUAV(midwayGradFlagsBuffer.get());
 
-                context->BindCS(MakeResourceList(1, midwayBufferUAV, midwayGradFlagsBufferUAV, tileCoordsUAV));
+                metalContext.BindCS(MakeResourceList(1, midwayBufferUAV, midwayGradFlagsBufferUAV, tileCoordsUAV));
 
-                context->Bind(cs0);
-                context->Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
-                                    unsigned(XlCeil(tile._height/float(threadGroupWidth))));
+                metalContext.Bind(cs0);
+                metalContext.Dispatch( 
+                    unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
+                    unsigned(XlCeil(tile._height/float(threadGroupWidth))));
 
                     //  if everything is ok up to this point, we can commit to the final
                     //  output --
-                context->BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
-                context->Bind(cs1);
-                context->Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
-                                    unsigned(XlCeil(tile._height/float(threadGroupWidth))));
+                metalContext.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
+                metalContext.Bind(cs1);
+                metalContext.Dispatch( 
+                    unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
+                    unsigned(XlCeil(tile._height/float(threadGroupWidth))));
 
                     //  We need to read back the new min/max heights
                     //  we could write these back to the original terrain cell -- but it
@@ -170,18 +168,19 @@ namespace SceneEngine
                 if (readbackData) {
                     float newHeightOffset = readbackData[2] - heightOffsetValue;
                     float newHeightScale = (readbackData[3] - readbackData[2]) / float(compressedHeightMask);
-					coverageInfo._heightOffset = newHeightOffset;
-					coverageInfo._heightScale = newHeightScale;
+                    coverageInfo._heightOffset = newHeightOffset;
+                    coverageInfo._heightScale = newHeightScale;
                 }
             } else {
                     // just write directly
-                context->BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
-                context->Bind(cs2);
-                context->Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
-                                    unsigned(XlCeil(tile._height/float(threadGroupWidth))));
+                metalContext.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
+                metalContext.Bind(cs2);
+                metalContext.Dispatch( 
+                    unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
+                    unsigned(XlCeil(tile._height/float(threadGroupWidth))));
             }
 
-            context->UnbindCS<Metal::UnorderedAccessView>(0, 3);
+            metalContext.UnbindCS<Metal::UnorderedAccessView>(0, 3);
         } CATCH (...) {
             // note, it's a real problem when we get a invalid resource get... 
             //  We should ideally stall until all the required resources are loaded
@@ -257,10 +256,7 @@ namespace SceneEngine
 						[=](const TerrainCell::NodeField& field) { return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
 					size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
 
-					result.push_back(
-						FoundNode { 
-							AsPointer(ni), unsigned(fieldIndex), 
-							nodeMin, nodeMax });
+					result.push_back(FoundNode { AsPointer(ni), unsigned(fieldIndex), nodeMin });
 				}
 			}
 		}
@@ -284,14 +280,15 @@ namespace SceneEngine
 			cellHash, layerId, cellOrigin, cellMax,
 			upd._updateAreaMins, upd._updateAreaMaxs);
 
-		for (const auto& n:nodes) {
+		// for (const auto& n:nodes) {
                 // downsampling required depends on which field we're in.
-            unsigned downsample = unsigned(4-n._fieldIndex);
-            ShortCircuitTileUpdate(
-				n._node->_tile, coverageLayerIndex, 
-				n._nodeMin, n._nodeMax, downsample, 
-				*n._node, upd);
-        }
+            // unsigned downsample = unsigned(4-n._fieldIndex);
+            // ShortCircuitTileUpdate(
+            //     metalContext,
+			// 	n._node->_tile, coverageLayerIndex, 
+			// 	n._nodeMin, downsample, 
+			// 	*n._node, upd);
+        // }
     }
 
 	void    TerrainCellRenderer::AbandonShortCircuitData(
@@ -299,8 +296,7 @@ namespace SceneEngine
 		UInt2 cellOrigin, UInt2 cellMax, 
 		UInt2 abandonMins, UInt2 abandonMaxs)
     {
-		// Find the tiles that would have been effected by short circuit operations in
-		// this area.
+		// Find the tiles that would have been effected by short circuit operations in this area.
 		// We will dump their data, so that they get reloaded from disk.
 		auto nodes = FindIntersectingNodes(
 			cellHash, layerId, cellOrigin, cellMax,
@@ -320,7 +316,6 @@ namespace SceneEngine
         _gradientFlagsSettings = gradientFlagsSettings;
     }
 
-
     void DoShortCircuitUpdate(
         uint64 cellHash, TerrainCoverageId layerId, std::weak_ptr<TerrainCellRenderer> renderer,
         TerrainCellId::UberSurfaceAddress uberAddress, const ShortCircuitUpdate& upd)
@@ -338,5 +333,168 @@ namespace SceneEngine
         if (r)
             r->AbandonShortCircuitData(cellHash, layerId, uberAddress._mins, uberAddress._maxs, mins, maxs);
 	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static bool CompareCellHash(const ShortCircuitBridge::CellRegion& lhs, const ShortCircuitBridge::CellRegion& rhs)
+    {
+        return lhs._cellHash < rhs._cellHash;
+    }
+
+    ShortCircuitUpdate ShortCircuitBridge::GetShortCircuit(uint64 cellHash, Float2 cellMins, Float2 cellMaxs)
+    {
+        auto l = _source.lock();
+        if (!l) return ShortCircuitUpdate {};
+
+        auto i = LowerBound(_cells, cellHash);
+        if (i != _cells.end() && i->first == cellHash) {
+            UInt2 uberMins(
+                i->second._uberMins[0] + unsigned((i->second._uberMaxs[0] - i->second._uberMins[0]) + cellMins[0]),
+                i->second._uberMins[1] + unsigned((i->second._uberMaxs[1] - i->second._uberMins[1]) + cellMins[1]));
+            UInt2 uberMaxs(
+                i->second._uberMins[0] + unsigned((i->second._uberMaxs[0] - i->second._uberMins[0]) + cellMaxs[0]),
+                i->second._uberMins[1] + unsigned((i->second._uberMaxs[1] - i->second._uberMins[1]) + cellMaxs[1]));
+
+            return l->GetShortCircuit(uberMins, uberMaxs);
+        }
+        return ShortCircuitUpdate {};
+    }
+
+    void ShortCircuitBridge::QueueShortCircuit(UInt2 uberMins, UInt2 uberMaxs)
+    {
+        for (const auto&i:_cells) {
+            const auto& r = i.second;
+            if (    r._uberMins[0] >= uberMaxs[0] || r._uberMaxs[0] < uberMins[0]
+                ||  r._uberMins[1] >= uberMaxs[1] || r._uberMaxs[1] < uberMins[1])
+                continue;
+
+            // queue a new update event
+            Float2 cellMins(
+                (uberMins[0] - r._uberMins[0]) / float(r._uberMaxs[0] - r._uberMins[0]),
+                (uberMins[1] - r._uberMins[1]) / float(r._uberMaxs[1] - r._uberMins[1]));
+            Float2 cellMaxs(
+                (uberMaxs[0] - r._uberMins[0]) / float(r._uberMaxs[0] - r._uberMins[0]),
+                (uberMaxs[1] - r._uberMins[1]) / float(r._uberMaxs[1] - r._uberMins[1]));
+            cellMins[0] = std::max(cellMins[0], 0.f);
+            cellMins[1] = std::max(cellMins[1], 0.f);
+            cellMaxs[0] = std::min(cellMaxs[0], 1.f);
+            cellMaxs[1] = std::min(cellMaxs[1], 1.f);
+
+            auto q = std::lower_bound(
+                _pendingUpdates.begin(), _pendingUpdates.end(), 
+                CellRegion { i.first }, CompareCellHash);
+
+            // we can choose to insert this as a separate event, or just combine it with
+            // what is already there.
+            if (q != _pendingUpdates.end() && q->_cellHash == i.first) {
+                q->_cellMins[0] = std::min(q->_cellMins[0], cellMins[0]);
+                q->_cellMins[1] = std::min(q->_cellMins[1], cellMins[1]);
+                q->_cellMaxs[0] = std::max(q->_cellMaxs[0], cellMaxs[0]);
+                q->_cellMaxs[1] = std::max(q->_cellMaxs[1], cellMaxs[1]);
+            } else {
+                CellRegion region { i.first, cellMins, cellMaxs };
+                _pendingUpdates.insert(q, region);
+            }
+        }
+    }
+
+    void ShortCircuitBridge::QueueAbandon(UInt2 uberMins, UInt2 uberMaxs)
+    {
+        // look for overlapping cells
+        for (const auto&i:_cells) {
+            const auto& r = i.second;
+            if (    r._uberMins[0] >= uberMaxs[0] || r._uberMaxs[0] < uberMins[0]
+                ||  r._uberMins[1] >= uberMaxs[1] || r._uberMaxs[1] < uberMins[1])
+                continue;
+
+            // remove any pending updates -- because they've all be abandoned now.
+            auto range = std::equal_range(
+                _pendingUpdates.begin(), _pendingUpdates.end(), 
+                CellRegion { i.first }, CompareCellHash);
+            _pendingUpdates.erase(range.first, range.second);
+
+            // queue a new abandon event
+            Float2 cellMins(
+                (uberMins[0] - r._uberMins[0]) / float(r._uberMaxs[0] - r._uberMins[0]),
+                (uberMins[1] - r._uberMins[1]) / float(r._uberMaxs[1] - r._uberMins[1]));
+            Float2 cellMaxs(
+                (uberMaxs[0] - r._uberMins[0]) / float(r._uberMaxs[0] - r._uberMins[0]),
+                (uberMaxs[1] - r._uberMins[1]) / float(r._uberMaxs[1] - r._uberMins[1]));
+            cellMins[0] = std::max(cellMins[0], 0.f);
+            cellMins[1] = std::max(cellMins[1], 0.f);
+            cellMaxs[0] = std::min(cellMaxs[0], 1.f);
+            cellMaxs[1] = std::min(cellMaxs[1], 1.f);
+
+            auto q = std::lower_bound(
+                _pendingAbandons.begin(), _pendingAbandons.end(), 
+                CellRegion { i.first }, CompareCellHash);
+
+            // we can choose to insert this as a separate event, or just combine it with
+            // what is already there.
+            if (q != _pendingAbandons.end() && q->_cellHash == i.first) {
+                q->_cellMins[0] = std::min(q->_cellMins[0], cellMins[0]);
+                q->_cellMins[1] = std::min(q->_cellMins[1], cellMins[1]);
+                q->_cellMaxs[0] = std::max(q->_cellMaxs[0], cellMaxs[0]);
+                q->_cellMaxs[1] = std::max(q->_cellMaxs[1], cellMaxs[1]);
+            } else {
+                CellRegion region { i.first, cellMins, cellMaxs };
+                _pendingAbandons.insert(q, region);
+            }
+        }
+    }
+
+    void ShortCircuitBridge::WriteCells(UInt2 uberMins, UInt2 uberMaxs)
+    {
+        auto l = _source.lock();
+        if (!l) return;
+
+        // look for overlapping cells
+        for (const auto&i:_cells) {
+            const auto& r = i.second;
+            if (    r._uberMins[0] >= uberMaxs[0] || r._uberMaxs[0] < uberMins[0]
+                ||  r._uberMins[1] >= uberMaxs[1] || r._uberMaxs[1] < uberMins[1])
+                continue;
+
+            // we need to call the write function to commit these cells to disk
+            // todo -- how do we handle exceptions here?
+            if (r._writeCells)
+                (r._writeCells)(l->GetSurface(), r._uberMins, r._uberMaxs);
+        }
+    }
+
+    void ShortCircuitBridge::RegisterCell(uint64 cellHash, UInt2 uberMins, UInt2 uberMaxs, WriteCellsFn&& writeCells)
+    {
+        auto i = LowerBound(_cells, cellHash);
+        if (i != _cells.end() && i->first == cellHash)
+            Throw(std::logic_error("Duplicate cell registered to ShortCircuitBridge. Check for hash conflicts or overlapping cells."));
+
+        _cells.insert(i, std::make_pair(cellHash, RegisteredCell { uberMins, uberMaxs, std::move(writeCells) }));
+    }
+
+    ShortCircuitBridge::ShortCircuitBridge(const std::shared_ptr<IShortCircuitSource>& source)
+    : _source(std::move(source))
+    {}
+
+    ShortCircuitBridge::~ShortCircuitBridge() {}
+
+    IShortCircuitSource::~IShortCircuitSource() {}
+
+
+    ShortCircuitUpdate::ShortCircuitUpdate() {}
+    ShortCircuitUpdate::~ShortCircuitUpdate() {}
+    ShortCircuitUpdate::ShortCircuitUpdate(ShortCircuitUpdate&& moveFrom) never_throws
+    : _srv(std::move(moveFrom._srv))
+    , _updateAreaMins(moveFrom._updateAreaMins), _updateAreaMaxs(moveFrom._updateAreaMaxs)
+    , _resourceMins(moveFrom._resourceMins), _resourceMaxs(moveFrom._resourceMaxs)
+    {}
+
+    ShortCircuitUpdate& ShortCircuitUpdate::operator=(ShortCircuitUpdate&& moveFrom) never_throws
+    {
+        _srv = std::move(moveFrom._srv);
+        _updateAreaMins = moveFrom._updateAreaMins; _updateAreaMaxs = moveFrom._updateAreaMaxs;
+        _resourceMins = moveFrom._resourceMins; _resourceMaxs = moveFrom._resourceMaxs;
+        return *this;
+    }
+
 }
 
