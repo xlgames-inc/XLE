@@ -35,7 +35,13 @@ namespace GUILayer
         void Add(const Assets::IAssetSet& set, uint64 id, Entry^ entry);
         Entry^ GetEntry(const Assets::IAssetSet& set, uint64 id);
 
-        void Commit();
+		ref class CommitResult
+		{
+		public:
+			property String^ ErrorMessages;
+		};
+
+		CommitResult^ Commit();
 
         PendingSaveList();
         ~PendingSaveList();

@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
+﻿// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+using System;
 using System.Windows.Forms;
 
 namespace ControlsLibrary
@@ -22,6 +22,7 @@ namespace ControlsLibrary
             set
             {
                 _assetList.Model = value;
+                _assetList.ExpandAll();
             }
         }
 

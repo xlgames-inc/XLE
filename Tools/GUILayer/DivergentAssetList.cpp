@@ -57,10 +57,39 @@ namespace GUILayer
         }
     };
 
+	static String^ GetAssetTypeName(uint64 typeCode)
+	{
+		using MatType = ::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>;
+		if (typeCode == typeid(MatType).hash_code()) {
+			return "Material";
+		}
+		return String::Empty;
+	}
+
+	private ref class ResourceImages
+	{
+	public:
+		static System::Drawing::Image^ s_materialImage = nullptr;
+	};
+
+	static System::Drawing::Image^ GetAssetTypeImage(uint64 typeCode)
+	{
+		using MatType = ::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>;
+		if (typeCode == typeid(MatType).hash_code()) {
+			if (!ResourceImages::s_materialImage) {
+				System::IO::Stream^ stream = System::Reflection::Assembly::GetExecutingAssembly()->GetManifestResourceStream("materialS.png");
+				ResourceImages::s_materialImage = System::Drawing::Image::FromStream(stream);
+			}
+			return ResourceImages::s_materialImage;
+		}
+		return nullptr;
+	}
+
     public ref class AssetTypeItem
     {
     public:
         property virtual System::String^ Label;
+		property virtual System::Drawing::Image^ Icon;
 
         const Assets::IAssetSet* _set;
         List<AssetItem^>^ _children;
@@ -88,7 +117,10 @@ namespace GUILayer
         AssetTypeItem(const Assets::IAssetSet& set) : _set(&set)
         { 
             _children = nullptr;
-            Label = clix::marshalString<clix::E_UTF8>(set.GetTypeName());
+			Label = GetAssetTypeName(set.GetTypeCode());
+			if (String::IsNullOrEmpty(Label))
+				Label = clix::marshalString<clix::E_UTF8>(set.GetTypeName());
+			Icon = GetAssetTypeImage(set.GetTypeCode());
             _checkState = System::Windows::Forms::CheckState::Checked;
         }
     };
@@ -242,7 +274,7 @@ namespace GUILayer
     PendingSaveList::~PendingSaveList()
     {}
 
-    array<Byte>^ LoadFileAsByteArray(const char filename[])
+    static array<Byte>^ LoadOriginalFileAsByteArray(const char filename[])
     {
         TRY {
             BasicFile file(filename, "rb");
@@ -257,9 +289,20 @@ namespace GUILayer
                 file.Read((uint8*)pinned, 1, size);
             }
             return block;
-        } CATCH(const std::exception& ) {
-            return gcnew array<Byte>(0);
-        } CATCH_END
+        } CATCH(const std::exception& e) {
+			auto builder = gcnew System::Text::StringBuilder();
+			builder->Append("Error while opening input file ");
+			builder->Append(clix::marshalString<clix::E_UTF8>(filename));
+			builder->AppendLine(". Exception message follows:");
+			builder->AppendLine(clix::marshalString<clix::E_UTF8>(e.what()));
+			return System::Text::Encoding::UTF8->GetBytes(builder->ToString());
+        } CATCH(...) {
+			auto builder = gcnew System::Text::StringBuilder();
+			builder->Append("Error while opening input file ");
+			builder->Append(clix::marshalString<clix::E_UTF8>(filename));
+			builder->AppendLine(". Unknown exception type.");
+			return System::Text::Encoding::UTF8->GetBytes(builder->ToString());
+		} CATCH_END
     }
 
     array<Byte>^ AsByteArray(const uint8* begin, const uint8* end)
@@ -374,7 +417,7 @@ namespace GUILayer
             
                 auto targetFilename = asset->GetIdentifier()._targetFilename;
                 auto splitName = MakeFileNameSplitter(targetFilename);
-                auto originalFile = LoadFileAsByteArray(splitName.AllExceptParameters().AsString().c_str());
+                auto originalFile = LoadOriginalFileAsByteArray(splitName.AllExceptParameters().AsString().c_str());
 
                 MemoryOutputStream<utf8> strm;
                 OutputStreamFormatter fmtter(strm);
@@ -395,26 +438,28 @@ namespace GUILayer
         return result;
     }
 
-    void PendingSaveList::Commit()
+    auto PendingSaveList::Commit() -> CommitResult^
     {
         #if defined(ASSETS_STORE_DIVERGENT)
 
+			auto errorMessages = gcnew System::Text::StringBuilder;
+
             using namespace RenderCore::Assets;
             auto materials = ::Assets::Internal::GetAssetSet<::Assets::ConfigFileListContainer<RawMaterial>>();
-            for (const auto& a:materials->_divergentAssets) {
-                auto asset = a.second;
-                auto hash = a.first;
-                if (!asset->HasChanges()) continue;
+			for (auto a = materials->_divergentAssets.cbegin(); a != materials->_divergentAssets.cend();) {
+                auto asset = a->second;
+                auto hash = a->first;
+				if (!asset->HasChanges()) { ++a; continue; }
 
                 auto entry = GetEntry(*materials, hash);
-                if (!entry || !entry->_saveQueued) continue;
+                if (!entry || !entry->_saveQueued) { ++a; continue; }
             
                     //  Sometimes mutliple assets will write to different parts of the same
                     //  file. It's a bit wierd, but we want the before and after parts to
                     //  only show changes related to this particular asset
                 auto targetFilename = asset->GetIdentifier()._targetFilename;
                 auto splitName = MakeFileNameSplitter(targetFilename);
-                auto originalFile = LoadFileAsByteArray(splitName.AllExceptParameters().AsString().c_str());
+                auto originalFile = LoadOriginalFileAsByteArray(splitName.AllExceptParameters().AsString().c_str());
             
                 MemoryOutputStream<utf8> strm;
                 OutputStreamFormatter fmtter(strm);
@@ -422,24 +467,41 @@ namespace GUILayer
                     splitName.AllExceptParameters(), splitName.Parameters(), 
                     asset->GetAsset()._asset);
 
+				auto dstFile = splitName.AllExceptParameters().AsString();
                 TRY
                 {
-                    BasicFile outputFile(splitName.AllExceptParameters().AsString().c_str(), "wb");
+                    BasicFile outputFile(dstFile.c_str(), "wb");
                     outputFile.Write(strm.GetBuffer().Begin(), 1, size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin()));
-                } CATCH (...) {
-                    // LogAlwaysError << "Problem when writing out to file: " << filename;
+
+					// Reset all divergent assets by removing them from the divergent asset list
+					// Underneath, the real file should have changed
+					// Note --	there's a problem here because pointers to these divergent assets might
+					//			be retained in other parts of the system.
+					a = materials->_divergentAssets.erase(a);
+					continue;
+                } CATCH(const std::exception& e) {
+					errorMessages->Append("Error while writing to file: ");
+					errorMessages->Append(clix::marshalString<clix::E_UTF8>(dstFile));
+					errorMessages->AppendLine(". Exception message follows:");
+					errorMessages->AppendLine(clix::marshalString<clix::E_UTF8>(e.what()));
+				} CATCH (...) {
+					errorMessages->Append("Error while writing to file: ");
+					errorMessages->Append(clix::marshalString<clix::E_UTF8>(dstFile));
+					errorMessages->AppendLine(". Unknown exception type.");
                 } CATCH_END
+
+				++a;	// should only get here after an execption
             }
 
-                // reset all divergent assets... Underneath, the real file should have changed
-            for (auto a = materials->_divergentAssets.cbegin(); a!=materials->_divergentAssets.cend();) {
-                auto entry = GetEntry(*materials, a->first);
-                if (!entry || !entry->_saveQueued) { 
-                    ++a; 
-                } else {
-                    a = materials->_divergentAssets.erase(a);
-                }
-            }
+			auto result = gcnew CommitResult;
+			result->ErrorMessages = errorMessages->ToString();
+			return result;
+
+		#else
+
+			auto result = gcnew CommitResult;
+			result->ErrorMessages = "Divergent asset behaviour is disabled in this build.";
+			return result;
 
         #endif
     }

@@ -52,13 +52,14 @@
             this._assetList.FullRowSelect = true;
             this._assetList.GridLineStyle = ((Aga.Controls.Tree.GridLineStyle)((Aga.Controls.Tree.GridLineStyle.Horizontal | Aga.Controls.Tree.GridLineStyle.Vertical)));
             this._assetList.LineColor = System.Drawing.SystemColors.ControlDark;
-            this._assetList.Location = new System.Drawing.Point(12, 12);
+            this._assetList.Location = new System.Drawing.Point(26, 22);
+            this._assetList.Margin = new System.Windows.Forms.Padding(7, 6, 7, 6);
             this._assetList.Model = null;
             this._assetList.Name = "_assetList";
             this._assetList.NodeControls.Add(this._nodeCheckBox);
             this._assetList.NodeControls.Add(this._label);
             this._assetList.SelectedNode = null;
-            this._assetList.Size = new System.Drawing.Size(267, 230);
+            this._assetList.Size = new System.Drawing.Size(576, 423);
             this._assetList.TabIndex = 0;
             this._assetList.UseColumns = true;
             this._assetList.SelectionChanged += new System.EventHandler(this.OnSelectionChange);
@@ -95,9 +96,10 @@
             // 
             this._okButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this._okButton.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this._okButton.Location = new System.Drawing.Point(886, 219);
+            this._okButton.Location = new System.Drawing.Point(1920, 404);
+            this._okButton.Margin = new System.Windows.Forms.Padding(7, 6, 7, 6);
             this._okButton.Name = "_okButton";
-            this._okButton.Size = new System.Drawing.Size(117, 23);
+            this._okButton.Size = new System.Drawing.Size(254, 42);
             this._okButton.TabIndex = 2;
             this._okButton.Text = "Do Export";
             this._okButton.UseVisualStyleBackColor = true;
@@ -106,9 +108,10 @@
             // 
             this._cancelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this._cancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this._cancelButton.Location = new System.Drawing.Point(763, 219);
+            this._cancelButton.Location = new System.Drawing.Point(1653, 404);
+            this._cancelButton.Margin = new System.Windows.Forms.Padding(7, 6, 7, 6);
             this._cancelButton.Name = "_cancelButton";
-            this._cancelButton.Size = new System.Drawing.Size(117, 23);
+            this._cancelButton.Size = new System.Drawing.Size(254, 42);
             this._cancelButton.TabIndex = 3;
             this._cancelButton.Text = "Cancel";
             this._cancelButton.UseVisualStyleBackColor = true;
@@ -118,20 +121,24 @@
             this._compareWindow.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this._compareWindow.Location = new System.Drawing.Point(285, 12);
+            this._compareWindow.Location = new System.Drawing.Point(618, 22);
+            this._compareWindow.Margin = new System.Windows.Forms.Padding(0);
             this._compareWindow.Name = "_compareWindow";
-            this._compareWindow.Size = new System.Drawing.Size(718, 201);
+            this._compareWindow.Size = new System.Drawing.Size(1556, 371);
             this._compareWindow.TabIndex = 1;
             // 
             // ExportPreviewDialog
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AcceptButton = this._okButton;
+            this.AutoScaleDimensions = new System.Drawing.SizeF(13F, 24F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1015, 254);
+            this.CancelButton = this._cancelButton;
+            this.ClientSize = new System.Drawing.Size(2199, 469);
             this.Controls.Add(this._cancelButton);
             this.Controls.Add(this._okButton);
             this.Controls.Add(this._compareWindow);
             this.Controls.Add(this._assetList);
+            this.Margin = new System.Windows.Forms.Padding(7, 6, 7, 6);
             this.Name = "ExportPreviewDialog";
             this.Text = "Export Preview";
             this.ResumeLayout(false);

@@ -16,6 +16,24 @@ namespace ControlsLibrary.BasicControls
             InitializeComponent();
         }
 
+        static public void ShowModal(String text)
+        {
+            using (var dlg = new TextWindow())
+            {
+                dlg.Text = text;
+                dlg.ShowDialog();
+            }
+        }
+
+        static public void Show(String text)
+        {
+            using (var dlg = new TextWindow())
+            {
+                dlg.Text = text;
+                dlg.Show();
+            }
+        }
+
         public new string Text { set { _textBox.Text = value; } }
     }
 }

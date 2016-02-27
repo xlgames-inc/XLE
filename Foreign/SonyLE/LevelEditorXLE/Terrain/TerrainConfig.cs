@@ -217,11 +217,7 @@ namespace LevelEditorXLE.Terrain
             for (uint c = 0; c < m_config.ImportOp.WarningCount; ++c)
                 builder.AppendLine(m_config.ImportOp.Warning(c));
 
-            using (var dlg = new ControlsLibrary.BasicControls.TextWindow())
-            {
-                dlg.Text = builder.ToString();
-                dlg.ShowDialog();
-            }
+            ControlsLibrary.BasicControls.TextWindow.ShowModal(builder.ToString());
         }
     }
 }

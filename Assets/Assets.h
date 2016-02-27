@@ -520,7 +520,7 @@ namespace Assets
         template <typename AssetType>
             uint64          AssetSet<AssetType>::GetTypeCode() const
             {
-                return Hash64(typeid(AssetType).name());
+                return typeid(AssetType).hash_code();
             }
 
         template <typename AssetType>

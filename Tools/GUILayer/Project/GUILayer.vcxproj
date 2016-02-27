@@ -185,6 +185,12 @@
       <Project>{f47f1b0a-ae7c-482a-baf8-d47a6b09b817}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <_EmbedManagedResourceFile Include="..\Resources\material.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <_EmbedManagedResourceFile Include="..\Resources\materialS.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

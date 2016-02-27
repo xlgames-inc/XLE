@@ -64,7 +64,11 @@ namespace ModelViewer
 
                 if (result == DialogResult.OK)
                 {
-                    pendingAssetList.Commit();
+                    var cmtResult = pendingAssetList.Commit();
+
+                    // if we got some error messages during the commit; display them here...
+                    if (!String.IsNullOrEmpty(cmtResult.ErrorMessages))
+                        ControlsLibrary.BasicControls.TextWindow.ShowModal(cmtResult.ErrorMessages);
                 }
             }
         }

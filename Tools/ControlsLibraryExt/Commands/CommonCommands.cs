@@ -102,7 +102,11 @@ namespace ControlsLibraryExt.Commands
                 dialog.BuildAssetList(pendingAssetList);
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    pendingAssetList.Commit();
+                    var cmtResult = pendingAssetList.Commit();
+
+                    // if we got some error messages during the commit; display them here...
+                    if (!String.IsNullOrEmpty(cmtResult.ErrorMessages))
+                        ControlsLibrary.BasicControls.TextWindow.ShowModal(cmtResult.ErrorMessages);
                 }
             }
         }
