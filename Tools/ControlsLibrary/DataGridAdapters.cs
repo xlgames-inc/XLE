@@ -558,7 +558,7 @@ namespace ControlsLibrary
             using (var ofd = new OpenFileDialog())
             {
                 ofd.FileName = Value ?? "";
-                ofd.Filter = "Texture files|*.dds;*.jpg;*.png;*.tif;*.tiff;*.tga|All Files|*.*";
+                ofd.Filter = "Texture files|*.dds;*.jpg;*.png;*.tif;*.tiff;*.tga;*.hdr;*.exr|All Files|*.*";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     Value = GUILayer.Utils.MakeAssetName(ofd.FileName);
