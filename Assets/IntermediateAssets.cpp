@@ -278,7 +278,7 @@ namespace Assets { namespace IntermediateAssets
 								markerFile.Read(rawData.get(), 1, size_t(fileSize));
 
                                 InputStreamFormatter<utf8> formatter(
-                                    MemoryMappedInputStream(rawData.get(), PtrAdd(rawData.get(), fileSize)));
+                                    MemoryMappedInputStream(rawData.get(), PtrAdd(rawData.get(), (ptrdiff_t)fileSize)));
                                 Document<InputStreamFormatter<utf8>> doc(formatter);
 
 								auto compareVersion = doc.Attribute(u("VersionString")).Value();
