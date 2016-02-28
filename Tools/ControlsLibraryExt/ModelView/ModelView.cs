@@ -120,6 +120,7 @@ namespace ControlsLibraryExt.ModelView
     }
 
     [Export(typeof(IInitializable))]
+    [Export(typeof(ActiveModelView))]
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class ActiveModelView : IInitializable
     {
@@ -135,6 +136,15 @@ namespace ControlsLibraryExt.ModelView
                     StandardControlGroup.Center),
                 null);
         }
+
+        public void LoadFromCommandLine(string model)
+        {
+            _settings.ModelName = model;
+            _settings.ResetCamera = true;
+            _controls.Invalidate3DView();
+        }
+
+        public Control Control { get { return _controls; } }
 
         [Import(AllowDefault = false)] private IControlHostService _controlHostService;
         [Import(AllowDefault = true)] private Material.ActiveMaterialContext _activeMaterialContext;

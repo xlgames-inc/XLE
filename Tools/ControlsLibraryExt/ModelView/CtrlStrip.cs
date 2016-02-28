@@ -5,12 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
-using System.Data;
-using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 
 namespace ControlsLibraryExt.ModelView
@@ -72,7 +67,7 @@ namespace ControlsLibraryExt.ModelView
             if (Object == null) return;
 
             GUILayer.ModelVisSettings.ColourByMaterialType v;
-            if (Enum.TryParse<GUILayer.ModelVisSettings.ColourByMaterialType>(((ComboBox)sender).SelectedValue.ToString(), out v))
+            if (Enum.TryParse(((ComboBox)sender).SelectedValue.ToString(), out v))
             {
                 Object.ColourByMaterial = v;
                 InvokeOnChange();
@@ -84,7 +79,7 @@ namespace ControlsLibraryExt.ModelView
             if (Object == null) return;
 
             DisplayMode v;
-            if (Enum.TryParse<DisplayMode>(((ComboBox)sender).SelectedValue.ToString(), out v))
+            if (Enum.TryParse(((ComboBox)sender).SelectedValue.ToString(), out v))
             {
                 switch (v)
                 {

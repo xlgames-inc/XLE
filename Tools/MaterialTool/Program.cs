@@ -27,7 +27,7 @@ namespace MaterialTool
     public class Program
     {
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             // This startup sequence is based on the "Circuit editor" sample in the Sony ATF repo
             // We want to take advantage of the ATF implementations whereever they exist, but we'll
@@ -179,6 +179,33 @@ namespace MaterialTool
             engineDevice.AttachDefaultCompilers();
 
             container.InitializeAll();
+
+            // if there is a model filename on the command line, we will load it into our viewer
+            if (args != null && args.Length > 0)
+            {
+                var a = args[0];
+                if (string.Equals(System.IO.Path.GetExtension(a), ".dae", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Insert a delegate to be executed after the AutoDocumentService has run. That is attached
+                    // to the "Loaded" event in the main form, also -- so this should occur afterwards
+                    // This way we can pop our window to the top, after the auto load documents appear
+                    mainForm.Loaded += delegate (object o, EventArgs eventArgs)
+                        {
+                            var modelView = container.GetExport<ControlsLibraryExt.ModelView.ActiveModelView>().Value;
+                            if (modelView != null)
+                            {
+                                modelView.LoadFromCommandLine(a);
+
+                                var hostService = container.GetExport<IControlHostService>().Value;
+                                if (hostService != null)
+                                    hostService.Show(modelView.Control);
+
+                                // unfortunately we can't suppress the autoload documents stuff from here!
+                            }
+                        };
+                }
+            }
+
             Application.Run(mainForm);
             container.Dispose();
             mainForm.Dispose();

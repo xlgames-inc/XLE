@@ -41,6 +41,7 @@ namespace EntityInterface
             *_manager, meld,  Float2(-100000.f, -100000.f), Float2( 100000.f,  100000.f));
 		auto hiddenResult = _hiddenObjects->CreateCell(
 			*_manager, meld, Float2(-100000.f, -100000.f), Float2(100000.f, 100000.f));
+		(void)hiddenResult;
 		assert(result == hiddenResult);	// ids must match up
 		return result;
 	}
