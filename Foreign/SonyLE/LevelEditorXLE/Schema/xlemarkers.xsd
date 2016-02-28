@@ -17,7 +17,6 @@
         <LeGe.NativeType nativeName="MarkerPoint"/>
         <LeGe.NativeVis geo="sphere"/>
         <LeGe.NativeProperty name="translate" nativeName="Translation"/>
-        <scea.dom.editors.attribute name="indexlist" displayName="Index List" category="General"/>
         <scea.dom.editors.attribute name="translate" displayName="Translation" category="General"
                                     editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
         <scea.dom.editors name="MarkerPoint" category="Markers" image="LevelEditorCore.Resources.gameObject.png" menuText="MarkerPoint" description="MarkerPoint"/>

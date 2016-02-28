@@ -992,13 +992,13 @@ namespace SceneEngine
         return _pimpl->_renderer;
     }
 
-    std::shared_ptr<PlacementsEditor> PlacementsManager::CreateEditor()
+    std::shared_ptr<PlacementsEditor> PlacementsManager::CreateEditor(bool visible)
     {
             // Create a new editor, and register all cells with in.
             // What happens if new cells are created? They must be registered with
             // all editors, also...!
         auto editor = std::make_shared<PlacementsEditor>(
-            _pimpl->_placementsCache, _pimpl->_modelCache, _pimpl->_renderer);
+            _pimpl->_placementsCache, _pimpl->_modelCache, visible ? _pimpl->_renderer : nullptr);
         for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
             editor->RegisterCell(
                 *i,
@@ -1294,10 +1294,10 @@ namespace SceneEngine
 				} CATCH_END
 			}
 
-            if (!placements) {
+            if (!placements)
                 placements = std::make_shared<DynamicPlacements>();
-            }
-            _renderer->SetOverride(cellGuid, placements);
+            if (_renderer)
+				_renderer->SetOverride(cellGuid, placements);
             p = _dynPlacements.insert(p, std::make_pair(cellGuid, std::move(placements)));
         }
 
@@ -1640,7 +1640,7 @@ namespace SceneEngine
     {
             // get the local bounding box for a model
             // ... but stall waiting for any pending resources
-        auto* model = _editorPimpl->_renderer->GetModelCache().GetModelScaffold(filename);
+        auto* model = _editorPimpl->_modelCache->GetModelScaffold(filename);
         auto state = model->StallAndResolve();
         if (state != ::Assets::AssetState::Ready) {
             result = std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
@@ -1677,7 +1677,7 @@ namespace SceneEngine
         if (objectIndex >= _objects.size()) return std::string();
 
             // attempt to get the 
-        auto scaff = _editorPimpl->_renderer->GetModelCache().GetScaffolds(
+        auto scaff = _editorPimpl->_modelCache->GetScaffolds(
             _objects[objectIndex]._model.c_str(), _objects[objectIndex]._material.c_str());
         if (!scaff._material) return std::string();
 
@@ -1690,6 +1690,7 @@ namespace SceneEngine
         auto& currentState = _objects[index];
         auto currTrans = currentState._transaction;
         if (currTrans != ObjTransDef::Deleted) {
+			currentState = newState;
             currentState._transaction = (currTrans == ObjTransDef::Created || currTrans == ObjTransDef::Error) ? ObjTransDef::Created : ObjTransDef::Modified;
             PushObj(index, currentState);
         }
@@ -2041,13 +2042,12 @@ namespace SceneEngine
 				// If we didn't get an actual "placements" object, it means that nothing has been created
 				// in this cell yet (and maybe the original asset is invalid/uncreated).
 				// We should treat this the same as if the object didn't exists previously.
-				// for (; i != iend; ++i) {
-				// 	ObjTransDef def;
-				// 	def._localToWorld = Identity<decltype(def._localToWorld)>();
-				// 	def._transaction = ObjTransDef::Error;
-				// 	originalState.push_back(def);
-				// }
-				i = guids.erase(i, iend);
+				for (; i != iend; ++i) {
+					ObjTransDef def;
+					def._localToWorld = Identity<decltype(def._localToWorld)>();
+					def._transaction = ObjTransDef::Error;
+					originalState.push_back(def);
+				}
 				continue; 
 			}
 
@@ -2138,8 +2138,7 @@ namespace SceneEngine
     uint64 PlacementsEditor::CreateCell(
         PlacementsManager& manager,
         const ::Assets::ResChar name[],
-        const Float2& mins, const Float2& maxs, 
-		bool visible)
+        const Float2& mins, const Float2& maxs)
     {
             //  The implementation here is not great. Originally, PlacementsManager
             //  was supposed to be constructed with all of it's cells already created.
@@ -2150,6 +2149,7 @@ namespace SceneEngine
         newCell._cellToWorld = Identity<decltype(newCell._cellToWorld)>();
         newCell._aabbMin = Expand(mins, -10000.f);
         newCell._aabbMax = Expand(maxs,  10000.f);
+		const bool visible = _pimpl->_renderer != nullptr;
         if (visible) manager._pimpl->_cells.push_back(newCell);
         RegisterCell(newCell, mins, maxs);
         return newCell._filenameHash;
@@ -2177,6 +2177,7 @@ namespace SceneEngine
         const PlacementGUID* begin, const PlacementGUID* end,
         const std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>& predicate)
     {
+		if (!_pimpl->_renderer) return;
         _pimpl->_renderer->BeginPrepare();
 
             //  We need to take a copy, so we don't overwrite
@@ -2318,7 +2319,8 @@ namespace SceneEngine
             SavePlacements(cellName, placements);
 
                 // clear the renderer links
-            _pimpl->_renderer->SetOverride(cellGuid, nullptr);
+            if (_pimpl->_renderer)
+				_pimpl->_renderer->SetOverride(cellGuid, nullptr);
         }
 
         _pimpl->_dynPlacements.clear();

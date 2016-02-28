@@ -20,7 +20,7 @@ using LevelEditorCore;
 
 namespace LevelEditorXLE.Placements
 {
-    public class XLEPlacementDocument : DomDocument, IListable, IHierarchical, IGameDocument, IGameObjectFolder
+    public class XLEPlacementDocument : DomDocument, IListable, IHierarchical, IGameDocument, IGameObjectFolder, IEnumerableContext
     {
         #region IListable Members
         public void GetInfo(ItemInfo info)
@@ -133,6 +133,33 @@ namespace LevelEditorXLE.Placements
             }
 
             Dirty = false;
+        }
+        #endregion
+        #region IEnumerableContext Members
+        public IEnumerable<object> Items
+        {
+            get
+            {
+                // note -- basically identical to GameContext::Items
+                var pendingChildren = new Queue<DomNode>(DomNode.Children);
+                while (pendingChildren.Count != 0)
+                {
+                    var childNode = pendingChildren.Dequeue();
+                    var e = childNode.As<IEnumerableContext>();
+                    if (e != null)
+                    {
+                        foreach (var o in e.Items)
+                            yield return o;
+                    }
+                    else
+                    {
+                        yield return Util.AdaptDomPath(childNode);
+                        foreach (var c in childNode.Children)
+                            pendingChildren.Enqueue(c);
+                    }
+                }
+
+            }
         }
         #endregion
 

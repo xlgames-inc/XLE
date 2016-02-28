@@ -449,7 +449,7 @@
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
         <scea.dom.editors.attribute category="General" name="SuppressionFactor" displayName="Suppression Factor" description=""/>
 
-        <scea.dom.editors.attribute category="General" name="GridShiftFactor" displayName="Grid Shift Factor" description="Animates the entire ocean, moving in the direction of the wind"
+        <scea.dom.editors.attribute category="General" name="GridShiftSpeed" displayName="Grid Shift Factor" description="Animates the entire ocean, moving in the direction of the wind"
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,.2"/>
 
         <scea.dom.editors.attribute category="General" name="BaseHeight" displayName="Base Height" description="Z position for the surface of the ocean"/>

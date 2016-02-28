@@ -70,7 +70,7 @@ namespace SceneEngine
             -> std::vector<std::pair<Float3x4, ObjectBoundingBoxes>>;
 
         std::shared_ptr<PlacementsRenderer> GetRenderer();
-        std::shared_ptr<PlacementsEditor> CreateEditor();
+        std::shared_ptr<PlacementsEditor> CreateEditor(bool visible = true);
 
         void SetImposters(std::shared_ptr<DynamicImposters> imposters);
 
@@ -180,8 +180,7 @@ namespace SceneEngine
         uint64 CreateCell(
             PlacementsManager& manager,
             const ::Assets::ResChar name[],
-            const Float2& mins, const Float2& maxs,
-			bool visible = true);
+            const Float2& mins, const Float2& maxs);
         bool RemoveCell(uint64 id);
         static uint64 GenerateObjectGUID();
 		void PerformGUIDFixup(PlacementGUID* begin, PlacementGUID* end) const;

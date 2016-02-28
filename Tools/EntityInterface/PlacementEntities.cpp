@@ -38,99 +38,115 @@ namespace EntityInterface
             // todo -- boundary of this cell should be set to something reasonable
             //          (or at least adapt as objects are added and removed)
         auto result = (DocumentId)_editor->CreateCell(
-            *_manager,
-            meld,  Float2(-100000.f, -100000.f), Float2( 100000.f,  100000.f));
+            *_manager, meld,  Float2(-100000.f, -100000.f), Float2( 100000.f,  100000.f));
 		auto hiddenResult = _hiddenObjects->CreateCell(
-			*_manager,
-			meld, Float2(-100000.f, -100000.f), Float2(100000.f, 100000.f), false);
+			*_manager, meld, Float2(-100000.f, -100000.f), Float2(100000.f, 100000.f));
 		assert(result == hiddenResult);	// ids must match up
 		return result;
-    }
+	}
 
-    bool PlacementEntities::DeleteDocument(DocumentId doc, DocumentTypeId docType)
-    {
-        if (docType != DocumentType_Placements) { assert(0); return false; }
-        bool result = _editor->RemoveCell(doc);
+	bool PlacementEntities::DeleteDocument(DocumentId doc, DocumentTypeId docType)
+	{
+		if (docType != DocumentType_Placements) { assert(0); return false; }
+		bool result = _editor->RemoveCell(doc);
 		result |= _hiddenObjects->RemoveCell(doc);
 		return result;
-    }
+	}
 
-    ObjectId PlacementEntities::AssignObjectId(DocumentId doc, ObjectTypeId type) const
-    {
-        if (type != ObjectType_Placement) { assert(0); return 0; }
-        return _editor->GenerateObjectGUID();
-    }
+	ObjectId PlacementEntities::AssignObjectId(DocumentId doc, ObjectTypeId type) const
+	{
+		if (type != ObjectType_Placement) { assert(0); return 0; }
+		return _editor->GenerateObjectGUID();
+	}
 
 	enum VisibilityChange { None, MakeVisible, MakeHidden };
 	static VisibilityChange GetVisibilityChange(const PropertyInitializer initializers[], size_t initializerCount)
 	{
 		VisibilityChange visChange = None;
-		for (unsigned c = 0; c<initializerCount; ++c) {
+		for (unsigned c = 0; c < initializerCount; ++c) {
 			if (initializers[c]._prop == Property_Visible && initializers[c]._src) {
-				bool flagValue = *(const uint8*)initializers[c]._src != 0;
+				bool flagValue = (*(const uint8*)initializers[c]._src) != 0;
 				visChange = flagValue ? MakeVisible : MakeHidden;
 			}
 		}
 		return visChange;
 	}
 
-    static bool SetObjProperty(
-        SceneEngine::PlacementsEditor::ObjTransDef& obj, 
-        const PropertyInitializer& prop)
-    {
-        if (prop._prop == Property_Transform) {
-                // note -- putting in a transpose here, because the level editor matrix
-                //          math uses a transposed form
-            if (prop._elementType == (unsigned)ImpliedTyping::TypeCat::Float && prop._arrayCount >= 16) {
-                obj._localToWorld = AsFloat3x4(Transpose(*(const Float4x4*)prop._src));
-                return true;
-            }
-        } else if (prop._prop == Property_Model || prop._prop == Property_Material || prop._prop == Property_Supplements) {
-            Assets::ResChar buffer[MaxPath];
-            ucs2_2_utf8(
-                (const ucs2*)prop._src, prop._arrayCount,
-                (utf8*)buffer, dimof(buffer));
+	static bool SetObjProperty(
+		SceneEngine::PlacementsEditor::ObjTransDef& obj,
+		const PropertyInitializer& prop)
+	{
+		if (prop._prop == Property_Transform) {
+			// note -- putting in a transpose here, because the level editor matrix
+			//          math uses a transposed form
+			if (prop._elementType == (unsigned)ImpliedTyping::TypeCat::Float && prop._arrayCount >= 16) {
+				obj._localToWorld = AsFloat3x4(Transpose(*(const Float4x4*)prop._src));
+				return true;
+			}
+		}
+		else if (prop._prop == Property_Model || prop._prop == Property_Material || prop._prop == Property_Supplements) {
+			Assets::ResChar buffer[MaxPath];
+			ucs2_2_utf8(
+				(const ucs2*)prop._src, prop._arrayCount,
+				(utf8*)buffer, dimof(buffer));
 
-            if (prop._prop == Property_Model) {
-                obj._model = buffer;
-            } else if (prop._prop == Property_Supplements) {
-                obj._supplements = buffer;
-            } else {
-                obj._material = buffer;
-            }
-            return true;
-        }
-        return false;
-    }
+			if (prop._prop == Property_Model) {
+				obj._model = buffer;
+			}
+			else if (prop._prop == Property_Supplements) {
+				obj._supplements = buffer;
+			}
+			else {
+				obj._material = buffer;
+			}
+			return true;
+		}
+		return false;
+	}
 
-    bool PlacementEntities::CreateObject(
-        const Identifier& id, 
-        const PropertyInitializer initializers[], size_t initializerCount)
-    {
-        if (id.ObjectType() != ObjectType_Placement) { assert(0); return false; }
+	bool PlacementEntities::CreateObject(
+		const Identifier& id,
+		const PropertyInitializer initializers[], size_t initializerCount)
+	{
+		if (id.ObjectType() != ObjectType_Placement) { assert(0); return false; }
 
-        SceneEngine::PlacementsEditor::ObjTransDef newObj;
-        newObj._localToWorld = Identity<decltype(newObj._localToWorld)>();
-        newObj._model = "";
-        newObj._material = "";
-        for (size_t c=0; c<initializerCount; ++c) 
-            SetObjProperty(newObj, initializers[c]);
+		SceneEngine::PlacementsEditor::ObjTransDef newObj;
+		newObj._localToWorld = Identity<decltype(newObj._localToWorld)>();
+		for (size_t c = 0; c < initializerCount; ++c)
+			SetObjProperty(newObj, initializers[c]);
 
 		auto visChange = GetVisibilityChange(initializers, initializerCount);
 
-        auto guid = SceneEngine::PlacementGUID(id.Document(), id.Object());
+		auto guid = SceneEngine::PlacementGUID(id.Document(), id.Object());
 		std::shared_ptr<SceneEngine::PlacementsEditor::ITransaction> transaction;
 		if (visChange == MakeHidden) {
 			transaction = _hiddenObjects->Transaction_Begin(nullptr, nullptr);
 		} else
 			transaction = _editor->Transaction_Begin(nullptr, nullptr);
 		if (transaction->Create(guid, newObj)) {
-            transaction->Commit();
-            return true;
-        }
+			transaction->Commit();
+			return true;
+		}
 
-        return false;
-    }
+		return false;
+	}
+
+	static std::shared_ptr<SceneEngine::PlacementsEditor::ITransaction> Begin(SceneEngine::PlacementsEditor& editor, SceneEngine::PlacementGUID guid)
+	{
+		auto result = editor.Transaction_Begin(
+			&guid, &guid + 1,
+			SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
+		assert(result);
+		return result;
+	}
+
+	static bool FoundExistingObject(const SceneEngine::PlacementsEditor::ITransaction& trans)
+	{
+		for (unsigned c=0; c<trans.GetObjectCount(); ++c)
+			if (trans.GetObject(c)._transaction == SceneEngine::PlacementsEditor::ObjTransDef::Unchanged)
+				return true;
+		return false;
+	}
 
     bool PlacementEntities::DeleteObject(const Identifier& id)
     {
@@ -141,18 +157,14 @@ namespace EntityInterface
 
 			// delete from both the hidden and visible lists ---
 
-        auto transaction = _editor->Transaction_Begin(
-            &guid, &guid+1, 
-            SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
+        auto transaction = Begin(*_editor, guid);
         if (transaction->GetObjectCount()==1) {
             transaction->Delete(0);
             transaction->Commit();
             result |= true;
         }
 
-		transaction = _hiddenObjects->Transaction_Begin(
-			&guid, &guid + 1,
-			SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
+		transaction = Begin(*_hiddenObjects, guid);
 		if (transaction->GetObjectCount() == 1) {
 			transaction->Delete(0);
 			transaction->Commit();
@@ -194,63 +206,41 @@ namespace EntityInterface
 			// if the object is not already in the visible list, then we have to move
 			// it's properties across from the hidden list (and destroy the version
 			// in the hidden list)
-			auto visibleTrans = _editor->Transaction_Begin(
-				&guid, &guid + 1,
-				SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
-			if (	visibleTrans && visibleTrans->GetObjectCount() == 1
-				&& visibleTrans->GetObject(0)._transaction == TransType::Error) {
-
-				auto hiddenTrans = _hiddenObjects->Transaction_Begin(
-					&guid, &guid + 1,
-					SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
-				if (	hiddenTrans && hiddenTrans->GetObjectCount() == 1
-					&&	hiddenTrans->GetObject(0)._transaction == TransType::Unchanged) {
+			auto visibleTrans = Begin(*_editor, guid);
+			if (!FoundExistingObject(*visibleTrans)) {
+				auto hiddenTrans = Begin(*_hiddenObjects, guid);
+				if (FoundExistingObject(*hiddenTrans)) {
 					// Copy across, delete the hidden item, and then commit the result
 					visibleTrans->SetObject(0, hiddenTrans->GetObject(0));
 					hiddenTrans->Delete(0);
 					hiddenTrans->Commit();
+					pendingTransactionCommit = true;
 				}
 			}
 
 			mainTransaction = std::move(visibleTrans);
-			pendingTransactionCommit = true;
 		} else if (visChange == MakeHidden) {
-			auto hiddenTrans = _hiddenObjects->Transaction_Begin(
-				&guid, &guid + 1,
-				SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
-			if (hiddenTrans && hiddenTrans->GetObjectCount() == 1) {
-				auto visibleTrans = _editor->Transaction_Begin(
-					&guid, &guid + 1,
-					SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
-				if (	visibleTrans && visibleTrans->GetObjectCount() == 1
-					&&	visibleTrans->GetObject(0)._transaction == TransType::Unchanged) {
-				
+			auto hiddenTrans = Begin(*_hiddenObjects, guid);
+			if (hiddenTrans->GetObjectCount() > 0) {
+				auto visibleTrans = Begin(*_editor, guid);
+				if (FoundExistingObject(*visibleTrans)) {
 					hiddenTrans->SetObject(0, visibleTrans->GetObject(0));
 					visibleTrans->Delete(0);
 					visibleTrans->Commit();
+					pendingTransactionCommit = true;
 				}
 			}
 
 			mainTransaction = std::move(hiddenTrans);
-			pendingTransactionCommit = true;
 		} else {
-			mainTransaction = _editor->Transaction_Begin(
-				&guid, &guid + 1,
-				SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
-			if (mainTransaction && mainTransaction->GetObjectCount() == 1
-				&& mainTransaction->GetObject(0)._transaction == TransType::Error) {
-
+			mainTransaction = Begin(*_editor, guid);
+			if (!FoundExistingObject(*mainTransaction)) {
 				// if we're threatening to create the object, let's first check to
 				// see if a hidden object exists instead (and if so, switch to that 
 				// transaction instead)
-				auto hiddenTrans = _hiddenObjects->Transaction_Begin(
-					&guid, &guid + 1,
-					SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
-				if (hiddenTrans && hiddenTrans->GetObjectCount() == 1 && 
-					hiddenTrans->GetObject(0)._transaction == TransType::Unchanged) {
-
+				auto hiddenTrans = Begin(*_hiddenObjects, guid);
+				if (FoundExistingObject(*hiddenTrans))
 					mainTransaction = std::move(hiddenTrans);
-				}
 			}
 		}
 
@@ -260,13 +250,10 @@ namespace EntityInterface
             //          necessary given that we could get there several thousand times during
             //          startup for an average scene.
         
-        if (mainTransaction && mainTransaction->GetObjectCount()==1) {
+        if (mainTransaction && mainTransaction->GetObjectCount() > 0) {
             auto originalObject = mainTransaction->GetObject(0);
-
-            for (size_t c=0; c<initializerCount; ++c) {
+            for (size_t c=0; c<initializerCount; ++c)
                 pendingTransactionCommit |= SetObjProperty(originalObject, initializers[c]);
-            }
-
             if (pendingTransactionCommit) {
 				mainTransaction->SetObject(0, originalObject);
 				mainTransaction->Commit();
@@ -288,17 +275,13 @@ namespace EntityInterface
         typedef std::pair<Float3, Float3> BoundingBox;
 
         auto guid = SceneEngine::PlacementGUID(id.Document(), id.Object());
-        auto transaction = _editor->Transaction_Begin(
-            &guid, &guid+1, 
-            SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
+        auto transaction = Begin(*_editor, guid);
         if (transaction && transaction->GetObjectCount()==1) {
 
 			// if the object didn't previous exist in the visible list, then check the hidden list
 			if (transaction->GetObject(0)._transaction == SceneEngine::PlacementsEditor::ObjTransDef::Error) {
-				auto hiddenTrans = _hiddenObjects->Transaction_Begin(
-					&guid, &guid + 1,
-					SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
-				if (hiddenTrans && hiddenTrans->GetObjectCount() == 1 && hiddenTrans->GetObject(0)._transaction != SceneEngine::PlacementsEditor::ObjTransDef::Error)
+				auto hiddenTrans = Begin(*_hiddenObjects, guid);
+				if (hiddenTrans->GetObjectCount() == 0 || hiddenTrans->GetObject(0)._transaction != SceneEngine::PlacementsEditor::ObjTransDef::Error)
 					transaction = hiddenTrans;
 			}
 

@@ -413,29 +413,28 @@ namespace LevelEditor
         public IEnumerable<object> Items
         {
             get 
-            {            
-                
-                DomNode folderNode = MasterContext.RootGameObjectFolder.Cast<DomNode>();
-                IEnumerable<DomNode> descendants = folderNode.Subtree.Skip(1);
-                foreach (DomNode childNode in descendants)
+            {
+                // DavidJ --    Adjust the tree walk here to allow for references to generic sub documents
+                //              Any subnode that is itself a IEnumerableContext will take over traversal of
+                //              it's children. This allows IReference<> type objects to dig down into their children.
+                // Traverse through in breadth-first order
+                var pendingChildren = new Queue<DomNode>(DomNode.Children);
+                while (pendingChildren.Count != 0)
                 {
-                    if (childNode.Is<IReference<IResource>>()) continue;
-                    yield return Util.AdaptDomPath(childNode);
-                }
-
-                foreach (GameContext subContext in m_gameDocumentRegistry.SubDocuments.AsIEnumerable<GameContext>())
-                {
-                    folderNode = subContext.RootGameObjectFolder.As<DomNode>();
-                    if (folderNode != null)
+                    var childNode = pendingChildren.Dequeue();
+                    var e = childNode.As<IEnumerableContext>();
+                    if (e != null)
                     {
-                        descendants = folderNode.Subtree.Skip(1);
-                        foreach (DomNode childNode in descendants)
-                        {
-                            if (childNode.Is<IReference<IResource>>()) continue;
-                            yield return Util.AdaptDomPath(childNode);
-                        }
+                        foreach (var o in e.Items)
+                            yield return o;
                     }
-                }                
+                    else
+                    {
+                        yield return Util.AdaptDomPath(childNode);
+                        foreach (var c in childNode.Children)
+                            pendingChildren.Enqueue(c);
+                    }
+                }
             }
         }
 

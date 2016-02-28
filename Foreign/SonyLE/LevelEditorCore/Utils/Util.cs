@@ -291,12 +291,15 @@ namespace LevelEditorCore
                 {
                     foreach (IGameDocument doc in gameDocumentRegistry.Documents)
                     {
-                        DomNode folderNode = doc.RootGameObjectFolder.Cast<DomNode>();
-                        foreach (DomNode childNode in folderNode.Subtree)
+                        var enumerable = doc.As<IEnumerableContext>();
+                        if (enumerable != null)
                         {
-                            if ((exact && childNode.Type == type)
-                                || (!exact && type.IsAssignableFrom(childNode.Type)))
-                                yield return childNode;
+                            foreach (DomNode childNode in enumerable.Items.AsIEnumerable<DomNode>())
+                            {
+                                if ((exact && childNode.Type == type)
+                                    || (!exact && type.IsAssignableFrom(childNode.Type)))
+                                    yield return childNode;
+                            }
                         }
                     }
                 }

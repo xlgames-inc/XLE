@@ -77,7 +77,7 @@ namespace GUILayer
         _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
             SceneEngine::WorldPlacementsConfig(), modelCache, Float3(0.f, 0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor();
-		_placementsHidden = _placementsManager->CreateEditor();
+		_placementsHidden = _placementsManager->CreateEditor(false);
             // note --  we need to have the terrain manager a default terrain format here... But it's too early
             //          for some settings (like the gradient flags settings!)
         auto defTerrainFormat = std::make_shared<SceneEngine::TerrainFormat>(SceneEngine::GradientFlagsSettings(true));

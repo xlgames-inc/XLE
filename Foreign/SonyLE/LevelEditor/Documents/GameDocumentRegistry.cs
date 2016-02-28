@@ -161,11 +161,10 @@ namespace LevelEditor
         {            
             foreach (IGameDocument doc in Documents)
             {
-                var rootFolder = doc.RootGameObjectFolder;
-                if (rootFolder!=null)
+                var enumerable = doc.As<IEnumerableContext>();
+                if (enumerable != null)
                 {
-                    DomNode folderNode = rootFolder.Cast<DomNode>();
-                    foreach (DomNode childNode in folderNode.Subtree)
+                    foreach (DomNode childNode in enumerable.Items.AsIEnumerable<DomNode>())
                     {
                         T t = childNode.As<T>();
                         if (t != null)

@@ -29,7 +29,7 @@ namespace LevelEditorXLE.Placements
 
     public class PlacementsCellRef 
         : LevelEditorCore.GenericAdapters.GenericReference<XLEPlacementDocument>
-        , IHierarchical, IExportable
+        , IHierarchical, IExportable, IEnumerableContext
     {
         public Vec3F CaptureMins
         {
@@ -168,6 +168,18 @@ namespace LevelEditorXLE.Placements
         {
             SelectNameIfNecessary();
             Target.Save(Uri, schemaLoader);
+        }
+        #endregion
+
+        #region IEnumerableContext
+        public IEnumerable<object> Items
+        {
+            get
+            {
+                var t = Target;
+                if (t != null) return t.Items;
+                return System.Linq.Enumerable.Empty<object>();
+            }
         }
         #endregion
 

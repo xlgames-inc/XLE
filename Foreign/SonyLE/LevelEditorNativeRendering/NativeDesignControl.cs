@@ -456,25 +456,14 @@ namespace RenderingInterop
             }
         }
        
-        private IEnumerable<DomNode> Items
+        private IEnumerable<object> Items
         {
             get
             {
                 IGameDocumentRegistry gameDocumentRegistry = Globals.MEFContainer.GetExportedValue<IGameDocumentRegistry>();
-                DomNode folderNode = gameDocumentRegistry.MasterDocument.RootGameObjectFolder.Cast<DomNode>();
-                foreach (DomNode childNode in folderNode.Subtree)
-                {
-                    yield return childNode;
-                }
-
-                foreach (IGameDocument subDoc in gameDocumentRegistry.SubDocuments)
-                {
-                    folderNode = subDoc.RootGameObjectFolder.Cast<DomNode>();
-                    foreach (DomNode childNode in folderNode.Subtree)
-                    {
-                        yield return childNode;
-                    }
-                }
+                var doc = gameDocumentRegistry.MasterDocument.As<IEnumerableContext>();
+                if (doc != null) return doc.Items;
+                return System.Linq.Enumerable.Empty<DomNode>();
             }
         }
         
