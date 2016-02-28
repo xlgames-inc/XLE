@@ -1055,14 +1055,14 @@ namespace SceneEngine
         uint64 AddPlacement(
             const Float3x4& objectToCell, 
             const std::pair<Float3, Float3>& cellSpaceBoundary,
-            const ResChar modelFilename[], const ResChar materialFilename[],
+            StringSection<ResChar> modelFilename, StringSection<ResChar> materialFilename,
             SupplementRange supplements,
             uint64 objectGuid);
 
         std::vector<ObjectReference>& GetObjects() { return _objects; }
         bool HasObject(uint64 guid);
 
-        unsigned AddString(const ResChar str[]);
+        unsigned AddString(StringSection<ResChar> str);
         unsigned AddSupplements(SupplementRange supplements);
 
         DynamicPlacements(const Placements& copyFrom);
@@ -1081,10 +1081,10 @@ namespace SceneEngine
         return generator();
     }
 
-    unsigned DynamicPlacements::AddString(const ResChar str[])
+    unsigned DynamicPlacements::AddString(StringSection<ResChar> str)
     {
         unsigned result = ~unsigned(0x0);
-        auto stringHash = Hash64(str);
+        auto stringHash = Hash64(str.begin(), str.end());
 
         auto* start = AsPointer(_filenamesBuffer.begin());
         auto* end = AsPointer(_filenamesBuffer.end());
@@ -1100,11 +1100,11 @@ namespace SceneEngine
 
         if (result == ~unsigned(0x0)) {
             result = unsigned(_filenamesBuffer.size());
-            auto length = XlStringLen(str);
-            _filenamesBuffer.resize(_filenamesBuffer.size() + sizeof(uint64) + (length + 1) * sizeof(ResChar));
+            auto lengthInBaseChars = str.end() - str.begin();
+            _filenamesBuffer.resize(_filenamesBuffer.size() + sizeof(uint64) + (lengthInBaseChars + 1) * sizeof(ResChar));
             auto* dest = &_filenamesBuffer[result];
             *(uint64*)dest = stringHash;
-            XlCopyString((ResChar*)PtrAdd(dest, sizeof(uint64)), length+1, str);
+            XlCopyString((ResChar*)PtrAdd(dest, sizeof(uint64)), lengthInBaseChars+1, str);
         }
 
         return result;
@@ -1136,10 +1136,11 @@ namespace SceneEngine
     uint64 DynamicPlacements::AddPlacement(
         const Float3x4& objectToCell,
         const std::pair<Float3, Float3>& cellSpaceBoundary,
-        const ResChar modelFilename[], const ResChar materialFilename[],
+        StringSection<ResChar> modelFilename, StringSection<ResChar> materialFilename,
         SupplementRange supplements,
         uint64 objectGuid)
     {
+		assert(modelFilename.Length() > 0);
         ObjectReference newReference;
         newReference._localToCell = objectToCell;
         newReference._cellSpaceBoundary = cellSpaceBoundary;
@@ -1261,12 +1262,15 @@ namespace SceneEngine
         auto cellName = GetCellName(cellGuid);
         assert(cellName && cellName[0]);
 
-        TRY {
-            return &Assets::GetAsset<Placements>(cellName);
-        } CATCH (const std::exception& e) {
-            LogWarning << "Got invalid resource while loading placements file (" << cellName << "). Error: (" << e.what() << ").";
-            return nullptr;
-        } CATCH_END
+		if (cellName[0] != '[') {		// used in the editor for dynamic placements
+			TRY {
+				return &Assets::GetAsset<Placements>(cellName);
+			} CATCH (const std::exception& e) {
+				LogWarning << "Got invalid resource while loading placements file (" << cellName << "). Error: (" << e.what() << ").";
+				return nullptr;
+			} CATCH_END
+		}
+		return nullptr;
     }
 
     std::shared_ptr<DynamicPlacements> PlacementsEditor::Pimpl::GetDynPlacements(uint64 cellGuid)
@@ -1281,12 +1285,14 @@ namespace SceneEngine
             auto cellName = GetCellName(cellGuid);
             assert(cellName && cellName[0]);
 
-            TRY {
-                auto& sourcePlacements = Assets::GetAsset<Placements>(cellName);
-                placements = std::make_shared<DynamicPlacements>(sourcePlacements);
-            } CATCH (const std::exception& e) {
-                LogWarning << "Got invalid resource while loading placements file (" << cellName << "). If this file exists, but is corrupted, the next save will overwrite it. Error: (" << e.what() << ").";
-            } CATCH_END
+			if (cellName[0] != '[') {		// used in the editor for dynamic placements
+				TRY {
+					auto& sourcePlacements = Assets::GetAsset<Placements>(cellName);
+					placements = std::make_shared<DynamicPlacements>(sourcePlacements);
+				} CATCH (const std::exception& e) {
+					LogWarning << "Got invalid resource while loading placements file (" << cellName << "). If this file exists, but is corrupted, the next save will overwrite it. Error: (" << e.what() << ").";
+				} CATCH_END
+			}
 
             if (!placements) {
                 placements = std::make_shared<DynamicPlacements>();
@@ -1683,9 +1689,8 @@ namespace SceneEngine
     {
         auto& currentState = _objects[index];
         auto currTrans = currentState._transaction;
-        if (currTrans != ObjTransDef::Error && currTrans != ObjTransDef::Deleted) {
-            currentState = newState;
-            currentState._transaction = (currTrans == ObjTransDef::Created) ? ObjTransDef::Created : ObjTransDef::Modified;
+        if (currTrans != ObjTransDef::Deleted) {
+            currentState._transaction = (currTrans == ObjTransDef::Created || currTrans == ObjTransDef::Error) ? ObjTransDef::Created : ObjTransDef::Modified;
             PushObj(index, currentState);
         }
     }
@@ -1807,7 +1812,7 @@ namespace SceneEngine
                 auto suppGuid = StringToSupplementGuids(newState._supplements.c_str());
                 dynPlacements->AddPlacement(
                     localToCell, TransformBoundingBox(localToCell, boundingBox),
-                    newState._model.c_str(), materialFilename.c_str(), 
+                    MakeStringSection(newState._model), MakeStringSection(materialFilename), 
                     MakeIteratorRange(suppGuid), id);
 
                 guid = PlacementGUID(i->_filenameHash, id);
@@ -1868,7 +1873,7 @@ namespace SceneEngine
                 auto supp = StringToSupplementGuids(newState._supplements.c_str());
                 dynPlacements->AddPlacement(
                     localToCell, TransformBoundingBox(localToCell, boundingBox),
-                    newState._model.c_str(), materialFilename.c_str(), 
+                    MakeStringSection(newState._model), MakeStringSection(materialFilename), 
                     MakeIteratorRange(supp), id);
 
                 guid.second = id;
@@ -1898,8 +1903,10 @@ namespace SceneEngine
 
     void    Transaction::Delete(unsigned index)
     {
-        _objects[index]._transaction = ObjTransDef::Deleted;
-        PushObj(index, _objects[index]);
+		if (_objects[index]._transaction != ObjTransDef::Error) {
+			_objects[index]._transaction = ObjTransDef::Deleted;
+			PushObj(index, _objects[index]);
+		}
     }
 
     void Transaction::PushObj(unsigned index, const ObjTransDef& newState)
@@ -1965,14 +1972,14 @@ namespace SceneEngine
             auto suppGuids = StringToSupplementGuids(newState._supplements.c_str());
             if (hasExisting) {
                 dst->_localToCell = localToCell;
-                dst->_modelFilenameOffset = dynPlacements->AddString(newState._model.c_str());
-                dst->_materialFilenameOffset = dynPlacements->AddString(materialFilename.c_str());
+                dst->_modelFilenameOffset = dynPlacements->AddString(MakeStringSection(newState._model));
+                dst->_materialFilenameOffset = dynPlacements->AddString(MakeStringSection(materialFilename));
                 dst->_supplementsOffset = dynPlacements->AddSupplements(MakeIteratorRange(suppGuids));
                 dst->_cellSpaceBoundary = cellSpaceBoundary;
             } else {
                 dynPlacements->AddPlacement(
                     localToCell, cellSpaceBoundary, 
-                    newState._model.c_str(), materialFilename.c_str(), 
+                    MakeStringSection(newState._model), MakeStringSection(materialFilename), 
                     MakeIteratorRange(suppGuids), guid.second);
             }
         }
@@ -2030,7 +2037,19 @@ namespace SceneEngine
 
             auto cellToWorld = cellIterator->_cellToWorld;
             auto* placements = editorPimpl->GetPlacements(cellIterator->_filenameHash);
-            if (!placements) { i = guids.erase(i, iend); continue; }
+            if (!placements) {
+				// If we didn't get an actual "placements" object, it means that nothing has been created
+				// in this cell yet (and maybe the original asset is invalid/uncreated).
+				// We should treat this the same as if the object didn't exists previously.
+				// for (; i != iend; ++i) {
+				// 	ObjTransDef def;
+				// 	def._localToWorld = Identity<decltype(def._localToWorld)>();
+				// 	def._transaction = ObjTransDef::Error;
+				// 	originalState.push_back(def);
+				// }
+				i = guids.erase(i, iend);
+				continue; 
+			}
 
             if (transactionFlags & PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits) {
                     //  Sometimes we want to ignore the top 32 bits of the id. It works, but it's
@@ -2119,7 +2138,8 @@ namespace SceneEngine
     uint64 PlacementsEditor::CreateCell(
         PlacementsManager& manager,
         const ::Assets::ResChar name[],
-        const Float2& mins, const Float2& maxs)
+        const Float2& mins, const Float2& maxs, 
+		bool visible)
     {
             //  The implementation here is not great. Originally, PlacementsManager
             //  was supposed to be constructed with all of it's cells already created.
@@ -2130,12 +2150,12 @@ namespace SceneEngine
         newCell._cellToWorld = Identity<decltype(newCell._cellToWorld)>();
         newCell._aabbMin = Expand(mins, -10000.f);
         newCell._aabbMax = Expand(maxs,  10000.f);
-        manager._pimpl->_cells.push_back(newCell);
+        if (visible) manager._pimpl->_cells.push_back(newCell);
         RegisterCell(newCell, mins, maxs);
         return newCell._filenameHash;
     }
 
-    bool PlacementsEditor::RemoveCell(PlacementsManager& manager, uint64 id)
+    bool PlacementsEditor::RemoveCell(uint64 id)
     {
         auto i = std::lower_bound(_pimpl->_cells.begin(), _pimpl->_cells.end(), id, Pimpl::RegisteredCell::CompareHash());
         if (i != _pimpl->_cells.end() && i->_filenameHash == id) {

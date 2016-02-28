@@ -56,6 +56,7 @@ namespace GUILayer
     public:
         std::shared_ptr<SceneEngine::PlacementsManager>         _placementsManager;
         std::shared_ptr<SceneEngine::PlacementsEditor>          _placementsEditor;
+		std::shared_ptr<SceneEngine::PlacementsEditor>          _placementsHidden;
         std::shared_ptr<SceneEngine::TerrainManager>            _terrainManager;
         std::shared_ptr<SceneEngine::VegetationSpawnManager>    _vegetationSpawnManager;
         std::shared_ptr<SceneEngine::VolumetricFogManager>      _volumeFogManager;

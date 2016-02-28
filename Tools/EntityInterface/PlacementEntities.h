@@ -37,12 +37,14 @@ namespace EntityInterface
 
         PlacementEntities(
             std::shared_ptr<SceneEngine::PlacementsManager> manager,
-            std::shared_ptr<SceneEngine::PlacementsEditor> editor);
+            std::shared_ptr<SceneEngine::PlacementsEditor> editor,
+			std::shared_ptr<SceneEngine::PlacementsEditor> hiddenObjects);
         ~PlacementEntities();
 
     protected:
         std::shared_ptr<SceneEngine::PlacementsManager> _manager;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
+		std::shared_ptr<SceneEngine::PlacementsEditor> _hiddenObjects;
 
         unsigned _cellCounter;
     };

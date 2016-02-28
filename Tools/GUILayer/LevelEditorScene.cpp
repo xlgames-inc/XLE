@@ -77,6 +77,7 @@ namespace GUILayer
         _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
             SceneEngine::WorldPlacementsConfig(), modelCache, Float3(0.f, 0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor();
+		_placementsHidden = _placementsManager->CreateEditor();
             // note --  we need to have the terrain manager a default terrain format here... But it's too early
             //          for some settings (like the gradient flags settings!)
         auto defTerrainFormat = std::make_shared<SceneEngine::TerrainFormat>(SceneEngine::GradientFlagsSettings(true));
@@ -394,6 +395,7 @@ namespace GUILayer
 
     auto EditorSceneManager::ExportPlacements(EntityInterface::DocumentId placementsDoc) -> PendingExport^
     {
+			// (note -- hidden placements will not be exported)
         auto result = gcnew PlacementsPendingExport(placementsDoc, _scene->_placementsEditor);
         result->_success = false;
 
@@ -499,7 +501,7 @@ namespace GUILayer
         _scene = std::make_shared<EditorScene>();
 
         using namespace EntityInterface;
-        auto placementsEditor = std::make_shared<PlacementEntities>(_scene->_placementsManager, _scene->_placementsEditor);
+        auto placementsEditor = std::make_shared<PlacementEntities>(_scene->_placementsManager, _scene->_placementsEditor, _scene->_placementsHidden);
         auto terrainEditor = std::make_shared<TerrainEntities>(_scene->_terrainManager);
         auto flexGobInterface = std::make_shared<RetainedEntityInterface>(_scene->_flexObjects);
 

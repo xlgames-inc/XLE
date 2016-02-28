@@ -180,8 +180,9 @@ namespace SceneEngine
         uint64 CreateCell(
             PlacementsManager& manager,
             const ::Assets::ResChar name[],
-            const Float2& mins, const Float2& maxs);
-        bool RemoveCell(PlacementsManager& manager, uint64 id);
+            const Float2& mins, const Float2& maxs,
+			bool visible = true);
+        bool RemoveCell(uint64 id);
         static uint64 GenerateObjectGUID();
 		void PerformGUIDFixup(PlacementGUID* begin, PlacementGUID* end) const;
 
