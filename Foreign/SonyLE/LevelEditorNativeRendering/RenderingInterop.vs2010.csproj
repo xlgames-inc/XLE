@@ -89,8 +89,7 @@
     <Compile Include="NativeInterop\Structs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Resolvers\AssetResolver.cs" />
-    <Compile Include="Resolvers\TextureThumbnailResolver.cs" />
-    <Compile Include="Resolvers\ThumbnailResolver.cs" />
+    <Compile Include="Resolvers\ThumbnailResolverFromWinAPI.cs" />
     <Compile Include="Resources.cs" />
     <Compile Include="TextureRenderSurface.cs" />
     <Compile Include="Util3d.cs" />

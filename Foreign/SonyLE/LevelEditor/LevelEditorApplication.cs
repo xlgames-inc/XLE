@@ -147,7 +147,7 @@ namespace LevelEditor
             TypeCatalog renderingInteropCatalog = new TypeCatalog(
                 typeof(RenderingInterop.GameEngine),
                 typeof(RenderingInterop.NativeGameEditor),
-                typeof(RenderingInterop.ThumbnailResolver),
+                typeof(RenderingInterop.ThumbnailResolverFromWinAPI),
                 typeof(RenderingInterop.RenderCommands),
                 typeof(RenderingInterop.AssetResolver),
                 typeof(RenderingInterop.NativeDesignView),
@@ -155,8 +155,7 @@ namespace LevelEditor
                 typeof(RenderingInterop.ExtensionManipulator),
                 typeof(RenderingInterop.ScaleManipulator),
                 typeof(RenderingInterop.RotateManipulator),
-                typeof(RenderingInterop.TranslatePivotManipulator),
-                typeof(RenderingInterop.TextureThumbnailResolver)
+                typeof(RenderingInterop.TranslatePivotManipulator)
                 );
 
             // <<XLE

@@ -595,11 +595,13 @@ namespace LevelEditorCore
                 foreach (Uri resourceUri in currentAssetFolder.ResourceUris)
                 {
                     m_thumbnailService.ResolveThumbnail(resourceUri);
+
+                    Bitmap tempThumbnail;
                     string assetPath = resourceUri.LocalPath;
                     string assetFileName = Path.GetFileName(assetPath);
-                    Icon shellIcon = FileIconUtil.GetFileIcon(assetFileName, FileIconUtil.IconSize.Large, false);
-                    Bitmap tempThumbnail = shellIcon.ToBitmap();
-                    shellIcon.Dispose();
+                    using (Icon shellIcon = FileIconUtil.GetFileIcon(assetFileName, FileIconUtil.IconSize.Large, false))
+                        tempThumbnail = shellIcon.ToBitmap();
+
                     ThumbnailControlItem item = NewItem(resourceUri, tempThumbnail);
                     m_thumbnailControl.Items.Add(item);
                 }
