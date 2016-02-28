@@ -2,7 +2,6 @@
 
 using System;
 using System.Windows.Forms;
-using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Drawing;
 
@@ -16,7 +15,6 @@ using LevelEditorCore;
 using LevelEditorCore.VectorMath;
 
 using Camera = Sce.Atf.Rendering.Camera;
-using ViewTypes = Sce.Atf.Rendering.ViewTypes;
 using AxisSystemType = Sce.Atf.Rendering.Dom.AxisSystemType;
 
 

@@ -152,11 +152,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\Resources\material.png">
-      <Filter>Resources</Filter>
-    </Image>
-    <Image Include="..\Resources\materialS.png">
-      <Filter>Resources</Filter>
-    </Image>
+    <_EmbedManagedResourceFile Include="..\Resources\material.png" />
+    <_EmbedManagedResourceFile Include="..\Resources\materialS.png" />
   </ItemGroup>
 </Project>

@@ -111,13 +111,10 @@ namespace LevelEditorXLE.Placements
         {
             return CanReference(PlcmtST.Type, resource);
         }
-        public static bool CanReference(DomNodeType domtype, IResource resource)
+        private static bool CanReference(DomNodeType domtype, IResource resource)
         {
-            var type = domtype.GetTag(Annotations.ReferenceConstraint.ResourceType) as string;
-            if (type != null) {
-                return type == resource.Type;
-            }
-            return false;
+            var restraintType = domtype.GetTag(Annotations.ReferenceConstraint.ResourceType) as string;
+            return (restraintType != null) ? (restraintType == resource.Type) : false;
         }
         #endregion
     }

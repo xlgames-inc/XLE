@@ -151,7 +151,6 @@ namespace LevelEditor
                 typeof(RenderingInterop.RenderCommands),
                 typeof(RenderingInterop.AssetResolver),
                 typeof(RenderingInterop.NativeDesignView),
-                typeof(RenderingInterop.ResourcePreview),
                 typeof(RenderingInterop.TranslateManipulator),  
                 typeof(RenderingInterop.ExtensionManipulator),
                 typeof(RenderingInterop.ScaleManipulator),

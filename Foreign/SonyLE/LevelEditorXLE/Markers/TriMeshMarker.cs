@@ -4,13 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.IO;
-
-using Sce.Atf;
 using Sce.Atf.Adaptation;
 using Sce.Atf.Applications;
 using Sce.Atf.Dom;

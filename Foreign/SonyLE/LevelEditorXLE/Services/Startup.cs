@@ -4,19 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-using System.ComponentModel;
 using System.ComponentModel.Composition.Hosting;
-
-using Sce.Atf;
 using Sce.Atf.Dom;
-
-using LevelEditorCore;
-using LevelEditorXLE.Terrain;
-using LevelEditorXLE.Placements;
-using LevelEditorXLE.Game;
-using LevelEditorXLE.Environment;
-
-using PropertyDescriptor = Sce.Atf.Dom.PropertyDescriptor;
 
 namespace LevelEditorXLE
 {
@@ -24,23 +13,23 @@ namespace LevelEditorXLE
     {
         public static void InitializeAdapters()
         {
-            Schema.placementsCellReferenceType.Type.Define(new ExtensionInfo<PlacementsCellRef>());
-            Schema.placementsFolderType.Type.Define(new ExtensionInfo<PlacementsFolder>());
-            Schema.placementsDocumentType.Type.Define(new ExtensionInfo<XLEPlacementDocument>());
-            Schema.placementObjectType.Type.Define(new ExtensionInfo<XLEPlacementObject>());
-            Schema.terrainType.Type.Define(new ExtensionInfo<XLETerrainGob>());
-            Schema.terrainCoverageLayer.Type.Define(new ExtensionInfo<XLETerrainCoverage>());
-            Schema.terrainBaseTextureType.Type.Define(new ExtensionInfo<TerrainBaseTexture>());
-            Schema.abstractTerrainMaterialDescType.Type.Define(new ExtensionInfo<TerrainMaterialItem>());
-            Schema.envSettingsFolderType.Type.Define(new ExtensionInfo<XLEEnvSettingsFolder>());
-            Schema.envSettingsType.Type.Define(new ExtensionInfo<XLEEnvSettings>());
-            Schema.xleGameType.Type.Define(new ExtensionInfo<GameExtensions>());
-            Schema.envUtilityType.Type.Define(new ExtensionInfo<EnvUtility>());
-            Schema.vegetationSpawnConfigType.Type.Define(new ExtensionInfo<VegetationSpawnConfigGob>());
-            Schema.vegetationSpawnMaterialType.Type.Define(new ExtensionInfo<VegetationSpawnMaterialItem>());
+            Schema.placementsCellReferenceType.Type.Define(new ExtensionInfo<Placements.PlacementsCellRef>());
+            Schema.placementsFolderType.Type.Define(new ExtensionInfo<Placements.PlacementsFolder>());
+            Schema.placementsDocumentType.Type.Define(new ExtensionInfo<Placements.XLEPlacementDocument>());
+            Schema.placementObjectType.Type.Define(new ExtensionInfo<Placements.XLEPlacementObject>());
+            Schema.terrainType.Type.Define(new ExtensionInfo<Terrain.XLETerrainGob>());
+            Schema.terrainCoverageLayer.Type.Define(new ExtensionInfo<Terrain.XLETerrainCoverage>());
+            Schema.terrainBaseTextureType.Type.Define(new ExtensionInfo<Terrain.TerrainBaseTexture>());
+            Schema.abstractTerrainMaterialDescType.Type.Define(new ExtensionInfo<Terrain.TerrainMaterialItem>());
+            Schema.envSettingsFolderType.Type.Define(new ExtensionInfo<Environment.XLEEnvSettingsFolder>());
+            Schema.envSettingsType.Type.Define(new ExtensionInfo<Environment.XLEEnvSettings>());
+            Schema.xleGameType.Type.Define(new ExtensionInfo<Game.GameExtensions>());
+            Schema.envUtilityType.Type.Define(new ExtensionInfo<Environment.EnvUtility>());
+            Schema.vegetationSpawnConfigType.Type.Define(new ExtensionInfo<Terrain.VegetationSpawnConfigGob>());
+            Schema.vegetationSpawnMaterialType.Type.Define(new ExtensionInfo<Terrain.VegetationSpawnMaterialItem>());
             Schema.triMeshMarkerType.Type.Define(new ExtensionInfo<Markers.TriMeshMarker>());
             Schema.markerPointType.Type.Define(new ExtensionInfo<Markers.PointMarker>());
-            Schema.gameObjectFolderType.Type.Define(new ExtensionInfo<XLEGameObjectsFolder>());
+            Schema.gameObjectFolderType.Type.Define(new ExtensionInfo<Game.XLEGameObjectsFolder>());
         }
 
         public static TypeCatalog CreateTypeCatalog()
@@ -61,7 +50,9 @@ namespace LevelEditorXLE
 
                 // typeof(Placements.PlacementManipulator),     (provides access to the native placements manipulators... but not really required)
                 typeof(Placements.ResourceConverter),
-                typeof(Placements.ScatterPlaceManipulator)
+                typeof(Placements.ScatterPlaceManipulator),
+
+                typeof(AssetMan.ResourcePreview)
                 );
         }
     }

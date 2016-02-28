@@ -27,6 +27,8 @@ namespace ControlsLibraryExt.ModelView
             _view.MouseClick += OnViewerMouseClick;
         }
 
+        public void Invalidate3DView() { _view.Invalidate(); }
+
         public GUILayer.ModelVisSettings Object
         {
             set 
@@ -114,7 +116,7 @@ namespace ControlsLibraryExt.ModelView
         private GUILayer.VisMouseOver _visMouseOver;
         private GUILayer.VisResources _visResources;
 
-        internal Material.ActiveMaterialContext _activeMaterialContext;
+        public Material.ActiveMaterialContext _activeMaterialContext;
     }
 
     [Export(typeof(IInitializable))]
@@ -135,7 +137,7 @@ namespace ControlsLibraryExt.ModelView
         }
 
         [Import(AllowDefault = false)] private IControlHostService _controlHostService;
-        [Import] private Material.ActiveMaterialContext _activeMaterialContext;
+        [Import(AllowDefault = true)] private Material.ActiveMaterialContext _activeMaterialContext;
         ModelView _controls;
 
         GUILayer.ModelVisSettings _settings;
