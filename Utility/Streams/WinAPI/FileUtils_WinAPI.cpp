@@ -137,6 +137,18 @@ namespace Utility
                 (LPTSTR) &lpMsgBuf,
                 0, NULL);
 
+			// FORMAT_MESSAGE_FROM_SYSTEM will typically give us a new line
+			// at the end of the string. We can strip it off here (assuming we have write
+			// access to the buffer). We're going to get rid of any terminating '.' as well.
+			// Note -- assuming 8 bit base character width here (ie, ASCII, UTF8)
+			if (lpMsgBuf) {
+				auto *end = XlStringEnd((char*)lpMsgBuf);
+				while ((end - 1) > lpMsgBuf && (*(end - 1) == '\n' || *(end - 1) == '\r' || *(end-1) == '.')) {
+					--end;
+					*end = '\0';
+				}
+			}
+
             Exceptions::IOException except(
                 AsExceptionReason(dw),
                 "Failure during file open. Probably missing file or bad privileges: (%s), openMode: (%s), error string: (%s)", 
@@ -204,6 +216,15 @@ namespace Utility
                 FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                 (LPTSTR) &lpMsgBuf, 0, NULL);
+
+			if (lpMsgBuf) {
+				auto *end = XlStringEnd((char*)lpMsgBuf);
+				while ((end - 1) > lpMsgBuf && (*(end - 1) == '\n' || *(end - 1) == '\r' || *(end - 1) == '.')) {
+					--end;
+					*end = '\0';
+				}
+			}
+
             Exceptions::IOException except(
                 AsExceptionReason(dw), 
                 "Failure while attempting to duplicate file handle. Error string: (%s)", lpMsgBuf);
@@ -231,6 +252,15 @@ namespace Utility
                 FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                 (LPTSTR) &lpMsgBuf, 0, NULL);
+
+			if (lpMsgBuf) {
+				auto *end = XlStringEnd((char*)lpMsgBuf);
+				while ((end - 1) > lpMsgBuf && (*(end - 1) == '\n' || *(end - 1) == '\r' || *(end - 1) == '.')) {
+					--end;
+					*end = '\0';
+				}
+			}
+
             Exceptions::IOException except(
                 AsExceptionReason(dw), 
                 "Failure while attempting to duplicate file handle. Error string: (%s)", lpMsgBuf);

@@ -14,6 +14,12 @@ namespace ControlsLibrary
         public ModifiedAssetsDialog()
         {
             InitializeComponent();
+            _action.DropDownItems.AddRange(
+                new System.Collections.Generic.List<object> {
+                    GUILayer.PendingSaveList.Action.Save,
+                    GUILayer.PendingSaveList.Action.Abandon,
+                    GUILayer.PendingSaveList.Action.Ignore
+                });
             _assetList.LoadOnDemand = true;
         }
 
@@ -23,6 +29,7 @@ namespace ControlsLibrary
             {
                 _assetList.Model = value;
                 _assetList.ExpandAll();
+                _assetList.AutoSizeColumn(_treeColumn2);
             }
         }
 
@@ -43,8 +50,8 @@ namespace ControlsLibrary
             if (selected != null && selected._pendingSave != null)
             {
                 _compareWindow.Comparison = new Tuple<object, object>(
-                    System.Text.UnicodeEncoding.UTF8.GetString(selected._pendingSave._oldFileData),
-                    System.Text.UnicodeEncoding.UTF8.GetString(selected._pendingSave._newFileData));
+                    System.Text.Encoding.UTF8.GetString(selected._pendingSave._oldFileData),
+                    System.Text.Encoding.UTF8.GetString(selected._pendingSave._newFileData));
             }
             else
             {
@@ -60,6 +67,14 @@ namespace ControlsLibrary
         private void _cancelButton_Click(object sender, EventArgs e)
         {
             DialogResult = DialogResult.Cancel;
+        }
+    }
+
+    public class PrettyNodeComboBox : Aga.Controls.Tree.NodeControls.NodeComboBox
+    {
+        protected override string FormatLabel(object obj)
+        {
+            return "<" + base.FormatLabel(obj) + ">";
         }
     }
 }

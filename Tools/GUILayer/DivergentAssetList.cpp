@@ -17,6 +17,7 @@
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/Conversion.h"
 #include "MarshalString.h"
 
@@ -35,17 +36,16 @@ namespace GUILayer
         uint64 _id;
 
         PendingSaveList::Entry^ _pendingSave;
-        property virtual System::Windows::Forms::CheckState SaveQueuedState
+        property virtual PendingSaveList::Action Action
         {
-            System::Windows::Forms::CheckState get() 
+			PendingSaveList::Action get()
             { 
-                bool queued = _pendingSave ? _pendingSave->_saveQueued : false;
-                return queued ? System::Windows::Forms::CheckState::Checked : System::Windows::Forms::CheckState::Unchecked; 
+                return _pendingSave ? _pendingSave->_action : PendingSaveList::Action::Ignore;
             }
-            void set(System::Windows::Forms::CheckState check) 
+            void set(PendingSaveList::Action action)
             {
                 if (_pendingSave) {
-                    _pendingSave->_saveQueued  = (check==System::Windows::Forms::CheckState::Checked); 
+                    _pendingSave->_action = action; 
                 }
             }
         }
@@ -94,22 +94,22 @@ namespace GUILayer
         const Assets::IAssetSet* _set;
         List<AssetItem^>^ _children;
 
-        System::Windows::Forms::CheckState _checkState;
+		PendingSaveList::Action _action;
 
-        property virtual System::Windows::Forms::CheckState SaveQueuedState
+        property virtual PendingSaveList::Action Action
         {
-            System::Windows::Forms::CheckState get() 
-            { 
-                return _checkState;
+			PendingSaveList::Action get()
+            {
+                return _action;
             }
 
-            void set(System::Windows::Forms::CheckState check) 
+            void set(PendingSaveList::Action action)
             {
-                _checkState = check;
+				_action = action;
                 if (_children!=nullptr)
                 {
                     for each(auto child in _children)
-                        child->SaveQueuedState = check;
+                        child->Action = action;
                 }
             }
         }
@@ -121,7 +121,7 @@ namespace GUILayer
 			if (String::IsNullOrEmpty(Label))
 				Label = clix::marshalString<clix::E_UTF8>(set.GetTypeName());
 			Icon = GetAssetTypeImage(set.GetTypeCode());
-            _checkState = System::Windows::Forms::CheckState::Checked;
+            _action = PendingSaveList::Action::Save;
         }
     };
 
@@ -446,13 +446,20 @@ namespace GUILayer
 
             using namespace RenderCore::Assets;
             auto materials = ::Assets::Internal::GetAssetSet<::Assets::ConfigFileListContainer<RawMaterial>>();
-			for (auto a = materials->_divergentAssets.cbegin(); a != materials->_divergentAssets.cend();) {
-                auto asset = a->second;
-                auto hash = a->first;
-				if (!asset->HasChanges()) { ++a; continue; }
+			for (const auto& a:materials->_divergentAssets) {
+                auto asset = a.second;
+                auto hash = a.first;
+				if (!asset->HasChanges()) continue;
 
                 auto entry = GetEntry(*materials, hash);
-                if (!entry || !entry->_saveQueued) { ++a; continue; }
+                if (!entry || entry->_action == Action::Ignore) continue;
+
+				if (entry->_action == Action::Abandon) {
+					asset->AbandonChanges();
+					continue;
+				}
+
+				assert(entry->_action == Action::Save);
             
                     //  Sometimes mutliple assets will write to different parts of the same
                     //  file. It's a bit wierd, but we want the before and after parts to
@@ -470,14 +477,13 @@ namespace GUILayer
 				auto dstFile = splitName.AllExceptParameters().AsString();
                 TRY
                 {
-                    BasicFile outputFile(dstFile.c_str(), "wb");
-                    outputFile.Write(strm.GetBuffer().Begin(), 1, size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin()));
+					{
+						BasicFile outputFile(dstFile.c_str(), "wb");
+						outputFile.Write(strm.GetBuffer().Begin(), 1, size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin()));
+					}
 
-					// Reset all divergent assets by removing them from the divergent asset list
-					// Underneath, the real file should have changed
-					// Note --	there's a problem here because pointers to these divergent assets might
-					//			be retained in other parts of the system.
-					a = materials->_divergentAssets.erase(a);
+					// abandon changes now to allow us to reload the asset from disk
+					asset->AbandonChanges();
 					continue;
                 } CATCH(const std::exception& e) {
 					errorMessages->Append("Error while writing to file: ");
@@ -489,8 +495,6 @@ namespace GUILayer
 					errorMessages->Append(clix::marshalString<clix::E_UTF8>(dstFile));
 					errorMessages->AppendLine(". Unknown exception type.");
                 } CATCH_END
-
-				++a;	// should only get here after an execption
             }
 
 			auto result = gcnew CommitResult;

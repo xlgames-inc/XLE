@@ -319,6 +319,7 @@ namespace GUILayer
         RawMaterial::MaterialParameterBox::get()
     {
         if (!_underlying) { return nullptr; }
+		CheckBindingInvalidation();
         if (!_materialParameterBox) {
             _materialParameterBox = BindingConv::AsBindingList(_underlying->GetAsset()._asset._matParamBox);
             _materialParameterBox->ListChanged += 
@@ -333,6 +334,7 @@ namespace GUILayer
     BindingList<StringStringPair^>^ RawMaterial::ShaderConstants::get()
     {
         if (!_underlying) { return nullptr; }
+		CheckBindingInvalidation();
         if (!_shaderConstants) {
             _shaderConstants = BindingConv::AsBindingList(_underlying->GetAsset()._asset._constants);
             _shaderConstants->ListChanged += 
@@ -347,6 +349,7 @@ namespace GUILayer
     BindingList<StringStringPair^>^ RawMaterial::ResourceBindings::get()
     {
         if (!_underlying) { return nullptr; }
+		CheckBindingInvalidation();
         if (!_resourceBindings) {
             _resourceBindings = BindingConv::AsBindingList(_underlying->GetAsset()._asset._resourceBindings);
             _resourceBindings->ListChanged += 
@@ -381,17 +384,20 @@ namespace GUILayer
         }
 
         if (!!_underlying) {
-            if (obj == _materialParameterBox) {
+			bool isMatParams = obj == _materialParameterBox;
+			bool isMatConstants = obj == _shaderConstants;
+			CheckBindingInvalidation();
+            if (isMatParams) {
                 auto transaction = _underlying->Transaction_Begin("Material parameter");
                 if (transaction) {
-                    transaction->GetAsset()._asset._matParamBox = BindingConv::AsParameterBox(_materialParameterBox);
-                    transaction->Commit();
+                    transaction->GetAsset()._asset._matParamBox = BindingConv::AsParameterBox((BindingList<StringStringPair^>^)obj);
+                    _transId = transaction->Commit();
                 }
-            } else if (obj == _shaderConstants) {
+            } else if (isMatConstants) {
                 auto transaction = _underlying->Transaction_Begin("Material constant");
                 if (transaction) {
-                    transaction->GetAsset()._asset._constants = BindingConv::AsParameterBox(_shaderConstants);
-                    transaction->Commit();
+                    transaction->GetAsset()._asset._constants = BindingConv::AsParameterBox((BindingList<StringStringPair^>^)obj);
+					_transId = transaction->Commit();
                 }
             }
         }
@@ -413,12 +419,14 @@ namespace GUILayer
         }
 
         if (!!_underlying) {
-            assert(obj == _resourceBindings);
-            auto transaction = _underlying->Transaction_Begin("Resource Binding");
-            if (transaction) {
-                transaction->GetAsset()._asset._resourceBindings = BindingConv::AsParameterBox(_resourceBindings);
-                transaction->Commit();
-            }
+            if (obj == _resourceBindings) {
+				CheckBindingInvalidation();
+				auto transaction = _underlying->Transaction_Begin("Resource Binding");
+				if (transaction) {
+					transaction->GetAsset()._asset._resourceBindings = BindingConv::AsParameterBox((BindingList<StringStringPair^>^)obj);
+					_transId = transaction->Commit();
+				}
+			}
         }
     }
 
@@ -481,10 +489,11 @@ namespace GUILayer
     {
         auto native = Conversion::Convert<::Assets::rstring>(clix::marshalString<clix::E_UTF8>(value));
         if (_underlying->GetAsset()._asset._techniqueConfig != native) {
+			CheckBindingInvalidation();
             auto transaction = _underlying->Transaction_Begin("Technique Config");
             if (transaction) {
                 transaction->GetAsset()._asset._techniqueConfig = native;
-                transaction->Commit();
+                _transId = transaction->Commit();
             }
         }
     }
@@ -523,8 +532,23 @@ namespace GUILayer
         return gcnew RawMaterial("untitled" + (counter++) + ".material");
     }
 
+	void RawMaterial::CheckBindingInvalidation()
+	{
+		// If our transaction id doesn't match what we find in the divergent asset, it means
+		// that the the asset may have been modified from some other place. When this happens, 
+		// we have to dump the cached values in our BindingLists
+		auto underlyingTransId = _underlying->GetIdentifier()._transactionId;
+		if (underlyingTransId != _transId) {
+			_materialParameterBox = nullptr;
+			_shaderConstants = nullptr;
+			_resourceBindings = nullptr;
+			_transId = underlyingTransId;
+		}
+	}
+
     RawMaterial::RawMaterial(System::String^ initialiser)
     {
+		_transId = 0;
         _initializer = initialiser;
         auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
         _underlying = RenderCore::Assets::RawMaterial::GetDivergentAsset(nativeInit.c_str());

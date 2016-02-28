@@ -29,8 +29,10 @@
         private void InitializeComponent()
         {
             this._assetList = new Aga.Controls.Tree.TreeViewAdv();
+            this._treeColumn1 = new Aga.Controls.Tree.TreeColumn();
+            this._treeColumn2 = new Aga.Controls.Tree.TreeColumn();
             this._icon = new Aga.Controls.Tree.NodeControls.NodeStateIcon();
-            this._nodeCheckBox = new Aga.Controls.Tree.NodeControls.NodeCheckBox();
+            this._action = new ControlsLibrary.PrettyNodeComboBox();
             this._label = new Aga.Controls.Tree.NodeControls.NodeTextBox();
             this._compareWindow = new ControlsLibrary.FileCompare();
             this._saveButton = new System.Windows.Forms.Button();
@@ -44,6 +46,8 @@
             this._assetList.AutoRowHeight = true;
             this._assetList.BackColor = System.Drawing.SystemColors.Window;
             this._assetList.ColumnFont = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this._assetList.Columns.Add(this._treeColumn1);
+            this._assetList.Columns.Add(this._treeColumn2);
             this._assetList.DefaultToolTipProvider = null;
             this._assetList.DragDropMarkColor = System.Drawing.Color.Black;
             this._assetList.LineColor = System.Drawing.SystemColors.ControlDark;
@@ -52,34 +56,48 @@
             this._assetList.Model = null;
             this._assetList.Name = "_assetList";
             this._assetList.NodeControls.Add(this._icon);
-            this._assetList.NodeControls.Add(this._nodeCheckBox);
+            this._assetList.NodeControls.Add(this._action);
             this._assetList.NodeControls.Add(this._label);
             this._assetList.SelectedNode = null;
-            this._assetList.Size = new System.Drawing.Size(640, 620);
+            this._assetList.Size = new System.Drawing.Size(640, 566);
             this._assetList.TabIndex = 2;
-            this._assetList.Text = "treeViewAdv1";
             this._assetList.SelectionChanged += new System.EventHandler(this._tree_SelectionChanged);
+            // 
+            // _treeColumn1
+            // 
+            this._treeColumn1.Header = "Action";
+            this._treeColumn1.SortOrder = System.Windows.Forms.SortOrder.None;
+            this._treeColumn1.TooltipText = null;
+            this._treeColumn1.Width = 75;
+            // 
+            // _treeColumn2
+            // 
+            this._treeColumn2.Header = "Asset";
+            this._treeColumn2.SortOrder = System.Windows.Forms.SortOrder.None;
+            this._treeColumn2.TooltipText = null;
             // 
             // _icon
             // 
             this._icon.DataPropertyName = "Icon";
             this._icon.LeftMargin = 1;
-            this._icon.ParentColumn = null;
+            this._icon.ParentColumn = this._treeColumn2;
             this._icon.ScaleMode = Aga.Controls.Tree.ImageScaleMode.Clip;
             // 
-            // _nodeCheckBox
+            // _action
             // 
-            this._nodeCheckBox.DataPropertyName = "SaveQueuedState";
-            this._nodeCheckBox.EditEnabled = true;
-            this._nodeCheckBox.LeftMargin = 0;
-            this._nodeCheckBox.ParentColumn = null;
+            this._action.DataPropertyName = "Action";
+            this._action.EditEnabled = true;
+            this._action.EditOnClick = true;
+            this._action.IncrementalSearchEnabled = true;
+            this._action.LeftMargin = 3;
+            this._action.ParentColumn = this._treeColumn1;
             // 
             // _label
             // 
             this._label.DataPropertyName = "Label";
             this._label.IncrementalSearchEnabled = true;
             this._label.LeftMargin = 3;
-            this._label.ParentColumn = null;
+            this._label.ParentColumn = this._treeColumn2;
             // 
             // _compareWindow
             // 
@@ -89,19 +107,19 @@
             this._compareWindow.Location = new System.Drawing.Point(678, 20);
             this._compareWindow.Margin = new System.Windows.Forms.Padding(15, 11, 15, 11);
             this._compareWindow.Name = "_compareWindow";
-            this._compareWindow.Size = new System.Drawing.Size(2066, 675);
+            this._compareWindow.Size = new System.Drawing.Size(1680, 621);
             this._compareWindow.TabIndex = 3;
             // 
             // _saveButton
             // 
             this._saveButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this._saveButton.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this._saveButton.Location = new System.Drawing.Point(287, 647);
+            this._saveButton.Location = new System.Drawing.Point(287, 593);
             this._saveButton.Margin = new System.Windows.Forms.Padding(7, 6, 7, 6);
             this._saveButton.Name = "_saveButton";
             this._saveButton.Size = new System.Drawing.Size(369, 48);
             this._saveButton.TabIndex = 0;
-            this._saveButton.Text = "Save All Checked";
+            this._saveButton.Text = "Commit";
             this._saveButton.UseVisualStyleBackColor = true;
             this._saveButton.Click += new System.EventHandler(this._saveButton_Click);
             // 
@@ -109,7 +127,7 @@
             // 
             this._cancelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this._cancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this._cancelButton.Location = new System.Drawing.Point(16, 647);
+            this._cancelButton.Location = new System.Drawing.Point(16, 593);
             this._cancelButton.Margin = new System.Windows.Forms.Padding(7, 6, 7, 6);
             this._cancelButton.Name = "_cancelButton";
             this._cancelButton.Size = new System.Drawing.Size(257, 48);
@@ -124,7 +142,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(13F, 24F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this._cancelButton;
-            this.ClientSize = new System.Drawing.Size(2760, 710);
+            this.ClientSize = new System.Drawing.Size(2374, 656);
             this.Controls.Add(this._cancelButton);
             this.Controls.Add(this._saveButton);
             this.Controls.Add(this._compareWindow);
@@ -142,9 +160,10 @@
         private FileCompare _compareWindow;
         private System.Windows.Forms.Button _saveButton;
         private System.Windows.Forms.Button _cancelButton;
-        private Aga.Controls.Tree.NodeControls.NodeCheckBox _nodeCheckBox;
         private Aga.Controls.Tree.NodeControls.NodeTextBox _label;
         private Aga.Controls.Tree.NodeControls.NodeStateIcon _icon;
-
+        private Aga.Controls.Tree.TreeColumn _treeColumn1;
+        private Aga.Controls.Tree.TreeColumn _treeColumn2;
+        private PrettyNodeComboBox _action;
     }
 }

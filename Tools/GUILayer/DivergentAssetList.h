@@ -19,17 +19,19 @@ namespace GUILayer
     public ref class PendingSaveList
     {
     public:
+		enum class Action { Save, Abandon, Ignore };
+
         ref class Entry
         {
         public:
             String^ _filename;
             array<Byte>^ _oldFileData;
             array<Byte>^ _newFileData;
-            bool _saveQueued;
+			Action _action;
 
-            Entry() { _saveQueued = false; }
+            Entry() { _action = Action::Ignore; }
             Entry(String^ filename, array<Byte>^ oldFileData, array<Byte>^ newFileData)
-                : _filename(filename), _oldFileData(oldFileData), _newFileData(newFileData), _saveQueued(true) {}
+                : _filename(filename), _oldFileData(oldFileData), _newFileData(newFileData), _action(Action::Save) {}
         };
 
         void Add(const Assets::IAssetSet& set, uint64 id, Entry^ entry);

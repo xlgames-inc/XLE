@@ -17,6 +17,8 @@
     <ClInclude Include="..\ConfigFileContainer.h" />
     <ClInclude Include="..\CompilerHelper.h" />
     <ClInclude Include="..\ChunkFileAsset.h" />
+    <ClInclude Include="..\AssetsInternal.h" />
+    <ClInclude Include="..\AssetSetInternal.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />

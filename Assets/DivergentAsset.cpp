@@ -26,10 +26,11 @@ namespace Assets
 
         auto fn = _targetFilename;
         auto paramStart = fn.find_last_of(':');
+		auto end = fn.cend();
         if (paramStart != std::basic_string<ResChar>::npos)
-            fn.erase(fn.begin() + paramStart, fn.end());
+			end = fn.cbegin() + paramStart;
 
-        Services::GetAsyncMan().GetIntermediateStore().ShadowFile(fn.c_str());
+        Services::GetAsyncMan().GetIntermediateStore().ShadowFile(MakeStringSection(AsPointer(fn.cbegin()), AsPointer(end)));
     }
 
 

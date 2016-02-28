@@ -119,7 +119,7 @@ namespace Assets { namespace IntermediateAssets
         return GetRetainedFileRecord(filename)->_state;
     }
 
-    void Store::ShadowFile(const ResChar filename[])
+    void Store::ShadowFile(StringSection<ResChar> filename)
     {
         auto record = GetRetainedFileRecord(filename);
         record->_state._status = DependentFileState::Status::Shadowed;

@@ -379,6 +379,9 @@ namespace GUILayer
 
         RawMaterial(String^ initialiser);
 
+		uint32 _transId;
+		void CheckBindingInvalidation();
+
         static RawMaterial();
         static Dictionary<String^, WeakReference^>^ s_table;
     };

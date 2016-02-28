@@ -101,8 +101,8 @@ namespace Assets { namespace IntermediateAssets
                 MakeIntermediateName(buffer, Count, firstInitializer);
             }
 
-        static auto GetDependentFileState(const StringSection<ResChar> filename) -> DependentFileState;
-        static void ShadowFile(const ResChar filename[]);
+        static auto GetDependentFileState(StringSection<ResChar> filename) -> DependentFileState;
+        static void ShadowFile(StringSection<ResChar> filename);
 
         Store(const ResChar baseDirectory[], const ResChar versionString[], const ResChar configString[], bool universal = false);
         ~Store();
