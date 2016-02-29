@@ -228,10 +228,16 @@ namespace GUILayer
 		Metal::ConstantBufferPacket _localTransform;
 		ParameterBox				_matParams;
 
-		ObjectParams(const RetainedEntity& obj, ParsingContext& parserContext)
+		ObjectParams(const RetainedEntity& obj, ParsingContext& parserContext, bool directionalTransform = false)
 		{
+			auto trans = GetTransform(obj);
+			if (directionalTransform) {
+					// reorient the transform similar to represent the orientation of directional lights
+				auto translation = ExtractTranslation(trans);
+				trans = MakeObjectToWorld(-Normalize(translation), Float3(0.f, 0.f, 1.f), translation);
+			}
 			_localTransform = MakeLocalTransformPacket(
-				GetTransform(obj), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
+				trans, ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
 
 			// bit of a hack -- copy from the "Diffuse" parameter to the "MaterialDiffuse" shader constant
 			auto c = obj._properties.GetParameter(Parameters::Diffuse, ~0u);
@@ -239,7 +245,7 @@ namespace GUILayer
 		}
 	};
 
-    static void DrawObject(
+    static void DrawSphereStandIn(
         Metal::DeviceContext& devContext, ParsingContext& parserContext, 
 		const ObjectParams& params, unsigned techniqueIndex, const ::Assets::ResChar technique[],
 		const VisGeoBox& visBox, const TechniqueMaterial::Variation& fallbackShader)
@@ -257,6 +263,25 @@ namespace GUILayer
 			devContext.Draw(visBox._cubeVBCount);
 		}
     }
+
+	static void DrawPointerStandIn(
+		Metal::DeviceContext& devContext, ParsingContext& parserContext,
+		const ObjectParams& params, unsigned techniqueIndex, const ::Assets::ResChar technique[],
+		const VisGeoBox& visBox, const TechniqueMaterial::Variation& fallbackShader)
+	{
+		CATCH_ASSETS_BEGIN
+			auto& asset = ::Assets::GetAssetDep<SimpleModel>("game/model/simple/pointerstandin.dae");
+		asset.Render(devContext, parserContext, params._localTransform, techniqueIndex, technique, params._matParams);
+		return;
+		CATCH_ASSETS_END(parserContext)
+
+			// after an asset exception, we can just render some simple stand-in
+			if (fallbackShader._shader._shaderProgram) {
+				fallbackShader._shader.Apply(devContext, parserContext, { params._localTransform, fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams) });
+				devContext.Bind(MakeResourceList(visBox._cubeVB), visBox._cubeVBStride, 0);
+				devContext.Draw(visBox._cubeVBCount);
+			}
+	}
 
 	static void DrawGenObject(
 		Metal::DeviceContext& devContext, ParsingContext& parserContext, 
@@ -346,13 +371,19 @@ namespace GUILayer
 		if (Tweakable("DrawMarkers", true)) {
 
 			auto fallbackShader = visBox._material.FindVariation(parserContext, techniqueIndex, baseTechnique); 
-			if (!_cubeAnnotations.empty()) {
-				for (auto a=_cubeAnnotations.cbegin(); a!=_cubeAnnotations.cend(); ++a) {
-					auto objects = _objects->FindEntitiesOfType(a->_typeId);
-					for (const auto&o:objects) {
-						if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
-						DrawObject(metalContext, parserContext, ObjectParams(*o, parserContext), techniqueIndex, baseTechnique, visBox, fallbackShader);
-					}
+			for (const auto& a:_cubeAnnotations) {
+				auto objects = _objects->FindEntitiesOfType(a._typeId);
+				for (const auto&o:objects) {
+					if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
+					DrawSphereStandIn(metalContext, parserContext, ObjectParams(*o, parserContext), techniqueIndex, baseTechnique, visBox, fallbackShader);
+				}
+			}
+
+			for (const auto& a:_directionalAnnotations) {
+				auto objects = _objects->FindEntitiesOfType(a._typeId);
+				for (const auto&o : objects) {
+					if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
+					DrawPointerStandIn(metalContext, parserContext, ObjectParams(*o, parserContext, true), techniqueIndex, baseTechnique, visBox, fallbackShader);
 				}
 			}
 
@@ -403,6 +434,8 @@ namespace GUILayer
             _triMeshAnnotations.push_back(newAnnotation);
         } else if (XlEqStringI(geoType, "AreaLight")) {
 			_areaLightAnnotation.push_back(newAnnotation);
+		} else if (XlEqStringI(geoType, "PointToOrigin")) {
+			_directionalAnnotations.push_back(newAnnotation);
 		} else {
             _cubeAnnotations.push_back(newAnnotation);
         }
@@ -452,6 +485,12 @@ namespace GUILayer
                 if (RayVsAABB(worldSpaceRay, GetTransform(*o), Float3(-1.f, -1.f, -1.f), Float3(1.f, 1.f, 1.f)))
 					return AsResult(worldSpaceRay.first, *o);
         }
+
+		for (const auto& a : _placeHolders->_directionalAnnotations) {
+			for (const auto& o : _placeHolders->_objects->FindEntitiesOfType(a._typeId))
+				if (RayVsAABB(worldSpaceRay, GetTransform(*o), Float3(-1.f, -1.f, -1.f), Float3(1.f, 1.f, 1.f)))
+					return AsResult(worldSpaceRay.first, *o);
+		}
 
 		for (const auto& a : _placeHolders->_areaLightAnnotation) {
 			for (const auto& o : _placeHolders->_objects->FindEntitiesOfType(a._typeId)) {

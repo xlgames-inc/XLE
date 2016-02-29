@@ -256,6 +256,9 @@ namespace XLEMath
     Float4x4    MakeCameraToWorld(const Float3& forward, const Float3& up, const Float3& position);
     Float4x4    MakeCameraToWorld(const Float3& forward, const Float3& up, const Float3& right, const Float3& position);
 
+	Float4x4    MakeObjectToWorld(const Float3& forward, const Float3& up, const Float3& position);
+	Float4x4    MakeObjectToWorld(const Float3& forward, const Float3& up, const Float3& right, const Float3& position);
+
     inline void CopyTransform(Float3x4& destination, const Float4x4& localToWorld)
     {
         destination(0, 0)    = localToWorld(0, 0);

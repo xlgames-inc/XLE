@@ -41,6 +41,7 @@ namespace GUILayer
             EntityInterface::ObjectTypeId _typeId;
         };
         std::vector<Annotation> _cubeAnnotations;
+		std::vector<Annotation> _directionalAnnotations;
         std::vector<Annotation> _triMeshAnnotations;
 		std::vector<Annotation> _areaLightAnnotation;
 
