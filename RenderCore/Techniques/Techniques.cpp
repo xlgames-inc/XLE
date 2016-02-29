@@ -895,7 +895,12 @@ namespace RenderCore { namespace Techniques
                             } else {
                                 _technique[index] = std::move(newTech);
                             }
-                        } else {
+                        } else if (XlEqString(eleName, u("*"))) {
+							// This is applied to all techniques
+							Technique newTech(formatter, std::string(), &searchRules, &inheritedAssets);
+							for (unsigned c = 0; c < dimof(_technique); ++c)
+								_technique[c].MergeIn(newTech);
+						} else {
                             LogWarning 
                                 << "Ignoring technique label (" << eleName.AsString().c_str() 
                                 << ") because it is unrecognised";

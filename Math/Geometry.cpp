@@ -31,6 +31,72 @@ namespace XLEMath
             spherical[2] * XlCos(spherical[0]));
     }
 
+	bool ShortestSegmentBetweenLines(
+		float& mua, float& mub,
+		const std::pair<Float3, Float3>& rayA,
+		const std::pair<Float3, Float3>& rayB)
+	{
+		/*
+				The shortest line that connects to lines (p1->p2 and p3->p4) will
+				be perpendicular to each. As a result,
+					(pa-pb) dot (p2-p1) = 0
+					(pa-pb) dot (p4-p3) = 0
+				where pa->pb is the shortest line described. This gives us a two equations
+				that can be solved with some simple algebra for the answer.
+
+				This was originally based on an implementation from Paul Bourke.
+					http://local.wasp.uwa.edu.au/~pbourke/geometry/lineline3d/
+					(no longer available there)
+		*/
+
+		const float epsilon = 0.0001f;
+
+		const Float3& p1 = rayA.first;
+		const Float3& p2 = rayA.second;
+		const Float3& p3 = rayB.first;
+		const Float3& p4 = rayB.second;
+
+		auto p13 = p1-p3;
+		auto p43 = p4-p3;
+		auto p21 = p2-p1;
+
+			/* early out if either line is zero length (or too close for accuracy) */
+		if (Dot(p43,p43) < epsilon || Dot(p21,p21) < epsilon)
+			return false;
+
+		auto d1343 = Dot(p13, p43);
+		auto d4321 = Dot(p43, p21);
+		auto d1321 = Dot(p13, p21);
+		auto d4343 = Dot(p43, p43);
+		auto d2121 = Dot(p21, p21);
+
+		float denom = d2121 * d4343 - d4321 * d4321;
+		if (abs(denom) < epsilon) return false;
+
+		float numer = d1343 * d4321 - d1321 * d4343;
+		mua = numer / denom;
+		mub = (d1343 + d4321 * mua) / d4343;
+
+		return true;
+	}
+
+	bool DistanceToSphereIntersection(
+		float& distance,
+		Float3 rayStart, Float3 rayDirection, float sphereRadiusSq)
+	{
+		/*	Find the std::distance, along the ray that begins at 'rayStart' and continues in unit direction 'direction', to the
+			first intersection with the sphere centered at the origin and with radius 'radius'.
+			Returns 0 if there is no intersection */
+		auto d = Dot(-rayStart, rayDirection);
+		const Float3 closestPoint = rayStart + d * rayDirection;
+		const auto closestDistanceSq = MagnitudeSquared(closestPoint);
+		if (closestDistanceSq > sphereRadiusSq)
+			return false;
+		auto a = XlSqrt(sphereRadiusSq - closestDistanceSq);
+		distance = std::min(d-a, d+a);
+		return true;
+	}
+
     bool RayVsAABB(const std::pair<Float3, Float3>& worldSpaceRay, const Float4x4& aabbToWorld, const Float3& mins, const Float3& maxs)
     {
             //  Does this ray intersect the aabb? 

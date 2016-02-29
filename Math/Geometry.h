@@ -48,6 +48,18 @@ namespace XLEMath
     Float3 CartesianToSpherical(Float3 direction);
     Float3 SphericalToCartesian(Float3 spherical);
 
+	/// <summary>LineLine3D algorithm for finding the shortest line segment that joints two lines</summary>
+	bool ShortestSegmentBetweenLines(
+		float& muA, float& muB,
+		const std::pair<Float3, Float3>& rayA,
+		const std::pair<Float3, Float3>& rayB);
+
+	/// <summary>Finds the distance along a ray to the intersection with a sphere at the origin</summary>
+	/// Note that it takes "radiusSq" not radius!
+	bool DistanceToSphereIntersection(
+		float& distance,
+		Float3 rayStart, Float3 rayDirection, float sphereRadiusSq);
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
             //      I N L I N E   I M P L E M E N T A T I O N S
         ////////////////////////////////////////////////////////////////////////////////////////////////

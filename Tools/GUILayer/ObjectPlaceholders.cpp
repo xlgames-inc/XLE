@@ -40,6 +40,8 @@ namespace GUILayer
         static const auto Translation = ParameterBox::MakeParameterNameHash("Translation");
         static const auto Visible = ParameterBox::MakeParameterNameHash("Visible");
         static const auto ShowMarker = ParameterBox::MakeParameterNameHash("ShowMarker");
+		static const auto Shape = ParameterBox::MakeParameterNameHash("Shape");
+		static const auto Diffuse = ParameterBox::MakeParameterNameHash("Diffuse");
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -161,7 +163,9 @@ namespace GUILayer
         unsigned                _cubeVBStride;
         TechniqueMaterial       _material;
         TechniqueMaterial       _materialP;
-		TechniqueMaterial       _materialGen;
+		TechniqueMaterial       _materialGenSphere;
+		TechniqueMaterial       _materialGenTube;
+		TechniqueMaterial       _materialGenRectangle;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
         VisGeoBox(const Desc&);
@@ -179,10 +183,18 @@ namespace GUILayer
         Metal::GlobalInputLayouts::P,
         { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
         ParameterBox())
-	, _materialGen(
+	, _materialGenSphere(
 		Metal::InputLayout((const Metal::InputElementDesc*)nullptr, 0),
 		{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
-		ParameterBox())
+		ParameterBox({ std::make_pair(u("SHAPE"), "1") }))
+	, _materialGenTube(
+		Metal::InputLayout((const Metal::InputElementDesc*)nullptr, 0),
+		{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
+		ParameterBox({ std::make_pair(u("SHAPE"), "2") }))
+	, _materialGenRectangle(
+		Metal::InputLayout((const Metal::InputElementDesc*)nullptr, 0),
+		{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
+		ParameterBox({ std::make_pair(u("SHAPE"), "3") }))
     {
         auto cubeVertices = ToolsRig::BuildCube();
         _cubeVBCount = (unsigned)cubeVertices.size();
@@ -222,8 +234,7 @@ namespace GUILayer
 				GetTransform(obj), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
 
 			// bit of a hack -- copy from the "Diffuse" parameter to the "MaterialDiffuse" shader constant
-			auto diffuseName = ParameterBox::MakeParameterNameHash(u("Diffuse"));
-			unsigned c = obj._properties.GetParameter(diffuseName, ~0u);
+			auto c = obj._properties.GetParameter(Parameters::Diffuse, ~0u);
 			_matParams.SetParameter(u("MaterialDiffuse"), Float3(((c >> 16) & 0xff) / 255.f, ((c >> 8) & 0xff) / 255.f, ((c >> 0) & 0xff) / 255.f));
 		}
 	};
@@ -346,15 +357,25 @@ namespace GUILayer
 			}
 
 			if (!_areaLightAnnotation.empty()) {
-				auto tubeShader = visBox._materialGen.FindVariation(parserContext, techniqueIndex, "game/xleres/ui/objgen/tube.tech");
+				auto sphereShader = visBox._materialGenSphere.FindVariation(parserContext, techniqueIndex, "game/xleres/ui/objgen/arealight.tech"); 
+				auto tubeShader = visBox._materialGenTube.FindVariation(parserContext, techniqueIndex, "game/xleres/ui/objgen/arealight.tech"); 
+				auto rectangleShader = visBox._materialGenRectangle.FindVariation(parserContext, techniqueIndex, "game/xleres/ui/objgen/arealight.tech");
 				for (auto a = _areaLightAnnotation.cbegin(); a != _areaLightAnnotation.cend(); ++a) {
 					auto objects = _objects->FindEntitiesOfType(a->_typeId);
 					for (const auto&o : objects) {
 						if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
 
+						auto shape = o->_properties.GetParameter(Parameters::Shape, 0u);
+						Techniques::TechniqueMaterial::Variation* var;
+						unsigned vertexCount = 12 * 12 * 6;	// (must agree with the shader!)
+						switch (shape) { 
+						case 2: var = &tubeShader; break;
+						case 3: var = &rectangleShader; vertexCount = 6*6; break;
+						default: var = &sphereShader; break;
+						}
 						DrawGenObject(
 							metalContext, parserContext, 
-							ObjectParams(*o, parserContext), tubeShader, 12*12*6,
+							ObjectParams(*o, parserContext), *var, vertexCount,
 							visBox, fallbackShader);
 					}
 				}
@@ -405,29 +426,74 @@ namespace GUILayer
         std::shared_ptr<ObjectPlaceholders> _placeHolders;
     };
 
+	static SceneEngine::IIntersectionTester::Result AsResult(const Float3& worldSpaceCollision, const RetainedEntity& o)
+	{
+		SceneEngine::IIntersectionTester::Result result;
+		result._type = SceneEngine::IntersectionTestScene::Type::Extra;
+		result._worldSpaceCollision = worldSpaceCollision;
+		result._distance = 0.f;
+		result._objectGuid = std::make_pair(o._doc, o._id);
+		result._drawCallIndex = 0;
+		result._materialGuid = 0;
+		return result;
+	}
+
     auto ObjectPlaceholders::IntersectionTester::FirstRayIntersection(
         const SceneEngine::IntersectionTestContext& context,
         std::pair<Float3, Float3> worldSpaceRay) const -> Result
     {
         using namespace SceneEngine;
 
-        for (auto a=_placeHolders->_cubeAnnotations.cbegin(); a!=_placeHolders->_cubeAnnotations.cend(); ++a) {
-            auto objects = _placeHolders->_objects->FindEntitiesOfType(a->_typeId);
-            for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {
+		// note -- we always return the first intersection encountered. We should be finding the intersection
+		//		closest to the start of the ray!
 
-                auto transform = GetTransform(**o);
-                if (RayVsAABB(worldSpaceRay, transform, Float3(-1.f, -1.f, -1.f), Float3(1.f, 1.f, 1.f))) {
-                    Result result;
-                    result._type = IntersectionTestScene::Type::Extra;
-                    result._worldSpaceCollision = worldSpaceRay.first;
-                    result._distance = 0.f;
-                    result._objectGuid = std::make_pair((*o)->_doc, (*o)->_id);
-                    result._drawCallIndex = 0;
-                    result._materialGuid =0;
-                    return result;
-                }
-            }
+        for (const auto& a:_placeHolders->_cubeAnnotations) {
+            for (const auto& o: _placeHolders->_objects->FindEntitiesOfType(a._typeId))
+                if (RayVsAABB(worldSpaceRay, GetTransform(*o), Float3(-1.f, -1.f, -1.f), Float3(1.f, 1.f, 1.f)))
+					return AsResult(worldSpaceRay.first, *o);
         }
+
+		for (const auto& a : _placeHolders->_areaLightAnnotation) {
+			for (const auto& o : _placeHolders->_objects->FindEntitiesOfType(a._typeId)) {
+				const auto shape = o->_properties.GetParameter(Parameters::Shape, 0);
+				auto trans = GetTransform(*o); 
+				if (shape == 2) {
+					// Tube... We can ShortestSegmentBetweenLines to calculate if this ray
+					// intersects the tube
+					auto axis = ExtractForward(trans);
+					auto origin = ExtractTranslation(trans);
+					auto tube = std::make_pair(Float3(origin - axis), Float3(origin + axis));
+					float mua, mub;
+					if (ShortestSegmentBetweenLines(mua, mub, worldSpaceRay, tube)) {
+						mua = Clamp(mua, 0.f, 1.f);
+						mub = Clamp(mub, 0.f, 1.f);
+						float distanceSq = 
+							MagnitudeSquared(
+									LinearInterpolate(worldSpaceRay.first, worldSpaceRay.second, mua)
+								-	LinearInterpolate(tube.first, tube.second, mub));
+						float radiusSq = MagnitudeSquared(ExtractRight(trans));
+						if (distanceSq <= radiusSq) {
+								// (not correct intersection pt)
+							return AsResult(LinearInterpolate(worldSpaceRay.first, worldSpaceRay.second, mua), *o);
+						}
+					}
+				} else if (shape == 3)  {
+					// Rectangle. We treat it as a box with some small width
+					const float boxWidth = 0.01f;		// 1cm
+					SetUp(trans, boxWidth * ExtractUp(trans));
+					if (RayVsAABB(worldSpaceRay, trans, Float3(-1.f, -1.f, -1.f), Float3(1.f, 1.f, 1.f)))
+						return AsResult(worldSpaceRay.first, *o);
+				} else {
+					// Sphere
+					float radiusSq = MagnitudeSquared(ExtractRight(trans));
+					float dist;
+					if (DistanceToSphereIntersection(
+						dist, worldSpaceRay.first - ExtractTranslation(trans), 
+						Normalize(worldSpaceRay.second - worldSpaceRay.first), radiusSq))
+						return AsResult(worldSpaceRay.first, *o);
+				}
+			}
+		}
 
         return Result();
     }
