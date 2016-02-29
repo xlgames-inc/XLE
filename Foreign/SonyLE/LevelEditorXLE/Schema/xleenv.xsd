@@ -231,7 +231,7 @@
         <LeGe.NativeProperty name="DiffuseWideningMax" nativeName="DiffuseWideningMax"/>
         <LeGe.NativeProperty name="Specular" nativeName="Specular"/>
         <LeGe.NativeProperty name="SpecularBrightness" nativeName="SpecularBrightness"/>
-        <LeGe.NativeVis geo="sphere"/>
+        <LeGe.NativeVis geo="AreaLight"/>
 
         <scea.dom.editors.attribute category="Diffuse" name="Diffuse" displayName="Diffuse" description="Diffuse Color"
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>

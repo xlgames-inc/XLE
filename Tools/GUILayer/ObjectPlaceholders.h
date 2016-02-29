@@ -42,6 +42,7 @@ namespace GUILayer
         };
         std::vector<Annotation> _cubeAnnotations;
         std::vector<Annotation> _triMeshAnnotations;
+		std::vector<Annotation> _areaLightAnnotation;
 
         class IntersectionTester;
     };

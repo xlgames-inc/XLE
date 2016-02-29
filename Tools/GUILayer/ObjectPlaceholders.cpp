@@ -161,6 +161,7 @@ namespace GUILayer
         unsigned                _cubeVBStride;
         TechniqueMaterial       _material;
         TechniqueMaterial       _materialP;
+		TechniqueMaterial       _materialGen;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
         VisGeoBox(const Desc&);
@@ -178,6 +179,10 @@ namespace GUILayer
         Metal::GlobalInputLayouts::P,
         { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
         ParameterBox())
+	, _materialGen(
+		Metal::InputLayout((const Metal::InputElementDesc*)nullptr, 0),
+		{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
+		ParameterBox())
     {
         auto cubeVertices = ToolsRig::BuildCube();
         _cubeVBCount = (unsigned)cubeVertices.size();
@@ -205,27 +210,63 @@ namespace GUILayer
         return obj._properties.GetParameter(Parameters::ShowMarker, true);
     }
 
-    static void DrawObject(
-        Metal::DeviceContext& devContext, ParsingContext& parserContext, const VisGeoBox& visBox,
-        const TechniqueMaterial::Variation& shader, Metal::ConstantBufferPacket localTransform,
-		unsigned techniqueIndex, const ::Assets::ResChar technique[], const ParameterBox& matParams)
-    {
-		
-		TRY
-		{
-			auto& asset = ::Assets::GetAssetDep<SimpleModel>("game/model/simple/spherestandin.dae");
-			asset.Render(devContext, parserContext, localTransform, techniqueIndex, technique, matParams);
-			return;
-		} 
-		CATCH(const ::Assets::Exceptions::AssetException&) {}
-		CATCH_END
+	class ObjectParams
+	{
+	public:
+		Metal::ConstantBufferPacket _localTransform;
+		ParameterBox				_matParams;
 
-		if (shader._shader._shaderProgram) {
-			shader._shader.Apply(devContext, parserContext, { localTransform, shader._cbLayout->BuildCBDataAsPkt(matParams) } );
+		ObjectParams(const RetainedEntity& obj, ParsingContext& parserContext)
+		{
+			_localTransform = MakeLocalTransformPacket(
+				GetTransform(obj), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
+
+			// bit of a hack -- copy from the "Diffuse" parameter to the "MaterialDiffuse" shader constant
+			auto diffuseName = ParameterBox::MakeParameterNameHash(u("Diffuse"));
+			unsigned c = obj._properties.GetParameter(diffuseName, ~0u);
+			_matParams.SetParameter(u("MaterialDiffuse"), Float3(((c >> 16) & 0xff) / 255.f, ((c >> 8) & 0xff) / 255.f, ((c >> 0) & 0xff) / 255.f));
+		}
+	};
+
+    static void DrawObject(
+        Metal::DeviceContext& devContext, ParsingContext& parserContext, 
+		const ObjectParams& params, unsigned techniqueIndex, const ::Assets::ResChar technique[],
+		const VisGeoBox& visBox, const TechniqueMaterial::Variation& fallbackShader)
+    {
+		CATCH_ASSETS_BEGIN
+			auto& asset = ::Assets::GetAssetDep<SimpleModel>("game/model/simple/spherestandin.dae");
+			asset.Render(devContext, parserContext, params._localTransform, techniqueIndex, technique, params._matParams);
+			return;
+		CATCH_ASSETS_END(parserContext)
+
+		// after an asset exception, we can just render some simple stand-in
+		if (fallbackShader._shader._shaderProgram) {
+			fallbackShader._shader.Apply(devContext, parserContext, { params._localTransform, fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams) } );
 			devContext.Bind(MakeResourceList(visBox._cubeVB), visBox._cubeVBStride, 0);
 			devContext.Draw(visBox._cubeVBCount);
 		}
     }
+
+	static void DrawGenObject(
+		Metal::DeviceContext& devContext, ParsingContext& parserContext, 
+		const ObjectParams& params,
+		const TechniqueMaterial::Variation& generatorShader, unsigned vertexCount,
+		const VisGeoBox& visBox, const TechniqueMaterial::Variation& fallbackShader)
+	{
+		if (generatorShader._shader._shaderProgram) {
+			generatorShader._shader.Apply(devContext, parserContext, { params._localTransform, generatorShader._cbLayout->BuildCBDataAsPkt(params._matParams) });
+			devContext.Unbind<Metal::VertexBuffer>();
+			devContext.Bind(Metal::Topology::TriangleList);
+			devContext.Draw(vertexCount);
+			return;
+		}
+
+		if (fallbackShader._shader._shaderProgram) {
+			fallbackShader._shader.Apply(devContext, parserContext, { params._localTransform, fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams) });
+			devContext.Bind(MakeResourceList(visBox._cubeVB), visBox._cubeVBStride, 0);
+			devContext.Draw(visBox._cubeVBCount);
+		}
+	}
 
     static void DrawTriMeshMarker(
         Metal::DeviceContext& devContext,
@@ -290,27 +331,35 @@ namespace GUILayer
     {
         auto& visBox = FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
 
+		const auto* baseTechnique = "game/xleres/techniques/illum.tech";
 		if (Tweakable("DrawMarkers", true)) {
-			auto* baseTechnique = "game/xleres/techniques/illum.tech";
-			auto shader = visBox._material.FindVariation(parserContext, techniqueIndex, baseTechnique);
-			for (auto a=_cubeAnnotations.cbegin(); a!=_cubeAnnotations.cend(); ++a) {
-				auto objects = _objects->FindEntitiesOfType(a->_typeId);
-				for (const auto&o:objects) {
-					if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
 
-					auto localTransform = MakeLocalTransformPacket(
-						GetTransform(*o), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
-
-					ParameterBox matParams;
-
-					// bit of a hack -- copy from the "Diffuse" parameter to the "MaterialDiffuse" shader constant
-					auto diffuseName = ParameterBox::MakeParameterNameHash(u("Diffuse"));
-					unsigned c = o->_properties.GetParameter(diffuseName, ~0u);
-					matParams.SetParameter(u("MaterialDiffuse"), Float3(((c>>16)&0xff)/255.f, ((c>>8)&0xff)/255.f, ((c>>0)&0xff)/255.f));
-
-					DrawObject(metalContext, parserContext, visBox, shader, localTransform, techniqueIndex, baseTechnique, matParams);
+			auto fallbackShader = visBox._material.FindVariation(parserContext, techniqueIndex, baseTechnique); 
+			if (!_cubeAnnotations.empty()) {
+				for (auto a=_cubeAnnotations.cbegin(); a!=_cubeAnnotations.cend(); ++a) {
+					auto objects = _objects->FindEntitiesOfType(a->_typeId);
+					for (const auto&o:objects) {
+						if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
+						DrawObject(metalContext, parserContext, ObjectParams(*o, parserContext), techniqueIndex, baseTechnique, visBox, fallbackShader);
+					}
 				}
 			}
+
+			if (!_areaLightAnnotation.empty()) {
+				auto tubeShader = visBox._materialGen.FindVariation(parserContext, techniqueIndex, "game/xleres/ui/objgen/tube.tech");
+				for (auto a = _areaLightAnnotation.cbegin(); a != _areaLightAnnotation.cend(); ++a) {
+					auto objects = _objects->FindEntitiesOfType(a->_typeId);
+					for (const auto&o : objects) {
+						if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
+
+						DrawGenObject(
+							metalContext, parserContext, 
+							ObjectParams(*o, parserContext), tubeShader, 12*12*6,
+							visBox, fallbackShader);
+					}
+				}
+			}
+
 		}
 
         auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/meshmarker.tech");
@@ -331,7 +380,9 @@ namespace GUILayer
 
         if (XlEqStringI(geoType, "TriMeshMarker")) {
             _triMeshAnnotations.push_back(newAnnotation);
-        } else {
+        } else if (XlEqStringI(geoType, "AreaLight")) {
+			_areaLightAnnotation.push_back(newAnnotation);
+		} else {
             _cubeAnnotations.push_back(newAnnotation);
         }
     }

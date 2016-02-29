@@ -1,0 +1,133 @@
+// CompoundDocument:1
+
+// Generate a "tube" geometry in a way that matches the tube light types.
+// We extract the cardinal axes from the local to world, and use this to construct the tube shape
+// The ends are capped with hemispheres (using longitude/latitude arrangement of vertices)
+// It results in a singularity at the top of the hemisphere... But it has a straight equator.
+//
+// This is also an example of a custom built technique that inherits from, but overrides certain
+// parts of the default technique.
+
+#include "../../Transform.h"
+#include "../../MainGeometry.h"
+#include "../../Utility/MathConstants.h"
+
+struct GeneratedVertex
+{
+    float3 worldPosition;
+    float3 worldNormal;
+};
+
+float3 SphericalToCartesian(float3 spherical)
+{
+    float s0, c0, s1, c1;
+    sincos(spherical.x, s0, c0);
+    sincos(spherical.y, s1, c1);
+    return float3(
+        spherical.z * s0 * c1,
+        spherical.z * s0 * s1,
+        spherical.z * c0);
+}
+    
+GeneratedVertex GenVertex(uint vIndex)
+{
+    uint quadIndex = vIndex / 6;
+    uint indexInQuad = vIndex % 6;
+    const uint quadDims = 12;
+    
+    float sx = floor(quadIndex / float(quadDims)) / quadDims;
+    float sy = frac(quadIndex / float(quadDims));
+    
+    float2 sMins = float2(sx, sy); 
+    float2 sMaxs = float2(sx + 1.0f/float(quadDims), sy + 1.0f/float(quadDims));
+    
+    sMins.x *= pi; sMaxs.x *= pi;
+    sMins.y *= 2.0f*pi; sMaxs.y *= 2.0f*pi;
+        
+    float2 s;
+         if (indexInQuad == 0) s = float2(sMins.x, sMins.y);
+    else if (indexInQuad == 1) s = float2(sMins.x, sMaxs.y);
+    else if (indexInQuad == 2) s = float2(sMaxs.x, sMins.y);
+    else if (indexInQuad == 3) s = float2(sMaxs.x, sMins.y);
+    else if (indexInQuad == 4) s = float2(sMins.x, sMaxs.y);
+    else                       s = float2(sMaxs.x, sMaxs.y);
+    
+    float3 baseDirection = SphericalToCartesian(float3(s, 1.f));
+    bool downCap = baseDirection.z < 0.f;
+    
+    float3 xAxisLong = float3(LocalToWorld[0].x, LocalToWorld[1].x, LocalToWorld[2].x);
+    float3 xAxis = normalize(xAxisLong);
+    float radius = length(xAxisLong);
+    float3 zAxisLong = float3(LocalToWorld[0].y, LocalToWorld[1].y, LocalToWorld[2].y);
+    float3 zAxis = normalize(zAxisLong);
+    float3 yAxisLong = float3(LocalToWorld[0].z, LocalToWorld[1].z, LocalToWorld[2].z);
+    float3 yAxis = normalize(yAxisLong);
+    
+    baseDirection = 
+        baseDirection.x * xAxis
+        + baseDirection.y * yAxis
+        + baseDirection.z * zAxis;
+    
+    GeneratedVertex result;
+    result.worldNormal = baseDirection;
+    result.worldPosition = result.worldNormal;
+    
+    result.worldPosition = 
+        radius * result.worldPosition + float3(LocalToWorld[0].w, LocalToWorld[1].w, LocalToWorld[2].w);
+        
+        // We stretch out the tube here... It's not perfect. Ideally we should add
+        // another row of quads to go around the long part of the tube. But it looks
+        // find for non critical purposess  
+    if (downCap)    result.worldPosition -= zAxisLong;
+    else            result.worldPosition += zAxisLong;
+    return result;
+}
+
+VSOutput vs_main(uint vIndex : SV_VertexID)
+{
+	VSOutput output;
+	
+    GeneratedVertex genVertex = GenVertex(vIndex);
+
+	#if OUTPUT_COLOUR==1
+		output.colour = 1.0.xxxx;
+	#endif
+
+	#if OUTPUT_TEXCOORD==1
+		output.texCoord = 0.0.xx;
+	#endif
+
+	#if (OUTPUT_NORMAL==1)
+		output.normal = genVertex.worldNormal;
+	#endif
+
+	output.position = mul(WorldToClip, float4(genVertex.worldPosition,1));
+
+	#if OUTPUT_WORLD_VIEW_VECTOR==1
+		output.worldViewVector = WorldSpaceView.xyz - genVertex.worldPosition.xyz;
+	#endif
+
+	#if OUTPUT_WORLD_POSITION==1
+		output.worldPosition = worldPosition.xyz;
+	#endif
+
+	return output;
+}
+
+/* <<Chunk:TechniqueConfig:main>>--(
+~Inherit; game/xleres/techniques/illum.tech
+~Illum
+    VertexShader=<.>:vs_main
+~Deferred
+    VertexShader=<.>:vs_main
+~OrderIndependentTransparency
+    VertexShader=<.>:vs_main
+~StochasticTransparency
+    VertexShader=<.>:vs_main
+~DepthOnly
+    VertexShader=<.>:vs_main
+~ShadowGen
+    VertexShader=<.>:vs_main
+~RayTest
+    VertexShader=<.>:vs_main
+)--*/
