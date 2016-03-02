@@ -63,7 +63,7 @@ namespace SceneEngine
         auto mappedFile = std::make_unique<MemoryMappedFile>(filename, 0, MemoryMappedFile::Access::Read|MemoryMappedFile::Access::Write, BasicFile::ShareMode::Read);
         if (!mappedFile->IsValid())
             Throw(::Assets::Exceptions::InvalidAsset(
-                filename, "Failed while openning uber surface file"));
+                filename, "Failed while opening uber surface file"));
         
         auto& hdr = *(TerrainUberHeader*)mappedFile->GetData();
         if (hdr._magic != TerrainUberHeader::Magic)
@@ -313,14 +313,19 @@ namespace SceneEngine
                         dims[0] * bytesPerSample);
             }
 
-                //  Destroy the gpu cache
+                // Destroy the gpu cache
             _pimpl->_gpucache[0].reset();
             _pimpl->_gpucache[1].reset();
 
-                //  look for all of the cells that intersect with the area we've changed.
-                //  we have to rebuild the entire cell
-            if (_pimpl->_bridge)
+                // Look for all of the cells that intersect with the area we've changed.
+                // we have to rebuild the entire cell
+            if (_pimpl->_bridge) {
+                // Note that we abandon changes first (to flush out any queued change events)
+                // Afterwards, we should just write the cells, and they will be reloaded by the
+                // terrain renderer in the normal way.
+                _pimpl->_bridge->QueueAbandon(_pimpl->_gpuCacheMins, _pimpl->_gpuCacheMaxs);
                 _pimpl->_bridge->WriteCells(_pimpl->_gpuCacheMins, _pimpl->_gpuCacheMaxs);
+            }
 
             _pimpl->_gpuCacheMins = _pimpl->_gpuCacheMaxs = UInt2(0,0);
         }
