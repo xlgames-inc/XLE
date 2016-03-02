@@ -102,7 +102,7 @@ float GetBlendingWeightBias(TerrainTextureOutput texSample)
     return 10.f * SRGBLuminance(texSample.diffuseAlbedo.rgb);
 }
 
-TerrainTextureOutput GradFlagTexturing::Calculate(
+TerrainTextureOutput GradFlagTexturing_Calculate(
     float3 worldPosition, float2 dhdxy, uint materialId, float2 textureCoord)
 {
     TerrainTextureOutput result = TerrainTextureOutput_Blank();
@@ -265,6 +265,12 @@ TerrainTextureOutput GradFlagTexturing::Calculate(
     }
 
     return result;
+}
+
+TerrainTextureOutput GradFlagTexturing::Calculate(
+    float3 worldPosition, float2 dhdxy, uint materialId, float2 textureCoord)
+{
+    return GradFlagTexturing_Calculate(worldPosition, dhdxy, materialId, textureCoord);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -115,12 +115,19 @@ TerrainTextureOutput TerrainResolve_BaseTexturing(PSInput geo)
                 // we will end up with 16 taps... We only need 4, so long as coverage
                 // samples evenly fit inside of the gradient flag samples (which they
                 // should always do)
+                
+            // note --  On some hardware, the shader compiler fails if we use MainTexturing.Calculate here.
+            //          We must hardcode the default texturing method -- 
+            TerrainTextureOutput sample0 = GradFlagTexturing_Calculate(GetWorldPosition(geo), geo.dhdxy, materialId[0], geo.texCoord + tcOffset[0]);
+            TerrainTextureOutput sample1 = GradFlagTexturing_Calculate(GetWorldPosition(geo), geo.dhdxy, materialId[1], geo.texCoord + tcOffset[1]);
+            TerrainTextureOutput sample2 = GradFlagTexturing_Calculate(GetWorldPosition(geo), geo.dhdxy, materialId[2], geo.texCoord + tcOffset[2]);
+            TerrainTextureOutput sample3 = GradFlagTexturing_Calculate(GetWorldPosition(geo), geo.dhdxy, materialId[3], geo.texCoord + tcOffset[3]);
+            
             procTexture = TerrainTextureOutput_Blank();
-            [unroll] for (uint c=0; c<4; c++) {
-                float2 texCoord = geo.texCoord + tcOffset[c];
-                TerrainTextureOutput sample = MainTexturing.Calculate(GetWorldPosition(geo), geo.dhdxy, materialId[c], texCoord);
-                procTexture = AddWeighted(procTexture, sample, w[c]);
-            }
+            procTexture = AddWeighted(procTexture, sample0, w[0]);
+            procTexture = AddWeighted(procTexture, sample1, w[1]);
+            procTexture = AddWeighted(procTexture, sample2, w[2]);
+            procTexture = AddWeighted(procTexture, sample3, w[3]);
         }
     #else
         procTexture = MainTexturing.Calculate(GetWorldPosition(geo), geo.dhdxy, 0, geo.texCoord);
