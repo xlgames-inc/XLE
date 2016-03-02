@@ -109,8 +109,10 @@ void WriteInstance(
 		// todo -- we could also lookup ambient occlusion!
 	#if defined(COVERAGE_2)
 		uint2 shadowTexCoord = lerp(CoverageCoordMins[COVERAGE_2].xy, CoverageCoordMaxs[COVERAGE_2].xy, tc.xy);
-		float2 shadowSample = MakeCoverageTileSet(COVERAGE_2).Load(uint4(shadowTexCoord, CoverageOrigin[COVERAGE_2].z, 0)).r;
-		float shadowing = saturate(ShadowSoftness * (SunAngle + shadowSample.r)) * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
+		float2 shadowSample = MakeCoverageTileSet(COVERAGE_2).Load(uint4(shadowTexCoord, CoverageOrigin[COVERAGE_2].z, 0)).rg;
+		float shadowing =
+			  saturate(ShadowSoftness * (SunAngle + shadowSample.r))
+			* saturate(ShadowSoftness * (shadowSample.g - SunAngle));
 	#else
 		float shadowing = 1.f;
 	#endif

@@ -87,7 +87,7 @@
 		#if OUTPUT_TEXCOORD==1
 			output.texCoord = input[1].texCoord;
 		#endif
-		#if OUTPUT_COLOUR==1
+		#if OUTPUT_COLOUR>=1
 			output.colour = input[1].colour;
 		#endif
 		output.renderTargetIndex = c;
@@ -100,7 +100,7 @@
 		#if OUTPUT_TEXCOORD==1
 			output.texCoord = input[2].texCoord;
 		#endif
-		#if OUTPUT_COLOUR==1
+		#if OUTPUT_COLOUR>=1
 			output.colour = input[2].colour;
 		#endif
 		output.renderTargetIndex = c;

@@ -84,6 +84,15 @@ float GetVertexAOMultiplier(VSOutput geo)
     #endif
 }
 
+float GetVertexMainLightMultiplier(VSOutput geo)
+{
+    #if (OUTPUT_PER_VERTEX_MLO==1)
+        return geo.mainLightOcclusion;
+    #else
+        return 1.f;
+    #endif
+}
+
 float3 MaybeMakeDoubleSided(VSOutput geo, float3 normal)
 {
     #if (MAT_DOUBLE_SIDED_LIGHTING==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
