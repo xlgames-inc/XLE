@@ -126,8 +126,24 @@ namespace LevelEditorXLE.Placements
         #endregion
 
         #region IHierachical Members
-        public bool CanAddChild(object child) { return (m_target != null) && m_target.CanAddChild(child); }
-        public bool AddChild(object child) { return (m_target != null) && m_target.AddChild(child); }
+        public bool CanAddChild(object child) 
+        {
+            if (m_target == null) return false;
+            var hierarchical = m_target.AsAll<IHierarchical>();
+            foreach (var h in hierarchical)
+                if (h.CanAddChild(child)) 
+                    return true;
+            return false;
+        }
+        public bool AddChild(object child) 
+        {
+            if (m_target == null) return false;
+            var hierarchical = m_target.AsAll<IHierarchical>();
+            foreach (var h in hierarchical)
+                if (h.AddChild(child))
+                    return true;
+            return false;
+        }
         #endregion
 
         #region GenericReference<> Members
@@ -230,7 +246,7 @@ namespace LevelEditorXLE.Placements
         }
     }
 
-    public class PlacementsFolder : DomNodeAdapter, IListable, ICommandClient, IContextMenuCommandProvider, IExportable
+    public class PlacementsFolder : DomNodeAdapter, IListable, ICommandClient, IContextMenuCommandProvider, IExportable, IHierarchical
     {
         public static DomNode Create()
         {
@@ -471,6 +487,40 @@ namespace LevelEditorXLE.Placements
                     });
             }
             return refs;
+        }
+        #endregion
+
+        #region IHierachical Members
+        public bool CanAddChild(object child) 
+        {
+            // todo -- we could check which placement document is most appropriate for this!
+            foreach (var c in Cells)
+                if (c.CanAddChild(child))
+                    return true;
+            return false;
+        }
+        public bool AddChild(object child) 
+        {
+            // We need to look for the appropriate placement cell to put this placement in...
+            // If there are no placement cells, or if there isn't a cell that can contain this
+            // object, then we have to abort
+            var plc = child.As<ITransformable>();
+            if (plc == null) return false;
+
+            var keyPoint = (plc != null) ? plc.Translation : new Sce.Atf.VectorMath.Vec3F(0.0f, 0.0f, 0.0f);
+
+            foreach (var cellRef in Cells)
+            {
+                if (cellRef.IsResolved()
+                    && keyPoint.X >= cellRef.CaptureMins.X && keyPoint.X < cellRef.CaptureMaxs.X
+                    && keyPoint.Y >= cellRef.CaptureMins.Y && keyPoint.Y < cellRef.CaptureMaxs.Y
+                    && keyPoint.Z >= cellRef.CaptureMins.Z && keyPoint.Z < cellRef.CaptureMaxs.Z)
+                {
+                    if (cellRef.AddChild(child))
+                        return true;
+                }
+            }
+            return false;
         }
         #endregion
 

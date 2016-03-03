@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.ComponentModel.Composition;
+using System.Linq;
 
 using Sce.Atf;
 using Sce.Atf.VectorMath;
@@ -61,15 +62,23 @@ namespace RenderingInterop
                 {
                     foreach (object obj in path)
                     {
-                        DomNode pathnode = obj.As<DomNode>();
-                        if (pathnode == null) break;
-                        object item = Util.AdaptDomPath(pathnode);
-                        if (selectionCntx.SelectionContains(item))
+                        // Check if this object actually exists in the current selection
+                        // somewhere. DavidJ -- rewrote this because some controls (like
+                        // the Project Lister) use a different path of path object, and as a
+                        // result the old version would sometimes incorrectly fail.
+                        var i = selectionCntx.Selection.Where(
+                            x => 
+                            {
+                                var p = x.As<Path<object>>();
+                                return (p != null) && (p.Last == obj);
+                            }).FirstOrDefault();
+
+                        if (i != null)
                         {
-                            var xformable = pathnode.As<ITransformable>();
+                            var xformable = obj.As<ITransformable>();
                             if (xformable != null
                                 && (xformable.TransformationType & xformType) != 0
-                                && visibilityContext.IsVisible(pathnode))
+                                && visibilityContext.IsVisible(obj))
                             {
                                 manipNode = xformable;
                             }

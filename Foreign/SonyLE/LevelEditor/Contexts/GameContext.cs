@@ -162,7 +162,8 @@ namespace LevelEditor
         {
             get
             {
-                return m_activeItem ?? RootGameObjectFolder;                
+                // return m_activeItem ?? RootGameObjectFolder;
+                return m_activeItem ?? this;
             }
         }
 
@@ -887,7 +888,7 @@ namespace LevelEditor
             DomNode node = Adapters.As<DomNode>(item);            
             while (node != null)
             {
-                if (node.Is<GameObjectFolder>() || node.Is<GameObjectGroup>())
+                if (node.Parent == null) // node.Is<GameObjectFolder>() || node.Is<GameObjectGroup>())
                 {
                     m_activeItem = node;
                     break;

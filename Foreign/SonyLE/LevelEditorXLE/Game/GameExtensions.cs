@@ -21,6 +21,7 @@ namespace LevelEditorXLE.Game
 {
     class GameExtensions : DomNodeAdapter, IHierarchical, ICommandClient, IContextMenuCommandProvider
     {
+        #region IHierachical
         public bool CanAddChild(object child)
         {
             var domNode = child as DomNode;
@@ -29,18 +30,19 @@ namespace LevelEditorXLE.Game
                 foreach (var type in domNode.Type.Lineage)
                 {
                     if (type == Schema.placementsFolderType.Type) return true;
-                    if (type == Schema.abstractPlacementObjectType.Type) return true;
                     if (type == Schema.envSettingsFolderType.Type) return true;
                 }
             }
-            if (EnvSettingsFolder.CanAddChild(child)) return true;
 
-            return false;
+            return  PlacementsFolder.CanAddChild(child)
+                |   EnvSettingsFolder.CanAddChild(child);
         }
-
         public bool AddChild(object child)
         {
             if (EnvSettingsFolder.AddChild(child))
+                return true;
+
+            if (PlacementsFolder.AddChild(child))
                 return true;
 
             var domNode = child.As<DomNode>();
@@ -54,33 +56,6 @@ namespace LevelEditorXLE.Game
                         return true;
                     }
 
-                    if (type == Schema.abstractPlacementObjectType.Type)
-                    {
-                        // We need to look for the appropriate placement cell to put this placement in...
-                        // If there are no placement cells, or if there isn't a cell that can contain this
-                        // object, then we have to abort
-                        var plc = domNode.As<ITransformable>();
-                        var keyPoint = (plc != null) ? plc.Translation : new Sce.Atf.VectorMath.Vec3F(0.0f, 0.0f, 0.0f);
-
-                        var placementsFolder = GetChild<PlacementsFolder>(Schema.xleGameType.placementsChild);
-                        if (placementsFolder != null)
-                        {
-                            foreach (var cellRef in placementsFolder.Cells)
-                            {
-                                if (cellRef.IsResolved()
-                                    && keyPoint.X >= cellRef.CaptureMins.X && keyPoint.X < cellRef.CaptureMaxs.X
-                                    && keyPoint.Y >= cellRef.CaptureMins.Y && keyPoint.Y < cellRef.CaptureMaxs.Y
-                                    && keyPoint.Z >= cellRef.CaptureMins.Z && keyPoint.Z < cellRef.CaptureMaxs.Z
-                                    && cellRef.Target.CanAddChild(domNode))
-                                {
-                                    var hierarchical = cellRef.Target.AsAll<IHierarchical>();
-                                    foreach (var h in hierarchical)
-                                        if (h.AddChild(domNode)) return true;
-                                }
-                            }
-                        }
-                    }
-
                     if (domNode.Type == Schema.envSettingsFolderType.Type)
                     {
                         SetChild(Schema.xleGameType.environmentChild, domNode);
@@ -91,6 +66,7 @@ namespace LevelEditorXLE.Game
 
             return false;
         }
+        #endregion
 
         public XLEEnvSettingsFolder EnvSettingsFolder
         {
