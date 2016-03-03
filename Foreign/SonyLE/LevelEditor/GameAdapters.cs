@@ -32,6 +32,8 @@ namespace LevelEditor
             Schema.gameType.Type.Define(new ExtensionInfo<BookmarkingContext>());
             Schema.gameType.Type.Define(new ExtensionInfo<CustomLockingValidator>());
 
+            Schema.gameType.Type.Define(new ExtensionInfo<LevelEditor.Search.EnumerableContextQueryable>());
+
             // DavidJ -- removing this adapter beacuse it's causing problems with nodes with no name set
             // Schema.gameType.Type.Define(new ExtensionInfo<UniqueIdValidator>());
 

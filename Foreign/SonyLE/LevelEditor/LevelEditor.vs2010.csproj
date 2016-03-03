@@ -98,6 +98,8 @@
     <Compile Include="DomNodeAdapters\Depricated\ControlPoint.cs" />
     <Compile Include="DomNodeAdapters\Depricated\Curve.cs" />
     <Compile Include="DomNodeAdapters\Depricated\GameObjectReference.cs" />
+    <Compile Include="Search\DomNodePropertySearchService.cs" />
+    <Compile Include="Search\EnumerableContextQueryable.cs" />
     <Compile Include="DomNodeAdapters\GameReference.cs" />
     <Compile Include="DomNodeAdapters\Layer.cs" />
     <Compile Include="DomNodeAdapters\Depricated\Lights.cs" />
@@ -129,6 +131,9 @@
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Search\SearchResultsListView.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="Services\CustomFileSystemResourceFolder.cs" />
     <Compile Include="Services\GameLoopService.cs" />

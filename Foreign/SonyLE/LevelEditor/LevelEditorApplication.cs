@@ -92,7 +92,9 @@ namespace LevelEditor
                 typeof(WindowLayoutServiceCommands),    // window layout commands
                 typeof(HistoryLister),                  // visual undo/redo
                 typeof(SkinService),
-                typeof(ResourceService)
+                typeof(ResourceService),
+
+                typeof(LevelEditor.Search.DomNodePropertySearchService)
                 );
 
             TypeCatalog LECoreCatalog = new TypeCatalog(                                

@@ -57,21 +57,24 @@ namespace RenderingInterop
             if (selectionCntx.LastSelected != null)
             {
                 Path<object> path = selectionCntx.LastSelected.As<Path<object>>();
-                foreach (object obj in path)
+                if (path != null)
                 {
-                    DomNode pathnode = obj.As<DomNode>();
-                    if (pathnode == null) break;
-                    object item = Util.AdaptDomPath(pathnode);
-                    if (selectionCntx.SelectionContains(item))
+                    foreach (object obj in path)
                     {
-                        var xformable = pathnode.As<ITransformable>();
-                        if (xformable != null 
-                            && (xformable.TransformationType & xformType) != 0
-                            && visibilityContext.IsVisible(pathnode))
+                        DomNode pathnode = obj.As<DomNode>();
+                        if (pathnode == null) break;
+                        object item = Util.AdaptDomPath(pathnode);
+                        if (selectionCntx.SelectionContains(item))
                         {
-                            manipNode = xformable;                           
+                            var xformable = pathnode.As<ITransformable>();
+                            if (xformable != null
+                                && (xformable.TransformationType & xformType) != 0
+                                && visibilityContext.IsVisible(pathnode))
+                            {
+                                manipNode = xformable;
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
             }
