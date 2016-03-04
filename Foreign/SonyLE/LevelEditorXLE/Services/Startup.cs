@@ -51,6 +51,7 @@ namespace LevelEditorXLE
                 // typeof(Placements.PlacementManipulator),     (provides access to the native placements manipulators... but not really required)
                 typeof(Placements.ResourceConverter),
                 typeof(Placements.ScatterPlaceManipulator),
+                typeof(Placements.ResourceListerCommandClient),
 
                 typeof(AssetMan.ResourcePreview)
                 );

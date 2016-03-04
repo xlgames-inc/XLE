@@ -1,4 +1,6 @@
 ﻿// Replacement for DomNodePropertySearchService with some customizations for the level editor implementation of this.
+// Unfortunately we can't easily subclass in this case. This is the only way to get the functionality we want without
+// making changes to the ATF library itself.
 
 using System;
 using System.ComponentModel.Composition;
@@ -15,7 +17,8 @@ namespace LevelEditor.Search
     /// Allows the search/replace UI for the currently active context to be displayed in a control host client</summary>
     [Export(typeof(DomNodePropertySearchService))]
     [Export(typeof(IInitializable))]
-    public class DomNodePropertySearchService : IInitializable, IControlHostClient
+    [Export(typeof(LevelEditorCore.ISearchService))]
+    public class DomNodePropertySearchService : IInitializable, IControlHostClient, LevelEditorCore.ISearchService
     {
         /// <summary>
         /// Constructor</summary>

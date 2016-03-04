@@ -206,12 +206,22 @@ namespace LevelEditorCore
             get { return m_listContext.GetLastSelected<Uri>(); }
         }
 
+        public Uri ContextMenuTarget { get; private set; }
+
         /// <summary>
         /// Gets selected items</summary>
         public IEnumerable<Uri> Selection
         {
             get { return m_listContext.GetSelection<Uri>(); }
         }
+
+        public interface ISubCommandClient : ICommandClient 
+        {
+            IEnumerable<object> GetCommands(Uri focusUri);
+        }
+
+        [ImportMany(typeof(ISubCommandClient))]
+        private IEnumerable<ISubCommandClient> m_subCommands;
 
         protected virtual void OnSelectionChanged()
         {
@@ -315,7 +325,7 @@ namespace LevelEditorCore
         /// <returns>True if client can do the command</returns>
         public bool CanDoCommand(object commandTag)
         {
-            if (m_treeContext == null || m_treeContext.Root == null)// in case there is no currently opened document
+            if (m_treeContext == null || m_treeContext.Root == null) // in case there is no currently opened document
                 return false;
 
             if (commandTag is Command)
@@ -330,6 +340,10 @@ namespace LevelEditorCore
                         return false;
                 }
             }
+
+            foreach (var cc in m_subCommands)
+                if (cc.CanDoCommand(commandTag))
+                    return true;
 
             return false;
         }
@@ -360,6 +374,9 @@ namespace LevelEditorCore
                         break;
                 }
             }
+
+            foreach (var cc in m_subCommands)
+                cc.DoCommand(commandTag);
         }
 
         /// <summary>
@@ -368,6 +385,8 @@ namespace LevelEditorCore
         /// <param name="state">Command state to update</param>
         public void UpdateCommand(object commandTag, CommandState state)
         {
+            foreach (var cc in m_subCommands)
+                cc.UpdateCommand(commandTag, state);
         }
 
         #endregion
@@ -499,16 +518,18 @@ namespace LevelEditorCore
             if (e.Button == MouseButtons.Right)
             {
                 Point clientPoint = new Point(e.X, e.Y);
-                Uri resourceUri = GetClickedItemUri(clientPoint);
+                ContextMenuTarget = GetClickedItemUri(clientPoint);
+
                 List<object> commands = new List<object>(/*GetPopupCommandTags(target)*/);
+                foreach (var cc in m_subCommands)
+                    commands.AddRange(cc.GetCommands(ContextMenuTarget));
                 commands.Add(Command.DetailsView);
                 commands.Add(Command.ThumbnailView);
+
                 Control ctrl = (Control)sender;
                 Point screenPoint = ctrl.PointToScreen(clientPoint);
                 m_commandService.RunContextMenu(commands, screenPoint);
             }
-
-
         }
 
         // Gets an enumeration of all Uri tags of items selected in the specified control

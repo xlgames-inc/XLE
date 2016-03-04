@@ -7,8 +7,12 @@
 using System.ComponentModel.Composition;
 using System.ComponentModel;
 using System.Xml.Serialization;
+using System.Collections.Generic;
+using System.Linq;
+using System;
 using Sce.Atf;
 using Sce.Atf.Adaptation;
+using Sce.Atf.Applications;
 
 using LevelEditorCore;
 
@@ -19,65 +23,149 @@ namespace LevelEditorXLE.Placements
     public class ResourceConverter : IResourceConverter
     {
         #region IResourceConverter Members
-
-        public class Bookmark   // must be public to be serialized...?
-        {
-            public string Model;
-            public string Material;
-            public string Supplements;
-        }
-
         IAdaptable IResourceConverter.Convert(IResource resource)
         {
             if (resource == null) return null;
+            return XLEPlacementObject.Create(resource);
+        }
+        #endregion
+    }
 
-            if (resource.Type == "ModelBookmark")
+    [Export(typeof(LevelEditorCore.ResourceLister.ISubCommandClient))]
+    [Export(typeof(IInitializable))]
+    [PartCreationPolicy(CreationPolicy.Shared)]
+    public class ResourceListerCommandClient : LevelEditorCore.ResourceLister.ISubCommandClient, IInitializable
+    {
+        public bool CanDoCommand(object commandTag)
+        {
+            if (!(commandTag is Command)) return false;
+
+            switch ((Command)commandTag)
             {
-                // {
-                //     var stream2 = new System.IO.FileStream(
-                //         "E:\\XLE\\temp.xml",
-                //         System.IO.FileMode.CreateNew, System.IO.FileAccess.Write);
-                //     var serializer2 = new XmlSerializer(typeof(Bookmark));
-                //     Bookmark b = new Bookmark();
-                //     b.Model = "ModelName"; b.Material = "MaterialName"; b.Supplements = "Supp";
-                //     serializer2.Serialize(stream2, b);
-                // }
+                case Command.SearchForPlacements:
+                    {
+                        var target = _resLister.ContextMenuTarget;
+                        if (target == null) return false;
+                        var ext = System.IO.Path.GetExtension(target.LocalPath);
 
-                // If this is a bookmark, we need to load the xml and 
-                // extract the key properties from there.
-                var stream = new System.IO.FileStream(
-                    resource.Uri.LocalPath, 
-                    System.IO.FileMode.Open, System.IO.FileAccess.Read);
-                var serializer = new XmlSerializer(typeof(Bookmark));
-                var obj = serializer.Deserialize(stream) as Bookmark;
-                var newPlacement = XLEPlacementObject.Create();
-
-                    // we need to convert the strings into uris relative to the
-                    // original filename.
-                var resService = Globals.MEFContainer.GetExportedValue<IXLEAssetService>();
-                var basePath = resource.Uri.LocalPath;
-                    //  all this path processing is a little non-ideal. It would be better
-                    //  to drag these strings into C++ so we can use the reliable path
-                    //  manipulation routines there.
-                var lastSep = System.Math.Max(basePath.LastIndexOf('/'), basePath.LastIndexOf('\\'));
-                if (lastSep != -1) basePath = basePath.Substring(0, lastSep+1);
-                newPlacement.Model = resService.StripExtension(resService.AsAssetName(new System.Uri(basePath + obj.Model)));
-                newPlacement.Material = resService.StripExtension(resService.AsAssetName(new System.Uri(basePath + obj.Material)));
-                newPlacement.Supplements = obj.Supplements ?? "";
-
-                return newPlacement;
-            }
-            else 
-            if (XLEPlacementObject.CanReferenceStatic(resource))
-            {
-                var newPlacement = XLEPlacementObject.Create();
-                newPlacement.Target = resource;
-                return newPlacement;
+                        // we can only do this for model files, or model bookmarks
+                        return IsModelExtension(ext) || IsModelBookmarkExtension(ext);
+                    }
             }
 
-            return null;
+            return false;
         }
 
-        #endregion
+        public void DoCommand(object commandTag)
+        {
+            if (!(commandTag is Command)) return;
+
+            switch ((Command)commandTag)
+            {
+                case Command.SearchForPlacements:
+                    {
+                        var target = _resLister.ContextMenuTarget;
+                        if (target == null) break;
+
+                        IQueryPredicate predicate = null;
+
+                        // note --  we could use the IResourceService to do the type resolution here by
+                        //          calling IResourceService.Load... However, if the load operation is
+                        //          expensive, we might not always want to do it.
+                        var ext = System.IO.Path.GetExtension(target.LocalPath);
+                        if (IsModelExtension(ext))
+                        {
+                            predicate = XLEPlacementObject.CreateSearchPredicate(target);
+                        }
+                        else if (IsModelBookmarkExtension(ext))
+                        {
+                            // todo -- we could load the bookmark via the resource service, as so -- 
+                            // var res = IResourceService.Load(target);
+                            // if (res == null) break;
+                            var bookmark = XLEPlacementObject.LoadBookmark(target);
+                            if (bookmark == null) break;
+                            predicate = XLEPlacementObject.CreateSearchPredicate(bookmark, target);
+                        }
+
+                        if (predicate != null)
+                        {
+                            var queryContext = _contextRegistry.GetActiveContext<IQueryableContext>();
+                            if (queryContext != null)
+                            {
+                                // note -- in our query context, the results will be displaced to the user automatically
+                                // we could "show" the search results ui here, however.
+                                queryContext.Query(predicate);
+
+                                if (_searchService != null)
+                                    _searchService.Show();
+                            }
+                        }
+                    }
+                    break;
+            }
+        }
+
+        public void UpdateCommand(object commandTag, CommandState state) {}
+
+        public System.Collections.Generic.IEnumerable<object> GetCommands(System.Uri focusUri)
+        {
+            return new System.Collections.Generic.List<object>{ Command.SearchForPlacements };
+        }
+
+        public void Initialize()
+        {
+            _commandService.RegisterCommand(
+                Command.SearchForPlacements,
+                null,
+                "SearchCommands",
+                "Search for placements".Localize(),
+                "Find all objects that use this model".Localize(),
+                this);
+        }
+
+        [ImportingConstructor]
+        public ResourceListerCommandClient(IGameEngineProxy engineInfo)
+        {
+            if (engineInfo != null)
+            {
+                var modelType = engineInfo.Info.ResourceInfos.GetByType("Model");
+                _modelFileExtensions = (modelType != null) ? modelType.FileExts : null;
+
+                var bookmarkType = engineInfo.Info.ResourceInfos.GetByType("ModelBookmark");
+                _modelBookmarkExtensions = (bookmarkType != null) ? bookmarkType.FileExts : null;
+            }
+            _modelFileExtensions = _modelFileExtensions ?? System.Linq.Enumerable.Empty<string>();
+            _modelBookmarkExtensions = _modelBookmarkExtensions ?? System.Linq.Enumerable.Empty<string>();
+        }
+
+        private enum Command { SearchForPlacements }
+
+        private bool IsModelExtension(string ext)
+        {
+            return _modelFileExtensions.Where(x => string.Equals(x, ext, StringComparison.OrdinalIgnoreCase)).FirstOrDefault() != null;
+        }
+
+        private bool IsModelBookmarkExtension(string ext)
+        {
+            return _modelBookmarkExtensions.Where(x => string.Equals(x, ext, StringComparison.OrdinalIgnoreCase)).FirstOrDefault() != null;
+        }
+
+        [Import(AllowDefault = false)]
+        private ICommandService _commandService;
+
+        [Import(AllowDefault = false)]
+        private LevelEditorCore.ResourceLister _resLister;
+
+        [Import(AllowDefault = false)]
+        private IXLEAssetService _assetService;
+
+        [Import(AllowDefault = false)]
+        private IContextRegistry _contextRegistry;
+
+        [Import(AllowDefault = true)]
+        private ISearchService _searchService;
+
+        private IEnumerable<string> _modelFileExtensions;
+        private IEnumerable<string> _modelBookmarkExtensions;
     }
 }
