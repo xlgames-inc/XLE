@@ -152,6 +152,7 @@ namespace SceneEngine
                 // height map
             const void* _heightMapStreamingFilePtr;
             std::vector<NodeCoverageInfo> _heightTiles;
+            uint64 _heightMapFilenameHash;
 
 			#if defined(TERRAIN_ENABLE_EDITING)
 				Float4x4 NodeToCell(unsigned nodeId) const;
@@ -166,6 +167,7 @@ namespace SceneEngine
                 const TerrainCellTexture*       _source;
                 const void*                     _streamingFilePtr;
                 std::vector<NodeCoverageInfo>   _tiles;
+                uint64                          _filenameHash;
 
 				CoverageLayer();
 				~CoverageLayer();

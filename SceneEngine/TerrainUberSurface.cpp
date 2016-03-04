@@ -539,7 +539,11 @@ namespace SceneEngine
 
     ShortCircuitUpdate GenericUberSurfaceInterface::GetShortCircuit(UInt2 uberMins, UInt2 uberMaxs)
     {
-        return ShortCircuitUpdate {};
+        ShortCircuitUpdate result;
+        result._srv = std::make_unique<Metal::ShaderResourceView>(_pimpl->_gpucache[0]->GetUnderlying());
+        result._cellMinsInResource = Int2(uberMins) - Int2(_pimpl->_gpuCacheMins);
+        result._cellMaxsInResource = Int2(uberMaxs) - Int2(_pimpl->_gpuCacheMins);
+        return std::move(result);
     }
 
     TerrainUberSurfaceGeneric& GenericUberSurfaceInterface::GetSurface()

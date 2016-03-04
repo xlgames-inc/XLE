@@ -9,10 +9,12 @@
 #include "TextureTileSet.h"
 #include "TerrainUberSurface.h"
 #include "TerrainScaffold.h"
+#include "GestaltResource.h"
 
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
@@ -22,36 +24,97 @@
 #include "../Assets/Assets.h"
 #include "../Utility/StringFormat.h"
 
+#include "../RenderCore/DX11/Metal/IncludeDX11.h"       // for UpdateSubResource below
+
 namespace SceneEngine
 {
     using namespace RenderCore;
 
-    static BufferUploads::BufferDesc RWBufferDesc(unsigned size, unsigned structureSize)
+    class ShortCircuitResources
     {
-        using namespace BufferUploads;
-        BufferDesc result;
-        result._type = BufferDesc::Type::LinearBuffer;
-        result._bindFlags = BindFlag::UnorderedAccess|BindFlag::StructuredBuffer;
-        result._cpuAccess = 0;
-        result._gpuAccess = GPUAccess::Read|GPUAccess::Write;
-        result._linearBufferDesc._sizeInBytes = size;
-        result._linearBufferDesc._structureByteSize = structureSize;
-        result._name[0] = '\0';
-        return result;
+    public:
+        class Desc
+        {
+        public:
+            unsigned    _valueFormat;
+            unsigned    _filterType;
+            unsigned    _gradientFlagsEnable;
+
+            Desc(unsigned valueFormat, unsigned filterType, bool gradientFlagsEnable)
+            : _valueFormat(valueFormat), _filterType(filterType), _gradientFlagsEnable(gradientFlagsEnable)
+            {}
+        };
+
+        GestaltTypes::UAV _tileCoordsBuffer;
+
+        const Metal::ComputeShader* _cs0;
+        const Metal::ComputeShader* _cs1;
+        const Metal::ComputeShader* _cs2;
+        Metal::BoundUniforms _boundLayout;
+
+        const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
+
+        ShortCircuitResources(const Desc& desc);
+    private:
+        ::Assets::DepValPtr _depVal;
+    };
+
+    ShortCircuitResources::ShortCircuitResources(const Desc& desc)
+    {
+        const ::Assets::ResChar firstPassShader[] = "game/xleres/ui/copyterraintile.sh:WriteToMidway:cs_*";
+        const ::Assets::ResChar secondPassShader[] = "game/xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
+        StringMeld<64, char> defines; 
+        defines << "VALUE_FORMAT=" << desc._valueFormat << ";FILTER_TYPE=" << desc._filterType;
+        auto encodedGradientFlags = desc._gradientFlagsEnable;
+        if (encodedGradientFlags) defines << ";ENCODED_GRADIENT_FLAGS=1";
+
+        auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(firstPassShader, defines.get());
+        _cs0 = &::Assets::GetAssetDep<Metal::ComputeShader>(firstPassShader, defines.get());
+        _cs1 = &::Assets::GetAssetDep<Metal::ComputeShader>(secondPassShader, defines.get());
+        _cs2 = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/ui/copyterraintile.sh:DirectToFinal:cs_*", defines.get());
+
+        _boundLayout = Metal::BoundUniforms(byteCode);
+        _boundLayout.BindConstantBuffers(1, {"Parameters"});
+        _boundLayout.BindShaderResources(1, {"Input", "OldHeights"});
+
+        _tileCoordsBuffer = GestaltTypes::UAV(
+            BufferUploads::LinearBufferDesc::Create(8*4, 8*4),
+            "TileCoordsBuffer", nullptr, BufferUploads::BindFlag::StructuredBuffer);
+
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(_depVal, _cs0->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_depVal, _cs1->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_depVal, _cs2->GetDependencyValidation());
     }
 
-    static BufferUploads::BufferDesc RWTexture2DDesc(unsigned width, unsigned height, Metal::NativeFormat::Enum format)
+    class ShortCircuitMidwayBox
     {
-        using namespace BufferUploads;
-        BufferDesc result;
-        result._type = BufferDesc::Type::Texture;
-        result._bindFlags = BindFlag::UnorderedAccess;
-        result._cpuAccess = 0;
-        result._gpuAccess = GPUAccess::Read|GPUAccess::Write;
-        result._textureDesc = BufferUploads::TextureDesc::Plain2D(width, height, format);
-        result._name[0] = '\0';
-        return result;
+    public:
+        class Desc
+        {
+        public:
+            UInt2 _dims;
+            Desc(UInt2 dims) : _dims(dims) {}
+        };
+
+        GestaltTypes::UAV _midwayBuffer;
+        GestaltTypes::UAV _midwayGradFlags;
+
+        ShortCircuitMidwayBox(const Desc& desc);
+        ~ShortCircuitMidwayBox();
+    };
+
+    ShortCircuitMidwayBox::ShortCircuitMidwayBox(const Desc& desc)
+    {
+        _midwayBuffer = GestaltTypes::UAV(
+            BufferUploads::TextureDesc::Plain2D(desc._dims[0], desc._dims[1], Metal::NativeFormat::R32_FLOAT),
+            "TerrainMidway");
+        _midwayGradFlags = GestaltTypes::UAV(
+            BufferUploads::TextureDesc::Plain2D(desc._dims[0], desc._dims[1], Metal::NativeFormat::R32_UINT),
+            "TerrainMidway");
     }
+
+    ShortCircuitMidwayBox::~ShortCircuitMidwayBox() {}
 
     void TerrainCellRenderer::ShortCircuitTileUpdate(
         RenderCore::Metal::DeviceContext& metalContext, const TextureTile& tile, 
@@ -84,18 +147,7 @@ namespace SceneEngine
             unsigned filterType = Filter_Bilinear;
             if (format == 62) filterType = Filter_Max;      // (use "max" filter for integer types)
 
-            const ::Assets::ResChar firstPassShader[] = "game/xleres/ui/copyterraintile.sh:WriteToMidway:cs_*";
-            const ::Assets::ResChar secondPassShader[] = "game/xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
-            StringMeld<64, char> defines; 
-            defines << "VALUE_FORMAT=" << format << ";FILTER_TYPE=" << filterType;
-            auto encodedGradientFlags = _gradientFlagsSettings._enable;
-            if (encodedGradientFlags) defines << ";ENCODED_GRADIENT_FLAGS=1";
-            const auto compressedHeightMask = CompressedHeightMask(encodedGradientFlags);
-
-            auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(firstPassShader, defines.get());
-            auto& cs0 = ::Assets::GetAssetDep<Metal::ComputeShader>(firstPassShader, defines.get());
-            auto& cs1 = ::Assets::GetAssetDep<Metal::ComputeShader>(secondPassShader, defines.get());
-            auto& cs2 = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/ui/copyterraintile.sh:DirectToFinal:cs_*", defines.get());
+            auto& box = Techniques::FindCachedBoxDep2<ShortCircuitResources>(format, filterType, _gradientFlagsSettings._enable);
 
             float temp = FLT_MAX;
             const float heightOffsetValue = 5000.f; // (height values are shifted by this constant in the shader to get around issues with negative heights
@@ -111,11 +163,9 @@ namespace SceneEngine
                 heightOffsetValue, 0, 0, 0
             };
 
-            auto& uploads = tileSet->GetBufferUploads();
-            auto tileCoordsBuffer = uploads.Transaction_Immediate(
-                RWBufferDesc(sizeof(TileCoords), sizeof(TileCoords)), 
-                BufferUploads::CreateBasicPacket(sizeof(tileCoords), &tileCoords).get())->AdoptUnderlying();
-            Metal::UnorderedAccessView tileCoordsUAV(tileCoordsBuffer.get());
+            metalContext.GetUnderlying()->UpdateSubresource(
+                box._tileCoordsBuffer.Locator().GetUnderlying(),
+                0, nullptr, &tileCoords, sizeof(TileCoords), sizeof(TileCoords));
 
             const auto resSrc = BufferUploads::ExtractDesc(*upd._srv->GetResource());
             assert(resSrc._type == BufferUploads::BufferDesc::Type::Texture);
@@ -130,39 +180,29 @@ namespace SceneEngine
                 float _gradFlagThresholds[3];
             } parameters = {
                 upd._cellMinsInResource + 
-                    Int2(   int((upd._cellMaxsInResource[0] - upd._cellMaxsInResource[0]) * cellCoordMins[0]),
-                            int((upd._cellMaxsInResource[1] - upd._cellMaxsInResource[1]) * cellCoordMins[1])),
+                    Int2(   int((upd._cellMaxsInResource[0] - upd._cellMinsInResource[0]) * cellCoordMins[0]),
+                            int((upd._cellMaxsInResource[1] - upd._cellMinsInResource[1]) * cellCoordMins[1])),
                 {0,0},
                 UInt2(0, 0), UInt2(resSrc._textureDesc._width, resSrc._textureDesc._height),
 
-                Int3(tile._x, tile._y, tile._arrayIndex),
-                1<<downsample, Int2(tile._width, tile._height),
-                {0,0},
+                Int3(tile._x, tile._y, tile._arrayIndex), 1<<downsample, 
+                Int2(tile._width, tile._height), {0,0},
                 _gradientFlagsSettings._elementSpacing,
                 { _gradientFlagsSettings._slopeThresholds[0], _gradientFlagsSettings._slopeThresholds[1], _gradientFlagsSettings._slopeThresholds[2] }
             };
             Metal::ConstantBufferPacket pkts[] = { RenderCore::MakeSharedPkt(parameters) };
             const Metal::ShaderResourceView* srv[] = { upd._srv.get(), &tileSet->GetShaderResource() };
 
-            Metal::BoundUniforms boundLayout(byteCode);
-            boundLayout.BindConstantBuffers(1, {"Parameters"});
-            boundLayout.BindShaderResources(1, {"Input", "OldHeights"});
-            boundLayout.Apply(metalContext, Metal::UniformsStream(), Metal::UniformsStream(pkts, srv));
+            box._boundLayout.Apply(metalContext, Metal::UniformsStream(), Metal::UniformsStream(pkts, srv));
 
             const unsigned threadGroupWidth = 6;
             if (format == 0) {
                     // go via a midway buffer and handle the min/max quantization
-                auto midwayBuffer = uploads.Transaction_Immediate(
-                    RWTexture2DDesc(tile._width, tile._height, Metal::NativeFormat::R32_FLOAT))->AdoptUnderlying();
-                Metal::UnorderedAccessView midwayBufferUAV(midwayBuffer.get());
+                auto& midwayBox = Techniques::FindCachedBox2<ShortCircuitMidwayBox>(UInt2(tile._width, tile._height));
+                metalContext.BindCS(
+                    MakeResourceList(1, midwayBox._midwayBuffer.UAV(), midwayBox._midwayGradFlags.UAV(), box._tileCoordsBuffer.UAV()));
 
-                auto midwayGradFlagsBuffer = uploads.Transaction_Immediate(
-                    RWTexture2DDesc(tile._width, tile._height, Metal::NativeFormat::R32_UINT))->AdoptUnderlying();
-                Metal::UnorderedAccessView midwayGradFlagsBufferUAV(midwayGradFlagsBuffer.get());
-
-                metalContext.BindCS(MakeResourceList(1, midwayBufferUAV, midwayGradFlagsBufferUAV, tileCoordsUAV));
-
-                metalContext.Bind(cs0);
+                metalContext.Bind(*box._cs0);
                 metalContext.Dispatch( 
                     unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
                     unsigned(XlCeil(tile._height/float(threadGroupWidth))));
@@ -170,7 +210,7 @@ namespace SceneEngine
                     //  if everything is ok up to this point, we can commit to the final
                     //  output --
                 metalContext.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
-                metalContext.Bind(cs1);
+                metalContext.Bind(*box._cs1);
                 metalContext.Dispatch( 
                     unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
                     unsigned(XlCeil(tile._height/float(threadGroupWidth))));
@@ -178,9 +218,11 @@ namespace SceneEngine
                     //  We need to read back the new min/max heights
                     //  we could write these back to the original terrain cell -- but it
                     //  would be better to keep them cached only in the NodeRenderInfo
-                auto readback = uploads.Resource_ReadBack(BufferUploads::ResourceLocator(tileCoordsBuffer.get()));
+                auto& uploads = tileSet->GetBufferUploads();
+                auto readback = uploads.Resource_ReadBack(box._tileCoordsBuffer.Locator());
                 float* readbackData = (float*)readback->GetData();
                 if (readbackData) {
+                    const auto compressedHeightMask = CompressedHeightMask(_gradientFlagsSettings._enable);
                     float newHeightOffset = readbackData[2] - heightOffsetValue;
                     float newHeightScale = (readbackData[3] - readbackData[2]) / float(compressedHeightMask);
                     coverageInfo._heightOffset = newHeightOffset;
@@ -189,7 +231,7 @@ namespace SceneEngine
             } else {
                     // just write directly
                 metalContext.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
-                metalContext.Bind(cs2);
+                metalContext.Bind(*box._cs2);
                 metalContext.Dispatch( 
                     unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
                     unsigned(XlCeil(tile._height/float(threadGroupWidth))));
@@ -203,13 +245,30 @@ namespace SceneEngine
     }
 
     auto TerrainCellRenderer::FindIntersectingNodes(
-		uint64 cellHash, TerrainCoverageId layerId,
+		uint64 filenameHash, TerrainCoverageId layerId,
 		Float2 cellCoordMin, Float2 cellCoordMax) -> std::vector<FoundNode>
 	{
 		std::vector<FoundNode> result;
 
-        auto i = LowerBound(_renderInfos, cellHash);
-        if (i == _renderInfos.end() || i->first != cellHash) return result;
+        // auto i = LowerBound(_renderInfos, cellHash);
+        // if (i == _renderInfos.end() || i->first != cellHash) return result;
+        auto i = _renderInfos.begin();
+        for (;i!=_renderInfos.end(); ++i) {
+            if (layerId == CoverageId_Heights) {
+                if (i->second->_heightMapFilenameHash == filenameHash)
+                    break;
+            } else {
+                bool doubleBreak = false;
+                for (auto i2=i->second->_coverage.cbegin(); i2!=i->second->_coverage.cend(); ++i2) {
+                    if (i2->_filenameHash == filenameHash) {
+                        doubleBreak = true;
+                        break;
+                    }
+                }
+                if (doubleBreak) break;
+            }
+        }
+        if (i == _renderInfos.end()) return result;
 
         auto& cri = *i->second;
         auto& sourceCell = *i->second->_sourceCell;
@@ -251,8 +310,10 @@ namespace SceneEngine
             if (    nodeMinInCell[0] <= int(cellCoordMax[0]) && (nodeMinInCell[0]+overlap) >= int(cellCoordMin[0])
                 &&  nodeMinInCell[1] <= int(cellCoordMax[1]) && (nodeMinInCell[1]+overlap) >= int(cellCoordMin[1])) {
 
-				auto fi = std::find_if(sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
-					[=](const TerrainCell::NodeField& field) { return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
+				auto fi = std::find_if(
+                    sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
+					[=](const TerrainCell::NodeField& field) 
+                        { return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
 				size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
 
 				result.push_back(FoundNode { AsPointer(ni), unsigned(fieldIndex), Truncate(nodeMinInCell), Truncate(nodeMaxInCell) });
@@ -368,9 +429,10 @@ namespace SceneEngine
             cellMaxs[0] = std::min(cellMaxs[0], 1.f);
             cellMaxs[1] = std::min(cellMaxs[1], 1.f);
 
+            auto compare = CellRegion { i.first, Float2(0.f, 0.f), Float2(0.f, 0.f) };
             auto q = std::lower_bound(
                 _pendingUpdates.begin(), _pendingUpdates.end(), 
-                CellRegion { i.first }, CompareCellHash);
+                compare, CompareCellHash);
 
             // we can choose to insert this as a separate event, or just combine it with
             // what is already there.
@@ -396,9 +458,10 @@ namespace SceneEngine
                 continue;
 
             // remove any pending updates -- because they've all be abandoned now.
+            auto compare = CellRegion { i.first, Float2(0.f, 0.f), Float2(0.f, 0.f) };
             auto range = std::equal_range(
                 _pendingUpdates.begin(), _pendingUpdates.end(), 
-                CellRegion { i.first }, CompareCellHash);
+                compare, CompareCellHash);
             _pendingUpdates.erase(range.first, range.second);
 
             // queue a new abandon event
@@ -415,7 +478,7 @@ namespace SceneEngine
 
             auto q = std::lower_bound(
                 _pendingAbandons.begin(), _pendingAbandons.end(), 
-                CellRegion { i.first }, CompareCellHash);
+                compare, CompareCellHash);
 
             // we can choose to insert this as a separate event, or just combine it with
             // what is already there.
@@ -457,6 +520,34 @@ namespace SceneEngine
             Throw(std::logic_error("Duplicate cell registered to ShortCircuitBridge. Check for hash conflicts or overlapping cells."));
 
         _cells.insert(i, std::make_pair(cellHash, RegisteredCell { uberMins, uberMaxs, std::move(writeCells) }));
+    }
+
+    auto ShortCircuitBridge::GetPendingUpdates() -> std::vector<std::pair<CellRegion, ShortCircuitUpdate>>
+    {
+        std::vector<std::pair<CellRegion, ShortCircuitUpdate>> result;
+        auto l = _source.lock();
+        if (!l) return result;
+        
+        result.reserve(_pendingUpdates.size());
+        for (const auto& u:_pendingUpdates) {
+            auto c = LowerBound(_cells, u._cellHash);
+            // auto mins = UInt2(
+            //     (unsigned)XlFloor(LinearInterpolate(float(c->second._uberMins[0]), float(c->second._uberMaxs[0]), u._cellMins[0])),
+            //     (unsigned)XlFloor(LinearInterpolate(float(c->second._uberMins[1]), float(c->second._uberMaxs[1]), u._cellMins[1])));
+            // auto maxs = UInt2(
+            //     (unsigned)XlCeil(LinearInterpolate(float(c->second._uberMins[0]), float(c->second._uberMaxs[0]), u._cellMaxs[0])),
+            //     (unsigned)XlCeil(LinearInterpolate(float(c->second._uberMins[1]), float(c->second._uberMaxs[1]), u._cellMaxs[1])));
+            // result.push_back(std::make_pair(u, l->GetShortCircuit(mins, maxs)));
+            result.push_back(std::make_pair(u, l->GetShortCircuit(c->second._uberMins, c->second._uberMaxs)));
+        }
+        _pendingUpdates.clear();
+        return std::move(result);
+    }
+
+    auto ShortCircuitBridge::GetPendingAbandons() -> std::vector<CellRegion>
+    {
+        // This will clear "_pendingAbandons" as a side effect.
+        return std::move(_pendingAbandons);
     }
 
     ShortCircuitBridge::ShortCircuitBridge(const std::shared_ptr<IShortCircuitSource>& source)

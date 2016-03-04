@@ -21,8 +21,8 @@ namespace SceneEngine
     {
     public:
         std::unique_ptr<RenderCore::Metal::ShaderResourceView> _srv;
-        UInt2 _cellMinsInResource;      // the minimum corner of the cell in resource coordinates
-        UInt2 _cellMaxsInResource;      // the maximum corner of the cell in resource coordinates
+        Int2 _cellMinsInResource;      // the minimum corner of the cell in resource coordinates
+        Int2 _cellMaxsInResource;      // the maximum corner of the cell in resource coordinates
 
         ShortCircuitUpdate();
         ~ShortCircuitUpdate();

@@ -1207,9 +1207,8 @@ namespace SceneEngine
                 cell.SourceFile().c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE,
                 nullptr, OPEN_EXISTING,
                 FILE_FLAG_OVERLAPPED|FILE_FLAG_RANDOM_ACCESS, nullptr);
-            if (heightMapFileHandle == INVALID_HANDLE_VALUE) {
+            if (heightMapFileHandle == INVALID_HANDLE_VALUE)
                 Throw(::Exceptions::BasicLabel("Failed opening terrain height-map file for streaming"));
-            }
 
             std::vector<CoverageLayer> coverage;
             for (auto q=cellCoverageBegin; q<cellCoverageEnd; ++q) {
@@ -1219,6 +1218,7 @@ namespace SceneEngine
                 layer._source = *q;
                 layer._streamingFilePtr = INVALID_HANDLE_VALUE;
                 layer._tiles.resize(layer._source->_nodeFileOffsets.size());
+                layer._filenameHash = Hash64(layer._source->SourceFile());
 
                 layer._streamingFilePtr = ::CreateFile(
                     (*q)->SourceFile().c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE,
@@ -1232,6 +1232,7 @@ namespace SceneEngine
             _heightTiles = std::move(heightTiles);
             _sourceCell = &cell;
             _heightMapStreamingFilePtr = heightMapFileHandle;
+            _heightMapFilenameHash = Hash64(cell.SourceFile());
             _coverage = std::move(coverage);
         }
     }

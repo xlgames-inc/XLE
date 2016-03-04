@@ -13,7 +13,7 @@ cbuffer Parameters : register(b0)
 	int3 DstTileAddress;
 	int SampleArea;
 	uint2 TileSize;
-	uint2 Dummy;
+	uint2 Dummy2;
 	float GradFlagSpacing;
 	float GradFlagThresholds0, GradFlagThresholds1, GradFlagThresholds2;
 }
@@ -24,7 +24,6 @@ struct TileCoords
 	float HeightScale;
 	uint WorkingMinHeight;
 	uint WorkingMaxHeight;
-	float ElementSpacing;
 	float HeightOffsetValue;
 };
 
@@ -83,14 +82,14 @@ ValueType CalculateNewValue(uint3 dispatchThreadId)
 			ValueType sampleTotal = 0;
 			for (int y=0; y<SampleArea; ++y)
 				for (int x=0; x<SampleArea; ++x)
-					sampleTotal += Input[origin + int2(x,y) - SourceMin];
+					sampleTotal += Input[origin + int2(x,y)];
 			sampleTotal /= SampleArea * SampleArea;
 		#elif FILTER_TYPE == 2
 				//	max filter (good for samples that we can't interpolate between)
 			ValueType sampleTotal = 0;
 			for (int y=0; y<SampleArea; ++y)
 				for (int x=0; x<SampleArea; ++x)
-					sampleTotal = max(sampleTotal, Input[origin + int2(x,y) - SourceMin]);
+					sampleTotal = max(sampleTotal, Input[origin + int2(x,y)]);
 		#endif
 
 		return sampleTotal;
@@ -110,7 +109,7 @@ ValueType CalculateNewValue(uint3 dispatchThreadId)
 
 uint CalculateGradientFlags_TopLOD(int2 baseCoord, float spacing, float threshold0, float threshold1, float threshold2);
 
-uint CalculateGradientFlags(uint2 dispatchThreadId)
+uint CalculateGradientFlags(uint3 dispatchThreadId)
 {
 	int2 origin = GetSrcCoord(dispatchThreadId);
 
@@ -120,8 +119,8 @@ uint CalculateGradientFlags(uint2 dispatchThreadId)
 		// the update area to do downsampling and filtering
 		// We need to make sure we don't attempt to read outside of this region.
 
-	if (	origin.x >= SourceMin.x && (origin.x + SampleArea - 1) <= SourceMax.x
-		&&	origin.y >= SourceMin.y && (origin.y + SampleArea - 1) <= SourceMax.y) {
+	if (	origin.x >= UpdateMinInResource.x && (origin.x + SampleArea - 1) <= UpdateMaxInResource.x
+		&&	origin.y >= UpdateMinInResource.y && (origin.y + SampleArea - 1) <= UpdateMaxInResource.y) {
 
 			//	simple box filter for downsampling to the correct LOD
 			//	we could also try min or max filter for these!
@@ -181,7 +180,7 @@ float UIntToHeightValue(uint input)
 		MidwayOutput[dispatchThreadId.xy] = newHeight;
 
 		#if defined(QUANTIZE_HEIGHTS)
-			MidwayMaterialFlags[dispatchThreadId.xy] = CalculateGradientFlags(dispatchThreadId.xy);
+			MidwayMaterialFlags[dispatchThreadId.xy] = CalculateGradientFlags(dispatchThreadId);
 		#endif
 	}
 }
@@ -219,9 +218,9 @@ RWTexture2DArray<uint> Destination : register(u0);
 
 	#else
 
-		int2 srcAddress = GetSrcCoord(dispatchThreadId.xy);
-		if (	srcAddress.x >= UpdateMin.x && srcAddress.x <= UpdateMax.x
-			&&	srcAddress.y >= UpdateMin.y && scrAddress.y <= UpdateMax.y) {
+		int2 srcAddress = GetSrcCoord(dispatchThreadId);
+		if (	srcAddress.x >= UpdateMinInResource.x && srcAddress.x <= UpdateMaxInResource.x
+			&&	srcAddress.y >= UpdateMinInResource.y && scrAddress.y <= UpdateMaxInResource.y) {
 
 			Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = newHeight;
 		}
@@ -235,9 +234,9 @@ RWTexture2DArray<uint> Destination : register(u0);
 	if (dispatchThreadId.x >= TileSize.x || dispatchThreadId.y >= TileSize.y)
 		return;
 
-	int2 srcAddress = GetSrcCoord(dispatchThreadId.xy);
-	if (	srcAddress.x >= UpdateMin.x && srcAddress.x <= UpdateMax.x
-		&&	srcAddress.y >= UpdateMin.y && scrAddress.y <= UpdateMax.y) {
+	int2 srcAddress = GetSrcCoord(dispatchThreadId);
+	if (	srcAddress.x >= UpdateMinInResource.x && srcAddress.x <= UpdateMaxInResource.x
+		&&	srcAddress.y >= UpdateMinInResource.y && srcAddress.y <= UpdateMaxInResource.y) {
 
 		ValueType newValue = CalculateNewValue(dispatchThreadId);
 		Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = newValue;
@@ -248,13 +247,15 @@ RWTexture2DArray<uint> Destination : register(u0);
 
 bool CoordIsValid(int2 coord)
 {
-	return coord.x >= SourceMin.x && coord.x <= SourceMax.x && coord.y >= SourceMin.y && coord.y <= SourceMax.y;
+	return
+		coord.x >= UpdateMinInResource.x && coord.x <= UpdateMaxInResource.x &&
+		coord.y >= UpdateMinInResource.y && coord.y <= UpdateMaxInResource.y;
 }
 
 float GetHeight(int2 coord)
 {
 	if (CoordIsValid(coord)) {
-		return Input[coord - SourceMin];
+		return Input[coord];
 	}
 	return 0.f;
 }

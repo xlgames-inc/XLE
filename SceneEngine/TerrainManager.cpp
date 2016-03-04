@@ -387,8 +387,8 @@ namespace SceneEngine
             _uberSurfaceInterface = std::make_shared<HeightsUberSurfaceInterface>(std::ref(*_uberSurface));
 
             if (constant_expression<registerShortCircuit>::result()) {
-                auto bridge = std::make_shared<ShortCircuitBridge>(_uberSurfaceInterface);
-                _uberSurfaceInterface->SetShortCircuitBridge(bridge);
+                _uberSurfaceBridge = std::make_shared<ShortCircuitBridge>(_uberSurfaceInterface);
+                _uberSurfaceInterface->SetShortCircuitBridge(_uberSurfaceBridge);
 
                     //  Register cells for short-circuit update... Do we need to do this for every single cell
                     //  or just those that are within the limited area we're going to load?
@@ -400,7 +400,7 @@ namespace SceneEngine
                     //  std::bind(&DoAbandonShortCircuitData, c->BuildHash(), CoverageId_Heights, 
                     //     _renderer, c->_heightsToUber, std::placeholders::_1, std::placeholders::_2));
 
-                    bridge->RegisterCell(Hash64(c->_heightMapFilename), c->_heightsToUber._mins, c->_heightsToUber._maxs, nullptr);
+                    _uberSurfaceBridge->RegisterCell(Hash64(c->_heightMapFilename), c->_heightsToUber._mins, c->_heightsToUber._maxs, nullptr);
                 }
             }
         }
@@ -419,8 +419,8 @@ namespace SceneEngine
             ci._interface = std::make_shared<CoverageUberSurfaceInterface>(std::ref(*ci._uberSurface));
 
             if (constant_expression<registerShortCircuit>::result()) {
-                auto bridge = std::make_shared<ShortCircuitBridge>(ci._interface);
-                ci._interface->SetShortCircuitBridge(bridge);
+                ci._bridge = std::make_shared<ShortCircuitBridge>(ci._interface);
+                ci._interface->SetShortCircuitBridge(ci._bridge);
 
                     //  Register cells for short-circuit update... Do we need to do this for every single cell
                     //  or just those that are within the limited area we're going to load?
@@ -434,7 +434,7 @@ namespace SceneEngine
                     //         &DoAbandonShortCircuitData, cell->BuildHash(), l._id, _renderer, 
                     //         cell->_coverageToUber[c], std::placeholders::_1, std::placeholders::_2));
 
-                    bridge->RegisterCell(Hash64(cell->_coverageFilename[c]), cell->_heightsToUber._mins, cell->_heightsToUber._maxs, nullptr);
+                    ci._bridge->RegisterCell(Hash64(cell->_coverageFilename[c]), cell->_heightsToUber._mins, cell->_heightsToUber._maxs, nullptr);
                 }
             }
 
