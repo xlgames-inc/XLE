@@ -250,25 +250,28 @@ namespace SceneEngine
 	{
 		std::vector<FoundNode> result;
 
-        // auto i = LowerBound(_renderInfos, cellHash);
-        // if (i == _renderInfos.end() || i->first != cellHash) return result;
-        auto i = _renderInfos.begin();
-        for (;i!=_renderInfos.end(); ++i) {
-            if (layerId == CoverageId_Heights) {
-                if (i->second->_heightMapFilenameHash == filenameHash)
-                    break;
-            } else {
-                bool doubleBreak = false;
-                for (auto i2=i->second->_coverage.cbegin(); i2!=i->second->_coverage.cend(); ++i2) {
-                    if (i2->_filenameHash == filenameHash) {
-                        doubleBreak = true;
+        #if 1
+            auto i = LowerBound(_renderInfos, filenameHash);
+            if (i == _renderInfos.end() || i->first != filenameHash) return result;
+        #else
+            auto i = _renderInfos.begin();
+            for (;i!=_renderInfos.end(); ++i) {
+                if (layerId == CoverageId_Heights) {
+                    if (i->second->_heightMapFilenameHash == filenameHash)
                         break;
+                } else {
+                    bool doubleBreak = false;
+                    for (auto i2=i->second->_coverage.cbegin(); i2!=i->second->_coverage.cend(); ++i2) {
+                        if (i2->_filenameHash == filenameHash) {
+                            doubleBreak = true;
+                            break;
+                        }
                     }
+                    if (doubleBreak) break;
                 }
-                if (doubleBreak) break;
             }
-        }
-        if (i == _renderInfos.end()) return result;
+            if (i == _renderInfos.end()) return result;
+        #endif
 
         auto& cri = *i->second;
         auto& sourceCell = *i->second->_sourceCell;
@@ -362,26 +365,6 @@ namespace SceneEngine
     {
         _gradientFlagsSettings = gradientFlagsSettings;
     }
-
-#if 0
-    void DoShortCircuitUpdate(
-        uint64 cellHash, TerrainCoverageId layerId, std::weak_ptr<TerrainCellRenderer> renderer,
-        TerrainCellId::UberSurfaceAddress uberAddress, const ShortCircuitUpdate& upd)
-    {
-        auto r = renderer.lock();
-        if (r)
-            r->ShortCircuit(cellHash, layerId, uberAddress._mins, uberAddress._maxs, upd);
-    }
-
-	void DoAbandonShortCircuitData(
-		uint64 cellHash, TerrainCoverageId layerId, std::weak_ptr<TerrainCellRenderer> renderer,
-        TerrainCellId::UberSurfaceAddress uberAddress, UInt2 mins, UInt2 maxs)
-	{
-		auto r = renderer.lock();
-        if (r)
-            r->AbandonShortCircuitData(cellHash, layerId, uberAddress._mins, uberAddress._maxs, mins, maxs);
-	}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

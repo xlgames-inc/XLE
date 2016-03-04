@@ -400,7 +400,10 @@ namespace SceneEngine
                     //  std::bind(&DoAbandonShortCircuitData, c->BuildHash(), CoverageId_Heights, 
                     //     _renderer, c->_heightsToUber, std::placeholders::_1, std::placeholders::_2));
 
-                    _uberSurfaceBridge->RegisterCell(Hash64(c->_heightMapFilename), c->_heightsToUber._mins, c->_heightsToUber._maxs, nullptr);
+                    _uberSurfaceBridge->RegisterCell(
+                        // Hash64(c->_heightMapFilename), 
+                        c->BuildHash(),
+                        c->_heightsToUber._mins, c->_heightsToUber._maxs, nullptr);
                 }
             }
         }
@@ -434,7 +437,10 @@ namespace SceneEngine
                     //         &DoAbandonShortCircuitData, cell->BuildHash(), l._id, _renderer, 
                     //         cell->_coverageToUber[c], std::placeholders::_1, std::placeholders::_2));
 
-                    ci._bridge->RegisterCell(Hash64(cell->_coverageFilename[c]), cell->_heightsToUber._mins, cell->_heightsToUber._maxs, nullptr);
+                    ci._bridge->RegisterCell(
+                        // Hash64(cell->_coverageFilename[c]), 
+                        cell->BuildHash(),
+                        cell->_heightsToUber._mins, cell->_heightsToUber._maxs, nullptr);
                 }
             }
 
