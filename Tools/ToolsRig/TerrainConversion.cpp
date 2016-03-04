@@ -115,7 +115,7 @@ namespace ToolsRig
         ::Assets::ResChar uberSurfaceFile[MaxPath];
         TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, CoverageId_Heights);
         TerrainUberHeightsSurface heightsData(uberSurfaceFile);
-        HeightsUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
+        HeightsUberSurfaceInterface uberSurfaceInterface(heightsData);
 
         //////////////////////////////////////////////////////////////////////////////////////
         auto cells = BuildPrimedCells(outputConfig);

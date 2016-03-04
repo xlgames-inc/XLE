@@ -308,6 +308,7 @@
     <ClInclude Include="..\TerrainScaffold.h" />
     <ClInclude Include="..\TerrainMaterial.h" />
     <ClInclude Include="..\TerrainMaterialTextures.h" />
+    <ClInclude Include="..\TerrainShortCircuit.h" />
     <ClInclude Include="..\TerrainUberSurface.h" />
     <ClInclude Include="..\TextureTileSet.h" />
     <ClInclude Include="..\TiledLighting.h" />

@@ -100,8 +100,13 @@ namespace SceneEngine
         unsigned GetCoverageLayersCount() const             { return (unsigned)_coverageIds.size(); }
         const TerrainRendererConfig& GetConfig() const      { return _cfg; }
 
-        void ShortCircuit(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
-		void AbandonShortCircuitData(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, UInt2 abandonMins, UInt2 abandonMaxs);
+        void ShortCircuit(
+            RenderCore::Metal::DeviceContext& metalContext, 
+            uint64 cellHash, TerrainCoverageId layerId, 
+            Float2 cellCoordMins, Float2 cellCoordMaxs, 
+            const ShortCircuitUpdate& upd);
+		void AbandonShortCircuitData(uint64 cellHash, TerrainCoverageId layerId, Float2 cellCoordMins, Float2 cellCoordMaxs);
+
         const bool IsShortCircuitAllowed() const { return _shortCircuitAllowed; }
         void SetShortCircuitSettings(const GradientFlagsSettings& gradientFlagsSettings);
 
@@ -206,15 +211,19 @@ namespace SceneEngine
             const Float4x4& worldToProjection, const Float3& viewPositionWorld,
             CellRenderInfo& cellRenderInfo, const Float4x4& cellToWorld);
 
-        void    ShortCircuitTileUpdate(const TextureTile& tile, unsigned layerIndex, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, NodeCoverageInfo& coverageInfo, const ShortCircuitUpdate& upd);
+        void    ShortCircuitTileUpdate(
+            RenderCore::Metal::DeviceContext& metalContext, const TextureTile& tile, 
+            NodeCoverageInfo& coverageInfo, 
+            TerrainCoverageId layerId, unsigned fieldIndex, 
+            Float2 cellCoordMins, Float2 cellCoordMaxs,
+            const ShortCircuitUpdate& upd);
 
         auto    BuildQueuedNodeFlags(const CellRenderInfo& cellRenderInfo, unsigned nodeIndex, unsigned lodField) const -> unsigned;
 
-		struct FoundNode { NodeCoverageInfo* _node; unsigned _fieldIndex; UInt2 _nodeMin; UInt2 _nodeMax; };
-		std::vector<FoundNode> FindIntersectingNodes(
+		struct FoundNode { NodeCoverageInfo* _node; unsigned _fieldIndex; Float2 _cellCoordMin; Float2 _cellCoordMax; };
+        std::vector<FoundNode> FindIntersectingNodes(
 			uint64 cellHash, TerrainCoverageId layerId,
-			UInt2 cellOrigin, UInt2 cellMax, 
-			UInt2 areaMins, UInt2 areaMaxs);
+			Float2 cellCoordMin, Float2 cellCoordMax);
 
         TerrainCellRenderer(const TerrainCellRenderer&);
         TerrainCellRenderer& operator=(const TerrainCellRenderer&);
@@ -338,13 +347,5 @@ namespace SceneEngine
         void    EnterState(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, const TerrainMaterialTextures& materials, UInt2 elementSize, Mode mode = Mode_Normal);
         void    ExitState(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext);
     };
-
-    void DoShortCircuitUpdate(
-        uint64 cellHash, TerrainCoverageId layerId, std::weak_ptr<TerrainCellRenderer> renderer,
-        TerrainCellId::UberSurfaceAddress uberAddress, const ShortCircuitUpdate& upd);
-
-	void DoAbandonShortCircuitData(
-		uint64 cellHash, TerrainCoverageId layerId, std::weak_ptr<TerrainCellRenderer> renderer,
-        TerrainCellId::UberSurfaceAddress uberAddress, UInt2 mins, UInt2 maxs);
 }
 

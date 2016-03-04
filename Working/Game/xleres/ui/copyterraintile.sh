@@ -6,10 +6,10 @@
 
 cbuffer Parameters : register(b0)
 {
-	int2 SourceMin;
-	int2 SourceMax;
-	int2 UpdateMin;
-	int2 UpdateMax;
+	int2 NodeOriginInResource;
+	int2 Dummy;
+	int2 UpdateMinInResource;
+	int2 UpdateMaxInResource;
 	int3 DstTileAddress;
 	int SampleArea;
 	uint2 TileSize;
@@ -61,17 +61,22 @@ RWTexture2D<uint> 		MidwayMaterialFlags : register(u2);
 	#define FILTER_TYPE 1
 #endif
 
+int2 GetSrcCoord(uint3 dispatchThreadId)
+{
+	return int2(dispatchThreadId.xy * SampleArea) + NodeOriginInResource;
+}
+
 ValueType CalculateNewValue(uint3 dispatchThreadId)
 {
-	int2 origin = SampleArea * dispatchThreadId.xy;
+	int2 origin = GetSrcCoord(dispatchThreadId);
 
 		// SourceMins / SourceMaxs defines the area that we can read from
 		// The system should ensure that the source area is much bigger than
 		// the "update area" with borders on all sides. We need area around
 		// the update area to do downsampling and filtering
 		// We need to make sure we don't attempt to read outside of this region.
-	if (	origin.x >= SourceMin.x && (origin.x + SampleArea - 1) <= SourceMax.x
-		&&	origin.y >= SourceMin.y && (origin.y + SampleArea - 1) <= SourceMax.y) {
+	if (	origin.x >= UpdateMinInResource.x && (origin.x + SampleArea - 1) <= UpdateMaxInResource.x
+		&&	origin.y >= UpdateMinInResource.y && (origin.y + SampleArea - 1) <= UpdateMaxInResource.y) {
 
 		#if FILTER_TYPE == 1
 				//	simple box filter for downsampling to the correct LOD
@@ -107,7 +112,7 @@ uint CalculateGradientFlags_TopLOD(int2 baseCoord, float spacing, float threshol
 
 uint CalculateGradientFlags(uint2 dispatchThreadId)
 {
-	int2 origin = SampleArea * dispatchThreadId.xy;
+	int2 origin = GetSrcCoord(dispatchThreadId);
 
 		// SourceMins / SourceMaxs defines the area that we can read from
 		// The system should ensure that the source area is much bigger than
@@ -188,47 +193,51 @@ RWTexture2DArray<uint> Destination : register(u0);
 {
 	ValueType newHeight = MidwayOutput[dispatchThreadId.xy];
 
-	if (dispatchThreadId.x < TileSize.x && dispatchThreadId.y < TileSize.y) {
+	if (dispatchThreadId.x >= TileSize.x || dispatchThreadId.y >= TileSize.y)
+		return;
 
-			// When doing QUANTIZE_HEIGHTS, we need to re-write the entire tile...
-			// this is because the min/max values will have changed. That means every
-			// height value needs to adapter to the new min/max values.
-		#if defined(QUANTIZE_HEIGHTS)
 
-					// finally calculate the new compressed height & write to the buffer
-			float minHeight = UIntToHeightValue(TileCoordsBuffer[0].WorkingMinHeight);
-			float maxHeight = UIntToHeightValue(TileCoordsBuffer[0].WorkingMaxHeight);
+		// When doing QUANTIZE_HEIGHTS, we need to re-write the entire tile...
+		// this is because the min/max values will have changed. That means every
+		// height value needs to adapter to the new min/max values.
+	#if defined(QUANTIZE_HEIGHTS)
 
-				// we have to write everything -- because min/max height may have changed!
-			uint finalCompressedHeight = uint(
-				clamp((newHeight - minHeight) * float(RawHeightMask) / (maxHeight - minHeight),
-				0, float(RawHeightMask)));
+				// finally calculate the new compressed height & write to the buffer
+		float minHeight = UIntToHeightValue(TileCoordsBuffer[0].WorkingMinHeight);
+		float maxHeight = UIntToHeightValue(TileCoordsBuffer[0].WorkingMaxHeight);
 
-			#if (ENCODED_GRADIENT_FLAGS!=0)
-				finalCompressedHeight |= (MidwayMaterialFlags[dispatchThreadId.xy] & 3) << MaterialFlagsShift;
-			#endif
+			// we have to write everything -- because min/max height may have changed!
+		uint finalCompressedHeight = uint(
+			clamp((newHeight - minHeight) * float(RawHeightMask) / (maxHeight - minHeight),
+			0, float(RawHeightMask)));
 
-			Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = finalCompressedHeight;
-
-		#else
-
-			if (	(int)dispatchThreadId.x >= UpdateMin.x && (int)dispatchThreadId.x <= UpdateMax.x
-				&& 	(int)dispatchThreadId.y >= UpdateMin.y && (int)dispatchThreadId.y <= UpdateMax.y) {
-
-				Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = newHeight;
-			}
-
+		#if (ENCODED_GRADIENT_FLAGS!=0)
+			finalCompressedHeight |= (MidwayMaterialFlags[dispatchThreadId.xy] & 3) << MaterialFlagsShift;
 		#endif
 
-	}
+		Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = finalCompressedHeight;
+
+	#else
+
+		int2 srcAddress = GetSrcCoord(dispatchThreadId.xy);
+		if (	srcAddress.x >= UpdateMin.x && srcAddress.x <= UpdateMax.x
+			&&	srcAddress.y >= UpdateMin.y && scrAddress.y <= UpdateMax.y) {
+
+			Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = newHeight;
+		}
+
+	#endif
 }
 
 [numthreads(6, 6, 1)]
 	void DirectToFinal(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-	if (	dispatchThreadId.x < TileSize.x && dispatchThreadId.y < TileSize.y
-		&&	(int)dispatchThreadId.x * SampleArea >= UpdateMin.x && (int)dispatchThreadId.x * SampleArea <= UpdateMax.x
-		&& 	(int)dispatchThreadId.y * SampleArea >= UpdateMin.y && (int)dispatchThreadId.y * SampleArea <= UpdateMax.y) {
+	if (dispatchThreadId.x >= TileSize.x || dispatchThreadId.y >= TileSize.y)
+		return;
+
+	int2 srcAddress = GetSrcCoord(dispatchThreadId.xy);
+	if (	srcAddress.x >= UpdateMin.x && srcAddress.x <= UpdateMax.x
+		&&	srcAddress.y >= UpdateMin.y && scrAddress.y <= UpdateMax.y) {
 
 		ValueType newValue = CalculateNewValue(dispatchThreadId);
 		Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = newValue;

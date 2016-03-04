@@ -30,8 +30,6 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
 
-// #include "../RenderCore/DX11/Metal/IncludeDX11.h"
-
 namespace SceneEngine
 {
     using namespace RenderCore;
@@ -65,7 +63,7 @@ namespace SceneEngine
         auto mappedFile = std::make_unique<MemoryMappedFile>(filename, 0, MemoryMappedFile::Access::Read|MemoryMappedFile::Access::Write, BasicFile::ShareMode::Read);
         if (!mappedFile->IsValid())
             Throw(::Assets::Exceptions::InvalidAsset(
-                filename, "Failed while openning uber surface file"));
+                filename, "Failed while opening uber surface file"));
         
         auto& hdr = *(TerrainUberHeader*)mappedFile->GetData();
         if (hdr._magic != TerrainUberHeader::Magic)
@@ -138,27 +136,17 @@ namespace SceneEngine
     class GenericUberSurfaceInterface::Pimpl
     {
     public:
-        class RegisteredCell
-        {
-        public:
-            UInt2 _mins, _maxs;
-            unsigned _overlap;
-            std::string _filename;
-            std::function<void(const ShortCircuitUpdate&)> _shortCircuitUpdate;
-            std::function<void(UInt2, UInt2)> _abandonShortCircuitData;
-        };
-
-        std::vector<RegisteredCell>     _registeredCells;
         TerrainUberSurfaceGeneric*      _uberSurface;
 
         UInt2                           _gpuCacheMins, _gpuCacheMaxs;
-        std::shared_ptr<ITerrainFormat> _ioFormat;
 
         intrusive_ptr<BufferUploads::ResourceLocator>  _gpucache[2];
 
         std::unique_ptr<ErosionSimulation>  _erosionSim;
         UInt2                               _erosionSimGPUCacheOffset;
         Float2                              _erosionWorldSpaceOffset;
+
+        std::shared_ptr<ShortCircuitBridge>   _bridge;
 
         Pimpl() : _uberSurface(nullptr) {}
     };
@@ -293,17 +281,8 @@ namespace SceneEngine
 
 			// Our rendered probably has short-curcuit updates for the cells intersecting the
 			// lock area. We need to reload these cells from disk to abandon the updated data.
-			TRY 
-			{
-				using namespace RenderCore::Metal;
-				for (auto i=_pimpl->_registeredCells.cbegin(); i!=_pimpl->_registeredCells.cend(); ++i) {
-					if (oldCacheMaxs[0] < i->_mins[0] || oldCacheMaxs[1] < i->_mins[1]) continue;
-					if (oldCacheMins[0] > i->_maxs[0] || oldCacheMins[1] > i->_maxs[1]) continue;
-					i->_abandonShortCircuitData(oldCacheMins, oldCacheMaxs);
-				}
-			}
-			CATCH (...) {}
-			CATCH_END
+            if (_pimpl->_bridge)
+                _pimpl->_bridge->QueueAbandon(oldCacheMins, oldCacheMaxs);
 		}
 	}
 
@@ -334,25 +313,18 @@ namespace SceneEngine
                         dims[0] * bytesPerSample);
             }
 
-                //  Destroy the gpu cache
+                // Destroy the gpu cache
             _pimpl->_gpucache[0].reset();
             _pimpl->_gpucache[1].reset();
 
-                //  look for all of the cells that intersect with the area we've changed.
-                //  we have to rebuild the entire cell
-            if (_pimpl->_ioFormat) {
-                for (auto i=_pimpl->_registeredCells.cbegin(); i!=_pimpl->_registeredCells.cend(); ++i) {
-                    if (_pimpl->_gpuCacheMaxs[0] < i->_mins[0] || _pimpl->_gpuCacheMaxs[1] < i->_mins[1]) continue;
-                    if (_pimpl->_gpuCacheMins[0] > i->_maxs[0] || _pimpl->_gpuCacheMins[1] > i->_maxs[1]) continue;
-
-                    TRY {
-                        const auto treeDepth = 5u;
-                        _pimpl->_ioFormat->WriteCell(
-                            i->_filename.c_str(), *_pimpl->_uberSurface,
-                            i->_mins, i->_maxs, treeDepth, i->_overlap);
-                    } CATCH (...) {
-                    } CATCH_END     // if the directory for the output file doesn't exist, we can get an exception here
-                }
+                // Look for all of the cells that intersect with the area we've changed.
+                // we have to rebuild the entire cell
+            if (_pimpl->_bridge) {
+                // Note that we abandon changes first (to flush out any queued change events)
+                // Afterwards, we should just write the cells, and they will be reloaded by the
+                // terrain renderer in the normal way.
+                _pimpl->_bridge->QueueAbandon(_pimpl->_gpuCacheMins, _pimpl->_gpuCacheMaxs);
+                _pimpl->_bridge->WriteCells(_pimpl->_gpuCacheMins, _pimpl->_gpuCacheMaxs);
             }
 
             _pimpl->_gpuCacheMins = _pimpl->_gpuCacheMaxs = UInt2(0,0);
@@ -460,14 +432,14 @@ namespace SceneEngine
             auto& cs = ::Assets::GetAssetDep<Metal::ComputeShader>(fullShaderName.get());
             struct Parameters
             {
-                Float2 _center;
-                float _radius;
-                float _adjustment;
-                UInt2 _cacheMins;
-                UInt2 _cacheMaxs;
-                UInt2 _adjMins;
-                int _dummy[2];
-            } parameters = { center, radius, adjustment, _pimpl->_gpuCacheMins, _pimpl->_gpuCacheMaxs, adjMins, 0, 0 };
+                Float2 _center; float _radius; float _adjustment;
+                UInt2 _cacheMins; UInt2 _cacheMaxs;
+                UInt2 _adjMins; int _dummy[2];
+            } parameters = { 
+                center, radius, adjustment, 
+                _pimpl->_gpuCacheMins, _pimpl->_gpuCacheMaxs, 
+                adjMins, { 0, 0 }
+            };
 
             Metal::BoundUniforms uniforms(cbBytecode);
             uniforms.BindConstantBuffer(Hash64("Parameters"), 0, 1);
@@ -497,7 +469,7 @@ namespace SceneEngine
                 (adjMaxs[1] - adjMins[1] + 1 + threadGroupDim - 1) / threadGroupDim);
             context->UnbindCS<Metal::UnorderedAccessView>(0, 1);
 
-            DoShortCircuitUpdate(threadContext, adjMins, adjMaxs);
+            QueueShortCircuitUpdate(adjMins, adjMaxs);
         }
 		CATCH (::Assets::Exceptions::InvalidAsset&) { return TerrainToolResult::InvalidAsset; }
         CATCH (::Assets::Exceptions::PendingAsset&) { return TerrainToolResult::PendingAsset; }
@@ -507,36 +479,10 @@ namespace SceneEngine
 		return TerrainToolResult::Success;
     }
 
-    void    GenericUberSurfaceInterface::DoShortCircuitUpdate(
-        RenderCore::IThreadContext& context, 
-        UInt2 adjMins, UInt2 adjMaxs)
+    void    GenericUberSurfaceInterface::QueueShortCircuitUpdate(UInt2 adjMins, UInt2 adjMaxs)
     {
-        TRY 
-        {
-            using namespace RenderCore::Metal;
-
-            ShortCircuitUpdate upd;
-            upd._context = &context;
-            upd._updateAreaMins = adjMins;
-            upd._updateAreaMaxs = adjMaxs;
-            upd._resourceMins = _pimpl->_gpuCacheMins;
-            upd._resourceMaxs = _pimpl->_gpuCacheMaxs;
-            upd._srv = std::make_unique<ShaderResourceView>(_pimpl->_gpucache[0]->GetUnderlying());
-
-            for (auto i=_pimpl->_registeredCells.cbegin(); i!=_pimpl->_registeredCells.cend(); ++i) {
-                if (adjMaxs[0] < i->_mins[0] || adjMaxs[1] < i->_mins[1]) continue;
-                if (adjMins[0] > i->_maxs[0] || adjMins[1] > i->_maxs[1]) continue;
-
-                    //  do a short-circuit update here... Copy from the cached gpu surface
-                    //  into the relevant parts of these cells.
-                    //  note -- this doesn't really work correct if there are pending uploads
-                    //          for these cells!
-
-                i->_shortCircuitUpdate(upd);
-            }
-        }
-        CATCH (...) {}
-        CATCH_END
+        if (_pimpl->_bridge)
+            _pimpl->_bridge->QueueShortCircuit(adjMins, adjMaxs);
     }
 
     void    GenericUberSurfaceInterface::BuildEmptyFile(
@@ -562,52 +508,49 @@ namespace SceneEngine
         }
     }
 
-    void    GenericUberSurfaceInterface::RegisterCell(
-                    const char destinationFile[], UInt2 mins, UInt2 maxs, unsigned overlap,
-                    std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate,
-                    std::function<void(UInt2, UInt2)> abandonShortCircuitData)
-    {
-            //      Register the given cell... When there are any modifications, 
-            //      we'll write over this cell's cached file
-
-        Pimpl::RegisteredCell registeredCell;
-        registeredCell._mins = mins;
-        registeredCell._maxs = maxs;
-        registeredCell._overlap = overlap;
-        registeredCell._filename = destinationFile;
-        registeredCell._shortCircuitUpdate = shortCircuitUpdate;
-		registeredCell._abandonShortCircuitData = abandonShortCircuitData;
-        _pimpl->_registeredCells.push_back(registeredCell);
-    }
-
-    void    GenericUberSurfaceInterface::RenderDebugging(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext)
+    void    GenericUberSurfaceInterface::RenderDebugging(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
     {
         if (!_pimpl->_gpucache[0])
             return;
 
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             Metal::ShaderResourceView  gpuCacheSRV(_pimpl->_gpucache[0]->GetUnderlying());
-            context->BindPS(MakeResourceList(5, gpuCacheSRV));
+            metalContext->BindPS(MakeResourceList(5, gpuCacheSRV));
             auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                 "game/xleres/ui/terrainmodification.sh:GpuCacheDebugging:ps_*",
                 "");
-            context->Bind(debuggingShader);
-            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-            SetupVertexGeneratorShader(*context);
-            context->Draw(4);
+            metalContext->Bind(debuggingShader);
+            metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
+            SetupVertexGeneratorShader(*metalContext);
+            metalContext->Draw(4);
         CATCH_ASSETS_END(parserContext)
 
-        context->UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 1);
+        metalContext->UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 1);
     }
 
-    GenericUberSurfaceInterface::GenericUberSurfaceInterface(TerrainUberSurfaceGeneric& uberSurface, std::shared_ptr<ITerrainFormat> ioFormat)
+    void GenericUberSurfaceInterface::SetShortCircuitBridge(const std::shared_ptr<ShortCircuitBridge>& bridge)
+    {
+        _pimpl->_bridge = bridge;
+    }
+
+    ShortCircuitUpdate GenericUberSurfaceInterface::GetShortCircuit(UInt2 uberMins, UInt2 uberMaxs)
+    {
+        return ShortCircuitUpdate {};
+    }
+
+    TerrainUberSurfaceGeneric& GenericUberSurfaceInterface::GetSurface()
+    {
+        return *_pimpl->_uberSurface;
+    }
+
+    GenericUberSurfaceInterface::GenericUberSurfaceInterface(TerrainUberSurfaceGeneric& uberSurface)
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_uberSurface = &uberSurface;     // no protection on this pointer (assuming it's coming from a resource)
-        pimpl->_ioFormat = std::move(ioFormat);
-
         _pimpl = std::move(pimpl);
     }
 
@@ -869,8 +812,7 @@ namespace SceneEngine
             gpuCacheOffset, gpuCacheOffset + size);
 
             //  Update the mesh with the changes
-        DoShortCircuitUpdate(
-            context,
+        QueueShortCircuitUpdate(
             _pimpl->_gpuCacheMins + gpuCacheOffset, 
             _pimpl->_gpuCacheMins + gpuCacheOffset + size);
     }
@@ -911,9 +853,8 @@ namespace SceneEngine
 
     TerrainUberHeightsSurface* HeightsUberSurfaceInterface::GetUberSurface() { return _uberSurface; }
 
-    HeightsUberSurfaceInterface::HeightsUberSurfaceInterface(
-        TerrainUberHeightsSurface& uberSurface, std::shared_ptr<ITerrainFormat> ioFormat)
-    : GenericUberSurfaceInterface(uberSurface, std::move(ioFormat))
+    HeightsUberSurfaceInterface::HeightsUberSurfaceInterface(TerrainUberHeightsSurface& uberSurface)
+    : GenericUberSurfaceInterface(uberSurface)
     {
         _uberSurface = &uberSurface;
     }
@@ -955,10 +896,8 @@ namespace SceneEngine
     {
     }
 
-    CoverageUberSurfaceInterface::CoverageUberSurfaceInterface(
-        TerrainUberSurfaceGeneric& uberSurface,
-        std::shared_ptr<ITerrainFormat> ioFormat)
-        : GenericUberSurfaceInterface(uberSurface, std::move(ioFormat))
+    CoverageUberSurfaceInterface::CoverageUberSurfaceInterface(TerrainUberSurfaceGeneric& uberSurface)
+    : GenericUberSurfaceInterface(uberSurface)
     {
     }
     CoverageUberSurfaceInterface::~CoverageUberSurfaceInterface() {}

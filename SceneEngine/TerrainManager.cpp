@@ -241,22 +241,27 @@ namespace SceneEngine
         std::shared_ptr<ITerrainFormat> _ioFormat;
 
         std::unique_ptr<TerrainUberHeightsSurface> _uberSurface;
-        std::unique_ptr<HeightsUberSurfaceInterface> _uberSurfaceInterface;
+        std::shared_ptr<HeightsUberSurfaceInterface> _uberSurfaceInterface;
+        std::shared_ptr<ShortCircuitBridge> _uberSurfaceBridge;
 
         class CoverageInterface
         {
         public:
             TerrainCoverageId _id;
             std::unique_ptr<TerrainUberSurfaceGeneric> _uberSurface;
-            std::unique_ptr<CoverageUberSurfaceInterface> _interface;
+            std::shared_ptr<CoverageUberSurfaceInterface> _interface;
+            std::shared_ptr<ShortCircuitBridge> _bridge;
 
             CoverageInterface() {}
-            CoverageInterface(CoverageInterface&& moveFrom) : _id(moveFrom._id), _uberSurface(std::move(moveFrom._uberSurface)), _interface(std::move(moveFrom._interface)) {}
-            CoverageInterface& operator=(CoverageInterface&& moveFrom) 
+            CoverageInterface(CoverageInterface&& moveFrom) never_throws 
+            : _id(moveFrom._id), _uberSurface(std::move(moveFrom._uberSurface))
+            , _interface(std::move(moveFrom._interface)), _bridge(std::move(moveFrom._bridge)) {}
+            CoverageInterface& operator=(CoverageInterface&& moveFrom) never_throws
             {
                 _id = moveFrom._id;
                 _uberSurface = std::move(moveFrom._uberSurface);
                 _interface = std::move(moveFrom._interface);
+                _bridge = std::move(moveFrom._bridge);
                 return *this;
             }
         };
@@ -275,6 +280,8 @@ namespace SceneEngine
 
         void AddCells(const TerrainConfig& cfg, UInt2 cellMin, UInt2 cellMax);
         void BuildUberSurface(const ::Assets::ResChar uberSurfaceDir[], const TerrainConfig& cfg);
+
+        void FlushShortCircuitQueue(Metal::DeviceContext& context);
     };
 
 
@@ -377,18 +384,23 @@ namespace SceneEngine
             TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, CoverageId_Heights);
 
             _uberSurface = std::make_unique<TerrainUberHeightsSurface>(uberSurfaceFile);
-            _uberSurfaceInterface = std::make_unique<HeightsUberSurfaceInterface>(std::ref(*_uberSurface), _ioFormat);
+            _uberSurfaceInterface = std::make_shared<HeightsUberSurfaceInterface>(std::ref(*_uberSurface));
 
             if (constant_expression<registerShortCircuit>::result()) {
+                auto bridge = std::make_shared<ShortCircuitBridge>(_uberSurfaceInterface);
+                _uberSurfaceInterface->SetShortCircuitBridge(bridge);
+
                     //  Register cells for short-circuit update... Do we need to do this for every single cell
                     //  or just those that are within the limited area we're going to load?
                 for (auto c=_cells.cbegin(); c!=_cells.cend(); ++c) {
-                    _uberSurfaceInterface->RegisterCell(
-                        c->_heightMapFilename, c->_heightsToUber._mins, c->_heightsToUber._maxs, cfg.NodeOverlap(),
-                        std::bind(&DoShortCircuitUpdate, c->BuildHash(), CoverageId_Heights, 
-							_renderer, c->_heightsToUber, std::placeholders::_1),
-						std::bind(&DoAbandonShortCircuitData, c->BuildHash(), CoverageId_Heights, 
-							_renderer, c->_heightsToUber, std::placeholders::_1, std::placeholders::_2));
+                    // _uberSurfaceInterface->RegisterCell(
+                    //     c->_heightMapFilename, c->_heightsToUber._mins, c->_heightsToUber._maxs, cfg.NodeOverlap(),
+                    //     std::bind(&DoShortCircuitUpdate, c->BuildHash(), CoverageId_Heights, 
+                    //     _renderer, c->_heightsToUber, std::placeholders::_1),
+                    //  std::bind(&DoAbandonShortCircuitData, c->BuildHash(), CoverageId_Heights, 
+                    //     _renderer, c->_heightsToUber, std::placeholders::_1, std::placeholders::_2));
+
+                    bridge->RegisterCell(Hash64(c->_heightMapFilename), c->_heightsToUber._mins, c->_heightsToUber._maxs, nullptr);
                 }
             }
         }
@@ -404,20 +416,25 @@ namespace SceneEngine
             ci._id = l._id;
                 
             ci._uberSurface = std::make_unique<TerrainUberSurfaceGeneric>(uberSurfaceFile);
-            ci._interface = std::make_unique<CoverageUberSurfaceInterface>(std::ref(*ci._uberSurface), _ioFormat);
+            ci._interface = std::make_shared<CoverageUberSurfaceInterface>(std::ref(*ci._uberSurface));
 
             if (constant_expression<registerShortCircuit>::result()) {
+                auto bridge = std::make_shared<ShortCircuitBridge>(ci._interface);
+                ci._interface->SetShortCircuitBridge(bridge);
+
                     //  Register cells for short-circuit update... Do we need to do this for every single cell
                     //  or just those that are within the limited area we're going to load?
                 for (auto cell=_cells.cbegin(); cell!=_cells.cend(); ++cell) {
-                    ci._interface->RegisterCell(
-                        cell->_coverageFilename[c], cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs, l._overlap,
-                        std::bind(
-                            &DoShortCircuitUpdate, cell->BuildHash(), l._id, _renderer, 
-                            cell->_coverageToUber[c], std::placeholders::_1),
-						std::bind(
-                            &DoAbandonShortCircuitData, cell->BuildHash(), l._id, _renderer, 
-                            cell->_coverageToUber[c], std::placeholders::_1, std::placeholders::_2));
+                    // ci._interface->RegisterCell(
+                    //     cell->_coverageFilename[c], cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs, l._overlap,
+                    //     std::bind(
+                    //         &DoShortCircuitUpdate, cell->BuildHash(), l._id, _renderer, 
+                    //         cell->_coverageToUber[c], std::placeholders::_1),
+                    //  std::bind(
+                    //         &DoAbandonShortCircuitData, cell->BuildHash(), l._id, _renderer, 
+                    //         cell->_coverageToUber[c], std::placeholders::_1, std::placeholders::_2));
+
+                    bridge->RegisterCell(Hash64(cell->_coverageFilename[c]), cell->_heightsToUber._mins, cell->_heightsToUber._maxs, nullptr);
                 }
             }
 
@@ -572,6 +589,25 @@ namespace SceneEngine
         _renderer->WriteQueuedNodes(terrainContext, collapseContext);
     }
 
+    static void FlushShortCircuit(Metal::DeviceContext& context, TerrainCellRenderer& renderer, ShortCircuitBridge& bridge, TerrainCoverageId coverageId)
+    {
+        // Do the abandons first, then update every cell that's changed
+        auto pendingAbandons = bridge.GetPendingAbandons();
+        for (const auto&a:pendingAbandons)
+            renderer.AbandonShortCircuitData(a._cellHash, coverageId, a._cellMins, a._cellMaxs);
+
+        auto pendingUpdates = bridge.GetPendingUpdates();
+        for (const auto&u:pendingUpdates)
+            renderer.ShortCircuit(context, u.first._cellHash, coverageId, u.first._cellMins, u.first._cellMaxs, u.second);
+    }
+
+    void TerrainManager::Pimpl::FlushShortCircuitQueue(Metal::DeviceContext& context)
+    {
+        FlushShortCircuit(context, *_renderer, *_uberSurfaceBridge, CoverageId_Heights);
+        for (const auto&l:_coverageInterfaces)
+            FlushShortCircuit(context, *_renderer, *l._bridge, l._id);
+    }
+
     void TerrainManager::Render(Metal::DeviceContext* context, LightingParserContext& parserContext, unsigned techniqueIndex)
     {
         assert(_pimpl);
@@ -593,9 +629,15 @@ namespace SceneEngine
         state._queuedNodes.reserve(2048);
         state._currentViewport = Metal::ViewportDesc(*context);
         const auto& projDesc = parserContext.GetProjectionDesc();
-		_pimpl->CullNodes(projDesc, state);
+        _pimpl->CullNodes(projDesc, state);
 
         renderer->CompletePendingUploads();
+
+        // Check for short-circuit events.
+        const bool doShortCircuit = true;
+        if (doShortCircuit && renderer->IsShortCircuitAllowed())
+            _pimpl->FlushShortCircuitQueue(*context);
+
         renderer->QueueUploads(state);
 
         if (!_pimpl->_textures || _pimpl->_textures->GetDependencyValidation()->GetValidationIndex() > 0) {
@@ -615,9 +657,8 @@ namespace SceneEngine
             : TerrainRenderingContext::Mode_Normal;
 
         Float3 sunDirection(0.f, 0.f, 1.f);
-        if (parserContext.GetSceneParser() && parserContext.GetSceneParser()->GetLightCount() > 0) {
+        if (parserContext.GetSceneParser() && parserContext.GetSceneParser()->GetLightCount() > 0)
             sunDirection = parserContext.GetSceneParser()->GetLightDesc(0)._position;
-        }
 
             // We want to project the sun direction onto the plane for the precalculated sun movement.
             // Then find the appropriate angle for on that plane.
@@ -684,8 +725,7 @@ namespace SceneEngine
         const auto& projDesc = parserContext.GetProjectionDesc();
 		_pimpl->CullNodes(projDesc, state);
 
-        const unsigned compressedHeightMask = 
-            CompressedHeightMask(state._encodedGradientFlags);
+        const auto compressedHeightMask = CompressedHeightMask(state._encodedGradientFlags);
 
             //  second pass -- remove nodes that don't intersect the ray
         for (auto i=state._queuedNodes.begin(); i!=state._queuedNodes.end();) {
@@ -805,9 +845,9 @@ namespace SceneEngine
             _pimpl->_renderer->SetShortCircuitSettings(gradientFlagsSettings);
     }
 
-    const TerrainCoordinateSystem&  TerrainManager::GetCoords() const                       { return _pimpl->_coords; }
-    HeightsUberSurfaceInterface* TerrainManager::GetHeightsInterface()                      { return _pimpl->_uberSurfaceInterface.get(); }
-    std::shared_ptr<ISurfaceHeightsProvider> TerrainManager::GetHeightsProvider()    { return _pimpl->_heightsProvider; }
+    const TerrainCoordinateSystem&  TerrainManager::GetCoords() const               { return _pimpl->_coords; }
+    HeightsUberSurfaceInterface* TerrainManager::GetHeightsInterface()              { return _pimpl->_uberSurfaceInterface.get(); }
+    std::shared_ptr<ISurfaceHeightsProvider> TerrainManager::GetHeightsProvider()   { return _pimpl->_heightsProvider; }
 
     CoverageUberSurfaceInterface*   TerrainManager::GetCoverageInterface(TerrainCoverageId id)
     {

@@ -8,7 +8,7 @@
 
 #include "Erosion.h"
 #include "TerrainCoverageId.h"
-#include "../RenderCore/Metal/Forward.h"
+#include "TerrainShortCircuit.h"
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../Utility/ParameterBox.h"        // for ImpliedTyping::TypeDesc
 #include "../Utility/PtrUtils.h"
@@ -17,7 +17,6 @@
 #include "../Utility/IntrusivePtr.h"
 #include "../Core/Types.h"
 #include <memory>
-#include <functional>
 #include <assert.h>
 
 namespace Utility { class MemoryMappedFile; }
@@ -32,7 +31,6 @@ namespace SceneEngine
     typedef std::pair<uint16, uint16> ShadowSample;
     typedef TerrainUberSurface<float> TerrainUberHeightsSurface;
 
-    class ITerrainFormat;
     class TerrainConfig;
     class TerrainCoordinateSystem;
 
@@ -91,18 +89,9 @@ namespace SceneEngine
         friend class HeightsUberSurfaceInterface;
     };
 
-    class ShortCircuitUpdate
-    {
-    public:
-        std::unique_ptr<RenderCore::Metal::ShaderResourceView> _srv;
-        UInt2 _updateAreaMins, _updateAreaMaxs;
-        UInt2 _resourceMins, _resourceMaxs;
-        RenderCore::IThreadContext* _context;
-    };
-
     class TerrainCoordinateSystem;
 
-    class GenericUberSurfaceInterface
+    class GenericUberSurfaceInterface : public IShortCircuitSource
     {
     public:
         static void    BuildEmptyFile(
@@ -110,11 +99,7 @@ namespace SceneEngine
             unsigned width, unsigned height, 
             const ImpliedTyping::TypeDesc& type);
 
-        void    RegisterCell(
-                    const char destinationFile[], UInt2 mins, UInt2 maxs, unsigned overlap,
-                    std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate,
-                    std::function<void(UInt2, UInt2)> abandonShortCircuitData);
-        void    RenderDebugging(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& context);
+        void    RenderDebugging(RenderCore::IThreadContext& threadContext, SceneEngine::LightingParserContext& context);
 
 		std::pair<UInt2, UInt2> GetLock() const;
         void    FlushLockToDisk();
@@ -122,9 +107,12 @@ namespace SceneEngine
 
         intrusive_ptr<BufferUploads::ResourceLocator> CopyToGPU(UInt2 topLeft, UInt2 bottomRight);
 
-        GenericUberSurfaceInterface(
-            TerrainUberSurfaceGeneric& uberSurface, 
-            std::shared_ptr<ITerrainFormat> ioFormat = nullptr);
+        void SetShortCircuitBridge(const std::shared_ptr<ShortCircuitBridge>& bridge);
+
+        ShortCircuitUpdate GetShortCircuit(UInt2 uberMins, UInt2 uberMaxs);
+        TerrainUberSurfaceGeneric& GetSurface();
+
+        GenericUberSurfaceInterface(TerrainUberSurfaceGeneric& uberSurface);
         virtual ~GenericUberSurfaceInterface();
     protected:
         class Pimpl;
@@ -137,8 +125,7 @@ namespace SceneEngine
             UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
             Float2 center, float radius, float adjustment, 
             std::tuple<uint64, void*, size_t> extraPackets[], unsigned extraPacketCount);
-        void    DoShortCircuitUpdate(
-            RenderCore::IThreadContext& context, UInt2 adjMins, UInt2 adjMaxs);
+        void    QueueShortCircuitUpdate(UInt2 adjMins, UInt2 adjMaxs);
 
         virtual void CancelActiveOperations();
     };
@@ -165,9 +152,7 @@ namespace SceneEngine
 
         TerrainUberHeightsSurface* GetUberSurface();
 
-        HeightsUberSurfaceInterface(
-            TerrainUberHeightsSurface& uberSurface,
-            std::shared_ptr<ITerrainFormat> ioFormat = nullptr);
+        HeightsUberSurfaceInterface(TerrainUberHeightsSurface& uberSurface);
         ~HeightsUberSurfaceInterface();
     private:
         void    CancelActiveOperations();
@@ -180,9 +165,7 @@ namespace SceneEngine
     public:
         TerrainToolResult Paint(RenderCore::IThreadContext& context, Float2 centre, float radius, unsigned paintValue);
 
-        CoverageUberSurfaceInterface(
-            TerrainUberSurfaceGeneric& uberSurface,
-            std::shared_ptr<ITerrainFormat> ioFormat);
+        CoverageUberSurfaceInterface(TerrainUberSurfaceGeneric& uberSurface);
         ~CoverageUberSurfaceInterface();
 
     protected:
