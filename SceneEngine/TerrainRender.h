@@ -83,6 +83,8 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class ShortCircuitBridge;
+
     class TerrainCellRenderer
     {
     public:
@@ -90,7 +92,8 @@ namespace SceneEngine
                         TerrainRenderingContext& terrainContext, TerrainCollapseContext& collapseContext,
                         const TerrainCellId& cell);
         void WriteQueuedNodes(TerrainRenderingContext& renderingContext, TerrainCollapseContext& collapseContext);
-        void CompletePendingUploads();
+		void CompletePendingUploads(); 
+		std::vector<std::pair<uint64, uint32>> CompletePendingUploads_Bridge();
         void QueueUploads(TerrainRenderingContext& terrainContext);
         void Render(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, TerrainRenderingContext& terrainContext);
 
@@ -105,6 +108,11 @@ namespace SceneEngine
             uint64 cellHash, TerrainCoverageId layerId, 
             Float2 cellCoordMins, Float2 cellCoordMaxs, 
             const ShortCircuitUpdate& upd);
+		void ShortCircuit(
+			RenderCore::Metal::DeviceContext& metalContext,
+			ShortCircuitBridge& bridge,
+			uint64 cellHash, TerrainCoverageId layerId,
+			uint32 nodeIndex);
 		void AbandonShortCircuitData(uint64 cellHash, TerrainCoverageId layerId, Float2 cellCoordMins, Float2 cellCoordMaxs);
 
         const bool IsShortCircuitAllowed() const { return _shortCircuitAllowed; }
@@ -152,7 +160,6 @@ namespace SceneEngine
                 // height map
             const void* _heightMapStreamingFilePtr;
             std::vector<NodeCoverageInfo> _heightTiles;
-            uint64 _heightMapFilenameHash;
 
 			#if defined(TERRAIN_ENABLE_EDITING)
 				Float4x4 NodeToCell(unsigned nodeId) const;
@@ -167,7 +174,6 @@ namespace SceneEngine
                 const TerrainCellTexture*       _source;
                 const void*                     _streamingFilePtr;
                 std::vector<NodeCoverageInfo>   _tiles;
-                uint64                          _filenameHash;
 
 				CoverageLayer();
 				~CoverageLayer();

@@ -461,7 +461,18 @@ namespace SceneEngine
         }
     }
 
-    void        TerrainCellRenderer::CompletePendingUploads()
+	void        TerrainCellRenderer::CompletePendingUploads()
+	{
+		// note; ideally we want an erase/remove that will reorder the vector here... That is on erase,
+		// just do a std::swap between the erased item and the last item.
+		// that should be most efficient when we complete multiple operations per frame (which will be normal)
+		auto i = std::remove_if(
+			_pendingUploads.begin(), _pendingUploads.end(),
+			[=](const UploadPair& p) { return p.first->CompleteUpload(p.second, _heightMapTileSet->GetBufferUploads()); });
+		_pendingUploads.erase(i, _pendingUploads.end());
+	}
+
+	std::vector<std::pair<uint64, uint32>> TerrainCellRenderer::CompletePendingUploads_Bridge()
     {
             // note; ideally we want an erase/remove that will reorder the vector here... That is on erase,
             // just do a std::swap between the erased item and the last item.
@@ -473,19 +484,15 @@ namespace SceneEngine
             // Each of the uploads between i and _pendingUploads.end() are completed this frame. 
             // We can search through them to see if any need to be touched by a short-circuit 
             // from the uber surface.
-        // for (auto i2=i; i2!=_pendingUploads.end(); ++i2) {
-        //     const auto& srcCell = *i2->first->_sourceCell;
-        //     const auto& node = *srcCell._nodes[i2->second];
-        //     const auto& nodeToCell = node._localToCell;
-        // 
-        //     Float3 nodeMinInCell = TransformPoint(nodeToCell, Float3(0.f, 0.f, 0.f));
-        //     Float3 nodeMaxInCell = TransformPoint(nodeToCell, Float3(1.f, 1.f, 1.f));
-        //     const auto* cellFile = srcCell.SourceFile().c_str();
-        //     // we can compare this region against the list of registered cells in
-        //     // the uber surfaces to see if we need to perform a short-circuit here.
-        // }
+		std::vector<std::pair<uint64, uint32>> result;
+        for (auto i2=i; i2!=_pendingUploads.end(); ++i2) {
+			auto ri = std::find_if(_renderInfos.begin(), _renderInfos.end(), [i2](const CRIPair& p) { return p.second.get() == i2->first; });
+			assert(ri != _renderInfos.end());
+			result.push_back(std::make_pair(ri->first, i2->second));
+        }
 
         _pendingUploads.erase(i, _pendingUploads.end());
+		return result;
     }
 
     void        TerrainCellRenderer::QueueUploads(TerrainRenderingContext& terrainContext)
@@ -1218,7 +1225,6 @@ namespace SceneEngine
                 layer._source = *q;
                 layer._streamingFilePtr = INVALID_HANDLE_VALUE;
                 layer._tiles.resize(layer._source->_nodeFileOffsets.size());
-                layer._filenameHash = Hash64(layer._source->SourceFile());
 
                 layer._streamingFilePtr = ::CreateFile(
                     (*q)->SourceFile().c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE,
@@ -1232,7 +1238,6 @@ namespace SceneEngine
             _heightTiles = std::move(heightTiles);
             _sourceCell = &cell;
             _heightMapStreamingFilePtr = heightMapFileHandle;
-            _heightMapFilenameHash = Hash64(cell.SourceFile());
             _coverage = std::move(coverage);
         }
     }

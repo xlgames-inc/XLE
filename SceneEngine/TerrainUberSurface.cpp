@@ -596,6 +596,11 @@ namespace SceneEngine
 
     ShortCircuitUpdate GenericUberSurfaceInterface::GetShortCircuit(UInt2 uberMins, UInt2 uberMaxs)
     {
+		if (!_pimpl->_gpucache[0]) return ShortCircuitUpdate();
+		if (	uberMins[0] >= _pimpl->_gpuCacheMaxs[0] || uberMins[1] >= _pimpl->_gpuCacheMaxs[1]
+			||	uberMaxs[0] <  _pimpl->_gpuCacheMins[0] || uberMaxs[1] <  _pimpl->_gpuCacheMins[1])
+			return ShortCircuitUpdate();
+
         ShortCircuitUpdate result;
         result._srv = std::make_unique<Metal::ShaderResourceView>(_pimpl->_gpucache[0]->GetUnderlying());
         result._cellMinsInResource = Int2(uberMins) - Int2(_pimpl->_gpuCacheMins);

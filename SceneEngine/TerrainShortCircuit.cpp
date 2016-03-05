@@ -250,28 +250,8 @@ namespace SceneEngine
 	{
 		std::vector<FoundNode> result;
 
-        #if 1
-            auto i = LowerBound(_renderInfos, filenameHash);
-            if (i == _renderInfos.end() || i->first != filenameHash) return result;
-        #else
-            auto i = _renderInfos.begin();
-            for (;i!=_renderInfos.end(); ++i) {
-                if (layerId == CoverageId_Heights) {
-                    if (i->second->_heightMapFilenameHash == filenameHash)
-                        break;
-                } else {
-                    bool doubleBreak = false;
-                    for (auto i2=i->second->_coverage.cbegin(); i2!=i->second->_coverage.cend(); ++i2) {
-                        if (i2->_filenameHash == filenameHash) {
-                            doubleBreak = true;
-                            break;
-                        }
-                    }
-                    if (doubleBreak) break;
-                }
-            }
-            if (i == _renderInfos.end()) return result;
-        #endif
+        auto i = LowerBound(_renderInfos, filenameHash);
+        if (i == _renderInfos.end() || i->first != filenameHash) return result;
 
         auto& cri = *i->second;
         auto& sourceCell = *i->second->_sourceCell;
@@ -333,13 +313,65 @@ namespace SceneEngine
     	auto nodes = FindIntersectingNodes(cellHash, layerId, cellCoordMins, cellCoordMaxs);
 		for (const auto& n:nodes) {
             ShortCircuitTileUpdate(
-                metalContext, n._node->_tile, 
-                *n._node,
-                layerId, n._fieldIndex, 
-                n._cellCoordMin,n._cellCoordMax,
+                metalContext, n._node->_tile, *n._node,
+                layerId, n._fieldIndex, n._cellCoordMin, n._cellCoordMax,
                 upd);
         }
     }
+
+	void TerrainCellRenderer::ShortCircuit(
+		RenderCore::Metal::DeviceContext& metalContext,
+		ShortCircuitBridge& bridge,
+		uint64 cellHash, TerrainCoverageId layerId,
+		uint32 nodeIndex)
+	{
+		auto i = LowerBound(_renderInfos, cellHash);
+		if (i == _renderInfos.end() || i->first != cellHash) return;
+
+		auto& cri = *i->second;
+		auto& sourceCell = *i->second->_sourceCell;
+
+		TextureTileSet* tileSet = nullptr;
+		std::vector<NodeCoverageInfo>* tiles = nullptr;
+		unsigned coverageLayerIndex = ~unsigned(0);
+
+		if (layerId == CoverageId_Heights) {
+			tileSet = _heightMapTileSet.get();
+			tiles = &cri._heightTiles;
+		} else {
+			for (unsigned c = 0; c<_coverageIds.size(); ++c)
+				if (_coverageIds[c] == layerId) { coverageLayerIndex = c; break; }
+			if (coverageLayerIndex >= unsigned(_coverageTileSet.size())) return;
+			tileSet = _coverageTileSet[coverageLayerIndex].get();
+			tiles = &cri._coverage[coverageLayerIndex]._tiles;
+		}
+
+		if (!tileSet || !tiles) return;
+		if (nodeIndex >= tiles->size()) return;
+
+		const auto& tile = (*tiles)[nodeIndex]._tile;
+		if (tile._width == ~0u || tile._transaction != ~BufferUploads::TransactionID(0x0)) return;
+
+		auto fi = std::find_if(
+			sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
+			[=](const TerrainCell::NodeField& field)
+			{ return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
+		size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
+
+		const auto& sourceNode = *sourceCell._nodes[nodeIndex];
+		auto nodeMinInCell = Truncate(TransformPoint(sourceNode._localToCell, Float3(0.f, 0.f, 0.f)));
+		auto nodeMaxInCell = Truncate(TransformPoint(sourceNode._localToCell, Float3(1.f, 1.f, 1.f)));
+
+		auto upd = bridge.GetShortCircuit(cellHash, nodeMinInCell, nodeMaxInCell);
+		if (upd._srv && upd._cellMinsInResource[0] < upd._cellMaxsInResource[0] && upd._cellMinsInResource[1] < upd._cellMaxsInResource[1])
+			ShortCircuitTileUpdate(
+				metalContext, tile,
+				(*tiles)[nodeIndex], layerId, 
+				unsigned(fieldIndex), 
+				// nodeMinInCell, nodeMaxInCell,
+				Float2(0.f, 0.f), Float2(1.f, 1.f),
+				upd);
+	}
 
 	void    TerrainCellRenderer::AbandonShortCircuitData(
 		uint64 cellHash, TerrainCoverageId layerId, 
@@ -379,11 +411,11 @@ namespace SceneEngine
         auto i = LowerBound(_cells, cellHash);
         if (i != _cells.end() && i->first == cellHash) {
             UInt2 uberMins(
-                i->second._uberMins[0] + unsigned((i->second._uberMaxs[0] - i->second._uberMins[0]) + cellMins[0]),
-                i->second._uberMins[1] + unsigned((i->second._uberMaxs[1] - i->second._uberMins[1]) + cellMins[1]));
+                i->second._uberMins[0] + unsigned((i->second._uberMaxs[0] - i->second._uberMins[0]) * cellMins[0]),
+                i->second._uberMins[1] + unsigned((i->second._uberMaxs[1] - i->second._uberMins[1]) * cellMins[1]));
             UInt2 uberMaxs(
-                i->second._uberMins[0] + unsigned((i->second._uberMaxs[0] - i->second._uberMins[0]) + cellMaxs[0]),
-                i->second._uberMins[1] + unsigned((i->second._uberMaxs[1] - i->second._uberMins[1]) + cellMaxs[1]));
+                i->second._uberMins[0] + unsigned((i->second._uberMaxs[0] - i->second._uberMins[0]) * cellMaxs[0]),
+                i->second._uberMins[1] + unsigned((i->second._uberMaxs[1] - i->second._uberMins[1]) * cellMaxs[1]));
 
             return l->GetShortCircuit(uberMins, uberMaxs);
         }
@@ -512,13 +544,6 @@ namespace SceneEngine
         result.reserve(_pendingUpdates.size());
         for (const auto& u:_pendingUpdates) {
             auto c = LowerBound(_cells, u._cellHash);
-            // auto mins = UInt2(
-            //     (unsigned)XlFloor(LinearInterpolate(float(c->second._uberMins[0]), float(c->second._uberMaxs[0]), u._cellMins[0])),
-            //     (unsigned)XlFloor(LinearInterpolate(float(c->second._uberMins[1]), float(c->second._uberMaxs[1]), u._cellMins[1])));
-            // auto maxs = UInt2(
-            //     (unsigned)XlCeil(LinearInterpolate(float(c->second._uberMins[0]), float(c->second._uberMaxs[0]), u._cellMaxs[0])),
-            //     (unsigned)XlCeil(LinearInterpolate(float(c->second._uberMins[1]), float(c->second._uberMaxs[1]), u._cellMaxs[1])));
-            // result.push_back(std::make_pair(u, l->GetShortCircuit(mins, maxs)));
             result.push_back(std::make_pair(u, l->GetShortCircuit(c->second._uberMins, c->second._uberMaxs)));
         }
         _pendingUpdates.clear();

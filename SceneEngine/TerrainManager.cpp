@@ -282,6 +282,7 @@ namespace SceneEngine
         void BuildUberSurface(const ::Assets::ResChar uberSurfaceDir[], const TerrainConfig& cfg);
 
         void FlushShortCircuitQueue(Metal::DeviceContext& context);
+		void ShortCircuitFinishedUploads(Metal::DeviceContext& context, IteratorRange<std::pair<uint64, uint32>*> updated);
     };
 
 
@@ -614,6 +615,14 @@ namespace SceneEngine
             FlushShortCircuit(context, *_renderer, *l._bridge, l._id);
     }
 
+	void TerrainManager::Pimpl::ShortCircuitFinishedUploads(
+		Metal::DeviceContext& context, 
+		IteratorRange<std::pair<uint64, uint32>*> updated)
+	{
+		for (const auto& u:updated)
+			_renderer->ShortCircuit(context, *_uberSurfaceBridge, u.first, CoverageId_Heights, u.second);
+	}
+
     void TerrainManager::Render(Metal::DeviceContext* context, LightingParserContext& parserContext, unsigned techniqueIndex)
     {
         assert(_pimpl);
@@ -637,12 +646,14 @@ namespace SceneEngine
         const auto& projDesc = parserContext.GetProjectionDesc();
         _pimpl->CullNodes(projDesc, state);
 
-        renderer->CompletePendingUploads();
-
         // Check for short-circuit events.
-        const bool doShortCircuit = true;
-        if (doShortCircuit && renderer->IsShortCircuitAllowed())
+        if (renderer->IsShortCircuitAllowed()) {
+			auto completed = renderer->CompletePendingUploads_Bridge();
+			_pimpl->ShortCircuitFinishedUploads(*context, MakeIteratorRange(completed));
             _pimpl->FlushShortCircuitQueue(*context);
+		} else {
+			renderer->CompletePendingUploads();
+		}
 
         renderer->QueueUploads(state);
 
@@ -758,7 +769,12 @@ namespace SceneEngine
             //  we should have a set of nodes that are visible on screen, and that might intersect the ray
             //  execute the intersections test shader to look for intersections with the terrain triangles
             //  we need to create a structured buffer for the result, and bind it to the geometry shader
-        _pimpl->_renderer->CompletePendingUploads();
+		if (_pimpl->_renderer->IsShortCircuitAllowed()) {
+			auto completed = _pimpl->_renderer->CompletePendingUploads_Bridge();
+			_pimpl->ShortCircuitFinishedUploads(*context, MakeIteratorRange(completed));
+		} else {
+			_pimpl->_renderer->CompletePendingUploads();
+		}
         _pimpl->_renderer->QueueUploads(state);
 
         const unsigned resultsBufferSize = 4 * 1024;
