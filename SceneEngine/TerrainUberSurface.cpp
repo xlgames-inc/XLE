@@ -407,6 +407,66 @@ namespace SceneEngine
     void GenericUberSurfaceInterface::CancelActiveOperations()
     {}
 
+	class ApplyToolResources
+	{
+	public:
+		class Desc 
+		{
+		public:
+			const ::Assets::ResChar* _shaderName;
+			using Pkt = std::tuple<uint64, void*, size_t>;
+			IteratorRange<Pkt*> _extraPackets; 
+
+			Desc(const ::Assets::ResChar shaderName[], IteratorRange<Pkt*> extraPackets)
+			: _shaderName(shaderName), _extraPackets(extraPackets) {}
+		};
+
+		const Metal::ComputeShader* _cs;
+		Metal::BoundUniforms _uniforms;
+		bool _needsInputHash;
+
+		const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
+
+		ApplyToolResources(const Desc& desc);
+		~ApplyToolResources();
+	private:
+		::Assets::DepValPtr _depVal;
+	};
+}
+
+namespace RenderCore { namespace Techniques
+{
+	template <> uint64 CalculateCachedBoxHash(const SceneEngine::ApplyToolResources::Desc& desc)
+	{
+		auto h = Hash64(desc._shaderName);
+		for (const auto& p:desc._extraPackets)
+			h = HashCombine(std::get<0>(p), h);
+		return h;
+	}
+}}
+
+namespace SceneEngine
+{
+	ApplyToolResources::ApplyToolResources(const Desc& desc)
+	{
+		StringMeld<256, ::Assets::ResChar> fullShaderName;
+		fullShaderName << desc._shaderName << ":cs_*";
+
+		auto& cbBytecode = ::Assets::GetAssetDep<CompiledShaderByteCode>(fullShaderName.get());
+		_cs = &::Assets::GetAssetDep<Metal::ComputeShader>(fullShaderName.get());
+
+		_uniforms = Metal::BoundUniforms(cbBytecode);
+		_uniforms.BindConstantBuffer(Hash64("Parameters"), 0, 1);
+		for (unsigned c = 0; c<desc._extraPackets.size(); ++c)
+			_uniforms.BindConstantBuffer(std::get<0>(desc._extraPackets[c]), 1 + c, 1);
+
+		_needsInputHash = _uniforms.BindShaderResource(Hash64("InputSurface"), 0, 1);
+
+		_depVal = _cs->GetDependencyValidation();
+	}
+
+	ApplyToolResources::~ApplyToolResources() {}
+
     auto GenericUberSurfaceInterface::ApplyTool(
         RenderCore::IThreadContext& threadContext,
         UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
@@ -424,12 +484,7 @@ namespace SceneEngine
 
             auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
             context->BindCS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
-
-            StringMeld<256, ::Assets::ResChar> fullShaderName;
-            fullShaderName << shaderName << ":cs_*";
-
-            auto& cbBytecode = ::Assets::GetAssetDep<CompiledShaderByteCode>(fullShaderName.get());
-            auto& cs = ::Assets::GetAssetDep<Metal::ComputeShader>(fullShaderName.get());
+            
             struct Parameters
             {
                 Float2 _center; float _radius; float _adjustment;
@@ -441,12 +496,12 @@ namespace SceneEngine
                 adjMins, { 0, 0 }
             };
 
-            Metal::BoundUniforms uniforms(cbBytecode);
-            uniforms.BindConstantBuffer(Hash64("Parameters"), 0, 1);
-
-            const auto InputSurfaceHash = Hash64("InputSurface");
+			auto& box = Techniques::FindCachedBoxDep2<ApplyToolResources>(
+				shaderName, 
+				MakeIteratorRange(extraPackets, &extraPackets[extraPacketCount]));
+            
             Metal::ShaderResourceView cacheCopySRV;
-            if (uniforms.BindShaderResource(InputSurfaceHash, 0, 1)) {
+            if (box._needsInputHash) {
                 Metal::Copy(*context, _pimpl->_gpucache[1]->GetUnderlying(), _pimpl->_gpucache[0]->GetUnderlying());
                 cacheCopySRV = Metal::ShaderResourceView(_pimpl->_gpucache[1]->GetUnderlying());
             }
@@ -455,14 +510,16 @@ namespace SceneEngine
             std::vector<Metal::ConstantBufferPacket> pkts;
             pkts.push_back(RenderCore::MakeSharedPkt(parameters));
             for (unsigned c=0; c<extraPacketCount; ++c) {
-                uniforms.BindConstantBuffer(std::get<0>(extraPackets[c]), 1+c, 1);
                 auto start = std::get<1>(extraPackets[c]);
                 auto size = std::get<2>(extraPackets[c]);
                 pkts.push_back(RenderCore::MakeSharedPkt(start, PtrAdd(start, size)));
             }
 
-            uniforms.Apply(*context, Metal::UniformsStream(), Metal::UniformsStream(AsPointer(pkts.begin()), nullptr, pkts.size(), resources, dimof(resources)));   // no access to global uniforms here
-            context->Bind(cs);
+            box._uniforms.Apply(
+				*context, 
+				Metal::UniformsStream(), 
+				Metal::UniformsStream(AsPointer(pkts.begin()), nullptr, pkts.size(), resources, dimof(resources)));   // no access to global uniforms here
+            context->Bind(*box._cs);
             const unsigned threadGroupDim = 16;
             context->Dispatch(
                 (adjMaxs[0] - adjMins[0] + 1 + threadGroupDim - 1) / threadGroupDim,

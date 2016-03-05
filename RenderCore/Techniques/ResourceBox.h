@@ -41,11 +41,16 @@ namespace RenderCore { namespace Techniques
             return table->_internalTable;
         }
 
+	template <typename Desc> uint64 CalculateCachedBoxHash(const Desc& desc)
+	{
+		return Hash64(&desc, PtrAdd(&desc, sizeof(Desc)));
+	}
+
     template <typename Box> Box& FindCachedBox(const typename Box::Desc& desc)
     {
-        uint64 hashValue = Hash64(&desc, PtrAdd(&desc, sizeof(typename Box::Desc)));
+        auto hashValue = CalculateCachedBoxHash(desc);
         auto& boxTable = GetBoxTable<Box>();
-        auto i = std::lower_bound(boxTable.cbegin(), boxTable.cend(), hashValue, CompareFirst<uint64, std::unique_ptr<Box>>());
+        auto i = LowerBound(boxTable, hashValue);
         if (i!=boxTable.cend() && i->first==hashValue) {
             return *i->second;
         }
@@ -63,16 +68,11 @@ namespace RenderCore { namespace Techniques
         return FindCachedBox<Box>(Box::Desc(std::forward<Params>(params)...));
     }
 
-    template <typename Desc> uint64 CalculateCachedBoxHash(const Desc& desc)
-    {
-        return Hash64(&desc, PtrAdd(&desc, sizeof(Desc)));
-    }
-
     template <typename Box> Box& FindCachedBoxDep(const typename Box::Desc& desc)
     {
         auto hashValue = CalculateCachedBoxHash(desc);
         auto& boxTable = GetBoxTable<Box>();
-        auto i = std::lower_bound(boxTable.begin(), boxTable.end(), hashValue, CompareFirst<uint64, std::unique_ptr<Box>>());
+        auto i = LowerBound(boxTable, hashValue);
         if (i!=boxTable.end() && i->first==hashValue) {
             if (i->second->GetDependencyValidation()->GetValidationIndex()!=0) {
                 i->second = std::make_unique<Box>(desc);

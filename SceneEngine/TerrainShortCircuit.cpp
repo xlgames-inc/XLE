@@ -303,15 +303,13 @@ namespace SceneEngine
                 //  the uber-surface coordinate system. If there's an overlap
                 //  between the node coords and the update box, we need to do
                 //  a copy.
-            const unsigned compressedHeightMask = CompressedHeightMask(sourceCell.EncodedGradientFlags());
-
             Float3 nodeMinInCell = TransformPoint(sourceNode->_localToCell, Float3(0.f, 0.f, 0.f));
-            Float3 nodeMaxInCell = TransformPoint(sourceNode->_localToCell, Float3(1.f, 1.f, float(compressedHeightMask)));
+            Float3 nodeMaxInCell = TransformPoint(sourceNode->_localToCell, Float3(1.f, 1.f, 1.f));
 
             // todo -- this overlap should be data driven! (and dependent on the field index)
             const float overlap = 2.0f / 512.0f;
-            if (    nodeMinInCell[0] <= int(cellCoordMax[0]) && (nodeMinInCell[0]+overlap) >= int(cellCoordMin[0])
-                &&  nodeMinInCell[1] <= int(cellCoordMax[1]) && (nodeMinInCell[1]+overlap) >= int(cellCoordMin[1])) {
+            if (    nodeMinInCell[0] <= cellCoordMax[0] && (nodeMaxInCell[0]+overlap) >= cellCoordMin[0]
+                &&  nodeMinInCell[1] <= cellCoordMax[1] && (nodeMaxInCell[1]+overlap) >= cellCoordMin[1]) {
 
 				auto fi = std::find_if(
                     sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
