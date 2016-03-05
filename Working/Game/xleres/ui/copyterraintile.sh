@@ -25,6 +25,7 @@ struct TileCoords
 	uint WorkingMinHeight;
 	uint WorkingMaxHeight;
 	float HeightOffsetValue;
+    uint3 Dummy3;
 };
 
 #if VALUE_FORMAT == 62

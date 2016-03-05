@@ -78,7 +78,7 @@ namespace SceneEngine
         _boundLayout.BindShaderResources(1, {"Input", "OldHeights"});
 
         _tileCoordsBuffer = GestaltTypes::UAV(
-            BufferUploads::LinearBufferDesc::Create(8*4, 8*4),
+            BufferUploads::LinearBufferDesc::Create(32, 32),
             "TileCoordsBuffer", nullptr, BufferUploads::BindFlag::StructuredBuffer);
 
         _depVal = std::make_shared<::Assets::DependencyValidation>();
@@ -209,6 +209,7 @@ namespace SceneEngine
 
                     //  if everything is ok up to this point, we can commit to the final
                     //  output --
+				box._boundLayout.UnbindShaderResources(metalContext, 1);
                 metalContext.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
                 metalContext.Bind(*box._cs1);
                 metalContext.Dispatch( 
@@ -237,7 +238,7 @@ namespace SceneEngine
                     unsigned(XlCeil(tile._height/float(threadGroupWidth))));
             }
 
-            metalContext.UnbindCS<Metal::UnorderedAccessView>(0, 3);
+            metalContext.UnbindCS<Metal::UnorderedAccessView>(0, 4);
         } CATCH (...) {
             // note, it's a real problem when we get a invalid resource get... 
             //  We should ideally stall until all the required resources are loaded
@@ -346,11 +347,9 @@ namespace SceneEngine
 			tiles = &cri._coverage[coverageLayerIndex]._tiles;
 		}
 
-		if (!tileSet || !tiles) return;
-		if (nodeIndex >= tiles->size()) return;
-
+		if (!tileSet || !tiles || nodeIndex >= tiles->size()) return;
 		const auto& tile = (*tiles)[nodeIndex]._tile;
-		if (tile._width == ~0u || tile._transaction != ~BufferUploads::TransactionID(0x0)) return;
+		if (!tileSet->IsValid(tile)) return;
 
 		auto fi = std::find_if(
 			sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
