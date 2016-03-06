@@ -245,6 +245,50 @@ namespace SceneEngine
         } CATCH_END
     }
 
+	static unsigned GetFieldIndex(const TerrainCell& cell, unsigned nodeIndex)
+	{
+		auto fi = std::find_if(
+			cell._nodeFields.cbegin(), cell._nodeFields.cend(),
+			[=](const TerrainCell::NodeField& field)
+		{ return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
+		return (unsigned)std::distance(cell._nodeFields.cbegin(), fi);
+	}
+
+	static std::pair<Float2, Float2> GetNodeInCell(const TerrainCell& cell, unsigned nodeIndex)
+	{
+		const auto& sourceNode = *cell._nodes[nodeIndex];
+		auto nodeMinInCell = Truncate(TransformPoint(sourceNode._localToCell, Float3(0.f, 0.f, 0.f)));
+		auto nodeMaxInCell = Truncate(TransformPoint(sourceNode._localToCell, Float3(1.f, 1.f, 1.f)));
+		return std::make_pair(nodeMinInCell, nodeMaxInCell);
+	}
+
+	class TileSetPtrs
+	{
+	public:
+		TextureTileSet* _tileSet;
+		std::vector<TerrainCellRenderer::NodeCoverageInfo>* _tiles;
+		unsigned _coverageLayerIndex;
+
+		TileSetPtrs(TerrainCellRenderer& renderer, TerrainCellRenderer::CellRenderInfo& cri, TerrainCoverageId layerId)
+		{
+			_tileSet = nullptr;
+			_tiles = nullptr;
+			_coverageLayerIndex = ~unsigned(0);
+
+			if (layerId == CoverageId_Heights) {
+				_tileSet = renderer._heightMapTileSet.get();
+				_tiles = &cri._heightTiles;
+			}
+			else {
+				for (unsigned c = 0; c<renderer._coverageIds.size(); ++c)
+					if (renderer._coverageIds[c] == layerId) { _coverageLayerIndex = c; break; }
+				if (_coverageLayerIndex >= unsigned(renderer._coverageTileSet.size())) return;
+				_tileSet = renderer._coverageTileSet[_coverageLayerIndex].get();
+				_tiles = &cri._coverage[_coverageLayerIndex]._tiles;
+			}
+		}
+	};
+
     auto TerrainCellRenderer::FindIntersectingNodes(
 		uint64 filenameHash, TerrainCoverageId layerId,
 		Float2 cellCoordMin, Float2 cellCoordMax) -> std::vector<FoundNode>
@@ -256,50 +300,23 @@ namespace SceneEngine
 
         auto& cri = *i->second;
         auto& sourceCell = *i->second->_sourceCell;
+		TileSetPtrs p(*this, cri, layerId);
+        if (!p._tileSet || !p._tiles) return result;
 
-        TextureTileSet* tileSet = nullptr;
-        std::vector<NodeCoverageInfo>* tiles = nullptr;
-        unsigned coverageLayerIndex = ~unsigned(0);
-        
-        if (layerId == CoverageId_Heights) {
-            tileSet = _heightMapTileSet.get();
-            tiles = &cri._heightTiles;
-        } else {
-            for (unsigned c=0; c<_coverageIds.size(); ++c)
-                if (_coverageIds[c] == layerId) { coverageLayerIndex = c; break; }
-            if (coverageLayerIndex >= unsigned(_coverageTileSet.size())) return result;
-            tileSet = _coverageTileSet[coverageLayerIndex].get();
-            tiles = &cri._coverage[coverageLayerIndex]._tiles;
-        }
+		for (unsigned nodeIndex=0; nodeIndex<unsigned(sourceCell._nodes.size()); ++nodeIndex) {
+			auto& ni = (*p._tiles)[nodeIndex];
+            if (!p._tileSet->IsValid(ni._tile)) continue;
+			auto nodeInCell = GetNodeInCell(sourceCell, nodeIndex);
 
-        if (!tileSet || !tiles) return result;
-
-        for (auto ni=tiles->begin(); ni!=tiles->end(); ++ni) {
-            if (!tileSet->IsValid(ni->_tile)) continue;
-
-            auto nodeIndex = std::distance(tiles->begin(), ni);
-            auto& sourceNode = sourceCell._nodes[nodeIndex];
-
-                //  We need to transform the coordinates for this node into
-                //  the uber-surface coordinate system. If there's an overlap
-                //  between the node coords and the update box, we need to do
-                //  a copy.
-            Float3 nodeMinInCell = TransformPoint(sourceNode->_localToCell, Float3(0.f, 0.f, 0.f));
-            Float3 nodeMaxInCell = TransformPoint(sourceNode->_localToCell, Float3(1.f, 1.f, 1.f));
-
+			//  We need to transform the coordinates for this node into
+			//  the uber-surface coordinate system. If there's an overlap
+			//  between the node coords and the update box, we need to do
+			//  a copy.
             // todo -- this overlap should be data driven! (and dependent on the field index)
             const float overlap = 2.0f / 512.0f;
-            if (    nodeMinInCell[0] <= cellCoordMax[0] && (nodeMaxInCell[0]+overlap) >= cellCoordMin[0]
-                &&  nodeMinInCell[1] <= cellCoordMax[1] && (nodeMaxInCell[1]+overlap) >= cellCoordMin[1]) {
-
-				auto fi = std::find_if(
-                    sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
-					[=](const TerrainCell::NodeField& field) 
-                        { return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
-				size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
-
-				result.push_back(FoundNode { AsPointer(ni), unsigned(fieldIndex), Truncate(nodeMinInCell), Truncate(nodeMaxInCell) });
-			}
+            if (    nodeInCell.first[0] <= cellCoordMax[0] && (nodeInCell.second[0]+overlap) >= cellCoordMin[0]
+                &&  nodeInCell.first[1] <= cellCoordMax[1] && (nodeInCell.second[1]+overlap) >= cellCoordMin[1])
+				result.push_back(FoundNode { &ni, GetFieldIndex(sourceCell, nodeIndex), nodeInCell.first, nodeInCell.second });
 		}
 
 		return result;
@@ -312,12 +329,11 @@ namespace SceneEngine
 		const ShortCircuitUpdate& upd)
     {
     	auto nodes = FindIntersectingNodes(cellHash, layerId, cellCoordMins, cellCoordMaxs);
-		for (const auto& n:nodes) {
+		for (const auto& n:nodes)
             ShortCircuitTileUpdate(
                 metalContext, n._node->_tile, *n._node,
                 layerId, n._fieldIndex, n._cellCoordMin, n._cellCoordMax,
                 upd);
-        }
     }
 
 	void TerrainCellRenderer::ShortCircuit(
@@ -329,47 +345,20 @@ namespace SceneEngine
 		auto i = LowerBound(_renderInfos, cellHash);
 		if (i == _renderInfos.end() || i->first != cellHash) return;
 
-		auto& cri = *i->second;
+		TileSetPtrs p(*this, *i->second, layerId);
+
+		if (!p._tileSet || !p._tiles || nodeIndex >= p._tiles->size()) return;
+		const auto& tile = (*p._tiles)[nodeIndex]._tile;
+		if (!p._tileSet->IsValid(tile)) return;
+
 		auto& sourceCell = *i->second->_sourceCell;
-
-		TextureTileSet* tileSet = nullptr;
-		std::vector<NodeCoverageInfo>* tiles = nullptr;
-		unsigned coverageLayerIndex = ~unsigned(0);
-
-		if (layerId == CoverageId_Heights) {
-			tileSet = _heightMapTileSet.get();
-			tiles = &cri._heightTiles;
-		} else {
-			for (unsigned c = 0; c<_coverageIds.size(); ++c)
-				if (_coverageIds[c] == layerId) { coverageLayerIndex = c; break; }
-			if (coverageLayerIndex >= unsigned(_coverageTileSet.size())) return;
-			tileSet = _coverageTileSet[coverageLayerIndex].get();
-			tiles = &cri._coverage[coverageLayerIndex]._tiles;
-		}
-
-		if (!tileSet || !tiles || nodeIndex >= tiles->size()) return;
-		const auto& tile = (*tiles)[nodeIndex]._tile;
-		if (!tileSet->IsValid(tile)) return;
-
-		auto fi = std::find_if(
-			sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
-			[=](const TerrainCell::NodeField& field)
-			{ return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
-		size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
-
-		const auto& sourceNode = *sourceCell._nodes[nodeIndex];
-		auto nodeMinInCell = Truncate(TransformPoint(sourceNode._localToCell, Float3(0.f, 0.f, 0.f)));
-		auto nodeMaxInCell = Truncate(TransformPoint(sourceNode._localToCell, Float3(1.f, 1.f, 1.f)));
-
-		auto upd = bridge.GetShortCircuit(cellHash, nodeMinInCell, nodeMaxInCell);
+		auto nodeInCell = GetNodeInCell(sourceCell, nodeIndex);
+		auto upd = bridge.GetShortCircuit(cellHash, nodeInCell.first, nodeInCell.second);
 		if (upd._srv && upd._cellMinsInResource[0] < upd._cellMaxsInResource[0] && upd._cellMinsInResource[1] < upd._cellMaxsInResource[1])
 			ShortCircuitTileUpdate(
 				metalContext, tile,
-				(*tiles)[nodeIndex], layerId, 
-				unsigned(fieldIndex), 
-				// nodeMinInCell, nodeMaxInCell,
-				Float2(0.f, 0.f), Float2(1.f, 1.f),
-				upd);
+				(*p._tiles)[nodeIndex], layerId, GetFieldIndex(sourceCell, nodeIndex),
+				Float2(0.f, 0.f), Float2(1.f, 1.f), upd);
 	}
 
 	void    TerrainCellRenderer::AbandonShortCircuitData(

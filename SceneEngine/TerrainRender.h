@@ -219,6 +219,7 @@ namespace SceneEngine
             const Float4x4& worldToProjection, const Float3& viewPositionWorld,
             CellRenderInfo& cellRenderInfo, const Float4x4& cellToWorld);
 
+		friend class TileSetPtrs;
         void    ShortCircuitTileUpdate(
             RenderCore::Metal::DeviceContext& metalContext, const TextureTile& tile, 
             NodeCoverageInfo& coverageInfo, 
