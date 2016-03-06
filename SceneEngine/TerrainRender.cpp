@@ -485,10 +485,11 @@ namespace SceneEngine
             // We can search through them to see if any need to be touched by a short-circuit 
             // from the uber surface.
 		std::vector<std::pair<uint64, uint32>> result;
+		result.reserve(std::distance(i, _pendingUploads.end()));
         for (auto i2=i; i2!=_pendingUploads.end(); ++i2) {
 			auto ri = std::find_if(_renderInfos.begin(), _renderInfos.end(), [i2](const CRIPair& p) { return p.second.get() == i2->first; });
 			assert(ri != _renderInfos.end());
-			result.push_back(std::make_pair(ri->first, i2->second & ~(1u << 31u)));
+			result.push_back(std::make_pair(ri->first, i2->second));
         }
 
         _pendingUploads.erase(i, _pendingUploads.end());

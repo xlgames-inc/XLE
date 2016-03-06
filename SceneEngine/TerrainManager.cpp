@@ -376,6 +376,18 @@ namespace SceneEngine
         }
     }
 
+	static void WriteCell(
+		::Assets::rstring filename, UInt2 uberMins, UInt2 uberMaxs,
+		std::shared_ptr<ITerrainFormat> fmt,
+		std::shared_ptr<GenericUberSurfaceInterface> uber,
+		unsigned cellTreeDepth, unsigned nodeOverlap)
+	{
+		fmt->WriteCell(
+			filename.c_str(), uber->GetSurface(),
+			uberMins, uberMaxs,
+			cellTreeDepth, nodeOverlap);
+	}
+
     void TerrainManager::Pimpl::BuildUberSurface(const ::Assets::ResChar uberSurfaceDir[], const TerrainConfig& cfg)
     {
         const bool registerShortCircuit = true;
@@ -394,17 +406,14 @@ namespace SceneEngine
                     //  Register cells for short-circuit update... Do we need to do this for every single cell
                     //  or just those that are within the limited area we're going to load?
                 for (auto c=_cells.cbegin(); c!=_cells.cend(); ++c) {
-                    // _uberSurfaceInterface->RegisterCell(
-                    //     c->_heightMapFilename, c->_heightsToUber._mins, c->_heightsToUber._maxs, cfg.NodeOverlap(),
-                    //     std::bind(&DoShortCircuitUpdate, c->BuildHash(), CoverageId_Heights, 
-                    //     _renderer, c->_heightsToUber, std::placeholders::_1),
-                    //  std::bind(&DoAbandonShortCircuitData, c->BuildHash(), CoverageId_Heights, 
-                    //     _renderer, c->_heightsToUber, std::placeholders::_1, std::placeholders::_2));
-
                     _uberSurfaceBridge->RegisterCell(
-                        // Hash64(c->_heightMapFilename), 
                         c->BuildHash(),
-                        c->_heightsToUber._mins, c->_heightsToUber._maxs, nullptr);
+                        c->_heightsToUber._mins, c->_heightsToUber._maxs,
+						std::bind(WriteCell, 
+							::Assets::rstring(c->_heightMapFilename), 
+							c->_heightsToUber._mins, c->_heightsToUber._maxs,
+							_ioFormat, _uberSurfaceInterface, 
+							_cfg.CellTreeDepth(), _cfg.NodeOverlap()));
                 }
             }
         }
@@ -429,19 +438,14 @@ namespace SceneEngine
                     //  Register cells for short-circuit update... Do we need to do this for every single cell
                     //  or just those that are within the limited area we're going to load?
                 for (auto cell=_cells.cbegin(); cell!=_cells.cend(); ++cell) {
-                    // ci._interface->RegisterCell(
-                    //     cell->_coverageFilename[c], cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs, l._overlap,
-                    //     std::bind(
-                    //         &DoShortCircuitUpdate, cell->BuildHash(), l._id, _renderer, 
-                    //         cell->_coverageToUber[c], std::placeholders::_1),
-                    //  std::bind(
-                    //         &DoAbandonShortCircuitData, cell->BuildHash(), l._id, _renderer, 
-                    //         cell->_coverageToUber[c], std::placeholders::_1, std::placeholders::_2));
-
                     ci._bridge->RegisterCell(
-                        // Hash64(cell->_coverageFilename[c]), 
                         cell->BuildHash(),
-                        cell->_heightsToUber._mins, cell->_heightsToUber._maxs, nullptr);
+                        cell->_heightsToUber._mins, cell->_heightsToUber._maxs, 
+						std::bind(WriteCell,
+							::Assets::rstring(cell->_coverageFilename[c]),
+							cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs,
+							_ioFormat, ci._interface,
+							_cfg.CellTreeDepth(), l._overlap));
                 }
             }
 
@@ -619,8 +623,17 @@ namespace SceneEngine
 		Metal::DeviceContext& context, 
 		IteratorRange<std::pair<uint64, uint32>*> updated)
 	{
-		for (const auto& u:updated)
-			_renderer->ShortCircuit(context, *_uberSurfaceBridge, u.first, CoverageId_Heights, u.second);
+		for (const auto& u:updated) {
+			if (u.second & (1u << 31u)) {
+				// Unfortunately, due to the way this works we don't know which layer has completed
+				// So we just have to try them all. This will result in redundant extra uploads in some
+				// cases.
+				for (const auto&l : _coverageInterfaces)
+					_renderer->ShortCircuit(context, *l._bridge, u.first, l._id, u.second & ~(1u << 31u));
+			} else {
+				_renderer->ShortCircuit(context, *_uberSurfaceBridge, u.first, CoverageId_Heights, u.second);
+			}
+		}
 	}
 
     void TerrainManager::Render(Metal::DeviceContext* context, LightingParserContext& parserContext, unsigned techniqueIndex)

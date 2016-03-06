@@ -221,7 +221,7 @@ RWTexture2DArray<uint> Destination : register(u0);
 
 		int2 srcAddress = GetSrcCoord(dispatchThreadId);
 		if (	srcAddress.x >= UpdateMinInResource.x && srcAddress.x <= UpdateMaxInResource.x
-			&&	srcAddress.y >= UpdateMinInResource.y && scrAddress.y <= UpdateMaxInResource.y) {
+			&&	srcAddress.y >= UpdateMinInResource.y && srcAddress.y <= UpdateMaxInResource.y) {
 
 			Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = newHeight;
 		}

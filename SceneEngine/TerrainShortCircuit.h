@@ -56,7 +56,7 @@ namespace SceneEngine
         void QueueAbandon(UInt2 uberMins, UInt2 uberMaxs);
         void WriteCells(UInt2 uberMins, UInt2 uberMaxs);
 
-        using WriteCellsFn = std::function<void(TerrainUberSurfaceGeneric&, UInt2 uberMins, UInt2 uberMaxs)>;
+        using WriteCellsFn = std::function<void()>;
         void RegisterCell(uint64 cellHash, UInt2 uberMins, UInt2 uberMaxs, WriteCellsFn&& writeCells);
 
         ShortCircuitBridge(const std::shared_ptr<IShortCircuitSource>& source);

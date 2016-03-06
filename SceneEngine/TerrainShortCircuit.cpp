@@ -521,7 +521,7 @@ namespace SceneEngine
             // we need to call the write function to commit these cells to disk
             // todo -- how do we handle exceptions here?
             if (r._writeCells)
-                (r._writeCells)(l->GetSurface(), r._uberMins, r._uberMaxs);
+                (r._writeCells)();
         }
     }
 
