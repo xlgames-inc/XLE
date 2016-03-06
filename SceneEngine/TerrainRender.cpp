@@ -472,12 +472,29 @@ namespace SceneEngine
 		_pendingUploads.erase(i, _pendingUploads.end());
 	}
 
+	template<typename Iterator, typename Predicate>
+		Iterator MoveToBack(Iterator begin, Iterator end, Predicate predicate) 
+	{
+		// "remove_if" type algorithm that will not retain the same ordering, but
+		// is generally efficient. Also, the "removed" items can be accessed in the 
+		// range between newEnd and end
+		Iterator newEnd = end;
+		for (auto i = begin; i != newEnd;) {
+			if (predicate(*i)) {
+				if ((newEnd-1) != i)
+					std::swap(*(newEnd-1), *i);
+				--newEnd;
+			} else ++i;
+		}
+		return newEnd;
+	}
+
 	std::vector<std::pair<uint64, uint32>> TerrainCellRenderer::CompletePendingUploads_Bridge()
     {
             // note; ideally we want an erase/remove that will reorder the vector here... That is on erase,
             // just do a std::swap between the erased item and the last item.
             // that should be most efficient when we complete multiple operations per frame (which will be normal)
-        auto i = std::remove_if(
+        auto i = MoveToBack(
             _pendingUploads.begin(), _pendingUploads.end(),
             [=](const UploadPair& p) { return p.first->CompleteUpload(p.second, _heightMapTileSet->GetBufferUploads()); });
 
@@ -536,10 +553,9 @@ namespace SceneEngine
             }
             
             if (i->_flags & Flags::NeedsCoverageUploadMask) {
+				bool anyCoverageUploads = false;
                 for (unsigned covIndex=0; covIndex<unsigned(cellRenderInfo._coverage.size()); ++covIndex) {
                     auto n = i->_absNodeIndex;
-                    bool anyCoverageUploads = false;
-
                     if (i->_flags & (Flags::NeedsCoverageUpload0<<covIndex)) {
                         auto& c = cellRenderInfo._coverage[covIndex];
                         c._tiles[n].Queue(
@@ -549,11 +565,9 @@ namespace SceneEngine
                         ++uploadsThisFrame;
                         anyCoverageUploads = true;
                     }
-
-                    if (anyCoverageUploads) {
-                        _pendingUploads.push_back(UploadPair(&cellRenderInfo, n | (1u<<31u)));
-                    }
                 }
+				if (anyCoverageUploads)
+					_pendingUploads.push_back(UploadPair(&cellRenderInfo, n | (1u << 31u)));
             }
         }
     }
@@ -1072,6 +1086,9 @@ namespace SceneEngine
                 }
         } CATCH (...) { // suppress pending / invalid resources
         } CATCH_END
+
+		context->UnbindVS<Metal::ShaderResourceView>(0, 1);
+		context->UnbindDS<Metal::ShaderResourceView>(0, 1);
     }
 
     void TerrainCellRenderer::RenderNode(    
@@ -1358,8 +1375,7 @@ namespace SceneEngine
             // the caller should check to see if we need an upload before calling this
         assert(!coverageTileSet.IsValid(_tile));
         assert(!coverageTileSet.IsValid(_pendingTile));
-        coverageTileSet.Transaction_Begin(
-            _pendingTile, filePtr, fileOffset, fileSize);
+        coverageTileSet.Transaction_Begin(_pendingTile, filePtr, fileOffset, fileSize);
     }
 
     void TerrainCellRenderer::NodeCoverageInfo::EndTransactions(BufferUploads::IManager& bufferUploads)
@@ -1369,10 +1385,7 @@ namespace SceneEngine
             //  to some allocated space in the tile set. In other words, the 
             //  destination area in the tile set is not deallocated during when
             //  the transaction ends.
-        if (_tile._transaction != ~BufferUploads::TransactionID(0x0)) {
-            bufferUploads.Transaction_End(_tile._transaction);
-            _tile._transaction = ~BufferUploads::TransactionID(0x0);
-        }
+        assert(_tile._transaction == ~BufferUploads::TransactionID(0x0));		// (there should never be a transaction on the front buffer tile)
         if (_pendingTile._transaction != ~BufferUploads::TransactionID(0x0)) {
             bufferUploads.Transaction_End(_pendingTile._transaction);
             _pendingTile._transaction = ~BufferUploads::TransactionID(0x0);

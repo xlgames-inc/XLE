@@ -232,6 +232,16 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->CSSetShaderResources(startSlot, count, srv);
     }
 
+	template<>
+		void  DeviceContext::UnbindDS<ShaderResourceView>(unsigned startSlot, unsigned count)
+		{
+			ID3D::ShaderResourceView* srv[16];
+			assert(count <= dimof(srv));
+			count = std::min(count, (unsigned)dimof(srv));
+			std::fill(srv, &srv[count], nullptr);
+			_underlying->DSSetShaderResources(startSlot, count, srv);
+		}
+
     template<>
         void  DeviceContext::UnbindCS<UnorderedAccessView>(unsigned startSlot, unsigned count)
     {

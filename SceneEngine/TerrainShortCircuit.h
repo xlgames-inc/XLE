@@ -47,8 +47,8 @@ namespace SceneEngine
             uint64 _cellHash;
             Float2 _cellMins, _cellMaxs;
         };
-        std::vector<std::pair<CellRegion, ShortCircuitUpdate>>  GetPendingUpdates();
-        std::vector<CellRegion>                                 GetPendingAbandons();
+        std::vector<CellRegion>		GetPendingUpdates();
+        std::vector<CellRegion>		GetPendingAbandons();
 
         ShortCircuitUpdate GetShortCircuit(uint64 cellHash, Float2 cellMins, Float2 cellMaxs);
 

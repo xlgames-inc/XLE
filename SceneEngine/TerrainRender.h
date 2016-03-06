@@ -105,9 +105,9 @@ namespace SceneEngine
 
         void ShortCircuit(
             RenderCore::Metal::DeviceContext& metalContext, 
-            uint64 cellHash, TerrainCoverageId layerId, 
-            Float2 cellCoordMins, Float2 cellCoordMaxs, 
-            const ShortCircuitUpdate& upd);
+			ShortCircuitBridge& bridge, 
+			uint64 cellHash, TerrainCoverageId layerId,
+            Float2 cellCoordMins, Float2 cellCoordMaxs);
 		void ShortCircuit(
 			RenderCore::Metal::DeviceContext& metalContext,
 			ShortCircuitBridge& bridge,

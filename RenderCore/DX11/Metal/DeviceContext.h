@@ -231,6 +231,7 @@ namespace RenderCore { namespace Metal_DX11
         T1(Type) void   UnbindGS(unsigned startSlot, unsigned count);
         T1(Type) void   UnbindPS(unsigned startSlot, unsigned count);
         T1(Type) void   UnbindCS(unsigned startSlot, unsigned count);
+		T1(Type) void   UnbindDS(unsigned startSlot, unsigned count);
         T1(Type) void   Unbind();
         void            UnbindSO();
 

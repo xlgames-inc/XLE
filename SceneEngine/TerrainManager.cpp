@@ -609,7 +609,7 @@ namespace SceneEngine
 
         auto pendingUpdates = bridge.GetPendingUpdates();
         for (const auto&u:pendingUpdates)
-            renderer.ShortCircuit(context, u.first._cellHash, coverageId, u.first._cellMins, u.first._cellMaxs, u.second);
+            renderer.ShortCircuit(context, bridge, u._cellHash, coverageId, u._cellMins, u._cellMaxs);
     }
 
     void TerrainManager::Pimpl::FlushShortCircuitQueue(Metal::DeviceContext& context)
@@ -642,6 +642,12 @@ namespace SceneEngine
         auto* renderer = _pimpl->_renderer.get();
         if (!renderer) return;
 
+		// auto& reload = Tweakable("TerrainReload", false);
+		// if (reload) {
+		// 	_pimpl->_renderer->UnloadCachedData();
+		// 	reload = false;
+		// }
+
             //  We need to enable the rendering state once, for all cells. The state should be
             //  more or less the same for every cell, so we don't need to do it every time
 			//
@@ -656,8 +662,7 @@ namespace SceneEngine
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
         state._currentViewport = Metal::ViewportDesc(*context);
-        const auto& projDesc = parserContext.GetProjectionDesc();
-        _pimpl->CullNodes(projDesc, state);
+        _pimpl->CullNodes(parserContext.GetProjectionDesc(), state);
 
         // Check for short-circuit events.
         if (renderer->IsShortCircuitAllowed()) {

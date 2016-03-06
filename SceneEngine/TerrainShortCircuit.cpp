@@ -324,16 +324,19 @@ namespace SceneEngine
 
     void    TerrainCellRenderer::ShortCircuit(
         RenderCore::Metal::DeviceContext& metalContext,
+		ShortCircuitBridge& bridge,
 		uint64 cellHash, TerrainCoverageId layerId, 
-		Float2 cellCoordMins, Float2 cellCoordMaxs, 
-		const ShortCircuitUpdate& upd)
+		Float2 cellCoordMins, Float2 cellCoordMaxs)
     {
     	auto nodes = FindIntersectingNodes(cellHash, layerId, cellCoordMins, cellCoordMaxs);
+		if (nodes.empty()) return;
+
+		auto upd = bridge.GetShortCircuit(cellHash, Float2(0.f, 0.f), Float2(1.f, 1.f));
 		for (const auto& n:nodes)
-            ShortCircuitTileUpdate(
-                metalContext, n._node->_tile, *n._node,
-                layerId, n._fieldIndex, n._cellCoordMin, n._cellCoordMax,
-                upd);
+			ShortCircuitTileUpdate(
+				metalContext, n._node->_tile, *n._node,
+				layerId, n._fieldIndex, n._cellCoordMin, n._cellCoordMax,
+				upd);
     }
 
 	void TerrainCellRenderer::ShortCircuit(
@@ -346,19 +349,24 @@ namespace SceneEngine
 		if (i == _renderInfos.end() || i->first != cellHash) return;
 
 		TileSetPtrs p(*this, *i->second, layerId);
+		auto& sourceCell = *i->second->_sourceCell;
+		auto nodeInCell = GetNodeInCell(sourceCell, nodeIndex);
 
 		if (!p._tileSet || !p._tiles || nodeIndex >= p._tiles->size()) return;
 		const auto& tile = (*p._tiles)[nodeIndex]._tile;
 		if (!p._tileSet->IsValid(tile)) return;
-
-		auto& sourceCell = *i->second->_sourceCell;
-		auto nodeInCell = GetNodeInCell(sourceCell, nodeIndex);
+		
 		auto upd = bridge.GetShortCircuit(cellHash, nodeInCell.first, nodeInCell.second);
-		if (upd._srv && upd._cellMinsInResource[0] < upd._cellMaxsInResource[0] && upd._cellMinsInResource[1] < upd._cellMaxsInResource[1])
+		if (upd._srv && upd._cellMinsInResource[0] < upd._cellMaxsInResource[0] && upd._cellMinsInResource[1] < upd._cellMaxsInResource[1]) {
+			// LogInfo 
+			// 	<< "ShortCircuit " << nodeIndex << " field:" << GetFieldIndex(sourceCell, nodeIndex) 
+			// 	<< " (" << nodeInCell.first[0] << "," << nodeInCell.first[1] << ") ("
+			// 	<< nodeInCell.second[0] << "," << nodeInCell.second[1] << ") -- update";
 			ShortCircuitTileUpdate(
 				metalContext, tile,
 				(*p._tiles)[nodeIndex], layerId, GetFieldIndex(sourceCell, nodeIndex),
 				Float2(0.f, 0.f), Float2(1.f, 1.f), upd);
+		}
 	}
 
 	void    TerrainCellRenderer::AbandonShortCircuitData(
@@ -523,19 +531,10 @@ namespace SceneEngine
         _cells.insert(i, std::make_pair(cellHash, RegisteredCell { uberMins, uberMaxs, std::move(writeCells) }));
     }
 
-    auto ShortCircuitBridge::GetPendingUpdates() -> std::vector<std::pair<CellRegion, ShortCircuitUpdate>>
+    auto ShortCircuitBridge::GetPendingUpdates() -> std::vector<CellRegion>
     {
-        std::vector<std::pair<CellRegion, ShortCircuitUpdate>> result;
-        auto l = _source.lock();
-        if (!l) return result;
-        
-        result.reserve(_pendingUpdates.size());
-        for (const auto& u:_pendingUpdates) {
-            auto c = LowerBound(_cells, u._cellHash);
-            result.push_back(std::make_pair(u, l->GetShortCircuit(c->second._uberMins, c->second._uberMaxs)));
-        }
-        _pendingUpdates.clear();
-        return std::move(result);
+		// This will clear "_pendingUpdates" as a side effect.
+		return std::move(_pendingUpdates);
     }
 
     auto ShortCircuitBridge::GetPendingAbandons() -> std::vector<CellRegion>
