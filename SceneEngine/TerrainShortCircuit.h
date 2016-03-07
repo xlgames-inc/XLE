@@ -13,6 +13,8 @@
 #include <memory>
 #include <functional>
 
+namespace ConsoleRig { class IProgress; }
+
 namespace SceneEngine
 {
     class TerrainUberSurfaceGeneric;
@@ -54,7 +56,7 @@ namespace SceneEngine
 
         void QueueShortCircuit(UInt2 uberMins, UInt2 uberMaxs);
         void QueueAbandon(UInt2 uberMins, UInt2 uberMaxs);
-        void WriteCells(UInt2 uberMins, UInt2 uberMaxs);
+        void WriteCells(UInt2 uberMins, UInt2 uberMaxs, ConsoleRig::IProgress* progress);
 
         using WriteCellsFn = std::function<void()>;
         void RegisterCell(uint64 cellHash, UInt2 uberMins, UInt2 uberMaxs, WriteCellsFn&& writeCells);

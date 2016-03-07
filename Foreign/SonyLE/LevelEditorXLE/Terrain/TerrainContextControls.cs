@@ -162,7 +162,10 @@ namespace LevelEditorXLE.Terrain
 
             try
             {
-                sceneManager.SaveTerrainLock(_attached.ActiveLayer);
+                using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+                {
+                    sceneManager.SaveTerrainLock(_attached.ActiveLayer, progress);
+                }
             }
             catch (Exception ex)
             {

@@ -102,7 +102,7 @@ namespace SceneEngine
         void    RenderDebugging(RenderCore::IThreadContext& threadContext, SceneEngine::LightingParserContext& context);
 
 		std::pair<UInt2, UInt2> GetLock() const;
-        void    FlushLockToDisk();
+        void    FlushLockToDisk(ConsoleRig::IProgress* progress = nullptr);
 		void	AbandonLock();
 
         intrusive_ptr<BufferUploads::ResourceLocator> CopyToGPU(UInt2 topLeft, UInt2 bottomRight);

@@ -116,7 +116,19 @@ namespace LevelEditorXLE
                 if (result == FileDialogResult.Yes)
                 {
                     foreach (var l in layerIds)
-                        sceneManager.SaveTerrainLock(l);
+                    {
+                        try
+                        {
+                            using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+                            {
+                                sceneManager.SaveTerrainLock(l, progress);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ControlsLibrary.BasicControls.ExceptionReport.Show(ex, "Saving terrain lock");
+                        }
+                    }
                 }
                 else if (result == FileDialogResult.Cancel)
                 {

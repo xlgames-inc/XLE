@@ -48,6 +48,7 @@ namespace GUILayer
     ref class ObjectSet;
     ref class TerrainConfig;
     ref class TerrainManipulatorContext;
+    interface class IProgress;
     class TerrainGob;
     class ObjectPlaceholders;
 
@@ -149,7 +150,7 @@ namespace GUILayer
             uint typeId, System::String^ annotationName, 
             IEnumerable<EntityLayer::PropertyInitializer>^ initializers);
 
-        void SaveTerrainLock(uint layerId);
+        void SaveTerrainLock(uint layerId, IProgress^ progress);
         void AbandonTerrainLock(uint layerId);
         bool HasTerrainLock(uint layerId);
 

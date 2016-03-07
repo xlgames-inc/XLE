@@ -129,7 +129,7 @@ namespace GUILayer
         return *_scene->_flexObjects;
     }
 
-    void EditorSceneManager::SaveTerrainLock(uint layerId)
+    void EditorSceneManager::SaveTerrainLock(uint layerId, IProgress^ progress)
     {
         if (!_scene->_terrainManager) return;
 
@@ -141,7 +141,8 @@ namespace GUILayer
         }
         if (!interf) return;
 
-        TRY { interf->FlushLockToDisk(); } 
+        auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+        TRY { interf->FlushLockToDisk(nativeProgress.get()); } 
         CATCH (const std::exception& e) { Throw(Marshal(e)); }
         CATCH_END
     }

@@ -286,7 +286,7 @@ namespace SceneEngine
 		}
 	}
 
-    void    GenericUberSurfaceInterface::FlushLockToDisk()
+    void    GenericUberSurfaceInterface::FlushLockToDisk(ConsoleRig::IProgress* progress)
     {
         if (_pimpl->_gpucache[0]) {
                 // readback data from the gpu asset (often requires a staging-style resource)
@@ -324,7 +324,7 @@ namespace SceneEngine
                 // Afterwards, we should just write the cells, and they will be reloaded by the
                 // terrain renderer in the normal way.
                 _pimpl->_bridge->QueueAbandon(_pimpl->_gpuCacheMins, _pimpl->_gpuCacheMaxs);
-                _pimpl->_bridge->WriteCells(_pimpl->_gpuCacheMins, _pimpl->_gpuCacheMaxs);
+                _pimpl->_bridge->WriteCells(_pimpl->_gpuCacheMins, _pimpl->_gpuCacheMaxs, progress);
             }
 
             _pimpl->_gpuCacheMins = _pimpl->_gpuCacheMaxs = UInt2(0,0);

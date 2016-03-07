@@ -12,6 +12,7 @@
 #include "TerrainMaterialTextures.h"
 #include "TerrainMaterial.h"
 #include "SurfaceHeightsProvider.h"
+#include "TerrainFormat.h"
 #include "SceneEngineUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
@@ -244,6 +245,8 @@ namespace SceneEngine
         std::shared_ptr<HeightsUberSurfaceInterface> _uberSurfaceInterface;
         std::shared_ptr<ShortCircuitBridge> _uberSurfaceBridge;
 
+        std::shared_ptr<GradientFlagsSettings> _gradFlagSettings;
+
         class CoverageInterface
         {
         public:
@@ -378,12 +381,16 @@ namespace SceneEngine
 
 	static void WriteCell(
 		::Assets::rstring filename, UInt2 uberMins, UInt2 uberMaxs,
-		std::shared_ptr<ITerrainFormat> fmt,
-		std::shared_ptr<GenericUberSurfaceInterface> uber,
+		std::weak_ptr<GenericUberSurfaceInterface> uber,
+        std::shared_ptr<GradientFlagsSettings> gradFlagSettings,
 		unsigned cellTreeDepth, unsigned nodeOverlap)
 	{
-		fmt->WriteCell(
-			filename.c_str(), uber->GetSurface(),
+        auto l = uber.lock();
+        if (!l) return;
+
+        TerrainFormat fmt(*gradFlagSettings);
+		fmt.WriteCell(
+			filename.c_str(), l->GetSurface(),
 			uberMins, uberMaxs,
 			cellTreeDepth, nodeOverlap);
 	}
@@ -412,7 +419,7 @@ namespace SceneEngine
 						std::bind(WriteCell, 
 							::Assets::rstring(c->_heightMapFilename), 
 							c->_heightsToUber._mins, c->_heightsToUber._maxs,
-							_ioFormat, _uberSurfaceInterface, 
+							_uberSurfaceInterface, _gradFlagSettings,
 							_cfg.CellTreeDepth(), _cfg.NodeOverlap()));
                 }
             }
@@ -444,7 +451,7 @@ namespace SceneEngine
 						std::bind(WriteCell,
 							::Assets::rstring(cell->_coverageFilename[c]),
 							cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs,
-							_ioFormat, ci._interface,
+							ci._interface, _gradFlagSettings,
 							_cfg.CellTreeDepth(), l._overlap));
                 }
             }
@@ -490,10 +497,13 @@ namespace SceneEngine
         _pimpl->_cells.clear();
         _pimpl->_uberSurfaceInterface.reset();
         _pimpl->_uberSurface.reset();
+        _pimpl->_uberSurfaceBridge.reset();
         _pimpl->_coverageInterfaces.clear();
 
         if (_pimpl->_renderer)
             _pimpl->_renderer->UnloadCachedData();
+
+        _pimpl->_gradFlagSettings = std::make_shared<GradientFlagsSettings>();
     }
 
     static float CellSizeWorldSpace(const TerrainConfig& cfg)
@@ -578,6 +588,7 @@ namespace SceneEngine
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_ioFormat = std::move(ioFormat);
+        _pimpl->_gradFlagSettings = std::make_shared<GradientFlagsSettings>();
     }
 
     TerrainManager::~TerrainManager()
@@ -883,6 +894,7 @@ namespace SceneEngine
     {
         if (_pimpl->_renderer)
             _pimpl->_renderer->SetShortCircuitSettings(gradientFlagsSettings);
+        *_pimpl->_gradFlagSettings = gradientFlagsSettings;
     }
 
     const TerrainCoordinateSystem&  TerrainManager::GetCoords() const               { return _pimpl->_coords; }

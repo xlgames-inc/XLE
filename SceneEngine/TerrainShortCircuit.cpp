@@ -20,6 +20,7 @@
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
 
+#include "../ConsoleRig/IProgress.h"
 #include "../Math/Transformations.h"
 #include "../Assets/Assets.h"
 #include "../Utility/StringFormat.h"
@@ -428,11 +429,11 @@ namespace SceneEngine
 
             // queue a new update event
             Float2 cellMins(
-                (uberMins[0] - r._uberMins[0]) / float(r._uberMaxs[0] - r._uberMins[0]),
-                (uberMins[1] - r._uberMins[1]) / float(r._uberMaxs[1] - r._uberMins[1]));
+                (int(uberMins[0]) - int(r._uberMins[0])) / float(r._uberMaxs[0] - r._uberMins[0]),
+                (int(uberMins[1]) - int(r._uberMins[1])) / float(r._uberMaxs[1] - r._uberMins[1]));
             Float2 cellMaxs(
-                (uberMaxs[0] - r._uberMins[0]) / float(r._uberMaxs[0] - r._uberMins[0]),
-                (uberMaxs[1] - r._uberMins[1]) / float(r._uberMaxs[1] - r._uberMins[1]));
+                (int(uberMaxs[0]) - int(r._uberMins[0])) / float(r._uberMaxs[0] - r._uberMins[0]),
+                (int(uberMaxs[1]) - int(r._uberMins[1])) / float(r._uberMaxs[1] - r._uberMins[1]));
             cellMins[0] = std::max(cellMins[0], 0.f);
             cellMins[1] = std::max(cellMins[1], 0.f);
             cellMaxs[0] = std::min(cellMaxs[0], 1.f);
@@ -475,11 +476,11 @@ namespace SceneEngine
 
             // queue a new abandon event
             Float2 cellMins(
-                (uberMins[0] - r._uberMins[0]) / float(r._uberMaxs[0] - r._uberMins[0]),
-                (uberMins[1] - r._uberMins[1]) / float(r._uberMaxs[1] - r._uberMins[1]));
+                (int(uberMins[0]) - int(r._uberMins[0])) / float(r._uberMaxs[0] - r._uberMins[0]),
+                (int(uberMins[1]) - int(r._uberMins[1])) / float(r._uberMaxs[1] - r._uberMins[1]));
             Float2 cellMaxs(
-                (uberMaxs[0] - r._uberMins[0]) / float(r._uberMaxs[0] - r._uberMins[0]),
-                (uberMaxs[1] - r._uberMins[1]) / float(r._uberMaxs[1] - r._uberMins[1]));
+                (int(uberMaxs[0]) - int(r._uberMins[0])) / float(r._uberMaxs[0] - r._uberMins[0]),
+                (int(uberMaxs[1]) - int(r._uberMins[1])) / float(r._uberMaxs[1] - r._uberMins[1]));
             cellMins[0] = std::max(cellMins[0], 0.f);
             cellMins[1] = std::max(cellMins[1], 0.f);
             cellMaxs[0] = std::min(cellMaxs[0], 1.f);
@@ -503,22 +504,34 @@ namespace SceneEngine
         }
     }
 
-    void ShortCircuitBridge::WriteCells(UInt2 uberMins, UInt2 uberMaxs)
+    void ShortCircuitBridge::WriteCells(UInt2 uberMins, UInt2 uberMaxs, ConsoleRig::IProgress* progress)
     {
         auto l = _source.lock();
         if (!l) return;
 
         // look for overlapping cells
+        std::vector<const RegisteredCell*> overlappingCells;
         for (const auto&i:_cells) {
             const auto& r = i.second;
             if (    r._uberMins[0] >= uberMaxs[0] || r._uberMaxs[0] < uberMins[0]
                 ||  r._uberMins[1] >= uberMaxs[1] || r._uberMaxs[1] < uberMins[1])
                 continue;
+            if (r._writeCells)
+                overlappingCells.push_back(&r);
+        }
 
+        std::shared_ptr<ConsoleRig::IStep> step;
+        if (progress)
+            step = progress->BeginStep("Write cells", unsigned(overlappingCells.size()), false);
+
+        for (auto c:overlappingCells) {
+            assert(c && c->_writeCells);
             // we need to call the write function to commit these cells to disk
             // todo -- how do we handle exceptions here?
-            if (r._writeCells)
-                (r._writeCells)();
+            (c->_writeCells)();
+
+            if (step)
+                step->Advance();
         }
     }
 
