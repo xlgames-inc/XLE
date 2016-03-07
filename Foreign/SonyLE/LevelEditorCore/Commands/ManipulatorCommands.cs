@@ -197,27 +197,29 @@ namespace LevelEditorCore.Commands
                 CommandVisibility.All,
                 this);
 
-            m_commandService.RegisterCommand(
-              Command.SnapToVertex,
-              StandardMenu.Modify,
-              CommandGroup.Manipulators,
-              "SnapToVertex".Localize(),
-              "Snap To Vertex".Localize(),
-              Keys.None,
-              Resources.VertexSnapImage,
-              CommandVisibility.All,
-              this);
+            #if false
+                m_commandService.RegisterCommand(
+                  Command.SnapToVertex,
+                  StandardMenu.Modify,
+                  CommandGroup.Manipulators,
+                  "SnapToVertex".Localize(),
+                  "Snap To Vertex".Localize(),
+                  Keys.None,
+                  Resources.VertexSnapImage,
+                  CommandVisibility.All,
+                  this);
 
-            m_commandService.RegisterCommand(
-                Command.RotateOnSnap,
-                StandardMenu.Modify,
-                CommandGroup.Manipulators,
-                "RotateOnSnap".Localize(),
-                "Rotate On Snap".Localize(),
-                Keys.None,
-                Resources.RotateOnSnapImage,
-                CommandVisibility.All,
-                this);
+                m_commandService.RegisterCommand(
+                    Command.RotateOnSnap,
+                    StandardMenu.Modify,
+                    CommandGroup.Manipulators,
+                    "RotateOnSnap".Localize(),
+                    "Rotate On Snap".Localize(),
+                    Keys.None,
+                    Resources.RotateOnSnapImage,
+                    CommandVisibility.All,
+                    this);
+            #endif
 
             m_commandService.RegisterCommand(
                 Command.AlignToTerrainUp,

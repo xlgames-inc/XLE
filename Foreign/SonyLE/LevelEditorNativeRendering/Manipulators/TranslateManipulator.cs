@@ -111,9 +111,10 @@ namespace RenderingInterop
             Ray3F rayV = vc.GetRay(scrPt, proj);
             Vec3F translate = m_translatorControl.OnDragging(rayV);
 
-            ISnapSettings snapSettings = (ISnapSettings)DesignView;            
-            bool snapToGeom = Control.ModifierKeys == m_snapGeometryKey;
+            ISnapSettings snapSettings = (ISnapSettings)DesignView;
 
+#if false
+            bool snapToGeom = Control.ModifierKeys == m_snapGeometryKey;
             if (snapToGeom)
             {
                 Matrix4F view = vc.Camera.ViewMatrix;
@@ -200,8 +201,9 @@ namespace RenderingInterop
                         }
                     }
                 }                
-            }           
+            }
             else
+#endif
             {
                 IGrid grid = DesignView.Context.Cast<IGame>().Grid;
                 bool snapToGrid = Control.ModifierKeys == m_snapGridKey
@@ -220,13 +222,8 @@ namespace RenderingInterop
                     parentWorldToLocal.TransformVector(translate, out localTranslation);
                     Vec3F trans = m_originalValues[i] + localTranslation;
                    
-                    if(snapToGrid)
-                    {                    
-                        if(grid.Snap)
-                            trans = grid.SnapPoint(trans);
-                        else
-                            trans.Y = gridHeight;                    
-                    }
+                    if (snapToGrid)
+                        trans = grid.SnapPoint(trans);
 
                     node.Translation = trans;
                 }                

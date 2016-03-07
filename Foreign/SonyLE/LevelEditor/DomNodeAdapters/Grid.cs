@@ -73,10 +73,7 @@ namespace LevelEditor.DomNodeAdapters
         public Vec3F SnapPoint(Vec3F pt)
         {
             float segment = Size / (float)Subdivisions;
-            Vec3F snap = new Vec3F((int)(pt.X / segment), 0, (int)(pt.Z / segment));
-            snap = snap * segment;
-            snap.Y = Height;
-            return snap;
+            return new Vec3F((int)(pt.X / segment) * segment, (int)(pt.Y / segment) * segment, pt.Z);
         }
 
         /// <summary>
