@@ -162,7 +162,7 @@ namespace LevelEditor
             if (copyList.Count > 1)
             {// create group
                 IGame game = m_contextRegistry.GetActiveContext<IGame>();
-                IGameObjectGroup gobgroup = game.CreateGameObjectGroup();
+                var gobgroup = game.RootGameObjectFolder.CreateGroup();
                 gobgroup.Translation = bound.Center;
                 gobgroup.UpdateTransform();
                 Matrix4F worldInv = new Matrix4F();
@@ -173,7 +173,7 @@ namespace LevelEditor
                     worldInv.Transform(ref translate);
                     gob.Translation = translate;
                     gob.UpdateTransform();
-                    gobgroup.GameObjects.Add(gob);
+                    gobgroup.AddChild(gob);
                 }
                 gobchild = gobgroup.As<DomNode>();                
             }

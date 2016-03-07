@@ -6,12 +6,12 @@ namespace LevelEditorCore
 {
     /// <summary>
     /// DomObjectInterface for game object groups</summary>
-    public interface IGameObjectGroup : IGameObject, IHierarchical
+    public interface ITransformableGroup : ITransformable, IHierarchical
     {
         /// <summary>
         /// Gets the list of all child game objects</summary>
         /// <remarks>Sub-groups are included in this list as well</remarks>
-        IList<IGameObject> GameObjects
+        IList<ITransformable> Objects
         {
             get;
         }

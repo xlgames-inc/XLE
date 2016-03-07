@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Windows.Forms;
+using System.Linq;
 
 using Sce.Atf;
 using Sce.Atf.Adaptation;
@@ -34,50 +35,49 @@ namespace LevelEditorCore.Commands
             m_contextRegistry = contextRegistry;            
         }
 
+        private IGameObjectFolder GetObjectFolder(DomNode n)
+        {
+            foreach(var p in n.Lineage) 
+            {
+                var folder = p.As<IGameObjectFolder>();
+                if (folder != null) return folder;
+            }
+            return null;
+        }
+
         /// <summary>
         /// Tests if the gameobjects can be grouped.
         /// The gameobjects can be grouped if there are more than one 
         /// and they belong to the same level.</summary>        
-        public bool CanGroup(IEnumerable<IGameObject> gobs)
+        public bool CanGroup(IEnumerable<object> gobs)
         {
             // can group if there are more than one gob and they all belong to same level.
-            DomNode root1 = null;
+            IGameObjectFolder root1 = null;
             int gobcount = 0;
-            bool sameLevel = true;
-            foreach (IGameObject gob in gobs)
+            foreach (var gob in gobs)
             {
-                DomNode root = gob.As<DomNode>().GetRoot();
-                if (!root.Is<IGame>())
-                {
-                    sameLevel = false;
-                    break;
-                }
-                if (root1 == null)
-                    root1 = root;
+                    // ignore objects that are not ITransformables
+                if (!gob.Is<ITransformable>()) continue;
 
-                if (root1 != root)
-                {
-                    sameLevel = false;
-                    break;
-                }
+                var node = gob.As<DomNode>();
+                if (node == null) continue;
+                var root = GetObjectFolder(node);
+                if (root == null) return false;     // (cannot group detached nodes)
+                if (root1 != null && root1 != root)
+                    return false;
+                root1 = root;
+
                 gobcount++;
             }
-
-            return sameLevel && gobcount > 1;
+            return gobcount > 1;
         }
 
         /// <summary>
         /// Tests if the Gameobjects can be Ungrouped.        
         /// </summary>        
-        public bool CanUngroup(IEnumerable<IGameObject> gobs)
+        public bool CanUngroup(IEnumerable<object> gobs)
         {
-            // can ungroup.
-            foreach (IGameObject gob in gobs)
-            {
-                if (gob.Is<IGameObjectGroup>())
-                    return true;
-            }
-            return false;
+            return gobs.AsIEnumerable<ITransformableGroup>().FirstOrDefault() != null;
         }
 
         /// <summary>
@@ -85,83 +85,125 @@ namespace LevelEditorCore.Commands
         /// <param name="gobs">GameObjects to be grouped</param>
         /// <remarks>Creates a new GameObjectGroup and moves all 
         /// the GameObjects into it.</remarks>
-        public IGameObjectGroup Group(IEnumerable<IGameObject> gobs)
+        public ITransformableGroup Group(IEnumerable<object> gobs)
         {
             // extra check.
             if (!CanGroup(gobs)) return null;
 
-            IGame game = null;
-            AABB groupBox = new AABB();
-            List<IGameObject> gameObjects = new List<IGameObject>();
-            foreach (IGameObject gameObject in gobs)
+            IGameObjectFolder root = null;
+            var gameObjects = new List<ITransformable>();
+            foreach (var gameObject in gobs)
             {
-                if (game == null)
-                {
-                    game = gameObject.As<DomNode>().GetRoot().As<IGame>();
-                }
+                ITransformable trans = gameObject.As<ITransformable>();
+                if (trans==null) continue;
+                var node = gameObject.As<DomNode>();
+                if (node == null) continue;
 
-                gameObjects.Add(gameObject);
-
-                IBoundable boundable = gameObject.As<IBoundable>();
-                groupBox.Extend(boundable.BoundingBox);                
+                gameObjects.Add(trans);
+                var root1 = GetObjectFolder(node);
+                if (root != null && root != root1) return null;
+                root = root1;
             }
 
-            IGameObjectGroup group = game.CreateGameObjectGroup();
-            DomNode node = group.As<DomNode>();
-            node.InitializeExtensions();
-            ITransformable transformable = node.As<ITransformable>();
-            transformable.Translation = groupBox.Center;
+            // sort from shallowest in the tree to deepest. Then remove any nodes that
+            // are already children of other nodes in the list
+            gameObjects.Sort(
+                (lhs, rhs) => { return lhs.As<DomNode>().Lineage.Count().CompareTo(rhs.As<DomNode>().Lineage.Count()); });
+
+            // awkward iteration here... Maybe there's a better way to traverse this list..?
+            for (int c=0; c<gameObjects.Count;)
+            {
+                var n = gameObjects[c].As<DomNode>();
+                bool remove = false;
+                for (int c2=0; c2<c; ++c2)
+                    if (n.IsDescendantOf(gameObjects[c2].As<DomNode>())) {
+                        remove = true;
+                        break;
+                    }
+
+                if (remove) { gameObjects.RemoveAt(c); }
+                else ++c;
+            }
+
+            // finally, we must have at least 2 valid objects to perform the grouping operation
+            if (gameObjects.Count < 2) return null;
+
+            AABB groupBox = new AABB();
+            foreach (var gameObject in gameObjects.AsIEnumerable<IBoundable>())
+                groupBox.Extend(gameObject.BoundingBox);
+
+            var group = root.CreateGroup();
+            if (group == null) return null;
+
+            group.As<DomNode>().InitializeExtensions();
+
+            // try to add the group to the parent of the shallowest item
+            var groupParent = gameObjects[0].As<DomNode>().Parent.AsAll<IHierarchical>();
+            bool addedToGroupParent = false;
+            foreach(var h in groupParent)
+                if (h.AddChild(group)) { addedToGroupParent = true; break; }
+            if (!addedToGroupParent) return null;
+
+            // arrange the transform for the group so that it's origin is in the center of the objects
+            var groupParentTransform = new Matrix4F();
+            if (groupParent.Is<ITransformable>())
+                groupParentTransform = groupParent.As<ITransformable>().LocalToWorld;
+
+            Matrix4F invgroupParentTransform = new Matrix4F();
+            invgroupParentTransform.Invert(groupParentTransform);
+            group.Transform = Matrix4F.Multiply(new Matrix4F(groupBox.Center), invgroupParentTransform);
             
             Matrix4F invWorld = new Matrix4F();
-            invWorld.Invert(transformable.Transform);
+            invWorld.Invert(group.Transform);
 
-            game.RootGameObjectFolder.GameObjects.Add(group);
-
-            foreach (IGameObject gameObject in gameObjects)
+            // now try to actually add the objects to the group
+            var hier = group.AsAll<IHierarchical>();
+            foreach (var gameObject in gameObjects)
             {
-                ITransformable xformable = gameObject.As<ITransformable>();
-                Matrix4F world = ComputeWorldTransform(xformable);
-                SetTransform(xformable, world);
-                group.GameObjects.Add(gameObject);
-                Vec3F trans = world.Translation;
-                invWorld.Transform(ref trans);
-                xformable.Translation = trans;
+                Matrix4F oldWorld = gameObject.LocalToWorld;
+
+                bool addedToGroup = false;
+                foreach (var h in hier)
+                    if (h.AddChild(gameObject)) { addedToGroup = true;  break; }
+
+                if (addedToGroup)
+                    gameObject.Transform = Matrix4F.Multiply(oldWorld, invWorld);
             }
 
-            return group;            
+            return group;
         }
 
         /// <summary>
         /// Ungroups the specified gameobjects.</summary>        
-        public IEnumerable<IGameObject> Ungroup(IEnumerable<IGameObject> gobs)
+        public IEnumerable<ITransformable> Ungroup(IEnumerable<object> gobs)
         {
             if (!CanUngroup(gobs))
                 return EmptyArray<IGameObject>.Instance;
 
-            List<IGameObject> ungrouplist = new List<IGameObject>();
-            List<IGameObject> goblist = new List<IGameObject>(gobs);
-            foreach (IGameObject gameObject in goblist)
+            List<ITransformable> ungrouplist = new List<ITransformable>();
+            foreach (var group in gobs.AsIEnumerable<ITransformableGroup>())
             {
-                // Ungroup selected groups
-                IGameObjectGroup group = gameObject.As<IGameObjectGroup>();
-                if (group == null) continue;
+                // try to move the children into the parent of the group
+                var node = group.As<DomNode>();
+                if (node == null) continue;
+                var insertParent = node.Lineage.Skip(1).AsIEnumerable<IHierarchical>().FirstOrDefault();
+                if (insertParent == null) continue;
 
-                List<IGameObject> childList = new List<IGameObject>(group.GameObjects);
-                IGame game = group.As<DomNode>().GetRoot().As<IGame>();
-                // Move children to the root game object folder
-                
-                foreach (IGameObject child in childList)
+                var groupTransform = group.Transform;
+                var objects = new List<ITransformable>(group.Objects);  // (copy, because we'll remove as we go through)
+                foreach (var child in objects)
                 {
-                    ITransformable xformChild = child.As<ITransformable>();
-                    Matrix4F world = ComputeWorldTransform(xformChild);             
-                    game.RootGameObjectFolder.GameObjects.Add(child);
-                    SetTransform(xformChild, world);                    
-                    ungrouplist.Add(child);
+                    if (insertParent.AddChild(child))
+                    {
+                        child.Transform = Matrix4F.Multiply(child.Transform, groupTransform);
+                        ungrouplist.Add(child);
+                    }
                 }
-                // Remove group
-                group.Cast<DomNode>().RemoveFromParent();
+
+                if (group.Objects.Count == 0)
+                    group.Cast<DomNode>().RemoveFromParent();
             }
-            return ungrouplist;            
+            return ungrouplist;          
         }
 
         #region IInitializable Members
@@ -214,14 +256,15 @@ namespace LevelEditorCore.Commands
                 case StandardCommand.EditGroup:
                     transactionContext.DoTransaction(delegate
                     {
-                        IGameObjectGroup group = Group(SelectedGobs);
-                        m_selectionContext.Set(Util.AdaptDomPath(group.As<DomNode>()));
+                        var group = Group(SelectedGobs);
+                        if (group != null)
+                            m_selectionContext.Set(Util.AdaptDomPath(group.As<DomNode>()));
                     }, "Group".Localize());                    
                     break;
                 case StandardCommand.EditUngroup:
                     transactionContext.DoTransaction(delegate
                     {
-                        IEnumerable<IGameObject> gobs = Ungroup(SelectedGobs);
+                        var gobs = Ungroup(SelectedGobs);
                         List<object> newselection = new List<object>();
                         foreach(var gob in gobs)
                         {
@@ -246,13 +289,14 @@ namespace LevelEditorCore.Commands
 
         /// <summary>
         /// Gets the current GameContext's selection of GameObjects</summary>
-        private IEnumerable<IGameObject> SelectedGobs
+        private IEnumerable<object> SelectedGobs
         {
             get
             {
-                IEnumerable<DomNode> rootDomNodes = m_selectionContext != null ?
-                DomNode.GetRoots(m_selectionContext.GetSelection<DomNode>()) : EmptyArray<DomNode>.Instance;
-                return rootDomNodes.AsIEnumerable<IGameObject>();
+                return
+                    m_selectionContext != null
+                    ? DomNode.GetRoots(m_selectionContext.GetSelection<DomNode>()) 
+                    : EmptyArray<DomNode>.Instance;
             }
         }
        
@@ -279,30 +323,6 @@ namespace LevelEditorCore.Commands
         {
             m_canGroup = CanGroup(SelectedGobs);
             m_canUngroup = CanUngroup(SelectedGobs);
-        }
-
-        private Matrix4F ComputeWorldTransform(ITransformable xform)
-        {
-            Matrix4F world = new Matrix4F();
-            DomNode node = xform.As<DomNode>();
-            foreach (DomNode n in node.Lineage)
-            {
-                ITransformable xformNode = n.As<ITransformable>();
-                if (xformNode != null)
-                {
-                    world.Mul(world, xformNode.Transform);
-                }
-            }
-            return world;            
-        }
-
-        private void SetTransform(ITransformable xform, Matrix4F mtrx)
-        {
-            xform.Translation = mtrx.Translation;
-            xform.Scale = mtrx.GetScale();
-            Vec3F rot = new Vec3F();
-            mtrx.GetEulerAngles(out rot.X, out rot.Y, out rot.Z);
-            xform.Rotation = rot;
         }
 
         private bool m_canGroup;

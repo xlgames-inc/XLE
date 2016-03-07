@@ -24,7 +24,8 @@ namespace LevelEditorCore
         /// components below.</summary>
         Matrix4F Transform
         {
-            get;            
+            get;
+            set;
         }
 
         /// <summary>
@@ -70,6 +71,11 @@ namespace LevelEditorCore
         {
             get;
             set;
+        }
+
+        Matrix4F LocalToWorld
+        {
+            get;
         }
     }
 }

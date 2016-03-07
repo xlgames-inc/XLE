@@ -19,7 +19,7 @@ namespace EntityInterface
 {
     static const DocumentTypeId DocumentType_Placements = 1;
     static const ObjectTypeId ObjectType_Placement = 1;
-    static const PropertyId Property_Transform = 100;
+    static const PropertyId Property_LocalToWorld = 100;
     static const PropertyId Property_Visible = 101;
     static const PropertyId Property_Model = 102;
     static const PropertyId Property_Material = 103;
@@ -77,7 +77,7 @@ namespace EntityInterface
 		SceneEngine::PlacementsEditor::ObjTransDef& obj,
 		const PropertyInitializer& prop)
 	{
-		if (prop._prop == Property_Transform) {
+		if (prop._prop == Property_LocalToWorld) {
 			// note -- putting in a transpose here, because the level editor matrix
 			//          math uses a transposed form
 			if (prop._elementType == (unsigned)ImpliedTyping::TypeCat::Float && prop._arrayCount >= 16) {
@@ -270,7 +270,7 @@ namespace EntityInterface
         void* dest, unsigned* destSize) const
     {
         if (id.ObjectType() != ObjectType_Placement) { assert(0); return false; }
-        if (prop != Property_Transform && prop != Property_Bounds && prop != Property_LocalBounds) { assert(0); return false; }
+        if (prop != Property_LocalToWorld && prop != Property_Bounds && prop != Property_LocalBounds) { assert(0); return false; }
         assert(destSize);
 
         typedef std::pair<Float3, Float3> BoundingBox;
@@ -286,7 +286,7 @@ namespace EntityInterface
 					transaction = hiddenTrans;
 			}
 
-            if (prop == Property_Transform) {
+            if (prop == Property_LocalToWorld) {
                 if (*destSize >= sizeof(Float4x4)) {
                     auto originalObject = transaction->GetObject(0);
                         // note -- putting in a transpose here, because the level editor matrix
@@ -332,7 +332,7 @@ namespace EntityInterface
 
     PropertyId PlacementEntities::GetPropertyId(ObjectTypeId type, const char name[]) const
     {
-        if (!XlCompareString(name, "transform"))    return Property_Transform;
+        if (!XlCompareString(name, "LocalToWorld")) return Property_LocalToWorld;
         if (!XlCompareString(name, "visible"))      return Property_Visible;
         if (!XlCompareString(name, "model"))        return Property_Model;
         if (!XlCompareString(name, "material"))     return Property_Material;

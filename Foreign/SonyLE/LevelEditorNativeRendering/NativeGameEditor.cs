@@ -58,7 +58,6 @@ namespace RenderingInterop
                     continue;
 
                     // First, go through and interpret the annotations that are not inherited
-                List<NativeAttributeInfo> nativeAttribs = new List<NativeAttributeInfo>();
                 foreach (XmlNode annot in topLevelAnnotations)
                 {
                     XmlElement elm = annot as XmlElement;
@@ -88,6 +87,7 @@ namespace RenderingInterop
                 // inheritted, the "property ids" for each type in the inheritance chain will be different
                 // and unrelated.
 
+                List<NativeAttributeInfo> nativeAttribs = new List<NativeAttributeInfo>(); 
                 foreach (var inherittedType in domType.Lineage)
                 {
                     var annotations = inherittedType.GetTagLocal<IEnumerable<XmlNode>>();

@@ -6,12 +6,13 @@ using Sce.Atf.Applications;
 using Sce.Atf.Dom;
 
 using LevelEditorCore;
+using LevelEditorCore.VectorMath;
 
 namespace LevelEditor.DomNodeAdapters
 {
     /// <summary>
     /// DomNodeAdapter for game object groups</summary>
-    public class GameObjectGroup : GameObject, IGameObjectGroup
+    public class TransformableGroup : TransformObject, ITransformableGroup, IListable, IBoundable
     {
         protected override void OnNodeSet()
         {
@@ -65,24 +66,24 @@ namespace LevelEditor.DomNodeAdapters
 
         /// <summary>
         /// Gets game object children</summary>
-        public IList<IGameObject> GameObjects
+        public IList<ITransformable> Objects
         {
-            get { return GetChildList<IGameObject>(Schema.gameObjectGroupType.gameObjectChild); }
+            get { return GetChildList<ITransformable>(Schema.gameObjectGroupType.gameObjectChild); }
         }
 
         #region IHierarchical Members
 
         public bool CanAddChild(object child)
         {
-            return (child.Is<IGameObject>());
+            return (child.Is<ITransformable>());
         }
 
         public bool AddChild(object child)
         {
-            IGameObject gameObject = child.As<IGameObject>();
+            var gameObject = child.As<ITransformable>();
             if (gameObject == null)
                 return false;
-            GameObjects.Add(gameObject);
+            Objects.Add(gameObject);
             return true;            
         }
 
@@ -93,17 +94,46 @@ namespace LevelEditor.DomNodeAdapters
         /// <summary>
         /// Gets display info (label, icon, ...) for the ProjectLister and other controls</summary>
         /// <param name="info">Item info: passed in and modified by this method</param>
-        public override void GetInfo(ItemInfo info)
+        public void GetInfo(ItemInfo info)
         {
             info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
-            info.Label = Name;
-            info.IsLeaf = GameObjects.Count == 0;
+            info.Label = "Group";
+            info.IsLeaf = Objects.Count == 0;
 
-            if (IsLocked)
-                info.StateImageIndex = info.GetImageList().Images.IndexOfKey(Sce.Atf.Resources.LockImage);
+            // if (IsLocked)
+            //     info.StateImageIndex = info.GetImageList().Images.IndexOfKey(Sce.Atf.Resources.LockImage);
         }
 
         #endregion
-       
+
+        #region IBoundable Members
+        public AABB BoundingBox
+        {
+            get
+            {
+                AABB groupBox = new AABB();
+                foreach (var obj in Objects.AsIEnumerable<IBoundable>())
+                    groupBox.Extend(obj.BoundingBox);
+                return groupBox;
+            }
+        }
+
+        public AABB LocalBoundingBox
+        {
+            get
+            {
+                AABB groupBox = new AABB();
+                foreach (var obj in Objects.AsIEnumerable<IBoundable>()) {
+                    var trans = obj.As<ITransformable>();
+                    var xform = (trans!=null) ? trans.Transform : Sce.Atf.VectorMath.Matrix4F.Identity;
+                    var bb = new AABB(obj.BoundingBox.Min, obj.BoundingBox.Max);
+                    bb.Transform(xform);
+                    groupBox.Extend(bb);
+                }
+                return groupBox;
+            }
+        }
+        #endregion
+
     }
 }

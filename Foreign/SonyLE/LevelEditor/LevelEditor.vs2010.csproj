@@ -109,7 +109,7 @@
     <Compile Include="DomNodeAdapters\Game.cs" />
     <Compile Include="DomNodeAdapters\GameObject.cs" />
     <Compile Include="DomNodeAdapters\GameObjectFolder.cs" />
-    <Compile Include="DomNodeAdapters\GameObjectGroup.cs" />
+    <Compile Include="DomNodeAdapters\TransformableGroup.cs" />
     <Compile Include="DomNodeAdapters\GameObjectProperties.cs" />
     <Compile Include="DomNodeAdapters\Grid.cs" />
     <Compile Include="DomNodeAdapters\Depricated\Locator.cs" />

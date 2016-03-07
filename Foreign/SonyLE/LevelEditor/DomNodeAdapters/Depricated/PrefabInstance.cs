@@ -94,14 +94,15 @@ namespace LevelEditor.DomNodeAdapters
                 if(resUri == null)
                     SetAttribute(Schema.prefabInstanceType.prefabRefAttribute, m_prefab.Uri);
 
-                IGameObjectGroup gobgroup = DomNode.As<IGameObjectGroup>();
-                if (string.IsNullOrWhiteSpace(gobgroup.Name))
-                    gobgroup.Name = "PrefabInst_" + m_prefab.Name;
+                var gobgroup = DomNode.As<ITransformableGroup>();
+                // if (string.IsNullOrWhiteSpace(gobgroup.Name))
+                //     gobgroup.Name = "PrefabInst_" + m_prefab.Name;
 
                 DomNode[] gobs = DomNode.Copy(m_prefab.GameObjects.AsIEnumerable<DomNode>());
                 HashSet<string> gobIds = new HashSet<string>();
                 
-                gobgroup.GameObjects.Clear();                
+                foreach (var c in gobgroup.As<DomNode>().Children) c.RemoveFromParent();
+
                 foreach (var gobNode in gobs)
                 {
                     gobNode.InitializeExtensions();
@@ -115,7 +116,7 @@ namespace LevelEditor.DomNodeAdapters
                     if (namer != null)
                         gob.Name = namer.Name(gob.Name);
                     
-                    gobgroup.GameObjects.Add(gob);
+                    gobgroup.AddChild(gob);
                 }
 
                 // cleanup m_overridesmap

@@ -111,13 +111,6 @@ namespace LevelEditor.DomNodeAdapters
                 return rootFolder;              
             }
         }
-
-        public IGameObjectGroup CreateGameObjectGroup()
-        {
-            GameObjectGroup gobGroup = new DomNode(Schema.gameObjectGroupType.Type).As<GameObjectGroup>();
-            gobGroup.Name = "GameObjectGroup".Localize("this is the name of a folder in the project lister");
-            return gobGroup;
-        }
        
         public IReference<IResource> CreateResourceReference(IResource resource)
         {

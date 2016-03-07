@@ -38,10 +38,6 @@ namespace LevelEditorCore
         IReference<IResource> CreateResourceReference(IResource resource);
 
         /// <summary>
-        /// Creates new GameObjectGroup instance</summary>        
-        IGameObjectGroup CreateGameObjectGroup();
-
-        /// <summary>
         /// Creates new GameObjectFolder instance.</summary>        
         IGameObjectFolder CreateGameObjectFolder();
     }

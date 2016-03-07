@@ -58,6 +58,7 @@
         <LeGe.NativeProperty name="visible" nativeName="visible" nativeType="bool" access="set,get"/>
         <LeGe.NativeProperty nativeName="Bounds" nativeType="AABB" access="get"/>
         <LeGe.NativeProperty nativeName="LocalBounds" nativeType="AABB" access="get"/>
+        <LeGe.NativeProperty nativeName="LocalToWorld" />
 
         <scea.dom.editors.attribute name="locked" displayName="Locked" description="Lock this object" category="General" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
         <scea.dom.editors.attribute name="visible" displayName="Visibility" description="Whether item is visible in Design View" category="Display" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
@@ -82,7 +83,7 @@
     </xs:annotation>
 
     <xs:sequence>
-      <xs:element name="placement" type="abstractPlacementObjectType" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="placement" type="transformObjectType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
     <xs:attribute name="name" type="xs:string" />
   </xs:complexType>

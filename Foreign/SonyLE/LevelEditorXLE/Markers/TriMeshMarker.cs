@@ -101,6 +101,10 @@ namespace LevelEditorXLE.Markers
                 result.Translation = Translation;
                 return result;
             }
+            set
+            {
+                Translation = value.Translation;
+            }
         }
 
         public Vec3F Translation
@@ -153,6 +157,25 @@ namespace LevelEditorXLE.Markers
         public AABB LocalBoundingBox
         {
             get { return new AABB(new Vec3F(-1, -1, -1), new Vec3F(1, 1, 1)); }
+        }
+
+        public Matrix4F LocalToWorld
+        {
+            get
+            {
+                Matrix4F world = Transform;
+                var node = this.As<DomNode>();
+                if (node != null)
+                {
+                    foreach (var n in node.Lineage.Skip(1))
+                    {
+                        var xformNode = n.As<ITransformable>();
+                        if (xformNode != null)
+                            world.Mul(world, xformNode.Transform);
+                    }
+                }
+                return world;
+            }
         }
 
         public static IAdaptable Create(Vec3F position)

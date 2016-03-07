@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 using Sce.Atf;
 using Sce.Atf.Adaptation;
@@ -28,6 +29,15 @@ namespace LevelEditor.DomNodeAdapters
         public virtual Matrix4F Transform
         {
             get { return this.GetMatrix4x4(TransformableST.transformAttribute); }
+            set
+            {
+                Translation = value.Translation;
+                Scale = value.GetScale();
+                Vec3F rot = new Vec3F();
+                value.GetEulerAngles(out rot.X, out rot.Y, out rot.Z);
+                Rotation = rot;
+                UpdateTransform();
+            }
         }
 
         /// <summary>
@@ -94,6 +104,25 @@ namespace LevelEditor.DomNodeAdapters
             {
                 int v = (int)value;
                 SetAttribute(TransformableST.transformationTypeAttribute, v);
+            }
+        }
+
+        public Matrix4F LocalToWorld
+        {
+            get
+            {
+                Matrix4F world = Transform;
+                var node = this.As<DomNode>();
+                if (node != null)
+                {
+                    foreach (var n in node.Lineage.Skip(1))
+                    {
+                        var xformNode = n.As<ITransformable>();
+                        if (xformNode != null)
+                            world.Mul(world, xformNode.Transform);
+                    }
+                }
+                return world;
             }
         }
 

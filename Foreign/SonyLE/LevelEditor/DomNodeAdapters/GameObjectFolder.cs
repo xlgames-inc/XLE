@@ -14,9 +14,7 @@ namespace LevelEditor.DomNodeAdapters
     /// <summary>
     /// DomNodeAdapter for game object folders</summary>
     public class GameObjectFolder : DomNodeAdapter,  IGameObjectFolder
-         
     {
-        
         #region INameable Members
 
         /// <summary>
@@ -30,7 +28,6 @@ namespace LevelEditor.DomNodeAdapters
         #endregion
 
         #region IGameObjectFolder Members
-
         /// <summary>
         /// Gets the list of game objects</summary>
         public IList<IGameObject> GameObjects
@@ -43,6 +40,13 @@ namespace LevelEditor.DomNodeAdapters
         public IList<IGameObjectFolder> GameObjectFolders
         {
             get { return GetChildList<IGameObjectFolder>(Schema.gameObjectFolderType.folderChild); }
+        }
+
+        public ITransformableGroup CreateGroup()
+        {
+            var gobGroup = new DomNode(Schema.gameObjectGroupType.Type).As<ITransformableGroup>();
+            // gobGroup.Name = "Group".Localize("this is the name of a folder in the project lister");
+            return gobGroup;
         }
         #endregion
 

@@ -49,7 +49,7 @@ namespace LevelEditor
             Schema.gameObjectFolderType.Type.Define(new ExtensionInfo<GameObjectFolder>());
 
             // gob group
-            Schema.gameObjectGroupType.Type.Define(new ExtensionInfo<GameObjectGroup>());
+            Schema.gameObjectGroupType.Type.Define(new ExtensionInfo<TransformableGroup>());
 
             // prefab
             Schema.objectOverrideType.Type.Define(new ExtensionInfo<ObjectOverride>());

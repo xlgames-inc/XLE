@@ -22,5 +22,7 @@ namespace LevelEditorCore
         {
             get;
         }
+
+        ITransformableGroup CreateGroup();
     }
 }

@@ -132,7 +132,7 @@
     <Compile Include="Interfaces\IManipulator.cs" />
     <Compile Include="Interfaces\IGameObject.cs" />
     <Compile Include="Interfaces\IGameObjectFolder.cs" />
-    <Compile Include="Interfaces\IGameObjectGroup.cs" />
+    <Compile Include="Interfaces\ITransformableGroup.cs" />
     <Compile Include="Interfaces\IGrid.cs" />
     <Compile Include="Interfaces\ISnapSettings.cs" />
     <Compile Include="Resources.cs" />

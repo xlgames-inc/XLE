@@ -43,6 +43,14 @@ namespace LevelEditorXLE.Placements
                 GetChildList<XLEPlacementObject>(Schema.placementsDocumentType.placementChild).Add(placement);
                 return true;
             }
+
+            // we can also add other "transformable" objects (such as a group)
+            var node = child.As<DomNode>();
+            if (node != null && node.Type.Lineage.FirstOrDefault(t => t == Schema.transformObjectType.Type) != null)
+            {
+                GetChildList<DomNode>(Schema.placementsDocumentType.placementChild).Add(node);
+                return true;
+            }
             return false;
         }
         #endregion
@@ -94,6 +102,13 @@ namespace LevelEditorXLE.Placements
         public IList<IGameObjectFolder> GameObjectFolders
         {
             get { return null; }
+        }
+
+        public ITransformableGroup CreateGroup()
+        {
+            var gobGroup = new DomNode(Schema.gameObjectGroupType.Type).As<ITransformableGroup>();
+            // gobGroup.Name = "Group".Localize("this is the name of a folder in the project lister");
+            return gobGroup;
         }
         #endregion
         #region IGameDocument Members

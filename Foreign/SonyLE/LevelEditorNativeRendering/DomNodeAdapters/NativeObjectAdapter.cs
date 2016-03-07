@@ -98,6 +98,36 @@ namespace RenderingInterop
                     InstanceId, TypeId,
                     0, 0, insertionPosition);
             }
+
+            UpdateLocalToWorld();
+            UpdateLocalToWorld_Children();
+        }
+
+        internal void UpdateLocalToWorld()
+        {
+            using (var transfer = new NativePropertyTransfer())
+            {
+                using (var stream = transfer.CreateStream())
+                {
+                    UpdateSecondaryNativeProperties(DomNode, transfer.Properties, stream);
+                    if (transfer.Properties.Count > 0)
+                    {
+                        GameEngine.SetObjectProperty(
+                            TypeId, DocumentId, InstanceId,
+                            transfer.Properties);
+                    }
+                }
+            }
+        }
+
+        internal void UpdateLocalToWorld_Children()
+        {
+            foreach (DomNode child in DomNode.Subtree)
+            {
+                NativeObjectAdapter childObject = child.As<NativeObjectAdapter>();
+                if (childObject != null)
+                    childObject.UpdateLocalToWorld();
+            }
         }
 
         internal class NativePropertyTransfer : IDisposable
@@ -144,17 +174,23 @@ namespace RenderingInterop
                 if (attribInfo == null) return;
             }
 
+            bool isTransform = e.AttributeInfo.Name == "transform";
             using (var transfer = new NativePropertyTransfer())
             {
                 using (var stream = transfer.CreateStream())
-                    UpdateNativeProperty(DomNode, attribInfo, transfer.Properties, stream);
-                if (transfer.Properties.Count > 0)
                 {
-                    GameEngine.SetObjectProperty(
-                        TypeId, DocumentId, InstanceId,
-                        transfer.Properties);
+                    UpdateNativeProperty(DomNode, attribInfo, transfer.Properties, stream);
+                    if (isTransform)
+                        UpdateSecondaryNativeProperties(DomNode, transfer.Properties, stream);
+                    if (transfer.Properties.Count > 0)
+                    {
+                        GameEngine.SetObjectProperty(
+                            TypeId, DocumentId, InstanceId,
+                            transfer.Properties);
+                    }
                 }
             }
+            if (isTransform) UpdateLocalToWorld_Children();
         }
         
         /// <summary>
@@ -167,14 +203,16 @@ namespace RenderingInterop
             using (var transfer = new NativePropertyTransfer())
             {
                 using (var stream = transfer.CreateStream())
+                {
                     foreach (AttributeInfo attribInfo in this.DomNode.Type.Attributes)
                         UpdateNativeProperty(DomNode, attribInfo, transfer.Properties, stream);
-
-                if (transfer.Properties.Count > 0)
-                {
-                    GameEngine.SetObjectProperty(
-                        TypeId, DocumentId, InstanceId,
-                        transfer.Properties);
+                    UpdateSecondaryNativeProperties(DomNode, transfer.Properties, stream);
+                    if (transfer.Properties.Count > 0)
+                    {
+                        GameEngine.SetObjectProperty(
+                            TypeId, DocumentId, InstanceId,
+                            transfer.Properties);
+                    }
                 }
             }
         }
@@ -220,10 +258,12 @@ namespace RenderingInterop
                 using (var transfer = new NativePropertyTransfer())
                 {
                     using (var stream = transfer.CreateStream())
+                    {
                         foreach (AttributeInfo attribInfo in this.DomNode.Type.Attributes)
                             UpdateNativeProperty(DomNode, attribInfo, transfer.Properties, stream);
-
-                    m_instanceId = GameEngine.CreateObject(doc.NativeDocumentId, existingId, TypeId, transfer.Properties);
+                        UpdateSecondaryNativeProperties(DomNode, transfer.Properties, stream);
+                        m_instanceId = GameEngine.CreateObject(doc.NativeDocumentId, existingId, TypeId, transfer.Properties);
+                    }
                 }
 
                 if (m_instanceId != 0)
@@ -278,6 +318,40 @@ namespace RenderingInterop
                 attribInfo.Type.ClrType, attribInfo.Type.Length,
                 node.GetAttribute(attribInfo),
                 properties, stream);
+        }
+
+        internal static NativeAttributeInfo LocalToWorldAttribute(DomNodeType type)
+        {
+            var secondaryAttribs = type.GetTag<NativeAttributeInfo[]>();
+            if (secondaryAttribs != null)
+                foreach (var a in secondaryAttribs)
+                    if (a.Name.Equals("LocalToWorld"))
+                        return a;
+            return null;
+        }
+
+        unsafe internal static void UpdateSecondaryNativeProperties(
+            DomNode node,
+            IList<PropertyInitializer> properties, 
+            System.IO.UnmanagedMemoryStream stream)
+        {
+            NativeAttributeInfo localToWorldAttrib = LocalToWorldAttribute(node.Type);
+            if (localToWorldAttrib != null)
+            {
+                // we have to build a "local to world" transform, and push that through.
+                var trans = node.As<ITransformable>();
+                if (trans != null)
+                {
+                    var localToWorld = trans.LocalToWorld;
+                    properties.Add(
+                        GameEngine.CreateInitializer(
+                            localToWorldAttrib.PropertyId, stream.PositionPointer,
+                            typeof(float), 16, false));
+                    for (int c=0; c<16; ++c)
+                        ((float*)stream.PositionPointer)[c] = localToWorld[c];
+                    stream.Position += sizeof(float) * 16;
+                }
+            }
         }
 
         unsafe internal static void PushAttribute(
