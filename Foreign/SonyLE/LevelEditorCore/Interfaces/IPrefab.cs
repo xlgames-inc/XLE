@@ -10,12 +10,12 @@ namespace LevelEditorCore
     /// Prefab interface</summary>
     public interface IPrefab : IResource
     {
-        /// <summary>
-        /// Gets all the gameobjects in this prefab</summary>
-        IEnumerable<IGameObject> GameObjects { get; }
-
-        /// <summary>
-        /// Gets name of the prefab </summary>
+        IEnumerable<object> GameObjects { get; }
         string Name { get; }
+    }
+
+    public interface IPrefabInstance
+    {
+        void Resolve(UniqueNamer namer);
     }
 }

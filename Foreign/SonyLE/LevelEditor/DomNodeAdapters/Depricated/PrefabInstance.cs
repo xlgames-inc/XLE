@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Sce.Atf;
 using Sce.Atf.Adaptation;
 using Sce.Atf.Dom;
+using Sce.Atf.Applications;
 
 using LevelEditorCore;
 
@@ -12,7 +13,7 @@ namespace LevelEditor.DomNodeAdapters
 {
     /// <summary>
     /// Prefab instance.</summary>
-    public class PrefabInstance : DomNodeAdapter
+    public class PrefabInstance : DomNodeAdapter, IPrefabInstance, IListable
     {
         public static PrefabInstance Create(IPrefab prefab)
         {
@@ -24,10 +25,11 @@ namespace LevelEditor.DomNodeAdapters
             return inst;
         }
 
-        public IEnumerable<IGameObject> GameObjects
+        public IEnumerable<object> GameObjects
         {
-            get { return GetChildList<IGameObject>(Schema.prefabInstanceType.gameObjectChild);}
+            get { return GetChildList<object>(Schema.prefabInstanceType.gameObjectChild);}
         }
+
         protected override void OnNodeSet()
         {
             base.OnNodeSet();
@@ -49,26 +51,27 @@ namespace LevelEditor.DomNodeAdapters
         private IList<ObjectOverride> m_overrideList;
         private void DomNode_AttributeChanged(object sender, AttributeEventArgs e)
         {
-            if (e.DomNode == this.DomNode || !e.DomNode.Is<IGameObject>())
+            if (e.DomNode == this.DomNode)
                 return;
 
             if (!e.AttributeInfo.Equivalent(e.DomNode.Type.IdAttribute))
             {
-                IGameObject gob = e.DomNode.Cast<IGameObject>();                
-                string originalName = m_intsToOriginal[e.DomNode];
-                ObjectOverride objectOverride;
-                m_overridesMap.TryGetValue(originalName, out objectOverride);
-                if (objectOverride == null)
+                string originalName;
+                if (m_intsToOriginal.TryGetValue(e.DomNode, out originalName))
                 {
-                    objectOverride = ObjectOverride.Create(originalName);                    
-                    m_overrideList.Add(objectOverride);
-                    m_overridesMap.Add(originalName, objectOverride);
+                    ObjectOverride objectOverride;
+                    m_overridesMap.TryGetValue(originalName, out objectOverride);
+                    if (objectOverride == null)
+                    {
+                        objectOverride = ObjectOverride.Create(originalName);
+                        m_overrideList.Add(objectOverride);
+                        m_overridesMap.Add(originalName, objectOverride);
+                    }
+
+                    AttributeOverride attrOverride = objectOverride.GetOrCreateByName(e.AttributeInfo.Name);
+                    attrOverride.AttribValue = e.AttributeInfo.Type.Convert(e.NewValue);
                 }
-
-                AttributeOverride attrOverride = objectOverride.GetOrCreateByName(e.AttributeInfo.Name);
-                attrOverride.AttribValue = e.AttributeInfo.Type.Convert(e.NewValue);
-
-            }                      
+            }
         }
 
         private void DomNodeStructureChanged(object sender, ChildEventArgs e)
@@ -77,6 +80,15 @@ namespace LevelEditor.DomNodeAdapters
             {
                 throw new InvalidTransactionException("Structure of PrefabInstance cannot be changesd");
             }
+        }
+
+        private string GetName(object obj, int index)
+        {
+            var nameable = obj.As<INameable>();
+            if (nameable != null) return nameable.Name;
+                // Without a name, we just call back to the index in the list
+                // We could do better 
+            return index.ToString();
         }
 
         private bool m_updating;
@@ -101,22 +113,29 @@ namespace LevelEditor.DomNodeAdapters
                 DomNode[] gobs = DomNode.Copy(m_prefab.GameObjects.AsIEnumerable<DomNode>());
                 HashSet<string> gobIds = new HashSet<string>();
                 
-                foreach (var c in gobgroup.As<DomNode>().Children) c.RemoveFromParent();
+                var childrenCopy = new List<DomNode>(gobgroup.As<DomNode>().Children);
+                foreach (var c in childrenCopy) c.RemoveFromParent();
 
-                foreach (var gobNode in gobs)
+                for (int c = 0; c < gobs.Length; ++c)
                 {
+                    var gobNode = gobs[c];
                     gobNode.InitializeExtensions();
-                    IGameObject gob = gobNode.As<IGameObject>();
-                    m_intsToOriginal.Add(gobNode, gob.Name);
-                    gobIds.Add(gob.Name);
-                    ObjectOverride objectOverride;                    
-                    m_overridesMap.TryGetValue(gob.Name, out objectOverride);
+                    var name = GetName(gobNode, c);
+
+                    m_intsToOriginal.Add(gobNode, name);
+                    gobIds.Add(name);
+                    ObjectOverride objectOverride;
+                    m_overridesMap.TryGetValue(name, out objectOverride);
                     updateNode(gobNode, objectOverride);
-                    string name = gob.Name;
+
                     if (namer != null)
-                        gob.Name = namer.Name(gob.Name);
-                    
-                    gobgroup.AddChild(gob);
+                    {
+                        var nameable = gobNode.As<INameable>();
+                        if (nameable != null)
+                            nameable.Name = namer.Name(nameable.Name);
+                    }
+
+                    gobgroup.AddChild(gobNode);
                 }
 
                 // cleanup m_overridesmap
@@ -141,8 +160,8 @@ namespace LevelEditor.DomNodeAdapters
         {
             if (node == null || objectOverride == null)
                 return;
-            string nodeId = node.GetId();
-            System.Diagnostics.Debug.Assert(nodeId == objectOverride.ObjectName);
+            // string nodeId = node.GetId();
+            // System.Diagnostics.Debug.Assert(nodeId == objectOverride.ObjectName);
 
             foreach (AttributeOverride attrOverride in objectOverride.AttributeOverrides)
             {
@@ -151,6 +170,14 @@ namespace LevelEditor.DomNodeAdapters
             }
 
         }
+
+        #region IListable Members
+        public void GetInfo(ItemInfo info)
+        {
+            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
+            info.Label = "Prefab: " + ((m_prefab != null) ? m_prefab.Name : "<<unattached>>");
+        }
+        #endregion
 
         // maps the id of the instance to object override
         private Dictionary<string, ObjectOverride>

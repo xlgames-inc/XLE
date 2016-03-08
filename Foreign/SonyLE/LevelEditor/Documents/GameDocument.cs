@@ -203,13 +203,8 @@ namespace LevelEditor
 
 
             // sync all the prefab instances
-            DomNode folderNode = document.RootGameObjectFolder.As<DomNode>();
-            foreach (DomNode node in folderNode.Subtree)
-            {
-                PrefabInstance prefab = node.As<PrefabInstance>();
-                if (prefab == null) continue;
-                prefab.Resolve(uniqueNamer);
-            }
+            foreach (var node in document.As<DomNode>().Subtree.AsIEnumerable<IPrefabInstance>())
+                node.Resolve(uniqueNamer);
 
             LevelEditorXLE.Patches.CreateDefaultNodes(rootNode);
 

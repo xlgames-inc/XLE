@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Windows.Forms;
 using System.IO;
+using System.Linq;
 
 using Sce.Atf;
 using Sce.Atf.Adaptation;
@@ -99,16 +100,9 @@ namespace LevelEditor
 
         bool ICommandClient.CanDoCommand(object commandTag)
         {
-            bool cando = false;
             if (commandTag.Equals(Commands.CreatePrefab))
-            {
-                foreach (IGameObject gob in SelectedGobs)
-                {
-                    cando = true;
-                    break;
-                }
-            }
-            return cando;
+                return SelectedGobs.Any();
+            return false;
         }
 
         void ICommandClient.DoCommand(object commandTag)
@@ -148,62 +142,62 @@ namespace LevelEditor
 
         #endregion
 
-        private IEnumerable<IGameObject> SelectedGobs
+        private IEnumerable<object> SelectedGobs
         {
             get
             {
-                object context = m_contextRegistry.GetActiveContext<IGameContext>();
-                ISelectionContext selectionContext = (ISelectionContext)context;
-                IEnumerable<DomNode> rootDomNodes = selectionContext != null ?
-                         DomNode.GetRoots(selectionContext.GetSelection<DomNode>()) : EmptyArray<DomNode>.Instance;
-                foreach (DomNode node in rootDomNodes)
-                {
-                    PrefabInstance prefabInst = node.As<PrefabInstance>();
-                    if (prefabInst != null)
-                    {
-                        foreach (IGameObject gob in prefabInst.GameObjects)
-                            yield return gob;
-                    }
-                    else
-                    {
-                        IGameObject gob = node.As<IGameObject>();
-                        if(gob != null)
-                            yield return gob;
-
-                    }
-                }                
+                var selectionContext = m_contextRegistry.GetActiveContext<ISelectionContext>();
+                var rootDomNodes = 
+                    selectionContext != null 
+                    ? DomNode.GetRoots(selectionContext.GetSelection<DomNode>()) 
+                    : EmptyArray<DomNode>.Instance;
+                return rootDomNodes;
             }
         }
 
-        private DomNode CreatePrefab(IEnumerable<IGameObject> gobs)
+        private DomNode CreatePrefab(IEnumerable<object> gobs)
         {
             UniqueNamer uniqueNamer = new UniqueNamer();
             DomNode[] temp = new DomNode[1];
-            List<IGameObject> copyList = new List<IGameObject>();
+            var copyList = new List<object>();
             AABB bound = new AABB();
-            foreach (IGameObject gameObject in SelectedGobs)
+            foreach (var gameObject in SelectedGobs)
             {
                 IBoundable boundable = gameObject.As<IBoundable>();
                 bound.Extend(boundable.BoundingBox);
-                Matrix4F world = TransformUtils.ComputeWorldTransform(gameObject);
+                
+                var trans = gameObject.As<ITransformable>();
+                var world = (trans != null) ? TransformUtils.ComputeWorldTransform(trans) : Matrix4F.Identity;
+
                 temp[0] = gameObject.As<DomNode>();
                 DomNode[] copies = DomNode.Copy(temp);
                 copies[0].InitializeExtensions();
-                IGameObject copy = copies[0].As<IGameObject>();
-                copy.Name = uniqueNamer.Name(copy.Name);
-                TransformUtils.SetTransform(copy, world);
-                copyList.Add(copy);
+
+                var nameable = copies[0].As<INameable>();
+                if (nameable != null)
+                    nameable.Name = uniqueNamer.Name(nameable.Name);
+
+                var copyTrans = copies[0].As<ITransformable>();
+                if (copyTrans != null)
+                    TransformUtils.SetTransform(copyTrans, world);
+                copyList.Add(copies[0]);
             }
 
             DomNode prefab = new DomNode(Schema.prefabType.Type, Schema.prefabRootElement);
             var list = prefab.GetChildList(Schema.prefabType.gameObjectChild);
             Vec3F center = bound.Center;
-            foreach (IGameObject gob in copyList)
-            {                
-                gob.Translation = gob.Translation - center;
-                gob.UpdateTransform(); 
-                list.Add(gob.As<DomNode>());
-            }            
+            foreach (var gob in copyList)
+            {
+                var trans = gob.As<ITransformable>();
+                if (trans != null)
+                {
+                    trans.Translation = trans.Translation - center;
+                    trans.UpdateTransform();
+                }
+                var node = gob.As<DomNode>();
+                if (node != null)
+                    list.Add(node);
+            }
             return prefab;
         }
         
@@ -246,18 +240,19 @@ namespace LevelEditor
             prefab.Name = Path.GetFileNameWithoutExtension(ur.LocalPath);
             return prefab;
         }
+
+        public IEnumerable<object> GameObjects 
+        { 
+            get
+            {
+                return DomNode.GetChildren(Schema.prefabType.gameObjectChild);
+            }
+        }
+
         public string Name
         {
             get;
             private set;
-        }
-        protected override void OnNodeSet()
-        {
-            m_gobs = GetChildList<IGameObject>(Schema.prefabType.gameObjectChild);
-        }
-        public IEnumerable<IGameObject> GameObjects
-        {
-            get { return m_gobs; }
         }
 
         #region IResource Members
@@ -278,7 +273,6 @@ namespace LevelEditor
 
         #endregion
 
-        private Uri m_uri;        
-        private IEnumerable<IGameObject> m_gobs;
+        private Uri m_uri;
     }
 }

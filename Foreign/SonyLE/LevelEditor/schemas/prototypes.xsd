@@ -48,7 +48,7 @@
 
   <xs:complexType name ="prefabType" >
     <xs:sequence>
-      <xs:element name="gameObject" type="gameObjectType" minOccurs="1" maxOccurs="unbounded" />
+      <xs:element name="gameObject" type="transformObjectType" minOccurs="1" maxOccurs="unbounded" />
     </xs:sequence>
   </xs:complexType>
 

@@ -32,7 +32,7 @@ namespace LevelEditorXLE.Placements
         #region IHierarchical Members
         public bool CanAddChild(object child)
         {
-            return child.Is<XLEPlacementObject>();
+            return child.Is<XLEPlacementObject>() || child.Is<IPrefabInstance>();
         }
 
         public bool AddChild(object child)
@@ -44,7 +44,7 @@ namespace LevelEditorXLE.Placements
                 return true;
             }
 
-            // we can also add other "transformable" objects (such as a group)
+            // we can also add other "transformable" objects (such as a group or a IPrefabInstance)
             var node = child.As<DomNode>();
             if (node != null && node.Type.Lineage.FirstOrDefault(t => t == Schema.transformObjectType.Type) != null)
             {
@@ -209,12 +209,12 @@ namespace LevelEditorXLE.Placements
                 // read existing document using custom dom XML reader
                 using (FileStream stream = File.OpenRead(filePath))
                 {
-                        // Note --  Sony code uses "CustomDomXmlReader" to modify
-                        //          the urls of relative assets in reference types at
-                        //          load time.
-                        //          However, we're going to prefer a method that does this
-                        //          on demand, rather than at load time -- so we should be able
-                        //          to use a standard xml reader.
+                    // Note --  Sony code uses "CustomDomXmlReader" to modify
+                    //          the urls of relative assets in reference types at
+                    //          load time.
+                    //          However, we're going to prefer a method that does this
+                    //          on demand, rather than at load time -- so we should be able
+                    //          to use a standard xml reader.
                     // var reader = new CustomDomXmlReader(Globals.ResourceRoot, schemaLoader);
                     var reader = new DomXmlReader(schemaLoader as XmlSchemaTypeLoader);
                     rootNode = reader.Read(stream, uri);
@@ -233,7 +233,14 @@ namespace LevelEditorXLE.Placements
             // Initialize Dom extensions now that the data is complete
             rootNode.InitializeExtensions();
 
-            if (docRegistry!=null) docRegistry.Add(doc);
+            // sync all the prefab instances
+            {
+                UniqueNamer uniqueNamer = new UniqueNamer('_');
+                foreach (var prefab in doc.As<DomNode>().Subtree.AsIEnumerable<IPrefabInstance>())
+                    prefab.Resolve(uniqueNamer);
+            }
+
+            if (docRegistry != null) docRegistry.Add(doc);
             doc.Dirty = createdNewFile;
             return doc;
         }
