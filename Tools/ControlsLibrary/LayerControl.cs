@@ -5,32 +5,34 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 
 namespace ControlsLibrary
 {
-    // internal class LayerControlHack : IDisposable
-    // {
-    //     public LayerControlHack(Control c) { }
-    //     public void OnPaint(PaintEventArgs pe) { }
-    //     public void OnPaintBackground(PaintEventArgs pe) { }
-    //     public void OnResize(EventArgs pe) { }
-    //     public void SetupDefaultVis(GUILayer.ModelVisSettings settings) { }
-    //     public void AddDefaultCameraHandler(GUILayer.VisCameraSettings settings) { }
-    //     public void AddSystem(GUILayer.IOverlaySystem overlay) { }
-    //     public GUILayer.VisMouseOver CreateVisMouseOver(GUILayer.ModelVisSettings settings) { return null; }
-    // 
-    //     public void Dispose() { }
-    //     protected virtual void Dispose(bool disposing) { }
-    // }
+    #if false
+        public class LayerControlHack : IDisposable
+        {
+            public LayerControlHack(Control c) { }
+            public void OnPaint(Control c, PaintEventArgs pe) { }
+            public void OnPaintBackground(PaintEventArgs pe) { }
+            public void OnResize(EventArgs pe) { }
 
-    using LayerControlHack = GUILayer.LayerControl;
+            public void AddDefaultCameraHandler(GUILayer.VisCameraSettings settings) { }
+            public void AddSystem(GUILayer.IOverlaySystem overlay) { }
+            public void SetUpdateAsyncMan(bool updateAsyncMan) { }
+
+            public void SetupDefaultVis(GUILayer.ModelVisSettings settings, GUILayer.VisMouseOver mouseOver, GUILayer.VisResources res) { }
+            public GUILayer.VisMouseOver CreateVisMouseOver(GUILayer.ModelVisSettings settings, GUILayer.VisResources res) { return null; }
+            public GUILayer.VisResources CreateVisResources() { return null; }
+
+            public bool IsInputKey(Keys keyData) { return false; }
+        
+            public void Dispose() { }
+            protected virtual void Dispose(bool disposing) { }
+        }
+    #else
+        using LayerControlHack = GUILayer.LayerControl;
+    #endif
     
     public partial class LayerControl : UserControl
     {

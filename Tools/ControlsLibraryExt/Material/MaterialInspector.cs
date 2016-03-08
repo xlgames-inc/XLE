@@ -4,16 +4,11 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-using System;
 using System.ComponentModel.Composition;
-using System.Collections.Generic;
 using System.Windows.Forms;
 
 using Sce.Atf;
-using Sce.Atf.Adaptation;
 using Sce.Atf.Applications;
-using Sce.Atf.Controls.PropertyEditing;
-using Sce.Atf.Dom;
 
 using ControlsLibrary.MaterialEditor;
 using System.Reflection;
@@ -61,7 +56,7 @@ namespace ControlsLibraryExt.Material
         HierchicalMaterialControl _controls;
     }
 
-    class MatTab : ControlsLibrary.MaterialEditor.MaterialControl.ExtraControls
+    class MatTab : MaterialControl.ExtraControls
     {
         public MatTab(MaterialSchemaLoader schemaLoader)
         {
@@ -78,7 +73,7 @@ namespace ControlsLibraryExt.Material
 
             Controls.Add(m_child);
             Dock = DockStyle.Fill;
-            Padding = new System.Windows.Forms.Padding(0);
+            Padding = new Padding(0);
             ResumeLayout(false);
         }
 

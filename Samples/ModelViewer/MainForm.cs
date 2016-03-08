@@ -29,8 +29,11 @@ namespace ModelViewer
             viewSettings.SelectedObject = visSettings;
             visSettings.AttachCallback(mouseOverDetails);
 
-            mouseOverDetails.SelectedObject = visMouseOver;
-            visMouseOver.AttachCallback(mouseOverDetails);
+            if (visMouseOver != null)
+            {
+                mouseOverDetails.SelectedObject = visMouseOver;
+                visMouseOver.AttachCallback(mouseOverDetails);
+            }
 
             viewerControl.MouseClick += OnViewerMouseClick;
             viewerControl.Underlying.SetUpdateAsyncMan(true);
@@ -38,7 +41,7 @@ namespace ModelViewer
 
         protected void ContextMenu_EditMaterial(object sender, EventArgs e)
         {
-            if (visMouseOver.HasMouseOver) 
+            if (visMouseOver != null && visMouseOver.HasMouseOver) 
             {
                     // pop-up a modal version of the material editor (for testing/prototyping)
                 if (visMouseOver.FullMaterialName != null)
@@ -85,7 +88,7 @@ namespace ModelViewer
                 ContextMenu cm = new ContextMenu();
                 cm.MenuItems.Add("Show Modifications", new EventHandler(ContextMenu_ShowModifications));
                 cm.MenuItems.Add("Show Invalid Assets", new EventHandler(ContextMenu_ShowInvalidAssets));
-                if (visMouseOver.HasMouseOver)
+                if (visMouseOver != null && visMouseOver.HasMouseOver)
                     cm.MenuItems.Add("Edit &Material", new EventHandler(ContextMenu_EditMaterial));
                 cm.Show(this, e.Location);
             }
