@@ -26,6 +26,7 @@
 #include "../../Math/Transformations.h"
 #include "../../Math/Geometry.h"
 #include <iomanip>
+#include <random>
 
 namespace ToolsRig
 {
@@ -951,7 +952,43 @@ namespace ToolsRig
         return true;
     }
 
-    void GenerateBlueNoisePlacements(std::vector<Float2>& workingSet, float radius, unsigned count)
+	static void EraseRandomPoints(std::vector<Float2>& workingSet, size_t idealSize, std::mt19937& generator)
+	{
+		// Randomly erase items in the list until we are at the ideal size.
+		// But, let's weight the random distribution so that objects near the center
+		// of the the circle are more likely to be removed.
+		if (workingSet.size() <= idealSize) return;
+
+		std::vector<size_t> sortedIndices;
+		sortedIndices.reserve(workingSet.size());
+		for (size_t c=0; c<workingSet.size(); ++c)
+			sortedIndices.push_back(c);
+		
+		std::sort(
+			sortedIndices.begin(), sortedIndices.end(),
+			[&workingSet](size_t lhs, size_t rhs)
+			{
+				return MagnitudeSquared(workingSet[lhs]) < MagnitudeSquared(workingSet[rhs]);
+			});
+
+		const float biasFactor = 3.f;
+		std::vector<size_t> indicesToRemove;
+		indicesToRemove.reserve(sortedIndices.size() - idealSize);
+		while (sortedIndices.size() > idealSize) {
+			float value = std::uniform_real_distribution<float>(0.f, 1.f)(generator);
+			value = std::pow(value, biasFactor);
+			size_t index = (size_t)(value * float(sortedIndices.size()-1));
+			indicesToRemove.push_back(sortedIndices[index]);
+			sortedIndices.erase(sortedIndices.begin() + index);
+		}
+
+		// now, finally remove those indices from "workingSet"
+		std::sort(indicesToRemove.begin(), indicesToRemove.end());
+		for (auto i=indicesToRemove.rbegin(); i!=indicesToRemove.rend(); ++i)
+			workingSet.erase(workingSet.begin() + *i);
+	}
+
+    static void GenerateBlueNoisePlacements(std::vector<Float2>& workingSet, float radius, unsigned count, std::mt19937& generator)
     {
             //  Create new placements arranged in a equally spaced pattern
             //  around the circle.
@@ -982,25 +1019,25 @@ namespace ToolsRig
         if (workingSet.empty())
             workingSet.push_back(
                 Radial2Cart2D(
-                    rand() * (2.f * gPI / float(RAND_MAX)),
-                    LinearInterpolate(.125f * radius, .25f * radius, rand() / float(RAND_MAX))));
+					std::uniform_real_distribution<float>(0.f, 2.f * gPI)(generator),
+					(std::uniform_real_distribution<float>(.125f * radius, .25f * radius)(generator))));
 
             // erase random objects to reduce the number
-        while (workingSet.size() > count)
-            workingSet.erase(workingSet.begin() + (rand() % workingSet.size()));
+		EraseRandomPoints(workingSet, count, generator);
 
         const unsigned iterationCount = count; // 2 * count - 1;
         for (unsigned c=0; c<iterationCount && workingSet.size() < count; ++c) {
             assert(!workingSet.empty());
-            unsigned index = rand() % unsigned(workingSet.size());
+            // unsigned index = rand() % unsigned(workingSet.size());
+			auto index = std::uniform_int_distribution<size_t>(0, workingSet.size()-1)(generator);
 
                 // look for a good random connector
             bool gotGoodPt = false;
-            float startAngle = rand() * (2.f * gPI / float(RAND_MAX));
+            float startAngle = std::uniform_real_distribution<float>(0.f, 2.f * gPI)(generator);
             for (unsigned t=0; t<k; ++t) {
                 Float2 pt = workingSet[index] + Radial2Cart2D(
                     startAngle + float(t) * (2.f * gPI / float(k)),
-                    littleCircleRadius * (2.f + rand() / float(RAND_MAX)));
+                    littleCircleRadius * (std::uniform_real_distribution<float>(2.f, 3.f)(generator)));
 
                 if (MagnitudeSquared(pt) > radius * radius) {
                     continue;   // bad pt; outside of large radius. We need the centre to be within the large radius
@@ -1025,8 +1062,8 @@ namespace ToolsRig
                 if (workingSet.empty()) {
                     workingSet.push_back(
                         Radial2Cart2D(
-                            rand() * (2.f * gPI / float(RAND_MAX)),
-                            LinearInterpolate(.125f * radius, .25f * radius, rand() / float(RAND_MAX))));
+							std::uniform_real_distribution<float>(0.f, 2.f * gPI)(generator),
+							(std::uniform_real_distribution<float>(.125f * radius, .25f * radius)(generator))));
                 }
             }
         }
@@ -1124,12 +1161,27 @@ namespace ToolsRig
               (modelBoundingBox.second[0] - modelBoundingBox.first[0]) 
             * (modelBoundingBox.second[1] - modelBoundingBox.first[1]);
 
+		static std::mt19937 generator(std::random_device().operator()());
+
             // randomly remove one existing object
-        if (!noisyPts.empty())
-            noisyPts.erase(noisyPts.begin() + (rand() % noisyPts.size()));
+        if (!noisyPts.empty()) {
+			// EraseRandomPoints(noisyPts, noisyPts.size()-1, generator);
+			// The biased erase it very expensive when removing a single object. We can do
+			// better by looking for a point within 3/4 of the radius.
+			float eraseLimit = 3.f/4.f * radius;
+			unsigned iterationCount = 0;
+			for (;;) {
+				auto index = std::uniform_int_distribution<size_t>(0, noisyPts.size()-1)(generator);
+				if (MagnitudeSquared(noisyPts[index]) < eraseLimit*eraseLimit || iterationCount > 100) {
+					noisyPts.erase(noisyPts.begin() + index);
+					break;
+				}
+				iterationCount++;
+			}
+		}
 
         float bigCircleArea = gPI * radius * radius;
-        GenerateBlueNoisePlacements(noisyPts, radius, unsigned(bigCircleArea*density/crossSectionArea));
+        GenerateBlueNoisePlacements(noisyPts, radius, unsigned(bigCircleArea*density/crossSectionArea), generator);
 
             //  Now add new placements for all of these pts.
             //  We need to clamp them to the terrain surface as we do this
