@@ -305,5 +305,25 @@ namespace LevelEditorCore
                 }
             }
         }
+
+        /// <summary>
+        /// Searches ancestors of the given node to look for one that is locked.
+        /// This is how nodes inherit the locked status from their parents.
+        /// </summary>
+        public static bool AncestorIsLocked(this DomNodeAdapter adapter)
+        {
+            var lockable = adapter.DomNode.Ancestry.AsIEnumerable<ILockable>().FirstOrDefault();
+            return (lockable != null)?lockable.IsLocked:false;
+        }
+
+        /// <summary>
+        /// Searches ancestors of the given node to check for visibility status.
+        /// This is how nodes inherit the hidden status from their parent.
+        /// </summary>
+        public static bool AncestorIsVisible(this DomNodeAdapter adapter)
+        {
+            var visible = adapter.DomNode.Ancestry.AsIEnumerable<IVisible>().FirstOrDefault();
+            return (visible != null)?visible.Visible:true;
+        }
     }
 }

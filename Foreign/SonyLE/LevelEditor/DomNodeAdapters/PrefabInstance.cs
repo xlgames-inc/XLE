@@ -27,7 +27,7 @@ namespace LevelEditor.DomNodeAdapters
 
         protected IEnumerable<object> GameObjects
         {
-            get { return GetChildList<object>(Schema.prefabInstanceType.gameObjectChild);}
+            get { return GetChildList<object>(Schema.prefabInstanceType.objectChild);}
         }
 
         protected override void OnNodeSet()
@@ -75,7 +75,7 @@ namespace LevelEditor.DomNodeAdapters
 
         private void DomNodeStructureChanged(object sender, ChildEventArgs e)
         {
-            if (!m_updating && e.ChildInfo.Equivalent(Schema.prefabInstanceType.gameObjectChild))
+            if (!m_updating && e.ChildInfo.Equivalent(Schema.prefabInstanceType.objectChild))
             {
                 throw new InvalidTransactionException("Structure of PrefabInstance cannot be changesd");
             }

@@ -201,7 +201,7 @@ namespace RenderingInterop
                 }
 
                 // map native element from gameObjectGroupType to gameObjectFolderType.
-                object gobsId = groupType.GetChildInfo("gameObject").GetTag(NativeAnnotations.NativeElement);
+                object gobsId = groupType.GetChildInfo("object").GetTag(NativeAnnotations.NativeElement);
                 foreach (ChildInfo srcChildInfo in gobFolderType.Children)
                 {
                     if (srcChildInfo.IsList)

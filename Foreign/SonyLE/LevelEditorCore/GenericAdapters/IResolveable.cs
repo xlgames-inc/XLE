@@ -65,6 +65,10 @@ namespace LevelEditorCore.GenericAdapters
 
             info.Label = name;
             info.IsLeaf = m_target == null;
+
+            var lockable = this.As<ILockable>();
+            if (lockable != null && lockable.IsLocked)
+                info.StateImageIndex = info.GetImageList().Images.IndexOfKey(Sce.Atf.Resources.LockImage);
         }
 
         #endregion

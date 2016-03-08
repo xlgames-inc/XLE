@@ -42,10 +42,6 @@ namespace LevelEditorXLE
 
             gameType.Type = getNodeType("gap", "gameType");
             gameType.nameAttribute = gameType.Type.GetAttributeInfo("name");
-            gameType.fogEnabledAttribute = gameType.Type.GetAttributeInfo("fogEnabled");
-            gameType.fogColorAttribute = gameType.Type.GetAttributeInfo("fogColor");
-            gameType.fogRangeAttribute = gameType.Type.GetAttributeInfo("fogRange");
-            gameType.fogDensityAttribute = gameType.Type.GetAttributeInfo("fogDensity");
             gameType.gameObjectFolderChild = gameType.Type.GetChildInfo("gameObjectFolder");
             gameType.layersChild = gameType.Type.GetChildInfo("layers");
             gameType.bookmarksChild = gameType.Type.GetChildInfo("bookmarks");
@@ -110,6 +106,27 @@ namespace LevelEditorXLE
             gridType.heightAttribute = gridType.Type.GetAttributeInfo("height");
             gridType.snapAttribute = gridType.Type.GetAttributeInfo("snap");
             gridType.visibleAttribute = gridType.Type.GetAttributeInfo("visible");
+
+            visibleTransformObjectType.Type = getNodeType("gap", "visibleTransformObjectType");
+            visibleTransformObjectType.transformAttribute = visibleTransformObjectType.Type.GetAttributeInfo("transform");
+            visibleTransformObjectType.translateAttribute = visibleTransformObjectType.Type.GetAttributeInfo("translate");
+            visibleTransformObjectType.rotateAttribute = visibleTransformObjectType.Type.GetAttributeInfo("rotate");
+            visibleTransformObjectType.scaleAttribute = visibleTransformObjectType.Type.GetAttributeInfo("scale");
+            visibleTransformObjectType.pivotAttribute = visibleTransformObjectType.Type.GetAttributeInfo("pivot");
+            visibleTransformObjectType.transformationTypeAttribute = visibleTransformObjectType.Type.GetAttributeInfo("transformationType");
+            visibleTransformObjectType.visibleAttribute = visibleTransformObjectType.Type.GetAttributeInfo("visible");
+            visibleTransformObjectType.lockedAttribute = visibleTransformObjectType.Type.GetAttributeInfo("locked");
+
+            transformObjectGroupType.Type = getNodeType("gap", "transformObjectGroupType");
+            transformObjectGroupType.transformAttribute = transformObjectGroupType.Type.GetAttributeInfo("transform");
+            transformObjectGroupType.translateAttribute = transformObjectGroupType.Type.GetAttributeInfo("translate");
+            transformObjectGroupType.rotateAttribute = transformObjectGroupType.Type.GetAttributeInfo("rotate");
+            transformObjectGroupType.scaleAttribute = transformObjectGroupType.Type.GetAttributeInfo("scale");
+            transformObjectGroupType.pivotAttribute = transformObjectGroupType.Type.GetAttributeInfo("pivot");
+            transformObjectGroupType.transformationTypeAttribute = transformObjectGroupType.Type.GetAttributeInfo("transformationType");
+            transformObjectGroupType.visibleAttribute = transformObjectGroupType.Type.GetAttributeInfo("visible");
+            transformObjectGroupType.lockedAttribute = transformObjectGroupType.Type.GetAttributeInfo("locked");
+            transformObjectGroupType.objectChild = transformObjectGroupType.Type.GetChildInfo("object");
 
             ambientSettingsType.Type = getNodeType("gap", "ambientSettingsType");
             ambientSettingsType.AmbientLightAttribute = ambientSettingsType.Type.GetAttributeInfo("AmbientLight");
@@ -351,6 +368,8 @@ namespace LevelEditorXLE
             placementsCellReferenceType.ExportEnabledAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ExportEnabled");
             placementsCellReferenceType.cachedCellMinsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("cachedCellMins");
             placementsCellReferenceType.cachedCellMaxsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("cachedCellMaxs");
+            placementsCellReferenceType.visibleAttribute = placementsCellReferenceType.Type.GetAttributeInfo("visible");
+            placementsCellReferenceType.lockedAttribute = placementsCellReferenceType.Type.GetAttributeInfo("locked");
 
             placementsFolderType.Type = getNodeType("gap", "placementsFolderType");
             placementsFolderType.baseEditorPathAttribute = placementsFolderType.Type.GetAttributeInfo("baseEditorPath");
@@ -528,18 +547,6 @@ namespace LevelEditorXLE
             gameObjectWithComponentType.lockedAttribute = gameObjectWithComponentType.Type.GetAttributeInfo("locked");
             gameObjectWithComponentType.componentChild = gameObjectWithComponentType.Type.GetChildInfo("component");
 
-            gameObjectGroupType.Type = getNodeType("gap", "gameObjectGroupType");
-            gameObjectGroupType.transformAttribute = gameObjectGroupType.Type.GetAttributeInfo("transform");
-            gameObjectGroupType.translateAttribute = gameObjectGroupType.Type.GetAttributeInfo("translate");
-            gameObjectGroupType.rotateAttribute = gameObjectGroupType.Type.GetAttributeInfo("rotate");
-            gameObjectGroupType.scaleAttribute = gameObjectGroupType.Type.GetAttributeInfo("scale");
-            gameObjectGroupType.pivotAttribute = gameObjectGroupType.Type.GetAttributeInfo("pivot");
-            gameObjectGroupType.transformationTypeAttribute = gameObjectGroupType.Type.GetAttributeInfo("transformationType");
-            gameObjectGroupType.nameAttribute = gameObjectGroupType.Type.GetAttributeInfo("name");
-            gameObjectGroupType.visibleAttribute = gameObjectGroupType.Type.GetAttributeInfo("visible");
-            gameObjectGroupType.lockedAttribute = gameObjectGroupType.Type.GetAttributeInfo("locked");
-            gameObjectGroupType.gameObjectChild = gameObjectGroupType.Type.GetChildInfo("gameObject");
-
             markerPointType.Type = getNodeType("gap", "markerPointType");
             markerPointType.translateAttribute = markerPointType.Type.GetAttributeInfo("translate");
 
@@ -559,10 +566,6 @@ namespace LevelEditorXLE
 
             xleGameType.Type = getNodeType("gap", "xleGameType");
             xleGameType.nameAttribute = xleGameType.Type.GetAttributeInfo("name");
-            xleGameType.fogEnabledAttribute = xleGameType.Type.GetAttributeInfo("fogEnabled");
-            xleGameType.fogColorAttribute = xleGameType.Type.GetAttributeInfo("fogColor");
-            xleGameType.fogRangeAttribute = xleGameType.Type.GetAttributeInfo("fogRange");
-            xleGameType.fogDensityAttribute = xleGameType.Type.GetAttributeInfo("fogDensity");
             xleGameType.ExportDirectoryAttribute = xleGameType.Type.GetAttributeInfo("ExportDirectory");
             xleGameType.gameObjectFolderChild = xleGameType.Type.GetChildInfo("gameObjectFolder");
             xleGameType.layersChild = xleGameType.Type.GetChildInfo("layers");
@@ -599,10 +602,6 @@ namespace LevelEditorXLE
         {
             public static DomNodeType Type;
             public static AttributeInfo nameAttribute;
-            public static AttributeInfo fogEnabledAttribute;
-            public static AttributeInfo fogColorAttribute;
-            public static AttributeInfo fogRangeAttribute;
-            public static AttributeInfo fogDensityAttribute;
             public static ChildInfo gameObjectFolderChild;
             public static ChildInfo layersChild;
             public static ChildInfo bookmarksChild;
@@ -697,6 +696,33 @@ namespace LevelEditorXLE
             public static AttributeInfo heightAttribute;
             public static AttributeInfo snapAttribute;
             public static AttributeInfo visibleAttribute;
+        }
+
+        public static class visibleTransformObjectType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+        }
+
+        public static class transformObjectGroupType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static ChildInfo objectChild;
         }
 
         public static class ambientSettingsType
@@ -989,6 +1015,8 @@ namespace LevelEditorXLE
             public static AttributeInfo ExportEnabledAttribute;
             public static AttributeInfo cachedCellMinsAttribute;
             public static AttributeInfo cachedCellMaxsAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
         }
 
         public static class placementsFolderType
@@ -1224,21 +1252,6 @@ namespace LevelEditorXLE
             public static ChildInfo componentChild;
         }
 
-        public static class gameObjectGroupType
-        {
-            public static DomNodeType Type;
-            public static AttributeInfo transformAttribute;
-            public static AttributeInfo translateAttribute;
-            public static AttributeInfo rotateAttribute;
-            public static AttributeInfo scaleAttribute;
-            public static AttributeInfo pivotAttribute;
-            public static AttributeInfo transformationTypeAttribute;
-            public static AttributeInfo nameAttribute;
-            public static AttributeInfo visibleAttribute;
-            public static AttributeInfo lockedAttribute;
-            public static ChildInfo gameObjectChild;
-        }
-
         public static class markerPointType
         {
             public static DomNodeType Type;
@@ -1266,10 +1279,6 @@ namespace LevelEditorXLE
         {
             public static DomNodeType Type;
             public static AttributeInfo nameAttribute;
-            public static AttributeInfo fogEnabledAttribute;
-            public static AttributeInfo fogColorAttribute;
-            public static AttributeInfo fogRangeAttribute;
-            public static AttributeInfo fogDensityAttribute;
             public static AttributeInfo ExportDirectoryAttribute;
             public static ChildInfo gameObjectFolderChild;
             public static ChildInfo layersChild;

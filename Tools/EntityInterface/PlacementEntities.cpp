@@ -332,13 +332,13 @@ namespace EntityInterface
 
     PropertyId PlacementEntities::GetPropertyId(ObjectTypeId type, const char name[]) const
     {
-        if (!XlCompareString(name, "LocalToWorld")) return Property_LocalToWorld;
-        if (!XlCompareString(name, "visible"))      return Property_Visible;
-        if (!XlCompareString(name, "model"))        return Property_Model;
-        if (!XlCompareString(name, "material"))     return Property_Material;
-        if (!XlCompareString(name, "supplements"))  return Property_Supplements;
-        if (!XlCompareString(name, "Bounds"))       return Property_Bounds;
-        if (!XlCompareString(name, "LocalBounds"))  return Property_LocalBounds;
+        if (!XlCompareString(name, "LocalToWorld"))     return Property_LocalToWorld;
+        if (!XlCompareString(name, "VisibleHierarchy")) return Property_Visible;
+        if (!XlCompareString(name, "model"))            return Property_Model;
+        if (!XlCompareString(name, "material"))         return Property_Material;
+        if (!XlCompareString(name, "supplements"))      return Property_Supplements;
+        if (!XlCompareString(name, "Bounds"))           return Property_Bounds;
+        if (!XlCompareString(name, "LocalBounds"))      return Property_LocalBounds;
         return 0;
     }
 

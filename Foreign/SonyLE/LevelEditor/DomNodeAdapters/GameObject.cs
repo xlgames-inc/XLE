@@ -39,7 +39,7 @@ namespace LevelEditor.DomNodeAdapters
         /// Node visibility</summary>
         public virtual bool Visible
         {
-            get { return GetAttribute<bool>(Schema.gameObjectType.visibleAttribute); }
+            get { return GetAttribute<bool>(Schema.gameObjectType.visibleAttribute) && this.AncestorIsVisible(); }
             set { SetAttribute(Schema.gameObjectType.visibleAttribute, value); }
         }
         #endregion
@@ -50,17 +50,7 @@ namespace LevelEditor.DomNodeAdapters
         /// </summary>
         public virtual bool IsLocked
         {
-            get 
-            { 
-                bool locked =  GetAttribute<bool>(Schema.gameObjectType.lockedAttribute);
-                if (locked == false)
-                {
-                    ILockable lockable = GetParentAs<ILockable>();
-                    if(lockable != null) 
-                        locked = lockable.IsLocked;                        
-                }
-                return locked;                    
-            }
+            get { return GetAttribute<bool>(Schema.gameObjectType.lockedAttribute) || this.AncestorIsLocked(); }
             set { SetAttribute(Schema.gameObjectType.lockedAttribute, value); }
         }
 

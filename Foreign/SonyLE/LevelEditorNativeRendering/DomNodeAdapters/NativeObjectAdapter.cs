@@ -27,6 +27,8 @@ namespace RenderingInterop
             DomNode node = DomNode;           
             node.AttributeChanged += node_AttributeChanged;            
             TypeId = (uint)DomNode.Type.GetTag(NativeAnnotations.NativeType);
+            _localToWorldAttribute = GetSecondaryAttribute(node.Type, "LocalToWorld");
+            _visibleHierarchyAttribute = GetSecondaryAttribute(node.Type, "VisibleHierarchy");
 
             System.Diagnostics.Debug.Assert(m_instanceId==0);
 
@@ -109,7 +111,7 @@ namespace RenderingInterop
             {
                 using (var stream = transfer.CreateStream())
                 {
-                    UpdateSecondaryNativeProperties(DomNode, transfer.Properties, stream);
+                    UpdateSecondaryNativeProperties(transfer.Properties, stream);
                     if (transfer.Properties.Count > 0)
                     {
                         GameEngine.SetObjectProperty(
@@ -174,14 +176,14 @@ namespace RenderingInterop
                 if (attribInfo == null) return;
             }
 
-            bool isTransform = e.AttributeInfo.Name == "transform";
+            bool hierarchicalProperty = (e.AttributeInfo.Name == "transform") || (e.AttributeInfo.Name == "visible");
             using (var transfer = new NativePropertyTransfer())
             {
                 using (var stream = transfer.CreateStream())
                 {
                     UpdateNativeProperty(DomNode, attribInfo, transfer.Properties, stream);
-                    if (isTransform)
-                        UpdateSecondaryNativeProperties(DomNode, transfer.Properties, stream);
+                    if (hierarchicalProperty)
+                        UpdateSecondaryNativeProperties(transfer.Properties, stream);
                     if (transfer.Properties.Count > 0)
                     {
                         GameEngine.SetObjectProperty(
@@ -190,7 +192,7 @@ namespace RenderingInterop
                     }
                 }
             }
-            if (isTransform) UpdateLocalToWorld_Children();
+            if (hierarchicalProperty) UpdateLocalToWorld_Children();
         }
         
         /// <summary>
@@ -206,7 +208,7 @@ namespace RenderingInterop
                 {
                     foreach (AttributeInfo attribInfo in this.DomNode.Type.Attributes)
                         UpdateNativeProperty(DomNode, attribInfo, transfer.Properties, stream);
-                    UpdateSecondaryNativeProperties(DomNode, transfer.Properties, stream);
+                    UpdateSecondaryNativeProperties(transfer.Properties, stream);
                     if (transfer.Properties.Count > 0)
                     {
                         GameEngine.SetObjectProperty(
@@ -261,7 +263,7 @@ namespace RenderingInterop
                     {
                         foreach (AttributeInfo attribInfo in this.DomNode.Type.Attributes)
                             UpdateNativeProperty(DomNode, attribInfo, transfer.Properties, stream);
-                        UpdateSecondaryNativeProperties(DomNode, transfer.Properties, stream);
+                        UpdateSecondaryNativeProperties(transfer.Properties, stream);
                         m_instanceId = GameEngine.CreateObject(doc.NativeDocumentId, existingId, TypeId, transfer.Properties);
                     }
                 }
@@ -320,36 +322,46 @@ namespace RenderingInterop
                 properties, stream);
         }
 
-        internal static NativeAttributeInfo LocalToWorldAttribute(DomNodeType type)
+        internal static NativeAttributeInfo GetSecondaryAttribute(DomNodeType type, string name)
         {
             var secondaryAttribs = type.GetTag<NativeAttributeInfo[]>();
             if (secondaryAttribs != null)
                 foreach (var a in secondaryAttribs)
-                    if (a.Name.Equals("LocalToWorld"))
+                    if (a.Name.Equals(name))
                         return a;
             return null;
         }
 
-        unsafe internal static void UpdateSecondaryNativeProperties(
-            DomNode node,
+        unsafe internal void UpdateSecondaryNativeProperties(
             IList<PropertyInitializer> properties, 
             System.IO.UnmanagedMemoryStream stream)
         {
-            NativeAttributeInfo localToWorldAttrib = LocalToWorldAttribute(node.Type);
-            if (localToWorldAttrib != null)
+            if (_localToWorldAttribute != null)
             {
                 // we have to build a "local to world" transform, and push that through.
-                var trans = node.As<ITransformable>();
+                var trans = DomNode.As<ITransformable>();
                 if (trans != null)
                 {
                     var localToWorld = trans.LocalToWorld;
                     properties.Add(
                         GameEngine.CreateInitializer(
-                            localToWorldAttrib.PropertyId, stream.PositionPointer,
+                            _localToWorldAttribute.PropertyId, stream.PositionPointer,
                             typeof(float), 16, false));
                     for (int c=0; c<16; ++c)
                         ((float*)stream.PositionPointer)[c] = localToWorld[c];
                     stream.Position += sizeof(float) * 16;
+                }
+            }
+
+            if (_visibleHierarchyAttribute != null)
+            {
+                var visible = DomNode.As<IVisible>();
+                if (visible != null)
+                {
+                    uint d = Convert.ToUInt32(visible.Visible);
+                    SetBasicProperty(_visibleHierarchyAttribute.PropertyId, d, properties, stream);
+                    *(uint*)stream.PositionPointer = d;
+                    stream.Position += sizeof(uint);
                 }
             }
         }
@@ -514,6 +526,9 @@ namespace RenderingInterop
 
         private ulong m_instanceId = 0;
         private ulong m_documentId = 0;
+
+        private NativeAttributeInfo _visibleHierarchyAttribute;
+        private NativeAttributeInfo _localToWorldAttribute;
         
         #region INativeObject Members
         public void InvokeFunction(string fn, IntPtr arg, out IntPtr retval)

@@ -18,4 +18,38 @@
     <xs:attribute name="transformationType" type="xs:integer" default="15"/>
   </xs:complexType>
 
+  <xs:complexType name="visibleTransformObjectType">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors.attribute name="locked" displayName="Locked" description="Lock this object" category="General" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
+        <scea.dom.editors.attribute name="visible" displayName="Visibility" description="Whether item is visible in Design View" category="Display" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="transformObjectType">
+        <xs:attribute name="visible" type="xs:boolean" default="true" />
+        <xs:attribute name="locked" type="xs:boolean" default="false" />
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="transformObjectGroupType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="ObjectGroup"/>
+        <LeGe.GameObjectProperties />
+        <LeGe.TransformUpdater />
+        <LeGe.TransformObject />
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="visibleTransformObjectType">
+        <xs:sequence>
+          <xs:element name="object" type="transformObjectType" 
+                      minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
 </xs:schema>

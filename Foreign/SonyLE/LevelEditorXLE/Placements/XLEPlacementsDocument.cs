@@ -20,7 +20,10 @@ using LevelEditorCore;
 
 namespace LevelEditorXLE.Placements
 {
-    public class XLEPlacementDocument : DomDocument, IGameDocument, IGameObjectFolder, IEnumerableContext
+    public class XLEPlacementDocument 
+        : DomDocument, 
+            IGameDocument, IGameObjectFolder, IEnumerableContext,
+            IHierarchical, INameable, IListable
     {
         #region IListable Members
         public void GetInfo(ItemInfo info)
@@ -32,7 +35,7 @@ namespace LevelEditorXLE.Placements
         #region IHierarchical Members
         public bool CanAddChild(object child)
         {
-            return child.Is<XLEPlacementObject>() || child.Is<IPrefabInstance>();
+            return child.Is<XLEPlacementObject>() || child.Is<IPrefabInstance>() || child.Is<ITransformableGroup>();
         }
 
         public bool AddChild(object child)
@@ -55,37 +58,10 @@ namespace LevelEditorXLE.Placements
         }
         #endregion
         #region INameable Members
-
-        /// <summary>
-        /// Gets and sets the name</summary>
         public string Name
         {
             get { return GetAttribute<string>(Schema.placementsDocumentType.nameAttribute); }
             set { SetAttribute(Schema.placementsDocumentType.nameAttribute, value); }
-        }
-
-        #endregion
-        #region IVisible Members
-        public bool Visible
-        {
-            get { return true; }
-            set { }
-        }
-        #endregion
-        #region ILockable Members
-        public bool IsLocked
-        {
-            get
-            {
-                ILockable lockable = GetParentAs<ILockable>();
-                return (lockable != null) ? lockable.IsLocked : false;
-            }
-            set 
-            {
-                ILockable lockable = GetParentAs<ILockable>();
-                if (lockable != null)
-                    lockable.IsLocked = value;
-            }
         }
         #endregion
         #region IGameObjectFolder Members
@@ -106,7 +82,7 @@ namespace LevelEditorXLE.Placements
 
         public ITransformableGroup CreateGroup()
         {
-            var gobGroup = new DomNode(Schema.gameObjectGroupType.Type).As<ITransformableGroup>();
+            var gobGroup = new DomNode(Schema.transformObjectGroupType.Type).As<ITransformableGroup>();
             // gobGroup.Name = "Group".Localize("this is the name of a folder in the project lister");
             return gobGroup;
         }

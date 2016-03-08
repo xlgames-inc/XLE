@@ -124,6 +124,27 @@ namespace LevelEditor
             resourceReferenceType.Type = getNodeType("gap", "resourceReferenceType");
             resourceReferenceType.uriAttribute = resourceReferenceType.Type.GetAttributeInfo("uri");
 
+            visibleTransformObjectType.Type = getNodeType("gap", "visibleTransformObjectType");
+            visibleTransformObjectType.transformAttribute = visibleTransformObjectType.Type.GetAttributeInfo("transform");
+            visibleTransformObjectType.translateAttribute = visibleTransformObjectType.Type.GetAttributeInfo("translate");
+            visibleTransformObjectType.rotateAttribute = visibleTransformObjectType.Type.GetAttributeInfo("rotate");
+            visibleTransformObjectType.scaleAttribute = visibleTransformObjectType.Type.GetAttributeInfo("scale");
+            visibleTransformObjectType.pivotAttribute = visibleTransformObjectType.Type.GetAttributeInfo("pivot");
+            visibleTransformObjectType.transformationTypeAttribute = visibleTransformObjectType.Type.GetAttributeInfo("transformationType");
+            visibleTransformObjectType.visibleAttribute = visibleTransformObjectType.Type.GetAttributeInfo("visible");
+            visibleTransformObjectType.lockedAttribute = visibleTransformObjectType.Type.GetAttributeInfo("locked");
+
+            transformObjectGroupType.Type = getNodeType("gap", "transformObjectGroupType");
+            transformObjectGroupType.transformAttribute = transformObjectGroupType.Type.GetAttributeInfo("transform");
+            transformObjectGroupType.translateAttribute = transformObjectGroupType.Type.GetAttributeInfo("translate");
+            transformObjectGroupType.rotateAttribute = transformObjectGroupType.Type.GetAttributeInfo("rotate");
+            transformObjectGroupType.scaleAttribute = transformObjectGroupType.Type.GetAttributeInfo("scale");
+            transformObjectGroupType.pivotAttribute = transformObjectGroupType.Type.GetAttributeInfo("pivot");
+            transformObjectGroupType.transformationTypeAttribute = transformObjectGroupType.Type.GetAttributeInfo("transformationType");
+            transformObjectGroupType.visibleAttribute = transformObjectGroupType.Type.GetAttributeInfo("visible");
+            transformObjectGroupType.lockedAttribute = transformObjectGroupType.Type.GetAttributeInfo("locked");
+            transformObjectGroupType.objectChild = transformObjectGroupType.Type.GetChildInfo("object");
+
             gameObjectComponentType.Type = getNodeType("gap", "gameObjectComponentType");
             gameObjectComponentType.nameAttribute = gameObjectComponentType.Type.GetAttributeInfo("name");
             gameObjectComponentType.activeAttribute = gameObjectComponentType.Type.GetAttributeInfo("active");
@@ -147,15 +168,6 @@ namespace LevelEditor
             gameObjectWithComponentType.lockedAttribute = gameObjectWithComponentType.Type.GetAttributeInfo("locked");
             gameObjectWithComponentType.componentChild = gameObjectWithComponentType.Type.GetChildInfo("component");
 
-            gameObjectGroupType.Type = getNodeType("gap", "gameObjectGroupType");
-            gameObjectGroupType.transformAttribute = gameObjectGroupType.Type.GetAttributeInfo("transform");
-            gameObjectGroupType.translateAttribute = gameObjectGroupType.Type.GetAttributeInfo("translate");
-            gameObjectGroupType.rotateAttribute = gameObjectGroupType.Type.GetAttributeInfo("rotate");
-            gameObjectGroupType.scaleAttribute = gameObjectGroupType.Type.GetAttributeInfo("scale");
-            gameObjectGroupType.pivotAttribute = gameObjectGroupType.Type.GetAttributeInfo("pivot");
-            gameObjectGroupType.transformationTypeAttribute = gameObjectGroupType.Type.GetAttributeInfo("transformationType");
-            gameObjectGroupType.gameObjectChild = gameObjectGroupType.Type.GetChildInfo("gameObject");
-
             objectOverrideType.Type = getNodeType("gap", "objectOverrideType");
             objectOverrideType.objectNameAttribute = objectOverrideType.Type.GetAttributeInfo("objectName");
             objectOverrideType.attributeOverrideChild = objectOverrideType.Type.GetChildInfo("attributeOverride");
@@ -171,8 +183,10 @@ namespace LevelEditor
             prefabInstanceType.scaleAttribute = prefabInstanceType.Type.GetAttributeInfo("scale");
             prefabInstanceType.pivotAttribute = prefabInstanceType.Type.GetAttributeInfo("pivot");
             prefabInstanceType.transformationTypeAttribute = prefabInstanceType.Type.GetAttributeInfo("transformationType");
+            prefabInstanceType.visibleAttribute = prefabInstanceType.Type.GetAttributeInfo("visible");
+            prefabInstanceType.lockedAttribute = prefabInstanceType.Type.GetAttributeInfo("locked");
             prefabInstanceType.prefabRefAttribute = prefabInstanceType.Type.GetAttributeInfo("prefabRef");
-            prefabInstanceType.gameObjectChild = prefabInstanceType.Type.GetChildInfo("gameObject");
+            prefabInstanceType.objectChild = prefabInstanceType.Type.GetChildInfo("object");
             prefabInstanceType.objectOverrideChild = prefabInstanceType.Type.GetChildInfo("objectOverride");
 
             renderComponentType.Type = getNodeType("gap", "renderComponentType");
@@ -728,6 +742,33 @@ namespace LevelEditor
             public static AttributeInfo uriAttribute;
         }
 
+        public static class visibleTransformObjectType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+        }
+
+        public static class transformObjectGroupType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static ChildInfo objectChild;
+        }
+
         public static class gameObjectComponentType
         {
             public static DomNodeType Type;
@@ -760,18 +801,6 @@ namespace LevelEditor
             public static ChildInfo componentChild;
         }
 
-        public static class gameObjectGroupType
-        {
-            public static DomNodeType Type;
-            public static AttributeInfo transformAttribute;
-            public static AttributeInfo translateAttribute;
-            public static AttributeInfo rotateAttribute;
-            public static AttributeInfo scaleAttribute;
-            public static AttributeInfo pivotAttribute;
-            public static AttributeInfo transformationTypeAttribute;
-            public static ChildInfo gameObjectChild;
-        }
-
         public static class objectOverrideType
         {
             public static DomNodeType Type;
@@ -795,8 +824,10 @@ namespace LevelEditor
             public static AttributeInfo scaleAttribute;
             public static AttributeInfo pivotAttribute;
             public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
             public static AttributeInfo prefabRefAttribute;
-            public static ChildInfo gameObjectChild;
+            public static ChildInfo objectChild;
             public static ChildInfo objectOverrideChild;
         }
 

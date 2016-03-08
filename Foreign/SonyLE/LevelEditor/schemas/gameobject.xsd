@@ -10,37 +10,37 @@
   <xs:include schemaLocation="transformobject.xsd"/>
 
   <!--  base type of all the components that can be added to game object-->
-    <xs:complexType name="gameObjectComponentType" abstract="true">
-        <xs:annotation>
-            <xs:appinfo>
-                <LeGe.NativeType nativeName="GameObjectComponent"/>
-                <LeGe.NativeProperty name="name" nativeName="Name" nativeType="wchar_t*" access="set"/>
-                <LeGe.NativeProperty name="active" nativeName="Active" nativeType="bool" access="set"/>
-            </xs:appinfo>
-        </xs:annotation>        
-        <xs:attribute name="name" type="xs:string" default=""/>
-        <xs:attribute name="active" type="xs:boolean" default="true"/>
-    </xs:complexType>
+  <xs:complexType name="gameObjectComponentType" abstract="true">
+      <xs:annotation>
+          <xs:appinfo>
+              <LeGe.NativeType nativeName="GameObjectComponent"/>
+              <LeGe.NativeProperty name="name" nativeName="Name" nativeType="wchar_t*" access="set"/>
+              <LeGe.NativeProperty name="active" nativeName="Active" nativeType="bool" access="set"/>
+          </xs:appinfo>
+      </xs:annotation>        
+      <xs:attribute name="name" type="xs:string" default=""/>
+      <xs:attribute name="active" type="xs:boolean" default="true"/>
+  </xs:complexType>
 
     <!-- base type of all component that need to have transform -->
-    <xs:complexType name="transformComponentType">
-        <xs:annotation>
-            <xs:appinfo>
-                <LeGe.NativeType nativeName="TransformComponent"/>
-                <LeGe.NativeProperty name="translation" nativeName="Translation" nativeType="float3" access="set"/>
-                <LeGe.NativeProperty name="rotation" nativeName="Rotation" nativeType="float3" access="set"/>
-                <LeGe.NativeProperty name="scale" nativeName="Scale" nativeType="float3" access="set"/>
-            </xs:appinfo>
-        </xs:annotation>        
-        <xs:complexContent>
-            <xs:extension base="gameObjectComponentType">
-                <xs:attribute name="translation" type="vector3Type" default="0 0 0"/>
-                <xs:attribute name="rotation" type="vector3Type" default="0 0 0"/>
-                <xs:attribute name="scale" type="vector3Type" default="1 1 1"/>
-            </xs:extension>
-        </xs:complexContent>    
-    </xs:complexType>
-    
+  <xs:complexType name="transformComponentType">
+      <xs:annotation>
+          <xs:appinfo>
+              <LeGe.NativeType nativeName="TransformComponent"/>
+              <LeGe.NativeProperty name="translation" nativeName="Translation" nativeType="float3" access="set"/>
+              <LeGe.NativeProperty name="rotation" nativeName="Rotation" nativeType="float3" access="set"/>
+              <LeGe.NativeProperty name="scale" nativeName="Scale" nativeType="float3" access="set"/>
+          </xs:appinfo>
+      </xs:annotation>        
+      <xs:complexContent>
+          <xs:extension base="gameObjectComponentType">
+              <xs:attribute name="translation" type="vector3Type" default="0 0 0"/>
+              <xs:attribute name="rotation" type="vector3Type" default="0 0 0"/>
+              <xs:attribute name="scale" type="vector3Type" default="1 1 1"/>
+          </xs:extension>
+      </xs:complexContent>    
+  </xs:complexType>
+  
   <xs:complexType name="gameObjectType">
     <xs:annotation>
       <xs:appinfo>
@@ -83,24 +83,6 @@
     </xs:complexContent>
   </xs:complexType>
 
-  <xs:complexType name="gameObjectGroupType">
-    <xs:annotation>
-      <xs:appinfo>
-        <LeGe.NativeType nativeName="GameObjectGroup"/>
-        <LeGe.GameObjectProperties />
-        <LeGe.TransformUpdater />
-        <LeGe.TransformObject />
-      </xs:appinfo>
-    </xs:annotation>
-    <xs:complexContent>
-      <xs:extension base="transformObjectType">
-        <xs:sequence>
-          <xs:element name="gameObject" type="transformObjectType" minOccurs="0" maxOccurs="unbounded" />
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-  
   <xs:complexType name="gameObjectFolderType">
     <xs:annotation>
       <xs:appinfo>

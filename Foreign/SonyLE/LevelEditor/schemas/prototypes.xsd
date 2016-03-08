@@ -31,7 +31,7 @@
       </xs:appinfo>
     </xs:annotation>
     <xs:complexContent>
-      <xs:extension base="gameObjectGroupType">
+      <xs:extension base="transformObjectGroupType">
         <xs:sequence>
           <xs:element name="objectOverride" type="objectOverrideType" minOccurs="0" maxOccurs="unbounded" />
         </xs:sequence>

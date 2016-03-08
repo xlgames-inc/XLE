@@ -52,7 +52,7 @@ namespace LevelEditor.DomNodeAdapters
             newFlags |= TransformationTypes.Scale;
             newFlags &= ~TransformationTypes.UniformScale;
 
-            IEnumerable<ITransformable> transformables = GetChildList<ITransformable>(Schema.gameObjectGroupType.gameObjectChild);
+            var transformables = GetChildList<ITransformable>(Schema.transformObjectGroupType.objectChild);
             foreach (ITransformable childNode in transformables)
             {
                 if ((childNode.TransformationType & TransformationTypes.Scale) == 0)
@@ -68,7 +68,7 @@ namespace LevelEditor.DomNodeAdapters
         /// Gets game object children</summary>
         public IList<ITransformable> Objects
         {
-            get { return GetChildList<ITransformable>(Schema.gameObjectGroupType.gameObjectChild); }
+            get { return GetChildList<ITransformable>(Schema.transformObjectGroupType.objectChild); }
         }
 
         #region IHierarchical Members
@@ -100,12 +100,11 @@ namespace LevelEditor.DomNodeAdapters
             info.Label = "Group";
             info.IsLeaf = Objects.Count == 0;
 
-            // if (IsLocked)
-            //     info.StateImageIndex = info.GetImageList().Images.IndexOfKey(Sce.Atf.Resources.LockImage);
+            if (IsLocked)
+                info.StateImageIndex = info.GetImageList().Images.IndexOfKey(Sce.Atf.Resources.LockImage);
         }
 
         #endregion
-
         #region IBoundable Members
         public AABB BoundingBox
         {
@@ -134,22 +133,19 @@ namespace LevelEditor.DomNodeAdapters
             }
         }
         #endregion
-
-        #region ILockable Members
-        public bool IsLocked
-        {
-            get { return false; }
-            set { }
-        }
-        #endregion
-
         #region IVisible Members
-        public bool Visible
+        public virtual bool Visible
         {
-            get { return true; }
-            set {}
+            get { return GetAttribute<bool>(Schema.transformObjectGroupType.visibleAttribute) && this.AncestorIsVisible(); }
+            set { SetAttribute(Schema.transformObjectGroupType.visibleAttribute, value); }
         }
         #endregion
-
+        #region ILockable Members
+        public virtual bool IsLocked
+        {
+            get { return GetAttribute<bool>(Schema.transformObjectGroupType.lockedAttribute) || this.AncestorIsLocked(); }
+            set { SetAttribute(Schema.transformObjectGroupType.lockedAttribute, value); }
+        }
+        #endregion
     }
 }

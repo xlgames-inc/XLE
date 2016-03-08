@@ -6,7 +6,7 @@ namespace LevelEditorCore
 {
     /// <summary>
     /// Interface for game object folders</summary>
-    public interface IGameObjectFolder : IHierarchical,INameable,IVisible, IListable, ILockable
+    public interface IGameObjectFolder
     {
         /// <summary>
         /// Gets the list of game objects</summary>

@@ -12,8 +12,8 @@
       <xs:appinfo>
         <scea.dom.editors.attribute name="captureMins" displayName="CaptureMins" description="Minimum capture point of this cell" category="Bounds" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
         <scea.dom.editors.attribute name="captureMaxs" displayName="CaptureMaxs" description="Maximum capture point of this cell" category="Bounds" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
-        <scea.dom.editors.attribute name="ref" displayName="Ref" description="Placements document file"/>
-        <scea.dom.editors.attribute name="name" displayName="Name" description="Display name"/>
+        <scea.dom.editors.attribute name="ref" displayName="Ref" description="Placements document file" category="General"/>
+        <scea.dom.editors.attribute name="name" displayName="Name" description="Display name" category="General"/>
         <scea.dom.editors.attribute name="ExportTarget" displayName="Export Target" category="Export" description="Destination file written to in export operations"/>
         <scea.dom.editors.attribute name="ExportEnabled" displayName="Export Enabled" category="Export" description="Enable or disable export of this item"/>
       </xs:appinfo>
@@ -54,21 +54,17 @@
     <xs:annotation>
       <xs:appinfo>
         <LeGe.NativeType nativeName="PlacementObject"/>
-        <LeGe.NativeProperty name="transform" nativeName="transform" nativeType="Float4x4" access="set"/>
-        <LeGe.NativeProperty name="visible" nativeName="visible" nativeType="bool" access="set,get"/>
-        <LeGe.NativeProperty nativeName="Bounds" nativeType="AABB" access="get"/>
-        <LeGe.NativeProperty nativeName="LocalBounds" nativeType="AABB" access="get"/>
-        <LeGe.NativeProperty nativeName="LocalToWorld" />
-
-        <scea.dom.editors.attribute name="locked" displayName="Locked" description="Lock this object" category="General" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
-        <scea.dom.editors.attribute name="visible" displayName="Visibility" description="Whether item is visible in Design View" category="Display" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
+        <LeGe.NativeProperty name="transform" nativeName="transform"/>
+        <LeGe.NativeProperty name="visible" nativeName="visible"/>
+        <LeGe.NativeProperty nativeName="Bounds"/>
+        <LeGe.NativeProperty nativeName="LocalBounds"/>
+        <LeGe.NativeProperty nativeName="LocalToWorld"/>
+        <LeGe.NativeProperty nativeName="VisibleHierarchy"/>
       </xs:appinfo>
     </xs:annotation>
 
     <xs:complexContent>
-      <xs:extension base="transformObjectType">
-        <xs:attribute name="visible" type="xs:boolean" default="true" />
-        <xs:attribute name="locked" type="xs:boolean" default="false" />
+      <xs:extension base="visibleTransformObjectType">
         <xs:attribute name="ID" type="xs:unsignedLong" default="0"/>
       </xs:extension>
     </xs:complexContent>

@@ -139,13 +139,13 @@ namespace LevelEditorXLE.Markers
 
         public bool Visible
         {
-            get { return true; }
+            get { return this.AncestorIsVisible(); }
             set { }
         }
 
         public bool IsLocked
         {
-            get { return false; }
+            get { return this.AncestorIsLocked(); }
             set { }
         }
 

@@ -428,7 +428,7 @@ namespace LevelEditor
         /// Gets DomNodeType of GameObjectGroup.</summary>
         public DomNodeType GameObjectGroupType
         {
-            get { return Schema.gameObjectGroupType.Type; }
+            get { return Schema.transformObjectGroupType.Type; }
         }
 
         /// <summary>

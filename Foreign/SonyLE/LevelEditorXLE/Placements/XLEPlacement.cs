@@ -72,29 +72,22 @@ namespace LevelEditorXLE.Placements
         {
             info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
             info.Label = "<" + Path.GetFileNameWithoutExtension(Model) + ">";
+
+            if (IsLocked)
+                info.StateImageIndex = info.GetImageList().Images.IndexOfKey(Sce.Atf.Resources.LockImage);
         }
         #endregion
         #region IVisible Members
         public virtual bool Visible
         {
-            get { return GetAttribute<bool>(Schema.abstractPlacementObjectType.visibleAttribute); }
+            get { return GetAttribute<bool>(Schema.abstractPlacementObjectType.visibleAttribute) && this.AncestorIsVisible(); }
             set { SetAttribute(Schema.abstractPlacementObjectType.visibleAttribute, value); }
         }
         #endregion
         #region ILockable Members
         public virtual bool IsLocked
         {
-            get
-            {
-                bool locked = GetAttribute<bool>(Schema.abstractPlacementObjectType.lockedAttribute);
-                if (locked == false)
-                {
-                    ILockable lockable = GetParentAs<ILockable>();
-                    if (lockable != null)
-                        locked = lockable.IsLocked;
-                }
-                return locked;
-            }
+            get { return GetAttribute<bool>(Schema.abstractPlacementObjectType.lockedAttribute) || this.AncestorIsLocked(); }
             set { SetAttribute(Schema.abstractPlacementObjectType.lockedAttribute, value); }
         }
         #endregion

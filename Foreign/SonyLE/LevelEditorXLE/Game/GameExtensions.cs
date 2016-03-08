@@ -171,7 +171,7 @@ namespace LevelEditorXLE.Game
 
                 case Command.CreateTriMeshMarker:
                     {
-                        this.As<IGame>().RootGameObjectFolder.AddChild(Markers.TriMeshMarker.Create());
+                        this.As<IGame>().RootGameObjectFolder.As<IHierarchical>().AddChild(Markers.TriMeshMarker.Create());
                         break;
                     }
             }

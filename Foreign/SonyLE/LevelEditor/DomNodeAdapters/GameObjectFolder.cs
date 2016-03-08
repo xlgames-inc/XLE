@@ -13,7 +13,7 @@ namespace LevelEditor.DomNodeAdapters
 {
     /// <summary>
     /// DomNodeAdapter for game object folders</summary>
-    public class GameObjectFolder : DomNodeAdapter,  IGameObjectFolder
+    public class GameObjectFolder : DomNodeAdapter, IGameObjectFolder, IHierarchical, INameable, IVisible, IListable, ILockable
     {
         #region INameable Members
 
@@ -44,7 +44,7 @@ namespace LevelEditor.DomNodeAdapters
 
         public ITransformableGroup CreateGroup()
         {
-            var gobGroup = new DomNode(Schema.gameObjectGroupType.Type).As<ITransformableGroup>();
+            var gobGroup = new DomNode(Schema.transformObjectGroupType.Type).As<ITransformableGroup>();
             // gobGroup.Name = "Group".Localize("this is the name of a folder in the project lister");
             return gobGroup;
         }
@@ -56,7 +56,7 @@ namespace LevelEditor.DomNodeAdapters
         /// Get or sets the object's visibility state</summary>
         public bool Visible
         {
-            get { return GetAttribute<bool>(Schema.gameObjectFolderType.visibleAttribute); }
+            get { return GetAttribute<bool>(Schema.gameObjectFolderType.visibleAttribute) && this.AncestorIsVisible(); }
             set { SetAttribute(Schema.gameObjectFolderType.visibleAttribute, value); }
         }
 
@@ -68,17 +68,7 @@ namespace LevelEditor.DomNodeAdapters
         /// Gets or sets a value indicating if the DomNode is locked</summary>
         public bool IsLocked
         {
-            get
-            {
-                bool locked = GetAttribute<bool>(Schema.gameObjectFolderType.lockedAttribute);
-                if (locked == false)
-                {
-                    ILockable lockable = GetParentAs<ILockable>();
-                    if (lockable != null)
-                        locked = lockable.IsLocked;
-                }
-                return locked;
-            }
+            get { return GetAttribute<bool>(Schema.gameObjectFolderType.lockedAttribute) || this.AncestorIsLocked(); }
             set { SetAttribute(Schema.gameObjectFolderType.lockedAttribute, value); }
         }       
         #endregion

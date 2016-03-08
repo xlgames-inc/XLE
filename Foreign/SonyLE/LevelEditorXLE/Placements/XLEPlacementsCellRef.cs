@@ -27,7 +27,7 @@ namespace LevelEditorXLE.Placements
     using CellRefST = Schema.placementsCellReferenceType;
     using FolderST = Schema.placementsFolderType;
 
-    public class PlacementsCellRef 
+    public class PlacementsCellRef
         : LevelEditorCore.GenericAdapters.GenericReference<XLEPlacementDocument>
         , IHierarchical, IExportable, IEnumerableContext
     {
@@ -124,7 +124,6 @@ namespace LevelEditorXLE.Placements
             return result;
         }
         #endregion
-
         #region IHierachical Members
         public bool CanAddChild(object child) 
         {
@@ -145,7 +144,6 @@ namespace LevelEditorXLE.Placements
             return false;
         }
         #endregion
-
         #region GenericReference<> Members
         static PlacementsCellRef()
         {
@@ -164,7 +162,6 @@ namespace LevelEditorXLE.Placements
             XLEPlacementDocument.Release(target);
         }
         #endregion
-
         #region IResolveable
         public override bool CanCreateNew() { return true; }
         public override void CreateAndResolve()
@@ -186,7 +183,6 @@ namespace LevelEditorXLE.Placements
             Target.Save(Uri, schemaLoader);
         }
         #endregion
-
         #region IEnumerableContext
         public IEnumerable<object> Items
         {
