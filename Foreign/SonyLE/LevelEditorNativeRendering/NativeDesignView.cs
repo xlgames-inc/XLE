@@ -70,14 +70,25 @@ namespace RenderingInterop
 
         void m_selectionContext_SelectionChanged(object sender, EventArgs e)
         {
-            IEnumerable<DomNode> domNodes = m_selectionContext.Selection.AsIEnumerable<DomNode>();
-            IEnumerable<DomNode> roots = DomNode.GetRoots(domNodes);
-            IEnumerable<NativeObjectAdapter> nativeObjects = roots.AsIEnumerable<NativeObjectAdapter>();
+            var domNodes = m_selectionContext.Selection.AsIEnumerable<DomNode>();
+            var roots = DomNode.GetRoots(domNodes);
 
             var sel = GameEngine.GlobalSelection;
             sel.Clear();
-            foreach (var adapter in nativeObjects)
-                sel.Add(adapter.DocumentId, adapter.InstanceId);
+            foreach (var node in roots)
+            {
+                if (node.Is<ITransformableGroup>())
+                {
+                    foreach (var adapter in node.Subtree.AsIEnumerable<NativeObjectAdapter>())
+                        sel.Add(adapter.DocumentId, adapter.InstanceId);
+                }
+                else
+                {
+                    var adapter = node.As<NativeObjectAdapter>();
+                    if (adapter != null)
+                        sel.Add(adapter.DocumentId, adapter.InstanceId);
+                }
+            }
 
             using (var placements = GameEngine.GetEditorSceneManager().GetPlacementsEditor())
                 sel.DoFixup(placements);

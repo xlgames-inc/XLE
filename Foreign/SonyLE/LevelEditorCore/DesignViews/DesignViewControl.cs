@@ -4,6 +4,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using System.Linq;
 
 using Sce.Atf;
 using Sce.Atf.Adaptation;
@@ -193,13 +194,10 @@ namespace LevelEditorCore
                 Point screenPoint = PointToScreen(clientPoint);
 
                 object target = this;
-                IList<object> pickList = Pick(e);
-                if (pickList.Count > 0)
-                {
-                    Path<object> pickedObj = (Path<object>)pickList[0];
+                var pickList = Pick(e);
+                var pickedObj = pickList.FirstOrDefault().As<Path<object>>();
+                if (pickedObj != null)
                     target = pickedObj.Last;
-                }
-
 
                 IEnumerable<object> commands =
                     contextMenuCommandProviders.GetCommands(DesignView.Context, target);
@@ -235,21 +233,22 @@ namespace LevelEditorCore
         {
             SelectMode selectMode = InputScheme.GetSelectMode(Control.ModifierKeys);
             ISelectionContext selection = DesignView.Context.As<ISelectionContext>();
-            IList<object> hits = Pick(e);
-            bool multiSelect = DragOverThreshold;            
-            if (multiSelect == false && hits.Count > 0)
+            var hits = Pick(e);
+            bool multiSelect = DragOverThreshold;       
+     
+            if (multiSelect == false && hits.Any())
             {
                 List<object> singleHit = new List<object>();
-                if(selectMode == SelectMode.Normal)
+                if (selectMode == SelectMode.Normal)
                 {
                     m_hitIndex++;
-                    if (m_hitIndex >= hits.Count)
-                        m_hitIndex = 0;            
-                    singleHit.Add(hits[m_hitIndex]);
+                    if (m_hitIndex >= hits.Count())
+                        m_hitIndex = 0;
+                    singleHit.Add(hits.ElementAt(m_hitIndex));
                 }
                 else
                 {
-                    singleHit.Add(hits[0]);
+                    singleHit.Add(hits.ElementAt(0));
                 }
                 hits = singleHit;
             }
@@ -273,9 +272,9 @@ namespace LevelEditorCore
             }
         }
 
-        protected virtual IList<object> Pick(MouseEventArgs e)
+        protected virtual IEnumerable<object> Pick(MouseEventArgs e)
         {
-            return new List<object>();
+            return System.Linq.Enumerable.Empty<object>();
         }
         /// <summary>
         /// Gets the starting mouse coordinates</summary>

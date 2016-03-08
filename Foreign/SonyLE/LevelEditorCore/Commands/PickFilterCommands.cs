@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using Sce.Atf;
 using Sce.Atf.Applications;
 using Sce.Atf.Controls.PropertyEditing;
+using Sce.Atf.Adaptation;
 
 
 namespace LevelEditorCore.Commands
@@ -39,7 +40,10 @@ namespace LevelEditorCore.Commands
             var defFilter = new DefaultPickFilter();
             m_filters.Add(defFilter.Name, defFilter);
             m_pickFilterComboBox.Items.Add(defFilter.Name);
-            
+
+            var defFilterIgnoreGroups = new DefaultPickFilterIgnoreGroups();
+            m_filters.Add(defFilterIgnoreGroups.Name, defFilterIgnoreGroups);
+            m_pickFilterComboBox.Items.Add(defFilterIgnoreGroups.Name);
                                   
             foreach (IPickFilter pickFilter in m_pickFilters)
             {
@@ -99,21 +103,31 @@ namespace LevelEditorCore.Commands
 
         private class DefaultPickFilter : IPickFilter
         {
-
             #region IPickFilter Members
-
-            public string Name
+            public string Name { get { return "Any Object"; } }
+            public object Filter(object obj, MouseEventArgs e) 
             {
-                get { return "Any Object"; }
+                var path = obj.As<Path<object>>();
+                if (path != null)
+                {
+                    // Search through the path to look for a group of some kind.
+                    // If we find it, we must select the group, not the original object.
+                    for (int c = 0; c < path.Count; ++c)
+                    {
+                        if (path[c].Is<ITransformableGroup>())
+                            return path[c];
+                    }
+                }
+                return obj; 
             }
+            #endregion
+        }
 
-            /// <summary>
-            /// Pass-through filter. </summary>            
-            public object Filter(object obj, MouseEventArgs e)
-            {
-                return obj;
-            }
-
+        private class DefaultPickFilterIgnoreGroups : IPickFilter
+        {
+            #region IPickFilter Members
+            public string Name { get { return "Any Object (ignore groups)"; } }
+            public object Filter(object obj, MouseEventArgs e) { return obj; }
             #endregion
         }
     }

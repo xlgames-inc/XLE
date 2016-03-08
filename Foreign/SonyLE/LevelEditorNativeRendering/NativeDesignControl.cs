@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using System.Drawing;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Linq;
 using LevelEditorCore.VectorMath;
 using Sce.Atf;
 using Sce.Atf.Adaptation;
@@ -69,15 +70,12 @@ namespace RenderingInterop
             base.Dispose(disposing);
         }
         
-        protected override IList<object> Pick(MouseEventArgs e)
+        protected override IEnumerable<object> Pick(MouseEventArgs e)
         {           
             bool multiSelect = DragOverThreshold;
-            List<object> paths = new List<object>();
-
             Picking.HitRecord[] hits;
-
             if(multiSelect)
-            {// frustum pick                
+            {
                 RectangleF rect = MakeRect(FirstMousePoint, CurrentMousePoint);
                 var frustum = XLEBridgeUtils.Utils.MakeFrustumMatrix(Utils.AsCameraDesc(Camera), rect, ClientSize);
                 hits = Picking.FrustumPick(
@@ -87,7 +85,7 @@ namespace RenderingInterop
                     Picking.Flags.Objects | Picking.Flags.Helpers);
             }
             else
-            {// ray pick
+            {
                 Ray3F rayW = GetWorldRay(CurrentMousePoint);
                 hits = Picking.RayPick(
                     GameEngine.GetEngineDevice(),
@@ -99,58 +97,54 @@ namespace RenderingInterop
             if (hits==null) return new List<object>();
 
             // create unique list of hits
+            var uniqueHits = new List<DomNode>();
+
+            var nativeIdMapping = Globals.MEFContainer.GetExportedValue<INativeIdMapping>();
             HashSet<ulong> instanceSet = new HashSet<ulong>();
-            var uniqueHits = new List<Picking.HitRecord>();
-            // build 'path' objects for each hit record.
             foreach (var hit in hits)
-            {
-                bool added = instanceSet.Add(hit.instanceId);
-                if (added) uniqueHits.Add(hit);
-            }
-
-            var firstHit = new Picking.HitRecord();
-            
+                if (instanceSet.Add(hit.instanceId))
+                {
+                    var nobj = nativeIdMapping.GetAdapter(hit.documentId, hit.instanceId).As<DomNodeAdapter>();
+                    if (nobj != null && nobj.DomNode != null)
+                        uniqueHits.Add(nobj.DomNode);
+                }
 
             // build 'path' objects for each hit record.
-            foreach (var hit in uniqueHits)
+            var paths = new List<AdaptablePath<object>>();
+            foreach (var node in uniqueHits)
             {
-                var nativeIdMapping = Globals.MEFContainer.GetExportedValue<INativeIdMapping>();
-                var nobj = nativeIdMapping.GetAdapter(hit.documentId, hit.instanceId).As<DomNodeAdapter>();
-                if (nobj == null) continue;
-
-                DomNode dom = nobj.DomNode;
-                object hitPath = Util.AdaptDomPath(dom);
-                object obj = DesignView.PickFilter.Filter(hitPath, e);
+                var hitPath = Util.AdaptDomPath(node);
+                var obj = DesignView.PickFilter.Filter(hitPath, e);
                 if (obj != null)
                 {
-                    if (paths.Count == 0)
-                    {
-                        firstHit = hit;
-                    }
-                    var newPath = obj as AdaptablePath<object> ?? Util.AdaptDomPath((DomNode)obj);
-                    paths.Add(newPath);
+                    var path = obj as AdaptablePath<object> ?? Util.AdaptDomPath((DomNode)obj);
+                    // Prevent the same object from being added multiple times...
+                    if (paths.Where(x => x.Last == path.Last).FirstOrDefault() == null)
+                        paths.Add(path);
                 }
             }
 
-
-            if (multiSelect == false && paths.Count > 0)                
-            {
-                var path = paths[0];
-                ISelectionContext selection = DesignView.Context.As<ISelectionContext>();
-                ILinear linear = path.As<ILinear>();
-                if (linear != null
-                    && Control.ModifierKeys == System.Windows.Forms.Keys.Shift
-                    && selection.SelectionContains(path))
+            #if false
+                if (multiSelect == false && paths.Count > 0 && firstHit != null)
                 {
-                    ITransactionContext trans = DesignView.Context.As<ITransactionContext>();
-                    trans.DoTransaction(
-                        delegate
-                        {
-                            linear.InsertPoint(firstHit.index, firstHit.hitPt.X, firstHit.hitPt.Y, firstHit.hitPt.Z);
-                        }, "insert control point".Localize()
-                        );
+                    var path = paths[0];
+                    ISelectionContext selection = DesignView.Context.As<ISelectionContext>();
+                    ILinear linear = path.As<ILinear>();
+                    if (linear != null
+                        && Control.ModifierKeys == System.Windows.Forms.Keys.Shift
+                        && selection.SelectionContains(path))
+                    {
+                        ITransactionContext trans = DesignView.Context.As<ITransactionContext>();
+                        trans.DoTransaction(
+                            delegate
+                            {
+                                linear.InsertPoint(firstHit.index, firstHit.hitPt.X, firstHit.hitPt.Y, firstHit.hitPt.Z);
+                            }, "insert control point".Localize()
+                            );
+                    }
                 }
-            }
+            #endif
+
             return paths;
         }
         
