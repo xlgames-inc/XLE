@@ -233,7 +233,7 @@ namespace LevelEditorCore.Commands
         public virtual IEnumerable<object> GetCommands(object context, object target)
         {            
             bool contextTest = (context is IGameContext)  || (context is FilteredTreeView);            
-            bool targetTest = (target is DesignViewControl) || (Adapters.Is<IGameObject>(target));
+            bool targetTest = (target is DesignViewControl) || (Adapters.Is<IVisible>(target));
 
             if (contextTest && targetTest)
             {                

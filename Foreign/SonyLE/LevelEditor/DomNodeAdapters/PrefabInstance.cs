@@ -13,7 +13,7 @@ namespace LevelEditor.DomNodeAdapters
 {
     /// <summary>
     /// Prefab instance.</summary>
-    public class PrefabInstance : DomNodeAdapter, IPrefabInstance, IListable
+    public class PrefabInstance : TransformableGroup, IPrefabInstance, IListable
     {
         public static PrefabInstance Create(IPrefab prefab)
         {
@@ -25,7 +25,7 @@ namespace LevelEditor.DomNodeAdapters
             return inst;
         }
 
-        public IEnumerable<object> GameObjects
+        protected IEnumerable<object> GameObjects
         {
             get { return GetChildList<object>(Schema.prefabInstanceType.gameObjectChild);}
         }
@@ -45,7 +45,6 @@ namespace LevelEditor.DomNodeAdapters
 
             if(DomNode.Parent == null)
                 Resolve(null);
-
         }
 
         private IList<ObjectOverride> m_overrideList;
@@ -87,7 +86,8 @@ namespace LevelEditor.DomNodeAdapters
             var nameable = obj.As<INameable>();
             if (nameable != null) return nameable.Name;
                 // Without a name, we just call back to the index in the list
-                // We could do better 
+                // We could do better -- this can create a lot of confusion if the objects in the
+                // prefab file change order.
             return index.ToString();
         }
 
@@ -106,16 +106,14 @@ namespace LevelEditor.DomNodeAdapters
                 if(resUri == null)
                     SetAttribute(Schema.prefabInstanceType.prefabRefAttribute, m_prefab.Uri);
 
-                var gobgroup = DomNode.As<ITransformableGroup>();
-                // if (string.IsNullOrWhiteSpace(gobgroup.Name))
-                //     gobgroup.Name = "PrefabInst_" + m_prefab.Name;
-
-                DomNode[] gobs = DomNode.Copy(m_prefab.GameObjects.AsIEnumerable<DomNode>());
-                HashSet<string> gobIds = new HashSet<string>();
-                
-                var childrenCopy = new List<DomNode>(gobgroup.As<DomNode>().Children);
+                // Remove the children that are stored within this group (these remain in the file
+                // so that they are used when the resolve fails)
+                var childrenCopy = new List<DomNode>(base.Objects.AsIEnumerable<DomNode>());
                 foreach (var c in childrenCopy) c.RemoveFromParent();
 
+                // Create new children from the prefab, applying the overriden attributes as we go
+                DomNode[] gobs = DomNode.Copy(m_prefab.GameObjects.AsIEnumerable<DomNode>());
+                HashSet<string> gobIds = new HashSet<string>(); 
                 for (int c = 0; c < gobs.Length; ++c)
                 {
                     var gobNode = gobs[c];
@@ -135,7 +133,7 @@ namespace LevelEditor.DomNodeAdapters
                             nameable.Name = namer.Name(nameable.Name);
                     }
 
-                    gobgroup.AddChild(gobNode);
+                    AddChild(gobNode);
                 }
 
                 // cleanup m_overridesmap
@@ -145,6 +143,7 @@ namespace LevelEditor.DomNodeAdapters
                     if (!gobIds.Contains(id))
                     {
                         ObjectOverride objectOverride = m_overridesMap[id];
+                        objectOverride.DomNode.RemoveFromParent();
                         m_overridesMap.Remove(id);
                         m_overrideList.Remove(objectOverride);
                     }
@@ -160,21 +159,17 @@ namespace LevelEditor.DomNodeAdapters
         {
             if (node == null || objectOverride == null)
                 return;
-            // string nodeId = node.GetId();
-            // System.Diagnostics.Debug.Assert(nodeId == objectOverride.ObjectName);
-
             foreach (AttributeOverride attrOverride in objectOverride.AttributeOverrides)
             {
                 AttributeInfo attrInfo = node.Type.GetAttributeInfo(attrOverride.Name);
                 node.SetAttribute(attrInfo, attrInfo.Type.Convert(attrOverride.AttribValue));
             }
-
         }
 
         #region IListable Members
-        public void GetInfo(ItemInfo info)
+        public new void GetInfo(ItemInfo info)
         {
-            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
+            base.GetInfo(info);
             info.Label = "Prefab: " + ((m_prefab != null) ? m_prefab.Name : "<<unattached>>");
         }
         #endregion

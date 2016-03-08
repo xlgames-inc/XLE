@@ -86,7 +86,10 @@
   <xs:complexType name="gameObjectGroupType">
     <xs:annotation>
       <xs:appinfo>
-        <scea.dom.editors name="GameObjectGroup" category="Level Tools" image="LevelEditorCore.Resources.group.png" menuText="Game Object Group" description="Game Object Group"/>
+        <LeGe.NativeType nativeName="GameObjectGroup"/>
+        <LeGe.GameObjectProperties />
+        <LeGe.TransformUpdater />
+        <LeGe.TransformObject />
       </xs:appinfo>
     </xs:annotation>
     <xs:complexContent>

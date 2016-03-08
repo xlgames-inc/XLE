@@ -32,17 +32,6 @@ namespace LevelEditorXLE
             placementsDocumentType.nameAttribute = placementsDocumentType.Type.GetAttributeInfo("name");
             placementsDocumentType.placementChild = placementsDocumentType.Type.GetChildInfo("placement");
 
-            abstractPlacementObjectType.Type = getNodeType("gap", "abstractPlacementObjectType");
-            abstractPlacementObjectType.transformAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("transform");
-            abstractPlacementObjectType.translateAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("translate");
-            abstractPlacementObjectType.rotateAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("rotate");
-            abstractPlacementObjectType.scaleAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("scale");
-            abstractPlacementObjectType.pivotAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("pivot");
-            abstractPlacementObjectType.transformationTypeAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("transformationType");
-            abstractPlacementObjectType.visibleAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("visible");
-            abstractPlacementObjectType.lockedAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("locked");
-            abstractPlacementObjectType.IDAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("ID");
-
             transformObjectType.Type = getNodeType("gap", "transformObjectType");
             transformObjectType.transformAttribute = transformObjectType.Type.GetAttributeInfo("transform");
             transformObjectType.translateAttribute = transformObjectType.Type.GetAttributeInfo("translate");
@@ -373,6 +362,17 @@ namespace LevelEditorXLE
             placementsFolderType.ExportEnabledAttribute = placementsFolderType.Type.GetAttributeInfo("ExportEnabled");
             placementsFolderType.cellChild = placementsFolderType.Type.GetChildInfo("cell");
 
+            abstractPlacementObjectType.Type = getNodeType("gap", "abstractPlacementObjectType");
+            abstractPlacementObjectType.transformAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("transform");
+            abstractPlacementObjectType.translateAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("translate");
+            abstractPlacementObjectType.rotateAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("rotate");
+            abstractPlacementObjectType.scaleAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("scale");
+            abstractPlacementObjectType.pivotAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("pivot");
+            abstractPlacementObjectType.transformationTypeAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("transformationType");
+            abstractPlacementObjectType.visibleAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("visible");
+            abstractPlacementObjectType.lockedAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("locked");
+            abstractPlacementObjectType.IDAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("ID");
+
             placementObjectType.Type = getNodeType("gap", "placementObjectType");
             placementObjectType.transformAttribute = placementObjectType.Type.GetAttributeInfo("transform");
             placementObjectType.translateAttribute = placementObjectType.Type.GetAttributeInfo("translate");
@@ -413,6 +413,10 @@ namespace LevelEditorXLE
             terrainBaseTextureType.diffusedimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("diffusedims");
             terrainBaseTextureType.normaldimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("normaldims");
             terrainBaseTextureType.paramdimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("paramdims");
+            terrainBaseTextureType.SpecularAttribute = terrainBaseTextureType.Type.GetAttributeInfo("Specular");
+            terrainBaseTextureType.RoughnessMinAttribute = terrainBaseTextureType.Type.GetAttributeInfo("RoughnessMin");
+            terrainBaseTextureType.RoughnessMaxAttribute = terrainBaseTextureType.Type.GetAttributeInfo("RoughnessMax");
+            terrainBaseTextureType.ShadowSoftnessAttribute = terrainBaseTextureType.Type.GetAttributeInfo("ShadowSoftness");
             terrainBaseTextureType.materialChild = terrainBaseTextureType.Type.GetChildInfo("material");
 
             terrainBaseTextureStrataType.Type = getNodeType("gap", "terrainBaseTextureStrataType");
@@ -578,20 +582,6 @@ namespace LevelEditorXLE
             public static DomNodeType Type;
             public static AttributeInfo nameAttribute;
             public static ChildInfo placementChild;
-        }
-
-        public static class abstractPlacementObjectType
-        {
-            public static DomNodeType Type;
-            public static AttributeInfo transformAttribute;
-            public static AttributeInfo translateAttribute;
-            public static AttributeInfo rotateAttribute;
-            public static AttributeInfo scaleAttribute;
-            public static AttributeInfo pivotAttribute;
-            public static AttributeInfo transformationTypeAttribute;
-            public static AttributeInfo visibleAttribute;
-            public static AttributeInfo lockedAttribute;
-            public static AttributeInfo IDAttribute;
         }
 
         public static class transformObjectType
@@ -1014,6 +1004,20 @@ namespace LevelEditorXLE
             public static ChildInfo cellChild;
         }
 
+        public static class abstractPlacementObjectType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static AttributeInfo IDAttribute;
+        }
+
         public static class placementObjectType
         {
             public static DomNodeType Type;
@@ -1065,6 +1069,10 @@ namespace LevelEditorXLE
             public static AttributeInfo diffusedimsAttribute;
             public static AttributeInfo normaldimsAttribute;
             public static AttributeInfo paramdimsAttribute;
+            public static AttributeInfo SpecularAttribute;
+            public static AttributeInfo RoughnessMinAttribute;
+            public static AttributeInfo RoughnessMaxAttribute;
+            public static AttributeInfo ShadowSoftnessAttribute;
             public static ChildInfo materialChild;
         }
 

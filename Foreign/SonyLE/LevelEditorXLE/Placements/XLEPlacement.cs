@@ -30,7 +30,7 @@ namespace LevelEditorXLE.Placements
 
     class XLEPlacementObject 
         : DomNodeAdapter
-        , INameable, IVisible, ILockable, IListable, IReference<IResource>
+        , IVisible, ILockable, IListable, IReference<IResource>
     {
         public XLEPlacementObject() { }
         
@@ -71,14 +71,7 @@ namespace LevelEditorXLE.Placements
         public void GetInfo(ItemInfo info)
         {
             info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
-            info.Label = Name;
-        }
-        #endregion
-        #region INameable Members
-        public string Name
-        {
-            get { return "<" + Path.GetFileNameWithoutExtension(Model) + ">"; }
-            set { }
+            info.Label = "<" + Path.GetFileNameWithoutExtension(Model) + ">";
         }
         #endregion
         #region IVisible Members

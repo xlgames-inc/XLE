@@ -20,7 +20,7 @@ using LevelEditorCore;
 
 namespace LevelEditorXLE.Placements
 {
-    public class XLEPlacementDocument : DomDocument, IListable, IHierarchical, IGameDocument, IGameObjectFolder, IEnumerableContext
+    public class XLEPlacementDocument : DomDocument, IGameDocument, IGameObjectFolder, IEnumerableContext
     {
         #region IListable Members
         public void GetInfo(ItemInfo info)

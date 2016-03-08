@@ -178,7 +178,7 @@ namespace LevelEditorCore.Commands
         public IEnumerable<ITransformable> Ungroup(IEnumerable<object> gobs)
         {
             if (!CanUngroup(gobs))
-                return EmptyArray<IGameObject>.Instance;
+                return EmptyArray<ITransformable>.Instance;
 
             List<ITransformable> ungrouplist = new List<ITransformable>();
             foreach (var group in gobs.AsIEnumerable<ITransformableGroup>())

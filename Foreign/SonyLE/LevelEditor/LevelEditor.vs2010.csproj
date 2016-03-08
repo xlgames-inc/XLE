@@ -104,7 +104,7 @@
     <Compile Include="DomNodeAdapters\Layer.cs" />
     <Compile Include="DomNodeAdapters\Depricated\Lights.cs" />
     <Compile Include="DomNodeAdapters\OpaqueAdapters.cs" />
-    <Compile Include="DomNodeAdapters\Depricated\PrefabInstance.cs" />
+    <Compile Include="DomNodeAdapters\PrefabInstance.cs" />
     <Compile Include="DomNodeAdapters\Depricated\ResourceReference.cs" />
     <Compile Include="DomNodeAdapters\Game.cs" />
     <Compile Include="DomNodeAdapters\GameObject.cs" />

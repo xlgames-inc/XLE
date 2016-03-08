@@ -30,10 +30,6 @@ namespace LevelEditor
         {
             gameType.Type = getNodeType("gap", "gameType");
             gameType.nameAttribute = gameType.Type.GetAttributeInfo("name");
-            gameType.fogEnabledAttribute = gameType.Type.GetAttributeInfo("fogEnabled");
-            gameType.fogColorAttribute = gameType.Type.GetAttributeInfo("fogColor");
-            gameType.fogRangeAttribute = gameType.Type.GetAttributeInfo("fogRange");
-            gameType.fogDensityAttribute = gameType.Type.GetAttributeInfo("fogDensity");
             gameType.gameObjectFolderChild = gameType.Type.GetChildInfo("gameObjectFolder");
             gameType.layersChild = gameType.Type.GetChildInfo("layers");
             gameType.bookmarksChild = gameType.Type.GetChildInfo("bookmarks");
@@ -158,9 +154,6 @@ namespace LevelEditor
             gameObjectGroupType.scaleAttribute = gameObjectGroupType.Type.GetAttributeInfo("scale");
             gameObjectGroupType.pivotAttribute = gameObjectGroupType.Type.GetAttributeInfo("pivot");
             gameObjectGroupType.transformationTypeAttribute = gameObjectGroupType.Type.GetAttributeInfo("transformationType");
-            gameObjectGroupType.nameAttribute = gameObjectGroupType.Type.GetAttributeInfo("name");
-            gameObjectGroupType.visibleAttribute = gameObjectGroupType.Type.GetAttributeInfo("visible");
-            gameObjectGroupType.lockedAttribute = gameObjectGroupType.Type.GetAttributeInfo("locked");
             gameObjectGroupType.gameObjectChild = gameObjectGroupType.Type.GetChildInfo("gameObject");
 
             objectOverrideType.Type = getNodeType("gap", "objectOverrideType");
@@ -178,9 +171,6 @@ namespace LevelEditor
             prefabInstanceType.scaleAttribute = prefabInstanceType.Type.GetAttributeInfo("scale");
             prefabInstanceType.pivotAttribute = prefabInstanceType.Type.GetAttributeInfo("pivot");
             prefabInstanceType.transformationTypeAttribute = prefabInstanceType.Type.GetAttributeInfo("transformationType");
-            prefabInstanceType.nameAttribute = prefabInstanceType.Type.GetAttributeInfo("name");
-            prefabInstanceType.visibleAttribute = prefabInstanceType.Type.GetAttributeInfo("visible");
-            prefabInstanceType.lockedAttribute = prefabInstanceType.Type.GetAttributeInfo("locked");
             prefabInstanceType.prefabRefAttribute = prefabInstanceType.Type.GetAttributeInfo("prefabRef");
             prefabInstanceType.gameObjectChild = prefabInstanceType.Type.GetChildInfo("gameObject");
             prefabInstanceType.objectOverrideChild = prefabInstanceType.Type.GetChildInfo("objectOverride");
@@ -595,10 +585,6 @@ namespace LevelEditor
         {
             public static DomNodeType Type;
             public static AttributeInfo nameAttribute;
-            public static AttributeInfo fogEnabledAttribute;
-            public static AttributeInfo fogColorAttribute;
-            public static AttributeInfo fogRangeAttribute;
-            public static AttributeInfo fogDensityAttribute;
             public static ChildInfo gameObjectFolderChild;
             public static ChildInfo layersChild;
             public static ChildInfo bookmarksChild;
@@ -783,9 +769,6 @@ namespace LevelEditor
             public static AttributeInfo scaleAttribute;
             public static AttributeInfo pivotAttribute;
             public static AttributeInfo transformationTypeAttribute;
-            public static AttributeInfo nameAttribute;
-            public static AttributeInfo visibleAttribute;
-            public static AttributeInfo lockedAttribute;
             public static ChildInfo gameObjectChild;
         }
 
@@ -812,9 +795,6 @@ namespace LevelEditor
             public static AttributeInfo scaleAttribute;
             public static AttributeInfo pivotAttribute;
             public static AttributeInfo transformationTypeAttribute;
-            public static AttributeInfo nameAttribute;
-            public static AttributeInfo visibleAttribute;
-            public static AttributeInfo lockedAttribute;
             public static AttributeInfo prefabRefAttribute;
             public static ChildInfo gameObjectChild;
             public static ChildInfo objectOverrideChild;

@@ -12,7 +12,7 @@ namespace LevelEditor.DomNodeAdapters
 {
     /// <summary>
     /// DomNodeAdapter for game object groups</summary>
-    public class TransformableGroup : TransformObject, ITransformableGroup, IListable, IBoundable
+    public class TransformableGroup : TransformObject, ITransformableGroup, IListable, IBoundable, IVisible, ILockable
     {
         protected override void OnNodeSet()
         {
@@ -132,6 +132,22 @@ namespace LevelEditor.DomNodeAdapters
                 }
                 return groupBox;
             }
+        }
+        #endregion
+
+        #region ILockable Members
+        public bool IsLocked
+        {
+            get { return false; }
+            set { }
+        }
+        #endregion
+
+        #region IVisible Members
+        public bool Visible
+        {
+            get { return true; }
+            set {}
         }
         #endregion
 
