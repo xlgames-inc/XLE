@@ -53,7 +53,8 @@ namespace LevelEditorXLE
                 typeof(Placements.ScatterPlaceManipulator),
                 typeof(Placements.ResourceListerCommandClient),
 
-                typeof(AssetMan.ResourcePreview)
+                typeof(AssetMan.ResourcePreview),
+                typeof(Manipulators.ExtraEditCommands)
                 );
         }
     }

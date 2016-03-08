@@ -63,6 +63,13 @@
     <Compile Include="Environment\EnvUtility.cs" />
     <Compile Include="Environment\XLEEnvAdapter.cs" />
     <Compile Include="Game\GameExtensions.cs" />
+    <Compile Include="Manipulators\ExtraEditCommands.cs" />
+    <Compile Include="Manipulators\RandomizeTransformsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Manipulators\RandomizeTransformsForm.Designer.cs">
+      <DependentUpon>RandomizeTransformsForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Manipulators\XLEScatterPlaceControls.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -123,6 +130,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Manipulators\RandomizeTransformsForm.resx">
+      <DependentUpon>RandomizeTransformsForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Manipulators\XLENativeManipControls.resx">
       <DependentUpon>XLENativeManipControls.cs</DependentUpon>
     </EmbeddedResource>
