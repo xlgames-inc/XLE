@@ -328,6 +328,7 @@ namespace ToolsRig
         bool _draggingManipulator;
     };
 
+    static const float s_manipulatorCylinderRadius = 0.125f;
 
     bool FineTuneManipulator::OnInputEvent(
         const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
@@ -341,7 +342,6 @@ namespace ToolsRig
         }
 
         auto pixelRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
-        const float manipulatorCylinderRadius = 0.5f;
         auto cylinderRay = std::make_pair(Expand(Truncate(_targetPoint.first), 0.f), Expand(Truncate(_targetPoint.first), 1000.f));
 
         if (evnt.IsPress_LButton()) {
@@ -352,7 +352,7 @@ namespace ToolsRig
                 float muA, muB;
                 bool foundResult = ShortestSegmentBetweenLines(muA, muB, cylinderRay, pixelRay);
                 if (foundResult && muB > 0.f && muB < 1.f &&
-                    MagnitudeSquared(LinearInterpolate(cylinderRay.first, cylinderRay.second, muA) - LinearInterpolate(pixelRay.first, pixelRay.second, muB)) < (manipulatorCylinderRadius*manipulatorCylinderRadius)) {
+                    MagnitudeSquared(LinearInterpolate(cylinderRay.first, cylinderRay.second, muA) - LinearInterpolate(pixelRay.first, pixelRay.second, muB)) < (s_manipulatorCylinderRadius*s_manipulatorCylinderRadius)) {
                     isClickOnManipulatorCylinder = true;
                 }
             }
@@ -390,10 +390,11 @@ namespace ToolsRig
     void FineTuneManipulator::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
     {
         TerrainManipulatorBase::Render(context, parserContext);
-        if (_targetPoint.second)
+        if (_targetPoint.second) {
             RenderCylinderHighlight(context, parserContext, _targetPoint.first, _radius);
-
-        // We should also render a cylinder around the area we can click on to raise or lower geometry
+            DrawWorldSpaceCylinder(context, parserContext, _targetPoint.first,
+                Float3(0.f, 0.f, 1000.f), s_manipulatorCylinderRadius);
+        }
     }
 
     auto FineTuneManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>

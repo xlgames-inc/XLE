@@ -42,6 +42,10 @@ namespace ToolsRig
         RenderCore::Techniques::ParsingContext& parserContext,
         const Float3& centre, float radius);
 
+    void DrawWorldSpaceCylinder(
+        RenderCore::IThreadContext& threadContext, RenderCore::Techniques::ParsingContext& parserContext,
+        Float3 origin, Float3 axis, float radius);
+
 	enum class RectangleHighlightType { Tool, LockedArea };
     void RenderRectangleHighlight(
         RenderCore::IThreadContext& threadContext, 
