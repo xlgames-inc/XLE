@@ -7,6 +7,7 @@
 #include "TerrainManipulators.h"
 #include "TerrainManipulatorsCommon.h"
 #include "ManipulatorsUtil.h"
+#include "ManipulatorsRender.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/Font.h"
 
@@ -29,6 +30,7 @@
 
 #include "../../Math/ProjectionMath.h"
 #include "../../Math/Transformations.h"
+#include "../../Math/Geometry.h"
 #include "../../Utility/TimeUtils.h"
 #include "../../ConsoleRig/Console.h"
 
@@ -296,6 +298,132 @@ namespace ToolsRig
         _flags = 0x3;
 		_strength = 10.f;
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class FineTuneManipulator : public TerrainManipulatorBase
+    {
+    public:
+        virtual bool    OnInputEvent(
+            const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestScene& hitTestScene);
+        virtual void    Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
+
+        virtual const char* GetName() const { return "Fine Tune"; }
+        virtual std::string GetStatusText() const { return std::string(); }
+
+        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const; 
+        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
+        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const;
+        virtual void SetActivationState(bool newState);
+
+        FineTuneManipulator(
+            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+            std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
+
+    private:
+        std::pair<Float3, bool> _targetPoint;
+        float _radius;
+        bool _draggingManipulator;
+    };
+
+
+    bool FineTuneManipulator::OnInputEvent(
+        const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestScene& hitTestScene)
+    {
+        if (evnt._wheelDelta) {
+            float roundingPoint = .5f;
+            float wheelAdjustment = XlCeil(_radius / 8.f / roundingPoint) * roundingPoint;
+            _radius = std::max(0.5f, _radius + wheelAdjustment * evnt._wheelDelta / 120.f);
+        }
+
+        auto pixelRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
+        const float manipulatorCylinderRadius = 0.5f;
+        auto cylinderRay = std::make_pair(Expand(Truncate(_targetPoint.first), 0.f), Expand(Truncate(_targetPoint.first), 1000.f));
+
+        if (evnt.IsPress_LButton()) {
+            // If we click on the main manipulator cylinder, we should start a drag operation
+            // Otherwise, we should try to reposition the target point
+            bool isClickOnManipulatorCylinder = false;
+            if (_targetPoint.second) {
+                float muA, muB;
+                bool foundResult = ShortestSegmentBetweenLines(muA, muB, cylinderRay, pixelRay);
+                if (foundResult && muB > 0.f && muB < 1.f &&
+                    MagnitudeSquared(LinearInterpolate(cylinderRay.first, cylinderRay.second, muA) - LinearInterpolate(pixelRay.first, pixelRay.second, muB)) < (manipulatorCylinderRadius*manipulatorCylinderRadius)) {
+                    isClickOnManipulatorCylinder = true;
+                }
+            }
+
+            if (isClickOnManipulatorCylinder) {
+                _draggingManipulator = true;
+            } else {
+                _targetPoint = FindTerrainIntersection(hitTestContext, hitTestScene, evnt._mousePosition);
+                _draggingManipulator = false;
+            }
+            return true;
+        } else if (evnt.IsHeld_LButton() && _draggingManipulator && _targetPoint.second) {
+            // drag the manipulator up or down, and apply the changes to the terrain
+            float muA, muB;
+            bool foundResult = ShortestSegmentBetweenLines(muA, muB, cylinderRay, pixelRay);
+            if (foundResult && muB > 0.f && muB < 1.f) {
+                float adjustmentHeightValue = LinearInterpolate(cylinderRay.first, cylinderRay.second, muA)[2];
+
+                auto *i = _terrainManager->GetHeightsInterface();
+                if (i) {
+                    auto result = i->FineTune(
+                        *hitTestContext.GetThreadContext(),
+                        Truncate(_targetPoint.first), _radius, adjustmentHeightValue);
+
+                    if (result != SceneEngine::TerrainToolResult::Success)
+                        Throw(TerrainManipulatorException(result));
+                }
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    void FineTuneManipulator::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+    {
+        TerrainManipulatorBase::Render(context, parserContext);
+        if (_targetPoint.second)
+            RenderCylinderHighlight(context, parserContext, _targetPoint.first, _radius);
+
+        // We should also render a cylinder around the area we can click on to raise or lower geometry
+    }
+
+    auto FineTuneManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>
+    {
+        static FloatParameter parameters[] = 
+        {
+            FloatParameter(ManipulatorParameterOffset(&FineTuneManipulator::_radius), 0.5f, 40.f, FloatParameter::Logarithmic, "Radius"),
+        };
+        return std::make_pair(parameters, dimof(parameters));
+    }
+
+    auto FineTuneManipulator::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>
+    {
+        return std::make_pair(nullptr, 0);
+    }
+
+    auto FineTuneManipulator::GetIntParameters() const -> std::pair<IntParameter*, size_t>
+    {
+        return std::make_pair(nullptr, 0);
+    }
+
+    void FineTuneManipulator::SetActivationState(bool newState) { _draggingManipulator = false; }
+
+    FineTuneManipulator::FineTuneManipulator(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+        std::shared_ptr<TerrainManipulatorContext> manipulatorContext) 
+    : TerrainManipulatorBase(terrainManager, manipulatorContext)
+    , _draggingManipulator(false)
+    , _radius(3.f)
+    { }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -623,6 +751,7 @@ namespace ToolsRig
         result.emplace_back(std::make_unique<NoiseManipulator>(terrainManager, manipulatorContext));
         result.emplace_back(std::make_unique<FillNoiseManipulator>(terrainManager, manipulatorContext));
         result.emplace_back(std::make_unique<CopyHeight>(terrainManager, manipulatorContext));
+        result.emplace_back(std::make_unique<FineTuneManipulator>(terrainManager, manipulatorContext));
         result.emplace_back(std::make_unique<RotateManipulator>(terrainManager, manipulatorContext));
         result.emplace_back(std::make_unique<ErosionManipulator>(terrainManager, manipulatorContext));
         result.emplace_back(std::make_unique<PaintCoverageManipulator>(terrainManager, manipulatorContext));

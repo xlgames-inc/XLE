@@ -142,6 +142,22 @@ float2 CalculateDHDXY(uint2 surfaceSpaceCoord)
 }
 
 [numthreads(16, 16, 1)]
+	void FineTune(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+	uint2 surfaceSpaceCoord = DispatchOffset + dispatchThreadId.xy;
+	float rsq = LengthSquared(float2(surfaceSpaceCoord) - Center);
+	if (surfaceSpaceCoord.x <= SurfaceMaxs.x && surfaceSpaceCoord.y <= SurfaceMaxs.y && rsq < (Radius*Radius)) {
+
+		float A = 1.0f - sqrt(rsq)/Radius;
+		A = pow(A, 1.f/2.f);
+		float strength = A;
+		float oldHeight = OutputSurface[surfaceSpaceCoord - SurfaceMins];
+		OutputSurface[surfaceSpaceCoord - SurfaceMins] = lerp(oldHeight, Adjustment, A);
+
+	}
+}
+
+[numthreads(16, 16, 1)]
 	void AddNoise(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 	uint2 surfaceSpaceCoord = DispatchOffset + dispatchThreadId.xy;

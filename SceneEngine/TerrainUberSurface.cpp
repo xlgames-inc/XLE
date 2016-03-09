@@ -701,6 +701,26 @@ namespace SceneEngine
         return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "CopyHeight", center, radius, adjustment, extraPackets, dimof(extraPackets));
     }
 
+    auto HeightsUberSurfaceInterface::FineTune(
+        RenderCore::IThreadContext& threadContext, 
+        Float2 center, float radius, float newHeight) -> TerrainToolResult
+    {
+        if (!_pimpl || !_pimpl->_uberSurface)
+            return TerrainToolResult::Error;
+
+        UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - radius)),
+                        (unsigned)std::max(0.f, XlFloor(center[1] - radius)));
+        UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->GetWidth()-1, (unsigned)XlCeil(center[0] + radius)),
+                        std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + radius)));
+
+        if (!PrepareCache(adjMins, adjMaxs))
+			return TerrainToolResult::OutsideLock;
+
+            //  run a shader that will modify the gpu-cached part of the uber surface as we need
+
+        return ApplyTool(threadContext, adjMins, adjMaxs, baseShader "FineTune", center, radius, newHeight, nullptr, 0);
+    }
+
     auto HeightsUberSurfaceInterface::Rotate(RenderCore::IThreadContext& threadContext, Float2 center, float radius, Float3 rotationAxis, float rotationAngle) -> TerrainToolResult
     {
         if (!_pimpl || !_pimpl->_uberSurface)

@@ -133,11 +133,12 @@ namespace SceneEngine
     class HeightsUberSurfaceInterface : public GenericUberSurfaceInterface
     {
     public:
-        TerrainToolResult    AdjustHeights(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment, float powerValue);
-        TerrainToolResult    Smooth(RenderCore::IThreadContext& context, Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags);
-        TerrainToolResult    AddNoise(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment);
-        TerrainToolResult    CopyHeight(RenderCore::IThreadContext& context, Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags);
-        TerrainToolResult    Rotate(RenderCore::IThreadContext& context, Float2 center, float radius, Float3 rotationAxis, float rotationAngle);
+        TerrainToolResult   AdjustHeights(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment, float powerValue);
+        TerrainToolResult   Smooth(RenderCore::IThreadContext& context, Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags);
+        TerrainToolResult   AddNoise(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment);
+        TerrainToolResult   CopyHeight(RenderCore::IThreadContext& context, Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags);
+        TerrainToolResult   FineTune(RenderCore::IThreadContext& context, Float2 center, float radius, float newHeight);
+        TerrainToolResult   Rotate(RenderCore::IThreadContext& context, Float2 center, float radius, Float3 rotationAxis, float rotationAngle);
 
         TerrainToolResult    FillWithNoise(RenderCore::IThreadContext& context, Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail);
 
