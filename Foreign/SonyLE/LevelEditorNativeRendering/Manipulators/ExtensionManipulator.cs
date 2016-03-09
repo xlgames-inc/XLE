@@ -41,11 +41,11 @@ namespace RenderingInterop
         }
 
 
-        public override bool Pick(ViewControl vc, Point scrPt)
+        public override ManipulatorPickResult Pick(ViewControl vc, Point scrPt)
         {
             m_hitRegion = HitRegion.None;
-            if (base.Pick(vc, scrPt) == false)
-                return false;
+            if (base.Pick(vc, scrPt) == ManipulatorPickResult.Miss)
+                return ManipulatorPickResult.Miss;
 
             Camera camera = vc.Camera;            
             float s = Util.CalcAxisScale(vc.Camera, HitMatrix.Translation, AxisLength, vc.Height);
@@ -81,7 +81,7 @@ namespace RenderingInterop
             if (box.Intersect(ray))
             {
                 m_hitRegion = HitRegion.XAxis;
-                return true;
+                return ManipulatorPickResult.DeferredBeginDrag;
             }
 
             // -X
@@ -94,8 +94,8 @@ namespace RenderingInterop
 
             if (box.Intersect(ray))
             {
-                m_hitRegion = HitRegion.NegXAxis;                
-                return true;
+                m_hitRegion = HitRegion.NegXAxis;
+                return ManipulatorPickResult.DeferredBeginDrag;
             }
 
             // y axis
@@ -109,7 +109,7 @@ namespace RenderingInterop
             if (box.Intersect(ray))
             {
                 m_hitRegion = HitRegion.YAxis;
-                return true;
+                return ManipulatorPickResult.DeferredBeginDrag;
             }
 
             // -Y
@@ -120,8 +120,8 @@ namespace RenderingInterop
             ray.Transform(BoxMtrx);
             if (box.Intersect(ray))
             {
-                m_hitRegion = HitRegion.NegYAxis;                
-                return true;
+                m_hitRegion = HitRegion.NegYAxis;
+                return ManipulatorPickResult.DeferredBeginDrag;
             }
 
 
@@ -136,7 +136,7 @@ namespace RenderingInterop
             if (box.Intersect(ray))
             {
                 m_hitRegion = HitRegion.ZAxis;
-                return true;
+                return ManipulatorPickResult.DeferredBeginDrag;
             }
 
             // -Z
@@ -148,11 +148,11 @@ namespace RenderingInterop
             ray.Transform(BoxMtrx);
             if (box.Intersect(ray))
             {
-                m_hitRegion = HitRegion.NegZAxis;                
-                return true;
+                m_hitRegion = HitRegion.NegZAxis;
+                return ManipulatorPickResult.DeferredBeginDrag;
             }
 
-            return false;
+            return ManipulatorPickResult.Miss;
         }
 
         public override void Render(object opaqueContext, ViewControl vc)
@@ -282,7 +282,7 @@ namespace RenderingInterop
             Util3D.DrawCube(context, xform, nzcolor);
         }
 
-        public override void OnBeginDrag()
+        public override void OnBeginDrag(ViewControl vc, Point scrPt)
         {
             if (m_hitRegion == HitRegion.None)
                 return;

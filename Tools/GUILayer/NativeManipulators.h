@@ -61,9 +61,11 @@ namespace GUILayer
     public:
         bool MouseMove(IViewContext^ vc, Point scrPt);
         void Render(SimpleRenderingContext^ context);
-        void OnBeginDrag();
-        void OnDragging(IViewContext^ vc, Point scrPt);
-        void OnEndDrag(IViewContext^ vc, Point scrPt);
+
+        bool OnHover(IViewContext^ vc, Point scrPt);
+        bool OnBeginDrag(IViewContext^ vc, Point scrPt);
+        bool OnDragging(IViewContext^ vc, Point scrPt);
+        bool OnEndDrag(IViewContext^ vc, Point scrPt);
         void OnMouseWheel(IViewContext^ vc, Point scrPt, int delta);
 
         NativeManipulatorLayer(ActiveManipulatorContext^ manipContext);
@@ -71,8 +73,6 @@ namespace GUILayer
 
     private:
         bool SendInputEvent(IViewContext^ vc, const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
-
         ActiveManipulatorContext^ _manipContext;
-        bool _pendingBeginDrag;
     };
 }

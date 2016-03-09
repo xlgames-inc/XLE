@@ -12,6 +12,7 @@ using System.Drawing;
 using Sce.Atf;
 using Sce.Atf.Applications;
 using LevelEditorXLE.Extensions;
+using LevelEditorCore;
 
 #pragma warning disable 0649 // Field '...' is never assigned to, and will always have its default value null
 
@@ -20,26 +21,31 @@ namespace LevelEditorXLE.Placements
     [Export(typeof(LevelEditorCore.IManipulator))]
     [Export(typeof(XLEBridgeUtils.IShutdownWithEngine))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class PlacementManipulator : LevelEditorCore.IManipulator, XLEBridgeUtils.IShutdownWithEngine, IDisposable
+    public class PlacementManipulator : IManipulator, XLEBridgeUtils.IShutdownWithEngine, IDisposable
     {
-        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc as GUILayer.IViewContext, scrPt); }
-        public void OnBeginDrag()                                              { _nativeManip.OnBeginDrag(); }
-        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc as GUILayer.IViewContext, scrPt); }
-        public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt)     { _nativeManip.OnEndDrag(vc as GUILayer.IViewContext, scrPt); }
-        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc as GUILayer.IViewContext, scrPt, delta); }
+        public ManipulatorPickResult Pick(ViewControl vc, Point scrPt)
+        {
+            if (_nativeManip.MouseMove(vc as GUILayer.IViewContext, scrPt))
+                return ManipulatorPickResult.ImmediateBeginDrag;
+            return ManipulatorPickResult.Miss;
+        }
+        public void OnBeginDrag(ViewControl vc, Point scrPt)   { _nativeManip.OnBeginDrag(vc as GUILayer.IViewContext, scrPt); }
+        public void OnDragging(ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc as GUILayer.IViewContext, scrPt); }
+        public void OnEndDrag(ViewControl vc, Point scrPt)     { _nativeManip.OnEndDrag(vc as GUILayer.IViewContext, scrPt); }
+        public void OnMouseWheel(ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc as GUILayer.IViewContext, scrPt, delta); }
 
-        public void Render(object opaqueContext, LevelEditorCore.ViewControl vc) 
+        public void Render(object opaqueContext, ViewControl vc) 
         {
             var context = opaqueContext as GUILayer.SimpleRenderingContext;
             if (context == null) return;
             _nativeManip.Render(context); 
         }
 
-        public LevelEditorCore.ManipulatorInfo ManipulatorInfo
+        public ManipulatorInfo ManipulatorInfo
         {
             get
             {
-                return new LevelEditorCore.ManipulatorInfo(
+                return new ManipulatorInfo(
                     "Placements".Localize(),
                     "Activate placements editing".Localize(),
                     LevelEditorCore.Resources.TerrainManipImage,

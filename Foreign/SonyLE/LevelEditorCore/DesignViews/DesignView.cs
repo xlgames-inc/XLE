@@ -168,7 +168,7 @@ namespace LevelEditorCore
                 if (m_manipulator != null)
                 {                    
                     Point pt = ActiveView.PointToClient(Control.MousePosition);                    
-                    bool picked = m_manipulator.Pick(ActiveView, pt);
+                    bool picked = m_manipulator.Pick(ActiveView, pt) != ManipulatorPickResult.Miss;
                     ActiveView.Cursor = picked ? Cursors.SizeAll : Cursors.Default;                    
                 }
                 else

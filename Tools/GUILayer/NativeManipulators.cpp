@@ -54,8 +54,18 @@ namespace GUILayer
         underlying->Render(context->GetThreadContext(), context->GetParsingContext());
     }
 
-    void NativeManipulatorLayer::OnBeginDrag() { _pendingBeginDrag = true; }
-    void NativeManipulatorLayer::OnDragging(IViewContext^ vc, Point scrPt) 
+    bool NativeManipulatorLayer::OnBeginDrag(IViewContext^ vc, Point scrPt) 
+    { 
+        using namespace RenderOverlays::DebuggingDisplay;
+        auto btnState = 1<<0;
+		InputSnapshot evnt(
+			btnState, btnState, 0,
+			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
+        SetupModifierKeys(evnt);
+		return SendInputEvent(vc, evnt);
+    }
+
+    bool NativeManipulatorLayer::OnDragging(IViewContext^ vc, Point scrPt) 
 	{
 			//  We need to create a fake "mouse over" event and pass it through to
 			//  the currently selected manipulator. We might also need to set the state
@@ -65,15 +75,13 @@ namespace GUILayer
 		using namespace RenderOverlays::DebuggingDisplay;
         auto btnState = 1<<0;
 		InputSnapshot evnt(
-			btnState, _pendingBeginDrag ? btnState : 0, 0,
+			btnState, 0, 0,
 			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
         SetupModifierKeys(evnt);
-
-		SendInputEvent(vc, evnt);
-        _pendingBeginDrag = false;
+        return SendInputEvent(vc, evnt);
 	}
 
-    void NativeManipulatorLayer::OnEndDrag(IViewContext^ vc, Point scrPt) 
+    bool NativeManipulatorLayer::OnEndDrag(IViewContext^ vc, Point scrPt) 
 	{
             // Emulate a "mouse up" operation 
         using namespace RenderOverlays::DebuggingDisplay;
@@ -82,8 +90,16 @@ namespace GUILayer
 			0, btnState, 0,
 			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
         SetupModifierKeys(evnt);
-        SendInputEvent(vc, evnt);
+        return SendInputEvent(vc, evnt);
 	}
+
+    bool NativeManipulatorLayer::OnHover(IViewContext^ vc, Point scrPt)
+    {
+        using namespace RenderOverlays::DebuggingDisplay;
+		InputSnapshot evnt(0, 0, 0, Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
+        SetupModifierKeys(evnt);
+        return SendInputEvent(vc, evnt);
+    }
 
     void NativeManipulatorLayer::OnMouseWheel(IViewContext^ vc, Point scrPt, int delta)
     {
@@ -98,7 +114,6 @@ namespace GUILayer
     NativeManipulatorLayer::NativeManipulatorLayer(ActiveManipulatorContext^ manipContext) 
     : _manipContext(manipContext)
     {
-        _pendingBeginDrag = false;
     }
 
     NativeManipulatorLayer::~NativeManipulatorLayer()

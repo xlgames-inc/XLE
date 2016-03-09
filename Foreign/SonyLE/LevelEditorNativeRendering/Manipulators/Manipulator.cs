@@ -27,16 +27,16 @@ namespace RenderingInterop
 
         #region IManipulator Members
 
-        public virtual bool Pick(ViewControl vc, Point scrPt)
+        public virtual ManipulatorPickResult Pick(ViewControl vc, Point scrPt)
         {
             Matrix4F normWorld = GetManipulatorMatrix();
-            if (normWorld == null) return false;
+            if (normWorld == null) return ManipulatorPickResult.Miss;
             HitRayV = vc.GetRay(scrPt, vc.Camera.ProjectionMatrix);            
-            HitMatrix.Set(normWorld);            
-            return true;
+            HitMatrix.Set(normWorld);
+            return ManipulatorPickResult.DeferredBeginDrag;
         }
         public abstract void Render(object context, ViewControl vc);
-        public abstract void OnBeginDrag();
+        public abstract void OnBeginDrag(ViewControl vc, Point scrPt);
         public abstract void OnDragging(ViewControl vc, Point scrPt);
         public abstract void OnEndDrag(ViewControl vc, Point scrPt);
         public abstract void OnMouseWheel(ViewControl vc, Point scrPt, int delta);

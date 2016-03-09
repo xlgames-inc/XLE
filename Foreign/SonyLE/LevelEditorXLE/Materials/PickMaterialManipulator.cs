@@ -32,7 +32,7 @@ namespace LevelEditorXLE.Materials
                 Keys.None);
         }
 
-        public bool Pick(ViewControl vc, Point scrPt) 
+        public ManipulatorPickResult Pick(ViewControl vc, Point scrPt) 
         {
             m_highlightMaterialGUID = ~0ul;
             m_highlight.Clear();
@@ -41,7 +41,7 @@ namespace LevelEditorXLE.Materials
             var endPt = ray.Origin + vc.Camera.FarZ * ray.Direction;
 
             var nativeVC = vc as GUILayer.IViewContext;
-            if (nativeVC == null) return false;
+            if (nativeVC == null) return ManipulatorPickResult.Miss;
 
             // do an intersection test here, and find the material under the cursor
             var pick = XLEBridgeUtils.Picking.RayPick(
@@ -58,10 +58,10 @@ namespace LevelEditorXLE.Materials
                 }
             }
 
-            return true;
+            return ManipulatorPickResult.ImmediateBeginDrag;
         }
 
-        public void OnBeginDrag() { }
+        public void OnBeginDrag(ViewControl vc, Point scrPt) {}
         public void OnDragging(ViewControl vc, Point scrPt) {}
 
         public void OnEndDrag(ViewControl vc, Point scrPt) 

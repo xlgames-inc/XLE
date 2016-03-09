@@ -217,13 +217,13 @@ namespace LevelEditorXLE.Placements
 
         public bool ClearBeforeDraw() { return false; }
 
-        public bool Pick(ViewControl vc, Point scrPt)
+        public ManipulatorPickResult Pick(ViewControl vc, Point scrPt)
         {
             m_hasHoverPt = HitTest(out m_hoverPt, scrPt, vc);
-            return m_hasHoverPt;
+            return m_hasHoverPt ? ManipulatorPickResult.ImmediateBeginDrag : ManipulatorPickResult.Miss;
         }
 
-        public void OnBeginDrag() {}
+        public void OnBeginDrag(ViewControl vc, Point scrPt) { }
         public void OnDragging(ViewControl vc, Point scrPt)
         {
             m_hasHoverPt = HitTest(out m_hoverPt, scrPt, vc);

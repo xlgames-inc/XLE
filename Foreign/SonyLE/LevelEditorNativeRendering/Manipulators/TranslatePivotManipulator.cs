@@ -32,11 +32,11 @@ namespace RenderingInterop
 
         #region Implementation of IManipulator
 
-        public override bool Pick(ViewControl vc, Point scrPt)
+        public override ManipulatorPickResult Pick(ViewControl vc, Point scrPt)
         {
             m_hitRegion = HitRegion.None;
-            if (base.Pick(vc, scrPt) == false)
-                return false;
+            if (base.Pick(vc, scrPt) == ManipulatorPickResult.Miss)
+                return ManipulatorPickResult.Miss;
 
             m_node = GetManipulatorNode(TransformationTypes.Pivot);
 
@@ -48,7 +48,9 @@ namespace RenderingInterop
             Ray3F rayL = vc.GetRay(scrPt, wvp);
             m_hitRegion = m_translatorControl.Pick(vc, HitMatrix, view, rayL, HitRayV);
             bool picked = m_hitRegion != HitRegion.None;
-            return picked;
+            if (picked)
+                return ManipulatorPickResult.DeferredBeginDrag;
+            return ManipulatorPickResult.Miss;
         }
 
         public override void Render(object opaqueContext, ViewControl vc)
@@ -58,7 +60,7 @@ namespace RenderingInterop
             m_translatorControl.Render(opaqueContext, vc, normWorld);                                
         }
 
-        public override void OnBeginDrag()
+        public override void OnBeginDrag(ViewControl vc, Point scrPt)
         {
             if (m_hitRegion == HitRegion.None || !CanManipulate(m_node))
                 return;                       

@@ -83,17 +83,28 @@ namespace LevelEditorCore
             m_dragOverThreshold = false;
             
             if (DesignView.Context != null)
-            {                
+            {
                 bool handled = CameraController.MouseDown(this, e);
                 if (handled)
                 {
                     m_mouseDownAction = MouseDownAction.ControllingCamera;
                 }
                 else if (e.Button == MouseButtons.Left)
-                {// either regular pick or manipulator pick.                    
-                    if (DesignView.Manipulator != null && DesignView.Manipulator.Pick(this, e.Location))
+                {// either regular pick or manipulator pick.
+                    var pickResult = ManipulatorPickResult.Miss;
+                    if (DesignView.Manipulator != null)
+                        pickResult = DesignView.Manipulator.Pick(this, e.Location);
+
+                    if (pickResult == ManipulatorPickResult.DeferredBeginDrag)
                     {
-                        m_mouseDownAction = MouseDownAction.Manipulating;                        
+                        m_mouseDownAction = MouseDownAction.Manipulating;
+                        m_dragOverThreshold = false;
+                    }
+                    else if (pickResult == ManipulatorPickResult.ImmediateBeginDrag)
+                    {
+                        m_mouseDownAction = MouseDownAction.Manipulating;
+                        m_dragOverThreshold = true;
+                        DesignView.Manipulator.OnBeginDrag(this, e.Location);
                     }
                     else
                     {
@@ -124,7 +135,7 @@ namespace LevelEditorCore
                     {
                         m_dragOverThreshold = true;
                         if (m_mouseDownAction == MouseDownAction.Manipulating)
-                            DesignView.Manipulator.OnBeginDrag();
+                            DesignView.Manipulator.OnBeginDrag(this, e.Location);
                     }
                 }
 
@@ -150,8 +161,8 @@ namespace LevelEditorCore
                     }
                 }
                 else if (DesignView.Manipulator != null)
-                {                    
-                    bool picked = DesignView.Manipulator.Pick(this, e.Location);
+                {
+                    bool picked = DesignView.Manipulator.Pick(this, e.Location) != ManipulatorPickResult.Miss;
                     this.Cursor = picked ? Cursors.SizeAll : Cursors.Default;
                     DesignView.InvalidateViews();
                 }

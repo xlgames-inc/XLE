@@ -32,11 +32,11 @@ namespace RenderingInterop
         }
 
 
-        public override bool Pick(ViewControl vc, Point scrPt)
+        public override ManipulatorPickResult Pick(ViewControl vc, Point scrPt)
         {
             m_hitRegion = HitRegion.None;
-            if (base.Pick(vc, scrPt) == false)
-                return false;
+            if (base.Pick(vc, scrPt) == ManipulatorPickResult.Miss)
+                return ManipulatorPickResult.Miss;
 
             Camera camera = vc.Camera;
             float RingDiameter = 2 * AxisLength;
@@ -106,7 +106,10 @@ namespace RenderingInterop
                 m_hitRegion = HitRegion.LookAxis;
             }
 
-            return m_hitRegion != HitRegion.None;
+            if (m_hitRegion != HitRegion.None)
+                return ManipulatorPickResult.DeferredBeginDrag;
+
+            return ManipulatorPickResult.Miss;
         }
 
 
@@ -149,7 +152,7 @@ namespace RenderingInterop
             Util3D.DrawRing(context, xform, lColor);
         }
 
-        public override void OnBeginDrag()
+        public override void OnBeginDrag(ViewControl vc, Point scrPt)
         {
             if (m_hitRegion == HitRegion.None)
                 return;

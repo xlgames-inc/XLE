@@ -30,11 +30,11 @@ namespace RenderingInterop
                                          Keys.R);
         }
 
-        public override bool Pick(ViewControl vc, Point scrPt)
+        public override ManipulatorPickResult Pick(ViewControl vc, Point scrPt)
         {            
-            m_hitRegion = HitRegion.None;           
-            if (base.Pick(vc, scrPt) == false) 
-                return false;
+            m_hitRegion = HitRegion.None;
+            if (base.Pick(vc, scrPt) == ManipulatorPickResult.Miss)
+                return ManipulatorPickResult.Miss;
                                    
             Camera camera = vc.Camera;
 
@@ -62,7 +62,7 @@ namespace RenderingInterop
             if (box.Intersect(ray))
             {
                 m_hitRegion = HitRegion.CenterCube;
-                return true;
+                return ManipulatorPickResult.DeferredBeginDrag;
             }
 
             Matrix4F boxScale = new Matrix4F();
@@ -82,7 +82,7 @@ namespace RenderingInterop
             if (box.Intersect(ray))
             {
                 m_hitRegion = HitRegion.XAxis;
-                return true;
+                return ManipulatorPickResult.DeferredBeginDrag;
             }
 
             // y axis
@@ -95,7 +95,7 @@ namespace RenderingInterop
             if (box.Intersect(ray))
             {
                 m_hitRegion = HitRegion.YAxis;
-                return true;
+                return ManipulatorPickResult.DeferredBeginDrag;
             }
 
             // z axis
@@ -109,10 +109,10 @@ namespace RenderingInterop
             if (box.Intersect(ray))
             {
                 m_hitRegion = HitRegion.ZAxis;
-                return true;
+                return ManipulatorPickResult.DeferredBeginDrag;
             }
 
-            return false;
+            return ManipulatorPickResult.Miss;
         }
 
         public override void Render(object opaqueContext, ViewControl vc)
@@ -179,7 +179,7 @@ namespace RenderingInterop
             Util3D.DrawCube(context, xform, zcolor);
         }
 
-        public override void OnBeginDrag()
+        public override void OnBeginDrag(ViewControl vc, Point scrPt)
         {
             m_activeOp = null;
 

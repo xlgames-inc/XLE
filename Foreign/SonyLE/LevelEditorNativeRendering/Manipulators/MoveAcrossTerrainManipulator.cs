@@ -37,11 +37,11 @@ namespace RenderingInterop
 
         #region Implementation of IManipulator
 
-        public override bool Pick(ViewControl vc, Point scrPt)
+        public override ManipulatorPickResult Pick(ViewControl vc, Point scrPt)
         {
             m_hitRegion = HitRegion.None;
-            if (base.Pick(vc, scrPt) == false)
-                return false;
+            if (base.Pick(vc, scrPt) == ManipulatorPickResult.Miss)
+                return ManipulatorPickResult.Miss;
 
             Camera camera = vc.Camera;
             
@@ -68,11 +68,11 @@ namespace RenderingInterop
             if (box.Intersect(ray))
             {
                 m_hitRegion = HitRegion.XYSquare;
-                return true;
+                return ManipulatorPickResult.DeferredBeginDrag;
             }
 
             m_hitRegion = HitRegion.None;
-            return false;
+            return ManipulatorPickResult.Miss;
         }
 
         public override void Render(object opaqueContext, ViewControl vc)
@@ -120,7 +120,7 @@ namespace RenderingInterop
                 highlight ? Color.Gold : Color.Green);
         }
 
-        public override void OnBeginDrag()
+        public override void OnBeginDrag(ViewControl vc, Point scrPt)
         {
             if (m_hitRegion == HitRegion.None)
                 return;

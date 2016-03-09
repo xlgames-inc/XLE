@@ -12,38 +12,43 @@ using Sce.Atf;
 using Sce.Atf.Applications;
 using System;
 using LevelEditorXLE.Extensions;
+using LevelEditorCore;
 
 namespace LevelEditorXLE.Terrain
 {
-    [Export(typeof(LevelEditorCore.IManipulator))]
+    [Export(typeof(IManipulator))]
     [Export(typeof(XLEBridgeUtils.IShutdownWithEngine))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class TerrainManipulator : LevelEditorCore.IManipulator, XLEBridgeUtils.IShutdownWithEngine, IDisposable, XLEBridgeUtils.IManipulatorExtra
+    public class TerrainManipulator : IManipulator, XLEBridgeUtils.IShutdownWithEngine, IDisposable, XLEBridgeUtils.IManipulatorExtra
     {
-        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          
+        public ManipulatorPickResult Pick(ViewControl vc, Point scrPt)
         {
             try
             {
-                return _nativeManip.MouseMove(vc as GUILayer.IViewContext, scrPt);
+                if (_nativeManip.OnHover(vc as GUILayer.IViewContext, scrPt))
+                    return ManipulatorPickResult.ImmediateBeginDrag;
+                return ManipulatorPickResult.Miss;
             }
             catch (Exception e)
             {
                 Outputs.Write(OutputMessageType.Warning, "Suppressing error in TerrainManipulator: " + e.Message);
-                return false;
+                return ManipulatorPickResult.Miss;
             }
         }
-        public void OnBeginDrag()                                              
+
+        public void OnBeginDrag(ViewControl vc, Point scrPt)
         { 
             try
             {
-                _nativeManip.OnBeginDrag();
+                _nativeManip.OnBeginDrag(vc as GUILayer.IViewContext, scrPt);
             }
             catch (Exception e)
             {
                 Outputs.Write(OutputMessageType.Warning, "Suppressing error in TerrainManipulator: " + e.Message);
             }
         }
-        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    
+
+        public void OnDragging(ViewControl vc, Point scrPt)
         {
             try
             {
@@ -59,8 +64,8 @@ namespace LevelEditorXLE.Terrain
             }
         }
 
-        public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt) 
-		{
+        public void OnEndDrag(ViewControl vc, Point scrPt)
+        {
             try
             {
                 _nativeManip.OnEndDrag(vc as GUILayer.IViewContext, scrPt);
@@ -73,20 +78,9 @@ namespace LevelEditorXLE.Terrain
                 msgPt.Y -= 20;
                 vc.ShowHoverMessage(e.Message, msgPt);
             }
+        }
 
-			// we need to create operations and turn them into a transaction:
-			// string transName = string.Format("Apply {0} brush", brush.Name);
-			// 
-			// GameContext context = m_designView.Context.As<GameContext>();
-			// context.DoTransaction(
-			// 	delegate
-			// {
-			// 	foreach(var op in m_tmpOps)
-			// 		context.TransactionOperations.Add(op);
-			// }, transName);
-			// m_tmpOps.Clear();
-		}
-        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) 
+        public void OnMouseWheel(ViewControl vc, Point scrPt, int delta)
         {
             try
             {
@@ -101,7 +95,7 @@ namespace LevelEditorXLE.Terrain
             }
         }
 
-        public void Render(object opaqueContext, LevelEditorCore.ViewControl vc) 
+        public void Render(object opaqueContext, ViewControl vc)
         {
             var context = opaqueContext as GUILayer.SimpleRenderingContext;
             if (context == null) return;
@@ -110,11 +104,11 @@ namespace LevelEditorXLE.Terrain
 
         public bool ClearBeforeDraw() { return false; }
 
-        public LevelEditorCore.ManipulatorInfo ManipulatorInfo
+        public ManipulatorInfo ManipulatorInfo
         {
             get
             {
-                return new LevelEditorCore.ManipulatorInfo(
+                return new ManipulatorInfo(
                     "Terrain".Localize(),
                     "Activate Terrain editing".Localize(),
                     Resources.TerrainManip,
