@@ -35,17 +35,36 @@ namespace LevelEditor.Search
             GridLines = true;
             Sorting = SortOrder.Ascending;
 
+            _syncContext = System.Threading.SynchronizationContext.Current;
+            _selectionUpdateTimer = new System.Threading.Timer(
+                (t) =>
+                {
+                    var listView = ((WeakReference)t).Target as SearchResultsListView;
+                    if (listView != null)
+                        listView._syncContext.Post(new System.Threading.SendOrPostCallback(UpdateSelectionTick), listView);
+                }, 
+                new WeakReference(this), 100, System.Threading.Timeout.Infinite);
             SelectedIndexChanged += SearchResultsListView_SelectedIndexChanged;
         }
 
-        void SearchResultsListView_SelectedIndexChanged(object sender, EventArgs e)
+        #region SelectedItemsHandling
+        private void SearchResultsListView_SelectedIndexChanged(object sender, EventArgs e)
         {
-            var selectionContext = m_queryResultContext.As<ISelectionContext>();
-            if (selectionContext == null) return;
-            selectionContext.Selection = GetSelection();
+            // We get mutliple "SelectedIndexChanged" events for a single user operation. However,
+            // we don't really know which will be the last. We can try to optimize this by delaying
+            // for a short while, and only processing the last event.
+            _selectionUpdateTimer.Change(100, System.Threading.Timeout.Infinite);
         }
 
-        IEnumerable<object> GetSelection()
+        private static void UpdateSelectionTick(object client)
+        {
+            var listView = (SearchResultsListView)client;
+            var selectionContext = listView.m_queryResultContext.As<ISelectionContext>();
+            if (selectionContext != null)
+                selectionContext.Selection = listView.GetSelection();
+        }
+
+        private IEnumerable<object> GetSelection()
         {
             foreach (var s in SelectedItems) {
                 var node = ((ListViewItem)s).Tag.As<DomNode>();
@@ -53,6 +72,10 @@ namespace LevelEditor.Search
                     yield return LevelEditorCore.Util.AdaptDomPath(node);
             }
         }
+
+        private readonly System.Threading.Timer _selectionUpdateTimer;
+        private readonly System.Threading.SynchronizationContext _syncContext;
+        #endregion
 
         /// <summary>
         /// Constructor with IQueryableResultContext and IContextRegistry</summary>
@@ -178,92 +201,100 @@ namespace LevelEditor.Search
         /// Updates the result list</summary>
         protected override void UpdateResults()
         {
-            ClearResults();
-
-            // ListView header and items will be built from the contents of these lists
-            List<HeaderData> headerList = new List<HeaderData>();
-            List<ListViewItem> itemList = new List<ListViewItem>();
-
-            // Create a new list item for each "matching" DomNode (ie, one that contains one or more matching properties)
-            foreach (object resultObject in QueryResultContext.Results)
+            BeginUpdate();
+            try
             {
-                // DomNodeQueryMatch is a DomNode, paired with a list of its properties that matched the search
-                DomNodeQueryMatch queryMatch = resultObject as DomNodeQueryMatch;
+                ClearResults();
 
-                if (queryMatch == null)
-                    throw new InvalidOperationException("The class implementing IQueryableContext, which produced the results passed in, did not create results of type DomNodeQueryMatch.  Consider use DomNodeQueryable to create your search results.");
+                // ListView header and items will be built from the contents of these lists
+                List<HeaderData> headerList = new List<HeaderData>();
+                List<ListViewItem> itemList = new List<ListViewItem>();
 
-                // Add the "Node Name" and "Type" headers if none have been created yet
-                int headerIndex = 0;
-                if (headerList.Count <= headerIndex)
+                // Create a new list item for each "matching" DomNode (ie, one that contains one or more matching properties)
+                foreach (object resultObject in QueryResultContext.Results)
                 {
-                    headerList.Add(new HeaderData("Node Name", HorizontalAlignment.Left));
-                    headerList.Add(new HeaderData("Type", HorizontalAlignment.Center));
-                }
+                    // DomNodeQueryMatch is a DomNode, paired with a list of its properties that matched the search
+                    DomNodeQueryMatch queryMatch = resultObject as DomNodeQueryMatch;
 
-                // Display DomNode name and type
-                string nodeName = GetDomNodeName(queryMatch.DomNode);
-                string nodeType = queryMatch.DomNode.Type.ToString();
+                    if (queryMatch == null)
+                        throw new InvalidOperationException("The class implementing IQueryableContext, which produced the results passed in, did not create results of type DomNodeQueryMatch.  Consider use DomNodeQueryable to create your search results.");
 
-                // This will allow the results list to be updated when one of its items has changed
-                // (for instance, from an 'undo' or 'redo')
-                queryMatch.DomNode.AttributeChanged += DomNode_Changed;
-
-                ListViewItem newItem = new ListViewItem(new string[2] { nodeName, nodeType });
-                newItem.Tag = queryMatch.DomNode;
-
-                headerList[headerIndex++].RegisterColumnString(nodeName);
-                headerList[headerIndex++].RegisterColumnString(nodeType);
-
-                // After the DomNode's name and type, include the name and value of each property of this DomNode that matched
-                foreach (object predicateResult in queryMatch.PredicateMatchResults.Values)
-                {
-                    List<IQueryMatch> matchingItems = predicateResult as List<IQueryMatch>;
-                    if (matchingItems != null)
+                    // Add the "Node Name" and "Type" headers if none have been created yet
+                    int headerIndex = 0;
+                    if (headerList.Count <= headerIndex)
                     {
-                        foreach (DomNodePropertyMatch matchingItem in matchingItems)
+                        headerList.Add(new HeaderData("Node Name", HorizontalAlignment.Left));
+                        headerList.Add(new HeaderData("Type", HorizontalAlignment.Center));
+                    }
+
+                    // Display DomNode name and type
+                    string nodeName = GetDomNodeName(queryMatch.DomNode);
+                    string nodeType = queryMatch.DomNode.Type.ToString();
+
+                    // This will allow the results list to be updated when one of its items has changed
+                    // (for instance, from an 'undo' or 'redo')
+                    queryMatch.DomNode.AttributeChanged += DomNode_Changed;
+
+                    ListViewItem newItem = new ListViewItem(new string[2] { nodeName, nodeType });
+                    newItem.Tag = queryMatch.DomNode;
+
+                    headerList[headerIndex++].RegisterColumnString(nodeName);
+                    headerList[headerIndex++].RegisterColumnString(nodeType);
+
+                    // After the DomNode's name and type, include the name and value of each property of this DomNode that matched
+                    foreach (object predicateResult in queryMatch.PredicateMatchResults.Values)
+                    {
+                        List<IQueryMatch> matchingItems = predicateResult as List<IQueryMatch>;
+                        if (matchingItems != null)
                         {
-                            // Add additional "Property" and "Value" headers (if need be)
-                            if (headerList.Count <= headerIndex)
+                            foreach (DomNodePropertyMatch matchingItem in matchingItems)
                             {
-                                headerList.Add(new HeaderData("Property", HorizontalAlignment.Right));
-                                headerList.Add(new HeaderData("Value", HorizontalAlignment.Left));
+                                // Add additional "Property" and "Value" headers (if need be)
+                                if (headerList.Count <= headerIndex)
+                                {
+                                    headerList.Add(new HeaderData("Property", HorizontalAlignment.Right));
+                                    headerList.Add(new HeaderData("Value", HorizontalAlignment.Left));
+                                }
+
+                                // Each property name and value pair are added as subitems of the list item
+                                string newPropertyName = matchingItem.Name;
+                                string newPropertyValue = matchingItem.GetValue().ToString();
+
+                                // Add each subitem, tagged with the PropertyDescriptor to which it is associated
+                                ListViewItem.ListViewSubItem subItemName = new ListViewItem.ListViewSubItem(newItem, newPropertyName);
+                                ListViewItem.ListViewSubItem subItemValue = new ListViewItem.ListViewSubItem(newItem, newPropertyValue);
+                                subItemName.Tag = matchingItem.PropertyDescriptor;
+                                subItemValue.Tag = matchingItem.PropertyDescriptor;
+                                newItem.SubItems.Add(subItemName);
+                                newItem.SubItems.Add(subItemValue);
+
+                                headerList[headerIndex++].RegisterColumnString(newPropertyName);
+                                headerList[headerIndex++].RegisterColumnString(newPropertyValue);
                             }
-
-                            // Each property name and value pair are added as subitems of the list item
-                            string newPropertyName = matchingItem.Name;
-                            string newPropertyValue = matchingItem.GetValue().ToString();
-
-                            // Add each subitem, tagged with the PropertyDescriptor to which it is associated
-                            ListViewItem.ListViewSubItem subItemName = new ListViewItem.ListViewSubItem(newItem, newPropertyName);
-                            ListViewItem.ListViewSubItem subItemValue = new ListViewItem.ListViewSubItem(newItem, newPropertyValue);
-                            subItemName.Tag = matchingItem.PropertyDescriptor;
-                            subItemValue.Tag = matchingItem.PropertyDescriptor;
-                            newItem.SubItems.Add(subItemName);
-                            newItem.SubItems.Add(subItemValue);
-
-                            headerList[headerIndex++].RegisterColumnString(newPropertyName);
-                            headerList[headerIndex++].RegisterColumnString(newPropertyValue);
                         }
                     }
+
+                    // Add the matching DomNode, with all matching properties, to the results list
+                    itemList.Add(newItem);
                 }
 
-                // Add the matching DomNode, with all matching properties, to the results list
-                itemList.Add(newItem);
-            }
+                // All search results have been reviewed, and all header data from it has been created.
+                // Build the ListView header from the header data
+                var g = CreateGraphics();
+                foreach (HeaderData headerData in headerList)
+                {
+                    // Width of header determined by longest string found in that column
+                    int width = g.MeasureString(headerData.LongestString, Font).ToSize().Width + 15;
+                    Columns.Add(headerData.Name, width, headerData.HorizontalAlignment);
+                }
 
-            // All search results have been reviewed, and all header data from it has been created.
-            // Build the ListView header from the header data
-            var g = CreateGraphics();
-            foreach (HeaderData headerData in headerList)
+                // Build the ListView items
+                Items.AddRange(itemList.ToArray());
+            }
+            finally
             {
-                // Width of header determined by longest string found in that column
-                int width = g.MeasureString(headerData.LongestString, Font).ToSize().Width + 15;
-                Columns.Add(headerData.Name, width, headerData.HorizontalAlignment);
+                EndUpdate();
             }
-
-            // Build the ListView items
-            Items.AddRange(itemList.ToArray());
         }
 
         private void DomNode_Changed(object sender, EventArgs e)

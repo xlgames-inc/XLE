@@ -19,7 +19,11 @@ namespace LevelEditor.Search
         {
             m_results.Clear();
             var enumerable = DomNode.As<IEnumerableContext>();
-            if (enumerable == null) return m_results;
+            if (enumerable == null || predicate == null)
+            {
+                ResultsChanged.Raise(this, EventArgs.Empty);
+                return m_results;
+            }
 
             // Iterate over all dom nodes under this adapter
             foreach (var o in enumerable.Items)

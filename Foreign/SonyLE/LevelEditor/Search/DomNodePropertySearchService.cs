@@ -45,6 +45,14 @@ namespace LevelEditor.Search
             m_rootControl.Controls.Add(SearchUI.Control);
             SearchUI.UIChanged += UIElement_Changed;
 
+            _clearButton = new Button() { Text = "Clear" };
+            _clearButton.Click += (object sender, EventArgs args) => { m_contextRegistry.GetActiveContext<IQueryableContext>().Query(null); };
+            _clearButton.Dock = DockStyle.None;
+            _clearButton.AutoSize = true;
+            _clearButton.FlatStyle = FlatStyle.Flat;
+            _clearButton.FlatAppearance.BorderSize = 0;
+            m_rootControl.Controls.Add(_clearButton);
+
             // Create and add the replace input control
             var domNodeReplaceToolStrip = new DomNodeReplaceToolStrip();
             // hack --  we can't set this property, because it's marked as "internal" in the 
@@ -99,6 +107,17 @@ namespace LevelEditor.Search
                     resultsBounds.Height = m_rootControl.Height - (m_rootControl.Margin.Top + m_rootControl.Margin.Bottom + scb.Height + 2);
                     ResultsUI.Control.Bounds = resultsBounds;
                     ResultsUI.Control.Anchor = AnchorStyles.None;
+                }
+
+                if (_clearButton != null)
+                {
+                    Rectangle bounds = scb;
+                    bounds.X += scb.Width;
+                    bounds.Width = _clearButton.Width;
+                    _clearButton.AutoSize = false; 
+                    _clearButton.Bounds = bounds;
+                    _clearButton.Anchor = AnchorStyles.None;
+                    scb.Width += bounds.Width;
                 }
 
                 if (ReplaceUI != null)
@@ -158,6 +177,8 @@ namespace LevelEditor.Search
         ISearchUI m_searchUI;
         IReplaceUI m_replaceUI;
         IResultsUI m_resultsUI;
+
+        private Button _clearButton;
 
         /// <summary>
         /// Gets search UI</summary>
