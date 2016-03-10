@@ -99,9 +99,9 @@ namespace GUILayer
             CATCH_ASSETS_BEGIN
                 for (auto i:delaySteps)
                     if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
-                        scene._placementsManager->RenderTransparent(metalContext, parserContext, techniqueIndex, i);
+                        scene._placementsManager->CommitTransparent(metalContext, parserContext, techniqueIndex, i);
                     } else {
-                        scene._placementsManager->Render(metalContext, parserContext, techniqueIndex);
+                        scene._placementsManager->Render(metalContext, parserContext, techniqueIndex, *scene._placementsCells);
                     }
             CATCH_ASSETS_END(parserContext)
 
@@ -205,12 +205,14 @@ namespace GUILayer
         EditorSceneOverlay(
             std::shared_ptr<EditorSceneParser> sceneParser,
             EditorSceneRenderSettings^ renderSettings,
-            std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor);
+            std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor,
+            std::shared_ptr<SceneEngine::PlacementsRenderer> _placementsRenderer);
         ~EditorSceneOverlay();
     protected:
         clix::shared_ptr<EditorSceneParser> _sceneParser;
         EditorSceneRenderSettings^ _renderSettings;
         clix::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
+        clix::shared_ptr<SceneEngine::PlacementsRenderer> _placementsRenderer;
     };
     
     void EditorSceneOverlay::RenderToScene(
@@ -242,7 +244,7 @@ namespace GUILayer
             // at the moment, only placements can be selected... So we need to assume that 
             // they are all placements.
             ToolsRig::Placements_RenderHighlight(
-                *threadContext, parserContext, _placementsEditor.get(),
+                *threadContext, parserContext, *_placementsEditor.get(), *_placementsRenderer.get(),
                 (const SceneEngine::PlacementGUID*)AsPointer(_renderSettings->_selection->_nativePlacements->cbegin()),
                 (const SceneEngine::PlacementGUID*)AsPointer(_renderSettings->_selection->_nativePlacements->cend()));
         }
@@ -257,11 +259,13 @@ namespace GUILayer
     EditorSceneOverlay::EditorSceneOverlay(
         std::shared_ptr<EditorSceneParser> sceneParser,
         EditorSceneRenderSettings^ renderSettings,
-        std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor)
+        std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor,
+        std::shared_ptr<SceneEngine::PlacementsRenderer> placementsRenderer)
     {
         _sceneParser = std::move(sceneParser);
         _renderSettings = renderSettings;
         _placementsEditor = std::move(placementsEditor);
+        _placementsRenderer = std::move(placementsRenderer);
     }
     EditorSceneOverlay::~EditorSceneOverlay() {}
 
@@ -275,7 +279,7 @@ namespace GUILayer
         {
             return gcnew EditorSceneOverlay(
                 std::make_shared<EditorSceneParser>(scene, std::move(camera)), 
-                renderSettings, scene->_placementsEditor);
+                renderSettings, scene->_placementsEditor, scene->_placementsManager->GetRenderer());
         }
     }
 }

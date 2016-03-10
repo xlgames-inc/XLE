@@ -17,6 +17,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/IDevice.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
 
 #include "../Math/Transformations.h"
 #include "../Math/Vector.h"
@@ -35,17 +36,14 @@ namespace SceneEngine
         TerrainManager& terrainManager,
         std::pair<Float3, Float3> worldSpaceRay)
     {
-        TRY {
+        CATCH_ASSETS_BEGIN
             TerrainManager::IntersectionResult intersections[8];
             unsigned intersectionCount = terrainManager.CalculateIntersections(
                 intersections, dimof(intersections), worldSpaceRay, devContext, parserContext);
 
-            if (intersectionCount > 0) {
+            if (intersectionCount > 0)
                 return std::make_pair(intersections[0]._intersectionPoint, true);
-            }
-        } CATCH (...) {
-        } CATCH_END
-
+        CATCH_ASSETS_END(parserContext)
         return std::make_pair(Float3(0,0,0), false);
     }
 
@@ -75,7 +73,8 @@ namespace SceneEngine
 
     static std::vector<ModelIntersectionStateContext::ResultEntry> PlacementsIntersection(
         RenderCore::Metal::DeviceContext& metalContext, ModelIntersectionStateContext& stateContext,
-        SceneEngine::PlacementsEditor& placementsEditor, SceneEngine::PlacementGUID object)
+        SceneEngine::PlacementsEditor& placementsEditor, SceneEngine::PlacementsRenderer& placementsRenderer,
+        SceneEngine::PlacementGUID object)
     {
             // Using the GPU, look for intersections between the ray
             // and the given model. Since we're using the GPU, we need to
@@ -90,10 +89,9 @@ namespace SceneEngine
 
             //  We need to invoke the render for the given object
             //  now. Afterwards we can query the buffers for the result
-        const unsigned techniqueIndex = 6;
         placementsEditor.RenderFiltered(
-            &metalContext, stateContext.GetParserContext(), techniqueIndex,
-            &object, &object+1);
+            &metalContext, stateContext.GetParserContext(), RenderCore::Techniques::TechniqueIndex::RayTest,
+            placementsRenderer, &object, &object+1);
         return stateContext.GetResults();
     }
 
@@ -154,7 +152,7 @@ namespace SceneEngine
                         auto guid = trans->GetGuid(c);
                         auto results = PlacementsIntersection(
                             *metalContext.get(), stateContext, 
-                            *_placements, guid);
+                            *_placements, *_placementsRenderer, guid);
 
                         bool gotGoodResult = false;
                         unsigned drawCallIndex = 0;
@@ -172,8 +170,7 @@ namespace SceneEngine
                         if (gotGoodResult && intersectionDistance < result._distance) {
                             result = Result();
                             result._type = Type::Placement;
-                            result._worldSpaceCollision = 
-                                LinearInterpolate(worldSpaceRay.first, worldSpaceRay.second, intersectionDistance / rayLength);
+                            result._worldSpaceCollision = LinearInterpolate(worldSpaceRay.first, worldSpaceRay.second, intersectionDistance / rayLength);
                             result._distance = intersectionDistance;
                             result._objectGuid = guid;
                             result._drawCallIndex = drawCallIndex;
@@ -217,7 +214,7 @@ namespace SceneEngine
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
 
-        if ((filter & Type::Placement) && _placements) {
+        if ((filter & Type::Placement) && _placements && _placementsRenderer) {
             auto roughIntersection = 
                 _placements->Find_FrustumIntersection(worldToProjection, nullptr);
 
@@ -257,7 +254,7 @@ namespace SceneEngine
                         
                         bool isInside = boundaryTest == AABBIntersection::Within;
                         if (!isInside) {
-                            auto results = PlacementsIntersection(*metalContext.get(), stateContext, *_placements, guid);
+                            auto results = PlacementsIntersection(*metalContext.get(), stateContext, *_placements, *_placementsRenderer, guid);
                             isInside = !results.empty();
                         }
 
@@ -298,9 +295,11 @@ namespace SceneEngine
     IntersectionTestScene::IntersectionTestScene(
         std::shared_ptr<TerrainManager> terrainManager,
         std::shared_ptr<PlacementsEditor> placements,
+        std::shared_ptr<PlacementsRenderer> placementsRenderer,
         std::initializer_list<std::shared_ptr<IIntersectionTester>> extraTesters)
     : _terrainManager(std::move(terrainManager))
     , _placements(std::move(placements))
+    , _placementsRenderer(std::move(placementsRenderer))
     {
         for (size_t c=0; c<extraTesters.size(); ++c) 
             _extraTesters.push_back(std::move(extraTesters.begin()[c]));

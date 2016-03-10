@@ -100,9 +100,12 @@ namespace LevelEditorXLE.Materials
             var sceneManager = nativeVC.SceneManager;
             using (var placements = sceneManager.GetPlacementsEditor())
             {
-                GUILayer.RenderingUtil.RenderHighlight(
-                    context, placements,
-                    null, m_highlightMaterialGUID);
+                using (var renderer = sceneManager.GetPlacementsRenderer())
+                {
+                    GUILayer.RenderingUtil.RenderHighlight(
+                        context, placements, renderer,
+                        null, m_highlightMaterialGUID);
+                }
             }
         }
 

@@ -33,18 +33,20 @@ namespace ToolsRig
     void Placements_RenderFiltered(
         Metal::DeviceContext& metalContext,
         Techniques::ParsingContext& parserContext,
-        SceneEngine::PlacementsEditor* editor,
+        SceneEngine::PlacementsEditor& editor,
+        SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementGUID* filterBegin,
         const SceneEngine::PlacementGUID* filterEnd,
         uint64 materialGuid)
     {
         using namespace RenderCore::Assets;
         if (materialGuid == ~0ull) {
-            editor->RenderFiltered(&metalContext, parserContext, 0, filterBegin, filterEnd);
+            editor.RenderFiltered(&metalContext, parserContext, 0, renderer, filterBegin, filterEnd);
         } else {
                 //  render with a predicate to compare the material binding index to
                 //  the given value
-            editor->RenderFiltered(&metalContext, parserContext, 0, filterBegin, filterEnd,
+            editor.RenderFiltered(
+                &metalContext, parserContext, 0, renderer, filterBegin, filterEnd,
                 [=](const DelayedDrawCall& e) { 
                     return ((const ModelRenderer*)e._renderer)->GetMaterialBindingForDrawCall(e._drawCallIndex) == materialGuid; 
                 });
@@ -54,7 +56,8 @@ namespace ToolsRig
     void Placements_RenderHighlight(
         IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
-        SceneEngine::PlacementsEditor* editor,
+        SceneEngine::PlacementsEditor& editor,
+        SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementGUID* filterBegin,
         const SceneEngine::PlacementGUID* filterEnd,
         uint64 materialGuid)
@@ -62,7 +65,7 @@ namespace ToolsRig
         CATCH_ASSETS_BEGIN
             auto& metalContext = *Metal::DeviceContext::Get(threadContext);
             BinaryHighlight highlight(metalContext);
-            Placements_RenderFiltered(metalContext, parserContext, editor, filterBegin, filterEnd, materialGuid);
+            Placements_RenderFiltered(metalContext, parserContext, editor, renderer, filterBegin, filterEnd, materialGuid);
             highlight.FinishWithOutline(metalContext, Float3(.65f, .8f, 1.5f));
         CATCH_ASSETS_END(parserContext)
     }

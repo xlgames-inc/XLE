@@ -8,13 +8,18 @@
 
 #include <memory>
 
-namespace SceneEngine { class PlacementsManager; class TerrainManager; class IntersectionTestContext; }
+namespace SceneEngine 
+{ 
+    class PlacementsManager; class PlacementCellSet; 
+    class TerrainManager; class IntersectionTestContext;
+}
 namespace PlatformRig { class IOverlaySystem; }
 
 namespace Sample
 {
     std::shared_ptr<PlatformRig::IOverlaySystem> CreatePlacementsEditorOverlaySystem(
         std::shared_ptr<SceneEngine::PlacementsManager> placementsManager,
+        std::shared_ptr<SceneEngine::PlacementCellSet> placementsCell,
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext);
 }

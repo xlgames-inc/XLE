@@ -45,6 +45,7 @@ namespace GUILayer
     ref class IntersectionTestContextWrapper;
 	ref class IntersectionTestSceneWrapper;
     ref class PlacementsEditorWrapper;
+    ref class PlacementsRendererWrapper;
     ref class ObjectSet;
     ref class TerrainConfig;
     ref class TerrainManipulatorContext;
@@ -58,6 +59,8 @@ namespace GUILayer
         std::shared_ptr<SceneEngine::PlacementsManager>         _placementsManager;
         std::shared_ptr<SceneEngine::PlacementsEditor>          _placementsEditor;
 		std::shared_ptr<SceneEngine::PlacementsEditor>          _placementsHidden;
+        std::shared_ptr<SceneEngine::PlacementCellSet>          _placementsCells;
+		std::shared_ptr<SceneEngine::PlacementCellSet>          _placementsCellsHidden;
         std::shared_ptr<SceneEngine::TerrainManager>            _terrainManager;
         std::shared_ptr<SceneEngine::VegetationSpawnManager>    _vegetationSpawnManager;
         std::shared_ptr<SceneEngine::VolumetricFogManager>      _volumeFogManager;
@@ -142,8 +145,9 @@ namespace GUILayer
         IManipulatorSet^ CreateTerrainManipulators(TerrainManipulatorContext^ context);
         IManipulatorSet^ CreatePlacementManipulators(IPlacementManipulatorSettingsLayer^ context);
         IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera, EditorSceneRenderSettings^ renderSettings);
-		IntersectionTestSceneWrapper^ GetIntersectionScene();
+        IntersectionTestSceneWrapper^ GetIntersectionScene();
         PlacementsEditorWrapper^ GetPlacementsEditor();
+        PlacementsRendererWrapper^ GetPlacementsRenderer();
         EntityLayer^ GetEntityInterface();
 
         void SetTypeAnnotation(

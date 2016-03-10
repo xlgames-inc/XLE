@@ -549,7 +549,7 @@ namespace ToolsRig
         std::shared_ptr<SceneEngine::IIntersectionTester> resolver = 
             std::make_shared<SingleModelIntersectionResolver>(std::move(settings), std::move(cache));
         return std::shared_ptr<SceneEngine::IntersectionTestScene>(
-            new SceneEngine::IntersectionTestScene(nullptr, nullptr, { resolver }));
+            new SceneEngine::IntersectionTestScene(nullptr, nullptr, nullptr, { resolver }));
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -118,11 +118,12 @@ namespace GUILayer
 
     PlacementManipulators::PlacementManipulators(
         ToolsRig::IPlacementManipulatorSettings* context,
-        std::shared_ptr<SceneEngine::PlacementsEditor> editor)
+        std::shared_ptr<SceneEngine::PlacementsEditor> editor,
+        std::shared_ptr<SceneEngine::PlacementsRenderer> renderer)
     {
         _pimpl.reset(new PlacementManipulatorsPimpl);
 
-        auto manip = ToolsRig::CreatePlacementManipulators(context, editor);
+        auto manip = ToolsRig::CreatePlacementManipulators(context, editor, renderer);
         for (auto& t : manip) {
             _pimpl->_manipulators.push_back(
                 PlacementManipulatorsPimpl::RegisteredManipulator(t->GetName(), std::move(t)));

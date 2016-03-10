@@ -46,6 +46,7 @@ namespace Sample
         std::unique_ptr<CharactersScene>                    _characters;
         std::shared_ptr<SceneEngine::TerrainManager>        _terrainManager;
         std::shared_ptr<SceneEngine::PlacementsManager>     _placementsManager;
+        std::shared_ptr<SceneEngine::PlacementCellSet>      _placementsCells;
         std::shared_ptr<RenderCore::Techniques::CameraDesc> _cameraDesc;
         std::shared_ptr<RenderCore::Assets::ModelCache>     _modelCache;
         std::shared_ptr<SceneEngine::DynamicImposters>      _imposters;
@@ -191,9 +192,9 @@ namespace Sample
                 CATCH_ASSETS_BEGIN
                     for (auto i:delaySteps)
                         if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
-                            _pimpl->_placementsManager->RenderTransparent(context, parserContext, techniqueIndex, i);
+                            _pimpl->_placementsManager->CommitTransparent(context, parserContext, techniqueIndex, i);
                         } else {
-                            _pimpl->_placementsManager->Render(context, parserContext, techniqueIndex);
+                            _pimpl->_placementsManager->Render(context, parserContext, techniqueIndex, *_pimpl->_placementsCells);
                         }
                 CATCH_ASSETS_END(parserContext)
                 GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), name, GPUProfiler::End);
@@ -260,6 +261,11 @@ namespace Sample
         return _pimpl->_placementsManager;
     }
 
+    std::shared_ptr<SceneEngine::PlacementCellSet> EnvironmentSceneParser::GetPlacementCells()
+    {
+        return _pimpl->_placementsCells;
+    }
+
     std::shared_ptr<RenderCore::Techniques::CameraDesc> EnvironmentSceneParser::GetCameraPtr()
     {
         return _pimpl->_cameraDesc;
@@ -312,8 +318,8 @@ namespace Sample
 
         if (!_pimpl->_placementsCfgVal || _pimpl->_placementsCfgVal->GetValidationIndex() != 0) {
             ::Assets::ConfigFileContainer<SceneEngine::WorldPlacementsConfig> container(_pimpl->MakeCfgName(PlacementsCfg).c_str());
-            _pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
-                container._asset, _pimpl->_modelCache, WorldOffset);
+            _pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(_pimpl->_modelCache);
+            _pimpl->_placementsCells = std::make_shared<SceneEngine::PlacementCellSet>(container._asset, WorldOffset);
             _pimpl->_placementsCfgVal = container.GetDependencyValidation();
 
             _pimpl->_imposters = std::make_shared<SceneEngine::DynamicImposters>(

@@ -37,10 +37,8 @@ namespace EntityInterface
 
             // todo -- boundary of this cell should be set to something reasonable
             //          (or at least adapt as objects are added and removed)
-        auto result = (DocumentId)_editor->CreateCell(
-            *_manager, meld,  Float2(-100000.f, -100000.f), Float2( 100000.f,  100000.f));
-		auto hiddenResult = _hiddenObjects->CreateCell(
-			*_manager, meld, Float2(-100000.f, -100000.f), Float2(100000.f, 100000.f));
+        auto result = (DocumentId)_editor->CreateCell(meld, Float2(-100000.f, -100000.f), Float2(100000.f, 100000.f));
+		auto hiddenResult = _hiddenObjects->CreateCell(meld, Float2(-100000.f, -100000.f), Float2(100000.f, 100000.f));
 		(void)hiddenResult;
 		assert(result == hiddenResult);	// ids must match up
 		return result;

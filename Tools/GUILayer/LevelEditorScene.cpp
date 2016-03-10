@@ -74,10 +74,11 @@ namespace GUILayer
     EditorScene::EditorScene()
     {
         auto modelCache = std::make_shared<RenderCore::Assets::ModelCache>();
-        _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
-            SceneEngine::WorldPlacementsConfig(), modelCache, Float3(0.f, 0.f, 0.f));
-        _placementsEditor = _placementsManager->CreateEditor();
-		_placementsHidden = _placementsManager->CreateEditor(false);
+        _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(modelCache);
+        _placementsCells = std::make_shared<SceneEngine::PlacementCellSet>(SceneEngine::WorldPlacementsConfig(), Float3(0.f, 0.f, 0.f));
+        _placementsCellsHidden = std::make_shared<SceneEngine::PlacementCellSet>(SceneEngine::WorldPlacementsConfig(), Float3(0.f, 0.f, 0.f));
+        _placementsEditor = _placementsManager->CreateEditor(_placementsCells);
+		_placementsHidden = _placementsManager->CreateEditor(_placementsCellsHidden);
             // note --  we need to have the terrain manager a default terrain format here... But it's too early
             //          for some settings (like the gradient flags settings!)
         auto defTerrainFormat = std::make_shared<SceneEngine::TerrainFormat>(SceneEngine::GradientFlagsSettings(true));
@@ -192,7 +193,7 @@ namespace GUILayer
         IPlacementManipulatorSettingsLayer^ context)
     {
         if (_scene->_placementsEditor) {
-            return gcnew PlacementManipulators(context->GetNative(), _scene->_placementsEditor);
+            return gcnew PlacementManipulators(context->GetNative(), _scene->_placementsEditor, _scene->_placementsManager->GetRenderer());
         } else {
             return nullptr;
         }
@@ -203,12 +204,18 @@ namespace GUILayer
 		return gcnew IntersectionTestSceneWrapper(
             _scene->_terrainManager,
             _scene->_placementsEditor,
+            _scene->_placementsManager->GetRenderer(),
             {_scene->_placeholders->CreateIntersectionTester()} );
     }
 
     PlacementsEditorWrapper^ EditorSceneManager::GetPlacementsEditor()
 	{
 		return gcnew PlacementsEditorWrapper(_scene->_placementsEditor);
+    }
+
+    PlacementsRendererWrapper^ EditorSceneManager::GetPlacementsRenderer()
+    {
+        return gcnew PlacementsRendererWrapper(_scene->_placementsManager->GetRenderer());
     }
 
     EntityLayer^ EditorSceneManager::GetEntityInterface()
@@ -249,7 +256,9 @@ namespace GUILayer
                 // output->Write(p, _preview->Length * sizeof(wchar_t));
                     // we need to use clix::marshalString in order to convert to UTF8 characters
                 auto nativeString = clix::marshalString<clix::E_UTF8>(_preview);
-                output->Write(AsPointer(nativeString.cbegin()), int(nativeString.size() * sizeof(decltype(nativeString)::value_type)));
+                output->Write(
+                    AsPointer(nativeString.cbegin()), 
+                    int(nativeString.size() * sizeof(decltype(nativeString)::value_type)));
                 
                 result._success = true;
                 result._messages = "Success";

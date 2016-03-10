@@ -100,7 +100,8 @@ namespace GUILayer
 
         PlacementManipulators(
             ToolsRig::IPlacementManipulatorSettings* context,
-            std::shared_ptr<SceneEngine::PlacementsEditor> editor);
+            std::shared_ptr<SceneEngine::PlacementsEditor> editor,
+            std::shared_ptr<SceneEngine::PlacementsRenderer> renderer);
         ~PlacementManipulators();
     protected:
         clix::auto_ptr<PlacementManipulatorsPimpl> _pimpl;

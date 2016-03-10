@@ -207,7 +207,7 @@ namespace Sample
                 "[Test] Shadow frustum debugger");
 
             frameRig.GetDebugSystem()->Register(
-                std::make_shared<SceneEngine::PlacementsQuadTreeDebugger>(mainScene->GetPlacementManager()),
+                std::make_shared<SceneEngine::PlacementsQuadTreeDebugger>(mainScene->GetPlacementManager(), mainScene->GetPlacementCells()),
                 "[Placements] Culling");
 
             frameRig.GetDebugSystem()->Register(
@@ -239,7 +239,9 @@ namespace Sample
                     overlaySwitch->AddSystem(
                         KeyId_Make("1"),
                         Sample::CreatePlacementsEditorOverlaySystem(
-                            mainScene->GetPlacementManager(), mainScene->GetTerrainManager(), 
+                            mainScene->GetPlacementManager(), 
+                            mainScene->GetPlacementCells(),
+                            mainScene->GetTerrainManager(), 
                             intersectionContext));
                 }
                 if (mainScene->GetTerrainManager()) {

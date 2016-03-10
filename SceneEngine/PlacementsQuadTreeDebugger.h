@@ -11,6 +11,7 @@
 namespace SceneEngine
 {
     class PlacementsManager;
+    class PlacementCellSet;
 
     class PlacementsQuadTreeDebugger : public RenderOverlays::DebuggingDisplay::IWidget
     {
@@ -24,10 +25,11 @@ namespace SceneEngine
                         Interactables& interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
-        PlacementsQuadTreeDebugger(std::shared_ptr<PlacementsManager> placementsManager);
+        PlacementsQuadTreeDebugger(std::shared_ptr<PlacementsManager> placementsManager, std::shared_ptr<PlacementCellSet> cells);
         ~PlacementsQuadTreeDebugger();
     protected:
         std::shared_ptr<PlacementsManager> _placementsManager;
+        std::shared_ptr<PlacementCellSet> _cells;
     };
 }
 

@@ -316,10 +316,11 @@ namespace SceneEngine
     class PlacementCell
     {
     public:
-        ResChar     _filename[256];
         uint64      _filenameHash;
         Float3x4    _cellToWorld;
         Float3      _aabbMin, _aabbMax;
+        Float2      _captureMins, _captureMaxs;
+        ResChar     _filename[256];
     };
 
     class PlacementsQuadTree;
@@ -403,13 +404,23 @@ namespace SceneEngine
             const PlacementCell& cell,
             const uint64* filterStart = nullptr, const uint64* filterEnd = nullptr);
 
+        void Render(
+            RenderCore::Metal::DeviceContext* context,
+            RenderCore::Techniques::ParsingContext& parserContext,
+            const Placements& placements,
+            const PlacementsQuadTree* quadTree,
+            const Float3x4& cellToWorld,
+            const uint64* filterStart = nullptr, const uint64* filterEnd = nullptr);
+
         void SetOverride(uint64 guid, std::shared_ptr<Placements> placements);
         auto GetCachedQuadTree(uint64 cellFilenameHash) const -> const PlacementsQuadTree*;
         ModelCache& GetModelCache() { return *_cache; }
 
         void SetImposters(std::shared_ptr<DynamicImposters> imposters);
 
-        PlacementsRenderer(std::shared_ptr<PlacementsCache> placementsCache, std::shared_ptr<ModelCache> modelCache);
+        PlacementsRenderer(
+            std::shared_ptr<PlacementsCache> placementsCache, 
+            std::shared_ptr<ModelCache> modelCache);
         ~PlacementsRenderer();
     protected:
         class CellRenderInfo
@@ -439,7 +450,6 @@ namespace SceneEngine
             CellRenderInfo& operator=(const CellRenderInfo&);
         };
 
-        std::vector<std::pair<uint64, std::shared_ptr<Placements>>> _cellOverrides;
         std::vector<std::pair<uint64, CellRenderInfo>> _cells;
         std::shared_ptr<PlacementsCache> _placementsCache;
         std::shared_ptr<ModelCache> _cache;
@@ -447,24 +457,33 @@ namespace SceneEngine
 
         std::shared_ptr<RenderCore::Assets::IModelFormat> _modelFormat;
         std::shared_ptr<DynamicImposters> _imposters;
-
-        void Render(
-            RenderCore::Metal::DeviceContext* context,
-            RenderCore::Techniques::ParsingContext& parserContext,
-            const Placements& placements,
-            const PlacementsQuadTree* quadTree,
-            const Float3x4& cellToWorld,
-            const uint64* filterStart, const uint64* filterEnd);
     };
 
     class PlacementsManager::Pimpl
     {
     public:
-        std::vector<PlacementCell> _cells;
         std::shared_ptr<PlacementsRenderer> _renderer;
         std::shared_ptr<PlacementsCache> _placementsCache;
         std::shared_ptr<ModelCache> _modelCache;
     };
+
+    class PlacementCellSet::Pimpl
+    {
+    public:
+        std::vector<PlacementCell> _cells;
+        std::vector<std::pair<uint64, std::shared_ptr<Placements>>> _cellOverrides;
+
+        void SetOverride(uint64 guid, std::shared_ptr<Placements> placements);
+        Placements* GetOverride(uint64 guid);
+    };
+
+    Placements* PlacementCellSet::Pimpl::GetOverride(uint64 guid)
+    {
+        auto i = LowerBound(_cellOverrides, guid);
+        if (i != _cellOverrides.end() && i->first == guid)
+            return i->second.get();
+        return nullptr;
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -526,22 +545,6 @@ namespace SceneEngine
         return nullptr;
     }
 
-    void PlacementsRenderer::SetOverride(uint64 guid, std::shared_ptr<Placements> placements)
-    {
-        auto i = LowerBound(_cellOverrides, guid);
-        if (i ==_cellOverrides.end() || i->first != guid) {
-            if (placements) {
-                _cellOverrides.insert(i, std::make_pair(guid, std::move(placements)));
-            }
-        } else {
-            if (placements) {
-                i->second = std::move(placements); // override the previous one
-            } else {
-                _cellOverrides.erase(i);
-            }
-        }
-    }
-
     void PlacementsRenderer::Render(
         RenderCore::Metal::DeviceContext* context,
         RenderCore::Techniques::ParsingContext& parserContext,
@@ -563,45 +566,33 @@ namespace SceneEngine
         //
         // It seems useful to me. But if the overhead becomes too great, we can just change
         // to a basic 2d addressing model.
+        if (cell._filename[0] == '[') return;   // hack -- if the cell filename begins with '[', it is a cell from the editor (and should be using _cellOverrides)
 
-        if (CullAABB_Aligned(parserContext.GetProjectionDesc()._worldToProjection, cell._aabbMin, cell._aabbMax))
-            return;
-
-            //  We need to look in the "_cellOverride" list first.
-            //  The overridden cells are actually designed for tools. When authoring 
-            //  placements, we need a way to render them before they are flushed to disk.
-        auto i = LowerBound(_cellOverrides, cell._filenameHash);
-        if (i != _cellOverrides.end() && i->first == cell._filenameHash) {
-            Render(context, parserContext, *i->second.get(), nullptr, cell._cellToWorld, filterStart, filterEnd);
-        } else {
-            if (cell._filename[0] == '[') return;   // hack -- if the cell filename begins with '[', it is a cell from the editor (and should be using _cellOverrides)
-
-            auto i2 = LowerBound(_cells, cell._filenameHash);
-            if (i2 == _cells.end() || i2->first != cell._filenameHash) {
-                CellRenderInfo newRenderInfo;
-                newRenderInfo._placements = _placementsCache->Get(cell._filenameHash, cell._filename);
-                i2 = _cells.insert(i2, std::make_pair(cell._filenameHash, std::move(newRenderInfo)));
-            }
-
-                // check if we need to reload placements
-            if (i2->second._placements->_placements->GetDependencyValidation()->GetValidationIndex() != 0) {
-                i2->second._placements->Reload();
-                i2->second._quadTree.reset();
-            }
-
-            if (!i2->second._quadTree) {
-                i2->second._quadTree = std::make_unique<PlacementsQuadTree>(
-                    &i2->second._placements->_placements->GetObjectReferences()->_cellSpaceBoundary,
-                    sizeof(Placements::ObjectReference), 
-                    i2->second._placements->_placements->GetObjectReferenceCount());
-            }
-
-            Render(
-                context, parserContext, 
-                *i2->second._placements->_placements, 
-                i2->second._quadTree.get(),
-                cell._cellToWorld, filterStart, filterEnd);
+        auto i2 = LowerBound(_cells, cell._filenameHash);
+        if (i2 == _cells.end() || i2->first != cell._filenameHash) {
+            CellRenderInfo newRenderInfo;
+            newRenderInfo._placements = _placementsCache->Get(cell._filenameHash, cell._filename);
+            i2 = _cells.insert(i2, std::make_pair(cell._filenameHash, std::move(newRenderInfo)));
         }
+
+            // check if we need to reload placements
+        if (i2->second._placements->_placements->GetDependencyValidation()->GetValidationIndex() != 0) {
+            i2->second._placements->Reload();
+            i2->second._quadTree.reset();
+        }
+
+        if (!i2->second._quadTree) {
+            i2->second._quadTree = std::make_unique<PlacementsQuadTree>(
+                &i2->second._placements->_placements->GetObjectReferences()->_cellSpaceBoundary,
+                sizeof(Placements::ObjectReference), 
+                i2->second._placements->_placements->GetObjectReferenceCount());
+        }
+
+        Render(
+            context, parserContext, 
+            *i2->second._placements->_placements, 
+            i2->second._quadTree.get(),
+            cell._cellToWorld, filterStart, filterEnd);
     }
 
     static SupplementRange AsSupplements(const uint64* supplementsBuffer, unsigned supplementsOffset)
@@ -902,7 +893,8 @@ namespace SceneEngine
     void PlacementsManager::Render(
         RenderCore::Metal::DeviceContext* context, 
         RenderCore::Techniques::ParsingContext& parserContext,
-        unsigned techniqueIndex)
+        unsigned techniqueIndex,
+        const PlacementCellSet& cellSet)
     {
         if (!Tweakable("DoPlacements", true)) {
             _pimpl->_renderer->ClearPrepared();
@@ -912,12 +904,26 @@ namespace SceneEngine
         _pimpl->_renderer->BeginPrepare();
 
             // Render every registered cell
-            // We catch exceptions on a cell based level (so pending cells won't
-            // cause other cells to flicker)
+            // We catch exceptions on a cell based level (so pending cells won't cause other cells to flicker)
             // non-asset exceptions will throw back to the caller and bypass EndRender()
-        for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
+        auto& cells = cellSet._pimpl->_cells;
+        const auto& worldToProj = parserContext.GetProjectionDesc()._worldToProjection;
+        for (auto i=cells.begin(); i!=cells.end(); ++i) {
+            if (CullAABB_Aligned(worldToProj, i->_aabbMin, i->_aabbMax))
+                continue;
+
             CATCH_ASSETS_BEGIN
-                _pimpl->_renderer->Render(context, parserContext, *i);
+
+                    //  We need to look in the "_cellOverride" list first.
+                    //  The overridden cells are actually designed for tools. When authoring 
+                    //  placements, we need a way to render them before they are flushed to disk.
+                auto ovr = LowerBound(cellSet._pimpl->_cellOverrides, i->_filenameHash);
+                if (ovr != cellSet._pimpl->_cellOverrides.end() && ovr->first == i->_filenameHash) {
+                    _pimpl->_renderer->Render(context, parserContext, *ovr->second.get(), nullptr, i->_cellToWorld);
+                } else {
+                    _pimpl->_renderer->Render(context, parserContext, *i);
+                }
+
             CATCH_ASSETS_END(parserContext)
         }
 
@@ -926,11 +932,12 @@ namespace SceneEngine
         _pimpl->_renderer->EndPrepare();
 
             // Commit opaque now
-        _pimpl->_renderer->CommitPrepared(context, parserContext, techniqueIndex, 
+        _pimpl->_renderer->CommitPrepared(
+            context, parserContext, techniqueIndex, 
             RenderCore::Assets::DelayStep::OpaqueRender);
     }
 
-    void PlacementsManager::RenderTransparent(
+    void PlacementsManager::CommitTransparent(
         RenderCore::Metal::DeviceContext* context, 
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
@@ -949,11 +956,11 @@ namespace SceneEngine
         return _pimpl->_renderer->HasPrepared(delayStep);
     }
 
-    auto PlacementsManager::GetVisibleQuadTrees(const Float4x4& worldToClip) const
+    auto PlacementsManager::GetVisibleQuadTrees(const PlacementCellSet& cellSet, const Float4x4& worldToClip) const
             -> std::vector<std::pair<Float3x4, const PlacementsQuadTree*>>
     {
         std::vector<std::pair<Float3x4, const PlacementsQuadTree*>> result;
-        for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
+        for (auto i=cellSet._pimpl->_cells.begin(); i!=cellSet._pimpl->_cells.end(); ++i) {
             if (!CullAABB(worldToClip, i->_aabbMin, i->_aabbMax)) {
                 auto* tree = _pimpl->_renderer->GetCachedQuadTree(i->_filenameHash);
                 result.push_back(std::make_pair(i->_cellToWorld, tree));
@@ -962,11 +969,11 @@ namespace SceneEngine
         return std::move(result);
     }
 
-    auto PlacementsManager::GetObjectBoundingBoxes(const Float4x4& worldToClip) const
+    auto PlacementsManager::GetObjectBoundingBoxes(const PlacementCellSet& cellSet, const Float4x4& worldToClip) const
             -> std::vector<std::pair<Float3x4, ObjectBoundingBoxes>>
     {
         std::vector<std::pair<Float3x4, ObjectBoundingBoxes>> result;
-        for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
+        for (auto i=cellSet._pimpl->_cells.begin(); i!=cellSet._pimpl->_cells.end(); ++i) {
             if (!CullAABB(worldToClip, i->_aabbMin, i->_aabbMax)) {
                 auto& placements = Assets::GetAsset<Placements>(i->_filename);
                 ObjectBoundingBoxes obb;
@@ -984,19 +991,9 @@ namespace SceneEngine
         return _pimpl->_renderer;
     }
 
-    std::shared_ptr<PlacementsEditor> PlacementsManager::CreateEditor(bool visible)
+    std::shared_ptr<PlacementsEditor> PlacementsManager::CreateEditor(const std::shared_ptr<PlacementCellSet>& cellSet)
     {
-            // Create a new editor, and register all cells with in.
-            // What happens if new cells are created? They must be registered with
-            // all editors, also...!
-        auto editor = std::make_shared<PlacementsEditor>(
-            _pimpl->_placementsCache, _pimpl->_modelCache, visible ? _pimpl->_renderer : nullptr);
-        for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
-            editor->RegisterCell(
-                *i,
-                Truncate(i->_aabbMin), Truncate(i->_aabbMax));
-        }
-        return editor;
+        return std::make_shared<PlacementsEditor>(cellSet, _pimpl->_placementsCache, _pimpl->_modelCache);
     }
 
     void PlacementsManager::SetImposters(std::shared_ptr<DynamicImposters> imposters)
@@ -1004,40 +1001,58 @@ namespace SceneEngine
         _pimpl->_renderer->SetImposters(std::move(imposters));
     }
 
-    PlacementsManager::PlacementsManager(
-        const WorldPlacementsConfig& cfg,
-        std::shared_ptr<ModelCache> modelCache,
-        const Float3& worldOffset)
+    PlacementsManager::PlacementsManager(std::shared_ptr<ModelCache> modelCache)
     {
             //  Using the given config file, let's construct the list of 
             //  placement cells
-        auto pimpl = std::make_unique<Pimpl>();
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_placementsCache = std::make_shared<PlacementsCache>();
+        _pimpl->_modelCache = modelCache;
+        _pimpl->_renderer = std::make_shared<PlacementsRenderer>(_pimpl->_placementsCache, std::move(modelCache));
+    }
 
-        pimpl->_cells.reserve(cfg._cells.size());
+    PlacementsManager::~PlacementsManager() {}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void PlacementCellSet::Pimpl::SetOverride(uint64 guid, std::shared_ptr<Placements> placements)
+    {
+        auto i = LowerBound(_cellOverrides, guid);
+        if (i ==_cellOverrides.end() || i->first != guid) {
+            if (placements) {
+                _cellOverrides.insert(i, std::make_pair(guid, std::move(placements)));
+            }
+        } else {
+            if (placements) {
+                i->second = std::move(placements); // override the previous one
+            } else {
+                _cellOverrides.erase(i);
+            }
+        }
+    }
+    
+    PlacementCellSet::PlacementCellSet(const WorldPlacementsConfig& cfg, const Float3& worldOffset)
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_cells.reserve(cfg._cells.size());
         for (auto c=cfg._cells.cbegin(); c!=cfg._cells.cend(); ++c) {
             PlacementCell cell;
             XlCopyString(cell._filename, c->_file);
             cell._filenameHash = Hash64(cell._filename);
             cell._cellToWorld = AsFloat3x4(worldOffset + c->_offset);
 
-                // note -- we could shrink wrap this bounding box around th objects
+                // note -- we could shrink wrap this bounding box around the objects
                 //      inside. This might be necessary, actually, because some objects
                 //      may be straddling the edges of the area, so the cell bounding box
                 //      should be slightly larger.
             cell._aabbMin = c->_offset + c->_mins;
             cell._aabbMax = c->_offset + c->_maxs;
 
-            pimpl->_cells.push_back(cell);
+            _pimpl->_cells.push_back(cell);
         }
-
-        pimpl->_placementsCache = std::make_shared<PlacementsCache>();
-        pimpl->_modelCache = modelCache;
-        pimpl->_renderer = std::make_shared<PlacementsRenderer>(pimpl->_placementsCache, std::move(modelCache));
-        _pimpl = std::move(pimpl);
     }
 
-    PlacementsManager::~PlacementsManager() {}
+    PlacementCellSet::~PlacementCellSet() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1165,72 +1180,64 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    struct CompareFilenameHash
+    {
+    public:
+        bool operator()(const PlacementCell& lhs, const PlacementCell& rhs) const   { return lhs._filenameHash < rhs._filenameHash; }
+        bool operator()(const PlacementCell& lhs, uint64 rhs) const                 { return lhs._filenameHash < rhs; }
+        bool operator()(uint64 lhs, const PlacementCell& rhs) const                 { return lhs < rhs._filenameHash; }
+    };
+
     class PlacementsEditor::Pimpl
     {
     public:
-        class RegisteredCell : public PlacementCell
-        {
-        public:
-            Float2 _mins;
-            Float2 _maxs;
-
-            struct CompareHash
-            {
-            public:
-                bool operator()(const RegisteredCell& lhs, const RegisteredCell& rhs) const { return lhs._filenameHash < rhs._filenameHash; }
-                bool operator()(const RegisteredCell& lhs, uint64 rhs) const { return lhs._filenameHash < rhs; }
-                bool operator()(uint64 lhs, const RegisteredCell& rhs) const { return lhs < rhs._filenameHash; }
-            };
-        };
-        std::vector<RegisteredCell> _cells;
         std::vector<std::pair<uint64, std::shared_ptr<DynamicPlacements>>> _dynPlacements;
 
-        std::shared_ptr<PlacementsRenderer> _renderer;
-        std::shared_ptr<PlacementsCache> _placementsCache;
-        std::shared_ptr<ModelCache> _modelCache;
+        std::shared_ptr<PlacementsCache>    _placementsCache;
+        std::shared_ptr<ModelCache>         _modelCache;
+        std::shared_ptr<PlacementCellSet>   _cellSet;
 
-        std::shared_ptr<DynamicPlacements> GetDynPlacements(uint64 cellGuid);
-        const Placements* GetPlacements(uint64 cellGuid);
-        Float3x4 GetCellToWorld(uint64 cellGuid);
-        const ResChar* GetCellName(uint64 cellGuid);
+        std::shared_ptr<DynamicPlacements>  GetDynPlacements(uint64 cellGuid);
+        const Placements*                   GetPlacements(uint64 cellGuid);
+        Float3x4                            GetCellToWorld(uint64 cellGuid);
+        const ResChar*                      GetCellName(uint64 cellGuid);
 
         ::Assets::AssetState TryGetBoundingBox(
-            Placements::BoundingBox& result, const ResChar modelFilename[], unsigned LOD = 0, bool stallWhilePending = false) const;
+            Placements::BoundingBox& result, const ResChar modelFilename[],
+            unsigned LOD = 0, bool stallWhilePending = false) const;
 
         void Find_RayIntersection(
             std::vector<PlacementGUID>& result,
-            const RegisteredCell& cell,
+            const PlacementCell& cell,
             const std::pair<Float3, Float3>& cellSpaceRay,
             const std::function<bool(const ObjIntersectionDef&)>& predicate);
 
         void Find_FrustumIntersection(
             std::vector<PlacementGUID>& result,
-            const RegisteredCell& cell,
+            const PlacementCell& cell,
             const Float4x4& cellToProjection,
             const std::function<bool(const ObjIntersectionDef&)>& predicate);
 
         void Find_BoxIntersection(
             std::vector<PlacementGUID>& result,
-            const RegisteredCell& cell,
+            const PlacementCell& cell,
             const std::pair<Float3, Float3>& cellSpaceBB,
             const std::function<bool(const ObjIntersectionDef&)>& predicate);
     };
 
     const ResChar* PlacementsEditor::Pimpl::GetCellName(uint64 cellGuid)
     {
-        auto p = std::lower_bound(_cells.cbegin(), _cells.cend(), cellGuid, RegisteredCell::CompareHash());
-        if (p != _cells.end() && p->_filenameHash == cellGuid) {
+        auto p = std::lower_bound(_cellSet->_pimpl->_cells.cbegin(), _cellSet->_pimpl->_cells.cend(), cellGuid, CompareFilenameHash());
+        if (p != _cellSet->_pimpl->_cells.end() && p->_filenameHash == cellGuid)
             return p->_filename;
-        }
         return nullptr;
     }
 
     Float3x4 PlacementsEditor::Pimpl::GetCellToWorld(uint64 cellGuid)
     {
-        auto p = std::lower_bound(_cells.cbegin(), _cells.cend(), cellGuid, RegisteredCell::CompareHash());
-        if (p != _cells.end() && p->_filenameHash == cellGuid) {
+        auto p = std::lower_bound(_cellSet->_pimpl->_cells.cbegin(), _cellSet->_pimpl->_cells.cend(), cellGuid, CompareFilenameHash());
+        if (p != _cellSet->_pimpl->_cells.end() && p->_filenameHash == cellGuid)
             return p->_cellToWorld;
-        }
         return Identity<Float3x4>();
     }
 
@@ -1282,8 +1289,7 @@ namespace SceneEngine
 
             if (!placements)
                 placements = std::make_shared<DynamicPlacements>();
-            if (_renderer)
-				_renderer->SetOverride(cellGuid, placements);
+            _cellSet->_pimpl->SetOverride(cellGuid, placements);
             p = _dynPlacements.insert(p, std::make_pair(cellGuid, std::move(placements)));
         }
 
@@ -1291,7 +1297,8 @@ namespace SceneEngine
     }
 
     ::Assets::AssetState PlacementsEditor::Pimpl::TryGetBoundingBox(
-        Placements::BoundingBox& result, const ResChar modelFilename[], unsigned LOD, bool stallWhilePending) const
+        Placements::BoundingBox& result, const ResChar modelFilename[], 
+        unsigned LOD, bool stallWhilePending) const
     {
         auto model = _modelCache->GetModelScaffold(modelFilename);
         if (!model) return ::Assets::AssetState::Invalid;
@@ -1306,8 +1313,7 @@ namespace SceneEngine
     }
 
     void PlacementsEditor::Pimpl::Find_RayIntersection(
-        std::vector<PlacementGUID>& result,
-        const RegisteredCell& cell,
+        std::vector<PlacementGUID>& result, const PlacementCell& cell,
         const std::pair<Float3, Float3>& cellSpaceRay,
         const std::function<bool(const ObjIntersectionDef&)>& predicate)
     {
@@ -1357,7 +1363,7 @@ namespace SceneEngine
 
     void PlacementsEditor::Pimpl::Find_FrustumIntersection(
         std::vector<PlacementGUID>& result,
-        const RegisteredCell& cell,
+        const PlacementCell& cell,
         const Float4x4& cellToProjection,
         const std::function<bool(const ObjIntersectionDef&)>& predicate)
     {
@@ -1406,7 +1412,7 @@ namespace SceneEngine
 
     void PlacementsEditor::Pimpl::Find_BoxIntersection(
         std::vector<PlacementGUID>& result,
-        const RegisteredCell& cell,
+        const PlacementCell& cell,
         const std::pair<Float3, Float3>& cellSpaceBB,
         const std::function<bool(const ObjIntersectionDef&)>& predicate)
     {
@@ -1458,12 +1464,11 @@ namespace SceneEngine
     {
         std::vector<PlacementGUID> result;
         const float placementAssumedMaxRadius = 100.f;
-        for (auto i=_pimpl->_cells.cbegin(); i!=_pimpl->_cells.cend(); ++i) {
+        for (auto i=_pimpl->_cellSet->_pimpl->_cells.cbegin(); i!=_pimpl->_cellSet->_pimpl->_cells.cend(); ++i) {
             Float3 cellMin = i->_aabbMin - Float3(placementAssumedMaxRadius, placementAssumedMaxRadius, placementAssumedMaxRadius);
             Float3 cellMax = i->_aabbMax + Float3(placementAssumedMaxRadius, placementAssumedMaxRadius, placementAssumedMaxRadius);
-            if (!RayVsAABB(std::make_pair(rayStart, rayEnd), cellMin, cellMax)) {
+            if (!RayVsAABB(std::make_pair(rayStart, rayEnd), cellMin, cellMax))
                 continue;
-            }
 
                 // We need to suppress any exception that occurs (we can get invalid/pending assets here)
                 // \todo -- we need to prepare all shaders and assets required here. It's better to stall
@@ -1490,7 +1495,7 @@ namespace SceneEngine
     {
         std::vector<PlacementGUID> result;
         const float placementAssumedMaxRadius = 100.f;
-        for (auto i=_pimpl->_cells.cbegin(); i!=_pimpl->_cells.cend(); ++i) {
+        for (auto i=_pimpl->_cellSet->_pimpl->_cells.cbegin(); i!=_pimpl->_cellSet->_pimpl->_cells.cend(); ++i) {
             Float3 cellMin = i->_aabbMin - Float3(placementAssumedMaxRadius, placementAssumedMaxRadius, placementAssumedMaxRadius);
             Float3 cellMax = i->_aabbMax + Float3(placementAssumedMaxRadius, placementAssumedMaxRadius, placementAssumedMaxRadius);
             if (CullAABB(worldToProjection, cellMin, cellMax)) {
@@ -1524,7 +1529,7 @@ namespace SceneEngine
         std::vector<PlacementGUID> result;
 
         const float placementAssumedMaxRadius = 100.f;
-        for (auto i=_pimpl->_cells.cbegin(); i!=_pimpl->_cells.cend(); ++i) {
+        for (auto i=_pimpl->_cellSet->_pimpl->_cells.cbegin(); i!=_pimpl->_cellSet->_pimpl->_cells.cend(); ++i) {
             if (    worldSpaceMaxs[0] < (i->_aabbMin[0] - placementAssumedMaxRadius)
                 ||  worldSpaceMaxs[1] < (i->_aabbMin[1] - placementAssumedMaxRadius)
                 ||  worldSpaceMins[0] > (i->_aabbMax[0] + placementAssumedMaxRadius)
@@ -1773,9 +1778,10 @@ namespace SceneEngine
         PlacementGUID guid(0, 0);
         PlacementsTransform localToCell = Identity<PlacementsTransform>();
 
-        for (auto i=_editorPimpl->_cells.cbegin(); i!=_editorPimpl->_cells.cend(); ++i) {
-            if (    worldSpaceCenter[0] >= i->_mins[0] && worldSpaceCenter[0] < i->_maxs[0]
-                &&  worldSpaceCenter[1] >= i->_mins[1] && worldSpaceCenter[1] < i->_maxs[1]) {
+        auto& cells = _editorPimpl->_cellSet->_pimpl->_cells;
+        for (auto i=cells.cbegin(); i!=cells.cend(); ++i) {
+            if (    worldSpaceCenter[0] >= i->_captureMins[0] && worldSpaceCenter[0] < i->_captureMaxs[0]
+                &&  worldSpaceCenter[1] >= i->_captureMins[1] && worldSpaceCenter[1] < i->_captureMaxs[1]) {
                 
                     // This is the correct cell. Look for a dynamic placement associated
                 auto dynPlacements = _editorPimpl->GetDynPlacements(i->_filenameHash);
@@ -1845,7 +1851,8 @@ namespace SceneEngine
         PlacementsTransform localToCell = Identity<PlacementsTransform>();
         bool foundCell = false;
 
-        for (auto i=_editorPimpl->_cells.cbegin(); i!=_editorPimpl->_cells.cend(); ++i) {
+        auto& cells = _editorPimpl->_cellSet->_pimpl->_cells;
+        for (auto i=cells.cbegin(); i!=cells.cend(); ++i) {
             if (i->_filenameHash == guid.first) {
                 auto dynPlacements = _editorPimpl->GetDynPlacements(i->_filenameHash);
                 localToCell = Combine(newState._localToWorld, InvertOrthonormalTransform(i->_cellToWorld));
@@ -2011,13 +2018,14 @@ namespace SceneEngine
         std::sort(guids.begin(), guids.end(), CompareGUID);
 
         std::vector<ObjTransDef> originalState;
-        auto cellIterator = editorPimpl->_cells.begin();
+        auto& cells = editorPimpl->_cellSet->_pimpl->_cells;
+        auto cellIterator = cells.begin();
         for (auto i=guids.begin(); i!=guids.end();) {
             auto iend = std::find_if(i, guids.end(), 
                 [&](const PlacementGUID& guid) { return guid.first != i->first; });
 
-            cellIterator = std::lower_bound(cellIterator, editorPimpl->_cells.end(), i->first, PlacementsEditor::Pimpl::RegisteredCell::CompareHash());
-            if (cellIterator == editorPimpl->_cells.end() || cellIterator->_filenameHash != i->first) {
+            cellIterator = std::lower_bound(cellIterator, cells.end(), i->first, CompareFilenameHash());
+            if (cellIterator == cells.end() || cellIterator->_filenameHash != i->first) {
                 i = guids.erase(i, iend);
                 continue;
             }
@@ -2107,22 +2115,7 @@ namespace SceneEngine
         }
     }
 
-    void PlacementsEditor::RegisterCell(
-        const PlacementCell& cell,
-        const Float2& mins, const Float2& maxs)
-    {
-        auto i = std::lower_bound(_pimpl->_cells.begin(), _pimpl->_cells.end(), cell._filenameHash, Pimpl::RegisteredCell::CompareHash());
-        assert(i == _pimpl->_cells.end() || i->_filenameHash != cell._filenameHash);
-
-        Pimpl::RegisteredCell newCell;
-        *(PlacementCell*)&newCell = cell;
-        newCell._mins = mins;
-        newCell._maxs = maxs;
-        _pimpl->_cells.insert(i, newCell);
-    }
-
     uint64 PlacementsEditor::CreateCell(
-        PlacementsManager& manager,
         const ::Assets::ResChar name[],
         const Float2& mins, const Float2& maxs)
     {
@@ -2135,17 +2128,17 @@ namespace SceneEngine
         newCell._cellToWorld = Identity<decltype(newCell._cellToWorld)>();
         newCell._aabbMin = Expand(mins, -10000.f);
         newCell._aabbMax = Expand(maxs,  10000.f);
-		const bool visible = _pimpl->_renderer != nullptr;
-        if (visible) manager._pimpl->_cells.push_back(newCell);
-        RegisterCell(newCell, mins, maxs);
+        newCell._captureMins = mins;
+        newCell._captureMaxs = maxs;
+        _pimpl->_cellSet->_pimpl->_cells.push_back(newCell);
         return newCell._filenameHash;
     }
 
     bool PlacementsEditor::RemoveCell(uint64 id)
     {
-        auto i = std::lower_bound(_pimpl->_cells.begin(), _pimpl->_cells.end(), id, Pimpl::RegisteredCell::CompareHash());
-        if (i != _pimpl->_cells.end() && i->_filenameHash == id) {
-            _pimpl->_cells.erase(i);
+        auto i = std::lower_bound(_pimpl->_cellSet->_pimpl->_cells.begin(), _pimpl->_cellSet->_pimpl->_cells.end(), id, CompareFilenameHash());
+        if (i != _pimpl->_cellSet->_pimpl->_cells.end() && i->_filenameHash == id) {
+            _pimpl->_cellSet->_pimpl->_cells.erase(i);
             return true;
         }
         return false;
@@ -2160,11 +2153,11 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext* context,
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
+        PlacementsRenderer& renderer,
         const PlacementGUID* begin, const PlacementGUID* end,
         const std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>& predicate)
     {
-		if (!_pimpl->_renderer) return;
-        _pimpl->_renderer->BeginPrepare();
+        renderer.BeginPrepare();
 
             //  We need to take a copy, so we don't overwrite
             //  and reorder the caller's version.
@@ -2172,14 +2165,14 @@ namespace SceneEngine
             std::vector<PlacementGUID> copy(begin, end);
             std::sort(copy.begin(), copy.end());
 
-            auto ci = _pimpl->_cells.begin();
+            auto ci = _pimpl->_cellSet->_pimpl->_cells.begin();
             for (auto i=copy.begin(); i!=copy.end();) {
                 auto i2 = i+1;
                 for (; i2!=copy.end() && i2->first == i->first; ++i2) {}
 
-			    while (ci != _pimpl->_cells.end() && ci->_filenameHash < i->first) { ++ci; }
+			    while (ci != _pimpl->_cellSet->_pimpl->_cells.end() && ci->_filenameHash < i->first) { ++ci; }
 
-                if (ci != _pimpl->_cells.end() && ci->_filenameHash == i->first) {
+                if (ci != _pimpl->_cellSet->_pimpl->_cells.end() && ci->_filenameHash == i->first) {
 
                         // re-write the object guids for the renderer's convenience
                     uint64* tStart = &i->first;
@@ -2187,9 +2180,12 @@ namespace SceneEngine
                     while (i < i2) { *t++ = i->second; i++; }
 
                     CATCH_ASSETS_BEGIN
-                        _pimpl->_renderer->Render(
-                            context, parserContext,
-                            *ci, tStart, t);
+                        auto ovr = LowerBound(_pimpl->_cellSet->_pimpl->_cellOverrides, ci->_filenameHash);
+                        if (ovr != _pimpl->_cellSet->_pimpl->_cellOverrides.end() && ovr->first == ci->_filenameHash) {
+                            renderer.Render(context, parserContext, *ovr->second.get(), nullptr, ci->_cellToWorld, tStart, t);
+                        } else {
+                            renderer.Render(context, parserContext, *ci, tStart, t);
+                        }
                     CATCH_ASSETS_END(parserContext)
 
                 } else {
@@ -2198,35 +2194,40 @@ namespace SceneEngine
             }
         } else {
                 // in this case we're not filtering by object GUID (though we may apply a predicate on the prepared draw calls)
-            for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
+            for (auto i=_pimpl->_cellSet->_pimpl->_cells.begin(); i!=_pimpl->_cellSet->_pimpl->_cells.end(); ++i) {
                 CATCH_ASSETS_BEGIN
-                    _pimpl->_renderer->Render(context, parserContext, *i);
+                    auto ovr = LowerBound(_pimpl->_cellSet->_pimpl->_cellOverrides, i->_filenameHash);
+                    if (ovr != _pimpl->_cellSet->_pimpl->_cellOverrides.end() && ovr->first == i->_filenameHash) {
+                        renderer.Render(context, parserContext, *ovr->second.get(), nullptr, i->_cellToWorld);
+                    } else {
+                        renderer.Render(context, parserContext, *i);
+                    }
                 CATCH_ASSETS_END(parserContext)
             }
         }
 
         if (predicate)
-            _pimpl->_renderer->FilterDrawCalls(predicate);
+            renderer.FilterDrawCalls(predicate);
 
-        _pimpl->_renderer->EndPrepare();
+        renderer.EndPrepare();
 
             // we also have to commit translucent steps. We must use the geometry from all translucent steps
         for (unsigned c=unsigned(RenderCore::Assets::DelayStep::OpaqueRender); c<unsigned(RenderCore::Assets::DelayStep::Max); ++c)
-            _pimpl->_renderer->CommitPrepared(context, parserContext, techniqueIndex, RenderCore::Assets::DelayStep(c));
+            renderer.CommitPrepared(context, parserContext, techniqueIndex, RenderCore::Assets::DelayStep(c));
     }
 
 	void PlacementsEditor::PerformGUIDFixup(PlacementGUID* begin, PlacementGUID* end) const
 	{
 		std::sort(begin, end);
 
-		auto ci = _pimpl->_cells.begin();
+		auto ci = _pimpl->_cellSet->_pimpl->_cells.begin();
 		for (auto i = begin; i != end;) {
 			auto i2 = i + 1;
 			for (; i2 != end && i2->first == i->first; ++i2) {}
 
-			while (ci != _pimpl->_cells.end() && ci->_filenameHash < i->first) { ++ci; }
+			while (ci != _pimpl->_cellSet->_pimpl->_cells.end() && ci->_filenameHash < i->first) { ++ci; }
 
-			if (ci != _pimpl->_cells.end() && ci->_filenameHash == i->first) {
+			if (ci != _pimpl->_cellSet->_pimpl->_cells.end() && ci->_filenameHash == i->first) {
 
 				// The ids will usually have their
 				// top 32 bit zeroed out. We must fix them by finding the match placements
@@ -2305,8 +2306,7 @@ namespace SceneEngine
             SavePlacements(cellName, placements);
 
                 // clear the renderer links
-            if (_pimpl->_renderer)
-				_pimpl->_renderer->SetOverride(cellGuid, nullptr);
+            _pimpl->_cellSet->_pimpl->SetOverride(cellGuid, nullptr);
         }
 
         _pimpl->_dynPlacements.clear();
@@ -2385,15 +2385,14 @@ namespace SceneEngine
     }
 
     PlacementsEditor::PlacementsEditor(
+        std::shared_ptr<PlacementCellSet> cellSet,
         std::shared_ptr<PlacementsCache> placementsCache,
-        std::shared_ptr<ModelCache> modelCache,
-        std::shared_ptr<PlacementsRenderer> renderer)
+        std::shared_ptr<ModelCache> modelCache)
     {
-        auto pimpl = std::make_unique<Pimpl>();
-        pimpl->_renderer = std::move(renderer);
-        pimpl->_placementsCache = std::move(placementsCache);
-        pimpl->_modelCache = std::move(modelCache);
-        _pimpl = std::move(pimpl);
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_cellSet = std::move(cellSet);
+        _pimpl->_placementsCache = std::move(placementsCache);
+        _pimpl->_modelCache = std::move(modelCache);
     }
 
     PlacementsEditor::~PlacementsEditor()

@@ -45,6 +45,21 @@ namespace SceneEngine
     class PlacementsQuadTree;
     class DynamicImposters;
 
+    /// <summary>A collection of cells that can be rendered or edited</summary>
+    /// 
+    class PlacementCellSet
+    {
+    public:
+        PlacementCellSet(const WorldPlacementsConfig& cfg, const Float3& worldOffset);
+        ~PlacementCellSet();
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+        friend class PlacementsManager;
+        friend class PlacementsEditor;
+        friend class Transaction;
+    };
+
     /// <summary>Manages stream and organization of object placements</summary>
     /// In this context, placements are static objects placed in the world. Most
     /// scenes will have a large number of essentially static objects. This object
@@ -55,29 +70,27 @@ namespace SceneEngine
         void Render(
             RenderCore::Metal::DeviceContext* context,
             RenderCore::Techniques::ParsingContext& parserContext,
-            unsigned techniqueIndex);
-        void RenderTransparent(
+            unsigned techniqueIndex,
+            const PlacementCellSet& cellSet);
+        void CommitTransparent(
             RenderCore::Metal::DeviceContext* context,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep);
         bool HasPrepared(RenderCore::Assets::DelayStep delayStep);
 
-        auto GetVisibleQuadTrees(const Float4x4& worldToClip) const
+        auto GetVisibleQuadTrees(const PlacementCellSet& cellSet, const Float4x4& worldToClip) const
             -> std::vector<std::pair<Float3x4, const PlacementsQuadTree*>>;
 
         struct ObjectBoundingBoxes { const std::pair<Float3, Float3> * _boundingBox; unsigned _stride; unsigned _count; };
-        auto GetObjectBoundingBoxes(const Float4x4& worldToClip) const
+        auto GetObjectBoundingBoxes(const PlacementCellSet& cellSet, const Float4x4& worldToClip) const
             -> std::vector<std::pair<Float3x4, ObjectBoundingBoxes>>;
 
         std::shared_ptr<PlacementsRenderer> GetRenderer();
-        std::shared_ptr<PlacementsEditor> CreateEditor(bool visible = true);
+        std::shared_ptr<PlacementsEditor> CreateEditor(const std::shared_ptr<PlacementCellSet>& cellSet);
 
         void SetImposters(std::shared_ptr<DynamicImposters> imposters);
 
-        PlacementsManager(
-            const WorldPlacementsConfig& cfg,
-            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache,
-            const Float3& worldOffset);
+        PlacementsManager(std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
         ~PlacementsManager();
     protected:
         class Pimpl;
@@ -170,20 +183,14 @@ namespace SceneEngine
             RenderCore::Metal::DeviceContext* context,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
+            PlacementsRenderer& renderer,
             const PlacementGUID* begin, const PlacementGUID* end,
             const DrawCallPredicate& predicate = DrawCallPredicate(nullptr));
 
-        void RegisterCell(
-            const PlacementCell& cell,
-            const Float2& mins, const Float2& maxs);
-
-        uint64 CreateCell(
-            PlacementsManager& manager,
-            const ::Assets::ResChar name[],
-            const Float2& mins, const Float2& maxs);
-        bool RemoveCell(uint64 id);
+        uint64  CreateCell(const ::Assets::ResChar name[], const Float2& mins, const Float2& maxs);
+        bool    RemoveCell(uint64 id);
         static uint64 GenerateObjectGUID();
-		void PerformGUIDFixup(PlacementGUID* begin, PlacementGUID* end) const;
+        void    PerformGUIDFixup(PlacementGUID* begin, PlacementGUID* end) const;
 
         std::pair<Float3, Float3> CalculateCellBoundary(uint64 cellId) const;
 
@@ -194,9 +201,9 @@ namespace SceneEngine
         std::pair<Float3, Float3> GetModelBoundingBox(const Assets::ResChar modelName[]) const;
 
         PlacementsEditor(
+            std::shared_ptr<PlacementCellSet> cellSet,
             std::shared_ptr<PlacementsCache> placementsCache, 
-            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache,
-            std::shared_ptr<PlacementsRenderer> renderer);
+            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
         ~PlacementsEditor();
     protected:
         class Pimpl;

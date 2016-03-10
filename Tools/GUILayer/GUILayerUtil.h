@@ -17,6 +17,7 @@ namespace SceneEngine
     class IntersectionTestScene; 
     class TerrainManager;
     class PlacementsEditor;
+    class PlacementsRenderer;
     class IIntersectionTester;
 }
 
@@ -60,6 +61,7 @@ namespace GUILayer
         IntersectionTestSceneWrapper(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
             std::shared_ptr<SceneEngine::PlacementsEditor> placements,
+            std::shared_ptr<SceneEngine::PlacementsRenderer> renderer,
             std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionTester>> extraTesters);
         ~IntersectionTestSceneWrapper();
         !IntersectionTestSceneWrapper();
@@ -76,6 +78,16 @@ namespace GUILayer
         !PlacementsEditorWrapper();
 	};
 
+    public ref class PlacementsRendererWrapper
+	{
+	public:
+		clix::shared_ptr<SceneEngine::PlacementsRenderer> _renderer;
+
+		SceneEngine::PlacementsRenderer& GetNative();
+		PlacementsRendererWrapper(std::shared_ptr<SceneEngine::PlacementsRenderer> scene);
+        ~PlacementsRendererWrapper();
+        !PlacementsRendererWrapper();
+	};
 
     public interface class IStep
     {

@@ -45,9 +45,11 @@ namespace ToolsRig
                                 SceneEngine::LightingParserContext& parserContext);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
-        PlacementsWidgets(  std::shared_ptr<SceneEngine::PlacementsEditor> editor, 
-                            std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
-                            std::shared_ptr<SceneEngine::IntersectionTestScene> intersectionTestScene);
+        PlacementsWidgets(
+            std::shared_ptr<SceneEngine::PlacementsEditor> editor, 
+            std::shared_ptr<SceneEngine::PlacementsRenderer> renderer, 
+            std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
+            std::shared_ptr<SceneEngine::IntersectionTestScene> intersectionTestScene);
         ~PlacementsWidgets();
 
     private:
@@ -96,11 +98,13 @@ namespace ToolsRig
 
         SelectAndEdit(
             IPlacementManipulatorSettings* manInterface,
-            std::shared_ptr<SceneEngine::PlacementsEditor> editor);
+            std::shared_ptr<SceneEngine::PlacementsEditor> editor,
+            std::shared_ptr<SceneEngine::PlacementsRenderer> renderer);
         ~SelectAndEdit();
 
     protected:
-        std::shared_ptr<SceneEngine::PlacementsEditor>  _editor;
+        std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
+        std::shared_ptr<SceneEngine::PlacementsRenderer> _renderer;
                   
         class SubOperation
         {
@@ -500,7 +504,7 @@ namespace ToolsRig
                 //  likely get the most efficient results by rendering
                 //  all of objects that require highlights in one go.
             Placements_RenderHighlight(
-                context, parserContext, _editor.get(),
+                context, parserContext, *_editor, *_renderer,
                 AsPointer(activeSelection.begin()), AsPointer(activeSelection.end()));
         }
     }
@@ -564,10 +568,12 @@ namespace ToolsRig
 
     SelectAndEdit::SelectAndEdit(
         IPlacementManipulatorSettings* manInterface,
-        std::shared_ptr<SceneEngine::PlacementsEditor> editor)
+        std::shared_ptr<SceneEngine::PlacementsEditor> editor,
+        std::shared_ptr<SceneEngine::PlacementsRenderer> renderer)
     {
         _manInterface = manInterface;
         _editor = editor;
+        _renderer = renderer;
         _anchorPoint = Float3(0.f, 0.f, 0.f);
     }
 
@@ -596,13 +602,15 @@ namespace ToolsRig
 
         PlaceSingle(
             IPlacementManipulatorSettings* manInterface,
-            std::shared_ptr<SceneEngine::PlacementsEditor> editor);
+            std::shared_ptr<SceneEngine::PlacementsEditor> editor,
+            std::shared_ptr<SceneEngine::PlacementsRenderer> renderer);
         ~PlaceSingle();
 
     protected:
         Millisecond                     _placeTimeout;
-        IPlacementManipulatorSettings* _manInterface;
+        IPlacementManipulatorSettings*  _manInterface;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
+        std::shared_ptr<SceneEngine::PlacementsRenderer> _renderer;
         unsigned                        _rendersSinceHitTest;
 
         bool        _doRandomRotation;
@@ -712,7 +720,7 @@ namespace ToolsRig
             }
 
             Placements_RenderHighlight(
-                context, parserContext, _editor.get(),
+                context, parserContext, *_editor, *_renderer,
                 AsPointer(objects.begin()), AsPointer(objects.end()));
         }
     }
@@ -742,11 +750,13 @@ namespace ToolsRig
 
     PlaceSingle::PlaceSingle(
         IPlacementManipulatorSettings* manInterface,
-        std::shared_ptr<SceneEngine::PlacementsEditor> editor)
+        std::shared_ptr<SceneEngine::PlacementsEditor> editor,
+        std::shared_ptr<SceneEngine::PlacementsRenderer> renderer)
     {
         _placeTimeout = 0;
         _manInterface = manInterface;
         _editor = std::move(editor);
+        _renderer = std::move(renderer);
         _rendersSinceHitTest = 0;
         _doRandomRotation = true;
         _placementRotation = 0.f;
@@ -1279,11 +1289,12 @@ namespace ToolsRig
 
     std::vector<std::unique_ptr<IManipulator>> CreatePlacementManipulators(
         IPlacementManipulatorSettings* context,
-        std::shared_ptr<SceneEngine::PlacementsEditor> editor)
+        std::shared_ptr<SceneEngine::PlacementsEditor> editor,
+        std::shared_ptr<SceneEngine::PlacementsRenderer> renderer)
     {
         std::vector<std::unique_ptr<IManipulator>> result;
-        result.push_back(std::make_unique<SelectAndEdit>(context, editor));
-        result.push_back(std::make_unique<PlaceSingle>(context, editor));
+        result.push_back(std::make_unique<SelectAndEdit>(context, editor, renderer));
+        result.push_back(std::make_unique<PlaceSingle>(context, editor, renderer));
         result.push_back(std::make_unique<ScatterPlacements>(context, editor));
         return result;
     }
@@ -1516,6 +1527,7 @@ namespace ToolsRig
 
     PlacementsWidgets::PlacementsWidgets(
         std::shared_ptr<SceneEngine::PlacementsEditor> editor, 
+        std::shared_ptr<SceneEngine::PlacementsRenderer> renderer, 
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
         std::shared_ptr<SceneEngine::IntersectionTestScene> intersectionTestScene)
     {
@@ -1526,7 +1538,7 @@ namespace ToolsRig
 
         std::string selectedModel = "game\\model\\nature\\lupinus\\lupinusb.DAE";
 
-        auto manipulators = CreatePlacementManipulators(this, editor);
+        auto manipulators = CreatePlacementManipulators(this, editor, renderer);
         manipulators[0]->SetActivationState(true);
 
         _editor = std::move(editor);
@@ -1577,18 +1589,20 @@ namespace ToolsRig
 
     PlacementsManipulatorsManager::PlacementsManipulatorsManager(
         std::shared_ptr<SceneEngine::PlacementsManager> placementsManager,
+        std::shared_ptr<SceneEngine::PlacementCellSet> placementCellSet,
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext)
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_screens = std::make_shared<DebugScreensSystem>();
         pimpl->_placementsManager = std::move(placementsManager);
-        pimpl->_editor = pimpl->_placementsManager->CreateEditor();
+        pimpl->_editor = pimpl->_placementsManager->CreateEditor(placementCellSet);
         pimpl->_intersectionTestContext = std::move(intersectionContext);
         pimpl->_intersectionTestScene = std::make_shared<SceneEngine::IntersectionTestScene>(
-            terrainManager, pimpl->_editor);
+            terrainManager, pimpl->_editor, pimpl->_placementsManager->GetRenderer());
         pimpl->_placementsDispl = std::make_shared<PlacementsWidgets>(
-            pimpl->_editor, pimpl->_intersectionTestContext, pimpl->_intersectionTestScene);
+            pimpl->_editor, placementsManager->GetRenderer(),
+            pimpl->_intersectionTestContext, pimpl->_intersectionTestScene);
         pimpl->_screens->Register(pimpl->_placementsDispl, "Placements", DebugScreensSystem::SystemDisplay);
         _pimpl = std::move(pimpl);
     }

@@ -15,11 +15,12 @@ namespace Sample
     public:
         PlacementsManipulators(
             std::shared_ptr<SceneEngine::PlacementsManager> placementsManager,
+            std::shared_ptr<SceneEngine::PlacementCellSet> placementsCell,
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
             std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext)
         {
             _placementsManipulators = std::make_shared<::ToolsRig::PlacementsManipulatorsManager>(
-                placementsManager, terrainManager, intersectionContext);
+                placementsManager, placementsCell, terrainManager, intersectionContext);
         }
 
         std::shared_ptr<IInputListener> GetInputListener()
@@ -49,11 +50,13 @@ namespace Sample
 
     std::shared_ptr<PlatformRig::IOverlaySystem> CreatePlacementsEditorOverlaySystem(
         std::shared_ptr<SceneEngine::PlacementsManager> placementsManager,
+        std::shared_ptr<SceneEngine::PlacementCellSet> placementsCell,
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext)
     {
         return std::make_shared<PlacementsManipulators>(
-            std::move(placementsManager), std::move(terrainManager), std::move(intersectionContext));
+            std::move(placementsManager), std::move(placementsCell),
+            std::move(terrainManager), std::move(intersectionContext));
     }
 }
 

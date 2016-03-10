@@ -19,9 +19,11 @@ namespace SceneEngine
 {
     class TerrainManager;
     class PlacementsManager;
+    class PlacementsRenderer;
     class IntersectionTestContext;
     class LightingParserContext;
     class PlacementsEditor;
+    class PlacementCellSet;
     typedef std::pair<uint64, uint64> PlacementGUID;
     class IntersectionTestScene;
 }
@@ -47,6 +49,7 @@ namespace ToolsRig
 
         PlacementsManipulatorsManager(
             std::shared_ptr<SceneEngine::PlacementsManager> placementsManager,
+            std::shared_ptr<SceneEngine::PlacementCellSet> placementCellSet,
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
             std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext);
         ~PlacementsManipulatorsManager();
@@ -73,7 +76,8 @@ namespace ToolsRig
 
     std::vector<std::unique_ptr<IManipulator>> CreatePlacementManipulators(
         IPlacementManipulatorSettings* context,
-        std::shared_ptr<SceneEngine::PlacementsEditor> editor);
+        std::shared_ptr<SceneEngine::PlacementsEditor> editor,
+        std::shared_ptr<SceneEngine::PlacementsRenderer> renderer);
 
     void CalculateScatterOperation(
         std::vector<SceneEngine::PlacementGUID>& _toBeDeleted,

@@ -63,9 +63,10 @@ namespace GUILayer
     IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
         std::shared_ptr<SceneEngine::PlacementsEditor> placements,
+        std::shared_ptr<SceneEngine::PlacementsRenderer> renderer,
         std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionTester>> extraTesters)
     {
-		_scene = std::make_shared<SceneEngine::IntersectionTestScene>(terrainManager, placements, extraTesters);
+		_scene = std::make_shared<SceneEngine::IntersectionTestScene>(terrainManager, placements, renderer, extraTesters);
     }
 
     IntersectionTestSceneWrapper::~IntersectionTestSceneWrapper()
@@ -82,6 +83,8 @@ namespace GUILayer
 	{
 		return *_scene.get();
 	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     PlacementsEditorWrapper::PlacementsEditorWrapper(
 		std::shared_ptr<SceneEngine::PlacementsEditor> scene)
@@ -103,6 +106,30 @@ namespace GUILayer
 	{
 		return *_editor.get();
 	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    PlacementsRendererWrapper::PlacementsRendererWrapper(
+		std::shared_ptr<SceneEngine::PlacementsRenderer> scene)
+	{
+		_renderer = std::move(scene);
+	}
+
+    PlacementsRendererWrapper::~PlacementsRendererWrapper()
+    {
+        _renderer.reset();
+    }
+
+    PlacementsRendererWrapper::!PlacementsRendererWrapper()
+    {
+        System::Diagnostics::Debug::Assert(false, "PlacementsEditorWrapper finalizer used");
+    }
+
+	SceneEngine::PlacementsRenderer& PlacementsRendererWrapper::GetNative()
+	{
+		return *_renderer.get();
+	}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

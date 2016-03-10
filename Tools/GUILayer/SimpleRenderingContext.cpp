@@ -303,6 +303,7 @@ namespace GUILayer
         static void RenderHighlight(
             SimpleRenderingContext^ context,
             PlacementsEditorWrapper^ placements,
+            PlacementsRendererWrapper^ renderer,
             ObjectSet^ highlight, uint64 materialGuid)
         {
             if (highlight == nullptr) {
@@ -311,7 +312,9 @@ namespace GUILayer
                     ToolsRig::BinaryHighlight highlight(metalContext);
                     ToolsRig::Placements_RenderFiltered(
                         metalContext, 
-                        context->GetParsingContext(), &placements->GetNative(), nullptr, nullptr, materialGuid);
+                        context->GetParsingContext(), 
+                        placements->GetNative(), renderer->GetNative(),
+                        nullptr, nullptr, materialGuid);
 
                     const Float3 highlightCol(.75f, .8f, 0.4f);
                     const unsigned overlayCol = 2;
@@ -323,7 +326,8 @@ namespace GUILayer
                 if (highlight->IsEmpty()) return;
 
                 ToolsRig::Placements_RenderHighlight(
-                    context->GetThreadContext(), context->GetParsingContext(), &placements->GetNative(),
+                    context->GetThreadContext(), context->GetParsingContext(), 
+                    placements->GetNative(), renderer->GetNative(),
                     (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cbegin()),
                     (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cend()),
                     materialGuid);
