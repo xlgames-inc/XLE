@@ -1061,12 +1061,6 @@ namespace SceneEngine
         DynamicPlacements();
     };
 
-    uint64 BuildGuid64()
-    {
-        static std::mt19937_64 generator(std::random_device().operator()());
-        return generator();
-    }
-
     static uint32 BuildGuid32()
     {
         static std::mt19937 generator(std::random_device().operator()());

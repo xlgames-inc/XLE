@@ -17,10 +17,9 @@
 
 namespace SceneEngine
 {
-
-    void DrawBasisAxes(RenderCore::Metal::DeviceContext* context, const SceneEngine::LightingParserContext& parserContext, const Float3& offset)
+    void DrawBasisAxes(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext, const Float3& offset)
     {
-        TRY {
+        CATCH_ASSETS_BEGIN
 
                 //
                 //      Draw world space X, Y, Z axes (to make it easier to see what's going on)
@@ -77,9 +76,7 @@ namespace SceneEngine
             context->Bind(Topology::LineList);
             context->Draw(dimof(vertices));
 
-        } CATCH(const std::exception&) {
-        } CATCH_END
+        CATCH_ASSETS_END(parserContext)
     }
-
-
 }
+

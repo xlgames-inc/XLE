@@ -12,6 +12,6 @@
 namespace SceneEngine
 {
     class LightingParserContext;
-    void DrawBasisAxes(RenderCore::Metal::DeviceContext* context, const LightingParserContext& parserContext, const Float3& offset = Float3(0,0,0));
+    void DrawBasisAxes(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, const Float3& offset = Float3(0,0,0));
 }
 

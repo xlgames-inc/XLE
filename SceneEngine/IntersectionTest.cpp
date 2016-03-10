@@ -182,8 +182,9 @@ namespace SceneEngine
                             result._modelName = trans->GetObject(c)._model;
                         }
                     }
-                } CATCH(...) {
-                } CATCH_END
+                }
+                CATCH(const ::Assets::Exceptions::AssetException&) {} 
+                CATCH_END
 
                 trans->Cancel();
             }
@@ -192,7 +193,6 @@ namespace SceneEngine
         unsigned firstExtraBit = IntegerLog2(uint32(Type::Extra));
         for (size_t c=0; c<_extraTesters.size(); ++c) {
             if (!(filter & 1<<uint32(c+firstExtraBit))) continue;
-
             TRY
             {
                 auto res = _extraTesters[c]->FirstRayIntersection(context, worldSpaceRay);
@@ -200,8 +200,9 @@ namespace SceneEngine
                     result = res;
                     result._type = (Type::Enum)(1<<uint32(c+firstExtraBit));
                 }
-            } CATCH(...) {
-            } CATCH_END
+            } 
+            CATCH(const ::Assets::Exceptions::AssetException&) {} 
+            CATCH_END
         }
 
         return result;
@@ -269,8 +270,9 @@ namespace SceneEngine
                             result.push_back(r);
                         }
                     }
-                } CATCH(...) {
-                } CATCH_END
+                } 
+                CATCH(const ::Assets::Exceptions::AssetException&) {} 
+                CATCH_END
 
                 trans->Cancel();
             }
