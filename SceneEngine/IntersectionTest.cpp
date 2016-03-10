@@ -73,7 +73,7 @@ namespace SceneEngine
 
     static std::vector<ModelIntersectionStateContext::ResultEntry> PlacementsIntersection(
         RenderCore::Metal::DeviceContext& metalContext, ModelIntersectionStateContext& stateContext,
-        SceneEngine::PlacementsEditor& placementsEditor, SceneEngine::PlacementsRenderer& placementsRenderer,
+        SceneEngine::PlacementsRenderer& placementsRenderer, SceneEngine::PlacementCellSet& cellSet,
         SceneEngine::PlacementGUID object)
     {
             // Using the GPU, look for intersections between the ray
@@ -89,9 +89,9 @@ namespace SceneEngine
 
             //  We need to invoke the render for the given object
             //  now. Afterwards we can query the buffers for the result
-        placementsEditor.RenderFiltered(
+        placementsRenderer.RenderFiltered(
             &metalContext, stateContext.GetParserContext(), RenderCore::Techniques::TechniqueIndex::RayTest,
-            placementsRenderer, &object, &object+1);
+            cellSet, &object, &object+1);
         return stateContext.GetResults();
     }
 
@@ -120,9 +120,9 @@ namespace SceneEngine
             }
         }
 
-        if ((filter & Type::Placement) && _placements) {
+        if ((filter & Type::Placement) && _placements && _placementsIntersections) {
             auto roughIntersection = 
-                _placements->Find_RayIntersection(worldSpaceRay.first, worldSpaceRay.second, nullptr);
+                _placementsIntersections->Find_RayIntersection(*_placements, worldSpaceRay.first, worldSpaceRay.second, nullptr);
 
             if (!roughIntersection.empty()) {
 
@@ -131,8 +131,8 @@ namespace SceneEngine
 
                     //  we need to create a temporary transaction to get
                     //  at the information for these objects.
-                auto trans = _placements->Transaction_Begin(
-                    AsPointer(roughIntersection.cbegin()), AsPointer(roughIntersection.cend()));
+                auto trans = _placementsIntersections->Transaction_Begin(
+                    *_placemnents, AsPointer(roughIntersection.cbegin()), AsPointer(roughIntersection.cend()));
 
                 TRY
                 {
@@ -152,7 +152,8 @@ namespace SceneEngine
                         auto guid = trans->GetGuid(c);
                         auto results = PlacementsIntersection(
                             *metalContext.get(), stateContext, 
-                            *_placements, *_placementsRenderer, guid);
+                            *_placementsRenderer, *_placements,
+                            guid);
 
                         bool gotGoodResult = false;
                         unsigned drawCallIndex = 0;
@@ -294,12 +295,12 @@ namespace SceneEngine
 
     IntersectionTestScene::IntersectionTestScene(
         std::shared_ptr<TerrainManager> terrainManager,
-        std::shared_ptr<PlacementsEditor> placements,
-        std::shared_ptr<PlacementsRenderer> placementsRenderer,
+        std::shared_ptr<PlacementCellSet> placements,
+        std::shared_ptr<PlacementsIntersections> placementsIntersections,
         std::initializer_list<std::shared_ptr<IIntersectionTester>> extraTesters)
     : _terrainManager(std::move(terrainManager))
     , _placements(std::move(placements))
-    , _placementsRenderer(std::move(placementsRenderer))
+    , _placementsIntersections(std::move(placementsIntersections))
     {
         for (size_t c=0; c<extraTesters.size(); ++c) 
             _extraTesters.push_back(std::move(extraTesters.begin()[c]));

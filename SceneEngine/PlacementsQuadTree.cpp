@@ -531,7 +531,7 @@ namespace SceneEngine
                 // render some debugging information (including bounding boxes for
                 // the nodes in the quad tree).
                 // This is helpful for developing the algorithm for 
-            auto quadTrees = _placementsManager->GetVisibleQuadTrees(
+            auto quadTrees = _placementsManager->GetRenderer()->GetVisibleQuadTrees(
                 *_cells, context->GetProjectionDesc()._worldToProjection);
             for (auto i=quadTrees.cbegin(); i!=quadTrees.cend(); ++i) {
                 auto cellToWorld = i->first;
@@ -555,7 +555,7 @@ namespace SceneEngine
                 }
             }
         } else {
-            auto cells = _placementsManager->GetObjectBoundingBoxes(*_cells, context->GetProjectionDesc()._worldToProjection);
+            auto cells = _placementsManager->GetRenderer()->GetObjectBoundingBoxes(*_cells, context->GetProjectionDesc()._worldToProjection);
             for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
                 auto cellToWorld = c->first;
                 auto objs = c->second;

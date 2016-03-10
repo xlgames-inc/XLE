@@ -41,23 +41,21 @@ namespace SceneEngine
     };
 
     class PlacementsRenderer;
+    class PlacementsIntersections;
     class PlacementsEditor;
     class PlacementsQuadTree;
     class DynamicImposters;
 
-    /// <summary>A collection of cells that can be rendered or edited</summary>
+    /// <summary>A collection of cells</summary>
     /// 
     class PlacementCellSet
     {
     public:
         PlacementCellSet(const WorldPlacementsConfig& cfg, const Float3& worldOffset);
         ~PlacementCellSet();
-    private:
+
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
-        friend class PlacementsManager;
-        friend class PlacementsEditor;
-        friend class Transaction;
     };
 
     /// <summary>Manages stream and organization of object placements</summary>
@@ -67,6 +65,27 @@ namespace SceneEngine
     class PlacementsManager
     {
     public:
+        std::shared_ptr<PlacementsRenderer>         GetRenderer();
+        std::shared_ptr<PlacementsEditor>           CreateEditor(const std::shared_ptr<PlacementCellSet>& cellSet);
+        std::shared_ptr<PlacementsIntersections>    GetIntersections();
+
+        PlacementsManager(std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
+        ~PlacementsManager();
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+
+        friend class PlacementsEditor;
+    };
+    
+    class PlacementCell;
+    class PlacementsCache;
+    typedef std::pair<uint64, uint64> PlacementGUID;
+    
+    class PlacementsRenderer
+    {
+    public:
+            // -------------- Rendering --------------
         void Render(
             RenderCore::Metal::DeviceContext* context,
             RenderCore::Techniques::ParsingContext& parserContext,
@@ -78,6 +97,17 @@ namespace SceneEngine
             unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep);
         bool HasPrepared(RenderCore::Assets::DelayStep delayStep);
 
+            // -------------- Render filtered --------------
+        using DrawCallPredicate = std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>;
+        void RenderFiltered(
+            RenderCore::Metal::DeviceContext* context,
+            RenderCore::Techniques::ParsingContext& parserContext,
+            unsigned techniqueIndex,
+            const PlacementCellSet& cellSet,
+            const PlacementGUID* begin, const PlacementGUID* end,
+            const DrawCallPredicate& predicate = DrawCallPredicate(nullptr));
+
+            // -------------- Utilities --------------
         auto GetVisibleQuadTrees(const PlacementCellSet& cellSet, const Float4x4& worldToClip) const
             -> std::vector<std::pair<Float3x4, const PlacementsQuadTree*>>;
 
@@ -85,37 +115,58 @@ namespace SceneEngine
         auto GetObjectBoundingBoxes(const PlacementCellSet& cellSet, const Float4x4& worldToClip) const
             -> std::vector<std::pair<Float3x4, ObjectBoundingBoxes>>;
 
-        std::shared_ptr<PlacementsRenderer> GetRenderer();
-        std::shared_ptr<PlacementsEditor> CreateEditor(const std::shared_ptr<PlacementCellSet>& cellSet);
-
         void SetImposters(std::shared_ptr<DynamicImposters> imposters);
 
-        PlacementsManager(std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
-        ~PlacementsManager();
+        PlacementsRenderer(
+            std::shared_ptr<PlacementsCache> placementsCache, 
+            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
+        ~PlacementsRenderer();
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
-
-        friend class PlacementsEditor;
     };
 
-    typedef std::pair<uint64, uint64> PlacementGUID;
-    class PlacementCell;
-    class PlacementsCache;
+    class PlacementsIntersections
+    {
+    public:
+                // -------------- Intersections --------------
+        class IntersectionDef
+        {
+        public:
+            Float3x4    _localToWorld;
+            std::pair<Float3, Float3> _localSpaceBoundingBox;
+            uint64      _model;
+            uint64      _material;
+        };
+
+        std::vector<PlacementGUID> Find_BoxIntersection(
+            const PlacementCellSet& cellSet,
+            const Float3& worldSpaceMins, const Float3& worldSpaceMaxs,
+            const std::function<bool(const IntersectionDef&)>& predicate);
+
+        std::vector<PlacementGUID> Find_RayIntersection(
+            const PlacementCellSet& cellSet,
+            const Float3& rayStart, const Float3& rayEnd,
+            const std::function<bool(const IntersectionDef&)>& predicate);
+
+        std::vector<PlacementGUID> Find_FrustumIntersection(
+            const PlacementCellSet& cellSet,
+            const Float4x4& worldToProjection,
+            const std::function<bool(const IntersectionDef&)>& predicate);
+
+        PlacementsIntersections(
+            std::shared_ptr<PlacementsCache> placementsCache, 
+            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
+        ~PlacementsIntersections();
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
 
     class PlacementsEditor
     {
     public:
         typedef Float3x4 PlacementsTransform;
-
-        class ObjIntersectionDef
-        {
-        public:
-            Float3x4 _localToWorld;
-            std::pair<Float3, Float3> _localSpaceBoundingBox;
-            uint64 _model;
-            uint64 _material;
-        };
 
         class ObjTransDef
         {
@@ -164,29 +215,6 @@ namespace SceneEngine
             const PlacementGUID* placementsBegin, const PlacementGUID* placementsEnd,
             TransactionFlags::BitField transactionFlags = 0);
 
-            // -------------- intersections --------------
-        std::vector<PlacementGUID> Find_BoxIntersection(
-            const Float3& worldSpaceMins, const Float3& worldSpaceMaxs,
-            const std::function<bool(const ObjIntersectionDef&)>& predicate);
-
-        std::vector<PlacementGUID> Find_RayIntersection(
-            const Float3& rayStart, const Float3& rayEnd,
-            const std::function<bool(const ObjIntersectionDef&)>& predicate);
-
-        std::vector<PlacementGUID> Find_FrustumIntersection(
-            const Float4x4& worldToProjection,
-            const std::function<bool(const ObjIntersectionDef&)>& predicate);
-
-        using DrawCallPredicate = std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>;
-
-        void RenderFiltered(
-            RenderCore::Metal::DeviceContext* context,
-            RenderCore::Techniques::ParsingContext& parserContext,
-            unsigned techniqueIndex,
-            PlacementsRenderer& renderer,
-            const PlacementGUID* begin, const PlacementGUID* end,
-            const DrawCallPredicate& predicate = DrawCallPredicate(nullptr));
-
         uint64  CreateCell(const ::Assets::ResChar name[], const Float2& mins, const Float2& maxs);
         bool    RemoveCell(uint64 id);
         static uint64 GenerateObjectGUID();
@@ -211,5 +239,6 @@ namespace SceneEngine
 
         friend class Transaction;
     };
+
 }
 

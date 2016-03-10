@@ -21,7 +21,7 @@ namespace SceneEngine
     class ISceneParser;
     class TerrainManager;
     class PlacementsEditor;
-    class PlacementsRenderer;
+    class PlacementsIntersections;
 
     /// <summary>Context for doing ray & box intersection test<summary>
     /// This context is intended for performing ray intersections for tools.
@@ -135,14 +135,14 @@ namespace SceneEngine
 
         IntersectionTestScene(
             std::shared_ptr<TerrainManager> terrainManager = nullptr,
-            std::shared_ptr<PlacementsEditor> placements = nullptr,
-            std::shared_ptr<PlacementsRenderer> _placementsRenderer = nullptr,
+            std::shared_ptr<PlacementCellSet> placements = nullptr,
+            std::shared_ptr<PlacementsIntersections> placementsIntersections = nullptr,
             std::initializer_list<std::shared_ptr<IIntersectionTester>> extraTesters = std::initializer_list<std::shared_ptr<IIntersectionTester>>());
         ~IntersectionTestScene();
     protected:
         std::shared_ptr<TerrainManager> _terrainManager;
-        std::shared_ptr<PlacementsEditor> _placements;
-        std::shared_ptr<PlacementsRenderer> _placementsRenderer;
+        std::shared_ptr<PlacementCellSet> _placements;
+        std::shared_ptr<PlacementsIntersections> _placementsIntersections;
         std::vector<std::shared_ptr<IIntersectionTester>> _extraTesters;
     };
 
