@@ -359,13 +359,13 @@ namespace SceneEngine
     }
 
     bool PlacementsQuadTree::CalculateVisibleObjects(
-        const float cellToClipAligned[], 
+        const Float4x4& cellToClipAligned, 
         const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
         unsigned visObjs[], unsigned& visObjsCount, unsigned visObjMaxCount,
         Metrics* metrics) const
     {
         visObjsCount = 0;
-        assert((size_t(cellToClipAligned) & 0xf) == 0);
+        assert((size_t(AsFloatArray(cellToClipAligned)) & 0xf) == 0);
 
         unsigned nodeAabbTestCount = 0, payloadAabbTestCount = 0;
 

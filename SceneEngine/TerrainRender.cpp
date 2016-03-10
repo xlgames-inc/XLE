@@ -393,9 +393,7 @@ namespace SceneEngine
     {
             // Cull on a cell level (prevent loading of distance cell resources)
             //      todo -- if we knew the cell min/max height, we could do this more accurately
-        if (CullAABB_Aligned(
-            AsFloatArray(projDesc._worldToProjection), 
-            cell._aabbMin, cell._aabbMax))
+        if (CullAABB_Aligned(projDesc._worldToProjection, cell._aabbMin, cell._aabbMax))
             return;
 
             // look for a valid "CellRenderInfo" already in our cache
@@ -678,7 +676,7 @@ namespace SceneEngine
 
                             // once a parent node is entirely within the frustum, so to must be all children
                         if (n->_entirelyWithinFrustum) {
-                            auto aabbTest = TestAABB_Aligned(AsFloatArray(localToProjection), Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(compressedHeightMask)));
+                            auto aabbTest = TestAABB_Aligned(localToProjection, Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(compressedHeightMask)));
                             if (aabbTest == AABBIntersection::Culled) { 
                                 newNodes[c]._id._nodeId = ~unsigned(0x0);
                                 continue; 
@@ -901,7 +899,7 @@ namespace SceneEngine
                 cullResults[n - field._nodeBegin] = AABBIntersection::Culled;
             } else {
                 __declspec(align(16)) auto localToProjection = Combine(nodeToCell, cellToProjection);
-                cullResults[n - field._nodeBegin] = TestAABB_Aligned(AsFloatArray(localToProjection), Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(compressedHeightMask)));
+                cullResults[n - field._nodeBegin] = TestAABB_Aligned(localToProjection, Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(compressedHeightMask)));
                 if (cullResults[n - field._nodeBegin] != AABBIntersection::Culled) {
                     screenSpaceEdgeLengths[n - field._nodeBegin] = CalculateScreenSpaceEdgeLength(
                         localToProjection, terrainContext._currentViewport.Width, terrainContext._currentViewport.Height);
@@ -990,7 +988,7 @@ namespace SceneEngine
                 //  do a culling step first... If the node is completely outside
                 //  of the frustum, let's cull it quickly
             const __declspec(align(16)) auto localToProjection = Combine(nodeToCell, cellToProjection);
-            if (CullAABB_Aligned(AsFloatArray(localToProjection), Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(compressedHeightMask)))) {
+            if (CullAABB_Aligned(localToProjection, Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(compressedHeightMask)))) {
                 continue;
             }
 
@@ -1056,7 +1054,7 @@ namespace SceneEngine
         context->BindPS(MakeResourceList(_heightMapTileSet->GetShaderResource()));
 
             // go through all nodes that were previously queued (with CullNodes) and render them
-        TRY {
+        CATCH_ASSETS_BEGIN
             CellRenderInfo* currentCell = nullptr;
             for (auto i=terrainContext._queuedNodes.begin(); i!=terrainContext._queuedNodes.end(); ++i)
                 if (i->_flags & TerrainRenderingContext::QueuedNode::Flags::HasValidData) {
@@ -1084,8 +1082,7 @@ namespace SceneEngine
 
                     RenderNode(context, parserContext, terrainContext, *i->_cell, i->_absNodeIndex, i->_neighbourLODDiff);
                 }
-        } CATCH (...) { // suppress pending / invalid resources
-        } CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
 		context->UnbindVS<Metal::ShaderResourceView>(0, 1);
 		context->UnbindDS<Metal::ShaderResourceView>(0, 1);

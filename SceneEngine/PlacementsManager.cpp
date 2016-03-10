@@ -243,7 +243,8 @@ namespace SceneEngine
 
     static const ::Assets::AssetChunkRequest PlacementsChunkRequests[]
     {
-        ::Assets::AssetChunkRequest { 
+        ::Assets::AssetChunkRequest
+        {
             "Placements", ChunkType_Placements, 0, 
             ::Assets::AssetChunkRequest::DataType::Raw 
         }
@@ -272,10 +273,9 @@ namespace SceneEngine
 
         void const* i = chunks[0]._buffer.get();
         const auto& hdr = *(const PlacementsHeader*)i;
-        if (hdr._version != 0) {
+        if (hdr._version != 0)
             Throw(::Exceptions::BasicLabel(
                 StringMeld<128>() << "Unexpected version number (" << hdr._version << ")"));
-        }
         i = PtrAdd(i, sizeof(PlacementsHeader));
 
         plc->_objects.clear();
@@ -564,11 +564,8 @@ namespace SceneEngine
         // It seems useful to me. But if the overhead becomes too great, we can just change
         // to a basic 2d addressing model.
 
-        if (CullAABB_Aligned(
-                AsFloatArray(parserContext.GetProjectionDesc()._worldToProjection), 
-                cell._aabbMin, cell._aabbMax)) {
+        if (CullAABB_Aligned(parserContext.GetProjectionDesc()._worldToProjection, cell._aabbMin, cell._aabbMax))
             return;
-        }
 
             //  We need to look in the "_cellOverride" list first.
             //  The overridden cells are actually designed for tools. When authoring 
@@ -763,10 +760,6 @@ namespace SceneEngine
         const Float3x4& cellToWorld,
         const uint64* filterStart, const uint64* filterEnd)
     {
-        if (!placements.GetObjectReferenceCount()) {
-            return;
-        }
-
             //
             //  Here we render all of the placements defined by the placement
             //  file in renderInfo._placements.
@@ -820,7 +813,7 @@ namespace SceneEngine
             unsigned visibleObjCount = 0;
             PlacementsQuadTree::Metrics metrics;
             quadTree->CalculateVisibleObjects(
-                AsFloatArray(cellToCullSpace), &objRef->_cellSpaceBoundary,
+                cellToCullSpace, &objRef->_cellSpaceBoundary,
                 sizeof(Placements::ObjectReference),
                 visibleObjs, visibleObjCount, dimof(visibleObjs),
                 &metrics);
@@ -861,9 +854,8 @@ namespace SceneEngine
         } else {
             for (unsigned c=0; c<placementCount; ++c) {
                 auto& obj = objRef[c];
-                if (CullAABB_Aligned(AsFloatArray(cellToCullSpace), obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
+                if (CullAABB_Aligned(cellToCullSpace, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second))
                     continue;
-                }
 
                     // Filtering is required in some cases (for example, if we want to render only
                     // a single object in highlighted state). Rendering only part of a cell isn't

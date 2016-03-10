@@ -271,7 +271,7 @@ namespace Sample
                         Combine_InPlace(i2->_animState._motionCompensation * newState._time, final);
 
                         __declspec(align(16)) auto localToCulling = Combine(i2->_localToWorld, worldToProjection);
-                        if (!CullAABB_Aligned(AsFloatArray(localToCulling), roughBoundingBox.first, roughBoundingBox.second)) {
+                        if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
                             newState._instances.push_back(final);
                         }
                     }
@@ -297,7 +297,7 @@ namespace Sample
             Combine_InPlace(i->_animState._motionCompensation * i->_animState._time, final);
 
             __declspec(align(16)) auto localToCulling = Combine(i->_localToWorld, worldToProjection);
-            if (!CullAABB_Aligned(AsFloatArray(localToCulling), roughBoundingBox.first, roughBoundingBox.second)) {
+            if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
                 newState._instances.push_back(final);
                 _pimpl->_stateCache.push_back(std::move(newState));
             }
@@ -312,7 +312,7 @@ namespace Sample
         Combine_InPlace(_pimpl->_playerCharacter->_animState._motionCompensation * _pimpl->_playerCharacter->_animState._time, final);
     
         __declspec(align(16)) auto localToCulling = Combine(_pimpl->_playerCharacter->_localToWorld, worldToProjection);
-        if (!CullAABB_Aligned(AsFloatArray(localToCulling), roughBoundingBox.first, roughBoundingBox.second)) {
+        if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
             newState._instances.push_back(final);
             _pimpl->_stateCache.push_back(std::move(newState));
         }

@@ -43,7 +43,7 @@ namespace SceneEngine
         };
 
         bool CalculateVisibleObjects(
-            const float cellToClipAligned[],
+            const Float4x4& cellToClipAligned,
             const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
             unsigned visObjs[], unsigned& visObjsCount, unsigned visObjMaxCount,
             Metrics* metrics = nullptr) const;

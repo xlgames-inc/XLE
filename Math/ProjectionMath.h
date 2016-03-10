@@ -24,7 +24,7 @@ namespace XLEMath
         const Float3& mins, const Float3& maxs);
 
     AABBIntersection::Enum TestAABB_Aligned(
-        const float localToProjection[], 
+        const Float4x4& localToProjection, 
         const Float3& mins, const Float3& maxs);
 
     inline bool CullAABB(
@@ -36,7 +36,7 @@ namespace XLEMath
     }
 
     inline bool CullAABB_Aligned(
-        const float localToProjection[],
+        const Float4x4& localToProjection,
         const Float3& mins, const Float3& maxs)
     {
         return TestAABB_Aligned(localToProjection, mins, maxs) 

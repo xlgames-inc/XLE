@@ -381,10 +381,10 @@ namespace XLEMath
     }
 
     AABBIntersection::Enum TestAABB_Aligned(
-        const float localToProjection[], 
+        const Float4x4& localToProjection, 
         const Float3& mins, const Float3& maxs)
     {
-        return TestAABB_SSE(localToProjection, mins, maxs);
+        return TestAABB_SSE(AsFloatArray(localToProjection), mins, maxs);
     }
 
     Float4 ExtractMinimalProjection(const Float4x4& projectionMatrix)
