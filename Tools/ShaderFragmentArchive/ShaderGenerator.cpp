@@ -470,7 +470,8 @@ namespace ShaderPatcherLayer
                 sw->Write("/* <<Chunk:TechniqueConfig:main>>--("); sw->WriteLine();
                 sw->Write("~Inherit; game/xleres/techniques/illum.tech"); sw->WriteLine();
 
-				WriteTechniqueConfigSection(sw, "Deferred", "deferred_main", context->ShaderParameters);
+				WriteTechniqueConfigSection(sw, "Forward", "forward_main", context->ShaderParameters);
+                WriteTechniqueConfigSection(sw, "Deferred", "deferred_main", context->ShaderParameters);
 				WriteTechniqueConfigSection(sw, "OrderIndependentTransparency", "oi_main", context->ShaderParameters);
                 WriteTechniqueConfigSection(sw, "StochasticTransparency", "stochastic_main", context->ShaderParameters);
                 WriteTechniqueConfigSection(sw, "DepthOnly", "depthonly_main", context->ShaderParameters);

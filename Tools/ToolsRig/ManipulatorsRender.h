@@ -23,21 +23,31 @@ namespace SceneEngine
 namespace ToolsRig
 {
     void Placements_RenderHighlight(
-        RenderCore::IThreadContext& threadContext,
+        RenderCore::Metal::DeviceContext& threadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
-        const SceneEngine::PlacementGUID* filterBegin,
-        const SceneEngine::PlacementGUID* filterEnd,
+        const SceneEngine::PlacementGUID* filterBegin = nullptr,
+        const SceneEngine::PlacementGUID* filterEnd = nullptr,
         uint64 materialGuid = ~0ull);
 
     void Placements_RenderFiltered(
         RenderCore::Metal::DeviceContext& metalContext,
         RenderCore::Techniques::ParsingContext& parserContext,
+        unsigned techniqueIndex,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
-        const SceneEngine::PlacementGUID* filterBegin,
-        const SceneEngine::PlacementGUID* filterEnd,
+        const SceneEngine::PlacementGUID* filterBegin = nullptr,
+        const SceneEngine::PlacementGUID* filterEnd = nullptr,
+        uint64 materialGuid = ~0ull);
+
+    void Placements_RenderShadow(
+        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::PlacementsRenderer& renderer,
+        const SceneEngine::PlacementCellSet& cellSet,
+        const SceneEngine::PlacementGUID* filterBegin = nullptr,
+        const SceneEngine::PlacementGUID* filterEnd = nullptr,
         uint64 materialGuid = ~0ull);
 
     void RenderCylinderHighlight(

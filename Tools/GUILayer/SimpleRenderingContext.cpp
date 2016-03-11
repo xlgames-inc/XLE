@@ -307,13 +307,13 @@ namespace GUILayer
             PlacementsRendererWrapper^ renderer,
             ObjectSet^ highlight, uint64 materialGuid)
         {
+            auto& metalContext = context->GetDevContext();
             if (highlight == nullptr) {
                 CATCH_ASSETS_BEGIN
-                    auto& metalContext = context->GetDevContext();
                     ToolsRig::BinaryHighlight highlight(metalContext);
                     ToolsRig::Placements_RenderFiltered(
-                        metalContext, 
-                        context->GetParsingContext(), 
+                        metalContext, context->GetParsingContext(), 
+                        RenderCore::Techniques::TechniqueIndex::Forward,
                         renderer->GetNative(), placements->GetNative().GetCellSet(), 
                         nullptr, nullptr, materialGuid);
 
@@ -327,7 +327,7 @@ namespace GUILayer
                 if (highlight->IsEmpty()) return;
 
                 ToolsRig::Placements_RenderHighlight(
-                    context->GetThreadContext(), context->GetParsingContext(), 
+                    metalContext, context->GetParsingContext(), 
                     renderer->GetNative(), placements->GetNative().GetCellSet(),
                     (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cbegin()),
                     (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cend()),

@@ -33,6 +33,7 @@ namespace ToolsRig
     void Placements_RenderFiltered(
         Metal::DeviceContext& metalContext,
         Techniques::ParsingContext& parserContext,
+        unsigned techniqueIndex,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
         const SceneEngine::PlacementGUID* filterBegin,
@@ -41,12 +42,12 @@ namespace ToolsRig
     {
         using namespace RenderCore::Assets;
         if (materialGuid == ~0ull) {
-            renderer.RenderFiltered(&metalContext, parserContext, 0, cellSet, filterBegin, filterEnd);
+            renderer.RenderFiltered(&metalContext, parserContext, techniqueIndex, cellSet, filterBegin, filterEnd);
         } else {
                 //  render with a predicate to compare the material binding index to
                 //  the given value
             renderer.RenderFiltered(
-                &metalContext, parserContext, 0, cellSet, filterBegin, filterEnd,
+                &metalContext, parserContext, techniqueIndex, cellSet, filterBegin, filterEnd,
                 [=](const DelayedDrawCall& e) { 
                     return ((const ModelRenderer*)e._renderer)->GetMaterialBindingForDrawCall(e._drawCallIndex) == materialGuid; 
                 });
@@ -54,7 +55,7 @@ namespace ToolsRig
     }
 
     void Placements_RenderHighlight(
-        IThreadContext& threadContext,
+        Metal::DeviceContext& metalContext,
         Techniques::ParsingContext& parserContext,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
@@ -63,10 +64,29 @@ namespace ToolsRig
         uint64 materialGuid)
     {
         CATCH_ASSETS_BEGIN
-            auto& metalContext = *Metal::DeviceContext::Get(threadContext);
             BinaryHighlight highlight(metalContext);
-            Placements_RenderFiltered(metalContext, parserContext, renderer, cellSet, filterBegin, filterEnd, materialGuid);
+            Placements_RenderFiltered(
+                metalContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward,
+                renderer, cellSet, filterBegin, filterEnd, materialGuid);
             highlight.FinishWithOutline(metalContext, Float3(.65f, .8f, 1.5f));
+        CATCH_ASSETS_END(parserContext)
+    }
+
+    void Placements_RenderShadow(
+        Metal::DeviceContext& metalContext,
+        Techniques::ParsingContext& parserContext,
+        SceneEngine::PlacementsRenderer& renderer,
+        const SceneEngine::PlacementCellSet& cellSet,
+        const SceneEngine::PlacementGUID* filterBegin,
+        const SceneEngine::PlacementGUID* filterEnd,
+        uint64 materialGuid)
+    {
+        CATCH_ASSETS_BEGIN
+            BinaryHighlight highlight(metalContext);
+            Placements_RenderFiltered(
+                metalContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward,
+                renderer, cellSet, filterBegin, filterEnd, materialGuid);
+            highlight.FinishWithShadow(metalContext, Float4(.025f, .025f, .025f, 0.85f));
         CATCH_ASSETS_END(parserContext)
     }
 

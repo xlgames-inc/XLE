@@ -57,6 +57,8 @@ namespace GUILayer
         void PrepareEnvironmentalSettings(const char envSettings[]);
         void AddLightingPlugins(LightingParserContext& parserContext);
 
+        void RenderShadowForHiddenPlacements(DeviceContext& context, LightingParserContext& parserContext) const;
+
         EditorSceneParser(
             std::shared_ptr<EditorScene> editorScene,
             std::shared_ptr<ToolsRig::VisCameraSettings> camera);
@@ -86,7 +88,7 @@ namespace GUILayer
         auto batchFilter = parseSettings._batchFilter;
         auto& scene = *_editorScene;
 
-        if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainManager) {
+        if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && scene._terrainManager) {
             if (batchFilter == BF::General) {
 				CATCH_ASSETS_BEGIN
                     scene._terrainManager->Render(metalContext, parserContext, techniqueIndex);
@@ -113,11 +115,21 @@ namespace GUILayer
             if (batchFilter == BF::Transparent) {
                 CATCH_ASSETS_BEGIN
                     scene._placeholders->Render(*metalContext, parserContext, techniqueIndex);
-                    scene._shallowSurfaceManager->RenderDebugging(
-                        *metalContext, parserContext, techniqueIndex, GetSurfaceHeights(*_editorScene));
+                    scene._shallowSurfaceManager->RenderDebugging(*metalContext, parserContext, techniqueIndex, GetSurfaceHeights(scene));
                 CATCH_ASSETS_END(parserContext)
             }
         }
+    }
+
+    void EditorSceneParser::RenderShadowForHiddenPlacements(
+        DeviceContext& metalContext, 
+        LightingParserContext& parserContext) const
+    {
+        ToolsRig::Placements_RenderHighlight(
+            metalContext, parserContext, 
+            *_editorScene->_placementsManager->GetRenderer(), 
+            *_editorScene->_placementsCellsHidden,
+            nullptr, nullptr);
     }
 
     bool EditorSceneParser::HasContent(const SceneParseSettings& parseSettings) const
@@ -205,13 +217,15 @@ namespace GUILayer
         EditorSceneOverlay(
             std::shared_ptr<EditorSceneParser> sceneParser,
             EditorSceneRenderSettings^ renderSettings,
-            std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor,
+            std::shared_ptr<SceneEngine::PlacementCellSet> placementCells,
+            std::shared_ptr<SceneEngine::PlacementCellSet> placementCellsHidden,
             std::shared_ptr<SceneEngine::PlacementsRenderer> _placementsRenderer);
         ~EditorSceneOverlay();
     protected:
         clix::shared_ptr<EditorSceneParser> _sceneParser;
         EditorSceneRenderSettings^ _renderSettings;
-        clix::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
+        clix::shared_ptr<SceneEngine::PlacementCellSet> _placementCells;
+        clix::shared_ptr<SceneEngine::PlacementCellSet> _placementCellsHidden;
         clix::shared_ptr<SceneEngine::PlacementsRenderer> _placementsRenderer;
     };
     
@@ -224,6 +238,10 @@ namespace GUILayer
                 clix::marshalString<clix::E_UTF8>(_renderSettings->_activeEnvironmentSettings).c_str());
 
             auto qualSettings = SceneEngine::RenderingQualitySettings(threadContext->GetStateDesc()._viewportDimensions);
+            qualSettings._lightingModel = 
+                (::ConsoleRig::Detail::FindTweakable("LightingModel", 0) == 0)
+                ? RenderingQualitySettings::LightingModel::Deferred 
+                : RenderingQualitySettings::LightingModel::Forward;
 
             auto& screenshot = ::ConsoleRig::Detail::FindTweakable("Screenshot", 0);
             if (screenshot) {
@@ -239,15 +257,23 @@ namespace GUILayer
                 *threadContext, parserContext, *_sceneParser.get(), _sceneParser->GetCameraDesc(),qualSettings);
         }
 
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
         if (_renderSettings->_selection && _renderSettings->_selection->_nativePlacements->size() > 0) {
             // Draw a selection highlight for these items
             // at the moment, only placements can be selected... So we need to assume that 
             // they are all placements.
             ToolsRig::Placements_RenderHighlight(
-                *threadContext, parserContext, 
-                *_placementsRenderer.get(), _placementsEditor->GetCellSet(),
+                *metalContext, parserContext, 
+                *_placementsRenderer.get(), *_placementCells.get(),
                 (const SceneEngine::PlacementGUID*)AsPointer(_renderSettings->_selection->_nativePlacements->cbegin()),
                 (const SceneEngine::PlacementGUID*)AsPointer(_renderSettings->_selection->_nativePlacements->cend()));
+        }
+
+        // render shadow for hidden placements
+        if (::ConsoleRig::Detail::FindTweakable("ShadowHiddenPlacements", true)) {
+            ToolsRig::Placements_RenderShadow(
+                *metalContext, parserContext, 
+                *_placementsRenderer.get(), *_placementCellsHidden.get());
         }
     }
 
@@ -257,15 +283,18 @@ namespace GUILayer
     {}
 
     void EditorSceneOverlay::SetActivationState(bool) {}
+
     EditorSceneOverlay::EditorSceneOverlay(
         std::shared_ptr<EditorSceneParser> sceneParser,
         EditorSceneRenderSettings^ renderSettings,
-        std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor,
+        std::shared_ptr<SceneEngine::PlacementCellSet> placementCells,
+        std::shared_ptr<SceneEngine::PlacementCellSet> placementCellsHidden,
         std::shared_ptr<SceneEngine::PlacementsRenderer> placementsRenderer)
     {
         _sceneParser = std::move(sceneParser);
         _renderSettings = renderSettings;
-        _placementsEditor = std::move(placementsEditor);
+        _placementCells = std::move(placementCells);
+        _placementCellsHidden = std::move(placementCellsHidden);
         _placementsRenderer = std::move(placementsRenderer);
     }
     EditorSceneOverlay::~EditorSceneOverlay() {}
@@ -280,7 +309,8 @@ namespace GUILayer
         {
             return gcnew EditorSceneOverlay(
                 std::make_shared<EditorSceneParser>(scene, std::move(camera)), 
-                renderSettings, scene->_placementsEditor, scene->_placementsManager->GetRenderer());
+                renderSettings, scene->_placementsCells, scene->_placementsCellsHidden,
+                scene->_placementsManager->GetRenderer());
         }
     }
 }

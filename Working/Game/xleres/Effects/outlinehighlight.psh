@@ -34,7 +34,30 @@ float4 main(float4 pos : SV_Position) : SV_Target0
 		}
 	}
 
+	if (frac((basePos.x + basePos.y) / 8.f) < 0.5f) discard;
+
 	float alpha = max(abs(dhdp.x), abs(dhdp.y));
 	alpha = 1.0f - pow(1.0f-alpha, 8.f);
 	return float4(alpha * OutlineColour, alpha);
+}
+
+cbuffer ShadowHighlightSettings
+{
+	float4 ShadowColor;
+}
+float4 main_shadow(float4 pos : SV_Position) : SV_Target0
+{
+		//	using a sharr convolution to find the edges of the shapes in "InputTexture",
+		//	we'll write out an outline highlight
+		//
+		//	This is not the most efficient way to do this... The sharr filter should be
+		//	separable. But this implementation was intended for non-performance critical
+		//	purposes, and convenient to do this it this way.
+
+	int2 basePos = int2(pos.xy);
+	if (frac((basePos.x + basePos.y) / 4.f) < 0.5f) discard;
+
+	float alpha = InputTexture.Load(int3(basePos.xy, 0)).a;
+	// return ShadowColor * alpha;
+	return ShadowColor * (alpha > 0.01f);
 }

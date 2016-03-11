@@ -19,10 +19,63 @@ GBufferEncoded deferred_main({{MainFunctionParameterSignature}})
 ):>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+	//		F O R W A R D   M A I N
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+~forward_main; item=<:(
+
+#include "TextureAlgorithm.h" 	// for SystemInputs
+#include "Lighting/Forward.h"
+
+#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+	[earlydepthstencil]
+#endif
+float4 forward_main({{MainFunctionParameterSignature}}, SystemInputs sys) : SV_Target0
+{
+    // If we're doing to do the alpha threshold test, we
+    // should try to do as early in the shader as we can!
+    // Unfortunately, there's no real easy way to do that with
+    // a node graph here...Unless we create some special #define
+    // somehow...
+
+	// DoAlphaTest(geo, GetAlphaThreshold());
+
+	GBufferValues sample;
+    {{GraphName}}({{ForwardMainParameters}}, sample);
+
+	float3 directionToEye = 0.0.xxx;
+	#if (OUTPUT_WORLD_VIEW_VECTOR==1)
+		directionToEye = normalize(geo.worldViewVector);
+	#endif
+
+	float4 result = float4(
+		ResolveLitColor(
+			sample, directionToEye, GetWorldPosition(geo),
+			LightScreenDest_Create(int2(geo.position.xy), GetSampleIndex(sys))), 1.f);
+
+	#if OUTPUT_FOG_COLOR == 1
+		result.rgb = lerp(geo.fogColor.rgb, result.rgb, geo.fogColor.a);
+	#endif
+
+	result.a = sample.blendingAlpha;
+
+    #if (OUTPUT_COLOUR>=1) && (MAT_VCOLOR_IS_ANIM_PARAM==0)
+        result.rgb *= geo.colour.rgb;
+    #endif
+
+	#if MAT_SKIP_LIGHTING_SCALE==0
+		result.rgb *= LightingScale;		// (note -- should we scale by this here? when using this shader with a basic lighting pipeline [eg, for material preview], the scale is unwanted)
+	#endif
+	return result;
+}
+
+):>
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 	//		O R D E R   I N D E P E N D E N T   M A I N
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-~oi_main;  item=<:(
+~oi_main; item=<:(
 
 #include "game/xleres/Forward/Transparency/util.h"
 

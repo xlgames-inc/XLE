@@ -34,11 +34,11 @@ namespace ToolsRig
     /// buffer, and then blend a outline or highlight over other geometry.
     /// Generally, it's used like this:
     /// <list>
-    ///   <item> BinaryHighlight::BinaryHighlight() (constructor)
-    ///   <item> Draw something... 
+    ///   <item>BinaryHighlight::BinaryHighlight() (constructor)
+    ///   <item>Draw something... 
     ///         (BinaryHighlight constructor binds an offscreen buffer, so this render 
     ///         is just to provide the siholette of the thing we want to highlight
-    ///   <item> BinaryHighlight::FinishWithOutline()
+    ///   <item>BinaryHighlight::FinishWithOutline()
     ///         This rebinds the old render target, and blends in the highlight
     /// </list>
     class BinaryHighlight
@@ -50,6 +50,9 @@ namespace ToolsRig
         void FinishWithOutlineAndOverlay(
             RenderCore::Metal::DeviceContext& metalContext, 
             Float3 outlineColor, unsigned overlayColor);
+        void FinishWithShadow(
+            RenderCore::Metal::DeviceContext& metalContext, 
+            Float4 shadowColor);
         
         BinaryHighlight(RenderCore::Metal::DeviceContext& metalContext);
         ~BinaryHighlight();

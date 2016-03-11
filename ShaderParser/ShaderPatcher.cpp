@@ -1762,7 +1762,8 @@ namespace ShaderPatcher
 
 		std::stringstream result;
 		Plustache::template_t preprocessor;
-		result << preprocessor.render(GetTechniqueTemplate("deferred_main"), context);
+		result << preprocessor.render(GetTechniqueTemplate("forward_main"), context);
+        result << preprocessor.render(GetTechniqueTemplate("deferred_main"), context);
 		result << preprocessor.render(GetTechniqueTemplate("oi_main"), context);
         result << preprocessor.render(GetTechniqueTemplate("stochastic_main"), context);
         result << preprocessor.render(GetTechniqueTemplate("depthonly_main"), context);

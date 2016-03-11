@@ -503,8 +503,9 @@ namespace ToolsRig
                 //  this one placement at a time -- but we will most
                 //  likely get the most efficient results by rendering
                 //  all of objects that require highlights in one go.
+            auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
             Placements_RenderHighlight(
-                context, parserContext, *_renderer, _editor->GetCellSet(),
+                *metalContext, parserContext, *_renderer, _editor->GetCellSet(),
                 AsPointer(activeSelection.begin()), AsPointer(activeSelection.end()));
         }
     }
@@ -719,8 +720,9 @@ namespace ToolsRig
                 objects.push_back(_transaction->GetGuid(c));
             }
 
+            auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
             Placements_RenderHighlight(
-                context, parserContext, *_renderer, _editor->GetCellSet(),
+                *metalContext, parserContext, *_renderer, _editor->GetCellSet(),
                 AsPointer(objects.begin()), AsPointer(objects.end()));
         }
     }
