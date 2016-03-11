@@ -104,6 +104,18 @@ namespace LevelEditorXLE.Terrain
 
         public bool ClearBeforeDraw() { return false; }
 
+        public Control GetHoveringControl()
+        {
+            if (_manipContext.ActiveManipulator == "Paint Coverage")
+            {
+                var ctrl = new System.Windows.Forms.ComboBox();
+                ctrl.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+                return ctrl;
+            }
+            return null;
+        }
+        public event System.EventHandler OnHoveringControlChanged;
+
         public ManipulatorInfo ManipulatorInfo
         {
             get
@@ -132,7 +144,13 @@ namespace LevelEditorXLE.Terrain
         [ImportingConstructor]
         public TerrainManipulator(IContextRegistry contextRegistry)
         {
-            _manipContext = new GUILayer.ActiveManipulatorContext(); 
+            _manipContext = new GUILayer.ActiveManipulatorContext();
+            _manipContext.OnActiveManipulatorChange += 
+                (object sender, EventArgs e) =>
+                {
+                    if (this.OnHoveringControlChanged != null)
+                        this.OnHoveringControlChanged(null, EventArgs.Empty);
+                };
             _nativeManip = null;
 
             _contextRegistry = new WeakReference(contextRegistry);

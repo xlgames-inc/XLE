@@ -127,6 +127,9 @@ namespace LevelEditorXLE.Placements
             }
         }
 
+        public System.Windows.Forms.Control GetHoveringControl() { return null; }
+        public event System.EventHandler OnHoveringControlChanged;
+
         private GUILayer.NativeManipulatorLayer _nativeManip;
         private GUILayer.ActiveManipulatorContext _manipContext;
         private Settings _manipSettings;

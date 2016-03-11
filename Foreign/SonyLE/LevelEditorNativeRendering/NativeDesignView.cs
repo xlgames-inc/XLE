@@ -31,23 +31,23 @@ namespace RenderingInterop
                 new NativeDesignControl(this) { ViewType = ViewTypes.Top },
                 new NativeDesignControl(this) { ViewType = ViewTypes.Front }
             };
+
             foreach (var v in views)
             {
                 v.Adapter.AddRenderCallback(
                     (GUILayer.SimpleRenderingContext context) => RenderCallback(this, v.Camera));
             }
+
             QuadView.TopLeft = views[0];
             QuadView.TopRight = views[1];
             QuadView.BottomLeft = views[2];
             QuadView.BottomRight = views[3];
 
-            // set control names.            
+            // set control names.
             QuadView.TopLeft.Name = "TopLeft";
             QuadView.TopRight.Name = "TopRight";
             QuadView.BottomLeft.Name = "BottomLeft";
             QuadView.BottomRight.Name = "BottomRight";
-
-
 
             ViewMode = ViewModes.Single;
             ContextChanged += NativeDesignView_ContextChanged;
@@ -98,9 +98,7 @@ namespace RenderingInterop
 
         private ISelectionContext m_selectionContext;
 
-        private void RenderCallback(DesignView designView, Sce.Atf.Rendering.Camera camera)
-        {}
-        
+        private void RenderCallback(DesignView designView, Sce.Atf.Rendering.Camera camera) {}
     }
 
 }

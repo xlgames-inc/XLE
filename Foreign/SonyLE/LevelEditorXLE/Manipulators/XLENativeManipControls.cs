@@ -37,7 +37,6 @@ namespace LevelEditorXLE.Manipulators
             else
             {
                 var h = manipulatorSelection.PreferredHeight;
-
                 manipulatorSelection.Size = new System.Drawing.Size(size.Width - 6, h);
                 manipulatorProperties.Location = new System.Drawing.Point(3, h + 9);
                 manipulatorProperties.Size = new System.Drawing.Size(size.Width - 6, size.Height - h - 12);

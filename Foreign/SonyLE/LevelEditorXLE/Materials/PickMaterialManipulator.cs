@@ -115,6 +115,9 @@ namespace LevelEditorXLE.Materials
             protected set;
         }
 
+        public System.Windows.Forms.Control GetHoveringControl() { return null; }
+        public event System.EventHandler OnHoveringControlChanged;
+
         [Import(AllowDefault = false)] private ControlsLibraryExt.Material.ActiveMaterialContext Context;
         private GUILayer.ObjectSet m_highlight = new GUILayer.ObjectSet();
         private ulong m_highlightMaterialGUID = ~0ul;

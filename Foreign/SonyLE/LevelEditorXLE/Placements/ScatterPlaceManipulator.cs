@@ -319,6 +319,9 @@ namespace LevelEditorXLE.Placements
             }
         }
 
+        public System.Windows.Forms.Control GetHoveringControl() { return null; }
+        public event System.EventHandler OnHoveringControlChanged;
+
         public ManipulatorSettings ManipulatorContext
         {
             get;

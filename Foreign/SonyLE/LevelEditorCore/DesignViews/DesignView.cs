@@ -28,16 +28,27 @@ namespace LevelEditorCore
     public abstract class DesignView : IDesignView, ISnapSettings
     {
         public DesignView()
-        {            
+        {
+            ContainerControl = new Control();
+            ContainerControl.Padding = new Padding(0, 0, 0, 0);
+            ContainerControl.Margin = new Padding(0, 0, 0, 0);
+            ContainerControl.Dock = DockStyle.Fill;
             QuadView = new QuadPanelControl();
+            QuadView.Padding = new Padding(0, 0, 0, 0);
+            QuadView.Margin = new Padding(0, 0, 0, 0);
+            QuadView.Dock = DockStyle.Fill;
+            ContainerControl.Controls.Add(QuadView);
             CameraController.LockOrthographic = true;
+
+            ContainerControl.Layout += 
+                (object sender, System.Windows.Forms.LayoutEventArgs e) => { UpdateManipulatorControl(); };
         }
 
         #region IDesignView Members
 
         public Control HostControl
         {
-            get { return QuadView; }
+            get { return ContainerControl; }
         }
 
         public DesignViewControl ActiveView
@@ -54,8 +65,8 @@ namespace LevelEditorCore
                 foreach (Control ctrl in QuadView.Controls)
                 {
                     DesignViewControl view = ctrl as DesignViewControl;
-                    if (view != null) yield return view;                    
-                }                                    
+                    if (view != null) yield return view;
+                }
             }
         }
 
@@ -64,7 +75,7 @@ namespace LevelEditorCore
         /// for the current ViewMode</summary>
         public IEnumerable<DesignViewControl> Views
         {
-            get {return AllViews.Where(view => view.Width > 1 && view.Height > 1); }
+            get { return AllViews.Where(view => view.Width > 1 && view.Height > 1); }
         }
 
         private ViewModes m_viewMode = ViewModes.Quad;
@@ -76,12 +87,12 @@ namespace LevelEditorCore
                 m_viewMode = value;
                 switch (m_viewMode)
                 {
-                    case ViewModes.Single:                        
+                    case ViewModes.Single:
                         QuadView.EnableX = false;
                         QuadView.EnableY = false;
                         QuadView.SplitterThickness = 0;
                         QuadView.SplitX = 1.0f;
-                        QuadView.SplitY = 1.0f;                        
+                        QuadView.SplitY = 1.0f;
                         break;
                     case ViewModes.DualHorizontal:
                         if (QuadView.ActiveControl == QuadView.TopLeft
@@ -93,21 +104,17 @@ namespace LevelEditorCore
                         QuadView.EnableX = false;
                         QuadView.EnableY = true;
                         QuadView.SplitterThickness = DefaultSplitterThickness;
-                        
                         break;
                     case ViewModes.DualVertical:
-                        
                         if (QuadView.ActiveControl == QuadView.TopLeft
                             || QuadView.ActiveControl == QuadView.BottomLeft)
                             QuadView.SplitY = 1.0f;
-                            else
+                        else
                             QuadView.SplitY = 0.0f;
-
                         QuadView.SplitterThickness = DefaultSplitterThickness;
                         QuadView.EnableX = true;
                         QuadView.EnableY = false;
                         QuadView.SplitX = 0.5f;
-                        
                         break;
                     case ViewModes.Quad:
                         QuadView.EnableX = true;
@@ -162,14 +169,26 @@ namespace LevelEditorCore
         {
             get { return m_manipulator; }
             set
-            {                
-                m_manipulator = value;
-                                
+            {
                 if (m_manipulator != null)
-                {                    
-                    Point pt = ActiveView.PointToClient(Control.MousePosition);                    
+                    m_manipulator.OnHoveringControlChanged -= m_manipulator_OnHoveringControlChanged; 
+
+                if (ManipulatorControl != null)
+                {
+                    ContainerControl.Controls.Remove(ManipulatorControl);
+                    ManipulatorControl = null;
+                }
+
+                m_manipulator = value;
+                if (m_manipulator != null)
+                {
+                    Point pt = ActiveView.PointToClient(Control.MousePosition);
                     bool picked = m_manipulator.Pick(ActiveView, pt) != ManipulatorPickResult.Miss;
-                    ActiveView.Cursor = picked ? Cursors.SizeAll : Cursors.Default;                    
+                    ActiveView.Cursor = picked ? Cursors.SizeAll : Cursors.Default;
+                    m_manipulator.OnHoveringControlChanged += m_manipulator_OnHoveringControlChanged; 
+                    ManipulatorControl = m_manipulator.GetHoveringControl();
+                    ContainerControl.Controls.Add(ManipulatorControl);
+                    UpdateManipulatorControl();
                 }
                 else
                 {
@@ -177,8 +196,22 @@ namespace LevelEditorCore
                 }
                 InvalidateViews();
             }
-            
+        }
 
+        void m_manipulator_OnHoveringControlChanged(object sender, EventArgs e)
+        {
+            if (ManipulatorControl != null)
+            {
+                ContainerControl.Controls.Remove(ManipulatorControl);
+                ManipulatorControl = null;
+            }
+
+            if (m_manipulator != null)
+            {
+                ManipulatorControl = m_manipulator.GetHoveringControl();
+                ContainerControl.Controls.Add(ManipulatorControl);
+                UpdateManipulatorControl();
+            }
         }
 
         public IPickFilter PickFilter
@@ -226,7 +259,7 @@ namespace LevelEditorCore
         [DefaultValue((float)(5.0f * (Math.PI / 180.0f)))]
         public float SnapAngle
         {
-            get{return m_SnapAngle;}
+            get { return m_SnapAngle; }
             set
             {
                 m_SnapAngle = MathUtil.Clamp(value,0, (float) (2.0 * Math.PI));
@@ -254,7 +287,6 @@ namespace LevelEditorCore
             }
         }
 
-
         /// <summary>
         /// Gets/sets input scheme.</summary>
         [DefaultValue(ControlSchemes.Maya)]
@@ -278,9 +310,23 @@ namespace LevelEditorCore
                 m_controlScheme = value;
             }
         }
-                   
+
+        void UpdateManipulatorControl()
+        {
+            var bounds = ContainerControl.Bounds;
+            if (ManipulatorControl != null)
+            {
+                ManipulatorControl.Bounds = new System.Drawing.Rectangle(
+                    bounds.Location + bounds.Size - ManipulatorControl.Bounds.Size - new System.Drawing.Size(8, 8),
+                    ManipulatorControl.Bounds.Size);
+                ManipulatorControl.BringToFront();
+            }
+        }
+
         protected const int DefaultSplitterThickness = 8;
         protected readonly QuadPanelControl QuadView;
+        protected readonly System.Windows.Forms.Control ContainerControl;
+        protected System.Windows.Forms.Control ManipulatorControl;
 
         #region private members
 

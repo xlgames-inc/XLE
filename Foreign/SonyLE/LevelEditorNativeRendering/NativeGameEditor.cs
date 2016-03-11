@@ -18,22 +18,22 @@ using LevelEditorCore;
 namespace RenderingInterop
 {
     /// <summary>
-    /// Native Game Editor.</summary>    
+    /// Native Game Editor.</summary>
     [Export(typeof(IInitializable))]
-    [Export(typeof(IControlHostClient))]    
+    [Export(typeof(IControlHostClient))]
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class NativeGameEditor : IInitializable, IControlHostClient
-    {        
+    {
         #region IInitializable Members
         void IInitializable.Initialize()
-        {           
+        {
             m_controlInfo = new ControlInfo("DesignView", "DesignView", StandardControlGroup.CenterPermanent);
             m_controlHostService.RegisterControl(m_designView.HostControl, m_controlInfo, this);
           
             Application.ApplicationExit += delegate
-            {            
+            {
                 Util3D.Shutdown();
-                GameEngine.Shutdown();                
+                GameEngine.Shutdown();
             };
 
             GameEngine.RefreshView += (sender,e)=> m_designView.InvalidateViews();
@@ -44,7 +44,7 @@ namespace RenderingInterop
             string ns = m_schemaLoader.NameSpace;
 
             // register GridRenderer on grid child.
-            DomNodeType gridType = m_schemaLoader.TypeCollection.GetNodeType(ns, "gridType");            
+            DomNodeType gridType = m_schemaLoader.TypeCollection.GetNodeType(ns, "gridType");
             gridType.Define(new ExtensionInfo<GridRenderer>());
 
             // register NativeGameWorldAdapter on game type.
@@ -64,9 +64,9 @@ namespace RenderingInterop
                     if (elm.LocalName == NativeAnnotations.NativeType)
                     {
                         string typeName = elm.GetAttribute(NativeAnnotations.NativeName);
-                        domType.SetTag(NativeAnnotations.NativeType, GameEngine.GetObjectTypeId(typeName));                        
+                        domType.SetTag(NativeAnnotations.NativeType, GameEngine.GetObjectTypeId(typeName));
                         if (domType.IsAbstract == false)
-                            domType.Define(new ExtensionInfo<NativeObjectAdapter>());                        
+                            domType.Define(new ExtensionInfo<NativeObjectAdapter>());
                     }
                     else if (elm.LocalName == NativeAnnotations.NativeDocumentType)
                     {
@@ -169,7 +169,7 @@ namespace RenderingInterop
                 // any relevant part of the schema changes.
                 // purpose:
                 // gameObjectFolderType does not exist in C++
-                // this code will map gameObjectFolderType to gameObjectGroupType.                                    
+                // this code will map gameObjectFolderType to gameObjectGroupType.
                 DomNodeType gobFolderType = m_schemaLoader.GameObjectFolderType;
                 DomNodeType groupType = m_schemaLoader.GameObjectGroupType;
 
@@ -210,7 +210,7 @@ namespace RenderingInterop
                     }
                 }
 
-                m_schemaLoader.GameType.GetChildInfo("gameObjectFolder").SetTag(NativeAnnotations.NativeElement, gobsId);                
+                m_schemaLoader.GameType.GetChildInfo("gameObjectFolder").SetTag(NativeAnnotations.NativeElement, gobsId);
             }
 
             #endregion
@@ -238,7 +238,7 @@ namespace RenderingInterop
         }
 
         bool IControlHostClient.Close(Control control)
-        {            
+        {
             if (m_documentRegistry.ActiveDocument != null)
             {
                 return m_documentService.Close(m_documentRegistry.ActiveDocument);
@@ -287,7 +287,7 @@ namespace RenderingInterop
         [Import(AllowDefault = false)]
         private IDocumentService m_documentService;
 
-        [Import(AllowDefault = false)] 
+        [Import(AllowDefault = false)]
         private IContextRegistry m_contextRegistry;
 
         [Import(AllowDefault = false)]
@@ -306,6 +306,5 @@ namespace RenderingInterop
         private ScriptingService m_scriptingService = null;
 
         private ControlInfo m_controlInfo;
-               
     }
 }

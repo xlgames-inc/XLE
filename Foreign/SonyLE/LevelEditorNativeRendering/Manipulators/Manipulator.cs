@@ -47,6 +47,9 @@ namespace RenderingInterop
             protected set;
         }
 
+        public System.Windows.Forms.Control GetHoveringControl() { return null; }
+        public event System.EventHandler OnHoveringControlChanged;
+
         #endregion
         protected abstract Matrix4F GetManipulatorMatrix();
         
