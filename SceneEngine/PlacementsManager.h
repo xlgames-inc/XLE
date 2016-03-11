@@ -62,12 +62,12 @@ namespace SceneEngine
     /// In this context, placements are static objects placed in the world. Most
     /// scenes will have a large number of essentially static objects. This object
     /// manages a large continuous world of these kinds of objects.
-    class PlacementsManager
+    class PlacementsManager : public std::enable_shared_from_this<PlacementsManager>
     {
     public:
-        std::shared_ptr<PlacementsRenderer>         GetRenderer();
-        std::shared_ptr<PlacementsEditor>           CreateEditor(const std::shared_ptr<PlacementCellSet>& cellSet);
-        std::shared_ptr<PlacementsIntersections>    GetIntersections();
+        const std::shared_ptr<PlacementsRenderer>& GetRenderer();
+        const std::shared_ptr<PlacementsIntersections>& GetIntersections();
+        std::shared_ptr<PlacementsEditor> CreateEditor(const std::shared_ptr<PlacementCellSet>& cellSet);
 
         PlacementsManager(std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
         ~PlacementsManager();
@@ -228,8 +228,12 @@ namespace SceneEngine
 
         std::pair<Float3, Float3> GetModelBoundingBox(const Assets::ResChar modelName[]) const;
 
+        std::shared_ptr<PlacementsManager> GetManager();
+        const PlacementCellSet& GetCellSet() const;
+
         PlacementsEditor(
             std::shared_ptr<PlacementCellSet> cellSet,
+            std::shared_ptr<PlacementsManager> manager,
             std::shared_ptr<PlacementsCache> placementsCache, 
             std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
         ~PlacementsEditor();

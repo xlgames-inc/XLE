@@ -120,9 +120,10 @@ namespace SceneEngine
             }
         }
 
-        if ((filter & Type::Placement) && _placements && _placementsIntersections) {
+        if ((filter & Type::Placement) && _placements && _placementsEditor) {
+            auto intersections = _placementsEditor->GetManager()->GetIntersections();
             auto roughIntersection = 
-                _placementsIntersections->Find_RayIntersection(*_placements, worldSpaceRay.first, worldSpaceRay.second, nullptr);
+                intersections->Find_RayIntersection(*_placements, worldSpaceRay.first, worldSpaceRay.second, nullptr);
 
             if (!roughIntersection.empty()) {
 
@@ -131,8 +132,8 @@ namespace SceneEngine
 
                     //  we need to create a temporary transaction to get
                     //  at the information for these objects.
-                auto trans = _placementsIntersections->Transaction_Begin(
-                    *_placemnents, AsPointer(roughIntersection.cbegin()), AsPointer(roughIntersection.cend()));
+                auto trans = _placementsEditor->Transaction_Begin(
+                    AsPointer(roughIntersection.cbegin()), AsPointer(roughIntersection.cend()));
 
                 TRY
                 {
@@ -152,7 +153,7 @@ namespace SceneEngine
                         auto guid = trans->GetGuid(c);
                         auto results = PlacementsIntersection(
                             *metalContext.get(), stateContext, 
-                            *_placementsRenderer, *_placements,
+                            *_placementsEditor->GetManager()->GetRenderer(), *_placements,
                             guid);
 
                         bool gotGoodResult = false;
@@ -171,7 +172,9 @@ namespace SceneEngine
                         if (gotGoodResult && intersectionDistance < result._distance) {
                             result = Result();
                             result._type = Type::Placement;
-                            result._worldSpaceCollision = LinearInterpolate(worldSpaceRay.first, worldSpaceRay.second, intersectionDistance / rayLength);
+                            result._worldSpaceCollision = LinearInterpolate(
+                                worldSpaceRay.first, worldSpaceRay.second, 
+                                intersectionDistance / rayLength);
                             result._distance = intersectionDistance;
                             result._objectGuid = guid;
                             result._drawCallIndex = drawCallIndex;
@@ -215,9 +218,10 @@ namespace SceneEngine
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
 
-        if ((filter & Type::Placement) && _placements && _placementsRenderer) {
+        if ((filter & Type::Placement) && _placements && _placementsEditor) {
+            auto intersections = _placementsEditor->GetManager()->GetIntersections();
             auto roughIntersection = 
-                _placements->Find_FrustumIntersection(worldToProjection, nullptr);
+                intersections->Find_FrustumIntersection(*_placements, worldToProjection, nullptr);
 
                 // we can improve the intersection by doing ray-vs-triangle tests
                 // on the roughIntersection geometry
@@ -225,7 +229,7 @@ namespace SceneEngine
             if (!roughIntersection.empty()) {
                     //  we need to create a temporary transaction to get
                     //  at the information for these objects.
-                auto trans = _placements->Transaction_Begin(
+                auto trans = _placementsEditor->Transaction_Begin(
                     AsPointer(roughIntersection.cbegin()), AsPointer(roughIntersection.cend()));
 
                 TRY
@@ -255,7 +259,9 @@ namespace SceneEngine
                         
                         bool isInside = boundaryTest == AABBIntersection::Within;
                         if (!isInside) {
-                            auto results = PlacementsIntersection(*metalContext.get(), stateContext, *_placements, *_placementsRenderer, guid);
+                            auto results = PlacementsIntersection(
+                                *metalContext.get(), stateContext, 
+                                *_placementsEditor->GetManager()->GetRenderer(), *_placements, guid);
                             isInside = !results.empty();
                         }
 
@@ -296,11 +302,11 @@ namespace SceneEngine
     IntersectionTestScene::IntersectionTestScene(
         std::shared_ptr<TerrainManager> terrainManager,
         std::shared_ptr<PlacementCellSet> placements,
-        std::shared_ptr<PlacementsIntersections> placementsIntersections,
+        std::shared_ptr<PlacementsEditor> placementsEditor,
         std::initializer_list<std::shared_ptr<IIntersectionTester>> extraTesters)
     : _terrainManager(std::move(terrainManager))
     , _placements(std::move(placements))
-    , _placementsIntersections(std::move(placementsIntersections))
+    , _placementsEditor(std::move(placementsEditor))
     {
         for (size_t c=0; c<extraTesters.size(); ++c) 
             _extraTesters.push_back(std::move(extraTesters.begin()[c]));

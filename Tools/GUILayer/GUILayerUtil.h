@@ -18,6 +18,7 @@ namespace SceneEngine
     class TerrainManager;
     class PlacementsEditor;
     class PlacementsRenderer;
+    class PlacementCellSet;
     class IIntersectionTester;
 }
 
@@ -60,8 +61,8 @@ namespace GUILayer
 		IntersectionTestSceneWrapper(std::shared_ptr<SceneEngine::IntersectionTestScene> scene);
         IntersectionTestSceneWrapper(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-            std::shared_ptr<SceneEngine::PlacementsEditor> placements,
-            std::shared_ptr<SceneEngine::PlacementsRenderer> renderer,
+            std::shared_ptr<SceneEngine::PlacementCellSet> placements,
+            std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor,
             std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionTester>> extraTesters);
         ~IntersectionTestSceneWrapper();
         !IntersectionTestSceneWrapper();

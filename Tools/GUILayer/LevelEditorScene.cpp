@@ -89,7 +89,7 @@ namespace GUILayer
         _flexObjects = std::make_shared<EntityInterface::RetainedEntities>();
         _placeholders = std::make_shared<ObjectPlaceholders>(_flexObjects);
         _dynamicImposters = std::make_shared<SceneEngine::DynamicImposters>(modelCache->GetSharedStateSet());
-        _placementsManager->SetImposters(_dynamicImposters);
+        _placementsManager->GetRenderer()->SetImposters(_dynamicImposters);
         _currentTime = 0.f;
     }
 
@@ -203,8 +203,8 @@ namespace GUILayer
 	{
 		return gcnew IntersectionTestSceneWrapper(
             _scene->_terrainManager,
+            _scene->_placementsCells,
             _scene->_placementsEditor,
-            _scene->_placementsManager->GetRenderer(),
             {_scene->_placeholders->CreateIntersectionTester()} );
     }
 

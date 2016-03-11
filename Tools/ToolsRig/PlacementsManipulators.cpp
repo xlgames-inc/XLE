@@ -504,7 +504,7 @@ namespace ToolsRig
                 //  likely get the most efficient results by rendering
                 //  all of objects that require highlights in one go.
             Placements_RenderHighlight(
-                context, parserContext, *_editor, *_renderer,
+                context, parserContext, *_renderer, _editor->GetCellSet(),
                 AsPointer(activeSelection.begin()), AsPointer(activeSelection.end()));
         }
     }
@@ -720,7 +720,7 @@ namespace ToolsRig
             }
 
             Placements_RenderHighlight(
-                context, parserContext, *_editor, *_renderer,
+                context, parserContext, *_renderer, _editor->GetCellSet(),
                 AsPointer(objects.begin()), AsPointer(objects.end()));
         }
     }
@@ -1133,10 +1133,11 @@ namespace ToolsRig
 
         std::vector<Float2> noisyPts;
 
-        _toBeDeleted = editor.Find_BoxIntersection(
+        _toBeDeleted = editor.GetManager()->GetIntersections()->Find_BoxIntersection(
+            editor.GetCellSet(),
             centre - Float3(radius, radius, radius),
             centre + Float3(radius, radius, radius),
-            [radius, centre, &modelGuids, &noisyPts](const SceneEngine::PlacementsEditor::ObjIntersectionDef& objectDef) -> bool
+            [radius, centre, &modelGuids, &noisyPts](const SceneEngine::PlacementsIntersections::IntersectionDef& objectDef) -> bool
             {
                 auto i = std::lower_bound(modelGuids.cbegin(), modelGuids.cend(), objectDef._model);
                 if (i != modelGuids.cend() && *i == objectDef._model) {
@@ -1599,7 +1600,7 @@ namespace ToolsRig
         pimpl->_editor = pimpl->_placementsManager->CreateEditor(placementCellSet);
         pimpl->_intersectionTestContext = std::move(intersectionContext);
         pimpl->_intersectionTestScene = std::make_shared<SceneEngine::IntersectionTestScene>(
-            terrainManager, pimpl->_editor, pimpl->_placementsManager->GetRenderer());
+            terrainManager, placementCellSet, pimpl->_editor);
         pimpl->_placementsDispl = std::make_shared<PlacementsWidgets>(
             pimpl->_editor, placementsManager->GetRenderer(),
             pimpl->_intersectionTestContext, pimpl->_intersectionTestScene);

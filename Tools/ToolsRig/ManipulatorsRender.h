@@ -15,7 +15,7 @@
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 namespace SceneEngine 
 { 
-    class PlacementsEditor;
+    class PlacementCellSet;
     class PlacementsRenderer;
     typedef std::pair<uint64, uint64> PlacementGUID;
 }
@@ -25,8 +25,8 @@ namespace ToolsRig
     void Placements_RenderHighlight(
         RenderCore::IThreadContext& threadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::PlacementsEditor& editor,
         SceneEngine::PlacementsRenderer& renderer,
+        const SceneEngine::PlacementCellSet& cellSet,
         const SceneEngine::PlacementGUID* filterBegin,
         const SceneEngine::PlacementGUID* filterEnd,
         uint64 materialGuid = ~0ull);
@@ -34,8 +34,8 @@ namespace ToolsRig
     void Placements_RenderFiltered(
         RenderCore::Metal::DeviceContext& metalContext,
         RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::PlacementsEditor& editor,
         SceneEngine::PlacementsRenderer& renderer,
+        const SceneEngine::PlacementCellSet& cellSet,
         const SceneEngine::PlacementGUID* filterBegin,
         const SceneEngine::PlacementGUID* filterEnd,
         uint64 materialGuid = ~0ull);

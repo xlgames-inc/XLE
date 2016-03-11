@@ -17,6 +17,7 @@
 #include "../ToolsRig/ManipulatorsRender.h"
 #include "../ToolsRig/HighlightEffects.h"
 #include "../../PlatformRig/BasicSceneParser.h"     // (PlatformRig::EnvironmentSettings destructor)
+#include "../../SceneEngine/PlacementsManager.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
@@ -313,7 +314,7 @@ namespace GUILayer
                     ToolsRig::Placements_RenderFiltered(
                         metalContext, 
                         context->GetParsingContext(), 
-                        placements->GetNative(), renderer->GetNative(),
+                        renderer->GetNative(), placements->GetNative().GetCellSet(), 
                         nullptr, nullptr, materialGuid);
 
                     const Float3 highlightCol(.75f, .8f, 0.4f);
@@ -327,7 +328,7 @@ namespace GUILayer
 
                 ToolsRig::Placements_RenderHighlight(
                     context->GetThreadContext(), context->GetParsingContext(), 
-                    placements->GetNative(), renderer->GetNative(),
+                    renderer->GetNative(), placements->GetNative().GetCellSet(),
                     (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cbegin()),
                     (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cend()),
                     materialGuid);

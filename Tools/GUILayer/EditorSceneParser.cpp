@@ -99,9 +99,9 @@ namespace GUILayer
             CATCH_ASSETS_BEGIN
                 for (auto i:delaySteps)
                     if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
-                        scene._placementsManager->CommitTransparent(metalContext, parserContext, techniqueIndex, i);
+                        scene._placementsManager->GetRenderer()->CommitTransparent(metalContext, parserContext, techniqueIndex, i);
                     } else {
-                        scene._placementsManager->Render(metalContext, parserContext, techniqueIndex, *scene._placementsCells);
+                        scene._placementsManager->GetRenderer()->Render(metalContext, parserContext, techniqueIndex, *scene._placementsCells);
                     }
             CATCH_ASSETS_END(parserContext)
 
@@ -132,7 +132,7 @@ namespace GUILayer
 
                 auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
                 for (auto i:delaySteps)
-                    if (    _editorScene->_placementsManager->HasPrepared(i)
+                    if (    _editorScene->_placementsManager->GetRenderer()->HasPrepared(i)
                         ||  _editorScene->_vegetationSpawnManager->HasContent(i))
                         return true;
             }
@@ -244,7 +244,8 @@ namespace GUILayer
             // at the moment, only placements can be selected... So we need to assume that 
             // they are all placements.
             ToolsRig::Placements_RenderHighlight(
-                *threadContext, parserContext, *_placementsEditor.get(), *_placementsRenderer.get(),
+                *threadContext, parserContext, 
+                *_placementsRenderer.get(), _placementsEditor->GetCellSet(),
                 (const SceneEngine::PlacementGUID*)AsPointer(_renderSettings->_selection->_nativePlacements->cbegin()),
                 (const SceneEngine::PlacementGUID*)AsPointer(_renderSettings->_selection->_nativePlacements->cend()));
         }

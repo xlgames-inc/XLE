@@ -898,6 +898,8 @@ namespace SceneEngine
     , _preparedRenders(typeid(ModelRenderer).hash_code())
     {}
 
+    PlacementsRenderer::Pimpl::~Pimpl() {}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void PlacementsRenderer::SetImposters(std::shared_ptr<DynamicImposters> imposters)
@@ -1077,19 +1079,22 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<PlacementsRenderer> PlacementsManager::GetRenderer()
+    const std::shared_ptr<PlacementsRenderer>& PlacementsManager::GetRenderer()
     {
         return _pimpl->_renderer;
     }
 
-    std::shared_ptr<PlacementsIntersections> PlacementsManager::GetIntersections()
+    const std::shared_ptr<PlacementsIntersections>& PlacementsManager::GetIntersections()
     {
         return _pimpl->_intersections;
     }
 
-    std::shared_ptr<PlacementsEditor> PlacementsManager::CreateEditor(const std::shared_ptr<PlacementCellSet>& cellSet)
+    std::shared_ptr<PlacementsEditor> PlacementsManager::CreateEditor(
+        const std::shared_ptr<PlacementCellSet>& cellSet)
     {
-        return std::make_shared<PlacementsEditor>(cellSet, _pimpl->_placementsCache, _pimpl->_modelCache);
+        return std::make_shared<PlacementsEditor>(
+            cellSet, shared_from_this(),
+            _pimpl->_placementsCache, _pimpl->_modelCache);
     }
 
     PlacementsManager::PlacementsManager(std::shared_ptr<ModelCache> modelCache)
@@ -1288,6 +1293,7 @@ namespace SceneEngine
         std::shared_ptr<PlacementsCache>    _placementsCache;
         std::shared_ptr<ModelCache>         _modelCache;
         std::shared_ptr<PlacementCellSet>   _cellSet;
+        std::shared_ptr<PlacementsManager>  _manager;
 
         std::shared_ptr<DynamicPlacements>  GetDynPlacements(uint64 cellGuid);
         Float3x4                            GetCellToWorld(uint64 cellGuid);
@@ -2427,8 +2433,12 @@ namespace SceneEngine
         return std::make_shared<Transaction>(_pimpl.get(), placementsBegin, placementsEnd, transactionFlags);
     }
 
+    std::shared_ptr<PlacementsManager> PlacementsEditor::GetManager() { return _pimpl->_manager; }
+    const PlacementCellSet& PlacementsEditor::GetCellSet() const { return *_pimpl->_cellSet; }
+
     PlacementsEditor::PlacementsEditor(
         std::shared_ptr<PlacementCellSet> cellSet,
+        std::shared_ptr<PlacementsManager> manager,
         std::shared_ptr<PlacementsCache> placementsCache,
         std::shared_ptr<ModelCache> modelCache)
     {
@@ -2436,6 +2446,7 @@ namespace SceneEngine
         _pimpl->_cellSet = std::move(cellSet);
         _pimpl->_placementsCache = std::move(placementsCache);
         _pimpl->_modelCache = std::move(modelCache);
+        _pimpl->_manager = std::move(manager);
     }
 
     PlacementsEditor::~PlacementsEditor()
