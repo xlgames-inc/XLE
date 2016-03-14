@@ -14,13 +14,16 @@
     <xs:annotation>
       <xs:appinfo>
         <LeGe.NativeProperty name="MaterialId" nativeName="MaterialId"/>
+        <LeGe.NativeProperty name="Name" nativeName="MaterialName"/>
         <scea.dom.editors.attribute name="MaterialId" displayName="Material Id" description="Material to attach to (zero based index)" category="General"/>
+        <scea.dom.editors.attribute name="Name" displayName="Name" description="Descriptive name for this material" category="General"/>
       </xs:appinfo>
     </xs:annotation>
-    
+
     <xs:attribute name="MaterialId" type="xs:int" default="0"/>
+    <xs:attribute name="Name" type ="xs:string" default=""/>
   </xs:complexType>
-    
+
   <xs:complexType name="terrainBaseTextureType">
     <xs:annotation>
       <xs:appinfo>
@@ -137,17 +140,17 @@
 
         <scea.dom.editors.attribute name="FlatTexture" displayName="FlatTexture" description="FlatTexture" category="General" 
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
-        
+
         <scea.dom.editors.attribute name="SlopeTexture0" displayName="SlopeTexture0" description="SlopeTexture0" category="General" 
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>        
         <scea.dom.editors.attribute name="SlopeTexture1" displayName="SlopeTexture1" description="SlopeTexture1" category="General" 
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
         <scea.dom.editors.attribute name="SlopeTexture2" displayName="SlopeTexture2" description="SlopeTexture2" category="General"
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
-        
+
         <scea.dom.editors.attribute name="BlendingTexture" displayName="BlendingTexture" description="BlendingTexture" category="General"
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
-        
+
         <scea.dom.editors.attribute name="FlatTextureMapping" displayName="FlatTextureMapping" description="FlatTextureMapping" category="General"/>
         <scea.dom.editors.attribute name="SlopeTexture0Mapping" displayName="SlopeTexture0Mapping" description="SlopeTexture0Mapping" category="General"/>
         <scea.dom.editors.attribute name="SlopeTexture1Mapping" displayName="SlopeTexture1Mapping" description="SlopeTexture1Mapping" category="General"/>
@@ -272,7 +275,7 @@
     <xs:attribute name="SuppressionLacunarity" type="xs:float" default="2.0192"/>
     <xs:attribute name="MaterialId" type="xs:int" default="0"/>
   </xs:complexType>
-  
+
   <xs:complexType name="vegetationSpawnConfigType">
     <xs:annotation>
       <xs:appinfo>
@@ -280,7 +283,7 @@
         <LeGe.NativeProperty name="BaseGridSpacing" nativeName="BaseGridSpacing"/>
         <LeGe.NativeProperty name="JitterAmount" nativeName="JitterAmount"/>
         <LeGe.NativeProperty name="AlignToTerrainUp" nativeName="AlignToTerrainUp"/>
-        
+
         <scea.dom.editors.attribute name="BaseGridSpacing" displayName="Base Grid Spacing" description="Spacing between objects (before position jittering)" category="General"/>
         <scea.dom.editors.attribute name="JitterAmount" displayName="Jitter Amount" description="Randomness applied to positions. Higher numbers mean objects are more randomly scattered." category="General"/>
         <scea.dom.editors.attribute name="AlignToTerrainUp" displayName="Align To Terrain Up" description="Align objects to terrain up (instead of world up)" category="General"/>
@@ -296,7 +299,7 @@
     <xs:attribute name="JitterAmount" type="xs:float" default="1"/>
     <xs:attribute name="AlignToTerrainUp" type="xs:boolean" default="false"/>
   </xs:complexType>
-  
+
   <!-- ......................................................................... -->
 
   <xs:complexType name="terrainCoverageLayer">
@@ -329,11 +332,11 @@
       <xs:element name="VegetationSpawn" type="vegetationSpawnConfigType" minOccurs="0" maxOccurs="1" />
       <xs:element name="coverage" type="terrainCoverageLayer" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
-    
+
     <xs:attribute name="UberSurfaceDir" type="xs:string" />
     <xs:attribute name="CellsDir" type="xs:string" />
     <xs:attribute name="ConfigFileTarget" type="xs:string" default="terrain.cfg" />
-    
+
     <xs:attribute name="NodeDimensions" type="xs:unsignedInt" default="32" />
     <xs:attribute name="Overlap" type="xs:unsignedInt" default="2" />
     <xs:attribute name="Spacing" type="xs:float" default="10" />
@@ -351,5 +354,5 @@
   </xs:complexType>
 
   <!-- ......................................................................... -->
-  
+
 </xs:schema>

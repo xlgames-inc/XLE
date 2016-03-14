@@ -18,7 +18,38 @@ using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Terrain
 {
-    class TerrainBaseTexture : DomNodeAdapter, IExportable, ICommandClient, IContextMenuCommandProvider, IHierarchical
+    class TerrainBaseTextureMaterial : DomNodeAdapter, IListable, INameable
+    {
+        public int Id
+        {
+            get { return GetAttribute<int>(Schema.abstractTerrainMaterialDescType.MaterialIdAttribute); }
+            set { SetAttribute(Schema.abstractTerrainMaterialDescType.MaterialIdAttribute, value); }
+        }
+
+        public string Name
+        {
+            get { return GetAttribute<string>(Schema.abstractTerrainMaterialDescType.NameAttribute); }
+            set { SetAttribute(Schema.abstractTerrainMaterialDescType.NameAttribute, value); }
+        }
+
+        public static DomNode Create(int materialId)
+        {
+            var mat = new DomNode(Schema.terrainMaterialType.Type);
+            mat.SetAttribute(Schema.abstractTerrainMaterialDescType.MaterialIdAttribute, materialId);
+            mat.SetAttribute(Schema.abstractTerrainMaterialDescType.NameAttribute, "Material: " + materialId.ToString());
+            return mat;
+        }
+
+        public void GetInfo(ItemInfo info)
+        {
+            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
+            info.Label = Name;
+        }
+    }
+
+    class TerrainBaseTexture
+        : DomNodeAdapter
+        , IExportable, ICommandClient, IContextMenuCommandProvider, IHierarchical
     {
         public string ExportDirectory
         {
@@ -54,14 +85,16 @@ namespace LevelEditorXLE.Terrain
         }
         #endregion
 
+        #region Material Children
+        IEnumerable<TerrainBaseTextureMaterial> Materials
+        {
+            get { return GetChildList<DomNode>(Schema.terrainBaseTextureType.materialChild).AsIEnumerable<TerrainBaseTextureMaterial>(); }
+        }
+
         public IEnumerable<int> GetMaterialIds()
         {
-            var children = GetChildList<DomNode>(Schema.terrainBaseTextureType.materialChild);
-            foreach(var i in children) {
-                var id = i.GetAttribute(Schema.abstractTerrainMaterialDescType.MaterialIdAttribute);
-                if (id is int)
-                    yield return (int)id;
-            }
+            foreach(var i in Materials)
+                yield return i.Id;
         }
 
         public int GetNextMaterialId()
@@ -71,6 +104,27 @@ namespace LevelEditorXLE.Terrain
                 maxId = Math.Max(maxId, id);
             return maxId+1;
         }
+
+        protected override void OnNodeSet()
+        {
+            DomNode.ChildInserted += DomNode_ChildInserted;
+            DomNode.ChildRemoved += DomNode_ChildRemoved;
+            UpdateBridgeList();
+        }
+
+        private void DomNode_ChildInserted(object sender, ChildEventArgs e)         { e.Child.AttributeChanged += Child_AttributeChanged; UpdateBridgeList();}
+        private void DomNode_ChildRemoved(object sender, ChildEventArgs e)          { e.Child.AttributeChanged -= Child_AttributeChanged; UpdateBridgeList(); }
+        private void Child_AttributeChanged(object sender, AttributeEventArgs e)    { UpdateBridgeList(); }
+
+        private void UpdateBridgeList()
+        {
+            var bridge = Globals.MEFContainer.GetExport<TerrainNamingBridge>().Value;
+            var names = new List<Tuple<string, int>>();
+            foreach(var m in Materials)
+                names.Add(new Tuple<string,int>(m.Name, m.Id));
+            bridge.SetBaseTextureMaterials(names);
+        }
+        #endregion
 
         #region IExportable
         public string ExportTarget
@@ -103,7 +157,6 @@ namespace LevelEditorXLE.Terrain
             }
             return false;
         }
-
         void ICommandClient.DoCommand(object commandTag)
         {
             if (!(commandTag is Command)) return;
@@ -112,16 +165,15 @@ namespace LevelEditorXLE.Terrain
             {
                 case Command.AddTerrainTextureMaterial:
                     {
-                        var mat = new DomNode(Schema.terrainMaterialType.Type);
-                        mat.SetAttribute(Schema.abstractTerrainMaterialDescType.MaterialIdAttribute, GetNextMaterialId());
-                        ApplicationUtil.Insert(DomNode.GetRoot(), this, mat, "Add Terrain Material", null);
+                        var mat = TerrainBaseTextureMaterial.Create(GetNextMaterialId());
+                        ApplicationUtil.Insert(
+                            DomNode.GetRoot(), this, mat, 
+                            "Add Terrain Material", null);
                     }
                     break;
             }
         }
-
-        void ICommandClient.UpdateCommand(object commandTag, CommandState commandState)
-        { }
+        void ICommandClient.UpdateCommand(object commandTag, CommandState commandState) {}
         #endregion
 
         private enum Command
@@ -132,26 +184,7 @@ namespace LevelEditorXLE.Terrain
         IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)
         {
             foreach (Command command in Enum.GetValues(typeof(Command)))
-            {
                 yield return command;
-            }
-        }
-    }
-
-    class TerrainMaterialItem : DomNodeAdapter, IListable
-    {
-        public int Id 
-        {
-            get 
-            {
-                return GetAttribute<int>(Schema.abstractTerrainMaterialDescType.MaterialIdAttribute);
-            }
-        }
-
-        public void GetInfo(ItemInfo info)
-        {
-            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
-            info.Label = "Material: " + Id;
         }
     }
 }

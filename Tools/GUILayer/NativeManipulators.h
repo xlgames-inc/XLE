@@ -37,6 +37,8 @@ namespace GUILayer
         event EventHandler^ OnActiveManipulatorChange;
         event EventHandler^ OnManipulatorSetChange;
 
+        void SetTerrainBaseTextureMaterial(int index);
+
         ActiveManipulatorContext();
         ~ActiveManipulatorContext();
     private:

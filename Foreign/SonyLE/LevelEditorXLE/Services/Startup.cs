@@ -20,7 +20,7 @@ namespace LevelEditorXLE
             Schema.terrainType.Type.Define(new ExtensionInfo<Terrain.XLETerrainGob>());
             Schema.terrainCoverageLayer.Type.Define(new ExtensionInfo<Terrain.XLETerrainCoverage>());
             Schema.terrainBaseTextureType.Type.Define(new ExtensionInfo<Terrain.TerrainBaseTexture>());
-            Schema.abstractTerrainMaterialDescType.Type.Define(new ExtensionInfo<Terrain.TerrainMaterialItem>());
+            Schema.abstractTerrainMaterialDescType.Type.Define(new ExtensionInfo<Terrain.TerrainBaseTextureMaterial>());
             Schema.envSettingsFolderType.Type.Define(new ExtensionInfo<Environment.XLEEnvSettingsFolder>());
             Schema.envSettingsType.Type.Define(new ExtensionInfo<Environment.XLEEnvSettings>());
             Schema.xleGameType.Type.Define(new ExtensionInfo<Game.GameExtensions>());
@@ -54,7 +54,8 @@ namespace LevelEditorXLE
                 typeof(Placements.ResourceListerCommandClient),
 
                 typeof(AssetMan.ResourcePreview),
-                typeof(Manipulators.ExtraEditCommands)
+                typeof(Manipulators.ExtraEditCommands),
+                typeof(Terrain.TerrainNamingBridge)
                 );
         }
     }

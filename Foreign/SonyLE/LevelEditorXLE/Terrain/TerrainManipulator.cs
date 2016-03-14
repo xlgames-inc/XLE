@@ -8,18 +8,57 @@ using System.ComponentModel;
 using System.ComponentModel.Composition;
 using System.Windows.Forms;
 using System.Drawing;
+using System.Collections.Generic;
+using System;
 using Sce.Atf;
 using Sce.Atf.Applications;
-using System;
 using LevelEditorXLE.Extensions;
 using LevelEditorCore;
 
 namespace LevelEditorXLE.Terrain
 {
+    [Export(typeof(TerrainNamingBridge))]
+    [PartCreationPolicy(CreationPolicy.Shared)]
+    public class TerrainNamingBridge
+    {
+        public IEnumerable<Tuple<string, int>> BaseTextureMaterials { get { return _baseTextureMaterials; } }
+        public IEnumerable<Tuple<string, int>> DecorationMaterials { get { return _decorationMaterials; } }
+
+        public event EventHandler<EventArgs> OnBaseTextureMaterialsChanged;
+        public event EventHandler<EventArgs> OnDecorationMaterialsChanged;
+
+        public void SetBaseTextureMaterials(IEnumerable<Tuple<string, int>> range)
+        {
+            _baseTextureMaterials.Clear();
+            _baseTextureMaterials.AddRange(range);
+            if (OnBaseTextureMaterialsChanged != null)
+                OnBaseTextureMaterialsChanged(this, EventArgs.Empty);
+        }
+
+        public void SetDecorationMaterials(IEnumerable<Tuple<string, int>> range)
+        {
+            _decorationMaterials.Clear();
+            _decorationMaterials.AddRange(range);
+            if (OnDecorationMaterialsChanged != null)
+                OnDecorationMaterialsChanged(this, EventArgs.Empty);
+        }
+
+        public TerrainNamingBridge()
+        {
+            _baseTextureMaterials = new List<Tuple<string, int>>();
+            _decorationMaterials = new List<Tuple<string, int>>();
+        }
+
+        private List<Tuple<string, int>> _baseTextureMaterials;
+        private List<Tuple<string, int>> _decorationMaterials;
+    }
+
     [Export(typeof(IManipulator))]
     [Export(typeof(XLEBridgeUtils.IShutdownWithEngine))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class TerrainManipulator : IManipulator, XLEBridgeUtils.IShutdownWithEngine, IDisposable, XLEBridgeUtils.IManipulatorExtra
+    public class TerrainManipulator
+        : IManipulator, IDisposable
+        , XLEBridgeUtils.IShutdownWithEngine, XLEBridgeUtils.IManipulatorExtra
     {
         public ManipulatorPickResult Pick(ViewControl vc, Point scrPt)
         {
@@ -108,9 +147,7 @@ namespace LevelEditorXLE.Terrain
         {
             if (_manipContext.ActiveManipulator == "Paint Coverage")
             {
-                var ctrl = new System.Windows.Forms.ComboBox();
-                ctrl.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-                return ctrl;
+                return _baseTextureCombo;
             }
             return null;
         }
@@ -142,7 +179,7 @@ namespace LevelEditorXLE.Terrain
         }
 
         [ImportingConstructor]
-        public TerrainManipulator(IContextRegistry contextRegistry)
+        public TerrainManipulator(IContextRegistry contextRegistry, TerrainNamingBridge namingBridge)
         {
             _manipContext = new GUILayer.ActiveManipulatorContext();
             _manipContext.OnActiveManipulatorChange += 
@@ -152,10 +189,20 @@ namespace LevelEditorXLE.Terrain
                         this.OnHoveringControlChanged(null, EventArgs.Empty);
                 };
             _nativeManip = null;
+            _attachedSceneManager = new WeakReference(null);
+            _attachedTerrainManiContext = new WeakReference(null);
 
             _contextRegistry = new WeakReference(contextRegistry);
             contextRegistry.ActiveContextChanged += OnActiveContextChanged;
             _nativeManip = new GUILayer.NativeManipulatorLayer(_manipContext);
+
+            _baseTextureCombo = new System.Windows.Forms.ComboBox();
+            _baseTextureCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            _baseTextureCombo.DisplayMember = "Text";
+            _baseTextureCombo.ValueMember = "Value";
+
+            _namingBridge = namingBridge;
+            _namingBridge.OnBaseTextureMaterialsChanged += OnBaseTextureMaterialsChanged;
         }
 
         public void Dispose() { Shutdown(); }
@@ -176,17 +223,48 @@ namespace LevelEditorXLE.Terrain
                 }
             }
 
-            if (sceneMan != null && maniContext != null) {
-                _manipContext.ManipulatorSet = sceneMan.CreateTerrainManipulators(maniContext);
-            } else {
+            if (sceneMan != null && maniContext != null)
+            {
+                if (sceneMan != _attachedSceneManager.Target || maniContext != _attachedTerrainManiContext.Target)
+                {
+                    _manipContext.ManipulatorSet = sceneMan.CreateTerrainManipulators(maniContext);
+                    _attachedSceneManager.Target = sceneMan;
+                    _attachedTerrainManiContext.Target = maniContext;
+                }
+            } 
+            else 
+            {
                 _manipContext.ManipulatorSet = null;
+                _attachedSceneManager.Target = null;
+                _attachedTerrainManiContext.Target = null;
             }
+        }
+
+        private void OnBaseTextureMaterialsChanged(object sender, EventArgs e)
+        {
+            var selected = _baseTextureCombo.SelectedItem;
+            _baseTextureCombo.SelectedIndexChanged -= _baseTextureCombo_SelectedIndexChanged;
+            _baseTextureCombo.Items.Clear();
+            foreach (var m in _namingBridge.BaseTextureMaterials)
+                _baseTextureCombo.Items.Add(new { Text = m.Item1, Value = m.Item2 });
+            _baseTextureCombo.SelectedItem = selected;
+            _baseTextureCombo.SelectedIndexChanged += _baseTextureCombo_SelectedIndexChanged;
+        }
+
+        void _baseTextureCombo_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            dynamic o = _baseTextureCombo.SelectedItem;
+            _manipContext.SetTerrainBaseTextureMaterial((System.Int32)o.Value);
         }
 
         private GUILayer.NativeManipulatorLayer _nativeManip;
         private GUILayer.ActiveManipulatorContext _manipContext;
         private WeakReference _contextRegistry;
-    };
+        private TerrainNamingBridge _namingBridge;
+        private System.Windows.Forms.ComboBox _baseTextureCombo;
+        private WeakReference _attachedSceneManager;
+        private WeakReference _attachedTerrainManiContext;
+    }
 }
 
 

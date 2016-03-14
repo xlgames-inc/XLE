@@ -368,8 +368,6 @@ namespace LevelEditorXLE
             placementsCellReferenceType.ExportEnabledAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ExportEnabled");
             placementsCellReferenceType.cachedCellMinsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("cachedCellMins");
             placementsCellReferenceType.cachedCellMaxsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("cachedCellMaxs");
-            placementsCellReferenceType.visibleAttribute = placementsCellReferenceType.Type.GetAttributeInfo("visible");
-            placementsCellReferenceType.lockedAttribute = placementsCellReferenceType.Type.GetAttributeInfo("locked");
 
             placementsFolderType.Type = getNodeType("gap", "placementsFolderType");
             placementsFolderType.baseEditorPathAttribute = placementsFolderType.Type.GetAttributeInfo("baseEditorPath");
@@ -427,6 +425,7 @@ namespace LevelEditorXLE
 
             abstractTerrainMaterialDescType.Type = getNodeType("gap", "abstractTerrainMaterialDescType");
             abstractTerrainMaterialDescType.MaterialIdAttribute = abstractTerrainMaterialDescType.Type.GetAttributeInfo("MaterialId");
+            abstractTerrainMaterialDescType.NameAttribute = abstractTerrainMaterialDescType.Type.GetAttributeInfo("Name");
 
             terrainBaseTextureType.Type = getNodeType("gap", "terrainBaseTextureType");
             terrainBaseTextureType.diffusedimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("diffusedims");
@@ -449,10 +448,12 @@ namespace LevelEditorXLE
 
             terrainStrataMaterialType.Type = getNodeType("gap", "terrainStrataMaterialType");
             terrainStrataMaterialType.MaterialIdAttribute = terrainStrataMaterialType.Type.GetAttributeInfo("MaterialId");
+            terrainStrataMaterialType.NameAttribute = terrainStrataMaterialType.Type.GetAttributeInfo("Name");
             terrainStrataMaterialType.strataChild = terrainStrataMaterialType.Type.GetChildInfo("strata");
 
             terrainMaterialType.Type = getNodeType("gap", "terrainMaterialType");
             terrainMaterialType.MaterialIdAttribute = terrainMaterialType.Type.GetAttributeInfo("MaterialId");
+            terrainMaterialType.NameAttribute = terrainMaterialType.Type.GetAttributeInfo("Name");
             terrainMaterialType.FlatTextureAttribute = terrainMaterialType.Type.GetAttributeInfo("FlatTexture");
             terrainMaterialType.SlopeTexture0Attribute = terrainMaterialType.Type.GetAttributeInfo("SlopeTexture0");
             terrainMaterialType.SlopeTexture1Attribute = terrainMaterialType.Type.GetAttributeInfo("SlopeTexture1");
@@ -1015,8 +1016,6 @@ namespace LevelEditorXLE
             public static AttributeInfo ExportEnabledAttribute;
             public static AttributeInfo cachedCellMinsAttribute;
             public static AttributeInfo cachedCellMaxsAttribute;
-            public static AttributeInfo visibleAttribute;
-            public static AttributeInfo lockedAttribute;
         }
 
         public static class placementsFolderType
@@ -1089,6 +1088,7 @@ namespace LevelEditorXLE
         {
             public static DomNodeType Type;
             public static AttributeInfo MaterialIdAttribute;
+            public static AttributeInfo NameAttribute;
         }
 
         public static class terrainBaseTextureType
@@ -1120,6 +1120,7 @@ namespace LevelEditorXLE
         {
             public static DomNodeType Type;
             public static AttributeInfo MaterialIdAttribute;
+            public static AttributeInfo NameAttribute;
             public static ChildInfo strataChild;
         }
 
@@ -1127,6 +1128,7 @@ namespace LevelEditorXLE
         {
             public static DomNodeType Type;
             public static AttributeInfo MaterialIdAttribute;
+            public static AttributeInfo NameAttribute;
             public static AttributeInfo FlatTextureAttribute;
             public static AttributeInfo SlopeTexture0Attribute;
             public static AttributeInfo SlopeTexture1Attribute;
