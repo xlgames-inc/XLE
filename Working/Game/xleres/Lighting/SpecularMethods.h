@@ -257,7 +257,12 @@ float3 ReferenceSpecularGGX(
     } else {
         q = SchlickFresnelCore(sndl * dot(negativeLightDirection, normal));
     }
-    float3 F = lerp(F0, 1.f, q);
+    #if TAPER_OFF_FRESNEL
+        float3 upperLimit = min(1.0.xxx, 50.0f * F0);
+        float3 F = F0 + (upperLimit - F0) * q;
+    #else
+        float3 F = lerp(F0, 1.f, q);
+    #endif
 
     /////////// Microfacet ///////////
         // Mapping alpha to roughness squared (as per Disney
@@ -271,7 +276,16 @@ float3 ReferenceSpecularGGX(
 
     // note that the NdotL part here is for scaling down the incident light
     // (and so not part of the general BRDF equation)
-    return F * (NdotL * G * D / denom);
+    float A = (NdotL * G * D / denom);
+
+    // In extreme cases, we must clamp the maximum specular values. This is should
+    // only be used when there is extreme variation in the normals (otherwise it can
+    // distort the lighting model). However, for some models, it's difficult to find
+    // a better solution.
+    #if MAT_CLAMP_SPEC!=0
+        A = min(A, 10.f);
+    #endif
+    return F * A;
 }
 
 float3 CalculateSpecular_GGX(

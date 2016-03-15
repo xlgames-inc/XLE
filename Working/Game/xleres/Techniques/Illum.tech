@@ -17,6 +17,7 @@
             MAT_BLEND_FOG=0
             MAT_SKIP_LIGHTING_SCALE=0
             MAT_TRANSMITTED_SPECULAR=0
+            MAT_CLAMP_SPEC=0
         ~Runtime
             BASIC_LIGHT_COUNT=1
             SHADOW_CASCADE_MODE=2
@@ -86,6 +87,7 @@
             OUTPUT_WORLD_VIEW_VECTOR=1
         ~Material
             MAT_TRANSMITTED_SPECULAR=0
+            MAT_CLAMP_SPEC=0
         ~GlobalEnvironment
             SKIP_MATERIAL_DIFFUSE=0
             SKY_PROJECTION
@@ -152,6 +154,7 @@
             OUTPUT_WORLD_VIEW_VECTOR=1
         ~Material
             MAT_TRANSMITTED_SPECULAR=0
+            MAT_CLAMP_SPEC=0
         ~GlobalEnvironment
             SKIP_MATERIAL_DIFFUSE=0
             SKY_PROJECTION
