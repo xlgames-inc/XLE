@@ -254,12 +254,13 @@
         <LeGe.NativeProperty name="SuppressionLacunarity" nativeName="SuppressionLacunarity"/>
         <LeGe.NativeProperty name="MaterialId" nativeName="MaterialId"/>
 
-        <scea.dom.editors.attribute name="NoSpawnWeight" displayName="NoSpawnWeight" description="Higher numbers mean places where objects would normally be spawned are left blank" category="General"/>
-        <scea.dom.editors.attribute name="SuppressionThreshold" displayName="SuppressionThreshold" description="Suppresses object spawning in a noise pattern" category="General"/>
-        <scea.dom.editors.attribute name="SuppressionNoise" displayName="SuppressionNoise" description="Frequency value for noise pattern for suppression" category="General"/>
-        <scea.dom.editors.attribute name="SuppressionGain" displayName="SuppressionGain" description="Gain value for noise pattern for suppression" category="General"/>
-        <scea.dom.editors.attribute name="SuppressionLacunarity" displayName="SuppressionLacunarity" description="Lacunarity value for noise pattern for suppression" category="General"/>
+        <scea.dom.editors.attribute name="NoSpawnWeight" displayName="NoSpawnWeight" description="Higher numbers mean places where objects would normally be spawned are left blank" category="SpawnPattern"/>
+        <scea.dom.editors.attribute name="SuppressionThreshold" displayName="SuppressionThreshold" description="Suppresses object spawning in a noise pattern" category="SpawnPattern"/>
+        <scea.dom.editors.attribute name="SuppressionNoise" displayName="SuppressionNoise" description="Frequency value for noise pattern for suppression" category="SpawnPattern"/>
+        <scea.dom.editors.attribute name="SuppressionGain" displayName="SuppressionGain" description="Gain value for noise pattern for suppression" category="SpawnPattern"/>
+        <scea.dom.editors.attribute name="SuppressionLacunarity" displayName="SuppressionLacunarity" description="Lacunarity value for noise pattern for suppression" category="SpawnPattern"/>
         <scea.dom.editors.attribute name="MaterialId" displayName="MaterialId" description="Id for this material (must be unique and contiguous)" category="General"/>
+        <scea.dom.editors.attribute name="Name" displayName="Name" description="Name for this material" category="General"/>
 
         <scea.dom.editors name="VegetationSpawnMaterial" category="Terrain" image="LevelEditorCore.Resources.gameObject.png" menuText="VegetationSpawnMaterial" description="VegetationSpawnMaterial"/>
       </xs:appinfo>
@@ -274,6 +275,7 @@
     <xs:attribute name="SuppressionGain" type="xs:float" default="0.935"/>
     <xs:attribute name="SuppressionLacunarity" type="xs:float" default="2.0192"/>
     <xs:attribute name="MaterialId" type="xs:int" default="0"/>
+    <xs:attribute name="Name" type="xs:string" default="unnamed"/>
   </xs:complexType>
 
   <xs:complexType name="vegetationSpawnConfigType">

@@ -18,8 +18,40 @@ using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Terrain
 {
-    class VegetationSpawnConfigGob : DomNodeAdapter, IHierarchical, IExportable, ICommandClient, IContextMenuCommandProvider
+    class VegetationSpawnMaterialItem : DomNodeAdapter, IListable, INameable
     {
+        public int Id
+        {
+            get { return GetAttribute<int>(Schema.vegetationSpawnMaterialType.MaterialIdAttribute); }
+            set { SetAttribute(Schema.vegetationSpawnMaterialType.MaterialIdAttribute, value); }
+        }
+
+        public string Name
+        {
+            get { return GetAttribute<string>(Schema.vegetationSpawnMaterialType.NameAttribute); }
+            set { SetAttribute(Schema.vegetationSpawnMaterialType.NameAttribute, value); }
+        }
+
+        public void GetInfo(ItemInfo info)
+        {
+            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
+            info.Label = Name;
+        }
+
+        public static DomNode Create(int materialId)
+        {
+            var mat = new DomNode(Schema.vegetationSpawnMaterialType.Type);
+            mat.SetAttribute(Schema.vegetationSpawnMaterialType.MaterialIdAttribute, materialId);
+            mat.SetAttribute(Schema.vegetationSpawnMaterialType.NameAttribute, "Material: " + materialId.ToString());
+            return mat;
+        }
+    }
+
+    class VegetationSpawnConfigGob
+        : DomNodeAdapter
+        , IHierarchical, IExportable, ICommandClient, IContextMenuCommandProvider
+    {
+        #region IHierarchical members
         public bool CanAddChild(object child)
         {
             var domNode = child.As<DomNode>();
@@ -39,16 +71,18 @@ namespace LevelEditorXLE.Terrain
 
             return false;
         }
+        #endregion
+
+        #region Material Children
+        IEnumerable<VegetationSpawnMaterialItem> Materials
+        {
+            get { return GetChildList<DomNode>(Schema.vegetationSpawnConfigType.materialChild).AsIEnumerable<VegetationSpawnMaterialItem>(); }
+        }
 
         public IEnumerable<int> GetMaterialIds()
         {
-            var children = GetChildList<DomNode>(Schema.vegetationSpawnConfigType.materialChild);
-            foreach (var i in children)
-            {
-                var id = i.GetAttribute(Schema.vegetationSpawnMaterialType.MaterialIdAttribute);
-                if (id is int)
-                    yield return (int)id;
-            }
+            foreach (var i in Materials)
+                yield return i.Id;
         }
 
         public int GetNextMaterialId()
@@ -58,6 +92,27 @@ namespace LevelEditorXLE.Terrain
                 maxId = Math.Max(maxId, id);
             return maxId + 1;
         }
+
+        protected override void OnNodeSet()
+        {
+            DomNode.ChildInserted += DomNode_ChildInserted;
+            DomNode.ChildRemoved += DomNode_ChildRemoved;
+            UpdateBridgeList();
+        }
+
+        private void DomNode_ChildInserted(object sender, ChildEventArgs e)         { e.Child.AttributeChanged += Child_AttributeChanged; UpdateBridgeList(); }
+        private void DomNode_ChildRemoved(object sender, ChildEventArgs e)          { e.Child.AttributeChanged -= Child_AttributeChanged; UpdateBridgeList(); }
+        private void Child_AttributeChanged(object sender, AttributeEventArgs e)    { UpdateBridgeList(); }
+
+        private void UpdateBridgeList()
+        {
+            var bridge = Globals.MEFContainer.GetExport<TerrainNamingBridge>().Value;
+            var names = new List<Tuple<string, int>>();
+            foreach (var m in Materials)
+                names.Add(new Tuple<string, int>(m.Name, m.Id));
+            bridge.SetDecorationMaterials(names);
+        }
+        #endregion
 
         #region IExportable
         public string ExportDirectory
@@ -104,8 +159,7 @@ namespace LevelEditorXLE.Terrain
             {
                 case Command.AddVegetationSpawnMaterial:
                     {
-                        var mat = new DomNode(Schema.vegetationSpawnMaterialType.Type);
-                        mat.SetAttribute(Schema.vegetationSpawnMaterialType.MaterialIdAttribute, GetNextMaterialId());
+                        var mat = VegetationSpawnMaterialItem.Create(GetNextMaterialId());
                         ApplicationUtil.Insert(DomNode.GetRoot(), this, mat, "Add Decoration Material", null);
                     }
                     break;
@@ -127,25 +181,6 @@ namespace LevelEditorXLE.Terrain
             {
                 yield return command;
             }
-        }
-
-        public VegetationSpawnConfigGob() { }
-    }
-
-    class VegetationSpawnMaterialItem : DomNodeAdapter, IListable
-    {
-        public int Id
-        {
-            get
-            {
-                return GetAttribute<int>(Schema.vegetationSpawnMaterialType.MaterialIdAttribute);
-            }
-        }
-
-        public void GetInfo(ItemInfo info)
-        {
-            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
-            info.Label = "Material: " + Id;
         }
     }
 }

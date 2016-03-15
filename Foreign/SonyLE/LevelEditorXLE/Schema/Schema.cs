@@ -486,6 +486,7 @@ namespace LevelEditorXLE
             vegetationSpawnMaterialType.SuppressionGainAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("SuppressionGain");
             vegetationSpawnMaterialType.SuppressionLacunarityAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("SuppressionLacunarity");
             vegetationSpawnMaterialType.MaterialIdAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("MaterialId");
+            vegetationSpawnMaterialType.NameAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("Name");
             vegetationSpawnMaterialType.objectChild = vegetationSpawnMaterialType.Type.GetChildInfo("object");
 
             vegetationSpawnConfigType.Type = getNodeType("gap", "vegetationSpawnConfigType");
@@ -1170,6 +1171,7 @@ namespace LevelEditorXLE
             public static AttributeInfo SuppressionGainAttribute;
             public static AttributeInfo SuppressionLacunarityAttribute;
             public static AttributeInfo MaterialIdAttribute;
+            public static AttributeInfo NameAttribute;
             public static ChildInfo objectChild;
         }
 

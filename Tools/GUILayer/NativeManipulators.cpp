@@ -187,19 +187,38 @@ namespace GUILayer
         OnActiveManipulatorChange(this, EventArgs::Empty);
     }
 
-    void ActiveManipulatorContext::SetTerrainBaseTextureMaterial(int index)
+    void ActiveManipulatorContext::SetPaintCoverageMaterial(int index)
     {
-        auto props = ManipulatorSet->GetProperties("Paint Coverage");
-        if (props != nullptr) {
-            auto item = props->PropertyDescriptors["PaintValue"];
-            if (item != nullptr) {
-                auto obj = System::Linq::Enumerable::FirstOrDefault(props->Items);
-                if (obj != nullptr) {
-                    item->SetValue(obj, gcnew System::Int32(index));
-                    RaisePropertyChange();
+        if (ManipulatorSet != nullptr) {
+            auto props = ManipulatorSet->GetProperties("Paint Coverage");
+            if (props != nullptr) {
+                auto item = props->PropertyDescriptors["PaintValue"];
+                if (item != nullptr) {
+                    auto obj = System::Linq::Enumerable::FirstOrDefault(props->Items);
+                    if (obj != nullptr) {
+                        item->SetValue(obj, gcnew System::Int32(index));
+                        RaisePropertyChange();
+                    }
                 }
             }
         }
+    }
+
+    int ActiveManipulatorContext::GetPaintCoverageMaterial()
+    {
+        if (ManipulatorSet != nullptr) {
+            auto props = ManipulatorSet->GetProperties("Paint Coverage");
+            if (props != nullptr) {
+                auto item = props->PropertyDescriptors["PaintValue"];
+                if (item != nullptr) {
+                    auto obj = System::Linq::Enumerable::FirstOrDefault(props->Items);
+                    if (obj != nullptr) {
+                        return (System::Int32)item->GetValue(obj);
+                    }
+                }
+            }
+        }
+        return 0;
     }
 
     ActiveManipulatorContext::ActiveManipulatorContext()

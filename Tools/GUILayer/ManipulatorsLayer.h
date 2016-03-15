@@ -23,27 +23,29 @@ namespace GUILayer
     {
     public:
         class RegisteredManipulator
-		{
-		public:
-			std::string _name;
-			std::shared_ptr<ToolsRig::IManipulator> _manipulator;
-			RegisteredManipulator(
-				const std::string& name,
-				std::shared_ptr<ToolsRig::IManipulator> manipulator)
-				: _name(name), _manipulator(std::move(manipulator))
-			{}
-			RegisteredManipulator() {}
-			~RegisteredManipulator();
-		};
-		std::vector<RegisteredManipulator> _terrainManipulators;
+        {
+        public:
+            std::string _name;
+            std::shared_ptr<ToolsRig::IManipulator> _manipulator;
+            RegisteredManipulator(
+                const std::string& name,
+                std::shared_ptr<ToolsRig::IManipulator> manipulator)
+                : _name(name), _manipulator(std::move(manipulator))
+            {}
+            RegisteredManipulator() {}
+            ~RegisteredManipulator();
+        };
+        std::vector<RegisteredManipulator> _terrainManipulators;
     };
 
     public ref class TerrainManipulatorContext
     {
     public:
-        property unsigned ActiveLayer { unsigned get(); void set(unsigned value); }
-        property bool ShowLockedArea { bool get(); void set(bool value); }
-		property bool ShowCoverage { bool get(); void set(bool value); }
+        property unsigned ActiveLayer   { unsigned get(); void set(unsigned value); }
+        property bool ShowLockedArea    { bool get(); void set(bool value); }
+        property bool ShowCoverage      { bool get(); void set(bool value); }
+
+        event System::EventHandler<System::EventArgs^>^ OnActiveLayerChange;
 
         std::shared_ptr<::ToolsRig::TerrainManipulatorContext> GetNative() { return _native; }
 
@@ -60,7 +62,7 @@ namespace GUILayer
         property TerrainManipulatorContext^ Context { TerrainManipulatorContext^ get() { return _context; } }
 
         virtual clix::shared_ptr<ToolsRig::IManipulator> GetManipulator(System::String^ name) override;
-		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() override;
+        virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() override;
 
         TerrainManipulators(
             std::shared_ptr<SceneEngine::TerrainManager> terrain, 
@@ -77,26 +79,26 @@ namespace GUILayer
     {
     public:
         class RegisteredManipulator
-		{
-		public:
-			std::string _name;
-			std::shared_ptr<ToolsRig::IManipulator> _manipulator;
-			RegisteredManipulator(
-				const std::string& name,
-				std::shared_ptr<ToolsRig::IManipulator> manipulator)
-				: _name(name), _manipulator(std::move(manipulator))
-			{}
-			RegisteredManipulator() {}
-			~RegisteredManipulator();
-		};
-		std::vector<RegisteredManipulator> _manipulators;
+        {
+        public:
+            std::string _name;
+            std::shared_ptr<ToolsRig::IManipulator> _manipulator;
+            RegisteredManipulator(
+                const std::string& name,
+                std::shared_ptr<ToolsRig::IManipulator> manipulator)
+                : _name(name), _manipulator(std::move(manipulator))
+            {}
+            RegisteredManipulator() {}
+            ~RegisteredManipulator();
+        };
+        std::vector<RegisteredManipulator> _manipulators;
     };
 
     ref class PlacementManipulators : public IManipulatorSet
     {
     public:
         virtual clix::shared_ptr<ToolsRig::IManipulator> GetManipulator(System::String^ name) override;
-		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() override;
+        virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() override;
 
         PlacementManipulators(
             ToolsRig::IPlacementManipulatorSettings* context,

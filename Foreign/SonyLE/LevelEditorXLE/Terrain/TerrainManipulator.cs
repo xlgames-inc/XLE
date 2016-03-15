@@ -147,6 +147,10 @@ namespace LevelEditorXLE.Terrain
         {
             if (_manipContext.ActiveManipulator == "Paint Coverage")
             {
+                if (    _attachedTerrainManiContext != null
+                    &&  _attachedTerrainManiContext.ActiveLayer == 1001) {
+                    return _decorationMaterialCombo;
+                }
                 return _baseTextureCombo;
             }
             return null;
@@ -190,7 +194,7 @@ namespace LevelEditorXLE.Terrain
                 };
             _nativeManip = null;
             _attachedSceneManager = new WeakReference(null);
-            _attachedTerrainManiContext = new WeakReference(null);
+            _attachedTerrainManiContext = null;
 
             _contextRegistry = new WeakReference(contextRegistry);
             contextRegistry.ActiveContextChanged += OnActiveContextChanged;
@@ -201,8 +205,14 @@ namespace LevelEditorXLE.Terrain
             _baseTextureCombo.DisplayMember = "Text";
             _baseTextureCombo.ValueMember = "Value";
 
+            _decorationMaterialCombo = new System.Windows.Forms.ComboBox();
+            _decorationMaterialCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            _decorationMaterialCombo.DisplayMember = "Text";
+            _decorationMaterialCombo.ValueMember = "Value";
+
             _namingBridge = namingBridge;
             _namingBridge.OnBaseTextureMaterialsChanged += OnBaseTextureMaterialsChanged;
+            _namingBridge.OnDecorationMaterialsChanged += OnDecorationMaterialsChanged;
         }
 
         public void Dispose() { Shutdown(); }
@@ -223,38 +233,73 @@ namespace LevelEditorXLE.Terrain
                 }
             }
 
-            if (sceneMan != null && maniContext != null)
+            if (sceneMan == null || maniContext == null)
             {
-                if (sceneMan != _attachedSceneManager.Target || maniContext != _attachedTerrainManiContext.Target)
-                {
-                    _manipContext.ManipulatorSet = sceneMan.CreateTerrainManipulators(maniContext);
-                    _attachedSceneManager.Target = sceneMan;
-                    _attachedTerrainManiContext.Target = maniContext;
-                }
-            } 
-            else 
-            {
+                if (_attachedTerrainManiContext != null)
+                    _attachedTerrainManiContext.OnActiveLayerChange -= OnActiveLayerChanged;
                 _manipContext.ManipulatorSet = null;
                 _attachedSceneManager.Target = null;
-                _attachedTerrainManiContext.Target = null;
+                _attachedTerrainManiContext = null;
+                return;
+            }
+
+            if (sceneMan != _attachedSceneManager.Target || maniContext != _attachedTerrainManiContext)
+            {
+                if (_attachedTerrainManiContext != null)
+                    _attachedTerrainManiContext.OnActiveLayerChange -= OnActiveLayerChanged;
+                _manipContext.ManipulatorSet = sceneMan.CreateTerrainManipulators(maniContext);
+                _attachedSceneManager.Target = sceneMan;
+                _attachedTerrainManiContext = maniContext;
+                if (_attachedTerrainManiContext != null)
+                    _attachedTerrainManiContext.OnActiveLayerChange += OnActiveLayerChanged;
             }
         }
 
         private void OnBaseTextureMaterialsChanged(object sender, EventArgs e)
         {
-            var selected = _baseTextureCombo.SelectedItem;
+            var selected = _manipContext.GetPaintCoverageMaterial();
             _baseTextureCombo.SelectedIndexChanged -= _baseTextureCombo_SelectedIndexChanged;
             _baseTextureCombo.Items.Clear();
             foreach (var m in _namingBridge.BaseTextureMaterials)
-                _baseTextureCombo.Items.Add(new { Text = m.Item1, Value = m.Item2 });
-            _baseTextureCombo.SelectedItem = selected;
+            {
+                var idx = _baseTextureCombo.Items.Add(new { Text = m.Item1, Value = m.Item2 });
+                if (m.Item2 == selected)
+                    _decorationMaterialCombo.SelectedIndex = idx;
+            }
             _baseTextureCombo.SelectedIndexChanged += _baseTextureCombo_SelectedIndexChanged;
+        }
+
+        private void OnDecorationMaterialsChanged(object sender, EventArgs e)
+        {
+            var selected = _manipContext.GetPaintCoverageMaterial();
+            _decorationMaterialCombo.SelectedIndexChanged -= _decorationMaterialCombo_SelectedIndexChanged;
+            _decorationMaterialCombo.Items.Clear();
+            foreach (var m in _namingBridge.DecorationMaterials)
+            {
+                var idx = _decorationMaterialCombo.Items.Add(new { Text = m.Item1, Value = m.Item2 });
+                if (m.Item2 == selected)
+                    _decorationMaterialCombo.SelectedIndex = idx;
+            }
+            _decorationMaterialCombo.SelectedIndexChanged += _decorationMaterialCombo_SelectedIndexChanged;
+        }
+
+        private void OnActiveLayerChanged(object sender, EventArgs e)
+        {
+            // Update the "hovering control" as a result of the active coverage layer changing
+            if (OnHoveringControlChanged != null)
+                OnHoveringControlChanged(this, EventArgs.Empty);
         }
 
         void _baseTextureCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
             dynamic o = _baseTextureCombo.SelectedItem;
-            _manipContext.SetTerrainBaseTextureMaterial((System.Int32)o.Value);
+            _manipContext.SetPaintCoverageMaterial((System.Int32)o.Value);
+        }
+
+        void _decorationMaterialCombo_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            dynamic o = _decorationMaterialCombo.SelectedItem;
+            _manipContext.SetPaintCoverageMaterial((System.Int32)o.Value);
         }
 
         private GUILayer.NativeManipulatorLayer _nativeManip;
@@ -262,8 +307,9 @@ namespace LevelEditorXLE.Terrain
         private WeakReference _contextRegistry;
         private TerrainNamingBridge _namingBridge;
         private System.Windows.Forms.ComboBox _baseTextureCombo;
+        private System.Windows.Forms.ComboBox _decorationMaterialCombo;
         private WeakReference _attachedSceneManager;
-        private WeakReference _attachedTerrainManiContext;
+        private GUILayer.TerrainManipulatorContext _attachedTerrainManiContext;
     }
 }
 

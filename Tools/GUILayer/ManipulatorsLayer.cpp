@@ -56,35 +56,16 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    unsigned TerrainManipulatorContext::ActiveLayer::get()
-    {
-        return unsigned(_native->_activeLayer);
+    unsigned TerrainManipulatorContext::ActiveLayer::get()              { return unsigned(_native->_activeLayer); }
+    void TerrainManipulatorContext::ActiveLayer::set(unsigned value)    
+    { 
+        _native->_activeLayer = (SceneEngine::TerrainCoverageId)value; 
+        OnActiveLayerChange(this, System::EventArgs::Empty);
     }
-    
-    void TerrainManipulatorContext::ActiveLayer::set(unsigned value)
-    {
-        _native->_activeLayer = (SceneEngine::TerrainCoverageId)value;
-    }
-
-    bool TerrainManipulatorContext::ShowLockedArea::get()
-    {
-        return _native->_showLockedArea;
-    }
-
-    void TerrainManipulatorContext::ShowLockedArea::set(bool value)
-    {
-        _native->_showLockedArea = value;
-    }
-
-	bool TerrainManipulatorContext::ShowCoverage::get()
-    {
-        return _native->_showCoverage;
-    }
-
-    void TerrainManipulatorContext::ShowCoverage::set(bool value)
-    {
-        _native->_showCoverage = value;
-    }
+    bool TerrainManipulatorContext::ShowLockedArea::get()               { return _native->_showLockedArea; }
+    void TerrainManipulatorContext::ShowLockedArea::set(bool value)     { _native->_showLockedArea = value; }
+	bool TerrainManipulatorContext::ShowCoverage::get()                 { return _native->_showCoverage; }
+    void TerrainManipulatorContext::ShowCoverage::set(bool value)       { _native->_showCoverage = value; }
 
     TerrainManipulatorContext::TerrainManipulatorContext(std::shared_ptr<ToolsRig::TerrainManipulatorContext> native)
     : _native(std::move(native)) {}

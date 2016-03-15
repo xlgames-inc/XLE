@@ -32,18 +32,18 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(Schema.abstractTerrainMaterialDescType.NameAttribute, value); }
         }
 
+        public void GetInfo(ItemInfo info)
+        {
+            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
+            info.Label = Name;
+        }
+
         public static DomNode Create(int materialId)
         {
             var mat = new DomNode(Schema.terrainMaterialType.Type);
             mat.SetAttribute(Schema.abstractTerrainMaterialDescType.MaterialIdAttribute, materialId);
             mat.SetAttribute(Schema.abstractTerrainMaterialDescType.NameAttribute, "Material: " + materialId.ToString());
             return mat;
-        }
-
-        public void GetInfo(ItemInfo info)
-        {
-            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
-            info.Label = Name;
         }
     }
 

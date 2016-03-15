@@ -69,6 +69,7 @@ namespace LevelEditorXLE.Terrain
 
             [Category("Shadows")] [Description("Sun Path Angle (in degrees)")]
             public float SunPathAngle { get; set; }
+
             [Category("Gradient Flags")] [Description("Has encoded gradient flags")]
             public bool HasEncodedGradientFlags { get; set; }
 

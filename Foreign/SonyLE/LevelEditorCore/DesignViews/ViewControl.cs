@@ -277,8 +277,12 @@ namespace LevelEditorCore
 
             private static void OnTimeout(object client)
             {
-                ((HoverClient)client)._form.Dispose();
-                ((HoverClient)client)._form = null;
+                var clnt = (HoverClient)client;
+                if (clnt._form != null)
+                {
+                    clnt._form.Dispose();
+                    clnt._form = null;
+                }
             }
 
             public void Dispose() 
