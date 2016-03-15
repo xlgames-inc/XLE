@@ -28,8 +28,7 @@
           converter="LevelEditorXLE.AssetNameConverter,LevelEditorXLE"/>
         <scea.dom.editors.attribute category="Sky" name="SkyTextureType" displayName="Type" 
           description="Mapping mode for the sky texture. HemiCube is the upper half of a cubemap. HemiEquirectangular is the upper half of a paranoramic map."
-          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:HemiCube=0,Cube=1,Equirectangular=2,HemiEquirectangular=3"
-          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:HemiCube=0,Cube=1,Equirectangular=2,HemiEquirectangular=3"/>
+          enum="HemiCube=0,Cube=1,Equirectangular=2,HemiEquirectangular=3"/>
         <scea.dom.editors.attribute category="Sky" name="SkyReflectionScale" displayName="Sky Reflection Scale" description="Scale for the reflection of the static sky image"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
         <scea.dom.editors.attribute category="Sky" name="SkyBrightness" displayName="Brightness of the sky"
@@ -237,8 +236,7 @@
         <scea.dom.editors.attribute category="Diffuse" name="DiffuseBrightness" displayName="Diffuse Brightness" description="Brightness of the diffuse part of the light"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,100"/>
         <scea.dom.editors.attribute category="Diffuse" name="DiffuseModel" displayName="Diffuse Model"
-          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:Lambert=0,Soft=1"
-          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:Lambert=0,Soft=1"/>
+          enum="Lambert=0,Soft=1"/>
         <scea.dom.editors.attribute category="Diffuse" name="DiffuseWideningMin" displayName="Widening Min" description="Minimum value for the widening effect for diffuse light"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2.5"/>
         <scea.dom.editors.attribute category="Diffuse" name="DiffuseWideningMax" displayName="Widening Max" description="Maximum value for the widening effect for diffuse light"
@@ -275,8 +273,7 @@
           editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:CastShadows"
           converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:CastShadows"/>
         <scea.dom.editors.attribute category="Other" name="ShadowResolveModel" displayName="Shadow Resolve Model"
-          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:Noisy=0,Smooth=1"
-          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:Noisy=0,Smooth=1"/>
+          enum="Noisy=0,Smooth=1"/>
 
         <scea.dom.editors category="Lights" name="DirLight" menuText="Lights/DirLight" description="A directional light"/>
         <LeGe.NativeVis geo="PointToOrigin"/>
@@ -714,8 +711,7 @@
 
         <scea.dom.editors.attribute category="Simulation" name="SimMethod" displayName="Simulation Method"
                                     description="Simulation method for animation. PipeModel is cheaper and simplier. But the JabobiRelax method handles water depth better. The models produce subtly different animation."
-                                    editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:PipeModel=0,JacobiRelax=1"
-                                    converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:PipeModel=0,JacobiRelax=1"/>
+                                    enum="PipeModel=0,JacobiRelax=1"/>
         <scea.dom.editors.attribute category="Simulation" name="RainQuantity" displayName="RainQuantity"
                                     description="Quantity of rain fall added to the simulation, every frame."/>
         <scea.dom.editors.attribute category="Simulation" name="EvaporationConstant" displayName="EvaporationConstant"

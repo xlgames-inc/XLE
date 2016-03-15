@@ -81,6 +81,7 @@
     <Compile Include="Placements\Converter.cs" />
     <Compile Include="Placements\PlacementManipulator.cs" />
     <Compile Include="Placements\ScatterPlaceManipulator.cs" />
+    <Compile Include="PropertyEditing\EnumUITypeEditor.cs" />
     <Compile Include="Services\Commands.cs" />
     <Compile Include="Services\Extensions.cs" />
     <Compile Include="Services\Patches.cs" />

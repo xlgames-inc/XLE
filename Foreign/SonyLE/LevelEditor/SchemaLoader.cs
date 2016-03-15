@@ -257,17 +257,7 @@ namespace LevelEditor
                             }                            
                         }
 
-                        // shortcut for specifying enum editors and converters...
-                        XmlAttribute enumAttribute = xmlnode.Attributes["enum"];
-                        if (enumAttribute != null)
-                        {
-                            var e = xmlnode as XmlElement;
-                            if (e != null)
-                            {
-                                e.SetAttribute("editor", "Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:" + enumAttribute.Value);
-                                e.SetAttribute("converter", "Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:" + enumAttribute.Value);
-                            }
-                        }
+                        LevelEditorXLE.Patches.PatchSchemaAnnotation(xmlnode);
                     }
                 }
 

@@ -273,5 +273,20 @@ namespace LevelEditorXLE
         }
 
         public static DomNodeType GetGameType() { return Schema.xleGameType.Type; }
+
+        public static void PatchSchemaAnnotation(XmlNode xmlnode)
+        {
+            // shortcut for specifying enum editors and converters...
+            XmlAttribute enumAttribute = xmlnode.Attributes["enum"];
+            if (enumAttribute != null)
+            {
+                var e = xmlnode as XmlElement;
+                if (e != null)
+                {
+                    e.SetAttribute("editor", "LevelEditorXLE.PropertyEditing.EnumUITypeEditor,LevelEditorXLE:" + enumAttribute.Value);
+                    e.SetAttribute("converter", "Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:" + enumAttribute.Value);
+                }
+            }
+        }
     }
 }

@@ -75,7 +75,7 @@ GeneratedVertex GenVertex(uint vIndex, uint shape)
         localToWorld[0].z = normAxis.x; localToWorld[1].z = normAxis.y; localToWorld[2].z = normAxis.z;
         result.worldPosition = mul(localToWorld, float4(result.worldPosition,1)).xyz;
         return result;
-    } else if (shape = 4) {
+    } else if (shape == 4) {
         // Cylinder shape.
         const uint faceCount = 32;
         float t0 = 2 * pi * float(quadIndex) / float(faceCount);
