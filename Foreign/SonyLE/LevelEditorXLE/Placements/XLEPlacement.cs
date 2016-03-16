@@ -21,11 +21,25 @@ namespace LevelEditorXLE.Placements
 {
     using PlcmtST = Schema.placementObjectType;
 
-    public class Bookmark
+    public class Bookmark : DomNodeAdapter
     {
-        public string Model;
-        public string Material;
-        public string Supplements;
+        public Uri Model
+        {
+            get { return GetAttribute<Uri>(Schema.modelBookmarkType.ModelAttribute); }
+            set { SetAttribute(Schema.modelBookmarkType.ModelAttribute, value); }
+        }
+
+        public Uri Material
+        {
+            get { return GetAttribute<Uri>(Schema.modelBookmarkType.MaterialAttribute); }
+            set { SetAttribute(Schema.modelBookmarkType.MaterialAttribute, value); }
+        }
+
+        public string Supplements
+        {
+            get { return GetAttribute<string>(Schema.modelBookmarkType.SupplementsAttribute); }
+            set { SetAttribute(Schema.modelBookmarkType.SupplementsAttribute, value); }
+        }
     }
 
     class XLEPlacementObject 
@@ -34,15 +48,15 @@ namespace LevelEditorXLE.Placements
     {
         public XLEPlacementObject() { }
         
-        public string Model
+        public Uri Model
         {
-            get { return GetAttribute<string>(PlcmtST.modelAttribute); }
+            get { return GetAttribute<Uri>(PlcmtST.modelAttribute); }
             set { SetAttribute(PlcmtST.modelAttribute, value); }
         }
 
-        public string Material
+        public Uri Material
         {
-            get { return GetAttribute<string>(PlcmtST.materialAttribute); }
+            get { return GetAttribute<Uri>(PlcmtST.materialAttribute); }
             set { SetAttribute(PlcmtST.materialAttribute, value); }
         }
 
@@ -71,7 +85,7 @@ namespace LevelEditorXLE.Placements
         public void GetInfo(ItemInfo info)
         {
             info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
-            info.Label = "<" + Path.GetFileNameWithoutExtension(Model) + ">";
+            info.Label = "<" + Path.GetFileNameWithoutExtension(Model.OriginalString) + ">";
 
             if (IsLocked)
                 info.StateImageIndex = info.GetImageList().Images.IndexOfKey(Sce.Atf.Resources.LockImage);
@@ -110,15 +124,14 @@ namespace LevelEditorXLE.Placements
                         // If this is a bookmark, we need to load the xml and 
                         // extract the key properties from there.
                     var bookmark = LoadBookmark(value.Uri);
-                    Model = AsReferenceName(ResolveBookmarkUri(bookmark.Model, value.Uri));
-                    Material = AsReferenceName(ResolveBookmarkUri(bookmark.Material, value.Uri));
+                    Model = bookmark.Model;
+                    Material = bookmark.Material;
                     Supplements = bookmark.Supplements ?? "";
                 }
                 else
                 {
-                    var referenceName = AsReferenceName(value.Uri);
-                    Model = referenceName;
-                    Material = referenceName; 
+                    Model = value.Uri;
+                    Material = value.Uri; 
                 }
             }
         }
@@ -132,9 +145,11 @@ namespace LevelEditorXLE.Placements
         private static string AsReferenceName(Uri uri)
         {
             var resService = Globals.MEFContainer.GetExportedValue<IXLEAssetService>();
-            return resService.StripExtension(resService.AsAssetName(uri));
+            // return resService.StripExtension(resService.AsAssetName(uri));
+            return resService.AsAssetName(uri);
         }
 
+#if false
         private static Uri ResolveBookmarkUri(string target, Uri bookmarkFileUri)
         {
             // This path handling is really awkward. But there's no way around this.
@@ -149,15 +164,18 @@ namespace LevelEditorXLE.Placements
             if (lastSep != -1) basePath = basePath.Substring(0, lastSep + 1);
             return new System.Uri(basePath + target);
         }
+#endif
         #endregion
 
         public static Bookmark LoadBookmark(Uri uri)
         {
-            var stream = new System.IO.FileStream(
-                uri.LocalPath,
-                System.IO.FileMode.Open, System.IO.FileAccess.Read);
-            var serializer = new System.Xml.Serialization.XmlSerializer(typeof(Bookmark));
-            return serializer.Deserialize(stream) as Bookmark;
+            using (var stream = File.OpenRead(uri.LocalPath))
+            {
+                var schemaLoader = Globals.MEFContainer.GetExport<ISchemaLoader>().Value;
+                var reader = new CustomDomXmlReader(uri, schemaLoader as XmlSchemaTypeLoader);
+                var opaqueNode = reader.Read(stream, uri);
+                return opaqueNode.As<Bookmark>();
+            }
         }
 
         public static IQueryPredicate CreateSearchPredicate(Uri modelName)
@@ -174,7 +192,7 @@ namespace LevelEditorXLE.Placements
             // note -- we will only compare the "model"
             var predicate = new Sce.Atf.Dom.DomNodePropertyPredicate();
             predicate.AddPropertyNameExpression("Model");
-            var refName = AsReferenceName(ResolveBookmarkUri(bkmrk.Model, baseUri));
+            var refName = AsReferenceName(bkmrk.Model);
             predicate.AddValueStringSearchExpression(refName, (UInt64)StringQuery.Matches, false);
             return predicate;
         }

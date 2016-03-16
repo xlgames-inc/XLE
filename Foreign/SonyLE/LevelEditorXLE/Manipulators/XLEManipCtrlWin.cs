@@ -78,7 +78,7 @@ namespace LevelEditorXLE.Manipulators
                                 if (settings != null)
                                     settings.SaveModelList(fn);
                             }
-                            catch { MessageBox.Show("Error while saving model list"); }
+                            catch (Exception e) { MessageBox.Show("Error while saving model list " + e.Message); }
                         };
 
                     properties.LoadEvent = delegate(object o, string fn)
@@ -98,7 +98,7 @@ namespace LevelEditorXLE.Manipulators
                                 properties.Object = new Placements.ScatterPlaceManipulator.ManipulatorSettings();
                                 properties.Object = settings;
                             }
-                            catch { MessageBox.Show("Error while loading model list"); }
+                            catch (Exception e) { MessageBox.Show("Error while loading model list " + e.Message); }
                         };
 
                     var page = new TabPage("Scatter Placer");

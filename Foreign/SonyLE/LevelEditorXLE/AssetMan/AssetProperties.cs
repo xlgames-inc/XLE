@@ -82,6 +82,7 @@ namespace LevelEditorXLE
     {
         public virtual string AsAssetName(Uri uri)
         {
+            string result;
             // covert this uri into a string filename that is fit for the assets system
             if (uri.IsAbsoluteUri)
             {
@@ -95,14 +96,20 @@ namespace LevelEditorXLE
                     // side, and leave the native side to deal with converting them to relative when
                     // necessary.
                 if (relUri.OriginalString.Substring(0, 2) == "..")
-                    return Uri.UnescapeDataString(uri.OriginalString);
-
-                return Uri.UnescapeDataString(relUri.OriginalString);
+                {
+                    result = Uri.UnescapeDataString(uri.OriginalString);
+                }
+                else
+                {
+                    result = Uri.UnescapeDataString(relUri.OriginalString);
+                }
             }
             else
             {
-                return Uri.UnescapeDataString(uri.OriginalString);
+                result = Uri.UnescapeDataString(uri.OriginalString);
             }
+
+            return result.Replace('?', ':').ToLower();
         }
 
         public virtual string StripExtension(string input)

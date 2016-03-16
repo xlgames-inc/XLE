@@ -17,6 +17,7 @@ namespace LevelEditorXLE
             Schema.placementsFolderType.Type.Define(new ExtensionInfo<Placements.PlacementsFolder>());
             Schema.placementsDocumentType.Type.Define(new ExtensionInfo<Placements.XLEPlacementDocument>());
             Schema.placementObjectType.Type.Define(new ExtensionInfo<Placements.XLEPlacementObject>());
+            Schema.modelBookmarkType.Type.Define(new ExtensionInfo<Placements.Bookmark>());
             Schema.terrainType.Type.Define(new ExtensionInfo<Terrain.XLETerrainGob>());
             Schema.terrainCoverageLayer.Type.Define(new ExtensionInfo<Terrain.XLETerrainCoverage>());
             Schema.terrainBaseTextureType.Type.Define(new ExtensionInfo<Terrain.TerrainBaseTexture>());

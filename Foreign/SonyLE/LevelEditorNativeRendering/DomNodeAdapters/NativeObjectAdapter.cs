@@ -492,11 +492,11 @@ namespace RenderingInterop
                 }
 
                 else if (clrType == typeof(System.Uri)) {
-                    if(data != null && !string.IsNullOrWhiteSpace(data.ToString()))
+                    if(data != null)
                     {
-                        Uri uri = (Uri)data;                        
-                        string str = uri.LocalPath;
-                        SetStringProperty(propertyId, str, properties, stream);
+                        string assetName = AsAssetName((Uri)data);
+                        if (!string.IsNullOrWhiteSpace(assetName))
+                            SetStringProperty(propertyId, assetName, properties, stream);
                     }
                 }
 
@@ -512,6 +512,37 @@ namespace RenderingInterop
                     }
                 }
             }
+        }
+
+        private static string AsAssetName(Uri uri)
+        {
+            string result;
+            if (uri.IsAbsoluteUri)
+            {
+                var cwd = new Uri(System.IO.Directory.GetCurrentDirectory().TrimEnd('\\') + "\\");
+                var relUri = cwd.MakeRelativeUri(uri);
+
+                    // If the relative directory beings with a ".." (ie, the file is somewhere else
+                    // on the drive, outside of the working folder) then let's pass the full absolute
+                    // path. 
+                    // This is not ideally. Really we should be using only absolute paths in the C#
+                    // side, and leave the native side to deal with converting them to relative when
+                    // necessary.
+                if (relUri.OriginalString.Substring(0, 2) == "..")
+                {
+                    result = Uri.UnescapeDataString(uri.OriginalString);
+                }
+                else
+                {
+                    result = Uri.UnescapeDataString(relUri.OriginalString);
+                }
+            }
+            else
+            {
+                result = Uri.UnescapeDataString(uri.OriginalString);
+            }
+
+            return result.Replace('?', ':').ToLower();
         }
 
         public uint TypeId

@@ -35,11 +35,11 @@ namespace LevelEditorXLE.Placements
             public class Object
             {
                 [EditorAttribute(typeof(FileUriEditor), typeof(System.Drawing.Design.UITypeEditor))]
-                [TypeConverter(typeof(AssetNameNoExtConverter))]
+                // [TypeConverter(typeof(AssetNameNoExtConverter))]
                 public string Model { get; set; }
 
                 [EditorAttribute(typeof(FileUriEditor), typeof(System.Drawing.Design.UITypeEditor))]
-                [TypeConverter(typeof(AssetNameNoExtConverter))]
+                // [TypeConverter(typeof(AssetNameNoExtConverter))]
                 public string Material { get; set; }
 
                 public string Supplements { get; set; }
@@ -48,8 +48,8 @@ namespace LevelEditorXLE.Placements
 
                 public Object()
                 {
-                    Model = "Game/Model/Nature/BushTree/BushE";
-                    Material = "Game/Model/Nature/BushTree/BushE";
+                    Model = "file:///model";
+                    Material = "file:///material";
                     Supplements = "";
                     Weight = 100;
                 }
@@ -82,18 +82,38 @@ namespace LevelEditorXLE.Placements
 
             public void SaveModelList(string fn)
             {
-                var stream = new System.IO.FileStream(fn, System.IO.FileMode.CreateNew, System.IO.FileAccess.Write);
-                var serializer = new XmlSerializer(typeof(List<Object>));
-                serializer.Serialize(stream, _objects);
+                using (var stream = new System.IO.FileStream(fn, System.IO.FileMode.Create, System.IO.FileAccess.Write))
+                {
+                    var serializer = new XmlSerializer(typeof(List<Object>));
+                    var baseUri = new Uri(fn);
+                    var objs = new List<Object>(
+                        _objects.Select(
+                            (Object o) =>
+                            {
+                                var clone = new Object { Model = o.Model, Material = o.Material, Supplements = o.Supplements, Weight = o.Weight };
+                                clone.Model = Uri.UnescapeDataString(baseUri.MakeRelativeUri(new Uri(clone.Model)).ToString());
+                                clone.Material = Uri.UnescapeDataString(baseUri.MakeRelativeUri(new Uri(clone.Material)).ToString());
+                                return clone;
+                            }));
+                    serializer.Serialize(stream, objs);
+                }
             }
 
             public void LoadModelList(string fn)
             {
-                var stream = new System.IO.FileStream(fn, System.IO.FileMode.Open, System.IO.FileAccess.Read);
-                var serializer = new XmlSerializer(typeof(List<Object>));
-                var newObjs = serializer.Deserialize(stream) as List<Object>;
-                _objects.Clear();
-                _objects.InsertRange(0, newObjs);
+                using (var stream = new System.IO.FileStream(fn, System.IO.FileMode.Open, System.IO.FileAccess.Read))
+                {
+                    var serializer = new XmlSerializer(typeof(List<Object>));
+                    var newObjs = serializer.Deserialize(stream) as List<Object>;
+                    var baseUri = new Uri(fn);
+                    foreach (var o in newObjs)
+                    {
+                        o.Model = Uri.UnescapeDataString(new Uri(baseUri, o.Model).ToString());
+                        o.Material = Uri.UnescapeDataString(new Uri(baseUri, o.Material).ToString());
+                    }
+                    _objects.Clear();
+                    _objects.InsertRange(0, newObjs);
+                }
             }
 
             #region IPropertyEditingContext items
@@ -246,7 +266,7 @@ namespace LevelEditorXLE.Placements
                 {
                     op = GUILayer.EditorInterfaceUtils.CalculateScatterOperation(
                         editor, scene,
-                        ManipulatorContext.Objects.Select(C => C.Model),
+                        ManipulatorContext.Objects.Select(C => _assetService.AsAssetName(new Uri(C.Model))),
                         XLEBridgeUtils.Utils.AsVector3(m_hoverPt),
                         ManipulatorContext.Radius, ManipulatorContext.Density);
                 }
@@ -297,7 +317,7 @@ namespace LevelEditorXLE.Placements
                         var p = resGob.As<Placements.XLEPlacementObject>();
                         if (p != null)
                         {
-                            p.Material = o.Material;
+                            p.Material = new Uri(o.Material);
                             p.Supplements = o.Supplements;
                         }
                     }
@@ -357,6 +377,9 @@ namespace LevelEditorXLE.Placements
 
         [Import(AllowDefault = false)]
         private INativeIdMapping m_nativeIdMapping;
+
+        [Import(AllowDefault = false)]
+        private IXLEAssetService _assetService;
     }
 }
 

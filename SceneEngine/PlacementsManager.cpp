@@ -2273,7 +2273,7 @@ namespace SceneEngine
 				// top 32 bit zeroed out. We must fix them by finding the match placements
 				// in our cached placements, and fill in the top 32 bits...
 				const auto* cachedPlacements = GetPlacements(*ci, *_pimpl->_cellSet, *_pimpl->_placementsCache);
-                if (!cachedPlacements) continue;
+                if (!cachedPlacements) { i = i2; continue; }
 
 				auto count = cachedPlacements->GetObjectReferenceCount();
 				const auto* placements = cachedPlacements->GetObjectReferences();

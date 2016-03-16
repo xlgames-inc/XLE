@@ -86,15 +86,14 @@
 
   <xs:element name="placementsDocument" type="placementsDocumentType"/>
 
-  <!-- the following are concrete types... They can be moved into another schema file -->
-
+  <!-- The following are concrete types... They can be moved into another schema file -->
   <xs:complexType name="placementObjectType">
     <xs:annotation>
       <xs:appinfo>
         <sce.atf.referenceConstraint resourceType ="Model,ModelBookmark"/>
-        <LeGe.NativeProperty name="model" nativeName="model" nativeType="whcar_t*" access="set"/>
-        <LeGe.NativeProperty name="material" nativeName="material" nativeType="whcar_t*" access="set"/>
-        <LeGe.NativeProperty name="supplements" nativeName="supplements" nativeType="whcar_t*" access="set"/>
+        <LeGe.NativeProperty name="model" nativeName="model"/>
+        <LeGe.NativeProperty name="material" nativeName="material"/>
+        <LeGe.NativeProperty name="supplements" nativeName="supplements"/>
         
         <scea.dom.editors name="Placement" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="Placement" description="Placement"/>
         <scea.dom.editors.attribute name="model" displayName="Model" description="Bound model resource" category="Resource"/>
@@ -109,15 +108,14 @@
 
     <xs:complexContent>
       <xs:extension base="abstractPlacementObjectType">
-        <xs:attribute name="model" type="xs:string" />
-        <xs:attribute name="material" type="xs:string" />
+        <xs:attribute name="model" type="xs:anyURI" />
+        <xs:attribute name="material" type="xs:anyURI" />
         <xs:attribute name="supplements" type="xs:string" />
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
 
-
-    <!-- D Y N A M I C   I M P O S T E R S   C O N F I G -->
+  <!-- D Y N A M I C   I M P O S T E R S   C O N F I G -->
   <xs:complexType name="dynamicImpostersConfig">
     <xs:annotation>
       <xs:appinfo>
@@ -172,4 +170,13 @@
 
   </xs:complexType>
 
+  <!-- P l a c e m e n t  b o o k m a r k -->
+  <xs:complexType name="modelBookmarkType">
+    <xs:attribute name="Model" type="xs:anyURI" />
+    <xs:attribute name="Material" type="xs:anyURI" />
+    <xs:attribute name="Supplements" type="xs:string" />
+  </xs:complexType>
+  
+  <xs:element name="Bookmark" type="modelBookmarkType" />
+  
 </xs:schema>

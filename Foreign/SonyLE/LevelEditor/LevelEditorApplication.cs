@@ -31,7 +31,6 @@ namespace LevelEditor
         [STAThread]
 		static void  Main()
         {
-
             double start = LevelEditorCore.Timing.GetHiResCurrentTime();
 #if DEBUG
             AllocConsole();
@@ -205,7 +204,7 @@ namespace LevelEditor
 
             var gameEngine = container.GetExportedValue<IGameEngineProxy>();
             foreach (IInitializable initializable in container.GetExportedValues<IInitializable>())
-            {                
+            {
                 initializable.Initialize();
             }
             GC.KeepAlive(gameEngine);

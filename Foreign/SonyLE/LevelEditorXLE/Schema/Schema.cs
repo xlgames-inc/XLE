@@ -40,6 +40,11 @@ namespace LevelEditorXLE
             transformObjectType.pivotAttribute = transformObjectType.Type.GetAttributeInfo("pivot");
             transformObjectType.transformationTypeAttribute = transformObjectType.Type.GetAttributeInfo("transformationType");
 
+            modelBookmarkType.Type = getNodeType("gap", "modelBookmarkType");
+            modelBookmarkType.ModelAttribute = modelBookmarkType.Type.GetAttributeInfo("Model");
+            modelBookmarkType.MaterialAttribute = modelBookmarkType.Type.GetAttributeInfo("Material");
+            modelBookmarkType.SupplementsAttribute = modelBookmarkType.Type.GetAttributeInfo("Supplements");
+
             gameType.Type = getNodeType("gap", "gameType");
             gameType.nameAttribute = gameType.Type.GetAttributeInfo("name");
             gameType.gameObjectFolderChild = gameType.Type.GetChildInfo("gameObjectFolder");
@@ -579,6 +584,7 @@ namespace LevelEditorXLE
             xleGameType.environmentChild = xleGameType.Type.GetChildInfo("environment");
 
             placementsDocumentRootElement = getRootElement(NS, "placementsDocument");
+            modelBookmarkRootElement = getRootElement(NS, "modelBookmark");
             gameRootElement = getRootElement(NS, "game");
         }
 
@@ -598,6 +604,14 @@ namespace LevelEditorXLE
             public static AttributeInfo scaleAttribute;
             public static AttributeInfo pivotAttribute;
             public static AttributeInfo transformationTypeAttribute;
+        }
+
+        public static class modelBookmarkType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo ModelAttribute;
+            public static AttributeInfo MaterialAttribute;
+            public static AttributeInfo SupplementsAttribute;
         }
 
         public static class gameType
@@ -1295,6 +1309,8 @@ namespace LevelEditorXLE
         }
 
         public static ChildInfo placementsDocumentRootElement;
+
+        public static ChildInfo modelBookmarkRootElement;
 
         public static ChildInfo gameRootElement;
     }

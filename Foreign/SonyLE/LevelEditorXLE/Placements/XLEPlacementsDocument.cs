@@ -107,10 +107,7 @@ namespace LevelEditorXLE.Placements
             FileMode fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.OpenOrCreate;
             using (FileStream stream = new FileStream(filePath, fileMode))
             {
-                // note --  "LevelEditor" project has a ComstDomXmlWriter object that contains some
-                //          special case code for certain node types. We're just using the default
-                //          DomXmlWriter, so we won't benefit from that special behaviour.
-                var writer = new Sce.Atf.Dom.DomXmlWriter(schemaLoader.TypeCollection);
+                var writer = new CustomDomXmlWriter(uri, schemaLoader.TypeCollection);
                 writer.Write(node, stream, uri);
             }
         }
@@ -185,14 +182,7 @@ namespace LevelEditorXLE.Placements
                 // read existing document using custom dom XML reader
                 using (FileStream stream = File.OpenRead(filePath))
                 {
-                    // Note --  Sony code uses "CustomDomXmlReader" to modify
-                    //          the urls of relative assets in reference types at
-                    //          load time.
-                    //          However, we're going to prefer a method that does this
-                    //          on demand, rather than at load time -- so we should be able
-                    //          to use a standard xml reader.
-                    // var reader = new CustomDomXmlReader(Globals.ResourceRoot, schemaLoader);
-                    var reader = new DomXmlReader(schemaLoader as XmlSchemaTypeLoader);
+                    var reader = new CustomDomXmlReader(uri, schemaLoader as XmlSchemaTypeLoader);
                     rootNode = reader.Read(stream, uri);
                 }
             }

@@ -47,7 +47,7 @@ namespace LevelEditor
             FileMode fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.OpenOrCreate;
             using (FileStream stream = new FileStream(filePath, fileMode))
             {
-                var writer = new CustomDomXmlWriter(Globals.ResourceRoot, schemaLoader.TypeCollection);
+                var writer = new CustomDomXmlWriter(uri, schemaLoader.TypeCollection);
                 writer.Write(node, stream, uri);
             }
         }
@@ -138,7 +138,7 @@ namespace LevelEditor
                 // read existing document using custom dom XML reader
                 using (FileStream stream = File.OpenRead(filePath))
                 {
-                    var reader = new CustomDomXmlReader(Globals.ResourceRoot, schemaLoader);
+                    var reader = new CustomDomXmlReader(uri, schemaLoader);
                     rootNode = reader.Read(stream, uri);
                 }
             }

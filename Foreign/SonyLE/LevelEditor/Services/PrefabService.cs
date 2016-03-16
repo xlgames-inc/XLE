@@ -80,7 +80,7 @@ namespace LevelEditor
                 {
                     using (Stream stream = File.OpenRead(fileName))
                     {
-                        var reader = new CustomDomXmlReader(Globals.ResourceRoot, m_schemaLoader);
+                        var reader = new CustomDomXmlReader(uri, m_schemaLoader);
                         DomNode node = reader.Read(stream, uri);                        
                         resource = Prefab.Create(node, uri);
                     }
@@ -123,7 +123,7 @@ namespace LevelEditor
                     FileMode fileMode = File.Exists(filePathLocal) ? FileMode.Truncate : FileMode.OpenOrCreate;
                     using (FileStream stream = new FileStream(filePathLocal, fileMode))
                     {
-                        var writer = new CustomDomXmlWriter(Globals.ResourceRoot, m_schemaLoader.TypeCollection);
+                        var writer = new CustomDomXmlWriter(ur, m_schemaLoader.TypeCollection);
                         writer.Write(prefab, stream, ur);
                     }
                     m_resourceService.Unload(ur);

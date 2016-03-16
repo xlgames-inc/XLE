@@ -45,9 +45,9 @@ namespace LevelEditor
                 Uri ur = (Uri)value;
                 if (ur.IsAbsoluteUri)
                 {
-                    // todo use schema annotation to choose between resource root and this uri                    
-                    if (node.Type == Schema.gameReferenceType.Type
-                        || node.Type == Schema.gameObjectReferenceType.Type)
+                    // todo use schema annotation to choose between resource root and this uri
+                    if (    node.Type == Schema.gameReferenceType.Type 
+                        ||  node.Type == Schema.gameObjectReferenceType.Type)
                     {// use this Uri to make it relative.
                         ur = Uri.MakeRelativeUri(ur);
                     }
