@@ -17,15 +17,12 @@
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
         
         <scea.dom.editors.attribute category="Ambient" name="DiffuseIBL" displayName="Irradiance map"
-          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" 
-          converter="LevelEditorXLE.AssetNameConverter,LevelEditorXLE"/>
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms"/>
         <scea.dom.editors.attribute category="Ambient" name="SpecularIBL" displayName="Filtered glossy reflections"
-          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms"
-          converter="LevelEditorXLE.AssetNameConverter,LevelEditorXLE"/>
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms"/>
         
         <scea.dom.editors.attribute category="Sky" name="SkyTexture" displayName="Sky Texture"
-          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" 
-          converter="LevelEditorXLE.AssetNameConverter,LevelEditorXLE"/>
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms"/>
         <scea.dom.editors.attribute category="Sky" name="SkyTextureType" displayName="Type" 
           description="Mapping mode for the sky texture. HemiCube is the upper half of a cubemap. HemiEquirectangular is the upper half of a paranoramic map."
           enum="HemiCube=0,Cube=1,Equirectangular=2,HemiEquirectangular=3"/>
@@ -85,10 +82,10 @@
     </xs:annotation>
     <xs:attribute name="AmbientLight" type="xs:int" default="-1"/>
     <xs:attribute name="AmbientBrightness" type="xs:float" default="0"/>
-    <xs:attribute name="DiffuseIBL" type="xs:string"/>
-    <xs:attribute name="SpecularIBL" type="xs:string"/>
+    <xs:attribute name="DiffuseIBL" type="xs:anyURI"/>
+    <xs:attribute name="SpecularIBL" type="xs:anyURI"/>
     
-    <xs:attribute name="SkyTexture" type="xs:string"/>
+    <xs:attribute name="SkyTexture" type="xs:anyURI"/>
     <xs:attribute name="SkyTextureType" type="xs:int" default="1"/>
     <xs:attribute name="SkyReflectionScale" type="xs:float" default="1"/>
     <xs:attribute name="SkyReflectionBlurriness" type="xs:float" default="2"/>

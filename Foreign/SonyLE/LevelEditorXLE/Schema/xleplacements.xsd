@@ -19,7 +19,7 @@
       </xs:appinfo>
     </xs:annotation>
 
-    <xs:attribute name="ref" type="xs:string" />
+    <xs:attribute name="ref" type="xs:anyURI" />
     <xs:attribute name="ExportTarget" type="xs:string" default="finals/placements.plc" />
     <xs:attribute name="name" type="xs:string" />
     <xs:attribute name="captureMins" type="vector3Type" default="-10000 -10000 -5000"/>
@@ -41,7 +41,7 @@
     <xs:sequence>
       <xs:element name="cell" type="placementsCellReferenceType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
-    <xs:attribute name="baseEditorPath" type="xs:string" default="placements/" />
+    <xs:attribute name="baseEditorPath" type="xs:anyURI"/>
     <xs:attribute name="baseExportPath" type="xs:string" default="finals/placements/" />
     <xs:attribute name="CellCount" type="int2Type" default="0 0" />
     <xs:attribute name="CellsOrigin" type="vector2Type" default="0 0" />

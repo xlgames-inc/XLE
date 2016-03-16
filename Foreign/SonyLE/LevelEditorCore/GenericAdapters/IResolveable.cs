@@ -75,37 +75,7 @@ namespace LevelEditorCore.GenericAdapters
 
         public Uri Uri
         {
-            get 
-            {
-                if (RawReference==null || RawReference.Length == 0) return null;
-
-                    // Convert the reference string into a uri
-                    // normally our reference string will be a path
-                    // that is relative to path of the containing
-                    // document. Here, we have to assume the top of
-                    // our dom node hierarchy implements IResource
-                    // (so it can give us the base URI)
-                var root = DomNode.GetRoot();
-                var doc = root.As<IDocument>();
-                Uri baseUri;
-                if (doc != null && Globals.MEFContainer.GetExportedValue<IDocumentService>().IsUntitled(doc)) {
-                        // This is an untitled document.
-                        // We should use the resources root as a base, because the document uri
-                        // is unreliable. It's a bit awkward, because it means this method of
-                        // uri resolution can't work reliably until the root document has been saved.
-                        // (and if the user changes the directory of the root document, does that mean
-                        // they want the resource references to be updated, also?)
-                    baseUri = Globals.ResourceRoot;
-                }
-                else
-                    baseUri = root.Cast<IResource>().Uri;
-                return new Uri(baseUri, RawReference);
-            }
-        }
-
-        public string RawReference
-        {
-            get { return GetAttribute<string>(s_refAttribute); }
+            get { return GetAttribute<Uri>(s_refAttribute); }
             set { SetAttribute(s_refAttribute, value); }
         }
 

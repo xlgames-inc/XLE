@@ -209,28 +209,12 @@ namespace LevelEditorXLE.Placements
 
                 var root = DomNode.GetRoot();
                 var doc = root.As<IDocument>();
-                Uri baseUri;
-                if (doc != null && Globals.MEFContainer.GetExportedValue<IDocumentService>().IsUntitled(doc))
-                {
-                    // This is an untitled document.
-                    // We have to use the absolute filename for the reference. 
-                    // It's a bit awkward, because it means this method of
-                    // uri resolution can't work reliably until the root document has been saved.
-                    // (and if the user changes the directory of the root document, does that mean
-                    // they want the resource references to be updated, also?)
-                    RawReference = new Uri(dlg.FileName).AbsolutePath;
-                }
-                else
-                {
-                    baseUri = root.Cast<IResource>().Uri;
-                    var relURI = baseUri.MakeRelativeUri(new Uri(dlg.FileName));
-                    RawReference = relURI.OriginalString;
-                }
+                Uri = new Uri(dlg.FileName);
                 Target.Dirty = true;
             }
         }
 
-        public static DomNode Create(string reference, string exportTarget, string name, Vec3F mins, Vec3F maxs)
+        public static DomNode Create(Uri reference, string exportTarget, string name, Vec3F mins, Vec3F maxs)
         {
             var result = new DomNode(CellRefST.Type);
             result.SetAttribute(CellRefST.refAttribute, reference);
@@ -284,9 +268,9 @@ namespace LevelEditorXLE.Placements
             get { return GetChildList<PlacementsCellRef>(FolderST.cellChild); }
         }
 
-        internal string BaseEditorPath
+        internal Uri BaseEditorPath
         {
-            get { return GetAttribute<string>(FolderST.baseEditorPathAttribute); }
+            get { return GetAttribute<Uri>(FolderST.baseEditorPathAttribute); }
             set { SetAttribute(FolderST.baseEditorPathAttribute, value); }
         }
 
@@ -315,6 +299,13 @@ namespace LevelEditorXLE.Placements
         }
 
         #region Configure Steps
+        internal Uri GetBaseUri()
+        {
+            var root = DomNode.GetRoot().As<IResource>();
+            if (root != null) return root.Uri;
+            return new Uri(Directory.GetCurrentDirectory().TrimEnd('\\') + "\\");
+        }
+
         internal void Reconfigure(PlacementsConfig.Config cfg)
         {
                 // Based on the configuration settings given, remove and attach
@@ -328,27 +319,23 @@ namespace LevelEditorXLE.Placements
                 // arranged in a dense 2d grid. The filenames contain the x and y
                 // coordinates of the cell in that grid.
 
-            BaseEditorPath = FixPath(cfg.BaseEditorPath);
+            BaseEditorPath = new Uri(GetBaseUri(), cfg.BaseEditorPath);
             BaseExportPath = FixPath(cfg.BaseExportPath);
             SetAttribute(FolderST.CellCountAttribute, new int[2] { (int)cfg.CellCountX, (int)cfg.CellCountY } );
             SetAttribute(FolderST.CellSizeAttribute, cfg.CellSize);
             SetAttribute(FolderST.CellsOriginAttribute, new float[2] { cfg.CellsOriginX, cfg.CellsOriginY } );
             ExportTarget = BaseExportPath + "placements.cfg";
 
-            var newCells = new List<Tuple<string, string, string, Vec3F, Vec3F>>();
+            var newCells = new List<Tuple<Uri, string, string, Vec3F, Vec3F>>();
             var cellCount = CellCount;
             for (uint y=0; y<cellCount[1]; ++y)
                 for (uint x = 0; x < cellCount[0]; ++x) {
-                    var rf = String.Format(
-                        "{0}p{1,3:D3}_{2,3:D3}.plcdoc",
-                        BaseEditorPath, x, y);
-                    var ex = String.Format(
-                        "{0}p{1,3:D3}_{2,3:D3}.plc",
-                        BaseExportPath, x, y);
+                    var rf = String.Format("p{0,3:D3}_{1,3:D3}.plcdoc", x, y);
+                    var ex = String.Format("{0}p{1,3:D3}_{2,3:D3}.plc", BaseExportPath, x, y);
                     var name = String.Format("{0,2:D2}-{1,2:D2}", x, y);
                     var mins = new Vec3F(x * cfg.CellSize + cfg.CellsOriginX, y * cfg.CellSize + cfg.CellsOriginY, -5000.0f);
                     var maxs = new Vec3F((x+1) * cfg.CellSize + cfg.CellsOriginX, (y+1) * cfg.CellSize + cfg.CellsOriginY, 5000.0f);
-                    newCells.Add(Tuple.Create(rf, ex, name, mins, maxs));
+                    newCells.Add(Tuple.Create(new Uri(BaseEditorPath, rf), ex, name, mins, maxs));
                 }
 
             var foundMatching = new bool[newCells.Count];
@@ -357,7 +344,7 @@ namespace LevelEditorXLE.Placements
             var toBeRemoved = new List<PlacementsCellRef>();
             var existingRefs = Cells;
             foreach(var r in existingRefs) {
-                var rawRef = r.RawReference;
+                var rawRef = r.Uri;
                 int index = newCells.FindIndex(0, newCells.Count, s => s.Item1.Equals(rawRef));
                 if (index >= 0) {
                     foundMatching[index] = true;
@@ -394,7 +381,7 @@ namespace LevelEditorXLE.Placements
         internal PlacementsConfig.Config GetCfg()
         {
             var cfg = new PlacementsConfig.Config();
-            cfg.BaseEditorPath = BaseEditorPath;
+            cfg.BaseEditorPath = (BaseEditorPath != null) ? GetBaseUri().MakeRelativeUri(BaseEditorPath).ToString() : "";
             cfg.BaseExportPath = BaseExportPath;
             var cellCount = CellCount;
             if (cellCount[0] > 0 && cellCount[1] > 0)
