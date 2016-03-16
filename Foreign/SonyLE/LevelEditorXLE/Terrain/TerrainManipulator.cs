@@ -264,7 +264,7 @@ namespace LevelEditorXLE.Terrain
             {
                 var idx = _baseTextureCombo.Items.Add(new { Text = m.Item1, Value = m.Item2 });
                 if (m.Item2 == selected)
-                    _decorationMaterialCombo.SelectedIndex = idx;
+                    _baseTextureCombo.SelectedIndex = idx;
             }
             _baseTextureCombo.SelectedIndexChanged += _baseTextureCombo_SelectedIndexChanged;
         }

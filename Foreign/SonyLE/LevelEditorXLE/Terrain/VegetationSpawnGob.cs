@@ -122,7 +122,7 @@ namespace LevelEditorXLE.Terrain
                 var game = DomNode.GetRoot().As<Game.GameExtensions>();
                 if (game != null) return game.ExportDirectory;
                 var rootTerrain = DomNode.Parent.As<XLETerrainGob>();
-                if (rootTerrain != null) return rootTerrain.CellsDirectory;
+                if (rootTerrain != null) return rootTerrain.CellsDirectory.LocalPath;
                 return "";
             }
         }

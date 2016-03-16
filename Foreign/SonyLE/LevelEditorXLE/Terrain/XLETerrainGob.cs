@@ -50,15 +50,15 @@ namespace LevelEditorXLE.Terrain
             return null;
         }
 
-        public string UberSurfaceDirectory
+        public Uri UberSurfaceDirectory
         {
-            get { return GetAttribute<string>(TerrainST.UberSurfaceDirAttribute); }
+            get { return GetAttribute<Uri>(TerrainST.UberSurfaceDirAttribute); }
             set { SetAttribute(TerrainST.UberSurfaceDirAttribute, value); }
         }
 
-        public string CellsDirectory
+        public Uri CellsDirectory
         {
-            get { return GetAttribute<string>(TerrainST.CellsDirAttribute); }
+            get { return GetAttribute<Uri>(TerrainST.CellsDirAttribute); }
             set { SetAttribute(TerrainST.CellsDirAttribute, value); }
         }
 
@@ -325,8 +325,8 @@ namespace LevelEditorXLE.Terrain
             cfg.Overlap = Overlap;
             cfg.Spacing = Spacing;
             cfg.CellTreeDepth = CellTreeDepth;
-            cfg.UberSurfaceDirectory = UberSurfaceDirectory;
-            cfg.CellsDirectory = CellsDirectory;
+            cfg.UberSurfaceDirectory = UberSurfaceDirectory != null ? UberSurfaceDirectory.LocalPath : "";
+            cfg.CellsDirectory = CellsDirectory != null ? CellsDirectory.LocalPath : "";
             cfg.HasEncodedGradientFlags = HasEncodedGradientFlags;
             cfg.SunPathAngle = SunPathAngle;
             cfg.SlopeThreshold0 = GradFlagSlopeThreshold0;
@@ -341,8 +341,8 @@ namespace LevelEditorXLE.Terrain
             Overlap = cfg.Overlap;
             CellTreeDepth = cfg.CellTreeDepth;
             Spacing = cfg.Spacing;
-            UberSurfaceDirectory = cfg.UberSurfaceDirectory;
-            CellsDirectory = cfg.CellsDirectory;
+            UberSurfaceDirectory = new Uri(cfg.UberSurfaceDirectory.TrimEnd('\\') + "\\");
+            CellsDirectory = new Uri(cfg.CellsDirectory.TrimEnd('\\') + "\\");
             HasEncodedGradientFlags = cfg.HasEncodedGradientFlags;
             SunPathAngle = cfg.SunPathAngle;
             GradFlagSlopeThreshold0 = cfg.SlopeThreshold0;
@@ -447,14 +447,14 @@ namespace LevelEditorXLE.Terrain
                 using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
                 {
                     GUILayer.EditorInterfaceUtils.GenerateShadowsSurface(
-                        BuildEngineConfig(), UberSurfaceDirectory,
+                        BuildEngineConfig(), UberSurfaceDirectory.LocalPath,
                         progress);
                 }
 
                 using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
                 {
                     GUILayer.EditorInterfaceUtils.GenerateAmbientOcclusionSurface(
-                        BuildEngineConfig(), UberSurfaceDirectory,
+                        BuildEngineConfig(), UberSurfaceDirectory.LocalPath,
                         progress);
                 }
             }
@@ -483,7 +483,7 @@ namespace LevelEditorXLE.Terrain
                 using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
                 {
                     GUILayer.EditorInterfaceUtils.GenerateCellFiles(
-                        BuildEngineConfig(), UberSurfaceDirectory, true,
+                        BuildEngineConfig(), UberSurfaceDirectory.LocalPath, true,
                         GradFlagSlopeThreshold0, GradFlagSlopeThreshold1, GradFlagSlopeThreshold2, progress);
                 }
             }
@@ -509,7 +509,7 @@ namespace LevelEditorXLE.Terrain
                         GUILayer.EditorInterfaceUtils.ExecuteTerrainExport(
                             fileDlg.FileName,
                             BuildEngineConfig(),
-                            UberSurfaceDirectory,
+                            UberSurfaceDirectory.LocalPath,
                             1, progress);
                     }
                     Reload();
@@ -770,9 +770,9 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(Schema.terrainCoverageLayer.ResolutionAttribute, value); }
         }
 
-        public string SourceFile
+        public Uri SourceFile
         {
-            get { return GetAttribute<string>(Schema.terrainCoverageLayer.SourceFileAttribute); }
+            get { return GetAttribute<Uri>(Schema.terrainCoverageLayer.SourceFileAttribute); }
             set { SetAttribute(Schema.terrainCoverageLayer.SourceFileAttribute, value); }
         }
 
@@ -811,7 +811,7 @@ namespace LevelEditorXLE.Terrain
             cfg.CellTreeDepth = terrain.CellTreeDepth;
 
             cfg.Resolution = Resolution;
-            cfg.SourceFile = SourceFile;
+            cfg.SourceFile = SourceFile != null ? SourceFile.LocalPath : "";
             cfg.Enable = Enable;
             cfg.Id = LayerId;
             cfg.ShaderNormalizationMode = ShaderNormalizationMode;
@@ -821,7 +821,7 @@ namespace LevelEditorXLE.Terrain
         internal void CommitDialogConfig(TerrainCoverageConfig.Config cfg)
         {
             Resolution = cfg.Resolution;
-            SourceFile = cfg.SourceFile;
+            SourceFile = new Uri(cfg.SourceFile);
             Enable = cfg.Enable;
             LayerId = cfg.Id;
             ShaderNormalizationMode = cfg.ShaderNormalizationMode;
@@ -844,7 +844,7 @@ namespace LevelEditorXLE.Terrain
                     using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
                     {
                         cfg.ImportOp.Execute(
-                            terrain.UberSurfaceDirectory,
+                            terrain.UberSurfaceDirectory.LocalPath,
                             cfg.Id, cfg.ImportOp.ImportCoverageFormat,
                             progress);
                     }
@@ -900,7 +900,7 @@ namespace LevelEditorXLE.Terrain
                         GUILayer.EditorInterfaceUtils.ExecuteTerrainExport(
                             fileDlg.FileName,
                             terrain.BuildEngineConfig(),
-                            terrain.UberSurfaceDirectory,
+                            terrain.UberSurfaceDirectory.LocalPath,
                             LayerId, progress);
                     }
                     terrain.Reload();
@@ -923,7 +923,7 @@ namespace LevelEditorXLE.Terrain
                 using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
                 {
                     GUILayer.EditorInterfaceUtils.GenerateCellFiles(
-                        terrain.BuildEngineConfig(), terrain.UberSurfaceDirectory, true,
+                        terrain.BuildEngineConfig(), terrain.UberSurfaceDirectory.LocalPath, true,
                         LayerId, progress);
                 }
             }

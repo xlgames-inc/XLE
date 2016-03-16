@@ -625,6 +625,7 @@ namespace SceneEngine
 
     void TerrainManager::Pimpl::FlushShortCircuitQueue(Metal::DeviceContext& context)
     {
+        if (!_uberSurfaceBridge) return;
         FlushShortCircuit(context, *_renderer, *_uberSurfaceBridge, CoverageId_Heights);
         for (const auto&l:_coverageInterfaces)
             FlushShortCircuit(context, *_renderer, *l._bridge, l._id);
@@ -634,6 +635,7 @@ namespace SceneEngine
 		Metal::DeviceContext& context, 
 		IteratorRange<std::pair<uint64, uint32>*> updated)
 	{
+        if (!_uberSurfaceBridge) return;
 		for (const auto& u:updated) {
 			if (u.second & (1u << 31u)) {
 				// Unfortunately, due to the way this works we don't know which layer has completed

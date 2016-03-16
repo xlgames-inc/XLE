@@ -30,7 +30,14 @@ namespace LevelEditorXLE.Manipulators
             switch ((Command)commandTag)
             {
                 case Command.RandomizeTransforms:
-                    return _contextRegistry.GetActiveContext<ISelectionContext>().Selection.AsIEnumerable<ITransformable>().Any();
+                    {
+                        var context = _contextRegistry.GetActiveContext<ISelectionContext>();
+                        if (context != null && context.Selection != null)
+                        {
+                            return context.Selection.AsIEnumerable<ITransformable>().Any();
+                        }
+                        return false;
+                    }
             }
 
             return false;

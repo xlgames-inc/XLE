@@ -13,9 +13,10 @@ namespace LevelEditorXLE
         string AsAssetName(Uri uri);
         string StripExtension(string input);
         string GetBaseTextureName(string input);
+        Uri GetBaseTextureName(Uri input);
     };
 
-    public class AssetNameConverter : TypeConverter
+    public class BaseTextureNameConverter : TypeConverter
     {
         public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
         {
@@ -35,43 +36,22 @@ namespace LevelEditorXLE
                 {
                     return UriToAssetName(uri);
                 }
-                return str;
             }
 
             return base.ConvertFrom(context, culture, value);
         }
 
         public override object ConvertTo(
-            ITypeDescriptorContext context,
-            CultureInfo culture,
-            object value,
-            Type destinationType)
+            ITypeDescriptorContext context, CultureInfo culture,
+            object value, Type destinationType)
         {
             return base.ConvertTo(context, culture, value, destinationType);
         }
 
-        protected virtual string UriToAssetName(Uri uri)
+        protected Uri UriToAssetName(Uri uri)
         {
             var resService = LevelEditorCore.Globals.MEFContainer.GetExportedValue<IXLEAssetService>();
-            return resService.AsAssetName(uri);
-        }
-    }
-
-    public class AssetNameNoExtConverter : AssetNameConverter
-    {
-        protected override string UriToAssetName(Uri uri)
-        {
-            var resService = LevelEditorCore.Globals.MEFContainer.GetExportedValue<IXLEAssetService>();
-            return resService.StripExtension(resService.AsAssetName(uri));
-        }
-    }
-
-    public class BaseTextureNameConverter : AssetNameConverter
-    {
-        protected override string UriToAssetName(Uri uri)
-        {
-            var resService = LevelEditorCore.Globals.MEFContainer.GetExportedValue<IXLEAssetService>();
-            return resService.GetBaseTextureName(resService.AsAssetName(uri));
+            return resService.GetBaseTextureName(uri);
         }
     }
 
@@ -146,6 +126,21 @@ namespace LevelEditorXLE
             var pattern = new
                 System.Text.RegularExpressions.Regex("(_[dD][fF])|(_[dD][dD][nN])|(_[sS][pP])|(_[rR])");
             return pattern.Replace(input, "_*");
+        }
+
+        public virtual Uri GetBaseTextureName(Uri input)
+        {
+            // To get the "base texture name", we must strip off _ddn, _df and _sp suffixes
+            // we will replace them with _*
+            // Note that we want to keep extension
+            // It's important that we use "_*", because this works best with the FileOpen dialog
+            // When open the editor for this filename, the FileOpen dialog will default to
+            // the previous value. If we use "_*", the pattern will actually match the right
+            // textures in that dialog -- and it feels more natural to the user. Other patterns
+            // won't match any files
+            var pattern = new
+                System.Text.RegularExpressions.Regex("(_[dD][fF])|(_[dD][dD][nN])|(_[sS][pP])|(_[rR])");
+            return new Uri(pattern.Replace(input.ToString(), "_*"));
         }
     };
 

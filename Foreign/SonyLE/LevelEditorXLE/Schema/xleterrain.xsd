@@ -93,9 +93,9 @@
       </xs:appinfo>
     </xs:annotation>
 
-    <xs:attribute name="texture0" type="xs:string" default=""/>
-    <xs:attribute name="texture1" type="xs:string" default=""/>
-    <xs:attribute name="texture2" type="xs:string" default=""/>
+    <xs:attribute name="texture0" type="xs:anyURI"/>
+    <xs:attribute name="texture1" type="xs:anyURI"/>
+    <xs:attribute name="texture2" type="xs:anyURI"/>
     <xs:attribute name="mapping0" type="xs:float" default="10.0"/>
     <xs:attribute name="mapping1" type="xs:float" default="10.0"/>
     <xs:attribute name="mapping2" type="xs:float" default="10.0"/>
@@ -163,11 +163,11 @@
 
     <xs:complexContent>
       <xs:extension base="abstractTerrainMaterialDescType">
-        <xs:attribute name="FlatTexture" type="xs:string" default=""/>
-        <xs:attribute name="SlopeTexture0" type="xs:string" default=""/>
-        <xs:attribute name="SlopeTexture1" type="xs:string" default=""/>
-        <xs:attribute name="SlopeTexture2" type="xs:string" default=""/>
-        <xs:attribute name="BlendingTexture" type="xs:string" default=""/>
+        <xs:attribute name="FlatTexture" type="xs:anyURI" />
+        <xs:attribute name="SlopeTexture0" type="xs:anyURI" />
+        <xs:attribute name="SlopeTexture1" type="xs:anyURI" />
+        <xs:attribute name="SlopeTexture2" type="xs:anyURI" />
+        <xs:attribute name="BlendingTexture" type="xs:anyURI" />
         
         <xs:attribute name="FlatTextureMapping" type="xs:float" default="1.0"/>
         <xs:attribute name="SlopeTexture0Mapping" type="xs:float" default="1.0"/>
@@ -206,8 +206,8 @@
       <xs:extension base="abstractTerrainMaterialDescType">
         <xs:attribute name="Name" type="xs:string" default=""/>
         
-        <xs:attribute name="Texture0" type="xs:string" default=""/>
-        <xs:attribute name="Texture1" type="xs:string" default=""/>
+        <xs:attribute name="Texture0" type="xs:anyURI"/>
+        <xs:attribute name="Texture1" type="xs:anyURI"/>
 
         <xs:attribute name="HGrid" type="xs:float" default="100.0"/>
         <xs:attribute name="Gain" type="xs:float" default=".5"/>
@@ -239,8 +239,8 @@
 
     <xs:attribute name="MaxDrawDistance" type="xs:float" default="100"/>
     <xs:attribute name="FrequencyWeight" type="xs:float" default="100"/>
-    <xs:attribute name="Model" type="xs:string" default=""/>
-    <xs:attribute name="Material" type="xs:string" default=""/>
+    <xs:attribute name="Model" type="xs:anyURI"/>
+    <xs:attribute name="Material" type="xs:anyURI"/>
   </xs:complexType>
 
   <xs:complexType name="vegetationSpawnMaterialType">
@@ -308,7 +308,7 @@
     <xs:attribute name="Id" type="xs:unsignedInt" default="1000"/>
     <xs:attribute name="Resolution" type="xs:float" default="1"/>
     <xs:attribute name="Overlap" type="xs:unsignedInt" default="1"/>
-    <xs:attribute name="SourceFile" type="xs:string"/>
+    <xs:attribute name="SourceFile" type="xs:anyURI"/>
     <xs:attribute name="Enable" type="xs:boolean" default="true"/>
     <xs:attribute name="Format" type="xs:unsignedInt" default="0"/>
     <xs:attribute name="ShaderNormalizationMode" type="xs:unsignedInt" default="0"/>
@@ -335,8 +335,8 @@
       <xs:element name="coverage" type="terrainCoverageLayer" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
 
-    <xs:attribute name="UberSurfaceDir" type="xs:string" />
-    <xs:attribute name="CellsDir" type="xs:string" />
+    <xs:attribute name="UberSurfaceDir" type="xs:anyURI" />
+    <xs:attribute name="CellsDir" type="xs:anyURI" />
     <xs:attribute name="ConfigFileTarget" type="xs:string" default="terrain.cfg" />
 
     <xs:attribute name="NodeDimensions" type="xs:unsignedInt" default="32" />
