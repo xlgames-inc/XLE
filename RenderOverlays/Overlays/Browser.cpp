@@ -23,6 +23,7 @@
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/SceneParser.h"
+#include "../../SceneEngine/PreparedScene.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 
@@ -469,7 +470,10 @@ namespace Overlays
         auto sceneParser = ToolsRig::CreateModelScene(model);
         Techniques::TechniqueContext techniqueContext;
         SceneEngine::LightingParserContext lightingParserContext(techniqueContext);
-        SceneEngine::LightingParser_ExecuteScene(context, lightingParserContext, *sceneParser.get(), sceneParser->GetCameraDesc(), qualitySettings);
+        SceneEngine::PreparedScene preparedScene;
+        SceneEngine::LightingParser_ExecuteScene(
+            context, lightingParserContext, *sceneParser.get(), 
+            sceneParser->GetCameraDesc(), qualitySettings, preparedScene);
     }
 
     static const unsigned ModelBrowserItemDimensions = 196;

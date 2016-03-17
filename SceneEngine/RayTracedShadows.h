@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../RenderCore/Metal/Forward.h"
+#include "../RenderCore/IThreadContext_Forward.h"
 
 namespace SceneEngine
 {
@@ -14,10 +15,13 @@ namespace SceneEngine
     class ShadowProjectionDesc;
     class PreparedRTShadowFrustum;
     class MainTargetsBox;
+    class PreparedScene;
 
     PreparedRTShadowFrustum PrepareRTShadows(
+        RenderCore::IThreadContext& context, 
         RenderCore::Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext,
+        PreparedScene& preparedScene,
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex);
 

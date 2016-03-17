@@ -141,9 +141,10 @@ namespace Sample
     }
 
     void TestPlatformSceneParser::ExecuteScene(   
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::IThreadContext& context, 
         LightingParserContext& parserContext, 
         const SceneParseSettings& parseSettings,
+        SceneEngine::PreparedScene& preparedPackets,
         unsigned techniqueIndex) const
     {
         CPUProfileEvent pEvnt("ExecuteScene", g_cpuProfiler);
@@ -151,21 +152,30 @@ namespace Sample
         bool renderAsCloud = Tweakable("RenderAsCloud", false);
         auto& box = RenderCore::Techniques::FindCachedBoxDep2<Test::DualContourTest>(Tweakable("GridDims", 256));
 
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
             ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth
             ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::DMShadows
             ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::RayTracedShadows) {
 
             if (!renderAsCloud)
-                box._renderer->Render(context, parserContext, techniqueIndex);
+                box._renderer->Render(metalContext.get(), parserContext, techniqueIndex);
         }
 
         if (parseSettings._batchFilter == SceneParseSettings::BatchFilter::Transparent) {
             if (renderAsCloud)
-                box._renderer->RenderAsCloud(context, parserContext);
+                box._renderer->RenderAsCloud(metalContext.get(), parserContext);
             if (Tweakable("TerrainWireframe", false))
-                box._renderer->RenderUnsortedTrans(context, parserContext, 8);
+                box._renderer->RenderUnsortedTrans(metalContext.get(), parserContext, 8);
         }
+    }
+
+    void TestPlatformSceneParser::PrepareScene(
+        RenderCore::IThreadContext& context, 
+        LightingParserContext& parserContext,
+        SceneEngine::PreparedScene& preparedPackets) const
+    {
     }
 
     bool TestPlatformSceneParser::HasContent(const SceneParseSettings& parseSettings) const

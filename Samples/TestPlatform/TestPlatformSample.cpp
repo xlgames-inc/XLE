@@ -20,6 +20,7 @@
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
+#include "../../SceneEngine/PreparedScene.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 
 #include "../../RenderCore/IDevice.h"
@@ -215,6 +216,7 @@ namespace Sample
             //  some scene might need a "prepare" step to 
             //  build some resources before the main render occurs.
         scene->PrepareFrame(context);
+        SceneEngine::PreparedScene preparedScene;
 
         using namespace SceneEngine;
         if (scene) {
@@ -224,7 +226,8 @@ namespace Sample
                 RenderingQualitySettings(
                     presChainDims, 
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
-                    Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
+                    Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)),
+                preparedScene);
         }
 
         if (overlaySys) {

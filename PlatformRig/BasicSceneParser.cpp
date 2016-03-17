@@ -51,6 +51,13 @@ namespace PlatformRig
         return GetEnvSettings()._toneMapSettings;
     }
 
+    void BasicSceneParser::PrepareScene(
+        RenderCore::IThreadContext& context, 
+        SceneEngine::LightingParserContext& parserContext,
+        SceneEngine::PreparedScene& preparedPackets) const
+    {
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     SceneEngine::LightDesc DefaultDominantLight()

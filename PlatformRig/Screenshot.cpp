@@ -11,6 +11,7 @@
 #include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/Tonemap.h"
 #include "../SceneEngine/SceneEngineUtils.h"
+#include "../SceneEngine/PreparedScene.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -149,6 +150,7 @@ namespace PlatformRig
                 auto rtDesc = TextureDesc::Plain2D(viewWidth+2*skirt, viewHeight+2*skirt, format);
                 target = TargetType(rtDesc, "HighResScreenShot");
 
+                SceneEngine::PreparedScene preparedScene;
                 auto sceneMarker = LightingParser_SetupScene(*metalContext, parserContext, &sceneParser, samplingPassIndex, samplingPassCount);
 
                     // We build a custom projection matrix that limits
@@ -189,7 +191,7 @@ namespace PlatformRig
                 metalContext->Bind(MakeResourceList(target.RTV()), nullptr);
                 metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(rtDesc._width), float(rtDesc._height)));
                 LightingParser_SetGlobalTransform(*metalContext, parserContext, projDesc);
-                LightingParser_ExecuteScene(*metalContext, parserContext, tileQualSettings);
+                LightingParser_ExecuteScene(context, parserContext, tileQualSettings, preparedScene);
             }
 
         doToneMap = oldDoToneMap;

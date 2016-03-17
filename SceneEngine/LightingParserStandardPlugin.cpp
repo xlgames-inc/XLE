@@ -25,7 +25,7 @@ namespace SceneEngine
     using namespace RenderCore::Metal;
 
     void LightingParserStandardPlugin::OnPreScenePrepare(
-            RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext) const
+            RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const
     {
     }
 

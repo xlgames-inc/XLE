@@ -73,7 +73,6 @@ namespace Utility
         std::unique_ptr<Pimpl> _pimpl;
     };
 
-    
 }
 
 using namespace Utility;

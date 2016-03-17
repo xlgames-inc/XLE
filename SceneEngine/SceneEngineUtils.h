@@ -7,6 +7,7 @@
 #pragma once 
 
 #include "SceneParser.h"    // for SceneParseSettings
+#include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/InputLayout.h"

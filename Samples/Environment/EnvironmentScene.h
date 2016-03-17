@@ -33,10 +33,11 @@ namespace Sample
 
         RenderCore::Techniques::CameraDesc GetCameraDesc() const;
 
-        void ExecuteScene(   
-            RenderCore::Metal::DeviceContext* context, 
+        void ExecuteScene(
+            RenderCore::IThreadContext& context,
             LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings,
+            SceneEngine::PreparedScene& preparedPackets,
             unsigned techniqueIndex) const;
         bool HasContent(const SceneParseSettings& parseSettings) const;
 

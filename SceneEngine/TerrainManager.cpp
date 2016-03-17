@@ -13,6 +13,7 @@
 #include "TerrainMaterial.h"
 #include "SurfaceHeightsProvider.h"
 #include "TerrainFormat.h"
+#include "PreparedScene.h"
 #include "SceneEngineUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
@@ -649,49 +650,69 @@ namespace SceneEngine
 		}
 	}
 
-    void TerrainManager::Render(Metal::DeviceContext* context, LightingParserContext& parserContext, unsigned techniqueIndex)
+    void TerrainManager::Prepare(
+        Metal::DeviceContext* context,
+        LightingParserContext& parserContext,
+        PreparedScene& preparedPackets)
     {
         assert(_pimpl);
         auto* renderer = _pimpl->_renderer.get();
         if (!renderer) return;
 
-		// auto& reload = Tweakable("TerrainReload", false);
-		// if (reload) {
-		// 	_pimpl->_renderer->UnloadCachedData();
-		// 	reload = false;
-		// }
+        // auto& reload = Tweakable("TerrainReload", false);
+        // if (reload) {
+        //  _pimpl->_renderer->UnloadCachedData();
+        //  reload = false;
+        // }
 
             //  We need to enable the rendering state once, for all cells. The state should be
             //  more or less the same for every cell, so we don't need to do it every time
-			//
-			//	We can setup multi-pass rendering for the terrain by reorganising this function
-			//	a little bit. The Cull step only needs to be done once per frame. So it can be
-			//	prepared early in the frame calculations, and then reused in multiple subsequent
-			//	render steps.
-        TerrainRenderingContext state(
+            //
+            //  We can setup multi-pass rendering for the terrain by reorganising this function
+            //  a little bit. The Cull step only needs to be done once per frame. So it can be
+            //  prepared early in the frame calculations, and then reused in multiple 
+            //  subsequent render steps.
+        auto* state = preparedPackets.Allocate<TerrainRenderingContext>(
+            0,
             renderer->GetCoverageIds(), 
             renderer->GetCoverageFmts(), renderer->GetCoverageLayersCount(), 
             _pimpl->_cfg.EncodedGradientFlags());
-        state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
-        state._queuedNodes.reserve(2048);
-        state._currentViewport = Metal::ViewportDesc(*context);
-        _pimpl->CullNodes(parserContext.GetProjectionDesc(), state);
+        if (!state) return;
 
-        // Check for short-circuit events.
-        if (renderer->IsShortCircuitAllowed()) {
-			auto completed = renderer->CompletePendingUploads_Bridge();
-			_pimpl->ShortCircuitFinishedUploads(*context, MakeIteratorRange(completed));
-            _pimpl->FlushShortCircuitQueue(*context);
-		} else {
-			renderer->CompletePendingUploads();
-		}
+        state->_queuedNodes.erase(state->_queuedNodes.begin(), state->_queuedNodes.end());
+        state->_queuedNodes.reserve(2048);
+        state->_currentViewport = Metal::ViewportDesc(*context);
+        _pimpl->CullNodes(parserContext.GetProjectionDesc(), *state);
 
-        renderer->QueueUploads(state);
+        renderer->QueueUploads(*state);
 
         if (!_pimpl->_textures || _pimpl->_textures->GetDependencyValidation()->GetValidationIndex() > 0) {
             _pimpl->_textures.reset();
             _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(
                 *context, _pimpl->_matCfg, _pimpl->_cfg.EncodedGradientFlags());
+        }
+    }
+
+    void TerrainManager::Render(
+        Metal::DeviceContext* context, 
+        LightingParserContext& parserContext, 
+        PreparedScene& preparedPackets,
+        unsigned techniqueIndex)
+    {
+        assert(_pimpl);
+        auto* renderer = _pimpl->_renderer.get();
+        if (!renderer) return;
+
+        auto* state = preparedPackets.Get<TerrainRenderingContext>(0);
+        if (!state) return;
+
+        // Check for short-circuit events.
+        if (renderer->IsShortCircuitAllowed()) {
+            auto completed = renderer->CompletePendingUploads_Bridge();
+            _pimpl->ShortCircuitFinishedUploads(*context, MakeIteratorRange(completed));
+            _pimpl->FlushShortCircuitQueue(*context);
+        } else {
+            renderer->CompletePendingUploads();
         }
 
         context->BindPS(MakeResourceList(8, 
@@ -735,9 +756,9 @@ namespace SceneEngine
             context->BindGS(MakeResourceList(6, lightingConstantsBuffer));  
         }
 
-        state.EnterState(context, parserContext, *_pimpl->_textures, renderer->GetHeightsElementSize(), mode);
-        renderer->Render(context, parserContext, state);
-        state.ExitState(context, parserContext);
+        state->EnterState(context, parserContext, *_pimpl->_textures, renderer->GetHeightsElementSize(), mode);
+        renderer->Render(context, parserContext, *state);
+        state->ExitState(context, parserContext);
 
         // if (_pimpl->_coverageInterfaces.size() > 0)
         //     parserContext._pendingOverlays.push_back(

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../../IThreadContext_Forward.h"
 #include "../../../Core/Types.h"
 #include <algorithm>
 #include <memory>
@@ -38,7 +39,7 @@ namespace RenderCore { namespace Metal_DX11
 
         #if defined(GPUANNOTATIONS_ENABLE)
 
-                /// <summary>Add a debugging animation<summary>
+                /// <summary>Add a debugging animation</summary>
                 /// These annotations are used for debugging. They will create a marker in debugging
                 /// tools (like nsight / RenderDoc). The "annotationName" can be any arbitrary name.
                 /// Note that we're taking a wchar_t for the name. This is for DirectX, which needs

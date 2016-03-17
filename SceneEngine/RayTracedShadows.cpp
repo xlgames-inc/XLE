@@ -139,8 +139,10 @@ namespace SceneEngine
     static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");
 
     PreparedRTShadowFrustum PrepareRTShadows(
+        IThreadContext& context,
         Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext,
+        PreparedScene& preparedScene,
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
     {
@@ -231,8 +233,8 @@ namespace SceneEngine
 
         CATCH_ASSETS_BEGIN
             parserContext.GetSceneParser()->ExecuteScene(
-                &metalContext, parserContext, sceneParseSettings, 
-                TechniqueIndex_RTShadowGen);
+                context, parserContext, sceneParseSettings, 
+                preparedScene, TechniqueIndex_RTShadowGen);
         CATCH_ASSETS_END(parserContext)
 
         metalContext.UnbindSO();

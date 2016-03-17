@@ -32,10 +32,15 @@ namespace Sample
         std::shared_ptr<ToolsRig::VisCameraSettings> GetCameraPtr();
 
         void ExecuteScene(   
-            RenderCore::Metal::DeviceContext* context, 
+            RenderCore::IThreadContext& context, 
             LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings,
+            SceneEngine::PreparedScene& preparedPackets,
             unsigned techniqueIndex) const;
+        void PrepareScene(
+            RenderCore::IThreadContext& context, 
+            LightingParserContext& parserContext,
+            SceneEngine::PreparedScene& preparedPackets) const;
         virtual bool HasContent(const SceneParseSettings& parseSettings) const;
 
         float GetTimeValue() const;

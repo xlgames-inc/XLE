@@ -15,6 +15,7 @@
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/RayVsModel.h"
 #include "../../SceneEngine/IntersectionTest.h"
+#include "../../SceneEngine/PreparedScene.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/IThreadContext.h"
@@ -86,30 +87,33 @@ namespace ToolsRig
     class ModelSceneParser : public VisSceneParser
     {
     public:
-        void ExecuteScene(  RenderCore::Metal::DeviceContext* context, 
-                            SceneEngine::LightingParserContext& parserContext, 
-                            const SceneEngine::SceneParseSettings& parseSettings,
-                            unsigned techniqueIndex) const 
+        void ExecuteScene(  
+            RenderCore::IThreadContext& context,
+            SceneEngine::LightingParserContext& parserContext, 
+            const SceneEngine::SceneParseSettings& parseSettings,
+            SceneEngine::PreparedScene& preparedPackets,
+            unsigned techniqueIndex) const 
         {
             auto delaySteps = SceneEngine::AsDelaySteps(parseSettings._batchFilter);
             if (delaySteps.empty()) return;
 
+            auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+
             RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
             if (_sharedStateSet)
-                captureMarker = _sharedStateSet->CaptureState(*context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+                captureMarker = _sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
             using namespace RenderCore;
             Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
-            context->BindGS(MakeResourceList(drawCallIndexBuffer));
-
+            metalContext->BindGS(MakeResourceList(drawCallIndexBuffer));
 
             if (Tweakable("RenderSkinned", false)) {
                 if (delaySteps[0] == RenderCore::Assets::DelayStep::OpaqueRender) {
                     auto preparedAnimation = _model->CreatePreparedAnimation();
                     RenderCore::Assets::SkinPrepareMachine prepareMachine(
                         *_modelScaffold, _modelScaffold->EmbeddedSkeleton());
-                    prepareMachine.PrepareAnimation(context, preparedAnimation);
-                    _model->PrepareAnimation(context, preparedAnimation, prepareMachine.GetSkeletonBinding());
+                    prepareMachine.PrepareAnimation(metalContext.get(), preparedAnimation);
+                    _model->PrepareAnimation(metalContext.get(), preparedAnimation, prepareMachine.GetSkeletonBinding());
 
                     RenderCore::Assets::MeshToModel meshToModel(
                         preparedAnimation._finalMatrices.get(),
@@ -117,13 +121,13 @@ namespace ToolsRig
                         &prepareMachine.GetSkeletonBinding());
 
                     _model->Render(
-                        RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
+                        RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
                         *_sharedStateSet, Identity<Float4x4>(), 
                         meshToModel, &preparedAnimation);
 
                     if (Tweakable("RenderSkeleton", false)) {
                         prepareMachine.RenderSkeleton(
-                            context, parserContext, 
+                            metalContext.get(), parserContext, 
                             preparedAnimation._animState, Identity<Float4x4>());
                     }
                 }
@@ -132,15 +136,15 @@ namespace ToolsRig
 
                 for (auto i:delaySteps)
                     ModelRenderer::RenderPrepared(
-                        RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
+                        RenderCore::Assets::ModelRendererContext(*metalContext.get(), parserContext, techniqueIndex),
                         *_sharedStateSet, _delayedDrawCalls, i,
-                        [context, &drawCallIndexBuffer, &fillInStencilInfo](ModelRenderer::DrawCallEvent evnt)
+                        [&metalContext, &drawCallIndexBuffer, &fillInStencilInfo](ModelRenderer::DrawCallEvent evnt)
                         {
                             if (fillInStencilInfo) {
                                 // hack -- we just adjust the depth stencil state to enable the stencil buffer
                                 //          no way to do this currently without dropping back to low level API
                                 #if GFXAPI_ACTIVE == GFXAPI_DX11
-                                    Metal::DepthStencilState dss(*context);
+                                    Metal::DepthStencilState dss(*metalContext);
                                     D3D11_DEPTH_STENCIL_DESC desc;
                                     dss.GetUnderlying()->GetDesc(&desc);
                                     desc.StencilEnable = true;
@@ -155,14 +159,14 @@ namespace ToolsRig
                                     desc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
                                     desc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
                                     auto newDSS = Metal::ObjectFactory().CreateDepthStencilState(&desc);
-                                    context->GetUnderlying()->OMSetDepthStencilState(newDSS.get(), 1+evnt._drawCallIndex);
+                                    metalContext->GetUnderlying()->OMSetDepthStencilState(newDSS.get(), 1+evnt._drawCallIndex);
                                 #endif
                             }
 
                             unsigned drawCallIndexB[4] = { evnt._drawCallIndex, 0, 0, 0 };
-                            drawCallIndexBuffer.Update(*context, drawCallIndexB, sizeof(drawCallIndexB));
+                            drawCallIndexBuffer.Update(*metalContext, drawCallIndexB, sizeof(drawCallIndexB));
 
-                            context->DrawIndexed(evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
+                            metalContext->DrawIndexed(evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
                         });
             }
         }
@@ -298,9 +302,10 @@ namespace ToolsRig
             screenshot = 0;
         }
 
+        SceneEngine::PreparedScene preparedScene;
         LightingParser_ExecuteScene(
             *context, parserContext, sceneParser, sceneParser.GetCameraDesc(),
-            qualSettings);
+            qualSettings, preparedScene);
     }
 
     void ModelVisLayer::RenderWidgets(

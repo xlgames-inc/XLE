@@ -19,6 +19,7 @@ namespace SceneEngine
 {
     class LightingParserContext;
     class TechniqueContext;
+    class PreparedScene;
     class HeightsUberSurfaceInterface;
     class CoverageUberSurfaceInterface;
     class ITerrainFormat;
@@ -35,9 +36,15 @@ namespace SceneEngine
     class TerrainManager
     {
     public:
-        void Render(    RenderCore::Metal::DeviceContext* context, 
-                        LightingParserContext& parserContext, 
-                        unsigned techniqueIndex);
+        void Prepare(
+            RenderCore::Metal::DeviceContext* context,
+            LightingParserContext& parserContext,
+            PreparedScene& preparedPackets);
+        void Render(
+            RenderCore::Metal::DeviceContext* context,
+            LightingParserContext& parserContext,
+            PreparedScene& preparedPackets,
+            unsigned techniqueIndex);
 
         class IntersectionResult
         {

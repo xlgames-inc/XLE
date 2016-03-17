@@ -141,7 +141,8 @@ namespace SceneEngine
         if (tile._transaction == ~BufferUploads::TransactionID(0x0)) {
                 //  if there's already a transaction on this tile, we might
                 //  be chasing the same upload again
-            tile._transaction = _bufferUploads->Transaction_Begin(_resource);
+            tile._transaction = _bufferUploads->Transaction_Begin(
+                _resource, BufferUploads::TransactionOptions::FramePriority);
         }
         assert(tile._transaction != ~BufferUploads::TransactionID(0x0));
 

@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/Forward.h"
+#include "../RenderCore/IThreadContext_Forward.h"
 
 namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; } }
 
@@ -17,6 +17,7 @@ namespace SceneEngine
     class GlobalLightingDesc;
     class LightDesc;
     class ToneMapSettings;
+    class PreparedScene;
 
     class SceneParseSettings
     {
@@ -30,7 +31,6 @@ namespace SceneEngine
             };
             typedef unsigned BitField;
         };
-
         enum class BatchFilter
         {
             General,                // general rendering batch
@@ -46,10 +46,7 @@ namespace SceneEngine
         Toggles::BitField   _toggles;
         unsigned            _projectionIndex;
 
-        SceneParseSettings(
-            BatchFilter batchFilter, 
-            Toggles::BitField toggles = ~0u, 
-            unsigned projectionIndex=0)
+        SceneParseSettings(BatchFilter batchFilter, Toggles::BitField toggles=~0u, unsigned projectionIndex=0)
         : _batchFilter(batchFilter), _toggles(toggles), _projectionIndex(projectionIndex) {}
     };
 
@@ -58,10 +55,15 @@ namespace SceneEngine
     public:
         virtual auto GetCameraDesc() const -> RenderCore::Techniques::CameraDesc = 0;
         virtual void ExecuteScene(
-            RenderCore::Metal::DeviceContext* context, 
+            RenderCore::IThreadContext& context,
             LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings,
+            PreparedScene& preparedPackets,
             unsigned techniqueIndex) const = 0;
+        virtual void PrepareScene(
+            RenderCore::IThreadContext& context, 
+            LightingParserContext& parserContext,
+            PreparedScene& preparedPackets) const = 0;
         virtual bool HasContent(const SceneParseSettings& parseSettings) const = 0;
 
         using ProjectionDesc    = RenderCore::Techniques::ProjectionDesc;

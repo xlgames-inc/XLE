@@ -227,6 +227,7 @@
     <ClCompile Include="..\OrderIndependentTransparency.cpp" />
     <ClCompile Include="..\PlacementsManager.cpp" />
     <ClCompile Include="..\PlacementsQuadTree.cpp" />
+    <ClCompile Include="..\PreparedScene.cpp" />
     <ClCompile Include="..\Rain.cpp" />
     <ClCompile Include="..\RayTracedShadows.cpp" />
     <ClCompile Include="..\RayVsModel.cpp" />
@@ -282,6 +283,7 @@
     <ClInclude Include="..\PlacementsManager.h" />
     <ClInclude Include="..\PlacementsQuadTree.h" />
     <ClInclude Include="..\PlacementsQuadTreeDebugger.h" />
+    <ClInclude Include="..\PreparedScene.h" />
     <ClInclude Include="..\Rain.h" />
     <ClInclude Include="..\RayTracedShadows.h" />
     <ClInclude Include="..\RayVsModel.h" />

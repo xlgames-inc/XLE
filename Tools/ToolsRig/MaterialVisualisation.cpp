@@ -11,6 +11,7 @@
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
+#include "../../SceneEngine/PreparedScene.h"
 
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/Techniques.h"
@@ -62,17 +63,20 @@ namespace ToolsRig
     class MaterialSceneParser : public VisSceneParser
     {
     public:
-        void ExecuteScene(  Metal::DeviceContext* context, 
-                            SceneEngine::LightingParserContext& parserContext, 
-                            const SceneEngine::SceneParseSettings& parseSettings,
-                            unsigned techniqueIndex) const 
+        void ExecuteScene(  
+            RenderCore::IThreadContext& context,
+            SceneEngine::LightingParserContext& parserContext,
+            const SceneEngine::SceneParseSettings& parseSettings,
+            SceneEngine::PreparedScene& preparedPackets,
+            unsigned techniqueIndex) const 
         {
             using BF = SceneEngine::SceneParseSettings::BatchFilter;
             if (    parseSettings._batchFilter == BF::PreDepth
                 ||  parseSettings._batchFilter == BF::General
                 ||  parseSettings._batchFilter == BF::DMShadows) {
 
-                Draw(*context, parserContext, techniqueIndex);
+                auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+                Draw(*metalContext, parserContext, techniqueIndex);
             }
         }
 
@@ -383,6 +387,8 @@ namespace ToolsRig
         sceneParser.Prepare();
         SceneEngine::RenderingQualitySettings qualSettings(context.GetStateDesc()._viewportDimensions);
 
+        SceneEngine::PreparedScene preparedScene;
+
         if (settings._lightingType == MaterialVisSettings::LightingType::NoLightingParser) {
                 
             auto metalContext = Metal::DeviceContext::Get(context);
@@ -400,10 +406,15 @@ namespace ToolsRig
                 
         } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {
             qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Deferred;
-            SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings);
+            SceneEngine::LightingParser_ExecuteScene(
+                context, parserContext, 
+                sceneParser, sceneParser.GetCameraDesc(), qualSettings,
+                preparedScene);
         } else if (settings._lightingType == MaterialVisSettings::LightingType::Forward) {
             qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Forward;
-            SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings);
+            SceneEngine::LightingParser_ExecuteScene(
+                context, parserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings,
+                preparedScene);
         }
 
         return true;

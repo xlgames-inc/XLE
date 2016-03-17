@@ -7,6 +7,7 @@
 #pragma once
 
 #include "LightingParser.h"
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"       // for DelayStep
 #include "../Assets/AssetsCore.h"
@@ -74,10 +75,12 @@ namespace SceneEngine
 
     class LightingParserContext;
     class VegetationSpawnResources;
+    class PreparedScene;
 
     void VegetationSpawn_Prepare(
-        RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& lightingParserContext,
+        RenderCore::IThreadContext& context,
+        RenderCore::Metal::DeviceContext& metalContext, LightingParserContext& parserContext,
+        PreparedScene& preparedScene,
         const VegetationSpawnConfig& cfg,
         VegetationSpawnResources& resources);
 

@@ -29,6 +29,7 @@
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
+#include "../../SceneEngine/PreparedScene.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetSetManager.h"
 
@@ -226,6 +227,7 @@ namespace Sample
             //  build some resources before the main render occurs.
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         scene->PrepareFrame(metalContext.get());
+        SceneEngine::PreparedScene preparedScene;
 
         using namespace SceneEngine;
         auto presChainDims = presentationChain->GetViewportContext()->_dimensions;
@@ -238,7 +240,8 @@ namespace Sample
                 RenderingQualitySettings(
                     presChainDims, 
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
-                    Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
+                    Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)),
+                preparedScene);
         }
 
             //  If we need to, we can render outside of the lighting parser.

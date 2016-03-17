@@ -66,6 +66,11 @@ namespace PlatformRig
             const ProjectionDesc& mainSceneProj) const
             -> SceneEngine::ShadowProjectionDesc;
 
+        virtual void PrepareScene(
+            RenderCore::IThreadContext& context, 
+            SceneEngine::LightingParserContext& parserContext,
+            SceneEngine::PreparedScene& preparedPackets) const;
+
         unsigned    GetLightCount() const;
         auto        GetLightDesc(unsigned index) const -> const SceneEngine::LightDesc&;
         auto        GetGlobalLightingDesc() const -> SceneEngine::GlobalLightingDesc;

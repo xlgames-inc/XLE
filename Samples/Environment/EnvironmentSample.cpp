@@ -27,6 +27,7 @@
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
+#include "../../SceneEngine/PreparedScene.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../SceneEngine/PlacementsQuadTreeDebugger.h"
@@ -351,7 +352,8 @@ namespace Sample
                 //  build some resources before the main render occurs.
             scene->PrepareFrame(context, lightingParserContext);
 
-            LightingParser_ExecuteScene(context, lightingParserContext, *scene, scene->GetCameraDesc(), qualSettings);
+            PreparedScene preparedScene;
+            LightingParser_ExecuteScene(context, lightingParserContext, *scene, scene->GetCameraDesc(), qualSettings, preparedScene);
         }
 
         if (overlaySys) {

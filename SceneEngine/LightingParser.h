@@ -45,6 +45,7 @@ namespace SceneEngine
     class SceneParseSettings;
     class ISceneParser;
     class AttachedSceneMarker;
+    class PreparedScene;
 
     /// <summary>Execute rendering</summary>
     /// This is the main entry point for rendering a scene.
@@ -88,7 +89,8 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         ISceneParser& sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
-        const RenderingQualitySettings& qualitySettings);
+        const RenderingQualitySettings& qualitySettings,
+        PreparedScene& preparedScene);
 
     /// <summary>Executes the scene currently set to the parser context</summary>
     /// The currently attached scene will be rendered.
@@ -98,9 +100,10 @@ namespace SceneEngine
     /// this version can be used for special case purpose (for example, when a special
     /// case projection matrix is required)
     void LightingParser_ExecuteScene(
-        RenderCore::Metal::DeviceContext& metalContext, 
+        RenderCore::IThreadContext& metalContext, 
         LightingParserContext& parserContext,
-        const RenderingQualitySettings& qualitySettings);
+        const RenderingQualitySettings& qualitySettings,
+        PreparedScene& preparedScene);
 
     /// <summary>Initialise basic states for scene rendering</summary>
     /// Some render operations don't want to use the full lighting parser structure.
@@ -202,7 +205,7 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            MetalContext*, LightingParserContext&) const = 0;
+            RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const = 0;
 
         virtual void OnLightingResolvePrepare(
             MetalContext*, LightingParserContext&, LightingResolveContext&) const = 0;

@@ -401,19 +401,24 @@ namespace SceneEngine
         }
     }
 
-    void LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext);
+    void LightingParser_PrepareShadows(
+        IThreadContext& context, DeviceContext& metalContext, 
+        LightingParserContext& parserContext, PreparedScene& preparedScene);
 
     static void ExecuteScene(
-        DeviceContext& metalContext, 
+        IThreadContext& context,
         LightingParserContext& parserContext,
         const SPS& parseSettings,
+        PreparedScene& preparedScene,
         unsigned techniqueIndex,
         const wchar_t* name)
     {
         CATCH_ASSETS_BEGIN
-            GPUProfiler::DebugAnnotation anno(metalContext, name);
+            #if defined(GPUANNOTATIONS_ENABLE)
+                GPUProfiler::DebugAnnotation anno(*RenderCore::Metal::DeviceContext::Get(context), name);
+            #endif
             parserContext.GetSceneParser()->ExecuteScene(
-                &metalContext, parserContext, parseSettings, techniqueIndex);
+                context, parserContext, parseSettings, preparedScene, techniqueIndex);
         CATCH_ASSETS_END(parserContext)
     }
 
@@ -422,12 +427,15 @@ namespace SceneEngine
         return parserContext.GetSceneParser()->HasContent(parseSettings);
     }
 
-    static void ForwardLightingModel_Render(    DeviceContext& context, 
-                                                LightingParserContext& parserContext,
-                                                ForwardTargetsBox& targetsBox,
-                                                unsigned sampleCount)
+    static void ForwardLightingModel_Render(
+        IThreadContext& context,
+        DeviceContext& metalContext,
+        LightingParserContext& parserContext,
+        PreparedScene& preparedScene,
+        ForwardTargetsBox& targetsBox,
+        unsigned sampleCount)
     {
-        auto lightBindRes = LightingParser_BindLightResolveResources(context, parserContext);
+        auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_SPECULAR_IBL", lightBindRes._hasSpecularIBL?1:0);
@@ -441,17 +449,18 @@ namespace SceneEngine
             normalRenderToggles &= ~SceneParseSettings::Toggles::NonTerrain;
         }
 
-        ReturnToSteadyState(context);
+        ReturnToSteadyState(metalContext);
         {
             StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
             ExecuteScene(
                 context, parserContext, SPS(SPS::BatchFilter::PreDepth, normalRenderToggles),
+                preparedScene,
                 TechniqueIndex_DepthOnly, L"MainScene-DepthOnly");
         }
 
             /////
 
-        ReturnToSteadyState(context);
+        ReturnToSteadyState(metalContext);
         StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._forward);
 
             //  We must disable z write (so all shaders can be early-depth-stencil)
@@ -460,12 +469,13 @@ namespace SceneEngine
             //      will switch early-depth-stencil on and off as necessary, but in the second
             //      pass we want it on permanently because the depth reject will end up performing
             //      the same job as alpha testing)
-        context.Bind(Techniques::CommonResources()._dssReadOnly);
+        metalContext.Bind(Techniques::CommonResources()._dssReadOnly);
 
             /////
             
         ExecuteScene(
             context, parserContext, SPS(SPS::BatchFilter::General, normalRenderToggles),
+            preparedScene,
             TechniqueIndex_General, L"MainScene-General");
 
             /////
@@ -474,9 +484,9 @@ namespace SceneEngine
         TransparencyTargetsBox* oiTransTargets = nullptr;
         if (useOrderIndependentTransparency) {
             duplicatedDepthBuffer = 
-                BuildDuplicatedDepthBuffer(&context, targetsBox._msaaDepthBufferTexture.get());
+                BuildDuplicatedDepthBuffer(&metalContext, targetsBox._msaaDepthBufferTexture.get());
                 
-            oiTransTargets = OrderIndependentTransparency_Prepare(context, parserContext, duplicatedDepthBuffer);
+            oiTransTargets = OrderIndependentTransparency_Prepare(metalContext, parserContext, duplicatedDepthBuffer);
 
                 //
                 //      (render the parts of the scene that we want to use
@@ -487,9 +497,9 @@ namespace SceneEngine
                 //          select the technique index used deeper within the
                 //          scene parser.
                 //
-            ReturnToSteadyState(context);
+            ReturnToSteadyState(metalContext);
             ExecuteScene(
-                context, parserContext, SPS::BatchFilter::OITransparent,
+                context, parserContext, SPS::BatchFilter::OITransparent, preparedScene,
                 TechniqueIndex_OrderIndependentTransparency, L"MainScene-OITrans");
         }
 
@@ -502,8 +512,8 @@ namespace SceneEngine
             //          sky (because the prepare step will only write opaque stuff, 
             //          but the "resolve" step must come after sky rendering.
         if (Tweakable("DoSky", true)) {
-            Sky_Render(context, parserContext, true);
-            Sky_RenderPostFog(context, parserContext);
+            Sky_Render(metalContext, parserContext, true);
+            Sky_RenderPostFog(metalContext, parserContext);
         }
 
         if (useOrderIndependentTransparency) {
@@ -511,38 +521,40 @@ namespace SceneEngine
                 //  this a non-MSAA blend over a MSAA buffer; so it might kill the samples information.
                 //  We can try to do this after the MSAA resolve... But we do the luminance sample
                 //  before MSAA resolve, so transluent objects don't contribute to the luminance sampling.
-            OrderIndependentTransparency_Resolve(context, parserContext, *oiTransTargets, duplicatedDepthBuffer); // mainTargets._msaaDepthBufferSRV);
+            OrderIndependentTransparency_Resolve(metalContext, parserContext, *oiTransTargets, duplicatedDepthBuffer); // mainTargets._msaaDepthBufferSRV);
         }
     }
 
     static void LightingParser_DeferredPostGBuffer(
-        Metal::DeviceContext& context, 
+        IThreadContext& context,
+        Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext,
+        PreparedScene& preparedScene,
         MainTargetsBox& mainTargets)
     {
         //////////////////////////////////////////////////////////////////////////////////////////////////
             //  Render translucent objects (etc)
             //  everything after the gbuffer resolve
         LightingParser_PreTranslucency(
-            context, parserContext, 
+            metalContext, parserContext, 
             mainTargets._msaaDepthBufferSRV);
 
-        ReturnToSteadyState(context);
+        ReturnToSteadyState(metalContext);
 
             // We must bind all of the lighting resolve resources here
             //  -- because we'll be doing lighting operations in the pixel
             //      shaders in a forward-lit way
-        auto lightBindRes = LightingParser_BindLightResolveResources(context, parserContext);
+        auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_SPECULAR_IBL", lightBindRes._hasSpecularIBL?1:0);
 
         AutoCleanup bindShadowsCleanup;
         if (!parserContext._preparedDMShadows.empty()) {
-            BindShadowsForForwardResolve(context, parserContext, parserContext._preparedDMShadows[0].second);
+            BindShadowsForForwardResolve(metalContext, parserContext, parserContext._preparedDMShadows[0].second);
             bindShadowsCleanup = MakeAutoCleanup(
-                [&context, &parserContext]() 
-                { UnbindShadowsForForwardResolve(context, parserContext); });
+                [&metalContext, &parserContext]() 
+                { UnbindShadowsForForwardResolve(metalContext, parserContext); });
         }
                     
         //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -566,6 +578,7 @@ namespace SceneEngine
             StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
             ExecuteScene(
                 context, parserContext, SPS::BatchFilter::TransparentPreDepth,
+                preparedScene,
                 TechniqueIndex_DepthOnly, L"MainScene-TransPreDepth");
         }
 
@@ -573,26 +586,28 @@ namespace SceneEngine
             StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._forward);
             ExecuteScene(
                 context, parserContext, SPS::BatchFilter::Transparent,
+                preparedScene,
                 TechniqueIndex_General, L"MainScene-PostGBuffer");
         }
         
         if (hasOITrans) {
             StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
             if (enabledSortedTrans) {
-                auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&context, mainTargets._msaaDepthBufferTexture.get());
-                auto* transTargets = OrderIndependentTransparency_Prepare(context, parserContext, duplicatedDepthBuffer);
+                auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&metalContext, mainTargets._msaaDepthBufferTexture.get());
+                auto* transTargets = OrderIndependentTransparency_Prepare(metalContext, parserContext, duplicatedDepthBuffer);
 
                 ExecuteScene(
                     context, parserContext, SPS::BatchFilter::OITransparent,
+                    preparedScene,
                     TechniqueIndex_OrderIndependentTransparency, L"MainScene-PostGBuffer-OI");
 
                     // note; we use the main depth buffer for this call (not the duplicated buffer)
-                OrderIndependentTransparency_Resolve(context, parserContext, *transTargets, mainTargets._msaaDepthBufferSRV);
+                OrderIndependentTransparency_Resolve(metalContext, parserContext, *transTargets, mainTargets._msaaDepthBufferSRV);
             } else if (Tweakable("UseStochasticTrans", true)) {
-                SavedTargets savedTargets(context);
-                auto resetMarker = savedTargets.MakeResetMarker(context);
+                SavedTargets savedTargets(metalContext);
+                auto resetMarker = savedTargets.MakeResetMarker(metalContext);
 
-                StochasticTransparencyOp stochTransOp(context, parserContext);
+                StochasticTransparencyOp stochTransOp(metalContext, parserContext);
 
                     // We do 2 passes through the ordered transparency geometry
                     //  1) we write the multi-sample occlusion buffer
@@ -603,11 +618,13 @@ namespace SceneEngine
                 stochTransOp.PrepareFirstPass(mainTargets._msaaDepthBufferSRV);
                 ExecuteScene(
                     context, parserContext, SPS::BatchFilter::OITransparent,
+                    preparedScene,
                     TechniqueIndex_DepthOnly, L"MainScene-PostGBuffer-OI");
 
                 stochTransOp.PrepareSecondPass(mainTargets._msaaDepthBuffer);
                 ExecuteScene(
                     context, parserContext, SPS::BatchFilter::OITransparent,
+                    preparedScene,
                     TechniqueIndex_StochasticTransparency, L"MainScene-PostGBuffer-OI-Res");
 
                 resetMarker = SavedTargets::ResetMarker();  // back to normal targets now
@@ -617,17 +634,19 @@ namespace SceneEngine
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
         LightingParser_PostGBufferEffects(
-            context, parserContext, 
+            metalContext, parserContext, 
             mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]);
 
-        for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p) {
-            (*p)->OnPostSceneRender(&context, parserContext, SPS::BatchFilter::Transparent, TechniqueIndex_General);
-        }
+        for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
+            (*p)->OnPostSceneRender(&metalContext, parserContext, SPS::BatchFilter::Transparent, TechniqueIndex_General);
     }
 
-    void LightingParser_MainScene(  DeviceContext& context, 
-                                    LightingParserContext& parserContext,
-                                    const RenderingQualitySettings& qualitySettings)
+    void LightingParser_MainScene(
+        IThreadContext& context,
+        DeviceContext& metalContext, 
+        LightingParserContext& parserContext,
+        PreparedScene& preparedScene,
+        const RenderingQualitySettings& qualitySettings)
     {
             ////////////////////////////////////////////////////////////////////
                 //      1. Resolve lighting
@@ -660,7 +679,7 @@ namespace SceneEngine
         DepthStencilView sceneDepthsDSV;
         ID3D::Resource* postLightingResolveTexture = nullptr;
 
-        SavedTargets savedTargets(context);
+        SavedTargets savedTargets(metalContext);
 
         ViewportDesc mainViewport(  
             0.f, 0.f, float(qualitySettings._dimensions[0]), float(qualitySettings._dimensions[1]), 0.f, 1.f);
@@ -712,46 +731,47 @@ namespace SceneEngine
                     //      Bind and clear gbuffer
                     //
 
-                context.Bind(
+                metalContext.Bind(
                     MakeResourceList(   
                         mainTargets._gbufferRTVs[0], 
                         mainTargets._gbufferRTVs[1], 
                         mainTargets._gbufferRTVs[2]), 
                     &mainTargets._msaaDepthBuffer);
-                ClearDeferredBuffers(context, mainTargets);
-                context.Bind(mainViewport);
+                ClearDeferredBuffers(metalContext, mainTargets);
+                metalContext.Bind(mainViewport);
 
                     //
                 //////////////////////////////////////////////////////////////////////////////////////
                     //      Render full scene to gbuffer
                     //
 
-                ReturnToSteadyState(context);
+                ReturnToSteadyState(metalContext);
                 StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._deferred);
 
                 ExecuteScene(
                     context, parserContext, SPS::BatchFilter::General,
+                    preparedScene,
                     TechniqueIndex_Deferred, L"MainScene-OpaqueGBuffer");
                 for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p) {
-                    (*p)->OnPostSceneRender(&context, parserContext, SPS::BatchFilter::General, TechniqueIndex_Deferred);
+                    (*p)->OnPostSceneRender(&metalContext, parserContext, SPS::BatchFilter::General, TechniqueIndex_Deferred);
                 }
-                LightingParser_LateGBufferRender(context, parserContext, mainTargets);
-                LightingParser_ResolveGBuffer(context, parserContext, mainTargets, lightingResTargets);
+                LightingParser_LateGBufferRender(metalContext, parserContext, mainTargets);
+                LightingParser_ResolveGBuffer(metalContext, parserContext, mainTargets, lightingResTargets);
             } 
-            CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
+            CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(metalContext); }
             CATCH_END
 
                 // Post lighting resolve operations... (must rebind the depth buffer)
-            context.Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
-            context.Bind(
+            metalContext.Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
+            metalContext.Bind(
                 MakeResourceList(lightingResTargets._lightingResolveRTV), 
                 &mainTargets._msaaDepthBuffer);
-            context.Bind(Techniques::CommonResources()._dssReadOnly);
+            metalContext.Bind(Techniques::CommonResources()._dssReadOnly);
 
             TRY {
-                LightingParser_DeferredPostGBuffer(context, parserContext, mainTargets);
+                LightingParser_DeferredPostGBuffer(context, metalContext, parserContext, preparedScene, mainTargets);
             }
-            CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
+            CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(metalContext); }
             CATCH_END
 
             sceneDepthsSRV              = mainTargets._msaaDepthBufferSRV;
@@ -771,15 +791,15 @@ namespace SceneEngine
                             NativeFormat(DXGI_FORMAT_D24_UNORM_S8_UINT)),
                 sampling);
 
-            context.Clear(mainTargets._msaaDepthBuffer, 1.f, 0);
-            context.Bind(
+            metalContext.Clear(mainTargets._msaaDepthBuffer, 1.f, 0);
+            metalContext.Bind(
                 MakeResourceList(lightingResTargets._lightingResolveRTV),
                 &mainTargets._msaaDepthBuffer);
 
             if (!parserContext._preparedDMShadows.empty())
-                BindShadowsForForwardResolve(context, parserContext, parserContext._preparedDMShadows[0].second);
+                BindShadowsForForwardResolve(metalContext, parserContext, parserContext._preparedDMShadows[0].second);
 
-            ForwardLightingModel_Render(context, parserContext, mainTargets, sampling._sampleCount);
+            ForwardLightingModel_Render(context, metalContext, parserContext, preparedScene, mainTargets, sampling._sampleCount);
 
             sceneDepthsSRV              = mainTargets._msaaDepthBufferSRV;
             sceneSecondaryDepthsSRV     = mainTargets._secondaryDepthBufferSRV;
@@ -792,14 +812,14 @@ namespace SceneEngine
         }
 
         {
-            GPUProfiler::DebugAnnotation anno(context, L"Resolve-MSAA-HDR");
+            GPUProfiler::DebugAnnotation anno(metalContext, L"Resolve-MSAA-HDR");
 
             auto toneMapSettings = parserContext.GetSceneParser()->GetToneMapSettings();
             LuminanceResult luminanceResult;
             if (parserContext.GetSceneParser()->GetToneMapSettings()._flags & ToneMapSettings::Flags::EnableToneMap) {
                     //  (must resolve luminance early, because we use it during the MSAA resolve)
                 luminanceResult = ToneMap_SampleLuminance(
-                    context, parserContext, toneMapSettings, postLightingResolveSRV);
+                    metalContext, parserContext, toneMapSettings, postLightingResolveSRV);
             }
 
                 //
@@ -814,7 +834,7 @@ namespace SceneEngine
 				auto& msaaResolveRes = Techniques::FindCachedBox2<FinalResolveResources>(
 					inputTextureDesc.Width, inputTextureDesc.Height, Metal::AsNativeFormat(inputTextureDesc.Format));
                 LightingParser_ResolveMSAA(
-                    context, parserContext,
+                    metalContext, parserContext,
                     msaaResolveRes._postMsaaResolveTexture.get(),
                     postLightingResolveTexture,
 					Metal::AsNativeFormat(inputTextureDesc.Format));
@@ -825,8 +845,8 @@ namespace SceneEngine
                 postLightingResolveSRV = msaaResolveRes._postMsaaResolveSRV;
                 postLightingResolveRTV = msaaResolveRes._postMsaaResolveTarget;
             }
-            context.Bind(MakeResourceList(postLightingResolveRTV), nullptr);       // we don't have a single-sample depths target at this time (only multisample)
-            LightingParser_PostProcess(context, parserContext);
+            metalContext.Bind(MakeResourceList(postLightingResolveRTV), nullptr);       // we don't have a single-sample depths target at this time (only multisample)
+            LightingParser_PostProcess(metalContext, parserContext);
 
                 //  Write final colour to output texture
                 //  We have to be careful about whether "SRGB" is enabled
@@ -845,32 +865,34 @@ namespace SceneEngine
                             // todo -- make sure we're using the correct format here -- 
                         Metal::RenderTargetView rtv(res.get(), Metal::NativeFormat::R8G8B8A8_UNORM);
                         auto* drtv = rtv.GetUnderlying();
-                        context.GetUnderlying()->OMSetRenderTargets(1, &drtv, savedTargets.GetDepthStencilView());
+                        metalContext.GetUnderlying()->OMSetRenderTargets(1, &drtv, savedTargets.GetDepthStencilView());
                     } else
-                        savedTargets.ResetToOldTargets(context);
+                        savedTargets.ResetToOldTargets(metalContext);
                 }
             } else {
-                savedTargets.ResetToOldTargets(context);
+                savedTargets.ResetToOldTargets(metalContext);
             }
 
-            ToneMap_Execute(context, parserContext, luminanceResult, toneMapSettings, postLightingResolveSRV);
+            ToneMap_Execute(metalContext, parserContext, luminanceResult, toneMapSettings, postLightingResolveSRV);
 
                 //  if we're not in MSAA mode, we can rebind the main depth buffer. But if we're in MSAA mode, we have to
                 //  resolve the depth buffer before we can do that...
             if (qualitySettings._samplingCount >= 1) {
                 savedTargets.SetDepthStencilView(sceneDepthsDSV.GetUnderlying());
             }
-            savedTargets.ResetToOldTargets(context);
+            savedTargets.ResetToOldTargets(metalContext);
         }
 
-        LightingParser_Overlays(&context, parserContext);
+        LightingParser_Overlays(&metalContext, parserContext);
     }
 
     static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");
     static const utf8* StringShadowEnableNearCascade = u("SHADOW_ENABLE_NEAR_CASCADE");
 
     PreparedDMShadowFrustum LightingParser_PrepareDMShadow(
-        DeviceContext& context, LightingParserContext& parserContext, 
+        IThreadContext& context,
+        DeviceContext& metalContext, LightingParserContext& parserContext, 
+        PreparedScene& preparedScene,
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
     {
@@ -883,10 +905,10 @@ namespace SceneEngine
             return PreparedDMShadowFrustum();
 
         PreparedDMShadowFrustum preparedResult;
-        preparedResult.InitialiseConstants(&context, frustum._projections);
+        preparedResult.InitialiseConstants(&metalContext, frustum._projections);
         using TC = Techniques::TechniqueContext;
-        parserContext.SetGlobalCB(context, TC::CB_ShadowProjection, &preparedResult._arbitraryCBSource, sizeof(preparedResult._arbitraryCBSource));
-        parserContext.SetGlobalCB(context, TC::CB_OrthoShadowProjection, &preparedResult._orthoCBSource, sizeof(preparedResult._orthoCBSource));
+        parserContext.SetGlobalCB(metalContext, TC::CB_ShadowProjection, &preparedResult._arbitraryCBSource, sizeof(preparedResult._arbitraryCBSource));
+        parserContext.SetGlobalCB(metalContext, TC::CB_OrthoShadowProjection, &preparedResult._orthoCBSource, sizeof(preparedResult._orthoCBSource));
         preparedResult._resolveParameters._worldSpaceBias = frustum._worldSpaceResolveBias;
         preparedResult._resolveParameters._tanBlurAngle = frustum._tanBlurAngle;
         preparedResult._resolveParameters._minBlurSearch = frustum._minBlurSearch;
@@ -926,16 +948,16 @@ namespace SceneEngine
 
             /////////////////////////////////////////////
 
-        SavedTargets savedTargets(context);
-        auto resetMarker = savedTargets.MakeResetMarker(context);
-        context.Bind(RenderCore::ResourceList<RenderTargetView,0>(), &targetsBox._depthStencilView);
-        context.Bind(Metal::ViewportDesc(0.f, 0.f, float(frustum._width), float(frustum._height)));
+        SavedTargets savedTargets(metalContext);
+        auto resetMarker = savedTargets.MakeResetMarker(metalContext);
+        metalContext.Bind(RenderCore::ResourceList<RenderTargetView,0>(), &targetsBox._depthStencilView);
+        metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, float(frustum._width), float(frustum._height)));
 
         for (unsigned c=0; c<projectionCount; ++c) {
                 // note --  do we need to clear each slice individually? Or can we clear a single DSV 
                 //          representing the whole thing? What if we don't need every slice for this 
                 //          frame? Is there a benefit to skipping unnecessary slices?
-            context.Clear(targetsBox._dsvBySlice[c], 1.f, 0);  
+            metalContext.Clear(targetsBox._dsvBySlice[c], 1.f, 0);  
         }
 
         Float4x4 savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
@@ -948,26 +970,30 @@ namespace SceneEngine
             /////////////////////////////////////////////
 
         StateSetChangeMarker stateMarker(parserContext, resources._stateResolver);
-        context.Bind(resources._rasterizerState);
+        metalContext.Bind(resources._rasterizerState);
         ExecuteScene(
             context, parserContext, sceneParseSettings,
+            preparedScene,
             TechniqueIndex_ShadowGen, L"ShadowGen-Prepare");
 
         for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
-            (*p)->OnPostSceneRender(&context, parserContext, sceneParseSettings, TechniqueIndex_ShadowGen);
+            (*p)->OnPostSceneRender(&metalContext, parserContext, sceneParseSettings, TechniqueIndex_ShadowGen);
         
         return std::move(preparedResult);
     }
 
     PreparedRTShadowFrustum LightingParser_PrepareRTShadow(
-        DeviceContext& context, LightingParserContext& parserContext, 
-        const ShadowProjectionDesc& frustum,
+        IThreadContext& context,
+        DeviceContext& metalContext, LightingParserContext& parserContext,
+        PreparedScene& preparedScene, const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
     {
-        return PrepareRTShadows(context, parserContext, frustum, shadowFrustumIndex);
+        return PrepareRTShadows(context, metalContext, parserContext, preparedScene, frustum, shadowFrustumIndex);
     }
 
-    void LightingParser_PrepareShadows(DeviceContext& context, LightingParserContext& parserContext)
+    void LightingParser_PrepareShadows(
+        IThreadContext& context, DeviceContext& metalContext, 
+        LightingParserContext& parserContext, PreparedScene& preparedScene)
     {
         auto* scene = parserContext.GetSceneParser();
         if (!scene) {
@@ -976,7 +1002,7 @@ namespace SceneEngine
             return;
         }
 
-        GPUProfiler::DebugAnnotation anno(context, L"Prepare-Shadows");
+        GPUProfiler::DebugAnnotation anno(metalContext, L"Prepare-Shadows");
 
             // todo --  we should be using a temporary frame heap for this vector
         auto shadowFrustumCount = scene->GetShadowProjectionCount();
@@ -987,13 +1013,13 @@ namespace SceneEngine
             CATCH_ASSETS_BEGIN
                 if (frustum._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
 
-                    auto shadow = LightingParser_PrepareDMShadow(context, parserContext, frustum, c);
+                    auto shadow = LightingParser_PrepareDMShadow(context, metalContext, parserContext, preparedScene, frustum, c);
                     if (shadow.IsReady())
                         parserContext._preparedDMShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
 
                 } else if (frustum._resolveType == ShadowProjectionDesc::ResolveType::RayTraced) {
 
-                    auto shadow = LightingParser_PrepareRTShadow(context, parserContext, frustum, c);
+                    auto shadow = LightingParser_PrepareRTShadow(context, metalContext, parserContext, preparedScene, frustum, c);
                     if (shadow.IsReady())
                         parserContext._preparedRTShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
 
@@ -1038,7 +1064,8 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         ISceneParser& scene,
         const RenderCore::Techniques::CameraDesc& camera,
-        const RenderingQualitySettings& qualitySettings)
+        const RenderingQualitySettings& qualitySettings,
+        PreparedScene& preparedScene)
     {
         auto metalContext = DeviceContext::Get(context);
         auto marker = LightingParser_SetupScene(*metalContext.get(), parserContext, &scene);
@@ -1046,32 +1073,34 @@ namespace SceneEngine
             *metalContext.get(), parserContext, 
             BuildProjectionDesc(camera, qualitySettings._dimensions));
 
-        LightingParser_ExecuteScene(*metalContext, parserContext, qualitySettings);
+        LightingParser_ExecuteScene(context, parserContext, qualitySettings, preparedScene);
     }
 
     void LightingParser_ExecuteScene(
-        RenderCore::Metal::DeviceContext& metalContext, 
+        RenderCore::IThreadContext& context, 
         LightingParserContext& parserContext,
-        const RenderingQualitySettings& qualitySettings)
+        const RenderingQualitySettings& qualitySettings,
+        PreparedScene& preparedScene)
     {
+        auto metalContext = DeviceContext::Get(context);
         CATCH_ASSETS_BEGIN
-            ReturnToSteadyState(metalContext);
-            SetFrameGlobalStates(metalContext);
+            ReturnToSteadyState(*metalContext);
+            SetFrameGlobalStates(*metalContext);
         CATCH_ASSETS_END(parserContext)
 
         {
-            GPUProfiler::DebugAnnotation anno(metalContext, L"Prepare");
+            GPUProfiler::DebugAnnotation anno(*metalContext, L"Prepare");
             for (auto i=parserContext._plugins.cbegin(); i!=parserContext._plugins.cend(); ++i) {
                 CATCH_ASSETS_BEGIN
-                    (*i)->OnPreScenePrepare(&metalContext, parserContext);
+                    (*i)->OnPreScenePrepare(context, parserContext, preparedScene);
                 CATCH_ASSETS_END(parserContext)
             }
 
-            LightingParser_PrepareShadows(metalContext, parserContext);
+            LightingParser_PrepareShadows(context, *metalContext, parserContext, preparedScene);
         }
 
         CATCH_ASSETS_BEGIN
-            LightingParser_MainScene(metalContext, parserContext, qualitySettings);
+            LightingParser_MainScene(context, *metalContext, parserContext, preparedScene, qualitySettings);
         CATCH_ASSETS_END(parserContext)
     }
 

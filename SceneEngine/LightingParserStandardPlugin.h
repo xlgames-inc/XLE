@@ -14,7 +14,7 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            RenderCore::Metal::DeviceContext* context, LightingParserContext&) const;
+            RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const;
         virtual void OnLightingResolvePrepare(
             RenderCore::Metal::DeviceContext* context, 
             LightingParserContext& parserContext,

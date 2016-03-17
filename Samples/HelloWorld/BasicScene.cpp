@@ -11,6 +11,7 @@
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Tonemap.h"
@@ -50,10 +51,11 @@ namespace Sample
         //  In this example, though... Nothing happens!
     }
 
-    void BasicSceneParser::ExecuteScene(   
-        RenderCore::Metal::DeviceContext* context, 
+    void BasicSceneParser::ExecuteScene(
+        RenderCore::IThreadContext& context, 
         LightingParserContext& parserContext, 
         const SceneParseSettings& parseSettings,
+        SceneEngine::PreparedScene& preparedPackets,
         unsigned techniqueIndex) const
     {
             //  "ExecuteScene" is the main entry point for rendering the scene geometry.
@@ -90,10 +92,18 @@ namespace Sample
                 //  The scene parser is responsible for getting the ordering right. But
                 //  the best ordering depends on the type of scene you want to render.
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-                _model->RenderOpaque(context, parserContext, techniqueIndex);
+                auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+                _model->RenderOpaque(metalContext.get(), parserContext, techniqueIndex);
             }
 
         }
+    }
+
+    void BasicSceneParser::PrepareScene(
+        RenderCore::IThreadContext& context, 
+        LightingParserContext& parserContext,
+        SceneEngine::PreparedScene& preparedPackets) const
+    {
     }
 
     bool BasicSceneParser::HasContent(const SceneParseSettings& parseSettings) const

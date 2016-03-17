@@ -434,7 +434,7 @@ namespace BufferUploads
             /// buffers maintained by the system. Used by the BufferUploadDisplay
             /// for presenting profiling information.
         IMETHOD PoolSystemMetrics       CalculatePoolMetrics    () const IPURE;
-            /// <summary>Sets a barrier for frame priority operations<summary>
+            /// <summary>Sets a barrier for frame priority operations</summary>
             /// Sets a barrier, which determines the "end of frame" point for
             /// frame priority operations. This will normally be called from the same
             /// thread that begins most upload operations.

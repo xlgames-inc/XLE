@@ -151,6 +151,7 @@
     <ClCompile Include="..\DynamicImposters.cpp">
       <Filter>Lighting And Processing</Filter>
     </ClCompile>
+    <ClCompile Include="..\PreparedScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -320,6 +321,7 @@
     <ClInclude Include="..\TerrainShortCircuit.h">
       <Filter>Objects\Terrain</Filter>
     </ClInclude>
+    <ClInclude Include="..\PreparedScene.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

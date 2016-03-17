@@ -851,7 +851,7 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            MetalContext*, LightingParserContext&) const;
+            RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const;
 
         virtual void OnLightingResolvePrepare(
             MetalContext*, LightingParserContext&, LightingResolveContext&) const;
@@ -941,7 +941,7 @@ namespace SceneEngine
     }
 
     void VolumetricFogPlugin::OnPreScenePrepare(
-        MetalContext*, LightingParserContext&) const {}
+        RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const {}
     
     void VolumetricFogPlugin::OnPostSceneRender(
         MetalContext*, LightingParserContext&, 

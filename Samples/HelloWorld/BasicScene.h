@@ -7,13 +7,15 @@
 #pragma once
 
 #include "../../SceneEngine/SceneParser.h"
+#include "../../SceneEngine/PreparedScene.h"
+#include "../../RenderCore/Metal/Forward.h"
 #include <memory>
 
 namespace RenderCore { namespace Assets { class ModelRenderer; class SharedStateSet; } }
+namespace SceneEngine { class PreparedScene; }
 
 namespace Sample
 {
-
     class BasicSceneParser : public SceneEngine::ISceneParser
     {
     public:
@@ -30,10 +32,15 @@ namespace Sample
         RenderCore::Techniques::CameraDesc GetCameraDesc() const;
 
         void ExecuteScene(
-            RenderCore::Metal::DeviceContext* context, 
+            RenderCore::IThreadContext& context, 
             LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings,
+            SceneEngine::PreparedScene& preparedPackets,
             unsigned techniqueIndex) const;
+        void PrepareScene(
+            RenderCore::IThreadContext& context, 
+            LightingParserContext& parserContext,
+            SceneEngine::PreparedScene& preparedPackets) const;
         bool HasContent(const SceneParseSettings& parseSettings) const;
 
         unsigned GetShadowProjectionCount() const;

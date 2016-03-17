@@ -27,6 +27,7 @@
 #include "../../SceneEngine/VolumetricFog.h"
 #include "../../SceneEngine/ShallowSurface.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
+#include "../../SceneEngine/PreparedScene.h"
 
 #include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/StringUtils.h"
@@ -47,10 +48,15 @@ namespace GUILayer
         using SceneParseSettings =  SceneEngine::SceneParseSettings;
 
         void ExecuteScene(  
-            DeviceContext* context, 
+            RenderCore::IThreadContext& context, 
             LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings,
+            PreparedScene& preparedPackets,
             unsigned techniqueIndex) const;
+        void PrepareScene(
+            RenderCore::IThreadContext& context, 
+            LightingParserContext& parserContext,
+            PreparedScene& preparedPackets) const;
         bool HasContent(const SceneParseSettings& parseSettings) const;
 
         float GetTimeValue() const;
@@ -78,22 +84,25 @@ namespace GUILayer
         return scene._terrainManager ? scene._terrainManager->GetHeightsProvider().get() : nullptr;
     }
 
-    void EditorSceneParser::ExecuteScene(  
-        DeviceContext* metalContext, 
+    void EditorSceneParser::ExecuteScene(
+        RenderCore::IThreadContext& context, 
         LightingParserContext& parserContext, 
         const SceneParseSettings& parseSettings,
+        PreparedScene& preparedPackets,
         unsigned techniqueIndex) const
     {
         using BF = SceneParseSettings::BatchFilter;
         auto batchFilter = parseSettings._batchFilter;
         auto& scene = *_editorScene;
 
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+
         if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && scene._terrainManager) {
             if (batchFilter == BF::General) {
-				CATCH_ASSETS_BEGIN
-                    scene._terrainManager->Render(metalContext, parserContext, techniqueIndex);
+                CATCH_ASSETS_BEGIN
+                    scene._terrainManager->Render(metalContext.get(), parserContext, preparedPackets, techniqueIndex);
                 CATCH_ASSETS_END(parserContext)
-			}
+            }
         }
 
         if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
@@ -101,9 +110,9 @@ namespace GUILayer
             CATCH_ASSETS_BEGIN
                 for (auto i:delaySteps)
                     if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
-                        scene._placementsManager->GetRenderer()->CommitTransparent(metalContext, parserContext, techniqueIndex, i);
+                        scene._placementsManager->GetRenderer()->CommitTransparent(metalContext.get(), parserContext, techniqueIndex, i);
                     } else {
-                        scene._placementsManager->GetRenderer()->Render(metalContext, parserContext, techniqueIndex, *scene._placementsCells);
+                        scene._placementsManager->GetRenderer()->Render(metalContext.get(), parserContext, techniqueIndex, *scene._placementsCells);
                     }
             CATCH_ASSETS_END(parserContext)
 
@@ -118,6 +127,18 @@ namespace GUILayer
                     scene._shallowSurfaceManager->RenderDebugging(*metalContext, parserContext, techniqueIndex, GetSurfaceHeights(scene));
                 CATCH_ASSETS_END(parserContext)
             }
+        }
+    }
+
+    void EditorSceneParser::PrepareScene(
+        RenderCore::IThreadContext& context,
+        LightingParserContext& parserContext,
+        PreparedScene& preparedPackets) const
+    {
+        auto& scene = *_editorScene;
+        if (scene._terrainManager) {
+            auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+            scene._terrainManager->Prepare(metalContext.get(), parserContext, preparedPackets);
         }
     }
 
@@ -253,8 +274,11 @@ namespace GUILayer
             }
 
             _sceneParser->AddLightingPlugins(parserContext);
+            SceneEngine::PreparedScene preparedScene;
             SceneEngine::LightingParser_ExecuteScene(
-                *threadContext, parserContext, *_sceneParser.get(), _sceneParser->GetCameraDesc(),qualSettings);
+                *threadContext, parserContext, *_sceneParser.get(), 
+                _sceneParser->GetCameraDesc(), qualSettings,
+                preparedScene);
         }
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
