@@ -387,8 +387,6 @@ namespace ToolsRig
         sceneParser.Prepare();
         SceneEngine::RenderingQualitySettings qualSettings(context.GetStateDesc()._viewportDimensions);
 
-        SceneEngine::PreparedScene preparedScene;
-
         if (settings._lightingType == MaterialVisSettings::LightingType::NoLightingParser) {
                 
             auto metalContext = Metal::DeviceContext::Get(context);
@@ -408,13 +406,11 @@ namespace ToolsRig
             qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Deferred;
             SceneEngine::LightingParser_ExecuteScene(
                 context, parserContext, 
-                sceneParser, sceneParser.GetCameraDesc(), qualSettings,
-                preparedScene);
+                sceneParser, sceneParser.GetCameraDesc(), qualSettings);
         } else if (settings._lightingType == MaterialVisSettings::LightingType::Forward) {
             qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Forward;
             SceneEngine::LightingParser_ExecuteScene(
-                context, parserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings,
-                preparedScene);
+                context, parserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings);
         }
 
         return true;

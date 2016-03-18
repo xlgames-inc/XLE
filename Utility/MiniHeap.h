@@ -68,6 +68,9 @@ namespace Utility
 
         MiniHeap();
         ~MiniHeap();
+
+        MiniHeap(MiniHeap&& moveFrom);
+        MiniHeap& operator=(MiniHeap&& moveFrom);
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;

@@ -82,7 +82,8 @@ namespace BufferUploads
     class AssemblyLine
     {
     public:
-        enum {
+        enum 
+        {
             Step_UploadData           = (1<<0),
             Step_CreateResource       = (1<<1),
             Step_CreateStagingBuffer  = (1<<2),
@@ -273,7 +274,7 @@ namespace BufferUploads
             CommandListBudget(bool isLoading);
         };
 
-        void    UpdateData_PostBackground(Transaction& transaction, TransactionID id, DataPacket* rawData, const PartialResource& part);
+        void    UpdateData_PostBackground(QueueSet&, Transaction& transaction, TransactionID id, DataPacket* rawData, const PartialResource& part);
 
         void    ResolveBatchOperation(BatchPreparation& batchOperation, ThreadContext& context, unsigned stepMask);
         void    ReleaseTransaction(Transaction* transaction, ThreadContext& context, bool abort = false);
@@ -282,7 +283,7 @@ namespace BufferUploads
         bool    Process(const ResourceCreateStep& resourceCreateStep, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
         bool    Process_StagingBuffer(const ResourceCreateStep& resourceCreateStep, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
         bool    Process(const DataUploadStep& dataUploadStep, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
-        bool    Process(const PrepareDataStep& dataUploadStep, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
+        bool    Process(QueueSet& queueSet, const PrepareDataStep& dataUploadStep, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction, bool stallOnPending);
         auto    ProcessQueueSet(QueueSet& queueSet, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction) -> std::pair<bool,bool>;
         bool    DrainPriorityQueueSet(QueueSet& queueSet, unsigned stepMask, ThreadContext& context);
 
@@ -291,10 +292,10 @@ namespace BufferUploads
         static bool     SortSize_SmallestToLargest(const AssemblyLine::ResourceCreateStep& lhs, const AssemblyLine::ResourceCreateStep& rhs);
 
         auto    GetQueueSet(TransactionOptions::BitField transactionOptions) -> QueueSet &;
-        void    PushStep(Transaction& transaction, ResourceCreateStep&& step);
-        void    PushStep_StagingBuffer(Transaction& transaction, ResourceCreateStep&& step);
-        void    PushStep(Transaction& transaction, DataUploadStep&& step);
-        void    PushStep(Transaction& transaction, PrepareDataStep&& step);
+        void    PushStep(QueueSet&, Transaction& transaction, ResourceCreateStep&& step);
+        void    PushStep_StagingBuffer(QueueSet&, Transaction& transaction, ResourceCreateStep&& step);
+        void    PushStep(QueueSet&, Transaction& transaction, DataUploadStep&& step);
+        void    PushStep(QueueSet&, Transaction& transaction, PrepareDataStep&& step);
     };
 
     AssemblyLine::DataUploadStep::DataUploadStep()
@@ -462,7 +463,7 @@ namespace BufferUploads
                     // load step. When the load operation is finished, the other steps (such as
                     // resource creation and data upload) will be added
 
-                PushStep(*transaction, PrepareDataStep(result, initialisationData, std::move(bkgrndMarker), PartialResource()));
+                PushStep(GetQueueSet(transaction->_creationOptions), *transaction, PrepareDataStep(result, initialisationData, std::move(bkgrndMarker), PartialResource()));
                 return result;
             }
 
@@ -492,7 +493,7 @@ namespace BufferUploads
                     //      happens frequently enough to create blips in the graph.
                     //  
                 Interlocked::Add(&_currentQueuedBytes[AsUploadDataType(transaction->_desc)], PlatformInterface::ByteCount(transaction->_desc));
-                PushStep(*transaction, ResourceCreateStep(result, transaction->_desc, initialisationData));
+                PushStep(GetQueueSet(transaction->_creationOptions), *transaction, ResourceCreateStep(result, transaction->_desc, initialisationData));
             } else {
                 UpdateData(result, initialisationData, DefaultPartialResource(desc, *initialisationData));
             }
@@ -502,7 +503,7 @@ namespace BufferUploads
             //  upload data
             if (flags & TransactionOptions::ForceCreate) {
                 transaction->_creationQueued = true;
-                PushStep(*transaction, ResourceCreateStep(result, transaction->_desc));
+                PushStep(GetQueueSet(transaction->_creationOptions), *transaction, ResourceCreateStep(result, transaction->_desc));
             }
         }
 
@@ -1703,7 +1704,10 @@ namespace BufferUploads
         return false;
     }
 
-    bool        AssemblyLine::Process(const PrepareDataStep& step, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction)
+    bool        AssemblyLine::Process(
+        QueueSet& queueSet,
+        const PrepareDataStep& step, unsigned stepMask, ThreadContext& context, 
+        const CommandListBudget& budgetUnderConstruction, bool stallOnPending)
     {
         CommandListMetrics& metricsUnderConstruction = context.GetMetricsUnderConstruction();
         if ((metricsUnderConstruction._contextOperations+metricsUnderConstruction._nonContextOperations+1) < budgetUnderConstruction._limit_Operations) {
@@ -1720,34 +1724,37 @@ namespace BufferUploads
 
             auto currentState = step._marker->GetAssetState();
             if (currentState == Assets::AssetState::Pending) {
-                return false; // still waiting
-            } else {
-                if (currentState == Assets::AssetState::Ready) {
-                    // Asset is ready. We should now have a full buffer desc for this
-                    // object. That means we can create the resource creation and 
-                    // upload operations.
+                if (!stallOnPending)
+                    return false; // still waiting
 
-                    auto part = step._part;
-                    if (step._marker->_desc._type == BufferDesc::Type::Texture) {
-                        transaction->_desc._type = step._marker->_desc._type;
-                        transaction->_desc._textureDesc = step._marker->_desc._textureDesc;
-
-                        part = DefaultPartialResource(transaction->_desc, *step._packet);
-                    } else if (step._marker->_desc._type == BufferDesc::Type::LinearBuffer) {
-                        transaction->_desc._type = step._marker->_desc._type;
-                        transaction->_desc._linearBufferDesc = step._marker->_desc._linearBufferDesc;
-                    } // else if step._marker->_desc._type == BufferDesc::Type::Unknown, do nothing
-                    UpdateData_PostBackground(*transaction, step._id, step._packet.get(), part);
-                } else {
-                    assert(currentState == Assets::AssetState::Invalid);
-
-                    // Asset is invalid (eg, a missing file)
-                    // this should complete the transaction -- but leave it in an invalid state
-                }
-
-                ReleaseTransaction(transaction, context, true);
-                return true;
+                currentState = step._marker->StallWhilePending();
             }
+
+            if (currentState == Assets::AssetState::Ready) {
+                // Asset is ready. We should now have a full buffer desc for this
+                // object. That means we can create the resource creation and 
+                // upload operations.
+
+                auto part = step._part;
+                if (step._marker->_desc._type == BufferDesc::Type::Texture) {
+                    transaction->_desc._type = step._marker->_desc._type;
+                    transaction->_desc._textureDesc = step._marker->_desc._textureDesc;
+
+                    part = DefaultPartialResource(transaction->_desc, *step._packet);
+                } else if (step._marker->_desc._type == BufferDesc::Type::LinearBuffer) {
+                    transaction->_desc._type = step._marker->_desc._type;
+                    transaction->_desc._linearBufferDesc = step._marker->_desc._linearBufferDesc;
+                } // else if step._marker->_desc._type == BufferDesc::Type::Unknown, do nothing
+                UpdateData_PostBackground(queueSet, *transaction, step._id, step._packet.get(), part);
+            } else {
+                assert(currentState == Assets::AssetState::Invalid);
+
+                // Asset is invalid (eg, a missing file)
+                // this should complete the transaction -- but leave it in an invalid state
+            }
+
+            ReleaseTransaction(transaction, context, true);
+            return true;
         }
 
         return false;
@@ -1762,7 +1769,7 @@ namespace BufferUploads
         if (stepMask & Step_PrepareData) {
             PrepareDataStep* step = 0;
             while (queueSet._prepareSteps.try_front(step)) {
-                if (Process(*step, stepMask, context, budgetUnderConstruction)) {
+                if (Process(queueSet, *step, stepMask, context, budgetUnderConstruction, true)) {
                     didSomething = true;
                 } else {
                     _queueSet_Main._prepareSteps.push_overflow(std::move(*step));
@@ -1822,7 +1829,7 @@ namespace BufferUploads
         if (stepMask & Step_PrepareData) {
             PrepareDataStep* step = 0;
             if (queueSet._prepareSteps.try_front(step)) {
-                if (Process(*step, stepMask, context, budgetUnderConstruction)) {
+                if (Process(queueSet, *step, stepMask, context, budgetUnderConstruction, false)) {
                     atLeastOneRealAction = true;
                     queueSet._prepareSteps.pop();
                 }
@@ -1891,8 +1898,8 @@ namespace BufferUploads
 
                     //      --~<   Drain all frame priority steps   >~--      //
                 if (DrainPriorityQueueSet(_queueSet_FramePriority[*qs], stepMask, context)) {
-                    nothingFoundInQueues  = false;
-                    atLeastOneRealAction  = true;
+                    nothingFoundInQueues = false;
+                    atLeastOneRealAction = true;
                 }
                 framePriorityResolve = true;
                 fromFramePriorityQueueSet = *qs;
@@ -2124,15 +2131,15 @@ namespace BufferUploads
             if (bkgrndMarker) {
                 // this operation involves a background load. We need queue the background load first
                 // After the background load is completed, the rest of the operation will continue
-                PushStep(*transaction, PrepareDataStep(id, rawData, std::move(bkgrndMarker), part));
+                PushStep(GetQueueSet(transaction->_creationOptions), *transaction, PrepareDataStep(id, rawData, std::move(bkgrndMarker), part));
                 return;
             }
         }
 
-        UpdateData_PostBackground(*transaction, id, rawData, part);
+        UpdateData_PostBackground(GetQueueSet(transaction->_creationOptions), *transaction, id, rawData, part);
     }
 
-    void AssemblyLine::UpdateData_PostBackground(Transaction& transaction, TransactionID id, DataPacket* rawData, const PartialResource& part)
+    void AssemblyLine::UpdateData_PostBackground(QueueSet& queueSet, Transaction& transaction, TransactionID id, DataPacket* rawData, const PartialResource& part)
     {
             //  
             //      1. Queue creation & staging creation steps. But only if these haven't been queued or completed before.
@@ -2171,7 +2178,8 @@ namespace BufferUploads
                 //
                 //      Validate the size of information in the initialisation packet.
                 //
-            if (rawData && transaction._desc._type == BufferDesc::Type::Texture && (!part._box._left && !part._box._top && !part._box._right && !part._box._bottom)) {
+            if (rawData && transaction._desc._type == BufferDesc::Type::Texture 
+                && (!part._box._left && !part._box._top && !part._box._right && !part._box._bottom)) {
                 for (unsigned m=0; m<transaction._desc._textureDesc._mipCount; ++m) {
                     const size_t dataSize = rawData->GetDataSize(SubR(m, 0));
                     if (dataSize) {
@@ -2186,12 +2194,12 @@ namespace BufferUploads
         #endif
 
         if (mustQueueCreation) {
-            PushStep(transaction, ResourceCreateStep(id, transaction._desc));
+            PushStep(queueSet, transaction, ResourceCreateStep(id, transaction._desc));
         }
 
         if (mustQueueStaging) {
             transaction._requestedStagingLODOffset = requestedStagingLODOffset;
-            PushStep_StagingBuffer(transaction, ResourceCreateStep(id, transaction._desc));
+            PushStep_StagingBuffer(queueSet, transaction, ResourceCreateStep(id, transaction._desc));
         }
 
         Interlocked::Value size = 0;
@@ -2207,7 +2215,7 @@ namespace BufferUploads
 
             // there is a separate "step" for each array element
         for (unsigned e = part._arrayIndexMin; e <= part._arrayIndexMax; ++e)
-            PushStep(transaction, DataUploadStep(id, rawData, part._box, part._lodLevelMin, part._lodLevelMax, e));
+            PushStep(queueSet, transaction, DataUploadStep(id, rawData, part._box, part._lodLevelMin, part._lodLevelMax, e));
     }
 
     intrusive_ptr<ResourceLocator>     AssemblyLine::GetResource(TransactionID id)
@@ -2234,34 +2242,34 @@ namespace BufferUploads
         }
     }
 
-    void AssemblyLine::PushStep(Transaction& transaction, ResourceCreateStep&& step)
+    void AssemblyLine::PushStep(QueueSet& queueSet, Transaction& transaction, ResourceCreateStep&& step)
     {
         if (transaction._creationOptions & TransactionOptions::FramePriority) {
             LogAlwaysWarningF("Push priority create step to (%i)", _framePriority_WritingQueueSet);
         }
         Interlocked::Increment(&transaction._referenceCount);
-        GetQueueSet(transaction._creationOptions)._resourceCreateSteps.push_overflow(std::move(step));
+        queueSet._resourceCreateSteps.push_overflow(std::move(step));
     }
 
-    void AssemblyLine::PushStep_StagingBuffer(Transaction& transaction, ResourceCreateStep&& step)
+    void AssemblyLine::PushStep_StagingBuffer(QueueSet& queueSet, Transaction& transaction, ResourceCreateStep&& step)
     {
         Interlocked::Increment(&transaction._referenceCount);
-        GetQueueSet(transaction._creationOptions)._stagingBufferCreateSteps.push_overflow(std::move(step));
+        queueSet._stagingBufferCreateSteps.push_overflow(std::move(step));
     }
 
-    void AssemblyLine::PushStep(Transaction& transaction, DataUploadStep&& step)
+    void AssemblyLine::PushStep(QueueSet& queueSet, Transaction& transaction, DataUploadStep&& step)
     {
         if (transaction._creationOptions & TransactionOptions::FramePriority) {
             LogAlwaysWarningF("Push upload step to (%i)", _framePriority_WritingQueueSet);
         }
         Interlocked::Increment(&transaction._referenceCount);
-        GetQueueSet(transaction._creationOptions)._uploadSteps.push_overflow(std::move(step));
+        queueSet._uploadSteps.push_overflow(std::move(step));
     }
 
-    void AssemblyLine::PushStep(Transaction& transaction, PrepareDataStep&& step)
+    void AssemblyLine::PushStep(QueueSet& queueSet, Transaction& transaction, PrepareDataStep&& step)
     {
         Interlocked::Increment(&transaction._referenceCount);
-        GetQueueSet(transaction._creationOptions)._prepareSteps.push_overflow(std::move(step));
+        queueSet._prepareSteps.push_overflow(std::move(step));
     }
 
     unsigned AssemblyLine::FlipWritingQueueSet()

@@ -25,8 +25,8 @@ namespace SceneEngine
     {
     public:
         void    Transaction_Begin(
-                    TextureTile& tile,
-                    const void* fileHandle, size_t offset, size_t dataSize);
+            TextureTile& tile,
+            const void* fileHandle, size_t offset, size_t dataSize);
 
         bool    IsValid(const TextureTile& tile) const;
 
@@ -37,10 +37,11 @@ namespace SceneEngine
         Int2    GetTileSize() const { return _elementSize; }
         auto    GetFormat() const -> RenderCore::Metal::NativeFormat::Enum { return _format; }
         
-        TextureTileSet( BufferUploads::IManager& bufferUploads,
-                        Int2 elementSize, unsigned elementCount,
-                        RenderCore::Metal::NativeFormat::Enum format,
-                        bool allowModification);
+        TextureTileSet(
+            BufferUploads::IManager& bufferUploads,
+            Int2 elementSize, unsigned elementCount,
+            RenderCore::Metal::NativeFormat::Enum format,
+            bool allowModification);
         ~TextureTileSet();
 
     private:

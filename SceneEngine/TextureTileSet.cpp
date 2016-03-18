@@ -68,7 +68,6 @@ namespace SceneEngine
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
-
     static Int3 LinearToCoords(unsigned linearAddress, Int2 elesPerSlice)
     {
         unsigned slice = linearAddress / (elesPerSlice[0]*elesPerSlice[1]);
@@ -81,9 +80,7 @@ namespace SceneEngine
         return coords[0] + coords[1] * elesPerSlice[0] + coords[2] * (elesPerSlice[0] * elesPerSlice[1]);
     }
 
-    void    TextureTileSet::Transaction_Begin(
-                TextureTile& tile,
-                const void* fileHandle, size_t offset, size_t dataSize)
+    void TextureTileSet::Transaction_Begin(TextureTile& tile, const void* fileHandle, size_t offset, size_t dataSize)
     {
         CompleteCreation();
         if (!_resource || _resource->IsEmpty()) {
@@ -179,9 +176,9 @@ namespace SceneEngine
         
             //  check to see if this tile has been invalidated in an overwrite 
             //  operation.
-        unsigned linearAddress = CoordsToLinear(Int3(   tile._x / _elementSize[0], 
-                                                        tile._y / _elementSize[1], 
-                                                        tile._arrayIndex), _elementsPerArraySlice);
+        unsigned linearAddress = CoordsToLinear(
+            Int3(tile._x / _elementSize[0], tile._y / _elementSize[1], tile._arrayIndex), 
+            _elementsPerArraySlice);
         if (_uploadIds[linearAddress] != tile._uploadId)
             return false;   // another tile has been uploaded into this same spot
 
@@ -197,9 +194,8 @@ namespace SceneEngine
                 if (uploadsResource && !uploadsResource->IsEmpty()) {
                     Metal::ShaderResourceView shaderResource(uploadsResource->GetUnderlying());
                     Metal::UnorderedAccessView uav;
-                    if (_allowModification) {
+                    if (_allowModification)
                         uav = Metal::UnorderedAccessView(uploadsResource->GetUnderlying());
-                    }
                     _bufferUploads->Transaction_End(_creationTransaction);
                     _creationTransaction = ~BufferUploads::TransactionID(0x0);
 
@@ -211,10 +207,11 @@ namespace SceneEngine
         }
     }
 
-    TextureTileSet::TextureTileSet( BufferUploads::IManager& bufferUploads,
-                                    Int2 elementSize, unsigned elementCount,
-                                    RenderCore::Metal::NativeFormat::Enum format,
-                                    bool allowModification)
+    TextureTileSet::TextureTileSet(
+        BufferUploads::IManager& bufferUploads,
+        Int2 elementSize, unsigned elementCount,
+        RenderCore::Metal::NativeFormat::Enum format,
+        bool allowModification)
     {
         _creationTransaction = ~BufferUploads::TransactionID(0x0);
         _allowModification = allowModification;
@@ -231,9 +228,8 @@ namespace SceneEngine
             // fill in the slices (everything unallocated initially //
         std::vector<ArraySlice> slices;
         slices.reserve(pageCount);
-        for (int c=0; c<pageCount; ++c) {
+        for (int c=0; c<pageCount; ++c)
             slices.push_back(ArraySlice(elementsPerPage));
-        }
 
             // note -- there's currently a problem if the page count is 1
             // The system will create a non-array texture, which will cause

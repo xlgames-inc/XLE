@@ -22,17 +22,24 @@ namespace SceneEngine
         template<typename Type> Type* Get(Id id = 0);
 
         PreparedScene();
+        PreparedScene(PreparedScene&&);
         ~PreparedScene();
+        PreparedScene& operator=(PreparedScene&&);
     private:
         MiniHeap _heap;
 
+        using Destructor = void(void*);
         class Block
         {
         public:
             Id _id;
             MiniHeap::Allocation _allocation;
+            Destructor* _destructor;
         };
         std::vector<std::pair<size_t, Block>> _blocks;
+
+        template<typename Type> static void DestructorImpl(void* ptr)
+            { ((Type*)ptr)->~Type(); }
     };
 
     template<typename Type, typename... Args> 
@@ -51,7 +58,8 @@ namespace SceneEngine
                 new(alloc._allocation) Type(args...);
             #pragma pop_macro("new")
 
-            _blocks.insert(r.second, std::make_pair(typeid(Type).hash_code(), Block{ id, alloc }));
+            Destructor* destr = &DestructorImpl<Type>;
+            _blocks.insert(r.second, std::make_pair(typeid(Type).hash_code(), Block{ id, alloc, destr }));
             return (Type*)alloc._allocation;
         }
 

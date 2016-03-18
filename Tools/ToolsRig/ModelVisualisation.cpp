@@ -302,10 +302,9 @@ namespace ToolsRig
             screenshot = 0;
         }
 
-        SceneEngine::PreparedScene preparedScene;
         LightingParser_ExecuteScene(
             *context, parserContext, sceneParser, sceneParser.GetCameraDesc(),
-            qualSettings, preparedScene);
+            qualSettings);
     }
 
     void ModelVisLayer::RenderWidgets(

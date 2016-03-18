@@ -151,7 +151,9 @@ namespace PlatformRig
                 target = TargetType(rtDesc, "HighResScreenShot");
 
                 SceneEngine::PreparedScene preparedScene;
-                auto sceneMarker = LightingParser_SetupScene(*metalContext, parserContext, &sceneParser, samplingPassIndex, samplingPassCount);
+                auto sceneMarker = LightingParser_SetupScene(
+                    *metalContext, parserContext, 
+                    &sceneParser, samplingPassIndex, samplingPassCount);
 
                     // We build a custom projection matrix that limits
                     // the frustum to the particular tile we're rendering.

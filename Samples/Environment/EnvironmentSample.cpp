@@ -352,8 +352,7 @@ namespace Sample
                 //  build some resources before the main render occurs.
             scene->PrepareFrame(context, lightingParserContext);
 
-            PreparedScene preparedScene;
-            LightingParser_ExecuteScene(context, lightingParserContext, *scene, scene->GetCameraDesc(), qualSettings, preparedScene);
+            LightingParser_ExecuteScene(context, lightingParserContext, *scene, scene->GetCameraDesc(), qualSettings);
         }
 
         if (overlaySys) {

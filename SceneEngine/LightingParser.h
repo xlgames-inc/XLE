@@ -89,8 +89,7 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         ISceneParser& sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
-        const RenderingQualitySettings& qualitySettings,
-        PreparedScene& preparedScene);
+        const RenderingQualitySettings& qualitySettings);
 
     /// <summary>Executes the scene currently set to the parser context</summary>
     /// The currently attached scene will be rendered.
@@ -136,7 +135,7 @@ namespace SceneEngine
         const RenderCore::Techniques::CameraDesc& sceneCamera,
         UInt2 viewportDims, 
         const Float4x4* specialProjectionMatrix = nullptr);
-    
+
     /// <summary>Build a projection desc for an orthogonal camera</summary>
     RenderCore::Techniques::ProjectionDesc BuildProjectionDesc(
         const Float4x4& cameraToWorld,

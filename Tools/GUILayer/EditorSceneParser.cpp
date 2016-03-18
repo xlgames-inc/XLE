@@ -274,11 +274,9 @@ namespace GUILayer
             }
 
             _sceneParser->AddLightingPlugins(parserContext);
-            SceneEngine::PreparedScene preparedScene;
             SceneEngine::LightingParser_ExecuteScene(
                 *threadContext, parserContext, *_sceneParser.get(), 
-                _sceneParser->GetCameraDesc(), qualSettings,
-                preparedScene);
+                _sceneParser->GetCameraDesc(), qualSettings);
         }
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*threadContext);

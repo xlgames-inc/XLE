@@ -227,7 +227,6 @@ namespace Sample
             //  build some resources before the main render occurs.
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         scene->PrepareFrame(metalContext.get());
-        SceneEngine::PreparedScene preparedScene;
 
         using namespace SceneEngine;
         auto presChainDims = presentationChain->GetViewportContext()->_dimensions;
@@ -240,8 +239,7 @@ namespace Sample
                 RenderingQualitySettings(
                     presChainDims, 
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
-                    Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)),
-                preparedScene);
+                    Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
         }
 
             //  If we need to, we can render outside of the lighting parser.

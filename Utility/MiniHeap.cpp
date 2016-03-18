@@ -453,5 +453,11 @@ namespace Utility
     MiniHeap::~MiniHeap()
     {}
 
+    MiniHeap::MiniHeap(MiniHeap&& moveFrom) : _pimpl(std::move(moveFrom._pimpl)) {}
+    MiniHeap& MiniHeap::operator=(MiniHeap&& moveFrom)
+    {
+        _pimpl = std::move(moveFrom._pimpl);
+        return *this;
+    }
 }
 

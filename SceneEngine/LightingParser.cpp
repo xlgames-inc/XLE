@@ -45,14 +45,13 @@
 namespace SceneEngine
 {
     using namespace RenderCore;
-    using namespace RenderCore::Metal;
     using SPS = SceneParseSettings;
 
     DeepOceanSimSettings GlobalOceanSettings; 
     OceanLightingSettings GlobalOceanLightingSettings; 
 
     void LightingParser_ResolveGBuffer( 
-        DeviceContext& context,
+        Metal::DeviceContext& context,
         LightingParserContext& parserContext,
         MainTargetsBox& mainTargets,
         LightingResolveTextureBox& lightingResTargets);
@@ -66,7 +65,7 @@ namespace SceneEngine
     };
 
     LightResolveResourcesRes LightingParser_BindLightResolveResources( 
-        DeviceContext& context,
+        Metal::DeviceContext& context,
         LightingParserContext& parserContext);
 
     class StateSetResolvers
@@ -123,13 +122,14 @@ namespace SceneEngine
         //          VS s0, s1, s2, s4 -- default sampler, clamping sampler, anisotropic wrapping sampler, point sampler
         //          PS s6 -- samplerWrapU
         //
-    void SetFrameGlobalStates(DeviceContext& context)
+    void SetFrameGlobalStates(Metal::DeviceContext& context)
     {
-        SamplerState samplerDefault, 
-            samplerClamp(FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp), 
-            samplerAnisotrophic(FilterMode::Anisotropic),
-            samplerPoint(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp),
-            samplerWrapU(FilterMode::Trilinear, AddressMode::Wrap, AddressMode::Clamp);
+        Metal::SamplerState 
+            samplerDefault, 
+            samplerClamp(Metal::FilterMode::Trilinear, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp), 
+            samplerAnisotrophic(Metal::FilterMode::Anisotropic),
+            samplerPoint(Metal::FilterMode::Point, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp),
+            samplerWrapU(Metal::FilterMode::Trilinear, Metal::AddressMode::Wrap, Metal::AddressMode::Clamp);
         context.BindPS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
         context.BindVS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
         context.BindPS(RenderCore::MakeResourceList(6, samplerWrapU));
@@ -148,7 +148,7 @@ namespace SceneEngine
         // context.BindPS(MakeResourceList(19, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchocc.dds:L").GetShaderResource()));
     }
 
-    void ReturnToSteadyState(DeviceContext& context)
+    void ReturnToSteadyState(Metal::DeviceContext& context)
     {
             //
             //      Change some frequently changed states back
@@ -160,13 +160,13 @@ namespace SceneEngine
         context.Bind(Techniques::CommonResources()._dssReadWrite);
         context.Bind(Techniques::CommonResources()._blendOpaque);
         context.Bind(Techniques::CommonResources()._defaultRasterizer);
-        context.Bind(Topology::TriangleList);
-        context.BindVS(RenderCore::MakeResourceList(ConstantBuffer(), ConstantBuffer(), ConstantBuffer(), ConstantBuffer(), ConstantBuffer()));
-        context.BindPS(RenderCore::MakeResourceList(ConstantBuffer(), ConstantBuffer(), ConstantBuffer(), ConstantBuffer(), ConstantBuffer()));
-        context.Unbind<GeometryShader>();
+        context.Bind(Metal::Topology::TriangleList);
+        context.BindVS(RenderCore::MakeResourceList(Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer()));
+        context.BindPS(RenderCore::MakeResourceList(Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer()));
+        context.Unbind<Metal::GeometryShader>();
     }
 
-    static void ClearDeferredBuffers(DeviceContext& context, MainTargetsBox& mainTargets)
+    static void ClearDeferredBuffers(Metal::DeviceContext& context, MainTargetsBox& mainTargets)
     {
         if (mainTargets._gbufferRTVs[0].GetUnderlying())
             context.Clear(mainTargets._gbufferRTVs[0], Float4(0.33f, 0.33f, 0.33f, 1.f));
@@ -178,7 +178,7 @@ namespace SceneEngine
     }
 
     void LightingParser_SetGlobalTransform( 
-        DeviceContext& context, 
+        Metal::DeviceContext& context, 
         LightingParserContext& parserContext, 
         const RenderCore::Techniques::ProjectionDesc& projDesc)
     {
@@ -229,11 +229,12 @@ namespace SceneEngine
         return projDesc;
     }
 
-    void LightingParser_LateGBufferRender(  DeviceContext& context, 
-                                            LightingParserContext& parserContext,
-                                            MainTargetsBox& mainTargets)
+    void LightingParser_LateGBufferRender(
+        Metal::DeviceContext& context, 
+        LightingParserContext& parserContext,
+        MainTargetsBox& mainTargets)
     {
-        GPUProfiler::DebugAnnotation anno(context, L"LateGBuffer");
+        Metal::GPUProfiler::DebugAnnotation anno(context, L"LateGBuffer");
 
         #if defined(_DEBUG)
             auto& saveGBuffer = Tweakable("SaveGBuffer", false);
@@ -250,16 +251,16 @@ namespace SceneEngine
         class Desc
         {
         public:
-            Desc(unsigned width, unsigned height, NativeFormat::Enum format)
+            Desc(unsigned width, unsigned height, Metal::NativeFormat::Enum format)
                 : _width(width), _height(height), _format(format) {}
 
             unsigned            _width, _height;
-            NativeFormat::Enum  _format;
+            Metal::NativeFormat::Enum  _format;
         };
 
         ResourcePtr         _postMsaaResolveTexture;
-        RenderTargetView    _postMsaaResolveTarget;
-        ShaderResourceView  _postMsaaResolveSRV;
+        Metal::RenderTargetView    _postMsaaResolveTarget;
+        Metal::ShaderResourceView  _postMsaaResolveSRV;
 
         FinalResolveResources(const Desc& desc);
     };
@@ -269,23 +270,24 @@ namespace SceneEngine
         using namespace BufferUploads;
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, AsDXGIFormat(desc._format)),
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::AsDXGIFormat(desc._format)),
             "FinalResolve");
         auto postMsaaResolveTexture = CreateResourceImmediate(bufferUploadsDesc);
 
-        RenderTargetView postMsaaResolveTarget(postMsaaResolveTexture.get());
-        ShaderResourceView postMsaaResolveSRV(postMsaaResolveTexture.get());
+        Metal::RenderTargetView postMsaaResolveTarget(postMsaaResolveTexture.get());
+        Metal::ShaderResourceView postMsaaResolveSRV(postMsaaResolveTexture.get());
 
         _postMsaaResolveTexture = std::move(postMsaaResolveTexture);
         _postMsaaResolveTarget = std::move(postMsaaResolveTarget);
         _postMsaaResolveSRV = std::move(postMsaaResolveSRV);
     }
 
-    void LightingParser_ResolveMSAA(    DeviceContext& context, 
-                                        LightingParserContext& parserContext,
-                                        ID3D::Resource* destinationTexture,
-                                        ID3D::Resource* sourceTexture,
-                                        NativeFormat::Enum resolveFormat)
+    void LightingParser_ResolveMSAA(
+        Metal::DeviceContext& context, 
+        LightingParserContext& parserContext,
+        ID3D::Resource* destinationTexture,
+        ID3D::Resource* sourceTexture,
+        Metal::NativeFormat::Enum resolveFormat)
     {
             // todo -- support custom resolve (tone-map aware)
         context.GetUnderlying()->ResolveSubresource(
@@ -294,18 +296,19 @@ namespace SceneEngine
             Metal::AsDXGIFormat(resolveFormat));
     }
 
-    void LightingParser_PostProcess(    DeviceContext& context, 
-                                        LightingParserContext& parserContext)
+    void LightingParser_PostProcess(
+        Metal::DeviceContext& context, 
+        LightingParserContext& parserContext)
     {
         // nothing here yet!
     }
 
     void LightingParser_PreTranslucency(    
-        DeviceContext& context, 
+        Metal::DeviceContext& context, 
         LightingParserContext& parserContext,
-        ShaderResourceView& depthsSRV)
+        Metal::ShaderResourceView& depthsSRV)
     {
-        GPUProfiler::DebugAnnotation anno(context, L"PreTranslucency");
+        Metal::GPUProfiler::DebugAnnotation anno(context, L"PreTranslucency");
 
             // note --  these things can be executed by the scene parser? Are they better
             //          off handled by the scene parser, or the lighting parser?
@@ -330,12 +333,12 @@ namespace SceneEngine
     }
         
     void LightingParser_PostGBufferEffects(    
-        DeviceContext& context, 
+        Metal::DeviceContext& context, 
         LightingParserContext& parserContext,
-        ShaderResourceView& depthsSRV,
-        ShaderResourceView& normalsSRV)
+        Metal::ShaderResourceView& depthsSRV,
+        Metal::ShaderResourceView& normalsSRV)
     {
-        GPUProfiler::DebugAnnotation anno(context, L"PostGBuffer");
+        Metal::GPUProfiler::DebugAnnotation anno(context, L"PostGBuffer");
         
         if (Tweakable("DoRain", false)) {
             Rain_Render(&context, parserContext);
@@ -351,12 +354,12 @@ namespace SceneEngine
         }
     }
 
-    void LightingParser_Overlays(   DeviceContext* context,
+    void LightingParser_Overlays(   Metal::DeviceContext* context,
                                     LightingParserContext& parserContext)
     {
-        GPUProfiler::DebugAnnotation anno(*context, L"Overlays");
+        Metal::GPUProfiler::DebugAnnotation anno(*context, L"Overlays");
 
-        ViewportDesc mainViewportDesc(*context);
+        Metal::ViewportDesc mainViewportDesc(*context);
         auto& refractionBox = Techniques::FindCachedBox2<RefractionsBuffer>(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2));
         refractionBox.Build(*context, parserContext, 4.f);
         context->BindPS(MakeResourceList(12, refractionBox.GetSRV()));
@@ -402,7 +405,7 @@ namespace SceneEngine
     }
 
     void LightingParser_PrepareShadows(
-        IThreadContext& context, DeviceContext& metalContext, 
+        IThreadContext& context, Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext, PreparedScene& preparedScene);
 
     static void ExecuteScene(
@@ -415,7 +418,7 @@ namespace SceneEngine
     {
         CATCH_ASSETS_BEGIN
             #if defined(GPUANNOTATIONS_ENABLE)
-                GPUProfiler::DebugAnnotation anno(*RenderCore::Metal::DeviceContext::Get(context), name);
+                Metal::GPUProfiler::DebugAnnotation anno(*RenderCore::Metal::DeviceContext::Get(context), name);
             #endif
             parserContext.GetSceneParser()->ExecuteScene(
                 context, parserContext, parseSettings, preparedScene, techniqueIndex);
@@ -429,7 +432,7 @@ namespace SceneEngine
 
     static void ForwardLightingModel_Render(
         IThreadContext& context,
-        DeviceContext& metalContext,
+        Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
         PreparedScene& preparedScene,
         ForwardTargetsBox& targetsBox,
@@ -480,7 +483,7 @@ namespace SceneEngine
 
             /////
 
-        ShaderResourceView duplicatedDepthBuffer;
+        Metal::ShaderResourceView duplicatedDepthBuffer;
         TransparencyTargetsBox* oiTransTargets = nullptr;
         if (useOrderIndependentTransparency) {
             duplicatedDepthBuffer = 
@@ -643,7 +646,7 @@ namespace SceneEngine
 
     void LightingParser_MainScene(
         IThreadContext& context,
-        DeviceContext& metalContext, 
+        Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext,
         PreparedScene& preparedScene,
         const RenderingQualitySettings& qualitySettings)
@@ -672,16 +675,16 @@ namespace SceneEngine
                 //
             ////////////////////////////////////////////////////////////////////
 
-        ShaderResourceView postLightingResolveSRV;
-        ShaderResourceView sceneDepthsSRV;
-        ShaderResourceView sceneSecondaryDepthsSRV;
-        RenderTargetView postLightingResolveRTV;
-        DepthStencilView sceneDepthsDSV;
+        Metal::ShaderResourceView postLightingResolveSRV;
+        Metal::ShaderResourceView sceneDepthsSRV;
+        Metal::ShaderResourceView sceneSecondaryDepthsSRV;
+        Metal::RenderTargetView postLightingResolveRTV;
+        Metal::DepthStencilView sceneDepthsDSV;
         ID3D::Resource* postLightingResolveTexture = nullptr;
 
         SavedTargets savedTargets(metalContext);
 
-        ViewportDesc mainViewport(  
+        Metal::ViewportDesc mainViewport(  
             0.f, 0.f, float(qualitySettings._dimensions[0]), float(qualitySettings._dimensions[1]), 0.f, 1.f);
         
         bool precisionTargets = Tweakable("PrecisionTargets", false);
@@ -812,7 +815,7 @@ namespace SceneEngine
         }
 
         {
-            GPUProfiler::DebugAnnotation anno(metalContext, L"Resolve-MSAA-HDR");
+            Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Resolve-MSAA-HDR");
 
             auto toneMapSettings = parserContext.GetSceneParser()->GetToneMapSettings();
             LuminanceResult luminanceResult;
@@ -830,7 +833,7 @@ namespace SceneEngine
                 //          not be)
                 //
             if (qualitySettings._samplingCount > 1) {
-                TextureDesc2D inputTextureDesc(postLightingResolveTexture);
+                Metal::TextureDesc2D inputTextureDesc(postLightingResolveTexture);
 				auto& msaaResolveRes = Techniques::FindCachedBox2<FinalResolveResources>(
 					inputTextureDesc.Width, inputTextureDesc.Height, Metal::AsNativeFormat(inputTextureDesc.Format));
                 LightingParser_ResolveMSAA(
@@ -857,7 +860,7 @@ namespace SceneEngine
 
             const bool hardwareSRGBDisabled = Tweakable("Tonemap_DisableHardwareSRGB", true);
             if (hardwareSRGBDisabled) {
-                auto res = ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
+                auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
                 if (res) {
                     auto currentFormat = Metal::AsNativeFormat(Metal::TextureDesc2D(res.get()).Format);
                     if (Metal::GetComponentType(currentFormat) == Metal::FormatComponentType::UNorm_SRGB) {
@@ -891,7 +894,7 @@ namespace SceneEngine
 
     PreparedDMShadowFrustum LightingParser_PrepareDMShadow(
         IThreadContext& context,
-        DeviceContext& metalContext, LightingParserContext& parserContext, 
+        Metal::DeviceContext& metalContext, LightingParserContext& parserContext, 
         PreparedScene& preparedScene,
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
@@ -915,7 +918,8 @@ namespace SceneEngine
         preparedResult._resolveParameters._maxBlurSearch = frustum._maxBlurSearch;
         preparedResult._resolveParameters._shadowTextureSize = (float)std::min(frustum._width, frustum._height);
         XlZeroMemory(preparedResult._resolveParameters._dummy);
-        preparedResult._resolveParametersCB = ConstantBuffer(&preparedResult._resolveParameters, sizeof(preparedResult._resolveParameters));
+        preparedResult._resolveParametersCB = Metal::ConstantBuffer(
+            &preparedResult._resolveParameters, sizeof(preparedResult._resolveParameters));
 
             //  we need to set the "shadow cascade mode" settings to the right
             //  mode for this prepare step;
@@ -950,7 +954,7 @@ namespace SceneEngine
 
         SavedTargets savedTargets(metalContext);
         auto resetMarker = savedTargets.MakeResetMarker(metalContext);
-        metalContext.Bind(RenderCore::ResourceList<RenderTargetView,0>(), &targetsBox._depthStencilView);
+        metalContext.Bind(RenderCore::ResourceList<Metal::RenderTargetView,0>(), &targetsBox._depthStencilView);
         metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, float(frustum._width), float(frustum._height)));
 
         for (unsigned c=0; c<projectionCount; ++c) {
@@ -984,7 +988,7 @@ namespace SceneEngine
 
     PreparedRTShadowFrustum LightingParser_PrepareRTShadow(
         IThreadContext& context,
-        DeviceContext& metalContext, LightingParserContext& parserContext,
+        Metal::DeviceContext& metalContext, LightingParserContext& parserContext,
         PreparedScene& preparedScene, const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
     {
@@ -992,7 +996,7 @@ namespace SceneEngine
     }
 
     void LightingParser_PrepareShadows(
-        IThreadContext& context, DeviceContext& metalContext, 
+        IThreadContext& context, Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext, PreparedScene& preparedScene)
     {
         auto* scene = parserContext.GetSceneParser();
@@ -1002,7 +1006,7 @@ namespace SceneEngine
             return;
         }
 
-        GPUProfiler::DebugAnnotation anno(metalContext, L"Prepare-Shadows");
+        Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Prepare-Shadows");
 
             // todo --  we should be using a temporary frame heap for this vector
         auto shadowFrustumCount = scene->GetShadowProjectionCount();
@@ -1029,19 +1033,21 @@ namespace SceneEngine
     }
 
     void LightingParser_InitBasicLightEnv(  
-        DeviceContext& context,
+        Metal::DeviceContext& context,
         LightingParserContext& parserContext,
         ISceneParser& sceneParser);
 
     AttachedSceneMarker LightingParser_SetupScene(
-        DeviceContext& context, 
+        Metal::DeviceContext& context, 
         LightingParserContext& parserContext,
         ISceneParser* sceneParser,
         unsigned samplingPassIndex, unsigned samplingPassCount)
     {
-        struct GlobalCBuffer 
-        { float _time; unsigned _samplingPassIndex; unsigned _samplingPassCount; unsigned _dummy; }
-        time { 0.f, samplingPassIndex, samplingPassCount, 0 };
+        struct GlobalCBuffer
+        {
+            float _time; unsigned _samplingPassIndex; 
+            unsigned _samplingPassCount; unsigned _dummy;
+        } time { 0.f, samplingPassIndex, samplingPassCount, 0 };
         if (sceneParser)
             time._time = sceneParser->GetTimeValue();
         parserContext.SetGlobalCB(
@@ -1064,16 +1070,23 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         ISceneParser& scene,
         const RenderCore::Techniques::CameraDesc& camera,
-        const RenderingQualitySettings& qualitySettings,
-        PreparedScene& preparedScene)
+        const RenderingQualitySettings& qualitySettings)
     {
-        auto metalContext = DeviceContext::Get(context);
+        auto metalContext = Metal::DeviceContext::Get(context);
         auto marker = LightingParser_SetupScene(*metalContext.get(), parserContext, &scene);
         LightingParser_SetGlobalTransform(
             *metalContext.get(), parserContext, 
             BuildProjectionDesc(camera, qualitySettings._dimensions));
+        scene.PrepareScene(context, parserContext, marker.GetPreparedScene());
 
-        LightingParser_ExecuteScene(context, parserContext, qualitySettings, preparedScene);
+        {
+            ProtectState state(*metalContext, ProtectState::States::RenderTargets);
+            auto& uploads = GetBufferUploads();
+            uploads.FramePriority_Barrier();
+            uploads.Update(context);
+        }
+
+        LightingParser_ExecuteScene(context, parserContext, qualitySettings, marker.GetPreparedScene());
     }
 
     void LightingParser_ExecuteScene(
@@ -1082,14 +1095,14 @@ namespace SceneEngine
         const RenderingQualitySettings& qualitySettings,
         PreparedScene& preparedScene)
     {
-        auto metalContext = DeviceContext::Get(context);
+        auto metalContext = Metal::DeviceContext::Get(context);
         CATCH_ASSETS_BEGIN
             ReturnToSteadyState(*metalContext);
             SetFrameGlobalStates(*metalContext);
         CATCH_ASSETS_END(parserContext)
 
         {
-            GPUProfiler::DebugAnnotation anno(*metalContext, L"Prepare");
+            Metal::GPUProfiler::DebugAnnotation anno(*metalContext, L"Prepare");
             for (auto i=parserContext._plugins.cbegin(); i!=parserContext._plugins.cend(); ++i) {
                 CATCH_ASSETS_BEGIN
                     (*i)->OnPreScenePrepare(context, parserContext, preparedScene);

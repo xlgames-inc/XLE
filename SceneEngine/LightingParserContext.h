@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "PreparedScene.h"
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Metal/Forward.h"
@@ -61,27 +62,37 @@ namespace SceneEngine
 
         friend class AttachedSceneMarker;
         AttachedSceneMarker SetSceneParser(ISceneParser* sceneParser);
-        friend AttachedSceneMarker LightingParser_SetupScene(RenderCore::Metal::DeviceContext&, LightingParserContext&, ISceneParser*, unsigned, unsigned);
+        friend AttachedSceneMarker LightingParser_SetupScene(
+            RenderCore::Metal::DeviceContext&, LightingParserContext&, 
+            ISceneParser*, unsigned, unsigned);
     };
 
     class AttachedSceneMarker
     {
     public:
-        ~AttachedSceneMarker() { if (_parserContext) _parserContext->_sceneParser = nullptr; }
+        PreparedScene& GetPreparedScene() { return _preparedScene; }
+
         AttachedSceneMarker() : _parserContext(nullptr) {}
-        AttachedSceneMarker(const AttachedSceneMarker&) = delete;
-        const AttachedSceneMarker& operator=(const AttachedSceneMarker&) = delete;
         AttachedSceneMarker(AttachedSceneMarker&& moveFrom) never_throws
         : _parserContext(moveFrom._parserContext)
-        { moveFrom._parserContext = nullptr; }
+        {
+            moveFrom._parserContext = nullptr; 
+            moveFrom._preparedScene = std::move(moveFrom._preparedScene); 
+        }
         const AttachedSceneMarker& operator=(AttachedSceneMarker&& moveFrom) never_throws
         {
             _parserContext = moveFrom._parserContext;
             moveFrom._parserContext = nullptr;
+            moveFrom._preparedScene = std::move(moveFrom._preparedScene); 
         }
+        ~AttachedSceneMarker() { if (_parserContext) _parserContext->_sceneParser = nullptr; }
+
+        AttachedSceneMarker(const AttachedSceneMarker&) = delete;
+        const AttachedSceneMarker& operator=(const AttachedSceneMarker&) = delete;
     private:
         AttachedSceneMarker(LightingParserContext& parserContext) : _parserContext(&parserContext) {}
-        LightingParserContext* _parserContext;
+        LightingParserContext*  _parserContext;
+        PreparedScene           _preparedScene;
 
         friend class LightingParserContext;
     };

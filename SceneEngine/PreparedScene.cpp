@@ -11,6 +11,21 @@
 namespace SceneEngine
 {
     PreparedScene::PreparedScene() {}
-    PreparedScene::~PreparedScene() {}
+    PreparedScene::~PreparedScene() 
+    {
+        for (auto& b:_blocks)
+            (*b.second._destructor)(b.second._allocation._allocation);
+    }
+
+    PreparedScene::PreparedScene(PreparedScene&& moveFrom)
+    : _heap(std::move(moveFrom._heap)), _blocks(std::move(moveFrom._blocks))
+    {}
+
+    PreparedScene& PreparedScene::operator=(PreparedScene&& moveFrom)
+    {
+        _heap = std::move(moveFrom._heap);
+        _blocks = std::move(moveFrom._blocks);
+        return *this;
+    }
 }
 

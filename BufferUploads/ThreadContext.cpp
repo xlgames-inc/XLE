@@ -362,7 +362,7 @@ namespace BufferUploads
             for (auto i=_deferredCopies.begin(); i!=_deferredCopies.end(); ++i) {
                 const bool useMapPath = true;
                 if (useMapPath) {
-                    PlatformInterface::UnderlyingDeviceContext::MappedBuffer mappedBuffer = immediateContext.Map(*i->_destination->GetUnderlying(), PlatformInterface::UnderlyingDeviceContext::MapType::NoOverwrite);
+                    auto mappedBuffer = immediateContext.Map(*i->_destination->GetUnderlying(), PlatformInterface::UnderlyingDeviceContext::MapType::NoOverwrite);
                     XlCopyMemoryAlign16(PtrAdd(mappedBuffer.GetData(), i->_destination->Offset()), i->_temporaryBuffer->GetData(), i->_size);
                 } else {
                     immediateContext.PushToResource(
@@ -376,9 +376,8 @@ namespace BufferUploads
     {
         if (!_deferredDefragCopies.empty()) {
             PlatformInterface::UnderlyingDeviceContext immediateContext(immContext);
-            for (std::vector<DeferredDefragCopy>::const_iterator i=_deferredDefragCopies.begin(); i!=_deferredDefragCopies.end(); ++i) {
+            for (auto i=_deferredDefragCopies.begin(); i!=_deferredDefragCopies.end(); ++i)
                 immediateContext.ResourceCopy_DefragSteps(*i->_destination, *i->_source, i->_steps);
-            }
         }
     }
 
