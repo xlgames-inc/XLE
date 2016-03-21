@@ -725,9 +725,11 @@ namespace SceneEngine
             // to add a more formal "prepare" step. So it will have to wait for now.
             auto LOD = unsigned(distanceSq / (75.f*75.f));
 
-            if (    modelHash != _currentModel || materialHash != _currentMaterial 
+            if (    modelHash != _currentModel 
+                ||  materialHash != _currentMaterial 
                 ||  obj._supplementsOffset != _currentSupplements
                 ||  std::min(_current._maxLOD, LOD) != _current._selectedLOD) {
+
                 _current = cache.GetModel(
                     (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64)),
                     (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64)),
@@ -851,8 +853,8 @@ namespace SceneEngine
         const bool doFilter = filterStart != filterEnd;
         Internal::RendererHelper helper(_imposters.get());
 
-        auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
-        cameraPosition = TransformPoint(InvertOrthonormalTransform(cellToWorld), cameraPosition);
+        auto cameraPositionCell = ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
+        cameraPositionCell = TransformPointByOrthonormalInverse(cellToWorld, cameraPositionCell);
         
         const auto* filenamesBuffer = placements.GetFilenamesBuffer();
         const auto* supplementsBuffer = placements.GetSupplementsBuffer();
@@ -871,13 +873,13 @@ namespace SceneEngine
                     if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
                     helper.Render<true>(
                         *_cache, _preparedRenders,
-                        filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
+                        filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPositionCell);
                 }
             } else {
                 for (auto o:objects)
                     helper.Render<true>(
                         *_cache, _preparedRenders,
-                        filenamesBuffer, supplementsBuffer, objRef[o], cellToWorld, cameraPosition);
+                        filenamesBuffer, supplementsBuffer, objRef[o], cellToWorld, cameraPositionCell);
             }
         } else { //////////////////////////////////////////////////////////////////////////////////////////////////////
             if (doFilter) {
@@ -887,13 +889,13 @@ namespace SceneEngine
                     if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
                     helper.Render<false>(
                         *_cache, _preparedRenders,
-                        filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
+                        filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPositionCell);
                 }
             } else {
                 for (auto o:objects)
                     helper.Render<false>(
                         *_cache, _preparedRenders,
-                        filenamesBuffer, supplementsBuffer, objRef[o], cellToWorld, cameraPosition);
+                        filenamesBuffer, supplementsBuffer, objRef[o], cellToWorld, cameraPositionCell);
             }
         } /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1066,6 +1068,33 @@ namespace SceneEngine
                 pcell->_placements = _pimpl->CullCell(pcell->_objects, parserContext, cell);
                 if (!pcell->_placements) continue;
             }
+
+            #if 0
+                auto filenamesBuffer = pcell->_placements->GetFilenamesBuffer();
+                auto supplementsBuffer = pcell->_placements->GetSupplementsBuffer();
+
+                unsigned currentModel = 0;
+                unsigned currentMaterial = 0;
+                unsigned currentSupplements = 0;
+                unsigned currentLOD = 0;
+                for (auto o=pcell->_objects.cbegin(); o!=pcell->_objects.cend(); ++o) {
+                    const auto& obj = pcell->_placements->GetObjectReferences()[*o];
+
+                    auto LOD = 0u;   // todo -- clamp the LOD against max somehow
+                    if (    obj._modelFilenameOffset != currentModel || obj._materialFilenameOffset != currentMaterial 
+                        ||  obj._supplementsOffset != currentSupplements || LOD != currentLOD) {
+                        _pimpl->_cache->PrepareModel(
+                            (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64)),
+                            (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64)),
+                            AsSupplements(supplementsBuffer, obj._supplementsOffset),
+                            LOD);
+                        currentModel = obj._modelFilenameOffset;
+                        currentMaterial = obj._materialFilenameOffset;
+                        currentSupplements = obj._supplementsOffset;
+                    }
+                }
+            #endif
+
             prepared->_cells.emplace_back(std::move(pcell));
         }
     }

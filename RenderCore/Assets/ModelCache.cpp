@@ -229,6 +229,17 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
+    ::Assets::AssetState ModelCache::PrepareModel(
+        const ResChar modelFilename[], const ResChar materialFilename[],
+        SupplementRange supplements,
+        unsigned LOD)
+    {
+        auto scaffold = GetScaffolds(modelFilename, materialFilename);
+        if (!scaffold._model || !scaffold._material)
+            return ::Assets::AssetState::Pending;
+        return ::Assets::AssetState::Ready;
+    }
+
     ModelScaffold* ModelCache::GetModelScaffold(const ResChar modelFilename[])
     {
         auto hashedModelName = Hash64(modelFilename);

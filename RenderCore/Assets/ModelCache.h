@@ -74,6 +74,11 @@ namespace RenderCore { namespace Assets
         Scaffolds GetScaffolds(
             const ResChar modelFilename[], 
             const ResChar materialFilename[]);
+        ::Assets::AssetState PrepareModel(
+            const ResChar modelFilename[],
+            const ResChar materialFilename[],
+            SupplementRange supplements = SupplementRange(),
+            unsigned LOD = 0); 
 
         ModelScaffold*      GetModelScaffold(const ResChar modelFilename[]);
         SharedStateSet&     GetSharedStateSet();
