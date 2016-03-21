@@ -80,6 +80,7 @@ namespace SceneEngine
     
     class PlacementCell;
     class PlacementsCache;
+    class PreparedScene;
     typedef std::pair<uint64, uint64> PlacementGUID;
     
     class PlacementsRenderer
@@ -96,6 +97,12 @@ namespace SceneEngine
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep);
         bool HasPrepared(RenderCore::Assets::DelayStep delayStep);
+        
+            // -------------- Cull --------------
+        void Cull(
+            PreparedScene& preparedScene,
+            RenderCore::Techniques::ParsingContext& parserContext,
+            const PlacementCellSet& cellSet);
 
             // -------------- Render filtered --------------
         using DrawCallPredicate = std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>;

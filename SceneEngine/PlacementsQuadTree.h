@@ -48,6 +48,8 @@ namespace SceneEngine
             unsigned visObjs[], unsigned& visObjsCount, unsigned visObjMaxCount,
             Metrics* metrics = nullptr) const;
 
+        unsigned GetMaxResults() const;
+
         PlacementsQuadTree(
             const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
             size_t objCount);

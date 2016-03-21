@@ -423,11 +423,18 @@ namespace SceneEngine
             const PlacementCell& cell,
             const uint64* filterStart = nullptr, const uint64* filterEnd = nullptr);
 
+        void CullCell(
+            std::vector<unsigned>& visiblePlacements,
+            RenderCore::Techniques::ParsingContext& parserContext,
+            const Placements& placements,
+            const PlacementsQuadTree* quadTree,
+            const Float3x4& cellToWorld);
+
         void Render(
             RenderCore::Metal::DeviceContext* context,
             RenderCore::Techniques::ParsingContext& parserContext,
             const Placements& placements,
-            const PlacementsQuadTree* quadTree,
+            IteratorRange<unsigned*> objects,
             const Float3x4& cellToWorld,
             const uint64* filterStart = nullptr, const uint64* filterEnd = nullptr);
 
@@ -605,11 +612,17 @@ namespace SceneEngine
                 i2->second._placements->_placements->GetObjectReferenceCount());
         }
 
-        Render(
-            context, parserContext, 
-            *i2->second._placements->_placements, 
-            i2->second._quadTree.get(),
-            cell._cellToWorld, filterStart, filterEnd);
+        static std::vector<unsigned> visibleObjects;
+        visibleObjects.clear();
+        CullCell(
+                visibleObjects, parserContext, 
+                *i2->second._placements->_placements, 
+                i2->second._quadTree.get(),
+                cell._cellToWorld);
+        Render( context, parserContext, 
+                *i2->second._placements->_placements, 
+                MakeIteratorRange(visibleObjects),
+                cell._cellToWorld, filterStart, filterEnd);
     }
 
     static SupplementRange AsSupplements(const uint64* supplementsBuffer, unsigned supplementsOffset)
@@ -760,11 +773,53 @@ namespace SceneEngine
         return StringMeldAppend(parserContext._stringHelpers->_quickMetrics);
     }
 
+    void PlacementsRenderer::Pimpl::CullCell(
+        std::vector<unsigned>& visiblePlacements,
+        RenderCore::Techniques::ParsingContext& parserContext,
+        const Placements& placements,
+        const PlacementsQuadTree* quadTree,
+        const Float3x4& cellToWorld)
+    {
+        auto placementCount = placements.GetObjectReferenceCount();
+        if (!placementCount) {
+            return;
+        }
+        
+        __declspec(align(16)) auto cellToCullSpace = Combine(cellToWorld, parserContext.GetProjectionDesc()._worldToProjection);
+
+        const auto* objRef = placements.GetObjectReferences();
+        
+        if (quadTree) {
+            auto cullResults = quadTree->GetMaxResults();
+            visiblePlacements.resize(cullResults);
+            PlacementsQuadTree::Metrics metrics;
+            quadTree->CalculateVisibleObjects(
+                cellToCullSpace, &objRef->_cellSpaceBoundary,
+                sizeof(Placements::ObjectReference),
+                AsPointer(visiblePlacements.begin()), cullResults, cullResults,
+                &metrics);
+            visiblePlacements.resize(cullResults);
+
+            QuickMetrics(parserContext) << "Cull placements cell... AABB test: (" << metrics._nodeAabbTestCount << ") nodes + (" << metrics._payloadAabbTestCount << ") payloads\n";
+
+                // we have to sort to return to our expected order
+            std::sort(visiblePlacements.begin(), visiblePlacements.end());
+        } else {
+            visiblePlacements.reserve(placementCount);
+            for (unsigned c=0; c<placementCount; ++c) {
+                auto& obj = objRef[c];
+                if (CullAABB_Aligned(cellToCullSpace, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second))
+                    continue;
+                visiblePlacements.push_back(c);
+            }
+        }
+    }
+
     void PlacementsRenderer::Pimpl::Render(
         RenderCore::Metal::DeviceContext* context,
         RenderCore::Techniques::ParsingContext& parserContext,
         const Placements& placements,
-        const PlacementsQuadTree* quadTree,
+        IteratorRange<unsigned*> objects,
         const Float3x4& cellToWorld,
         const uint64* filterStart, const uint64* filterEnd)
     {
@@ -798,94 +853,55 @@ namespace SceneEngine
             //  for rendering.
             //  
 
-        auto placementCount = placements.GetObjectReferenceCount();
-        if (!placementCount) {
-            return;
-        }
-        
-        __declspec(align(16)) auto cellToCullSpace = Combine(cellToWorld, parserContext.GetProjectionDesc()._worldToProjection);
-        auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
-        cameraPosition = TransformPoint(InvertOrthonormalTransform(cellToWorld), cameraPosition);
-
         const uint64* filterIterator = filterStart;
         const bool doFilter = filterStart != filterEnd;
         Internal::RendererHelper helper(_imposters.get());
+
+        auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
+        cameraPosition = TransformPoint(InvertOrthonormalTransform(cellToWorld), cameraPosition);
         
         const auto* filenamesBuffer = placements.GetFilenamesBuffer();
         const auto* supplementsBuffer = placements.GetSupplementsBuffer();
         const auto* objRef = placements.GetObjectReferences();
-        
-        if (quadTree) {
 
-            unsigned visibleObjs[10*1024];
-            unsigned visibleObjCount = 0;
-            PlacementsQuadTree::Metrics metrics;
-            quadTree->CalculateVisibleObjects(
-                cellToCullSpace, &objRef->_cellSpaceBoundary,
-                sizeof(Placements::ObjectReference),
-                visibleObjs, visibleObjCount, dimof(visibleObjs),
-                &metrics);
+            // Filtering is required in some cases (for example, if we want to render only
+            // a single object in highlighted state). Rendering only part of a cell isn't
+            // ideal for this architecture. Mostly the cell is intended to work as a 
+            // immutable atomic object. However, we really need filtering for some things.
 
-            QuickMetrics(parserContext) << "Cull placements cell... AABB test: (" << metrics._nodeAabbTestCount << ") nodes + (" << metrics._payloadAabbTestCount << ") payloads\n";
-
-                // we have to sort to return to our expected order
-            std::sort(visibleObjs, &visibleObjs[visibleObjCount]);
-
-            if (_imposters && _imposters->IsEnabled()) {
-                for (unsigned c=0; c<visibleObjCount; ++c) {
-                    auto& obj = objRef[visibleObjs[c]];
-
-                    if (doFilter) {
-                        while (filterIterator != filterEnd && *filterIterator < obj._guid) { ++filterIterator; }
-                        if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
-                    }
-
+        if (_imposters && _imposters->IsEnabled()) { //////////////////////////////////////////////////////////////////
+            if (doFilter) {
+                for (auto o:objects) {
+                    auto& obj = objRef[o];
+                    while (filterIterator != filterEnd && *filterIterator < obj._guid) { ++filterIterator; }
+                    if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
                     helper.Render<true>(
                         *_cache, _preparedRenders,
                         filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
                 }
             } else {
-                for (unsigned c=0; c<visibleObjCount; ++c) {
-                    auto& obj = objRef[visibleObjs[c]];
-
-                    if (doFilter) {
-                        while (filterIterator != filterEnd && *filterIterator < obj._guid) { ++filterIterator; }
-                        if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
-                    }
-
-                    helper.Render<false>(
-                        *_cache, _preparedRenders,
-                        filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
-                }
-            }
-
-        } else {
-            for (unsigned c=0; c<placementCount; ++c) {
-                auto& obj = objRef[c];
-                if (CullAABB_Aligned(cellToCullSpace, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second))
-                    continue;
-
-                    // Filtering is required in some cases (for example, if we want to render only
-                    // a single object in highlighted state). Rendering only part of a cell isn't
-                    // ideal for this architecture. Mostly the cell is intended to work as a 
-                    // immutable atomic object. However, we really need filtering for some things.
-
-                if (doFilter) {
-                    while (filterIterator != filterEnd && *filterIterator < obj._guid) { ++filterIterator; }
-                    if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
-                }
-
-                if (_imposters && _imposters->IsEnabled()) {
+                for (auto o:objects)
                     helper.Render<true>(
                         *_cache, _preparedRenders,
-                        filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
-                } else {
+                        filenamesBuffer, supplementsBuffer, objRef[o], cellToWorld, cameraPosition);
+            }
+        } else { //////////////////////////////////////////////////////////////////////////////////////////////////////
+            if (doFilter) {
+                for (auto o:objects) {
+                    auto& obj = objRef[o];
+                    while (filterIterator != filterEnd && *filterIterator < obj._guid) { ++filterIterator; }
+                    if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
                     helper.Render<false>(
                         *_cache, _preparedRenders,
                         filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
                 }
+            } else {
+                for (auto o:objects)
+                    helper.Render<false>(
+                        *_cache, _preparedRenders,
+                        filenamesBuffer, supplementsBuffer, objRef[o], cellToWorld, cameraPosition);
             }
-        }
+        } /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         QuickMetrics(parserContext) << "Placements cell: (" << helper._metrics._instancesPrepared << ") instances from (" << helper._metrics._uniqueModelsPrepared << ") models. Imposters: (" << helper._metrics._impostersQueued << ")\n";
     }
@@ -929,6 +945,8 @@ namespace SceneEngine
 
         _pimpl->BeginPrepare();
 
+        static std::vector<unsigned> visibleObjects;
+
             // Render every registered cell
             // We catch exceptions on a cell based level (so pending cells won't cause other cells to flicker)
             // non-asset exceptions will throw back to the caller and bypass EndRender()
@@ -945,7 +963,9 @@ namespace SceneEngine
                     //  placements, we need a way to render them before they are flushed to disk.
                 auto ovr = LowerBound(cellSet._pimpl->_cellOverrides, i->_filenameHash);
                 if (ovr != cellSet._pimpl->_cellOverrides.end() && ovr->first == i->_filenameHash) {
-                    _pimpl->Render(context, parserContext, *ovr->second.get(), nullptr, i->_cellToWorld);
+                    visibleObjects.clear();
+                    _pimpl->CullCell(visibleObjects, parserContext, *ovr->second.get(), nullptr, i->_cellToWorld);
+                    _pimpl->Render(context, parserContext, *ovr->second.get(), MakeIteratorRange(visibleObjects), i->_cellToWorld);
                 } else {
                     _pimpl->Render(context, parserContext, *i);
                 }
@@ -981,6 +1001,25 @@ namespace SceneEngine
     {
         return _pimpl->HasPrepared(delayStep);
     }
+    
+    class PreparedPlacements
+    {
+    public:
+        std::vector<unsigned> _visibleObjects;
+    };
+
+    void PlacementsRenderer::Cull(
+        PreparedScene& preparedScene,
+        RenderCore::Techniques::ParsingContext& parserContext,
+        const PlacementCellSet& cellSet)
+    {
+        auto& cells = cellSet._pimpl->_cells;
+        const auto& worldToProj = parserContext.GetProjectionDesc()._worldToProjection;
+        for (auto i=cells.begin(); i!=cells.end(); ++i) {
+            if (CullAABB_Aligned(worldToProj, i->_aabbMin, i->_aabbMax))
+                continue;
+        }
+    }
 
     void PlacementsRenderer::RenderFiltered(
         RenderCore::Metal::DeviceContext* context,
@@ -991,6 +1030,8 @@ namespace SceneEngine
         const std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>& predicate)
     {
         _pimpl->BeginPrepare();
+
+        static std::vector<unsigned> visibleObjects;
 
             //  We need to take a copy, so we don't overwrite
             //  and reorder the caller's version.
@@ -1013,7 +1054,9 @@ namespace SceneEngine
                     CATCH_ASSETS_BEGIN
                         auto ovr = LowerBound(cellSet._pimpl->_cellOverrides, ci->_filenameHash);
                         if (ovr != cellSet._pimpl->_cellOverrides.end() && ovr->first == ci->_filenameHash) {
-                            _pimpl->Render(context, parserContext, *ovr->second.get(), nullptr, ci->_cellToWorld, tStart, t);
+                            visibleObjects.clear();
+                            _pimpl->CullCell(visibleObjects, parserContext, *ovr->second.get(), nullptr, ci->_cellToWorld);
+                            _pimpl->Render(context, parserContext, *ovr->second.get(), MakeIteratorRange(visibleObjects), ci->_cellToWorld, tStart, t);
                         } else {
                             _pimpl->Render(context, parserContext, *ci, tStart, t);
                         }
@@ -1029,7 +1072,9 @@ namespace SceneEngine
                 CATCH_ASSETS_BEGIN
                     auto ovr = LowerBound(cellSet._pimpl->_cellOverrides, i->_filenameHash);
                     if (ovr != cellSet._pimpl->_cellOverrides.end() && ovr->first == i->_filenameHash) {
-                        _pimpl->Render(context, parserContext, *ovr->second.get(), nullptr, i->_cellToWorld);
+                        visibleObjects.clear();
+                        _pimpl->CullCell(visibleObjects, parserContext, *ovr->second.get(), nullptr, i->_cellToWorld);
+                        _pimpl->Render(context, parserContext, *ovr->second.get(), MakeIteratorRange(visibleObjects), i->_cellToWorld);
                     } else {
                         _pimpl->Render(context, parserContext, *i);
                     }

@@ -39,8 +39,9 @@ namespace SceneEngine
             std::vector<unsigned> _objects;
         };
 
-        std::vector<Node> _nodes;
-        std::vector<Payload> _payloads;
+        std::vector<Node>       _nodes;
+        std::vector<Payload>    _payloads;
+        unsigned                _maxCullResults;
 
         class WorkingObject
         {
@@ -51,6 +52,14 @@ namespace SceneEngine
 
         void PushNode(  unsigned parentNode, unsigned childIndex,
                         const std::vector<WorkingObject>& workingObjects);
+
+        unsigned CalculateMaxResults()
+        {
+            unsigned result = 0;
+            for (auto&i:_payloads)
+                result += (unsigned)i._objects.size();
+            return result;
+        }
 
         static void InitPayload(Payload& p, const std::vector<WorkingObject>& workingObjects)
         {
@@ -462,6 +471,11 @@ namespace SceneEngine
         return true;
     }
 
+    unsigned PlacementsQuadTree::GetMaxResults() const
+    {
+        return _pimpl->_maxCullResults;
+    }
+
     PlacementsQuadTree::PlacementsQuadTree(
         const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
         size_t objCount)
@@ -498,6 +512,7 @@ namespace SceneEngine
 
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->PushNode(~unsigned(0x0), 0, workingObjects);
+        pimpl->_maxCullResults = pimpl->CalculateMaxResults();
 
         _pimpl = std::move(pimpl);
     }
