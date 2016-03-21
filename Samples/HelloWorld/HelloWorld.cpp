@@ -188,7 +188,7 @@ namespace Sample
                         frameRig.GetMainOverlaySystem().get()));
 
                     // ------- Update ----------------------------------------
-                RenderCore::Assets::Services::GetBufferUploads().Update(*context);
+                RenderCore::Assets::Services::GetBufferUploads().Update(*context, false);
                 mainScene->Update(frameResult._elapsedTime);
                 g_cpuProfiler.EndFrame();
                 ++FrameRenderCount;

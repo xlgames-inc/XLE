@@ -140,7 +140,7 @@ namespace BufferUploads
             Interlocked::Value _statusLock;
             bool _creationQueued, _stagingQueued;
             unsigned _requestedStagingLODOffset, _actualisedStagingLODOffset;
-            unsigned _completionCommandList;
+            unsigned _retirementCommandList;
             TransactionOptions::BitField _creationOptions;
             #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
                 unsigned _heapIndex;
@@ -583,12 +583,12 @@ namespace BufferUploads
         retirement->_desc = transaction->_desc;
         retirement->_requestTime = transaction->_requestTime;
 
-        transaction->_completionCommandList = abort ? 0 : context.CommandList_GetUnderConstruction();
         Interlocked::Value newRefCount = Interlocked::Decrement(&transaction->_referenceCount) - 1;
         assert(newRefCount>=0);
 
         if ((newRefCount&0x00ffffff)==0) {
                 //      After the last system reference is released (regardless of client references) we call it retired...
+            transaction->_retirementCommandList = abort ? 0 : context.CommandList_GetUnderConstruction();
             retirement->_retirementTime = PlatformInterface::QueryPerformanceCounter();
             // assert((retirement->_retirementTime - retirement->_requestTime)<100000000);      this just tends to happen while debugging!
             if ((metrics._retirementCount+1) <= dimof(metrics._retirements)) {
@@ -790,12 +790,14 @@ namespace BufferUploads
                 //          different frames). 
             // const int currentRenderThreadFrameId = PlatformInterface::GetFrameID(); 
             // return  ((referenceCount & 0x00ffffff) == 0)
-            //     &&  (transaction->_completionCommandList <= lastCommandList_CommittedToImmediate)
+            //     &&  (transaction->_retirementCommandList <= lastCommandList_CommittedToImmediate)
             //     &&  (transaction->_creationFrameID <= currentRenderThreadFrameId)       // prevent the transaction from completing on a frame earlier than it's creation
             //     ;
-            return  ((referenceCount & 0x00ffffff) == 0)
-                    &&  (transaction->_completionCommandList <= lastCommandList_CommittedToImmediate)
-                    ;
+            const bool isCompleted = 
+                ((referenceCount & 0x00ffffff) == 0)
+                &&  (transaction->_retirementCommandList <= lastCommandList_CommittedToImmediate)
+                ;
+            return isCompleted;
         } else {
             return false;
         }
@@ -816,7 +818,7 @@ namespace BufferUploads
         _creationQueued = _stagingQueued = false;
         _referenceCount = 0;
         _requestedStagingLODOffset = _actualisedStagingLODOffset = ~unsigned(0x0);
-        _completionCommandList = ~unsigned(0x0);
+        _retirementCommandList = ~unsigned(0x0);
         _creationOptions = 0;
         // _creationFrameID = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
@@ -831,7 +833,7 @@ namespace BufferUploads
         _creationQueued = _stagingQueued = false;
         _referenceCount = 0;
         _requestedStagingLODOffset = _actualisedStagingLODOffset = ~unsigned(0x0);
-        _completionCommandList = ~unsigned(0x0);
+        _retirementCommandList = ~unsigned(0x0);
         _creationOptions = 0;
         // _creationFrameID = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
@@ -854,7 +856,7 @@ namespace BufferUploads
         _stagingQueued = moveFrom._stagingQueued;
         _requestedStagingLODOffset = moveFrom._requestedStagingLODOffset;
         _actualisedStagingLODOffset = moveFrom._actualisedStagingLODOffset;
-        _completionCommandList = moveFrom._completionCommandList;
+        _retirementCommandList = moveFrom._retirementCommandList;
         _creationOptions = moveFrom._creationOptions;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = moveFrom._heapIndex;
@@ -876,7 +878,7 @@ namespace BufferUploads
         _stagingQueued = moveFrom._stagingQueued;
         _requestedStagingLODOffset = moveFrom._requestedStagingLODOffset;
         _actualisedStagingLODOffset = moveFrom._actualisedStagingLODOffset;
-        _completionCommandList = moveFrom._completionCommandList;
+        _retirementCommandList = moveFrom._retirementCommandList;
         _creationOptions = moveFrom._creationOptions;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = moveFrom._heapIndex;
@@ -904,17 +906,14 @@ namespace BufferUploads
         #if defined(DEQUE_BASED_TRANSACTIONS)
             _transactions.resize(2*1024);
             _transactions_LongTerm.resize(512);
-            for (std::deque<Transaction>::iterator i=_transactions.begin(); i!=_transactions.end(); ++i) {
+            for (auto i=_transactions.begin(); i!=_transactions.end(); ++i)
                 i->_referenceCount = ~Interlocked::Value(0x0); 
-            }
-            for (std::deque<Transaction>::iterator i=_transactions_LongTerm.begin(); i!=_transactions_LongTerm.end(); ++i) {
+            for (auto i=_transactions_LongTerm.begin(); i!=_transactions_LongTerm.end(); ++i)
                 i->_referenceCount = ~Interlocked::Value(0x0); 
-            }
         #else
             _transactions.resize(6*1024);
-            for (std::vector<Transaction>::iterator i=_transactions.begin(); i!=_transactions.end(); ++i) { 
+            for (auto i=_transactions.begin(); i!=_transactions.end(); ++i)
                 i->_referenceCount = ~Interlocked::Value(0x0); 
-            }
             _transactions_TemporaryCount = _transactions_LongTermCount = 0;
         #endif
         _queuedPeakCreates = _queuedPeakUploads =_queuedPeakStagingCreates = _queuedPeakPrepares = 0;
@@ -1329,7 +1328,7 @@ namespace BufferUploads
                         if (batchedResource && !batchedResource->IsEmpty()) {
                             break;
                         }
-                        LogAlwaysWarningF("Warning -- resource creationg failed inBatchedResources::Allocate(). Sleeping and attempting again");
+                        LogWarning << "Resource creationg failed inBatchedResources::Allocate(). Sleeping and attempting again";
                         Threading::Sleep(16);
                     }
 
@@ -1517,7 +1516,7 @@ namespace BufferUploads
                         completed = true;
                     } /*else {
                             This happens all the time when we hit the budget limit
-                        LogAlwaysWarningF("Warning -- Failed to create resource (%s)", Description(transaction->_desc).c_str());
+                        LogWarning << "Failed to create resource (" << Description(transaction->_desc) << ")";
                     }*/
                 } else {
 
@@ -1927,7 +1926,7 @@ namespace BufferUploads
 
                 //      this can happen when we're pending a file load now
                 // if (!nothingFoundInQueues && !atLeastOneRealAction) {
-                //     LogAlwaysWarningF("Warning -- suspected allocation failure; sleeping");
+                //     LogWarning << "Suspected allocation failure; sleeping";
                 //     Sleep(5);
                 // }
             }
@@ -1935,9 +1934,10 @@ namespace BufferUploads
             CommandList::ID commandListIdCommitted = ~unsigned(0x0);
 
                 /////////////// ~~~~ /////////////// ~~~~ ///////////////
-            const bool somethingToResolve    = (metricsUnderConstruction._contextOperations!=0) || (metricsUnderConstruction._nonContextOperations!=0)
-                                             ||  _batchPreparation_Main._batchedAllocationSize  || !context.GetCommitStepUnderConstruction().IsEmpty()
-                                             || publishableEventList > context.EventList_GetPublishedID();
+            const bool somethingToResolve = 
+                    (metricsUnderConstruction._contextOperations!=0) || (metricsUnderConstruction._nonContextOperations!=0)
+                ||  _batchPreparation_Main._batchedAllocationSize  || !context.GetCommitStepUnderConstruction().IsEmpty()
+                ||  publishableEventList > context.EventList_GetPublishedID();
             const unsigned commitCountCurrent = context.CommitCount_Current();
             const bool normalPriorityResolve = commitCountCurrent > context.CommitCount_LastResolve();
             if ((framePriorityResolve||normalPriorityResolve) && somethingToResolve) {
@@ -1984,13 +1984,13 @@ namespace BufferUploads
             #if defined(XL_DEBUG)
                 if (framePriorityResolve) {
                     ScopedLock(_transactionsToBeCompletedNextFramePriorityCommit_Lock);
-                    for (   std::vector<TransactionID>::iterator i=_transactionsToBeCompletedNextFramePriorityCommit.begin(); 
-                            i!=_transactionsToBeCompletedNextFramePriorityCommit.end(); ++i) {
+                    for (   auto i =_transactionsToBeCompletedNextFramePriorityCommit.begin(); 
+                                 i!=_transactionsToBeCompletedNextFramePriorityCommit.end(); ++i) {
                         Transaction* transaction = GetTransaction(*i);
                         if (transaction) {
                             Interlocked::Value referenceCount = transaction->_referenceCount;
                             const bool isCompleted = ((referenceCount & 0x00ffffff) == 0)
-                                &&  (transaction->_completionCommandList <= commandListIdCommitted);
+                                &&  (transaction->_retirementCommandList <= commandListIdCommitted);
                             assert(isCompleted);
                         }
                     }
@@ -2244,9 +2244,6 @@ namespace BufferUploads
 
     void AssemblyLine::PushStep(QueueSet& queueSet, Transaction& transaction, ResourceCreateStep&& step)
     {
-        if (transaction._creationOptions & TransactionOptions::FramePriority) {
-            LogAlwaysWarningF("Push priority create step to (%i)", _framePriority_WritingQueueSet);
-        }
         Interlocked::Increment(&transaction._referenceCount);
         queueSet._resourceCreateSteps.push_overflow(std::move(step));
     }
@@ -2259,9 +2256,6 @@ namespace BufferUploads
 
     void AssemblyLine::PushStep(QueueSet& queueSet, Transaction& transaction, DataUploadStep&& step)
     {
-        if (transaction._creationOptions & TransactionOptions::FramePriority) {
-            LogAlwaysWarningF("Push upload step to (%i)", _framePriority_WritingQueueSet);
-        }
         Interlocked::Increment(&transaction._referenceCount);
         queueSet._uploadSteps.push_overflow(std::move(step));
     }
@@ -2491,7 +2485,7 @@ namespace BufferUploads
         return _foregroundContext->EventList_Release(id);
     }
 
-    void                    Manager::Update(RenderCore::IThreadContext& immediateContext)
+    void                    Manager::Update(RenderCore::IThreadContext& immediateContext, bool preserveRenderState)
     {
         if (_waitingForDeviceResetEvent!=XlHandle_Invalid) {
             assert(0);
@@ -2502,8 +2496,8 @@ namespace BufferUploads
             _assemblyLine->Process(_foregroundStepMask, *_foregroundContext.get());
         }
             //  Commit both the foreground and background contexts here
-        _foregroundContext->CommitToImmediate(immediateContext, *_gpuEventStack);
-        _backgroundContext->CommitToImmediate(immediateContext, *_gpuEventStack);
+        _foregroundContext->CommitToImmediate(immediateContext, *_gpuEventStack, preserveRenderState);
+        _backgroundContext->CommitToImmediate(immediateContext, *_gpuEventStack, preserveRenderState);
 
         PlatformInterface::Resource_RecalculateVideoMemoryHeadroom();
     }

@@ -139,7 +139,7 @@ namespace SceneEngine
                 //  if there's already a transaction on this tile, we might
                 //  be chasing the same upload again
             tile._transaction = _bufferUploads->Transaction_Begin(
-                _resource, BufferUploads::TransactionOptions::FramePriority);
+                _resource, _priorityMode ? BufferUploads::TransactionOptions::FramePriority : 0);
         }
         assert(tile._transaction != ~BufferUploads::TransactionID(0x0));
 
@@ -207,6 +207,11 @@ namespace SceneEngine
         }
     }
 
+    void TextureTileSet::SetPriorityMode(bool priorityMode)
+    {
+        _priorityMode = priorityMode;
+    }
+
     TextureTileSet::TextureTileSet(
         BufferUploads::IManager& bufferUploads,
         Int2 elementSize, unsigned elementCount,
@@ -215,6 +220,7 @@ namespace SceneEngine
     {
         _creationTransaction = ~BufferUploads::TransactionID(0x0);
         _allowModification = allowModification;
+        _priorityMode = false;
 
             //  keep pages of around 1024x1024... just add enough array elements
             //  to have as many elements as requested. Normally powers-of-two

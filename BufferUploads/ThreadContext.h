@@ -107,7 +107,8 @@ namespace BufferUploads
         void                    ResolveCommandList();
         void                    CommitToImmediate(
             RenderCore::IThreadContext& commitTo,
-            PlatformInterface::GPUEventStack& gpuEventStack);
+            PlatformInterface::GPUEventStack& gpuEventStack,
+            bool preserveRenderState);
 
         CommandListMetrics      PopMetrics();
 

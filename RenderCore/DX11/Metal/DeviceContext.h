@@ -248,7 +248,7 @@ namespace RenderCore { namespace Metal_DX11
 
         void        BeginCommandList();
         auto        ResolveCommandList() -> intrusive_ptr<CommandList>;
-        void        CommitCommandList(CommandList& commandList);
+        void        CommitCommandList(CommandList& commandList, bool preserveRenderState);
 
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
         static void PrepareForDestruction(IDevice* device, IPresentationChain* presentationChain);

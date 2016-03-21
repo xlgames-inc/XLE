@@ -36,6 +36,8 @@ namespace SceneEngine
 
         Int2    GetTileSize() const { return _elementSize; }
         auto    GetFormat() const -> RenderCore::Metal::NativeFormat::Enum { return _format; }
+        void    SetPriorityMode(bool priorityMode);
+        bool    GetPriorityMode() const { return _priorityMode; }
         
         TextureTileSet(
             BufferUploads::IManager& bufferUploads,
@@ -61,6 +63,7 @@ namespace SceneEngine
         std::vector<ArraySlice>     _slices;
         BufferUploads::IManager *   _bufferUploads;
         bool                        _allowModification;
+        bool                        _priorityMode;
 
         std::vector<unsigned>       _uploadIds;
         mutable LRUQueue            _lruQueue;

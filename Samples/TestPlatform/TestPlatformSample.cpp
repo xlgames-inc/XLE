@@ -164,7 +164,7 @@ namespace Sample
                         frameRig.GetMainOverlaySystem().get()));
 
                     // ------- Update ----------------------------------------
-                RenderCore::Assets::Services::GetBufferUploads().Update(*context);
+                RenderCore::Assets::Services::GetBufferUploads().Update(*context, false);
                 mainScene->Update(frameResult._elapsedTime);
                 g_cpuProfiler.EndFrame();
                 ++FrameRenderCount;
@@ -216,7 +216,6 @@ namespace Sample
             //  some scene might need a "prepare" step to 
             //  build some resources before the main render occurs.
         scene->PrepareFrame(context);
-        SceneEngine::PreparedScene preparedScene;
 
         using namespace SceneEngine;
         if (scene) {
@@ -226,8 +225,7 @@ namespace Sample
                 RenderingQualitySettings(
                     presChainDims, 
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
-                    Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)),
-                preparedScene);
+                    Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
         }
 
         if (overlaySys) {

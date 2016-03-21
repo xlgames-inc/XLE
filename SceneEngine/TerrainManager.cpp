@@ -650,6 +650,11 @@ namespace SceneEngine
 		}
 	}
 
+    static TerrainRenderingContext::PriorityMode GetPriorityMode() 
+    { 
+        return (TerrainRenderingContext::PriorityMode)Tweakable("TerrainPriorityMode", 1); 
+    }
+
     void TerrainManager::Prepare(
         Metal::DeviceContext* context,
         LightingParserContext& parserContext,
@@ -676,7 +681,8 @@ namespace SceneEngine
             0,
             renderer->GetCoverageIds(), 
             renderer->GetCoverageFmts(), renderer->GetCoverageLayersCount(), 
-            _pimpl->_cfg.EncodedGradientFlags());
+            _pimpl->_cfg.EncodedGradientFlags(),
+            GetPriorityMode());
         if (!state) return;
 
         state->_queuedNodes.erase(state->_queuedNodes.begin(), state->_queuedNodes.end());
@@ -787,7 +793,8 @@ namespace SceneEngine
             _pimpl->_renderer->GetCoverageIds(), 
             _pimpl->_renderer->GetCoverageFmts(),
             _pimpl->_renderer->GetCoverageLayersCount(),
-            _pimpl->_cfg.EncodedGradientFlags());
+            _pimpl->_cfg.EncodedGradientFlags(),
+            GetPriorityMode());
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
         state._currentViewport = Metal::ViewportDesc(*context);        // (accurate viewport is required to get the lodding right)

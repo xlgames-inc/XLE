@@ -164,6 +164,10 @@ float UIntToHeightValue(uint input)
 {
 	ValueType newHeight = CalculateNewValue(dispatchThreadId);
 
+	// Check for error values entering the pipeline here.
+	if (isnan(newHeight) || isinf(newHeight))
+		newHeight = 0.f;
+
 	#if defined(QUANTIZE_HEIGHTS)
 			//	We need to find the min/max height
 			//		note that with a 33x33 tile grid, we are just 1 row and 1 column too many

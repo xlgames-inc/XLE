@@ -73,7 +73,8 @@ namespace BufferUploads
 
     void ThreadContext::CommitToImmediate(
         RenderCore::IThreadContext& commitTo,
-        PlatformInterface::GPUEventStack& gpuEventStack)
+        PlatformInterface::GPUEventStack& gpuEventStack,
+        bool preserveRenderState)
     {
         auto immContext = DeviceContext::Get(commitTo);
         if (_requiresResolves) {
@@ -103,7 +104,7 @@ namespace BufferUploads
 
                     commandList->_commitStep.CommitToImmediate_PreCommandList(commitTo);
                     if (commandList->_deviceCommandList) {
-                        immContext->CommitCommandList(*commandList->_deviceCommandList.get());
+                        immContext->CommitCommandList(*commandList->_deviceCommandList.get(), preserveRenderState);
                     }
                     commandList->_commitStep.CommitToImmediate_PostCommandList(commitTo);
                     _commandListIDCommittedToImmediate   = std::max(_commandListIDCommittedToImmediate, commandList->_id);

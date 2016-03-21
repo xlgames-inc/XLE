@@ -96,7 +96,8 @@ namespace SceneEngine
         const TerrainCoverageId* coverageLayers, 
         const CoverageFormat* coverageFmts, 
         unsigned coverageLayerCount,
-        bool encodedGradientFlags)
+        bool encodedGradientFlags,
+        PriorityMode priorityMode)
     : _currentViewport(0.f, 0.f, 0.f, 0.f, 0.f, 0.f)
     {
         _indexDrawCount = 0;
@@ -104,6 +105,7 @@ namespace SceneEngine
         // _elementSize = elementSize;
         _dynamicTessellation = false;
         _encodedGradientFlags = encodedGradientFlags;
+        _priorityMode = priorityMode;
 
         _coverageLayerCount = std::min(coverageLayerCount, TerrainCellId::MaxCoverageCount);
         for (unsigned c=0; c<_coverageLayerCount; ++c) {
@@ -513,6 +515,19 @@ namespace SceneEngine
 
     void        TerrainCellRenderer::QueueUploads(TerrainRenderingContext& terrainContext)
     {
+        bool refreshPriorityMode = (terrainContext._priorityMode != TerrainRenderingContext::PriorityMode::None) != _heightMapTileSet->GetPriorityMode();
+        refreshPriorityMode |= !_coverageTileSet.empty() && (terrainContext._priorityMode == TerrainRenderingContext::PriorityMode::All) != _coverageTileSet[0]->GetPriorityMode();
+        if (refreshPriorityMode) {
+            UnloadCachedData();
+            terrainContext._queuedNodes.clear();
+            _heightMapTileSet->SetPriorityMode(terrainContext._priorityMode != TerrainRenderingContext::PriorityMode::None);
+            //      Perhaps some coverage layers are never set to frame priority mode...?
+            //      We can render distant terrain geometry without all of the coverage layers
+            //      -- but it might look a little strange flickering in.
+            for (auto& t:_coverageTileSet)
+                t->SetPriorityMode(terrainContext._priorityMode == TerrainRenderingContext::PriorityMode::All);
+        }
+
             //  After we've culled the list of nodes we need for this frame, let's queue all of the uploads that
             //  need to occur. Sort the list by priority so that if we run out of upload slots, the most important
             //  nodes will be processed first.
@@ -1056,8 +1071,9 @@ namespace SceneEngine
             // go through all nodes that were previously queued (with CullNodes) and render them
         CATCH_ASSETS_BEGIN
             CellRenderInfo* currentCell = nullptr;
-            for (auto i=terrainContext._queuedNodes.begin(); i!=terrainContext._queuedNodes.end(); ++i)
-                if (i->_flags & TerrainRenderingContext::QueuedNode::Flags::HasValidData) {
+            for (auto i=terrainContext._queuedNodes.begin(); i!=terrainContext._queuedNodes.end(); ++i) {
+                bool hasData = _heightMapTileSet->IsValid(i->_cell->_heightTiles[i->_absNodeIndex]._tile);
+                if (hasData) { // i->_flags & TerrainRenderingContext::QueuedNode::Flags::HasValidData) {
 
                         // we only have to upload the local transform when the current cell changes
                         // note that the current culling process is reordering queued nodes by
@@ -1082,6 +1098,7 @@ namespace SceneEngine
 
                     RenderNode(context, parserContext, terrainContext, *i->_cell, i->_absNodeIndex, i->_neighbourLODDiff);
                 }
+            }
         CATCH_ASSETS_END(parserContext)
 
 		context->UnbindVS<Metal::ShaderResourceView>(0, 1);
@@ -1100,7 +1117,7 @@ namespace SceneEngine
         /////////////////////////////////////////////////////////////////////////////
             //  if we've got some texture data, we can go ahead and
             //  render this object
-        assert(heightTile._width && heightTile._height);
+        assert(heightTile._width && heightTile._height && heightTile._width != ~0x0u && heightTile._height != ~0x0u);
 
         TileConstants tileConstants;
         XlSetMemory(&tileConstants, 0, sizeof(tileConstants));
@@ -1109,7 +1126,10 @@ namespace SceneEngine
 
         for (unsigned covIndex=0; covIndex<cellRenderInfo._coverage.size(); ++covIndex) {
             const auto& covTile = cellRenderInfo._coverage[covIndex]._tiles[absNodeIndex]._tile;
-            if (covTile._width == ~unsigned(0x0) || covTile._height == ~unsigned(0x0)) continue;
+            if (covTile._width == ~unsigned(0x0) || covTile._height == ~unsigned(0x0)) {
+                // LogWarning << "Can't queue coverage tile (seems like upload didn't complete)";
+                continue;
+            }
             
             const unsigned overlap = 1;
             tileConstants._coverageCoordMins[covIndex][1]  = (float)covTile._y;

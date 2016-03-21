@@ -441,7 +441,7 @@ namespace ToolsRig
             
                 // stall...!
             asyncMan.Update();
-            bufferUploads.Update(threadContext);
+            bufferUploads.Update(threadContext, false);     // (note -- render state can get reset here)
         }
 
         RenderCore::Assets::MeshToModel meshToModel(model);

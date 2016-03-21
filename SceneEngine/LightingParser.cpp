@@ -1079,13 +1079,11 @@ namespace SceneEngine
             BuildProjectionDesc(camera, qualitySettings._dimensions));
         scene.PrepareScene(context, parserContext, marker.GetPreparedScene());
 
-        {
-            ProtectState state(*metalContext, ProtectState::States::RenderTargets);
-            auto& uploads = GetBufferUploads();
-            uploads.FramePriority_Barrier();
-            uploads.Update(context);
-        }
-
+        // Throw in a "frame priority barrier" here, right after the prepare scene. This will
+        // force all uploads started during PrepareScene to be completed when we next call
+        // bufferUploads.Update(). Normally we want a gap between FramePriority_Barrier() and
+        // Update(), because this gives some time for the background thread to run.
+        GetBufferUploads().FramePriority_Barrier();
         LightingParser_ExecuteScene(context, parserContext, qualitySettings, marker.GetPreparedScene());
     }
 
@@ -1111,6 +1109,8 @@ namespace SceneEngine
 
             LightingParser_PrepareShadows(context, *metalContext, parserContext, preparedScene);
         }
+
+        GetBufferUploads().Update(context, true);
 
         CATCH_ASSETS_BEGIN
             LightingParser_MainScene(context, *metalContext, parserContext, preparedScene, qualitySettings);

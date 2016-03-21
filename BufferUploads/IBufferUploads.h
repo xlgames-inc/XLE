@@ -408,7 +408,10 @@ namespace BufferUploads
 
             /// <summary>Called every frame to update uploads</summary>
             /// Performs once-per-frame tasks. Normally called by the render device once per frame.
-        IMETHOD void                    Update  (RenderCore::IThreadContext& immediateContext) IPURE;
+            /// <param name="preserveRenderState">Set to true to preserve the render state in the 
+            ///     immediate context. When set to false, sometimes the render state will be reset
+            ///     to the default (See DirectX documentation for ExecuteCommandList)</param>
+        IMETHOD void                    Update  (RenderCore::IThreadContext& immediateContext, bool preserveRenderState) IPURE;
             /// @}
 
             /// \name Utilities, profiling & debugging

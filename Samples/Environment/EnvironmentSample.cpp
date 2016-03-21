@@ -303,7 +303,7 @@ namespace Sample
                         frameRig.GetMainOverlaySystem().get()));
 
                     // ------- Update ----------------------------------------
-                RenderCore::Assets::Services::GetBufferUploads().Update(*context);
+                RenderCore::Assets::Services::GetBufferUploads().Update(*context, false);
                 mainScene->Update(frameResult._elapsedTime);
                 cameraInputHandler->Commit(frameResult._elapsedTime);   // we need to be careful to update the camera at the right time (relative to character update)
                 g_cpuProfiler.EndFrame();

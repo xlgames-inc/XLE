@@ -6,6 +6,7 @@
 
 #include "PlatformInterface.h"
 #include "../RenderCore/Metal/Format.h"
+#include "../ConsoleRig/Log.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/TimeUtils.h"
 #include <assert.h>
@@ -266,7 +267,7 @@ namespace BufferUploads { namespace PlatformInterface
                 return;
             }
         }
-        assert(0);
+        LogWarning << "Ran out of free query objects in GPUEventStack";
         _lastCompletedID = std::max(_lastCompletedID, event);       // consider it immediately completed
 #endif
     }

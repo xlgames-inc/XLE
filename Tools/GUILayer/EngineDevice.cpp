@@ -53,7 +53,7 @@ namespace GUILayer
         BufferUploads::IManager* bufferUploads = &_renderAssetsServices->GetBufferUploads();
         result->GetFrameRig().AddPostPresentCallback(
             [bufferUploads](RenderCore::IThreadContext& threadContext)
-            { bufferUploads->Update(threadContext); });
+            { bufferUploads->Update(threadContext, false); });
 
         return std::move(result);
     }
@@ -126,7 +126,7 @@ namespace GUILayer
         Assets::Services::GetAsyncMan().Update();
 
             // Some tools need buffer uploads to be updated from here
-        _pimpl->GetBufferUploads()->Update(*_pimpl->GetImmediateContext());
+        _pimpl->GetBufferUploads()->Update(*_pimpl->GetImmediateContext(), false);
     }
 
     void EngineDevice::PrepareForShutdown()

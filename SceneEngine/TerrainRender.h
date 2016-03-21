@@ -317,9 +317,12 @@ namespace SceneEngine
         RenderCore::Metal::ViewportDesc    _currentViewport;
         unsigned        _indexDrawCount;
 
+        enum class PriorityMode { None, All, JustHeights };
+
         // Int2            _elementSize;
         bool            _dynamicTessellation;
         bool            _encodedGradientFlags;
+        PriorityMode    _priorityMode;
 
         TerrainCoverageId   _coverageLayerIds[TerrainCellId::MaxCoverageCount];
         CoverageFormat      _coverageFmts[TerrainCellId::MaxCoverageCount];
@@ -349,7 +352,8 @@ namespace SceneEngine
             const TerrainCoverageId* coverageLayers, 
             const CoverageFormat* coverageFmts, 
             unsigned coverageLayerCount,
-            bool encodedGradientFlags);
+            bool encodedGradientFlags,
+            PriorityMode priorityMode);
 
         enum Mode { Mode_Normal, Mode_RayTest, Mode_VegetationPrepare };
 

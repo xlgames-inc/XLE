@@ -350,9 +350,11 @@ namespace RenderCore { namespace Metal_DX11
         return type == D3D11_DEVICE_CONTEXT_IMMEDIATE;
     }
 
-    void    DeviceContext::CommitCommandList(CommandList& commandList)
+    void    DeviceContext::CommitCommandList(CommandList& commandList, bool preserveRenderState)
     {
-        _underlying->ExecuteCommandList(commandList.GetUnderlying(), FALSE);
+        // Note that if "preserveRenderState" isn't set, the device will be reset to it's default
+        // state.
+        _underlying->ExecuteCommandList(commandList.GetUnderlying(), preserveRenderState);
     }
 
     std::shared_ptr<DeviceContext>  DeviceContext::Get(IThreadContext& threadContext)
