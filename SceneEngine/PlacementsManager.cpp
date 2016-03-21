@@ -7,6 +7,7 @@
 #include "PlacementsManager.h"
 #include "PlacementsQuadTree.h"
 #include "DynamicImposters.h"
+#include "PreparedScene.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
 #include "../RenderCore/Assets/Material.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
@@ -417,11 +418,10 @@ namespace SceneEngine
         void FilterDrawCalls(const std::function<bool(const DelayedDrawCall&)>& predicate);
         bool HasPrepared(RenderCore::Assets::DelayStep delayStep) const;
 
-        void Render(
-            RenderCore::Metal::DeviceContext* context,
+        Placements* CullCell(
+            std::vector<unsigned>& visiblePlacements,
             RenderCore::Techniques::ParsingContext& parserContext,
-            const PlacementCell& cell,
-            const uint64* filterStart = nullptr, const uint64* filterEnd = nullptr);
+            const PlacementCell& cell);
 
         void CullCell(
             std::vector<unsigned>& visiblePlacements,
@@ -569,11 +569,10 @@ namespace SceneEngine
         return nullptr;
     }
 
-    void PlacementsRenderer::Pimpl::Render(
-        RenderCore::Metal::DeviceContext* context,
+    Placements* PlacementsRenderer::Pimpl::CullCell(
+        std::vector<unsigned>& visibleObjects,
         RenderCore::Techniques::ParsingContext& parserContext,
-        const PlacementCell& cell,
-        const uint64* filterStart, const uint64* filterEnd)
+        const PlacementCell& cell)
     {
         // Look for a "RenderInfo" for this cell.. and create it if it doesn't exist
         // Note that there's a bit of extra overhead here:
@@ -590,7 +589,7 @@ namespace SceneEngine
         //
         // It seems useful to me. But if the overhead becomes too great, we can just change
         // to a basic 2d addressing model.
-        if (cell._filename[0] == '[') return;   // hack -- if the cell filename begins with '[', it is a cell from the editor (and should be using _cellOverrides)
+        if (cell._filename[0] == '[') return nullptr;   // hack -- if the cell filename begins with '[', it is a cell from the editor (and should be using _cellOverrides)
 
         auto i2 = LowerBound(_cells, cell._filenameHash);
         if (i2 == _cells.end() || i2->first != cell._filenameHash) {
@@ -612,17 +611,13 @@ namespace SceneEngine
                 i2->second._placements->_placements->GetObjectReferenceCount());
         }
 
-        static std::vector<unsigned> visibleObjects;
-        visibleObjects.clear();
         CullCell(
-                visibleObjects, parserContext, 
-                *i2->second._placements->_placements, 
-                i2->second._quadTree.get(),
-                cell._cellToWorld);
-        Render( context, parserContext, 
-                *i2->second._placements->_placements, 
-                MakeIteratorRange(visibleObjects),
-                cell._cellToWorld, filterStart, filterEnd);
+            visibleObjects, parserContext, 
+            *i2->second._placements->_placements, 
+            i2->second._quadTree.get(),
+            cell._cellToWorld);
+
+        return i2->second._placements->_placements.get();
     }
 
     static SupplementRange AsSupplements(const uint64* supplementsBuffer, unsigned supplementsOffset)
@@ -781,9 +776,8 @@ namespace SceneEngine
         const Float3x4& cellToWorld)
     {
         auto placementCount = placements.GetObjectReferenceCount();
-        if (!placementCount) {
+        if (!placementCount)
             return;
-        }
         
         __declspec(align(16)) auto cellToCullSpace = Combine(cellToWorld, parserContext.GetProjectionDesc()._worldToProjection);
 
@@ -932,6 +926,21 @@ namespace SceneEngine
 
     PlacementsRenderer::~PlacementsRenderer() {}
 
+    class PreCulledPlacements
+    {
+    public:
+        class Cell
+        {
+        public:
+            unsigned                _cellIndex;
+            std::vector<unsigned>   _objects;
+            Placements*             _placements;
+            Float3x4                _cellToWorld;
+        };
+
+        std::vector<std::unique_ptr<Cell>> _cells;
+    };
+
     void PlacementsRenderer::Render(
         RenderCore::Metal::DeviceContext* context, 
         RenderCore::Techniques::ParsingContext& parserContext,
@@ -961,14 +970,17 @@ namespace SceneEngine
                     //  We need to look in the "_cellOverride" list first.
                     //  The overridden cells are actually designed for tools. When authoring 
                     //  placements, we need a way to render them before they are flushed to disk.
+                Placements* plc;
+                visibleObjects.clear();
                 auto ovr = LowerBound(cellSet._pimpl->_cellOverrides, i->_filenameHash);
                 if (ovr != cellSet._pimpl->_cellOverrides.end() && ovr->first == i->_filenameHash) {
-                    visibleObjects.clear();
                     _pimpl->CullCell(visibleObjects, parserContext, *ovr->second.get(), nullptr, i->_cellToWorld);
-                    _pimpl->Render(context, parserContext, *ovr->second.get(), MakeIteratorRange(visibleObjects), i->_cellToWorld);
+                    plc = ovr->second.get();
                 } else {
-                    _pimpl->Render(context, parserContext, *i);
+                    plc = _pimpl->CullCell(visibleObjects, parserContext, *i);
+                    if (!plc) continue;
                 }
+                _pimpl->Render(context, parserContext, *plc, MakeIteratorRange(visibleObjects), i->_cellToWorld);
 
             CATCH_ASSETS_END(parserContext)
         }
@@ -978,6 +990,32 @@ namespace SceneEngine
         _pimpl->EndPrepare();
 
             // Commit opaque now
+        _pimpl->CommitPrepared(
+            context, parserContext, techniqueIndex, 
+            RenderCore::Assets::DelayStep::OpaqueRender);
+    }
+
+    void PlacementsRenderer::Render(
+        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::Techniques::ParsingContext& parserContext,
+        PreparedScene& preparedScene,
+        unsigned techniqueIndex,
+        const PlacementCellSet& cellSet)
+    {
+        if (!Tweakable("DoPlacements", true)) {
+            _pimpl->ClearPrepared();
+            return;
+        }
+
+        _pimpl->BeginPrepare();
+
+        auto* prepared = preparedScene.Get<PreCulledPlacements>((PreparedScene::Id)&cellSet);
+        if (!prepared) return;
+
+        for (auto&i:prepared->_cells)
+            _pimpl->Render(context, parserContext, *i->_placements, MakeIteratorRange(i->_objects), i->_cellToWorld);
+
+        _pimpl->EndPrepare();
         _pimpl->CommitPrepared(
             context, parserContext, techniqueIndex, 
             RenderCore::Assets::DelayStep::OpaqueRender);
@@ -1001,23 +1039,34 @@ namespace SceneEngine
     {
         return _pimpl->HasPrepared(delayStep);
     }
-    
-    class PreparedPlacements
-    {
-    public:
-        std::vector<unsigned> _visibleObjects;
-    };
 
-    void PlacementsRenderer::Cull(
+    void PlacementsRenderer::CullToPreparedScene(
         PreparedScene& preparedScene,
         RenderCore::Techniques::ParsingContext& parserContext,
         const PlacementCellSet& cellSet)
     {
+        auto* prepared = preparedScene.Allocate<PreCulledPlacements>((PreparedScene::Id)&cellSet);
+
         auto& cells = cellSet._pimpl->_cells;
         const auto& worldToProj = parserContext.GetProjectionDesc()._worldToProjection;
-        for (auto i=cells.begin(); i!=cells.end(); ++i) {
-            if (CullAABB_Aligned(worldToProj, i->_aabbMin, i->_aabbMax))
+        for (unsigned c=0; c<(unsigned)cells.size(); ++c) {
+            auto& cell = cells[c];
+            if (CullAABB_Aligned(worldToProj, cell._aabbMin, cell._aabbMax))
                 continue;
+
+            auto pcell = std::make_unique<PreCulledPlacements::Cell>();
+            pcell->_cellIndex = c;
+            pcell->_cellToWorld = cell._cellToWorld;
+
+            auto ovr = LowerBound(cellSet._pimpl->_cellOverrides, cell._filenameHash);
+            if (ovr != cellSet._pimpl->_cellOverrides.end() && ovr->first == cell._filenameHash) {
+                _pimpl->CullCell(pcell->_objects, parserContext, *ovr->second.get(), nullptr, cell._cellToWorld);
+                pcell->_placements = ovr->second.get();
+            } else {
+                pcell->_placements = _pimpl->CullCell(pcell->_objects, parserContext, cell);
+                if (!pcell->_placements) continue;
+            }
+            prepared->_cells.emplace_back(std::move(pcell));
         }
     }
 
@@ -1052,14 +1101,17 @@ namespace SceneEngine
                     while (i < i2) { *t++ = i->second; i++; }
 
                     CATCH_ASSETS_BEGIN
+                        Placements* plcmnts;
+                        visibleObjects.clear();
                         auto ovr = LowerBound(cellSet._pimpl->_cellOverrides, ci->_filenameHash);
                         if (ovr != cellSet._pimpl->_cellOverrides.end() && ovr->first == ci->_filenameHash) {
-                            visibleObjects.clear();
                             _pimpl->CullCell(visibleObjects, parserContext, *ovr->second.get(), nullptr, ci->_cellToWorld);
-                            _pimpl->Render(context, parserContext, *ovr->second.get(), MakeIteratorRange(visibleObjects), ci->_cellToWorld, tStart, t);
+                            plcmnts = ovr->second.get();
                         } else {
-                            _pimpl->Render(context, parserContext, *ci, tStart, t);
+                            plcmnts = _pimpl->CullCell(visibleObjects, parserContext, *ci);
+                            if (!plcmnts) continue;
                         }
+                        _pimpl->Render(context, parserContext, *plcmnts, MakeIteratorRange(visibleObjects), ci->_cellToWorld, tStart, t);
                     CATCH_ASSETS_END(parserContext)
 
                 } else {
@@ -1070,14 +1122,17 @@ namespace SceneEngine
                 // in this case we're not filtering by object GUID (though we may apply a predicate on the prepared draw calls)
             for (auto i=cellSet._pimpl->_cells.begin(); i!=cellSet._pimpl->_cells.end(); ++i) {
                 CATCH_ASSETS_BEGIN
+                    Placements* plcmnts;
+                    visibleObjects.clear();
                     auto ovr = LowerBound(cellSet._pimpl->_cellOverrides, i->_filenameHash);
                     if (ovr != cellSet._pimpl->_cellOverrides.end() && ovr->first == i->_filenameHash) {
-                        visibleObjects.clear();
                         _pimpl->CullCell(visibleObjects, parserContext, *ovr->second.get(), nullptr, i->_cellToWorld);
-                        _pimpl->Render(context, parserContext, *ovr->second.get(), MakeIteratorRange(visibleObjects), i->_cellToWorld);
+                        plcmnts = ovr->second.get();
                     } else {
-                        _pimpl->Render(context, parserContext, *i);
+                        plcmnts = _pimpl->CullCell(visibleObjects, parserContext, *i);
+                        if (!plcmnts) continue;
                     }
+                    _pimpl->Render(context, parserContext, *plcmnts, MakeIteratorRange(visibleObjects), i->_cellToWorld);
                 CATCH_ASSETS_END(parserContext)
             }
         }

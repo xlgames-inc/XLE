@@ -92,6 +92,12 @@ namespace SceneEngine
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
             const PlacementCellSet& cellSet);
+        void Render(
+            RenderCore::Metal::DeviceContext* context,
+            RenderCore::Techniques::ParsingContext& parserContext,
+            PreparedScene& preparedScene,
+            unsigned techniqueIndex,
+            const PlacementCellSet& cellSet);
         void CommitTransparent(
             RenderCore::Metal::DeviceContext* context,
             RenderCore::Techniques::ParsingContext& parserContext,
@@ -99,7 +105,7 @@ namespace SceneEngine
         bool HasPrepared(RenderCore::Assets::DelayStep delayStep);
         
             // -------------- Cull --------------
-        void Cull(
+        void CullToPreparedScene(
             PreparedScene& preparedScene,
             RenderCore::Techniques::ParsingContext& parserContext,
             const PlacementCellSet& cellSet);

@@ -110,9 +110,18 @@ namespace GUILayer
             CATCH_ASSETS_BEGIN
                 for (auto i:delaySteps)
                     if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
-                        scene._placementsManager->GetRenderer()->CommitTransparent(metalContext.get(), parserContext, techniqueIndex, i);
+                        scene._placementsManager->GetRenderer()->CommitTransparent(
+                            metalContext.get(), parserContext, techniqueIndex, i);
                     } else {
-                        scene._placementsManager->GetRenderer()->Render(metalContext.get(), parserContext, techniqueIndex, *scene._placementsCells);
+                        if (batchFilter == SceneParseSettings::BatchFilter::General) {
+                            scene._placementsManager->GetRenderer()->Render(
+                                metalContext.get(), parserContext, preparedPackets,
+                                techniqueIndex, *scene._placementsCells);
+                        } else {
+                            scene._placementsManager->GetRenderer()->Render(
+                                metalContext.get(), parserContext,
+                                techniqueIndex, *scene._placementsCells);
+                        }
                     }
             CATCH_ASSETS_END(parserContext)
 
@@ -139,6 +148,7 @@ namespace GUILayer
         if (scene._terrainManager) {
             auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
             scene._terrainManager->Prepare(metalContext.get(), parserContext, preparedPackets);
+            scene._placementsManager->GetRenderer()->CullToPreparedScene(preparedPackets, parserContext, *scene._placementsCells);
         }
     }
 

@@ -545,7 +545,6 @@ namespace SceneEngine
                 // the current camera position. For each quad-tree we find, let's
                 // render some debugging information (including bounding boxes for
                 // the nodes in the quad tree).
-                // This is helpful for developing the algorithm for 
             auto quadTrees = _placementsManager->GetRenderer()->GetVisibleQuadTrees(
                 *_cells, context->GetProjectionDesc()._worldToProjection);
             for (auto i=quadTrees.cbegin(); i!=quadTrees.cend(); ++i) {
