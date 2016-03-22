@@ -106,7 +106,7 @@ float3 BrightPassFilter(float3 colour)
 	float3 l			= scale * colour.rgb;
 
 	const float threshold = BloomThreshold;
-	l   = saturate(l/float(threshold).rrr - 1.0.xxx);
+	l = l/threshold - 1.0.xxx;
 
 	// const float rampingFactor = BloomRampingFactor;
 	// l = l / (rampingFactor+l);
@@ -183,9 +183,11 @@ float3 BrightPassFilter(float3 colour)
 		//		all of the input pixels. Otherwise, we get a lot of flickering
 		//		as bright pixels move in and out of sampling.
 		//
-		//		Take the average of the pixels in our area, then run that
-		//		through a single bright pass filter. (ie, this isn't the
-		//		average of post-filtered values).
+		//		We can choose to do the bright pass filter before taking the average
+		//		or afterwards. Since the filter isn't linear, this will result in
+		// 		different results. Currently performing the filtering afterwards is
+		//		creating significant flickering. It's a very noticable artifact, so we
+		// 		must do it afterwards.
 		//
 		//		Unfortunately these loops aren't fixed length -- maybe there's
 		//		a better way to do this?
@@ -195,12 +197,12 @@ float3 BrightPassFilter(float3 colour)
 	float3 acculumatedColour = 0.0.xxx;
 	for (int y=inputMins.y; y<inputMaxs.y; ++y) {
 		for (int x=inputMins.x; x<inputMaxs.x; ++x) {
-			acculumatedColour += LoadInputColor(int2(x, y));
+			acculumatedColour += BrightPassFilter(LoadInputColor(int2(x, y)));
 		}
 	}
 	int pixelSampleCount = (inputMaxs.x-inputMins.x)*(inputMaxs.y-inputMins.y);
 	float3 t = acculumatedColour/float(pixelSampleCount);
-	OutputBrightPass[dispatchThreadId.xy] = float4(BrightPassFilter(t), 1);
+	OutputBrightPass[dispatchThreadId.xy] = float4(t, 1);
 }
 
 [numthreads(16, 16, 1)]
