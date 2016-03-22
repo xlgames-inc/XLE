@@ -29,5 +29,15 @@ namespace LevelEditorXLE.Extensions
             }
             return XLEBridgeUtils.Utils.GlobalSceneManager;
         }
+
+        internal static Uri GetBaseExportUri(this Sce.Atf.Dom.DomNodeAdapter adapter)
+        {
+            var root = adapter.DomNode.GetRoot();
+            var game = root.As<Game.GameExtensions>();
+            if (game != null) return game.ExportDirectory;
+            var resource = root.As<Sce.Atf.IResource>();
+            if (resource != null) return resource.Uri;
+            return new Uri(System.IO.Directory.GetCurrentDirectory().TrimEnd('\\') + "\\");
+        }
     }
 }

@@ -365,7 +365,6 @@ namespace LevelEditorXLE
 
             placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReferenceType");
             placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
-            placementsCellReferenceType.ExportTargetAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ExportTarget");
             placementsCellReferenceType.nameAttribute = placementsCellReferenceType.Type.GetAttributeInfo("name");
             placementsCellReferenceType.captureMinsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("captureMins");
             placementsCellReferenceType.captureMaxsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("captureMaxs");
@@ -376,7 +375,6 @@ namespace LevelEditorXLE
 
             placementsFolderType.Type = getNodeType("gap", "placementsFolderType");
             placementsFolderType.baseEditorPathAttribute = placementsFolderType.Type.GetAttributeInfo("baseEditorPath");
-            placementsFolderType.baseExportPathAttribute = placementsFolderType.Type.GetAttributeInfo("baseExportPath");
             placementsFolderType.CellCountAttribute = placementsFolderType.Type.GetAttributeInfo("CellCount");
             placementsFolderType.CellsOriginAttribute = placementsFolderType.Type.GetAttributeInfo("CellsOrigin");
             placementsFolderType.CellSizeAttribute = placementsFolderType.Type.GetAttributeInfo("CellSize");
@@ -584,7 +582,7 @@ namespace LevelEditorXLE
             xleGameType.environmentChild = xleGameType.Type.GetChildInfo("environment");
 
             placementsDocumentRootElement = getRootElement(NS, "placementsDocument");
-            modelBookmarkRootElement = getRootElement(NS, "modelBookmark");
+            BookmarkRootElement = getRootElement(NS, "Bookmark");
             gameRootElement = getRootElement(NS, "game");
         }
 
@@ -1023,7 +1021,6 @@ namespace LevelEditorXLE
         {
             public static DomNodeType Type;
             public static AttributeInfo refAttribute;
-            public static AttributeInfo ExportTargetAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo captureMinsAttribute;
             public static AttributeInfo captureMaxsAttribute;
@@ -1037,7 +1034,6 @@ namespace LevelEditorXLE
         {
             public static DomNodeType Type;
             public static AttributeInfo baseEditorPathAttribute;
-            public static AttributeInfo baseExportPathAttribute;
             public static AttributeInfo CellCountAttribute;
             public static AttributeInfo CellsOriginAttribute;
             public static AttributeInfo CellSizeAttribute;
@@ -1310,7 +1306,7 @@ namespace LevelEditorXLE
 
         public static ChildInfo placementsDocumentRootElement;
 
-        public static ChildInfo modelBookmarkRootElement;
+        public static ChildInfo BookmarkRootElement;
 
         public static ChildInfo gameRootElement;
     }

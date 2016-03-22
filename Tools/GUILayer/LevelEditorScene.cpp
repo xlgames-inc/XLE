@@ -243,12 +243,12 @@ namespace GUILayer
     ref class TextPendingExport : public EditorSceneManager::PendingExport
     {
     public:
-        EditorSceneManager::ExportResult PerformExport(System::String^ destFile) override
+        EditorSceneManager::ExportResult PerformExport(System::Uri^ destFile) override
         {
             EditorSceneManager::ExportResult result;
             TRY
             {
-                auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destFile);
+                auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destFile->LocalPath);
                 PrepareDirectoryForFile(nativeDestFile);
 
                 auto output = OpenFileOutput(nativeDestFile.c_str(), "wb");
@@ -367,12 +367,12 @@ namespace GUILayer
     ref class PlacementsPendingExport : public EditorSceneManager::PendingExport
     {
     public:
-        EditorSceneManager::ExportResult PerformExport(System::String^ destFile) override
+        EditorSceneManager::ExportResult PerformExport(System::Uri^ destFile) override
         {
             EditorSceneManager::ExportResult result;
             TRY
             {
-                auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destFile);
+                auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destFile->LocalPath);
                 PrepareDirectoryForFile(nativeDestFile);
 
                 _placements->WriteCell(_doc, nativeDestFile.c_str());

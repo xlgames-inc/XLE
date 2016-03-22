@@ -224,10 +224,15 @@ namespace LevelEditorXLE.Environment
         }
         
         #region IExportable
-        public string ExportTarget
+        public Uri ExportTarget
         {
-            get { return GetAttribute<string>(Schema.envSettingsFolderType.ExportTargetAttribute); }
-            set { SetAttribute(Schema.envSettingsFolderType.ExportTargetAttribute, value); }
+            get
+            {
+                var fn = GetAttribute<string>(Schema.envSettingsFolderType.ExportTargetAttribute);
+                var parent = DomNode.GetRoot().As<Game.GameExtensions>();
+                if (parent != null) return new Uri(parent.ExportDirectory, fn);
+                return new Uri(fn);
+            }
         }
 
         public string ExportCategory

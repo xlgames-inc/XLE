@@ -122,10 +122,16 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(TerrainST.GradFlagSlopeThreshold2Attribute, value); }
         }
 
-        public string ConfigExportTarget
+        public Uri ConfigExportTarget
         {
-            get { return GetAttribute<string>(TerrainST.ConfigFileTargetAttribute); }
-            set { SetAttribute(TerrainST.ConfigFileTargetAttribute, value); }
+            get 
+            {
+                var fn = GetAttribute<string>(TerrainST.ConfigFileTargetAttribute);
+                var game = DomNode.GetRoot().As<Game.GameExtensions>();
+                if (game != null)
+                    return new Uri(game.ExportDirectory, fn);
+                return Utils.CurrentDirectoryAsUri();
+            }
         }
 
         public DomNode BaseTexture
@@ -224,7 +230,7 @@ namespace LevelEditorXLE.Terrain
         #endregion
 
         #region IExportable
-        public string CacheExportTarget { get { return CellsDirectory + "/cached.dat"; } }
+        public Uri CacheExportTarget { get { return new Uri(CellsDirectory, "cached.dat"); } }
         public string ExportCategory { get { return "Terrain"; } }
 
         public IEnumerable<PendingExport> BuildPendingExports()

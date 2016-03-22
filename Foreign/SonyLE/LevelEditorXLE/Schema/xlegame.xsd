@@ -26,7 +26,7 @@
           <xs:element name="terrain" type="terrainType" minOccurs="0" maxOccurs="1"/>
           <xs:element name="environment" type="envSettingsFolderType" minOccurs="0" maxOccurs="1"/>
         </xs:sequence>
-        <xs:attribute name="ExportDirectory" type="xs:string" default="finals/" />
+        <xs:attribute name="ExportDirectory" type="xs:anyURI" default="./finals/" />
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>

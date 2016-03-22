@@ -108,6 +108,7 @@
     <Compile Include="Placements\XLEPlacementsDocument.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Schema\Schema.cs" />
+    <Compile Include="Services\Utils.cs" />
     <Compile Include="Terrain\TerrainContextControls.cs">
       <SubType>UserControl</SubType>
     </Compile>

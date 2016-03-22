@@ -18,7 +18,7 @@ namespace ControlsLibrary
         public class QueuedExport
         {
             public bool DoExport { get; set; }
-            public string TargetFile { get; set; }
+            public Uri TargetFile { get; set; }
             public string ExistingText { get; set; }
             public string TextPreview { get; set; }
             public string Category { get; set; }
@@ -39,7 +39,7 @@ namespace ControlsLibrary
         {
             internal class Item
             {
-                public string Label
+                public Uri Label
                 {
                     get { return Attached.TargetFile; }
                 }

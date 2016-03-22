@@ -54,9 +54,6 @@ namespace LevelEditorXLE.Placements
             [Category("Basic")] [Description("Base Level Editor Path")]
             public string BaseEditorPath { get; set; }
 
-            [Category("Basic")] [Description("Base Export Path")]
-            public string BaseExportPath { get; set; }
-
             internal bool UnnamedPlacementDocuments { get; set; }
 
             internal Config() 

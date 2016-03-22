@@ -66,8 +66,7 @@ namespace LevelEditorXLE
             // covert this uri into a string filename that is fit for the assets system
             if (uri.IsAbsoluteUri)
             {
-                var cwd = new Uri(System.IO.Directory.GetCurrentDirectory().TrimEnd('\\') + "\\");
-                var relUri = cwd.MakeRelativeUri(uri);
+                var relUri = Utils.CurrentDirectoryAsUri().MakeRelativeUri(uri);
 
                     // If the relative directory beings with a ".." (ie, the file is somewhere else
                     // on the drive, outside of the working folder) then let's pass the full absolute

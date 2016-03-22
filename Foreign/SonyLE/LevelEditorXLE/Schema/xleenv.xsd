@@ -212,7 +212,7 @@
     <xs:sequence>
       <xs:element name="settings" type="envSettingsType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
-    <xs:attribute name="ExportTarget" type="xs:string" default="finals/env.txt" />
+    <xs:attribute name="ExportTarget" type="xs:string" default="env.txt" />
     <xs:attribute name="ExportEnabled" type="xs:boolean" default="true"/>
   </xs:complexType>
 

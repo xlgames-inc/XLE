@@ -51,15 +51,15 @@ namespace LevelEditorXLE.Terrain
         : DomNodeAdapter
         , IExportable, ICommandClient, IContextMenuCommandProvider, IHierarchical
     {
-        public string ExportDirectory
+        public Uri ExportDirectory
         {
             get 
             {
                 var game = DomNode.GetRoot().As<Game.GameExtensions>();
                 if (game != null) return game.ExportDirectory;
                 var rootTerrain = DomNode.Parent.As<XLETerrainGob>();
-                if (rootTerrain != null) return rootTerrain.CellsDirectory.LocalPath;
-                return "";
+                if (rootTerrain != null) return rootTerrain.CellsDirectory;
+                return Utils.CurrentDirectoryAsUri();
             }
         }
 
@@ -127,9 +127,9 @@ namespace LevelEditorXLE.Terrain
         #endregion
 
         #region IExportable
-        public string ExportTarget
+        public Uri ExportTarget
         {
-            get { return ExportDirectory + "TerrainMaterial.cfg"; }
+            get { return new Uri(ExportDirectory, "TerrainMaterial.cfg"); }
         }
 
         public string ExportCategory

@@ -116,7 +116,7 @@ namespace LevelEditorXLE
                         || preview.Export._previewType == GUILayer.EditorSceneManager.PendingExport.Type.MetricsText)
                     {
                         e.TextPreview = preview.Export._preview;
-                        var comparisonFile = e.TargetFile;
+                        var comparisonFile = e.TargetFile.LocalPath;
                         if (preview.Export._previewType == GUILayer.EditorSceneManager.PendingExport.Type.MetricsText)
                             comparisonFile += ".metrics";
 

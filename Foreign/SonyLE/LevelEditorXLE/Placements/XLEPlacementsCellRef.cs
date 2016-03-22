@@ -68,8 +68,8 @@ namespace LevelEditorXLE.Placements
                     var boundary = GUILayer.EditorInterfaceUtils.CalculatePlacementCellBoundary(
                         sceneMan, target.NativeDocumentId);
                     var result = Tuple.Create(
-                        Utils.AsVec3F(boundary.Item1),
-                        Utils.AsVec3F(boundary.Item2));
+                        XLEBridgeUtils.Utils.AsVec3F(boundary.Item1),
+                        XLEBridgeUtils.Utils.AsVec3F(boundary.Item2));
                     this.SetVec3(CellRefST.cachedCellMinsAttribute, result.Item1);
                     this.SetVec3(CellRefST.cachedCellMaxsAttribute, result.Item2);
                     return result;
@@ -82,10 +82,16 @@ namespace LevelEditorXLE.Placements
         }
 
         #region IExportable
-        public string ExportTarget
+        public Uri ExportTarget
         {
-            get { return GetAttribute<string>(CellRefST.ExportTargetAttribute); }
-            set { SetAttribute(CellRefST.ExportTargetAttribute, value); }
+            get 
+            {
+                var root = DomNode.GetRoot();
+                var gameExt = root.As<LevelEditorXLE.Game.GameExtensions>();
+                if (gameExt != null)
+                    return new Uri(gameExt.ExportDirectory, Name + ".plc");
+                return new Uri(Name + ".plc");
+            }
         }
 
         public string ExportCategory
@@ -95,7 +101,7 @@ namespace LevelEditorXLE.Placements
 
         private class ErrorExport : GUILayer.EditorSceneManager.PendingExport
         {
-            public override GUILayer.EditorSceneManager.ExportResult PerformExport(string destFile)
+            public override GUILayer.EditorSceneManager.ExportResult PerformExport(Uri destFile)
             {
                 throw new NotImplementedException("Attempting to perform impossible export");
             }
@@ -214,11 +220,10 @@ namespace LevelEditorXLE.Placements
             }
         }
 
-        public static DomNode Create(Uri reference, string exportTarget, string name, Vec3F mins, Vec3F maxs)
+        public static DomNode Create(Uri reference, string name, Vec3F mins, Vec3F maxs)
         {
             var result = new DomNode(CellRefST.Type);
             result.SetAttribute(CellRefST.refAttribute, reference);
-            result.SetAttribute(CellRefST.ExportTargetAttribute, exportTarget);
             result.SetAttribute(CellRefST.nameAttribute, name);
             DomNodeUtil.SetVector(result, CellRefST.captureMinsAttribute, mins);
             DomNodeUtil.SetVector(result, CellRefST.captureMaxsAttribute, maxs);
@@ -274,12 +279,6 @@ namespace LevelEditorXLE.Placements
             set { SetAttribute(FolderST.baseEditorPathAttribute, value); }
         }
 
-        internal string BaseExportPath
-        {
-            get { return GetAttribute<string>(FolderST.baseExportPathAttribute); }
-            set { SetAttribute(FolderST.baseExportPathAttribute, value); }
-        }
-
         internal int[] CellCount
         {
             get { return GetAttribute<int[]>(FolderST.CellCountAttribute); }
@@ -320,22 +319,19 @@ namespace LevelEditorXLE.Placements
                 // coordinates of the cell in that grid.
 
             BaseEditorPath = new Uri(GetBaseUri(), cfg.BaseEditorPath);
-            BaseExportPath = FixPath(cfg.BaseExportPath);
             SetAttribute(FolderST.CellCountAttribute, new int[2] { (int)cfg.CellCountX, (int)cfg.CellCountY } );
             SetAttribute(FolderST.CellSizeAttribute, cfg.CellSize);
             SetAttribute(FolderST.CellsOriginAttribute, new float[2] { cfg.CellsOriginX, cfg.CellsOriginY } );
-            ExportTarget = BaseExportPath + "placements.cfg";
 
-            var newCells = new List<Tuple<Uri, string, string, Vec3F, Vec3F>>();
+            var newCells = new List<Tuple<Uri, string, Vec3F, Vec3F>>();
             var cellCount = CellCount;
             for (uint y=0; y<cellCount[1]; ++y)
                 for (uint x = 0; x < cellCount[0]; ++x) {
                     var rf = String.Format("p{0,3:D3}_{1,3:D3}.plcdoc", x, y);
-                    var ex = String.Format("{0}p{1,3:D3}_{2,3:D3}.plc", BaseExportPath, x, y);
                     var name = String.Format("{0,2:D2}-{1,2:D2}", x, y);
                     var mins = new Vec3F(x * cfg.CellSize + cfg.CellsOriginX, y * cfg.CellSize + cfg.CellsOriginY, -5000.0f);
                     var maxs = new Vec3F((x+1) * cfg.CellSize + cfg.CellsOriginX, (y+1) * cfg.CellSize + cfg.CellsOriginY, 5000.0f);
-                    newCells.Add(Tuple.Create(new Uri(BaseEditorPath, rf), ex, name, mins, maxs));
+                    newCells.Add(Tuple.Create(new Uri(BaseEditorPath, rf), name, mins, maxs));
                 }
 
             var foundMatching = new bool[newCells.Count];
@@ -348,10 +344,9 @@ namespace LevelEditorXLE.Placements
                 int index = newCells.FindIndex(0, newCells.Count, s => s.Item1.Equals(rawRef));
                 if (index >= 0) {
                     foundMatching[index] = true;
-                    r.ExportTarget = newCells[index].Item2; 
-                    r.Name = newCells[index].Item3;
-                    r.CaptureMins = newCells[index].Item4;
-                    r.CaptureMaxs = newCells[index].Item5;
+                    r.Name = newCells[index].Item2;
+                    r.CaptureMins = newCells[index].Item3;
+                    r.CaptureMaxs = newCells[index].Item4;
                 } else
                     toBeRemoved.Add(r);
             }
@@ -371,8 +366,7 @@ namespace LevelEditorXLE.Placements
                 {
                     var newItem = PlacementsCellRef.Create(
                         cfg.UnnamedPlacementDocuments ? null : newCells[c].Item1, 
-                        newCells[c].Item2, newCells[c].Item3,
-                        newCells[c].Item4, newCells[c].Item5);
+                        newCells[c].Item2, newCells[c].Item3, newCells[c].Item4);
                     childList.Add(newItem);
                     newItem.As<PlacementsCellRef>().CreateAndResolve();
                 }
@@ -382,7 +376,6 @@ namespace LevelEditorXLE.Placements
         {
             var cfg = new PlacementsConfig.Config();
             cfg.BaseEditorPath = (BaseEditorPath != null) ? GetBaseUri().MakeRelativeUri(BaseEditorPath).ToString() : "";
-            cfg.BaseExportPath = BaseExportPath;
             var cellCount = CellCount;
             if (cellCount[0] > 0 && cellCount[1] > 0)
             {
@@ -439,10 +432,16 @@ namespace LevelEditorXLE.Placements
         #endregion
 
         #region IExportable
-        public string ExportTarget
+        public Uri ExportTarget
         {
-            get { return GetAttribute<string>(FolderST.ExportTargetAttribute); }
-            set { SetAttribute(FolderST.ExportTargetAttribute, value); }
+            get 
+            {
+                var root = DomNode.GetRoot();
+                var gameExt = root.As<LevelEditorXLE.Game.GameExtensions>();
+                if (gameExt != null)
+                    return new Uri(gameExt.ExportDirectory, "placements.cfg");
+                return new Uri("placements.cfg");
+            }
         }
 
         public string ExportCategory { get { return "Placements"; } }
@@ -461,12 +460,13 @@ namespace LevelEditorXLE.Placements
             foreach (var c in Cells)
             {
                 var boundary = c.CalculateCellBoundary();
+                var resService = Globals.MEFContainer.GetExportedValue<IXLEAssetService>();
                 refs.Add(new GUILayer.EditorSceneManager.PlacementCellRef
                     {
-                        NativeFile = c.ExportTarget,
-                        Offset = Utils.AsVector3(c.Offset),
-                        Mins = Utils.AsVector3(boundary.Item1),
-                        Maxs = Utils.AsVector3(boundary.Item2)
+                        NativeFile = resService.AsAssetName(c.ExportTarget),
+                        Offset = XLEBridgeUtils.Utils.AsVector3(c.Offset),
+                        Mins = XLEBridgeUtils.Utils.AsVector3(boundary.Item1),
+                        Maxs = XLEBridgeUtils.Utils.AsVector3(boundary.Item2)
                     });
             }
             return refs;

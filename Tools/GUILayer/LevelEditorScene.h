@@ -118,7 +118,7 @@ namespace GUILayer
 
             bool _success = false;
             
-            virtual ExportResult PerformExport(System::String^ destFile) = 0;
+            virtual ExportResult PerformExport(System::Uri^ destFile) = 0;
         };
 
         PendingExport^ ExportEnv(EntityInterface::DocumentId docId);

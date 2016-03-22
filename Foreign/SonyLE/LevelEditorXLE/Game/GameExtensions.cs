@@ -6,6 +6,7 @@
 
 using System.Collections.Generic;
 using System.ComponentModel;
+using System;
 
 using Sce.Atf;
 using Sce.Atf.Adaptation;
@@ -97,9 +98,15 @@ namespace LevelEditorXLE.Game
             get { return DomNode.GetChild(Schema.xleGameType.terrainChild).As<Terrain.XLETerrainGob>(); }
         }
 
-        public string ExportDirectory
+        public Uri ExportDirectory
         {
-            get { return GetAttribute<string>(Schema.xleGameType.ExportDirectoryAttribute); }
+            get 
+            { 
+                var uri = GetAttribute<Uri>(Schema.xleGameType.ExportDirectoryAttribute);
+                if (uri.IsAbsoluteUri)
+                    return uri;
+                return new Uri(Utils.CurrentDirectoryAsUri(), uri.OriginalString);
+            }
             set { SetAttribute(Schema.xleGameType.ExportDirectoryAttribute, value); }
         }
 
@@ -205,13 +212,13 @@ namespace LevelEditorXLE.Game
     class XLEGameObjectsFolder : DomNodeAdapter, IExportable
     {
         #region IExportable
-        public string ExportTarget
+        public Uri ExportTarget
         {
-            get 
+            get
             {
                 var parent = DomNode.GetRoot().As<GameExtensions>();
-                if (parent != null) return parent.ExportDirectory + "GameObjects.txt";
-                return "finals/GameObjects.txt"; 
+                if (parent != null) return new Uri(parent.ExportDirectory, "GameObjects.txt");
+                return new Uri("GameObjects.txt");
             }
         }
 
@@ -223,7 +230,10 @@ namespace LevelEditorXLE.Game
         public IEnumerable<PendingExport> BuildPendingExports()
         {
             var result = new List<PendingExport>();
-            result.Add(new PendingExport(ExportTarget, this.GetSceneManager().ExportGameObjects(0)));
+            result.Add(
+                new PendingExport(
+                    ExportTarget, 
+                    this.GetSceneManager().ExportGameObjects(0)));
             return result;
         }
         #endregion

@@ -115,19 +115,19 @@ namespace LevelEditorXLE.Terrain
         #endregion
 
         #region IExportable
-        public string ExportDirectory
+        public Uri ExportDirectory
         {
             get
             {
                 var game = DomNode.GetRoot().As<Game.GameExtensions>();
                 if (game != null) return game.ExportDirectory;
                 var rootTerrain = DomNode.Parent.As<XLETerrainGob>();
-                if (rootTerrain != null) return rootTerrain.CellsDirectory.LocalPath;
-                return "";
+                if (rootTerrain != null) return rootTerrain.CellsDirectory;
+                return Utils.CurrentDirectoryAsUri();
             }
         }
 
-        public string ExportTarget { get { return ExportDirectory + "/vegetationspawn.cfg"; } }
+        public Uri ExportTarget { get { return new Uri(ExportDirectory, "vegetationspawn.cfg"); } }
         public string ExportCategory { get { return "VegetationSpawn"; } }
 
         public IEnumerable<PendingExport> BuildPendingExports()

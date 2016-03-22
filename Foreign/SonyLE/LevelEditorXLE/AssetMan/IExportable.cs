@@ -5,10 +5,10 @@ namespace LevelEditorXLE
 {
     public class PendingExport
     {
-        public string TargetFile { get; set; }
+        public Uri TargetFile { get; set; }
         public GUILayer.EditorSceneManager.PendingExport Export { get; set; }
 
-        public PendingExport(string targetFile, GUILayer.EditorSceneManager.PendingExport pendingExport)
+        public PendingExport(Uri targetFile, GUILayer.EditorSceneManager.PendingExport pendingExport)
         {
             TargetFile = targetFile;
             Export = pendingExport;

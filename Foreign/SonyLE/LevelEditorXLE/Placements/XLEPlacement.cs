@@ -142,29 +142,6 @@ namespace LevelEditorXLE.Placements
             var types = restraintType.Split(',');
             return types.Where(x => string.Equals(x, resource.Type, StringComparison.OrdinalIgnoreCase)).FirstOrDefault() != null;
         }
-        private static string AsReferenceName(Uri uri)
-        {
-            var resService = Globals.MEFContainer.GetExportedValue<IXLEAssetService>();
-            // return resService.StripExtension(resService.AsAssetName(uri));
-            return resService.AsAssetName(uri);
-        }
-
-#if false
-        private static Uri ResolveBookmarkUri(string target, Uri bookmarkFileUri)
-        {
-            // This path handling is really awkward. But there's no way around this.
-            // Values in the bookmark files aren't true Uris, because they can contain parameters
-            // after the filename. But we need to make them relative to the bookmark URI
-            // filename. It would be better to use the robust c++ filename handling stuff for this
-            // but that's also difficult.
-            // The normal .net Uri functions don't seem to work exactly right, either -- because
-            // our filenames are wierd.
-            var basePath = bookmarkFileUri.AbsoluteUri;
-            var lastSep = System.Math.Max(basePath.LastIndexOf('/'), basePath.LastIndexOf('\\'));
-            if (lastSep != -1) basePath = basePath.Substring(0, lastSep + 1);
-            return new System.Uri(basePath + target);
-        }
-#endif
         #endregion
 
         public static Bookmark LoadBookmark(Uri uri)
@@ -183,7 +160,8 @@ namespace LevelEditorXLE.Placements
             // we need to build a predicate that looks for placements that are using this model
             var predicate = new Sce.Atf.Dom.DomNodePropertyPredicate();
             predicate.AddPropertyNameExpression("Model");
-            predicate.AddValueStringSearchExpression(AsReferenceName(modelName), (UInt64)StringQuery.Matches, false);
+            var searchName = Path.GetFileNameWithoutExtension(modelName.LocalPath);
+            predicate.AddValueStringSearchExpression(searchName, (UInt64)StringQuery.Contains, false);
             return predicate;
         }
 
@@ -192,8 +170,8 @@ namespace LevelEditorXLE.Placements
             // note -- we will only compare the "model"
             var predicate = new Sce.Atf.Dom.DomNodePropertyPredicate();
             predicate.AddPropertyNameExpression("Model");
-            var refName = AsReferenceName(bkmrk.Model);
-            predicate.AddValueStringSearchExpression(refName, (UInt64)StringQuery.Matches, false);
+            var searchName = Path.GetFileNameWithoutExtension(bkmrk.Model.LocalPath);
+            predicate.AddValueStringSearchExpression(searchName, (UInt64)StringQuery.Matches, false);
             return predicate;
         }
     }
