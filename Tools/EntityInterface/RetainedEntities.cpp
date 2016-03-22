@@ -436,6 +436,7 @@ namespace EntityInterface
                     i._elementType = unsigned(type._type);
                     i._arrayCount = type._arrayCount;
                     i._src = (const void*)bufferOffset;
+                    i._isString = type._typeHint == ImpliedTyping::TypeHint::String;
 
                     inits.push_back(i);
                 }

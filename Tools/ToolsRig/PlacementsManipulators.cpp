@@ -1598,7 +1598,7 @@ namespace ToolsRig
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_screens = std::make_shared<DebugScreensSystem>();
-        pimpl->_placementsManager = std::move(placementsManager);
+        pimpl->_placementsManager = placementsManager;
         pimpl->_editor = pimpl->_placementsManager->CreateEditor(placementCellSet);
         pimpl->_intersectionTestContext = std::move(intersectionContext);
         pimpl->_intersectionTestScene = std::make_shared<SceneEngine::IntersectionTestScene>(

@@ -58,26 +58,28 @@ namespace Sample
 ///////////////////////////////////////////////////////////////////////////////
 
     CharacterModel::CharacterModel(
-        const ::Assets::ResChar skin[], const ::Assets::ResChar skeleton[], const ::Assets::ResChar animationSet[], 
+        const CharacterInputFiles& files, 
         RenderCore::Assets::SharedStateSet& sharedStates)
     {
         #if defined(_DEBUG)
-            _skinInitialiser = skin; _skeletonInitialiser = skeleton; _animationSetInitialiser = animationSet;
+            _skinInitialiser = files._skin; _skeletonInitialiser = files._skeleton; _animationSetInitialiser = files._animationSet;
         #endif
 
         using namespace RenderCore::Assets;
-        _model = &Assets::GetAssetComp<ModelScaffold>(skin);
-        _skeleton = &Assets::GetAssetComp<SkeletonScaffold>(skeleton);
-        _animationSet = &Assets::GetAssetComp<AnimationSetScaffold>(animationSet);
-        auto& matScaffold = Assets::GetAssetComp<MaterialScaffold>(skin, skin);
+        _model = &Assets::GetAssetComp<ModelScaffold>(files._skin.c_str());
+        _skeleton = &Assets::GetAssetComp<SkeletonScaffold>(files._skeleton.c_str());
+        _animationSet = &Assets::GetAssetComp<AnimationSetScaffold>(files._animationSet.c_str());
+        auto& matScaffold = Assets::GetAssetComp<MaterialScaffold>(files._skin.c_str(), files._skin.c_str());
 
-        auto searchRules = Assets::DefaultDirectorySearchRules(skin);
+        auto searchRules = Assets::DefaultDirectorySearchRules(files._skin.c_str());
         const unsigned levelOfDetail = 0;
 
             // stall here until our resources are full loaded
         _model->StallAndResolve();
         matScaffold.StallAndResolve();
-        _renderer = std::make_unique<ModelRenderer>(*_model, matScaffold, ModelRenderer::Supplements(), sharedStates, &searchRules, levelOfDetail);
+        _renderer = std::make_unique<ModelRenderer>(
+            *_model, matScaffold, ModelRenderer::Supplements(), 
+            sharedStates, &searchRules, levelOfDetail);
 
         _skeleton->StallAndResolve();
         _animationSet->StallAndResolve();
@@ -88,16 +90,17 @@ namespace Sample
     {}
 
 
-    Character::Character(const CharacterModel& model)
+    Character::Character(uint64 id, const CharacterModel& model)
     : _model(&model)
     , _localToWorld(Identity<Float4x4>())
+    , _id(id)
     {
     }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    NPCCharacter::NPCCharacter(const CharacterModel& model, std::shared_ptr<AnimationDecisionTree> animDecisionTree)
-    : Character(model)
+    NPCCharacter::NPCCharacter(uint64 id, const CharacterModel& model, std::shared_ptr<AnimationDecisionTree> animDecisionTree)
+    : Character(id, model)
     {
         _walkingVelocity = LinearInterpolate(200.f, 500.f, rand() / float(RAND_MAX)) / CharactersScale;
 
@@ -187,7 +190,8 @@ namespace Sample
         return ypr[2];
     }
 
-    PlayerCharacter::PlayerCharacter(const CharacterModel& model, std::shared_ptr<AnimationDecisionTree> animDecisionTree) : Character(model) 
+    PlayerCharacter::PlayerCharacter(uint64 id, const CharacterModel& model, std::shared_ptr<AnimationDecisionTree> animDecisionTree) 
+        : Character(id, model) 
     {
         #if defined(ENABLE_XLNET)
             auto& stateWorld = Network::StatePropagation::StateWorld::GetInstance();
@@ -210,14 +214,15 @@ namespace Sample
         _animDecisionTree = std::move(animDecisionTree);
     }
 
-    bool    PlayerCharacter::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+    void    PlayerCharacter::Accumulate(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
     {
         _accumulatedState.Accumulate(evnt, _prevAccumulatedState);
-        return false;
     }
 
     void    PlayerCharacter::Update(float deltaTime)
     {
+        // This is only intended to be a very basic implementation.
+        // Practical applications will require more sophisticated patterns.
         using namespace RenderOverlays::DebuggingDisplay;
         static const KeyId forward      = KeyId_Make("w");
         static const KeyId back         = KeyId_Make("s");
@@ -410,13 +415,14 @@ namespace Sample
         #endif
     }
 
-    NetworkCharacter::NetworkCharacter( const CharacterModel& model
+    NetworkCharacter::NetworkCharacter( 
+        uint64 id,
+        const CharacterModel& model,
         #if defined(ENABLE_XLNET)
-                                        , std::shared_ptr<Network::StatePropagation::StateBundle>& stateBundle
+            std::shared_ptr<Network::StatePropagation::StateBundle>& stateBundle,
         #endif
-                                        , std::shared_ptr<AnimationDecisionTree> animDecisionTree
-                                        )
-    :       Character(model)
+        std::shared_ptr<AnimationDecisionTree> animDecisionTree)
+    : Character(id, model)
     #if defined(ENABLE_XLNET)
     ,       _stateBundle(stateBundle)
     #endif
@@ -430,6 +436,27 @@ namespace Sample
         _animDecisionTree = std::move(animDecisionTree);
     }
 
+    uint64 CharacterInputFiles::MakeHash() const
+    {
+        return HashCombine(Hash64(_skin), HashCombine(Hash64(_animationSet), Hash64(_skeleton)));
+    }
 }
 
+
+#include "../../Utility/Meta/ClassAccessors.h"
+#include "../../Utility/Meta/ClassAccessorsImpl.h"
+
+template<> const ClassAccessors& GetAccessors<Sample::CharacterInputFiles>()
+{
+    using Obj = Sample::CharacterInputFiles;
+    static ClassAccessors props(typeid(Obj).hash_code());
+    static bool init = false;
+    if (!init) {
+        props.Add(u("Skin"),            DefaultGet(Obj, _skin),          DefaultSet(Obj, _skin));
+        props.Add(u("AnimationSet"),    DefaultGet(Obj, _animationSet),  DefaultSet(Obj, _animationSet));
+        props.Add(u("Skeleton"),        DefaultGet(Obj, _skeleton),      DefaultSet(Obj, _skeleton));
+        init = true;
+    }
+    return props;
+}
 

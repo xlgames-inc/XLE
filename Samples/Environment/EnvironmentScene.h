@@ -15,7 +15,8 @@ namespace SceneEngine { class TerrainManager; class PlacementsManager; class Pla
 
 namespace Sample
 {
-    class PlayerCharacter;
+    class IPlayerCharacter;
+
     class EnvironmentSceneParser : public PlatformRig::BasicSceneParser
     {
     public:
@@ -33,6 +34,10 @@ namespace Sample
 
         RenderCore::Techniques::CameraDesc GetCameraDesc() const;
 
+        void PrepareScene(
+            RenderCore::IThreadContext& context, 
+            SceneEngine::LightingParserContext& parserContext,
+            SceneEngine::PreparedScene& preparedPackets) const;
         void ExecuteScene(
             RenderCore::IThreadContext& context,
             LightingParserContext& parserContext, 
@@ -43,7 +48,7 @@ namespace Sample
 
         float GetTimeValue() const;
 
-        std::shared_ptr<PlayerCharacter> GetPlayerCharacter();
+        std::shared_ptr<IPlayerCharacter> GetPlayerCharacter();
         std::shared_ptr<SceneEngine::TerrainManager> GetTerrainManager();
         std::shared_ptr<SceneEngine::PlacementsManager> GetPlacementManager();
         std::shared_ptr<SceneEngine::PlacementCellSet> GetPlacementCells();

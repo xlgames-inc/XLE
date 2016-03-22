@@ -43,7 +43,7 @@ namespace Sample
     }
 
     SampleInputHandler::SampleInputHandler(
-        std::shared_ptr<Character> playerCharacter,
+        std::shared_ptr<PlatformRig::Camera::ICameraAttach> playerCharacter,
         std::shared_ptr<SceneEngine::TerrainManager> terrain,
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext)
     {

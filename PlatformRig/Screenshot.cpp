@@ -150,7 +150,6 @@ namespace PlatformRig
                 auto rtDesc = TextureDesc::Plain2D(viewWidth+2*skirt, viewHeight+2*skirt, format);
                 target = TargetType(rtDesc, "HighResScreenShot");
 
-                SceneEngine::PreparedScene preparedScene;
                 auto sceneMarker = LightingParser_SetupScene(
                     *metalContext, parserContext, 
                     &sceneParser, samplingPassIndex, samplingPassCount);
@@ -193,7 +192,8 @@ namespace PlatformRig
                 metalContext->Bind(MakeResourceList(target.RTV()), nullptr);
                 metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(rtDesc._width), float(rtDesc._height)));
                 LightingParser_SetGlobalTransform(*metalContext, parserContext, projDesc);
-                LightingParser_ExecuteScene(context, parserContext, tileQualSettings, preparedScene);
+                sceneParser.PrepareScene(context, parserContext, sceneMarker.GetPreparedScene());
+                LightingParser_ExecuteScene(context, parserContext, tileQualSettings, sceneMarker.GetPreparedScene());
             }
 
         doToneMap = oldDoToneMap;

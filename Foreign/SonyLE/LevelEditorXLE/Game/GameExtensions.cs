@@ -25,6 +25,8 @@ namespace LevelEditorXLE.Game
         #region IHierachical
         public bool CanAddChild(object child)
         {
+            if (child.Is<IGameObject>() || child.Is<IGameObjectFolder>()) return false;
+
             var domNode = child as DomNode;
             if (domNode != null)
             {
@@ -40,6 +42,8 @@ namespace LevelEditorXLE.Game
         }
         public bool AddChild(object child)
         {
+            if (child.Is<IGameObject>() || child.Is<IGameObjectFolder>()) return false;
+
             if (EnvSettingsFolder.AddChild(child))
                 return true;
 

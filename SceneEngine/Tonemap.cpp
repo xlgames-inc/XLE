@@ -831,6 +831,8 @@ namespace SceneEngine
             }
             ///////////////////////////////////////////////////////////////////////////////////////
 
+            resources._horizontalFilterBinding->UnbindShaderResources(context, 1);
+
                 // copied blurred buffer back into main target
                 //  bind output rendertarget (but not depth buffer)
             auto savedViewport = savedTargets.GetViewports()[0];

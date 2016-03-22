@@ -54,6 +54,9 @@ namespace LevelEditor.DomNodeAdapters
         public bool CanAddChild(object child)
         {
             if (child.Is<GameReference>()) return true;
+            var gameObjFolder = RootGameObjectFolder.AsAll<IHierarchical>();
+            foreach (var folder in gameObjFolder)
+                if (folder.CanAddChild(child)) return true;
             return false;
         }
 
@@ -64,7 +67,7 @@ namespace LevelEditor.DomNodeAdapters
         /// are NOT inserted as children of this object but rather as children
         /// of the GameObjectFolder child (thus becoming grand children of Game).</remarks>
         public bool AddChild(object child)
-        {            
+        {
             GameReference gameref = child.As<GameReference>();
             if (gameref != null)
             {
@@ -73,7 +76,11 @@ namespace LevelEditor.DomNodeAdapters
                 return true;
             }
 
-            return false;           
+            var gameObjFolder = RootGameObjectFolder.AsAll<IHierarchical>();
+            foreach (var folder in gameObjFolder)
+                if (folder.AddChild(child)) return true;
+
+            return false;
         }
 
         #endregion

@@ -8,11 +8,22 @@
 
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../SceneEngine/LightingParserContext.h"
+#include "../../PlatformRig/CameraManager.h"
 #include <memory>
+
+namespace EntityInterface { class  RetainedEntities; }
 
 namespace Sample
 {
-    class PlayerCharacter;
+    class AnimationNames;
+    class CharacterInputFiles;
+
+    class IPlayerCharacter : public RenderOverlays::DebuggingDisplay::IInputListener, public PlatformRig::Camera::ICameraAttach
+    {
+    public:
+        bool OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt) = 0;
+    };
+
     class CharactersScene
     {
     public:
@@ -20,19 +31,31 @@ namespace Sample
             RenderCore::Metal::DeviceContext* context,
             SceneEngine::LightingParserContext& parserContext,
             int techniqueIndex) const;
-        void Prepare(
-            RenderCore::Metal::DeviceContext* context);
+        void Prepare(RenderCore::Metal::DeviceContext* context);
         void Cull(const Float4x4& worldToProjection);
         void Update(float deltaTime);
 
-        std::shared_ptr<PlayerCharacter>  GetPlayerCharacter();
+        void Clear();
+        void CreateCharacter(
+            uint64 id,
+            const CharacterInputFiles&, const AnimationNames&,
+            bool player, const Float4x4& localToWorld);
+        void DeleteCharacter(uint64 id);
+
+        std::shared_ptr<IPlayerCharacter> GetPlayerCharacter();
 
         Float4x4 DefaultCameraToWorld() const;
 
         CharactersScene();
         ~CharactersScene();
-    protected:
+
         class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
+    protected:
+        std::shared_ptr<Pimpl> _pimpl;
     };
+
+    void RegisterEntityInterface(
+        EntityInterface::RetainedEntities& flexSys,
+        const std::shared_ptr<CharactersScene>& sys);
 }
+

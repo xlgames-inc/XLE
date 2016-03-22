@@ -28,11 +28,21 @@ namespace Sample
 
     class AnimationDecisionTree;
 
+    class CharacterInputFiles
+    {
+    public:
+        std::string     _skin;
+        std::string     _animationSet;
+        std::string     _skeleton;
+
+        uint64 MakeHash() const;
+    };
+
     class CharacterModel
     {
     public:
         CharacterModel(
-            const ::Assets::ResChar skin[], const ::Assets::ResChar skeleton[], const ::Assets::ResChar animationSet[],
+            const CharacterInputFiles& files,
             RenderCore::Assets::SharedStateSet& sharedStates);
         ~CharacterModel();
 
@@ -65,17 +75,18 @@ namespace Sample
         #endif
     };
 
-    class Character : public PlatformRig::Camera::ICameraAttach
+    class Character
     {
     public:
         const CharacterModel*   _model;
         AnimationState          _animState;
         Float4x4                _localToWorld;
+        uint64                  _id;
 
         const Float4x4&     GetLocalToWorld() const { return _localToWorld; }
         void                SetLocalToWorld(const Float4x4& newTransform) { _localToWorld = newTransform; }
 
-        Character(const CharacterModel& model);
+        Character(uint64 id, const CharacterModel& model);
     };
 
     class NPCCharacter : public Character
@@ -87,22 +98,21 @@ namespace Sample
         float   _currentVelScale;
         std::shared_ptr<AnimationDecisionTree> _animDecisionTree;
 
-        NPCCharacter(const CharacterModel& model, std::shared_ptr<AnimationDecisionTree> animDecisionTree);
+        NPCCharacter(uint64 id, const CharacterModel& model, std::shared_ptr<AnimationDecisionTree> animDecisionTree);
         void Update(float deltaTime);
         void Retarget();
     };
 
-    class PlayerCharacter : public Character, public RenderOverlays::DebuggingDisplay::IInputListener
+    class PlayerCharacter : public Character
     {
     public:
-        bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
         void    Update(float deltaTime);
-
-        PlayerCharacter(const CharacterModel& model, std::shared_ptr<AnimationDecisionTree> animDecisionTree);
+        void    Accumulate(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        PlayerCharacter(uint64 id, const CharacterModel& model, std::shared_ptr<AnimationDecisionTree> animDecisionTree);
     protected:
+        std::shared_ptr<AnimationDecisionTree>              _animDecisionTree;
         RenderOverlays::DebuggingDisplay::InputSnapshot     _accumulatedState;
         RenderOverlays::DebuggingDisplay::InputSnapshot     _prevAccumulatedState;
-        std::shared_ptr<AnimationDecisionTree> _animDecisionTree;
 
         struct StateBundleContents
         {
@@ -112,7 +122,7 @@ namespace Sample
             std::shared_ptr<Network::StatePropagation::StateBundle>      _stateBundle;
         #endif
     };
-
+    
     template<typename Type> class Spline
     {
     public:
@@ -166,12 +176,14 @@ namespace Sample
         void    Update(float deltaTime);
         void    HandleEvent(const char eventString[]);
         bool    IsAttached(Network::StateBundleId bundleId);
-        NetworkCharacter(   const CharacterModel& model
-                            #if defined(ENABLE_XLNET)
-                                , std::shared_ptr<Network::StatePropagation::StateBundle>& stateBundle
-                            #endif
-                            , std::shared_ptr<AnimationDecisionTree> animDecisionTree
-                            );
+        NetworkCharacter(
+            uint64 id,
+            const CharacterModel& model
+            #if defined(ENABLE_XLNET)
+                , std::shared_ptr<Network::StatePropagation::StateBundle>& stateBundle
+            #endif
+            , std::shared_ptr<AnimationDecisionTree> animDecisionTree
+            );
 
     protected:
         struct StateBundleContents { Float3 _translation; float _yaw; };

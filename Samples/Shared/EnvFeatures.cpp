@@ -84,7 +84,7 @@ namespace Sample
             if (parseSettings._batchFilter == BF::Transparent) {
                 CPUProfileEvent pEvnt("ShallowSurface", g_cpuProfiler);
                 GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "ShallowSurface", GPUProfiler::Begin);
-                if (_shallowSurfaces)
+                if (_shallowSurfaces && _surfaceHeights)
                     _shallowSurfaces->RenderDebugging(*context, parserContext, techniqueIndex, _surfaceHeights.get());
                 GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "ShallowSurface", GPUProfiler::End);
             }
@@ -108,17 +108,21 @@ namespace Sample
         return false;
     }
 
+    void ScenePlugin_EnvironmentFeatures::SetSurfaceHeights(
+        std::shared_ptr<SceneEngine::ISurfaceHeightsProvider> surfaceHeights)
+    {
+        _surfaceHeights = std::move(surfaceHeights);
+    }
+
     ScenePlugin_EnvironmentFeatures::ScenePlugin_EnvironmentFeatures(
         const ::Assets::rstring& cfgDir,
         std::shared_ptr<EntityInterface::RetainedEntities> retainedEntities,
-        std::shared_ptr<RenderCore::Assets::ModelCache> modelCache,
-        std::shared_ptr<SceneEngine::ISurfaceHeightsProvider> surfaceHeights)
+        std::shared_ptr<RenderCore::Assets::ModelCache> modelCache)
     : _cfgDir(cfgDir)
     {
         _volumetricFogMan = std::make_shared<SceneEngine::VolumetricFogManager>();
         _shallowSurfaces = std::make_shared<SceneEngine::ShallowSurfaceManager>();
         _vegetationSpawnManager = std::make_shared<SceneEngine::VegetationSpawnManager>(std::move(modelCache));
-        _surfaceHeights = std::move(surfaceHeights);
 
             //  Create the object that will manage updates via the entities
             //  interface system.

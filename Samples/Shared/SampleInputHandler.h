@@ -10,6 +10,7 @@
 #include <memory>
 
 namespace SceneEngine { class IntersectionTestContext; class TerrainManager; }
+namespace PlatformRig { namespace Camera { class ICameraAttach; }}
 
 namespace Sample
 {
@@ -20,12 +21,12 @@ namespace Sample
         bool OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
 
         SampleInputHandler(
-            std::shared_ptr<Character> playerCharacter, 
+            std::shared_ptr<PlatformRig::Camera::ICameraAttach> playerCharacter, 
             std::shared_ptr<SceneEngine::TerrainManager> terrain,
             std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext);
         ~SampleInputHandler();
     protected:
-        std::shared_ptr<Character> _playerCharacter;
+        std::shared_ptr<PlatformRig::Camera::ICameraAttach> _playerCharacter;
         std::shared_ptr<SceneEngine::TerrainManager> _terrain;
         std::shared_ptr<SceneEngine::IntersectionTestContext> _intersectionTestContext;
     };

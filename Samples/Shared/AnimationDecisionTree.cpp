@@ -152,26 +152,6 @@ namespace Sample
         return newState;
     }
 
-    namespace AnimationNames
-    {
-        static const std::string RunForward         = "onehand_mo_combat_run_f";
-        static const std::string RunBack            = "onehand_mo_combat_run_b";
-        static const std::string RunLeft            = "onehand_mo_combat_run_l";
-        static const std::string RunRight           = "onehand_mo_combat_run_r";
-
-        static const std::string RunForward_ToIdle  = "onehand_mo_combat_runtoidle_f";
-        static const std::string RunBack_ToIdle     = "onehand_mo_combat_runtoidle_b";
-        static const std::string RunLeft_ToIdle     = "onehand_mo_combat_runtoidle_l";
-        static const std::string RunRight_ToIdle    = "onehand_mo_combat_runtoidle_r";
-
-        static const std::string Idle               = "onehand_ba_combat_idle";
-        static const std::string Idle1              = "onehand_ba_combat_idle_rand_1";
-        static const std::string Idle2              = "onehand_ba_combat_idle_rand_2";
-        static const std::string Idle3              = "onehand_ba_combat_idle_rand_3";
-        static const std::string Idle4              = "onehand_ba_combat_idle_rand_4";
-        static const std::string Idle5              = "onehand_ba_combat_idle_rand_5";
-    }
-
     auto AnimationDecisionTree::BuildAnimationDesc(const RenderCore::Assets::AnimationSet& animSet, uint64 animation) const -> AnimationDesc
     {
         auto i = animSet.FindAnimation(animation);
@@ -188,7 +168,9 @@ namespace Sample
         return nullptr;
     }
 
-    Float3 AnimationDecisionTree::ExtractMotionVelocity(const RenderCore::Assets::AnimationImmutableData& animSet, uint64 animation)
+    Float3 AnimationDecisionTree::ExtractMotionVelocity(
+        const RenderCore::Assets::AnimationImmutableData& animSet,
+        uint64 animation, uint32 rootNodeParameter)
     {
             //
             //      Part of the animation is just a fixed offset to the root node of the skeleton.
@@ -196,13 +178,10 @@ namespace Sample
             //      when playing the animation back! Calculate the movement by finding the start and
             //      end points of the right animation driver, and taking the overall translation.
             //
-        uint64 rootNodeHash = Hash64("Bip01/matrix"); // Hash64("Bip01");
-        uint32 parameter = animSet._animationSet.FindParameter(rootNodeHash);
-
         auto anim = animSet._animationSet.FindAnimation(animation);
         for (unsigned c=anim._beginDriver; c<anim._endDriver; ++c) {
             auto driver = animSet._animationSet.GetAnimationDriver(c);
-            if (parameter == ~uint32(0x0) || driver._parameterIndex == parameter) {
+            if (rootNodeParameter == ~uint32(0x0) || driver._parameterIndex == rootNodeParameter) {
                 using namespace RenderCore;
 
                 auto curve = FindCurve(animSet, driver._curveId);
@@ -225,33 +204,99 @@ namespace Sample
         return Float3(0.f, 0.f, 0.f);
     }
 
-    AnimationDecisionTree::AnimationDecisionTree(const RenderCore::Assets::AnimationImmutableData& animSet, float characterScale)
+    AnimationDecisionTree::AnimationDecisionTree(
+        const AnimationNames& cfg,
+        const RenderCore::Assets::AnimationImmutableData& animSet, float characterScale)
     {
             //      Let's get the critical animation for each animation from the animSet
         _characterScale = characterScale;
 
-        _mainAnimations[AnimationType::RunForward]  = BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::RunForward));
-        _mainAnimations[AnimationType::RunBack]     = BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::RunBack));
-        _mainAnimations[AnimationType::RunLeft]     = BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::RunLeft));
-        _mainAnimations[AnimationType::RunRight]    = BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::RunRight));
+        _mainAnimations[AnimationType::RunForward]  = BuildAnimationDesc(animSet._animationSet, Hash64(cfg._runForward));
+        _mainAnimations[AnimationType::RunBack]     = BuildAnimationDesc(animSet._animationSet, Hash64(cfg._runBack));
+        _mainAnimations[AnimationType::RunLeft]     = BuildAnimationDesc(animSet._animationSet, Hash64(cfg._runLeft));
+        _mainAnimations[AnimationType::RunRight]    = BuildAnimationDesc(animSet._animationSet, Hash64(cfg._runRight));
 
-        _runForwardToIdle   = BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::RunForward_ToIdle));
-        _runBackToIdle      = BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::RunBack_ToIdle));
-        _runLeftToIdle      = BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::RunLeft_ToIdle));
-        _runRightToIdle     = BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::RunRight_ToIdle));
+        _runForwardToIdle   = BuildAnimationDesc(animSet._animationSet, Hash64(cfg._runForward_ToIdle));
+        _runBackToIdle      = BuildAnimationDesc(animSet._animationSet, Hash64(cfg._runBack_ToIdle));
+        _runLeftToIdle      = BuildAnimationDesc(animSet._animationSet, Hash64(cfg._runLeft_ToIdle));
+        _runRightToIdle     = BuildAnimationDesc(animSet._animationSet, Hash64(cfg._runRight_ToIdle));
 
-        _mainAnimations[AnimationType::Idle] = BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::Idle));
-        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::Idle1)));
-        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::Idle2)));
-        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::Idle3)));
-        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::Idle4)));
-        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(AnimationNames::Idle5)));
+        _mainAnimations[AnimationType::Idle] = BuildAnimationDesc(animSet._animationSet, Hash64(cfg._idle));
+        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(cfg._idle1)));
+        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(cfg._idle2)));
+        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(cfg._idle3)));
+        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(cfg._idle4)));
+        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(cfg._idle5)));
 
-        _runForwardVelocity = ExtractMotionVelocity(animSet, Hash64(AnimationNames::RunForward));
-        _runBackVelocity    = ExtractMotionVelocity(animSet, Hash64(AnimationNames::RunBack));
-        _runLeftVelocity    = ExtractMotionVelocity(animSet, Hash64(AnimationNames::RunLeft));
-        _runRightVelocity   = ExtractMotionVelocity(animSet, Hash64(AnimationNames::RunRight));
+        auto rootNodeHash = Hash64(cfg._rootTransform);
+        auto rootNodeParameter = animSet._animationSet.FindParameter(rootNodeHash);
+
+        _runForwardVelocity = ExtractMotionVelocity(animSet, Hash64(cfg._runForward), rootNodeParameter);
+        _runBackVelocity    = ExtractMotionVelocity(animSet, Hash64(cfg._runBack), rootNodeParameter);
+        _runLeftVelocity    = ExtractMotionVelocity(animSet, Hash64(cfg._runLeft), rootNodeParameter);
+        _runRightVelocity   = ExtractMotionVelocity(animSet, Hash64(cfg._runRight), rootNodeParameter);
     }
 
+    AnimationDecisionTree::~AnimationDecisionTree() {}
+
+
+    uint64 AnimationNames::MakeHash() const
+    {
+        auto result = Hash64(_runForward);
+        result = HashCombine(result, Hash64(_runBack));
+        result = HashCombine(result, Hash64(_runLeft));
+        result = HashCombine(result, Hash64(_runRight));
+
+        result = HashCombine(result, Hash64(_runForward_ToIdle));
+        result = HashCombine(result, Hash64(_runBack_ToIdle));
+        result = HashCombine(result, Hash64(_runLeft_ToIdle));
+        result = HashCombine(result, Hash64(_runRight_ToIdle));
+
+        result = HashCombine(result, Hash64(_idle));
+        result = HashCombine(result, Hash64(_idle1));
+        result = HashCombine(result, Hash64(_idle2));
+        result = HashCombine(result, Hash64(_idle3));
+        result = HashCombine(result, Hash64(_idle4));
+        result = HashCombine(result, Hash64(_idle5));
+
+        result = HashCombine(result, Hash64(_rootTransform));
+        return result;
+    }
 
 }
+
+
+#include "../../Utility/Meta/ClassAccessors.h"
+#include "../../Utility/Meta/ClassAccessorsImpl.h"
+
+template<> const ClassAccessors& GetAccessors<Sample::AnimationNames>()
+{
+    using Obj = Sample::AnimationNames;
+    static ClassAccessors props(typeid(Obj).hash_code());
+    static bool init = false;
+    if (!init) {
+        props.Add(u("RunForward"),          DefaultGet(Obj, _runForward),       DefaultSet(Obj, _runForward));
+        props.Add(u("RunBack"),             DefaultGet(Obj, _runBack),          DefaultSet(Obj, _runBack));
+        props.Add(u("RunLeft"),             DefaultGet(Obj, _runLeft),          DefaultSet(Obj, _runLeft));
+        props.Add(u("RunRight"),            DefaultGet(Obj, _runRight),         DefaultSet(Obj, _runRight));
+
+        props.Add(u("RunForward_ToIdle"),       DefaultGet(Obj, _runForward_ToIdle),    DefaultSet(Obj, _runForward_ToIdle));
+        props.Add(u("RunBack_ToIdle"),          DefaultGet(Obj, _runBack_ToIdle),       DefaultSet(Obj, _runBack_ToIdle));
+        props.Add(u("RunLeft_ToIdle"),          DefaultGet(Obj, _runLeft_ToIdle),       DefaultSet(Obj, _runLeft_ToIdle));
+        props.Add(u("RunRight_ToIdle"),         DefaultGet(Obj, _runRight_ToIdle),      DefaultSet(Obj, _runRight_ToIdle));
+
+        props.Add(u("Idle"),            DefaultGet(Obj, _idle),     DefaultSet(Obj, _idle));
+        props.Add(u("Idle1"),           DefaultGet(Obj, _idle1),    DefaultSet(Obj, _idle1));
+        props.Add(u("Idle2"),           DefaultGet(Obj, _idle2),    DefaultSet(Obj, _idle2));
+        props.Add(u("Idle3"),           DefaultGet(Obj, _idle3),    DefaultSet(Obj, _idle3));
+        props.Add(u("Idle4"),           DefaultGet(Obj, _idle4),    DefaultSet(Obj, _idle4));
+        props.Add(u("Idle5"),           DefaultGet(Obj, _idle5),    DefaultSet(Obj, _idle5));
+
+        props.Add(u("RootTransform"),   DefaultGet(Obj, _rootTransform),    DefaultSet(Obj, _rootTransform));
+
+        init = true;
+    }
+    return props;
+}
+
+

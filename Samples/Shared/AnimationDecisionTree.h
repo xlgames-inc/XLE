@@ -48,6 +48,25 @@ namespace Sample
             _motionCompensation = Float3(0.f, 0.f, 0.f);
         }
     };
+
+    class AnimationNames
+    {
+    public:
+        std::string _runForward, _runBack;
+        std::string _runLeft, _runRight;
+
+        std::string _runForward_ToIdle;
+        std::string _runBack_ToIdle;
+        std::string _runLeft_ToIdle;
+        std::string _runRight_ToIdle;
+
+        std::string _idle, _idle1, _idle2;
+        std::string _idle3, _idle4, _idle5;
+
+        std::string _rootTransform;
+
+        uint64 MakeHash() const;
+    };
     
     /// <summary>Simple logic for character animation</summary>
     /// Typically when animating characters we need some structure to
@@ -61,7 +80,11 @@ namespace Sample
         AnimationState      Update(float deltaTime, const AnimationState& prevState, const Float3& localTranslation, float rotation);
         AnimationState      PlayAnimation(uint64 animation, const AnimationState& prevState, const RenderCore::Assets::AnimationSet& animSet);
 
-        AnimationDecisionTree(const RenderCore::Assets::AnimationImmutableData& animSet, float characterScale);
+        AnimationDecisionTree(
+            const AnimationNames& cfg,
+            const RenderCore::Assets::AnimationImmutableData& animSet, 
+            float characterScale);
+        ~AnimationDecisionTree();
 
     private:
         struct AnimationDesc
@@ -84,7 +107,7 @@ namespace Sample
         float           _characterScale;
 
         AnimationDesc   BuildAnimationDesc(const RenderCore::Assets::AnimationSet& animSet, uint64 animation) const;
-        Float3          ExtractMotionVelocity(const RenderCore::Assets::AnimationImmutableData& animSet, uint64 animation);
+        Float3          ExtractMotionVelocity(const RenderCore::Assets::AnimationImmutableData& animSet, uint64 animation, uint32 rootNodeParameter);
         void            SelectIdleAnimation(AnimationState& state);
     };
 }

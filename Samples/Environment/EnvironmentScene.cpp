@@ -43,7 +43,7 @@ namespace Sample
     class EnvironmentSceneParser::Pimpl
     {
     public:
-        std::unique_ptr<CharactersScene>                    _characters;
+        std::shared_ptr<CharactersScene>                    _characters;
         std::shared_ptr<SceneEngine::TerrainManager>        _terrainManager;
         std::shared_ptr<SceneEngine::PlacementsManager>     _placementsManager;
         std::shared_ptr<SceneEngine::PlacementsRenderer>    _placementsRenderer;
@@ -62,6 +62,7 @@ namespace Sample
         std::shared_ptr<EntityInterface::RetainedEntities>  _retainedEntities;
 
         std::vector<std::shared_ptr<IScenePlugin>>          _scenePlugins;
+        std::shared_ptr<ScenePlugin_EnvironmentFeatures>    _envFeatures;
 
         ::Assets::rstring _cfgDir;
         float _time;
@@ -123,14 +124,7 @@ namespace Sample
         //////////////////////////////////////////////////////////// //// //// //// .... ....
             // Culling, etc
 
-        // RenderCore::Metal::ViewportDesc viewport(*metalContext.get());
-        // auto sceneCamera = GetCameraDesc();
-        // auto projectionMatrix = RenderCore::Techniques::PerspectiveProjection(
-        //     sceneCamera, viewport.Width / float(viewport.Height));
-        // auto worldToProjection = Combine(
-        //     InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
         const auto& worldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
-
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         _pimpl->_characters->Cull(worldToProjection);
         _pimpl->_characters->Prepare(metalContext.get());
@@ -154,6 +148,19 @@ namespace Sample
         }
     }
 
+    void EnvironmentSceneParser::PrepareScene(
+        RenderCore::IThreadContext& context, 
+        SceneEngine::LightingParserContext& parserContext,
+        SceneEngine::PreparedScene& preparedPackets) const
+    {
+        #if defined(ENABLE_TERRAIN)
+            if (Tweakable("DoTerrain", true)) {
+                auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+                _pimpl->_terrainManager->Prepare(metalContext.get(), parserContext, preparedPackets);
+            }
+        #endif
+    }
+
     void EnvironmentSceneParser::ExecuteScene(   
         RenderCore::IThreadContext& context, 
         LightingParserContext& parserContext, 
@@ -170,14 +177,12 @@ namespace Sample
         #if defined(ENABLE_TERRAIN)
             if (    parseSettings._toggles & Toggles::Terrain
                 &&  parseSettings._batchFilter == BF::General) {
-                if (Tweakable("DoTerrain", true)) {
-                    CPUProfileEvent pEvnt("TerrainRender", g_cpuProfiler);
-                    GPUProfiler::TriggerEvent(*metalContext, g_gpuProfiler.get(), "TerrainRender", GPUProfiler::Begin);
-                    CATCH_ASSETS_BEGIN
-                        _pimpl->_terrainManager->Render(metalContext.get(), parserContext, preparedPackets, techniqueIndex);
-                    CATCH_ASSETS_END(parserContext)
-                    GPUProfiler::TriggerEvent(*metalContext, g_gpuProfiler.get(), "TerrainRender", GPUProfiler::End);
-                }
+                CPUProfileEvent pEvnt("TerrainRender", g_cpuProfiler);
+                GPUProfiler::TriggerEvent(*metalContext, g_gpuProfiler.get(), "TerrainRender", GPUProfiler::Begin);
+                CATCH_ASSETS_BEGIN
+                    _pimpl->_terrainManager->Render(metalContext.get(), parserContext, preparedPackets, techniqueIndex);
+                CATCH_ASSETS_END(parserContext)
+                GPUProfiler::TriggerEvent(*metalContext, g_gpuProfiler.get(), "TerrainRender", GPUProfiler::End);
             }
         #endif
 
@@ -250,7 +255,7 @@ namespace Sample
         _pimpl->_time += deltaTime; 
     }
 
-    std::shared_ptr<PlayerCharacter>  EnvironmentSceneParser::GetPlayerCharacter()
+    std::shared_ptr<IPlayerCharacter>  EnvironmentSceneParser::GetPlayerCharacter()
     {
         return _pimpl->_characters->GetPlayerCharacter();
     }
@@ -305,12 +310,8 @@ namespace Sample
                 MainTerrainConfig = container._asset;
                 MainTerrainCoords = _pimpl->_terrainManager->GetCoords();
 
-                _pimpl->_scenePlugins.clear();
-                _pimpl->_scenePlugins.push_back(
-                    std::make_shared<ScenePlugin_EnvironmentFeatures>(
-                        _pimpl->_cfgDir,
-                        _pimpl->_retainedEntities, _pimpl->_modelCache, 
-                        _pimpl->_terrainManager->GetHeightsProvider()));
+                if (_pimpl->_envFeatures)
+                    _pimpl->_envFeatures->SetSurfaceHeights(_pimpl->_terrainManager->GetHeightsProvider());
             }
 
             if (!_pimpl->_terrainTexturesCfgVal || _pimpl->_terrainTexturesCfgVal->GetValidationIndex() != 0) {
@@ -352,6 +353,37 @@ namespace Sample
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_time = 0.f;
+
+        #if 0
+            CharacterInputFiles chrFiles = 
+                {
+                    "game/chr/nu_f/skin/dragon003",
+                    "game/chr/nu_f/animation",
+                    "game/chr/nu_f/skeleton/all_co_sk_whirlwind_launch_mub",
+                };
+            AnimationNames animationNames = 
+                {
+                    "onehand_mo_combat_run_f",
+                    "onehand_mo_combat_run_b",
+                    "onehand_mo_combat_run_l",
+                    "onehand_mo_combat_run_r",
+
+                    "onehand_mo_combat_runtoidle_f",
+                    "onehand_mo_combat_runtoidle_b",
+                    "onehand_mo_combat_runtoidle_l",
+                    "onehand_mo_combat_runtoidle_r",
+
+                    "onehand_ba_combat_idle",
+                    "onehand_ba_combat_idle_rand_1",
+                    "onehand_ba_combat_idle_rand_2",
+                    "onehand_ba_combat_idle_rand_3",
+                    "onehand_ba_combat_idle_rand_4",
+                    "onehand_ba_combat_idle_rand_5",
+
+                    "Bip01/matrix"
+                };
+        #endif
+
         pimpl->_characters = std::make_unique<CharactersScene>();
 
         SplitPath<::Assets::ResChar> path(cfgDir);
@@ -373,7 +405,11 @@ namespace Sample
         pimpl->_modelCache = std::make_shared<RenderCore::Assets::ModelCache>();
 
         pimpl->_retainedEntities = std::make_shared<EntityInterface::RetainedEntities>();
+        RegisterEntityInterface(*pimpl->_retainedEntities, pimpl->_characters);
 
+        pimpl->_envFeatures = std::make_shared<ScenePlugin_EnvironmentFeatures>(
+            pimpl->_cfgDir, pimpl->_retainedEntities, pimpl->_modelCache);
+        pimpl->_scenePlugins.push_back(pimpl->_envFeatures);
         _pimpl = std::move(pimpl);
 
         FlushLoading();

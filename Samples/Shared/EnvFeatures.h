@@ -43,11 +43,12 @@ namespace Sample
             unsigned techniqueIndex) const;
         bool HasContent(const SceneEngine::SceneParseSettings& parseSettings) const;
 
+        void SetSurfaceHeights(std::shared_ptr<SceneEngine::ISurfaceHeightsProvider> surfaceHeights);
+
         ScenePlugin_EnvironmentFeatures(
             const ::Assets::rstring& cfgDir,
             std::shared_ptr<EntityInterface::RetainedEntities> retainedEntities,
-            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache,
-            std::shared_ptr<SceneEngine::ISurfaceHeightsProvider> surfaceHeights);
+            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
         ~ScenePlugin_EnvironmentFeatures();
 
     protected:

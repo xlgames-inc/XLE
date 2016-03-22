@@ -15,11 +15,13 @@
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../Tools/EntityInterface/RetainedEntities.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
 #include "../../Utility/Mixins.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
+#include "../../Utility/Meta/AccessorSerialize.h"
 
 namespace Sample
 {
@@ -60,13 +62,17 @@ namespace Sample
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
+    class PlayerCharacterInterf;
+
     class CharactersScene::Pimpl
     {
     public:
         typedef RenderCore::Assets::ModelRenderer::PreparedAnimation PreparedAnimation;
 
-        std::shared_ptr<AnimationDecisionTree>      _mainAnimDecisionTree;
-        std::unique_ptr<CharacterModel>             _characterModel;
+        using AnimPtr = std::shared_ptr<AnimationDecisionTree>;
+        using ModelPtr = std::shared_ptr<CharacterModel>;
+        std::vector<std::pair<uint64, AnimPtr>>     _animDecisionTrees;
+        std::vector<std::pair<uint64, ModelPtr>>    _characterModels;
 
         mutable std::vector<PreparedAnimation>      _preallocatedState;
         mutable RenderCore::Assets::SharedStateSet  _charactersSharedStateSet;
@@ -75,6 +81,8 @@ namespace Sample
         std::vector<NPCCharacter>           _characters;
         std::vector<NetworkCharacter>       _networkCharacters;
         std::vector<StateBin>               _stateCache;
+
+        std::shared_ptr<PlayerCharacterInterf> _playerCharacterInterf;
 
         Pimpl()
         : _charactersSharedStateSet(RenderCore::Assets::Services::GetTechniqueConfigDirs()) {}
@@ -303,18 +311,20 @@ namespace Sample
             }
         }
 
-        StateBin newState;
-        newState._model = _pimpl->_playerCharacter->_model;
-        newState._animation = _pimpl->_playerCharacter->_animState._animation;
-        newState._time = _pimpl->_playerCharacter->_animState._time;
+        if (_pimpl->_playerCharacter) {
+            StateBin newState;
+            newState._model = _pimpl->_playerCharacter->_model;
+            newState._animation = _pimpl->_playerCharacter->_animState._animation;
+            newState._time = _pimpl->_playerCharacter->_animState._time;
     
-        Float4x4 final = _pimpl->_playerCharacter->_localToWorld;
-        Combine_InPlace(_pimpl->_playerCharacter->_animState._motionCompensation * _pimpl->_playerCharacter->_animState._time, final);
+            Float4x4 final = _pimpl->_playerCharacter->_localToWorld;
+            Combine_InPlace(_pimpl->_playerCharacter->_animState._motionCompensation * _pimpl->_playerCharacter->_animState._time, final);
     
-        __declspec(align(16)) auto localToCulling = Combine(_pimpl->_playerCharacter->_localToWorld, worldToProjection);
-        if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
-            newState._instances.push_back(final);
-            _pimpl->_stateCache.push_back(std::move(newState));
+            __declspec(align(16)) auto localToCulling = Combine(_pimpl->_playerCharacter->_localToWorld, worldToProjection);
+            if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
+                newState._instances.push_back(final);
+                _pimpl->_stateCache.push_back(std::move(newState));
+            }
         }
     }
 
@@ -329,78 +339,164 @@ namespace Sample
         for (auto i = _pimpl->_networkCharacters.begin(); i!=_pimpl->_networkCharacters.end(); ++i) {
             i->Update(deltaTime);
         }
-        _pimpl->_playerCharacter->Update(deltaTime);
+        if (_pimpl->_playerCharacter)
+            _pimpl->_playerCharacter->Update(deltaTime);
     }
 
-    std::shared_ptr<PlayerCharacter>  CharactersScene::GetPlayerCharacter()
+    class PlayerCharacterInterf : public IPlayerCharacter
     {
-        return _pimpl->_playerCharacter;
+    public:
+        bool OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        {
+            if (_scene->_playerCharacter)
+                _scene->_playerCharacter->Accumulate(evnt);
+            return false;
+        }
+
+        const Float4x4& GetLocalToWorld() const
+        {
+            if (_scene->_playerCharacter)
+                return _scene->_playerCharacter->GetLocalToWorld();
+            return Identity<Float4x4>();
+        }
+
+        void SetLocalToWorld(const Float4x4& newTransform)
+        {
+            if (_scene->_playerCharacter)
+                _scene->_playerCharacter->SetLocalToWorld(newTransform);
+        }
+
+        PlayerCharacterInterf(std::shared_ptr<CharactersScene::Pimpl> scene)
+            : _scene(std::move(scene)) {}
+        ~PlayerCharacterInterf() {}
+    private:
+        std::shared_ptr<CharactersScene::Pimpl> _scene;
+    };
+
+    std::shared_ptr<IPlayerCharacter>  CharactersScene::GetPlayerCharacter()
+    {
+        return _pimpl->_playerCharacterInterf;
     }
 
     Float4x4 CharactersScene::DefaultCameraToWorld() const
     {
-        std::pair<Float3, Float3> boundingBox(Float3(0.f, 0.f, 0.f), Float3(0.f, 0.f, 0.f));
-        if (_pimpl->_characterModel) {
-            boundingBox = _pimpl->_characterModel->GetModelScaffold().GetStaticBoundingBox();
-        }
+        if (!_pimpl->_playerCharacter) return Identity<Float4x4>();
+
+        auto boundingBox = std::make_pair<Float3, Float3>(Float3(0.f, 0.f, 0.f), Float3(0.f, 0.f, 0.f));
+        if (_pimpl->_playerCharacter->_model)
+            boundingBox = _pimpl->_playerCharacter->_model->GetModelScaffold().GetStaticBoundingBox();
         auto cameraFocusPoint = LinearInterpolate(boundingBox.first, boundingBox.second, 0.5f);
 
         const Float3 defaultForwardVector(0.f, -1.f, 0.f);
         const Float3 defaultUpVector(0.f, 0.f, 1.f);
         const float boundingBoxDimension = Magnitude(boundingBox.second - boundingBox.first);
-        return
-            MakeCameraToWorld(
-                defaultForwardVector, defaultUpVector,
-                cameraFocusPoint - boundingBoxDimension * defaultForwardVector);
+        return MakeCameraToWorld(
+            defaultForwardVector, defaultUpVector,
+            cameraFocusPoint - boundingBoxDimension * defaultForwardVector);
     }
 
-    class CharacterInputFiles
+    void CharactersScene::Clear()
     {
-    public:
-        std::string     _skin;
-        std::string     _animationSet;
-        std::string     _skeleton;
+        _pimpl->_characters.clear();
+        _pimpl->_playerCharacter = nullptr;
+    }
 
-        CharacterInputFiles(const std::string& basePath);
-    };
-
-    CharacterInputFiles::CharacterInputFiles(const std::string& basePath)
+    void CharactersScene::CreateCharacter(
+        uint64 id,
+        const CharacterInputFiles& inputFiles, const AnimationNames& animNames,
+        bool player, const Float4x4& localToWorld)
     {
-        _skin           = basePath + "/skin/dragon003";
-        _animationSet   = basePath + "/animation";
-        _skeleton       = basePath + "/skeleton/all_co_sk_whirlwind_launch_mub";
+        uint64 modelHash = inputFiles.MakeHash();
+        auto model = LowerBound(_pimpl->_characterModels, modelHash);
+        if (model == _pimpl->_characterModels.end() || model->first != modelHash) {
+            model = _pimpl->_characterModels.insert(
+                model,
+                std::make_pair(modelHash, 
+                    std::make_shared<CharacterModel>(
+                        inputFiles, std::ref(_pimpl->_charactersSharedStateSet))));
+        }
+
+        uint64 animHash = HashCombine(animNames.MakeHash(), modelHash);
+        auto anim = LowerBound(_pimpl->_animDecisionTrees, animHash);
+        if (anim == _pimpl->_animDecisionTrees.end() || anim->first != animHash) {
+            anim = _pimpl->_animDecisionTrees.insert(
+                anim,
+                std::make_pair(modelHash, 
+                    std::make_shared<AnimationDecisionTree>(
+                        animNames, model->second->GetAnimationData(), CharactersScale)));
+        }
+
+        if (player) {
+            _pimpl->_playerCharacter = std::make_shared<PlayerCharacter>(id, std::ref(*model->second), anim->second);
+            _pimpl->_playerCharacter->SetLocalToWorld(localToWorld);
+        } else {
+            NPCCharacter chr(id, std::ref(*model->second), anim->second);
+            chr.SetLocalToWorld(localToWorld);
+            _pimpl->_characters.push_back(chr);
+        }
+    }
+
+    void CharactersScene::DeleteCharacter(uint64 id)
+    {
+        if (_pimpl->_playerCharacter && _pimpl->_playerCharacter->_id == id) {
+            _pimpl->_playerCharacter = nullptr;
+        } else {
+            for (auto i=_pimpl->_characters.begin(); i!=_pimpl->_characters.end(); ++i)
+                if (i->_id == id) {
+                    _pimpl->_characters.erase(i);
+                    return;
+                }
+            for (auto i=_pimpl->_networkCharacters.begin(); i!=_pimpl->_networkCharacters.end(); ++i)
+                if (i->_id == id) {
+                    _pimpl->_networkCharacters.erase(i);
+                    return;
+                }
+        }
     }
 
     CharactersScene::CharactersScene()
     {
-        auto pimpl = std::make_unique<Pimpl>();
-
-        CharacterInputFiles inputFiles("game/chr/nu_f");
-        pimpl->_characterModel = std::make_unique<CharacterModel>(
-            inputFiles._skin.c_str(), inputFiles._skeleton.c_str(), inputFiles._animationSet.c_str(), 
-            std::ref(pimpl->_charactersSharedStateSet));
-
-        pimpl->_mainAnimDecisionTree = std::shared_ptr<AnimationDecisionTree>(
-            new AnimationDecisionTree(
-                pimpl->_characterModel->GetAnimationData(), CharactersScale));
-
-        #if defined(_DEBUG)
-            const unsigned npcCount = 5;
-        #else
-            const unsigned npcCount = 5;
-        #endif
-        for (unsigned c=0; c<npcCount; ++c) {
-            pimpl->_characters.push_back(NPCCharacter(*pimpl->_characterModel, pimpl->_mainAnimDecisionTree));
-        }
-
-        pimpl->_playerCharacter = std::make_shared<PlayerCharacter>(std::ref(*pimpl->_characterModel), pimpl->_mainAnimDecisionTree);
-
-        _pimpl = std::move(pimpl);
+        _pimpl = std::make_shared<Pimpl>();
+        _pimpl->_playerCharacterInterf = std::make_shared<PlayerCharacterInterf>(_pimpl);
     }
 
-    CharactersScene::~CharactersScene()
+    CharactersScene::~CharactersScene() {}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void RegisterEntityInterface(
+        EntityInterface::RetainedEntities& flexSys,
+        const std::shared_ptr<CharactersScene>& sys)
     {
+        using namespace EntityInterface;
+        std::weak_ptr<CharactersScene> weakPtrToThis = sys;
+        const utf8* types[] = { (const utf8*)"CharacterSpawn" };
+        for (unsigned c=0; c<dimof(types); ++c) {
+            flexSys.RegisterCallback(
+                flexSys.GetTypeId(types[c]),
+                [weakPtrToThis](
+                    const RetainedEntities& entities, const Identifier& id, 
+                    RetainedEntities::ChangeType changeType)
+                {
+                    auto scene = weakPtrToThis.lock();
+                    if (!scene) return;
 
+                    if (changeType == RetainedEntities::ChangeType::Delete) {
+                        scene->DeleteCharacter(id.Object());
+                    } else if (changeType == RetainedEntities::ChangeType::Create) {
+                        auto* ent = entities.GetEntity(id);
+                        if (!ent) return;
+
+                        auto model = CreateFromParameters<CharacterInputFiles>(ent->_properties);
+                        auto anim = CreateFromParameters<AnimationNames>(ent->_properties);
+                        bool isPlayer = ent->_properties.GetParameter<int>("CharacterType", 1) == 0;
+                        auto localToWorld = Transpose(ent->_properties.GetParameter<Float4x4>("Transform", Identity<Float4x4>()));
+                        scene->CreateCharacter(id.Object(), model, anim, isPlayer, localToWorld);
+                    }
+                });
+        }
     }
-
 }
+

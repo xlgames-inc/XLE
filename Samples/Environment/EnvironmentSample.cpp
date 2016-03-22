@@ -8,7 +8,7 @@
 
 #include "../Shared/SampleInputHandler.h"
 #include "../Shared/SampleGlobals.h"
-#include "../Shared/Character.h"
+#include "../Shared/CharactersScene.h"
 #include "../Shared/PlacementsOverlaySystem.h"
 #include "../Shared/TerrainOverlaySystem.h"
 
@@ -118,7 +118,7 @@ namespace Sample
     
 
     static std::shared_ptr<PlatformRig::MainInputHandler> CreateInputHandler(
-        std::shared_ptr<EnvironmentSceneParser> mainScene, 
+        EnvironmentSceneParser& mainScene, 
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
         std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> cameraInputListener,
         std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> overlaySystemInputListener)
@@ -126,17 +126,17 @@ namespace Sample
         auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
         mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("game/xleres/hotkey.txt"));
         if (overlaySystemInputListener) {
-            mainInputHandler->AddListener(overlaySystemInputListener);
+            mainInputHandler->AddListener(std::move(overlaySystemInputListener));
         }
 
             // tie in input for player character & camera
         mainInputHandler->AddListener(std::move(cameraInputListener));
-        mainInputHandler->AddListener(mainScene->GetPlayerCharacter());
+        mainInputHandler->AddListener(mainScene.GetPlayerCharacter());
 
             // some special input options for samples
         mainInputHandler->AddListener(
             std::make_shared<SampleInputHandler>(
-                mainScene->GetPlayerCharacter(), mainScene->GetTerrainManager(), std::move(intersectionTestContext)));
+                mainScene.GetPlayerCharacter(), mainScene.GetTerrainManager(), std::move(intersectionTestContext)));
 
         return std::move(mainInputHandler);
     }
@@ -185,7 +185,7 @@ namespace Sample
 
             // main scene
         LogInfo << "Creating main scene";
-        auto mainScene = std::make_shared<EnvironmentSceneParser>("wmtest/finals");
+        auto mainScene = std::make_shared<EnvironmentSceneParser>("test1/finals");
         
         {
                 //  Create the debugging system, and add any "displays"
@@ -260,7 +260,7 @@ namespace Sample
             auto cameraInputHandler = std::make_shared<PlatformRig::Camera::CameraInputHandler>(
                 mainScene->GetCameraPtr(), mainScene->GetPlayerCharacter(), CharactersScale);
             auto mainInputHandler = CreateInputHandler(
-                mainScene, intersectionContext, cameraInputHandler, frameRig.GetMainOverlaySystem()->GetInputListener());
+                *mainScene, intersectionContext, cameraInputHandler, frameRig.GetMainOverlaySystem()->GetInputListener());
 
             primMan._window.GetInputTranslator().AddListener(mainInputHandler);
             auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
