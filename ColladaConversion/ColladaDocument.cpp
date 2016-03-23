@@ -692,6 +692,10 @@ namespace ColladaConversion
         {
             unsigned workingParamOffset = 0;
 
+            Param unnamedParam;
+            unsigned unnamedParamCount = 0;
+            bool foundStrideAttribute = false;
+
             ON_ELEMENT
                 if (Is(eleName, u("param"))) {
                         // <param> should have only attributes.
@@ -709,13 +713,17 @@ namespace ColladaConversion
                         }
                     }
 
-                        // do not record <param>s without names -- those are only used to skip over a slot
-                    if (newParam._name._end > newParam._name._start) {
+                        // Do not record <param>s without names -- those are only used to skip over a slots
+                        // (except when we find an accessor with just a single unnamed param... Then we still need it)
+                    if (!newParam._name.Empty()) {
                         if (_paramCount < dimof(_params)) {
                             _params[_paramCount] = newParam;
                         } else
                             _paramsOverflow.push_back(newParam);
                         ++_paramCount;
+                    } else {
+                        unnamedParam = newParam;
+                        ++unnamedParamCount;
                     }
 
                 } else {
@@ -728,6 +736,7 @@ namespace ColladaConversion
                     _count = Parse(value, _count);
                 } else if (Is(name, u("stride"))) {
                     _stride = Parse(value, _stride);
+                    foundStrideAttribute = true;
                 } else if (Is(name, u("source"))) {
                     _source = value;
                 } else if (Is(name, u("offset"))) {
@@ -735,6 +744,16 @@ namespace ColladaConversion
                 }
 
             PARSE_END
+
+            if (_paramCount==0) {
+                if (unnamedParamCount > 1)
+                    LogWarning << "Found multiple unnamed parameters in an accessor with no nammed params. This is invalid because there's no way to distinguish between the parameters. Using only the last one.";
+                _params[_paramCount++] = unnamedParam;
+            }
+
+            // if the "stride" attribute is omitted, we must imply it by the number of parameters.
+            if (!foundStrideAttribute)
+                _stride = (unsigned)_paramCount;
         }
 
         Accessor::Accessor(Accessor&& moveFrom)

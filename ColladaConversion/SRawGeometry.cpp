@@ -974,6 +974,10 @@ namespace ColladaConversion
                 param = &accessor->GetParam(c);
                 break;
             }
+        // sometimes there a source might have just a single unnamed param. In these cases, we must select that one.
+        if (!param && accessor->GetParamCount() == 1 && accessor->GetParam(0)._name.Empty()) {
+            param = &accessor->GetParam(0);
+        }
         if (!param) {
             LogWarning << "Expecting parameter with name " << paramName << " in <source> at " << source.GetLocation();
             return DynamicArray<Type>();
@@ -1297,7 +1301,7 @@ namespace ColladaConversion
                     LogAlwaysWarning 
                         << "Warning -- Exceeded maximum number of joints affecting a single vertex in skinning controller " 
                         << controller.GetLocation() 
-                        << "Only 4 joints can affect any given single vertex.";
+                        << ". Only 4 joints can affect any given single vertex.";
 
                         // (When this happens, only use the first 4, and ignore the others)
                     LogAlwaysWarningF("After filtering:\n");
