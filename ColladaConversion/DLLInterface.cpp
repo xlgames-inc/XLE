@@ -31,6 +31,7 @@
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileSystemMonitor.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/StringFormat.h"
 #include "../ConsoleRig/OutputStream.h"
 #include <memory>
 
@@ -264,8 +265,19 @@ namespace RenderCore { namespace ColladaConversion
         ReferencedGeometries refGeos;
         bool gatherSuccess = refGeos.Gather(scene.GetRootNode(), rootNode, jointRefs);
 
-        if (!gatherSuccess)
-            Throw(::Assets::Exceptions::FormatError("Could not find root node: %s", rootNode.AsString().c_str()));
+        if (!gatherSuccess) {
+            StringMeld<1024> meld;
+            using ::operator<<;
+            meld << "Error while looking for root node: " << rootNode.AsString().c_str() << ". Known nodes: ";
+
+            auto nodes = scene.GetRootNode().FindAllBreadthFirst([](const Node& n) { return true;});
+            for (unsigned c=0; c<nodes.size(); ++c) {
+                if (c!=0) meld << ", ";
+                meld << nodes[c].GetName().AsString().c_str();
+            }
+
+            Throw(::Assets::Exceptions::FormatError(meld.get()));
+        }
 
             // The skeleton joints won't be included in the skeleton
             // until we call FindSkinJoints. We don't really need the
