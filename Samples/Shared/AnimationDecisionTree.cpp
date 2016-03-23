@@ -14,7 +14,7 @@ namespace Sample
 
     void                AnimationDecisionTree::SelectIdleAnimation(AnimationState& state)
     {
-        if (rand() < RAND_MAX/2) {
+        if (rand() < RAND_MAX/2 || _extraIdles.empty()) {
             state._animation          = _mainAnimations[AnimationType::Idle]._name;
             state._animationDuration  = _mainAnimations[AnimationType::Idle]._duration;
         } else {
@@ -110,22 +110,22 @@ namespace Sample
                 //
             Float3 animVel = Float3(0.f, 0.f, 0.f);
             if (newState._type == AnimationType::RunForward) {
-                float animationTime = localTranslation[1] / _runForwardVelocity[1];
+                float animationTime = (_runForwardVelocity[1] != 0.f) ? localTranslation[1] / _runForwardVelocity[1] : deltaTime;
                 animationTime = std::max(0.f, animationTime);
                 newState._time += animationTime;    // update the animation to match
                 animVel = _runForwardVelocity;
             } else if (newState._type == AnimationType::RunBack) {
-                float animationTime = localTranslation[1] / _runBackVelocity[1];
+                float animationTime = (_runBackVelocity[1] != 0.f) ? localTranslation[1] / _runBackVelocity[1] : deltaTime;
                 animationTime = std::max(0.f, animationTime);
                 newState._time += animationTime;
                 animVel = _runBackVelocity;
             } else if (newState._type == AnimationType::RunLeft) {
-                float animationTime = localTranslation[0] / _runLeftVelocity[0];
+                float animationTime = (_runLeftVelocity[0] != 0.f) ? localTranslation[0] / _runLeftVelocity[0] : deltaTime;
                 animationTime = std::max(0.f, animationTime);
                 newState._time += animationTime;
                 animVel = _runLeftVelocity;
             } else if (newState._type == AnimationType::RunRight) {
-                float animationTime = localTranslation[0] / _runRightVelocity[0];
+                float animationTime = (_runRightVelocity[0] != 0.f) ? localTranslation[0] / _runRightVelocity[0] : deltaTime;
                 animationTime = std::max(0.f, animationTime);
                 newState._time += animationTime;
                 animVel = _runRightVelocity;
@@ -133,8 +133,13 @@ namespace Sample
                 newState._time += deltaTime;        // update idle, etc
             }
 
+            assert(std::isfinite(newState._time) && !std::isinf(newState._time));
+
             if (newState._time > newState._animationDuration) {
-                newState._time = XlFMod(newState._time, newState._animationDuration);
+                if (newState._animationDuration > 0.f) {
+                    newState._time = XlFMod(newState._time, newState._animationDuration);
+                } else
+                    newState._time = 0.f;
 
                 if (newState._type == AnimationType::Idle) {
                         //
@@ -222,19 +227,28 @@ namespace Sample
         _runRightToIdle     = BuildAnimationDesc(animSet._animationSet, Hash64(cfg._runRight_ToIdle));
 
         _mainAnimations[AnimationType::Idle] = BuildAnimationDesc(animSet._animationSet, Hash64(cfg._idle));
-        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(cfg._idle1)));
-        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(cfg._idle2)));
-        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(cfg._idle3)));
-        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(cfg._idle4)));
-        _extraIdles.push_back(BuildAnimationDesc(animSet._animationSet, Hash64(cfg._idle5)));
+
+        const std::string* extraIdles[] = { &cfg._idle1, &cfg._idle2, &cfg._idle3, &cfg._idle4, &cfg._idle5 };
+        for (unsigned c=0; c<dimof(extraIdles); ++c) {
+            auto animDesc = BuildAnimationDesc(animSet._animationSet, Hash64(*extraIdles[c]));
+            if (animDesc._duration > 0.f)
+                _extraIdles.push_back(animDesc);
+        }
 
         auto rootNodeHash = Hash64(cfg._rootTransform);
         auto rootNodeParameter = animSet._animationSet.FindParameter(rootNodeHash);
 
-        _runForwardVelocity = ExtractMotionVelocity(animSet, Hash64(cfg._runForward), rootNodeParameter);
-        _runBackVelocity    = ExtractMotionVelocity(animSet, Hash64(cfg._runBack), rootNodeParameter);
-        _runLeftVelocity    = ExtractMotionVelocity(animSet, Hash64(cfg._runLeft), rootNodeParameter);
-        _runRightVelocity   = ExtractMotionVelocity(animSet, Hash64(cfg._runRight), rootNodeParameter);
+        if (rootNodeParameter != ~0x0u) {
+            _runForwardVelocity = ExtractMotionVelocity(animSet, Hash64(cfg._runForward), rootNodeParameter);
+            _runBackVelocity    = ExtractMotionVelocity(animSet, Hash64(cfg._runBack), rootNodeParameter);
+            _runLeftVelocity    = ExtractMotionVelocity(animSet, Hash64(cfg._runLeft), rootNodeParameter);
+            _runRightVelocity   = ExtractMotionVelocity(animSet, Hash64(cfg._runRight), rootNodeParameter);
+        } else {
+            _runForwardVelocity = Zero<Float3>();
+            _runBackVelocity = Zero<Float3>();
+            _runLeftVelocity = Zero<Float3>();
+            _runRightVelocity = Zero<Float3>();
+        }
     }
 
     AnimationDecisionTree::~AnimationDecisionTree() {}

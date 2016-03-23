@@ -1,0 +1,10 @@
+This character is derived from a low poly model by Alejandro CG. Thanks so much Alejandro!
+
+You can find the originals here:
+http://opengameart.org/content/basic-male
+
+Small modifications were made in Blender, and it was exported without textures/materials.
+It's provided as a low overhead sample, just for testing purposes.
+
+It was licensed under the CC-BY-3 license (http://creativecommons.org/licenses/by/3.0/)
+

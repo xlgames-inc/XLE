@@ -276,6 +276,7 @@ namespace Sample
                     newState._time      = (blockStart->_animState._time + (i-1)->_animState._time) * .5f;
                     for (auto i2=blockStart; i2<i; ++i2) {
                         Float4x4 final = i2->_localToWorld;
+                        Combine_InPlace(RotationZ((float)M_PI), final);     // compensate for flip in the sample art
                         Combine_InPlace(i2->_animState._motionCompensation * newState._time, final);
 
                         __declspec(align(16)) auto localToCulling = Combine(i2->_localToWorld, worldToProjection);
@@ -302,6 +303,7 @@ namespace Sample
             newState._time      = i->_animState._time;
     
             Float4x4 final      = i->_localToWorld;
+            Combine_InPlace(RotationZ((float)M_PI), final);     // compensate for flip in the sample art
             Combine_InPlace(i->_animState._motionCompensation * i->_animState._time, final);
 
             __declspec(align(16)) auto localToCulling = Combine(i->_localToWorld, worldToProjection);
@@ -318,6 +320,7 @@ namespace Sample
             newState._time = _pimpl->_playerCharacter->_animState._time;
     
             Float4x4 final = _pimpl->_playerCharacter->_localToWorld;
+            Combine_InPlace(RotationZ((float)M_PI), final);     // compensate for flip in the sample art
             Combine_InPlace(_pimpl->_playerCharacter->_animState._motionCompensation * _pimpl->_playerCharacter->_animState._time, final);
     
             __declspec(align(16)) auto localToCulling = Combine(_pimpl->_playerCharacter->_localToWorld, worldToProjection);

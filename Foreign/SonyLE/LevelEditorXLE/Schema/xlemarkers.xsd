@@ -141,28 +141,28 @@
     <xs:complexContent>
       <xs:extension base="gameObjectType">
         
-        <xs:attribute name="Skin" type="xs:string" default="game/chr/nu_f/skin/dragon003"/>
-        <xs:attribute name="AnimationSet" type="xs:string" default="game/chr/nu_f/animation"/>
-        <xs:attribute name="Skeleton" type="xs:string" default="game/chr/nu_f/skeleton/all_co_sk_whirlwind_launch_mub"/>
+        <xs:attribute name="Skin" type="xs:string" default="game/model/character/skin"/>
+        <xs:attribute name="AnimationSet" type="xs:string" default="game/model/character/animations"/>
+        <xs:attribute name="Skeleton" type="xs:string" default="game/model/character/skin"/>
 
-        <xs:attribute name="RunForward" type="xs:string" default="onehand_mo_combat_run_f"/>
-        <xs:attribute name="RunBack" type="xs:string" default="onehand_mo_combat_run_b"/>
-        <xs:attribute name="RunLeft" type="xs:string" default="onehand_mo_combat_run_l"/>
-        <xs:attribute name="RunRight" type="xs:string" default="onehand_mo_combat_run_r"/>
+        <xs:attribute name="RunForward" type="xs:string" default="run"/>
+        <xs:attribute name="RunBack" type="xs:string" default="walk"/>
+        <xs:attribute name="RunLeft" type="xs:string" default="run"/>
+        <xs:attribute name="RunRight" type="xs:string" default="run"/>
         
-        <xs:attribute name="RunForward_ToIdle" type="xs:string" default="onehand_mo_combat_runtoidle_f"/>
-        <xs:attribute name="RunBack_ToIdle" type="xs:string" default="onehand_mo_combat_runtoidle_b"/>
-        <xs:attribute name="RunLeft_ToIdle" type="xs:string" default="onehand_mo_combat_runtoidle_l"/>
-        <xs:attribute name="RunRight_ToIdle" type="xs:string" default="onehand_mo_combat_runtoidle_r"/>
+        <xs:attribute name="RunForward_ToIdle" type="xs:string" default=""/>
+        <xs:attribute name="RunBack_ToIdle" type="xs:string" default=""/>
+        <xs:attribute name="RunLeft_ToIdle" type="xs:string" default=""/>
+        <xs:attribute name="RunRight_ToIdle" type="xs:string" default=""/>
 
-        <xs:attribute name="Idle" type="xs:string" default="onehand_ba_combat_idle"/>
-        <xs:attribute name="Idle1" type="xs:string" default="onehand_ba_combat_idle_rand_1"/>
-        <xs:attribute name="Idle2" type="xs:string" default="onehand_ba_combat_idle_rand_2"/>
-        <xs:attribute name="Idle3" type="xs:string" default="onehand_ba_combat_idle_rand_3"/>
-        <xs:attribute name="Idle4" type="xs:string" default="onehand_ba_combat_idle_rand_4"/>
-        <xs:attribute name="Idle5" type="xs:string" default="onehand_ba_combat_idle_rand_5"/>
+        <xs:attribute name="Idle" type="xs:string" default="idle"/>
+        <xs:attribute name="Idle1" type="xs:string" default=""/>
+        <xs:attribute name="Idle2" type="xs:string" default=""/>
+        <xs:attribute name="Idle3" type="xs:string" default=""/>
+        <xs:attribute name="Idle4" type="xs:string" default=""/>
+        <xs:attribute name="Idle5" type="xs:string" default=""/>
 
-        <xs:attribute name="RootTransform" type="xs:string" default="Bip01/matrix"/>
+        <xs:attribute name="RootTransform" type="xs:string" default="root/transform"/>
 
         <xs:attribute name="CharacterType" type="xs:int" default="0"/>
         
