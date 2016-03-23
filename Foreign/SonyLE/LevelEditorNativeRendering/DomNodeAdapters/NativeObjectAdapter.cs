@@ -542,7 +542,14 @@ namespace RenderingInterop
                 result = Uri.UnescapeDataString(uri.OriginalString);
             }
 
-            result = result.Replace('?', ':').ToLower();
+            // awkwardly, we want to make the filename lowercase here; but leave the case there for the parameters
+            var paramSeparator = result.LastIndexOf('?');
+            if (paramSeparator > 0)
+            {
+                result = result.Substring(0, paramSeparator).ToLower() + ":" + result.Substring(paramSeparator + 1);
+            } 
+            else
+                result = result.ToLower();
             if (result.EndsWith(".dae"))        // Remove .dae extensions for this moment, because they cause havok with placements
                 result = result.Substring(0, result.Length - 4);
             return result;
