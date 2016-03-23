@@ -67,11 +67,11 @@ namespace LevelEditor
             Schema.bezierType.Type.Define(new ExtensionInfo<BezierCurves>());
 
             // lights            
-            Schema.PointLight.Type.Define(new ExtensionInfo<PointLight>());            
-            Schema.BoxLight.Type.Define(new ExtensionInfo<BoxLight>());
+            // Schema.PointLight.Type.Define(new ExtensionInfo<PointLight>());            
+            // Schema.BoxLight.Type.Define(new ExtensionInfo<BoxLight>());
 
             // Billboard
-            Schema.billboardTestType.Type.Define(new ExtensionInfo<Billboard>());
+            // Schema.billboardTestType.Type.Define(new ExtensionInfo<Billboard>());
 
             // Material
             // Schema.decorationMapType.Type.Define(new ExtensionInfo<MaterialGob>());

@@ -93,7 +93,7 @@
         <LeGe.NativeProperty name="material" nativeName="material"/>
         <LeGe.NativeProperty name="supplements" nativeName="supplements"/>
         
-        <scea.dom.editors name="Placement" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="Placement" description="Placement"/>
+        <scea.dom.editors name="Placement" category="Placements" image="LevelEditorCore.Resources.gameObject.png" menuText="Placement" description="Placement"/>
         <scea.dom.editors.attribute name="model" displayName="Model" description="Bound model resource" category="Resource"/>
         <scea.dom.editors.attribute name="material" displayName="Material" description="Bound material resource" category="Resource"/>
         <scea.dom.editors.attribute name="supplements" displayName="Supplements" description="Additional model supplements to use during rendering" category="Resource"/>

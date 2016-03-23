@@ -20,6 +20,7 @@ namespace LevelEditorXLE.Environment
 {
     public class XLEEnvSettings : DomNodeAdapter, IHierarchical, IListable, ICommandClient, IContextMenuCommandProvider
     {
+        #region IHierachical implementation
         public bool CanAddChild(object child)
         {
             var domNode = child.As<DomNode>();
@@ -67,13 +68,14 @@ namespace LevelEditorXLE.Environment
             }
             return false;
         }
+        #endregion
 
         public DomNode FindObjectByName(string name)
         {
             var objects = GetChildList<DomNode>(Schema.envSettingsType.objectsChild);
             foreach (var o in objects)
             {
-                var oName = o.GetAttribute(Schema.gameObjectType.nameAttribute) as string;
+                var oName = o.GetAttribute(Schema.envObjectType.nameAttribute) as string;
                 if (oName != null && oName.Equals(name))
                     return o;
             }
@@ -115,6 +117,7 @@ namespace LevelEditorXLE.Environment
 
                 case Command.AddAreaLight:
                 case Command.AddDirectionalLight:
+                case Command.AddShadowSettings:
                     return true;
             }
 
@@ -145,7 +148,7 @@ namespace LevelEditorXLE.Environment
                     {
                             // the "Sun" is just a directional light with the name "Sun"
                         var sun = new DomNode(Schema.directionalLightType.Type);
-                        sun.SetAttribute(Schema.gameObjectType.nameAttribute, "Sun");
+                        sun.SetAttribute(Schema.envObjectType.nameAttribute, "Sun");
                         ApplicationUtil.Insert(DomNode.GetRoot(), this, sun, "Add Sun", null);
                         ApplicationUtil.Insert(
                             DomNode.GetRoot(), this,
@@ -167,6 +170,13 @@ namespace LevelEditorXLE.Environment
                         new DomNode(Schema.directionalLightType.Type),
                         "Add Directional Light", null);
                     break;
+
+                case Command.AddShadowSettings:
+                    ApplicationUtil.Insert(
+                        DomNode.GetRoot(), this,
+                        new DomNode(Schema.envSettingsType.Type),
+                        "Add Environment Settings", null);
+                    break;
             }
         }
 
@@ -176,11 +186,12 @@ namespace LevelEditorXLE.Environment
 
         private enum Command
         {
-            [Description("Add ambient settings")] AddAmbientSettings,
-            [Description("Add tone map settings")] AddToneMapSettings,
+            [Description("Add Ambient Settings")] AddAmbientSettings,
+            [Description("Add Tone Map Settings")] AddToneMapSettings,
             [Description("Add Sun")] AddSun,
             [Description("Add Directional Light")] AddDirectionalLight,
-            [Description("Add Area Light")] AddAreaLight
+            [Description("Add Area Light")] AddAreaLight,
+            [Description("Add Shadow Settings")] AddShadowSettings
         }
 
         IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)
@@ -200,9 +211,12 @@ namespace LevelEditorXLE.Environment
             info.Label = "EnvSettingsFolder";
         }
 
+        #region IHierachical implementation
         public bool CanAddChild(object child)
         {
-            return child.Is<XLEEnvSettings>();
+            if (child.Is<XLEEnvSettings>()) return true;
+            var defEnv = DefaultEnvSettings;
+            return (defEnv != null) && defEnv.CanAddChild(child);
         }
 
         public bool AddChild(object child)
@@ -212,14 +226,26 @@ namespace LevelEditorXLE.Environment
                 Settings.Add(settings);
                 return true;
             }
+            var defEnv = DefaultEnvSettings;
+            if (defEnv != null && defEnv.AddChild(child))
+                return true;
             return false;
         }
+        #endregion
 
         public System.Collections.Generic.ICollection<XLEEnvSettings> Settings
         {
             get
             {
                 return GetChildList<XLEEnvSettings>(Schema.envSettingsFolderType.settingsChild);
+            }
+        }
+
+        public XLEEnvSettings DefaultEnvSettings
+        {
+            get
+            {
+                return Settings.FirstOrDefault();
             }
         }
         

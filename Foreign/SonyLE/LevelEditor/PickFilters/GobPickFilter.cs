@@ -38,6 +38,7 @@ namespace LevelEditor.PickFilters
     }
 
 
+#if false
     /// <summary>
     /// PickFilter that only allow basic shapes 
     /// to be picked.</summary>
@@ -84,4 +85,5 @@ namespace LevelEditor.PickFilters
         }
         #endregion
     }
+#endif
 }

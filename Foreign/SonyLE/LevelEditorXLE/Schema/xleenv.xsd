@@ -76,7 +76,7 @@
 
         <LeGe.NativeProperty name="Flags" nativeName="Flags"/>
 
-        <scea.dom.editors category="Lights" name="AmbientSettings" menuText="Lights/AmbientSettings" description="Global ambient settings"/>
+        <scea.dom.editors category="Environment" name="AmbientSettings" menuText="Environment/AmbientSettings" description="Global ambient settings" image="LevelEditorCore.Resources.Lighting16.png"/>
         <LeGe.OpaqueListable label="Ambient"/>
       </xs:appinfo>
     </xs:annotation>
@@ -148,7 +148,7 @@
           editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:EnableToneMap,EnableBloom"
           converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:EnableToneMap,EnableBloom"/>
         
-        <scea.dom.editors category="Lights" name="ToneMapSettings" menuText="Lights/ToneMapSettings" description="Tone map and bloom settings"/>
+        <scea.dom.editors category="Environment" name="ToneMapSettings" menuText="Environment/ToneMapSettings" description="Tone map and bloom settings"/>
         <LeGe.OpaqueListable label="ToneMapSettings"/>
       </xs:appinfo>
     </xs:annotation>
@@ -168,8 +168,27 @@
 
       <!-- E N V   O B J E C T -->
   <xs:complexType name="envObjectType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeProperty name="transform" nativeName="transform"/>
+        <LeGe.NativeProperty name="visible" nativeName="visible"/>
+        <LeGe.NativeProperty name="name" nativeName="Name"/>
+        <LeGe.NativeProperty nativeName="Bounds"/>
+        <LeGe.NativeProperty nativeName="LocalBounds"/>
+        <LeGe.NativeProperty nativeName="LocalToWorld"/>
+        <LeGe.NativeProperty nativeName="VisibleHierarchy"/>
+
+        <scea.dom.editors.attribute name="name" displayName="Name" description="Unique name of Game Object" category="General"/>
+        
+        <LeGe.GameObjectProperties />
+        <LeGe.TransformUpdater />
+        <LeGe.TransformObject />
+      </xs:appinfo>
+    </xs:annotation>
+
     <xs:complexContent>
-      <xs:extension base="gameObjectType">
+      <xs:extension base="visibleTransformObjectType">
+        <xs:attribute name="name" type="xs:ID" />
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
@@ -186,7 +205,7 @@
         <LeGe.NativeProperty name="Name" nativeName="Name"/>
         
         <scea.dom.editors.attribute name="Name" displayName="Name" description="Name of these settings"/>
-        <scea.dom.editors category="Lights" name="EnvSettings" menuText="Lights/EnvSettings" description="Environment settings container"/>
+        <scea.dom.editors category="Environment" name="EnvSettings" menuText="Environment/EnvSettings" description="Environment settings container" image="LevelEditorCore.Resources.gameObjectFolder.png"/>
       </xs:appinfo>
     </xs:annotation>
 
@@ -272,8 +291,9 @@
         <scea.dom.editors.attribute category="Other" name="ShadowResolveModel" displayName="Shadow Resolve Model"
           enum="Noisy=0,Smooth=1"/>
 
-        <scea.dom.editors category="Lights" name="DirLight" menuText="Lights/DirLight" description="A directional light"/>
+        <scea.dom.editors category="Environment" name="DirLight" menuText="Environment/DirLight" description="A directional light" image="LevelEditorCore.Resources.Lighting16.png"/>
         <LeGe.NativeVis geo="PointToOrigin"/>
+        <LeGe.OpaqueListable label="Directional Light"/>
       </xs:appinfo>
     </xs:annotation>
 
@@ -292,8 +312,9 @@
         <LeGe.NativeProperty name="Shape" nativeName="Shape"/>
         <scea.dom.editors.attribute name="Shape" enum="Sphere=1,Tube=2,Rectangle=3,Disc=4" 
           category="Light" displayName="Shape" description="The shape of the area light"/>
-        <scea.dom.editors category="Lights" name="AreaLight" menuText="Lights/AreaLight" description="An area light (eg, sphere, tube, rectangle, disc)"/>
+        <scea.dom.editors category="Environment" name="AreaLight" menuText="Environment/AreaLight" description="An area light (eg, sphere, tube, rectangle, disc)" image="LevelEditorCore.Resources.Lighting16.png"/>
         <LeGe.NativeVis geo="AreaLight"/>
+        <LeGe.OpaqueListable label="Area Light"/>
       </xs:appinfo>
     </xs:annotation>
 
@@ -366,7 +387,7 @@
         <scea.dom.editors.attribute category="General" name="Name" displayName="Name"/>
         <scea.dom.editors.attribute category="General" name="Light" displayName="Attached Light"/>
 
-        <scea.dom.editors category="Lights" name="ShadowFrustumSettings" menuText="Lights/ShadowFrustumSettings" description="Shadow frustum settings"/>
+        <scea.dom.editors category="Environment" name="ShadowFrustumSettings" menuText="Environment/ShadowFrustumSettings" description="Shadow frustum settings" image="LevelEditorCore.Resources.Shadow16.png"/>
         <LeGe.OpaqueListable label="ShadowFrustumSettings"/>
       </xs:appinfo>
     </xs:annotation>
@@ -559,7 +580,7 @@
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-90,90"/>
         <scea.dom.editors.attribute category="General" name="SunName" displayName="Sun Name" description="Name of the light that represents the sun (typically just 'Sun')"/>
 
-        <scea.dom.editors category="Lights" name="EnvUtility" menuText="Lights/EnvUtility" description="Utilities and general parameters for the global environment"/>
+        <scea.dom.editors category="Environment" name="EnvUtility" menuText="Environment/EnvUtility" description="Utilities and general parameters for the global environment"/>
       </xs:appinfo>
     </xs:annotation>
 

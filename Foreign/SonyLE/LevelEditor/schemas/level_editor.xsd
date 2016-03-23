@@ -103,7 +103,7 @@
   
     <!-- lights-->
   
-  <!--
+<!--
     <xs:complexType name="DirLight">
         <xs:annotation>
             <xs:appinfo>
@@ -128,8 +128,9 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-  -->
+-->
 
+<!--
     <xs:complexType name="BoxLight">
         <xs:annotation>
             <xs:appinfo>
@@ -185,6 +186,7 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
+-->
 
     <!-- Linears -->
   <xs:complexType name="controlPointType">
@@ -258,6 +260,7 @@
   
 
 <!-- examples -->
+<!--
   <xs:complexType name="skyDomeType">
     <xs:annotation>
       <xs:appinfo>
@@ -484,10 +487,11 @@
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
-
+-->
   
   <!-- terrain related types  -->
 
+<!--
   <xs:complexType name="terrainMapType" abstract="true">
     <xs:annotation>
       <xs:appinfo>
@@ -641,6 +645,7 @@
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
+-->
     
   <!--  sample resource (asset) meta-data types   -->
   <xs:complexType name="resourceMetadataType">

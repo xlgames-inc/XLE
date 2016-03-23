@@ -172,9 +172,9 @@ namespace LevelEditorXLE
             envObjectType.scaleAttribute = envObjectType.Type.GetAttributeInfo("scale");
             envObjectType.pivotAttribute = envObjectType.Type.GetAttributeInfo("pivot");
             envObjectType.transformationTypeAttribute = envObjectType.Type.GetAttributeInfo("transformationType");
-            envObjectType.nameAttribute = envObjectType.Type.GetAttributeInfo("name");
             envObjectType.visibleAttribute = envObjectType.Type.GetAttributeInfo("visible");
             envObjectType.lockedAttribute = envObjectType.Type.GetAttributeInfo("locked");
+            envObjectType.nameAttribute = envObjectType.Type.GetAttributeInfo("name");
 
             envMiscType.Type = getNodeType("gap", "envMiscType");
 
@@ -197,9 +197,9 @@ namespace LevelEditorXLE
             staticLightType.scaleAttribute = staticLightType.Type.GetAttributeInfo("scale");
             staticLightType.pivotAttribute = staticLightType.Type.GetAttributeInfo("pivot");
             staticLightType.transformationTypeAttribute = staticLightType.Type.GetAttributeInfo("transformationType");
-            staticLightType.nameAttribute = staticLightType.Type.GetAttributeInfo("name");
             staticLightType.visibleAttribute = staticLightType.Type.GetAttributeInfo("visible");
             staticLightType.lockedAttribute = staticLightType.Type.GetAttributeInfo("locked");
+            staticLightType.nameAttribute = staticLightType.Type.GetAttributeInfo("name");
             staticLightType.DiffuseAttribute = staticLightType.Type.GetAttributeInfo("Diffuse");
             staticLightType.DiffuseBrightnessAttribute = staticLightType.Type.GetAttributeInfo("DiffuseBrightness");
             staticLightType.DiffuseModelAttribute = staticLightType.Type.GetAttributeInfo("DiffuseModel");
@@ -215,9 +215,9 @@ namespace LevelEditorXLE
             directionalLightType.scaleAttribute = directionalLightType.Type.GetAttributeInfo("scale");
             directionalLightType.pivotAttribute = directionalLightType.Type.GetAttributeInfo("pivot");
             directionalLightType.transformationTypeAttribute = directionalLightType.Type.GetAttributeInfo("transformationType");
-            directionalLightType.nameAttribute = directionalLightType.Type.GetAttributeInfo("name");
             directionalLightType.visibleAttribute = directionalLightType.Type.GetAttributeInfo("visible");
             directionalLightType.lockedAttribute = directionalLightType.Type.GetAttributeInfo("locked");
+            directionalLightType.nameAttribute = directionalLightType.Type.GetAttributeInfo("name");
             directionalLightType.DiffuseAttribute = directionalLightType.Type.GetAttributeInfo("Diffuse");
             directionalLightType.DiffuseBrightnessAttribute = directionalLightType.Type.GetAttributeInfo("DiffuseBrightness");
             directionalLightType.DiffuseModelAttribute = directionalLightType.Type.GetAttributeInfo("DiffuseModel");
@@ -235,9 +235,9 @@ namespace LevelEditorXLE
             areaLightType.scaleAttribute = areaLightType.Type.GetAttributeInfo("scale");
             areaLightType.pivotAttribute = areaLightType.Type.GetAttributeInfo("pivot");
             areaLightType.transformationTypeAttribute = areaLightType.Type.GetAttributeInfo("transformationType");
-            areaLightType.nameAttribute = areaLightType.Type.GetAttributeInfo("name");
             areaLightType.visibleAttribute = areaLightType.Type.GetAttributeInfo("visible");
             areaLightType.lockedAttribute = areaLightType.Type.GetAttributeInfo("locked");
+            areaLightType.nameAttribute = areaLightType.Type.GetAttributeInfo("name");
             areaLightType.DiffuseAttribute = areaLightType.Type.GetAttributeInfo("Diffuse");
             areaLightType.DiffuseBrightnessAttribute = areaLightType.Type.GetAttributeInfo("DiffuseBrightness");
             areaLightType.DiffuseModelAttribute = areaLightType.Type.GetAttributeInfo("DiffuseModel");
@@ -569,6 +569,36 @@ namespace LevelEditorXLE
             triMeshMarkerType.ShowMarkerAttribute = triMeshMarkerType.Type.GetAttributeInfo("ShowMarker");
             triMeshMarkerType.pointsChild = triMeshMarkerType.Type.GetChildInfo("points");
 
+            characterSpawnType.Type = getNodeType("gap", "characterSpawnType");
+            characterSpawnType.transformAttribute = characterSpawnType.Type.GetAttributeInfo("transform");
+            characterSpawnType.translateAttribute = characterSpawnType.Type.GetAttributeInfo("translate");
+            characterSpawnType.rotateAttribute = characterSpawnType.Type.GetAttributeInfo("rotate");
+            characterSpawnType.scaleAttribute = characterSpawnType.Type.GetAttributeInfo("scale");
+            characterSpawnType.pivotAttribute = characterSpawnType.Type.GetAttributeInfo("pivot");
+            characterSpawnType.transformationTypeAttribute = characterSpawnType.Type.GetAttributeInfo("transformationType");
+            characterSpawnType.nameAttribute = characterSpawnType.Type.GetAttributeInfo("name");
+            characterSpawnType.visibleAttribute = characterSpawnType.Type.GetAttributeInfo("visible");
+            characterSpawnType.lockedAttribute = characterSpawnType.Type.GetAttributeInfo("locked");
+            characterSpawnType.SkinAttribute = characterSpawnType.Type.GetAttributeInfo("Skin");
+            characterSpawnType.AnimationSetAttribute = characterSpawnType.Type.GetAttributeInfo("AnimationSet");
+            characterSpawnType.SkeletonAttribute = characterSpawnType.Type.GetAttributeInfo("Skeleton");
+            characterSpawnType.RunForwardAttribute = characterSpawnType.Type.GetAttributeInfo("RunForward");
+            characterSpawnType.RunBackAttribute = characterSpawnType.Type.GetAttributeInfo("RunBack");
+            characterSpawnType.RunLeftAttribute = characterSpawnType.Type.GetAttributeInfo("RunLeft");
+            characterSpawnType.RunRightAttribute = characterSpawnType.Type.GetAttributeInfo("RunRight");
+            characterSpawnType.RunForward_ToIdleAttribute = characterSpawnType.Type.GetAttributeInfo("RunForward_ToIdle");
+            characterSpawnType.RunBack_ToIdleAttribute = characterSpawnType.Type.GetAttributeInfo("RunBack_ToIdle");
+            characterSpawnType.RunLeft_ToIdleAttribute = characterSpawnType.Type.GetAttributeInfo("RunLeft_ToIdle");
+            characterSpawnType.RunRight_ToIdleAttribute = characterSpawnType.Type.GetAttributeInfo("RunRight_ToIdle");
+            characterSpawnType.IdleAttribute = characterSpawnType.Type.GetAttributeInfo("Idle");
+            characterSpawnType.Idle1Attribute = characterSpawnType.Type.GetAttributeInfo("Idle1");
+            characterSpawnType.Idle2Attribute = characterSpawnType.Type.GetAttributeInfo("Idle2");
+            characterSpawnType.Idle3Attribute = characterSpawnType.Type.GetAttributeInfo("Idle3");
+            characterSpawnType.Idle4Attribute = characterSpawnType.Type.GetAttributeInfo("Idle4");
+            characterSpawnType.Idle5Attribute = characterSpawnType.Type.GetAttributeInfo("Idle5");
+            characterSpawnType.RootTransformAttribute = characterSpawnType.Type.GetAttributeInfo("RootTransform");
+            characterSpawnType.CharacterTypeAttribute = characterSpawnType.Type.GetAttributeInfo("CharacterType");
+
             xleGameType.Type = getNodeType("gap", "xleGameType");
             xleGameType.nameAttribute = xleGameType.Type.GetAttributeInfo("name");
             xleGameType.ExportDirectoryAttribute = xleGameType.Type.GetAttributeInfo("ExportDirectory");
@@ -786,9 +816,9 @@ namespace LevelEditorXLE
             public static AttributeInfo scaleAttribute;
             public static AttributeInfo pivotAttribute;
             public static AttributeInfo transformationTypeAttribute;
-            public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
+            public static AttributeInfo nameAttribute;
         }
 
         public static class envMiscType
@@ -823,9 +853,9 @@ namespace LevelEditorXLE
             public static AttributeInfo scaleAttribute;
             public static AttributeInfo pivotAttribute;
             public static AttributeInfo transformationTypeAttribute;
-            public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
+            public static AttributeInfo nameAttribute;
             public static AttributeInfo DiffuseAttribute;
             public static AttributeInfo DiffuseBrightnessAttribute;
             public static AttributeInfo DiffuseModelAttribute;
@@ -844,9 +874,9 @@ namespace LevelEditorXLE
             public static AttributeInfo scaleAttribute;
             public static AttributeInfo pivotAttribute;
             public static AttributeInfo transformationTypeAttribute;
-            public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
+            public static AttributeInfo nameAttribute;
             public static AttributeInfo DiffuseAttribute;
             public static AttributeInfo DiffuseBrightnessAttribute;
             public static AttributeInfo DiffuseModelAttribute;
@@ -867,9 +897,9 @@ namespace LevelEditorXLE
             public static AttributeInfo scaleAttribute;
             public static AttributeInfo pivotAttribute;
             public static AttributeInfo transformationTypeAttribute;
-            public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
+            public static AttributeInfo nameAttribute;
             public static AttributeInfo DiffuseAttribute;
             public static AttributeInfo DiffuseBrightnessAttribute;
             public static AttributeInfo DiffuseModelAttribute;
@@ -1287,6 +1317,39 @@ namespace LevelEditorXLE
             public static AttributeInfo indexlistAttribute;
             public static AttributeInfo ShowMarkerAttribute;
             public static ChildInfo pointsChild;
+        }
+
+        public static class characterSpawnType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static AttributeInfo SkinAttribute;
+            public static AttributeInfo AnimationSetAttribute;
+            public static AttributeInfo SkeletonAttribute;
+            public static AttributeInfo RunForwardAttribute;
+            public static AttributeInfo RunBackAttribute;
+            public static AttributeInfo RunLeftAttribute;
+            public static AttributeInfo RunRightAttribute;
+            public static AttributeInfo RunForward_ToIdleAttribute;
+            public static AttributeInfo RunBack_ToIdleAttribute;
+            public static AttributeInfo RunLeft_ToIdleAttribute;
+            public static AttributeInfo RunRight_ToIdleAttribute;
+            public static AttributeInfo IdleAttribute;
+            public static AttributeInfo Idle1Attribute;
+            public static AttributeInfo Idle2Attribute;
+            public static AttributeInfo Idle3Attribute;
+            public static AttributeInfo Idle4Attribute;
+            public static AttributeInfo Idle5Attribute;
+            public static AttributeInfo RootTransformAttribute;
+            public static AttributeInfo CharacterTypeAttribute;
         }
 
         public static class xleGameType

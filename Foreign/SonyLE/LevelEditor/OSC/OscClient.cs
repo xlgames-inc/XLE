@@ -348,8 +348,8 @@ namespace LevelEditor.OSC
 
             base.Initialize();
 
-            AddDiffuseLightingOscAddresses(Schema.PointLight.Type.GetTag<PropertyDescriptorCollection>());
-            AddDiffuseLightingOscAddresses(Schema.BoxLight.Type.GetTag<PropertyDescriptorCollection>());
+            // AddDiffuseLightingOscAddresses(Schema.PointLight.Type.GetTag<PropertyDescriptorCollection>());
+            // AddDiffuseLightingOscAddresses(Schema.BoxLight.Type.GetTag<PropertyDescriptorCollection>());
         }
 
         private void AddDiffuseLightingOscAddresses(PropertyDescriptorCollection descriptorCollection)
