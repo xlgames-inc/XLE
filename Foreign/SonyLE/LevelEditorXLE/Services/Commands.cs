@@ -33,6 +33,8 @@ namespace LevelEditorXLE
             {
                 case Command.ExportToGame:
                     return true;
+                case Command.ExecuteEnvironmentSample:
+                    return true;
             }
 
             return false;
@@ -40,26 +42,20 @@ namespace LevelEditorXLE
 
         public void DoCommand(object commandTag)
         {
-            if (commandTag is Command)
+            if (!(commandTag is Command)) return;
+            
+            switch ((Command)commandTag)
             {
-                switch ((Command)commandTag)
-                {
-                    case Command.ExportToGame:
-                        PerformExportToGame();
-                        break;
-                }
+                case Command.ExportToGame:
+                    PerformExportToGame();
+                    break;
+                case Command.ExecuteEnvironmentSample:
+                    PerformExecuteEnvironmentSample();
+                    break;
             }
         }
 
-        public void UpdateCommand(object commandTag, Sce.Atf.Applications.CommandState state)
-        {
-            // if (commandTag is Command)
-            // {
-            //     switch ((Command)commandTag)
-            //     {
-            //     }
-            // }
-        }
+        public void UpdateCommand(object commandTag, Sce.Atf.Applications.CommandState state) {}
 
         public virtual void Initialize()
         {
@@ -73,11 +69,23 @@ namespace LevelEditorXLE
                 LevelEditorCore.Resources.CubesImage,
                 CommandVisibility.Menu,
                 this);
+
+            m_commandService.RegisterCommand(
+                Command.ExecuteEnvironmentSample,
+                StandardMenu.File,
+                "Assets",
+                "Execute Environment Sample".Localize(),
+                "Run the environment sample with the active level".Localize(),
+                Keys.None,
+                LevelEditorCore.Resources.CubesImage,
+                CommandVisibility.Menu,
+                this);
         }
 
         private enum Command
         {
-            ExportToGame
+            ExportToGame,
+            ExecuteEnvironmentSample
         }
 
         private void PerformExportToGame()
@@ -150,6 +158,29 @@ namespace LevelEditorXLE
                     }
                 }
             } 
+        }
+
+        private void PerformExecuteEnvironmentSample()
+        {
+            var rootNode = m_designView.ActiveView.DesignView.Context as DomNodeAdapter;
+            if (rootNode==null) return;
+
+            var gameExt = rootNode.As<Game.GameExtensions>();
+            if (gameExt==null) return;
+
+            MessageBox.Show(
+                "This will execute the environment sample, and load your level.\nYou should do threes things first.\n\n1) add a CharacterSpawn object for the player character (by dragging in from the Palette window).\n2) Add a sun, ambient settings and shadow settings.\n3) do a \"Export To Game\".\n\n"
+                + "The sample will reload any subsequent exports.");
+
+            var process = System.Diagnostics.Process.GetCurrentProcess(); // Or whatever method you are using
+            string fullPath = process.MainModule.FileName;
+
+            var envExe = new Uri(new Uri(fullPath), "environment.exe");
+
+            var resService = Globals.MEFContainer.GetExportedValue<IXLEAssetService>();
+            System.Diagnostics.Process.Start(
+                envExe.LocalPath, 
+                resService.AsAssetName(gameExt.ExportDirectory));
         }
 
         [Import(AllowDefault = false)]

@@ -170,7 +170,7 @@ namespace Sample
 
                 //  Finally, we execute the frame loop
             for (;;) {
-                if (OverlappedWindow::DoMsgPump() == OverlappedWindow::Terminate) {
+                if (OverlappedWindow::DoMsgPump() == OverlappedWindow::PumpResult::Terminate) {
                     break;
                 }
 

@@ -190,7 +190,7 @@ namespace PlatformRig { namespace Camera
 
         static unsigned mode = 0;
         if (_accumulatedState.IsPress(tab)) {
-            mode = (mode+1)%3;
+            mode = (mode+1)%2;
         }
 
         if (mode==0) {

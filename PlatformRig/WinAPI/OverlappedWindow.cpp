@@ -247,13 +247,18 @@ namespace PlatformRig
         MSG msg;
         while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) {
-                    return Terminate;
+                return PumpResult::Terminate;
             }
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
 
-        return Continue;
+        DWORD foreWindowProcess;
+        GetWindowThreadProcessId(GetForegroundWindow(), &foreWindowProcess);
+        
+        return (GetCurrentProcessId() != foreWindowProcess)
+            ? PumpResult::Background
+            : PumpResult::Continue;
     }
 
     IWindowHandler::~IWindowHandler() {}

@@ -369,6 +369,11 @@ namespace Sample
                 _scene->_playerCharacter->SetLocalToWorld(newTransform);
         }
 
+        bool IsPresent() const
+        {
+            return _scene->_playerCharacter != nullptr;
+        }
+
         PlayerCharacterInterf(std::shared_ptr<CharactersScene::Pimpl> scene)
             : _scene(std::move(scene)) {}
         ~PlayerCharacterInterf() {}

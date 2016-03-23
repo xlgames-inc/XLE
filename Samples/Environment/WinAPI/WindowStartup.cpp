@@ -8,6 +8,7 @@
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../Utility/SystemUtils.h"
+#include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Core/Exceptions.h"
 #include <stdio.h>
 
@@ -20,7 +21,7 @@
 
 namespace Sample
 {
-    void ExecuteSample();
+    void ExecuteSample(const char finalsDirectory[]);
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow)
@@ -45,8 +46,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     ConsoleRig::GlobalServices services("environmentsample");
     LogInfo << "------------------------------------------------------------------------------------------";
 
+    auto finalsDirectory = lpCmdLine;
+    if (!finalsDirectory[0]
+        || FindFiles(
+            std::string(finalsDirectory) + "/*.*", 
+            FindFilesFilter::File).empty()) {
+        MessageBox(0, "Expecting the same of a directory on the command line. This should be the 'finals' directory exported from the level editor.", "Environment Sample", MB_OK);
+    }
+
     TRY {
-        Sample::ExecuteSample();
+        Sample::ExecuteSample(lpCmdLine);
     } CATCH (const std::exception& e) {
         XlOutputDebugString("Hit top-level exception: ");
         XlOutputDebugString(e.what());

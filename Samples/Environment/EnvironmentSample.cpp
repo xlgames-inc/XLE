@@ -161,7 +161,7 @@ namespace Sample
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys);
 
-    void ExecuteSample()
+    void ExecuteSample(const char finalsDirectory[])
     {
         using namespace PlatformRig;
         using namespace Sample;
@@ -185,7 +185,7 @@ namespace Sample
 
             // main scene
         LogInfo << "Creating main scene";
-        auto mainScene = std::make_shared<EnvironmentSceneParser>("test1/finals");
+        auto mainScene = std::make_shared<EnvironmentSceneParser>(finalsDirectory);
         
         {
                 //  Create the debugging system, and add any "displays"
@@ -274,8 +274,14 @@ namespace Sample
 
                 //  Finally, we execute the frame loop
             for (;;) {
-                if (OverlappedWindow::DoMsgPump() == OverlappedWindow::Terminate) {
+                auto pump = OverlappedWindow::DoMsgPump();
+                if (pump == OverlappedWindow::PumpResult::Terminate)
                     break;
+
+                // When in the background, yield most of our time, and prevent rendering
+                if (pump == OverlappedWindow::PumpResult::Background) {
+                    Threading::Sleep(64);
+                    continue;
                 }
 
                     // ------- Render ----------------------------------------
@@ -331,7 +337,7 @@ namespace Sample
 
     PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
-        SceneEngine::LightingParserContext& lightingParserContext,
+        SceneEngine::LightingParserContext& parserContext,
         EnvironmentSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys)
@@ -346,31 +352,34 @@ namespace Sample
                 (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
                 Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0));
 
-            lightingParserContext.GetProjectionDesc() = BuildProjectionDesc(scene->GetCameraDesc(), qualSettings._dimensions);
+            parserContext.GetProjectionDesc() = BuildProjectionDesc(scene->GetCameraDesc(), qualSettings._dimensions);
 
                 //  some scene might need a "prepare" step to 
                 //  build some resources before the main render occurs.
-            scene->PrepareFrame(context, lightingParserContext);
+            scene->PrepareFrame(context, parserContext);
 
-            LightingParser_ExecuteScene(context, lightingParserContext, *scene, scene->GetCameraDesc(), qualSettings);
+            LightingParser_ExecuteScene(context, parserContext, *scene, scene->GetCameraDesc(), qualSettings);
         }
 
         if (overlaySys) {
-            overlaySys->RenderToScene(&context, lightingParserContext);
+            overlaySys->RenderToScene(&context, parserContext);
         }
+
+        if (!scene->GetPlayerCharacter()->IsPresent())
+            StringMeldAppend(parserContext._stringHelpers->_errorString) << "No player CharacterSpawn detected. Press Tab to switch camera types.";
 
         auto& usefulFonts = RenderCore::Techniques::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-        DrawPendingResources(metalContext.get(), lightingParserContext, usefulFonts._defaultFont0.get());
+        DrawPendingResources(metalContext.get(), parserContext, usefulFonts._defaultFont0.get());
 
         if (Tweakable("QuickMetrics", false))
-            DrawQuickMetrics(metalContext.get(), lightingParserContext, usefulFonts._defaultFont1.get());
+            DrawQuickMetrics(metalContext.get(), parserContext, usefulFonts._defaultFont1.get());
 
         if (overlaySys) {
-            overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());
+            overlaySys->RenderWidgets(&context, parserContext.GetProjectionDesc());
         }
 
-        return PlatformRig::FrameRig::RenderResult(lightingParserContext.HasPendingAssets());
+        return PlatformRig::FrameRig::RenderResult(parserContext.HasPendingAssets());
     }
 }
 

@@ -53,7 +53,7 @@ namespace PlatformRig
         InputTranslator& GetInputTranslator();
         void AddWindowHandler(std::shared_ptr<IWindowHandler> handler);
 
-        enum PumpResult { Continue, Terminate };
+        enum class PumpResult { Continue, Background, Terminate };
         static PumpResult DoMsgPump();
 
         OverlappedWindow();

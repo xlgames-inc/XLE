@@ -42,6 +42,24 @@ namespace LevelEditor
 
         #endregion
 
+        [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern int GetWindowThreadProcessId(IntPtr handle, out int processId);
+
+        private bool ApplicationIsActive()
+        {
+            // Check to see if this application is still in the foreground
+            // If we drop into the background, we should suppress updates.
+            var foregroundWindow = GetForegroundWindow();
+            if (foregroundWindow == IntPtr.Zero) return false;
+
+            int foreWindowProcess;
+            GetWindowThreadProcessId(foregroundWindow, out foreWindowProcess);
+            return foreWindowProcess == Process.GetCurrentProcess().Id;
+        }
+
         private void Application_Idle(object sender, EventArgs e)
         {
                 // DavidJ --    Don't do this refresh when update type is
@@ -52,6 +70,11 @@ namespace LevelEditor
 
             while (IsIdle())
             {
+                if (!ApplicationIsActive())
+                {
+                    System.Threading.Thread.Sleep(16);
+                    return;
+                }
                 Update();
                 Render();
             }

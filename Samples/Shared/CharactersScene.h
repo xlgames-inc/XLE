@@ -21,7 +21,7 @@ namespace Sample
     class IPlayerCharacter : public RenderOverlays::DebuggingDisplay::IInputListener, public PlatformRig::Camera::ICameraAttach
     {
     public:
-        bool OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt) = 0;
+        virtual bool IsPresent() const = 0;
     };
 
     class CharactersScene
