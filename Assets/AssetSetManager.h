@@ -58,20 +58,13 @@ namespace Assets
     template<typename Type>
         Internal::AssetSet<Type>* AssetSetManager::GetSetForType()
     {
-            // Try once, without locking
-            // once the "GetSetForTypeCode" returns something other than
-            // null, then we can consider that value permanent. No other
-            // thread can ever change it. The only exception is when shutting down.
-        auto* existing = GetSetForTypeCode(typeid(Type).hash_code());
-        if (existing) {
-                // we have to force an up-cast here...
-            return static_cast<Internal::AssetSet<Type>*>(existing);
-        }
-
-            // if it doesn't exist...
-            // lock, and try again (from the start)
+            // The lock here is frustratingly redundant in 99% of cases. But 
+            // we still need it for the rest of the cases. If we could force the
+            // system to add all of the types we need during startup, we could
+            // avoid this. Alternatively, this might be a good candidate for a spin
+            // lock, instead of a mutex
         Lock();
-        existing = GetSetForTypeCode(typeid(Type).hash_code());
+        auto existing = GetSetForTypeCode(typeid(Type).hash_code());
         if (existing) {
             Unlock();
             return static_cast<Internal::AssetSet<Type>*>(existing);
