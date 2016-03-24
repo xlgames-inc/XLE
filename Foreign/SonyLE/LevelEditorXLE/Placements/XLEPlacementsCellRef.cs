@@ -257,6 +257,20 @@ namespace LevelEditorXLE.Placements
                 var cfg = adapter.GetCfg();
                 cfg.UnnamedPlacementDocuments = true;
                 adapter.Reconfigure(cfg);
+
+                    // add a simple placement with a default object
+
+                var defResource = Globals.ResourceService.Load(
+                    new Uri(Utils.CurrentDirectoryAsUri(), "Game/Model/materialsphere.dae"));
+                if (defResource != null)
+                {
+                    var plcmnt = XLEPlacementObject.Create(defResource);
+                    if (plcmnt != null)
+                    {
+                        plcmnt.DomNode.InitializeExtensions();
+                        adapter.AddChild(plcmnt);
+                    }
+                }
                 return result;
             }
             return null;
