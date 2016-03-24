@@ -360,6 +360,10 @@ namespace LevelEditor
                     {
                         nodeType.Define(new ExtensionInfo<GameContext>());
                     }
+                    else if (annot.LocalName == "LeGe.VisibleLockable")
+                    {
+                        nodeType.Define(new ExtensionInfo<DomNodeAdapters.VisibleLockable>());
+                    }
                 }
             }           
         }

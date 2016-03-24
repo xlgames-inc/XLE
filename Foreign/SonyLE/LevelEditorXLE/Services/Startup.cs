@@ -26,6 +26,7 @@ namespace LevelEditorXLE
             Schema.envSettingsType.Type.Define(new ExtensionInfo<Environment.XLEEnvSettings>());
             Schema.xleGameType.Type.Define(new ExtensionInfo<Game.GameExtensions>());
             Schema.envUtilityType.Type.Define(new ExtensionInfo<Environment.EnvUtility>());
+            Schema.envObjectType.Type.Define(new ExtensionInfo<Environment.XLEEnvObject>());
             Schema.vegetationSpawnConfigType.Type.Define(new ExtensionInfo<Terrain.VegetationSpawnConfigGob>());
             Schema.vegetationSpawnMaterialType.Type.Define(new ExtensionInfo<Terrain.VegetationSpawnMaterialItem>());
             Schema.triMeshMarkerType.Type.Define(new ExtensionInfo<Markers.TriMeshMarker>());

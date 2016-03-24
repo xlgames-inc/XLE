@@ -170,8 +170,8 @@
   <xs:complexType name="envObjectType">
     <xs:annotation>
       <xs:appinfo>
-        <LeGe.NativeProperty name="transform" nativeName="transform"/>
-        <LeGe.NativeProperty name="visible" nativeName="visible"/>
+        <LeGe.NativeProperty name="transform" nativeName="Transform"/>
+        <LeGe.NativeProperty name="visible" nativeName="Visible"/>
         <LeGe.NativeProperty name="name" nativeName="Name"/>
         <LeGe.NativeProperty nativeName="Bounds"/>
         <LeGe.NativeProperty nativeName="LocalBounds"/>
@@ -183,6 +183,7 @@
         <LeGe.GameObjectProperties />
         <LeGe.TransformUpdater />
         <LeGe.TransformObject />
+        <LeGe.VisibleLockable />
       </xs:appinfo>
     </xs:annotation>
 
@@ -293,7 +294,6 @@
 
         <scea.dom.editors category="Environment" name="DirLight" menuText="Environment/DirLight" description="A directional light" image="LevelEditorCore.Resources.Lighting16.png"/>
         <LeGe.NativeVis geo="PointToOrigin"/>
-        <LeGe.OpaqueListable label="Directional Light"/>
       </xs:appinfo>
     </xs:annotation>
 
@@ -314,7 +314,6 @@
           category="Light" displayName="Shape" description="The shape of the area light"/>
         <scea.dom.editors category="Environment" name="AreaLight" menuText="Environment/AreaLight" description="An area light (eg, sphere, tube, rectangle, disc)" image="LevelEditorCore.Resources.Lighting16.png"/>
         <LeGe.NativeVis geo="AreaLight"/>
-        <LeGe.OpaqueListable label="Area Light"/>
       </xs:appinfo>
     </xs:annotation>
 

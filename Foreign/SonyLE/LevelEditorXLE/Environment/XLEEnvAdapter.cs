@@ -296,4 +296,36 @@ namespace LevelEditorXLE.Environment
         }
     }
 
+    public class XLEEnvObject : DomNodeAdapter, INameable, IListable
+    {
+        public virtual string Name
+        {
+            get
+            {
+                var result = GetAttribute<string>(Schema.envObjectType.nameAttribute);
+                if (string.IsNullOrEmpty(result)) return "<<unnamed>>";
+                return result;
+            }
+            set { SetAttribute(Schema.envObjectType.nameAttribute, value); }
+        }
+
+        public void GetInfo(ItemInfo info)
+        {
+            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
+            if (DomNode.Type == Schema.directionalLightType.Type)
+            {
+                info.Label = "Directional: " + Name;
+            }
+            else if (DomNode.Type == Schema.areaLightType.Type)
+            {
+                info.Label = "Area: " + Name;
+            }
+            else
+                info.Label = "Obj: " + Name;
+
+            var lockable = this.As<ILockable>();
+            if (lockable != null && lockable.IsLocked)
+                info.StateImageIndex = info.GetImageList().Images.IndexOfKey(Sce.Atf.Resources.LockImage);
+        }
+    }
 }

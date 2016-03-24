@@ -194,16 +194,24 @@ namespace RenderingInterop
             drgevent.Effect = (m_ghosts.Count > 0) ? (DragDropEffects.Move | DragDropEffects.Link) : DragDropEffects.None;
         }
 
-        protected bool GetTerrainCollision(out Vec3F result, Point clientPt)
+        protected bool GetInsertionPosition(out Vec3F result, Point clientPt)
         {
+            var ray = GetWorldRay(clientPt);
             var pick = Picking.RayPick(
-                GameEngine.GetEngineDevice(),
-                Adapter.SceneManager, Adapter.TechniqueContext,
-                GetWorldRay(clientPt), Utils.AsCameraDesc(Camera), ClientSize, Picking.Flags.Terrain);
+                GameEngine.GetEngineDevice(), Adapter.SceneManager, Adapter.TechniqueContext,
+                ray, Utils.AsCameraDesc(Camera), ClientSize, Picking.Flags.Terrain);
 
             if (pick != null && pick.Length > 0)
             {
                 result = pick[0].hitPt;
+                return true;
+            }
+
+            // If the ray is off the terrain, find the intersection of the ray with Z=0 plane.
+            float distance = ray.Origin.Z / -ray.Direction.Z;
+            if (distance > 0.0f)
+            {
+                result = ray.Origin + distance * ray.Direction;
                 return true;
             }
 
@@ -219,7 +227,8 @@ namespace RenderingInterop
                 //  Just do an intersection against the terrain to 
                 //  calculate basic insertion position
             Vec3F terrainHit;
-            if (GetTerrainCollision(out terrainHit, PointToClient(new Point(drgevent.X, drgevent.Y)))) {
+            if (GetInsertionPosition(out terrainHit, PointToClient(new Point(drgevent.X, drgevent.Y))))
+            {
                 ISnapSettings snapSettings = (ISnapSettings)DesignView;
                 foreach (var ghost in m_ghosts) {
                     var gameObject = ghost.As<ITransformable>();

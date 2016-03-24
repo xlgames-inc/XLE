@@ -109,6 +109,10 @@ namespace LevelEditorXLE.Game
                 var uri = GetAttribute<Uri>(Schema.xleGameType.ExportDirectoryAttribute);
                 if (uri.IsAbsoluteUri)
                     return uri;
+                // note -- we could check to see if this document is untitled here... But that requires using StandardFileCommands
+                var res = this.As<IResource>();
+                if (res != null && res.Uri != null)
+                    return new Uri(res.Uri, uri.OriginalString);
                 return new Uri(Utils.CurrentDirectoryAsUri(), uri.OriginalString);
             }
             set { SetAttribute(Schema.xleGameType.ExportDirectoryAttribute, value); }

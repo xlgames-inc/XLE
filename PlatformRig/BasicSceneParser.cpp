@@ -127,12 +127,19 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void Fixup(SceneEngine::LightDesc& light, const ParameterBox& props)
+    static void ReadTransform(SceneEngine::LightDesc& light, const ParameterBox& props)
     {
         static const auto transformHash = ParameterBox::MakeParameterNameHash("Transform");
         auto transform = Transpose(props.GetParameter(transformHash, Identity<Float4x4>()));
-        auto translation = ExtractTranslation(transform);
-        light._position = (MagnitudeSquared(translation) > 1e-5f) ? Normalize(translation) : Float3(0.f, 0.f, 0.f);
+
+        ScaleRotationTranslationM decomposed(transform);
+        light._position = decomposed._translation;
+        light._orientation = decomposed._rotation;
+        light._radii = Float2(decomposed._scale[0], decomposed._scale[1]);
+
+            // For directional lights we need to normalize the position (it will be treated as a direction)
+        if (light._shape == SceneEngine::LightDesc::Shape::Directional)
+            light._position = (MagnitudeSquared(light._position) > 1e-5f) ? Normalize(light._position) : Float3(0.f, 0.f, 0.f);
     }
     
     namespace EntityTypeName
@@ -186,12 +193,13 @@ namespace PlatformRig
 
                         ParameterBox params(formatter);
                         uint64 hashName = 0ull;
-                        if (params.GetString(Attribute::Name, buffer, dimof(buffer))) {
+                        if (params.GetString(Attribute::Name, buffer, dimof(buffer)))
                             hashName = Hash64((const char*)buffer);
-                        }
 
                         SceneEngine::LightDesc lightDesc(params);
-                        Fixup(lightDesc, params);
+                        if (XlEqString(name, EntityTypeName::DirectionalLight))
+                            lightDesc._shape = LightDesc::Shape::Directional;
+                        ReadTransform(lightDesc, params);
 
                         _lights.push_back(lightDesc);
 

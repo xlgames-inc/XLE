@@ -22,4 +22,18 @@ namespace LevelEditor.DomNodeAdapters
             info.IsLeaf = false;
         }
     }
+
+    class VisibleLockable : DomNodeAdapter, IVisible, ILockable
+    {
+        public virtual bool Visible
+        {
+            get { return GetAttribute<bool>(Schema.visibleTransformObjectType.visibleAttribute) && this.AncestorIsVisible(); }
+            set { SetAttribute(Schema.visibleTransformObjectType.visibleAttribute, value); }
+        }
+        public virtual bool IsLocked
+        {
+            get { return GetAttribute<bool>(Schema.visibleTransformObjectType.lockedAttribute) || this.AncestorIsLocked(); }
+            set { SetAttribute(Schema.visibleTransformObjectType.lockedAttribute, value); }
+        }
+    }
 }
