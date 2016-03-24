@@ -130,7 +130,7 @@ TerrainTextureOutput TerrainResolve_BaseTexturing(PSInput geo)
             procTexture = AddWeighted(procTexture, sample3, w[3]);
         }
     #else
-        procTexture = MainTexturing.Calculate(GetWorldPosition(geo), geo.dhdxy, 0, geo.texCoord);
+        procTexture = GradFlagTexturing_Calculate(GetWorldPosition(geo), geo.dhdxy, 0, geo.texCoord);
     #endif
 
     return procTexture;

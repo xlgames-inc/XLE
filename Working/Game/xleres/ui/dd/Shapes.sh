@@ -20,6 +20,13 @@ float4 Paint(
     float2 texCoord1	: TEXCOORD1,
     nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
 {
+	// note -- this functionality disable to try to get around issues with certain
+	//		drivers (like the Intel embedded GPU drivers) that don't seem to support
+	//		interface style dynamic linking correctly. Those drivers will crash inside
+	//		the shader compiler dll when attempting to compile this shader -- it's unclear
+	//		at the moment why this is happening, and if there is a work around.
+	return 0;
+
     DebuggingShapesCoords coords =
         DebuggingShapesCoords_Make(position, texCoord0, outputDimensions);
 
