@@ -287,8 +287,16 @@ namespace Serialization
 
             } else if (ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::UniquePtr) {
                 size_t* o = (size_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset);
-                o[0] = (ptr._subBlockOffset + size_t(base) + sizeof(Header));
-                *(unsigned*)(&o[1]) = 1;
+				#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER >= 1900)
+					// As in the vector case above, the arrangement of unique ptrs can changed in recent
+					// versions of visual studio. The solution is getting a bit awkward now, it might be
+					// better to consider and alternative approach...
+					*(unsigned*)(&o[0]) = 1; 
+					*PtrAdd(o, sizeof(size_t)) = (ptr._subBlockOffset + size_t(base) + sizeof(Header));					
+				#else
+					o[0] = (ptr._subBlockOffset + size_t(base) + sizeof(Header));
+					*(unsigned*)(&o[1]) = 1;
+				#endif
             }
         }
     }

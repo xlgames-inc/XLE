@@ -134,7 +134,7 @@
         <scea.dom.editors.attribute name="RootTransform" displayName="RootTransform" category="Animation Names"
                                     description="This should be the name of the transform at root of the hierarchy, in Collada sid format (such as 'Bip01/matrix'). Used for extracting run speed."/>
         
-        <scea.dom.editors name="CharacterSpawn" category="Markers" image="LevelEditorCore.Resources.gameObject.png" menuText="CharacterSpawn" description="Character position for use with the Environment sample."/>
+        <scea.dom.editors name="CharacterSpawn" category="Character" image="LevelEditorCore.Resources.gameObject.png" menuText="CharacterSpawn" description="Character position for use with the Environment sample."/>
       </xs:appinfo>
     </xs:annotation>
 
