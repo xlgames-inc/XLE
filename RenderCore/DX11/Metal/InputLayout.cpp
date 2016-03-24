@@ -770,7 +770,7 @@ namespace RenderCore { namespace Metal_DX11
     void BoundClassInterfaces::Bind(uint64 hashName, unsigned bindingArrayIndex, const char instance[])
     {
         for (auto s=0; s<ShaderStage::Max; ++s) {
-            if (!_stageBindings[s]._linkage) continue;
+            if (!_stageBindings[s]._linkage || !_stageBindings[s]._reflection) continue;
 
             bool gotoNextStage = false;
             D3D11_SHADER_DESC shaderDesc;
@@ -836,16 +836,18 @@ namespace RenderCore { namespace Metal_DX11
             _stageBindings[ShaderStage::Vertex]._reflection 
                 = CreateReflection(shader.GetCompiledVertexShader());
             _stageBindings[ShaderStage::Vertex]._linkage = shader.GetVertexShader().GetClassLinkage();
-            _stageBindings[ShaderStage::Vertex]._classInstanceArray.resize(
-                _stageBindings[ShaderStage::Vertex]._reflection->GetNumInterfaceSlots(), nullptr);
+            if (_stageBindings[ShaderStage::Vertex]._reflection)
+				_stageBindings[ShaderStage::Vertex]._classInstanceArray.resize(
+					_stageBindings[ShaderStage::Vertex]._reflection->GetNumInterfaceSlots(), nullptr);
         }
         
         if (shader.GetCompiledPixelShader().DynamicLinkingEnabled()) {
             _stageBindings[ShaderStage::Pixel]._reflection 
                 = CreateReflection(shader.GetCompiledPixelShader());
             _stageBindings[ShaderStage::Pixel]._linkage = shader.GetPixelShader().GetClassLinkage();
-            _stageBindings[ShaderStage::Pixel]._classInstanceArray.resize(
-                _stageBindings[ShaderStage::Pixel]._reflection->GetNumInterfaceSlots(), nullptr);
+			if (_stageBindings[ShaderStage::Pixel]._reflection)
+				_stageBindings[ShaderStage::Pixel]._classInstanceArray.resize(
+					_stageBindings[ShaderStage::Pixel]._reflection->GetNumInterfaceSlots(), nullptr);
         }
     }
 
@@ -856,16 +858,18 @@ namespace RenderCore { namespace Metal_DX11
             _stageBindings[ShaderStage::Vertex]._reflection 
                 = CreateReflection(shader.GetCompiledVertexShader());
             _stageBindings[ShaderStage::Vertex]._linkage = shader.GetVertexShader().GetClassLinkage();
-            _stageBindings[ShaderStage::Vertex]._classInstanceArray.resize(
-                _stageBindings[ShaderStage::Vertex]._reflection->GetNumInterfaceSlots(), nullptr);
+			if (_stageBindings[ShaderStage::Vertex]._reflection)
+				_stageBindings[ShaderStage::Vertex]._classInstanceArray.resize(
+					_stageBindings[ShaderStage::Vertex]._reflection->GetNumInterfaceSlots(), nullptr);
         }
         
         if (shader.GetCompiledPixelShader().DynamicLinkingEnabled()) {
             _stageBindings[ShaderStage::Pixel]._reflection 
                 = CreateReflection(shader.GetCompiledPixelShader());
             _stageBindings[ShaderStage::Pixel]._linkage = shader.GetPixelShader().GetClassLinkage();
-            _stageBindings[ShaderStage::Pixel]._classInstanceArray.resize(
-                _stageBindings[ShaderStage::Pixel]._reflection->GetNumInterfaceSlots(), nullptr);
+			if (_stageBindings[ShaderStage::Pixel]._reflection)
+				_stageBindings[ShaderStage::Pixel]._classInstanceArray.resize(
+					_stageBindings[ShaderStage::Pixel]._reflection->GetNumInterfaceSlots(), nullptr);
         }
     }
 

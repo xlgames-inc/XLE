@@ -153,6 +153,7 @@ namespace ToolsRig
         std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>> finalResult;
 
 		auto reflection = boundUniforms.GetReflection(RenderCore::ShaderStage::Pixel);
+		if (!reflection) return finalResult;
 
         D3D11_SHADER_DESC shaderDesc;
         reflection->GetDesc(&shaderDesc);

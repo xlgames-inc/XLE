@@ -1541,10 +1541,17 @@ namespace RenderCore { namespace Metal_DX11
 
     std::string D3DShaderCompiler::MakeShaderMetricsString(const void* data, size_t dataSize) const
     {
-            // build some metrics information about the given shader, using the D3D
-            //  reflections interface.
+            // Build some metrics information about the given shader, using the D3D
+            // reflections interface.
+		auto* hdr = (ShaderService::ShaderHeader*)data;
+		if (dataSize <= sizeof(ShaderService::ShaderHeader)
+			|| hdr->_version != ShaderService::ShaderHeader::Version) 
+			return "<Shader header corrupted, or wrong version>";
+
         ID3D::ShaderReflection* reflTemp = nullptr;
-        auto hresult = D3DReflect_Wrapper(data, dataSize, s_shaderReflectionInterfaceGuid, (void**)&reflTemp);
+        auto hresult = D3DReflect_Wrapper(
+			PtrAdd(data, sizeof(ShaderService::ShaderHeader)), dataSize - sizeof(ShaderService::ShaderHeader),
+			s_shaderReflectionInterfaceGuid, (void**)&reflTemp);
         intrusive_ptr<ID3D::ShaderReflection> refl = moveptr(reflTemp);
         if (!SUCCEEDED(hresult) || !refl) {
             return "<Failure in D3DReflect>";
