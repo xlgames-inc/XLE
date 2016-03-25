@@ -36,7 +36,7 @@ namespace LevelEditorXLE.AssetMan
                 new ControlInfo(
                     "Resource Preview".Localize(),
                     "Preview selected 3d resource".Localize(),
-                    StandardControlGroup.Center),
+                    StandardControlGroup.Right),
                 null);
         }
         #endregion

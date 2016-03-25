@@ -168,7 +168,7 @@ namespace GUILayer
     }
 
     VisResources::~VisResources() {}
-    VisResources::!VisResources() { System::Diagnostics::Debug::Assert(false, "Non deterministic delete of VisResources"); }
+    VisResources::!VisResources() { /* System::Diagnostics::Debug::Assert(false, "Non deterministic delete of VisResources"); */ }
 
     static void RenderTrackingOverlay(
         RenderOverlays::IOverlayContext& context,

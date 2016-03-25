@@ -76,7 +76,7 @@ namespace LevelEditorXLE
                     // necessary.
                 if (relUri.OriginalString.Substring(0, 2) == "..")
                 {
-                    result = Uri.UnescapeDataString(uri.OriginalString);
+                    result = Uri.UnescapeDataString(uri.LocalPath); // (use LocalPath to avoid the file:// prefix)
                 }
                 else
                 {

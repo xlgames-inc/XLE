@@ -46,25 +46,6 @@ namespace RenderingInterop
 
         public void OnRemoveFromDocument(XLEBridgeUtils.INativeDocumentAdapter doc)
         {
-            OnRemoveFromDocument_NonHier(doc);
-
-                // note -- use "Subtree" & not "Children" because this
-                //  will allow us to also touch NativeObjectAdapters
-                //  that are children of non-native objects
-                //  eg:
-                //      <<native object>>
-                //          <<non-native object>
-                //              <<native object>>
-            foreach (DomNode child in DomNode.Subtree)
-            {
-                NativeObjectAdapter childObject = child.As<NativeObjectAdapter>();
-                if (childObject != null)
-                    childObject.OnRemoveFromDocument_NonHier(doc);
-            }
-        }
-
-        private void OnRemoveFromDocument_NonHier(XLEBridgeUtils.INativeDocumentAdapter doc)
-        {
             if (DomNode == null || m_instanceId == 0) return;
 
             ulong documentId = (doc != null) ? doc.NativeDocumentId : 0;
@@ -530,7 +511,7 @@ namespace RenderingInterop
                     // necessary.
                 if (relUri.OriginalString.Substring(0, 2) == "..")
                 {
-                    result = Uri.UnescapeDataString(uri.OriginalString);
+                    result = Uri.UnescapeDataString(uri.LocalPath); // (use LocalPath to avoid the file:// prefix)
                 }
                 else
                 {

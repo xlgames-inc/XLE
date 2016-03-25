@@ -46,7 +46,7 @@ namespace GUILayer
 
         !MaterialVisSettings()
         {
-            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of MaterialVisSettings");
+            // System::Diagnostics::Debug::Assert(false, "Non deterministic delete of MaterialVisSettings");
         }
 
         const ToolsRig::MaterialVisSettings& GetUnderlying() { return *_object.get(); }

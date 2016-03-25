@@ -37,17 +37,18 @@ namespace RenderingInterop
 
         public void OnDocumentRemoved()
         {
-                // we need to call OnRemoveFromDocument on all children
-                // NativeObjectAdapter.OnRemoveFromDocument is hierarchical,
-                // so we only need to call on the top level children
+                // We need to call OnRemoveFromDocument on all children
+                // NativeObjectAdapter.OnRemoveFromDocument is now non-hierarchical.
+                // It will only have an effect on that particular object, not it's children.
+                // As a result, we must iterate through the entire subtree
             DomNode node = this.DomNode; 
             if (node != null)
             {
-                foreach (var subnode in node.Children)
+                foreach (var subnode in node.Subtree)
                 {
-                    var childObject = subnode.As<XLEBridgeUtils.INativeObjectAdapter>();
-                    if (childObject != null)
-                        childObject.OnRemoveFromDocument(this);
+                    var childObject = subnode.AsAll<XLEBridgeUtils.INativeObjectAdapter>();
+                    foreach (var c in childObject)
+                        c.OnRemoveFromDocument(this);
                 }
             }
 
@@ -95,17 +96,14 @@ namespace RenderingInterop
 
         private void AttemptRemoveNative(DomNode node)
         {
-            var childObject = node.As<NativeObjectAdapter>();
-            if (childObject != null)
+            foreach (var subnode in node.Subtree)
             {
-                childObject.OnSetParent(null, -1);
-                childObject.OnRemoveFromDocument(this);
-            }
-            else
-            {
-                // it might have native children, so we have to search for them
-                foreach (var child in node.Children)
-                    AttemptRemoveNative(child);
+                var nativeObject = subnode.AsAll<XLEBridgeUtils.INativeObjectAdapter>();
+                foreach (var n in nativeObject)
+                {
+                    n.OnSetParent(null, -1);
+                    n.OnRemoveFromDocument(this);
+                }
             }
         }
         
