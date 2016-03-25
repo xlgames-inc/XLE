@@ -1,0 +1,435 @@
+// CompoundDocument:1
+#include "game/xleres/System/Prefix.h"
+
+#include "game/xleres/Objects/Example/ProcWood/Wood_04_G.sh"
+#include "game/xleres/Surface.h"
+#include "game/xleres/Nodes/Output.sh"
+#include "game/xleres/Nodes/MaterialParam.sh"
+
+
+void ProcWood(VSOutput geo, out GBufferValues result)
+{
+	float3 Output_35_result;
+	Output_35_result = GetWorldPosition( geo );
+
+	float3 Output_31_color;
+	Wood_04_G( Output_35_result, Output_31_color );
+
+	CommonMaterialParam Output_33_result;
+	Output_33_result = CommonMaterialParam_Make( .3, .05, 0 );
+
+	float3 Output_34_result;
+	Output_34_result = GetNormal( geo );
+
+	GBufferValues Output_32_result;
+	Output_32_result = Output_PerPixel( Output_31_color, Output_34_result, Output_33_result, 1.0f, 1.0f, 1.0f, 1.0f, 0 );
+
+	result = Output_32_result;
+
+}
+/* <<Chunk:NodeGraph:ProcWood>>--(
+<?xml version="1.0" encoding="utf-8"?>
+<NodeGraph xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+	<ConstantConnections>
+		<ConstantConnection>
+			<OutputNodeID>32</OutputNodeID>
+			<OutputParameterName>blendingAlpha</OutputParameterName>
+			<Value>1.0f</Value>
+		</ConstantConnection>
+		<ConstantConnection>
+			<OutputNodeID>32</OutputNodeID>
+			<OutputParameterName>normalMapAccuracy</OutputParameterName>
+			<Value>1.0f</Value>
+		</ConstantConnection>
+		<ConstantConnection>
+			<OutputNodeID>32</OutputNodeID>
+			<OutputParameterName>cookedAmbientOcclusion</OutputParameterName>
+			<Value>1.0f</Value>
+		</ConstantConnection>
+		<ConstantConnection>
+			<OutputNodeID>32</OutputNodeID>
+			<OutputParameterName>cookedLightOcclusion</OutputParameterName>
+			<Value>1.0f</Value>
+		</ConstantConnection>
+		<ConstantConnection>
+			<OutputNodeID>32</OutputNodeID>
+			<OutputParameterName>transmission</OutputParameterName>
+			<Value>0</Value>
+		</ConstantConnection>
+		<ConstantConnection>
+			<OutputNodeID>33</OutputNodeID>
+			<OutputParameterName>roughness</OutputParameterName>
+			<Value>.3</Value>
+		</ConstantConnection>
+		<ConstantConnection>
+			<OutputNodeID>33</OutputNodeID>
+			<OutputParameterName>specular</OutputParameterName>
+			<Value>.05</Value>
+		</ConstantConnection>
+		<ConstantConnection>
+			<OutputNodeID>33</OutputNodeID>
+			<OutputParameterName>metal</OutputParameterName>
+			<Value>0</Value>
+		</ConstantConnection>
+	</ConstantConnections>
+	<InputParameterConnections />
+	<NodeConnections>
+		<NodeConnection>
+			<OutputNodeID>32</OutputNodeID>
+			<OutputParameterName>diffuseAlbedo</OutputParameterName>
+			<InputNodeID>31</InputNodeID>
+			<InputParameterName>color</InputParameterName>
+			<InputType>float3</InputType>
+			<OutputType>float3</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>31</OutputNodeID>
+			<OutputParameterName>coords</OutputParameterName>
+			<InputNodeID>35</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float3</InputType>
+			<OutputType>float3</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>32</OutputNodeID>
+			<OutputParameterName>material</OutputParameterName>
+			<InputNodeID>33</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>CommonMaterialParam</InputType>
+			<OutputType>CommonMaterialParam</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>32</OutputNodeID>
+			<OutputParameterName>worldSpaceNormal</OutputParameterName>
+			<InputNodeID>34</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float3</InputType>
+			<OutputType>float3</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+	</NodeConnections>
+	<Nodes>
+		<Node>
+			<FragmentArchiveName>game/xleres/Objects/Example/ProcWood\Wood_04_G.sh:Wood_04_G</FragmentArchiveName>
+			<NodeId>31</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>0</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Surface.h:GetWorldPosition</FragmentArchiveName>
+			<NodeId>35</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>1</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Output.sh:Output_PerPixel</FragmentArchiveName>
+			<NodeId>32</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>2</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\MaterialParam.sh:CommonMaterialParam_Make</FragmentArchiveName>
+			<NodeId>33</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>3</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Surface.h:GetNormal</FragmentArchiveName>
+			<NodeId>34</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>4</VisualNodeId>
+		</Node>
+	</Nodes>
+	<OutputParameterConnections />
+	<PreviewSettingsObjects>
+		<PreviewSettings>
+			<Geometry>Sphere</Geometry>
+			<OutputToVisualize></OutputToVisualize>
+			<VisualNodeId>0</VisualNodeId>
+		</PreviewSettings>
+		<PreviewSettings>
+			<Geometry>Sphere</Geometry>
+			<OutputToVisualize></OutputToVisualize>
+			<VisualNodeId>1</VisualNodeId>
+		</PreviewSettings>
+		<PreviewSettings>
+			<Geometry>Sphere</Geometry>
+			<OutputToVisualize>result.diffuseAlbedo</OutputToVisualize>
+			<VisualNodeId>2</VisualNodeId>
+		</PreviewSettings>
+		<PreviewSettings>
+			<Geometry>Sphere</Geometry>
+			<OutputToVisualize></OutputToVisualize>
+			<VisualNodeId>3</VisualNodeId>
+		</PreviewSettings>
+		<PreviewSettings>
+			<Geometry>Sphere</Geometry>
+			<OutputToVisualize></OutputToVisualize>
+			<VisualNodeId>4</VisualNodeId>
+		</PreviewSettings>
+	</PreviewSettingsObjects>
+	<VisualNodes>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>281</d4p1:x>
+				<d4p1:y>252</d4p1:y>
+			</Location>
+			<State>Normal</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>-91</d4p1:x>
+				<d4p1:y>340</d4p1:y>
+			</Location>
+			<State>Collapsed</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>1036</d4p1:x>
+				<d4p1:y>388</d4p1:y>
+			</Location>
+			<State>Normal</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>471</d4p1:x>
+				<d4p1:y>661</d4p1:y>
+			</Location>
+			<State>Collapsed</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>213</d4p1:x>
+				<d4p1:y>634</d4p1:y>
+			</Location>
+			<State>Collapsed</State>
+		</VisualNode>
+	</VisualNodes>
+</NodeGraph>
+)-- */
+/* <<Chunk:NodeGraphContext:ProcWood>>--(
+<?xml version="1.0" encoding="utf-8"?>
+<NodeGraphContext xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+	<HasTechniqueConfig>true</HasTechniqueConfig>
+	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+		<d2p1:KeyValueOfstringstring>
+			<d2p1:Key>OUTPUT_WORLD_POSITION</d2p1:Key>
+			<d2p1:Value>1</d2p1:Value>
+		</d2p1:KeyValueOfstringstring>
+	</ShaderParameters>
+	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+</NodeGraphContext>
+)-- */
+
+
+
+#include "TextureAlgorithm.h" 	// for SystemInputs
+#include "Lighting/Forward.h"
+
+#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+	[earlydepthstencil]
+#endif
+float4 forward_main(VSOutput geo, SystemInputs sys) : SV_Target0
+{
+    // If we're doing to do the alpha threshold test, we
+    // should try to do as early in the shader as we can!
+    // Unfortunately, there's no real easy way to do that with
+    // a node graph here...Unless we create some special #define
+    // somehow...
+
+	// DoAlphaTest(geo, GetAlphaThreshold());
+
+	GBufferValues sample;
+    ProcWood(geo, sample);
+
+	float3 directionToEye = 0.0.xxx;
+	#if (OUTPUT_WORLD_VIEW_VECTOR==1)
+		directionToEye = normalize(geo.worldViewVector);
+	#endif
+
+	float4 result = float4(
+		ResolveLitColor(
+			sample, directionToEye, GetWorldPosition(geo),
+			LightScreenDest_Create(int2(geo.position.xy), GetSampleIndex(sys))), 1.f);
+
+	#if OUTPUT_FOG_COLOR == 1
+		result.rgb = lerp(geo.fogColor.rgb, result.rgb, geo.fogColor.a);
+	#endif
+
+	result.a = sample.blendingAlpha;
+
+    #if (OUTPUT_COLOUR>=1) && (MAT_VCOLOR_IS_ANIM_PARAM==0)
+        result.rgb *= geo.colour.rgb;
+    #endif
+
+	#if MAT_SKIP_LIGHTING_SCALE==0
+		result.rgb *= LightingScale;		// (note -- should we scale by this here? when using this shader with a basic lighting pipeline [eg, for material preview], the scale is unwanted)
+	#endif
+	return result;
+}
+
+
+
+#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+	[earlydepthstencil]
+#endif
+GBufferEncoded deferred_main(VSOutput geo)
+{
+    // If we're doing to do the alpha threshold test, we
+    // should try to do as early in the shader as we can!
+    // Unfortunately, there's no real easy way to do that with
+    // a node graph here...Unless we create some special #define
+    // somehow...
+	// DoAlphaTest(geo, GetAlphaThreshold());
+	GBufferValues result;
+    ProcWood(geo, result);
+	return Encode(result);
+}
+
+
+
+#include "game/xleres/Forward/Transparency/util.h"
+
+float4 io_main(VSOutput geo, SystemInputs sys) : SV_Target0
+{
+    float destinationDepth = DuplicateOfDepthBuffer[uint2(geo.position.xy)];
+	float ndcComparison = geo.position.z; // / geo.position.w;
+	if (ndcComparison > destinationDepth)
+		discard;
+
+    GBufferValues sample;
+    ProcWood(geo, sample);
+
+		// note --  At alpha threshold, we just consider
+		//			it opaque. It's a useful optimisation
+		//			that goes hand in hand with the pre-depth pass.
+	const float minAlpha =   1.f / 255.f;
+	const float maxAlpha = 0.95f; // 254.f / 255.f;  // AlphaThreshold;
+	if (sample.blendingAlpha < minAlpha) {
+		discard;
+	}
+
+    float4 result = LightSample(sample, geo, sys);
+
+    if (result.a >= maxAlpha) {
+		return float4(LightingScale * result.rgb, 1.f); // result.a);
+	} else {
+		#if !MAT_PREMULTIPLIED_ALPHA
+			result.rgb *= result.a;
+		#endif
+
+		OutputFragmentNode(uint2(geo.position.xy), result, ndcComparison);
+		discard;
+		return 0.0.xxxx;
+	}
+}
+
+
+
+[earlydepthstencil]
+float4 stochastic_main(VSOutput geo,
+	#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
+		uint primitiveID : SV_PrimitiveID,
+	#endif
+	SystemInputs sys) : SV_Target
+{
+	float occlusion;
+	uint type = CalculateStochasticPixelType(geo.position, occlusion);
+	[branch] if (type > 0) {
+		if (type == 2) return float4(0.0.xxx, 1); // discard;
+
+		// Only need to calculate the "alpha" value for this step...
+		GBufferValues sample;
+		ProcWood(geo, sample);
+		return float4(0.0.xxx, sample.blendingAlpha);
+	}
+
+	GBufferValues sample;
+	ProcWood(geo, sample);
+
+	float4 litValue = LightSample(sample, geo, sys);
+	return float4((LightingScale * (1.f - occlusion) * litValue.a) * litValue.rgb, litValue.a);
+}
+
+
+
+#include "Forward/Transparency/depthonlyutil.h"
+
+#if (STOCHASTIC_TRANS)
+
+	void depthonly_main(
+		VSOutput geo, uint primitiveID : SV_PrimitiveID,
+		out uint oCoverage : SV_Coverage
+		#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
+			, out uint oPrimId : SV_Target0
+			#if (STOCHASTIC_TRANS_OPACITY==1)
+				, out float oOpacity : SV_Target1
+			#endif
+		#elif (STOCHASTIC_TRANS_OPACITY==1)
+			, out float oOpacity : SV_Target0
+		#endif
+
+		)
+	{
+		GBufferValues sample;
+		ProcWood(geo, sample);
+		float alpha = sample.blendingAlpha;
+
+		oCoverage = StochasticTransMask(uint2(geo.position.xy), alpha, primitiveID);
+		#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
+			oPrimId = primitiveID;
+		#endif
+		#if (STOCHASTIC_TRANS_OPACITY==1)
+			oOpacity = alpha;
+		#endif
+	}
+
+#else
+
+	#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
+		[earlydepthstencil]
+	#endif
+	void depthonly_main(VSOutput geo)
+	{
+		#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
+				// execute sampling only for discard() events
+			GBufferValues sample;
+			ProcWood(geo, sample);
+		#endif
+	}
+
+#endif
+
+
+/* <<Chunk:TechniqueConfig:main>>--(
+~Inherit; game/xleres/techniques/illum.tech
+~Forward
+    ~Parameters
+        ~Material
+            OUTPUT_WORLD_POSITION=1
+    PixelShader=<.>:forward_main
+~Deferred
+    ~Parameters
+        ~Material
+            OUTPUT_WORLD_POSITION=1
+    PixelShader=<.>:deferred_main
+~OrderIndependentTransparency
+    ~Parameters
+        ~Material
+            OUTPUT_WORLD_POSITION=1
+    PixelShader=<.>:oi_main
+~StochasticTransparency
+    ~Parameters
+        ~Material
+            OUTPUT_WORLD_POSITION=1
+    PixelShader=<.>:stochastic_main
+~DepthOnly
+    ~Parameters
+        ~Material
+            OUTPUT_WORLD_POSITION=1
+    PixelShader=<.>:depthonly_main
+)--*/
+
