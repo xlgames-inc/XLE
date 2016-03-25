@@ -827,7 +827,7 @@ namespace LevelEditorXLE.Terrain
         internal void CommitDialogConfig(TerrainCoverageConfig.Config cfg)
         {
             Resolution = cfg.Resolution;
-            SourceFile = new Uri(cfg.SourceFile);
+            SourceFile = String.IsNullOrEmpty(cfg.SourceFile) ? null : new Uri(cfg.SourceFile);
             Enable = cfg.Enable;
             LayerId = cfg.Id;
             ShaderNormalizationMode = cfg.ShaderNormalizationMode;
