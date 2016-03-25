@@ -27,11 +27,7 @@ namespace ControlsLibrary.BasicControls
 
         static public void Show(String text)
         {
-            using (var dlg = new TextWindow())
-            {
-                dlg.Text = text;
-                dlg.Show();
-            }
+            new TextWindow() { Text = text }.Show();
         }
 
         public new string Text { set { _textBox.Text = value; } }
