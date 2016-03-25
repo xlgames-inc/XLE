@@ -228,10 +228,10 @@
 
         <scea.dom.editors.attribute 
           name="Model" displayName="Model" description="Model" category="General" 
-          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.AssetNameNoExtConverter,LevelEditorXLE"/>
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms"/>
         <scea.dom.editors.attribute 
           name="Material" displayName="Material" description="Material" category="General" 
-          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.AssetNameNoExtConverter,LevelEditorXLE"/>
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms"/>
         <scea.dom.editors.attribute name="MaxDrawDistance" displayName="Max Draw Distance" description="Maximum draw distance for this type of object" category="General"/>
         <scea.dom.editors.attribute name="FrequencyWeight" displayName="Frequency Weight" description="Higher numbers mean this object will appear more frequently" category="General"/>
       </xs:appinfo>
