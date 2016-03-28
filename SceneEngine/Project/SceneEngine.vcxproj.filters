@@ -322,6 +322,7 @@
       <Filter>Objects\Terrain</Filter>
     </ClInclude>
     <ClInclude Include="..\PreparedScene.h" />
+    <ClInclude Include="..\ShaderLightDesc.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

@@ -29,19 +29,22 @@ namespace SceneEngine
     {
     }
 
+    void LightingParserStandardPlugin::InitBasicLightEnvironment(
+        RenderCore::Metal::DeviceContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const {}
+
             ////////////////////////////////////////////////////////////////////////
 
-    static void TiledLighting_Prepare(  DeviceContext* context,
+    static void TiledLighting_Prepare(  DeviceContext& context,
                                         LightingParserContext& parserContext,
                                         LightingResolveContext& resolveContext)
     {
         resolveContext._tiledLightingResult = 
             TiledLighting_CalculateLighting(
-                context, parserContext,
+                &context, parserContext,
                 resolveContext.GetMainTargets()._msaaDepthBufferSRV, resolveContext.GetMainTargets()._gbufferRTVsSRV[1]);
     }
 
-    static void AmbientOcclusion_Prepare(   DeviceContext* context,
+    static void AmbientOcclusion_Prepare(   DeviceContext& context,
                                             LightingParserContext& parserContext,
                                             LightingResolveContext& resolveContext)
     {
@@ -51,8 +54,8 @@ namespace SceneEngine
             auto& aoRes = Techniques::FindCachedBox2<AmbientOcclusionResources>(
                 mainTargets._desc._width, mainTargets._desc._height, NativeFormat::R8_UNORM,
                 useNormals, (useNormals && resolveContext.GetSamplingCount() > 1)?NativeFormat::R8G8B8A8_SNORM:NativeFormat::Unknown);
-            ViewportDesc mainViewportDesc(*context);
-            AmbientOcclusion_Render(context, parserContext, aoRes, mainTargets._msaaDepthBufferSRV, &mainTargets._gbufferRTVsSRV[1], mainViewportDesc);
+            ViewportDesc mainViewportDesc(context);
+            AmbientOcclusion_Render(&context, parserContext, aoRes, mainTargets._msaaDepthBufferSRV, &mainTargets._gbufferRTVsSRV[1], mainViewportDesc);
             resolveContext._ambientOcclusionResult = aoRes._aoSRV;
         }
     }
@@ -72,20 +75,20 @@ namespace SceneEngine
     }
 
     void LightingParserStandardPlugin::OnLightingResolvePrepare(
-            RenderCore::Metal::DeviceContext* context, 
+            RenderCore::Metal::DeviceContext& context, 
             LightingParserContext& parserContext,
             LightingResolveContext& resolveContext) const
     {
         TiledLighting_Prepare(context, parserContext, resolveContext);
         AmbientOcclusion_Prepare(context, parserContext, resolveContext);
-        ScreenSpaceReflections_Prepare(context, parserContext, resolveContext);
+        ScreenSpaceReflections_Prepare(&context, parserContext, resolveContext);
     }
 
 
             ////////////////////////////////////////////////////////////////////////
 
     void LightingParserStandardPlugin::OnPostSceneRender(
-            RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
+            RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings, unsigned techniqueIndex) const
     {
         const bool doTiledBeams             = Tweakable("TiledBeams", false);
@@ -94,10 +97,10 @@ namespace SceneEngine
 
         const bool isTransparentPass = parseSettings._batchFilter == SceneParseSettings::BatchFilter::Transparent;
         if (doTiledRenderingTest && tiledBeamsTransparent == isTransparentPass) {
-            ViewportDesc viewport(*context);
+            ViewportDesc viewport(context);
 
             TiledLighting_RenderBeamsDebugging(
-                context, parserContext, doTiledBeams, 
+                &context, parserContext, doTiledBeams, 
                 unsigned(viewport.Width), unsigned(viewport.Height),
                 techniqueIndex);
         }

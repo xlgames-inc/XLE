@@ -9,6 +9,7 @@
 #include "LightDesc.h"
 #include "Noise.h"
 #include "LightInternal.h"
+#include "ShaderLightDesc.h"
 
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -223,15 +224,15 @@ namespace SceneEngine
             vertexShader, "game/xleres/VolumetricEffect/resolvefog.psh:ResolveFog:ps_*", definesTable);
         Metal::BoundUniforms resolveLightBinding(*resolveLight);
         Techniques::TechniqueContext::BindGlobalUniforms(resolveLightBinding);
-        resolveLightBinding.BindConstantBuffers(1, {"VolumetricFogConstants", "LookupTableConstants"});
-        resolveLightBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture", "LookupTable"});
+        resolveLightBinding.BindConstantBuffers(1, {"VolumetricFogConstants", "VolFogLookupTableConstants"});
+        resolveLightBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture", "VolFogLookupTable"});
 
         auto* resolveLightNoGrid = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader, "game/xleres/VolumetricEffect/resolvefog.psh:ResolveFogNoGrid:ps_*", definesTable);
         Metal::BoundUniforms resolveLightNoGridBinding(*resolveLightNoGrid);
         Techniques::TechniqueContext::BindGlobalUniforms(resolveLightNoGridBinding);
-        resolveLightNoGridBinding.BindConstantBuffers(1, {"VolumetricFogConstants", "LookupTableConstants"});
-        resolveLightNoGridBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture", "LookupTable"});
+        resolveLightNoGridBinding.BindConstantBuffers(1, {"VolumetricFogConstants", "VolFogLookupTableConstants"});
+        resolveLightNoGridBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture", "VolFogLookupTable"});
 
         ///////////////////////////////////////////////////////////////////////////////////////////
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
@@ -856,11 +857,14 @@ namespace SceneEngine
             RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const;
 
         virtual void OnLightingResolvePrepare(
-            MetalContext*, LightingParserContext&, LightingResolveContext&) const;
+            MetalContext&, LightingParserContext&, LightingResolveContext&) const;
 
         virtual void OnPostSceneRender(
-            MetalContext*, LightingParserContext&, 
+            MetalContext&, LightingParserContext&, 
             const SceneParseSettings&, unsigned techniqueIndex) const;
+
+        virtual void InitBasicLightEnvironment(
+            MetalContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const;
 
         VolumetricFogPlugin(VolumetricFogManager::Pimpl& pimpl);
         ~VolumetricFogPlugin();
@@ -902,7 +906,7 @@ namespace SceneEngine
     }
 
     void VolumetricFogPlugin::OnLightingResolvePrepare(
-        MetalContext* metalContext, LightingParserContext& parserContext, 
+        MetalContext& metalContext, LightingParserContext& parserContext, 
         LightingResolveContext& resolveContext) const 
     {
         if (_pimpl->_cfg._volumes.empty() || _pimpl->_cfg._renderer._enable == false) return;
@@ -924,7 +928,7 @@ namespace SceneEngine
 
             const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
             VolumetricFog_Build(
-                metalContext, parserContext, 
+                &metalContext, parserContext, 
                 useMsaaSamplers, parserContext._preparedDMShadows[0].second,
                 _pimpl->_cfg._renderer, _pimpl->_cfg._volumes[0]);
 
@@ -946,8 +950,31 @@ namespace SceneEngine
         RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const {}
     
     void VolumetricFogPlugin::OnPostSceneRender(
-        MetalContext*, LightingParserContext&, 
+        MetalContext&, LightingParserContext&, 
         const SceneParseSettings&, unsigned techniqueIndex) const {}
+
+    void VolumetricFogPlugin::InitBasicLightEnvironment(
+        MetalContext& metalContext,
+        LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const
+    {
+        if (_pimpl->_cfg._volumes.empty() || _pimpl->_cfg._renderer._enable == false) return;
+
+        const bool doVolumetricFog = Tweakable("DoVolumetricFog", true);
+        if (!doVolumetricFog) return;
+
+        // Init the shader constants that will be used for forward light resolve shaders...
+        const auto& vol = _pimpl->_cfg._volumes[0];
+        env._volumeFog = ShaderLightDesc::VolumeFog {
+            vol._material._opticalThickness, vol._heightStart, vol._heightEnd, 1u,
+            vol._material._sunInscatter, 0u, 
+            vol._material._ambientInscatter, 0u };
+
+        // Bind the shader resources that will be required by forward lit resources
+        auto& fogTable = Techniques::FindCachedBox2<VolumetricFogDensityTable>(
+            vol._material._opticalThickness);
+        metalContext.BindVS(MakeResourceList(13, fogTable._tableConstants));
+        metalContext.BindVS(MakeResourceList(23, fogTable._tableSRV));
+    }
 
     VolumetricFogPlugin::VolumetricFogPlugin(VolumetricFogManager::Pimpl& pimpl) : _pimpl(&pimpl) {}
     VolumetricFogPlugin::~VolumetricFogPlugin() {}

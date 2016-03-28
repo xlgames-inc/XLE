@@ -4,58 +4,14 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "resolvefog.h"
 #include "VolumetricFog.h"
 #include "../TransformAlgorithm.h"
+#include "../TextureAlgorithm.h"
 #include "../CommonResources.h"
 #include "../Lighting/BasicLightingEnvironment.h"
 
-#if MSAA_SAMPLERS != 0
-	#define Texture2D_MaybeMS	Texture2DMS
-#else
- 	#define Texture2D_MaybeMS	Texture2D
-#endif
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-float4 LoadFloat4(Texture2DMS<float4> textureObject, int2 pixelCoords, int sampleIndex)
-{
-	return textureObject.Load(pixelCoords, sampleIndex);
-}
-
-float LoadFloat1(Texture2DMS<float> textureObject, int2 pixelCoords, int sampleIndex)
-{
-	return textureObject.Load(pixelCoords, sampleIndex);
-}
-
-float4 LoadFloat4(Texture2D<float4> textureObject, int2 pixelCoords, int sampleIndex)
-{
-	return textureObject.Load(int3(pixelCoords, 0));
-}
-
-float LoadFloat1(Texture2D<float> textureObject, int2 pixelCoords, int sampleIndex)
-{
-	return textureObject.Load(int3(pixelCoords, 0));
-}
-
-float3 GetDirectionToSun()
-{
-	return BasicLight[0].Position;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct SystemInputs
-{
-	#if MSAA_SAMPLES > 1
-		uint sampleIndex : SV_SampleIndex;
-	#endif
-};
-
-#if MSAA_SAMPLES > 1
-	uint GetSampleIndex(SystemInputs inputs) { return inputs.sampleIndex; }
-#else
-	uint GetSampleIndex(SystemInputs inputs) { return 0; }
-#endif
+float3 GetDirectionToSun() { return BasicLight[0].Position; }
 
 Texture2D_MaybeMS<float>	DepthTexture	 	: register(t4);
 
@@ -66,115 +22,22 @@ Texture2D_MaybeMS<float>	DepthTexture	 	: register(t4);
 #endif
 Texture3D<float>			TransmissionTexture	: register(t8);
 
-Texture2D<float> 			LookupTable 		: register(t10);
-
 float SampleTransmission(float2 coords, float slice) 	{ return TransmissionTexture.SampleLevel(ClampingSampler, float3(coords, slice), 0.f); }
 float SampleInscatter(float2 coords, float slice) 		{ return InscatterTexture.SampleLevel(ClampingSampler, float3(coords, slice), 0.f); }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-cbuffer LookupTableConstants
+VolumeFogDesc MakeFogDesc()
 {
-	float LookupTableMaxValue;
-	float LookupTableMaxDistance;
+	VolumeFogDesc result;
+	result.OpticalThickness = OpticalThickness;
+	result.HeightStart = HeightStart;
+	result.HeightEnd = HeightEnd;
+	result.EnableFlag = 0;
+	result.SunInscatter = SunInscatter;
+	result.AmbientInscatter = AmbientInscatter;
+	return result;
 }
-
-float CalculatePartialInscatter(float distance, float densScale)
-{
-	const bool usePrecalculatedDensity = true;
-	if (usePrecalculatedDensity) {
-		return LookupTableMaxValue * LookupTable.SampleLevel(
-			ClampingSampler, float2(distance / LookupTableMaxDistance, densScale), 0);
-	} else {
-		float result = 0.f;
-		const uint stepCount = 256;
-		const float stepDistance = distance / float(stepCount);
-		float t = 1.f; // exp(-Density * stepDistance);
-		for (uint c=0; c<stepCount; ++c) {
-			result += t * stepDistance * densScale * OpticalThickness;
-			t *= exp(-OpticalThickness * densScale * stepDistance);
-		}
-		return result;
-	}
-}
-
-float CalculateInscatter(float distance)
-{
-	return CalculatePartialInscatter(distance, 1.f);
-}
-
-void CalculateTransmissionAndInscatter(float3 rayStart, float3 rayEnd, out float transmissionValue, out float inscatter)
-{
-	float3 diff = rayStart - rayEnd;
-	float diffLen = length(diff);
-
-	if (rayEnd.z < rayStart.z) {
-
-			// Ray is pointing down. Camera might be outside of the volume, and we're
-			// looking into it.
-		float maxDensityDistance = 0.f;
-		if (rayEnd.z < HeightEnd)
-			maxDensityDistance =
-				diffLen * min(1.f, (HeightEnd - rayEnd.z) / (rayStart.z - rayEnd.z));
-
-		float a = saturate((HeightEnd   - rayEnd.z) / (rayStart.z - rayEnd.z));
-		float b = saturate((HeightStart - rayEnd.z) / (rayStart.z - rayEnd.z));
-		float ha = (lerp(rayEnd.z, rayStart.z, a) - HeightEnd) / (HeightStart - HeightEnd);
-		float hb = (lerp(rayEnd.z, rayStart.z, b) - HeightEnd) / (HeightStart - HeightEnd);
-
-			// We need to calculate an integral of density against distance for the ray
-			// as it passes through the area where the falls off!
-			// Fortunately, it's easy... The fog falls off linearly with height. So the
-			// integral is just average of the density at the start and at the end (if the
-			// camera is outside, that average should just be half the desnity value).
-			// Distance within the partial area is easy, as well... We just have to handle the
-			// situation where the camera is within the fog.
-		float aveDensity = (lerp(OpticalThickness, 0.f, ha) + lerp(OpticalThickness, 0.f, hb)) * 0.5f;
-		float partialDistance = abs(b - a) * diffLen;
-
-		transmissionValue = exp(-aveDensity * partialDistance - OpticalThickness * maxDensityDistance);
-
-			// Calculate the inscattered light. This is a little more difficult than the
-			// transmission coefficient!
-			// Light scatters in proportional to distance (and proportional to density in
-			// the partial section).
-			// However occlusion should also apply to the inscattered light (ie, the transmission
-			// coefficient should take effect). The inscattered light can turn out to be a lot of
-			// light, so this is can important step. But the math is a bit more complex.
-		inscatter = CalculateInscatter(maxDensityDistance);
-		inscatter *= exp(-aveDensity * partialDistance);
-
-			// rough estimate for inscatter in the partial area...
-			// this is a cheap hack, but it works surprisingly well!
-		inscatter += CalculatePartialInscatter(partialDistance, aveDensity / OpticalThickness);
-
-	} else {
-
-			// Ray is pointing up. Camera might be inside of the volume, and we're
-			// looking out of it.
-		float maxDensityDistance = 0.f;
-		if (rayStart.z < HeightEnd)
-			maxDensityDistance =
-				diffLen * min(1.f, (HeightEnd - rayStart.z) / (rayEnd.z - rayStart.z));
-
-		float a = saturate((HeightEnd   - rayEnd.z) / (rayStart.z - rayEnd.z));
-		float b = saturate((HeightStart - rayEnd.z) / (rayStart.z - rayEnd.z));
-		float ha = (lerp(rayEnd.z, rayStart.z, a) - HeightEnd) / (HeightStart - HeightEnd);
-		float hb = (lerp(rayEnd.z, rayStart.z, b) - HeightEnd) / (HeightStart - HeightEnd);
-
-		float aveDensity = (lerp(OpticalThickness, 0.f, ha) + lerp(OpticalThickness, 0.f, hb)) * 0.5f;
-		float partialDistance = abs(b - a) * diffLen;
-
-		transmissionValue = exp(-aveDensity * partialDistance - OpticalThickness * maxDensityDistance);
-
-		inscatter = CalculateInscatter(maxDensityDistance);
-		inscatter += exp(-OpticalThickness * maxDensityDistance)
-			* CalculatePartialInscatter(partialDistance, aveDensity / OpticalThickness);
-
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 float4 DoResolveFog(
 	float4 position,
@@ -190,13 +53,14 @@ float4 DoResolveFog(
 
 	float transmission = 1.f;
 	float inscatter = 0.f;
+	VolumeFogDesc desc = MakeFogDesc();
 
 	if (useVolumetricGrid) {
 
 		float slice	= worldSpaceDepth / WorldSpaceGridDepth;
 		if (slice > 1.f) {
 			float3 gridEnd = CalculateWorldPosition(viewFrustumVector, WorldSpaceGridDepth / FarClip, WorldSpaceView);
-			CalculateTransmissionAndInscatter(gridEnd, worldPosition, transmission, inscatter);
+			CalculateTransmissionAndInscatter(desc, gridEnd, worldPosition, transmission, inscatter);
 
 			#if (MONOCHROME_INSCATTER!=1)
 				inscatter *= .1f * SunInscatter;
@@ -213,7 +77,7 @@ float4 DoResolveFog(
 
 	} else {
 
-		CalculateTransmissionAndInscatter(WorldSpaceView, worldPosition, transmission, inscatter);
+		CalculateTransmissionAndInscatter(desc, WorldSpaceView, worldPosition, transmission, inscatter);
 		#if (MONOCHROME_INSCATTER!=1)
 			inscatter *= .1f * SunInscatter;
 		#endif
@@ -238,15 +102,7 @@ float4 DoResolveFog(
 		float3 directionToSample = viewFrustumVector;
 		float directionToSampleRLength = rsqrt(dot(directionToSample, directionToSample));
 		float cosTheta = dot(directionToSun, directionToSample) * directionToSampleRLength;
-		cosTheta = max(0, cosTheta);
-		cosTheta *= cosTheta;
-		cosTheta *= cosTheta;
-		// cosTheta *= cosTheta;
-
-		float3 colour = AmbientInscatter + cosTheta * SunInscatter;
-		// inscatter *= MonochromeRaleighScattering(cosTheta);
-
-		return float4(inscatter * colour, transmission);
+		return float4(inscatter * GetInscatterColor(desc, cosTheta), transmission);
 
 	#else
 		return float4(inscatter, transmission);

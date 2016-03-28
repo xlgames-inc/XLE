@@ -10,6 +10,7 @@
 #include "SceneParser.h"
 #include "SceneEngineUtils.h"
 #include "ShadowResources.h"
+#include "ShaderLightDesc.h"
 #include "LightInternal.h"
 
 #include "Sky.h"
@@ -67,40 +68,6 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    namespace ShaderLightDesc
-    {
-        struct Ambient
-        { 
-            Float3      _ambientColour; 
-            float       _skyReflectionScale; 
-            float       _skyReflectionBlurriness; 
-            unsigned    _dummy[3];
-        };
-
-        struct RangeFog
-        {
-            Float3      _rangeFogInscatter; unsigned _dummy1;
-            Float3      _rangeFogOpticalThickness; unsigned _dummy2;
-        };
-
-        class Light
-        {
-        public:
-                // Note that this structure is larger than it needs to be
-                // for some light types. Only some types need the full 
-                // orientation matrix.
-                // It seems like we would end up wasting shader constants
-                // if we want to store a large number of lights for forward
-                // rendering.
-            Float3 _position;           float _cutoffRange;
-            Float3 _diffuse;            float _sourceRadiusX;
-            Float3 _specular;           float _sourceRadiusY;
-            Float3 _orientationX;       float _diffuseWideningMin;
-            Float3 _orientationY;       float _diffuseWideningMax;
-            Float3 _orientationZ;       unsigned _dummy;
-        };
-    }
-
     static ShaderLightDesc::Ambient AsShaderDesc(const GlobalLightingDesc& desc)
     {
         return ShaderLightDesc::Ambient 
@@ -127,6 +94,25 @@ namespace SceneEngine
                 ExtractForward(light._orientation), light._diffuseWideningMax, 
                 ExtractUp(light._orientation), 0
             };
+    }
+
+    static ShaderLightDesc::Light BlankLightDesc()
+    {
+        return ShaderLightDesc::Light
+            {   Float3(0.f, 0.f, 0.f), 0.f, 
+                Float3(0.f, 0.f, 0.f), 0.f,
+                Float3(0.f, 0.f, 0.f), 0.f,
+                Float3(0.f, 0.f, 0.f), 0.f,
+                Float3(0.f, 0.f, 0.f), 0.f,
+                Float3(0.f, 0.f, 0.f), 0 };
+    }
+
+    static ShaderLightDesc::VolumeFog BlankVolumeFogDesc()
+    {
+        return ShaderLightDesc::VolumeFog
+            {   0.f, 0.f, 0.f, 0,
+                Float3(0.f, 0.f, 0.f), 0, 
+                Float3(0.f, 0.f, 0.f), 0 };
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -314,7 +300,7 @@ namespace SceneEngine
             Metal::GPUProfiler::DebugAnnotation anno(context, L"Prepare");
             for (auto i=parserContext._plugins.cbegin(); i!=parserContext._plugins.cend(); ++i) {
                 CATCH_ASSETS_BEGIN
-                    (*i)->OnLightingResolvePrepare(&context, parserContext, lightingResolveContext);
+                    (*i)->OnLightingResolvePrepare(context, parserContext, lightingResolveContext);
                 CATCH_ASSETS_END(parserContext)
             }
         }
@@ -718,37 +704,25 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void LightingParser_InitBasicLightEnv(  
-        Metal::DeviceContext& context,
+        Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
         ISceneParser& sceneParser)
     {
-        const unsigned lightCount = 1;
-        struct BasicEnv
-        {
-            ShaderLightDesc::Ambient    _ambient;
-            ShaderLightDesc::RangeFog   _rangeFog;
-            ShaderLightDesc::Light      _dominant[lightCount];
-        } env;
-
+        ShaderLightDesc::BasicEnvironment env;
         auto globalDesc = sceneParser.GetGlobalLightingDesc();
         env._ambient = AsShaderDesc(globalDesc);
         env._rangeFog = AsRangeFogDesc(globalDesc);
+        env._volumeFog = BlankVolumeFogDesc();
 
-        for (unsigned l=0; l<lightCount; ++l)
-            if (sceneParser.GetLightCount() > l) {
-                env._dominant[l] = AsShaderDesc(sceneParser.GetLightDesc(l));
-            } else {
-                env._dominant[l] = ShaderLightDesc::Light
-                    {   Float3(0.f, 0.f, 0.f), 0.f, 
-                        Float3(0.f, 0.f, 0.f), 0.f,
-                        Float3(0.f, 0.f, 0.f), 0.f,
-                        Float3(0.f, 0.f, 0.f), 0.f,
-                        Float3(0.f, 0.f, 0.f), 0.f,
-                        Float3(0.f, 0.f, 0.f), 0 };
-            }
+        auto lightCount = sceneParser.GetLightCount();
+        for (unsigned l=0; l<dimof(env._dominant); ++l)
+            env._dominant[l] = (lightCount > l) ? AsShaderDesc(sceneParser.GetLightDesc(l)) : BlankLightDesc();
+
+        for (const auto& p:parserContext._plugins)
+            p->InitBasicLightEnvironment(metalContext, parserContext, env);
 
         parserContext.SetGlobalCB(
-            context, Techniques::TechniqueContext::CB_BasicLightingEnvironment,
+            metalContext, Techniques::TechniqueContext::CB_BasicLightingEnvironment,
             &env, sizeof(env));
     }
 

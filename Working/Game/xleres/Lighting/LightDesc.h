@@ -21,6 +21,16 @@ struct RangeFogDesc
 	float3	OpticalThickness;
 };
 
+struct VolumeFogDesc
+{
+	float	OpticalThickness;
+	float	HeightStart;
+	float	HeightEnd;
+	bool	EnableFlag;
+	float3	SunInscatter;
+	float3	AmbientInscatter;
+};
+
 struct LightDesc
 {
     float3	Position; 		float	CutoffRange;

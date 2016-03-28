@@ -294,6 +294,7 @@
     <ClInclude Include="..\SceneParser.h" />
     <ClInclude Include="..\ScreenspaceReflections.h" />
     <ClInclude Include="..\LightDesc.h" />
+    <ClInclude Include="..\ShaderLightDesc.h" />
     <ClInclude Include="..\ShadowResources.h" />
     <ClInclude Include="..\ShallowSurface.h" />
     <ClInclude Include="..\ShallowWater.h" />

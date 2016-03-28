@@ -13,6 +13,12 @@
 #include "../TextureAlgorithm.h"		// for SystemInputs
 #include "../Lighting/LightDesc.h"		// for LightScreenDest
 
+#if OUTPUT_FOG_COLOR == 1
+	#include "../Lighting/RangeFogResolve.h"
+	#include "../Lighting/BasicLightingEnvironment.h"
+	#include "../VolumetricEffect/resolvefog.h"
+#endif
+
 //////////////////////////////////////////////////////////////////
 
 float3 BuildInterpolator_WORLDPOSITION(VSInput input)
@@ -134,6 +140,19 @@ VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 			float3 cameraForward = float3(-CameraBasis[0].z, -CameraBasis[1].z, -CameraBasis[2].z);
 			float distanceToView = dot(worldViewVector, cameraForward);
 			LightResolve_RangeFog(BasicRangeFog, distanceToView, output.fogColor.a, output.fogColor.rgb);
+
+			// Also apply fogging from volumetric fog volumes, if they exists
+			[branch] if (BasicVolumeFog.EnableFlag != false) {
+				float transmission, inscatter;
+				CalculateTransmissionAndInscatter(
+				    BasicVolumeFog,
+					WorldSpaceView, worldPosition, transmission, inscatter);
+
+				float cosTheta = -dot(worldViewVector, BasicLight[0].Position) * rsqrt(dot(worldViewVector, worldViewVector));
+				float4 volFog = float4(inscatter * GetInscatterColor(BasicVolumeFog, cosTheta), transmission);
+				output.fogColor.rgb = volFog.rgb + output.fogColor.rgb * volFog.a;
+				output.fogColor.a *= volFog.a;
+			}
 		}
 	#endif
 

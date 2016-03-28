@@ -533,11 +533,13 @@ namespace SceneEngine
         virtual void OnPreScenePrepare(
             RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const;
         virtual void OnLightingResolvePrepare(
-            Metal::DeviceContext* context, LightingParserContext& parserContext,
+            Metal::DeviceContext& context, LightingParserContext& parserContext,
             LightingResolveContext& resolveContext) const;
         virtual void OnPostSceneRender(
-            Metal::DeviceContext* context, LightingParserContext& parserContext, 
+            Metal::DeviceContext& context, LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings, unsigned techniqueIndex) const;
+        virtual void InitBasicLightEnvironment(
+            Metal::DeviceContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const;
 
         VegetationSpawnPlugin(VegetationSpawnManager::Pimpl& pimpl);
         ~VegetationSpawnPlugin();
@@ -558,12 +560,15 @@ namespace SceneEngine
     }
 
     void VegetationSpawnPlugin::OnLightingResolvePrepare(
-        Metal::DeviceContext* context, LightingParserContext& parserContext,
+        Metal::DeviceContext& context, LightingParserContext& parserContext,
         LightingResolveContext& resolveContext) const {}
 
     void VegetationSpawnPlugin::OnPostSceneRender(
-        Metal::DeviceContext* context, LightingParserContext& parserContext, 
+        Metal::DeviceContext& context, LightingParserContext& parserContext, 
         const SceneParseSettings& parseSettings, unsigned techniqueIndex) const {}
+
+    void VegetationSpawnPlugin::InitBasicLightEnvironment(
+        Metal::DeviceContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const {}
 
     VegetationSpawnPlugin::VegetationSpawnPlugin(VegetationSpawnManager::Pimpl& pimpl)
     : _pimpl(&pimpl) {}

@@ -641,7 +641,7 @@ namespace SceneEngine
             mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]);
 
         for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
-            (*p)->OnPostSceneRender(&metalContext, parserContext, SPS::BatchFilter::Transparent, TechniqueIndex_General);
+            (*p)->OnPostSceneRender(metalContext, parserContext, SPS::BatchFilter::Transparent, TechniqueIndex_General);
     }
 
     void LightingParser_MainScene(
@@ -756,7 +756,7 @@ namespace SceneEngine
                     preparedScene,
                     TechniqueIndex_Deferred, L"MainScene-OpaqueGBuffer");
                 for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p) {
-                    (*p)->OnPostSceneRender(&metalContext, parserContext, SPS::BatchFilter::General, TechniqueIndex_Deferred);
+                    (*p)->OnPostSceneRender(metalContext, parserContext, SPS::BatchFilter::General, TechniqueIndex_Deferred);
                 }
                 LightingParser_LateGBufferRender(metalContext, parserContext, mainTargets);
                 LightingParser_ResolveGBuffer(metalContext, parserContext, mainTargets, lightingResTargets);
@@ -981,7 +981,7 @@ namespace SceneEngine
             TechniqueIndex_ShadowGen, L"ShadowGen-Prepare");
 
         for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
-            (*p)->OnPostSceneRender(&metalContext, parserContext, sceneParseSettings, TechniqueIndex_ShadowGen);
+            (*p)->OnPostSceneRender(metalContext, parserContext, sceneParseSettings, TechniqueIndex_ShadowGen);
         
         return std::move(preparedResult);
     }

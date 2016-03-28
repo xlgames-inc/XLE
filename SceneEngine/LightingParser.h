@@ -19,6 +19,8 @@ namespace SceneEngine
 {
     using MetalContext = RenderCore::Metal::DeviceContext;
 
+    namespace ShaderLightDesc { class BasicEnvironment; }
+
     class RenderingQualitySettings
     {
     public:
@@ -190,15 +192,14 @@ namespace SceneEngine
 
     /// <summary>Plug-in for the lighting parser</summary>
     /// This allows for some customization of the lighting parser operations.
-    /// There are 2 important hooks for customization:
-    ///     <list>
-    ///         <item>OnPreScenePrepare --  this will be executed before the main rendering process begins. 
-    ///                 It is needed for preparing resources that will be used in later steps of the pipeline.
-    ///         <item>OnLightingResolvePrepare -- this will be executed before the lighting resolve step 
-    ///                 begins. There are two purposes to this: to prepare any resources that will be required 
-    ///                 during lighting resolve, and to queue operations that should happen during lighting 
-    ///                 resolve. To queue operations, use LightingResolveContext::AppendResolve
-    ///     </list>
+    /// <list>
+    ///     <item>OnPreScenePrepare --  this will be executed before the main rendering process begins. 
+    ///             It is needed for preparing resources that will be used in later steps of the pipeline.</item>
+    ///     <item>OnLightingResolvePrepare -- this will be executed before the lighting resolve step 
+    ///             begins. There are two purposes to this: to prepare any resources that will be required 
+    ///             during lighting resolve, and to queue operations that should happen during lighting 
+    ///             resolve. To queue operations, use LightingResolveContext::AppendResolve</item>
+    /// </list>
     /// 
     class ILightingParserPlugin
     {
@@ -207,11 +208,14 @@ namespace SceneEngine
             RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const = 0;
 
         virtual void OnLightingResolvePrepare(
-            MetalContext*, LightingParserContext&, LightingResolveContext&) const = 0;
+            MetalContext&, LightingParserContext&, LightingResolveContext&) const = 0;
 
         virtual void OnPostSceneRender(
-            MetalContext*, LightingParserContext&, 
+            MetalContext&, LightingParserContext&, 
             const SceneParseSettings&, unsigned techniqueIndex) const = 0;
+
+        virtual void InitBasicLightEnvironment(
+            MetalContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const = 0;
     };
 }
 
