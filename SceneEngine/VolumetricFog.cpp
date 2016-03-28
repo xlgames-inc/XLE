@@ -512,8 +512,8 @@ namespace SceneEngine
         const float shadowDepthScale = 1.0f / 2048.f;   // (should be based on the far clip in the shadow projection)
         struct Constants
         {
-            Float3 ForwardColour; unsigned _pad1;
-            Float3 BackColour; unsigned _pad2;
+            Float3 ForwardInscatter; unsigned _pad1;
+            Float3 AmbientInscatter; unsigned _pad2;
             Float3 ReciprocalGridDimensions;
             float WorldSpaceGridDepth;
 
@@ -528,13 +528,13 @@ namespace SceneEngine
             float HeightEnd;
             unsigned dummy[3];
         } constants = {
-            mat._forwardColour, 0,
-            mat._backColour, 0,
+            mat._sunInscatter, 0,
+            mat._ambientInscatter, 0,
             Float3(1.0f / float(rendererCfg._gridDimensions[0]), 1.0f / float(rendererCfg._gridDimensions[1]), 1.0f / float(rendererCfg._gridDimensions[2])),
             rendererCfg._worldSpaceGridDepth,
             mat._ESM_C, mat._shadowsBias, shadowDepthScale,
-            mat._jitteringAmount, mat._density, 
-            mat._noiseDensityScale, mat._noiseSpeed,
+            mat._jitteringAmount, mat._opticalThickness, 
+            mat._noiseThicknessScale, mat._noiseSpeed,
             volume._heightStart, volume._heightEnd,
             {0,0,0}
         };
@@ -558,7 +558,7 @@ namespace SceneEngine
                 UseESMShadowMaps(), GetHighPrecisionResources());
             auto& fogShaders = Techniques::FindCachedBoxDep2<VolumetricFogShaders>(
                 1, useMsaaSamplers, false, UseESMShadowMaps(), 
-                cfg._material._noiseDensityScale > 0.f,
+                cfg._material._noiseThicknessScale > 0.f,
                 GetShadowCascadeMode(shadowFrustum),
                 unsigned(fogRes._shadowMapRTVs.size()),
                 rendererCfg._skipShadowFrustums, rendererCfg._gridDimensions[2],
@@ -697,7 +697,7 @@ namespace SceneEngine
 
         auto& fogShaders = Techniques::FindCachedBoxDep2<VolumetricFogShaders>(
             samplingCount, useMsaaSamplers, flipDirection, UseESMShadowMaps(), 
-            cfg._material._noiseDensityScale > 0.f,
+            cfg._material._noiseThicknessScale > 0.f,
             shadowCascadeMode,
             shadowMapRTVs,
             rendererCfg._skipShadowFrustums,
@@ -708,7 +708,7 @@ namespace SceneEngine
         constantBufferPackets[0] = MakeVolFogConstants(cfg, rendererCfg);
 
         auto& fogTable = Techniques::FindCachedBox2<VolumetricFogDensityTable>(
-            cfg._material._density);
+            cfg._material._opticalThickness);
 
         const Metal::ShaderResourceView* srvs[] =
         {
@@ -746,11 +746,11 @@ namespace SceneEngine
     VolumetricFogMaterial VolumetricFogMaterial_Default()
     {
         VolumetricFogMaterial result;
-        result._density = .5f;
-        result._noiseDensityScale = 0.f;
+        result._opticalThickness = 1.f / 500.f;
+        result._noiseThicknessScale = 0.f;
         result._noiseSpeed = 1.f;
-        result._forwardColour = 17.f * Float3(.7f, .6f, 1.f);
-        result._backColour = 17.f * Float3(0.5f, 0.5f, .65f);
+        result._sunInscatter = 17.f * Float3(.7f, .6f, 1.f);
+        result._ambientInscatter = 17.f * Float3(0.5f, 0.5f, .65f);
         result._ESM_C = .25f * 80.f;
         result._shadowsBias = 0.00000125f;
         result._jitteringAmount = 0.5f;
@@ -770,13 +770,13 @@ namespace SceneEngine
 
     VolumetricFogConfig::FogVolume::FogVolume(const ParameterBox& params)
     {
-        ParamName(Density);
-        ParamName(NoiseDensityScale);
+        ParamName(ReciprocalThickness);
+        ParamName(NoiseThicknessScale);
         ParamName(NoiseSpeed);
-        ParamName(ForwardColor);
-        ParamName(ForwardColorScale);
-        ParamName(BackColor);
-        ParamName(BackColorScale);
+        ParamName(SunInscatter);
+        ParamName(SunInscatterScale);
+        ParamName(AmbientInscatter);
+        ParamName(AmbientInscatterScale);
         ParamName(ESM_C);
         ParamName(ShadowBias);
         ParamName(JitteringAmount);
@@ -784,15 +784,17 @@ namespace SceneEngine
         ParamName(HeightStart);
         ParamName(HeightEnd);
 
-        _material._density = params.GetParameter(Density, _material._density);
-        _material._noiseDensityScale = params.GetParameter(NoiseDensityScale, _material._noiseDensityScale);
+        _material._opticalThickness = 1.f / std::max(1.f, params.GetParameter(ReciprocalThickness, 1.f));
+        _material._noiseThicknessScale = params.GetParameter(NoiseThicknessScale, _material._noiseThicknessScale);
         _material._noiseSpeed = params.GetParameter(NoiseSpeed, _material._noiseSpeed);
-        _material._forwardColour = 
-            params.GetParameter(ForwardColorScale, 1.f)
-            * AsFloat3Color(params.GetParameter(ForwardColor, int(-1)));
-        _material._backColour = 
-            params.GetParameter(BackColorScale, 1.f)
-            * AsFloat3Color(params.GetParameter(BackColor, int(-1)));
+
+        _material._sunInscatter = 
+            params.GetParameter(SunInscatterScale, 1.f)
+            * AsFloat3Color(params.GetParameter(SunInscatter, int(-1)));
+        _material._ambientInscatter = 
+            params.GetParameter(AmbientInscatterScale, 1.f)
+            * AsFloat3Color(params.GetParameter(AmbientInscatter, int(-1)));
+
         _material._ESM_C = params.GetParameter(ESM_C, _material._ESM_C);
         _material._shadowsBias = params.GetParameter(ShadowBias, _material._shadowsBias);
         _material._jitteringAmount = params.GetParameter(JitteringAmount, _material._jitteringAmount);

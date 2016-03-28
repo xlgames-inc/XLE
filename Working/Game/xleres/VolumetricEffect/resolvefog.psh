@@ -39,7 +39,7 @@ float LoadFloat1(Texture2D<float> textureObject, int2 pixelCoords, int sampleInd
 
 float3 GetDirectionToSun()
 {
-	return BasicLight[0].NegativeDirection;
+	return BasicLight[0].Position;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,8 +91,8 @@ float CalculatePartialInscatter(float distance, float densScale)
 		const float stepDistance = distance / float(stepCount);
 		float t = 1.f; // exp(-Density * stepDistance);
 		for (uint c=0; c<stepCount; ++c) {
-			result += t * stepDistance * densScale * Density;
-			t *= exp(-Density * densScale * stepDistance);
+			result += t * stepDistance * densScale * OpticalThickness;
+			t *= exp(-OpticalThickness * densScale * stepDistance);
 		}
 		return result;
 	}
@@ -129,10 +129,10 @@ void CalculateTransmissionAndInscatter(float3 rayStart, float3 rayEnd, out float
 			// camera is outside, that average should just be half the desnity value).
 			// Distance within the partial area is easy, as well... We just have to handle the
 			// situation where the camera is within the fog.
-		float aveDensity = (lerp(Density, 0.f, ha) + lerp(Density, 0.f, hb)) * 0.5f;
+		float aveDensity = (lerp(OpticalThickness, 0.f, ha) + lerp(OpticalThickness, 0.f, hb)) * 0.5f;
 		float partialDistance = abs(b - a) * diffLen;
 
-		transmissionValue = exp(-aveDensity * partialDistance - Density * maxDensityDistance);
+		transmissionValue = exp(-aveDensity * partialDistance - OpticalThickness * maxDensityDistance);
 
 			// Calculate the inscattered light. This is a little more difficult than the
 			// transmission coefficient!
@@ -146,7 +146,7 @@ void CalculateTransmissionAndInscatter(float3 rayStart, float3 rayEnd, out float
 
 			// rough estimate for inscatter in the partial area...
 			// this is a cheap hack, but it works surprisingly well!
-		inscatter += CalculatePartialInscatter(partialDistance, aveDensity / Density);
+		inscatter += CalculatePartialInscatter(partialDistance, aveDensity / OpticalThickness);
 
 	} else {
 
@@ -162,13 +162,14 @@ void CalculateTransmissionAndInscatter(float3 rayStart, float3 rayEnd, out float
 		float ha = (lerp(rayEnd.z, rayStart.z, a) - HeightEnd) / (HeightStart - HeightEnd);
 		float hb = (lerp(rayEnd.z, rayStart.z, b) - HeightEnd) / (HeightStart - HeightEnd);
 
-		float aveDensity = (lerp(Density, 0.f, ha) + lerp(Density, 0.f, hb)) * 0.5f;
+		float aveDensity = (lerp(OpticalThickness, 0.f, ha) + lerp(OpticalThickness, 0.f, hb)) * 0.5f;
 		float partialDistance = abs(b - a) * diffLen;
 
-		transmissionValue = exp(-aveDensity * partialDistance - Density * maxDensityDistance);
+		transmissionValue = exp(-aveDensity * partialDistance - OpticalThickness * maxDensityDistance);
 
 		inscatter = CalculateInscatter(maxDensityDistance);
-		inscatter += exp(-Density * maxDensityDistance) * CalculatePartialInscatter(partialDistance, aveDensity / Density);
+		inscatter += exp(-OpticalThickness * maxDensityDistance)
+			* CalculatePartialInscatter(partialDistance, aveDensity / OpticalThickness);
 
 	}
 }
@@ -198,7 +199,7 @@ float4 DoResolveFog(
 			CalculateTransmissionAndInscatter(gridEnd, worldPosition, transmission, inscatter);
 
 			#if (MONOCHROME_INSCATTER!=1)
-				inscatter *= .1f * ForwardColour;
+				inscatter *= .1f * SunInscatter;
 			#endif
 		}
 
@@ -214,7 +215,7 @@ float4 DoResolveFog(
 
 		CalculateTransmissionAndInscatter(WorldSpaceView, worldPosition, transmission, inscatter);
 		#if (MONOCHROME_INSCATTER!=1)
-			inscatter *= .1f * ForwardColour;
+			inscatter *= .1f * SunInscatter;
 		#endif
 
 	}
@@ -237,9 +238,13 @@ float4 DoResolveFog(
 		float3 directionToSample = viewFrustumVector;
 		float directionToSampleRLength = rsqrt(dot(directionToSample, directionToSample));
 		float cosTheta = dot(directionToSun, directionToSample) * directionToSampleRLength;
+		cosTheta = max(0, cosTheta);
+		cosTheta *= cosTheta;
+		cosTheta *= cosTheta;
+		// cosTheta *= cosTheta;
 
-		float3 colour = lerp(ForwardColour, BackColour, 0.5f + 0.5f * cosTheta);
-		inscatter *= MonochromeRaleighScattering(cosTheta);
+		float3 colour = AmbientInscatter + cosTheta * SunInscatter;
+		// inscatter *= MonochromeRaleighScattering(cosTheta);
 
 		return float4(inscatter * colour, transmission);
 

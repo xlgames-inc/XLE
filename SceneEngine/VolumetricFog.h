@@ -18,12 +18,12 @@ namespace SceneEngine
     class VolumetricFogMaterial
     {
     public:
-        float _density;
-        float _noiseDensityScale;       // set to 0. to disable this feature
+        float _opticalThickness;
+        float _noiseThicknessScale;       // set to 0. to disable this feature
         float _noiseSpeed;
 
-        Float3 _forwardColour;
-        Float3 _backColour;
+        Float3 _sunInscatter;
+        Float3 _ambientInscatter;
 
         float _ESM_C;
         float _shadowsBias;

@@ -9,8 +9,8 @@
 
 cbuffer VolumetricFogConstants
 {
-    float3 ForwardColour;
-    float3 BackColour;
+    float3 SunInscatter;
+    float3 AmbientInscatter;
 
     float3 ReciprocalGridDimensions;
     float WorldSpaceGridDepth;
@@ -21,8 +21,8 @@ cbuffer VolumetricFogConstants
 
     float JitteringAmount; // = 0.5f;
 
-    float Density;
-    float NoiseDensityScale;
+    float OpticalThickness;
+    float NoiseThicknessScale;
     float NoiseSpeed;
 
     float HeightStart;

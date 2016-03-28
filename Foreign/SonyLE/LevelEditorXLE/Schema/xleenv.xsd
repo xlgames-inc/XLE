@@ -596,29 +596,35 @@
     <xs:annotation>
       <xs:appinfo>
         <LeGe.NativeType nativeName="FogVolume"/>
-        <LeGe.NativeProperty name="Density" nativeName="Density"/>
-        <LeGe.NativeProperty name="NoiseDensityScale" nativeName="NoiseDensityScale"/>
+        <LeGe.NativeProperty name="ReciprocalThickness" nativeName="ReciprocalThickness"/>
+        <LeGe.NativeProperty name="NoiseThicknessScale" nativeName="NoiseThicknessScale"/>
         <LeGe.NativeProperty name="NoiseSpeed" nativeName="NoiseSpeed"/>
-        <LeGe.NativeProperty name="ForwardColor" nativeName="ForwardColor"/>
-        <LeGe.NativeProperty name="ForwardColorScale" nativeName="ForwardColorScale"/>
-        <LeGe.NativeProperty name="BackColor" nativeName="BackColor"/>
-        <LeGe.NativeProperty name="BackColorScale" nativeName="BackColorScale"/>
+        <LeGe.NativeProperty name="SunInscatter" nativeName="SunInscatter"/>
+        <LeGe.NativeProperty name="SunInscatterScale" nativeName="SunInscatterScale"/>
+        <LeGe.NativeProperty name="AmbientInscatter" nativeName="AmbientInscatter"/>
+        <LeGe.NativeProperty name="AmbientInscatterScale" nativeName="AmbientInscatterScale"/>
         <LeGe.NativeProperty name="ESM_C" nativeName="ESM_C"/>
         <LeGe.NativeProperty name="ShadowBias" nativeName="ShadowBias"/>
         <LeGe.NativeProperty name="JitteringAmount" nativeName="JitteringAmount"/>
         <LeGe.NativeProperty name="HeightStart" nativeName="HeightStart"/>
         <LeGe.NativeProperty name="HeightEnd" nativeName="HeightEnd"/>
 
-        <scea.dom.editors.attribute category="Density" name="Density" displayName="Density"/>
-        <scea.dom.editors.attribute category="Density" name="NoiseDensityScale" displayName="Noise Density Scale"/>
+        <scea.dom.editors.attribute category="Density" name="ReciprocalThickness" displayName="Thickness Factor"
+                                    description="This controls out-scatter for the fog, or the amount of 'darkening' caused by the fog. Smaller numbers mean more light is deflected away, and the scene becomes darker. This value is the reciprocal of the optical thickness."
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:1,1500"/>
+        <scea.dom.editors.attribute category="Density" name="NoiseThicknessScale" displayName="Noise Thickess Scale"/>
         <scea.dom.editors.attribute category="Density" name="NoiseSpeed" displayName="Noise Speed"/>
 
-        <scea.dom.editors.attribute category="Color" name="ForwardColor" displayName="Forward Color"
-          editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
-        <scea.dom.editors.attribute category="Color" name="BackColor" displayName="Backwards Color"
-          editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
-        <scea.dom.editors.attribute category="Color" name="ForwardColorScale" displayName="Forward Color Scale"/>
-        <scea.dom.editors.attribute category="Color" name="BackColorScale" displayName="Backwards Color Scale"/>
+        <scea.dom.editors.attribute category="Color" name="SunInscatter" displayName="Sun Inscatter"
+                                    description="This is the 'inscatter' (or brightening) caused by the fog. This is in the direction of the sun."
+                                    editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
+        <scea.dom.editors.attribute category="Color" name="AmbientInscatter" displayName="Ambient Inscatter"
+                                    description="This is the 'inscatter' (or brightening) caused by the fog. This is the non-directional, ambient component."
+                                    editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
+        <scea.dom.editors.attribute category="Color" name="SunInscatterScale" displayName="Sun Inscatter Scale"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:1,200"/>
+        <scea.dom.editors.attribute category="Color" name="AmbientInscatterScale" displayName="Ambient Inscatter Scale"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:1,200"/>
         
         <scea.dom.editors.attribute category="Shadowing" name="ESM_C" displayName="ESM_C"/>
         <scea.dom.editors.attribute category="Shadowing" name="ShadowBias" displayName="ShadowBias"/>
@@ -634,14 +640,14 @@
 
     <xs:complexContent>
       <xs:extension base="gameObjectType">
-        <xs:attribute name="Density" type="xs:float" default=".5"/>
-        <xs:attribute name="NoiseDensityScale" type="xs:float" default="0"/>
+        <xs:attribute name="ReciprocalThickness" type="xs:float" default="500"/>
+        <xs:attribute name="NoiseThicknessScale" type="xs:float" default="0"/>
         <xs:attribute name="NoiseSpeed" type="xs:float" default="1"/>
 
-        <xs:attribute name="ForwardColor" type="xs:int" default="-1"/>
-        <xs:attribute name="ForwardColorScale" type="xs:float" default="1"/>
-        <xs:attribute name="BackColor" type="xs:int" default="-1"/>
-        <xs:attribute name="BackColorScale" type="xs:float" default="1"/>
+        <xs:attribute name="SunInscatter" type="xs:int" default="-1"/>
+        <xs:attribute name="SunInscatterScale" type="xs:float" default="1"/>
+        <xs:attribute name="AmbientInscatter" type="xs:int" default="-1"/>
+        <xs:attribute name="AmbientInscatterScale" type="xs:float" default="1"/>
 
         <xs:attribute name="ESM_C" type="xs:float" default="20"/>
         <xs:attribute name="ShadowBias" type="xs:float" default="0.000001"/>

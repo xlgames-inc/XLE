@@ -28,20 +28,20 @@ namespace Overlays
 
         ScrollBarObj objects[dimof(VolumetricFogSettings::_scrollers)] = 
         {
-            { &_materialSettings->_density,             "Density",              0.f,   1.f },
-            { &_materialSettings->_noiseDensityScale,   "NoiseDensityScale",    0.f,   1.f },
+            { &_materialSettings->_opticalThickness,             "Density",              0.f,   1.f },
+            { &_materialSettings->_noiseThicknessScale,   "NoiseDensityScale",    0.f,   1.f },
             { &_materialSettings->_noiseSpeed,          "NoiseSpeed",           0.001f,   10.f },
             // { &_materialSettings->_heightStart,         "HeightStart",          0.f,   300.f },
             // { &_materialSettings->_heightEnd,           "HeightEnd",            0.f,   300.f },
 
-            { &_materialSettings->_forwardColour[0],    "ForwardR",             0.f,   1.f },
-            { &_materialSettings->_forwardColour[1],    "ForwardG",             0.f,   1.f },
-            { &_materialSettings->_forwardColour[2],    "ForwardB",             0.f,   1.f },
+            { &_materialSettings->_sunInscatter[0],    "ForwardR",             0.f,   1.f },
+            { &_materialSettings->_sunInscatter[1],    "ForwardG",             0.f,   1.f },
+            { &_materialSettings->_sunInscatter[2],    "ForwardB",             0.f,   1.f },
             // { &_materialSettings->_forwardBrightness,   "ForwardBrightness",    0.f,   50.f },
 
-            { &_materialSettings->_backColour[0],       "BackR",                0.f,   1.f },
-            { &_materialSettings->_backColour[1],       "BackG",                0.f,   1.f },
-            { &_materialSettings->_backColour[2],       "BackB",                0.f,   1.f },
+            { &_materialSettings->_ambientInscatter[0],       "BackR",                0.f,   1.f },
+            { &_materialSettings->_ambientInscatter[1],       "BackG",                0.f,   1.f },
+            { &_materialSettings->_ambientInscatter[2],       "BackB",                0.f,   1.f },
             // { &_materialSettings->_backBrightness,      "BackBrightness",       0.f,   50.f },
 
             { &_materialSettings->_ESM_C,               "ESM_C",                0.f,   150.f },

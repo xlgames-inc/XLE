@@ -42,7 +42,7 @@ float ResolveShadows(float3 worldPosition)
 	float2 tc;
 
 	[unroll] for (int c=0; c<BLURRED_SHADOW_CASCADE_COUNT; ++c) {
-		float4 frustumCoordinates = ShadowProjection_GetOutput(worldPosition, SHADOW_CASCADE_SKIP+c);
+		float4 frustumCoordinates = ShadowProjection_GetOutput(worldPosition, SHADOW_CASCADE_SKIP+c, GetShadowCascadeMode());
 
 		d = frustumCoordinates.z / frustumCoordinates.w;
 		tc = frustumCoordinates.xy / frustumCoordinates.w;
@@ -165,7 +165,7 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 		//	Write final result to the volume texture
 
 	int3 outputTexel = dispatchThreadId;
-	float density = max(0, Density + NoiseDensityScale * noiseSample1);
+	float density = max(0, OpticalThickness + NoiseThicknessScale * noiseSample1);
 
 		// just linear with height currently...
 	float heightDensityScale = saturate((centrePoint.z - HeightStart) / (HeightEnd - HeightStart));
@@ -177,7 +177,7 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 
 float3 GetDirectionToSun()
 {
-	return BasicLight[0].NegativeDirection;
+	return BasicLight[0].Position;
 }
 
 #if (MONOCHROME_INSCATTER==1)
