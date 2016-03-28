@@ -54,7 +54,7 @@ float4 forward_main({{MainFunctionParameterSignature}}, SystemInputs sys) : SV_T
 			LightScreenDest_Create(int2(geo.position.xy), GetSampleIndex(sys))), 1.f);
 
 	#if OUTPUT_FOG_COLOR == 1
-		result.rgb = lerp(geo.fogColor.rgb, result.rgb, geo.fogColor.a);
+		result.rgb = geo.fogColor.rgb + result.rgb * geo.fogColor.a;
 	#endif
 
 	result.a = sample.blendingAlpha;

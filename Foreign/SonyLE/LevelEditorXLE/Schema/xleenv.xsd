@@ -36,7 +36,7 @@
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms"
           converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
         <scea.dom.editors.attribute category="RangeFog" name="RangeFogInscatterScale" displayName="Inscatter Scale"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:1,20000"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:1,1000"/>
         
         <scea.dom.editors.attribute category="RangeFog" name="RangeFogThickness" displayName="Optical thickness"
           description="Color of light scattered away by the atmosphere. A white color is ok (which means that all colors become dimmer equally with distance. But a physically correct model would scatter light differently for different colors."

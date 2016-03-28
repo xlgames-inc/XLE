@@ -122,9 +122,5 @@ VSOutput vs_main(VSInput input)
 		output.worldPosition = worldPosition.xyz;
 	#endif
 
-	#if OUTPUT_FOG_COLOR == 1
-		output.fogColor = CalculateFog(worldPosition.z, WorldSpaceView - worldPosition, NegativeDominantLightDirection);
-	#endif
-
 	return output;
 }

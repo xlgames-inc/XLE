@@ -40,8 +40,11 @@ VSSprite vs_main(VSSprite input)
 {
     VSOutput output;
     #if OUTPUT_FOG_COLOR == 1
-        // output.fogColor = CalculateFog(worldPosition.z, WorldSpaceView - worldPosition, NegativeDominantLightDirection);
-        output.fogColor = float4(0.0.xxx, 1.f);
+        {
+            float3 cameraForward = float3(-CameraBasis[0].z, -CameraBasis[1].z, -CameraBasis[2].z);
+            float distanceToView = dot(WorldSpaceView.xyz - input[0].position.xyz, cameraForward);
+            LightResolve_RangeFog(BasicRangeFog, distanceToView, output.fogColor.a, output.fogColor.rgb);
+        }
     #endif
 
     output.spriteIndex = input[0].spriteIndex;

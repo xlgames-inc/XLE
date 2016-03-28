@@ -111,10 +111,9 @@ namespace SceneEngine
 
     static ShaderLightDesc::RangeFog AsRangeFogDesc(const GlobalLightingDesc& desc)
     {
-        return ShaderLightDesc::RangeFog
-            { 
-                desc._rangeFogInscatter, 0, desc._rangeFogThickness, 0
-            };
+        if (desc._doRangeFog)
+            return ShaderLightDesc::RangeFog { desc._rangeFogInscatter, 0, desc._rangeFogThickness, 0 };
+        return ShaderLightDesc::RangeFog { Float3(0.f, 0.f, 0.f), 0, Float3(0.f, 0.f, 0.f), 0 };
     }
 
     static ShaderLightDesc::Light AsShaderDesc(const LightDesc& light)

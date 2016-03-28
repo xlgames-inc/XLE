@@ -14,7 +14,7 @@
             HAS_DIFFUSE_IBL
             HAS_SPECULAR_IBL
         ~Material
-            MAT_BLEND_FOG=0
+            MAT_BLEND_FOG=1
             MAT_SKIP_LIGHTING_SCALE=0
             MAT_TRANSMITTED_SPECULAR=0
             MAT_CLAMP_SPEC=0
@@ -155,6 +155,7 @@
         ~Material
             MAT_TRANSMITTED_SPECULAR=0
             MAT_CLAMP_SPEC=0
+            MAT_BLEND_FOG=1
         ~GlobalEnvironment
             SKIP_MATERIAL_DIFFUSE=0
             SKY_PROJECTION
