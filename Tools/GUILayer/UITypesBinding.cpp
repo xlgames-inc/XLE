@@ -719,11 +719,7 @@ namespace GUILayer
                 stateSet._flag |= RenderCore::Techniques::RenderStateSet::Flag::ForwardBlend;
 
                 stateSet._blendType = s_standardBlendDefs[c]._blendType;
-                if (s_standardBlendDefs[c]._blendType == BlendType::Basic) {
-                    stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::BlendType;
-                } else {
-                    stateSet._flag |= RenderCore::Techniques::RenderStateSet::Flag::BlendType;
-                }
+                stateSet._flag |= RenderCore::Techniques::RenderStateSet::Flag::BlendType;
 
                 transaction->Commit();
                 NotifyPropertyChanged("StandardBlendMode");

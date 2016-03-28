@@ -8,8 +8,8 @@
 #include "../../MainGeometry.h"
 #include "../../TextureAlgorithm.h"     // (for SystemInputs)
 #include "../../Surface.h"
-#include "../Lighting/LightDesc.h"
-#include "../Lighting/Forward.h"
+#include "../../Lighting/LightDesc.h"
+#include "../../Lighting/Forward.h"
 
 struct FragmentListNode
 {
@@ -111,7 +111,11 @@ Texture2DMS<float> StochasticOcclusionDepths : register(t9);
 	float LoadSampleOpacity(uint2 coord, int sample) { return 0.f; }
 #endif
 
-uint CalculateStochasticPixelType(float4 position, out float occlusion)
+uint CalculateStochasticPixelType(float4 position, out float occlusion
+	#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
+		, uint primitiveID
+	#endif
+	)
 {
 	// This is the main resolve step when using stochastic blending
 	// The brightness of the color we want to write should be modulated
@@ -133,7 +137,7 @@ uint CalculateStochasticPixelType(float4 position, out float occlusion)
 	uint firstPrimId = primId;
 	bool splitPixel = false;
 
-	for (uint s=0;;) {
+	[unroll] for (uint s=0;;) {
 			// Maybe getting self-occlusion here?
 			// The depth values written to the MSAA sample seem to be the depth
 			// at the sampling point (not the center of the pixel). So they won't
