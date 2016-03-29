@@ -154,9 +154,6 @@ namespace Overlays
 
         ScrollBarObj objects[dimof(OceanLightingSettingsDisplay::_scrollers)] = 
         {
-            { &_oceanSettings->_specularReflectionBrightness[0],    "SpecularBrightnessR",      0.f,   5.f },
-            { &_oceanSettings->_specularReflectionBrightness[1],    "SpecularBrightnessG",      0.f,   5.f },
-            { &_oceanSettings->_specularReflectionBrightness[2],    "SpecularBrightnessB",      0.f,   5.f },
             { &_oceanSettings->_opticalThickness[0],                "OpticalThicknessR",        0.f,    .05f },
             { &_oceanSettings->_opticalThickness[1],                "OpticalThicknessG",        0.f,    .05f },
             { &_oceanSettings->_opticalThickness[2],                "OpticalThicknessB",        0.f,    .05f },
@@ -164,7 +161,6 @@ namespace Overlays
             { &_oceanSettings->_skyReflectionBrightness,            "ReflectionBrightness",     0.f,   5.f },
             { &_oceanSettings->_upwellingScale,                     "UpwellingScale",           0.f,   1.f },
             { &_oceanSettings->_refractiveIndex,                    "RefractiveIndex",          1.f,   2.f },
-            { &_oceanSettings->_specularPower,                      "SpecularPower",           16.f, 512.f },
             { &_oceanSettings->_reflectionBumpScale,                "ReflectionBumpScale",      0.f,   1.f },
             { &_oceanSettings->_detailNormalFrequency,              "DetailNormalFrequency",    0.f,  10.f },
             { &_oceanSettings->_specularityFrequency,               "SpecularityFrequency",     0.f,  10.f }

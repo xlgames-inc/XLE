@@ -481,19 +481,19 @@
 
     <xs:complexContent>
       <xs:extension base="envMiscType">
-        <xs:attribute name="Enable" type="xs:boolean" default="false"/>
+        <xs:attribute name="Enable" type="xs:boolean" default="true"/>
         <xs:attribute name="WindAngle" type="xs:float" default="0"/>
-        <xs:attribute name="WindVelocity" type="xs:float" default="48"/>
+        <xs:attribute name="WindVelocity" type="xs:float" default="6"/>
         <xs:attribute name="PhysicalDimensions" type="xs:float" default="256"/>
         <xs:attribute name="GridDimensions" type="xs:unsignedInt" default="256"/>
-        <xs:attribute name="StrengthConstantXY" type="xs:float" default="1"/>
-        <xs:attribute name="StrengthConstantZ" type="xs:float" default=".61"/>
-        <xs:attribute name="DetailNormalsStrength" type="xs:float" default=".65"/>
+        <xs:attribute name="StrengthConstantXY" type="xs:float" default="1.5"/>
+        <xs:attribute name="StrengthConstantZ" type="xs:float" default="1"/>
+        <xs:attribute name="DetailNormalsStrength" type="xs:float" default="1.2"/>
         <xs:attribute name="SpectrumFade" type="xs:float" default="0"/>
-        <xs:attribute name="ScaleAgainstWind" type="xs:float" default=".25"/>
+        <xs:attribute name="ScaleAgainstWind" type="xs:float" default=".65"/>
         <xs:attribute name="SuppressionFactor" type="xs:float" default=".06"/>
         <xs:attribute name="GridShiftSpeed" type="xs:float" default=".062"/>
-        <xs:attribute name="BaseHeight" type="xs:float" default="100"/>
+        <xs:attribute name="BaseHeight" type="xs:float" default="0"/>
         <xs:attribute name="SpectrumMin" type="xs:float" default="0"/>
         <xs:attribute name="SpectrumMax" type="xs:float" default="1"/>
 
@@ -555,18 +555,18 @@
 
     <xs:complexContent>
       <xs:extension base="envMiscType">
-        <xs:attribute name="FoamBrightness" type="xs:float" default="0.08"/>
-        <xs:attribute name="OpticalThicknessReciprocalScalar" type="xs:float" default="0.05"/>
-        <xs:attribute name="OpticalThicknessReciprocalColor" type="xs:int" default="-1"/>
+        <xs:attribute name="FoamBrightness" type="xs:float" default="5.0"/>
+        <xs:attribute name="OpticalThicknessReciprocalScalar" type="xs:float" default="32"/>
+        <xs:attribute name="OpticalThicknessReciprocalColor" type="xs:int" default="-7286273"/>
         <xs:attribute name="SkyReflectionBrightness" type="xs:float" default="1"/>
-        <xs:attribute name="UpwellingScale" type="xs:float" default="1"/>
+        <xs:attribute name="UpwellingScale" type="xs:float" default="0.07"/>
         <xs:attribute name="RefractiveIndex" type="xs:float" default="1.333"/>
         <xs:attribute name="ReflectionBumpScale" type="xs:float" default=".1"/>
-        <xs:attribute name="DetailNormalFrequency" type="xs:float" default="6.727"/>
-        <xs:attribute name="SpecularityFrequency" type="xs:float" default="7.1"/>
+        <xs:attribute name="DetailNormalFrequency" type="xs:float" default="9.3"/>
+        <xs:attribute name="SpecularityFrequency" type="xs:float" default="3.2"/>
         <xs:attribute name="MatSpecularMin" type="xs:float" default=".3"/>
         <xs:attribute name="MatSpecularMax" type="xs:float" default=".6"/>
-        <xs:attribute name="MatRoughness" type="xs:float" default=".15"/>
+        <xs:attribute name="MatRoughness" type="xs:float" default=".1"/>
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>

@@ -838,21 +838,19 @@ namespace SceneEngine
     
     OceanLightingSettings::OceanLightingSettings()
     {
-        _specularReflectionBrightness = Float3(2.8f, 2.4f, 2.1f);
-        _foamBrightness = 0.08f;
-        _opticalThickness = Float3(0.05f, 0.042f, 0.038f);
-        _skyReflectionBrightness = 1.355f;
+        _foamBrightness = 5.0f;
+        _opticalThickness = Float3(1.f/(144.f/255.f * 32.f), 1.f/(209.f/255.f * 32.f), 1.f/(255.f/255.f * 32.f));
+        _skyReflectionBrightness = 1.f;
 
-        _specularPower = 128.f;
         _upwellingScale = .075f;
         _refractiveIndex = 1.333f;
         _reflectionBumpScale = 0.1f;
 
-        _detailNormalFrequency = 6.727f;
-        _specularityFrequency = 7.1f;
+        _detailNormalFrequency = 9.3f;
+        _specularityFrequency = 3.2f;
         _matSpecularMin = .3f; _matSpecularMax = .6f;
 
-        _matRoughness = .15f;
+        _matRoughness = .1f;
         _dummy[0] = _dummy[1] = _dummy[2] = 0;
     }
 
@@ -861,12 +859,10 @@ namespace SceneEngine
     OceanLightingSettings::OceanLightingSettings(const ParameterBox& params)
         : OceanLightingSettings()
     {
-        ParamName(SpecularReflectionBrightness);
         ParamName(FoamBrightness);
         ParamName(OpticalThicknessReciprocalScalar);
         ParamName(OpticalThicknessReciprocalColor);
         ParamName(SkyReflectionBrightness);
-        ParamName(SpecularPower);
         ParamName(UpwellingScale);
         ParamName(RefractiveIndex);
         ParamName(ReflectionBumpScale);
@@ -876,7 +872,6 @@ namespace SceneEngine
         ParamName(MatSpecularMax);
         ParamName(MatRoughness);
 
-        _specularReflectionBrightness = params.GetParameter(SpecularReflectionBrightness, _specularReflectionBrightness);
         _foamBrightness = params.GetParameter(FoamBrightness, _foamBrightness);
 
         auto otColor = params.GetParameter<unsigned>(OpticalThicknessReciprocalColor);
@@ -890,7 +885,6 @@ namespace SceneEngine
         }
 
         _skyReflectionBrightness = params.GetParameter(SkyReflectionBrightness, _skyReflectionBrightness);
-        _specularPower = params.GetParameter(SpecularPower, _specularPower);
         _upwellingScale = params.GetParameter(UpwellingScale, _upwellingScale);
         _refractiveIndex = params.GetParameter(RefractiveIndex, _refractiveIndex);
         _reflectionBumpScale = params.GetParameter(ReflectionBumpScale, _reflectionBumpScale);

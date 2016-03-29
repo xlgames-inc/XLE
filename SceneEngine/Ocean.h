@@ -32,12 +32,10 @@ namespace SceneEngine
     class OceanLightingSettings
     {
     public:
-        Float3      _specularReflectionBrightness;
-        float       _foamBrightness;
         Float3      _opticalThickness;
+        float       _foamBrightness;
         float       _skyReflectionBrightness;
 
-        float       _specularPower;
         float       _upwellingScale;
         float       _refractiveIndex;
         float       _reflectionBumpScale;

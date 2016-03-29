@@ -208,6 +208,7 @@ OceanSurfaceSample BuildOceanSurfaceSample(
 		// build a random quantity of foam to cover the surface.
 	float randomFoam = SurfaceSpecularity.Sample(DefaultSampler, float2(0.005f*Time, 0.f) + 0.1f * specularityTC);
 	randomFoam = randomFoam * randomFoam * randomFoam;
+	randomFoam *= 0.5f;
 	foamQuantity += randomFoam * saturate(20000.f / distanceToViewerSq);
 
 	result.dynamicReflectionTexCoord = dynamicReflectionTexCoord;

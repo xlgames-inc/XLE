@@ -37,7 +37,7 @@ namespace Overlays
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
     private:
-        ScrollBar   _scrollers[14];
+        ScrollBar   _scrollers[10];
         SceneEngine::OceanLightingSettings* _oceanSettings;
     };
 
