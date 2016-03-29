@@ -204,8 +204,9 @@ void CalculateFoam(	inout OceanLightingParts parts,
                     OceanSurfaceSample oceanSurface,
                     float foamBrightness)
 {
+    // add basic lambert diffuse to the foam to give it a bit of punch...
     float diffuseAmount = saturate(dot(oceanSurface.worldSpaceNormal, BasicLight[0].Position));
-    parts.foamAlbedo = ((0.5f + diffuseAmount) * foamBrightness) * oceanSurface.foamAlbedo;
+    parts.foamAlbedo = ((0.1f + diffuseAmount) * foamBrightness) * oceanSurface.foamAlbedo;
     parts.foamQuantity = oceanSurface.foamQuantity;
 }
 

@@ -40,14 +40,17 @@ namespace SceneEngine
             Float2      _windVector;
             float       _scaleAgainstWind;
             float       _suppressionFactor;
+            float       _spectrumMin, _spectrumMax;
 
             Desc(   unsigned width, unsigned height, const 
                     Float2& physicalDimensions, const Float2& windVector, 
-                    float scaleAgainstWind, float suppressionFactor)
+                    float scaleAgainstWind, float suppressionFactor,
+                    float spectrumMin, float spectrumMax)
             {   
                 _width = width; _height = height; _windVector = windVector; 
                 _physicalDimensions = physicalDimensions; 
                 _scaleAgainstWind = scaleAgainstWind; _suppressionFactor = suppressionFactor; 
+                _spectrumMin = spectrumMin; _spectrumMax = spectrumMax;
             }
         };
 
@@ -76,9 +79,15 @@ namespace SceneEngine
         const Float2 strongWindVector = oceanSettings._windVelocity[1] * Float2(XlCos(oceanSettings._windAngle[1]), XlSin(oceanSettings._windAngle[1]));
 
         auto& calmSpectrum = Techniques::FindCachedBox<StartingSpectrumBox>(
-            StartingSpectrumBox::Desc(dimensions,dimensions, physicalDimensions, calmWindVector, oceanSettings._scaleAgainstWind[0], oceanSettings._suppressionFactor[0]));
+            StartingSpectrumBox::Desc(
+                dimensions, dimensions, physicalDimensions, 
+                calmWindVector, oceanSettings._scaleAgainstWind[0], oceanSettings._suppressionFactor[0],
+                oceanSettings._spectrumMin, oceanSettings._spectrumMax));
         auto& strongSpectrum = Techniques::FindCachedBox<StartingSpectrumBox>(
-            StartingSpectrumBox::Desc(dimensions,dimensions, physicalDimensions, strongWindVector, oceanSettings._scaleAgainstWind[1], oceanSettings._suppressionFactor[1]));
+            StartingSpectrumBox::Desc(
+                dimensions, dimensions, physicalDimensions, 
+                strongWindVector, oceanSettings._scaleAgainstWind[1], oceanSettings._suppressionFactor[1],
+                oceanSettings._spectrumMin, oceanSettings._spectrumMax));
     
         const char* fftDefines = "";
         auto useMirrorOptimisation = Tweakable("OceanUseMirrorOptimisation", true);
@@ -204,10 +213,12 @@ namespace SceneEngine
 
         auto& calmSpectrum = Techniques::FindCachedBox<StartingSpectrumBox>(
             StartingSpectrumBox::Desc(  dimensions,dimensions, physicalDimensions, calmWindVector, 
-                                        oceanSettings._scaleAgainstWind[0], oceanSettings._suppressionFactor[0]));
+                                        oceanSettings._scaleAgainstWind[0], oceanSettings._suppressionFactor[0],
+                                        oceanSettings._spectrumMin, oceanSettings._spectrumMax));
         auto& strongSpectrum = Techniques::FindCachedBox<StartingSpectrumBox>(
             StartingSpectrumBox::Desc(  dimensions,dimensions, physicalDimensions, strongWindVector, 
-                                        oceanSettings._scaleAgainstWind[1], oceanSettings._suppressionFactor[1]));
+                                        oceanSettings._scaleAgainstWind[1], oceanSettings._suppressionFactor[1],
+                                        oceanSettings._spectrumMin, oceanSettings._spectrumMax));
 
         SetupVertexGeneratorShader(context);
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
@@ -282,8 +293,8 @@ namespace SceneEngine
         using namespace BufferUploads;
         auto& uploads = GetBufferUploads();
 
-        auto realValues      = std::unique_ptr<float[]>(new float[desc._width*desc._height]);
-        auto imaginaryValues = std::unique_ptr<float[]>(new float[desc._width*desc._height]);
+        auto realValues      = std::make_unique<float[]>(desc._width*desc._height);
+        auto imaginaryValues = std::make_unique<float[]>(desc._width*desc._height);
 
             //
             //      Build input to FFT
@@ -303,6 +314,10 @@ namespace SceneEngine
         #else
             const float freqBoost = 1.f;
         #endif
+
+        float maxMag = (freqBoost * 2.f * gPI) * Magnitude(Float2(desc._width * .5f / Lx, desc._height * .5f / Ly));
+        float kMin = maxMag * desc._spectrumMin;
+        float kMax = maxMag * desc._spectrumMax;
                     
         for (unsigned y=0; y<desc._height; ++y) {
             for (unsigned x=0; x<desc._width; ++x) {
@@ -341,6 +356,11 @@ namespace SceneEngine
                 float b = gReciprocalSqrt2 * XlSqrt(Ph);
                 float realPart       = randomValues.first * b;
                 float imaginaryPart  = randomValues.second * b;
+
+                if (k < kMin || k > kMax) {
+                    realPart = 0.f;
+                    imaginaryPart = 0.f;
+                }
 
                 realValues[y*desc._width+x] = realPart;
                 imaginaryValues[y*desc._width+x] = imaginaryPart;
@@ -406,6 +426,8 @@ namespace SceneEngine
         _foamIncreaseSpeed = 8.f / .33f;
         _foamIncreaseClamp = 8.f;
         _foamDecrease = 1;
+        _spectrumMin = 0.f;
+        _spectrumMax = 1.f;
     }
 
     #define ParamName(x) static auto x = ParameterBox::MakeParameterNameHash(#x);
@@ -430,12 +452,16 @@ namespace SceneEngine
         ParamName(FoamIncreaseSpeed);
         ParamName(FoamIncreaseClamp);
         ParamName(FoamDecrease);
+        ParamName(SpectrumMin);
+        ParamName(SpectrumMax);
 
         _enable = params.GetParameter(Enable, _enable);
         _windAngle[0] = params.GetParameter(WindAngle, _windAngle[0] * (180.f / gPI)) * (gPI / 180.f);
         _windVelocity[0] = params.GetParameter(WindVelocity, _windVelocity[0]);
         _physicalDimensions = params.GetParameter(PhysicalDimensions, _physicalDimensions);
         _gridDimensions = params.GetParameter(GridDimensions, _gridDimensions);
+        // _gridDimensions must be a power of two. Let's floor to a power of 2.
+        _gridDimensions = std::max(8u, 1u<<IntegerLog2(_gridDimensions));
         _strengthConstantXY = params.GetParameter(StrengthConstantXY, _strengthConstantXY);
         _strengthConstantZ = params.GetParameter(StrengthConstantZ, _strengthConstantZ);
         _detailNormalsStrength = params.GetParameter(DetailNormalsStrength, _detailNormalsStrength);
@@ -448,6 +474,8 @@ namespace SceneEngine
         _foamIncreaseSpeed = params.GetParameter(FoamIncreaseSpeed, _foamIncreaseSpeed);
         _foamIncreaseClamp = params.GetParameter(FoamIncreaseClamp, _foamIncreaseClamp);
         _foamDecrease = params.GetParameter(FoamDecrease, _foamDecrease);
+        _spectrumMin = params.GetParameter(SpectrumMin, _spectrumMin);
+        _spectrumMax = params.GetParameter(SpectrumMax, _spectrumMax);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

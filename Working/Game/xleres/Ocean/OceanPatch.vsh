@@ -7,6 +7,7 @@
 #define OUTPUT_TEXCOORD 1
 #define OUTPUT_WORLD_VIEW_VECTOR 1
 #define DO_REFLECTION_IN_VS 1
+#define OUTPUT_FOG_COLOR 1
 
 #if (MAT_DYNAMIC_REFLECTION==1) && (DO_REFLECTION_IN_VS==1)
 	#define VSOUTPUT_EXTRA float4 dynamicReflectionTexCoord : DYNREFLTC; float2 specularityTC : SPECTC;
@@ -25,6 +26,13 @@
 #include "../CommonResources.h"
 #include "../Utility/perlinnoise.h"
 
+#if OUTPUT_FOG_COLOR == 1
+	#include "../Lighting/RangeFogResolve.h"
+	#include "../Lighting/BasicLightingEnvironment.h"
+	#include "../VolumetricEffect/resolvefog.h"
+#endif
+
+
 #if !defined(SHALLOW_WATER_TILE_DIMENSION)
 	#define SHALLOW_WATER_TILE_DIMENSION 32
 #endif
@@ -37,16 +45,19 @@ Texture2D<uint>			ShallowGridsLookupTable : register(t4);
 
 cbuffer GridConstants : register(b7)
 {
-	float4x4	GridProjection;
+	row_major float4x4	LocalToClip;
+	float3		LocalSpaceView2;
 	float3		GridFrustumCorners[4];
 	float3		GridProjectionOrigin;
+	float2		GridTexCoordOrigin;
+	float2		GridTexCoordOriginIntPart;
 	uint		GridPatchWidth;
 	uint		GridPatchHeight;
 }
 
 	////////////////////////////   G R I D   P R O J E C T I O N   ////////////////////////////
 
-void CalculateWorldPosition(uint2 gridCoords, out float2 texCoords, out float3 outBaseWorldCoords, out float3 outDisplacement)
+void CalculateLocalPosition(uint2 gridCoords, out float2 texCoords, out float3 outBaseLocalCoords, out float3 outDisplacement)
 {
 		//
 		//		CPU side calculated a projection matrix, which we want to use to project
@@ -54,8 +65,8 @@ void CalculateWorldPosition(uint2 gridCoords, out float2 texCoords, out float3 o
 		//		evenly distributed in screen space.
 		//			-- but it can cause swimming.
 		//
-	float3 baseWorldPosition;
-	const bool useScreenSpaceGrid = UseScreenSpaceGrid!=0;
+	float3 baseLocalPosition;
+	const bool useScreenSpaceGrid = UseScreenSpaceGrid != 0;
 	[branch] if (useScreenSpaceGrid) {
 		float2 frustumCoords = float2(gridCoords.x/float(GridPatchWidth-1), gridCoords.y/float(GridPatchHeight-1));
 
@@ -74,9 +85,9 @@ void CalculateWorldPosition(uint2 gridCoords, out float2 texCoords, out float3 o
 		viewFrustumVector.z = min(0.0, viewFrustumVector.z);
 		float distanceToPlaneIntersection = (GridProjectionOrigin.z - WaterBaseHeight) / -viewFrustumVector.z;
 
-		baseWorldPosition = GridProjectionOrigin + distanceToPlaneIntersection * viewFrustumVector;
+		baseLocalPosition = GridProjectionOrigin + distanceToPlaneIntersection * viewFrustumVector;
 	} else {
-		baseWorldPosition = float3(
+		baseLocalPosition = float3(
 			gridCoords.x / float(GridPatchWidth) * PhysicalWidth,
 			gridCoords.y / float(GridPatchHeight) * PhysicalHeight,
 			WaterBaseHeight);
@@ -92,10 +103,9 @@ void CalculateWorldPosition(uint2 gridCoords, out float2 texCoords, out float3 o
 	const bool interpolateBetweenSamples = useScreenSpaceGrid;
 	[branch] if (interpolateBetweenSamples) {
 		texCoords = float2(
-			baseWorldPosition.x / PhysicalWidth,
-			baseWorldPosition.y / PhysicalHeight);
-
-		texCoords += GridShift;
+			baseLocalPosition.x / PhysicalWidth,
+			baseLocalPosition.y / PhysicalHeight);
+		texCoords += GridTexCoordOrigin + GridShift;
 
 		uint2 texDim;
 		XTexture.GetDimensions(texDim.x, texDim.y);
@@ -121,14 +131,14 @@ void CalculateWorldPosition(uint2 gridCoords, out float2 texCoords, out float3 o
 		//	necessary, because the ocean might not go all the way to horizon. It will get
 		//	clipped out at the far draw distance, and at that point, there are still visible
 		//	waves.
-	float3 viewOffsetVector = baseWorldPosition - WorldSpaceView;
+	float3 viewOffsetVector = baseLocalPosition - LocalSpaceView2;
 	float distanceFromCameraSq = dot(viewOffsetVector, viewOffsetVector);
 	float distanceAttenuation = saturate(1.f - distanceFromCameraSq / (1000.f * 1000.f));
 
 	displacement.xy *= distanceAttenuation * StrengthConstantXY * StrengthConstantMultiplier;
 	displacement.z *= distanceAttenuation * StrengthConstantZ * StrengthConstantMultiplier;
 
-	outBaseWorldCoords = baseWorldPosition;
+	outBaseLocalCoords = baseLocalPosition;
 	outDisplacement = displacement;
 }
 
@@ -167,8 +177,8 @@ VSOutput main(uint vertexId : SV_VertexId)
 	VSOutput output;
 	uint2 gridCoords = uint2(vertexId%GridPatchWidth, vertexId/GridPatchWidth);
 
-	float3 baseWorldPosition, displacement;
-	CalculateWorldPosition(gridCoords, output.texCoord, baseWorldPosition, displacement);
+	float3 baseLocalPosition, displacement;
+	CalculateLocalPosition(gridCoords, output.texCoord, baseLocalPosition, displacement);
 
 	#if MAT_USE_SHALLOW_WATER==1
 		float shallowWaterWeight;
@@ -178,12 +188,12 @@ VSOutput main(uint vertexId : SV_VertexId)
 		displacement = lerp(displacement, float3(0.f, 0.f, shallowWaterHeight - WaterBaseHeight), shallowWaterWeight);
 	#endif
 
-	float3 finalWorldPosition = baseWorldPosition + displacement;
+	float3 finalLocalPosition = baseLocalPosition + displacement;
 
-	output.position = mul(WorldToClip, float4(finalWorldPosition,1));
+	output.position = mul(LocalToClip, float4(finalLocalPosition,1));
 
 	#if OUTPUT_WORLD_VIEW_VECTOR==1
-		output.worldViewVector = WorldSpaceView.xyz - finalWorldPosition.xyz;
+		output.worldViewVector = LocalSpaceView2.xyz - finalLocalPosition.xyz;
 	#endif
 
 	#if MAT_USE_SHALLOW_WATER==1
@@ -192,13 +202,34 @@ VSOutput main(uint vertexId : SV_VertexId)
 
 	#if (MAT_DYNAMIC_REFLECTION==1) && (DO_REFLECTION_IN_VS==1)
 		output.dynamicReflectionTexCoord = mul(
-			WorldToReflection, float4(finalWorldPosition, 1.f));
+			LocalToReflection, float4(finalLocalPosition, 1.f));
 	#endif
 
-	float specularityOffsetX = PerlinNoise3D(float3(15.f * output.texCoord,				0.47f * Time));
-	float specularityOffsetY = PerlinNoise3D(float3(15.f * (1.0f - output.texCoord),	0.53f * Time));
-	output.specularityTC	 =	output.texCoord * SpecularityFrequency
+	float2 worldSpaceTC = output.texCoord + GridTexCoordOriginIntPart;
+	float specularityOffsetX = PerlinNoise3D(float3(15.f * worldSpaceTC,			0.47f * Time));
+	float specularityOffsetY = PerlinNoise3D(float3(15.f * (1.0f - worldSpaceTC),	0.53f * Time));
+	output.specularityTC	 =	worldSpaceTC * SpecularityFrequency
 								+	0.15f * float2(specularityOffsetX, specularityOffsetY);
+
+	#if OUTPUT_FOG_COLOR == 1
+		{
+			float3 negCameraForward = float3(CameraBasis[0].z, CameraBasis[1].z, CameraBasis[2].z);
+			float distanceToView = dot(output.worldViewVector, negCameraForward);
+			LightResolve_RangeFog(BasicRangeFog, distanceToView, output.fogColor.a, output.fogColor.rgb);
+			[branch] if (BasicVolumeFog.EnableFlag != false) {
+				float transmission, inscatter;
+				// (this only works correctly because the Z values in local space are the same as world space)
+				CalculateTransmissionAndInscatter(
+					BasicVolumeFog,
+					LocalSpaceView2, finalLocalPosition, transmission, inscatter);
+
+				float cosTheta = -dot(output.worldViewVector, BasicLight[0].Position) * rsqrt(dot(output.worldViewVector, output.worldViewVector));
+				float4 volFog = float4(inscatter * GetInscatterColor(BasicVolumeFog, cosTheta), transmission);
+				output.fogColor.rgb = volFog.rgb + output.fogColor.rgb * volFog.a;
+				output.fogColor.a *= volFog.a;
+			}
+		}
+	#endif
 
 	return output;
 }

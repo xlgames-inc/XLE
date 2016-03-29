@@ -7,6 +7,7 @@
 #define OUTPUT_TEXCOORD 1
 #define OUTPUT_WORLD_VIEW_VECTOR 1
 #define DO_REFLECTION_IN_VS 1
+#define OUTPUT_FOG_COLOR 1
 
 #if (MAT_DYNAMIC_REFLECTION==1) && (DO_REFLECTION_IN_VS==1)
 	#define VSOUTPUT_EXTRA float4 dynamicReflectionTexCoord : DYNREFLTC; float2 specularityTC : SPECTC;
@@ -342,6 +343,7 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 
 	parts.upwelling *= UpwellingScale;
 	parts.foamQuantity += 1.f-saturate(parts.forwardDistanceThroughWater*.2f);
+	parts.foamQuantity = saturate(parts.foamQuantity);
 	float foamTex = CalculateFoamFromFoamQuantity(geo.texCoord, parts.foamQuantity);
 	parts.skyReflection.rgb *= SkyReflectionBrightness;
 
@@ -378,12 +380,9 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 		+ (foamTex * parts.foamAlbedo)
 		;
 
-		//	Integrate atmosphere attenuation
-		//		We only need world space position for the fog calculation... So just
-		//		calculate based on "geo.worldViewVector" (we could also use OceanBaseHeight
-		//		as a close approximation)
-	// float4 fogResult = CalculateFog(WorldSpaceView.z - geo.worldViewVector.z, geo.worldViewVector, BasicLight[0].NegativeDirection);
-	// colour = lerp(fogResult.rgb, colour, fogResult.a);
+	#if OUTPUT_FOG_COLOR == 1
+		colour.rgb = geo.fogColor.rgb + colour.rgb * geo.fogColor.a;
+	#endif
 
 	return float4(LightingScale * colour, 1.f);
 }

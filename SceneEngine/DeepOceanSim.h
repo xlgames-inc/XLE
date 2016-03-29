@@ -35,6 +35,7 @@ namespace SceneEngine
         float       _suppressionFactor[2];
         float       _gridShiftSpeed;
         float       _baseHeight;
+        float       _spectrumMin, _spectrumMax;
 
         float       _foamThreshold, _foamIncreaseSpeed;
         float       _foamIncreaseClamp;

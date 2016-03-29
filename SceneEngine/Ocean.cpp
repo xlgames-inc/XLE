@@ -236,16 +236,19 @@ namespace SceneEngine
 
     struct GridRenderingConstants
     {
-        Float4x4 _gridProjection;
+        Float4x4 _localToClip;
+        Float3 _localSpaceView; unsigned _dummy0;
         Float4 _gridFrustumCorners[4];
-        Float3 _gridProjectionOrigin;
+        Float3 _gridProjectionOrigin; unsigned _dummy1;
+        Float2 _texCoordOrigin;
+        Float2 _texCoordOriginIntPart;
         unsigned _gridPatchWidth, _gridPatchHeight;
-        float _dummy0[3];
+        unsigned _dummy[2];
     };
 
     bool CalculateGridProjection(   GridRenderingConstants& result,
                                     Techniques::ProjectionDesc& mainCameraProjection, 
-                                    float oceanBaseHeight)
+                                    float oceanBaseHeight, float physicalDimensions)
     {
             //
             //      Calculate a projection matrix for the water grid.
@@ -257,11 +260,21 @@ namespace SceneEngine
             //      But when the water mesh does penetrate either near or far, 
             //      then we should customize the water projection transform slightly.
             //      
-        Float4x4 viewToWorld = mainCameraProjection._cameraToWorld;
 
-        auto forward    = ExtractForward_Cam(viewToWorld);
-        auto position   = ExtractTranslation(viewToWorld);
-        auto up         = ExtractUp_Cam(viewToWorld);
+            //
+            //      We're going to build a special "local" space for ocean rendering that ignores
+            //      the X, Y translation on the camera. This makes sense, because the ocean plane is
+            //      just a Z=constant plane. This will allow us to avoid floating point errors when
+            //      the camera is far from the origin.
+            //
+        auto cameraToLocal = mainCameraProjection._cameraToWorld;
+        auto camPosWorld = ExtractTranslation(cameraToLocal);
+        SetTranslation(cameraToLocal, Float3(0.f, 0.f, camPosWorld[2]));
+        auto localToProjection = Combine(InvertOrthonormalTransform(cameraToLocal), mainCameraProjection._cameraToProjection);
+
+        auto forward    = ExtractForward_Cam(cameraToLocal);
+        auto position   = ExtractTranslation(cameraToLocal);
+        auto up         = ExtractUp_Cam(cameraToLocal);
 
         Float4 waterPlane(0.f, 0.f, 1.f, -oceanBaseHeight);
 
@@ -271,7 +284,7 @@ namespace SceneEngine
             //      and the water plane.
             //
         Float3 cameraAbsFrustumCorners[8];
-        CalculateAbsFrustumCorners(cameraAbsFrustumCorners, mainCameraProjection._worldToProjection);
+        CalculateAbsFrustumCorners(cameraAbsFrustumCorners, localToProjection);
 
         const std::pair<unsigned, unsigned> edges[] = 
         {
@@ -422,14 +435,14 @@ namespace SceneEngine
             maxX, minY, minX, maxY,     // note -- maxX, minX flipped (required to match handiness of normal projection transforms)
             1.0f, 100.f, Techniques::GetDefaultClipSpaceType());
 
-        result._gridProjection = Combine(worldToView, gridPerspective);
+        auto gridProjection = Combine(worldToView, gridPerspective);
         result._gridProjectionOrigin = projectionViewPoint;
 
             // calculate the far frustum corners (note that the order of the corners is important)
             // our invert calculation is not accurate enough to calculate the near plane coordinates correctly
 
         Float3 gridProjAbsFrustumCorners[8];
-        CalculateAbsFrustumCorners(gridProjAbsFrustumCorners, result._gridProjection);
+        CalculateAbsFrustumCorners(gridProjAbsFrustumCorners, gridProjection);
 
             // shader needs frustum corners relative to the projection view point
             //      (ie, it's the direction to the frustum corners from the projection
@@ -441,6 +454,13 @@ namespace SceneEngine
         result._gridFrustumCorners[1] = Float4(LinearInterpolate(gridProjAbsFrustumCorners[1], gridProjAbsFrustumCorners[5], 0.5f) - projectionViewPoint, 0.f);
         result._gridFrustumCorners[2] = Float4(LinearInterpolate(gridProjAbsFrustumCorners[2], gridProjAbsFrustumCorners[6], 0.5f) - projectionViewPoint, 0.f);
         result._gridFrustumCorners[3] = Float4(LinearInterpolate(gridProjAbsFrustumCorners[3], gridProjAbsFrustumCorners[7], 0.5f) - projectionViewPoint, 0.f);
+
+        result._localToClip = localToProjection;
+        result._localSpaceView = position;
+        result._texCoordOrigin = Float2(std::fmod(camPosWorld[0], physicalDimensions) / physicalDimensions, std::fmod(camPosWorld[1], physicalDimensions) / physicalDimensions);
+        if (result._texCoordOrigin[0] < 0.f) result._texCoordOrigin[0] += 1.f;
+        if (result._texCoordOrigin[1] < 0.f) result._texCoordOrigin[1] += 1.f;
+        result._texCoordOriginIntPart = Float2(camPosWorld[0] / physicalDimensions - result._texCoordOrigin[0], camPosWorld[1] / physicalDimensions - result._texCoordOrigin[1]);
         return true;
     }
 
@@ -450,7 +470,7 @@ namespace SceneEngine
                                 float oceanBaseHeight)
     {
         GridRenderingConstants gridConstants;
-        if (CalculateGridProjection(gridConstants, mainCameraProjection, oceanBaseHeight)) {
+        if (CalculateGridProjection(gridConstants, mainCameraProjection, oceanBaseHeight, 1.f)) {
 
             Float3 cameraAbsFrustumCorners[8];
             CalculateAbsFrustumCorners(cameraAbsFrustumCorners, mainCameraProjection._worldToProjection);
@@ -624,7 +644,7 @@ namespace SceneEngine
         if (!pause) {
             savedProjection = parserContext.GetProjectionDesc();
         }
-        if (!CalculateGridProjection(gridConstants, savedProjection, oceanSettings._baseHeight)) {
+        if (!CalculateGridProjection(gridConstants, savedProjection, oceanSettings._baseHeight, oceanSettings._physicalDimensions)) {
             return;
         }
 

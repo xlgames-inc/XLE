@@ -30,17 +30,23 @@ cbuffer OceanMaterialSettings
     static const float StrengthConstantMultiplier = 1.0f / 512.f; // 256.f / 2.f;
 #endif
 
+uint2 OceanClp(int2 coords, uint2 texDimensions)
+{
+    // note -- expecting power of 2 for "texDimensions" here!
+    // modulo operation doesn't handle negative values correctly, but a bitwise operation will.
+    return uint2(coords.x&(texDimensions.x-1), coords.y&(texDimensions.y-1));
+}
+
 float OceanTextureCustomInterpolate(Texture2D<float> inputTex, uint2 texDimensions, float2 textureCoords)
 {
 		//	we need a custom interpolation, because each grid cell changes
 		//	sign in a chess-board pattern
-	textureCoords = frac(textureCoords);
     float2 explodedCoords = textureCoords * float2(texDimensions);
-	uint2 baseCoords = uint2(explodedCoords);
-	float sample00 = inputTex[(baseCoords + uint2(0,0))%texDimensions];
-	float sample10 = inputTex[(baseCoords + uint2(1,0))%texDimensions];
-	float sample01 = inputTex[(baseCoords + uint2(0,1))%texDimensions];
-	float sample11 = inputTex[(baseCoords + uint2(1,1))%texDimensions];
+	int2 baseCoords = int2(explodedCoords);
+	float sample00 = inputTex[OceanClp(baseCoords + int2(0,0), texDimensions)];
+	float sample10 = inputTex[OceanClp(baseCoords + int2(1,0), texDimensions)];
+	float sample01 = inputTex[OceanClp(baseCoords + int2(0,1), texDimensions)];
+	float sample11 = inputTex[OceanClp(baseCoords + int2(1,1), texDimensions)];
 
 	if (((baseCoords.x + baseCoords.y)&1)==1) {
 		sample00 = -sample00;
@@ -51,18 +57,10 @@ float OceanTextureCustomInterpolate(Texture2D<float> inputTex, uint2 texDimensio
 	}
 
 	float2 fractionalPart = frac(explodedCoords);
-    #if 1
-	    float weight00 = (1.f - fractionalPart.x) * (1.f - fractionalPart.y);
-	    float weight01 = (1.f - fractionalPart.x) * fractionalPart.y;
-	    float weight10 = fractionalPart.x * (1.f - fractionalPart.y);
-	    float weight11 = fractionalPart.x * fractionalPart.y;
-    #else
-        float weight00 = 1.f;
-	    float weight01 = 0.f;
-	    float weight10 = 0.f;
-	    float weight11 = 0.f;
-    #endif
-
+    float weight00 = (1.f - fractionalPart.x) * (1.f - fractionalPart.y);
+    float weight01 = (1.f - fractionalPart.x) * fractionalPart.y;
+    float weight10 = fractionalPart.x * (1.f - fractionalPart.y);
+    float weight11 = fractionalPart.x * fractionalPart.y;
 	return	sample00 * weight00
 		+	sample01 * weight01
 		+	sample10 * weight10

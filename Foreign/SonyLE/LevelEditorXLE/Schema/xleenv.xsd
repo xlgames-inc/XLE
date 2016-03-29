@@ -433,6 +433,8 @@
         <LeGe.NativeProperty name="FoamIncreaseSpeed" nativeName="FoamIncreaseSpeed"/>
         <LeGe.NativeProperty name="FoamIncreaseClamp" nativeName="FoamIncreaseClamp"/>
         <LeGe.NativeProperty name="FoamDecrease" nativeName="FoamDecrease"/>
+        <LeGe.NativeProperty name="SpectrumMin" nativeName="SpectrumMin"/>
+        <LeGe.NativeProperty name="SpectrumMax" nativeName="SpectrumMax"/>
 
         <scea.dom.editors.attribute category="General" name="Enable" displayName="Enable" description="Enable or disable ocean rendering" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
         
@@ -443,7 +445,7 @@
         
         <scea.dom.editors.attribute category="General" name="PhysicalDimensions" displayName="Size" description="Size of the repeating area of the ocean, in metres"
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1024"/>
-        <scea.dom.editors.attribute category="General" name="GridDimensions" displayName="Grid Detail" description="Size of the grid that is used for simulating the ocean"/>
+        <scea.dom.editors.attribute category="General" name="GridDimensions" displayName="Grid Detail" description="Size of the grid that is used for simulating the ocean (expecting power of 2)"/>
 
         <scea.dom.editors.attribute category="Wave Shape" name="StrengthConstantXY" displayName="XY Scale Factor" description="Scales the amount of movement in XY direction"
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
@@ -459,6 +461,11 @@
 
         <scea.dom.editors.attribute category="Animation" name="GridShiftSpeed" displayName="Grid Shift Factor" description="Animates the entire ocean, moving in the direction of the wind"
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,.2"/>
+
+        <scea.dom.editors.attribute category="Animation" name="SpectrumMin" displayName="Spectrum Min"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="Animation" name="SpectrumMax" displayName="Spectrum Max"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
 
         <scea.dom.editors.attribute category="General" name="BaseHeight" displayName="Base Height" description="Z position for the surface of the ocean"/>
 
@@ -487,6 +494,8 @@
         <xs:attribute name="SuppressionFactor" type="xs:float" default=".06"/>
         <xs:attribute name="GridShiftSpeed" type="xs:float" default=".062"/>
         <xs:attribute name="BaseHeight" type="xs:float" default="100"/>
+        <xs:attribute name="SpectrumMin" type="xs:float" default="0"/>
+        <xs:attribute name="SpectrumMax" type="xs:float" default="1"/>
 
         <xs:attribute name="FoamThreshold" type="xs:float" default=".3"/>
         <xs:attribute name="FoamIncreaseSpeed" type="xs:float" default="24"/>
