@@ -18,7 +18,7 @@ struct AmbientDesc
 struct RangeFogDesc
 {
 	float3 	Inscatter;
-	float3	OpticalThickness;
+	float	MonochromeOpticalThickness;
 };
 
 struct VolumeFogDesc

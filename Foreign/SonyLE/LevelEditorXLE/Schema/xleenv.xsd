@@ -36,14 +36,12 @@
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms"
           converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
         <scea.dom.editors.attribute category="RangeFog" name="RangeFogInscatterScale" displayName="Inscatter Scale"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:1,1000"/>
+          description="Quantity of inscatter."
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,.02"/>
         
-        <scea.dom.editors.attribute category="RangeFog" name="RangeFogThickness" displayName="Optical thickness"
-          description="Color of light scattered away by the atmosphere. A white color is ok (which means that all colors become dimmer equally with distance. But a physically correct model would scatter light differently for different colors."
-          editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms"
-          converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
-        <scea.dom.editors.attribute category="RangeFog" name="RangeFogThicknessScale" displayName="Optical thickness Scale"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:1,1500"/>
+        <scea.dom.editors.attribute category="RangeFog" name="RangeFogThicknessReciprocalScale" displayName="Optical thickness"
+          description="Quantity of light scattered away by the atmosphere (that is, the 'darkening' caused by the fog). This is actually the reciprocal of the optical thickness, so small numbers result in less darkening, and large numbers result in more."
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1500"/>
 
         <scea.dom.editors.attribute category="Atmosphere Blur" name="AtmosBlurStdDev" displayName="Blurriness" />
         <scea.dom.editors.attribute category="Atmosphere Blur" name="AtmosBlurStart" displayName="Start distance" />
@@ -67,8 +65,7 @@
 
         <LeGe.NativeProperty name="RangeFogInscatter" nativeName="RangeFogInscatter"/>
         <LeGe.NativeProperty name="RangeFogInscatterScale" nativeName="RangeFogInscatterScale"/>
-        <LeGe.NativeProperty name="RangeFogThickness" nativeName="RangeFogThickness"/>
-        <LeGe.NativeProperty name="RangeFogThicknessScale" nativeName="RangeFogThicknessScale"/>
+        <LeGe.NativeProperty name="RangeFogThicknessReciprocalScale" nativeName="RangeFogThicknessReciprocalScale"/>
 
         <LeGe.NativeProperty name="AtmosBlurStdDev" nativeName="AtmosBlurStdDev"/>
         <LeGe.NativeProperty name="AtmosBlurStart" nativeName="AtmosBlurStart"/>
@@ -93,8 +90,7 @@
 
     <xs:attribute name="RangeFogInscatter" type="xs:int" default="0"/>
     <xs:attribute name="RangeFogInscatterScale" type="xs:float" default="1"/>
-    <xs:attribute name="RangeFogThickness" type="xs:int" default="0"/>
-    <xs:attribute name="RangeFogThicknessScale" type="xs:float" default="1"/>
+    <xs:attribute name="RangeFogThicknessReciprocalScale" type="xs:float" default="1"/>
 
     <xs:attribute name="AtmosBlurStdDev" type="xs:float" default="1.3"/>
     <xs:attribute name="AtmosBlurStart" type="xs:float" default="1000"/>
@@ -438,41 +434,38 @@
         <LeGe.NativeProperty name="FoamIncreaseClamp" nativeName="FoamIncreaseClamp"/>
         <LeGe.NativeProperty name="FoamDecrease" nativeName="FoamDecrease"/>
 
-        <scea.dom.editors.attribute category="Enable" name="Enable" displayName="Enable" description="Enable or disable ocean rendering" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
+        <scea.dom.editors.attribute category="General" name="Enable" displayName="Enable" description="Enable or disable ocean rendering" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
         
-        <scea.dom.editors.attribute category="General" name="WindAngle" displayName="Wind Angle" description="Angle of the wind (this controls the movement of waves)"
+        <scea.dom.editors.attribute category="Animation" name="WindAngle" displayName="Wind Angle" description="Angle of the wind (this controls the movement of waves)"
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,6.28318"/>
-        <scea.dom.editors.attribute category="General" name="WindVelocity" displayName="Wind Velocity" description="The speed of the wind (in m/s). Higher numbers create more turbulent waves."
+        <scea.dom.editors.attribute category="Animation" name="WindVelocity" displayName="Wind Velocity" description="The speed of the wind (in m/s). Higher numbers create more turbulent waves."
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,100"/>
         
         <scea.dom.editors.attribute category="General" name="PhysicalDimensions" displayName="Size" description="Size of the repeating area of the ocean, in metres"
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1024"/>
         <scea.dom.editors.attribute category="General" name="GridDimensions" displayName="Grid Detail" description="Size of the grid that is used for simulating the ocean"/>
 
-        <scea.dom.editors.attribute category="General" name="StrengthConstantXY" displayName="XY Scale Factor" description="Scales the amount of movement in XY direction"
+        <scea.dom.editors.attribute category="Wave Shape" name="StrengthConstantXY" displayName="XY Scale Factor" description="Scales the amount of movement in XY direction"
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
-        <scea.dom.editors.attribute category="General" name="StrengthConstantZ" displayName="Z Scale Factor" description="Scales the amount of movement in Z direction"
-                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
-
-        <scea.dom.editors.attribute category="General" name="DetailNormalsStrength" displayName="Detail normals strength" description="The strength of the detail normals (higher numbers make them more visible)"
+        <scea.dom.editors.attribute category="Wave Shape" name="StrengthConstantZ" displayName="Z Scale Factor" description="Scales the amount of movement in Z direction"
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
 
-        <scea.dom.editors.attribute category="General" name="SpectrumFade" displayName="Spectrum Fade" description="Alpha value for fading between the 2 wind settings"
+        <scea.dom.editors.attribute category="Detail" name="DetailNormalsStrength" displayName="Detail normals strength" description="The strength of the detail normals (higher numbers make them more visible)"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
+
+        <scea.dom.editors.attribute category="Animation" name="ScaleAgainstWind" displayName="Scale Against Wind" description="Affects the movement of the waves that travel in the opposite direction to the wind"
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="Animation" name="SuppressionFactor" displayName="Suppression Factor" description=""/>
 
-        <scea.dom.editors.attribute category="General" name="ScaleAgainstWind" displayName="Scale Against Wind" description="Affects the movement of the waves that travel in the opposite direction to the wind"
-                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
-        <scea.dom.editors.attribute category="General" name="SuppressionFactor" displayName="Suppression Factor" description=""/>
-
-        <scea.dom.editors.attribute category="General" name="GridShiftSpeed" displayName="Grid Shift Factor" description="Animates the entire ocean, moving in the direction of the wind"
+        <scea.dom.editors.attribute category="Animation" name="GridShiftSpeed" displayName="Grid Shift Factor" description="Animates the entire ocean, moving in the direction of the wind"
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,.2"/>
 
         <scea.dom.editors.attribute category="General" name="BaseHeight" displayName="Base Height" description="Z position for the surface of the ocean"/>
 
-        <scea.dom.editors.attribute category="General" name="FoamThreshold" displayName="Foam Threshold" description=""/>
-        <scea.dom.editors.attribute category="General" name="FoamIncreaseSpeed" displayName="Foam Increase Speed" description=""/>
-        <scea.dom.editors.attribute category="General" name="FoamIncreaseClamp" displayName="Foam Increase Clamp" description=""/>
-        <scea.dom.editors.attribute category="General" name="FoamDecrease" displayName="Foam Decrease" description=""/>
+        <scea.dom.editors.attribute category="Foam" name="FoamThreshold" displayName="Foam Threshold" description=""/>
+        <scea.dom.editors.attribute category="Foam" name="FoamIncreaseSpeed" displayName="Foam Increase Speed" description=""/>
+        <scea.dom.editors.attribute category="Foam" name="FoamIncreaseClamp" displayName="Foam Increase Clamp" description=""/>
+        <scea.dom.editors.attribute category="Foam" name="FoamDecrease" displayName="Foam Decrease" description=""/>
 
         <scea.dom.editors category="Ocean" name="OceanSettings" menuText="Ocean/OceanSettings" description="Settings for the ocean rendering"/>
         <LeGe.OpaqueListable label="OceanSettings"/>
@@ -509,8 +502,8 @@
       <xs:appinfo>
         <LeGe.NativeType nativeName="OceanLightingSettings"/>
         <LeGe.NativeProperty name="FoamBrightness" nativeName="FoamBrightness"/>
-        <LeGe.NativeProperty name="OpticalThicknessScalar" nativeName="OpticalThicknessScalar"/>
-        <LeGe.NativeProperty name="OpticalThicknessColor" nativeName="OpticalThicknessColor"/>
+        <LeGe.NativeProperty name="OpticalThicknessReciprocalScalar" nativeName="OpticalThicknessReciprocalScalar"/>
+        <LeGe.NativeProperty name="OpticalThicknessReciprocalColor" nativeName="OpticalThicknessReciprocalColor"/>
         <LeGe.NativeProperty name="SkyReflectionBrightness" nativeName="SkyReflectionBrightness"/>
         <LeGe.NativeProperty name="UpwellingScale" nativeName="UpwellingScale"/>
         <LeGe.NativeProperty name="RefractiveIndex" nativeName="RefractiveIndex"/>
@@ -521,32 +514,30 @@
         <LeGe.NativeProperty name="MatSpecularMax" nativeName="MatSpecularMax"/>
         <LeGe.NativeProperty name="MatRoughness" nativeName="MatRoughness"/>
         
-        <scea.dom.editors.attribute category="General" name="OpticalThicknessScalar" displayName="Optical Thickness Scale" description="Optical thickness"
-                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
-        <scea.dom.editors.attribute category="General" name="OpticalThicknessColor" displayName="Optical Thickness" description="Optical thickness"
+        <scea.dom.editors.attribute category="Color" name="OpticalThicknessReciprocalScalar" displayName="Optical Thickness Scale" 
+                                    description="This amount of light that is blocked by the water. It is the main contributor to the 'color' of the water. So, typically this will be either a blue or green color. This is actually the reciprocal of the optical thickness, so brighter colors will result in clearer water, and dark colors will give the impression of deap or polluted water."
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,200"/>
+        <scea.dom.editors.attribute category="Color" name="OpticalThicknessReciprocalColor" displayName="Optical Thickness" 
+                                    description="This amount of light that is blocked by the water. It is the main contributor to the 'color' of the water. So, typically this will be either a blue or green color. This is actually the reciprocal of the optical thickness, so brighter colors will result in clearer water, and dark colors will give the impression of deap or polluted water."
                                     editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms"
                                     converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
 
-        <scea.dom.editors.attribute category="General" name="FoamBrightness" displayName="Foam Brightness" description="Brightness of the foam on the surface of the ocean"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
-        <scea.dom.editors.attribute category="General" name="SkyReflectionBrightness" displayName="Sky Reflection Brightness" description="Brightness of the reflection of the sky"
+        <scea.dom.editors.attribute category="Color" name="FoamBrightness" displayName="Foam Brightness" description="Brightness of the foam on the surface of the ocean"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
+        <scea.dom.editors.attribute category="Color" name="SkyReflectionBrightness" displayName="Sky Reflection Brightness" description="Brightness of the reflection of the sky"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,3"/>
-        <scea.dom.editors.attribute category="General" name="UpwellingScale" displayName="Upwelling scale" description="Brightness of the upwelling light. This is light that bounces into and them out of the ocean."
+        <scea.dom.editors.attribute category="Color" name="UpwellingScale" displayName="Upwelling scale" description="Brightness of the upwelling light. This is light that bounces into and them out of the ocean."
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
 
-        <scea.dom.editors.attribute category="General" name="ReflectionBumpScale" displayName="Reflection Bump Scale" description=""
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
-        <scea.dom.editors.attribute category="General" name="DetailNormalFrequency" displayName="Detail Normal Frequency" description="Size of the detail normals (higher numbers give finer detail)"
+        <scea.dom.editors.attribute category="Detail" name="DetailNormalFrequency" displayName="Detail Normal Frequency" description="Size of the detail normals (higher numbers give finer detail)"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
-        <scea.dom.editors.attribute category="General" name="SpecularityFrequency" displayName="Specularity Frequency" description="Mapping constant for the specularity texture"
+        <scea.dom.editors.attribute category="Detail" name="SpecularityFrequency" displayName="Specularity Frequency" description="Mapping constant for the specularity texture"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
 
-        <scea.dom.editors.attribute category="General" name="MatSpecularMin" displayName="Specular Minimum" description="Specular constant minimum"
+        <scea.dom.editors.attribute category="Material" name="MatRoughness" displayName="Roughness" description="Roughness constant"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
-        <scea.dom.editors.attribute category="General" name="MatSpecularMax" displayName="Specular Maximum" description="Specular constant maximum"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
-        <scea.dom.editors.attribute category="General" name="MatRoughness" displayName="Roughness" description="Roughness constant"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="Material" name="RefractiveIndex" displayName="Refractive Index"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,3"/>
 
         <scea.dom.editors category="Ocean" name="OceanLightingSettings" menuText="Ocean/OceanLightingSettings" description="Settings for lighting of the ocean surface"/>
         <LeGe.OpaqueListable label="OceanLightingSettings"/>
@@ -556,10 +547,10 @@
     <xs:complexContent>
       <xs:extension base="envMiscType">
         <xs:attribute name="FoamBrightness" type="xs:float" default="0.08"/>
-        <xs:attribute name="OpticalThicknessScalar" type="xs:float" default="0.05"/>
-        <xs:attribute name="OpticalThicknessColor" type="xs:int" default="-1"/>
-        <xs:attribute name="SkyReflectionBrightness" type="xs:float" default="1.355"/>
-        <xs:attribute name="UpwellingScale" type="xs:float" default="0.075"/>
+        <xs:attribute name="OpticalThicknessReciprocalScalar" type="xs:float" default="0.05"/>
+        <xs:attribute name="OpticalThicknessReciprocalColor" type="xs:int" default="-1"/>
+        <xs:attribute name="SkyReflectionBrightness" type="xs:float" default="1"/>
+        <xs:attribute name="UpwellingScale" type="xs:float" default="1"/>
         <xs:attribute name="RefractiveIndex" type="xs:float" default="1.333"/>
         <xs:attribute name="ReflectionBumpScale" type="xs:float" default=".1"/>
         <xs:attribute name="DetailNormalFrequency" type="xs:float" default="6.727"/>
@@ -608,6 +599,7 @@
         <LeGe.NativeProperty name="JitteringAmount" nativeName="JitteringAmount"/>
         <LeGe.NativeProperty name="HeightStart" nativeName="HeightStart"/>
         <LeGe.NativeProperty name="HeightEnd" nativeName="HeightEnd"/>
+        <LeGe.NativeProperty name="EnableShadows" nativeName="EnableShadows"/>
 
         <scea.dom.editors.attribute category="Density" name="ReciprocalThickness" displayName="Thickness Factor"
                                     description="This controls out-scatter for the fog, or the amount of 'darkening' caused by the fog. Smaller numbers mean more light is deflected away, and the scene becomes darker. This value is the reciprocal of the optical thickness."
@@ -622,16 +614,19 @@
                                     description="This is the 'inscatter' (or brightening) caused by the fog. This is the non-directional, ambient component."
                                     editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
         <scea.dom.editors.attribute category="Color" name="SunInscatterScale" displayName="Sun Inscatter Scale"
-                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:1,200"/>
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,0.08"/>
         <scea.dom.editors.attribute category="Color" name="AmbientInscatterScale" displayName="Ambient Inscatter Scale"
-                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:1,200"/>
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,0.08"/>
         
         <scea.dom.editors.attribute category="Shadowing" name="ESM_C" displayName="ESM_C"/>
         <scea.dom.editors.attribute category="Shadowing" name="ShadowBias" displayName="ShadowBias"/>
         <scea.dom.editors.attribute category="Shadowing" name="JitteringAmount" displayName="JitteringAmount"/>
+        <scea.dom.editors.attribute category="Shadowing" name="EnableShadows" displayName="EnableShadows" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
         
-        <scea.dom.editors.attribute category="Range" name="HeightStart" displayName="Height Start"/>
-        <scea.dom.editors.attribute category="Range" name="HeightEnd" displayName="Height End"/>
+        <scea.dom.editors.attribute category="Range" name="HeightStart" displayName="Fog Ceiling"
+                                    description="This is the height for the 'ceiling' of the fog bank. At this height, fog is at zero density."/>
+        <scea.dom.editors.attribute category="Range" name="HeightEnd" displayName="Fog Floor"
+                                    description="This is the height for the 'floor' of the fog bank. At this height, fog is at the maximum density."/>
         
         <scea.dom.editors category="Environment" name="FogVolume" menuText="Lights/FogVolume" description="Volumetric fog effect"/>
         <LeGe.OpaqueListable label="Fog Volume"/>
@@ -655,6 +650,7 @@
         
         <xs:attribute name="HeightStart" type="xs:float" default="100"/>
         <xs:attribute name="HeightEnd" type="xs:float" default="0"/>
+        <xs:attribute name="EnableShadows" type="xs:boolean" default="false"/>
       </xs:extension>
     </xs:complexContent>
   
@@ -713,8 +709,8 @@
         <LeGe.NativeProperty name="EvaporationConstant" nativeName="EvaporationConstant"/>
         <LeGe.NativeProperty name="PressureConstant" nativeName="PressureConstant"/>
         
-        <LeGe.NativeProperty name="OpticalThicknessColor" nativeName="OpticalThicknessColor"/>
-        <LeGe.NativeProperty name="OpticalThicknessScalar" nativeName="OpticalThicknessScalar"/>
+        <LeGe.NativeProperty name="OpticalThicknessReciprocalColor" nativeName="OpticalThicknessReciprocalColor"/>
+        <LeGe.NativeProperty name="OpticalThicknessReciprocalScalar" nativeName="OpticalThicknessReciprocalScalar"/>
         <LeGe.NativeProperty name="FoamColor" nativeName="FoamColor"/>
         <LeGe.NativeProperty name="Specular" nativeName="Specular"/>
         <LeGe.NativeProperty name="Roughness" nativeName="Roughness"/>
@@ -743,9 +739,10 @@
         <scea.dom.editors.attribute category="Simulation" name="PressureConstant" displayName="PressureConstant"
                                     description="Constant used by the PipeModel for controlling the size of waves. Try adjusting if waves seem too big or too small."/>
         
-        <scea.dom.editors.attribute category="Lighting" name="OpticalThicknessColor" displayName="Optical Thickness"
+        <scea.dom.editors.attribute category="Lighting" name="OpticalThicknessReciprocalColor" displayName="Optical Thickness"
                                     editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
-        <scea.dom.editors.attribute category="Lighting" name="OpticalThicknessScalar" displayName="Optical Thickness Scalar"/>
+        <scea.dom.editors.attribute category="Lighting" name="OpticalThicknessReciprocalScalar" displayName="Optical Thickness Scalar"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,200"/>
         <scea.dom.editors.attribute category="Lighting" name="FoamColor" displayName="Foam Color"
                                     editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
         <scea.dom.editors.attribute category="Lighting" name="Specular" displayName="Specular"/>
@@ -772,8 +769,8 @@
         <xs:attribute name="EvaporationConstant" type="xs:float" default="1"/>
         <xs:attribute name="PressureConstant" type="xs:float" default="150"/>
       
-        <xs:attribute name="OpticalThicknessColor" type="xs:int" default="-1"/>
-        <xs:attribute name="OpticalThicknessScalar" type="xs:float" default="0.07"/>
+        <xs:attribute name="OpticalThicknessReciprocalColor" type="xs:int" default="-1"/>
+        <xs:attribute name="OpticalThicknessReciprocalScalar" type="xs:float" default="1"/>
         <xs:attribute name="FoamColor" type="xs:int" default="-1"/>
         <xs:attribute name="Specular" type="xs:float" default=".22"/>
         <xs:attribute name="Roughness" type="xs:float" default=".06"/>

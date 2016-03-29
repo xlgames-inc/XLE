@@ -191,9 +191,9 @@ OceanSurfaceSample BuildOceanSurfaceSample(
 		result.worldSpaceNormal = DecompressGBufferNormal(compressedNormal);
 	#endif
 
-	float specularity = SurfaceSpecularity.Sample(DefaultSampler, specularityTC);
+	// float specularity = SurfaceSpecularity.Sample(DefaultSampler, specularityTC);
 	result.material.metal = 1.f;
-	result.material.specular = lerp(MatSpecularMin, MatSpecularMax, specularity);
+	result.material.specular = 0.22f;	// (has no bearing)
 	result.material.roughness = MatRoughness;
 
 	result.foamAlbedo = 1.0.xxx;

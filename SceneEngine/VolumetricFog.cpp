@@ -224,15 +224,15 @@ namespace SceneEngine
             vertexShader, "game/xleres/VolumetricEffect/resolvefog.psh:ResolveFog:ps_*", definesTable);
         Metal::BoundUniforms resolveLightBinding(*resolveLight);
         Techniques::TechniqueContext::BindGlobalUniforms(resolveLightBinding);
-        resolveLightBinding.BindConstantBuffers(1, {"VolumetricFogConstants", "VolFogLookupTableConstants"});
-        resolveLightBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture", "VolFogLookupTable"});
+        resolveLightBinding.BindConstantBuffers(1, {"VolumetricFogConstants"});
+        resolveLightBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture"});
 
         auto* resolveLightNoGrid = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader, "game/xleres/VolumetricEffect/resolvefog.psh:ResolveFogNoGrid:ps_*", definesTable);
         Metal::BoundUniforms resolveLightNoGridBinding(*resolveLightNoGrid);
         Techniques::TechniqueContext::BindGlobalUniforms(resolveLightNoGridBinding);
-        resolveLightNoGridBinding.BindConstantBuffers(1, {"VolumetricFogConstants", "VolFogLookupTableConstants"});
-        resolveLightNoGridBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture", "VolFogLookupTable"});
+        resolveLightNoGridBinding.BindConstantBuffers(1, {"VolumetricFogConstants"});
+        resolveLightNoGridBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture"});
 
         ///////////////////////////////////////////////////////////////////////////////////////////
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
@@ -688,7 +688,8 @@ namespace SceneEngine
         unsigned shadowCascadeMode = 2;
         unsigned shadowMapRTVs = 0;
         VolumetricFogResources* fogRes = nullptr;
-        if (shadowFrustum) {
+        bool doShadows = shadowFrustum && (cfg._material._flags & unsigned(VolumetricFogMaterial::Flags::EnableShadows));
+        if (doShadows) {
             fogRes = &Techniques::FindCachedBox2<VolumetricFogResources>(
                 rendererCfg, shadowFrustum->_frustumCount, 
                 UseESMShadowMaps(), GetHighPrecisionResources());
@@ -708,19 +709,19 @@ namespace SceneEngine
         Metal::ConstantBufferPacket constantBufferPackets[2];
         constantBufferPackets[0] = MakeVolFogConstants(cfg, rendererCfg);
 
-        auto& fogTable = Techniques::FindCachedBox2<VolumetricFogDensityTable>(
-            cfg._material._opticalThickness);
+        // auto& fogTable = Techniques::FindCachedBox2<VolumetricFogDensityTable>(
+        //     cfg._material._opticalThickness);
 
         const Metal::ShaderResourceView* srvs[] =
         {
             fogRes ? &fogRes->_inscatterFinalsValuesSRV : nullptr,
-            fogRes ? &fogRes->_transmissionValuesSRV : nullptr,
-            &fogTable._tableSRV
+            fogRes ? &fogRes->_transmissionValuesSRV : nullptr
+            //, &fogTable._tableSRV
         };
         const Metal::ConstantBuffer* prebuiltConstants[2] = {nullptr, nullptr};
-        prebuiltConstants[1] = &fogTable._tableConstants;
+        // prebuiltConstants[1] = &fogTable._tableConstants;
 
-        if (shadowFrustum) {
+        if (doShadows) {
 
             fogShaders._resolveLightBinding.Apply(
                 *context, lightingParserContext.GetGlobalUniformsStream(), 
@@ -755,6 +756,7 @@ namespace SceneEngine
         result._ESM_C = .25f * 80.f;
         result._shadowsBias = 0.00000125f;
         result._jitteringAmount = 0.5f;
+        result._flags |= (unsigned)VolumetricFogMaterial::Flags::EnableShadows;
         return result;
     }
 
@@ -784,8 +786,9 @@ namespace SceneEngine
 
         ParamName(HeightStart);
         ParamName(HeightEnd);
+        ParamName(EnableShadows);
 
-        _material._opticalThickness = 1.f / std::max(1.f, params.GetParameter(ReciprocalThickness, 1.f));
+        _material._opticalThickness = 1.f / std::max(1e-5f, params.GetParameter(ReciprocalThickness, 1.f));
         _material._noiseThicknessScale = params.GetParameter(NoiseThicknessScale, _material._noiseThicknessScale);
         _material._noiseSpeed = params.GetParameter(NoiseSpeed, _material._noiseSpeed);
 
@@ -799,6 +802,8 @@ namespace SceneEngine
         _material._ESM_C = params.GetParameter(ESM_C, _material._ESM_C);
         _material._shadowsBias = params.GetParameter(ShadowBias, _material._shadowsBias);
         _material._jitteringAmount = params.GetParameter(JitteringAmount, _material._jitteringAmount);
+        _material._flags = 
+            unsigned(VolumetricFogMaterial::Flags::EnableShadows) * params.GetParameter(EnableShadows, true);
 
         _heightStart = params.GetParameter(HeightStart, _heightStart);
         _heightEnd = params.GetParameter(HeightEnd, _heightEnd);
@@ -969,11 +974,13 @@ namespace SceneEngine
             vol._material._sunInscatter, 0u, 
             vol._material._ambientInscatter, 0u };
 
-        // Bind the shader resources that will be required by forward lit resources
-        auto& fogTable = Techniques::FindCachedBox2<VolumetricFogDensityTable>(
-            vol._material._opticalThickness);
-        metalContext.BindVS(MakeResourceList(13, fogTable._tableConstants));
-        metalContext.BindVS(MakeResourceList(23, fogTable._tableSRV));
+        #if 0
+            // Bind the shader resources that will be required by forward lit resources
+            auto& fogTable = Techniques::FindCachedBox2<VolumetricFogDensityTable>(
+                vol._material._opticalThickness);
+            metalContext.BindVS(MakeResourceList(13, fogTable._tableConstants));
+            metalContext.BindVS(MakeResourceList(23, fogTable._tableSRV));
+        #endif
     }
 
     VolumetricFogPlugin::VolumetricFogPlugin(VolumetricFogManager::Pimpl& pimpl) : _pimpl(&pimpl) {}

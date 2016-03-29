@@ -209,7 +209,7 @@ namespace SceneEngine
     : _ambientLight(0.f, 0.f, 0.f), _skyReflectionScale(1.0f), _skyReflectionBlurriness(2.f), _skyBrightness(1.f)
     , _doAtmosphereBlur(false)
     , _rangeFogInscatter(0.f, 0.f, 0.f)
-    , _rangeFogThickness(0.f, 0.f, 0.f)
+    , _rangeFogThickness(10000.f)
     , _doRangeFog(false)
     , _atmosBlurStdDev(1.3f), _atmosBlurStart(1000.f), _atmosBlurEnd(1500.f)
     , _skyTextureType(SkyTextureType::Equirectangular)
@@ -239,9 +239,9 @@ namespace SceneEngine
         static const auto specularIBLHash = ParamHash("SpecularIBL");
 
         static const auto rangeFogInscatterHash = ParamHash("RangeFogInscatter");
+        static const auto rangeFogInscatterReciprocalScaleHash = ParamHash("RangeFogInscatterReciprocalScale");
         static const auto rangeFogInscatterScaleHash = ParamHash("RangeFogInscatterScale");
-        static const auto rangeFogThicknessHash = ParamHash("RangeFogThickness");
-        static const auto rangeFogThicknessScaleHash = ParamHash("RangeFogThicknessScale");
+        static const auto rangeFogThicknessReciprocalScaleHash = ParamHash("RangeFogThicknessReciprocalScale");
 
         static const auto atmosBlurStdDevHash = ParamHash("AtmosBlurStdDev");
         static const auto atmosBlurStartHash = ParamHash("AtmosBlurStart");
@@ -257,8 +257,10 @@ namespace SceneEngine
         _skyBrightness = props.GetParameter(skyBrightness, _skyBrightness);
         _skyTextureType = (SkyTextureType)props.GetParameter(skyTextureTypeHash, unsigned(_skyTextureType));
 
-        _rangeFogInscatter = 1.f / std::max(1.f, props.GetParameter(rangeFogInscatterScaleHash, 1.f)) * AsFloat3Color(props.GetParameter(rangeFogInscatterHash, 0));
-        _rangeFogThickness = 1.f / std::max(1.f, props.GetParameter(rangeFogThicknessScaleHash, 1.f)) * AsFloat3Color(props.GetParameter(rangeFogThicknessHash, 0));
+        float inscatterScaleScale = 1.f / std::max(1e-5f, props.GetParameter(rangeFogInscatterReciprocalScaleHash, 1.f));
+        inscatterScaleScale = props.GetParameter(rangeFogInscatterScaleHash, inscatterScaleScale);
+        _rangeFogInscatter = inscatterScaleScale * AsFloat3Color(props.GetParameter(rangeFogInscatterHash, 0));
+        _rangeFogThickness = 1.f / std::max(1e-5f, props.GetParameter(rangeFogThicknessReciprocalScaleHash, 0.f));
 
         _atmosBlurStdDev = props.GetParameter(atmosBlurStdDevHash, _atmosBlurStdDev);
         _atmosBlurStart = props.GetParameter(atmosBlurStartHash, _atmosBlurStart);

@@ -312,7 +312,7 @@ namespace SceneEngine
 
             // note --  these things can be executed by the scene parser? Are they better
             //          off handled by the scene parser, or the lighting parser?
-        if (Tweakable("OceanDoSimulation", false)) {
+        if (Tweakable("OceanDoSimulation", true)) {
             Ocean_Execute(&context, parserContext, GlobalOceanSettings, GlobalOceanLightingSettings, depthsSRV);
         }
 

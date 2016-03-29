@@ -22,8 +22,8 @@ namespace SceneEngine
 
         struct RangeFog
         {
-            Float3      _rangeFogInscatter; unsigned _dummy1;
-            Float3      _rangeFogOpticalThickness; unsigned _dummy2;
+            Float3      _rangeFogInscatter;
+            float       _rangeFogOpticalThickness;
         };
 
         struct VolumeFog

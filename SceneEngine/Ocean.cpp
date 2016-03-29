@@ -843,8 +843,8 @@ namespace SceneEngine
     {
         ParamName(SpecularReflectionBrightness);
         ParamName(FoamBrightness);
-        ParamName(OpticalThicknessScalar);
-        ParamName(OpticalThicknessColor);
+        ParamName(OpticalThicknessReciprocalScalar);
+        ParamName(OpticalThicknessReciprocalColor);
         ParamName(SkyReflectionBrightness);
         ParamName(SpecularPower);
         ParamName(UpwellingScale);
@@ -859,10 +859,14 @@ namespace SceneEngine
         _specularReflectionBrightness = params.GetParameter(SpecularReflectionBrightness, _specularReflectionBrightness);
         _foamBrightness = params.GetParameter(FoamBrightness, _foamBrightness);
 
-        auto otColor = params.GetParameter<unsigned>(OpticalThicknessColor);
-        auto otScalar = params.GetParameter<float>(OpticalThicknessScalar);
+        auto otColor = params.GetParameter<unsigned>(OpticalThicknessReciprocalColor);
+        auto otScalar = params.GetParameter<float>(OpticalThicknessReciprocalScalar);
         if (otColor.first && otScalar.first) {
-            _opticalThickness = AsFloat3Color(otColor.second) * otScalar.second;
+            Float3 temp = AsFloat3Color(otColor.second) * otScalar.second;
+            _opticalThickness = Float3(
+                1.0f / std::max(1e-5f, temp[0]),
+                1.0f / std::max(1e-5f, temp[1]),
+                1.0f / std::max(1e-5f, temp[2]));
         }
 
         _skyReflectionBrightness = params.GetParameter(SkyReflectionBrightness, _skyReflectionBrightness);

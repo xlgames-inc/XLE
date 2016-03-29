@@ -192,7 +192,7 @@ namespace SceneEngine
 
         bool    _doRangeFog;
         Float3  _rangeFogInscatter;
-        Float3  _rangeFogThickness;     // optical thickness for range based fog
+        float   _rangeFogThickness;     // optical thickness for range based fog
 
         bool    _doAtmosphereBlur;
         float   _atmosBlurStdDev;

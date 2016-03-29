@@ -417,16 +417,12 @@ namespace SceneEngine
             float UpwellingScale;
             float SkyReflectionScale;
         };
-        // static LightingConstants lightingConstants = 
-        // {
-        //     0.2f * Float3(0.45f, 0.175f, 0.05f), 0,
-        //     Float3(0.5f, 0.5f, .5f),
-        //     .22f, .06f, 1.333f, 0.33f, 0.75f
-        // };
+        Float3 temp = cfg._opticalThicknessReciprocalScalar * AsFloat3Color(cfg._opticalThicknessReciprocalColor);
+        temp = Float3(1.0f / std::max(1e-5f, temp[0]), 1.0f / std::max(1e-5f, temp[1]), 1.0f / std::max(1e-5f, temp[2]));
         return MakeSharedPkt(
             LightingConstants
             {
-                cfg._opticalThicknessScalar * AsFloat3Color(cfg._opticalThicknessColor),
+                temp,
                 0,
                 AsFloat3Color(cfg._foamColor),
                 cfg._specular, cfg._roughness,
@@ -666,8 +662,8 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::ShallowSurface::Light
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("OpticalThicknessColor"),   DefaultGet(Obj, _opticalThicknessColor),    DefaultSet(Obj, _opticalThicknessColor));
-        props.Add(u("OpticalThicknessScalar"),  DefaultGet(Obj, _opticalThicknessScalar),   DefaultSet(Obj, _opticalThicknessScalar));
+        props.Add(u("OpticalThicknessReciprocalColor"), DefaultGet(Obj, _opticalThicknessReciprocalColor), DefaultSet(Obj, _opticalThicknessReciprocalColor));
+        props.Add(u("OpticalThicknessReciprocalScalar"),  DefaultGet(Obj, _opticalThicknessReciprocalScalar),   DefaultSet(Obj, _opticalThicknessReciprocalScalar));
         props.Add(u("FoamColor"),               DefaultGet(Obj, _foamColor),                DefaultSet(Obj, _foamColor));
         props.Add(u("Specular"),                DefaultGet(Obj, _specular),                 DefaultSet(Obj, _specular));
         props.Add(u("Roughness"),               DefaultGet(Obj, _roughness),                DefaultSet(Obj, _roughness));
@@ -695,8 +691,8 @@ namespace SceneEngine
 
     ShallowSurface::LightingConfig::LightingConfig()
     {
-        _opticalThicknessColor = ~0u;
-        _opticalThicknessScalar = .35f * .2f;
+        _opticalThicknessReciprocalColor = ~0u;
+        _opticalThicknessReciprocalScalar = 1.f;
         _foamColor = ~0u;
         _specular = .22f;
         _roughness = .06f;

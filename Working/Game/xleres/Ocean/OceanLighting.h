@@ -130,7 +130,7 @@ float3 CalculateUpwelling(float angle, OceanLightingParts parts, float3 opticalT
         result += brightness;
     }
 
-    return result / 100.f;
+    return result;
 }
 
 void CalculateRefractionValue(	inout OceanLightingParts parts,

@@ -40,8 +40,8 @@ namespace SceneEngine
         class LightingConfig
         {
         public:
-            unsigned _opticalThicknessColor;
-            float _opticalThicknessScalar;
+            unsigned _opticalThicknessReciprocalColor;
+            float _opticalThicknessReciprocalScalar;
             unsigned _foamColor;
             float _specular;
             float _roughness;

@@ -28,6 +28,9 @@ namespace SceneEngine
         float _ESM_C;
         float _shadowsBias;
         float _jitteringAmount;
+        unsigned _flags;
+
+        enum class Flags : unsigned { EnableShadows = 1<<0 };
     };
 
     VolumetricFogMaterial VolumetricFogMaterial_Default();

@@ -165,7 +165,7 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 		//	Write final result to the volume texture
 
 	int3 outputTexel = dispatchThreadId;
-	float density = max(0, OpticalThickness + NoiseThicknessScale * noiseSample1);
+	float density = max(0, 1.f + NoiseThicknessScale * noiseSample1);
 
 		// just linear with height currently...
 	float heightDensityScale = saturate((centrePoint.z - HeightStart) / (HeightEnd - HeightStart));
@@ -260,7 +260,7 @@ CalculateInscatter_Result CalculateInscatter(int3 dispatchThreadId, float densit
 		accumulatedInscatter += inscatter * accumulatedTransmission;
 
 			//	using Beer-Lambert equation for fog outscatter
-		float integralSolution = (backDensity + frontDensity) * .5f * transmissionDistance;
+		float integralSolution = (backDensity + frontDensity) * .5f * OpticalThickness * transmissionDistance;
 		accumulatedTransmission *= exp(-integralSolution);
 
 		InscatterOutput   	[int3(dispatchThreadId.xy, d)] = accumulatedInscatter;
