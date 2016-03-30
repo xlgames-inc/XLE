@@ -8,6 +8,7 @@
         ~Geometry
             OUTPUT_WORLD_VIEW_VECTOR=1
             OUTPUT_TEXCOORD=1
+            OUTPUT_FOG_COLOR=1
         ~GlobalEnvironment
     VertexShader=game/xleres/ocean/shallowsurface.sh:vs_main
     PixelShader=game/xleres/ocean/shallowsurface.sh:ps_main

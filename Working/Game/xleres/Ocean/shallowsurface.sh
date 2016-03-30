@@ -12,6 +12,7 @@
 #include "../Colour.h"
 #include "../BasicMaterial.h"
 #include "../CommonResources.h"
+#include "../Forward/resolvefog.h"
 
 Texture2D					Foam_Diffuse : register(t4);
 Texture2DArray<float2>		ShallowDerivatives : register(t5);
@@ -67,6 +68,10 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
     #if OUTPUT_WORLD_VIEW_VECTOR==1
         output.worldViewVector = WorldSpaceView.xyz - worldPosition.xyz;
     #endif
+
+    #if OUTPUT_FOG_COLOR == 1
+		output.fogColor = ResolveOutputFogColor(worldPosition.xyz, WorldSpaceView.xyz);
+	#endif
 
     return output;
 }
@@ -183,6 +188,10 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
         + (1.f-parts.foamQuantity) * (parts.specular + parts.skyReflection)
         + FoamColor * foamTex
         ;
+
+    #if OUTPUT_FOG_COLOR == 1
+		colour.rgb = geo.fogColor.rgb + colour.rgb * geo.fogColor.a;
+	#endif
 
     float4 result;
     result = float4(colour, 1.f);

@@ -25,13 +25,7 @@
 #include "../Transform.h"
 #include "../CommonResources.h"
 #include "../Utility/perlinnoise.h"
-
-#if OUTPUT_FOG_COLOR == 1
-	#include "../Lighting/RangeFogResolve.h"
-	#include "../Lighting/BasicLightingEnvironment.h"
-	#include "../VolumetricEffect/resolvefog.h"
-#endif
-
+#include "../Forward/resolvefog.h"
 
 #if !defined(SHALLOW_WATER_TILE_DIMENSION)
 	#define SHALLOW_WATER_TILE_DIMENSION 32
@@ -212,23 +206,8 @@ VSOutput main(uint vertexId : SV_VertexId)
 								+	0.15f * float2(specularityOffsetX, specularityOffsetY);
 
 	#if OUTPUT_FOG_COLOR == 1
-		{
-			float3 negCameraForward = float3(CameraBasis[0].z, CameraBasis[1].z, CameraBasis[2].z);
-			float distanceToView = dot(output.worldViewVector, negCameraForward);
-			LightResolve_RangeFog(BasicRangeFog, distanceToView, output.fogColor.a, output.fogColor.rgb);
-			[branch] if (BasicVolumeFog.EnableFlag != false) {
-				float transmission, inscatter;
-				// (this only works correctly because the Z values in local space are the same as world space)
-				CalculateTransmissionAndInscatter(
-					BasicVolumeFog,
-					LocalSpaceView2, finalLocalPosition, transmission, inscatter);
-
-				float cosTheta = -dot(output.worldViewVector, BasicLight[0].Position) * rsqrt(dot(output.worldViewVector, output.worldViewVector));
-				float4 volFog = float4(inscatter * GetInscatterColor(BasicVolumeFog, cosTheta), transmission);
-				output.fogColor.rgb = volFog.rgb + output.fogColor.rgb * volFog.a;
-				output.fogColor.a *= volFog.a;
-			}
-		}
+		// (this only works correctly because the Z values in local space are the same as world space)
+		output.fogColor = ResolveOutputFogColor(finalLocalPosition, LocalSpaceView2);
 	#endif
 
 	return output;

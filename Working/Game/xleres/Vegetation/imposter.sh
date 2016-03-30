@@ -18,6 +18,7 @@
 #include "../gbuffer.h"
 #include "../CommonResources.h"
 #include "../Lighting/LightingAlgorithm.h"  // for CalculateMipmapLevel
+#include "../forward/resolvefog.h"
 
 Texture2D ImposterAltas[2] : register(t0);
 
@@ -40,11 +41,7 @@ VSSprite vs_main(VSSprite input)
 {
     VSOutput output;
     #if OUTPUT_FOG_COLOR == 1
-        {
-            float3 cameraForward = float3(-CameraBasis[0].z, -CameraBasis[1].z, -CameraBasis[2].z);
-            float distanceToView = dot(WorldSpaceView.xyz - input[0].position.xyz, cameraForward);
-            LightResolve_RangeFog(BasicRangeFog, distanceToView, output.fogColor.a, output.fogColor.rgb);
-        }
+        output.fogColor = ResolveOutputFogColor(input[0].position.xyz, WorldSpaceView.xyz);
     #endif
 
     output.spriteIndex = input[0].spriteIndex;
