@@ -81,6 +81,7 @@ namespace GUILayer
                 camToWorld, 
                 0.f, worldDims[1], worldDims[0], 0.f, 
                 -4096.f, 4096.f));
+        SceneEngine::SetFrameGlobalStates(metalContext);
     }
 
     void ErosionOverlay::RenderToScene(
