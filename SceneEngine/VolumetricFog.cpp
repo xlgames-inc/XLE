@@ -929,24 +929,28 @@ namespace SceneEngine
         ///////////////////////////////////////////////////////////////////////////////////////////
 
         using namespace std::placeholders;
-        if (!parserContext._preparedDMShadows.empty() && parserContext._preparedDMShadows[0].second.IsReady()) {
+        auto& cfg = _pimpl->_cfg._volumes[0];
+        bool doShadows = 
+                !parserContext._preparedDMShadows.empty() && parserContext._preparedDMShadows[0].second.IsReady() 
+            && (cfg._material._flags & unsigned(VolumetricFogMaterial::Flags::EnableShadows));
+        if (doShadows) {
 
             const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
             VolumetricFog_Build(
                 &metalContext, parserContext, 
                 useMsaaSamplers, parserContext._preparedDMShadows[0].second,
-                _pimpl->_cfg._renderer, _pimpl->_cfg._volumes[0]);
+                _pimpl->_cfg._renderer, cfg);
 
             resolveContext.AppendResolve(
                 std::bind(DoVolumetricFogResolve, _1, _2, _3, _4, 
                     std::ref(_pimpl->_cfg._renderer),
-                    std::ref(_pimpl->_cfg._volumes[0])));
+                    std::ref(cfg)));
         } else {
 
             resolveContext.AppendResolve(
                 std::bind(DoVolumetricFogResolveNoGrid, _1, _2, _3, _4, 
                     std::ref(_pimpl->_cfg._renderer),
-                    std::ref(_pimpl->_cfg._volumes[0])));
+                    std::ref(cfg)));
 
         }
     }

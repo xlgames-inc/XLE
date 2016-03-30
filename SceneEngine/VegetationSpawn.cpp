@@ -616,6 +616,12 @@ namespace SceneEngine
             } CATCH(const ::Assets::Exceptions::AssetException&) {}
             CATCH_END
         }
+
+        // if we got a reload somewhere in the middle, we need to reset again
+        if (cache.GetReloadId() != _modelCacheReloadId) {
+            _drawCallSets.clear();
+            _drawCallSetDepVals.clear();
+        }
     }
 
     void VegetationSpawnManager::Render(

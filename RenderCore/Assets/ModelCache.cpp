@@ -106,10 +106,10 @@ namespace RenderCore { namespace Assets
         result._model = _pimpl->_modelScaffolds.Get(result._hashedModelName).get();
         if (!result._model || result._model->GetDependencyValidation()->GetValidationIndex() > 0) {
             auto model = Internal::CreateModelScaffold(modelFilename, *_pimpl->_format);
-            _pimpl->_modelScaffolds.Insert(result._hashedModelName, model);
+            auto insertType = _pimpl->_modelScaffolds.Insert(result._hashedModelName, model);
                 // we upload the "_reloadId" value when change one of our pointers from a previous
                 // valid value to something new
-            if (result._model) ++_pimpl->_reloadId;
+            if (result._model || insertType == LRUCacheInsertType::EvictAndReplace) ++_pimpl->_reloadId;
             result._model = model.get();
         }
 
@@ -123,8 +123,8 @@ namespace RenderCore { namespace Assets
             result._material = _pimpl->_materialScaffolds.Get(result._hashedMaterialName).get();
             if (!result._material || result._material->GetDependencyValidation()->GetValidationIndex() > 0) {
                 auto mat = Internal::CreateMaterialScaffold(modelFilename, matNamePtr, *_pimpl->_format);
-                _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, mat);
-                if (result._material) ++_pimpl->_reloadId;
+                auto insertType = _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, mat);
+                if (result._material || insertType == LRUCacheInsertType::EvictAndReplace) ++_pimpl->_reloadId;
                 result._material = mat.get();
             }
         } else if (resolveResult == ::Assets::AssetState::Invalid) {
@@ -165,8 +165,10 @@ namespace RenderCore { namespace Assets
             if (!supp || supp->GetDependencyValidation()->GetValidationIndex() > 0) {
                 if (supp) { ++_reloadId; }
                 supp = Internal::CreateSupplement(*s, modelFilename, materialFilename);
-                if (supp)
-                    _supplements.Insert(hashName, supp);
+                if (supp) {
+                    auto insertType = _supplements.Insert(hashName, supp);
+                    if (insertType == LRUCacheInsertType::EvictAndReplace) { ++_reloadId; }
+                }
             }
             if (supp)
                 result.push_back(supp.get());
@@ -204,7 +206,8 @@ namespace RenderCore { namespace Assets
                 MakeIteratorRange(suppScaff),
                 std::ref(*_pimpl->_sharedStateSet), &searchRules, LOD);
 
-            _pimpl->_modelRenderers.Insert(hashedModel, renderer);
+            auto insertType = _pimpl->_modelRenderers.Insert(hashedModel, renderer);
+            if (insertType == LRUCacheInsertType::EvictAndReplace) { ++_pimpl->_reloadId; }
         }
 
             // cache the bounding box, because it's an expensive operation to recalculate
@@ -247,7 +250,8 @@ namespace RenderCore { namespace Assets
         if (!result || result->GetDependencyValidation()->GetValidationIndex() > 0) {
             auto model = Internal::CreateModelScaffold(modelFilename, *_pimpl->_format);
             if (result) { ++_pimpl->_reloadId; }
-            _pimpl->_modelScaffolds.Insert(hashedModelName, model);
+            auto insertType = _pimpl->_modelScaffolds.Insert(hashedModelName, model);
+            if (insertType == LRUCacheInsertType::EvictAndReplace) { ++_pimpl->_reloadId; }
             result = model.get();
         }
         return result;

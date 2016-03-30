@@ -39,10 +39,11 @@ namespace Utility
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    enum class LRUCacheInsertType { Add, Update, EvictAndReplace, Fail };
     template<typename Type> class LRUCache
     {
     public:
-        void Insert(uint64 hashName, std::shared_ptr<Type> object);
+        LRUCacheInsertType Insert(uint64 hashName, std::shared_ptr<Type> object);
         std::shared_ptr<Type>& Get(uint64 hashName);
 
         LRUCache(unsigned cacheSize);
@@ -55,21 +56,21 @@ namespace Utility
     };
 
     template<typename Type>
-        void LRUCache<Type>::Insert(uint64 hashName, std::shared_ptr<Type> object)
+        LRUCacheInsertType LRUCache<Type>::Insert(uint64 hashName, std::shared_ptr<Type> object)
     {
             // try to insert this object into the cache (if it's not already here)
         auto i = std::lower_bound(_lookupTable.cbegin(), _lookupTable.cend(), hashName, CompareFirst<uint64, unsigned>());
         if (i != _lookupTable.cend() && i->first == hashName) {
                 // already here! But we should replace, this might be an update operation
             _objects[i->second] = object;
-            return;
+            return LRUCacheInsertType::Update;
         }
 
         if (_objects.size() < _cacheSize) {
             _objects.push_back(object);
             _lookupTable.insert(i, std::make_pair(hashName, unsigned(_objects.size()-1)));
             _queue.BringToFront(unsigned(_objects.size()-1));
-            return;
+            return LRUCacheInsertType::Add;
         }
 
             // we need to evict an existing object.
@@ -77,7 +78,8 @@ namespace Utility
 
         unsigned eviction = _queue.GetOldestValue();
         if (eviction == ~unsigned(0x0)) {
-            assert(0); return;
+            assert(0); 
+            return LRUCacheInsertType::Fail;
         }
 
         _objects[eviction] = object;
@@ -91,6 +93,7 @@ namespace Utility
         _lookupTable.insert(i, std::make_pair(hashName, eviction));
 
         _queue.BringToFront(eviction);
+        return LRUCacheInsertType::EvictAndReplace;
     }
 
     template<typename Type>

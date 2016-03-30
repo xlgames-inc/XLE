@@ -274,6 +274,8 @@ namespace GUILayer
                 ? RenderingQualitySettings::LightingModel::Deferred 
                 : RenderingQualitySettings::LightingModel::Forward;
 
+            _sceneParser->AddLightingPlugins(parserContext);
+
             auto& screenshot = ::ConsoleRig::Detail::FindTweakable("Screenshot", 0);
             if (screenshot) {
                 PlatformRig::TiledScreenshot(
@@ -282,8 +284,7 @@ namespace GUILayer
                     qualSettings, UInt2(screenshot, screenshot));
                 screenshot = 0;
             }
-
-            _sceneParser->AddLightingPlugins(parserContext);
+            
             SceneEngine::LightingParser_ExecuteScene(
                 *threadContext, parserContext, *_sceneParser.get(), 
                 _sceneParser->GetCameraDesc(), qualSettings);
