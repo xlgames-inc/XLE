@@ -2,6 +2,8 @@
 
 ### XLE prototype 3D game engine
 
+XLE is flexible and modular and powerful. It's intended to be combined with other solutions and extended for projects that have special case requirements.
+
 Starting points: <BR>
 * Development blog: https://xlgames-inc.github.io
 * Technical documentation: https://github.com/xlgames-inc/XLE/wiki
