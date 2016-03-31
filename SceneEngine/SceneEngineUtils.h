@@ -120,6 +120,7 @@ namespace SceneEngine
     static const auto TechniqueIndex_OrderIndependentTransparency = RenderCore::Techniques::TechniqueIndex::OrderIndependentTransparency;
     static const auto TechniqueIndex_RTShadowGen = RenderCore::Techniques::TechniqueIndex::WriteTriangleIndex;
     static const auto TechniqueIndex_StochasticTransparency = RenderCore::Techniques::TechniqueIndex::StochasticTransparency;
+    static const auto TechniqueIndex_DepthWeightedTransparency = RenderCore::Techniques::TechniqueIndex::DepthWeightedTransparency;
 
     typedef intrusive_ptr<ID3D::Resource>      ResourcePtr;
     ResourcePtr         CreateResourceImmediate(const BufferUploads::BufferDesc& desc);

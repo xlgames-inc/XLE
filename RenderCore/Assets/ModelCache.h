@@ -59,7 +59,7 @@ namespace RenderCore { namespace Assets
 
             Config()
             : _modelScaffoldCount(2000), _materialScaffoldCount(2000)
-            , _rendererCount(100) {}
+            , _rendererCount(200) {}
         };
 
         using ResChar = ::Assets::ResChar;

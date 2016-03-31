@@ -152,6 +152,9 @@
       <Filter>Lighting And Processing</Filter>
     </ClCompile>
     <ClCompile Include="..\PreparedScene.cpp" />
+    <ClCompile Include="..\DepthWeightedTransparency.cpp">
+      <Filter>Lighting And Processing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -323,6 +326,9 @@
     </ClInclude>
     <ClInclude Include="..\PreparedScene.h" />
     <ClInclude Include="..\ShaderLightDesc.h" />
+    <ClInclude Include="..\DepthWeightedTransparency.h">
+      <Filter>Lighting And Processing</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

@@ -759,6 +759,7 @@ namespace RenderCore { namespace Techniques
                 // note -- lexographically sorted!
             { u("Deferred"),                       unsigned(TechniqueIndex::Deferred) },
             { u("DepthOnly"),                      unsigned(TechniqueIndex::DepthOnly) },
+            { u("DepthWeightedTransparency"),      unsigned(TechniqueIndex::DepthWeightedTransparency) },
             { u("Illum"),                          unsigned(TechniqueIndex::Forward) },
             { u("OrderIndependentTransparency"),   unsigned(TechniqueIndex::OrderIndependentTransparency) },
             { u("PrepareVegetationSpawn"),         unsigned(TechniqueIndex::PrepareVegetationSpawn) },

@@ -169,3 +169,27 @@
             STOCHASTIC_TRANS_OPACITY
     VertexShader=game/xleres/forward/illum.vsh:main
     PixelShader=game/xleres/forward/transparency/illum.psh:main_stochastic
+~DepthWeightedTransparency
+    ~Inherit; shared.tech:CommonMaterial; shared.tech:Skinnable; shared.tech:VegetationSpawn; shared.tech:System
+    ~Parameters
+        ~Geometry
+            GEO_HAS_COLOUR
+            GEO_HAS_TEXCOORD
+            GEO_HAS_TANGENT_FRAME
+            GEO_HAS_BITANGENT
+            GEO_HAS_NORMAL
+            OUTPUT_WORLD_VIEW_VECTOR=1
+        ~Material
+            MAT_TRANSMITTED_SPECULAR=0
+            MAT_CLAMP_SPEC=0
+            MAT_BLEND_FOG=1
+        ~GlobalEnvironment
+            SKIP_MATERIAL_DIFFUSE=0
+            SKY_PROJECTION
+            HAS_DIFFUSE_IBL
+            HAS_SPECULAR_IBL
+        ~Runtime
+            BASIC_LIGHT_COUNT=1
+            SHADOW_CASCADE_MODE=2
+    VertexShader=game/xleres/forward/illum.vsh:main
+    PixelShader=game/xleres/forward/transparency/depthweighted.sh:main_depth_weighted_oi

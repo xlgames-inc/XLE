@@ -37,8 +37,9 @@ namespace RenderCore { namespace Techniques
         static const auto VisWireframe  = 8u;
         static const auto WriteTriangleIndex = 9u;
         static const auto StochasticTransparency = 10u;
+        static const auto DepthWeightedTransparency = 11u;
 
-        static const auto Max = 11u;
+        static const auto Max = 12u;
     };
 
     extern const ::Assets::ResChar* DefaultPredefinedCBLayout;

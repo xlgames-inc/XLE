@@ -20,6 +20,7 @@
 #include "RefractionsBuffer.h"
 #include "OrderIndependentTransparency.h"
 #include "StochasticTransparency.h"
+#include "DepthWeightedTransparency.h"
 #include "Sky.h"
 #include "SunFlare.h"
 #include "Rain.h"
@@ -290,6 +291,8 @@ namespace SceneEngine
         Metal::NativeFormat::Enum resolveFormat)
     {
             // todo -- support custom resolve (tone-map aware)
+            // See AMD post on this topic:
+            //      http://gpuopen.com/optimized-reversible-tonemapper-for-resolve/
         context.GetUnderlying()->ResolveSubresource(
             destinationTexture, D3D11CalcSubresource(0,0,0),
             sourceTexture, D3D11CalcSubresource(0,0,0),
@@ -562,10 +565,14 @@ namespace SceneEngine
                     
         //////////////////////////////////////////////////////////////////////////////////////////////////
         const bool hasOITrans = BatchHasContent(parserContext, SPS::BatchFilter::OITransparent);
-        const auto enabledSortedTrans = 
-            Tweakable("UseOITrans", false)
-            && (mainTargets._desc._sampling._sampleCount <= 1)
-            && hasOITrans;
+
+        enum OIMode { Unordered, Stochastic, DepthWeighted, SortedRef } oiMode;
+        switch (Tweakable("OITransMode", 1)) {
+        case 1:     oiMode = OIMode::Stochastic; break;
+        case 2:     oiMode = OIMode::DepthWeighted; break;
+        case 3:     oiMode = (mainTargets._desc._sampling._sampleCount <= 1) ? OIMode::SortedRef : OIMode::Stochastic; break;
+        default:    oiMode = OIMode::Unordered; break;
+        }
 
             // When enable OI transparency is enabled, we do a pre-depth pass
             // on all transparent geometry.
@@ -577,7 +584,7 @@ namespace SceneEngine
             //
             // The depth pre-pass helps a little bit for stochastic transparency,
             // but it's not clear that it helps overall.
-        if (enabledSortedTrans && Tweakable("TransPrePass", false)) {
+        if (oiMode == OIMode::SortedRef && Tweakable("TransPrePass", false)) {
             StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
             ExecuteScene(
                 context, parserContext, SPS::BatchFilter::TransparentPreDepth,
@@ -594,8 +601,8 @@ namespace SceneEngine
         }
         
         if (hasOITrans) {
-            StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
-            if (enabledSortedTrans) {
+            if (oiMode == OIMode::SortedRef) {
+                StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
                 auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&metalContext, mainTargets._msaaDepthBufferTexture.get());
                 auto* transTargets = OrderIndependentTransparency_Prepare(metalContext, parserContext, duplicatedDepthBuffer);
 
@@ -606,7 +613,8 @@ namespace SceneEngine
 
                     // note; we use the main depth buffer for this call (not the duplicated buffer)
                 OrderIndependentTransparency_Resolve(metalContext, parserContext, *transTargets, mainTargets._msaaDepthBufferSRV);
-            } else if (Tweakable("UseStochasticTrans", true)) {
+            } else if (oiMode == OIMode::Stochastic) {
+                StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
                 SavedTargets savedTargets(metalContext);
                 auto resetMarker = savedTargets.MakeResetMarker(metalContext);
 
@@ -632,6 +640,28 @@ namespace SceneEngine
 
                 resetMarker = SavedTargets::ResetMarker();  // back to normal targets now
                 stochTransOp.Resolve();
+            } else if (oiMode == OIMode::DepthWeighted) {
+                StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
+                SavedTargets savedTargets(metalContext);
+                auto resetMarker = savedTargets.MakeResetMarker(metalContext);
+
+                DepthWeightedTransparencyOp transOp(metalContext, parserContext);
+
+                Metal::DepthStencilView dsv(savedTargets.GetDepthStencilView());
+                transOp.PrepareFirstPass(&dsv);
+                ExecuteScene(
+                    context, parserContext, SPS::BatchFilter::OITransparent,
+                    preparedScene,
+                    TechniqueIndex_DepthWeightedTransparency, L"MainScene-PostGBuffer-OI");
+
+                resetMarker = SavedTargets::ResetMarker();  // back to normal targets now
+                transOp.Resolve();
+            } else if (oiMode == OIMode::Unordered) {
+                StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._forward);
+                ExecuteScene(
+                    context, parserContext, SPS::BatchFilter::OITransparent,
+                    preparedScene,
+                    TechniqueIndex_General, L"MainScene-PostGBuffer-OI");
             }
         }
 
