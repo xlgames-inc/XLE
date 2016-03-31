@@ -50,12 +50,13 @@ void CalculateTransmissionAndInscatter(
 			// light, so this is can important step. But the math is a bit more complex.
 		// inscatter = CalculateInscatter(maxDensityDistance, desc.OpticalThickness);
 		inscatter = maxDensityDistance * exp(-desc.OpticalThickness * .5f * maxDensityDistance);
-		inscatter *= exp(-desc.OpticalThickness * aveDensity * partialDistance);
+        float outscatter = exp(-desc.OpticalThickness * aveDensity * partialDistance);
+		inscatter *= outscatter;
 
 			// rough estimate for inscatter in the partial area...
 			// this is a cheap hack, but it works surprisingly well!
 		// inscatter += CalculatePartialInscatter(partialDistance, aveDensity, desc.OpticalThickness);
-		inscatter += aveDensity * partialDistance * exp(-desc.OpticalThickness * aveDensity * .5f * partialDistance);
+		inscatter += aveDensity * partialDistance * sqrt(outscatter); // exp(-desc.OpticalThickness * aveDensity * .5f * partialDistance);
 
 	} else {
 
@@ -72,8 +73,9 @@ void CalculateTransmissionAndInscatter(
 		//	* CalculatePartialInscatter(partialDistance, aveDensity, desc.OpticalThickness);
 
 		inscatter = aveDensity * partialDistance * exp(-desc.OpticalThickness * aveDensity * .5f * partialDistance);
-		inscatter *= exp(-desc.OpticalThickness * maxDensityDistance);
-		inscatter += maxDensityDistance * exp(-desc.OpticalThickness * .5f * maxDensityDistance);
+        float outscatter = exp(-desc.OpticalThickness * maxDensityDistance);
+		inscatter *= outscatter;
+		inscatter += maxDensityDistance * sqrt(outscatter); // exp(-desc.OpticalThickness * .5f * maxDensityDistance);
 
 	}
 }

@@ -22,7 +22,8 @@ void LightResolve_RangeFog(RangeFogDesc desc, float distance, out float outscatt
     // Approximate the amount of inscatter that gets outscattered later on... This helps
     // to give the inscatter a slightly less linear shape (against distance), which can avoid
     // excessive brightening in the distance (but tends to replace the brightening with darkening)
-    float inoutApprox = exp(-desc.MonochromeOpticalThickness * .5f * distance);
+    float inoutApprox = sqrt(outscatterScale);
+    // float inoutApprox = exp(-desc.MonochromeOpticalThickness * .5f * distance);
     inscatter = desc.Inscatter * distance * inoutApprox;
 }
 
