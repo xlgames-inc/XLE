@@ -4,6 +4,9 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>SELECT_VULKAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>

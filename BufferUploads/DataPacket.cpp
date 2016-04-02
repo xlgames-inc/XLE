@@ -6,6 +6,7 @@
 
 #include "DataPacket.h"
 #include "PlatformInterface.h"
+#include "../RenderCore/Metal/Format.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Threading/CompletionThreadPool.h"

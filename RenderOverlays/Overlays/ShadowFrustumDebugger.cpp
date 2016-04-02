@@ -21,7 +21,10 @@
 #include "../../Utility/StringFormat.h"
 
 #include "../../SceneEngine/SceneEngineUtils.h"
-#include "../../RenderCore/DX11/Metal/DX11Utils.h"
+
+#if GFXAPI_ACTIVE == GFXAPI_DX11
+	#include "../../RenderCore/DX11/Metal/DX11Utils.h"
+#endif
 
 namespace Overlays
 {
@@ -84,13 +87,15 @@ namespace Overlays
         devContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
         SceneEngine::SavedTargets savedTargets(devContext);
-        devContext.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 
-        ShaderResourceView depthSrv;
-        if (savedTargets.GetDepthStencilView())
-            depthSrv = ShaderResourceView(ExtractResource<ID3D::Resource>(
-                savedTargets.GetDepthStencilView()).get(), 
-                (NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
+		ShaderResourceView depthSrv; 
+		#if GFXAPI_ACTIVE == GFXAPI_DX11		// todo -- implement more generically!
+			devContext.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
+			if (savedTargets.GetDepthStencilView())
+				depthSrv = ShaderResourceView(ExtractResource<ID3D::Resource>(
+					savedTargets.GetDepthStencilView()).get(), 
+					(NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
+		#endif
 
         auto& res = Techniques::FindCachedBoxDep2<SFDResources>(
             (projectionDesc._projections._mode == SceneEngine::ShadowProjectionDesc::Projections::Mode::Ortho)?2:1,

@@ -234,7 +234,7 @@ namespace BufferUploads { namespace PlatformInterface
 
     void  GPUEventStack::TriggerEvent(RenderCore::Metal::DeviceContext* context, EventID event)
     {
-#if GFXAPI_ACTIVE != GFXAPI_OPENGLES
+#if GFXAPI_ACTIVE == GFXAPI_DX11
             //
             //      Look for a query in the query stack that isn't being used...
             //      this will become our.
@@ -274,7 +274,7 @@ namespace BufferUploads { namespace PlatformInterface
 
     void        GPUEventStack::Update(RenderCore::Metal::DeviceContext* context)
     {
-#if GFXAPI_ACTIVE != GFXAPI_OPENGLES
+#if GFXAPI_ACTIVE == GFXAPI_DX11
             //
             //      Look for completed queries, and update our current ID as they complete (also return the 
             //      query to the pool)

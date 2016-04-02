@@ -6,7 +6,7 @@
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(ForeignDir)\half-1.9.2\include;$(ForeignDir)\eigen;$(ForeignDir)\easyloggingpp;$(ForeignDir)\TinyThreadPP\source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ForeignDir)\half-1.9.2\include;$(ForeignDir)\eigen;$(ForeignDir)\easyloggingpp;$(ForeignDir)\TinyThreadPP\source;$(ForeignDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup />

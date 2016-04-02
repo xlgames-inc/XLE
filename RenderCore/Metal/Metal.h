@@ -11,12 +11,15 @@
 #define GFXAPI_DX11         1
 #define GFXAPI_DX9          2
 #define GFXAPI_OPENGLES     3
+#define GFXAPI_VULKAN		4
 
 #if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
 
     #if defined(SELECT_OPENGL)
         #define GFXAPI_ACTIVE   GFXAPI_OPENGLES
-    #else
+    #elif defined(SELECT_VULKAN)
+		#define GFXAPI_ACTIVE   GFXAPI_VULKAN
+	#else
         #define GFXAPI_ACTIVE   GFXAPI_DX11
     #endif
 
@@ -28,12 +31,20 @@
     
     #if defined(SELECT_OPENGL)
         #define GFXAPI_TARGET   GFXAPI_OPENGLES
+	#elif defined(SELECT_VULKAN)
+		#define GFXAPI_ACTIVE   GFXAPI_VULKAN
     #else
         #define GFXAPI_TARGET   GFXAPI_DX11
     #endif
 
 #elif PLATFORMOS_TARGET == PLATFORMOS_ANDROID
-    #define GFXAPI_TARGET   GFXAPI_OPENGLES
+
+	#if defined(SELECT_VULKAN)
+		#define GFXAPI_ACTIVE   GFXAPI_VULKAN
+	#else
+		#define GFXAPI_TARGET   GFXAPI_OPENGLES
+	#endif
+
 #endif
 
 // #define _PSTE(X,Y) X##Y
@@ -47,6 +58,13 @@
         namespace Metal_DX11 {}
         namespace Metal = Metal_DX11;
     }
+#elif GFXAPI_ACTIVE == GFXAPI_VULKAN
+	#define METAL_HEADER(X) _STRIZE(../Vulkan/Metal/X)
+
+	namespace RenderCore {
+		namespace Metal_Vulkan {}
+		namespace Metal = Metal_Vulkan;
+	}
 #else
     #define METAL_HEADER(X) _STRIZE(../OpenGLES/Metal/X)
 

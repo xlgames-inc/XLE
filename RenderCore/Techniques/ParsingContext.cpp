@@ -22,7 +22,7 @@ namespace RenderCore { namespace Techniques
             return;
         }
 
-        if (!_globalCBs[index].GetUnderlying()) {
+        if (!_globalCBs[index].IsGood()) {
             _globalCBs[index] = Metal::ConstantBuffer(newData, dataSize, false);
         } else {
             _globalCBs[index].Update(context, newData, dataSize);

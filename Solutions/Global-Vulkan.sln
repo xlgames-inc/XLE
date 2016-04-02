@@ -124,6 +124,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomTabControl", "..\Fore
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RenderCore_Vulkan", "..\RenderCore\Project\RenderCore_Vulkan.vcxproj", "{B7525B97-9195-416A-8019-ED7F239CF3E8}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NoSceneEngine", "..\Samples\NoSceneEngine\Project\NoSceneEngine.vcxproj", "{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -654,6 +656,18 @@ Global
 		{B7525B97-9195-416A-8019-ED7F239CF3E8}.Release|Win32.Build.0 = Release-Vulkan|Win32
 		{B7525B97-9195-416A-8019-ED7F239CF3E8}.Release|x64.ActiveCfg = Release-Vulkan|x64
 		{B7525B97-9195-416A-8019-ED7F239CF3E8}.Release|x64.Build.0 = Release-Vulkan|x64
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}.Debug|Win32.Build.0 = Debug|Win32
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}.Debug|x64.ActiveCfg = Debug|x64
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}.Debug|x64.Build.0 = Debug|x64
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}.Profile|Win32.ActiveCfg = Profile|Win32
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}.Profile|Win32.Build.0 = Profile|Win32
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}.Profile|x64.ActiveCfg = Profile|x64
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}.Profile|x64.Build.0 = Profile|x64
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}.Release|Win32.ActiveCfg = Release|Win32
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}.Release|Win32.Build.0 = Release|Win32
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}.Release|x64.ActiveCfg = Release|x64
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -701,5 +715,6 @@ Global
 		{75AED629-A689-4EEA-8276-DF6F0FB0F94B} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
 		{4DBFE2CF-45E4-4594-8E6A-5EBC2EEF85AE} = {16CFD681-2D5D-47CF-BEC6-62B6E9D82303}
 		{B7525B97-9195-416A-8019-ED7F239CF3E8} = {DF1932BF-7E8D-4EDA-90DA-91AA55C394EE}
+		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 	EndGlobalSection
 EndGlobal

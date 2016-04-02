@@ -29,9 +29,12 @@
 #include "../../Assets/ChunkFile.h"
 #include "../../Utility/Streams/FileUtils.h"
 
-#include "../DX11/Metal/IncludeDX11.h"
+#if GFXAPI_ACTIVE == GFXAPI_DX11
+	#include "../DX11/Metal/IncludeDX11.h"
+#endif
 
 #pragma warning(disable:4127)       // conditional expression is constant
+#pragma warning(disable:4505)		// unreferenced local function has been removed
 
 namespace RenderCore { namespace Assets
 {
@@ -293,7 +296,9 @@ namespace RenderCore { namespace Assets
 
     void ModelRenderer::PimplWithSkinning::EndBuildingSkinning(Metal::DeviceContext& context) const
     {
-        context.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			context.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
+		#endif
         context.Unbind<Metal::GeometryShader>();
     }
 
@@ -339,8 +344,8 @@ namespace RenderCore { namespace Assets
     class TBufferTemporaryTexture
     {
     public:
-        intrusive_ptr<ID3D::Resource>      _resource;
-        intrusive_ptr<ID3D::Resource>      _stagingResource;
+        intrusive_ptr<Metal::Underlying::Resource>      _resource;
+        intrusive_ptr<Metal::Underlying::Resource>      _stagingResource;
         Metal::ShaderResourceView       _view;
         size_t                          _size;
         unsigned                        _lastAllocatedFrame;
@@ -485,6 +490,7 @@ namespace RenderCore { namespace Assets
                 Metal::VertexBuffer&        outputResult,
                 unsigned                    outputOffset) const
     {
+#if GFXAPI_ACTIVE == GFXAPI_DX11
         using namespace Metal;
         const auto bindingType =
             Tweakable("SkeletonUpload_ViaTBuffer", false)
@@ -634,6 +640,7 @@ namespace RenderCore { namespace Assets
             SetSkinningShader(*context, bindingBox, d._subMaterialIndex);
             context->Draw(d._indexCount, d._firstVertex);
         }
+#endif
     }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -678,17 +685,23 @@ namespace RenderCore { namespace Assets
         _pimpl->EndBuildingSkinning(*context);
     }
 
-    static intrusive_ptr<ID3D::Device> ExtractDevice(RenderCore::Metal::DeviceContext* context)
-    {
-        ID3D::Device* tempPtr;
-        context->GetUnderlying()->GetDevice(&tempPtr);
-        return moveptr(tempPtr);
-    }
+	#if GFXAPI_ACTIVE == GFXAPI_DX11
+		static intrusive_ptr<ID3D::Device> ExtractDevice(RenderCore::Metal::DeviceContext* context)
+		{
+			ID3D::Device* tempPtr;
+			context->GetUnderlying()->GetDevice(&tempPtr);
+			return moveptr(tempPtr);
+		}
+	#endif
 
     bool ModelRenderer::CanDoPrepareAnimation(Metal::DeviceContext* context)
     {
-        auto featureLevel = ExtractDevice(context)->GetFeatureLevel();
-        return (featureLevel >= D3D_FEATURE_LEVEL_10_0);
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			auto featureLevel = ExtractDevice(context)->GetFeatureLevel();
+			return (featureLevel >= D3D_FEATURE_LEVEL_10_0);
+		#else
+			return false;
+		#endif
     }
 
     ModelRenderer::PreparedAnimation::PreparedAnimation() 
@@ -1162,34 +1175,36 @@ namespace RenderCore { namespace Assets
         _size = bufferSize;
         _shaderOffsetValue = 0;
 
-        using namespace Metal;
-        D3D11_BUFFER_DESC bufferDesc;
-        bufferDesc.ByteWidth = (UINT)bufferSize;
-        bufferDesc.Usage = dynamicResource?D3D11_USAGE_DYNAMIC:D3D11_USAGE_DEFAULT;
-        bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        bufferDesc.CPUAccessFlags = dynamicResource?D3D11_CPU_ACCESS_WRITE:0;
-        bufferDesc.MiscFlags = 0;
-        bufferDesc.StructureByteStride = 0;
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			using namespace Metal;
+			D3D11_BUFFER_DESC bufferDesc;
+			bufferDesc.ByteWidth = (UINT)bufferSize;
+			bufferDesc.Usage = dynamicResource?D3D11_USAGE_DYNAMIC:D3D11_USAGE_DEFAULT;
+			bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+			bufferDesc.CPUAccessFlags = dynamicResource?D3D11_CPU_ACCESS_WRITE:0;
+			bufferDesc.MiscFlags = 0;
+			bufferDesc.StructureByteStride = 0;
 
-        ObjectFactory objFactory;
+			ObjectFactory objFactory;
 
-        D3D11_SUBRESOURCE_DATA subData;
-        subData.pSysMem = sourceData;
-        subData.SysMemPitch = subData.SysMemSlicePitch = (UINT)bufferSize;
-        _resource = objFactory.CreateBuffer(&bufferDesc, sourceData?(&subData):nullptr);
+			D3D11_SUBRESOURCE_DATA subData;
+			subData.pSysMem = sourceData;
+			subData.SysMemPitch = subData.SysMemSlicePitch = (UINT)bufferSize;
+			_resource = objFactory.CreateBuffer(&bufferDesc, sourceData?(&subData):nullptr);
 
-        bufferDesc.Usage = D3D11_USAGE_STAGING;
-        bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-        bufferDesc.BindFlags = 0;
-        _stagingResource = objFactory.CreateBuffer(&bufferDesc);
+			bufferDesc.Usage = D3D11_USAGE_STAGING;
+			bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+			bufferDesc.BindFlags = 0;
+			_stagingResource = objFactory.CreateBuffer(&bufferDesc);
 
-        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-        srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER ;
-        srvDesc.Buffer.ElementOffset = 0;
-        srvDesc.Buffer.ElementWidth = (UINT)(bufferSize / (4*sizeof(float)));
-        auto srv = objFactory.CreateShaderResourceView(_resource.get(), &srvDesc);
-        _view = ShaderResourceView(srv.get());
+			D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+			srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+			srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER ;
+			srvDesc.Buffer.ElementOffset = 0;
+			srvDesc.Buffer.ElementWidth = (UINT)(bufferSize / (4*sizeof(float)));
+			auto srv = objFactory.CreateShaderResourceView(_resource.get(), &srvDesc);
+			_view = ShaderResourceView(srv.get());
+		#endif
     }
 
     TBufferTemporaryTexture::TBufferTemporaryTexture(const TBufferTemporaryTexture& cloneFrom)

@@ -12,6 +12,8 @@
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/Shader.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/RenderTargetView.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/IModelFormat.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
@@ -38,6 +40,8 @@
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
+
+#include "../../Core/WinAPI/IncludeWindows.h"
 
 namespace Overlays
 {

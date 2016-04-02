@@ -185,7 +185,17 @@ namespace BufferUploads { namespace PlatformInterface
         static const bool ContextBasedMultithreading = true;
         static const bool CanDoPartialMaps = false;
         static const bool NonVolatileResourcesTakeSystemMemory = false;
-    #else
+	#elif GFXAPI_ACTIVE == GFXAPI_VULKAN
+		// Vulkan capabilities haven't been tested!
+		static const bool SupportsResourceInitialisation = true;
+		static const bool RequiresStagingTextureUpload = false;
+		static const bool RequiresStagingResourceReadBack = true;
+		static const bool CanDoNooverwriteMapInBackground = false;
+		static const bool UseMapBasedDefrag = false;
+		static const bool ContextBasedMultithreading = true;
+		static const bool CanDoPartialMaps = false;
+		static const bool NonVolatileResourcesTakeSystemMemory = false;
+	#else
         #error Unsupported platform!
     #endif
 

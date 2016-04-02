@@ -811,22 +811,24 @@ namespace RenderCore { namespace Assets
         auto& devContext = *context._context;
         devContext.Bind(_indexBuffer, Metal::NativeFormat::Enum(cm->_indexFormat), cm->_ibOffset);
 
-        auto animGeo = SkinnedMesh::VertexStreams::AnimatedGeo;
-        UINT strides[] = { cm->_extraVbStride[animGeo], cm->_vertexStrides[0], cm->_vertexStrides[1], cm->_vertexStrides[2] };
-        UINT offsets[] = { cm->_extraVbOffset[animGeo], cm->_vbOffsets[0], cm->_vbOffsets[1], cm->_vbOffsets[2] };
-        ID3D::Buffer* underlyingVBs[] = { _vertexBuffer.GetUnderlying(), _vertexBuffer.GetUnderlying(), _vertexBuffer.GetUnderlying(), _vertexBuffer.GetUnderlying() };
-        static_assert(dimof(underlyingVBs) == (MaxVertexStreams+1), "underlyingVBs doesn't match MaxVertexStreams");
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			auto animGeo = SkinnedMesh::VertexStreams::AnimatedGeo;
+			UINT strides[] = { cm->_extraVbStride[animGeo], cm->_vertexStrides[0], cm->_vertexStrides[1], cm->_vertexStrides[2] };
+			UINT offsets[] = { cm->_extraVbOffset[animGeo], cm->_vbOffsets[0], cm->_vbOffsets[1], cm->_vbOffsets[2] };
+			ID3D::Buffer* underlyingVBs[] = { _vertexBuffer.GetUnderlying(), _vertexBuffer.GetUnderlying(), _vertexBuffer.GetUnderlying(), _vertexBuffer.GetUnderlying() };
+			static_assert(dimof(underlyingVBs) == (MaxVertexStreams+1), "underlyingVBs doesn't match MaxVertexStreams");
 
-            //  If we have a prepared animation, we have to replace the bindings
-            //  with the data from there.
-        if (preparedAnimation) {
-            underlyingVBs[0] = preparedAnimation->_skinningBuffer.GetUnderlying();
-            strides[0] = _skinnedBindings[meshIndex]._vertexStride;
-            offsets[0] = preparedAnimation->_vbOffsets[meshIndex];
-            result = _skinnedBindings[meshIndex]._techniqueInterface;
-        }
+				//  If we have a prepared animation, we have to replace the bindings
+				//  with the data from there.
+			if (preparedAnimation) {
+				underlyingVBs[0] = preparedAnimation->_skinningBuffer.GetUnderlying();
+				strides[0] = _skinnedBindings[meshIndex]._vertexStride;
+				offsets[0] = preparedAnimation->_vbOffsets[meshIndex];
+				result = _skinnedBindings[meshIndex]._techniqueInterface;
+			}
 
-        context._context->GetUnderlying()->IASetVertexBuffers(0, 2, underlyingVBs, strides, offsets);
+			context._context->GetUnderlying()->IASetVertexBuffers(0, 2, underlyingVBs, strides, offsets);
+		#endif
 
         return result;
     }
@@ -845,7 +847,7 @@ namespace RenderCore { namespace Assets
             srvs[c] = t?(&t->GetShaderResource()):nullptr;
         }
         cbs[1] = &_constantBuffers[constantsIndex];
-        assert(cbs[1] && cbs[1]->GetUnderlying());
+        assert(cbs[1] && cbs[1]->IsGood());
         boundUniforms.Apply(
             *context._context, context._parserContext->GetGlobalUniformsStream(),
             RenderCore::Metal::UniformsStream(nullptr, cbs, 2, srvs, _texturesPerMaterial));
@@ -1364,16 +1366,18 @@ namespace RenderCore { namespace Assets
 
             sharedStateSet.BeginRenderState(context, drawCallRes._renderStateSet);
 
-                // We have to do this transform update very frequently! isn't there a better way?
-            {
-                D3D11_MAPPED_SUBRESOURCE result;
-                HRESULT hresult = context._context->GetUnderlying()->Map(
-                    localTransformBuffer.GetUnderlying(), 0, D3D11_MAP_WRITE_DISCARD, 0, &result);
-                assert(SUCCEEDED(hresult) && result.pData); (void)hresult;
-                WriteLocalTransform<WLTFlags::LocalToWorld|WLTFlags::MaterialGuid>(
-                    result.pData, context, drawCalls._transforms[d->_meshToWorld], drawCallRes._materialBindingGuid);
-                context._context->GetUnderlying()->Unmap(localTransformBuffer.GetUnderlying(), 0);
-            }
+			#if GFXAPI_ACTIVE == GFXAPI_DX11
+					// We have to do this transform update very frequently! isn't there a better way?
+				{
+					D3D11_MAPPED_SUBRESOURCE result;
+					HRESULT hresult = context._context->GetUnderlying()->Map(
+						localTransformBuffer.GetUnderlying(), 0, D3D11_MAP_WRITE_DISCARD, 0, &result);
+					assert(SUCCEEDED(hresult) && result.pData); (void)hresult;
+					WriteLocalTransform<WLTFlags::LocalToWorld|WLTFlags::MaterialGuid>(
+						result.pData, context, drawCalls._transforms[d->_meshToWorld], drawCallRes._materialBindingGuid);
+					context._context->GetUnderlying()->Unmap(localTransformBuffer.GetUnderlying(), 0);
+				}
+			#endif
             
             auto textureSet = drawCallRes._textureSet;
             auto constantBufferIndex = drawCallRes._constantBuffer;

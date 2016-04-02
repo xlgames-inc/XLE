@@ -104,17 +104,22 @@
     <ClInclude Include="..\Resource.h" />
     <ClInclude Include="..\ShaderLangUtil.h" />
     <ClInclude Include="..\ShaderService.h" />
+    <ClInclude Include="..\Vulkan\Device.h" />
+    <ClInclude Include="..\Vulkan\IDeviceVulkan.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
     </ProjectReference>
-    <ProjectReference Include="RenderCore_DX11.vcxproj">
-      <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\DX11\Device.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Vulkan|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Vulkan|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\MinimalShaderSource.cpp" />
     <ClCompile Include="..\RenderUtils.cpp" />
@@ -122,6 +127,14 @@
     <ClCompile Include="..\ShaderLangUtil.cpp" />
     <ClCompile Include="..\ShaderService.cpp" />
     <ClCompile Include="..\Version.cpp" />
+    <ClCompile Include="..\Vulkan\DeviceVulkan.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">true</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
