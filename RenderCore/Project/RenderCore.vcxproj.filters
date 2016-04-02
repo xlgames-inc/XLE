@@ -44,12 +44,6 @@
     <ClInclude Include="..\Metal\Detail\DXGICompatibleFormats.h">
       <Filter>Metal\Detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\OpenGLES\IDeviceOpenGLES.h">
-      <Filter>OpenGL</Filter>
-    </ClInclude>
-    <ClInclude Include="..\OpenGLES\Device.h">
-      <Filter>OpenGL</Filter>
-    </ClInclude>
     <ClInclude Include="..\DX11\IDeviceDX11.h">
       <Filter>DX11</Filter>
     </ClInclude>
@@ -107,9 +101,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\OpenGLES\Device.cpp">
-      <Filter>OpenGL</Filter>
-    </ClCompile>
     <ClCompile Include="..\DX11\Device.cpp">
       <Filter>DX11</Filter>
     </ClCompile>

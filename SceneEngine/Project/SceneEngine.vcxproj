@@ -1,80 +1,53 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup Label="NsightTegraProject">
-    <NsightTegraProjectRevisionNumber>4</NsightTegraProjectRevisionNumber>
-  </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug-DX11|x64">
       <Configuration>Debug-DX11</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug-OpenGL|Win32">
-      <Configuration>Debug-OpenGL</Configuration>
-      <Platform>Win32</Platform>
+    <ProjectConfiguration Include="Debug-Vulkan|x64">
+      <Configuration>Debug-Vulkan</Configuration>
+      <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Debug-DX11|Win32">
       <Configuration>Debug-DX11</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug-OpenGL|x64">
-      <Configuration>Debug-OpenGL</Configuration>
-      <Platform>x64</Platform>
+    <ProjectConfiguration Include="Debug-Vulkan|Win32">
+      <Configuration>Debug-Vulkan</Configuration>
+      <Platform>Win32</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Profile-DX11|x64">
       <Configuration>Profile-DX11</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Profile-OpenGL|Win32">
-      <Configuration>Profile-OpenGL</Configuration>
-      <Platform>Win32</Platform>
+    <ProjectConfiguration Include="Profile-Vulkan|x64">
+      <Configuration>Profile-Vulkan</Configuration>
+      <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Profile-DX11|Win32">
       <Configuration>Profile-DX11</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Profile-OpenGL|x64">
-      <Configuration>Profile-OpenGL</Configuration>
-      <Platform>x64</Platform>
+    <ProjectConfiguration Include="Profile-Vulkan|Win32">
+      <Configuration>Profile-Vulkan</Configuration>
+      <Platform>Win32</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release-DX11|x64">
       <Configuration>Release-DX11</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Release-OpenGL|Win32">
-      <Configuration>Release-OpenGL</Configuration>
-      <Platform>Win32</Platform>
+    <ProjectConfiguration Include="Release-Vulkan|x64">
+      <Configuration>Release-Vulkan</Configuration>
+      <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release-DX11|Win32">
       <Configuration>Release-DX11</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug|Tegra-Android">
-      <Configuration>Debug</Configuration>
-      <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Profile|Tegra-Android">
-      <Configuration>Profile</Configuration>
-      <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release-OpenGL|x64">
-      <Configuration>Release-OpenGL</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Tegra-Android">
-      <Configuration>Release</Configuration>
-      <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Dummy1|Tegra-Android">
-      <Configuration>Dummy1</Configuration>
-      <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Dummy2|Tegra-Android">
-      <Configuration>Dummy2</Configuration>
-      <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Dummy3|Tegra-Android">
-      <Configuration>Dummy3</Configuration>
-      <Platform>Tegra-Android</Platform>
+    <ProjectConfiguration Include="Release-Vulkan|Win32">
+      <Configuration>Release-Vulkan</Configuration>
+      <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -84,21 +57,6 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-18</AndroidAPILevel>
-    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-18</AndroidAPILevel>
-    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-18</AndroidAPILevel>
-    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">x86-4.8</PlatformToolset>
-    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">x86-4.8</PlatformToolset>
-    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">x86-4.8</PlatformToolset>
-    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-17</AndroidMinAPI>
-    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-17</AndroidMinAPI>
-    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-17</AndroidMinAPI>
-    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-17</AndroidTargetAPI>
-    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-17</AndroidTargetAPI>
-    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-17</AndroidTargetAPI>
-    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'" />
-    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'" />
-    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'" />
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Platform)'=='Win32' or '$(Platform)'=='x64'">
     <PlatformToolset>v120</PlatformToolset>
@@ -113,36 +71,23 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
     <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Win32'">
-    <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|x64'">
-    <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
-  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
     <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">
+    <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">
+    <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
+    <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
     <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
-    <ClCompile>
-      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
-    <ClCompile>
-      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
-    <ClCompile>
-      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">
     <ClCompile>
       <AdditionalIncludeDirectories>..\..\Foreign\nvidia\nvao;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -168,6 +113,11 @@
       <AdditionalIncludeDirectories>..\..\Foreign\nvidia\nvao;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\Foreign\nvidia\nvao;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\BufferUploads\Project\BufferUploads.vcxproj">
       <Project>{e4d5cfa9-07d2-5a61-9991-2186eb30f680}</Project>
@@ -180,14 +130,6 @@
     </ProjectReference>
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
       <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
-      <Private>true</Private>
-      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
-      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
-      <LinkLibraryDependencies>true</LinkLibraryDependencies>
-      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
-    </ProjectReference>
-    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_OpenGLES.vcxproj">
-      <Project>{13d648df-8842-9ef7-46c5-910550130776}</Project>
       <Private>true</Private>
       <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
       <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
@@ -324,9 +266,7 @@
   <ItemGroup>
     <ClCompile Include="..\VegetationSpawn.cpp" />
     <ClCompile Include="..\VegetationSpawnConfig.cpp" />
-    <ClCompile Include="..\VolumetricFog.cpp">
-      <FileType>Document</FileType>
-    </ClCompile>
+    <ClCompile Include="..\VolumetricFog.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
