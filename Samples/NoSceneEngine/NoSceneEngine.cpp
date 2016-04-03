@@ -14,9 +14,7 @@
 #include "../../PlatformRig/OverlaySystem.h"
 
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Metal/GPUProfiler.h"
-#include "../../RenderCore/Metal/Shader.h"
-#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/GPUProfiler.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderOverlays/Font.h"
@@ -43,7 +41,7 @@ namespace Sample
 
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
-    RenderCore::Metal::GPUProfiler::Ptr g_gpuProfiler;
+    RenderCore::GPUProfiler::Ptr g_gpuProfiler;
     Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +90,7 @@ namespace Sample
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
         renderAssetServices->InitColladaCompilers();
-        g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
+        g_gpuProfiler = RenderCore::GPUProfiler::CreateProfiler();
         RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices->GetBufferUploads());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
         
@@ -107,7 +105,7 @@ namespace Sample
                 //  It just provides a convenient architecture for visualizing important information.
             LogInfo << "Setup tools and debugging";
             FrameRig frameRig;
-            InitDebugDisplays(*frameRig.GetDebugSystem());
+            // InitDebugDisplays(*frameRig.GetDebugSystem());
             InitProfilerDisplays(*frameRig.GetDebugSystem());
 
             auto overlaySwitch = std::make_shared<PlatformRig::OverlaySystemSwitch>();
@@ -154,7 +152,7 @@ namespace Sample
             //  Before we go too far, though, let's log a list of active assets.
         LogInfo << "Starting shutdown";
         assetServices->GetAssetSets().LogReport();
-        RenderCore::Metal::DeviceContext::PrepareForDestruction(renderDevice.get(), presentationChain.get());
+        // RenderCore::Metal::DeviceContext::PrepareForDestruction(renderDevice.get(), presentationChain.get());
 
         g_gpuProfiler.reset();
 
@@ -170,10 +168,10 @@ namespace Sample
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys)
     {
-        if (g_gpuProfiler) {
-            auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
-            debugSys.Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
-        }
+        // if (g_gpuProfiler) {
+        //     auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
+        //     debugSys.Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
+        // }
         debugSys.Register(
             std::make_shared<PlatformRig::Overlays::CPUProfileDisplay>(&g_cpuProfiler), 
             "[Profiler] CPU Profiler");

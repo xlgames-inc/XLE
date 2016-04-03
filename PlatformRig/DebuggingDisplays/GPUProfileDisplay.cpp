@@ -363,13 +363,13 @@ namespace PlatformRig { namespace Overlays
         _endOfLastFrame = 0;
         assert(s_listenerDisplay==0);
         s_listenerDisplay = this;
-        RenderCore::Metal::GPUProfiler::AddEventListener(&GPUEventListener);
+        RenderCore::GPUProfiler::AddEventListener(&GPUEventListener);
     }
 
     GPUProfileDisplay::~GPUProfileDisplay()
     {
         assert(s_listenerDisplay==this);
-        RenderCore::Metal::GPUProfiler::RemoveEventListener(&GPUEventListener);
+        RenderCore::GPUProfiler::RemoveEventListener(&GPUEventListener);
         s_listenerDisplay = NULL;
     }
 }}

@@ -88,6 +88,7 @@
     <ClInclude Include="..\Vulkan\IDeviceVulkan.h">
       <Filter>Vulkan</Filter>
     </ClInclude>
+    <ClInclude Include="..\GPUProfiler.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">
@@ -127,5 +128,6 @@
     <ClCompile Include="..\Vulkan\DeviceVulkan.cpp">
       <Filter>Vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="..\GPUProfiler.cpp" />
   </ItemGroup>
 </Project>

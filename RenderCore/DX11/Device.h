@@ -56,6 +56,7 @@ namespace RenderCore
         std::shared_ptr<IDevice>    GetDevice() const;
         void                        ClearAllBoundTargets() const;
         void                        IncrFrameId();
+		void						InvalidateCachedState() const;
 
         ThreadContext(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device);
         ~ThreadContext();

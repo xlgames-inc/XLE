@@ -6,16 +6,12 @@
 
 #pragma once
 
-#include "Forward.h"
-#include "DX11.h"
-#include "../../../Utility/IntrusivePtr.h"
 #include "../../../Core/Types.h"
-#include <algorithm>
-#include <memory>
+#include "../../../Core/Exceptions.h"
 
 #define GPUANNOTATIONS_ENABLE
 
-namespace RenderCore { namespace Metal_DX11
+namespace RenderCore { namespace Metal_Vulkan
 {
     class DeviceContext;
 
@@ -24,15 +20,13 @@ namespace RenderCore { namespace Metal_DX11
 		class Query
 		{
 		public:
-			intrusive_ptr<ID3D::Query> _query;
 			bool _isAllocated;
 
 			Query() : _isAllocated(false) {}
-			Query(Query&& moveFrom) never_throws : _isAllocated(moveFrom._isAllocated), _query(std::move(moveFrom._query)) {}
+			Query(Query&& moveFrom) never_throws : _isAllocated(moveFrom._isAllocated) {}
 			Query& operator=(Query&& moveFrom) never_throws
 			{
 				_isAllocated = moveFrom._isAllocated;
-				_query = std::move(moveFrom._query);
 				moveFrom._isAllocated = false;
 				return *this;
 			}
@@ -44,14 +38,19 @@ namespace RenderCore { namespace Metal_DX11
 			QueryConstructionFailure() : ::Exceptions::BasicLabel("Failed while constructing query. This will happen on downleveled interfaces.") {}
 		};
 
-		typedef D3D11_QUERY_DATA_TIMESTAMP_DISJOINT DisjointQueryData;
+		class DisjointQueryData 
+		{
+		public:
+			uint64 Frequency;
+			bool Disjoint;
+		};
 
-		bool GetDataNoFlush(DeviceContext& context, Query& query, void * destination, unsigned destinationSize);
-		bool GetDisjointData(DeviceContext& context, Query& query, DisjointQueryData& destination);
-		Query CreateQuery(bool disjoint);
-		void BeginQuery(DeviceContext& context, Query& query);
-		void EndQuery(DeviceContext& context, Query& query);
-		std::pair<uint64, uint64> CalculateSynchronisation(DeviceContext& context, Query& query, Query& disjoint);
+		inline bool GetDataNoFlush(DeviceContext& context, Query& query, void * destination, unsigned destinationSize) { return false; }
+		inline bool GetDisjointData(DeviceContext& context, Query& query, DisjointQueryData& destination) { return false; }
+		inline Query CreateQuery(bool disjoint) { return Query(); }
+		inline void BeginQuery(DeviceContext& context, Query& query) {}
+		inline void EndQuery(DeviceContext& context, Query& query) {}
+		std::pair<uint64, uint64> CalculateSynchronisation(DeviceContext& context, Query& query, Query& disjoint) { return std::make_pair(0,0); }
 
         #if defined(GPUANNOTATIONS_ENABLE)
 
@@ -82,4 +81,3 @@ namespace RenderCore { namespace Metal_DX11
         #endif
     }
 }}
-

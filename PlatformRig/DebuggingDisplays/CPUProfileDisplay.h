@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
-#include "../../RenderCore/Metal/GPUProfiler.h"
 
 namespace Utility { class HierarchicalCPUProfiler; }
 

@@ -27,6 +27,9 @@
       <Filter>OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="..\DataPacket.cpp" />
+    <ClCompile Include="..\Vulkan\PlatformInterfaceVulkan.cpp">
+      <Filter>Vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DX11">
@@ -34,6 +37,9 @@
     </Filter>
     <Filter Include="OpenGL">
       <UniqueIdentifier>{6434b243-2d74-4f67-bcaf-7a325d4ab405}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vulkan">
+      <UniqueIdentifier>{871a10c7-bf70-4ef9-a40c-a0aff7b68e00}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

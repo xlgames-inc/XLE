@@ -10,8 +10,7 @@
 #include "MainInputHandler.h"
 
 #include "../RenderCore/IThreadContext.h"
-#include "../RenderCore/Metal/GPUProfiler.h"
-#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/GPUProfiler.h"
 #include "../RenderOverlays/Font.h"
 #include "../RenderOverlays/DebuggingDisplay.h"
 
@@ -164,7 +163,7 @@ namespace PlatformRig
     auto FrameRig::ExecuteFrame(
         RenderCore::IThreadContext& context,
         RenderCore::IPresentationChain* presChain,
-        RenderCore::Metal::GPUProfiler::Profiler* gpuProfiler,
+        RenderCore::GPUProfiler::Profiler* gpuProfiler,
         HierarchicalCPUProfiler* cpuProfiler,
         const FrameRenderFunction& renderFunction) -> FrameResult
     {
@@ -187,11 +186,8 @@ namespace PlatformRig
         }
         _pimpl->_prevFrameStartTime = startTime;
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-
-        if (gpuProfiler) {
-            RenderCore::Metal::GPUProfiler::Frame_Begin(*metalContext, gpuProfiler, _pimpl->_frameRenderCount);
-        }
+        if (gpuProfiler)
+            RenderCore::GPUProfiler::Frame_Begin(context, gpuProfiler, _pimpl->_frameRenderCount);
 
         if (_pimpl->_updateAsyncMan)
             Assets::Services::GetAsyncMan().Update();
@@ -203,7 +199,7 @@ namespace PlatformRig
             //  We must invalidate the cached state at least once per frame.
             //  It appears that the driver might forget bound constant buffers
             //  during the begin frame or present
-        metalContext->InvalidateCachedState();
+        context.InvalidateCachedState();
 
         ////////////////////////////////
 
@@ -240,9 +236,8 @@ namespace PlatformRig
             }
         }
 
-        if (gpuProfiler) {
-            RenderCore::Metal::GPUProfiler::Frame_End(*metalContext, gpuProfiler);
-        }
+        if (gpuProfiler)
+            RenderCore::GPUProfiler::Frame_End(context, gpuProfiler);
 
         uint64 duration = GetPerformanceCounter() - startTime;
         _pimpl->_frameRate.PushFrameDuration(duration);

@@ -212,5 +212,24 @@ namespace SceneEngine
         _useNearProj = false;
     }
 
+	inline ShadowProjectionDesc::ShadowProjectionDesc()
+	{
+		_width = _height = 0;
+		_typelessFormat = _writeFormat = _readFormat = RenderCore::Metal::NativeFormat::Enum(0); // RenderCore::Metal::NativeFormat::Unknown;
+		_worldToClip = Identity<Float4x4>();
+		_slopeScaledBias = 0.f;
+		_depthBiasClamp = 0.f;
+		_rasterDepthBias = 0;
+		_dsSlopeScaledBias = 0.f;
+		_dsDepthBiasClamp = 0.f;
+		_dsRasterDepthBias = 0;
+		_worldSpaceResolveBias = 0.f;
+		_tanBlurAngle = 0.f;
+		_minBlurSearch = _maxBlurSearch = 0.f;
+		_resolveType = ResolveType::DepthTexture;
+		_windingCull = WindingCull::BackFaces;
+		_lightId = ~0u;
+	}
+
 }
 

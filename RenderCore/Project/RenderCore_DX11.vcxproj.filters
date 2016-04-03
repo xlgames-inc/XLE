@@ -9,10 +9,10 @@
     <ClCompile Include="..\DX11\Metal\Shader.cpp" />
     <ClCompile Include="..\DX11\Metal\ShaderResource.cpp" />
     <ClCompile Include="..\DX11\Metal\State.cpp" />
-    <ClCompile Include="..\DX11\Metal\GPUProfiler.cpp" />
     <ClCompile Include="..\DX11\Metal\RenderTargetView.cpp" />
     <ClCompile Include="..\DX11\Metal\CompiledShaderByteCode.cpp" />
     <ClCompile Include="..\DX11\Metal\Resource.cpp" />
+    <ClCompile Include="..\DX11\Metal\GPUProfilerDX11.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\DX11\Metal\DX11.h" />
@@ -27,10 +27,10 @@
     <ClInclude Include="..\DX11\Metal\Shader.h" />
     <ClInclude Include="..\DX11\Metal\ShaderResource.h" />
     <ClInclude Include="..\DX11\Metal\State.h" />
-    <ClInclude Include="..\DX11\Metal\GPUProfiler.h" />
     <ClInclude Include="..\DX11\Metal\RenderTargetView.h" />
     <ClInclude Include="..\DX11\Metal\Forward.h" />
     <ClInclude Include="..\DX11\Metal\DeviceContextImpl.h" />
     <ClInclude Include="..\DX11\Metal\Documentation.h" />
+    <ClInclude Include="..\DX11\Metal\GPUProfiler.h" />
   </ItemGroup>
 </Project>

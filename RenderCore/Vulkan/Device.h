@@ -47,6 +47,7 @@ namespace RenderCore
         std::shared_ptr<IDevice>    GetDevice() const;
         void                        ClearAllBoundTargets() const;
         void                        IncrFrameId();
+		void						InvalidateCachedState() const;
 
         ThreadContext(std::shared_ptr<Device> device);
         ~ThreadContext();

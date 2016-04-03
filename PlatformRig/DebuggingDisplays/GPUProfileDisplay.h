@@ -9,7 +9,7 @@
 #pragma once
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
-#include "../../RenderCore/Metal/GPUProfiler.h"
+#include "../../RenderCore/GPUProfiler.h"
 
 namespace PlatformRig { namespace Overlays
 {

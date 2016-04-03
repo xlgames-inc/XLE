@@ -145,7 +145,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Clear(const UnorderedAccessView& unorderedAccess, float values[4]) {}
         void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil) {}
 
-        static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext) {}
+        static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext) { return nullptr; }
 
 		void		CommitCommandList(CommandList&, bool) {}
 

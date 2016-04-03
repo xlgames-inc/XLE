@@ -411,6 +411,8 @@ namespace RenderCore
 		return {};
     }
 
+	void ThreadContext::InvalidateCachedState() const {}
+
     ThreadContext::ThreadContext(std::shared_ptr<Device> device)
     : _device(std::move(device))
 	, _frameId(0)

@@ -18,7 +18,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     class DeviceContext;
 
-    void Copy(DeviceContext&, Underlying::Resource* dst, Underlying::Resource* src);
+	inline void Copy(DeviceContext&, Underlying::Resource* dst, Underlying::Resource* src) {}
 
     namespace Internal { static std::true_type UnsignedTest(unsigned); static std::false_type UnsignedTest(...); }
 
@@ -76,9 +76,9 @@ namespace RenderCore { namespace Metal_Vulkan
         , _rightBottomBack(rightBottomBack) {}
     };
 
-    void CopyPartial(DeviceContext&, const CopyPartial_Dest& dst, const CopyPartial_Src& src);
+	inline void CopyPartial(DeviceContext&, const CopyPartial_Dest& dst, const CopyPartial_Src& src) {}
 
-    intrusive_ptr<Underlying::Resource> Duplicate(DeviceContext& context, Underlying::Resource* inputResource);
+	inline intrusive_ptr<Underlying::Resource> Duplicate(DeviceContext& context, Underlying::Resource* inputResource) { return nullptr; }
 }}
 
 namespace Utility

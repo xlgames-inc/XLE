@@ -67,10 +67,10 @@ namespace RenderCore { namespace Metal_Vulkan
         };
     }
 
-    auto        GetCompressionType(NativeFormat::Enum format) -> FormatCompressionType::Enum;
+    inline auto        GetCompressionType(NativeFormat::Enum format) -> FormatCompressionType::Enum { return FormatCompressionType::None; }
     auto        GetComponents(NativeFormat::Enum format) -> FormatComponents::Enum;
     auto        GetComponentType(NativeFormat::Enum format) -> FormatComponentType::Enum;
-    unsigned    BitsPerPixel(NativeFormat::Enum format);
+    inline unsigned    BitsPerPixel(NativeFormat::Enum format) { return 0; }
     unsigned    GetComponentPrecision(NativeFormat::Enum format);
     unsigned    GetDecompressedComponentPrecision(NativeFormat::Enum format);
     unsigned    GetComponentCount(FormatComponents::Enum components);
@@ -81,10 +81,10 @@ namespace RenderCore { namespace Metal_Vulkan
         FormatComponentType::Enum componentType,
         unsigned precision);
 
-    NativeFormat::Enum      AsSRGBFormat(NativeFormat::Enum inputFormat);
-    NativeFormat::Enum      AsLinearFormat(NativeFormat::Enum inputFormat);
-    NativeFormat::Enum      AsTypelessFormat(NativeFormat::Enum inputFormat);
-    bool                    HasLinearAndSRGBFormats(NativeFormat::Enum inputFormat);
+    inline NativeFormat::Enum      AsSRGBFormat(NativeFormat::Enum inputFormat) { return inputFormat; }
+    inline NativeFormat::Enum      AsLinearFormat(NativeFormat::Enum inputFormat) { return inputFormat; }
+    inline NativeFormat::Enum      AsTypelessFormat(NativeFormat::Enum inputFormat) { return inputFormat; }
+    inline bool                    HasLinearAndSRGBFormats(NativeFormat::Enum inputFormat) { return false; }
 
     namespace ShaderNormalizationMode
     {

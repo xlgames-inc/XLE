@@ -179,13 +179,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		ShaderProgram() {}
         ~ShaderProgram() {}
 
-        const VertexShader&                 GetVertexShader() const;
-        const GeometryShader&               GetGeometryShader() const;
-        const PixelShader&                  GetPixelShader() const;
-        const CompiledShaderByteCode&       GetCompiledVertexShader() const;
-        const CompiledShaderByteCode&       GetCompiledPixelShader() const;
-        const CompiledShaderByteCode*       GetCompiledGeometryShader() const;
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const;
+        const VertexShader&                 GetVertexShader() const { return *(const VertexShader*)nullptr; }
+        const GeometryShader&               GetGeometryShader() const { return *(const GeometryShader*)nullptr; }
+        const PixelShader&                  GetPixelShader() const { return *(const PixelShader*)nullptr; }
+        const CompiledShaderByteCode&       GetCompiledVertexShader() const { return *(const CompiledShaderByteCode*)nullptr; }
+        const CompiledShaderByteCode&       GetCompiledPixelShader() const { return *(const CompiledShaderByteCode*)nullptr; }
+        const CompiledShaderByteCode*       GetCompiledGeometryShader() const { return nullptr; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return nullptr; }
 
         bool DynamicLinkingEnabled() const { return false; }
 
@@ -213,13 +213,13 @@ namespace RenderCore { namespace Metal_Vulkan
 							const ::Assets::ResChar definesTable[]) {}
 		~DeepShaderProgram() {}
 
-        const HullShader&                   GetHullShader() const;
-        const DomainShader&                 GetDomainShader() const;
-        const CompiledShaderByteCode&       GetCompiledHullShader() const;
-        const CompiledShaderByteCode&       GetCompiledDomainShader() const;
+        const HullShader&                   GetHullShader() const { return *(const HullShader*)nullptr; }
+        const DomainShader&                 GetDomainShader() const { return *(const DomainShader*)nullptr; }
+        const CompiledShaderByteCode&       GetCompiledHullShader() const { return *(const CompiledShaderByteCode*)nullptr; }
+        const CompiledShaderByteCode&       GetCompiledDomainShader() const { return *(const CompiledShaderByteCode*)nullptr; }
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler();
+    inline std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler() { return nullptr; }
 }}

@@ -65,6 +65,7 @@ namespace RenderCore
         IMETHOD bool            IsImmediate() const IPURE;
         IMETHOD std::shared_ptr<IDevice>    GetDevice() const IPURE;
         IMETHOD void            ClearAllBoundTargets() const IPURE;
+		IMETHOD void			InvalidateCachedState() const IPURE;
 
         IMETHOD ThreadContextStateDesc  GetStateDesc() const IPURE;
         IDESTRUCTOR

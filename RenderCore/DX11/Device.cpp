@@ -511,6 +511,11 @@ namespace RenderCore
         return result;
     }
 
+	void ThreadContext::InvalidateCachedState() const
+	{
+		_underlying->InvalidateCachedState();
+	}
+
     ThreadContext::ThreadContext(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device)
     : _device(std::move(device))
     {
