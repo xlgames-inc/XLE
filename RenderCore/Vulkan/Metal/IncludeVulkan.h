@@ -10,6 +10,10 @@
 
 #if PLATFORMOS_TARGET  == PLATFORMOS_WINDOWS
 	#define VK_USE_PLATFORM_WIN32_KHR
+
+    // Vulkan includes <windows.h> -- so we must include it first to get our
+    // framework of compatibility macros!
+    #include "../../../Core/WinAPI/IncludeWindows.h"
 #endif
 
 #include "vulkan/vulkan.h"

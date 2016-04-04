@@ -139,6 +139,9 @@ namespace Sample
                     break;
                 }
 
+                renderDevice->BeginFrame(presentationChain.get());
+                presentationChain->Present();
+
                     // ------- Update ----------------------------------------
                 RenderCore::Assets::Services::GetBufferUploads().Update(*context, false);
                 g_cpuProfiler.EndFrame();

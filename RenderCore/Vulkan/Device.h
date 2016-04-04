@@ -18,10 +18,28 @@
 #include "../../Utility/IntrusivePtr.h"
 #include "Metal/IncludeVulkan.h"
 #include <memory>
+#include <vector>
 #include <type_traits>
 
 namespace RenderCore
 {
+    namespace Internal
+    {
+        template<typename Type>
+            struct VulkanShared
+                { typedef std::shared_ptr<typename std::remove_reference<decltype(*std::declval<Type>())>::type> Ptr; };
+    }
+
+    template<typename Type>
+	    using VulkanSharedPtr = typename Internal::VulkanShared<Type>::Ptr;
+
+    class SelectedPhysicalDevice
+	{
+	public:
+		VkPhysicalDevice _dev;
+		unsigned _renderingQueueFamily;
+	};
+
 ////////////////////////////////////////////////////////////////////////////////
 
     namespace Metal_DX11 { class DeviceContext; class ObjectFactory; }
@@ -34,9 +52,29 @@ namespace RenderCore
         void                Present() /*override*/;
         void                Resize(unsigned newWidth, unsigned newHeight) /*override*/;
 
-        PresentationChain();
+        std::shared_ptr<ViewportContext> GetViewportContext() const;
+        void                AcquireNextImage();
+
+        PresentationChain(
+            VulkanSharedPtr<VkSwapchainKHR> swapChain, 
+            VulkanSharedPtr<VkDevice> device,
+            VkQueue queue, 
+            const void* platformValue);
         ~PresentationChain();
     private:
+        VulkanSharedPtr<VkSwapchainKHR> _swapChain;
+        VkQueue _queue;
+        VulkanSharedPtr<VkDevice> _device;
+        const void* _platformValue;
+        unsigned _activeImageIndex;
+
+        class Image
+        {
+        public:
+            VkImage _underlying;
+            VulkanSharedPtr<VkSemaphore> _presentSemaphore;
+        };
+        std::vector<Image> _images;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,16 +107,6 @@ namespace RenderCore
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    namespace Internal
-    {
-        template<typename Type>
-            struct VulkanShared
-                { typedef std::shared_ptr<typename std::remove_reference<decltype(*std::declval<Type>())>::type> Ptr; };
-    }
-
-    template<typename Type>
-	    using VulkanSharedPtr = typename Internal::VulkanShared<Type>::Ptr;
-
 	class Device : public Base_Device, public std::enable_shared_from_this<Device>
     {
     public:
@@ -95,6 +123,7 @@ namespace RenderCore
     protected:
 		VulkanSharedPtr<VkInstance>     _instance;
 		VulkanSharedPtr<VkDevice>		_underlying;
+        SelectedPhysicalDevice          _physDev;
     };
 
     class DeviceVulkan : public Device, public Base_DeviceVulkan

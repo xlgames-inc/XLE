@@ -35,38 +35,60 @@ namespace RenderCore
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME
 	};
 
-#if 0
-	static std::vector<VkExtensionProperties> EnumerateExtensionProperties(
-		VkPhysicalDevice physDev,
-		const VkLayerProperties& layer)
-	{
-		for(;;) {
-			uint32_t extCount = 0;
-			auto res = vkEnumerateDeviceExtensionProperties(physDev, layer.layerName, &extCount, NULL);
-			if (res)
-				Throw(Exceptions::BasicLabel("Failure in during enumeration of Vulkan extension capabilities. You must have an up-to-date Vulkan driver installed."));
+    static const char* AsString(VkResult res)
+    {
+        // String names for standard vulkan error codes
+        switch (res)
+        {
+                // success codes
+            case VK_SUCCESS: return "Success";
+            case VK_NOT_READY: return "Not Ready";
+            case VK_TIMEOUT: return "Timeout";
+            case VK_EVENT_SET: return "Event Set";
+            case VK_EVENT_RESET: return "Event Reset";
+            case VK_INCOMPLETE: return "Incomplete";
 
-			if (extCount == 0)
-				return std::vector<VkExtensionProperties>();
+                // error codes
+            case VK_ERROR_OUT_OF_HOST_MEMORY: return "Out of host memory";
+            case VK_ERROR_OUT_OF_DEVICE_MEMORY: return "Out of device memory";
+            case VK_ERROR_INITIALIZATION_FAILED: return "Initialization failed";
+            case VK_ERROR_DEVICE_LOST: return "Device lost";
+            case VK_ERROR_MEMORY_MAP_FAILED: return "Memory map failed";
+            case VK_ERROR_LAYER_NOT_PRESENT: return "Layer not present";
+            case VK_ERROR_EXTENSION_NOT_PRESENT: return "Extension not present";
+            case VK_ERROR_FEATURE_NOT_PRESENT: return "Feature not present";
+            case VK_ERROR_INCOMPATIBLE_DRIVER: return "Incompatible driver";
+            case VK_ERROR_TOO_MANY_OBJECTS: return "Too many objects";
+            case VK_ERROR_FORMAT_NOT_SUPPORTED: return "Format not supported";
 
-			std::vector<VkExtensionProperties> result;
-			result.resize(extCount);
-			res = vkEnumerateDeviceExtensionProperties(
-				physDev, layer.layerName, &extCount, AsPointer(result.begin()));
-			if (res == VK_INCOMPLETE) continue; // doc's arent clear as to whether layerCount is updated in this case
+                // kronos extensions
+            case VK_ERROR_SURFACE_LOST_KHR: return "[KHR] Surface lost";
+            case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR: return "[KHR] Native window in use";
+            case VK_SUBOPTIMAL_KHR: return "[KHR] Suboptimal";
+            case VK_ERROR_OUT_OF_DATE_KHR: return "[KHR] Out of date";
+            case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR: return "[KHR] Incompatible display";
+            case VK_ERROR_VALIDATION_FAILED_EXT: return "[KHR] Validation failed";
 
-			return result;
-		}
-	}
-#endif
+                // NV extensions
+            case VK_ERROR_INVALID_SHADER_NV: return "[NV] Invalid shader";
+
+            default: return "<<unknown>>";
+        }
+    }
+
+    class VulkanAPIFailure : public Exceptions::BasicLabel
+    {
+    public:
+        VulkanAPIFailure(VkResult res, const char message[]) : Exceptions::BasicLabel("%s [%s, %i]", message, AsString(res), res) {}
+    };
 
 	static std::vector<VkLayerProperties> EnumerateLayers()
 	{
 		for (;;) {
 			uint32_t layerCount = 0;
 			auto res = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-			if (res)
-				Throw(Exceptions::BasicLabel("Failure in during enumeration of Vulkan layer capabilities. You must have an up-to-date Vulkan driver installed."));
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure in during enumeration of Vulkan layer capabilities. You must have an up-to-date Vulkan driver installed."));
 
 			if (layerCount == 0)
 				return std::vector<VkLayerProperties>();
@@ -75,6 +97,8 @@ namespace RenderCore
 			layerProps.resize(layerCount);
 			res = vkEnumerateInstanceLayerProperties(&layerCount, AsPointer(layerProps.begin()));
 			if (res == VK_INCOMPLETE) continue;	// doc's arent clear as to whether layerCount is updated in this case
+            if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure in during enumeration of Vulkan layer capabilities. You must have an up-to-date Vulkan driver installed."));
 
 			return layerProps;
 		}
@@ -108,7 +132,7 @@ namespace RenderCore
 		VkInstance rawResult = nullptr;
 		VkResult res = vkCreateInstance(&inst_info, s_allocationCallbacks, &rawResult);
 		if (res != VK_SUCCESS)
-			Throw(Exceptions::BasicLabel("Failure in Vulkan instance construction. You must have an up-to-date Vulkan driver installed."));
+			Throw(VulkanAPIFailure(res, "Failure in Vulkan instance construction. You must have an up-to-date Vulkan driver installed."));
 
 		return VulkanSharedPtr<VkInstance>(
 			rawResult,
@@ -120,8 +144,8 @@ namespace RenderCore
 		for (;;) {
 			uint32_t count = 0;
 			auto res = vkEnumeratePhysicalDevices(vulkan, &count, nullptr);
-			if (res)
-				Throw(Exceptions::BasicLabel("Failure in during enumeration of physical devices. You must have an up-to-date Vulkan driver installed."));
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure in during enumeration of physical devices. You must have an up-to-date Vulkan driver installed."));
 
 			if (count == 0)
 				return std::vector<VkPhysicalDevice>();
@@ -130,6 +154,8 @@ namespace RenderCore
 			props.resize(count);
 			res = vkEnumeratePhysicalDevices(vulkan, &count, AsPointer(props.begin()));
 			if (res == VK_INCOMPLETE) continue;	// doc's arent clear as to whether layerCount is updated in this case
+            if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure in during enumeration of physical devices. You must have an up-to-date Vulkan driver installed."));
 
 			return props;
 		}
@@ -173,7 +199,7 @@ namespace RenderCore
 			VkSurfaceKHR rawResult = nullptr;
 			auto res = vkCreateWin32SurfaceKHR(vulkan, &createInfo, s_allocationCallbacks, &rawResult);
 			if (res != VK_SUCCESS)
-				Throw(Exceptions::BasicLabel("Failure in Vulkan surface construction. You must have an up-to-date Vulkan driver installed."));
+				Throw(VulkanAPIFailure(res, "Failure in Vulkan surface construction. You must have an up-to-date Vulkan driver installed."));
 
 			// note --	capturing "vulkan" with an unprotected pointer here. We could use a protected
 			//			pointer easily enough... But I guess this approach is in-line with Vulkan design ideas.
@@ -184,13 +210,6 @@ namespace RenderCore
 			#pragma Windowing platform not supported
 		#endif
 	}
-
-	class SelectedPhysicalDevice
-	{
-	public:
-		VkPhysicalDevice _dev;
-		unsigned _renderingQueueFamily;
-	};
 
 	static SelectedPhysicalDevice SelectPhysicalDeviceForRendering(VkInstance vulkan, VkSurfaceKHR surface)
 	{
@@ -258,7 +277,7 @@ namespace RenderCore
 		VkDevice rawResult = nullptr;
 		auto res = vkCreateDevice(physDev._dev, &device_info, s_allocationCallbacks, &rawResult);
 		if (res != VK_SUCCESS)
-			Throw(Exceptions::BasicLabel("Failure while creating Vulkan logical device. You must have an up-to-date Vulkan driver installed."));
+			Throw(VulkanAPIFailure(res, "Failure while creating Vulkan logical device. You must have an up-to-date Vulkan driver installed."));
 
 		return VulkanSharedPtr<VkDevice>(
 			rawResult,
@@ -272,6 +291,7 @@ namespace RenderCore
 			//	available, it will throw an exception here.
 			//
 		_instance = CreateVulkanInstance();
+        _physDev = { nullptr, ~0u };
 
 			// We can't create the underlying device immediately... Because we need a pointer to
 			// the "platformValue" (window handle) in order to check for physical device capabilities.
@@ -284,20 +304,168 @@ namespace RenderCore
 		_instance.reset();
     }
 
+    static std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(VkPhysicalDevice physDev, VkSurfaceKHR surface)
+    {
+        for (;;)
+        {
+            uint32_t count;
+            auto res = vkGetPhysicalDeviceSurfaceFormatsKHR(physDev, surface, &count, nullptr);
+            if (res != VK_SUCCESS)
+                Throw(VulkanAPIFailure(res, "Failure while querying physical device surface formats"));
+            if (count == 0) return std::vector<VkSurfaceFormatKHR>();
+
+            std::vector<VkSurfaceFormatKHR> result;
+            result.resize(count);
+            res = vkGetPhysicalDeviceSurfaceFormatsKHR(physDev, surface, &count, AsPointer(result.begin()));
+            if (res == VK_INCOMPLETE) continue;
+            if (res != VK_SUCCESS)
+                Throw(VulkanAPIFailure(res, "Failure while querying physical device surface formats"));
+
+            return result;
+        }
+    }
+
+    static std::vector<VkPresentModeKHR> GetPresentModes(VkPhysicalDevice physDev, VkSurfaceKHR surface)
+    {
+        for (;;)
+        {
+            uint32_t count;
+            auto res = vkGetPhysicalDeviceSurfacePresentModesKHR(physDev, surface, &count, nullptr);
+            if (res != VK_SUCCESS)
+                Throw(VulkanAPIFailure(res, "Failure while querying surface present modes"));
+            if (count == 0) return std::vector<VkPresentModeKHR>();
+
+            std::vector<VkPresentModeKHR> result;
+            result.resize(count);
+            res = vkGetPhysicalDeviceSurfacePresentModesKHR(physDev, surface, &count, AsPointer(result.begin()));
+            if (res == VK_INCOMPLETE) continue;
+            if (res != VK_SUCCESS)
+                Throw(VulkanAPIFailure(res, "Failure while querying surface present modes"));
+
+            return result;
+        }
+    }
+
+    static VkPresentModeKHR SelectPresentMode(IteratorRange<VkPresentModeKHR*> availableModes)
+    {
+        // If mailbox mode is available, use it, as is the lowest-latency non-
+        // tearing mode.  If not, try IMMEDIATE which will usually be available,
+        // and is fastest (though it tears).  If not, fall back to FIFO which is
+        // always available.
+        VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+        for (auto pm:availableModes) {
+            if (pm == VK_PRESENT_MODE_MAILBOX_KHR) {
+                swapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+                break;
+            }
+            if ((swapchainPresentMode != VK_PRESENT_MODE_MAILBOX_KHR) &&
+                (pm == VK_PRESENT_MODE_IMMEDIATE_KHR)) {
+                swapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+            }
+        }
+        return swapchainPresentMode;
+    }
+
+    static VkQueue GetQueue(VkDevice dev, unsigned queueFamilyIndex, unsigned queueIndex=0)
+    {
+        VkQueue queue = nullptr;
+        vkGetDeviceQueue(dev, queueFamilyIndex, queueIndex, &queue);
+        return queue;
+    }
+
     std::unique_ptr<IPresentationChain> Device::CreatePresentationChain(
 		const void* platformValue, unsigned width, unsigned height)
     {
 		auto surface = CreateSurface(_instance.get(), platformValue);
 		if (!_underlying) {
-			auto phyDev = SelectPhysicalDeviceForRendering(_instance.get(), surface.get());
-			_underlying = CreateUnderlyingDevice(phyDev);
+			_physDev = SelectPhysicalDeviceForRendering(_instance.get(), surface.get());
+			_underlying = CreateUnderlyingDevice(_physDev);
 		}
-		return nullptr;
+
+        // The following is based on the "initswapchain" sample from the vulkan SDK
+        auto fmts = GetSurfaceFormats(_physDev._dev, surface.get());
+        assert(!fmts.empty());  // expecting at least one
+
+        // If the format list includes just one entry of VK_FORMAT_UNDEFINED,
+        // the surface has no preferred format.  Otherwise, at least one
+        // supported format will be returned.
+        auto chainFmt = 
+            (fmts.empty() || (fmts.size() == 1 && fmts[0].format == VK_FORMAT_UNDEFINED)) 
+            ? VK_FORMAT_B8G8R8A8_UNORM : fmts[0].format;
+
+        VkSurfaceCapabilitiesKHR surfCapabilities;
+        auto res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+            _physDev._dev, surface.get(), &surfCapabilities);
+        assert(res == VK_SUCCESS);
+
+        VkExtent2D swapChainExtent;
+        // width and height are either both -1, or both not -1.
+        if (surfCapabilities.currentExtent.width == (uint32_t)-1) {
+            // If the surface size is undefined, the size is set to
+            // the size of the images requested.
+            swapChainExtent.width = width;
+            swapChainExtent.height = height;
+        } else {
+            // If the surface size is defined, the swap chain size must match
+            swapChainExtent = surfCapabilities.currentExtent;
+        }
+
+        auto presentModes = GetPresentModes(_physDev._dev, surface.get());
+        auto swapchainPresentMode = SelectPresentMode(MakeIteratorRange(presentModes));
+        
+        // Determine the number of VkImage's to use in the swap chain (we desire to
+        // own only 1 image at a time, besides the images being displayed and
+        // queued for display):
+        auto desiredNumberOfSwapChainImages = surfCapabilities.minImageCount + 1;
+        if (surfCapabilities.maxImageCount > 0)
+            desiredNumberOfSwapChainImages = std::min(desiredNumberOfSwapChainImages, surfCapabilities.maxImageCount);
+
+        // setting "preTransform" to current transform... but clearing out other bits if the identity bit is set
+        auto preTransform = 
+            (surfCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+            ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR : surfCapabilities.currentTransform;
+
+        // finally, fill in our SwapchainCreate structure
+        VkSwapchainCreateInfoKHR swapChainInfo = {};
+        swapChainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        swapChainInfo.pNext = nullptr;
+        swapChainInfo.surface = surface.get();
+        swapChainInfo.minImageCount = desiredNumberOfSwapChainImages;
+        swapChainInfo.imageFormat = chainFmt;
+        swapChainInfo.imageExtent.width = swapChainExtent.width;
+        swapChainInfo.imageExtent.height = swapChainExtent.height;
+        swapChainInfo.preTransform = preTransform;
+        swapChainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        swapChainInfo.imageArrayLayers = 1;
+        swapChainInfo.presentMode = swapchainPresentMode;
+        swapChainInfo.oldSwapchain = nullptr;
+        swapChainInfo.clipped = true;
+        swapChainInfo.imageColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+        swapChainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        swapChainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        swapChainInfo.queueFamilyIndexCount = 0;
+        swapChainInfo.pQueueFamilyIndices = nullptr;
+
+        auto underlyingDev = _underlying.get();
+        VkSwapchainKHR swapChainRaw = nullptr;
+        res = vkCreateSwapchainKHR(underlyingDev, &swapChainInfo, s_allocationCallbacks, &swapChainRaw);
+        VulkanSharedPtr<VkSwapchainKHR> result(
+            swapChainRaw,
+            [underlyingDev](VkSwapchainKHR chain) { vkDestroySwapchainKHR(underlyingDev, chain, s_allocationCallbacks); } );
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failure while creating swap chain"));
+
+		return std::make_unique<PresentationChain>(
+            std::move(result), 
+            _underlying,
+            GetQueue(_underlying.get(), _physDev._renderingQueueFamily), 
+            platformValue);
     }
 
     void    Device::BeginFrame(IPresentationChain* presentationChain)
     {
-        (void)presentationChain;
+        PresentationChain* swapChain = checked_cast<PresentationChain*>(presentationChain);
+        swapChain->AcquireNextImage();
     }
 
     std::shared_ptr<IThreadContext> Device::GetImmediateContext()
@@ -366,19 +534,148 @@ namespace RenderCore
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-    PresentationChain::PresentationChain()
+    static void SubmitSemaphoreSignal(VkQueue queue, VkSemaphore semaphore)
     {
-    }
+        VkSubmitInfo submitInfo;
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.pNext = nullptr;
+        submitInfo.waitSemaphoreCount = 0;
+        submitInfo.pWaitSemaphores = nullptr;
+        submitInfo.pWaitDstStageMask = nullptr;
+        submitInfo.commandBufferCount = 0;
+        submitInfo.pCommandBuffers = nullptr;
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores= &semaphore;
 
-    PresentationChain::~PresentationChain()
-    {
+        auto res = vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
     }
 
     void            PresentationChain::Present()
     {
+        if (_activeImageIndex > unsigned(_images.size())) return;
+
+        // Queue a single operation to trigger the semaphore representing the end of rendering
+        // We could do this a little more efficiently by combining this with the last submit.
+        SubmitSemaphoreSignal(_queue, _images[_activeImageIndex]._presentSemaphore.get());
+
+        const VkSwapchainKHR swapChains[] = { _swapChain.get() };
+        uint32_t imageIndices[] = { _activeImageIndex };
+        const VkSemaphore semaphores[] = { _images[_activeImageIndex]._presentSemaphore.get() };
+
+        VkPresentInfoKHR present;
+        present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        present.pNext = NULL;
+        present.swapchainCount = dimof(swapChains);
+        present.pSwapchains = swapChains;
+        present.pImageIndices = imageIndices;
+        present.pWaitSemaphores = semaphores;
+        present.waitSemaphoreCount = dimof(semaphores);
+        present.pResults = NULL;
+
+        auto res = vkQueuePresentKHR(_queue, &present);
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failure while queuing present"));
+
+        _activeImageIndex = ~0x0u;
     }
 
     void            PresentationChain::Resize(unsigned newWidth, unsigned newHeight)
+    {
+        // todo -- we'll need to destroy and recreate the swapchain here
+    }
+
+    std::shared_ptr<ViewportContext> PresentationChain::GetViewportContext() const
+    {
+        return nullptr;
+    }
+
+    void PresentationChain::AcquireNextImage()
+    {
+        // note --  Due to the timeout here, we get a synchronise here.
+        //          This will prevent issues when either the GPU or CPU is
+        //          running ahead of the other... But we could do better by
+        //          using the semaphores
+        uint32_t nextImageIndex = ~0x0u;
+        const auto timeout = UINT64_MAX;
+        auto res = vkAcquireNextImageKHR(
+            _device.get(), _swapChain.get(), 
+            timeout,
+            VK_NULL_HANDLE, VK_NULL_HANDLE,
+            &nextImageIndex);
+        _activeImageIndex = nextImageIndex;
+
+        // TODO: Deal with the VK_SUBOPTIMAL_KHR and VK_ERROR_OUT_OF_DATE_KHR
+        // return codes
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failure during acquire next image"));
+    }
+
+    static std::vector<VkImage> GetImages(VkDevice dev, VkSwapchainKHR swapChain)
+    {
+        for (;;)
+        {
+            uint32_t count;
+            auto res = vkGetSwapchainImagesKHR(dev, swapChain, &count, nullptr);
+            if (res != VK_SUCCESS)
+                Throw(VulkanAPIFailure(res, "Failure while querying physical device surface formats"));
+            if (count == 0) return std::vector<VkImage>();
+
+            std::vector<VkImage> rawPtrs;
+            rawPtrs.resize(count);
+            res = vkGetSwapchainImagesKHR(dev, swapChain, &count, AsPointer(rawPtrs.begin()));
+            if (res == VK_INCOMPLETE) continue;
+            if (res != VK_SUCCESS)
+                Throw(VulkanAPIFailure(res, "Failure while querying physical device surface formats"));
+
+            // we don't have to destroy the images with VkDestroyImage -- they will be destroyed when the
+            // swapchain is destroyed.
+            return rawPtrs;
+        }
+    }
+
+    static VulkanSharedPtr<VkSemaphore> CreateBasicSemaphore(VkDevice dev)
+    {
+        VkSemaphoreCreateInfo presentCompleteSemaphoreCreateInfo;
+        presentCompleteSemaphoreCreateInfo.sType =
+            VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        presentCompleteSemaphoreCreateInfo.pNext = NULL;
+        presentCompleteSemaphoreCreateInfo.flags = 0;
+
+        VkSemaphore rawPtr = nullptr;
+        auto res = vkCreateSemaphore(
+            dev, &presentCompleteSemaphoreCreateInfo,
+            s_allocationCallbacks, &rawPtr);
+        VulkanSharedPtr<VkSemaphore> result(
+            rawPtr,
+            [dev](VkSemaphore sem) { vkDestroySemaphore(dev, sem, s_allocationCallbacks); });
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failure while creating Vulkan semaphore"));
+        return std::move(result);
+    }
+    
+    PresentationChain::PresentationChain(
+        VulkanSharedPtr<VkSwapchainKHR> swapChain, 
+        VulkanSharedPtr<VkDevice> device,
+        VkQueue queue, 
+        const void* platformValue)
+    : _swapChain(std::move(swapChain))
+    , _device(std::move(device))
+    , _queue(queue)
+    , _platformValue(platformValue)
+    {
+        _activeImageIndex = ~0x0u;
+
+        // We need to get pointers to each image and build the synchronization semaphores
+        auto images = GetImages(_device.get(), _swapChain.get());
+        _images.reserve(images.size());
+        for (auto i:images)
+            _images.emplace_back(
+                Image { i, CreateBasicSemaphore(_device.get()) });
+    }
+
+    PresentationChain::~PresentationChain()
     {
     }
 
