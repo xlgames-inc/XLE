@@ -40,7 +40,7 @@ namespace PlatformRig
         ResizePresentationChain(
             std::shared_ptr<RenderCore::IPresentationChain> presentationChain);
     protected:
-        std::shared_ptr<RenderCore::IPresentationChain> _presentationChain;
+        std::weak_ptr<RenderCore::IPresentationChain> _presentationChain;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -23,7 +23,7 @@ namespace RenderCore
 
 	static VkAllocationCallbacks* s_allocationCallbacks = nullptr;
 
-	const char* s_instanceExtensions[] = 
+	static const char* s_instanceExtensions[] = 
 	{
 		VK_KHR_SURFACE_EXTENSION_NAME
 		#if PLATFORMOS_TARGET  == PLATFORMOS_WINDOWS
@@ -31,9 +31,35 @@ namespace RenderCore
 		#endif
 	};
 
-	const char* s_deviceExtensions[] =
+	static const char* s_deviceExtensions[] =
 	{
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
+
+	static const char* s_instanceLayers[] =
+	{
+		"VK_LAYER_GOOGLE_threading",
+		"VK_LAYER_LUNARG_device_limits",
+		"VK_LAYER_LUNARG_draw_state",
+		"VK_LAYER_LUNARG_image",
+		"VK_LAYER_LUNARG_mem_tracker",
+		"VK_LAYER_LUNARG_object_tracker",
+		"VK_LAYER_LUNARG_param_checker",
+		"VK_LAYER_LUNARG_swapchain",
+		"VK_LAYER_GOOGLE_unique_objects"
+	};
+
+	static const char* s_deviceLayers[] =
+	{
+		"VK_LAYER_GOOGLE_threading",
+		"VK_LAYER_LUNARG_device_limits",
+		"VK_LAYER_LUNARG_draw_state",
+		"VK_LAYER_LUNARG_image",
+		"VK_LAYER_LUNARG_mem_tracker",
+		"VK_LAYER_LUNARG_object_tracker",
+		"VK_LAYER_LUNARG_param_checker",
+		"VK_LAYER_LUNARG_swapchain",
+		"VK_LAYER_GOOGLE_unique_objects"
 	};
 
     static const char* AsString(VkResult res)
@@ -83,19 +109,7 @@ namespace RenderCore
         VulkanAPIFailure(VkResult res, const char message[]) : Exceptions::BasicLabel("%s [%s, %i]", message, AsString(res), res) {}
     };
 
-    class ObjectFactory
-    {
-    public:
-        VkPhysicalDevice            _physDev;
-        VulkanSharedPtr<VkDevice>   _device;
-
-        unsigned FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask = 0) const;
-
-        ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device);
-
-    private:
-        VkPhysicalDeviceMemoryProperties _memProps;
-    };
+    
 
     unsigned ObjectFactory::FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask) const
     {
@@ -117,6 +131,9 @@ namespace RenderCore
         _memProps = {};
         vkGetPhysicalDeviceMemoryProperties(physDev, &_memProps);
     }
+
+	ObjectFactory::ObjectFactory() {}
+	ObjectFactory::~ObjectFactory() {}
 
 	static std::vector<VkLayerProperties> EnumerateLayers()
 	{
@@ -160,8 +177,8 @@ namespace RenderCore
 		inst_info.pNext = NULL;
 		inst_info.flags = 0;
 		inst_info.pApplicationInfo = &app_info;
-		inst_info.enabledLayerCount = 0;
-		inst_info.ppEnabledLayerNames = nullptr;
+		inst_info.enabledLayerCount = (uint32_t)dimof(s_instanceLayers);
+		inst_info.ppEnabledLayerNames = s_instanceLayers;
 		inst_info.enabledExtensionCount = (uint32_t)dimof(s_instanceExtensions);
 		inst_info.ppEnabledExtensionNames = s_instanceExtensions;
 
@@ -304,9 +321,9 @@ namespace RenderCore
 		device_info.pNext = nullptr;
 		device_info.queueCreateInfoCount = 1;
 		device_info.pQueueCreateInfos = &queue_info;
-		device_info.enabledLayerCount = 0;
-		device_info.ppEnabledLayerNames = nullptr;
-		device_info.enabledExtensionCount = dimof(s_deviceExtensions);
+		device_info.enabledLayerCount = (uint32)dimof(s_deviceLayers);
+		device_info.ppEnabledLayerNames = s_deviceLayers;
+		device_info.enabledExtensionCount = (uint32_t)dimof(s_deviceExtensions);
 		device_info.ppEnabledExtensionNames = s_deviceExtensions;
 		device_info.pEnabledFeatures = nullptr;
 
@@ -336,8 +353,8 @@ namespace RenderCore
 
     Device::~Device()
     {
-		_underlying.reset();
-		_instance.reset();
+		if (_underlying.get())
+			vkDeviceWaitIdle(_underlying.get());
     }
 
     static std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(VkPhysicalDevice physDev, VkSurfaceKHR surface)
@@ -409,6 +426,49 @@ namespace RenderCore
         return queue;
     }
 
+	VulkanSharedPtr<VkCommandBuffer> CommandPool::CreateBuffer(BufferType type)
+	{
+		VkCommandBufferAllocateInfo cmd = {};
+		cmd.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		cmd.pNext = nullptr;
+		cmd.commandPool = _pool.get();
+		cmd.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		cmd.commandBufferCount = 1;
+
+		auto dev = _device.get();
+		auto pool = _pool.get();
+		VkCommandBuffer rawBuffer = nullptr;
+		auto res = vkAllocateCommandBuffers(dev, &cmd, &rawBuffer);
+		VulkanSharedPtr<VkCommandBuffer> result(
+			rawBuffer,
+			[dev, pool](VkCommandBuffer buffer) { vkFreeCommandBuffers(dev, pool, 1, &buffer); });
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while creating command buffer"));
+		return result;
+	}
+
+	CommandPool::CommandPool(const ObjectFactory& factory, unsigned queueFamilyIndex)
+	: _device(factory._device)
+	{
+		VkCommandPoolCreateInfo cmd_pool_info = {};
+		cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		cmd_pool_info.pNext = nullptr;
+		cmd_pool_info.queueFamilyIndex = queueFamilyIndex;
+		cmd_pool_info.flags = 0;
+
+		auto dev = factory._device.get();
+		VkCommandPool rawPool = nullptr;
+		auto res = vkCreateCommandPool(dev, &cmd_pool_info, s_allocationCallbacks, &rawPool);
+		_pool = VulkanSharedPtr<VkCommandPool>(
+			rawPool,
+			[dev](VkCommandPool pool) { vkDestroyCommandPool(dev, pool, s_allocationCallbacks); });
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while creating command pool"));
+	}
+
+	CommandPool::CommandPool() {}
+	CommandPool::~CommandPool() {}
+
     std::unique_ptr<IPresentationChain> Device::CreatePresentationChain(
 		const void* platformValue, unsigned width, unsigned height)
     {
@@ -416,6 +476,12 @@ namespace RenderCore
 		if (!_underlying) {
 			_physDev = SelectPhysicalDeviceForRendering(_instance.get(), surface.get());
 			_underlying = CreateUnderlyingDevice(_physDev);
+			_objectFactory = ObjectFactory(_physDev._dev, _underlying);
+			_renderingCommandPool = CommandPool(_objectFactory, _physDev._renderingQueueFamily);
+
+			_foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
+				shared_from_this(), 
+				_renderingCommandPool.CreateBuffer(CommandPool::BufferType::Primary));
 		}
 
         // The following is based on the "initswapchain" sample from the vulkan SDK
@@ -492,8 +558,7 @@ namespace RenderCore
             Throw(VulkanAPIFailure(res, "Failure while creating swap chain"));
 
 		return std::make_unique<PresentationChain>(
-            std::move(result), 
-            ObjectFactory(_physDev._dev, _underlying),
+			std::move(surface), std::move(result), _objectFactory,
             GetQueue(_underlying.get(), _physDev._renderingQueueFamily), 
             BufferUploads::TextureDesc::Plain2D(swapChainExtent.width, swapChainExtent.height, chainFmt),
             platformValue);
@@ -503,24 +568,33 @@ namespace RenderCore
     {
         PresentationChain* swapChain = checked_cast<PresentationChain*>(presentationChain);
         swapChain->AcquireNextImage();
+
+		// reset and begin the primary foreground command buffer
+		auto cmdBuffer = _foregroundPrimaryContext->GetCommandBuffer();
+		auto res = vkResetCommandBuffer(cmdBuffer, 0);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while resetting command buffer"));
+
+		VkCommandBufferBeginInfo cmd_buf_info = {};
+		cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		cmd_buf_info.pNext = nullptr;
+		cmd_buf_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		cmd_buf_info.pInheritanceInfo = nullptr;
+		res = vkBeginCommandBuffer(cmdBuffer, &cmd_buf_info);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
+
+		swapChain->BindDefaultRenderPass(cmdBuffer);
     }
 
     std::shared_ptr<IThreadContext> Device::GetImmediateContext()
     {
-		if (!_underlying) {
-			auto phyDev = SelectPhysicalDeviceForRendering(_instance.get(), nullptr);
-			_underlying = CreateUnderlyingDevice(phyDev);
-		}
-		return std::make_shared<ThreadContextVulkan>(shared_from_this());
+		return _foregroundPrimaryContext;
     }
 
     std::unique_ptr<IThreadContext> Device::CreateDeferredContext()
     {
-		if (!_underlying) {
-			auto phyDev = SelectPhysicalDeviceForRendering(_instance.get(), nullptr);
-			_underlying = CreateUnderlyingDevice(phyDev);
-		}
-		return std::make_unique<ThreadContextVulkan>(shared_from_this());
+		return nullptr;
     }
 
     extern char VersionString[];
@@ -571,31 +645,59 @@ namespace RenderCore
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void SubmitSemaphoreSignal(VkQueue queue, VkSemaphore semaphore)
-    {
-        VkSubmitInfo submitInfo;
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.pNext = nullptr;
-        submitInfo.waitSemaphoreCount = 0;
-        submitInfo.pWaitSemaphores = nullptr;
-        submitInfo.pWaitDstStageMask = nullptr;
-        submitInfo.commandBufferCount = 0;
-        submitInfo.pCommandBuffers = nullptr;
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores= &semaphore;
+	#if 0
+		static void SubmitSemaphoreSignal(VkQueue queue, VkSemaphore semaphore)
+		{
+			VkSubmitInfo submitInfo;
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+			submitInfo.pNext = nullptr;
+			submitInfo.waitSemaphoreCount = 0;
+			submitInfo.pWaitSemaphores = nullptr;
+			submitInfo.pWaitDstStageMask = nullptr;
+			submitInfo.commandBufferCount = 0;
+			submitInfo.pCommandBuffers = nullptr;
+			submitInfo.signalSemaphoreCount = 1;
+			submitInfo.pSignalSemaphores= &semaphore;
 
-        auto res = vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-        if (res != VK_SUCCESS)
-            Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
-    }
+			auto res = vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
+		}
+	#endif
 
     void            PresentationChain::Present()
     {
         if (_activeImageIndex > unsigned(_images.size())) return;
 
-        // Queue a single operation to trigger the semaphore representing the end of rendering
-        // We could do this a little more efficiently by combining this with the last submit.
-        SubmitSemaphoreSignal(_queue, _images[_activeImageIndex]._presentSemaphore.get());
+		//////////////////////////////////////////////////////////////////
+
+		VkSubmitInfo submitInfo;
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = nullptr;
+		submitInfo.waitSemaphoreCount = 0;
+		submitInfo.pWaitSemaphores = nullptr;
+		submitInfo.pWaitDstStageMask = nullptr;
+		submitInfo.commandBufferCount = 0;
+		submitInfo.pCommandBuffers = nullptr;
+		if (_cmdBufferPendingCommit) {
+			vkCmdEndRenderPass(_cmdBufferPendingCommit);
+			auto res = vkEndCommandBuffer(_cmdBufferPendingCommit);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
+			submitInfo.commandBufferCount = 1;
+			submitInfo.pCommandBuffers = &_cmdBufferPendingCommit;
+		}
+		submitInfo.signalSemaphoreCount = 1;
+		auto sema = _images[_activeImageIndex]._presentSemaphore.get();
+		submitInfo.pSignalSemaphores = &sema;
+
+		auto res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
+
+		_cmdBufferPendingCommit = nullptr;
+
+		//////////////////////////////////////////////////////////////////
 
         const VkSwapchainKHR swapChains[] = { _swapChain.get() };
         uint32_t imageIndices[] = { _activeImageIndex };
@@ -611,7 +713,7 @@ namespace RenderCore
         present.waitSemaphoreCount = dimof(semaphores);
         present.pResults = NULL;
 
-        auto res = vkQueuePresentKHR(_queue, &present);
+        res = vkQueuePresentKHR(_queue, &present);
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failure while queuing present"));
 
@@ -655,6 +757,33 @@ namespace RenderCore
             Throw(VulkanAPIFailure(res, "Failure during acquire next image"));
     }
 
+	static VkClearValue ClearDepthStencil(float depth, uint32_t stencil) { VkClearValue result; result.depthStencil = VkClearDepthStencilValue { depth, stencil }; return result; }
+	static VkClearValue ClearColor(float r, float g, float b, float a) { VkClearValue result; result.color.float32[0] = r; result.color.float32[1] = g; result.color.float32[2] = b; result.color.float32[3] = a; return result; }
+
+	void PresentationChain::BindDefaultRenderPass(VkCommandBuffer cmdBuffer)
+	{
+		if (_activeImageIndex >= unsigned(_images.size())) return;
+		assert(!_cmdBufferPendingCommit);
+
+		// bind the default render pass for rendering directly to the swapchain
+		VkRenderPassBeginInfo rp_begin;
+		rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		rp_begin.pNext = nullptr;
+		rp_begin.renderPass = _defaultRenderPass.GetUnderlying();
+		rp_begin.framebuffer = _images[_activeImageIndex]._defaultFrameBuffer.GetUnderlying();
+		rp_begin.renderArea.offset.x = 0;
+		rp_begin.renderArea.offset.y = 0;
+		rp_begin.renderArea.extent.width = _bufferDesc._width;
+		rp_begin.renderArea.extent.height = _bufferDesc._height;
+		
+		VkClearValue clearValues[] = { ClearColor(0.5f, 0.25f, 1.f, 1.f), ClearDepthStencil(1.f, 0) };
+		rp_begin.pClearValues = clearValues;
+		rp_begin.clearValueCount = dimof(clearValues);
+
+		vkCmdBeginRenderPass(cmdBuffer, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
+		_cmdBufferPendingCommit = cmdBuffer;
+	}
+
     static std::vector<VkImage> GetImages(VkDevice dev, VkSwapchainKHR swapChain)
     {
         for (;;)
@@ -672,7 +801,7 @@ namespace RenderCore
             if (res != VK_SUCCESS)
                 Throw(VulkanAPIFailure(res, "Failure while querying physical device surface formats"));
 
-            // we don't have to destroy the images with VkDestroyImage -- they will be destroyed when the
+            // We don't have to destroy the images with VkDestroyImage -- they will be destroyed when the
             // swapchain is destroyed.
             return rawPtrs;
         }
@@ -698,36 +827,6 @@ namespace RenderCore
             Throw(VulkanAPIFailure(res, "Failure while creating Vulkan semaphore"));
         return std::move(result);
     }
-
-    class RenderPass
-    {
-    public:
-        enum class PreviousState { DontCare, Clear };
-
-        class TargetInfo
-        {
-        public:
-            VkFormat _format;
-            VkSampleCountFlagBits _samples;
-            PreviousState _previousState;
-
-            TargetInfo(
-                VkFormat fmt = VK_FORMAT_UNDEFINED, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT, 
-                PreviousState previousState = PreviousState::DontCare)
-            : _format(fmt), _samples(samples), _previousState() {}
-        };
-
-        VkRenderPass GetUnderlying() { return _underlying.get(); }
-
-        RenderPass(
-            const ObjectFactory& factory,
-            IteratorRange<TargetInfo*> rtvAttachments,
-            TargetInfo dsvAttachment = TargetInfo());
-        ~RenderPass();
-
-    private:
-        VulkanSharedPtr<VkRenderPass> _underlying;
-    };
 
     RenderPass::RenderPass(
         const ObjectFactory& factory,
@@ -762,7 +861,7 @@ namespace RenderCore
         }
 
         auto* i = attachments;
-        for (auto rtv:rtvAttachments) {
+        for (auto& rtv:rtvAttachments) {
             i->format = rtv._format;
             i->samples = rtv._samples;
             i->loadOp = (rtv._previousState ==  PreviousState::DontCare) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -834,24 +933,11 @@ namespace RenderCore
             Throw(VulkanAPIFailure(res, "Failure while creating render pass"));
     }
 
+	RenderPass::RenderPass() {}
+
     RenderPass::~RenderPass() {}
 
-    class Resource
-    {
-    public:
-        const BufferUploads::BufferDesc& GetDesc() const { return _desc; }
-        VkImage GetImage() const { return _image.get(); }
-        VkDeviceMemory GetDeviceMemory() const { return _mem.get(); }
-
-        Resource(
-            const ObjectFactory& factory,
-            const BufferUploads::BufferDesc& desc);
-        ~Resource();
-    private:
-        VulkanSharedPtr<VkImage> _image;
-        VulkanSharedPtr<VkDeviceMemory> _mem;
-        BufferUploads::BufferDesc _desc;
-    };
+    
 
     static VkSampleCountFlagBits AsSampleCountFlagBits(BufferUploads::TextureSamples samples)
     {
@@ -954,25 +1040,13 @@ namespace RenderCore
         }
     }
 
-    Resource::~Resource() {}
+	Resource::Resource() {}
 
-    class ImageView
-    {
-    public:
-        VkImageView GetUnderlying() { return _underlying.get(); }
-        ~ImageView();
-    protected:
-        VulkanSharedPtr<VkImageView> _underlying;
-    };
+    Resource::~Resource() {}
 
     ImageView::~ImageView() {}
     
-    class DepthStencilView : public ImageView
-    {
-    public:
-        DepthStencilView(const ObjectFactory& factory, Resource& res);
-        DepthStencilView() {}
-    };
+	DepthStencilView::DepthStencilView() {}
 
     DepthStencilView::DepthStencilView(const ObjectFactory& factory, Resource& res)
     {
@@ -1013,17 +1087,11 @@ namespace RenderCore
             Throw(VulkanAPIFailure(result, "Failed while creating depth stencil view of resource"));
     }
 
-    class RenderTargetView : public ImageView
-    {
-    public:
-        RenderTargetView(const ObjectFactory& factory, Resource& res);
-        RenderTargetView(const ObjectFactory& factory, VkImage image, VkFormat fmt);
-        RenderTargetView() {}
-    };
-
     RenderTargetView::RenderTargetView(const ObjectFactory& factory, Resource& res)
     : RenderTargetView(factory, res.GetImage(), (VkFormat)res.GetDesc()._textureDesc._nativePixelFormat)
     {}
+
+	RenderTargetView::RenderTargetView() {}
 
     RenderTargetView::RenderTargetView(const ObjectFactory& factory, VkImage image, VkFormat fmt)
     {
@@ -1057,20 +1125,6 @@ namespace RenderCore
             Throw(VulkanAPIFailure(result, "Failed while creating depth stencil view of resource"));
     }
 
-    class FrameBuffer
-    {
-    public:
-        FrameBuffer(
-            const ObjectFactory& factory,
-            IteratorRange<VkImageView*> views,
-            RenderPass& renderPass,
-            unsigned width, unsigned height);
-        ~FrameBuffer();
-
-    private:
-        VulkanSharedPtr<VkFramebuffer> _underlying;
-    };
-
     FrameBuffer::FrameBuffer(
         const ObjectFactory& factory,
         IteratorRange<VkImageView*> views,
@@ -1097,43 +1151,42 @@ namespace RenderCore
             Throw(VulkanAPIFailure(res, "Failed while allocating frame buffer"));
     }
 
+	FrameBuffer::FrameBuffer() {}
+
     FrameBuffer::~FrameBuffer() {}
 
-    
     PresentationChain::PresentationChain(
+		VulkanSharedPtr<VkSurfaceKHR> surface,
         VulkanSharedPtr<VkSwapchainKHR> swapChain,
         const ObjectFactory& factory,
         VkQueue queue, 
         const BufferUploads::TextureDesc& bufferDesc,
         const void* platformValue)
-    : _swapChain(std::move(swapChain))
+    : _surface(std::move(surface))
+	, _swapChain(std::move(swapChain))
     , _queue(queue)
     , _device(factory._device)
     , _platformValue(platformValue)
+	, _bufferDesc(bufferDesc)
+	, _cmdBufferPendingCommit(nullptr)
     {
         _activeImageIndex = ~0x0u;
 
         // We need to get pointers to each image and build the synchronization semaphores
         auto images = GetImages(_device.get(), _swapChain.get());
         _images.reserve(images.size());
-        for (auto i:images)
+        for (auto& i:images)
             _images.emplace_back(
                 Image { i, CreateBasicSemaphore(factory) });
 
-        Resource depthStencilRes(
+		_depthStencilResource = Resource(
             factory, 
             BufferUploads::CreateDesc(
                 BufferUploads::BindFlag::DepthStencil,
                 0, BufferUploads::GPUAccess::Read | BufferUploads::GPUAccess::Write,
                 BufferUploads::TextureDesc::Plain2D(bufferDesc._width, bufferDesc._height, VK_FORMAT_D24_UNORM_S8_UINT, 1, 1, bufferDesc._samples),
                 "DefaultDepth"));
-        DepthStencilView dsv(factory, depthStencilRes);
-        
-        // create color target views for the swap chain images
-        std::vector<RenderTargetView> rtvs;
-        rtvs.reserve(images.size());
-        for (auto i:images)
-            rtvs.emplace_back(RenderTargetView(factory, i, (VkFormat)bufferDesc._nativePixelFormat));
+        _dsv = DepthStencilView(factory, _depthStencilResource);
 
         // We must create a default render pass for rendering to the swap-chain images. 
         // In the most basic rendering operations, we just render directly into these buffers.
@@ -1145,33 +1198,35 @@ namespace RenderCore
         // render pass for rendering to offscreen buffers.
 
         auto vkSamples = AsSampleCountFlagBits(bufferDesc._samples);
-        RenderPass::TargetInfo rtvAttachments[] = { RenderPass::TargetInfo((VkFormat)bufferDesc._nativePixelFormat, vkSamples) };
+        RenderPass::TargetInfo rtvAttachments[] = { RenderPass::TargetInfo((VkFormat)bufferDesc._nativePixelFormat, vkSamples, RenderPass::PreviousState::Clear) };
 
         const VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
         const bool createDepthBuffer = depthFormat != VK_FORMAT_UNDEFINED;
         RenderPass::TargetInfo depthTargetInfo;
         if (constant_expression<createDepthBuffer>::result())
-            depthTargetInfo = RenderPass::TargetInfo(depthFormat, vkSamples);
+            depthTargetInfo = RenderPass::TargetInfo(depthFormat, vkSamples, RenderPass::PreviousState::Clear);
         
-        RenderPass rp(factory, MakeIteratorRange(rtvAttachments), depthTargetInfo);
+        _defaultRenderPass = RenderPass(factory, MakeIteratorRange(rtvAttachments), depthTargetInfo);
 
         // Now create the frame buffers to match the render pass
         VkImageView imageViews[2];
-        imageViews[1] = dsv.GetUnderlying();
+        imageViews[1] = _dsv.GetUnderlying();
 
-        std::vector<FrameBuffer> frameBuffers;
-        frameBuffers.reserve(images.size());
-        for (auto rtv:rtvs) {
-            imageViews[0] = rtv.GetUnderlying();
-            frameBuffers.emplace_back(
-                FrameBuffer(factory, MakeIteratorRange(imageViews), rp, bufferDesc._width, bufferDesc._height));
+        for (auto& i:_images) {
+			i._rtv = RenderTargetView(factory, i._underlying, (VkFormat)bufferDesc._nativePixelFormat);
+            imageViews[0] = i._rtv.GetUnderlying();
+            i._defaultFrameBuffer = FrameBuffer(factory, MakeIteratorRange(imageViews), _defaultRenderPass, bufferDesc._width, bufferDesc._height);
         }
-
-        (void)frameBuffers;
     }
 
     PresentationChain::~PresentationChain()
     {
+		_defaultRenderPass = RenderPass();
+		_images.clear();
+		_dsv = DepthStencilView();
+		_depthStencilResource = Resource();
+		_swapChain.reset();
+		_device.reset();
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1205,9 +1260,10 @@ namespace RenderCore
 
 	void ThreadContext::InvalidateCachedState() const {}
 
-    ThreadContext::ThreadContext(std::shared_ptr<Device> device)
+    ThreadContext::ThreadContext(std::shared_ptr<Device> device, VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
     : _device(std::move(device))
 	, _frameId(0)
+	, _primaryCommandBuffer(std::move(primaryCommandBuffer))
     {
     }
 
@@ -1241,8 +1297,8 @@ namespace RenderCore
         return nullptr;
     }
 
-    ThreadContextVulkan::ThreadContextVulkan(std::shared_ptr<Device> device)
-    : ThreadContext(std::move(device))
+    ThreadContextVulkan::ThreadContextVulkan(std::shared_ptr<Device> device, VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
+    : ThreadContext(std::move(device), std::move(primaryCommandBuffer))
     {}
 
 	ThreadContextVulkan::~ThreadContextVulkan() {}

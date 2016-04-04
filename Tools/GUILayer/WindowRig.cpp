@@ -28,17 +28,18 @@ namespace GUILayer
         ResizePresentationChain(
             std::shared_ptr<RenderCore::IPresentationChain> presentationChain);
     protected:
-        std::shared_ptr<RenderCore::IPresentationChain> _presentationChain;
+        std::weak_ptr<RenderCore::IPresentationChain> _presentationChain;
     };
 
     void ResizePresentationChain::OnResize(unsigned newWidth, unsigned newHeight)
     {
-        if (_presentationChain) {
+		auto chain = _presentationChain.lock();
+        if (chain) {
                 //  When we become an icon, we'll end up with zero width and height.
                 //  We can't actually resize the presentation to zero. And we can't
                 //  delete the presentation chain from here. So maybe just do nothing.
             if (newWidth && newHeight) {
-                _presentationChain->Resize(newWidth, newHeight);
+				chain->Resize(newWidth, newHeight);
             }
         }
     }
