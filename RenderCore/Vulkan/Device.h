@@ -15,6 +15,7 @@
 #include "../IDevice.h"
 #include "../IThreadContext.h"
 #include "IDeviceVulkan.h"
+#include "../../BufferUploads/IBufferUploads.h"
 #include "../../Utility/IntrusivePtr.h"
 #include "Metal/IncludeVulkan.h"
 #include <memory>
@@ -45,6 +46,7 @@ namespace RenderCore
     namespace Metal_DX11 { class DeviceContext; class ObjectFactory; }
 
     class Device;
+    class ObjectFactory;
 
     class PresentationChain : public Base_PresentationChain
     {
@@ -57,8 +59,9 @@ namespace RenderCore
 
         PresentationChain(
             VulkanSharedPtr<VkSwapchainKHR> swapChain, 
-            VulkanSharedPtr<VkDevice> device,
+            const ObjectFactory& factory,
             VkQueue queue, 
+            const BufferUploads::TextureDesc& bufferDesc,
             const void* platformValue);
         ~PresentationChain();
     private:

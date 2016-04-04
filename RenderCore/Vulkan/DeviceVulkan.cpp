@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Device.h"
+#include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/MemoryUtils.h"
@@ -81,6 +82,41 @@ namespace RenderCore
     public:
         VulkanAPIFailure(VkResult res, const char message[]) : Exceptions::BasicLabel("%s [%s, %i]", message, AsString(res), res) {}
     };
+
+    class ObjectFactory
+    {
+    public:
+        VkPhysicalDevice            _physDev;
+        VulkanSharedPtr<VkDevice>   _device;
+
+        unsigned FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask = 0) const;
+
+        ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device);
+
+    private:
+        VkPhysicalDeviceMemoryProperties _memProps;
+    };
+
+    unsigned ObjectFactory::FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask) const
+    {
+        // Search memtypes to find first index with those properties
+        for (uint32_t i=0; i<dimof(_memProps.memoryTypes); i++) {
+            if ((memoryTypeBits & 1) == 1) {
+                // Type is available, does it match user properties?
+                if ((_memProps.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask)
+                    return i;
+            }
+            memoryTypeBits >>= 1;
+        }
+        return ~0x0u;
+    }
+
+    ObjectFactory::ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device)
+    : _physDev(physDev), _device(device)
+    {
+        _memProps = {};
+        vkGetPhysicalDeviceMemoryProperties(physDev, &_memProps);
+    }
 
 	static std::vector<VkLayerProperties> EnumerateLayers()
 	{
@@ -457,8 +493,9 @@ namespace RenderCore
 
 		return std::make_unique<PresentationChain>(
             std::move(result), 
-            _underlying,
+            ObjectFactory(_physDev._dev, _underlying),
             GetQueue(_underlying.get(), _physDev._renderingQueueFamily), 
+            BufferUploads::TextureDesc::Plain2D(swapChainExtent.width, swapChainExtent.height, chainFmt),
             platformValue);
     }
 
@@ -597,6 +634,12 @@ namespace RenderCore
         //          This will prevent issues when either the GPU or CPU is
         //          running ahead of the other... But we could do better by
         //          using the semaphores
+        //
+        // Note that we must handle the VK_NOT_READY result... Some implementations
+        // may not block, even when timeout is some large value.
+        // As stated in the documentation, we shouldn't rely on this function for
+        // synchronisation -- instead, we should write an algorithm that will insert 
+        // stalls as necessary
         uint32_t nextImageIndex = ~0x0u;
         const auto timeout = UINT64_MAX;
         auto res = vkAcquireNextImageKHR(
@@ -635,7 +678,7 @@ namespace RenderCore
         }
     }
 
-    static VulkanSharedPtr<VkSemaphore> CreateBasicSemaphore(VkDevice dev)
+    static VulkanSharedPtr<VkSemaphore> CreateBasicSemaphore(const ObjectFactory& factory)
     {
         VkSemaphoreCreateInfo presentCompleteSemaphoreCreateInfo;
         presentCompleteSemaphoreCreateInfo.sType =
@@ -643,6 +686,7 @@ namespace RenderCore
         presentCompleteSemaphoreCreateInfo.pNext = NULL;
         presentCompleteSemaphoreCreateInfo.flags = 0;
 
+        auto dev = factory._device.get();
         VkSemaphore rawPtr = nullptr;
         auto res = vkCreateSemaphore(
             dev, &presentCompleteSemaphoreCreateInfo,
@@ -654,15 +698,417 @@ namespace RenderCore
             Throw(VulkanAPIFailure(res, "Failure while creating Vulkan semaphore"));
         return std::move(result);
     }
+
+    class RenderPass
+    {
+    public:
+        enum class PreviousState { DontCare, Clear };
+
+        class TargetInfo
+        {
+        public:
+            VkFormat _format;
+            VkSampleCountFlagBits _samples;
+            PreviousState _previousState;
+
+            TargetInfo(
+                VkFormat fmt = VK_FORMAT_UNDEFINED, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT, 
+                PreviousState previousState = PreviousState::DontCare)
+            : _format(fmt), _samples(samples), _previousState() {}
+        };
+
+        VkRenderPass GetUnderlying() { return _underlying.get(); }
+
+        RenderPass(
+            const ObjectFactory& factory,
+            IteratorRange<TargetInfo*> rtvAttachments,
+            TargetInfo dsvAttachment = TargetInfo());
+        ~RenderPass();
+
+    private:
+        VulkanSharedPtr<VkRenderPass> _underlying;
+    };
+
+    RenderPass::RenderPass(
+        const ObjectFactory& factory,
+        IteratorRange<TargetInfo*> rtvAttachments,
+        TargetInfo dsvAttachment)
+    {
+        // The render targets and depth buffers slots are called "attachments"
+        // In this case, we will create a render pass with a single subpass.
+        // That subpass will reference all buffers.
+        // This sets up the slots for rendertargets and depth buffers -- but it
+        // doesn't assign the specific images.
+      
+        bool hasDepthBuffer = dsvAttachment._format != VK_FORMAT_UNDEFINED;
+
+        VkAttachmentDescription attachmentsStatic[8];
+        std::vector<VkAttachmentDescription> attachmentsOverflow;
+        VkAttachmentReference colorReferencesStatic[8];
+        std::vector<VkAttachmentReference> colorReferencesOverflow;
+
+        VkAttachmentDescription* attachments = attachmentsStatic;
+        auto attachmentCount = rtvAttachments.size() + unsigned(hasDepthBuffer);
+        if (attachmentCount > dimof(attachmentsStatic)) {
+            attachmentsOverflow.resize(attachmentCount);
+            attachments = AsPointer(attachmentsOverflow.begin());
+        }
+        XlClearMemory(attachments, sizeof(VkAttachmentDescription) * attachmentCount);
+
+        VkAttachmentReference* colorReferences = colorReferencesStatic;
+        if (rtvAttachments.size() > dimof(colorReferencesStatic)) {
+            colorReferencesOverflow.resize(rtvAttachments.size());
+            colorReferences = AsPointer(colorReferencesOverflow.begin());
+        }
+
+        auto* i = attachments;
+        for (auto rtv:rtvAttachments) {
+            i->format = rtv._format;
+            i->samples = rtv._samples;
+            i->loadOp = (rtv._previousState ==  PreviousState::DontCare) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            i->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            i->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            i->stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            i->initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            i->finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            i->flags = 0;
+
+            colorReferences[i-attachments] = {};
+            colorReferences[i-attachments].attachment = uint32_t(i-attachments);
+            colorReferences[i-attachments].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+            ++i;
+        }
+
+        VkAttachmentReference depth_reference = {};
+
+        if (hasDepthBuffer) {
+            i->format = dsvAttachment._format;
+            i->samples = dsvAttachment._samples;
+            i->loadOp = (dsvAttachment._previousState ==  PreviousState::DontCare) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            i->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+            // note -- retaining stencil values frame to frame
+            i->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+            i->stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+            i->initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            i->finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            i->flags = 0;
+
+            depth_reference.attachment = uint32_t(i - attachments);
+            depth_reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+            ++i;
+        }
+
+        VkSubpassDescription subpass = {};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.flags = 0;
+        subpass.inputAttachmentCount = 0;
+        subpass.pInputAttachments = nullptr;
+        subpass.colorAttachmentCount = uint32_t(rtvAttachments.size());
+        subpass.pColorAttachments = colorReferences;
+        subpass.pResolveAttachments = nullptr;
+        subpass.pDepthStencilAttachment = hasDepthBuffer ? &depth_reference : nullptr;
+        subpass.preserveAttachmentCount = 0;
+        subpass.pPreserveAttachments = nullptr;
+
+        VkRenderPassCreateInfo rp_info = {};
+        rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rp_info.pNext = nullptr;
+        rp_info.attachmentCount = (uint32_t)attachmentCount;
+        rp_info.pAttachments = attachments;
+        rp_info.subpassCount = 1;
+        rp_info.pSubpasses = &subpass;
+        rp_info.dependencyCount = 0;
+        rp_info.pDependencies = nullptr;
+
+        auto dev = factory._device.get();
+        VkRenderPass rawPtr = nullptr;
+        auto res = vkCreateRenderPass(dev, &rp_info, s_allocationCallbacks, &rawPtr);
+        _underlying = VulkanSharedPtr<VkRenderPass>(
+            rawPtr,
+            [dev](VkRenderPass pass) { vkDestroyRenderPass(dev, pass, s_allocationCallbacks ); });
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failure while creating render pass"));
+    }
+
+    RenderPass::~RenderPass() {}
+
+    class Resource
+    {
+    public:
+        const BufferUploads::BufferDesc& GetDesc() const { return _desc; }
+        VkImage GetImage() const { return _image.get(); }
+        VkDeviceMemory GetDeviceMemory() const { return _mem.get(); }
+
+        Resource(
+            const ObjectFactory& factory,
+            const BufferUploads::BufferDesc& desc);
+        ~Resource();
+    private:
+        VulkanSharedPtr<VkImage> _image;
+        VulkanSharedPtr<VkDeviceMemory> _mem;
+        BufferUploads::BufferDesc _desc;
+    };
+
+    static VkSampleCountFlagBits AsSampleCountFlagBits(BufferUploads::TextureSamples samples)
+    {
+        return VK_SAMPLE_COUNT_1_BIT;
+    }
+
+    static VkImageTiling SelectDepthStencilTiling(VkPhysicalDevice physDev, VkFormat fmt)
+    {
+        // note --  flipped around the priority here from the samples (so that we usually won't
+        //          select linear tiling)
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(physDev, fmt, &props);
+        if (props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+            return VK_IMAGE_TILING_OPTIMAL;
+        } else if (props.linearTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+            return VK_IMAGE_TILING_LINEAR;
+        } else {
+            Throw(Exceptions::BasicLabel("Format (%i) can't be used for a depth stencil", unsigned(fmt)));
+        }
+    }
+
+    static VulkanSharedPtr<VkDeviceMemory> AllocateDeviceMemory(const ObjectFactory& factory, VkMemoryRequirements memReqs)
+    {
+        VkMemoryAllocateInfo mem_alloc = {};
+        mem_alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        mem_alloc.pNext = nullptr;
+        mem_alloc.allocationSize = memReqs.size;
+        mem_alloc.memoryTypeIndex = factory.FindMemoryType(memReqs.memoryTypeBits);
+        if (mem_alloc.memoryTypeIndex >= 32)
+            Throw(Exceptions::BasicLabel("Could not find compatible memory type for image"));
+
+        auto dev = factory._device.get();
+        VkDeviceMemory rawMem = nullptr;
+        auto res = vkAllocateMemory(dev, &mem_alloc, s_allocationCallbacks, &rawMem);
+        auto mem = VulkanSharedPtr<VkDeviceMemory>(
+            rawMem,
+            [dev](VkDeviceMemory mem) { vkFreeMemory(dev, mem, s_allocationCallbacks); });
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failed while allocating device memory for image"));
+
+        return mem;
+    }
+
+    Resource::Resource(const ObjectFactory& factory, const BufferUploads::BufferDesc& desc)
+    : _desc(desc)
+    {
+        if (desc._type == BufferUploads::BufferDesc::Type::Texture) {
+            const auto& tex = desc._textureDesc;
+
+                //
+                //  Create the "image" first....
+                //
+            VkImageCreateInfo image_info = {};
+            image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            image_info.pNext = nullptr;
+            image_info.imageType = VK_IMAGE_TYPE_2D;
+            image_info.format = (VkFormat)tex._nativePixelFormat;
+            image_info.extent.width = tex._width;
+            image_info.extent.height = tex._height;
+            image_info.extent.depth = tex._depth;
+            image_info.mipLevels = tex._mipCount;
+            image_info.arrayLayers = tex._arrayCount;
+            image_info.samples = AsSampleCountFlagBits(tex._samples);
+            image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            image_info.queueFamilyIndexCount = 0;
+            image_info.pQueueFamilyIndices = nullptr;
+            image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            image_info.flags = 0;
+            image_info.tiling = SelectDepthStencilTiling(factory._physDev, image_info.format);
+
+            auto dev = factory._device.get();
+            VkImage rawImage = nullptr;
+            auto res = vkCreateImage(dev, &image_info, s_allocationCallbacks, &rawImage);
+            _image = VulkanSharedPtr<VkImage>(
+                rawImage,
+                [dev](VkImage image) { vkDestroyImage(dev, image, s_allocationCallbacks); });
+            if (res != VK_SUCCESS)
+                Throw(VulkanAPIFailure(res, "Failed while creating image"));
+
+                //
+                //  We must decide on the right type of memory, and then allocate 
+                //  the memory buffer.
+                //
+            VkMemoryRequirements mem_reqs = {};
+            vkGetImageMemoryRequirements(dev, _image.get(), &mem_reqs);
+
+            _mem = AllocateDeviceMemory(factory, mem_reqs);
+
+                //
+                //  Bind the memory to the image
+                //
+            res = vkBindImageMemory(dev, _image.get(), _mem.get(), 0);
+            if (res != VK_SUCCESS)
+                Throw(VulkanAPIFailure(res, "Failed while binding device memory to image"));
+
+            // Samples set the "image layout" here. But we may not need to do that for resources
+            // that will be used with a RenderPass -- since we can just setup the layout when we
+            // create the renderpass.
+        }
+    }
+
+    Resource::~Resource() {}
+
+    class ImageView
+    {
+    public:
+        VkImageView GetUnderlying() { return _underlying.get(); }
+        ~ImageView();
+    protected:
+        VulkanSharedPtr<VkImageView> _underlying;
+    };
+
+    ImageView::~ImageView() {}
+    
+    class DepthStencilView : public ImageView
+    {
+    public:
+        DepthStencilView(const ObjectFactory& factory, Resource& res);
+        DepthStencilView() {}
+    };
+
+    DepthStencilView::DepthStencilView(const ObjectFactory& factory, Resource& res)
+    {
+        if (res.GetDesc()._type != BufferUploads::BufferDesc::Type::Texture)
+            Throw(Exceptions::BasicLabel("Attempting to build a DepthStencilView for a resource that is not a texture"));
+
+        VkImageViewCreateInfo view_info = {};
+        view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        view_info.pNext = nullptr;
+        view_info.image = res.GetImage();
+        view_info.format = (VkFormat)res.GetDesc()._textureDesc._nativePixelFormat;
+        view_info.components.r = VK_COMPONENT_SWIZZLE_R;
+        view_info.components.g = VK_COMPONENT_SWIZZLE_G;
+        view_info.components.b = VK_COMPONENT_SWIZZLE_B;
+        view_info.components.a = VK_COMPONENT_SWIZZLE_A;
+        view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        view_info.subresourceRange.baseMipLevel = 0;
+        view_info.subresourceRange.levelCount = 1;
+        view_info.subresourceRange.baseArrayLayer = 0;
+        view_info.subresourceRange.layerCount = 1;
+        view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        view_info.flags = 0;
+        assert(view_info.image != VK_NULL_HANDLE);
+
+        if (view_info.format == VK_FORMAT_D16_UNORM_S8_UINT ||
+            view_info.format == VK_FORMAT_D24_UNORM_S8_UINT ||
+            view_info.format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+            view_info.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
+
+        auto dev = factory._device.get();
+        VkImageView viewRaw = nullptr;
+        auto result = vkCreateImageView(dev, &view_info, s_allocationCallbacks, &viewRaw);
+        _underlying = VulkanSharedPtr<VkImageView>(
+            viewRaw,
+            [dev](VkImageView view) { vkDestroyImageView(dev, view, s_allocationCallbacks); });
+        if (result != VK_SUCCESS)
+            Throw(VulkanAPIFailure(result, "Failed while creating depth stencil view of resource"));
+    }
+
+    class RenderTargetView : public ImageView
+    {
+    public:
+        RenderTargetView(const ObjectFactory& factory, Resource& res);
+        RenderTargetView(const ObjectFactory& factory, VkImage image, VkFormat fmt);
+        RenderTargetView() {}
+    };
+
+    RenderTargetView::RenderTargetView(const ObjectFactory& factory, Resource& res)
+    : RenderTargetView(factory, res.GetImage(), (VkFormat)res.GetDesc()._textureDesc._nativePixelFormat)
+    {}
+
+    RenderTargetView::RenderTargetView(const ObjectFactory& factory, VkImage image, VkFormat fmt)
+    {
+        VkImageViewCreateInfo color_image_view = {};
+        color_image_view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        color_image_view.pNext = nullptr;
+        color_image_view.format = fmt;
+        color_image_view.components.r = VK_COMPONENT_SWIZZLE_R;
+        color_image_view.components.g = VK_COMPONENT_SWIZZLE_G;
+        color_image_view.components.b = VK_COMPONENT_SWIZZLE_B;
+        color_image_view.components.a = VK_COMPONENT_SWIZZLE_A;
+        color_image_view.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        color_image_view.subresourceRange.baseMipLevel = 0;
+        color_image_view.subresourceRange.levelCount = 1;
+        color_image_view.subresourceRange.baseArrayLayer = 0;
+        color_image_view.subresourceRange.layerCount = 1;
+        color_image_view.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        color_image_view.flags = 0;
+        color_image_view.image = image;
+
+        // samples set the image layout here... Maybe it's not necessary for us, because we can set it up
+        // in the render pass...?
+
+        auto dev = factory._device.get();
+        VkImageView viewRaw = nullptr;
+        auto result = vkCreateImageView(dev, &color_image_view, s_allocationCallbacks, &viewRaw);
+        _underlying = VulkanSharedPtr<VkImageView>(
+            viewRaw,
+            [dev](VkImageView view) { vkDestroyImageView(dev, view, s_allocationCallbacks); });
+        if (result != VK_SUCCESS)
+            Throw(VulkanAPIFailure(result, "Failed while creating depth stencil view of resource"));
+    }
+
+    class FrameBuffer
+    {
+    public:
+        FrameBuffer(
+            const ObjectFactory& factory,
+            IteratorRange<VkImageView*> views,
+            RenderPass& renderPass,
+            unsigned width, unsigned height);
+        ~FrameBuffer();
+
+    private:
+        VulkanSharedPtr<VkFramebuffer> _underlying;
+    };
+
+    FrameBuffer::FrameBuffer(
+        const ObjectFactory& factory,
+        IteratorRange<VkImageView*> views,
+        RenderPass& renderPass,
+        unsigned width, unsigned height)
+    {
+        VkFramebufferCreateInfo fb_info = {};
+        fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fb_info.pNext = nullptr;
+        fb_info.renderPass = renderPass.GetUnderlying();
+        fb_info.attachmentCount = (uint32_t)views.size();
+        fb_info.pAttachments = views.begin();
+        fb_info.width = width;
+        fb_info.height = height;
+        fb_info.layers = 1;
+
+        auto dev = factory._device.get();
+        VkFramebuffer rawFB = nullptr;
+        auto res = vkCreateFramebuffer(dev, &fb_info, s_allocationCallbacks, &rawFB);
+        _underlying = VulkanSharedPtr<VkFramebuffer>(
+            rawFB,
+            [dev](VkFramebuffer fb) { vkDestroyFramebuffer(dev, fb, s_allocationCallbacks); });
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failed while allocating frame buffer"));
+    }
+
+    FrameBuffer::~FrameBuffer() {}
+
     
     PresentationChain::PresentationChain(
-        VulkanSharedPtr<VkSwapchainKHR> swapChain, 
-        VulkanSharedPtr<VkDevice> device,
+        VulkanSharedPtr<VkSwapchainKHR> swapChain,
+        const ObjectFactory& factory,
         VkQueue queue, 
+        const BufferUploads::TextureDesc& bufferDesc,
         const void* platformValue)
     : _swapChain(std::move(swapChain))
-    , _device(std::move(device))
     , _queue(queue)
+    , _device(factory._device)
     , _platformValue(platformValue)
     {
         _activeImageIndex = ~0x0u;
@@ -672,7 +1118,56 @@ namespace RenderCore
         _images.reserve(images.size());
         for (auto i:images)
             _images.emplace_back(
-                Image { i, CreateBasicSemaphore(_device.get()) });
+                Image { i, CreateBasicSemaphore(factory) });
+
+        Resource depthStencilRes(
+            factory, 
+            BufferUploads::CreateDesc(
+                BufferUploads::BindFlag::DepthStencil,
+                0, BufferUploads::GPUAccess::Read | BufferUploads::GPUAccess::Write,
+                BufferUploads::TextureDesc::Plain2D(bufferDesc._width, bufferDesc._height, VK_FORMAT_D24_UNORM_S8_UINT, 1, 1, bufferDesc._samples),
+                "DefaultDepth"));
+        DepthStencilView dsv(factory, depthStencilRes);
+        
+        // create color target views for the swap chain images
+        std::vector<RenderTargetView> rtvs;
+        rtvs.reserve(images.size());
+        for (auto i:images)
+            rtvs.emplace_back(RenderTargetView(factory, i, (VkFormat)bufferDesc._nativePixelFormat));
+
+        // We must create a default render pass for rendering to the swap-chain images. 
+        // In the most basic rendering operations, we just render directly into these buffers.
+        // More complex applications may render into separate buffers, and then resolve onto 
+        // the swap chain buffers. In those cases, the use of PresentationChain may be radically
+        // different (eg, we don't even need to call AcquireNextImage() until we're ready to
+        // do the resolve).
+        // Also, more complex applications may want to combine the resolve operation into the
+        // render pass for rendering to offscreen buffers.
+
+        auto vkSamples = AsSampleCountFlagBits(bufferDesc._samples);
+        RenderPass::TargetInfo rtvAttachments[] = { RenderPass::TargetInfo((VkFormat)bufferDesc._nativePixelFormat, vkSamples) };
+
+        const VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
+        const bool createDepthBuffer = depthFormat != VK_FORMAT_UNDEFINED;
+        RenderPass::TargetInfo depthTargetInfo;
+        if (constant_expression<createDepthBuffer>::result())
+            depthTargetInfo = RenderPass::TargetInfo(depthFormat, vkSamples);
+        
+        RenderPass rp(factory, MakeIteratorRange(rtvAttachments), depthTargetInfo);
+
+        // Now create the frame buffers to match the render pass
+        VkImageView imageViews[2];
+        imageViews[1] = dsv.GetUnderlying();
+
+        std::vector<FrameBuffer> frameBuffers;
+        frameBuffers.reserve(images.size());
+        for (auto rtv:rtvs) {
+            imageViews[0] = rtv.GetUnderlying();
+            frameBuffers.emplace_back(
+                FrameBuffer(factory, MakeIteratorRange(imageViews), rp, bufferDesc._width, bufferDesc._height));
+        }
+
+        (void)frameBuffers;
     }
 
     PresentationChain::~PresentationChain()
