@@ -17,6 +17,8 @@
 #include "IDeviceVulkan.h"
 #include "../../Utility/IntrusivePtr.h"
 #include "Metal/IncludeVulkan.h"
+#include <memory>
+#include <type_traits>
 
 namespace RenderCore
 {
@@ -67,8 +69,15 @@ namespace RenderCore
 
 ////////////////////////////////////////////////////////////////////////////////
 
-	template<typename Type>
-		using VulkanSharedPtr = std::shared_ptr<typename std::remove_reference<decltype(*std::declval<Type>())>::type>;
+    namespace Internal
+    {
+        template<typename Type>
+            struct VulkanShared
+                { typedef std::shared_ptr<typename std::remove_reference<decltype(*std::declval<Type>())>::type> Ptr; };
+    }
+
+    template<typename Type>
+	    using VulkanSharedPtr = typename Internal::VulkanShared<Type>::Ptr;
 
 	class Device : public Base_Device, public std::enable_shared_from_this<Device>
     {
@@ -84,8 +93,8 @@ namespace RenderCore
         Device();
         ~Device();
     protected:
-		VulkanSharedPtr<VkInstance>			_instance;
-		VulkanSharedPtr<VkDevice>			_underlying;
+		VulkanSharedPtr<VkInstance>     _instance;
+		VulkanSharedPtr<VkDevice>		_underlying;
     };
 
     class DeviceVulkan : public Device, public Base_DeviceVulkan

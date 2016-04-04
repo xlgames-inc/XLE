@@ -185,7 +185,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const CompiledShaderByteCode&       GetCompiledVertexShader() const { return *(const CompiledShaderByteCode*)nullptr; }
         const CompiledShaderByteCode&       GetCompiledPixelShader() const { return *(const CompiledShaderByteCode*)nullptr; }
         const CompiledShaderByteCode*       GetCompiledGeometryShader() const { return nullptr; }
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return nullptr; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { static std::shared_ptr<::Assets::DependencyValidation> result; return result; }
 
         bool DynamicLinkingEnabled() const { return false; }
 
