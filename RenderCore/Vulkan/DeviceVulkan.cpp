@@ -170,15 +170,24 @@ namespace RenderCore
 		app_info.engineVersion = 1;
 		app_info.apiVersion = VK_MAKE_VERSION(1, 0, 0);
 
-		auto layers = EnumerateLayers();
+		auto availableLayers = EnumerateLayers();
+
+        std::vector<const char*> filteredLayers;
+        for (unsigned c=0; c<dimof(s_instanceLayers); ++c) {
+            auto i = std::find_if(
+                availableLayers.begin(), availableLayers.end(),
+                [c](VkLayerProperties layer) { return XlEqString(layer.layerName, s_instanceLayers[c]); });
+            if (i != availableLayers.end())
+                filteredLayers.push_back(s_instanceLayers[c]);
+        }
 
 		VkInstanceCreateInfo inst_info = {};
 		inst_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		inst_info.pNext = NULL;
 		inst_info.flags = 0;
 		inst_info.pApplicationInfo = &app_info;
-		inst_info.enabledLayerCount = (uint32_t)dimof(s_instanceLayers);
-		inst_info.ppEnabledLayerNames = s_instanceLayers;
+		inst_info.enabledLayerCount = (uint32_t)filteredLayers.size();
+		inst_info.ppEnabledLayerNames = AsPointer(filteredLayers.begin());
 		inst_info.enabledExtensionCount = (uint32_t)dimof(s_instanceExtensions);
 		inst_info.ppEnabledExtensionNames = s_instanceExtensions;
 
@@ -316,13 +325,23 @@ namespace RenderCore
 		queue_info.pQueuePriorities = queue_priorities;
 		queue_info.queueFamilyIndex = physDev._renderingQueueFamily;
 
+        auto availableLayers = EnumerateLayers();
+        std::vector<const char*> filteredLayers;
+        for (unsigned c=0; c<dimof(s_deviceLayers); ++c) {
+            auto i = std::find_if(
+                availableLayers.begin(), availableLayers.end(),
+                [c](VkLayerProperties layer) { return XlEqString(layer.layerName, s_deviceLayers[c]); });
+            if (i != availableLayers.end())
+                filteredLayers.push_back(s_deviceLayers[c]);
+        }
+
 		VkDeviceCreateInfo device_info = {};
 		device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		device_info.pNext = nullptr;
 		device_info.queueCreateInfoCount = 1;
 		device_info.pQueueCreateInfos = &queue_info;
-		device_info.enabledLayerCount = (uint32)dimof(s_deviceLayers);
-		device_info.ppEnabledLayerNames = s_deviceLayers;
+		device_info.enabledLayerCount = (uint32)filteredLayers.size();
+		device_info.ppEnabledLayerNames = AsPointer(filteredLayers.begin());
 		device_info.enabledExtensionCount = (uint32_t)dimof(s_deviceExtensions);
 		device_info.ppEnabledExtensionNames = s_deviceExtensions;
 		device_info.pEnabledFeatures = nullptr;

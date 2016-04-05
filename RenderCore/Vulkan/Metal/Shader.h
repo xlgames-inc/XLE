@@ -221,5 +221,5 @@ namespace RenderCore { namespace Metal_Vulkan
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    inline std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler() { return nullptr; }
+    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler();
 }}

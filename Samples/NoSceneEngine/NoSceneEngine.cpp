@@ -33,6 +33,8 @@
 
 #include <functional>
 
+#include "../../RenderCore/ShaderService.h"
+
 unsigned FrameRenderCount = 0;
 
 namespace Sample
@@ -132,6 +134,10 @@ namespace Sample
                 //      * the DeviceContext provides the methods we need for rendering.
             LogInfo << "Setup frame rig and rendering context";
             auto context = renderDevice->GetImmediateContext();
+
+            auto& shader = ::Assets::GetAsset<RenderCore::CompiledShaderByteCode>(
+                "game/xleres/basic.psh:copy:ps_*");
+            (void)shader;
 
                 //  Finally, we execute the frame loop
             for (;;) {
