@@ -11,11 +11,16 @@
 #include "../../ShaderLangUtil.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/InvalidAssetManager.h"
+#include "../../../Utility/StringUtils.h"
 
 #define EXCLUDE_PSTDINT
 #include "hlslcc.hpp"
 #include "ShaderLang.h"
 #include "../../SPIRV/GlslangToSpv.h"
+
+// for reflection
+#include "../../SPIRV/spirv.hpp"
+#include "../../SPIRV/disassemble.h"
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -243,6 +248,69 @@ namespace RenderCore { namespace Metal_Vulkan
             AsPointer(str.begin()), AsPointer(str.end()));
     }
 
+    class SPIRVReflection
+    {
+    public:
+        class MemberName
+        {
+        public:
+            unsigned _typeId;
+            unsigned _memberIndex;
+            StringSection<> _name;
+        };
+
+        class Name
+        {
+        public:
+            unsigned _objectId;
+            StringSection<> _name;
+        };
+
+        std::vector<MemberName> _memberNames;
+        std::vector<Name> _names;
+
+        SPIRVReflection(IteratorRange<uint32*> byteCode);
+    };
+
+    SPIRVReflection::SPIRVReflection(IteratorRange<uint32*> byteCode)
+    {
+        using namespace spv;
+
+        uint32* i = byteCode.begin() + 5;
+        while (i < byteCode.end()) {
+            // Instruction wordCount and opcode
+            unsigned int firstWord = *i;
+            unsigned wordCount = firstWord >> WordCountShift;
+            Op opCode = (Op)(firstWord & OpCodeMask);
+            auto paramStart = i+1;
+            i += wordCount;
+
+            switch (opCode) {
+            case OpMemberName:
+                // InstructionDesc[OpMemberName].operands.push(OperandId, "'Type'");
+                // InstructionDesc[OpMemberName].operands.push(OperandLiteralNumber, "'Member'");
+                // InstructionDesc[OpMemberName].operands.push(OperandLiteralString, "'Name'");
+                {
+                    auto type = paramStart[0];
+                    auto memberIndex = paramStart[1];
+                    auto name = MakeStringSection((const char*)&paramStart[2]);
+                    _memberNames.push_back(MemberName { type, memberIndex, name });
+                    break;
+                }
+
+            case OpName:
+                // InstructionDesc[OpName].operands.push(OperandId, "'Target'");
+                // InstructionDesc[OpName].operands.push(OperandLiteralString, "'Name'");
+                {
+                    auto type = paramStart[0];
+                    auto name = MakeStringSection((const char*)&paramStart[1]);
+                    _names.push_back(Name { type, name });
+                    break;
+                }
+            }
+        }
+    }
+
     static bool GLSLtoSPV(
         /*out*/ std::shared_ptr<std::vector<uint8>>& payload,
         /*out*/ std::shared_ptr<std::vector<uint8>>& errors,
@@ -280,11 +348,17 @@ namespace RenderCore { namespace Metal_Vulkan
         std::vector<unsigned> spirv;
         glslang::GlslangToSpv(*program.getIntermediate(shaderType), spirv);
 
+        SPIRVReflection reflection(MakeIteratorRange(spirv));
+
         auto spirvBlockSize = spirv.size() * sizeof(unsigned);
         payload = std::make_shared<std::vector<uint8>>(spirvBlockSize + sizeof(ShaderService::ShaderHeader));
 
         *(ShaderService::ShaderHeader*)AsPointer(payload->begin())
             = ShaderService::ShaderHeader { ShaderService::ShaderHeader::Version, false };
+
+        std::stringstream disassem;
+        spv::Disassemble(disassem, spirv);
+        auto d = disassem.str();
 
         std::memcpy(
             PtrAdd(AsPointer(payload->begin()), sizeof(ShaderService::ShaderHeader)),
