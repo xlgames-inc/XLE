@@ -9,7 +9,6 @@
 #include "DX11.h"
 #include "../../ShaderService.h"
 #include "../../../Assets/AssetsCore.h"
-#include "../../../Utility/Mixins.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Core/Types.h"
 #include <memory>
@@ -214,7 +213,7 @@ namespace RenderCore { namespace Metal_DX11
     ///                 Normally it's best to use the default compilation model.</item>
     ///     </list>
     ///
-    class ShaderProgram : noncopyable
+    class ShaderProgram
     {
     public:
         ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 

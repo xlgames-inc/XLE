@@ -19,7 +19,7 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler();
+    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateVulkanPrecompiler();
 }}
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -363,7 +363,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto result = HLSLToSPIRVCompiler::s_instance.lock();
         if (result) return std::move(result);
 
-        auto hlslCompiler = Metal_DX11::CreateLowLevelShaderCompiler();
+        auto hlslCompiler = Metal_DX11::CreateVulkanPrecompiler();
 
         result = std::make_shared<HLSLToSPIRVCompiler>(hlslCompiler);
         HLSLToSPIRVCompiler::s_instance = result;

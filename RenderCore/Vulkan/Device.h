@@ -18,6 +18,8 @@
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Utility/IntrusivePtr.h"
 #include "../../Utility/IteratorUtils.h"
+#include "Metal/VulkanCore.h"
+#include "Metal/ObjectFactory.h"
 #include "Metal/IncludeVulkan.h"
 #include <memory>
 #include <vector>
@@ -25,16 +27,6 @@
 
 namespace RenderCore
 {
-    namespace Internal
-    {
-        template<typename Type>
-            struct VulkanShared
-                { typedef std::shared_ptr<typename std::remove_reference<decltype(*std::declval<Type>())>::type> Ptr; };
-    }
-
-    template<typename Type>
-	    using VulkanSharedPtr = typename Internal::VulkanShared<Type>::Ptr;
-
     class SelectedPhysicalDevice
 	{
 	public:
@@ -42,12 +34,17 @@ namespace RenderCore
 		unsigned _renderingQueueFamily;
 	};
 
+    template<typename Type>
+        using VulkanSharedPtr = Metal_Vulkan::VulkanSharedPtr<Type>;
+
 ////////////////////////////////////////////////////////////////////////////////
 
-    namespace Metal_DX11 { class DeviceContext; class ObjectFactory; }
-
     class Device;
-    class ObjectFactory;
+
+    namespace Metal_Vulkan
+    {
+        class ObjectFactory;
+    }
 
 	class RenderPass
 	{
@@ -70,7 +67,7 @@ namespace RenderCore
 		VkRenderPass GetUnderlying() { return _underlying.get(); }
 
 		RenderPass(
-			const ObjectFactory& factory,
+			const Metal_Vulkan::ObjectFactory& factory,
 			IteratorRange<TargetInfo*> rtvAttachments,
 			TargetInfo dsvAttachment = TargetInfo());
 		RenderPass();
@@ -86,7 +83,7 @@ namespace RenderCore
 		VkFramebuffer GetUnderlying() { return _underlying.get(); }
 
 		FrameBuffer(
-			const ObjectFactory& factory,
+			const Metal_Vulkan::ObjectFactory& factory,
 			IteratorRange<VkImageView*> views,
 			RenderPass& renderPass,
 			unsigned width, unsigned height);
@@ -104,7 +101,7 @@ namespace RenderCore
 		VkDeviceMemory GetDeviceMemory() const { return _mem.get(); }
 
 		Resource(
-			const ObjectFactory& factory,
+			const Metal_Vulkan::ObjectFactory& factory,
 			const BufferUploads::BufferDesc& desc);
 		Resource();
 		~Resource();
@@ -126,15 +123,15 @@ namespace RenderCore
 	class DepthStencilView : public ImageView
 	{
 	public:
-		DepthStencilView(const ObjectFactory& factory, Resource& res);
+		DepthStencilView(const Metal_Vulkan::ObjectFactory& factory, Resource& res);
 		DepthStencilView();
 	};
 
 	class RenderTargetView : public ImageView
 	{
 	public:
-		RenderTargetView(const ObjectFactory& factory, Resource& res);
-		RenderTargetView(const ObjectFactory& factory, VkImage image, VkFormat fmt);
+		RenderTargetView(const Metal_Vulkan::ObjectFactory& factory, Resource& res);
+		RenderTargetView(const Metal_Vulkan::ObjectFactory& factory, VkImage image, VkFormat fmt);
 		RenderTargetView();
 	};
 
@@ -144,28 +141,12 @@ namespace RenderCore
 		enum class BufferType { Primary, Secondary };
 		VulkanSharedPtr<VkCommandBuffer> CreateBuffer(BufferType type);
 
-		CommandPool(const ObjectFactory& factory, unsigned queueFamilyIndex);
+		CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex);
 		CommandPool();
 		~CommandPool();
 	private:
 		VulkanSharedPtr<VkCommandPool> _pool;
 		VulkanSharedPtr<VkDevice> _device;
-	};
-
-	class ObjectFactory
-	{
-	public:
-		VkPhysicalDevice            _physDev;
-		VulkanSharedPtr<VkDevice>   _device;
-
-		unsigned FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask = 0) const;
-
-		ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device);
-		ObjectFactory();
-		~ObjectFactory();
-
-	private:
-		VkPhysicalDeviceMemoryProperties _memProps;
 	};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,7 +164,7 @@ namespace RenderCore
         PresentationChain(
 			VulkanSharedPtr<VkSurfaceKHR> surface, 
 			VulkanSharedPtr<VkSwapchainKHR> swapChain,			
-            const ObjectFactory& factory,
+            const Metal_Vulkan::ObjectFactory& factory,
             VkQueue queue, 
             const BufferUploads::TextureDesc& bufferDesc,
             const void* platformValue);
@@ -266,7 +247,7 @@ namespace RenderCore
 		VulkanSharedPtr<VkDevice>		_underlying;
         SelectedPhysicalDevice          _physDev;
 		CommandPool						_renderingCommandPool;
-		ObjectFactory					_objectFactory;
+		Metal_Vulkan::ObjectFactory		_objectFactory;
 
 		std::shared_ptr<ThreadContext>	_foregroundPrimaryContext;
     };

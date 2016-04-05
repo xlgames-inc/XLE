@@ -89,7 +89,7 @@ namespace RenderCore { namespace Metal_DX11
             REFIID  riid,
             LPVOID  *ppReflector) const;
 
-        D3DShaderCompiler();
+        D3DShaderCompiler(IteratorRange<D3D10_SHADER_MACRO*> fixedDefines);
         ~D3DShaderCompiler();
 
         static std::shared_ptr<D3DShaderCompiler> GetInstance() { return s_instance.lock(); }
@@ -101,6 +101,8 @@ namespace RenderCore { namespace Metal_DX11
 
         static std::weak_ptr<D3DShaderCompiler> s_instance;
         friend std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler();
+
+        std::vector<D3D10_SHADER_MACRO> _fixedDefines;
     };
 
         ////////////////////////////////////////////////////////////
@@ -271,7 +273,9 @@ namespace RenderCore { namespace Metal_DX11
     static const char s_shaderModelDef_D[] = "DSH";
     static const char s_shaderModelDef_C[] = "CSH";
 
-    static std::vector<D3D10_SHADER_MACRO> MakeDefinesTable(const char definesTable[], const char shaderModel[], std::string& definesCopy)
+    static std::vector<D3D10_SHADER_MACRO> MakeDefinesTable(
+        const char definesTable[], const char shaderModel[], std::string& definesCopy,
+        IteratorRange<const D3D10_SHADER_MACRO*> fixedDefines)
     {
         definesCopy = definesTable?definesTable:std::string();
         unsigned definesCount = 1;
@@ -281,11 +285,8 @@ namespace RenderCore { namespace Metal_DX11
         }
             
         std::vector<D3D10_SHADER_MACRO> arrayOfDefines;
-        arrayOfDefines.reserve(4+definesCount);
-        arrayOfDefines.push_back(MakeShaderMacro("D3D11", "1"));
-        #if defined(_DEBUG)
-            arrayOfDefines.push_back(MakeShaderMacro("_DEBUG", "1"));
-        #endif
+        arrayOfDefines.reserve(2+fixedDefines.size()+definesCount);
+        arrayOfDefines.insert(arrayOfDefines.begin(), fixedDefines.begin(), fixedDefines.end());
 
         const char* shaderModelStr = nullptr;
         switch (tolower(shaderModel[0])) {
@@ -1258,7 +1259,7 @@ namespace RenderCore { namespace Metal_DX11
         ID3DBlob* codeResult = nullptr, *errorResult = nullptr;
 
         std::string definesCopy;
-        auto arrayOfDefines = MakeDefinesTable(definesTable, shaderPath._shaderModel, definesCopy);
+        auto arrayOfDefines = MakeDefinesTable(definesTable, shaderPath._shaderModel, definesCopy, MakeIteratorRange(_fixedDefines));
 
         ResChar shaderModel[64];
         AdaptShaderModel(shaderModel, dimof(shaderModel), shaderPath._shaderModel);
@@ -1603,7 +1604,8 @@ namespace RenderCore { namespace Metal_DX11
 
     std::weak_ptr<D3DShaderCompiler> D3DShaderCompiler::s_instance;
 
-    D3DShaderCompiler::D3DShaderCompiler() 
+    D3DShaderCompiler::D3DShaderCompiler(IteratorRange<D3D10_SHADER_MACRO*> fixedDefines)
+    : _fixedDefines(fixedDefines.begin(), fixedDefines.end())
     {
         _module = (HMODULE)INVALID_HANDLE_VALUE;
     }
@@ -1648,9 +1650,26 @@ namespace RenderCore { namespace Metal_DX11
         auto result = D3DShaderCompiler::s_instance.lock();
         if (result) return std::move(result);
 
-        result = std::make_shared<D3DShaderCompiler>();
+        D3D10_SHADER_MACRO fixedDefines[] = { 
+            MakeShaderMacro("D3D11", "1")
+            #if defined(_DEBUG)
+                , MakeShaderMacro("_DEBUG", "1")
+            #endif
+        };
+        result = std::make_shared<D3DShaderCompiler>(MakeIteratorRange(fixedDefines));
         D3DShaderCompiler::s_instance = result;
         return std::move(result);
+    }
+
+    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateVulkanPrecompiler()
+    {
+        D3D10_SHADER_MACRO fixedDefines[] = { 
+            MakeShaderMacro("VULKAN", "1")
+            #if defined(_DEBUG)
+                , MakeShaderMacro("_DEBUG", "1")
+            #endif
+        };
+        return std::make_shared<D3DShaderCompiler>(MakeIteratorRange(fixedDefines));
     }
 
 }}

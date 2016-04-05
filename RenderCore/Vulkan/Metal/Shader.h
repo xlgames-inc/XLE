@@ -8,45 +8,55 @@
 
 #include "../../../Assets/AssetsCore.h"
 #include "../../ShaderService.h"
-
-namespace RenderCore { class CompiledShaderByteCode; }
+#include "VulkanCore.h"
+#include "IncludeVulkan.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class VertexShader
+    class Shader
     {
     public:
-            //
-            //          Resource interface
-            //
-		explicit VertexShader(const ::Assets::ResChar initializer[]) {}
-        explicit VertexShader(const CompiledShaderByteCode& byteCode) {}
-        VertexShader() {}
-        ~VertexShader() {}
+        typedef VkShaderModule UnderlyingType;
+        UnderlyingType  GetUnderlying() const { return _underlying.get(); }
+
+        Shader();
+        Shader(const CompiledShaderByteCode& byteCode);
+        ~Shader();
+    protected:
+        VulkanSharedPtr<VkShaderModule> _underlying;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class PixelShader
+    class VertexShader : public Shader
     {
     public:
             //
             //          Resource interface
             //
-        explicit PixelShader(const ::Assets::ResChar initializer[]) {}
-        explicit PixelShader(const CompiledShaderByteCode& byteCode) {}
-        PixelShader() {}
-        ~PixelShader() {}
+		explicit VertexShader(const ::Assets::ResChar initializer[]);
+        explicit VertexShader(const CompiledShaderByteCode& byteCode);
+        VertexShader();
+    };
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class PixelShader : public Shader
+    {
+    public:
+            //
+            //          Resource interface
+            //
+        explicit PixelShader(const ::Assets::ResChar initializer[]);
+        explicit PixelShader(const CompiledShaderByteCode& byteCode);
+        PixelShader();
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     class InputElementDesc;
 
-    class GeometryShader
+    class GeometryShader : public Shader
     {
     public:
         class StreamOutputInitializers
@@ -72,136 +82,95 @@ namespace RenderCore { namespace Metal_Vulkan
             //
             //          Resource interface
             //
-        GeometryShader(const ::Assets::ResChar initializer[], const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers()) {}
-        explicit GeometryShader(const CompiledShaderByteCode& byteCode, const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers()) {}
-        GeometryShader() {}
-        ~GeometryShader() {}
-        GeometryShader(GeometryShader&& moveFrom) {}
-        GeometryShader& operator=(GeometryShader&& moveFrom) {}
+        GeometryShader(const ::Assets::ResChar initializer[], const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
+        explicit GeometryShader(const CompiledShaderByteCode& byteCode, const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
+        GeometryShader();
 
-        static void SetDefaultStreamOutputInitializers(const StreamOutputInitializers&) {}
-        static const StreamOutputInitializers& GetDefaultStreamOutputInitializers() {}
+        static void SetDefaultStreamOutputInitializers(const StreamOutputInitializers&);
+        static const StreamOutputInitializers& GetDefaultStreamOutputInitializers();
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class HullShader
+    class HullShader : public Shader
     {
     public:
-        explicit HullShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr) {}
-        explicit HullShader(const CompiledShaderByteCode& byteCode) {}
-        ~HullShader() {}
+        explicit HullShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
+        explicit HullShader(const CompiledShaderByteCode& byteCode);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class DomainShader
+    class DomainShader : public Shader
     {
     public:
-        explicit DomainShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr) {}
-        explicit DomainShader(const CompiledShaderByteCode& byteCode) {}
-        ~DomainShader() {}
+        explicit DomainShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
+        explicit DomainShader(const CompiledShaderByteCode& byteCode);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ComputeShader
+    class ComputeShader : public Shader
     {
     public:
-        explicit ComputeShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr) {}
-        explicit ComputeShader(const CompiledShaderByteCode& byteCode) {}
-        ~ComputeShader() {}
+        explicit ComputeShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
+        explicit ComputeShader(const CompiledShaderByteCode& byteCode);
+        ~ComputeShader();
+
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
+    private:
+        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ///
-    /// <summary>A set of shaders for each stage of the shader pipeline</summary>
-    ///
-    /// A ShaderProgram contains a set of shaders, each of which will be bound to the pipeline
-    /// at the same time. Most of the time, it will contain just a vertex shader and a pixel shader.
-    /// 
-    /// In DirectX, it's easy to manage shaders for different stages of the pipeline separately. But
-    /// OpenGL prefers to combine all of the shaders together into one shader program object.
-    ///
-    ///     The DirectX11 shader pipeline looks like this:
-    ///         <list>
-    ///             <item>Vertex Shader</item>
-    ///             <item>Hull Shader</item>
-    ///             <item>(fixed function tessellator)</item>
-    ///             <item>Domain shader</item>
-    ///             <item>Geometry shader</item>
-    ///             <item>Pixel Shader</item>
-    ///         </list>
-    ///
-    /// Normally ShaderProgram objects are created and managed using the "Assets::GetAsset" or "Assets::GetAssetDep"
-    /// functions.
-    /// For example:
-    /// <code>\code
-    ///     auto& shader = Assets::GetAssetDep<ShaderProgram>("shaders/basic.vsh:main:vs_*", "shaders/basic.psh:main:ps_*");
-    /// \endcode</code>
-    ///
-    /// But it's also possible to construct a ShaderProgram as a basic object. 
-    /// <code>\code
-    ///     ShaderProgram myShaderProgram("shaders/basic.vsh:main:vs_*", "shaders/basic.psh:main:ps_*");
-    /// \endcode</code>
-    ///
-    /// Note that the parameters ":main:vs_*" specify the entry point and shader compilation model.
-    ///     <list>
-    ///         <item>":main" -- this is the entry point function. That is, there is a function in
-    ///                 the shader file called "main." It will take the shader input parameters and 
-    ///                 return the shader output values.</item>
-    ///         <item>":vs_*" -- this is the compilation model. "vs" means vertex shader. The "_*"
-    ///                 means to use the default compilation model for the current device. But it can 
-    ///                 be replaced with an appropriate compilation model 
-    ///                     (eg, vs_5_0, vs_4_0_level_9_1, ps_3_0, etc)
-    ///                 Normally it's best to use the default compilation model.</item>
-    ///     </list>
-    ///
     class ShaderProgram
     {
     public:
         ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
-                        const ::Assets::ResChar fragmentShaderInitializer[]) {}
+                        const ::Assets::ResChar fragmentShaderInitializer[]);
         
         ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
                         const ::Assets::ResChar fragmentShaderInitializer[],
-                        const ::Assets::ResChar definesTable[]) {}
+                        const ::Assets::ResChar definesTable[]);
 
         ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
                         const ::Assets::ResChar geometryShaderInitializer[],
                         const ::Assets::ResChar fragmentShaderInitializer[],
-                        const ::Assets::ResChar definesTable[]) {}
+                        const ::Assets::ResChar definesTable[]);
 
         ShaderProgram(  const CompiledShaderByteCode& compiledVertexShader, 
-                        const CompiledShaderByteCode& compiledFragmentShader) {}
+                        const CompiledShaderByteCode& compiledFragmentShader);
 
-		ShaderProgram() {}
-        ~ShaderProgram() {}
+		ShaderProgram();
+        ~ShaderProgram();
 
-        const VertexShader&                 GetVertexShader() const { return *(const VertexShader*)nullptr; }
-        const GeometryShader&               GetGeometryShader() const { return *(const GeometryShader*)nullptr; }
-        const PixelShader&                  GetPixelShader() const { return *(const PixelShader*)nullptr; }
-        const CompiledShaderByteCode&       GetCompiledVertexShader() const { return *(const CompiledShaderByteCode*)nullptr; }
-        const CompiledShaderByteCode&       GetCompiledPixelShader() const { return *(const CompiledShaderByteCode*)nullptr; }
-        const CompiledShaderByteCode*       GetCompiledGeometryShader() const { return nullptr; }
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { static std::shared_ptr<::Assets::DependencyValidation> result; return result; }
+        const VertexShader&                 GetVertexShader() const             { return _vertexShader; }
+        const GeometryShader&               GetGeometryShader() const           { return _geometryShader; }
+        const PixelShader&                  GetPixelShader() const              { return _pixelShader; }
+        const CompiledShaderByteCode&       GetCompiledVertexShader() const     { return *_compiledVertexShader; }
+        const CompiledShaderByteCode&       GetCompiledPixelShader() const      { return *_compiledPixelShader; }
+        const CompiledShaderByteCode*       GetCompiledGeometryShader() const   { return _compiledGeometryShader; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
 
-        bool DynamicLinkingEnabled() const { return false; }
+        bool DynamicLinkingEnabled() const;
 
-		ShaderProgram(ShaderProgram&&) never_throws {}
-        ShaderProgram& operator=(ShaderProgram&&) never_throws { return *this; }
+		ShaderProgram(ShaderProgram&&) never_throws;
+        ShaderProgram& operator=(ShaderProgram&&) never_throws;
+
         ShaderProgram(const ShaderProgram&) = delete;
         ShaderProgram& operator=(const ShaderProgram&) = delete;
+
+    protected:
+        const CompiledShaderByteCode*           _compiledVertexShader;
+        const CompiledShaderByteCode*           _compiledPixelShader;
+        const CompiledShaderByteCode*           _compiledGeometryShader;
+        VertexShader                            _vertexShader;
+        PixelShader                             _pixelShader;
+        GeometryShader                          _geometryShader;
+        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 
-    ///
-    /// <summary>A shader program with tessellation support</summary>
-    ///
-    /// A DeepShaderProgram is the same as ShaderProgram, but with tessellation support. Most
-    /// ShaderPrograms don't need tessellation shaders, so for simplicity they are excluded
-    /// from the default ShaderProgram object.
-    ///
     class DeepShaderProgram : public ShaderProgram
     {
     public:
@@ -210,13 +179,22 @@ namespace RenderCore { namespace Metal_Vulkan
                             const ::Assets::ResChar fragmentShaderInitializer[],
                             const ::Assets::ResChar hullShaderInitializer[],
                             const ::Assets::ResChar domainShaderInitializer[],
-							const ::Assets::ResChar definesTable[]) {}
-		~DeepShaderProgram() {}
+                            const ::Assets::ResChar definesTable[]);
+        ~DeepShaderProgram();
 
-        const HullShader&                   GetHullShader() const { return *(const HullShader*)nullptr; }
-        const DomainShader&                 GetDomainShader() const { return *(const DomainShader*)nullptr; }
-        const CompiledShaderByteCode&       GetCompiledHullShader() const { return *(const CompiledShaderByteCode*)nullptr; }
-        const CompiledShaderByteCode&       GetCompiledDomainShader() const { return *(const CompiledShaderByteCode*)nullptr; }
+        const HullShader&                   GetHullShader() const               { return _hullShader; }
+        const DomainShader&                 GetDomainShader() const             { return _domainShader; }
+        const CompiledShaderByteCode&       GetCompiledHullShader() const       { return _compiledHullShader; }
+        const CompiledShaderByteCode&       GetCompiledDomainShader() const     { return _compiledDomainShader; }
+
+    private:
+        const CompiledShaderByteCode&   _compiledHullShader;
+        const CompiledShaderByteCode&   _compiledDomainShader;
+        HullShader                      _hullShader;
+        DomainShader                    _domainShader;
+
+        DeepShaderProgram(const DeepShaderProgram&);
+        DeepShaderProgram& operator=(const DeepShaderProgram&);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

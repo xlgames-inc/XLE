@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define SELECT_VULKAN
+
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/MainInputHandler.h"
 #include "../../PlatformRig/InputTranslator.h"
@@ -34,6 +36,7 @@
 #include <functional>
 
 #include "../../RenderCore/ShaderService.h"
+#include "../../RenderCore/Metal/Shader.h"
 
 unsigned FrameRenderCount = 0;
 
@@ -135,8 +138,8 @@ namespace Sample
             LogInfo << "Setup frame rig and rendering context";
             auto context = renderDevice->GetImmediateContext();
 
-            auto& shader = ::Assets::GetAsset<RenderCore::CompiledShaderByteCode>(
-                "game/xleres/basic.psh:copy:ps_*");
+            auto& shader = ::Assets::GetAsset<RenderCore::Metal::PixelShader>(
+                "game/xleres/deferred/basic.psh:main:ps_*");
             (void)shader;
 
                 //  Finally, we execute the frame loop

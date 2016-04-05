@@ -7,7 +7,7 @@
 #include "../MainGeometry.h"
 #include "../Objects/IllumShader/PerPixel.h"
 
-#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1)) && (VULKAN!=1)
 	[earlydepthstencil]
 #endif
 GBufferEncoded main(VSOutput geo)

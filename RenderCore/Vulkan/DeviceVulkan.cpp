@@ -5,6 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Device.h"
+#include "Metal/VulkanCore.h"
+#include "Metal/ObjectFactory.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
@@ -20,8 +22,6 @@ namespace RenderCore
 		return ConsoleRig::GlobalServices::GetCrossModule()._services.CallDefault<std::string>(
 			ConstHash64<'appn', 'ame'>::Value, std::string("<<unnamed>>"));
 	}
-
-	static VkAllocationCallbacks* s_allocationCallbacks = nullptr;
 
 	static const char* s_instanceExtensions[] = 
 	{
@@ -62,78 +62,7 @@ namespace RenderCore
 		"VK_LAYER_GOOGLE_unique_objects"
 	};
 
-    static const char* AsString(VkResult res)
-    {
-        // String names for standard vulkan error codes
-        switch (res)
-        {
-                // success codes
-            case VK_SUCCESS: return "Success";
-            case VK_NOT_READY: return "Not Ready";
-            case VK_TIMEOUT: return "Timeout";
-            case VK_EVENT_SET: return "Event Set";
-            case VK_EVENT_RESET: return "Event Reset";
-            case VK_INCOMPLETE: return "Incomplete";
-
-                // error codes
-            case VK_ERROR_OUT_OF_HOST_MEMORY: return "Out of host memory";
-            case VK_ERROR_OUT_OF_DEVICE_MEMORY: return "Out of device memory";
-            case VK_ERROR_INITIALIZATION_FAILED: return "Initialization failed";
-            case VK_ERROR_DEVICE_LOST: return "Device lost";
-            case VK_ERROR_MEMORY_MAP_FAILED: return "Memory map failed";
-            case VK_ERROR_LAYER_NOT_PRESENT: return "Layer not present";
-            case VK_ERROR_EXTENSION_NOT_PRESENT: return "Extension not present";
-            case VK_ERROR_FEATURE_NOT_PRESENT: return "Feature not present";
-            case VK_ERROR_INCOMPATIBLE_DRIVER: return "Incompatible driver";
-            case VK_ERROR_TOO_MANY_OBJECTS: return "Too many objects";
-            case VK_ERROR_FORMAT_NOT_SUPPORTED: return "Format not supported";
-
-                // kronos extensions
-            case VK_ERROR_SURFACE_LOST_KHR: return "[KHR] Surface lost";
-            case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR: return "[KHR] Native window in use";
-            case VK_SUBOPTIMAL_KHR: return "[KHR] Suboptimal";
-            case VK_ERROR_OUT_OF_DATE_KHR: return "[KHR] Out of date";
-            case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR: return "[KHR] Incompatible display";
-            case VK_ERROR_VALIDATION_FAILED_EXT: return "[KHR] Validation failed";
-
-                // NV extensions
-            case VK_ERROR_INVALID_SHADER_NV: return "[NV] Invalid shader";
-
-            default: return "<<unknown>>";
-        }
-    }
-
-    class VulkanAPIFailure : public Exceptions::BasicLabel
-    {
-    public:
-        VulkanAPIFailure(VkResult res, const char message[]) : Exceptions::BasicLabel("%s [%s, %i]", message, AsString(res), res) {}
-    };
-
-    
-
-    unsigned ObjectFactory::FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask) const
-    {
-        // Search memtypes to find first index with those properties
-        for (uint32_t i=0; i<dimof(_memProps.memoryTypes); i++) {
-            if ((memoryTypeBits & 1) == 1) {
-                // Type is available, does it match user properties?
-                if ((_memProps.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask)
-                    return i;
-            }
-            memoryTypeBits >>= 1;
-        }
-        return ~0x0u;
-    }
-
-    ObjectFactory::ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device)
-    : _physDev(physDev), _device(device)
-    {
-        _memProps = {};
-        vkGetPhysicalDeviceMemoryProperties(physDev, &_memProps);
-    }
-
-	ObjectFactory::ObjectFactory() {}
-	ObjectFactory::~ObjectFactory() {}
+    using VulkanAPIFailure = Metal_Vulkan::VulkanAPIFailure;
 
 	static std::vector<VkLayerProperties> EnumerateLayers()
 	{
@@ -192,13 +121,13 @@ namespace RenderCore
 		inst_info.ppEnabledExtensionNames = s_instanceExtensions;
 
 		VkInstance rawResult = nullptr;
-		VkResult res = vkCreateInstance(&inst_info, s_allocationCallbacks, &rawResult);
+		VkResult res = vkCreateInstance(&inst_info, Metal_Vulkan::g_allocationCallbacks, &rawResult);
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure in Vulkan instance construction. You must have an up-to-date Vulkan driver installed."));
 
 		return VulkanSharedPtr<VkInstance>(
 			rawResult,
-			[](VkInstance inst) { vkDestroyInstance(inst, s_allocationCallbacks); });
+			[](VkInstance inst) { vkDestroyInstance(inst, Metal_Vulkan::g_allocationCallbacks); });
 	}
 
 	static std::vector<VkPhysicalDevice> EnumeratePhysicalDevices(VkInstance vulkan)
@@ -259,7 +188,7 @@ namespace RenderCore
 			createInfo.hwnd = (HWND)platformValue;
 
 			VkSurfaceKHR rawResult = nullptr;
-			auto res = vkCreateWin32SurfaceKHR(vulkan, &createInfo, s_allocationCallbacks, &rawResult);
+			auto res = vkCreateWin32SurfaceKHR(vulkan, &createInfo, Metal_Vulkan::g_allocationCallbacks, &rawResult);
 			if (res != VK_SUCCESS)
 				Throw(VulkanAPIFailure(res, "Failure in Vulkan surface construction. You must have an up-to-date Vulkan driver installed."));
 
@@ -267,7 +196,7 @@ namespace RenderCore
 			//			pointer easily enough... But I guess this approach is in-line with Vulkan design ideas.
 			return VulkanSharedPtr<VkSurfaceKHR>(
 				rawResult,
-				[vulkan](VkSurfaceKHR inst) { vkDestroySurfaceKHR(vulkan, inst, s_allocationCallbacks); });
+				[vulkan](VkSurfaceKHR inst) { vkDestroySurfaceKHR(vulkan, inst, Metal_Vulkan::g_allocationCallbacks); });
 		#else
 			#pragma Windowing platform not supported
 		#endif
@@ -347,13 +276,12 @@ namespace RenderCore
 		device_info.pEnabledFeatures = nullptr;
 
 		VkDevice rawResult = nullptr;
-		auto res = vkCreateDevice(physDev._dev, &device_info, s_allocationCallbacks, &rawResult);
+		auto res = vkCreateDevice(physDev._dev, &device_info, Metal_Vulkan::g_allocationCallbacks, &rawResult);
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while creating Vulkan logical device. You must have an up-to-date Vulkan driver installed."));
-
 		return VulkanSharedPtr<VkDevice>(
 			rawResult,
-			[](VkDevice dev) { vkDestroyDevice(dev, s_allocationCallbacks); });
+			[](VkDevice dev) { vkDestroyDevice(dev, Metal_Vulkan::g_allocationCallbacks); });
 	}
 
     Device::Device()
@@ -372,6 +300,7 @@ namespace RenderCore
 
     Device::~Device()
     {
+        Metal_Vulkan::SetDefaultObjectFactory(nullptr);
 		if (_underlying.get())
 			vkDeviceWaitIdle(_underlying.get());
     }
@@ -466,23 +395,10 @@ namespace RenderCore
 		return result;
 	}
 
-	CommandPool::CommandPool(const ObjectFactory& factory, unsigned queueFamilyIndex)
-	: _device(factory._device)
+	CommandPool::CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex)
+	: _device(factory.GetDevice())
 	{
-		VkCommandPoolCreateInfo cmd_pool_info = {};
-		cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		cmd_pool_info.pNext = nullptr;
-		cmd_pool_info.queueFamilyIndex = queueFamilyIndex;
-		cmd_pool_info.flags = 0;
-
-		auto dev = factory._device.get();
-		VkCommandPool rawPool = nullptr;
-		auto res = vkCreateCommandPool(dev, &cmd_pool_info, s_allocationCallbacks, &rawPool);
-		_pool = VulkanSharedPtr<VkCommandPool>(
-			rawPool,
-			[dev](VkCommandPool pool) { vkDestroyCommandPool(dev, pool, s_allocationCallbacks); });
-		if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while creating command pool"));
+		_pool = factory.CreateCommandPool(queueFamilyIndex);
 	}
 
 	CommandPool::CommandPool() {}
@@ -495,12 +411,14 @@ namespace RenderCore
 		if (!_underlying) {
 			_physDev = SelectPhysicalDeviceForRendering(_instance.get(), surface.get());
 			_underlying = CreateUnderlyingDevice(_physDev);
-			_objectFactory = ObjectFactory(_physDev._dev, _underlying);
+			_objectFactory = Metal_Vulkan::ObjectFactory(_physDev._dev, _underlying);
 			_renderingCommandPool = CommandPool(_objectFactory, _physDev._renderingQueueFamily);
 
 			_foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
 				shared_from_this(), 
 				_renderingCommandPool.CreateBuffer(CommandPool::BufferType::Primary));
+
+            Metal_Vulkan::SetDefaultObjectFactory(&_objectFactory);
 		}
 
         // The following is based on the "initswapchain" sample from the vulkan SDK
@@ -569,10 +487,10 @@ namespace RenderCore
 
         auto underlyingDev = _underlying.get();
         VkSwapchainKHR swapChainRaw = nullptr;
-        res = vkCreateSwapchainKHR(underlyingDev, &swapChainInfo, s_allocationCallbacks, &swapChainRaw);
+        res = vkCreateSwapchainKHR(underlyingDev, &swapChainInfo, Metal_Vulkan::g_allocationCallbacks, &swapChainRaw);
         VulkanSharedPtr<VkSwapchainKHR> result(
             swapChainRaw,
-            [underlyingDev](VkSwapchainKHR chain) { vkDestroySwapchainKHR(underlyingDev, chain, s_allocationCallbacks); } );
+            [underlyingDev](VkSwapchainKHR chain) { vkDestroySwapchainKHR(underlyingDev, chain, Metal_Vulkan::g_allocationCallbacks); } );
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failure while creating swap chain"));
 
@@ -644,23 +562,10 @@ namespace RenderCore
         return nullptr;
     }
 
-	VkInstance DeviceVulkan::GetVulkanInstance()
-    {
-        return _instance.get();
-    }
-
-	VkDevice DeviceVulkan::GetUnderlyingDevice()
-    {
-        return _underlying.get();
-    }
-
-	DeviceVulkan::DeviceVulkan()
-    {
-    }
-
-	DeviceVulkan::~DeviceVulkan()
-    {
-    }
+	VkInstance DeviceVulkan::GetVulkanInstance() { return _instance.get(); }
+	VkDevice DeviceVulkan::GetUnderlyingDevice() { return _underlying.get(); }
+	DeviceVulkan::DeviceVulkan() { }
+	DeviceVulkan::~DeviceVulkan() { }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -826,29 +731,13 @@ namespace RenderCore
         }
     }
 
-    static VulkanSharedPtr<VkSemaphore> CreateBasicSemaphore(const ObjectFactory& factory)
+    static VulkanSharedPtr<VkSemaphore> CreateBasicSemaphore(const Metal_Vulkan::ObjectFactory& factory)
     {
-        VkSemaphoreCreateInfo presentCompleteSemaphoreCreateInfo;
-        presentCompleteSemaphoreCreateInfo.sType =
-            VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        presentCompleteSemaphoreCreateInfo.pNext = NULL;
-        presentCompleteSemaphoreCreateInfo.flags = 0;
-
-        auto dev = factory._device.get();
-        VkSemaphore rawPtr = nullptr;
-        auto res = vkCreateSemaphore(
-            dev, &presentCompleteSemaphoreCreateInfo,
-            s_allocationCallbacks, &rawPtr);
-        VulkanSharedPtr<VkSemaphore> result(
-            rawPtr,
-            [dev](VkSemaphore sem) { vkDestroySemaphore(dev, sem, s_allocationCallbacks); });
-        if (res != VK_SUCCESS)
-            Throw(VulkanAPIFailure(res, "Failure while creating Vulkan semaphore"));
-        return std::move(result);
+        return factory.CreateSemaphore();
     }
 
     RenderPass::RenderPass(
-        const ObjectFactory& factory,
+        const Metal_Vulkan::ObjectFactory& factory,
         IteratorRange<TargetInfo*> rtvAttachments,
         TargetInfo dsvAttachment)
     {
@@ -942,14 +831,7 @@ namespace RenderCore
         rp_info.dependencyCount = 0;
         rp_info.pDependencies = nullptr;
 
-        auto dev = factory._device.get();
-        VkRenderPass rawPtr = nullptr;
-        auto res = vkCreateRenderPass(dev, &rp_info, s_allocationCallbacks, &rawPtr);
-        _underlying = VulkanSharedPtr<VkRenderPass>(
-            rawPtr,
-            [dev](VkRenderPass pass) { vkDestroyRenderPass(dev, pass, s_allocationCallbacks ); });
-        if (res != VK_SUCCESS)
-            Throw(VulkanAPIFailure(res, "Failure while creating render pass"));
+        _underlying = factory.CreateRenderPass(rp_info);
     }
 
 	RenderPass::RenderPass() {}
@@ -978,29 +860,16 @@ namespace RenderCore
         }
     }
 
-    static VulkanSharedPtr<VkDeviceMemory> AllocateDeviceMemory(const ObjectFactory& factory, VkMemoryRequirements memReqs)
+    static VulkanSharedPtr<VkDeviceMemory> AllocateDeviceMemory(
+        const Metal_Vulkan::ObjectFactory& factory, VkMemoryRequirements memReqs)
     {
-        VkMemoryAllocateInfo mem_alloc = {};
-        mem_alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        mem_alloc.pNext = nullptr;
-        mem_alloc.allocationSize = memReqs.size;
-        mem_alloc.memoryTypeIndex = factory.FindMemoryType(memReqs.memoryTypeBits);
-        if (mem_alloc.memoryTypeIndex >= 32)
+        auto type = factory.FindMemoryType(memReqs.memoryTypeBits);
+        if (type >= 32)
             Throw(Exceptions::BasicLabel("Could not find compatible memory type for image"));
-
-        auto dev = factory._device.get();
-        VkDeviceMemory rawMem = nullptr;
-        auto res = vkAllocateMemory(dev, &mem_alloc, s_allocationCallbacks, &rawMem);
-        auto mem = VulkanSharedPtr<VkDeviceMemory>(
-            rawMem,
-            [dev](VkDeviceMemory mem) { vkFreeMemory(dev, mem, s_allocationCallbacks); });
-        if (res != VK_SUCCESS)
-            Throw(VulkanAPIFailure(res, "Failed while allocating device memory for image"));
-
-        return mem;
+        return factory.AllocateMemory(memReqs.size, type);
     }
 
-    Resource::Resource(const ObjectFactory& factory, const BufferUploads::BufferDesc& desc)
+    Resource::Resource(const Metal_Vulkan::ObjectFactory& factory, const BufferUploads::BufferDesc& desc)
     : _desc(desc)
     {
         if (desc._type == BufferUploads::BufferDesc::Type::Texture) {
@@ -1026,21 +895,15 @@ namespace RenderCore
             image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
             image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
             image_info.flags = 0;
-            image_info.tiling = SelectDepthStencilTiling(factory._physDev, image_info.format);
+            image_info.tiling = SelectDepthStencilTiling(factory.GetPhysicalDevice(), image_info.format);
 
-            auto dev = factory._device.get();
-            VkImage rawImage = nullptr;
-            auto res = vkCreateImage(dev, &image_info, s_allocationCallbacks, &rawImage);
-            _image = VulkanSharedPtr<VkImage>(
-                rawImage,
-                [dev](VkImage image) { vkDestroyImage(dev, image, s_allocationCallbacks); });
-            if (res != VK_SUCCESS)
-                Throw(VulkanAPIFailure(res, "Failed while creating image"));
+            _image = factory.CreateImage(image_info);
 
                 //
                 //  We must decide on the right type of memory, and then allocate 
                 //  the memory buffer.
                 //
+            auto dev = factory.GetDevice().get();
             VkMemoryRequirements mem_reqs = {};
             vkGetImageMemoryRequirements(dev, _image.get(), &mem_reqs);
 
@@ -1049,7 +912,7 @@ namespace RenderCore
                 //
                 //  Bind the memory to the image
                 //
-            res = vkBindImageMemory(dev, _image.get(), _mem.get(), 0);
+            auto res = vkBindImageMemory(dev, _image.get(), _mem.get(), 0);
             if (res != VK_SUCCESS)
                 Throw(VulkanAPIFailure(res, "Failed while binding device memory to image"));
 
@@ -1067,7 +930,7 @@ namespace RenderCore
     
 	DepthStencilView::DepthStencilView() {}
 
-    DepthStencilView::DepthStencilView(const ObjectFactory& factory, Resource& res)
+    DepthStencilView::DepthStencilView(const Metal_Vulkan::ObjectFactory& factory, Resource& res)
     {
         if (res.GetDesc()._type != BufferUploads::BufferDesc::Type::Texture)
             Throw(Exceptions::BasicLabel("Attempting to build a DepthStencilView for a resource that is not a texture"));
@@ -1096,23 +959,16 @@ namespace RenderCore
             view_info.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
         }
 
-        auto dev = factory._device.get();
-        VkImageView viewRaw = nullptr;
-        auto result = vkCreateImageView(dev, &view_info, s_allocationCallbacks, &viewRaw);
-        _underlying = VulkanSharedPtr<VkImageView>(
-            viewRaw,
-            [dev](VkImageView view) { vkDestroyImageView(dev, view, s_allocationCallbacks); });
-        if (result != VK_SUCCESS)
-            Throw(VulkanAPIFailure(result, "Failed while creating depth stencil view of resource"));
+        _underlying = factory.CreateImageView(view_info);
     }
 
-    RenderTargetView::RenderTargetView(const ObjectFactory& factory, Resource& res)
+    RenderTargetView::RenderTargetView(const Metal_Vulkan::ObjectFactory& factory, Resource& res)
     : RenderTargetView(factory, res.GetImage(), (VkFormat)res.GetDesc()._textureDesc._nativePixelFormat)
     {}
 
 	RenderTargetView::RenderTargetView() {}
 
-    RenderTargetView::RenderTargetView(const ObjectFactory& factory, VkImage image, VkFormat fmt)
+    RenderTargetView::RenderTargetView(const Metal_Vulkan::ObjectFactory& factory, VkImage image, VkFormat fmt)
     {
         VkImageViewCreateInfo color_image_view = {};
         color_image_view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1134,18 +990,11 @@ namespace RenderCore
         // samples set the image layout here... Maybe it's not necessary for us, because we can set it up
         // in the render pass...?
 
-        auto dev = factory._device.get();
-        VkImageView viewRaw = nullptr;
-        auto result = vkCreateImageView(dev, &color_image_view, s_allocationCallbacks, &viewRaw);
-        _underlying = VulkanSharedPtr<VkImageView>(
-            viewRaw,
-            [dev](VkImageView view) { vkDestroyImageView(dev, view, s_allocationCallbacks); });
-        if (result != VK_SUCCESS)
-            Throw(VulkanAPIFailure(result, "Failed while creating depth stencil view of resource"));
+        _underlying = factory.CreateImageView(color_image_view);
     }
 
     FrameBuffer::FrameBuffer(
-        const ObjectFactory& factory,
+        const Metal_Vulkan::ObjectFactory& factory,
         IteratorRange<VkImageView*> views,
         RenderPass& renderPass,
         unsigned width, unsigned height)
@@ -1159,15 +1008,7 @@ namespace RenderCore
         fb_info.width = width;
         fb_info.height = height;
         fb_info.layers = 1;
-
-        auto dev = factory._device.get();
-        VkFramebuffer rawFB = nullptr;
-        auto res = vkCreateFramebuffer(dev, &fb_info, s_allocationCallbacks, &rawFB);
-        _underlying = VulkanSharedPtr<VkFramebuffer>(
-            rawFB,
-            [dev](VkFramebuffer fb) { vkDestroyFramebuffer(dev, fb, s_allocationCallbacks); });
-        if (res != VK_SUCCESS)
-            Throw(VulkanAPIFailure(res, "Failed while allocating frame buffer"));
+        _underlying = factory.CreateFramebuffer(fb_info);
     }
 
 	FrameBuffer::FrameBuffer() {}
@@ -1177,14 +1018,14 @@ namespace RenderCore
     PresentationChain::PresentationChain(
 		VulkanSharedPtr<VkSurfaceKHR> surface,
         VulkanSharedPtr<VkSwapchainKHR> swapChain,
-        const ObjectFactory& factory,
+        const Metal_Vulkan::ObjectFactory& factory,
         VkQueue queue, 
         const BufferUploads::TextureDesc& bufferDesc,
         const void* platformValue)
     : _surface(std::move(surface))
 	, _swapChain(std::move(swapChain))
     , _queue(queue)
-    , _device(factory._device)
+    , _device(factory.GetDevice())
     , _platformValue(platformValue)
 	, _bufferDesc(bufferDesc)
 	, _cmdBufferPendingCommit(nullptr)
