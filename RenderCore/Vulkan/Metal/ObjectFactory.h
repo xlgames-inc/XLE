@@ -46,6 +46,10 @@ namespace RenderCore { namespace Metal_Vulkan
             const void* byteCode, size_t size,
             VkShaderModuleCreateFlags flags = 0) const;
 
+        VulkanSharedPtr<VkPipeline> CreateGraphicsPipeline(
+            VkPipelineCache pipelineCache,
+            const VkGraphicsPipelineCreateInfo& createInfo) const;
+
         VulkanSharedPtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
             IteratorRange<const VkDescriptorSetLayoutBinding*> bindings) const;
 

@@ -172,6 +172,21 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(shader);
     }
 
+    VulkanSharedPtr<VkPipeline> ObjectFactory::CreateGraphicsPipeline(
+        VkPipelineCache pipelineCache,
+        const VkGraphicsPipelineCreateInfo& createInfo) const
+    {
+        auto dev = _device.get();
+        VkPipeline rawPipeline = nullptr;
+        auto res = vkCreateGraphicsPipelines(dev, pipelineCache, 1, &createInfo, g_allocationCallbacks, &rawPipeline);
+        auto pipeline = VulkanSharedPtr<VkPipeline>(
+            rawPipeline,
+            [dev](VkPipeline pipeline) { vkDestroyPipeline(dev, pipeline, Metal_Vulkan::g_allocationCallbacks); });
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failed while creating graphics pipeline"));
+        return std::move(pipeline);
+    }
+
     unsigned ObjectFactory::FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask) const
     {
         // Search memtypes to find first index with those properties

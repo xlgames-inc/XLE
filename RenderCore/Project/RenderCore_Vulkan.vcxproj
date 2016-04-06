@@ -55,11 +55,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Vulkan\Metal\CompiledShaderByteCode.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\DeviceContext.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Format.cpp" />
     <ClCompile Include="..\Vulkan\Metal\InputLayout.cpp" />
     <ClCompile Include="..\Vulkan\Metal\ObjectFactory.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Shader.cpp" />
     <ClCompile Include="..\Vulkan\Metal\ShaderReflection.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\State.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />

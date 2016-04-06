@@ -88,6 +88,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		BoundInputLayout(BoundInputLayout&& moveFrom) never_throws;
 		BoundInputLayout& operator=(BoundInputLayout&& moveFrom) never_throws;
 
+        const IteratorRange<const VkVertexInputAttributeDescription*> GetAttributes() const { return MakeIteratorRange(_attributes); }
     private:
         std::vector<VkVertexInputAttributeDescription> _attributes;
     };

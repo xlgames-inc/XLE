@@ -34,7 +34,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
             VkVertexInputAttributeDescription desc;
             desc.location = i->second._location;
-            desc.binding = c;
+            desc.binding = 0;
             desc.format = AsVkFormat(e._nativeFormat);
             desc.offset = e._alignedByteOffset == ~0x0u ? trackingOffset : e._alignedByteOffset;
             _attributes.push_back(desc);

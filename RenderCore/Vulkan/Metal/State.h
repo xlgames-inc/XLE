@@ -6,12 +6,14 @@
 
 #pragma once
 
-#include "Resource.h"
+#include "IncludeVulkan.h"
 #include <utility>
 
 namespace RenderCore { namespace Metal_Vulkan
 {
     class DeviceContext;
+
+    static const unsigned s_mrtLimit = 4;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -106,14 +108,6 @@ namespace RenderCore { namespace Metal_Vulkan
                         AddressMode::Enum addressW = AddressMode::Wrap,
 						Comparison::Enum comparison = Comparison::Never) {}
 		~SamplerState() {}
-
-        SamplerState(SamplerState&& moveFrom) {}
-        SamplerState& operator=(SamplerState&& moveFrom) {}
-        SamplerState(const SamplerState& copyFrom) {}
-        SamplerState& operator=(const SamplerState& copyFrom) {}
-
-		typedef Underlying::Resource*   UnderlyingType;
-		UnderlyingType					GetUnderlying() const { return nullptr; }
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -176,26 +170,16 @@ namespace RenderCore { namespace Metal_Vulkan
     /// <exception cref="::RenderCore::Exceptions::AllocationFailure">
     ///     Failed to create underlying object. Could be caused by invalid input values, or a corrupt/lost device.
     /// </exception>
-    class RasterizerState
+    class RasterizerState : public VkPipelineRasterizationStateCreateInfo
     {
     public:
-        RasterizerState(CullMode::Enum cullmode = CullMode::Back, bool frontCounterClockwise = true) {}
+        RasterizerState(CullMode::Enum cullmode = CullMode::Back, bool frontCounterClockwise = true);
         RasterizerState(
             CullMode::Enum cullmode, bool frontCounterClockwise,
             FillMode::Enum fillmode,
-            int depthBias, float depthBiasClamp, float slopeScaledBias) {}
-        RasterizerState(DeviceContext&) {}
-        ~RasterizerState() {}
-
-        RasterizerState(RasterizerState&& moveFrom) {}
-        RasterizerState& operator=(RasterizerState&& moveFrom) {}
-        RasterizerState(const RasterizerState& copyFrom) {}
-        RasterizerState& operator=(const RasterizerState& copyFrom) {}
+            int depthBias, float depthBiasClamp, float slopeScaledBias);
 
 		static RasterizerState Null() { return RasterizerState(); }
-
-		typedef Underlying::Resource*   UnderlyingType;
-		UnderlyingType					GetUnderlying() const { return nullptr; }
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,30 +273,23 @@ namespace RenderCore { namespace Metal_Vulkan
     /// <exception cref="::RenderCore::Exceptions::AllocationFailure">
     ///     Failed to create underlying object. Could be caused by invalid input values, or a corrupt/lost device.
     /// </exception>
-    class BlendState
+    class BlendState : public VkPipelineColorBlendStateCreateInfo
     {
     public:
         BlendState( BlendOp::Enum blendingOperation = BlendOp::Add, 
                     Blend::Enum srcBlend = Blend::SrcAlpha,
-                    Blend::Enum dstBlend = Blend::InvSrcAlpha) {}
+                    Blend::Enum dstBlend = Blend::InvSrcAlpha);
         BlendState( BlendOp::Enum blendingOperation, 
                     Blend::Enum srcBlend,
                     Blend::Enum dstBlend,
                     BlendOp::Enum alphaBlendingOperation, 
                     Blend::Enum alphaSrcBlend,
-                    Blend::Enum alphaDstBlend) {}
-        ~BlendState() {}
-
-        BlendState(BlendState&& moveFrom) {}
-        BlendState& operator=(BlendState&& moveFrom) {}
-        BlendState(const BlendState& copyFrom) {}
-        BlendState& operator=(const BlendState& copyFrom) {}
-        BlendState(DeviceContext& context) {}
+                    Blend::Enum alphaDstBlend);
 
 		static BlendState Null() { return BlendState(); }
 
-		typedef Underlying::Resource*   UnderlyingType;
-		UnderlyingType					GetUnderlying() const { return nullptr; }
+    private:
+        VkPipelineColorBlendAttachmentState _attachments[s_mrtLimit];
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -386,27 +363,18 @@ namespace RenderCore { namespace Metal_Vulkan
     /// <exception cref="::RenderCore::Exceptions::AllocationFailure">
     ///     Failed to create underlying object. Could be caused by invalid input values, or a corrupt/lost device.
     /// </exception>
-    class DepthStencilState
+    class DepthStencilState : public VkPipelineDepthStencilStateCreateInfo
     {
     public:
-        explicit DepthStencilState(bool enabled=true, bool writeEnabled=true, Comparison::Enum comparison = Comparison::LessEqual) {}
+        explicit DepthStencilState(bool enabled=true, bool writeEnabled=true, Comparison::Enum comparison = Comparison::LessEqual);
         DepthStencilState(
             bool depthTestEnabled, bool writeEnabled, 
             unsigned stencilReadMask, unsigned stencilWriteMask,
             const StencilMode& frontFaceStencil = StencilMode::NoEffect,
-            const StencilMode& backFaceStencil = StencilMode::NoEffect) {}
-        DepthStencilState(DeviceContext& context) {}
-        DepthStencilState(DepthStencilState&& moveFrom) {}
-        DepthStencilState& operator=(DepthStencilState&& moveFrom) {}
-        ~DepthStencilState() {}
-
-		typedef Underlying::Resource*   UnderlyingType;
-		UnderlyingType					GetUnderlying() const { return nullptr; }
+            const StencilMode& backFaceStencil = StencilMode::NoEffect);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class DeviceContext;
 
     /// <summary>Utility for querying low level viewport</summary>
     ///

@@ -6,13 +6,14 @@
 
 #pragma once
 
-#include "Resource.h"
+#include "State.h"
+#include "Forward.h"
+#include "VulkanCore.h"
+#include "../../Resource.h"
 #include "../../IDevice_Forward.h"
 #include "../../IThreadContext_Forward.h"
-#include "../../Resource.h"
-#include "../../../Math/Vector.h"		// for Float4
-#include "../../../Utility/Threading/ThreadingUtils.h"
-#include "Forward.h"
+#include "../../Math/Vector.h"  // for Float4 in Clear()
+#include <memory>
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -21,59 +22,58 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         enum Enum
         {
-            PointList       = 1,    // D3D11_PRIMITIVE_TOPOLOGY_POINTLIST,
-            LineList        = 2,    // D3D11_PRIMITIVE_TOPOLOGY_LINELIST,
-            LineStrip       = 3,    // D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP,
-            TriangleList    = 4,    // D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-            TriangleStrip   = 5,    // D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP
-            LineListAdj     = 10,   // D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ
+            PointList       = 0,    // VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
+            LineList        = 1,    // VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+            LineStrip       = 2,    // VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
+            TriangleList    = 3,    // VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+            TriangleStrip   = 4,    // VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP
+            LineListAdj     = 6,    // VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY
 
 
-            PatchList1 = 33,        // D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST	= 33,
-	        PatchList2 = 34,        // D3D11_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST	= 34,
-	        PatchList3 = 35,        // D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST	= 35,
-	        PatchList4 = 36,        // D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST	= 36,
-	        PatchList5 = 37,        // D3D11_PRIMITIVE_TOPOLOGY_5_CONTROL_POINT_PATCHLIST	= 37,
-	        PatchList6 = 38,        // D3D11_PRIMITIVE_TOPOLOGY_6_CONTROL_POINT_PATCHLIST	= 38,
-	        PatchList7 = 39,        // D3D11_PRIMITIVE_TOPOLOGY_7_CONTROL_POINT_PATCHLIST	= 39,
-	        PatchList8 = 40,        // D3D11_PRIMITIVE_TOPOLOGY_8_CONTROL_POINT_PATCHLIST	= 40,
-	        PatchList9 = 41,        // D3D11_PRIMITIVE_TOPOLOGY_9_CONTROL_POINT_PATCHLIST	= 41,
-	        PatchList10 = 42,       // D3D11_PRIMITIVE_TOPOLOGY_10_CONTROL_POINT_PATCHLIST	= 42,
-	        PatchList11 = 43,       // D3D11_PRIMITIVE_TOPOLOGY_11_CONTROL_POINT_PATCHLIST	= 43,
-	        PatchList12 = 44,       // D3D11_PRIMITIVE_TOPOLOGY_12_CONTROL_POINT_PATCHLIST	= 44,
-	        PatchList13 = 45,       // D3D11_PRIMITIVE_TOPOLOGY_13_CONTROL_POINT_PATCHLIST	= 45,
-	        PatchList14 = 46,       // D3D11_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST	= 46,
-	        PatchList15 = 47,       // D3D11_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST	= 47,
-	        PatchList16 = 48        // D3D11_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST	= 48
+            PatchList1 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList2 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList3 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList4 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList5 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList6 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList7 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList8 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList9 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList10 = 10,       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList11 = 10,       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList12 = 10,       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList13 = 10,       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList14 = 10,       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList15 = 10,       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList16 = 10        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
         };
     }
 
-	class CommandList : public RefCountedObject
-	{
-	public:
-		CommandList() {}
-		CommandList(const CommandList&) = delete;
-		CommandList& operator=(const CommandList&) = delete;
-	};
+    using CommandList = VulkanSharedPtr<VkCommandBuffer>;
 
-    class ObjectFactory
+    class PipelineBuilder
     {
     public:
-        void AttachCurrentModule() {}
-		void DetachCurrentModule() {}
+        void        Bind(const RasterizerState& rasterizer);
+        void        Bind(const BlendState& blendState);
+        void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
+        void        Bind(const BoundInputLayout& inputLayout);
+        void        Bind(Topology::Enum topology);
 
-        ObjectFactory(IDevice* device) {}
-        ObjectFactory() {}
-        ~ObjectFactory() {}
+        VulkanSharedPtr<VkPipeline> CreatePipeline(const ObjectFactory& factory, VkPipelineCache cache);
 
-        ObjectFactory(const ObjectFactory& cloneFrom) {}
-        ObjectFactory(ObjectFactory&& moveFrom) never_throws {}
-		ObjectFactory(Underlying::Resource&) {}
-        ObjectFactory& operator=(const ObjectFactory& cloneFrom) {}
-        ObjectFactory& operator=(ObjectFactory&& moveFrom) never_throws {}
+        PipelineBuilder();
+        ~PipelineBuilder();
+    protected:
+        RasterizerState         _rasterizerState;
+        BlendState              _blendState;
+        DepthStencilState       _depthStencilState;
+        VkPrimitiveTopology     _topology;
+
+        const BoundInputLayout* _inputLayout;       // note -- unprotected pointer
     };
 
-	class DeviceContext
+	class DeviceContext : public PipelineBuilder
     {
     public:
 		template<int Count> void    Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset=0) {}
@@ -108,8 +108,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void        Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[]) {}
         void        Bind(const IndexBuffer& ib, NativeFormat::Enum indexFormat, unsigned offset=0) {}
-        void        Bind(const BoundInputLayout& inputLayout) {}
-        void        Bind(Topology::Enum topology) {}
         void        Bind(const VertexShader& vertexShader) {}
         void        Bind(const GeometryShader& geometryShader) {}
         void        Bind(const PixelShader& pixelShader) {}
@@ -118,10 +116,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(const HullShader& hullShader) {}
         void        Bind(const ShaderProgram& shaderProgram) {}
         void        Bind(const DeepShaderProgram& deepShaderProgram) {}
-        void        Bind(const RasterizerState& rasterizer) {}
-        void        Bind(const BlendState& blender) {}
-        void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0) {}
-        void        Bind(const ViewportDesc& viewport) {}
+        void        Bind(const ViewportDesc& viewport);
 
         void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage) {}
         void        Bind(const DeepShaderProgram& deepShaderProgram, const BoundClassInterfaces& dynLinkage) {}
@@ -134,10 +129,10 @@ namespace RenderCore { namespace Metal_Vulkan
         T1(Type) void   Unbind() {}
         void            UnbindSO() {}
 
-        void        Draw(unsigned vertexCount, unsigned startVertexLocation=0) {}
-        void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0) {}
-        void        DrawAuto() {}
-        void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1) {}
+        void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
+        void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
+        void        DrawAuto();
+        void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
 
         void        Clear(const RenderTargetView& renderTargets, const Float4& clearColour) {}
         void        Clear(const DepthStencilView& depthStencil, float depth, unsigned stencil) {}
@@ -149,7 +144,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void		CommitCommandList(CommandList&, bool) {}
 
+        DeviceContext(CommandList cmdList);
 		DeviceContext(const DeviceContext&) = delete;
 		DeviceContext& operator=(const DeviceContext&) = delete;
+
+    private:
+        CommandList _primaryCommandList;
     };
 }}
