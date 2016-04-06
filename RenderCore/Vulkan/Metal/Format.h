@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "IncludeVulkan.h"      // just for VkFormat
+
 namespace Utility { namespace ImpliedTyping { class TypeDesc; }}
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -28,7 +30,9 @@ namespace RenderCore { namespace Metal_Vulkan
             X24_TYPELESS_G8_UINT, // = DXGI_FORMAT_X24_TYPELESS_G8_UINT,
 
             Matrix4x4 = 150,
-            Matrix3x4 = 151
+            Matrix3x4 = 151,
+
+            Max
         };
     }
 
@@ -100,5 +104,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
     const char* AsString(NativeFormat::Enum);
     NativeFormat::Enum AsNativeFormat(const char name[]);
+
+    VkFormat AsVkFormat(NativeFormat::Enum);
+    void InitFormatConversionTables();
 }}
 

@@ -12,6 +12,128 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+    BoundInputLayout::BoundInputLayout(const InputLayout& layout, const ShaderProgram& shader)
+    : BoundInputLayout(layout, shader.GetCompiledVertexShader())
+    {
+    }
+
+    BoundInputLayout::BoundInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader)
+    {
+        // find the vertex inputs into the shader, and match them against the input layout
+        unsigned trackingOffset = 0;
+
+        SPIRVReflection reflection(shader.GetByteCode());
+        _attributes.reserve(layout.second);
+        for (unsigned c=0; c<layout.second; ++c) {
+            const auto& e = layout.first[c];
+            auto hash = Hash64(e._semanticName, DefaultSeed64 + e._semanticIndex);
+
+            auto i = LowerBound(reflection._inputInterfaceQuickLookup, hash);
+            if (i == reflection._inputInterfaceQuickLookup.end() || i->first != hash)
+                continue;   // Could not be bound
+
+            VkVertexInputAttributeDescription desc;
+            desc.location = i->second._location;
+            desc.binding = c;
+            desc.format = AsVkFormat(e._nativeFormat);
+            desc.offset = e._alignedByteOffset == ~0x0u ? trackingOffset : e._alignedByteOffset;
+            _attributes.push_back(desc);
+
+            trackingOffset += desc.offset + BitsPerPixel(e._nativeFormat) / 8;
+        }
+
+        // todo -- check if any input slots are not bound to anything
+    }
+
+    BoundInputLayout::BoundInputLayout() {}
+    BoundInputLayout::~BoundInputLayout() {}
+
+	BoundInputLayout::BoundInputLayout(BoundInputLayout&& moveFrom) never_throws
+	: _attributes(std::move(moveFrom._attributes)) {}
+
+	BoundInputLayout& BoundInputLayout::operator=(BoundInputLayout&& moveFrom) never_throws
+	{
+		_attributes = std::move(moveFrom._attributes);
+		return *this;
+	}
+
+    namespace GlobalInputLayouts
+    {
+        namespace Detail
+        {
+            static const unsigned AppendAlignedElement = ~unsigned(0x0);
+            InputElementDesc P2CT_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, NativeFormat::R32G32_FLOAT   ),
+                InputElementDesc( "COLOR",      0, NativeFormat::R8G8B8A8_UNORM ),
+                InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT   )
+            };
+
+            InputElementDesc P2C_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, NativeFormat::R32G32_FLOAT   ),
+                InputElementDesc( "COLOR",      0, NativeFormat::R8G8B8A8_UNORM )
+            };
+
+            InputElementDesc PCT_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
+                InputElementDesc( "COLOR",      0, NativeFormat::R8G8B8A8_UNORM ),
+                InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT   )
+            };
+
+            InputElementDesc P_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT)
+            };
+
+            InputElementDesc PC_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
+                InputElementDesc( "COLOR",      0, NativeFormat::R8G8B8A8_UNORM )
+            };
+
+            InputElementDesc PT_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
+                InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT   )
+            };
+
+            InputElementDesc PN_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
+                InputElementDesc( "NORMAL",   0, NativeFormat::R32G32B32_FLOAT )
+            };
+
+            InputElementDesc PNT_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
+                InputElementDesc( "NORMAL",   0, NativeFormat::R32G32B32_FLOAT ),
+                InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT )
+            };
+
+            InputElementDesc PNTT_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
+                InputElementDesc( "NORMAL",   0, NativeFormat::R32G32B32_FLOAT ),
+                InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT ),
+                InputElementDesc( "TEXTANGENT",   0, NativeFormat::R32G32B32_FLOAT ),
+                InputElementDesc( "TEXBITANGENT",   0, NativeFormat::R32G32B32_FLOAT )
+            };
+        }
+
+        InputLayout P2CT = std::make_pair(Detail::P2CT_Elements, dimof(Detail::P2CT_Elements));
+        InputLayout P2C = std::make_pair(Detail::P2C_Elements, dimof(Detail::P2C_Elements));
+        InputLayout PCT = std::make_pair(Detail::PCT_Elements, dimof(Detail::PCT_Elements));
+        InputLayout P = std::make_pair(Detail::P_Elements, dimof(Detail::P_Elements));
+        InputLayout PC = std::make_pair(Detail::PC_Elements, dimof(Detail::PC_Elements));
+        InputLayout PT = std::make_pair(Detail::PT_Elements, dimof(Detail::PT_Elements));
+        InputLayout PN = std::make_pair(Detail::PN_Elements, dimof(Detail::PN_Elements));
+        InputLayout PNT = std::make_pair(Detail::PNT_Elements, dimof(Detail::PNT_Elements));
+        InputLayout PNTT = std::make_pair(Detail::PNTT_Elements, dimof(Detail::PNTT_Elements));
+    }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
 
     BoundUniforms::BoundUniforms(const ShaderProgram& shader)
     {
@@ -90,8 +212,8 @@ namespace RenderCore { namespace Metal_Vulkan
         bool gotBinding = false;
 
         for (unsigned s=0; s<dimof(_reflection); ++s) {
-            auto i = LowerBound(_reflection[s]._quickLookup, hashName);
-            if (i == _reflection[s]._quickLookup.end() || i->first != hashName) continue;
+            auto i = LowerBound(_reflection[s]._uniformQuickLookup, hashName);
+            if (i == _reflection[s]._uniformQuickLookup.end() || i->first != hashName) continue;
 
             assert(i->second._descriptorSet == stream);
             assert(stream < s_descriptorSetCount);
@@ -116,8 +238,8 @@ namespace RenderCore { namespace Metal_Vulkan
         bool gotBinding = false;
 
         for (unsigned s=0; s<dimof(_reflection); ++s) {
-            auto i = LowerBound(_reflection[s]._quickLookup, hashName);
-            if (i == _reflection[s]._quickLookup.end() || i->first != hashName) continue;
+            auto i = LowerBound(_reflection[s]._uniformQuickLookup, hashName);
+            if (i == _reflection[s]._uniformQuickLookup.end() || i->first != hashName) continue;
 
             assert(i->second._descriptorSet == stream);
             assert(stream < s_descriptorSetCount);

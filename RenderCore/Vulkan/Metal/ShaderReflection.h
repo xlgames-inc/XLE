@@ -19,6 +19,15 @@ namespace RenderCore { namespace Metal_Vulkan
         using MemberId = std::pair<ObjectId, unsigned>;
         using Name = StringSection<>;
         
+        //
+        //      Names
+        //
+        std::vector<std::pair<ObjectId, Name>> _names;
+        std::vector<std::pair<MemberId, Name>> _memberNames;
+
+        //
+        //      Bindings for uniforms and interface elements
+        //
         class Binding
         {
         public:
@@ -30,14 +39,44 @@ namespace RenderCore { namespace Metal_Vulkan
             Binding(unsigned location = ~0x0u, unsigned bindingPoint= ~0x0u, unsigned descriptorSet= ~0x0u, unsigned offset = ~0x0)
             : _location(location), _bindingPoint(bindingPoint), _descriptorSet(descriptorSet), _offset(offset) {}
         };
-
-        std::vector<std::pair<ObjectId, Name>> _names;
         std::vector<std::pair<ObjectId, Binding>> _bindings;
-
-        std::vector<std::pair<MemberId, Name>> _memberNames;
         std::vector<std::pair<MemberId, Binding>> _memberBindings;
+        std::vector<std::pair<uint64, Binding>> _uniformQuickLookup;
 
-        std::vector<std::pair<uint64, Binding>> _quickLookup;
+        //
+        //      Types
+        //
+        enum class BasicType { Int, Float, Bool };
+        enum class StorageType { UniformConstant, Input, Uniform, Output, Workgroup, CrossWorkgroup, Private, Function, Generic, PushConstant, AtomicCounter, Image, Unknown };
+        struct VectorType { ObjectId _componentType; unsigned _componentCount; };
+        struct PointerType { ObjectId _targetType; StorageType _storage; };
+
+        std::vector<std::pair<ObjectId, BasicType>>     _basicTypes;
+        std::vector<std::pair<ObjectId, VectorType>>    _vectorTypes;
+        std::vector<std::pair<ObjectId, PointerType>>   _pointerTypes;
+
+        struct Variable { ObjectId _type; StorageType _storage; };
+        std::vector<std::pair<ObjectId, Variable>>      _variables;
+
+        //
+        //      Interface (eg, vertex input)
+        //
+        class EntryPoint
+        {
+        public:
+            ObjectId _id;
+            StringSection<> _name;
+            std::vector<ObjectId> _interface;
+        };
+        EntryPoint _entryPoint;
+
+        class InputInterfaceElement
+        {
+        public:
+            ObjectId _type;
+            unsigned _location;
+        };
+        std::vector<std::pair<uint64, InputInterfaceElement>> _inputInterfaceQuickLookup;
 
         SPIRVReflection(IteratorRange<const uint32*> byteCode);
         SPIRVReflection(std::pair<const void*, size_t> byteCode);

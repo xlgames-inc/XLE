@@ -495,6 +495,11 @@ namespace Sample
                     "game/xleres/deferred/basic.vsh:main:vs_*",
                     "game/xleres/deferred/basic.psh:main:ps_*",
                     "GEO_HAS_TANGENT_FRAME=1;GEO_HAS_NORMAL=1;GEO_HAS_TEXCOORD=1;RES_HAS_DiffuseTexture=1;RES_HAS_NormalsTexture=1");
+
+            RenderCore::Metal::BoundInputLayout inputLayout(
+                RenderCore::Metal::GlobalInputLayouts::PNTT,
+                shader.GetCompiledVertexShader());
+
             RenderCore::Metal::BoundUniforms boundUniforms(shader);
             boundUniforms.BindConstantBuffers(0, {"GlobalTransform", "LocalTransform"});
             boundUniforms.BindShaderResources(0, {"DiffuseTexture", "NormalsTexture", "ParametersTexture"});
@@ -615,6 +620,13 @@ namespace Sample
             writes[0].dstArrayElement = 0;
 
             vkUpdateDescriptorSets(factory.GetDevice().get(), dimof(writes), writes, 0, nullptr);
+
+            VkDescriptorSet descriptorSets[] = { descriptorSet0.get() };
+            vkCmdBindDescriptorSets(
+                threadContext->GetPrimaryCommandBuffer(),
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                pipelineLayout.get(), 
+                0, 1, descriptorSets, 0, nullptr);
         }
         CATCH(const ::Assets::Exceptions::AssetException&) {}
         CATCH_END

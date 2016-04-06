@@ -80,14 +80,16 @@ namespace RenderCore { namespace Metal_Vulkan
     class BoundInputLayout
     {
     public:
-        BoundInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader) {}
-        BoundInputLayout(const InputLayout& layout, const ShaderProgram& shader) {}
-        explicit BoundInputLayout(DeviceContext& context) {}
-        BoundInputLayout() {}
-        ~BoundInputLayout() {}
+        BoundInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader);
+        BoundInputLayout(const InputLayout& layout, const ShaderProgram& shader);
+        BoundInputLayout();
+        ~BoundInputLayout();
 
-		BoundInputLayout(BoundInputLayout&& moveFrom) never_throws {}
-		BoundInputLayout& operator=(BoundInputLayout&& moveFrom) never_throws {}
+		BoundInputLayout(BoundInputLayout&& moveFrom) never_throws;
+		BoundInputLayout& operator=(BoundInputLayout&& moveFrom) never_throws;
+
+    private:
+        std::vector<VkVertexInputAttributeDescription> _attributes;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

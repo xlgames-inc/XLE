@@ -45,8 +45,30 @@ namespace RenderCore { namespace Metal_Vulkan
             }
         }
 
+    static SPIRVReflection::StorageType AsStorageType(unsigned type)
+    {
+        switch (type)
+        {
+        case 0:  return SPIRVReflection::StorageType::UniformConstant;
+        case 1:  return SPIRVReflection::StorageType::Input;
+        case 2:  return SPIRVReflection::StorageType::Uniform;
+        case 3:  return SPIRVReflection::StorageType::Output;
+        case 4:  return SPIRVReflection::StorageType::Workgroup;
+        case 5:  return SPIRVReflection::StorageType::CrossWorkgroup;
+        case 6:  return SPIRVReflection::StorageType::Private;
+        case 7:  return SPIRVReflection::StorageType::Function;
+        case 8:  return SPIRVReflection::StorageType::Generic;
+        case 9:  return SPIRVReflection::StorageType::PushConstant;
+        case 10: return SPIRVReflection::StorageType::AtomicCounter;
+        case 11: return SPIRVReflection::StorageType::Image;
+        default: return SPIRVReflection::StorageType::Unknown;
+        }
+    }
+
     SPIRVReflection::SPIRVReflection(IteratorRange<const uint32*> byteCode)
     {
+        _entryPoint._id = ~0x0u;
+
         using namespace spv;
         // spv::Parameterize();
 
@@ -107,19 +129,104 @@ namespace RenderCore { namespace Metal_Vulkan
                     FillInBinding(_memberBindings, id, decorationType, &paramStart[3], wordCount-4);
                     break;
                 }
+
+            case OpEntryPoint:
+                // InstructionDesc[OpEntryPoint].operands.push(OperandExecutionModel, "");
+                // InstructionDesc[OpEntryPoint].operands.push(OperandId, "'Entry Point'");
+                // InstructionDesc[OpEntryPoint].operands.push(OperandLiteralString, "'Name'");
+                // InstructionDesc[OpEntryPoint].operands.push(OperandVariableIds, "'Interface'");
+                {
+                    assert(_entryPoint._name.Empty() && _entryPoint._interface.empty());
+                    auto executionModel = paramStart[0]; (void)executionModel;
+                    _entryPoint._id = paramStart[1];
+                    _entryPoint._name = (const char*)&paramStart[2];
+
+                    auto nameEnd = XlStringEnd((const char*)&paramStart[2]);
+                    auto len = nameEnd+1-(const char*)&paramStart[2];
+                    if (len%4 != 0) len += 4-(len%4);
+                    auto* interfaceStart = PtrAdd(&paramStart[2], len);
+                    auto interfaceEnd = &paramStart[wordCount-1];
+                    _entryPoint._interface = std::vector<ObjectId>(interfaceStart, interfaceEnd);
+                    break;
+                }
+
+            case OpTypeBool:
+                _basicTypes.push_back(std::make_pair(paramStart[0], BasicType::Bool));
+                break;
+
+            case OpTypeFloat:  
+                _basicTypes.push_back(std::make_pair(paramStart[0], BasicType::Float));
+                break;
+
+            case OpTypeInt:  
+                _basicTypes.push_back(std::make_pair(paramStart[0], BasicType::Int));
+                break;
+
+            case OpTypeVector:  
+                _vectorTypes.push_back(std::make_pair(paramStart[0], VectorType{paramStart[1], paramStart[2]}));
+                break;
+
+            case OpTypePointer:  
+                _pointerTypes.push_back(std::make_pair(paramStart[0], PointerType{paramStart[2], AsStorageType(paramStart[1])}));
+                break;
+
+            case OpVariable:
+                if (wordCount > 3)
+                    _variables.push_back(std::make_pair(paramStart[1], Variable{paramStart[0], AsStorageType(paramStart[2])}));
+                break;
             }
         }
 
         // build the quick lookup table, which matches hash names to binding values
         for (auto& b:_bindings) {
+            if (b.second._descriptorSet==~0x0u && b.second._bindingPoint==~0x0) continue;
             auto n = LowerBound(_names, b.first);
             if (n == _names.end() || n->first != b.first) continue;
-            _quickLookup.push_back(std::make_pair(Hash64(n->second.begin(), n->second.end()), b.second));
+            _uniformQuickLookup.push_back(std::make_pair(Hash64(n->second.begin(), n->second.end()), b.second));
         }
 
         std::sort(
-            _quickLookup.begin(), _quickLookup.end(),
+            _uniformQuickLookup.begin(), _uniformQuickLookup.end(),
             CompareFirst<uint64, Binding>());
+
+        // build the quick lookup table for the input interface
+        for (auto i:_entryPoint._interface) {
+            auto v = LowerBound(_variables, i);
+            if (v == _variables.end() || v->first != i) continue;
+            if (v->second._storage != StorageType::Input) continue;
+
+            auto n = LowerBound(_names, v->first);
+            if (n == _names.end() || n->first != v->first) continue;
+
+            auto b = LowerBound(_bindings, v->first);
+            if (b == _bindings.end() || b->first != v->first) continue;
+
+            auto* nameStart = n->second.begin();
+            auto* nameEnd = n->second.end();
+
+            // Our shader path prepends "in_" infront of the semantic name
+            // when generating a variable name. Remove it before we make a hash.
+            if (XlBeginsWith(n->second, MakeStringSection("in_")))
+                nameStart += 3;
+            while (nameEnd-1 > nameStart && isdigit(*(nameEnd-1)))
+                --nameEnd;
+
+            unsigned index = 0;
+            if (nameEnd != n->second.end()) {
+                char temp[8];   // have to copy to get the null terminator! Awkward, need a int parser than works on a StringSection
+                XlCopyString(temp, MakeStringSection(nameEnd, n->second.end()));
+                index = atoi(temp);
+            }
+
+            _inputInterfaceQuickLookup.push_back(
+                std::make_pair(
+                    Hash64(nameStart, nameEnd, DefaultSeed64 + index),
+                    InputInterfaceElement{v->second._type, b->second._location}));
+        }
+
+        std::sort(
+            _inputInterfaceQuickLookup.begin(), _inputInterfaceQuickLookup.end(),
+            CompareFirst<uint64, InputInterfaceElement>());
 
         // std::stringstream disassem;
         // std::vector<unsigned> spirv(byteCode.begin(), byteCode.end());
@@ -141,39 +248,63 @@ namespace RenderCore { namespace Metal_Vulkan
 
     SPIRVReflection::SPIRVReflection(const SPIRVReflection& cloneFrom)
     : _names(cloneFrom._names)
-    , _bindings(cloneFrom._bindings)
     , _memberNames(cloneFrom._memberNames)
+    , _bindings(cloneFrom._bindings)
     , _memberBindings(cloneFrom._memberBindings)
-    , _quickLookup(cloneFrom._quickLookup)
+    , _uniformQuickLookup(cloneFrom._uniformQuickLookup)
+    , _basicTypes(cloneFrom._basicTypes)
+    , _vectorTypes(cloneFrom._vectorTypes)
+    , _pointerTypes(cloneFrom._pointerTypes)
+    , _variables(cloneFrom._variables)
+    , _entryPoint(cloneFrom._entryPoint)
+    , _inputInterfaceQuickLookup(cloneFrom._inputInterfaceQuickLookup)
     {
     }
 
     SPIRVReflection& SPIRVReflection::operator=(const SPIRVReflection& cloneFrom)
     {
         _names = cloneFrom._names;
-        _bindings = cloneFrom._bindings;
         _memberNames = cloneFrom._memberNames;
+        _bindings = cloneFrom._bindings;
         _memberBindings = cloneFrom._memberBindings;
-        _quickLookup = cloneFrom._quickLookup;
+        _uniformQuickLookup = cloneFrom._uniformQuickLookup;
+        _basicTypes = cloneFrom._basicTypes;
+        _vectorTypes = cloneFrom._vectorTypes;
+        _pointerTypes = cloneFrom._pointerTypes;
+        _variables = cloneFrom._variables;
+        _entryPoint = cloneFrom._entryPoint;
+        _inputInterfaceQuickLookup = cloneFrom._inputInterfaceQuickLookup;
         return *this;
     }
 
     SPIRVReflection::SPIRVReflection(SPIRVReflection&& moveFrom)
     : _names(std::move(moveFrom._names))
-    , _bindings(std::move(moveFrom._bindings))
     , _memberNames(std::move(moveFrom._memberNames))
+    , _bindings(std::move(moveFrom._bindings))
     , _memberBindings(std::move(moveFrom._memberBindings))
-    , _quickLookup(std::move(moveFrom._quickLookup))
+    , _uniformQuickLookup(std::move(moveFrom._uniformQuickLookup))
+    , _basicTypes(std::move(moveFrom._basicTypes))
+    , _vectorTypes(std::move(moveFrom._vectorTypes))
+    , _pointerTypes(std::move(moveFrom._pointerTypes))
+    , _variables(std::move(moveFrom._variables))
+    , _entryPoint(std::move(moveFrom._entryPoint))
+    , _inputInterfaceQuickLookup(std::move(moveFrom._inputInterfaceQuickLookup))
     {
     }
 
     SPIRVReflection& SPIRVReflection::operator=(SPIRVReflection&& moveFrom)
     {
         _names = std::move(moveFrom._names);
-        _bindings = std::move(moveFrom._bindings);
         _memberNames = std::move(moveFrom._memberNames);
+        _bindings = std::move(moveFrom._bindings);
         _memberBindings = std::move(moveFrom._memberBindings);
-        _quickLookup = std::move(moveFrom._quickLookup);
+        _uniformQuickLookup = std::move(moveFrom._uniformQuickLookup);
+        _basicTypes = std::move(moveFrom._basicTypes);
+        _vectorTypes = std::move(moveFrom._vectorTypes);
+        _pointerTypes = std::move(moveFrom._pointerTypes);
+        _variables = std::move(moveFrom._variables);
+        _entryPoint = std::move(moveFrom._entryPoint);
+        _inputInterfaceQuickLookup = std::move(moveFrom._inputInterfaceQuickLookup);
         return *this;
     }
 

@@ -7,6 +7,7 @@
 #include "Device.h"
 #include "Metal/VulkanCore.h"
 #include "Metal/ObjectFactory.h"
+#include "Metal/Format.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
@@ -286,6 +287,9 @@ namespace RenderCore
 
     Device::Device()
     {
+            // todo -- we need to do this in a bind to DLL step
+        Metal_Vulkan::InitFormatConversionTables();
+
 			//
 			//	Create the instance. This will attach the Vulkan DLL. If there are no valid Vulkan drivers
 			//	available, it will throw an exception here.

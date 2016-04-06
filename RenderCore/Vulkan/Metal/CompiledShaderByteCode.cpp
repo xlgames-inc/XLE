@@ -21,6 +21,9 @@
 #include <glslang/glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 
+// #include <glslang/SPIRV/disassemble.h>
+// #include <sstream>
+
 namespace RenderCore { namespace Metal_DX11
 {
     std::shared_ptr<ShaderService::ILowLevelCompiler> CreateVulkanPrecompiler();
@@ -332,7 +335,8 @@ namespace RenderCore { namespace Metal_Vulkan
         auto* bytecodeStart = (const char*)PtrAdd(AsPointer(hlslBytecode->begin()), sizeof(ShaderService::ShaderHeader));
         auto translateResult = TranslateHLSLFromMem(
             bytecodeStart,
-            HLSLCC_FLAG_UNIFORM_BUFFER_OBJECT,
+            HLSLCC_FLAG_UNIFORM_BUFFER_OBJECT | HLSLCC_FLAG_INOUT_SEMANTIC_NAMES 
+            | HLSLCC_FLAG_COMBINE_TEXTURE_SAMPLERS,
             LANG_330, &ext, &depData, 
             &glslShader);
         if (!translateResult) return false;
