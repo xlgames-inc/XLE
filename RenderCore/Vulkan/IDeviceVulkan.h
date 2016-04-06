@@ -8,6 +8,7 @@
 
 #include "../IDevice.h"
 #include "../IThreadContext.h"
+#include "Metal/IncludeVulkan.h"
 
 #define FLEX_USE_VTABLE_DeviceVulkan FLEX_USE_VTABLE_Device
 #define FLEX_USE_VTABLE_ThreadContextVulkan FLEX_USE_VTABLE_ThreadContext
@@ -27,6 +28,9 @@ namespace RenderCore
         class __declspec( uuid("{48764F24-01A1-47C9-9105-C6E57E29493D}") ) ICLASSNAME(DeviceVulkan)
         {
         public:
+            IMETHOD VkInstance	GetVulkanInstance() IPURE;
+		    IMETHOD VkDevice	GetUnderlyingDevice() IPURE;
+            IMETHOD VkQueue     GetRenderingQueue() IPURE;
             IDESTRUCTOR
         };
 
@@ -50,7 +54,7 @@ namespace RenderCore
         class __declspec( uuid("{BC1B03FD-6770-4714-82B7-D7819142ED4A}") ) ICLASSNAME(ThreadContextVulkan)
         {
         public:
-            // IMETHOD std::shared_ptr<Metal_Vulkan::DeviceContext>&  GetUnderlying() IPURE;
+            IMETHOD VkCommandBuffer	GetPrimaryCommandBuffer() IPURE;
             IDESTRUCTOR
         };
 

@@ -564,6 +564,11 @@ namespace RenderCore
 
 	VkInstance DeviceVulkan::GetVulkanInstance() { return _instance.get(); }
 	VkDevice DeviceVulkan::GetUnderlyingDevice() { return _underlying.get(); }
+    VkQueue DeviceVulkan::GetRenderingQueue()
+    {
+        return GetQueue(_underlying.get(), _physDev._renderingQueueFamily, 0);
+    }
+
 	DeviceVulkan::DeviceVulkan() { }
 	DeviceVulkan::~DeviceVulkan() { }
 
@@ -1155,6 +1160,11 @@ namespace RenderCore
     {
         if (guid == __uuidof(Base_ThreadContextVulkan)) { return (IThreadContextVulkan*)this; }
         return nullptr;
+    }
+
+    VkCommandBuffer ThreadContextVulkan::GetPrimaryCommandBuffer()
+    {
+        return _primaryCommandBuffer.get();
     }
 
     ThreadContextVulkan::ThreadContextVulkan(std::shared_ptr<Device> device, VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)

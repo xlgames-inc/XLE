@@ -47,7 +47,7 @@
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\VulkanSDK\1.0.5.0\glslang\glslang\Public;E:\work\HLSLCrossCompiler\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\VulkanSDK\1.0.5.0\;E:\work\HLSLCrossCompiler\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Lib>
       <AdditionalDependencies>E:\work\HLSLCrossCompiler\lib\Debug\libHLSLcc.lib;D:\VulkanSDK\1.0.5.0\glslang\build\glslang\Debug\glslang.lib;D:\VulkanSDK\1.0.5.0\glslang\build\SPIRV\Debug\SPIRV.lib;D:\VulkanSDK\1.0.5.0\glslang\build\glslang\OSDependent\Windows\Debug\OSDependent.lib;D:\VulkanSDK\1.0.5.0\glslang\build\OGLCompilersDLL\Debug\OGLCompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -58,6 +58,10 @@
     <ClCompile Include="..\Vulkan\Metal\InputLayout.cpp" />
     <ClCompile Include="..\Vulkan\Metal\ObjectFactory.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Shader.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\ShaderReflection.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

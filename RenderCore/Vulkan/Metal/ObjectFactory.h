@@ -8,6 +8,7 @@
 
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
+#include "../../../Utility/IteratorUtils.h"
 #include "../../../Core/Types.h"
 
 #undef CreateSemaphore
@@ -44,6 +45,9 @@ namespace RenderCore { namespace Metal_Vulkan
         VulkanSharedPtr<VkShaderModule> CreateShaderModule(
             const void* byteCode, size_t size,
             VkShaderModuleCreateFlags flags = 0) const;
+
+        VulkanSharedPtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
+            IteratorRange<const VkDescriptorSetLayoutBinding*> bindings) const;
 
 		unsigned FindMemoryType(
             VkFlags memoryTypeBits, 

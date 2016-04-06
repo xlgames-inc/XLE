@@ -221,7 +221,8 @@ namespace RenderCore
     class ThreadContextVulkan : public ThreadContext, public Base_ThreadContextVulkan
     {
     public:
-        virtual void*       QueryInterface(const GUID& guid);
+        virtual void*   QueryInterface(const GUID& guid);
+        VkCommandBuffer GetPrimaryCommandBuffer();
 
 		ThreadContextVulkan(std::shared_ptr<Device> device, VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer);
         ~ThreadContextVulkan();
@@ -256,8 +257,9 @@ namespace RenderCore
     {
     public:
         virtual void*   QueryInterface(const GUID& guid);
-		VkInstance		GetVulkanInstance();
-		VkDevice		GetUnderlyingDevice();
+		VkInstance	    GetVulkanInstance();
+		VkDevice	    GetUnderlyingDevice();
+        VkQueue         GetRenderingQueue();
         
         DeviceVulkan();
         ~DeviceVulkan();

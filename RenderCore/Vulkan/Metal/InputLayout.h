@@ -6,7 +6,10 @@
 
 #pragma once
 
+#include "VulkanCore.h"
 #include "Format.h"
+#include "ShaderReflection.h"
+#include "IncludeVulkan.h"
 #include "../../ShaderService.h"
 #include "../../RenderUtils.h"
 #include "../../../Utility/IntrusivePtr.h"
@@ -125,6 +128,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class ShaderResourceView;
     class ShaderProgram;
     class DeepShaderProgram;
+    class ObjectFactory;
 
     typedef SharedPkt ConstantBufferPacket;
 
@@ -164,35 +168,38 @@ namespace RenderCore { namespace Metal_Vulkan
     class BoundUniforms
     {
     public:
-        BoundUniforms(const ShaderProgram& shader) {}
-        BoundUniforms(const DeepShaderProgram& shader) {}
-        BoundUniforms(const CompiledShaderByteCode& shader) {}
-        BoundUniforms(const BoundUniforms& copyFrom) {}
-        BoundUniforms() {}
-        ~BoundUniforms() {}
-        BoundUniforms& operator=(const BoundUniforms& copyFrom) {}
-        BoundUniforms(BoundUniforms&& moveFrom) never_throws {}
-        BoundUniforms& operator=(BoundUniforms&& moveFrom) never_throws {}
+        BoundUniforms(const ShaderProgram& shader);
+        BoundUniforms(const DeepShaderProgram& shader);
+        BoundUniforms(const CompiledShaderByteCode& shader);
+        BoundUniforms(const BoundUniforms& copyFrom);
+        BoundUniforms();
+        ~BoundUniforms();
+        BoundUniforms& operator=(const BoundUniforms& copyFrom);
+        BoundUniforms(BoundUniforms&& moveFrom) never_throws;
+        BoundUniforms& operator=(BoundUniforms&& moveFrom) never_throws;
 
         bool BindConstantBuffer(    uint64 hashName, unsigned slot, unsigned uniformsStream,
                                     const ConstantBufferLayoutElement elements[] = nullptr, 
-                                    size_t elementCount = 0) {}
-        bool BindShaderResource(    uint64 hashName, unsigned slot, unsigned uniformsStream) {}
+                                    size_t elementCount = 0);
+        bool BindShaderResource(    uint64 hashName, unsigned slot, unsigned uniformsStream);
 
-        bool BindConstantBuffers(unsigned uniformsStream, std::initializer_list<const char*> cbs) {}
-        bool BindConstantBuffers(unsigned uniformsStream, std::initializer_list<uint64> cbs) {}
+        bool BindConstantBuffers(unsigned uniformsStream, std::initializer_list<const char*> cbs);
+        bool BindConstantBuffers(unsigned uniformsStream, std::initializer_list<uint64> cbs);
 
-        bool BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res) {}
-        bool BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res) {}
-
-		void CopyReflection(const BoundUniforms& copyFrom) {}
-
-        ConstantBufferLayout                                GetConstantBufferLayout(const char name[]) {}
-        std::vector<std::pair<ShaderStage::Enum,unsigned>>  GetConstantBufferBinding(const char name[]) {}
+        bool BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res);
+        bool BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res);
 
         void Apply( DeviceContext& context, 
-                    const UniformsStream& stream0, const UniformsStream& stream1) const {}
-        void UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const {}
+                    const UniformsStream& stream0, const UniformsStream& stream1) const;
+        void UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const;
+
+        VulkanSharedPtr<VkDescriptorSetLayout> CreateLayout(const ObjectFactory& factory, unsigned streamIndex) const;
+
+    private:
+        SPIRVReflection _reflection[ShaderStage::Max];
+
+        static const unsigned s_descriptorSetCount = 2;
+        std::vector<VkDescriptorSetLayoutBinding> _bindings[s_descriptorSetCount];
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

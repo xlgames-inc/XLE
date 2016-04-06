@@ -5,43 +5,39 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "InputLayout.h"
+#include "Shader.h"
+#include "ObjectFactory.h"
+#include "../../ShaderService.h"
+#include "../../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
 
-#if 0
     BoundUniforms::BoundUniforms(const ShaderProgram& shader)
     {
-            //  In this case, we must bind with every shader stage 
-            //      (since a shader program actually reflects the state of the entire stage pipeline) 
-        _stageBindings[ShaderStage::Vertex]._reflection     = CreateReflection(shader.GetCompiledVertexShader());
-        _stageBindings[ShaderStage::Pixel]._reflection      = CreateReflection(shader.GetCompiledPixelShader());
+        _reflection[ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
+        _reflection[ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
         auto* geoShader = shader.GetCompiledGeometryShader();
-        if (geoShader) {
-            _stageBindings[ShaderStage::Geometry]._reflection   = CreateReflection(*geoShader);
-        }
+        if (geoShader)
+            _reflection[ShaderStage::Geometry] = SPIRVReflection(geoShader->GetByteCode());
     }
 
     BoundUniforms::BoundUniforms(const DeepShaderProgram& shader)
     {
-            //  In this case, we must bind with every shader stage 
-            //      (since a shader program actually reflects the state of the entire stage pipeline) 
-        _stageBindings[ShaderStage::Vertex]._reflection     = CreateReflection(shader.GetCompiledVertexShader());
-        _stageBindings[ShaderStage::Pixel]._reflection      = CreateReflection(shader.GetCompiledPixelShader());
+        _reflection[ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
+        _reflection[ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
         auto* geoShader = shader.GetCompiledGeometryShader();
-        if (geoShader) {
-            _stageBindings[ShaderStage::Geometry]._reflection   = CreateReflection(*geoShader);
-        }
-        _stageBindings[ShaderStage::Hull]._reflection       = CreateReflection(shader.GetCompiledHullShader());
-        _stageBindings[ShaderStage::Domain]._reflection     = CreateReflection(shader.GetCompiledDomainShader());
+        if (geoShader)
+            _reflection[ShaderStage::Geometry] = SPIRVReflection(geoShader->GetByteCode());
+        _reflection[ShaderStage::Hull] = SPIRVReflection(shader.GetCompiledHullShader().GetByteCode());
+        _reflection[ShaderStage::Domain] = SPIRVReflection(shader.GetCompiledDomainShader().GetByteCode());
     }
 
 	BoundUniforms::BoundUniforms(const CompiledShaderByteCode& shader)
     {
-            //  In this case, we're binding with a single shader stage
         ShaderStage::Enum stage = shader.GetStage();
-        if (stage < dimof(_stageBindings)) {
-            _stageBindings[stage]._reflection = CreateReflection(shader);
+        if (stage < dimof(_reflection)) {
+            _reflection[stage] = SPIRVReflection(shader.GetByteCode());
         }
     }
 
@@ -51,202 +47,120 @@ namespace RenderCore { namespace Metal_Vulkan
 
     BoundUniforms::BoundUniforms(const BoundUniforms& copyFrom)
     {
-        for (unsigned s=0; s<dimof(_stageBindings); ++s)
-            _stageBindings[s] = copyFrom._stageBindings[s];
+        for (unsigned s=0; s<dimof(_reflection); ++s)
+            _reflection[s] = copyFrom._reflection[s];
     }
 
     BoundUniforms& BoundUniforms::operator=(const BoundUniforms& copyFrom)
     {
-        for (unsigned s=0; s<dimof(_stageBindings); ++s)
-            _stageBindings[s] = copyFrom._stageBindings[s];
+        for (unsigned s=0; s<dimof(_reflection); ++s)
+            _reflection[s] = copyFrom._reflection[s];
         return *this;
     }
 
     BoundUniforms::BoundUniforms(BoundUniforms&& moveFrom)
     {
-        for (unsigned s=0; s<dimof(_stageBindings); ++s)
-            _stageBindings[s] = std::move(moveFrom._stageBindings[s]);
+        for (unsigned s=0; s<dimof(_reflection); ++s)
+            _reflection[s] = std::move(moveFrom._reflection[s]);
     }
 
     BoundUniforms& BoundUniforms::operator=(BoundUniforms&& moveFrom)
     {
-        for (unsigned s=0; s<dimof(_stageBindings); ++s)
-            _stageBindings[s] = std::move(moveFrom._stageBindings[s]);
-        return *this;
-    }
-    
-    BoundUniforms::StageBinding::StageBinding() {}
-    BoundUniforms::StageBinding::~StageBinding() {}
-
-    BoundUniforms::StageBinding::StageBinding(StageBinding&& moveFrom)
-    :   _reflection(std::move(moveFrom._reflection))
-    ,   _shaderConstantBindings(std::move(moveFrom._shaderConstantBindings))
-    ,   _shaderResourceBindings(std::move(moveFrom._shaderResourceBindings))
-    {
-    }
-
-    BoundUniforms::StageBinding& BoundUniforms::StageBinding::operator=(BoundUniforms::StageBinding&& moveFrom)
-    {
-        _reflection = std::move(moveFrom._reflection);
-        _shaderConstantBindings = std::move(moveFrom._shaderConstantBindings);
-        _shaderResourceBindings = std::move(moveFrom._shaderResourceBindings);
+        for (unsigned s=0; s<dimof(_reflection); ++s)
+            _reflection[s] = std::move(moveFrom._reflection[s]);
         return *this;
     }
 
-	BoundUniforms::StageBinding::StageBinding(const StageBinding& copyFrom)
-	: _reflection(copyFrom._reflection)
-	, _shaderConstantBindings(copyFrom._shaderConstantBindings)
-	, _shaderResourceBindings(copyFrom._shaderResourceBindings)
-	{
-	}
-
-	BoundUniforms::StageBinding& BoundUniforms::StageBinding::operator=(const StageBinding& copyFrom)
-	{
-		_reflection = copyFrom._reflection;
-		_shaderConstantBindings = copyFrom._shaderConstantBindings;
-		_shaderResourceBindings = copyFrom._shaderResourceBindings;
-		return *this;
-	}
-    
+    static VkShaderStageFlags AsShaderStageFlag(ShaderStage::Enum stage)
+    {
+        switch (stage) {
+        case ShaderStage::Vertex: return VK_SHADER_STAGE_VERTEX_BIT;
+        case ShaderStage::Pixel: return VK_SHADER_STAGE_FRAGMENT_BIT;
+        case ShaderStage::Geometry: return VK_SHADER_STAGE_GEOMETRY_BIT;
+        case ShaderStage::Hull: return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        case ShaderStage::Domain: return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+        case ShaderStage::Compute: return VK_SHADER_STAGE_COMPUTE_BIT;
+        default: return 0;
+        }
+    }
 
     bool BoundUniforms::BindConstantBuffer( uint64 hashName, unsigned slot, unsigned stream,
                                             const ConstantBufferLayoutElement elements[], size_t elementCount)
     {
-        bool functionResult = false;
-            //
-            //    Look for this constant buffer in the shader interface.
-            //        If it exists, let's validate that the input layout is similar
-            //        to what the shader expects.
-            //
-        for (unsigned s=0; s<dimof(_stageBindings); ++s) {
-            if (!_stageBindings[s]._reflection) continue;
+        bool gotBinding = false;
 
-            D3D11_SHADER_DESC shaderDesc;
-            auto hresult = _stageBindings[s]._reflection->GetDesc(&shaderDesc);
+        for (unsigned s=0; s<dimof(_reflection); ++s) {
+            auto i = LowerBound(_reflection[s]._quickLookup, hashName);
+            if (i == _reflection[s]._quickLookup.end() || i->first != hashName) continue;
 
-			if (SUCCEEDED(hresult)) {
-				for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
-					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
-					HRESULT hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c, &bindingDesc);
-					if (SUCCEEDED(hresult)) {
-						const uint64 hash = Hash64(bindingDesc.Name, XlStringEnd(bindingDesc.Name));
-						if (hash == hashName) {
-							ID3D::ShaderReflectionConstantBuffer* cbReflection = _stageBindings[s]._reflection->GetConstantBufferByName(
-								bindingDesc.Name);
-							if (!cbReflection) 
-								continue;
+            assert(i->second._descriptorSet == stream);
+            assert(stream < s_descriptorSetCount);
 
-							D3D11_SHADER_BUFFER_DESC cbDesc;
-							XlZeroMemory(cbDesc);
-							cbReflection->GetDesc(&cbDesc); // when GetConstantBufferByName() fails, it returns a dummy object that doesn't do anything in GetDesc();
-							if (!cbDesc.Size) 
-								continue;
-
-							assert(Hash64(cbDesc.Name) == hashName);        // double check we got the correct reflection object
-
-							#if defined(_DEBUG)
-								for (size_t c=0; c<elementCount; ++c) {
-									ID3D::ShaderReflectionVariable* variable = 
-										cbReflection->GetVariableByName(elements[c]._name);
-									assert(variable);
-									if (variable) {
-										D3D11_SHADER_VARIABLE_DESC variableDesc;
-										XlZeroMemory(variableDesc);
-										variable->GetDesc(&variableDesc);
-										assert(variableDesc.Name!=nullptr);
-										assert(variableDesc.StartOffset == elements[c]._offset);
-										assert(variableDesc.Size == std::max(1u, elements[c]._arrayCount) * BitsPerPixel(elements[c]._format) / 8);
-									}
-								}
-							#endif
-							(void)elements; (void)elementCount; // (not used in release)
-
-							StageBinding::Binding newBinding;
-							newBinding._shaderSlot = bindingDesc.BindPoint;
-							newBinding._inputInterfaceSlot = slot | (stream<<16);
-							newBinding._savedCB = ConstantBuffer(nullptr, cbDesc.Size);
-							_stageBindings[s]._shaderConstantBindings.push_back(newBinding);
-							functionResult = true;
-							break;
-						}
-					}
-				}
-			}
+			// note --  expecting this object to be a uniform block. We should
+            //          do another lookup to check the type of the object.
+            VkDescriptorSetLayoutBinding binding;
+            binding.binding = i->second._bindingPoint;
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;     // (note, see also VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+            binding.descriptorCount = 1;
+            binding.stageFlags = AsShaderStageFlag(ShaderStage::Enum(s));   // note, can we combine multiple bindings into one by using multiple bits here?
+            binding.pImmutableSamplers = nullptr;
+            _bindings[stream].push_back(binding);
+            gotBinding = true;
         }
 
-        return functionResult;
+        return gotBinding;
     }
 
-    static NativeFormat::Enum AsNativeFormat(D3D11_SHADER_TYPE_DESC typeDesc)
+    bool BoundUniforms::BindShaderResource(uint64 hashName, unsigned slot, unsigned stream)
     {
-        switch (typeDesc.Type) {
-        case D3D10_SVT_INT:
-            if (typeDesc.Rows <= 1) {
-                if (typeDesc.Columns == 4) {
-                    return NativeFormat::R32G32B32A32_SINT;
-                } else if (typeDesc.Columns == 2) {
-                    return NativeFormat::R32G32_SINT;
-                } else if (typeDesc.Columns == 1) {
-                    return NativeFormat::R32_SINT;
-                } else {
-                    return NativeFormat::Unknown;
-                }
-            }
-            break;
-        case D3D10_SVT_UINT:
-            if (typeDesc.Rows <= 1) {
-                if (typeDesc.Columns == 4) {
-                    return NativeFormat::R32G32B32A32_UINT;
-                } else if (typeDesc.Columns == 2) {
-                    return NativeFormat::R32G32_UINT;
-                } else if (typeDesc.Columns == 1) {
-                    return NativeFormat::R32_UINT;
-                } else {
-                    return NativeFormat::Unknown;
-                }
-            }
-            break;
-        case D3D10_SVT_UINT8:
-            if (typeDesc.Rows <= 1) {
-                if (typeDesc.Columns == 4) {
-                    return NativeFormat::R8G8B8A8_UINT;
-                } else if (typeDesc.Columns == 2) {
-                    return NativeFormat::R8G8B8A8_UINT;
-                } else if (typeDesc.Columns == 1) {
-                    return NativeFormat::R8G8B8A8_UINT;
-                } else {
-                    return NativeFormat::Unknown;
-                }
-            }
-            break;
-        case D3D10_SVT_FLOAT:
-            if (typeDesc.Rows <= 1) {
-                if (typeDesc.Columns == 4) {
-                    return NativeFormat::R32G32B32A32_FLOAT;
-                } else if (typeDesc.Columns == 2) {
-                    return NativeFormat::R32G32_FLOAT;
-                } else if (typeDesc.Columns == 1) {
-                    return NativeFormat::R32_FLOAT;
-                } else {
-                    return NativeFormat::Unknown;
-                }
-            }
-            break;
-        case D3D11_SVT_DOUBLE:
-        default:
-            break;
+        bool gotBinding = false;
+
+        for (unsigned s=0; s<dimof(_reflection); ++s) {
+            auto i = LowerBound(_reflection[s]._quickLookup, hashName);
+            if (i == _reflection[s]._quickLookup.end() || i->first != hashName) continue;
+
+            assert(i->second._descriptorSet == stream);
+            assert(stream < s_descriptorSetCount);
+
+			// note --  We should validate the type of this object!
+            VkDescriptorSetLayoutBinding binding;
+            binding.binding = (i->second._bindingPoint == ~0x0) ? unsigned(_bindings[stream].size()) : i->second._bindingPoint;
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            binding.descriptorCount = 1;
+            binding.stageFlags = AsShaderStageFlag(ShaderStage::Enum(s));   // note, can we combine multiple bindings into one by using multiple bits here?
+            binding.pImmutableSamplers = nullptr;
+            _bindings[stream].push_back(binding);
+            gotBinding = true;
         }
-        return NativeFormat::Unknown;
+
+        return gotBinding;
+    }
+
+    static bool IsCBType(VkDescriptorType type)
+    {
+        return type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            || type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+            || type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+            || type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
+            ;
+    }
+
+    static bool IsShaderResType(VkDescriptorType type)
+    {
+        return type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+            || type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+            || type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+            ;
     }
 
     bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<const char*> cbs)
     {
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
+        assert(uniformsStream < s_descriptorSetCount);
         #if defined(_DEBUG)
-            for (unsigned c=0; c<ShaderStage::Max; ++c)
-                for (const auto& i:_stageBindings[c]._shaderConstantBindings)
-                    assert((i._inputInterfaceSlot>>16) != uniformsStream);
+            for (const auto& i:_bindings[uniformsStream])
+                assert(!IsCBType(i.descriptorType));
         #endif
 
         bool result = true;
@@ -259,10 +173,10 @@ namespace RenderCore { namespace Metal_Vulkan
     {
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
+        assert(uniformsStream < s_descriptorSetCount);
         #if defined(_DEBUG)
-            for (unsigned c=0; c<ShaderStage::Max; ++c)
-                for (const auto& i:_stageBindings[c]._shaderConstantBindings)
-                    assert((i._inputInterfaceSlot>>16) != uniformsStream);
+            for (const auto& i:_bindings[uniformsStream])
+                assert(!IsCBType(i.descriptorType));
         #endif
 
         bool result = true;
@@ -273,10 +187,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res)
     {
+        assert(uniformsStream < s_descriptorSetCount);
         #if defined(_DEBUG)
-            for (unsigned c=0; c<ShaderStage::Max; ++c)
-                for (const auto& i:_stageBindings[c]._shaderResourceBindings)
-                    assert((i._inputInterfaceSlot>>16) != uniformsStream);
+            for (const auto& i:_bindings[uniformsStream])
+                assert(!IsShaderResType(i.descriptorType));
         #endif
 
         bool result = true;
@@ -287,10 +201,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res)
     {
+        assert(uniformsStream < s_descriptorSetCount);
         #if defined(_DEBUG)
-            for (unsigned c=0; c<ShaderStage::Max; ++c)
-                for (const auto& i:_stageBindings[c]._shaderResourceBindings)
-                    assert((i._inputInterfaceSlot>>16) != uniformsStream);
+            for (const auto& i:_bindings[uniformsStream])
+                assert(!IsShaderResType(i.descriptorType));
         #endif
 
         bool result = true;
@@ -299,21 +213,23 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
-	void BoundUniforms::CopyReflection(const BoundUniforms& copyFrom)
-	{
-		for (unsigned c=0; c<ShaderStage::Max; ++c) {
-			_stageBindings[c]._shaderConstantBindings.clear();
-			_stageBindings[c]._shaderResourceBindings.clear();
-			_stageBindings[c]._reflection = copyFrom._stageBindings[c]._reflection;
-		}
-	}
+    VulkanSharedPtr<VkDescriptorSetLayout> 
+        BoundUniforms::CreateLayout(const ObjectFactory& factory, unsigned streamIndex) const
+    {
+        if (!_bindings[streamIndex].empty())
+            return factory.CreateDescriptorSetLayout(MakeIteratorRange(_bindings[streamIndex]));
+        return nullptr;
+    }
 
-	intrusive_ptr<ID3D::ShaderReflection> BoundUniforms::GetReflection(ShaderStage::Enum stage)
-	{
-		return _stageBindings[stage]._reflection;
-	}
+    void BoundUniforms::Apply(  DeviceContext& context, 
+                                const UniformsStream& stream0, 
+                                const UniformsStream& stream1) const
+    {
+    }
 
-#endif
+    void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const
+    {
+    }
 
 }}
 

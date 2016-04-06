@@ -151,6 +151,27 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(shader);
     }
 
+    VulkanSharedPtr<VkDescriptorSetLayout> ObjectFactory::CreateDescriptorSetLayout(
+        IteratorRange<const VkDescriptorSetLayoutBinding*> bindings) const
+    {
+        VkDescriptorSetLayoutCreateInfo createInfo = {};
+        createInfo.sType =
+            VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        createInfo.pNext = nullptr;
+        createInfo.bindingCount = (uint32)bindings.size();
+        createInfo.pBindings = bindings.begin();
+
+        auto dev = _device.get();
+        VkDescriptorSetLayout rawLayout = nullptr;
+        auto res = vkCreateDescriptorSetLayout(dev, &createInfo, g_allocationCallbacks, &rawLayout);
+        auto shader = VulkanSharedPtr<VkDescriptorSetLayout>(
+            rawLayout,
+            [dev](VkDescriptorSetLayout layout) { vkDestroyDescriptorSetLayout(dev, layout, Metal_Vulkan::g_allocationCallbacks); });
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failed while creating descriptor set layout"));
+        return std::move(shader);
+    }
+
     unsigned ObjectFactory::FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask) const
     {
         // Search memtypes to find first index with those properties

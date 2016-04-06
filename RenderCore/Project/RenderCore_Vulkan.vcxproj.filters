@@ -5,7 +5,9 @@
     <ClCompile Include="..\Vulkan\Metal\Shader.cpp" />
     <ClCompile Include="..\Vulkan\Metal\ObjectFactory.cpp" />
     <ClCompile Include="..\Vulkan\Metal\InputLayout.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\ShaderReflection.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />
   </ItemGroup>
 </Project>
