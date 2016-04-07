@@ -74,7 +74,7 @@ namespace RenderCore { namespace Metal_Vulkan
     inline auto        GetCompressionType(NativeFormat::Enum format) -> FormatCompressionType::Enum { return FormatCompressionType::None; }
     auto        GetComponents(NativeFormat::Enum format) -> FormatComponents::Enum;
     auto        GetComponentType(NativeFormat::Enum format) -> FormatComponentType::Enum;
-    inline unsigned    BitsPerPixel(NativeFormat::Enum format) { return 0; }
+    unsigned    BitsPerPixel(NativeFormat::Enum format);
     unsigned    GetComponentPrecision(NativeFormat::Enum format);
     unsigned    GetDecompressedComponentPrecision(NativeFormat::Enum format);
     unsigned    GetComponentCount(FormatComponents::Enum components);

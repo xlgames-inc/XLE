@@ -15,13 +15,14 @@
 #include "../IDevice.h"
 #include "../IThreadContext.h"
 #include "IDeviceVulkan.h"
-#include "../../BufferUploads/IBufferUploads.h"
-#include "../../Utility/IntrusivePtr.h"
-#include "../../Utility/IteratorUtils.h"
 #include "Metal/VulkanCore.h"
 #include "Metal/ObjectFactory.h"
 #include "Metal/DeviceContext.h"
+#include "Metal/Pools.h"
 #include "Metal/IncludeVulkan.h"
+#include "../../BufferUploads/IBufferUploads.h"
+#include "../../Utility/IntrusivePtr.h"
+#include "../../Utility/IteratorUtils.h"
 #include <memory>
 #include <vector>
 #include <type_traits>
@@ -137,20 +138,6 @@ namespace RenderCore
 		RenderTargetView();
 	};
 
-	class CommandPool
-	{
-	public:
-		enum class BufferType { Primary, Secondary };
-		VulkanSharedPtr<VkCommandBuffer> CreateBuffer(BufferType type);
-
-		CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex);
-		CommandPool();
-		~CommandPool();
-	private:
-		VulkanSharedPtr<VkCommandPool> _pool;
-		VulkanSharedPtr<VkDevice> _device;
-	};
-
 ////////////////////////////////////////////////////////////////////////////////
 
     class PresentationChain : public Base_PresentationChain
@@ -168,6 +155,7 @@ namespace RenderCore
 			VulkanSharedPtr<VkSwapchainKHR> swapChain,			
             const Metal_Vulkan::ObjectFactory& factory,
             VkQueue queue, 
+            Metal_Vulkan::GlobalPools& globalPools,
             const BufferUploads::TextureDesc& bufferDesc,
             const void* platformValue);
         ~PresentationChain();
@@ -213,8 +201,7 @@ namespace RenderCore
         ThreadContext(
             std::shared_ptr<Device> device, 
             const Metal_Vulkan::ObjectFactory& factory, 
-            VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer,
-            VkPipelineCache pipelineCache);
+            VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer);
         ~ThreadContext();
     protected:
         std::weak_ptr<Device>           _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
@@ -232,8 +219,7 @@ namespace RenderCore
 		ThreadContextVulkan(
             std::shared_ptr<Device> device, 
             const Metal_Vulkan::ObjectFactory& factory, 
-            VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer,
-            VkPipelineCache pipelineCache);
+            VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer);
         ~ThreadContextVulkan();
     };
 
@@ -250,15 +236,16 @@ namespace RenderCore
         std::shared_ptr<IThreadContext>         GetImmediateContext();
         std::unique_ptr<IThreadContext>         CreateDeferredContext();
 
+        Metal_Vulkan::GlobalPools&              GetGlobalPools() { return _pools; }
+
         Device();
         ~Device();
     protected:
 		VulkanSharedPtr<VkInstance>         _instance;
 		VulkanSharedPtr<VkDevice>		    _underlying;
         SelectedPhysicalDevice              _physDev;
-		CommandPool						    _renderingCommandPool;
-        VulkanSharedPtr<VkPipelineCache>    _pipelineCache;
 		Metal_Vulkan::ObjectFactory		    _objectFactory;
+        Metal_Vulkan::GlobalPools           _pools;
 
 		std::shared_ptr<ThreadContextVulkan>	_foregroundPrimaryContext;
     };
@@ -270,6 +257,7 @@ namespace RenderCore
 		VkInstance	    GetVulkanInstance();
 		VkDevice	    GetUnderlyingDevice();
         VkQueue         GetRenderingQueue();
+        Metal_Vulkan::GlobalPools&      GetGlobalPools();
         
         DeviceVulkan();
         ~DeviceVulkan();

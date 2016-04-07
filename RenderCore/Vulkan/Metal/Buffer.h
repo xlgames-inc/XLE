@@ -33,6 +33,7 @@ namespace RenderCore { namespace Metal_Vulkan
         bool                IsGood() const { return _underlying != nullptr; }
     protected:
         VulkanSharedPtr<VkBuffer> _underlying;
+        VulkanSharedPtr<VkDeviceMemory> _mem;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

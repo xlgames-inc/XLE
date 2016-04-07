@@ -8,6 +8,7 @@
 #include "ObjectFactory.h"
 #include "InputLayout.h"
 #include "Shader.h"
+#include "Pools.h"
 #include "../IDeviceVulkan.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -35,9 +36,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void        PipelineBuilder::Bind(const BoundUniforms& uniforms)
     {
-        _descriptorSets[0] = uniforms.CreateLayout(*_factory, 0);
-        VkDescriptorSetLayout layouts[] = { _descriptorSets[0].get() };
-        _pipelineLayout = _factory->CreatePipelineLayout(MakeIteratorRange(layouts));
+        if (!_descriptorSets[0]) {
+            _descriptorSets[0] = uniforms.CreateLayout(*_factory, 0);
+            VkDescriptorSetLayout layouts[] = { _descriptorSets[0].get() };
+            _pipelineLayout = _factory->CreatePipelineLayout(MakeIteratorRange(layouts));
+        }
     }
 
     void        PipelineBuilder::Bind(const ShaderProgram& shaderProgram)
@@ -176,6 +179,20 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void        DeviceContext::Bind(const ViewportDesc& viewport)
     {
+        vkCmdSetViewport(
+            _primaryCommandList.get(),
+            0, 1,
+            (VkViewport*)&viewport);
+
+            // todo -- get this right for non-integer coords
+        VkRect2D scissor = {
+            {int(viewport.TopLeftX), int(viewport.TopLeftY)},
+            {int(viewport.Width), int(viewport.Height)},
+        };
+        vkCmdSetScissor(
+            _primaryCommandList.get(),
+            0, 1,
+            &scissor);
     }
 
     void        DeviceContext::Bind(VulkanSharedPtr<VkRenderPass> renderPass)
@@ -221,8 +238,8 @@ namespace RenderCore { namespace Metal_Vulkan
     DeviceContext::DeviceContext(
         const ObjectFactory& factory, 
         VulkanSharedPtr<VkCommandBuffer> cmdList,
-        VkPipelineCache pipelineCache)
-    : PipelineBuilder(factory, pipelineCache)
+        GlobalPools globalPools)
+    : PipelineBuilder(factory, globalPools._mainPipelineCache.get())
     , _primaryCommandList(cmdList)
     {}
 

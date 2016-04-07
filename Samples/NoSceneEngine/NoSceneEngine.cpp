@@ -42,6 +42,7 @@
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Vulkan/Metal/ObjectFactory.h"
 #include "../../RenderCore/Vulkan/Metal/Buffer.h"
+#include "../../RenderCore/Vulkan/Metal/Pools.h"
 #include "../../RenderCore/Vulkan/IDeviceVulkan.h"
 #include "../../Tools/ToolsRig/VisualisationGeo.h"
 
@@ -497,7 +498,7 @@ namespace Sample
 
             auto& shader = ::Assets::GetAsset<Metal::ShaderProgram>(
                     "game/xleres/deferred/basic.vsh:main:vs_*",
-                    "game/xleres/deferred/basic.psh:main:ps_*",
+                    "game/xleres/basic.psh:copy_bilinear:ps_*",
                     "GEO_HAS_TEXCOORD=1;RES_HAS_DiffuseTexture=1");
 
             Metal::BoundInputLayout inputLayout(
@@ -514,59 +515,30 @@ namespace Sample
             metalContext->Bind(boundUniforms);
             metalContext->Bind(shader);
 
-#if 0
+#if 1
             auto& factory = RenderCore::Metal::GetDefaultObjectFactory();
             #define g_allocationCallbacks RenderCore::Metal_Vulkan::g_allocationCallbacks
             using RenderCore::Metal_Vulkan::VulkanAPIFailure;
             using RenderCore::Metal_Vulkan::VulkanSharedPtr;
-
-            // -------- descriptor pool --------
-            VkDescriptorPoolSize type_count[1];
-            type_count[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            type_count[0].descriptorCount = 1;
-
-            VkDescriptorPoolCreateInfo descriptor_pool = {};
-            descriptor_pool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            descriptor_pool.pNext = nullptr;
-            descriptor_pool.maxSets = 2;
-            descriptor_pool.poolSizeCount = 1;
-            descriptor_pool.pPoolSizes = type_count;
-
-            auto dev = factory.GetDevice().get();
-            VkDescriptorPool rawDescriptorPool = nullptr;
-            auto res = vkCreateDescriptorPool(dev, &descriptor_pool, g_allocationCallbacks, &rawDescriptorPool);
-            auto descriptorPool = VulkanSharedPtr<VkDescriptorPool>(
-                rawDescriptorPool,
-                [dev](VkDescriptorPool pool) { vkDestroyDescriptorPool(dev, pool, g_allocationCallbacks); });
-            if (res != VK_SUCCESS)
-                Throw(VulkanAPIFailure(res, "Failed while creating descriptor pool"));
+            (void)factory;
 
             // -------- descriptor set --------
-            VkDescriptorSetAllocateInfo desc_alloc_info;
-            desc_alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            desc_alloc_info.pNext = nullptr;
-            desc_alloc_info.descriptorPool = descriptorPool.get();
-            desc_alloc_info.descriptorSetCount = dimof(layouts);
-            desc_alloc_info.pSetLayouts = layouts;
-
-            // auto dev = factory.GetDevice().get();
-            auto pool = descriptorPool.get();
-            VkDescriptorSet rawDescriptorSets[2] = { nullptr, nullptr };
-            res = vkAllocateDescriptorSets(dev, &desc_alloc_info, rawDescriptorSets);
-            auto descriptorSet0 = VulkanSharedPtr<VkDescriptorSet>(
-                rawDescriptorSets[0],
-                [dev, pool](VkDescriptorSet set) { vkFreeDescriptorSets(dev, pool, 1, &set); });
-            // auto descriptorSet1 = VulkanSharedPtr<VkDescriptorSet>(
-            //     rawDescriptorSets[1],
-            //     [dev, pool](VkDescriptorSet set) { vkFreeDescriptorSets(dev, pool, 1, &set); });
-            if (res != VK_SUCCESS)
-                Throw(VulkanAPIFailure(res, "Failed while creating descriptor set"));
+            auto pool = device->GetGlobalPools()._mainDescriptorPool;
+            Metal::VulkanUniquePtr<VkDescriptorSet> descriptorSets[1];
+            const VkDescriptorSetLayout layouts[] = { metalContext->GetDescriptorSetLayout(0) };
+            pool.Allocate(
+                MakeIteratorRange(descriptorSets),
+                MakeIteratorRange(layouts));
 
             // -------- demo image --------
-            VulkanTest::texture_object texObj = {};
-            VulkanTest::init_image(
-                factory, device->GetRenderingQueue(), threadContext->GetPrimaryCommandBuffer(), 
-                texObj);
+            static VulkanTest::texture_object texObj = {};
+            static bool texInited = false;
+            if (!texInited) {
+                VulkanTest::init_image(
+                    factory, device->GetRenderingQueue(), threadContext->GetPrimaryCommandBuffer(), 
+                    texObj);
+                texInited = true;
+            }
 
             VkSamplerCreateInfo samplerCreateInfo = {};
             samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -586,7 +558,8 @@ namespace Sample
             samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 
             /* create sampler */
-            res = vkCreateSampler(dev, &samplerCreateInfo, g_allocationCallbacks, &texObj.sampler);
+            auto dev = factory.GetDevice().get();
+            auto res = vkCreateSampler(dev, &samplerCreateInfo, g_allocationCallbacks, &texObj.sampler);
             assert(res == VK_SUCCESS);
 
             // -------- write descriptor set --------
@@ -598,7 +571,7 @@ namespace Sample
             VkWriteDescriptorSet writes[1];
             writes[0] = {};
             writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[0].dstSet = descriptorSet0.get();
+            writes[0].dstSet = descriptorSets[0].get();
             writes[0].dstBinding = 0;
             writes[0].descriptorCount = 1;
             writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -607,18 +580,21 @@ namespace Sample
 
             vkUpdateDescriptorSets(factory.GetDevice().get(), dimof(writes), writes, 0, nullptr);
 
-            VkDescriptorSet descriptorSets[] = { descriptorSet0.get() };
-            vkCmdBindDescriptorSets(
-                threadContext->GetPrimaryCommandBuffer(),
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                pipelineLayout.get(), 
-                0, 1, descriptorSets, 0, nullptr);
+            // VkDescriptorSet rawDescriptorSets[] = { descriptorSets[0].get() };
+            // auto pipelineLayout = metalContext->GetPipelineLayout();
+            // vkCmdBindDescriptorSets(
+            //     threadContext->GetPrimaryCommandBuffer(),
+            //     VK_PIPELINE_BIND_POINT_GRAPHICS,
+            //     pipelineLayout, 0, 
+            //     dimof(rawDescriptorSets), rawDescriptorSets, 
+            //     0, nullptr);
 #endif
 
             auto cubeGeo = ToolsRig::BuildCube();
             auto vertexStride = sizeof(decltype(cubeGeo)::value_type);
-            Metal::VertexBuffer vb(AsPointer(cubeGeo.begin()), cubeGeo.size() * vertexStride);
+            static Metal::VertexBuffer vb(AsPointer(cubeGeo.begin()), cubeGeo.size() * vertexStride);
             metalContext->Bind(MakeResourceList(vb), (unsigned)vertexStride);
+            metalContext->Bind(Metal::ViewportDesc(0, 0, 256, 256));
             metalContext->Draw((unsigned)cubeGeo.size());
         }
         CATCH(const ::Assets::Exceptions::AssetException&) {}

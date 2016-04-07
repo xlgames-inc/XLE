@@ -133,15 +133,15 @@ namespace RenderCore { namespace Metal_Vulkan
         if (memoryTypeIndex >= 32)
             Throw(::Exceptions::BasicLabel("Could not find valid memory type for buffer"));
 
-        auto devMem = factory.AllocateMemory(mem_reqs.size, memoryTypeIndex);
+        _mem = factory.AllocateMemory(mem_reqs.size, memoryTypeIndex);
 
         if (initData && initDataSize) {
-            MemoryMap map(factory.GetDevice().get(), devMem.get());
+            MemoryMap map(factory.GetDevice().get(), _mem.get());
             std::memcpy(map._data, initData, std::min(initDataSize, (size_t)buf_info.size));
         }
 
         const VkDeviceSize offset = 0;
-        auto res = vkBindBufferMemory(factory.GetDevice().get(), _underlying.get(), devMem.get(), offset);
+        auto res = vkBindBufferMemory(factory.GetDevice().get(), _underlying.get(), _mem.get(), offset);
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while binding a buffer to device memory"));
     }
@@ -182,7 +182,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {}
 
     VertexBuffer::VertexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount)
-    : Buffer(factory, BuildDesc(BufferUploads::BindFlag::VertexBuffer, byteCount))
+    : Buffer(factory, BuildDesc(BufferUploads::BindFlag::VertexBuffer, byteCount), data, byteCount)
     {}
 
     IndexBuffer::IndexBuffer() {}
@@ -191,7 +191,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {}
 
     IndexBuffer::IndexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount)
-    : Buffer(factory, BuildDesc(BufferUploads::BindFlag::IndexBuffer, byteCount))
+    : Buffer(factory, BuildDesc(BufferUploads::BindFlag::IndexBuffer, byteCount), data, byteCount)
     {}
 
     ConstantBuffer::ConstantBuffer() {}
@@ -200,7 +200,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {}
 
     ConstantBuffer::ConstantBuffer(const ObjectFactory& factory, const void* data, size_t byteCount, bool immutable)
-    : Buffer(factory, BuildDesc(BufferUploads::BindFlag::ConstantBuffer, byteCount, immutable))
+    : Buffer(factory, BuildDesc(BufferUploads::BindFlag::ConstantBuffer, byteCount, immutable), data, byteCount)
     {}
 
 }}

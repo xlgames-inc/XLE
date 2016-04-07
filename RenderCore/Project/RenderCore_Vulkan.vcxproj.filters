@@ -10,8 +10,10 @@
     <ClCompile Include="..\Vulkan\Metal\State.cpp" />
     <ClCompile Include="..\Vulkan\Metal\DeviceContext.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Buffer.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\Pools.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />
+    <ClInclude Include="..\Vulkan\Metal\Pools.h" />
   </ItemGroup>
 </Project>

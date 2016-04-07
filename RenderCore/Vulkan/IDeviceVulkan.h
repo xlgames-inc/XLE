@@ -16,7 +16,7 @@
 
 namespace RenderCore
 {
-    namespace Metal_Vulkan { class DeviceContext; }
+    namespace Metal_Vulkan { class DeviceContext; class GlobalPools; }
 
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -32,6 +32,7 @@ namespace RenderCore
             IMETHOD VkInstance	GetVulkanInstance() IPURE;
 		    IMETHOD VkDevice	GetUnderlyingDevice() IPURE;
             IMETHOD VkQueue     GetRenderingQueue() IPURE;
+            IMETHOD Metal_Vulkan::GlobalPools& GetGlobalPools() IPURE;
             IDESTRUCTOR
         };
 

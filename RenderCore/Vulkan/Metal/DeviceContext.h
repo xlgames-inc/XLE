@@ -19,6 +19,8 @@ namespace RenderCore { namespace Metal_Vulkan
 {
     static const unsigned s_maxBoundVBs = 4;
 
+    class GlobalPools;
+
     /// Container for Topology::Enum
     namespace Topology
     {
@@ -67,7 +69,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         VulkanUniquePtr<VkPipeline> CreatePipeline(VkRenderPass renderPass, unsigned subpass = 0);
 
-        VkPipelineLayout    GetPipelineLayout() { return _pipelineLayout.get(); }
+        VkPipelineLayout        GetPipelineLayout() { return _pipelineLayout.get(); }
+        VkDescriptorSetLayout   GetDescriptorSetLayout(unsigned index) { return _descriptorSets[index].get(); }
 
         PipelineBuilder(const ObjectFactory& factory, VkPipelineCache cache);
         ~PipelineBuilder();
@@ -169,7 +172,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
         void        Bind(VulkanSharedPtr<VkRenderPass> renderPass);
 
-        DeviceContext(const ObjectFactory& factory, VulkanSharedPtr<VkCommandBuffer> cmdList, VkPipelineCache pipelineCache);
+        DeviceContext(
+            const ObjectFactory& factory, 
+            VulkanSharedPtr<VkCommandBuffer> cmdList, 
+            GlobalPools globalPools);
 		DeviceContext(const DeviceContext&) = delete;
 		DeviceContext& operator=(const DeviceContext&) = delete;
 

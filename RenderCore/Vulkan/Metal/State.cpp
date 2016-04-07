@@ -17,7 +17,7 @@ namespace RenderCore { namespace Metal_Vulkan
         pNext = nullptr;
         flags = 0;
         polygonMode = VK_POLYGON_MODE_FILL;
-        cullMode = VK_CULL_MODE_BACK_BIT;
+        cullMode = VK_CULL_MODE_NONE;
         frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         depthClampEnable = VK_TRUE;
         rasterizerDiscardEnable = VK_FALSE;
@@ -77,8 +77,8 @@ namespace RenderCore { namespace Metal_Vulkan
         sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         pNext = nullptr;
         flags = 0;
-        depthTestEnable = VK_TRUE;
-        depthWriteEnable = VK_TRUE;
+        depthTestEnable = VK_FALSE;
+        depthWriteEnable = VK_FALSE;
         depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
         depthBoundsTestEnable = VK_FALSE;
         minDepthBounds = 0;

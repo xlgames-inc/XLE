@@ -59,6 +59,9 @@ namespace RenderCore { namespace Metal_Vulkan
         VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
             IteratorRange<const VkDescriptorSetLayoutBinding*> bindings) const;
 
+        VulkanUniquePtr<VkDescriptorPool> CreateDescriptorPool(
+            const VkDescriptorPoolCreateInfo& createInfo) const;
+
         VulkanUniquePtr<VkPipelineLayout> CreatePipelineLayout(
             IteratorRange<const VkDescriptorSetLayout*> setLayouts,
             IteratorRange<const VkPushConstantRange*> pushConstants = IteratorRange<const VkPushConstantRange*>(),
@@ -66,6 +69,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         VulkanUniquePtr<VkBuffer> CreateBuffer(
             const VkBufferCreateInfo& createInfo) const;
+
+        VulkanUniquePtr<VkFence> CreateFence(VkFenceCreateFlags flags = 0) const;
 
 		unsigned FindMemoryType(
             VkFlags memoryTypeBits, 

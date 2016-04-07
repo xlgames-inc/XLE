@@ -8,6 +8,7 @@
 #include "Metal/VulkanCore.h"
 #include "Metal/ObjectFactory.h"
 #include "Metal/Format.h"
+#include "Metal/Pools.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
@@ -30,6 +31,7 @@ namespace RenderCore
 		#if PLATFORMOS_TARGET  == PLATFORMOS_WINDOWS
 			, VK_KHR_WIN32_SURFACE_EXTENSION_NAME
 		#endif
+        , VK_EXT_DEBUG_REPORT_EXTENSION_NAME
 	};
 
 	static const char* s_deviceExtensions[] =
@@ -47,7 +49,8 @@ namespace RenderCore
 		"VK_LAYER_LUNARG_object_tracker",
 		"VK_LAYER_LUNARG_param_checker",
 		"VK_LAYER_LUNARG_swapchain",
-		"VK_LAYER_GOOGLE_unique_objects"
+		"VK_LAYER_GOOGLE_unique_objects"/*,
+        "VK_LAYER_RENDERDOC_Capture"*/
 	};
 
 	static const char* s_deviceLayers[] =
@@ -60,7 +63,8 @@ namespace RenderCore
 		"VK_LAYER_LUNARG_object_tracker",
 		"VK_LAYER_LUNARG_param_checker",
 		"VK_LAYER_LUNARG_swapchain",
-		"VK_LAYER_GOOGLE_unique_objects"
+		"VK_LAYER_GOOGLE_unique_objects"/*,
+        "VK_LAYER_RENDERDOC_Capture"*/
 	};
 
     using VulkanAPIFailure = Metal_Vulkan::VulkanAPIFailure;
@@ -86,6 +90,31 @@ namespace RenderCore
 			return layerProps;
 		}
 	}
+
+    static VkDebugReportCallbackEXT msg_callback;
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback( VkFlags msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject, size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg, void *pUserData )
+    {
+	    (void)msgFlags; (void)objType; (void)srcObject; (void)location; (void)pUserData; (void)msgCode;
+        LogInfo << pLayerPrefix << ": " << pMsg;
+	    return false;
+    }
+    
+    static void debug_init(VkInstance instance)
+    {
+        VkDebugReportCallbackCreateInfoEXT debug_callback_info = {};
+        debug_callback_info.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
+        debug_callback_info.pfnCallback = debug_callback;
+        // debug_callback_info.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_INFORMATION_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
+        debug_callback_info.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
+	
+	    auto proc = ((PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr( instance, "vkCreateDebugReportCallbackEXT" ));
+        proc( instance, &debug_callback_info, Metal_Vulkan::g_allocationCallbacks, &msg_callback );
+    }
+    
+    static void debug_destroy(VkInstance instance)
+    {
+	    ((PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr( instance, "vkDestroyDebugReportCallbackEXT" ))( instance, msg_callback, 0 );
+    }
 
 	static VulkanSharedPtr<VkInstance> CreateVulkanInstance()
 	{
@@ -123,13 +152,15 @@ namespace RenderCore
 
 		VkInstance rawResult = nullptr;
 		VkResult res = vkCreateInstance(&inst_info, Metal_Vulkan::g_allocationCallbacks, &rawResult);
-		if (res != VK_SUCCESS)
+		auto instance = VulkanSharedPtr<VkInstance>(
+			rawResult,
+			[](VkInstance inst) { debug_destroy(inst); vkDestroyInstance(inst, Metal_Vulkan::g_allocationCallbacks); });
+        if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure in Vulkan instance construction. You must have an up-to-date Vulkan driver installed."));
 
-		return VulkanSharedPtr<VkInstance>(
-			rawResult,
-			[](VkInstance inst) { vkDestroyInstance(inst, Metal_Vulkan::g_allocationCallbacks); });
-	}
+        debug_init(instance.get());
+        return std::move(instance);
+    }
 
 	static std::vector<VkPhysicalDevice> EnumeratePhysicalDevices(VkInstance vulkan)
 	{
@@ -378,36 +409,6 @@ namespace RenderCore
         return queue;
     }
 
-	VulkanSharedPtr<VkCommandBuffer> CommandPool::CreateBuffer(BufferType type)
-	{
-		VkCommandBufferAllocateInfo cmd = {};
-		cmd.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		cmd.pNext = nullptr;
-		cmd.commandPool = _pool.get();
-		cmd.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		cmd.commandBufferCount = 1;
-
-		auto dev = _device.get();
-		auto pool = _pool.get();
-		VkCommandBuffer rawBuffer = nullptr;
-		auto res = vkAllocateCommandBuffers(dev, &cmd, &rawBuffer);
-		VulkanSharedPtr<VkCommandBuffer> result(
-			rawBuffer,
-			[dev, pool](VkCommandBuffer buffer) { vkFreeCommandBuffers(dev, pool, 1, &buffer); });
-		if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while creating command buffer"));
-		return result;
-	}
-
-	CommandPool::CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex)
-	: _device(factory.GetDevice())
-	{
-		_pool = factory.CreateCommandPool(queueFamilyIndex);
-	}
-
-	CommandPool::CommandPool() {}
-	CommandPool::~CommandPool() {}
-
     std::unique_ptr<IPresentationChain> Device::CreatePresentationChain(
 		const void* platformValue, unsigned width, unsigned height)
     {
@@ -416,14 +417,14 @@ namespace RenderCore
 			_physDev = SelectPhysicalDeviceForRendering(_instance.get(), surface.get());
 			_underlying = CreateUnderlyingDevice(_physDev);
 			_objectFactory = Metal_Vulkan::ObjectFactory(_physDev._dev, _underlying);
-			_renderingCommandPool = CommandPool(_objectFactory, _physDev._renderingQueueFamily);
-            _pipelineCache = _objectFactory.CreatePipelineCache();
+			_pools._renderingCommandPool = Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily);
+            _pools._mainDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory);
+            _pools._mainPipelineCache = _objectFactory.CreatePipelineCache();
 
 			_foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
 				shared_from_this(), 
                 _objectFactory,
-				_renderingCommandPool.CreateBuffer(CommandPool::BufferType::Primary),
-                _pipelineCache.get());
+				_pools._renderingCommandPool.Allocate(Metal_Vulkan::CommandPool::BufferType::Primary));
 
             Metal_Vulkan::SetDefaultObjectFactory(&_objectFactory);
 		}
@@ -504,8 +505,21 @@ namespace RenderCore
 		return std::make_unique<PresentationChain>(
 			std::move(surface), std::move(result), _objectFactory,
             GetQueue(_underlying.get(), _physDev._renderingQueueFamily), 
+            _pools,
             BufferUploads::TextureDesc::Plain2D(swapChainExtent.width, swapChainExtent.height, chainFmt),
             platformValue);
+    }
+
+    static void BeginOneTimeSubmit(VkCommandBuffer cmd)
+    {
+        VkCommandBufferBeginInfo cmd_buf_info = {};
+		cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		cmd_buf_info.pNext = nullptr;
+		cmd_buf_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		cmd_buf_info.pInheritanceInfo = nullptr;
+		auto res = vkBeginCommandBuffer(cmd, &cmd_buf_info);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
     }
 
     void    Device::BeginFrame(IPresentationChain* presentationChain)
@@ -519,15 +533,7 @@ namespace RenderCore
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while resetting command buffer"));
 
-		VkCommandBufferBeginInfo cmd_buf_info = {};
-		cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		cmd_buf_info.pNext = nullptr;
-		cmd_buf_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		cmd_buf_info.pInheritanceInfo = nullptr;
-		res = vkBeginCommandBuffer(cmdBuffer, &cmd_buf_info);
-		if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
-
+		BeginOneTimeSubmit(cmdBuffer);
 		auto rp = swapChain->BindDefaultRenderPass(cmdBuffer);
 
         if (rp)
@@ -577,6 +583,11 @@ namespace RenderCore
     VkQueue DeviceVulkan::GetRenderingQueue()
     {
         return GetQueue(_underlying.get(), _physDev._renderingQueueFamily, 0);
+    }
+
+    Metal_Vulkan::GlobalPools&      DeviceVulkan::GetGlobalPools()
+    {
+        return Device::GetGlobalPools();
     }
 
 	DeviceVulkan::DeviceVulkan() { }
@@ -633,6 +644,9 @@ namespace RenderCore
 		auto res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
+
+        // hack -- need to implement CPU/GPU synchronisation
+        vkDeviceWaitIdle(_device.get());
 
 		_cmdBufferPendingCommit = nullptr;
 
@@ -785,6 +799,11 @@ namespace RenderCore
             colorReferences = AsPointer(colorReferencesOverflow.begin());
         }
 
+        // note -- 
+        //      Is it safe to set the initialLayout in the RenderPass to _UNDEFINED
+        //      every time? If we're rendering to an image that we've touched before,
+        //      does it mean we can start using the same value for initial and final layouts?
+
         auto* i = attachments;
         for (auto& rtv:rtvAttachments) {
             i->format = rtv._format;
@@ -793,8 +812,8 @@ namespace RenderCore
             i->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             i->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             i->stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            i->initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            i->finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            i->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            i->finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
             i->flags = 0;
 
             colorReferences[i-attachments] = {};
@@ -816,7 +835,7 @@ namespace RenderCore
             i->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
             i->stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-            i->initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            i->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             i->finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             i->flags = 0;
 
@@ -1032,11 +1051,78 @@ namespace RenderCore
 
     FrameBuffer::~FrameBuffer() {}
 
+    static void SetImageLayout(
+        VkCommandBuffer cmd, VkImage image,
+        VkImageAspectFlags aspectMask,
+        VkImageLayout old_image_layout,
+        VkImageLayout new_image_layout) 
+    {
+        VkImageMemoryBarrier image_memory_barrier = {};
+        image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        image_memory_barrier.pNext = nullptr;
+        image_memory_barrier.srcAccessMask = 0;
+        image_memory_barrier.dstAccessMask = 0;
+        image_memory_barrier.oldLayout = old_image_layout;
+        image_memory_barrier.newLayout = new_image_layout;
+        image_memory_barrier.image = image;
+        image_memory_barrier.subresourceRange.aspectMask = aspectMask;
+        image_memory_barrier.subresourceRange.baseMipLevel = 0;
+        image_memory_barrier.subresourceRange.levelCount = 1;
+        image_memory_barrier.subresourceRange.layerCount = 1;
+
+        if (old_image_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+            || old_image_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+            image_memory_barrier.srcAccessMask =
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        }
+
+        if (new_image_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+            image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        }
+
+        if (new_image_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+            image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        }
+
+        if (old_image_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+            image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        }
+
+        if (old_image_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
+            image_memory_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+        }
+
+        if (new_image_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+            image_memory_barrier.srcAccessMask =
+                VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+            image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        }
+
+        if (new_image_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+            || new_image_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+            image_memory_barrier.dstAccessMask =
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        }
+
+        if (new_image_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+            image_memory_barrier.dstAccessMask =
+                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        }
+
+        VkPipelineStageFlags src_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        VkPipelineStageFlags dest_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+        vkCmdPipelineBarrier(
+            cmd, src_stages, dest_stages, 0, 0, NULL, 0, NULL,
+            1, &image_memory_barrier);
+    }
+
     PresentationChain::PresentationChain(
 		VulkanSharedPtr<VkSurfaceKHR> surface,
         VulkanSharedPtr<VkSwapchainKHR> swapChain,
         const Metal_Vulkan::ObjectFactory& factory,
         VkQueue queue, 
+        Metal_Vulkan::GlobalPools& globalPools,
         const BufferUploads::TextureDesc& bufferDesc,
         const void* platformValue)
     : _surface(std::move(surface))
@@ -1094,6 +1180,51 @@ namespace RenderCore
             imageViews[0] = i._rtv.GetUnderlying();
             i._defaultFrameBuffer = FrameBuffer(factory, MakeIteratorRange(imageViews), _defaultRenderPass, bufferDesc._width, bufferDesc._height);
         }
+
+        // We need to set the image layout for these images we created
+        // this is a little frustrating. I wonder if the GPU is just rearranging the pixel contents?
+        if (constant_expression<false>::result()) {
+            auto cmd = globalPools._renderingCommandPool.Allocate(Metal_Vulkan::CommandPool::BufferType::Primary);
+            BeginOneTimeSubmit(cmd.get());
+
+            for (auto& i:_images)
+                SetImageLayout(
+                    cmd.get(), i._underlying, 
+                    VK_IMAGE_ASPECT_COLOR_BIT,
+                    VK_IMAGE_LAYOUT_UNDEFINED,
+                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+            SetImageLayout(
+                cmd.get(), _depthStencilResource.GetImage(),
+                VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+            auto res = vkEndCommandBuffer(cmd.get());
+            if (res != VK_SUCCESS)
+			    Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
+
+            auto cmdRaw = cmd.get();
+            VkSubmitInfo submitInfo;
+		    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		    submitInfo.pNext = nullptr;
+		    submitInfo.waitSemaphoreCount = 0;
+		    submitInfo.pWaitSemaphores = nullptr;
+		    submitInfo.pWaitDstStageMask = nullptr;
+			submitInfo.commandBufferCount = 1;
+			submitInfo.pCommandBuffers = &cmdRaw;
+		    submitInfo.signalSemaphoreCount = 0;
+		    submitInfo.pSignalSemaphores = nullptr;
+
+            auto fence = factory.CreateFence();
+            res = vkQueueSubmit(_queue, 1, &submitInfo, fence.get());
+		    if (res != VK_SUCCESS)
+			    Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
+            VkFence fences[] = { fence.get() };
+            res = vkWaitForFences(factory.GetDevice().get(), dimof(fences), fences, true, UINT64_MAX);
+            if (res != VK_SUCCESS)
+			    Throw(VulkanAPIFailure(res, "Failure while waiting for fence"));
+        }
+
     }
 
     PresentationChain::~PresentationChain()
@@ -1140,11 +1271,10 @@ namespace RenderCore
     ThreadContext::ThreadContext(
         std::shared_ptr<Device> device, 
         const Metal_Vulkan::ObjectFactory& factory, 
-        VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer,
-        VkPipelineCache pipelineCache)
+        VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
     : _device(device)
 	, _frameId(0)
-	, _metalContext(std::make_shared<Metal_Vulkan::DeviceContext>(factory, std::move(primaryCommandBuffer), pipelineCache))
+	, _metalContext(std::make_shared<Metal_Vulkan::DeviceContext>(factory, std::move(primaryCommandBuffer), device->GetGlobalPools()))
     {
     }
 
@@ -1191,9 +1321,8 @@ namespace RenderCore
     ThreadContextVulkan::ThreadContextVulkan(
         std::shared_ptr<Device> device, 
         const Metal_Vulkan::ObjectFactory& factory, 
-        VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer,
-        VkPipelineCache pipelineCache)
-    : ThreadContext(std::move(device), factory, std::move(primaryCommandBuffer), pipelineCache)
+        VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
+    : ThreadContext(std::move(device), factory, std::move(primaryCommandBuffer))
     {}
 
 	ThreadContextVulkan::~ThreadContextVulkan() {}

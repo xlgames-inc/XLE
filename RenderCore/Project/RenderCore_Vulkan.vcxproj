@@ -60,11 +60,13 @@
     <ClCompile Include="..\Vulkan\Metal\Format.cpp" />
     <ClCompile Include="..\Vulkan\Metal\InputLayout.cpp" />
     <ClCompile Include="..\Vulkan\Metal\ObjectFactory.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\Pools.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Shader.cpp" />
     <ClCompile Include="..\Vulkan\Metal\ShaderReflection.cpp" />
     <ClCompile Include="..\Vulkan\Metal\State.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Vulkan\Metal\Pools.h" />
     <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

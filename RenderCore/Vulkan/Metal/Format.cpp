@@ -261,5 +261,19 @@ namespace RenderCore { namespace Metal_Vulkan
         return s_genericToVkTable[unsigned(input)];
     }
 
+
+
+    unsigned                    BitsPerPixel(NativeFormat::Enum format)
+    {
+        switch (format) {
+        #define _EXP(X, Y, Z, U)    case NativeFormat::X##_##Y: return U;
+            #include "../../Metal/Detail/DXGICompatibleFormats.h"
+        #undef _EXP
+        case NativeFormat::Matrix4x4: return 16 * sizeof(float) * 8;
+        case NativeFormat::Matrix3x4: return 12 * sizeof(float) * 8;
+        default: return 0;
+        }
+    }
+
 }}
 
