@@ -17,6 +17,8 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+    static const unsigned s_maxBoundVBs = 4;
+
     /// Container for Topology::Enum
     namespace Topology
     {
@@ -61,7 +63,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(const ShaderProgram& shaderProgram);
 
         void        Bind(Topology::Enum topology);
-        void        SetVertexStride(unsigned vertexStride);
+        void        SetVertexStrides(std::initializer_list<unsigned> vertexStrides);
 
         VulkanUniquePtr<VkPipeline> CreatePipeline(VkRenderPass renderPass, unsigned subpass = 0);
 
@@ -86,7 +88,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         const ObjectFactory*    _factory;
         VkPipelineCache         _cache;
-        unsigned                _vertexStride;
+        unsigned                _vertexStrides[s_maxBoundVBs];
     };
 
     using CommandList = VkCommandBuffer;
@@ -95,7 +97,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class DeviceContext : public PipelineBuilder
     {
     public:
-		template<int Count> void    Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset=0) {}
+		template<int Count> void    Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset=0);
 
         template<int Count> void    BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources) {}
         template<int Count> void    BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources) {}

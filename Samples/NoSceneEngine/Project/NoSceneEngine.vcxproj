@@ -99,6 +99,9 @@
     <ProjectReference Include="..\..\..\RenderOverlays\Project\RenderOverlays.vcxproj">
       <Project>{726e12f1-b69b-188d-390b-3a1e1889126d}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\Tools\ToolsRig\Project\ToolsRig.vcxproj">
+      <Project>{f47f1b0a-ae7c-482a-baf8-d47a6b09b817}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
     </ProjectReference>

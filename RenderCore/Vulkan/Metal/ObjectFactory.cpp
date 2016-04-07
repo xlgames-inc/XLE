@@ -234,6 +234,19 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(pipelineLayout);
     }
 
+    VulkanUniquePtr<VkBuffer> ObjectFactory::CreateBuffer(const VkBufferCreateInfo& createInfo) const
+    {
+        auto dev = _device.get();
+        VkBuffer rawBuffer = nullptr;
+        auto res = vkCreateBuffer(dev, &createInfo, g_allocationCallbacks, &rawBuffer);
+        auto buffer = VulkanUniquePtr<VkBuffer>(
+            rawBuffer,
+            [dev](VkBuffer buffer) { vkDestroyBuffer(dev, buffer, g_allocationCallbacks); });
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failed while creating buffer"));
+        return std::move(buffer);
+    }
+
     unsigned ObjectFactory::FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask) const
     {
         // Search memtypes to find first index with those properties

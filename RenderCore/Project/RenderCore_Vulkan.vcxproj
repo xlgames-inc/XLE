@@ -54,6 +54,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Vulkan\Metal\Buffer.cpp" />
     <ClCompile Include="..\Vulkan\Metal\CompiledShaderByteCode.cpp" />
     <ClCompile Include="..\Vulkan\Metal\DeviceContext.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Format.cpp" />

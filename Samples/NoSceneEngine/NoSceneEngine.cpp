@@ -41,7 +41,9 @@
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Vulkan/Metal/ObjectFactory.h"
+#include "../../RenderCore/Vulkan/Metal/Buffer.h"
 #include "../../RenderCore/Vulkan/IDeviceVulkan.h"
+#include "../../Tools/ToolsRig/VisualisationGeo.h"
 
 unsigned FrameRenderCount = 0;
 
@@ -496,10 +498,11 @@ namespace Sample
             auto& shader = ::Assets::GetAsset<Metal::ShaderProgram>(
                     "game/xleres/deferred/basic.vsh:main:vs_*",
                     "game/xleres/deferred/basic.psh:main:ps_*",
-                    "GEO_HAS_TANGENT_FRAME=1;GEO_HAS_NORMAL=1;GEO_HAS_TEXCOORD=1;RES_HAS_DiffuseTexture=1;RES_HAS_NormalsTexture=1");
+                    "GEO_HAS_TEXCOORD=1;RES_HAS_DiffuseTexture=1");
 
             Metal::BoundInputLayout inputLayout(
-                Metal::GlobalInputLayouts::PNTT,
+                // Metal::GlobalInputLayouts::PT,
+                ToolsRig::Vertex3D_InputLayout,
                 shader.GetCompiledVertexShader());
 
             Metal::BoundUniforms boundUniforms(shader);
@@ -510,8 +513,6 @@ namespace Sample
             metalContext->Bind(inputLayout);
             metalContext->Bind(boundUniforms);
             metalContext->Bind(shader);
-            metalContext->SetVertexStride(24);
-            metalContext->Draw(0);
 
 #if 0
             auto& factory = RenderCore::Metal::GetDefaultObjectFactory();
@@ -613,6 +614,12 @@ namespace Sample
                 pipelineLayout.get(), 
                 0, 1, descriptorSets, 0, nullptr);
 #endif
+
+            auto cubeGeo = ToolsRig::BuildCube();
+            auto vertexStride = sizeof(decltype(cubeGeo)::value_type);
+            Metal::VertexBuffer vb(AsPointer(cubeGeo.begin()), cubeGeo.size() * vertexStride);
+            metalContext->Bind(MakeResourceList(vb), (unsigned)vertexStride);
+            metalContext->Draw((unsigned)cubeGeo.size());
         }
         CATCH(const ::Assets::Exceptions::AssetException&) {}
         CATCH_END

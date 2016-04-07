@@ -6,5 +6,23 @@
 
 #pragma once
 
+#include "DeviceContext.h"
+
 namespace RenderCore { namespace Metal_Vulkan
-{}}
+{
+
+    template<int Count> 
+        void DeviceContext::Bind(
+            const ResourceList<VertexBuffer, Count>& VBs, 
+            unsigned stride, unsigned offset) 
+        {
+            assert(Count <= s_maxBoundVBs);
+            VkDeviceSize offsets[s_maxBoundVBs] = { offset, offset, offset, offset };
+            SetVertexStrides({stride, stride, stride, stride});
+            vkCmdBindVertexBuffers(
+                _primaryCommandList.get(),
+                VBs._startingPoint, Count,
+                VBs._buffers, offsets);
+        }
+
+}}

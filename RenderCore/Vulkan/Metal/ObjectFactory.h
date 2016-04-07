@@ -64,6 +64,9 @@ namespace RenderCore { namespace Metal_Vulkan
             IteratorRange<const VkPushConstantRange*> pushConstants = IteratorRange<const VkPushConstantRange*>(),
             VkPipelineLayoutCreateFlags flags = 0) const;
 
+        VulkanUniquePtr<VkBuffer> CreateBuffer(
+            const VkBufferCreateInfo& createInfo) const;
+
 		unsigned FindMemoryType(
             VkFlags memoryTypeBits, 
             VkMemoryPropertyFlags requirementsMask = 0) const;

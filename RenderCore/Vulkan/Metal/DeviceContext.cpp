@@ -55,9 +55,10 @@ namespace RenderCore { namespace Metal_Vulkan
         _topology = AsNativeTopology(topology);
     }
 
-    void        PipelineBuilder::SetVertexStride(unsigned vertexStride)
+    void        PipelineBuilder::SetVertexStrides(std::initializer_list<unsigned> vertexStrides)
     {
-        _vertexStride = 0;
+        for (unsigned c=0; c<vertexStrides.size() && c < dimof(_vertexStrides); ++c)
+            _vertexStrides[c] = vertexStrides.begin()[c];
     }
 
     static VkPipelineShaderStageCreateInfo BuildShaderStage(
@@ -93,7 +94,7 @@ namespace RenderCore { namespace Metal_Vulkan
         dynamicState.pDynamicStates = dynamicStateEnables;
         dynamicState.dynamicStateCount = 0;
 
-        VkVertexInputBindingDescription vertexBinding = { 0, _vertexStride, VK_VERTEX_INPUT_RATE_VERTEX };
+        VkVertexInputBindingDescription vertexBinding = { 0, _vertexStrides[0], VK_VERTEX_INPUT_RATE_VERTEX };
 
         VkPipelineVertexInputStateCreateInfo vi = {};
         vi.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -168,7 +169,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         _inputLayout = nullptr;
         _topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        _vertexStride = 0;
+        for (auto& v:_vertexStrides) v = 0;
     }
 
     PipelineBuilder::~PipelineBuilder() {}
@@ -185,7 +186,14 @@ namespace RenderCore { namespace Metal_Vulkan
     void        DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
         auto pipeline = CreatePipeline(_renderPass.get());
-        (void)pipeline;
+        vkCmdBindPipeline(
+            _primaryCommandList.get(),
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            pipeline.get());
+        vkCmdDraw(
+            _primaryCommandList.get(),
+            vertexCount, 1,
+            startVertexLocation, 0);
     }
     
     void        DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)

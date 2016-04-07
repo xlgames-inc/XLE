@@ -6,7 +6,9 @@
 
 #pragma once
 
-#include "Resource.h"
+#include "VulkanCore.h"
+#include "IncludeVulkan.h"
+#include "../../BufferUploads/IBufferUploads.h"
 #include "../../../Core/Prefix.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -14,69 +16,57 @@ namespace RenderCore { namespace Metal_Vulkan
     class ObjectFactory;
     class DeviceContext;
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class VertexBuffer
+    class Buffer
     {
     public:
-		VertexBuffer() {}
-        VertexBuffer(const void* data, size_t byteCount) {}
-        VertexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount) {}
-        ~VertexBuffer() {}
+        using Desc = BufferUploads::BufferDesc;
 
-        VertexBuffer(const VertexBuffer& cloneFrom) {}
-        VertexBuffer(VertexBuffer&& moveFrom) never_throws {}
-        VertexBuffer& operator=(const VertexBuffer& cloneFrom) {}
-        VertexBuffer& operator=(VertexBuffer&& moveFrom) never_throws {}
+        Buffer(
+            const ObjectFactory& factory, const Desc& desc,
+            const void* initData = nullptr, size_t initDataSize = 0);
+        Buffer();
 
-		typedef Underlying::Resource*   UnderlyingType;
-		UnderlyingType					GetUnderlying() const { return nullptr; }
+        void    Update(DeviceContext& context, const void* data, size_t byteCount);
+
+        typedef VkBuffer    UnderlyingType;
+		UnderlyingType		GetUnderlying() const { return _underlying.get(); }
+        bool                IsGood() const { return _underlying != nullptr; }
+    protected:
+        VulkanSharedPtr<VkBuffer> _underlying;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class IndexBuffer
+    class VertexBuffer : public Buffer
     {
     public:
-		IndexBuffer() {}
-        IndexBuffer(const void* data, size_t byteCount) {}
-        IndexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount) {}
-        ~IndexBuffer() {}
+		VertexBuffer();
+        VertexBuffer(const void* data, size_t byteCount);
+        VertexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount);
+    };
 
-        IndexBuffer(const IndexBuffer& cloneFrom) {}
-        IndexBuffer(IndexBuffer&& moveFrom) never_throws {}
-        IndexBuffer& operator=(const IndexBuffer& cloneFrom) {}
-        IndexBuffer& operator=(IndexBuffer&& moveFrom) never_throws {}
-        explicit IndexBuffer(DeviceContext& context) {}
+        ////////////////////////////////////////////////////////////////////////////////////////////////
 
-		typedef Underlying::Resource*   UnderlyingType;
-		UnderlyingType					GetUnderlying() const { return nullptr; }
+    class IndexBuffer : public Buffer
+    {
+    public:
+		IndexBuffer();
+        IndexBuffer(const void* data, size_t byteCount);
+        IndexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     class DeviceContext;
 
-    class ConstantBuffer
+    class ConstantBuffer : public Buffer
     {
     public:
-        ConstantBuffer(const void* data, size_t byteCount, bool immutable=true) {}
+        ConstantBuffer(const void* data, size_t byteCount, bool immutable=true);
         ConstantBuffer(
             const ObjectFactory& factory,
-            const void* data, size_t byteCount, bool immutable=true) {}
-        ConstantBuffer() {}
-        ~ConstantBuffer() {}
-
-        void    Update(DeviceContext& context, const void* data, size_t byteCount) {}
-
-        ConstantBuffer(const ConstantBuffer& cloneFrom) {}
-        ConstantBuffer(ConstantBuffer&& moveFrom) never_throws {}
-        ConstantBuffer& operator=(const ConstantBuffer& cloneFrom) {}
-        ConstantBuffer& operator=(ConstantBuffer&& moveFrom) never_throws {}
-
-		bool IsGood() const { return true; }
-		typedef Underlying::Resource*   UnderlyingType;
-		UnderlyingType					GetUnderlying() const { return nullptr; }
+            const void* data, size_t byteCount, bool immutable=true);
+        ConstantBuffer();
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
