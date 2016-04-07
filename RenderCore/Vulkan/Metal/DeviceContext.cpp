@@ -7,6 +7,8 @@
 #include "DeviceContext.h"
 #include "ObjectFactory.h"
 #include "InputLayout.h"
+#include "Shader.h"
+#include "../IDeviceVulkan.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -28,9 +30,22 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void        PipelineBuilder::Bind(const BoundInputLayout& inputLayout)
     {
+        _inputLayout = &inputLayout;
     }
 
-    static const VkPrimitiveTopology AsNativeTopology(Topology::Enum topology)
+    void        PipelineBuilder::Bind(const BoundUniforms& uniforms)
+    {
+        _descriptorSets[0] = uniforms.CreateLayout(*_factory, 0);
+        VkDescriptorSetLayout layouts[] = { _descriptorSets[0].get() };
+        _pipelineLayout = _factory->CreatePipelineLayout(MakeIteratorRange(layouts));
+    }
+
+    void        PipelineBuilder::Bind(const ShaderProgram& shaderProgram)
+    {
+        _shaderProgram = &shaderProgram;
+    }
+
+    static VkPrimitiveTopology AsNativeTopology(Topology::Enum topology)
     {
         return (VkPrimitiveTopology)topology;
     }
@@ -40,9 +55,35 @@ namespace RenderCore { namespace Metal_Vulkan
         _topology = AsNativeTopology(topology);
     }
 
-    VulkanSharedPtr<VkPipeline> PipelineBuilder::CreatePipeline(const ObjectFactory& factory, VkPipelineCache cache)
+    void        PipelineBuilder::SetVertexStride(unsigned vertexStride)
     {
-        VkGraphicsPipelineCreateInfo createInfo;
+        _vertexStride = 0;
+    }
+
+    static VkPipelineShaderStageCreateInfo BuildShaderStage(
+        const Shader& shader, VkShaderStageFlagBits stage)
+    {
+        VkPipelineShaderStageCreateInfo result = {};
+        result.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        result.pNext = nullptr;
+        result.flags = 0;
+        result.stage = stage;
+        result.module = shader.GetUnderlying();
+        result.pName = "main";
+        result.pSpecializationInfo = nullptr;
+        return result;
+    }
+
+    VulkanUniquePtr<VkPipeline> PipelineBuilder::CreatePipeline(VkRenderPass renderPass, unsigned subpass)
+    {
+        if (!_shaderProgram) return nullptr;
+
+        VkPipelineShaderStageCreateInfo shaderStages[3];
+        uint32_t shaderStageCount = 0;
+        shaderStages[shaderStageCount++] = BuildShaderStage(_shaderProgram->GetVertexShader(), VK_SHADER_STAGE_VERTEX_BIT);
+        shaderStages[shaderStageCount++] = BuildShaderStage(_shaderProgram->GetPixelShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
+        if (_shaderProgram->GetGeometryShader().IsGood())
+            shaderStages[shaderStageCount++] = BuildShaderStage(_shaderProgram->GetGeometryShader(), VK_SHADER_STAGE_GEOMETRY_BIT);
 
         VkDynamicState dynamicStateEnables[VK_DYNAMIC_STATE_RANGE_SIZE];
         VkPipelineDynamicStateCreateInfo dynamicState = {};
@@ -52,12 +93,14 @@ namespace RenderCore { namespace Metal_Vulkan
         dynamicState.pDynamicStates = dynamicStateEnables;
         dynamicState.dynamicStateCount = 0;
 
-        VkPipelineVertexInputStateCreateInfo vi;
+        VkVertexInputBindingDescription vertexBinding = { 0, _vertexStride, VK_VERTEX_INPUT_RATE_VERTEX };
+
+        VkPipelineVertexInputStateCreateInfo vi = {};
         vi.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vi.pNext = nullptr;
         vi.flags = 0;
-        vi.vertexBindingDescriptionCount = 0;
-        vi.pVertexBindingDescriptions = nullptr;
+        vi.vertexBindingDescriptionCount = 1;
+        vi.pVertexBindingDescriptions = &vertexBinding;
         vi.vertexAttributeDescriptionCount = 0;
         vi.pVertexAttributeDescriptions = nullptr;
 
@@ -67,7 +110,7 @@ namespace RenderCore { namespace Metal_Vulkan
             vi.pVertexAttributeDescriptions = attribs.begin();
         }
 
-        VkPipelineInputAssemblyStateCreateInfo ia;
+        VkPipelineInputAssemblyStateCreateInfo ia = {};
         ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         ia.pNext = nullptr;
         ia.flags = 0;
@@ -85,7 +128,7 @@ namespace RenderCore { namespace Metal_Vulkan
         vp.pScissors = nullptr;
         vp.pViewports = nullptr;
 
-        VkPipelineMultisampleStateCreateInfo ms;
+        VkPipelineMultisampleStateCreateInfo ms = {};
         ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         ms.pNext = nullptr;
         ms.flags = 0;
@@ -94,12 +137,12 @@ namespace RenderCore { namespace Metal_Vulkan
         ms.sampleShadingEnable = VK_FALSE;
         ms.alphaToCoverageEnable = VK_FALSE;
         ms.alphaToOneEnable = VK_FALSE;
-        ms.minSampleShading = 0.0;
+        ms.minSampleShading = 0.0f;
 
-        VkGraphicsPipelineCreateInfo pipeline;
+        VkGraphicsPipelineCreateInfo pipeline = {};
         pipeline.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipeline.pNext = nullptr;
-        pipeline.layout = info.pipeline_layout;
+        pipeline.layout = _pipelineLayout.get();
         pipeline.basePipelineHandle = VK_NULL_HANDLE;
         pipeline.basePipelineIndex = 0;
         pipeline.flags = 0;
@@ -112,18 +155,20 @@ namespace RenderCore { namespace Metal_Vulkan
         pipeline.pDynamicState = &dynamicState;
         pipeline.pViewportState = &vp;
         pipeline.pDepthStencilState = &_depthStencilState;
-        pipeline.pStages = info.shaderStages;
-        pipeline.stageCount = 2;
-        pipeline.renderPass = info.render_pass;
-        pipeline.subpass = 0;
+        pipeline.pStages = shaderStages;
+        pipeline.stageCount = shaderStageCount;
+        pipeline.renderPass = renderPass;
+        pipeline.subpass = subpass;
 
-        return factory.CreateGraphicsPipeline(cache, pipeline);
+        return _factory->CreateGraphicsPipeline(_cache, pipeline);
     }
 
-    PipelineBuilder::PipelineBuilder()
+    PipelineBuilder::PipelineBuilder(const ObjectFactory& factory, VkPipelineCache cache)
+    : _factory(&factory), _cache(cache)
     {
         _inputLayout = nullptr;
         _topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        _vertexStride = 0;
     }
 
     PipelineBuilder::~PipelineBuilder() {}
@@ -132,11 +177,18 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     }
 
-    void        DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation=0)
+    void        DeviceContext::Bind(VulkanSharedPtr<VkRenderPass> renderPass)
     {
+        _renderPass = std::move(renderPass);
+    }
+
+    void        DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
+    {
+        auto pipeline = CreatePipeline(_renderPass.get());
+        (void)pipeline;
     }
     
-    void        DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0)
+    void        DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
     }
 
@@ -144,9 +196,27 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     }
 
-    void        DeviceContext::Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1)
+    void        DeviceContext::Dispatch(unsigned countX, unsigned countY, unsigned countZ)
     {
     }
+
+    std::shared_ptr<DeviceContext> DeviceContext::Get(IThreadContext& threadContext)
+    {
+        IThreadContextVulkan* vulkanContext = 
+            (IThreadContextVulkan*)threadContext.QueryInterface(
+                __uuidof(IThreadContextVulkan));
+        if (vulkanContext)
+            return vulkanContext->GetMetalContext();
+        return nullptr;
+    }
+
+    DeviceContext::DeviceContext(
+        const ObjectFactory& factory, 
+        VulkanSharedPtr<VkCommandBuffer> cmdList,
+        VkPipelineCache pipelineCache)
+    : PipelineBuilder(factory, pipelineCache)
+    , _primaryCommandList(cmdList)
+    {}
 
 }}
 

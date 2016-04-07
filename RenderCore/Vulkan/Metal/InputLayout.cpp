@@ -335,7 +335,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
-    VulkanSharedPtr<VkDescriptorSetLayout> 
+    VulkanUniquePtr<VkDescriptorSetLayout> 
         BoundUniforms::CreateLayout(const ObjectFactory& factory, unsigned streamIndex) const
     {
         if (!_bindings[streamIndex].empty())

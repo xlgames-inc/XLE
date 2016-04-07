@@ -9,6 +9,7 @@
 #include "../IDevice.h"
 #include "../IThreadContext.h"
 #include "Metal/IncludeVulkan.h"
+#include <memory>
 
 #define FLEX_USE_VTABLE_DeviceVulkan FLEX_USE_VTABLE_Device
 #define FLEX_USE_VTABLE_ThreadContextVulkan FLEX_USE_VTABLE_ThreadContext
@@ -55,6 +56,7 @@ namespace RenderCore
         {
         public:
             IMETHOD VkCommandBuffer	GetPrimaryCommandBuffer() IPURE;
+            IMETHOD const std::shared_ptr<Metal_Vulkan::DeviceContext>& GetMetalContext() IPURE;
             IDESTRUCTOR
         };
 

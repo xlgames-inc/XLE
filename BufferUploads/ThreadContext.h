@@ -80,7 +80,7 @@ namespace BufferUploads
     public:
         typedef Interlocked::Value ID;
 
-        intrusive_ptr<RenderCore::Metal::CommandList> _deviceCommandList;
+        RenderCore::Metal::CommandListPtr   _deviceCommandList;
         mutable CommandListMetrics          _metrics;
         CommitStep                          _commitStep;
         ID                                  _id;

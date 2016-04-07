@@ -11,7 +11,7 @@ namespace RenderCore { namespace Metal_Vulkan
 {
     const VkAllocationCallbacks* g_allocationCallbacks = nullptr;
 
-    VulkanSharedPtr<VkCommandPool> ObjectFactory::CreateCommandPool(
+    VulkanUniquePtr<VkCommandPool> ObjectFactory::CreateCommandPool(
         unsigned queueFamilyIndex, VkCommandPoolCreateFlags flags) const
     {
         VkCommandPoolCreateInfo createInfo = {};
@@ -23,7 +23,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto dev = _device.get();
 		VkCommandPool rawPool = nullptr;
 		auto res = vkCreateCommandPool(dev, &createInfo, g_allocationCallbacks, &rawPool);
-		auto pool = VulkanSharedPtr<VkCommandPool>(
+		auto pool = VulkanUniquePtr<VkCommandPool>(
 			rawPool,
 			[dev](VkCommandPool pool) { vkDestroyCommandPool(dev, pool, g_allocationCallbacks); });
 		if (res != VK_SUCCESS)
@@ -31,7 +31,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(pool);
     }
 
-    VulkanSharedPtr<VkSemaphore> ObjectFactory::CreateSemaphore(
+    VulkanUniquePtr<VkSemaphore> ObjectFactory::CreateSemaphore(
         VkSemaphoreCreateFlags flags) const
     {
         VkSemaphoreCreateInfo createInfo = {};
@@ -44,7 +44,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto res = vkCreateSemaphore(
             dev, &createInfo,
             Metal_Vulkan::g_allocationCallbacks, &rawPtr);
-        VulkanSharedPtr<VkSemaphore> result(
+        VulkanUniquePtr<VkSemaphore> result(
             rawPtr,
             [dev](VkSemaphore sem) { vkDestroySemaphore(dev, sem, g_allocationCallbacks); });
         if (res != VK_SUCCESS)
@@ -52,7 +52,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(result);
     }
 
-    VulkanSharedPtr<VkDeviceMemory> ObjectFactory::AllocateMemory(
+    VulkanUniquePtr<VkDeviceMemory> ObjectFactory::AllocateMemory(
         VkDeviceSize allocationSize, unsigned memoryTypeIndex) const
     {
         VkMemoryAllocateInfo mem_alloc = {};
@@ -64,7 +64,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto dev = _device.get();
         VkDeviceMemory rawMem = nullptr;
         auto res = vkAllocateMemory(dev, &mem_alloc, Metal_Vulkan::g_allocationCallbacks, &rawMem);
-        auto mem = VulkanSharedPtr<VkDeviceMemory>(
+        auto mem = VulkanUniquePtr<VkDeviceMemory>(
             rawMem,
             [dev](VkDeviceMemory mem) { vkFreeMemory(dev, mem, Metal_Vulkan::g_allocationCallbacks); });
         if (res != VK_SUCCESS)
@@ -73,13 +73,13 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(mem);
     }
 
-    VulkanSharedPtr<VkRenderPass> ObjectFactory::CreateRenderPass(
+    VulkanUniquePtr<VkRenderPass> ObjectFactory::CreateRenderPass(
         const VkRenderPassCreateInfo& createInfo) const
     {
         auto dev = _device.get();
         VkRenderPass rawPtr = nullptr;
         auto res = vkCreateRenderPass(dev, &createInfo, Metal_Vulkan::g_allocationCallbacks, &rawPtr);
-        auto renderPass = VulkanSharedPtr<VkRenderPass>(
+        auto renderPass = VulkanUniquePtr<VkRenderPass>(
             rawPtr,
             [dev](VkRenderPass pass) { vkDestroyRenderPass(dev, pass, Metal_Vulkan::g_allocationCallbacks ); });
         if (res != VK_SUCCESS)
@@ -87,13 +87,13 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(renderPass);
     }
 
-    VulkanSharedPtr<VkImage> ObjectFactory::CreateImage(
+    VulkanUniquePtr<VkImage> ObjectFactory::CreateImage(
         const VkImageCreateInfo& createInfo) const
     {
         auto dev = _device.get();
         VkImage rawImage = nullptr;
         auto res = vkCreateImage(dev, &createInfo, Metal_Vulkan::g_allocationCallbacks, &rawImage);
-        auto image = VulkanSharedPtr<VkImage>(
+        auto image = VulkanUniquePtr<VkImage>(
             rawImage,
             [dev](VkImage image) { vkDestroyImage(dev, image, Metal_Vulkan::g_allocationCallbacks); });
         if (res != VK_SUCCESS)
@@ -101,13 +101,13 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(image);
     }
 
-    VulkanSharedPtr<VkImageView> ObjectFactory::CreateImageView(
+    VulkanUniquePtr<VkImageView> ObjectFactory::CreateImageView(
         const VkImageViewCreateInfo& createInfo) const
     {
         auto dev = _device.get();
         VkImageView viewRaw = nullptr;
         auto result = vkCreateImageView(dev, &createInfo, Metal_Vulkan::g_allocationCallbacks, &viewRaw);
-        auto imageView = VulkanSharedPtr<VkImageView>(
+        auto imageView = VulkanUniquePtr<VkImageView>(
             viewRaw,
             [dev](VkImageView view) { vkDestroyImageView(dev, view, Metal_Vulkan::g_allocationCallbacks); });
         if (result != VK_SUCCESS)
@@ -115,13 +115,13 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(imageView);
     }
 
-    VulkanSharedPtr<VkFramebuffer> ObjectFactory::CreateFramebuffer(
+    VulkanUniquePtr<VkFramebuffer> ObjectFactory::CreateFramebuffer(
         const VkFramebufferCreateInfo& createInfo) const
     {
         auto dev = _device.get();
         VkFramebuffer rawFB = nullptr;
         auto res = vkCreateFramebuffer(dev, &createInfo, Metal_Vulkan::g_allocationCallbacks, &rawFB);
-        auto framebuffer = VulkanSharedPtr<VkFramebuffer>(
+        auto framebuffer = VulkanUniquePtr<VkFramebuffer>(
             rawFB,
             [dev](VkFramebuffer fb) { vkDestroyFramebuffer(dev, fb, Metal_Vulkan::g_allocationCallbacks); });
         if (res != VK_SUCCESS)
@@ -129,7 +129,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(framebuffer);
     }
 
-    VulkanSharedPtr<VkShaderModule> ObjectFactory::CreateShaderModule(
+    VulkanUniquePtr<VkShaderModule> ObjectFactory::CreateShaderModule(
         const void* byteCode, size_t size,
         VkShaderModuleCreateFlags flags) const
     {
@@ -143,7 +143,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto dev = _device.get();
         VkShaderModule rawShader = nullptr;
         auto res = vkCreateShaderModule(dev, &createInfo, Metal_Vulkan::g_allocationCallbacks, &rawShader);
-        auto shader = VulkanSharedPtr<VkShaderModule>(
+        auto shader = VulkanUniquePtr<VkShaderModule>(
             rawShader,
             [dev](VkShaderModule shdr) { vkDestroyShaderModule(dev, shdr, Metal_Vulkan::g_allocationCallbacks); });
         if (res != VK_SUCCESS)
@@ -151,7 +151,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(shader);
     }
 
-    VulkanSharedPtr<VkDescriptorSetLayout> ObjectFactory::CreateDescriptorSetLayout(
+    VulkanUniquePtr<VkDescriptorSetLayout> ObjectFactory::CreateDescriptorSetLayout(
         IteratorRange<const VkDescriptorSetLayoutBinding*> bindings) const
     {
         VkDescriptorSetLayoutCreateInfo createInfo = {};
@@ -164,7 +164,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto dev = _device.get();
         VkDescriptorSetLayout rawLayout = nullptr;
         auto res = vkCreateDescriptorSetLayout(dev, &createInfo, g_allocationCallbacks, &rawLayout);
-        auto shader = VulkanSharedPtr<VkDescriptorSetLayout>(
+        auto shader = VulkanUniquePtr<VkDescriptorSetLayout>(
             rawLayout,
             [dev](VkDescriptorSetLayout layout) { vkDestroyDescriptorSetLayout(dev, layout, Metal_Vulkan::g_allocationCallbacks); });
         if (res != VK_SUCCESS)
@@ -172,19 +172,66 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(shader);
     }
 
-    VulkanSharedPtr<VkPipeline> ObjectFactory::CreateGraphicsPipeline(
+    VulkanUniquePtr<VkPipeline> ObjectFactory::CreateGraphicsPipeline(
         VkPipelineCache pipelineCache,
         const VkGraphicsPipelineCreateInfo& createInfo) const
     {
         auto dev = _device.get();
         VkPipeline rawPipeline = nullptr;
         auto res = vkCreateGraphicsPipelines(dev, pipelineCache, 1, &createInfo, g_allocationCallbacks, &rawPipeline);
-        auto pipeline = VulkanSharedPtr<VkPipeline>(
+        auto pipeline = VulkanUniquePtr<VkPipeline>(
             rawPipeline,
             [dev](VkPipeline pipeline) { vkDestroyPipeline(dev, pipeline, Metal_Vulkan::g_allocationCallbacks); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while creating graphics pipeline"));
         return std::move(pipeline);
+    }
+
+    VulkanUniquePtr<VkPipelineCache> ObjectFactory::CreatePipelineCache(
+        const void* initialData, size_t initialDataSize,
+        VkPipelineCacheCreateFlags flags) const
+    {
+        VkPipelineCacheCreateInfo createInfo;
+        createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+        createInfo.pNext = nullptr;
+        createInfo.initialDataSize = initialDataSize;
+        createInfo.pInitialData = initialData;
+        createInfo.flags = flags;
+
+        auto dev = _device.get();
+        VkPipelineCache rawCache = nullptr;
+        auto res = vkCreatePipelineCache(dev, &createInfo, g_allocationCallbacks, &rawCache);
+        auto cache = VulkanUniquePtr<VkPipelineCache>(
+            rawCache,
+            [dev](VkPipelineCache cache) { vkDestroyPipelineCache(dev, cache, Metal_Vulkan::g_allocationCallbacks); });
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failed while creating descriptor set layout"));
+        return std::move(cache);
+    }
+
+    VulkanUniquePtr<VkPipelineLayout> ObjectFactory::CreatePipelineLayout(
+        IteratorRange<const VkDescriptorSetLayout*> setLayouts,
+        IteratorRange<const VkPushConstantRange*> pushConstants,
+        VkPipelineLayoutCreateFlags flags) const
+    {
+        VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
+        pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pPipelineLayoutCreateInfo.pNext = nullptr;
+        pPipelineLayoutCreateInfo.flags = flags;
+        pPipelineLayoutCreateInfo.setLayoutCount = (uint32_t)setLayouts.size();
+        pPipelineLayoutCreateInfo.pSetLayouts = setLayouts.begin();
+        pPipelineLayoutCreateInfo.pushConstantRangeCount = (uint32_t)pushConstants.size();
+        pPipelineLayoutCreateInfo.pPushConstantRanges = pushConstants.begin();
+
+        auto dev = _device.get();
+        VkPipelineLayout rawPipelineLayout = nullptr;
+        auto res = vkCreatePipelineLayout(dev, &pPipelineLayoutCreateInfo, g_allocationCallbacks, &rawPipelineLayout);
+        auto pipelineLayout = VulkanUniquePtr<VkPipelineLayout>(
+            rawPipelineLayout,
+            [dev](VkPipelineLayout layout) { vkDestroyPipelineLayout(dev, layout, g_allocationCallbacks); });
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failed while creating descriptor set layout"));
+        return std::move(pipelineLayout);
     }
 
     unsigned ObjectFactory::FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask) const
@@ -207,6 +254,9 @@ namespace RenderCore { namespace Metal_Vulkan
         _memProps = {};
         vkGetPhysicalDeviceMemoryProperties(physDev, &_memProps);
     }
+
+    ObjectFactory::ObjectFactory(IDevice*) {}
+    ObjectFactory::ObjectFactory(Underlying::Resource&) {}
 
 	ObjectFactory::ObjectFactory() {}
 	// ObjectFactory::~ObjectFactory() {}

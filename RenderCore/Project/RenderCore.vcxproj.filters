@@ -89,6 +89,9 @@
       <Filter>Vulkan</Filter>
     </ClInclude>
     <ClInclude Include="..\GPUProfiler.h" />
+    <ClInclude Include="..\Metal\ObjectFactory.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">

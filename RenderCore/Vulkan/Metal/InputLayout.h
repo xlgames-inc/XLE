@@ -196,7 +196,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     const UniformsStream& stream0, const UniformsStream& stream1) const;
         void UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const;
 
-        VulkanSharedPtr<VkDescriptorSetLayout> CreateLayout(const ObjectFactory& factory, unsigned streamIndex) const;
+        VulkanUniquePtr<VkDescriptorSetLayout> CreateLayout(const ObjectFactory& factory, unsigned streamIndex) const;
 
     private:
         SPIRVReflection _reflection[ShaderStage::Max];

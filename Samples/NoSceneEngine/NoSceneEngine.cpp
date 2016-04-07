@@ -39,6 +39,7 @@
 #include "../../RenderCore/ShaderService.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Vulkan/Metal/ObjectFactory.h"
 #include "../../RenderCore/Vulkan/IDeviceVulkan.h"
 
@@ -484,55 +485,39 @@ namespace Sample
     {
         TRY
         {
-            auto threadContext = (RenderCore::IThreadContextVulkan*)genericThreadContext.QueryInterface(__uuidof(RenderCore::IThreadContextVulkan));
+            using namespace RenderCore;
+            auto threadContext = (IThreadContextVulkan*)genericThreadContext.QueryInterface(__uuidof(IThreadContextVulkan));
             if (!threadContext) return;
 
             auto genericDevice = genericThreadContext.GetDevice();
-            auto device = (RenderCore::IDeviceVulkan*)genericDevice->QueryInterface(__uuidof(RenderCore::IDeviceVulkan));
+            auto device = (IDeviceVulkan*)genericDevice->QueryInterface(__uuidof(IDeviceVulkan));
             if (!device) return;
 
-            auto& shader = ::Assets::GetAsset<RenderCore::Metal::ShaderProgram>(
+            auto& shader = ::Assets::GetAsset<Metal::ShaderProgram>(
                     "game/xleres/deferred/basic.vsh:main:vs_*",
                     "game/xleres/deferred/basic.psh:main:ps_*",
                     "GEO_HAS_TANGENT_FRAME=1;GEO_HAS_NORMAL=1;GEO_HAS_TEXCOORD=1;RES_HAS_DiffuseTexture=1;RES_HAS_NormalsTexture=1");
 
-            RenderCore::Metal::BoundInputLayout inputLayout(
-                RenderCore::Metal::GlobalInputLayouts::PNTT,
+            Metal::BoundInputLayout inputLayout(
+                Metal::GlobalInputLayouts::PNTT,
                 shader.GetCompiledVertexShader());
 
-            RenderCore::Metal::BoundUniforms boundUniforms(shader);
+            Metal::BoundUniforms boundUniforms(shader);
             boundUniforms.BindConstantBuffers(0, {"GlobalTransform", "LocalTransform"});
             boundUniforms.BindShaderResources(0, {"DiffuseTexture", "NormalsTexture", "ParametersTexture"});
 
+            auto metalContext = Metal::DeviceContext::Get(genericThreadContext);
+            metalContext->Bind(inputLayout);
+            metalContext->Bind(boundUniforms);
+            metalContext->Bind(shader);
+            metalContext->SetVertexStride(24);
+            metalContext->Draw(0);
+
+#if 0
             auto& factory = RenderCore::Metal::GetDefaultObjectFactory();
-            auto underlyingLayout0 = boundUniforms.CreateLayout(factory, 0);
-            auto underlyingLayout1 = boundUniforms.CreateLayout(factory, 1);
-            (void)underlyingLayout0;
-            (void)underlyingLayout1;
-
-            VkDescriptorSetLayout layouts[] = { underlyingLayout0.get() }; //, underlyingLayout1.get() };
-
             #define g_allocationCallbacks RenderCore::Metal_Vulkan::g_allocationCallbacks
             using RenderCore::Metal_Vulkan::VulkanAPIFailure;
             using RenderCore::Metal_Vulkan::VulkanSharedPtr;
-            
-            // -------- pipeline layout --------
-            VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
-            pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pPipelineLayoutCreateInfo.pNext = nullptr;
-            pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-            pPipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-            pPipelineLayoutCreateInfo.setLayoutCount = dimof(layouts);
-            pPipelineLayoutCreateInfo.pSetLayouts = layouts;
-
-            auto dev = factory.GetDevice().get();
-            VkPipelineLayout rawPipelineLayout = nullptr;
-            auto res = vkCreatePipelineLayout(dev, &pPipelineLayoutCreateInfo, g_allocationCallbacks, &rawPipelineLayout);
-            auto pipelineLayout = VulkanSharedPtr<VkPipelineLayout>(
-                rawPipelineLayout,
-                [dev](VkPipelineLayout layout) { vkDestroyPipelineLayout(dev, layout, g_allocationCallbacks); });
-            if (res != VK_SUCCESS)
-                Throw(VulkanAPIFailure(res, "Failed while creating descriptor set layout"));
 
             // -------- descriptor pool --------
             VkDescriptorPoolSize type_count[1];
@@ -546,9 +531,9 @@ namespace Sample
             descriptor_pool.poolSizeCount = 1;
             descriptor_pool.pPoolSizes = type_count;
 
-            // auto dev = factory.GetDevice().get();
+            auto dev = factory.GetDevice().get();
             VkDescriptorPool rawDescriptorPool = nullptr;
-            res = vkCreateDescriptorPool(dev, &descriptor_pool, g_allocationCallbacks, &rawDescriptorPool);
+            auto res = vkCreateDescriptorPool(dev, &descriptor_pool, g_allocationCallbacks, &rawDescriptorPool);
             auto descriptorPool = VulkanSharedPtr<VkDescriptorPool>(
                 rawDescriptorPool,
                 [dev](VkDescriptorPool pool) { vkDestroyDescriptorPool(dev, pool, g_allocationCallbacks); });
@@ -627,6 +612,7 @@ namespace Sample
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                 pipelineLayout.get(), 
                 0, 1, descriptorSets, 0, nullptr);
+#endif
         }
         CATCH(const ::Assets::Exceptions::AssetException&) {}
         CATCH_END

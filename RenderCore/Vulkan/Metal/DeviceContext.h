@@ -30,26 +30,24 @@ namespace RenderCore { namespace Metal_Vulkan
             LineListAdj     = 6,    // VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY
 
 
-            PatchList1 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList2 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList3 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList4 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList5 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList6 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList7 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList8 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList9 = 10,        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList10 = 10,       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList11 = 10,       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList12 = 10,       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList13 = 10,       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList14 = 10,       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList15 = 10,       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList16 = 10        // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+            PatchList1      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList2      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList3      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList4      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList5      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList6      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList7      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList8      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList9      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList10     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList11     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList12     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList13     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList14     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList15     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+	        PatchList16     = 10    // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
         };
     }
-
-    using CommandList = VulkanSharedPtr<VkCommandBuffer>;
 
     class PipelineBuilder
     {
@@ -57,13 +55,23 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(const RasterizerState& rasterizer);
         void        Bind(const BlendState& blendState);
         void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
+        
         void        Bind(const BoundInputLayout& inputLayout);
+        void        Bind(const BoundUniforms& uniforms);
+        void        Bind(const ShaderProgram& shaderProgram);
+
         void        Bind(Topology::Enum topology);
+        void        SetVertexStride(unsigned vertexStride);
 
-        VulkanSharedPtr<VkPipeline> CreatePipeline(const ObjectFactory& factory, VkPipelineCache cache);
+        VulkanUniquePtr<VkPipeline> CreatePipeline(VkRenderPass renderPass, unsigned subpass = 0);
 
-        PipelineBuilder();
+        VkPipelineLayout    GetPipelineLayout() { return _pipelineLayout.get(); }
+
+        PipelineBuilder(const ObjectFactory& factory, VkPipelineCache cache);
         ~PipelineBuilder();
+
+        PipelineBuilder(const PipelineBuilder&) = delete;
+        PipelineBuilder& operator=(const PipelineBuilder&) = delete;
     protected:
         RasterizerState         _rasterizerState;
         BlendState              _blendState;
@@ -71,7 +79,18 @@ namespace RenderCore { namespace Metal_Vulkan
         VkPrimitiveTopology     _topology;
 
         const BoundInputLayout* _inputLayout;       // note -- unprotected pointer
+        const ShaderProgram*    _shaderProgram;
+
+        VulkanUniquePtr<VkDescriptorSetLayout>  _descriptorSets[1];
+        VulkanUniquePtr<VkPipelineLayout>       _pipelineLayout;
+
+        const ObjectFactory*    _factory;
+        VkPipelineCache         _cache;
+        unsigned                _vertexStride;
     };
+
+    using CommandList = VkCommandBuffer;
+    using CommandListPtr = VulkanSharedPtr<VkCommandBuffer>;
 
 	class DeviceContext : public PipelineBuilder
     {
@@ -114,12 +133,13 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(const ComputeShader& computeShader) {}
         void        Bind(const DomainShader& domainShader) {}
         void        Bind(const HullShader& hullShader) {}
-        void        Bind(const ShaderProgram& shaderProgram) {}
         void        Bind(const DeepShaderProgram& deepShaderProgram) {}
         void        Bind(const ViewportDesc& viewport);
 
         void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage) {}
         void        Bind(const DeepShaderProgram& deepShaderProgram, const BoundClassInterfaces& dynLinkage) {}
+
+        using PipelineBuilder::Bind;        // we need to expose the "Bind" functions in the base class, as well
 
         T1(Type) void   UnbindVS(unsigned startSlot, unsigned count) {}
         T1(Type) void   UnbindGS(unsigned startSlot, unsigned count) {}
@@ -140,15 +160,20 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Clear(const UnorderedAccessView& unorderedAccess, float values[4]) {}
         void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil) {}
 
-        static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext) { return nullptr; }
+        static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
 
-		void		CommitCommandList(CommandList&, bool) {}
+		void		            CommitCommandList(VkCommandBuffer_T&, bool) {}
+        const CommandListPtr&   GetPrimaryCommandList() { return _primaryCommandList; }
 
-        DeviceContext(CommandList cmdList);
+        void        Bind(VulkanSharedPtr<VkRenderPass> renderPass);
+
+        DeviceContext(const ObjectFactory& factory, VulkanSharedPtr<VkCommandBuffer> cmdList, VkPipelineCache pipelineCache);
 		DeviceContext(const DeviceContext&) = delete;
 		DeviceContext& operator=(const DeviceContext&) = delete;
 
     private:
-        CommandList _primaryCommandList;
+        VulkanSharedPtr<VkCommandBuffer> _primaryCommandList;
+        VulkanSharedPtr<VkRenderPass> _renderPass;
     };
 }}
+

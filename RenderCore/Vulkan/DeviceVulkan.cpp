@@ -417,10 +417,13 @@ namespace RenderCore
 			_underlying = CreateUnderlyingDevice(_physDev);
 			_objectFactory = Metal_Vulkan::ObjectFactory(_physDev._dev, _underlying);
 			_renderingCommandPool = CommandPool(_objectFactory, _physDev._renderingQueueFamily);
+            _pipelineCache = _objectFactory.CreatePipelineCache();
 
 			_foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
 				shared_from_this(), 
-				_renderingCommandPool.CreateBuffer(CommandPool::BufferType::Primary));
+                _objectFactory,
+				_renderingCommandPool.CreateBuffer(CommandPool::BufferType::Primary),
+                _pipelineCache.get());
 
             Metal_Vulkan::SetDefaultObjectFactory(&_objectFactory);
 		}
@@ -511,7 +514,7 @@ namespace RenderCore
         swapChain->AcquireNextImage();
 
 		// reset and begin the primary foreground command buffer
-		auto cmdBuffer = _foregroundPrimaryContext->GetCommandBuffer();
+		auto cmdBuffer = _foregroundPrimaryContext->GetPrimaryCommandBuffer();
 		auto res = vkResetCommandBuffer(cmdBuffer, 0);
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while resetting command buffer"));
@@ -525,7 +528,10 @@ namespace RenderCore
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
 
-		swapChain->BindDefaultRenderPass(cmdBuffer);
+		auto rp = swapChain->BindDefaultRenderPass(cmdBuffer);
+
+        if (rp)
+            _foregroundPrimaryContext->GetMetalContext()->Bind(rp->ShareUnderlying());
     }
 
     std::shared_ptr<IThreadContext> Device::GetImmediateContext()
@@ -693,9 +699,9 @@ namespace RenderCore
 	static VkClearValue ClearDepthStencil(float depth, uint32_t stencil) { VkClearValue result; result.depthStencil = VkClearDepthStencilValue { depth, stencil }; return result; }
 	static VkClearValue ClearColor(float r, float g, float b, float a) { VkClearValue result; result.color.float32[0] = r; result.color.float32[1] = g; result.color.float32[2] = b; result.color.float32[3] = a; return result; }
 
-	void PresentationChain::BindDefaultRenderPass(VkCommandBuffer cmdBuffer)
-	{
-		if (_activeImageIndex >= unsigned(_images.size())) return;
+    RenderPass* PresentationChain::BindDefaultRenderPass(VkCommandBuffer cmd)
+    {
+        if (_activeImageIndex >= unsigned(_images.size())) return nullptr;
 		assert(!_cmdBufferPendingCommit);
 
 		// bind the default render pass for rendering directly to the swapchain
@@ -713,8 +719,10 @@ namespace RenderCore
 		rp_begin.pClearValues = clearValues;
 		rp_begin.clearValueCount = dimof(clearValues);
 
-		vkCmdBeginRenderPass(cmdBuffer, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
-		_cmdBufferPendingCommit = cmdBuffer;
+		vkCmdBeginRenderPass(cmd, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
+		_cmdBufferPendingCommit = cmd;
+
+        return &_defaultRenderPass;
 	}
 
     static std::vector<VkImage> GetImages(VkDevice dev, VkSwapchainKHR swapChain)
@@ -1119,7 +1127,7 @@ namespace RenderCore
 
     bool    ThreadContext::IsImmediate() const
     {
-        return false;
+        return true;
     }
 
     auto ThreadContext::GetStateDesc() const -> ThreadContextStateDesc
@@ -1129,10 +1137,14 @@ namespace RenderCore
 
 	void ThreadContext::InvalidateCachedState() const {}
 
-    ThreadContext::ThreadContext(std::shared_ptr<Device> device, VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
-    : _device(std::move(device))
+    ThreadContext::ThreadContext(
+        std::shared_ptr<Device> device, 
+        const Metal_Vulkan::ObjectFactory& factory, 
+        VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer,
+        VkPipelineCache pipelineCache)
+    : _device(device)
 	, _frameId(0)
-	, _primaryCommandBuffer(std::move(primaryCommandBuffer))
+	, _metalContext(std::make_shared<Metal_Vulkan::DeviceContext>(factory, std::move(primaryCommandBuffer), pipelineCache))
     {
     }
 
@@ -1168,11 +1180,20 @@ namespace RenderCore
 
     VkCommandBuffer ThreadContextVulkan::GetPrimaryCommandBuffer()
     {
-        return _primaryCommandBuffer.get();
+        return _metalContext->GetPrimaryCommandList().get();
     }
 
-    ThreadContextVulkan::ThreadContextVulkan(std::shared_ptr<Device> device, VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
-    : ThreadContext(std::move(device), std::move(primaryCommandBuffer))
+    const std::shared_ptr<Metal_Vulkan::DeviceContext>& ThreadContextVulkan::GetMetalContext()
+    {
+        return _metalContext;
+    }
+
+    ThreadContextVulkan::ThreadContextVulkan(
+        std::shared_ptr<Device> device, 
+        const Metal_Vulkan::ObjectFactory& factory, 
+        VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer,
+        VkPipelineCache pipelineCache)
+    : ThreadContext(std::move(device), factory, std::move(primaryCommandBuffer), pipelineCache)
     {}
 
 	ThreadContextVulkan::~ThreadContextVulkan() {}

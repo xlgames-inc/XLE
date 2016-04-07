@@ -20,6 +20,7 @@
 #include "../../Utility/IteratorUtils.h"
 #include "Metal/VulkanCore.h"
 #include "Metal/ObjectFactory.h"
+#include "Metal/DeviceContext.h"
 #include "Metal/IncludeVulkan.h"
 #include <memory>
 #include <vector>
@@ -65,6 +66,7 @@ namespace RenderCore
 		};
 
 		VkRenderPass GetUnderlying() { return _underlying.get(); }
+        const VulkanSharedPtr<VkRenderPass>& ShareUnderlying() { return _underlying; }
 
 		RenderPass(
 			const Metal_Vulkan::ObjectFactory& factory,
@@ -158,8 +160,8 @@ namespace RenderCore
         void	Resize(unsigned newWidth, unsigned newHeight) /*override*/;
 
         std::shared_ptr<ViewportContext> GetViewportContext() const;
-        void    AcquireNextImage();
-		void	BindDefaultRenderPass(VkCommandBuffer cmdBuffer);
+        void        AcquireNextImage();
+		RenderPass* BindDefaultRenderPass(VkCommandBuffer cmd);
 
         PresentationChain(
 			VulkanSharedPtr<VkSurfaceKHR> surface, 
@@ -208,14 +210,16 @@ namespace RenderCore
         void                        IncrFrameId();
 		void						InvalidateCachedState() const;
 
-		VkCommandBuffer				GetCommandBuffer() { return _primaryCommandBuffer.get(); }
-
-        ThreadContext(std::shared_ptr<Device> device, VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer);
+        ThreadContext(
+            std::shared_ptr<Device> device, 
+            const Metal_Vulkan::ObjectFactory& factory, 
+            VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer,
+            VkPipelineCache pipelineCache);
         ~ThreadContext();
     protected:
-        std::weak_ptr<Device>   _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
-		unsigned                _frameId;
-		VulkanSharedPtr<VkCommandBuffer> _primaryCommandBuffer;
+        std::weak_ptr<Device>           _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
+		unsigned                        _frameId;
+		std::shared_ptr<Metal_Vulkan::DeviceContext>     _metalContext;
     };
 
     class ThreadContextVulkan : public ThreadContext, public Base_ThreadContextVulkan
@@ -223,8 +227,13 @@ namespace RenderCore
     public:
         virtual void*   QueryInterface(const GUID& guid);
         VkCommandBuffer GetPrimaryCommandBuffer();
+        const std::shared_ptr<Metal_Vulkan::DeviceContext>& GetMetalContext();
 
-		ThreadContextVulkan(std::shared_ptr<Device> device, VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer);
+		ThreadContextVulkan(
+            std::shared_ptr<Device> device, 
+            const Metal_Vulkan::ObjectFactory& factory, 
+            VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer,
+            VkPipelineCache pipelineCache);
         ~ThreadContextVulkan();
     };
 
@@ -244,13 +253,14 @@ namespace RenderCore
         Device();
         ~Device();
     protected:
-		VulkanSharedPtr<VkInstance>     _instance;
-		VulkanSharedPtr<VkDevice>		_underlying;
-        SelectedPhysicalDevice          _physDev;
-		CommandPool						_renderingCommandPool;
-		Metal_Vulkan::ObjectFactory		_objectFactory;
+		VulkanSharedPtr<VkInstance>         _instance;
+		VulkanSharedPtr<VkDevice>		    _underlying;
+        SelectedPhysicalDevice              _physDev;
+		CommandPool						    _renderingCommandPool;
+        VulkanSharedPtr<VkPipelineCache>    _pipelineCache;
+		Metal_Vulkan::ObjectFactory		    _objectFactory;
 
-		std::shared_ptr<ThreadContext>	_foregroundPrimaryContext;
+		std::shared_ptr<ThreadContextVulkan>	_foregroundPrimaryContext;
     };
 
     class DeviceVulkan : public Device, public Base_DeviceVulkan

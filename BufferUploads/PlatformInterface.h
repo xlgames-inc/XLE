@@ -13,6 +13,7 @@
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/Types.h"
 #include "../RenderCore/Metal/Resource.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 
 namespace Utility { class DefragStep; }
 
@@ -97,8 +98,8 @@ namespace BufferUploads { namespace PlatformInterface
         };
 
             ////////   C O M M A N D   L I S T S   ////////
-        intrusive_ptr<RenderCore::Metal::CommandList>    ResolveCommandList();
-        void                                            BeginCommandList();
+        RenderCore::Metal::CommandListPtr       ResolveCommandList();
+        void                                    BeginCommandList();
 
             ////////   C O N S T R U C T I O N   ////////
         UnderlyingDeviceContext(RenderCore::IThreadContext& renderCoreContext);

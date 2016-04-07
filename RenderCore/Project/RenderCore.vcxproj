@@ -94,6 +94,7 @@
     <ClInclude Include="..\Metal\GPUProfiler.h" />
     <ClInclude Include="..\Metal\InputLayout.h" />
     <ClInclude Include="..\Metal\Metal.h" />
+    <ClInclude Include="..\Metal\ObjectFactory.h" />
     <ClInclude Include="..\Metal\RenderTargetView.h" />
     <ClInclude Include="..\Metal\Resource.h" />
     <ClInclude Include="..\Metal\Shader.h" />

@@ -18,6 +18,7 @@ namespace RenderCore { namespace Metal_Vulkan
     public:
         typedef VkShaderModule UnderlyingType;
         UnderlyingType  GetUnderlying() const { return _underlying.get(); }
+        bool            IsGood() const { return _underlying != nullptr; }
 
         Shader();
         Shader(const CompiledShaderByteCode& byteCode);

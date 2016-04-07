@@ -10,8 +10,8 @@
 namespace RenderCore { namespace Metal_Vulkan
 {
     RasterizerState::RasterizerState(
-        CullMode::Enum cullmode = CullMode::Back, 
-        bool frontCounterClockwise = true)
+        CullMode::Enum cullmode, 
+        bool frontCounterClockwise)
     {
         sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         pNext = nullptr;
@@ -35,9 +35,7 @@ namespace RenderCore { namespace Metal_Vulkan
     : RasterizerState() {}
 
     BlendState::BlendState( 
-        BlendOp::Enum blendingOperation = BlendOp::Add, 
-        Blend::Enum srcBlend = Blend::SrcAlpha,
-        Blend::Enum dstBlend = Blend::InvSrcAlpha)
+        BlendOp::Enum blendingOperation, Blend::Enum srcBlend, Blend::Enum dstBlend)
     {
         XlZeroMemory(_attachments);
         _attachments[0].colorWriteMask = 0xf;
@@ -71,8 +69,10 @@ namespace RenderCore { namespace Metal_Vulkan
         Blend::Enum alphaDstBlend)
     : BlendState() {}
 
+    StencilMode StencilMode::NoEffect(Comparison::Always, StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite);
+    StencilMode StencilMode::AlwaysWrite(Comparison::Always, StencilOp::Replace, StencilOp::DontWrite, StencilOp::DontWrite);
 
-    DepthStencilState::DepthStencilState(bool enabled=true, bool writeEnabled=true, Comparison::Enum comparison = Comparison::LessEqual)
+    DepthStencilState::DepthStencilState(bool enabled, bool writeEnabled, Comparison::Enum comparison)
     {
         sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         pNext = nullptr;
@@ -97,8 +97,8 @@ namespace RenderCore { namespace Metal_Vulkan
     DepthStencilState::DepthStencilState(
         bool depthTestEnabled, bool writeEnabled, 
         unsigned stencilReadMask, unsigned stencilWriteMask,
-        const StencilMode& frontFaceStencil = StencilMode::NoEffect,
-        const StencilMode& backFaceStencil = StencilMode::NoEffect)
+        const StencilMode& frontFaceStencil,
+        const StencilMode& backFaceStencil)
     : DepthStencilState() {}
 
 }}

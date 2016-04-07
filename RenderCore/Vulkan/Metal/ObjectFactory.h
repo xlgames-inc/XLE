@@ -7,7 +7,9 @@
 #pragma once
 
 #include "VulkanCore.h"
+#include "Resource.h"
 #include "IncludeVulkan.h"
+#include "../../IDevice_Forward.h"
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Core/Types.h"
 
@@ -21,43 +23,54 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkPhysicalDevice GetPhysicalDevice() const { return _physDev; }
 		const VulkanSharedPtr<VkDevice>& GetDevice() const { return _device; }
 
-        VulkanSharedPtr<VkCommandPool> CreateCommandPool(
+        VulkanUniquePtr<VkCommandPool> CreateCommandPool(
             unsigned queueFamilyIndex, VkCommandPoolCreateFlags flags = 0) const;
 
-        VulkanSharedPtr<VkSemaphore> CreateSemaphore(
+        VulkanUniquePtr<VkSemaphore> CreateSemaphore(
             VkSemaphoreCreateFlags flags = 0) const;
 
-        VulkanSharedPtr<VkDeviceMemory> AllocateMemory(
+        VulkanUniquePtr<VkDeviceMemory> AllocateMemory(
             VkDeviceSize allocationSize, unsigned memoryTypeIndex) const;
 
-        VulkanSharedPtr<VkRenderPass> CreateRenderPass(
+        VulkanUniquePtr<VkRenderPass> CreateRenderPass(
             const VkRenderPassCreateInfo& createInfo) const;
 
-        VulkanSharedPtr<VkImage> CreateImage(
+        VulkanUniquePtr<VkImage> CreateImage(
             const VkImageCreateInfo& createInfo) const;
 
-        VulkanSharedPtr<VkImageView> CreateImageView(
+        VulkanUniquePtr<VkImageView> CreateImageView(
             const VkImageViewCreateInfo& createInfo) const;
 
-        VulkanSharedPtr<VkFramebuffer> CreateFramebuffer(
+        VulkanUniquePtr<VkFramebuffer> CreateFramebuffer(
             const VkFramebufferCreateInfo& createInfo) const;
 
-        VulkanSharedPtr<VkShaderModule> CreateShaderModule(
+        VulkanUniquePtr<VkShaderModule> CreateShaderModule(
             const void* byteCode, size_t size,
             VkShaderModuleCreateFlags flags = 0) const;
 
-        VulkanSharedPtr<VkPipeline> CreateGraphicsPipeline(
+        VulkanUniquePtr<VkPipeline> CreateGraphicsPipeline(
             VkPipelineCache pipelineCache,
             const VkGraphicsPipelineCreateInfo& createInfo) const;
 
-        VulkanSharedPtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
+        VulkanUniquePtr<VkPipelineCache> CreatePipelineCache(
+            const void* initialData = nullptr, size_t initialDataSize = 0,
+            VkPipelineCacheCreateFlags flags = 0) const;
+
+        VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
             IteratorRange<const VkDescriptorSetLayoutBinding*> bindings) const;
+
+        VulkanUniquePtr<VkPipelineLayout> CreatePipelineLayout(
+            IteratorRange<const VkDescriptorSetLayout*> setLayouts,
+            IteratorRange<const VkPushConstantRange*> pushConstants = IteratorRange<const VkPushConstantRange*>(),
+            VkPipelineLayoutCreateFlags flags = 0) const;
 
 		unsigned FindMemoryType(
             VkFlags memoryTypeBits, 
             VkMemoryPropertyFlags requirementsMask = 0) const;
 
 		ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device);
+        ObjectFactory(IDevice*);
+        ObjectFactory(Underlying::Resource&);
 		ObjectFactory();
 		// ~ObjectFactory();
 

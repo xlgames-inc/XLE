@@ -108,6 +108,9 @@ namespace RenderCore { namespace Metal_Vulkan
                         AddressMode::Enum addressW = AddressMode::Wrap,
 						Comparison::Enum comparison = Comparison::Never) {}
 		~SamplerState() {}
+
+        using UnderlyingType = const SamplerState*;
+        UnderlyingType GetUnderlying() const { return this; }
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -180,6 +183,9 @@ namespace RenderCore { namespace Metal_Vulkan
             int depthBias, float depthBiasClamp, float slopeScaledBias);
 
 		static RasterizerState Null() { return RasterizerState(); }
+
+        using UnderlyingType = const RasterizerState*;
+        UnderlyingType GetUnderlying() const { return this; }
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -288,6 +294,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		static BlendState Null() { return BlendState(); }
 
+        using UnderlyingType = const BlendState*;
+        UnderlyingType GetUnderlying() const { return this; }
+
     private:
         VkPipelineColorBlendAttachmentState _attachments[s_mrtLimit];
     };
@@ -372,6 +381,9 @@ namespace RenderCore { namespace Metal_Vulkan
             unsigned stencilReadMask, unsigned stencilWriteMask,
             const StencilMode& frontFaceStencil = StencilMode::NoEffect,
             const StencilMode& backFaceStencil = StencilMode::NoEffect);
+
+        using UnderlyingType = const DepthStencilState*;
+        UnderlyingType GetUnderlying() const { return this; }
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

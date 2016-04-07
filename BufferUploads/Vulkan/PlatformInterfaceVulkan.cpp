@@ -45,7 +45,7 @@
             RenderCore::Metal::Copy(*_devContext, ResPtr(destination), ResPtr(source));
         }
 
-        intrusive_ptr<RenderCore::Metal::CommandList> UnderlyingDeviceContext::ResolveCommandList()
+        RenderCore::Metal::CommandListPtr UnderlyingDeviceContext::ResolveCommandList()
         {
             return nullptr;
         }

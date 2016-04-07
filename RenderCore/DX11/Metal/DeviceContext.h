@@ -87,6 +87,8 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<ID3D::CommandList> _underlying;
     };
 
+    using CommandListPtr = intrusive_ptr<CommandList>;
+
     class ObjectFactory
     {
     public:
@@ -247,7 +249,7 @@ namespace RenderCore { namespace Metal_DX11
         void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil);
 
         void        BeginCommandList();
-        auto        ResolveCommandList() -> intrusive_ptr<CommandList>;
+        auto        ResolveCommandList() -> CommandListPtr;
         void        CommitCommandList(CommandList& commandList, bool preserveRenderState);
 
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);

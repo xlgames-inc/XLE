@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <utility>
 #include <memory>
+#include <functional>
 
 extern "C" { typedef enum VkResult VkResult; }
 
@@ -18,12 +19,15 @@ namespace RenderCore { namespace Metal_Vulkan
     namespace Internal
     {
         template<typename Type>
-            struct VulkanShared
-                { typedef std::shared_ptr<typename std::remove_reference<decltype(*std::declval<Type>())>::type> Ptr; };
+            struct VulkanTypeTraits
+            { 
+                typedef std::shared_ptr<typename std::decay<decltype(*std::declval<Type>())>::type> SharedPtr; 
+                typedef std::unique_ptr<typename std::decay<decltype(*std::declval<Type>())>::type, std::function<void(Type)>> UniquePtr; 
+            };
     }
 
-    template<typename Type>
-	    using VulkanSharedPtr = typename Internal::VulkanShared<Type>::Ptr;
+    template<typename Type> using VulkanSharedPtr = typename Internal::VulkanTypeTraits<Type>::SharedPtr;
+    template<typename Type> using VulkanUniquePtr = typename Internal::VulkanTypeTraits<Type>::UniquePtr;
 
     class VulkanAPIFailure : public ::Exceptions::BasicLabel
     {
