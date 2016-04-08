@@ -621,12 +621,21 @@ namespace RenderCore
 
 		//////////////////////////////////////////////////////////////////
 
+        auto& sync = _presentSyncs[_activePresentSync];
+
 		VkSubmitInfo submitInfo;
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.pNext = nullptr;
-		submitInfo.waitSemaphoreCount = 0;
-		submitInfo.pWaitSemaphores = nullptr;
-		submitInfo.pWaitDstStageMask = nullptr;
+
+        VkSemaphore waitSema[] = { sync._onAcquireComplete.get() };
+        VkSemaphore signalSema[] = { sync._onCommandBufferComplete.get() };
+        VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		submitInfo.waitSemaphoreCount = dimof(waitSema);
+		submitInfo.pWaitSemaphores = waitSema;
+        submitInfo.signalSemaphoreCount = dimof(signalSema);
+		submitInfo.pSignalSemaphores = signalSema;
+		submitInfo.pWaitDstStageMask = &stage;
+
 		submitInfo.commandBufferCount = 0;
 		submitInfo.pCommandBuffers = nullptr;
 		if (_cmdBufferPendingCommit) {
@@ -637,9 +646,6 @@ namespace RenderCore
 			submitInfo.commandBufferCount = 1;
 			submitInfo.pCommandBuffers = &_cmdBufferPendingCommit;
 		}
-		submitInfo.signalSemaphoreCount = 1;
-		auto sema = _images[_activeImageIndex]._presentSemaphore.get();
-		submitInfo.pSignalSemaphores = &sema;
 
 		auto res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
 		if (res != VK_SUCCESS)
@@ -655,7 +661,7 @@ namespace RenderCore
 
         const VkSwapchainKHR swapChains[] = { _swapChain.get() };
         uint32_t imageIndices[] = { _activeImageIndex };
-        const VkSemaphore semaphores[] = { _images[_activeImageIndex]._presentSemaphore.get() };
+        const VkSemaphore waitSema_2[] = { sync._onCommandBufferComplete.get() };
 
         VkPresentInfoKHR present;
         present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -663,13 +669,18 @@ namespace RenderCore
         present.swapchainCount = dimof(swapChains);
         present.pSwapchains = swapChains;
         present.pImageIndices = imageIndices;
-        present.pWaitSemaphores = semaphores;
-        present.waitSemaphoreCount = dimof(semaphores);
+        present.pWaitSemaphores = waitSema_2;
+        present.waitSemaphoreCount = dimof(waitSema_2);
         present.pResults = NULL;
 
         res = vkQueuePresentKHR(_queue, &present);
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failure while queuing present"));
+
+        // queue a fence -- used to avoid acquiring an image before it has completed it's present.
+        res = vkQueueSubmit(_queue, 0, nullptr, sync._presentFence.get());
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failure while queuing post present fence"));
 
         _activeImageIndex = ~0x0u;
     }
@@ -686,6 +697,16 @@ namespace RenderCore
 
     void PresentationChain::AcquireNextImage()
     {
+        _activePresentSync = (_activePresentSync+1) % dimof(_presentSyncs);
+        auto& sync = _presentSyncs[_activePresentSync];
+        auto fence = sync._presentFence.get();
+        auto res = vkWaitForFences(_device.get(), 1, &fence, true, UINT64_MAX);
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failure while waiting for presentation fence"));
+        res = vkResetFences(_device.get(), 1, &fence);
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failure while resetting presentation fence"));
+
         // note --  Due to the timeout here, we get a synchronise here.
         //          This will prevent issues when either the GPU or CPU is
         //          running ahead of the other... But we could do better by
@@ -698,10 +719,10 @@ namespace RenderCore
         // stalls as necessary
         uint32_t nextImageIndex = ~0x0u;
         const auto timeout = UINT64_MAX;
-        auto res = vkAcquireNextImageKHR(
+        res = vkAcquireNextImageKHR(
             _device.get(), _swapChain.get(), 
             timeout,
-            VK_NULL_HANDLE, VK_NULL_HANDLE,
+            sync._onAcquireComplete.get(), VK_NULL_HANDLE,
             &nextImageIndex);
         _activeImageIndex = nextImageIndex;
 
@@ -761,11 +782,6 @@ namespace RenderCore
             // swapchain is destroyed.
             return rawPtrs;
         }
-    }
-
-    static VulkanSharedPtr<VkSemaphore> CreateBasicSemaphore(const Metal_Vulkan::ObjectFactory& factory)
-    {
-        return factory.CreateSemaphore();
     }
 
     RenderPass::RenderPass(
@@ -1140,9 +1156,7 @@ namespace RenderCore
         // We need to get pointers to each image and build the synchronization semaphores
         auto images = GetImages(_device.get(), _swapChain.get());
         _images.reserve(images.size());
-        for (auto& i:images)
-            _images.emplace_back(
-                Image { i, CreateBasicSemaphore(factory) });
+        for (auto& i:images) _images.emplace_back(Image { i });
 
 		_depthStencilResource = Resource(
             factory, 
@@ -1182,6 +1196,15 @@ namespace RenderCore
             imageViews[0] = i._rtv.GetUnderlying();
             i._defaultFrameBuffer = FrameBuffer(factory, MakeIteratorRange(imageViews), _defaultRenderPass, bufferDesc._width, bufferDesc._height);
         }
+
+        // Create the synchronisation primitives
+        // This pattern is similar to the "Hologram" sample in the Vulkan SDK
+        for (unsigned c=0; c<dimof(_presentSyncs); ++c) {
+            _presentSyncs[c]._onCommandBufferComplete = factory.CreateSemaphore();
+            _presentSyncs[c]._onAcquireComplete = factory.CreateSemaphore();
+            _presentSyncs[c]._presentFence = factory.CreateFence(VK_FENCE_CREATE_SIGNALED_BIT);
+        }
+        _activePresentSync = 0;
 
         // We need to set the image layout for these images we created
         // this is a little frustrating. I wonder if the GPU is just rearranging the pixel contents?

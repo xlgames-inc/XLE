@@ -329,14 +329,14 @@ namespace RenderCore { namespace Metal_Vulkan
         GlExtensions ext;
         ext.ARB_explicit_attrib_location = 0;
         ext.ARB_explicit_uniform_location = 0;
-        ext.ARB_shading_language_420pack = 0;
+        ext.ARB_shading_language_420pack = 1;
         GLSLCrossDependencyData depData = {};
         GLSLShader glslShader;
         auto* bytecodeStart = (const char*)PtrAdd(AsPointer(hlslBytecode->begin()), sizeof(ShaderService::ShaderHeader));
         auto translateResult = TranslateHLSLFromMem(
             bytecodeStart,
             HLSLCC_FLAG_UNIFORM_BUFFER_OBJECT | HLSLCC_FLAG_INOUT_SEMANTIC_NAMES 
-            | HLSLCC_FLAG_COMBINE_TEXTURE_SAMPLERS,
+            /*| HLSLCC_FLAG_COMBINE_TEXTURE_SAMPLERS*/,
             LANG_330, &ext, &depData, 
             &glslShader);
         if (!translateResult) return false;

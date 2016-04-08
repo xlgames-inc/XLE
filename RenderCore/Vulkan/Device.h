@@ -39,6 +39,9 @@ namespace RenderCore
     template<typename Type>
         using VulkanSharedPtr = Metal_Vulkan::VulkanSharedPtr<Type>;
 
+    template<typename Type>
+        using VulkanUniquePtr = Metal_Vulkan::VulkanUniquePtr<Type>;
+
 ////////////////////////////////////////////////////////////////////////////////
 
     class Device;
@@ -173,19 +176,28 @@ namespace RenderCore
         {
         public:
             VkImage _underlying;
-            VulkanSharedPtr<VkSemaphore> _presentSemaphore;
 			RenderTargetView _rtv;
 			FrameBuffer _defaultFrameBuffer;
         };
         std::vector<Image> _images;
 
-		Resource _depthStencilResource;
-		DepthStencilView _dsv;
+		Resource            _depthStencilResource;
+		DepthStencilView    _dsv;
 
-		RenderPass		_defaultRenderPass;
+		RenderPass		    _defaultRenderPass;
 		BufferUploads::TextureDesc _bufferDesc;
 
-		VkCommandBuffer _cmdBufferPendingCommit;
+		VkCommandBuffer     _cmdBufferPendingCommit;
+
+        class PresentSync
+        {
+        public:
+            VulkanUniquePtr<VkSemaphore>    _onAcquireComplete;
+            VulkanUniquePtr<VkSemaphore>    _onCommandBufferComplete;
+            VulkanUniquePtr<VkFence>        _presentFence;
+        };
+        PresentSync     _presentSyncs[3];
+        unsigned        _activePresentSync;
     };
 
 ////////////////////////////////////////////////////////////////////////////////

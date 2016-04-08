@@ -484,6 +484,9 @@ namespace Sample
 
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys);
 
+    static VulkanTest::texture_object texObj = {};
+    static bool texInited = false;
+
     static void RunShaderTest(RenderCore::IThreadContext& genericThreadContext)
     {
         TRY
@@ -514,6 +517,7 @@ namespace Sample
             metalContext->Bind(inputLayout);
             metalContext->Bind(boundUniforms);
             metalContext->Bind(shader);
+            metalContext->BindPipeline();
 
 #if 1
             auto& factory = RenderCore::Metal::GetDefaultObjectFactory();
@@ -531,42 +535,34 @@ namespace Sample
                 MakeIteratorRange(layouts));
 
             // -------- demo image --------
-            static VulkanTest::texture_object texObj = {};
-            static bool texInited = false;
-            if (!texInited) {
-                VulkanTest::init_image(
-                    factory, device->GetRenderingQueue(), threadContext->GetPrimaryCommandBuffer(), 
-                    texObj);
-                texInited = true;
-            }
-
-            VkSamplerCreateInfo samplerCreateInfo = {};
-            samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-            samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
-            samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
-            samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-            samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            samplerCreateInfo.mipLodBias = 0.0;
-            samplerCreateInfo.anisotropyEnable = VK_FALSE,
-            samplerCreateInfo.maxAnisotropy = 0;
-            samplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
-            samplerCreateInfo.minLod = 0.0;
-            samplerCreateInfo.maxLod = 0.0;
-            samplerCreateInfo.compareEnable = VK_FALSE;
-            samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-
-            /* create sampler */
-            auto dev = factory.GetDevice().get();
-            auto res = vkCreateSampler(dev, &samplerCreateInfo, g_allocationCallbacks, &texObj.sampler);
-            assert(res == VK_SUCCESS);
+            
+            // VkSamplerCreateInfo samplerCreateInfo = {};
+            // samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+            // samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
+            // samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
+            // samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+            // samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            // samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            // samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            // samplerCreateInfo.mipLodBias = 0.0;
+            // samplerCreateInfo.anisotropyEnable = VK_FALSE,
+            // samplerCreateInfo.maxAnisotropy = 0;
+            // samplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
+            // samplerCreateInfo.minLod = 0.0;
+            // samplerCreateInfo.maxLod = 0.0;
+            // samplerCreateInfo.compareEnable = VK_FALSE;
+            // samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+            // 
+            // /* create sampler */
+            // auto dev = factory.GetDevice().get();
+            // auto res = vkCreateSampler(dev, &samplerCreateInfo, g_allocationCallbacks, &texObj.sampler);
+            // assert(res == VK_SUCCESS);
 
             // -------- write descriptor set --------
             VkDescriptorImageInfo imageInfo;
             imageInfo.imageLayout = texObj.imageLayout;
             imageInfo.imageView = texObj.view;
-            imageInfo.sampler = texObj.sampler;
+            imageInfo.sampler = nullptr; // texObj.sampler;
 
             VkWriteDescriptorSet writes[1];
             writes[0] = {};
@@ -574,20 +570,21 @@ namespace Sample
             writes[0].dstSet = descriptorSets[0].get();
             writes[0].dstBinding = 0;
             writes[0].descriptorCount = 1;
-            writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            writes[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; // VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             writes[0].pImageInfo = &imageInfo;
             writes[0].dstArrayElement = 0;
 
             vkUpdateDescriptorSets(factory.GetDevice().get(), dimof(writes), writes, 0, nullptr);
 
-            // VkDescriptorSet rawDescriptorSets[] = { descriptorSets[0].get() };
-            // auto pipelineLayout = metalContext->GetPipelineLayout();
-            // vkCmdBindDescriptorSets(
-            //     threadContext->GetPrimaryCommandBuffer(),
-            //     VK_PIPELINE_BIND_POINT_GRAPHICS,
-            //     pipelineLayout, 0, 
-            //     dimof(rawDescriptorSets), rawDescriptorSets, 
-            //     0, nullptr);
+            auto cmdBuffer = threadContext->GetPrimaryCommandBuffer(); (void)cmdBuffer;
+            VkDescriptorSet rawDescriptorSets[] = { descriptorSets[0].get() };
+            auto pipelineLayout = metalContext->GetPipelineLayout();
+            vkCmdBindDescriptorSets(
+                cmdBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                pipelineLayout, 0, 
+                dimof(rawDescriptorSets), rawDescriptorSets, 
+                0, nullptr);
 #endif
 
             auto cubeGeo = ToolsRig::BuildCube();
@@ -685,6 +682,22 @@ namespace Sample
                 //      * the DeviceContext provides the methods we need for rendering.
             LogInfo << "Setup frame rig and rendering context";
             auto context = renderDevice->GetImmediateContext();
+
+            if (!texInited) {
+                using namespace RenderCore;
+                auto threadContext = (IThreadContextVulkan*)context->QueryInterface(__uuidof(IThreadContextVulkan));
+                if (!threadContext) return;
+
+                auto genericDevice = context->GetDevice();
+                auto device = (IDeviceVulkan*)genericDevice->QueryInterface(__uuidof(IDeviceVulkan));
+                if (!device) return;
+
+                VulkanTest::init_image(
+                    RenderCore::Metal::GetDefaultObjectFactory(), 
+                    device->GetRenderingQueue(), threadContext->GetPrimaryCommandBuffer(), 
+                    texObj);
+                texInited = true;
+            }
 
                 //  Finally, we execute the frame loop
             for (;;) {

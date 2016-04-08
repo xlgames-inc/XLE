@@ -171,6 +171,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const CommandListPtr&   GetPrimaryCommandList() { return _primaryCommandList; }
 
         void        Bind(VulkanSharedPtr<VkRenderPass> renderPass);
+        void        BindPipeline();
 
         DeviceContext(
             const ObjectFactory& factory, 

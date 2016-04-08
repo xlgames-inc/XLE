@@ -200,13 +200,17 @@ namespace RenderCore { namespace Metal_Vulkan
         _renderPass = std::move(renderPass);
     }
 
-    void        DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
+    void        DeviceContext::BindPipeline()
     {
         auto pipeline = CreatePipeline(_renderPass.get());
         vkCmdBindPipeline(
             _primaryCommandList.get(),
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             pipeline.get());
+    }
+
+    void        DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
+    {
         vkCmdDraw(
             _primaryCommandList.get(),
             vertexCount, 1,
