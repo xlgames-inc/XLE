@@ -167,6 +167,8 @@ namespace RenderCore
         const void*		_platformValue;
         unsigned		_activeImageIndex;
 
+        const Metal_Vulkan::ObjectFactory* _factory;
+
         class Image
         {
         public:

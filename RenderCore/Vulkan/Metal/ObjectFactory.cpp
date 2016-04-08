@@ -11,6 +11,8 @@ namespace RenderCore { namespace Metal_Vulkan
 {
     const VkAllocationCallbacks* g_allocationCallbacks = nullptr;
 
+    static std::shared_ptr<IDestructionQueue> CreateDestructionQueue(VulkanSharedPtr<VkDevice> device);
+
     VulkanUniquePtr<VkCommandPool> ObjectFactory::CreateCommandPool(
         unsigned queueFamilyIndex, VkCommandPoolCreateFlags flags) const
     {
@@ -20,12 +22,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		createInfo.queueFamilyIndex = queueFamilyIndex;
 		createInfo.flags = flags;
 
-        auto dev = _device.get();
+        auto d = _destruction.get();
 		VkCommandPool rawPool = nullptr;
-		auto res = vkCreateCommandPool(dev, &createInfo, g_allocationCallbacks, &rawPool);
+		auto res = vkCreateCommandPool(_device.get(), &createInfo, g_allocationCallbacks, &rawPool);
 		auto pool = VulkanUniquePtr<VkCommandPool>(
 			rawPool,
-			[dev](VkCommandPool pool) { vkDestroyCommandPool(dev, pool, g_allocationCallbacks); });
+			[d](VkCommandPool pool) { d->Destroy(pool); });
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while creating command pool"));
         return std::move(pool);
@@ -39,14 +41,14 @@ namespace RenderCore { namespace Metal_Vulkan
         createInfo.pNext = nullptr;
         createInfo.flags = flags;
 
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkSemaphore rawPtr = nullptr;
         auto res = vkCreateSemaphore(
-            dev, &createInfo,
+            _device.get(), &createInfo,
             g_allocationCallbacks, &rawPtr);
         VulkanUniquePtr<VkSemaphore> result(
             rawPtr,
-            [dev](VkSemaphore sem) { vkDestroySemaphore(dev, sem, g_allocationCallbacks); });
+            [d](VkSemaphore sem) { d->Destroy(sem); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failure while creating Vulkan semaphore"));
         return std::move(result);
@@ -61,12 +63,12 @@ namespace RenderCore { namespace Metal_Vulkan
         mem_alloc.allocationSize = allocationSize;
         mem_alloc.memoryTypeIndex = memoryTypeIndex;
 
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkDeviceMemory rawMem = nullptr;
-        auto res = vkAllocateMemory(dev, &mem_alloc, g_allocationCallbacks, &rawMem);
+        auto res = vkAllocateMemory(_device.get(), &mem_alloc, g_allocationCallbacks, &rawMem);
         auto mem = VulkanUniquePtr<VkDeviceMemory>(
             rawMem,
-            [dev](VkDeviceMemory mem) { vkFreeMemory(dev, mem, g_allocationCallbacks); });
+            [d](VkDeviceMemory mem) { d->Destroy(mem); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while allocating device memory for image"));
 
@@ -76,12 +78,12 @@ namespace RenderCore { namespace Metal_Vulkan
     VulkanUniquePtr<VkRenderPass> ObjectFactory::CreateRenderPass(
         const VkRenderPassCreateInfo& createInfo) const
     {
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkRenderPass rawPtr = nullptr;
-        auto res = vkCreateRenderPass(dev, &createInfo, g_allocationCallbacks, &rawPtr);
+        auto res = vkCreateRenderPass(_device.get(), &createInfo, g_allocationCallbacks, &rawPtr);
         auto renderPass = VulkanUniquePtr<VkRenderPass>(
             rawPtr,
-            [dev](VkRenderPass pass) { vkDestroyRenderPass(dev, pass, g_allocationCallbacks ); });
+            [d](VkRenderPass pass) { d->Destroy(pass); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failure while creating render pass"));
         return std::move(renderPass);
@@ -90,12 +92,12 @@ namespace RenderCore { namespace Metal_Vulkan
     VulkanUniquePtr<VkImage> ObjectFactory::CreateImage(
         const VkImageCreateInfo& createInfo) const
     {
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkImage rawImage = nullptr;
-        auto res = vkCreateImage(dev, &createInfo, g_allocationCallbacks, &rawImage);
+        auto res = vkCreateImage(_device.get(), &createInfo, g_allocationCallbacks, &rawImage);
         auto image = VulkanUniquePtr<VkImage>(
             rawImage,
-            [dev](VkImage image) { vkDestroyImage(dev, image, g_allocationCallbacks); });
+            [d](VkImage image) { d->Destroy(image); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while creating image"));
         return std::move(image);
@@ -104,12 +106,12 @@ namespace RenderCore { namespace Metal_Vulkan
     VulkanUniquePtr<VkImageView> ObjectFactory::CreateImageView(
         const VkImageViewCreateInfo& createInfo) const
     {
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkImageView viewRaw = nullptr;
-        auto result = vkCreateImageView(dev, &createInfo, g_allocationCallbacks, &viewRaw);
+        auto result = vkCreateImageView(_device.get(), &createInfo, g_allocationCallbacks, &viewRaw);
         auto imageView = VulkanUniquePtr<VkImageView>(
             viewRaw,
-            [dev](VkImageView view) { vkDestroyImageView(dev, view, g_allocationCallbacks); });
+            [d](VkImageView view) { d->Destroy(view); });
         if (result != VK_SUCCESS)
             Throw(VulkanAPIFailure(result, "Failed while creating depth stencil view of resource"));
         return std::move(imageView);
@@ -118,12 +120,12 @@ namespace RenderCore { namespace Metal_Vulkan
     VulkanUniquePtr<VkFramebuffer> ObjectFactory::CreateFramebuffer(
         const VkFramebufferCreateInfo& createInfo) const
     {
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkFramebuffer rawFB = nullptr;
-        auto res = vkCreateFramebuffer(dev, &createInfo, g_allocationCallbacks, &rawFB);
+        auto res = vkCreateFramebuffer(_device.get(), &createInfo, g_allocationCallbacks, &rawFB);
         auto framebuffer = VulkanUniquePtr<VkFramebuffer>(
             rawFB,
-            [dev](VkFramebuffer fb) { vkDestroyFramebuffer(dev, fb, g_allocationCallbacks); });
+            [d](VkFramebuffer fb) { d->Destroy(fb); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while allocating frame buffer"));
         return std::move(framebuffer);
@@ -140,12 +142,12 @@ namespace RenderCore { namespace Metal_Vulkan
         createInfo.codeSize = size;
         createInfo.pCode = (const uint32_t*)byteCode;
 
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkShaderModule rawShader = nullptr;
-        auto res = vkCreateShaderModule(dev, &createInfo, g_allocationCallbacks, &rawShader);
+        auto res = vkCreateShaderModule(_device.get(), &createInfo, g_allocationCallbacks, &rawShader);
         auto shader = VulkanUniquePtr<VkShaderModule>(
             rawShader,
-            [dev](VkShaderModule shdr) { vkDestroyShaderModule(dev, shdr, g_allocationCallbacks); });
+            [d](VkShaderModule shdr) { d->Destroy(shdr); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while creating shader module"));
         return std::move(shader);
@@ -161,12 +163,12 @@ namespace RenderCore { namespace Metal_Vulkan
         createInfo.bindingCount = (uint32)bindings.size();
         createInfo.pBindings = bindings.begin();
 
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkDescriptorSetLayout rawLayout = nullptr;
-        auto res = vkCreateDescriptorSetLayout(dev, &createInfo, g_allocationCallbacks, &rawLayout);
+        auto res = vkCreateDescriptorSetLayout(_device.get(), &createInfo, g_allocationCallbacks, &rawLayout);
         auto shader = VulkanUniquePtr<VkDescriptorSetLayout>(
             rawLayout,
-            [dev](VkDescriptorSetLayout layout) { vkDestroyDescriptorSetLayout(dev, layout, g_allocationCallbacks); });
+            [d](VkDescriptorSetLayout layout) { d->Destroy(layout); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while creating descriptor set layout"));
         return std::move(shader);
@@ -175,12 +177,12 @@ namespace RenderCore { namespace Metal_Vulkan
     VulkanUniquePtr<VkDescriptorPool> ObjectFactory::CreateDescriptorPool(
         const VkDescriptorPoolCreateInfo& createInfo) const
     {
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkDescriptorPool rawPool = nullptr;
-        auto res = vkCreateDescriptorPool(dev, &createInfo, g_allocationCallbacks, &rawPool);
+        auto res = vkCreateDescriptorPool(_device.get(), &createInfo, g_allocationCallbacks, &rawPool);
         auto pool = VulkanUniquePtr<VkDescriptorPool>(
             rawPool,
-            [dev](VkDescriptorPool pool) { vkDestroyDescriptorPool(dev, pool, g_allocationCallbacks); });
+            [d](VkDescriptorPool pool) { d->Destroy(pool); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while creating descriptor pool"));
         return std::move(pool);
@@ -190,12 +192,12 @@ namespace RenderCore { namespace Metal_Vulkan
         VkPipelineCache pipelineCache,
         const VkGraphicsPipelineCreateInfo& createInfo) const
     {
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkPipeline rawPipeline = nullptr;
-        auto res = vkCreateGraphicsPipelines(dev, pipelineCache, 1, &createInfo, g_allocationCallbacks, &rawPipeline);
+        auto res = vkCreateGraphicsPipelines(_device.get(), pipelineCache, 1, &createInfo, g_allocationCallbacks, &rawPipeline);
         auto pipeline = VulkanUniquePtr<VkPipeline>(
             rawPipeline,
-            [dev](VkPipeline pipeline) { vkDestroyPipeline(dev, pipeline, g_allocationCallbacks); });
+            [d](VkPipeline pipeline) { d->Destroy(pipeline); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while creating graphics pipeline"));
         return std::move(pipeline);
@@ -212,12 +214,12 @@ namespace RenderCore { namespace Metal_Vulkan
         createInfo.pInitialData = initialData;
         createInfo.flags = flags;
 
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkPipelineCache rawCache = nullptr;
-        auto res = vkCreatePipelineCache(dev, &createInfo, g_allocationCallbacks, &rawCache);
+        auto res = vkCreatePipelineCache(_device.get(), &createInfo, g_allocationCallbacks, &rawCache);
         auto cache = VulkanUniquePtr<VkPipelineCache>(
             rawCache,
-            [dev](VkPipelineCache cache) { vkDestroyPipelineCache(dev, cache, g_allocationCallbacks); });
+            [d](VkPipelineCache cache) { d->Destroy(cache); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while creating descriptor set layout"));
         return std::move(cache);
@@ -237,12 +239,12 @@ namespace RenderCore { namespace Metal_Vulkan
         pPipelineLayoutCreateInfo.pushConstantRangeCount = (uint32_t)pushConstants.size();
         pPipelineLayoutCreateInfo.pPushConstantRanges = pushConstants.begin();
 
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkPipelineLayout rawPipelineLayout = nullptr;
-        auto res = vkCreatePipelineLayout(dev, &pPipelineLayoutCreateInfo, g_allocationCallbacks, &rawPipelineLayout);
+        auto res = vkCreatePipelineLayout(_device.get(), &pPipelineLayoutCreateInfo, g_allocationCallbacks, &rawPipelineLayout);
         auto pipelineLayout = VulkanUniquePtr<VkPipelineLayout>(
             rawPipelineLayout,
-            [dev](VkPipelineLayout layout) { vkDestroyPipelineLayout(dev, layout, g_allocationCallbacks); });
+            [d](VkPipelineLayout layout) { d->Destroy(layout); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while creating descriptor set layout"));
         return std::move(pipelineLayout);
@@ -250,12 +252,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
     VulkanUniquePtr<VkBuffer> ObjectFactory::CreateBuffer(const VkBufferCreateInfo& createInfo) const
     {
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkBuffer rawBuffer = nullptr;
-        auto res = vkCreateBuffer(dev, &createInfo, g_allocationCallbacks, &rawBuffer);
+        auto res = vkCreateBuffer(_device.get(), &createInfo, g_allocationCallbacks, &rawBuffer);
         auto buffer = VulkanUniquePtr<VkBuffer>(
             rawBuffer,
-            [dev](VkBuffer buffer) { vkDestroyBuffer(dev, buffer, g_allocationCallbacks); });
+            [d](VkBuffer buffer) { d->Destroy(buffer); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while creating buffer"));
         return std::move(buffer);
@@ -268,12 +270,12 @@ namespace RenderCore { namespace Metal_Vulkan
         createInfo.pNext = nullptr;
         createInfo.flags = flags;
 
-        auto dev = _device.get();
+        auto d = _destruction.get();
         VkFence rawFence = nullptr;
-        auto res = vkCreateFence(dev, &createInfo, g_allocationCallbacks, &rawFence);
+        auto res = vkCreateFence(_device.get(), &createInfo, g_allocationCallbacks, &rawFence);
         auto fence = VulkanUniquePtr<VkFence>(
             rawFence,
-            [dev](VkFence fence) { vkDestroyFence(dev, fence, g_allocationCallbacks); });
+            [d](VkFence fence) { d->Destroy(fence); });
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while creating fence"));
         return std::move(fence);
@@ -293,18 +295,28 @@ namespace RenderCore { namespace Metal_Vulkan
         return ~0x0u;
     }
 
+    void ObjectFactory::FlushDestructionQueue() const
+    {
+        _destruction->Flush();
+    }
+
     ObjectFactory::ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device)
     : _physDev(physDev), _device(device)
     {
         _memProps = {};
         vkGetPhysicalDeviceMemoryProperties(physDev, &_memProps);
+        _destruction = CreateDestructionQueue(_device);
     }
 
     ObjectFactory::ObjectFactory(IDevice*) {}
     ObjectFactory::ObjectFactory(Underlying::Resource&) {}
 
 	ObjectFactory::ObjectFactory() {}
-	// ObjectFactory::~ObjectFactory() {}
+	ObjectFactory::~ObjectFactory() 
+    {
+        if (_destruction)
+            _destruction->Flush();
+    }
 
 
     static const ObjectFactory* s_defaultObjectFactory = nullptr;
@@ -317,6 +329,149 @@ namespace RenderCore { namespace Metal_Vulkan
     const ObjectFactory& GetDefaultObjectFactory()
     {
         return *s_defaultObjectFactory;
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    IDestructionQueue::~IDestructionQueue() {}
+
+    class DeferredDestruction : public IDestructionQueue
+    {
+    public:
+        void    Destroy(VkCommandPool);
+        void    Destroy(VkSemaphore);
+        void    Destroy(VkDeviceMemory);
+        void    Destroy(VkRenderPass);
+        void    Destroy(VkImage);
+        void    Destroy(VkImageView);
+        void    Destroy(VkFramebuffer);
+        void    Destroy(VkShaderModule);
+        void    Destroy(VkDescriptorSetLayout);
+        void    Destroy(VkDescriptorPool);
+        void    Destroy(VkPipeline);
+        void    Destroy(VkPipelineCache);
+        void    Destroy(VkPipelineLayout);
+        void    Destroy(VkBuffer);
+        void    Destroy(VkFence);
+
+        void    Flush();
+
+        DeferredDestruction(VulkanSharedPtr<VkDevice> device);
+        ~DeferredDestruction();
+    private:
+        VulkanSharedPtr<VkDevice> _device;
+
+        template<typename Type>
+            using Queue = std::vector<Type>;
+
+        std::tuple<
+              Queue<VkCommandPool>              // 0
+            , Queue<VkSemaphore>                // 1
+            , Queue<VkDeviceMemory>             // 2
+            , Queue<VkRenderPass>               // 3
+            , Queue<VkImage>                    // 4
+            , Queue<VkImageView>                // 5
+            , Queue<VkFramebuffer>              // 6
+            , Queue<VkShaderModule>             // 7
+            , Queue<VkDescriptorSetLayout>      // 8
+            , Queue<VkDescriptorPool>           // 9
+            , Queue<VkPipeline>                 // 10
+            , Queue<VkPipelineCache>            // 11
+            , Queue<VkPipelineLayout>           // 12
+            , Queue<VkBuffer>                   // 13
+            , Queue<VkFence>                    // 14
+        > _queues;
+
+        template<int Index, typename Type>
+            void DoDestroy(Type obj);
+
+        template<int Index>
+            void FlushQueue();
+    };
+
+    template<int Index, typename Type>
+        inline void DeferredDestruction::DoDestroy(Type obj)
+    {
+        //  Note -- we need std::get<Type> access.. But that requires C++14, and
+        //          isn't supported on VS2013
+        auto& q = std::get<Index>(_queues);
+        q.push_back(obj);
+    }
+
+    template<typename Type> void DestroyObjectImmediate(VkDevice device, Type obj);
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkCommandPool obj)           { vkDestroyCommandPool(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkSemaphore obj)             { vkDestroySemaphore(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkDeviceMemory obj)          { vkFreeMemory(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkRenderPass obj)            { vkDestroyRenderPass(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkImage obj)                 { vkDestroyImage(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkImageView obj)             { vkDestroyImageView(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkFramebuffer obj)           { vkDestroyFramebuffer(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkShaderModule obj)          { vkDestroyShaderModule(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkDescriptorSetLayout obj)   { vkDestroyDescriptorSetLayout(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkDescriptorPool obj)        { vkDestroyDescriptorPool(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkPipeline obj)              { vkDestroyPipeline(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkPipelineCache obj)         { vkDestroyPipelineCache(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkPipelineLayout obj)        { vkDestroyPipelineLayout(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkBuffer obj)                { vkDestroyBuffer(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkFence obj)                 { vkDestroyFence(device, obj, g_allocationCallbacks ); }
+
+    template<int Index>
+        inline void DeferredDestruction::FlushQueue()
+    {
+        auto& q = std::get<Index>(_queues);
+        for (auto i:q)
+            DestroyObjectImmediate(_device.get(), i);
+        q.clear();
+    }
+
+    void    DeferredDestruction::Destroy(VkCommandPool obj) { DoDestroy<0>(obj); }
+    void    DeferredDestruction::Destroy(VkSemaphore obj) { DoDestroy<1>(obj); }
+    void    DeferredDestruction::Destroy(VkDeviceMemory obj) { DoDestroy<2>(obj); }
+    void    DeferredDestruction::Destroy(VkRenderPass obj) { DoDestroy<3>(obj); }
+    void    DeferredDestruction::Destroy(VkImage obj) { DoDestroy<4>(obj); }
+    void    DeferredDestruction::Destroy(VkImageView obj) { DoDestroy<5>(obj); }
+    void    DeferredDestruction::Destroy(VkFramebuffer obj) { DoDestroy<6>(obj); }
+    void    DeferredDestruction::Destroy(VkShaderModule obj) { DoDestroy<7>(obj); }
+    void    DeferredDestruction::Destroy(VkDescriptorSetLayout obj) { DoDestroy<8>(obj); }
+    void    DeferredDestruction::Destroy(VkDescriptorPool obj) { DoDestroy<9>(obj); }
+    void    DeferredDestruction::Destroy(VkPipeline obj) { DoDestroy<10>(obj); }
+    void    DeferredDestruction::Destroy(VkPipelineCache obj) { DoDestroy<11>(obj); }
+    void    DeferredDestruction::Destroy(VkPipelineLayout obj) { DoDestroy<12>(obj); }
+    void    DeferredDestruction::Destroy(VkBuffer obj) { DoDestroy<13>(obj); }
+    void    DeferredDestruction::Destroy(VkFence obj) { DoDestroy<14>(obj); }
+
+    void    DeferredDestruction::Flush()
+    {
+        FlushQueue<0>();
+        FlushQueue<1>();
+        FlushQueue<2>();
+        FlushQueue<3>();
+        FlushQueue<4>();
+        FlushQueue<5>();
+        FlushQueue<6>();
+        FlushQueue<7>();
+        FlushQueue<8>();
+        FlushQueue<9>();
+        FlushQueue<10>();
+        FlushQueue<11>();
+        FlushQueue<12>();
+        FlushQueue<13>();
+        FlushQueue<14>();
+    }
+
+    DeferredDestruction::DeferredDestruction(VulkanSharedPtr<VkDevice> device)
+    : _device(device)
+    {
+    }
+
+    DeferredDestruction::~DeferredDestruction() 
+    {
+        Flush();
+    }
+
+    static std::shared_ptr<IDestructionQueue> CreateDestructionQueue(VulkanSharedPtr<VkDevice> device)
+    {
+        return std::make_shared<DeferredDestruction>(std::move(device));
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

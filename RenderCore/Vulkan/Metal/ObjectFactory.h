@@ -17,6 +17,28 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+    class IDestructionQueue
+    {
+    public:
+        virtual void    Destroy(VkCommandPool) = 0;
+        virtual void    Destroy(VkSemaphore) = 0;
+        virtual void    Destroy(VkDeviceMemory) = 0;
+        virtual void    Destroy(VkRenderPass) = 0;
+        virtual void    Destroy(VkImage) = 0;
+        virtual void    Destroy(VkImageView) = 0;
+        virtual void    Destroy(VkFramebuffer) = 0;
+        virtual void    Destroy(VkShaderModule) = 0;
+        virtual void    Destroy(VkDescriptorSetLayout) = 0;
+        virtual void    Destroy(VkDescriptorPool) = 0;
+        virtual void    Destroy(VkPipeline) = 0;
+        virtual void    Destroy(VkPipelineCache) = 0;
+        virtual void    Destroy(VkPipelineLayout) = 0;
+        virtual void    Destroy(VkBuffer) = 0;
+        virtual void    Destroy(VkFence) = 0;
+        virtual void    Flush() = 0;
+        virtual ~IDestructionQueue();
+    };
+
 	class ObjectFactory
 	{
 	public:
@@ -76,16 +98,20 @@ namespace RenderCore { namespace Metal_Vulkan
             VkFlags memoryTypeBits, 
             VkMemoryPropertyFlags requirementsMask = 0) const;
 
+        void FlushDestructionQueue() const;
+
 		ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device);
         ObjectFactory(IDevice*);
         ObjectFactory(Underlying::Resource&);
 		ObjectFactory();
-		// ~ObjectFactory();
+		~ObjectFactory();
 
 	private:
 		VkPhysicalDeviceMemoryProperties _memProps;
         VkPhysicalDevice            _physDev;
 		VulkanSharedPtr<VkDevice>   _device;
+
+        std::shared_ptr<IDestructionQueue> _destruction;
 	};
 
     const ObjectFactory& GetDefaultObjectFactory();

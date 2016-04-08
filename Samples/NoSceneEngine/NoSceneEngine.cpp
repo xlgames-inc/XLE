@@ -592,7 +592,7 @@ namespace Sample
 
             auto cubeGeo = ToolsRig::BuildCube();
             auto vertexStride = sizeof(decltype(cubeGeo)::value_type);
-            static Metal::VertexBuffer vb(AsPointer(cubeGeo.begin()), cubeGeo.size() * vertexStride);
+            Metal::VertexBuffer vb(AsPointer(cubeGeo.begin()), cubeGeo.size() * vertexStride);
             metalContext->Bind(MakeResourceList(vb), (unsigned)vertexStride);
             metalContext->Bind(Metal::ViewportDesc(0, 0, 256, 256));
             metalContext->Draw((unsigned)cubeGeo.size());
