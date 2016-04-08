@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "State.h"
+#include "ObjectFactory.h"
 #include "../../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -101,4 +102,33 @@ namespace RenderCore { namespace Metal_Vulkan
         const StencilMode& backFaceStencil)
     : DepthStencilState() {}
 
+
+
+    SamplerState::SamplerState(   
+        FilterMode::Enum filter,
+        AddressMode::Enum addressU, 
+        AddressMode::Enum addressV, 
+        AddressMode::Enum addressW,
+		Comparison::Enum comparison)
+    {
+        VkSamplerCreateInfo samplerCreateInfo = {};
+        samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+        samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+        samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        samplerCreateInfo.mipLodBias = 0.0;
+        samplerCreateInfo.anisotropyEnable = VK_FALSE,
+        samplerCreateInfo.maxAnisotropy = 0;
+        samplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
+        samplerCreateInfo.minLod = 0.0;
+        samplerCreateInfo.maxLod = 0.0;
+        samplerCreateInfo.compareEnable = VK_FALSE;
+        samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        _sampler = GetDefaultObjectFactory().CreateSampler(samplerCreateInfo);
+    }
+
+    SamplerState::~SamplerState() {}
 }}

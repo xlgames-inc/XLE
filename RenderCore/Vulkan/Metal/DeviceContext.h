@@ -70,9 +70,8 @@ namespace RenderCore { namespace Metal_Vulkan
         VulkanUniquePtr<VkPipeline> CreatePipeline(VkRenderPass renderPass, unsigned subpass = 0);
 
         VkPipelineLayout        GetPipelineLayout() { return _pipelineLayout.get(); }
-        VkDescriptorSetLayout   GetDescriptorSetLayout(unsigned index) { return _descriptorSets[index].get(); }
 
-        PipelineBuilder(const ObjectFactory& factory, VkPipelineCache cache);
+        PipelineBuilder(const ObjectFactory& factory, GlobalPools& globalPools);
         ~PipelineBuilder();
 
         PipelineBuilder(const PipelineBuilder&) = delete;
@@ -86,11 +85,10 @@ namespace RenderCore { namespace Metal_Vulkan
         const BoundInputLayout* _inputLayout;       // note -- unprotected pointer
         const ShaderProgram*    _shaderProgram;
 
-        VulkanUniquePtr<VkDescriptorSetLayout>  _descriptorSets[2];
-        VulkanUniquePtr<VkPipelineLayout>       _pipelineLayout;
+        VulkanSharedPtr<VkPipelineLayout> _pipelineLayout;
 
         const ObjectFactory*    _factory;
-        VkPipelineCache         _cache;
+        GlobalPools*            _globalPools;
         unsigned                _vertexStrides[s_maxBoundVBs];
     };
 
@@ -172,6 +170,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
         void        Bind(VulkanSharedPtr<VkRenderPass> renderPass);
         void        BindPipeline();
+
+        GlobalPools&    GetGlobalPools();
+        VkDevice        GetUnderlyingDevice();
 
         DeviceContext(
             const ObjectFactory& factory, 

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "VulkanCore.h"
 #include "IncludeVulkan.h"
 #include <utility>
 
@@ -106,11 +107,14 @@ namespace RenderCore { namespace Metal_Vulkan
                         AddressMode::Enum addressU = AddressMode::Wrap, 
                         AddressMode::Enum addressV = AddressMode::Wrap, 
                         AddressMode::Enum addressW = AddressMode::Wrap,
-						Comparison::Enum comparison = Comparison::Never) {}
-		~SamplerState() {}
+						Comparison::Enum comparison = Comparison::Never);
+		~SamplerState();
 
-        using UnderlyingType = const SamplerState*;
-        UnderlyingType GetUnderlying() const { return this; }
+        using UnderlyingType = VkSampler;
+        VkSampler GetUnderlying() const { return _sampler.get(); }
+
+    private:
+        VulkanSharedPtr<VkSampler> _sampler;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

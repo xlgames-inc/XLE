@@ -40,9 +40,10 @@
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Vulkan/Metal/ObjectFactory.h"
-#include "../../RenderCore/Vulkan/Metal/Buffer.h"
+#include "../../RenderCore/Metal/ObjectFactory.h"
+#include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Vulkan/Metal/Pools.h"
+#include "../../RenderCore/Metal/ShaderResource.h"
 #include "../../RenderCore/Vulkan/IDeviceVulkan.h"
 #include "../../Tools/ToolsRig/VisualisationGeo.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
@@ -447,26 +448,7 @@ namespace VulkanTest
             texObj.stagingMemory = mappableMemory;
         }
 
-        VkImageViewCreateInfo view_info = {};
-        view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        view_info.pNext = NULL;
-        view_info.image = VK_NULL_HANDLE;
-        view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        view_info.format = VK_FORMAT_R8G8B8A8_UNORM;
-        view_info.components.r = VK_COMPONENT_SWIZZLE_R;
-        view_info.components.g = VK_COMPONENT_SWIZZLE_G;
-        view_info.components.b = VK_COMPONENT_SWIZZLE_B;
-        view_info.components.a = VK_COMPONENT_SWIZZLE_A;
-        view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        view_info.subresourceRange.baseMipLevel = 0;
-        view_info.subresourceRange.levelCount = 1;
-        view_info.subresourceRange.baseArrayLayer = 0;
-        view_info.subresourceRange.layerCount = 1;
-
-        /* create image view */
-        view_info.image = texObj.image;
-        res = vkCreateImageView(device, &view_info, NULL, &texObj.view);
-        assert(res == VK_SUCCESS);
+        
     }
 
 }
@@ -521,34 +503,8 @@ namespace Sample
 #if 1
             auto& factory = RenderCore::Metal::GetDefaultObjectFactory();
 
-            // -------- descriptor set --------
-            auto& pool = device->GetGlobalPools()._mainDescriptorPool;
-            Metal::VulkanUniquePtr<VkDescriptorSet> descriptorSets[2];
-            const VkDescriptorSetLayout layouts[] = { metalContext->GetDescriptorSetLayout(0), metalContext->GetDescriptorSetLayout(1) };
-            pool.Allocate(
-                MakeIteratorRange(descriptorSets),
-                MakeIteratorRange(layouts));
-
-            // -------- demo image --------
-            VkSamplerCreateInfo samplerCreateInfo = {};
-            samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-            samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
-            samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
-            samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-            samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            samplerCreateInfo.mipLodBias = 0.0;
-            samplerCreateInfo.anisotropyEnable = VK_FALSE,
-            samplerCreateInfo.maxAnisotropy = 0;
-            samplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
-            samplerCreateInfo.minLod = 0.0;
-            samplerCreateInfo.maxLod = 0.0;
-            samplerCreateInfo.compareEnable = VK_FALSE;
-            samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-            auto sampler = factory.CreateSampler(samplerCreateInfo);
-
-            // -------- write descriptor set --------
+            // ------ uniforms -----------
+            Metal::SamplerState sampler;
             auto projDesc = Techniques::ProjectionDesc();
             auto globalTrans = Techniques::BuildGlobalTransformConstants(projDesc);
             auto localTrans = Techniques::MakeLocalTransform(
@@ -557,57 +513,14 @@ namespace Sample
 
             Metal::ConstantBuffer globalTransBuffer(&globalTrans, sizeof(globalTrans));
             Metal::ConstantBuffer localTransBuffer(&localTrans, sizeof(localTrans));
+            Metal::ShaderResourceView srv(factory, texObj.image);
 
-            VkDescriptorBufferInfo bufferInfo[2] = 
-            {
-                VkDescriptorBufferInfo{globalTransBuffer.GetUnderlying(), 0, VK_WHOLE_SIZE},
-                VkDescriptorBufferInfo{localTransBuffer.GetUnderlying(), 0, VK_WHOLE_SIZE},
-            };
-
-            VkDescriptorImageInfo imageInfo;
-            imageInfo.imageLayout = texObj.imageLayout;
-            imageInfo.imageView = texObj.view;
-            imageInfo.sampler = sampler.get();
-
-            VkWriteDescriptorSet writes[3];
-            writes[0] = {};
-            writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[0].dstSet = descriptorSets[1].get();
-            writes[0].dstBinding = 0;
-            writes[0].descriptorCount = 1;
-            writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            writes[0].pImageInfo = &imageInfo;
-            writes[0].dstArrayElement = 0;
-
-            writes[1] = {};
-            writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[1].dstSet = descriptorSets[0].get();
-            writes[1].dstBinding = 0;
-            writes[1].descriptorCount = 1;
-            writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            writes[1].pBufferInfo = &bufferInfo[0];
-            writes[1].dstArrayElement = 0;
-
-            writes[2] = {};
-            writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[2].dstSet = descriptorSets[0].get();
-            writes[2].dstBinding = 1;
-            writes[2].descriptorCount = 1;
-            writes[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            writes[2].pBufferInfo = &bufferInfo[1];
-            writes[2].dstArrayElement = 0;
-
-            vkUpdateDescriptorSets(factory.GetDevice().get(), dimof(writes), writes, 0, nullptr);
-
-            auto cmdBuffer = threadContext->GetPrimaryCommandBuffer(); (void)cmdBuffer;
-            VkDescriptorSet rawDescriptorSets[] = { descriptorSets[0].get(), descriptorSets[1].get() };
-            auto pipelineLayout = metalContext->GetPipelineLayout();
-            vkCmdBindDescriptorSets(
-                cmdBuffer,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                pipelineLayout, 0, 
-                dimof(rawDescriptorSets), rawDescriptorSets, 
-                0, nullptr);
+            const Metal::ConstantBuffer* cbs[] = {&globalTransBuffer, &localTransBuffer};
+            const Metal::ShaderResourceView* srvs[] = {&srv};
+            boundUniforms.Apply(
+                *metalContext,
+                Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)),
+                Metal::UniformsStream());
 #endif
 
             auto cubeGeo = ToolsRig::BuildCube();

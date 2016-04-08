@@ -6,12 +6,16 @@
 
 #pragma once
 
-#include "Resource.h"
 #include "Format.h"
+#include "Resource.h"
+#include "VulkanCore.h"
 #include "../../../Core/Prefix.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+    class ObjectFactory;
+    class SamplerState;
+
     class MipSlice
     {
     public:
@@ -23,19 +27,23 @@ namespace RenderCore { namespace Metal_Vulkan
     class ShaderResourceView
     {
     public:
-        ShaderResourceView() {}
-        ~ShaderResourceView() {}
-		ShaderResourceView(Underlying::Resource*, NativeFormat::Enum = NativeFormat::Unknown) {}
+        ShaderResourceView();
+        ~ShaderResourceView();
+		ShaderResourceView(const ObjectFactory& factory, VkImage image, NativeFormat::Enum = NativeFormat::Unknown);
+        ShaderResourceView(VkImage image, NativeFormat::Enum = NativeFormat::Unknown);
+        ShaderResourceView(Underlying::Resource* res, NativeFormat::Enum = NativeFormat::Unknown);
 
-        ShaderResourceView(const ShaderResourceView& cloneFrom) {}
-        ShaderResourceView(ShaderResourceView&& moveFrom) never_throws {}
-        ShaderResourceView& operator=(const ShaderResourceView& cloneFrom) {}
-        ShaderResourceView& operator=(ShaderResourceView&& moveFrom) never_throws {}
+		using UnderlyingType = VkImageView;
+        using UnderlyingResource = VkImage;
+		UnderlyingType			GetUnderlying() const { return _underlying.get(); }
+		bool                    IsGood() const { return _underlying != nullptr; }
 
-		typedef Underlying::Resource*   UnderlyingResource;
-		typedef Underlying::Resource*   UnderlyingType;
-		UnderlyingType					GetUnderlying() const { return nullptr; }
-		bool IsGood() const { return true; }
+        VkImageLayout _layout;
+
+        const SamplerState&     GetSampler() const;
+
+    private:
+        VulkanSharedPtr<VkImageView> _underlying;
     };
 }}
 

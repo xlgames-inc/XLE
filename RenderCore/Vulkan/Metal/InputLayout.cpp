@@ -6,7 +6,12 @@
 
 #include "InputLayout.h"
 #include "Shader.h"
+#include "Buffer.h"
+#include "ShaderResource.h"
+#include "State.h"
 #include "ObjectFactory.h"
+#include "DeviceContext.h"
+#include "Pools.h"
 #include "../../ShaderService.h"
 #include "../../../Utility/MemoryUtils.h"
 
@@ -339,15 +344,112 @@ namespace RenderCore { namespace Metal_Vulkan
     VulkanUniquePtr<VkDescriptorSetLayout> 
         BoundUniforms::CreateLayout(const ObjectFactory& factory, unsigned streamIndex) const
     {
-        if (!_bindings[streamIndex].empty())
-            return factory.CreateDescriptorSetLayout(MakeIteratorRange(_bindings[streamIndex]));
-        return nullptr;
+        return factory.CreateDescriptorSetLayout(MakeIteratorRange(_bindings[streamIndex]));
+    }
+
+    const VulkanSharedPtr<VkPipelineLayout>& BoundUniforms::SharePipelineLayout(
+        const ObjectFactory& factory,
+        DescriptorPool& descriptorPool) const
+    {
+        if (!_pipelineLayout) {
+            for (unsigned c=0; c<s_descriptorSetCount; ++c)
+                _layouts[c] = CreateLayout(factory, c);
+
+            VkDescriptorSetLayout rawLayouts[s_descriptorSetCount];
+            for (unsigned c=0; c<s_descriptorSetCount; ++c) rawLayouts[c] = _layouts[c].get();
+            _pipelineLayout = factory.CreatePipelineLayout(MakeIteratorRange(rawLayouts));
+
+            descriptorPool.Allocate(
+                MakeIteratorRange(_descriptorSets),
+                MakeIteratorRange(rawLayouts));
+        }
+        return _pipelineLayout;
     }
 
     void BoundUniforms::Apply(  DeviceContext& context, 
                                 const UniformsStream& stream0, 
                                 const UniformsStream& stream1) const
     {
+        auto pipelineLayout = SharePipelineLayout(GetDefaultObjectFactory(), context.GetGlobalPools()._mainDescriptorPool).get();
+
+        // -------- write descriptor set --------
+        const unsigned maxBindings = 16;
+        VkDescriptorBufferInfo bufferInfo[maxBindings];
+        VkDescriptorImageInfo imageInfo[maxBindings];
+        VkWriteDescriptorSet writes[maxBindings];
+
+        unsigned writeCount = 0, bufferCount = 0, imageCount = 0;
+
+        const UniformsStream* streams[] = { &stream0, &stream1 };
+
+        for (unsigned stri=0; stri<dimof(streams); ++stri) {
+            const auto& s = *streams[stri];
+
+            for (unsigned p=0; p<s._packetCount; ++p) {
+                if (s._prebuiltBuffers[p]) {
+
+                    assert(bufferCount < dimof(bufferInfo));
+                    assert(writeCount < dimof(writes));
+
+                    bufferInfo[bufferCount] = VkDescriptorBufferInfo{s._prebuiltBuffers[p]->GetUnderlying(), 0, VK_WHOLE_SIZE};
+
+                    writes[writeCount] = {};
+                    writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    writes[writeCount].dstSet = _descriptorSets[stri*2+0].get();
+                    writes[writeCount].dstBinding = p;
+                    writes[writeCount].descriptorCount = 1;
+                    writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                    writes[writeCount].pBufferInfo = &bufferInfo[bufferCount];
+                    writes[writeCount].dstArrayElement = 0;
+
+                    ++writeCount;
+                    ++bufferCount;
+                } else if (s._packets[p]) {
+                    // todo -- append these onto a large buffer, or use push constant updates
+                }
+            }
+
+            for (unsigned r=0; r<s._resourceCount; ++r) {
+                if (s._resources[r]) {
+
+                    assert(imageCount < dimof(imageInfo));
+                    assert(writeCount < dimof(writes));
+
+                    imageInfo[imageCount] = VkDescriptorImageInfo {
+                        s._resources[r]->GetSampler().GetUnderlying(),
+                        s._resources[r]->GetUnderlying(),
+                        s._resources[r]->_layout };
+
+                    writes[writeCount] = {};
+                    writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    writes[writeCount].dstSet = _descriptorSets[stri*2+1].get();
+                    writes[writeCount].dstBinding = r;
+                    writes[writeCount].descriptorCount = 1;
+                    writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                    writes[writeCount].pImageInfo = &imageInfo[imageCount];
+                    writes[writeCount].dstArrayElement = 0;
+
+                    ++writeCount;
+                    ++imageCount;
+                }
+            }
+        }
+
+        if (!writeCount) return;
+
+        vkUpdateDescriptorSets(context.GetUnderlyingDevice(), writeCount, writes, 0, nullptr);
+
+        auto cmdBuffer = context.GetPrimaryCommandList().get();
+
+        VkDescriptorSet rawDescriptorSets[s_descriptorSetCount];
+        for (unsigned c=0; c<s_descriptorSetCount; ++c) rawDescriptorSets[c] = _descriptorSets[c].get();
+
+        vkCmdBindDescriptorSets(
+            cmdBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            pipelineLayout, 0, 
+            dimof(rawDescriptorSets), rawDescriptorSets, 
+            0, nullptr);
     }
 
     void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const

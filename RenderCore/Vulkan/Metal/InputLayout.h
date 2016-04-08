@@ -132,6 +132,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class ShaderProgram;
     class DeepShaderProgram;
     class ObjectFactory;
+    class DescriptorPool;
 
     typedef SharedPkt ConstantBufferPacket;
 
@@ -192,17 +193,29 @@ namespace RenderCore { namespace Metal_Vulkan
         bool BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res);
         bool BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res);
 
+
+        // todo -- the following should be moved into another object. Something that is created
+        //      from the completed BoundUniforms
         void Apply( DeviceContext& context, 
                     const UniformsStream& stream0, const UniformsStream& stream1) const;
         void UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const;
 
-        VulkanUniquePtr<VkDescriptorSetLayout> CreateLayout(const ObjectFactory& factory, unsigned streamIndex) const;
+        const VulkanSharedPtr<VkPipelineLayout>& SharePipelineLayout(
+            const ObjectFactory& factory, 
+            DescriptorPool& descriptorPool) const;
 
     private:
         SPIRVReflection _reflection[ShaderStage::Max];
 
-        static const unsigned s_descriptorSetCount = 2;
-        std::vector<VkDescriptorSetLayoutBinding> _bindings[s_descriptorSetCount];
+        static const unsigned s_descriptorSetCount = 4;
+        std::vector<VkDescriptorSetLayoutBinding>   _bindings[s_descriptorSetCount];
+
+        mutable VulkanSharedPtr<VkPipelineLayout>           _pipelineLayout;
+        mutable VulkanUniquePtr<VkDescriptorSetLayout>      _layouts[s_descriptorSetCount];
+
+        mutable VulkanUniquePtr<VkDescriptorSet>            _descriptorSets[s_descriptorSetCount];
+
+        VulkanUniquePtr<VkDescriptorSetLayout>      CreateLayout(const ObjectFactory& factory, unsigned streamIndex) const;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

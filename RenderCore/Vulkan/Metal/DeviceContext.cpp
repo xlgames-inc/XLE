@@ -36,10 +36,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void        PipelineBuilder::Bind(const BoundUniforms& uniforms)
     {
-        _descriptorSets[0] = uniforms.CreateLayout(*_factory, 0);
-        _descriptorSets[1] = uniforms.CreateLayout(*_factory, 1);
-        VkDescriptorSetLayout layouts[] = { _descriptorSets[0].get(), _descriptorSets[1].get() };
-        _pipelineLayout = _factory->CreatePipelineLayout(MakeIteratorRange(layouts));
+        _pipelineLayout = uniforms.SharePipelineLayout(*_factory, _globalPools->_mainDescriptorPool);
     }
 
     void        PipelineBuilder::Bind(const ShaderProgram& shaderProgram)
@@ -163,11 +160,11 @@ namespace RenderCore { namespace Metal_Vulkan
         pipeline.renderPass = renderPass;
         pipeline.subpass = subpass;
 
-        return _factory->CreateGraphicsPipeline(_cache, pipeline);
+        return _factory->CreateGraphicsPipeline(_globalPools->_mainPipelineCache.get(), pipeline);
     }
 
-    PipelineBuilder::PipelineBuilder(const ObjectFactory& factory, VkPipelineCache cache)
-    : _factory(&factory), _cache(cache)
+    PipelineBuilder::PipelineBuilder(const ObjectFactory& factory, GlobalPools& globalPools)
+    : _factory(&factory), _globalPools(&globalPools)
     {
         _inputLayout = nullptr;
         _topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -238,11 +235,21 @@ namespace RenderCore { namespace Metal_Vulkan
         return nullptr;
     }
 
+    GlobalPools&    DeviceContext::GetGlobalPools()
+    {
+        return *_globalPools;
+    }
+
+    VkDevice        DeviceContext::GetUnderlyingDevice()
+    {
+        return _factory->GetDevice().get();
+    }
+
     DeviceContext::DeviceContext(
         const ObjectFactory& factory, 
         VulkanSharedPtr<VkCommandBuffer> cmdList,
         GlobalPools& globalPools)
-    : PipelineBuilder(factory, globalPools._mainPipelineCache.get())
+    : PipelineBuilder(factory, globalPools)
     , _primaryCommandList(cmdList)
     {}
 

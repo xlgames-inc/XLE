@@ -63,6 +63,7 @@
     <ClCompile Include="..\Vulkan\Metal\Pools.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Shader.cpp" />
     <ClCompile Include="..\Vulkan\Metal\ShaderReflection.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\ShaderResource.cpp" />
     <ClCompile Include="..\Vulkan\Metal\State.cpp" />
   </ItemGroup>
   <ItemGroup>

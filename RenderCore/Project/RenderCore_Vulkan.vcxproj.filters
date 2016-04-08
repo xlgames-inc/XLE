@@ -11,6 +11,7 @@
     <ClCompile Include="..\Vulkan\Metal\DeviceContext.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Buffer.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Pools.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\ShaderResource.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />
