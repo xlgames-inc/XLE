@@ -36,11 +36,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void        PipelineBuilder::Bind(const BoundUniforms& uniforms)
     {
-        if (!_descriptorSets[0]) {
-            _descriptorSets[0] = uniforms.CreateLayout(*_factory, 0);
-            VkDescriptorSetLayout layouts[] = { _descriptorSets[0].get() };
-            _pipelineLayout = _factory->CreatePipelineLayout(MakeIteratorRange(layouts));
-        }
+        _descriptorSets[0] = uniforms.CreateLayout(*_factory, 0);
+        _descriptorSets[1] = uniforms.CreateLayout(*_factory, 1);
+        VkDescriptorSetLayout layouts[] = { _descriptorSets[0].get(), _descriptorSets[1].get() };
+        _pipelineLayout = _factory->CreatePipelineLayout(MakeIteratorRange(layouts));
     }
 
     void        PipelineBuilder::Bind(const ShaderProgram& shaderProgram)

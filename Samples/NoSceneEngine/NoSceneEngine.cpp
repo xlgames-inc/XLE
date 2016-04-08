@@ -45,6 +45,8 @@
 #include "../../RenderCore/Vulkan/Metal/Pools.h"
 #include "../../RenderCore/Vulkan/IDeviceVulkan.h"
 #include "../../Tools/ToolsRig/VisualisationGeo.h"
+#include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../Math/Transformations.h"
 
 unsigned FrameRenderCount = 0;
 
@@ -503,13 +505,12 @@ namespace Sample
                     "GEO_HAS_TEXCOORD=1;RES_HAS_DiffuseTexture=1");
 
             Metal::BoundInputLayout inputLayout(
-                // Metal::GlobalInputLayouts::PT,
                 ToolsRig::Vertex3D_InputLayout,
                 shader.GetCompiledVertexShader());
 
             Metal::BoundUniforms boundUniforms(shader);
             boundUniforms.BindConstantBuffers(0, {"GlobalTransform", "LocalTransform"});
-            boundUniforms.BindShaderResources(0, {"DiffuseTexture", "NormalsTexture", "ParametersTexture"});
+            boundUniforms.BindShaderResources(1, {"DiffuseTexture"});
 
             auto metalContext = Metal::DeviceContext::Get(genericThreadContext);
             metalContext->Bind(inputLayout);
@@ -522,8 +523,8 @@ namespace Sample
 
             // -------- descriptor set --------
             auto& pool = device->GetGlobalPools()._mainDescriptorPool;
-            Metal::VulkanUniquePtr<VkDescriptorSet> descriptorSets[1];
-            const VkDescriptorSetLayout layouts[] = { metalContext->GetDescriptorSetLayout(0) };
+            Metal::VulkanUniquePtr<VkDescriptorSet> descriptorSets[2];
+            const VkDescriptorSetLayout layouts[] = { metalContext->GetDescriptorSetLayout(0), metalContext->GetDescriptorSetLayout(1) };
             pool.Allocate(
                 MakeIteratorRange(descriptorSets),
                 MakeIteratorRange(layouts));
@@ -548,25 +549,58 @@ namespace Sample
             auto sampler = factory.CreateSampler(samplerCreateInfo);
 
             // -------- write descriptor set --------
+            auto projDesc = Techniques::ProjectionDesc();
+            auto globalTrans = Techniques::BuildGlobalTransformConstants(projDesc);
+            auto localTrans = Techniques::MakeLocalTransform(
+                Identity<Float4x4>(), 
+                ExtractTranslation(projDesc._cameraToWorld));
+
+            Metal::ConstantBuffer globalTransBuffer(&globalTrans, sizeof(globalTrans));
+            Metal::ConstantBuffer localTransBuffer(&localTrans, sizeof(localTrans));
+
+            VkDescriptorBufferInfo bufferInfo[2] = 
+            {
+                VkDescriptorBufferInfo{globalTransBuffer.GetUnderlying(), 0, VK_WHOLE_SIZE},
+                VkDescriptorBufferInfo{localTransBuffer.GetUnderlying(), 0, VK_WHOLE_SIZE},
+            };
+
             VkDescriptorImageInfo imageInfo;
             imageInfo.imageLayout = texObj.imageLayout;
             imageInfo.imageView = texObj.view;
             imageInfo.sampler = sampler.get();
 
-            VkWriteDescriptorSet writes[1];
+            VkWriteDescriptorSet writes[3];
             writes[0] = {};
             writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[0].dstSet = descriptorSets[0].get();
+            writes[0].dstSet = descriptorSets[1].get();
             writes[0].dstBinding = 0;
             writes[0].descriptorCount = 1;
             writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             writes[0].pImageInfo = &imageInfo;
             writes[0].dstArrayElement = 0;
 
+            writes[1] = {};
+            writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[1].dstSet = descriptorSets[0].get();
+            writes[1].dstBinding = 0;
+            writes[1].descriptorCount = 1;
+            writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            writes[1].pBufferInfo = &bufferInfo[0];
+            writes[1].dstArrayElement = 0;
+
+            writes[2] = {};
+            writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[2].dstSet = descriptorSets[0].get();
+            writes[2].dstBinding = 1;
+            writes[2].descriptorCount = 1;
+            writes[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            writes[2].pBufferInfo = &bufferInfo[1];
+            writes[2].dstArrayElement = 0;
+
             vkUpdateDescriptorSets(factory.GetDevice().get(), dimof(writes), writes, 0, nullptr);
 
             auto cmdBuffer = threadContext->GetPrimaryCommandBuffer(); (void)cmdBuffer;
-            VkDescriptorSet rawDescriptorSets[] = { descriptorSets[0].get() };
+            VkDescriptorSet rawDescriptorSets[] = { descriptorSets[0].get(), descriptorSets[1].get() };
             auto pipelineLayout = metalContext->GetPipelineLayout();
             vkCmdBindDescriptorSets(
                 cmdBuffer,

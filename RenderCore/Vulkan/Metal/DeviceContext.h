@@ -86,7 +86,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const BoundInputLayout* _inputLayout;       // note -- unprotected pointer
         const ShaderProgram*    _shaderProgram;
 
-        VulkanUniquePtr<VkDescriptorSetLayout>  _descriptorSets[1];
+        VulkanUniquePtr<VkDescriptorSetLayout>  _descriptorSets[2];
         VulkanUniquePtr<VkPipelineLayout>       _pipelineLayout;
 
         const ObjectFactory*    _factory;

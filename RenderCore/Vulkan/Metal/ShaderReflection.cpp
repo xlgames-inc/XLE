@@ -87,11 +87,13 @@ namespace RenderCore { namespace Metal_Vulkan
                 // InstructionDesc[OpMemberName].operands.push(OperandLiteralNumber, "'Member'");
                 // InstructionDesc[OpMemberName].operands.push(OperandLiteralString, "'Name'");
                 {
-                    MemberId id(paramStart[0], paramStart[1]);
-                    auto i = LowerBound(_memberNames, id);
-                    if (i == _memberNames.end() || i->first != id)
-                        i = _memberNames.insert(i, std::make_pair(id, Name()));
-                    i->second = MakeStringSection((const char*)&paramStart[2]);
+                    if (((const char*)&paramStart[2])[0]) {
+                        MemberId id(paramStart[0], paramStart[1]);
+                        auto i = LowerBound(_memberNames, id);
+                        if (i == _memberNames.end() || i->first != id)
+                            i = _memberNames.insert(i, std::make_pair(id, Name()));
+                        i->second = MakeStringSection((const char*)&paramStart[2]);
+                    }
                     break;
                 }
 
@@ -166,6 +168,10 @@ namespace RenderCore { namespace Metal_Vulkan
                 _vectorTypes.push_back(std::make_pair(paramStart[0], VectorType{paramStart[1], paramStart[2]}));
                 break;
 
+            case OpTypeStruct:
+                _structTypes.push_back(paramStart[0]);
+                break;
+
             case OpTypePointer:  
                 _pointerTypes.push_back(std::make_pair(paramStart[0], PointerType{paramStart[2], AsStorageType(paramStart[1])}));
                 break;
@@ -180,9 +186,38 @@ namespace RenderCore { namespace Metal_Vulkan
         // build the quick lookup table, which matches hash names to binding values
         for (auto& b:_bindings) {
             if (b.second._descriptorSet==~0x0u && b.second._bindingPoint==~0x0) continue;
+
+            const char* nameStart = nullptr, *nameEnd = nullptr;
+
             auto n = LowerBound(_names, b.first);
-            if (n == _names.end() || n->first != b.first) continue;
-            _uniformQuickLookup.push_back(std::make_pair(Hash64(n->second.begin(), n->second.end()), b.second));
+            if (n != _names.end() && n->first == b.first) {
+                nameStart = n->second.begin();
+                nameEnd = n->second.end();
+            }
+
+            if (nameStart == nameEnd) {
+                // If we have no name attached, we can try to get the name from the type
+                // This occurs in our HLSL path for constant buffers. Constant buffers
+                // become a pointer to a struct (where the struct has the name we want),
+                // and the actual variable just has an empty name.
+                auto v = LowerBound(_variables, b.first);
+                if (v != _variables.end() || v->first == b.first) {
+                    auto type = v->second._type;
+                    auto ptr = LowerBound(_pointerTypes, type);
+                    if (ptr != _pointerTypes.end() && ptr->first == type)
+                        type = ptr->second._targetType;
+                
+                    n = LowerBound(_names, type);
+                    if (n != _names.end() && n->first == type) {
+                        nameStart = n->second.begin();
+                        nameEnd = n->second.end();
+                    } 
+                }
+            }
+
+            if (nameStart == nameEnd) continue;
+
+            _uniformQuickLookup.push_back(std::make_pair(Hash64(nameStart, nameEnd), b.second));
         }
 
         std::sort(
@@ -195,14 +230,35 @@ namespace RenderCore { namespace Metal_Vulkan
             if (v == _variables.end() || v->first != i) continue;
             if (v->second._storage != StorageType::Input) continue;
 
-            auto n = LowerBound(_names, v->first);
-            if (n == _names.end() || n->first != v->first) continue;
-
             auto b = LowerBound(_bindings, v->first);
             if (b == _bindings.end() || b->first != v->first) continue;
 
-            auto* nameStart = n->second.begin();
-            auto* nameEnd = n->second.end();
+            const char* nameStart = nullptr, *nameEnd = nullptr;
+
+            auto n = LowerBound(_names, v->first);
+            if (n != _names.end() && n->first == v->first) {
+                nameStart = n->second.begin();
+                nameEnd = n->second.end();
+            } 
+            
+            if (nameStart == nameEnd) {
+                // If we have no name attached, we can try to get the name from the type
+                // This occurs in our HLSL path for constant buffers. Constant buffers
+                // become a pointer to a struct (where the struct has the name we want),
+                // and the actual variable just has an empty name.
+                auto type = v->second._type;
+                auto ptr = LowerBound(_pointerTypes, type);
+                if (ptr != _pointerTypes.end() && ptr->first == type)
+                    type = ptr->second._targetType;
+                
+                n = LowerBound(_names, type);
+                if (n != _names.end() && n->first == type) {
+                    nameStart = n->second.begin();
+                    nameEnd = n->second.end();
+                } 
+            }
+
+            if (nameStart == nameEnd) continue;
 
             // Our shader path prepends "in_" infront of the semantic name
             // when generating a variable name. Remove it before we make a hash.
