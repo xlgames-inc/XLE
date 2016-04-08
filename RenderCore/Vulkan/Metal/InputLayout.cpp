@@ -28,6 +28,9 @@ namespace RenderCore { namespace Metal_Vulkan
             const auto& e = layout.first[c];
             auto hash = Hash64(e._semanticName, DefaultSeed64 + e._semanticIndex);
 
+            auto offset = e._alignedByteOffset == ~0x0u ? trackingOffset : e._alignedByteOffset;
+            trackingOffset = offset + BitsPerPixel(e._nativeFormat) / 8;
+
             auto i = LowerBound(reflection._inputInterfaceQuickLookup, hash);
             if (i == reflection._inputInterfaceQuickLookup.end() || i->first != hash)
                 continue;   // Could not be bound
@@ -36,10 +39,8 @@ namespace RenderCore { namespace Metal_Vulkan
             desc.location = i->second._location;
             desc.binding = e._inputSlot;
             desc.format = AsVkFormat(e._nativeFormat);
-            desc.offset = e._alignedByteOffset == ~0x0u ? trackingOffset : e._alignedByteOffset;
+            desc.offset = offset;
             _attributes.push_back(desc);
-
-            trackingOffset += desc.offset + BitsPerPixel(e._nativeFormat) / 8;
         }
 
         // todo -- check if any input slots are not bound to anything
