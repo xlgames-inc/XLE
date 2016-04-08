@@ -35,12 +35,21 @@ namespace RenderCore { namespace Metal_Vulkan
             IteratorRange<VulkanUniquePtr<VkDescriptorSet>*> dst,
             IteratorRange<const VkDescriptorSetLayout*> layouts);
 
+        void FlushDestroys();
+
         DescriptorPool(const Metal_Vulkan::ObjectFactory& factory);
         DescriptorPool();
         ~DescriptorPool();
+
+        DescriptorPool(const DescriptorPool&) = delete;
+        DescriptorPool& operator=(const DescriptorPool&) = delete;
+        DescriptorPool(DescriptorPool&&) never_throws;
+        DescriptorPool& operator=(DescriptorPool&&) never_throws;
     private:
         VulkanSharedPtr<VkDescriptorPool> _pool;
 		VulkanSharedPtr<VkDevice> _device;
+
+        std::vector<VkDescriptorSet> _pendingDestroy;
     };
 
     class GlobalPools
@@ -49,5 +58,9 @@ namespace RenderCore { namespace Metal_Vulkan
         CommandPool						    _renderingCommandPool;
         DescriptorPool                      _mainDescriptorPool;
         VulkanSharedPtr<VkPipelineCache>    _mainPipelineCache;
+
+        GlobalPools() {}
+        GlobalPools(const GlobalPools&) = delete;
+        GlobalPools& operator=(const GlobalPools&) = delete;
     };
 }}

@@ -284,7 +284,7 @@ namespace VulkanTest
         res = vkBindImageMemory(device, mappableImage, mappableMemory, 0);
         assert(res == VK_SUCCESS);
 
-        #if 0
+        #if 1
             set_image_layout(cmd, mappableImage, VK_IMAGE_ASPECT_COLOR_BIT,
                              VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_GENERAL);
 
@@ -326,7 +326,7 @@ namespace VulkanTest
         vkGetImageSubresourceLayout(device, mappableImage, &subres, &layout);
 
         /* Make sure command buffer is finished before mapping */
-        #if 0
+        #if 1
             #define FENCE_TIMEOUT 100000000
             do {
                 res =
@@ -349,7 +349,7 @@ namespace VulkanTest
 
         vkUnmapMemory(device, mappableMemory);
 
-        #if 0
+        #if 1
             VkCommandBufferBeginInfo cmd_buf_info = {};
             cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
             cmd_buf_info.pNext = NULL;
@@ -527,7 +527,7 @@ namespace Sample
             (void)factory;
 
             // -------- descriptor set --------
-            auto pool = device->GetGlobalPools()._mainDescriptorPool;
+            auto& pool = device->GetGlobalPools()._mainDescriptorPool;
             Metal::VulkanUniquePtr<VkDescriptorSet> descriptorSets[1];
             const VkDescriptorSetLayout layouts[] = { metalContext->GetDescriptorSetLayout(0) };
             pool.Allocate(
@@ -692,10 +692,60 @@ namespace Sample
                 auto device = (IDeviceVulkan*)genericDevice->QueryInterface(__uuidof(IDeviceVulkan));
                 if (!device) return;
 
+                auto cmd = threadContext->GetPrimaryCommandBuffer();
+                auto queue = device->GetRenderingQueue();
+
+                VkCommandBufferBeginInfo cmd_buf_info = {};
+                cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+                cmd_buf_info.pNext = NULL;
+                cmd_buf_info.flags = 0;
+                cmd_buf_info.pInheritanceInfo = NULL;
+
+                auto res = vkResetCommandBuffer(cmd, 0);
+                assert(res == VK_SUCCESS);
+                res = vkBeginCommandBuffer(cmd, &cmd_buf_info);
+                assert(res == VK_SUCCESS);
+
                 VulkanTest::init_image(
                     RenderCore::Metal::GetDefaultObjectFactory(), 
-                    device->GetRenderingQueue(), threadContext->GetPrimaryCommandBuffer(), 
+                    queue, cmd,  
                     texObj);
+
+
+                res = vkEndCommandBuffer(cmd);
+                assert(res == VK_SUCCESS);
+                const VkCommandBuffer cmd_bufs[] = {cmd};
+                VkFenceCreateInfo fenceInfo;
+                VkFence cmdFence;
+                fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+                fenceInfo.pNext = NULL;
+                fenceInfo.flags = 0;
+                vkCreateFence(device->GetUnderlyingDevice(), &fenceInfo, NULL, &cmdFence);
+
+                VkSubmitInfo submit_info[1] = {};
+                submit_info[0].pNext = NULL;
+                submit_info[0].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                submit_info[0].waitSemaphoreCount = 0;
+                submit_info[0].pWaitSemaphores = NULL;
+                submit_info[0].pWaitDstStageMask = NULL;
+                submit_info[0].commandBufferCount = 1;
+                submit_info[0].pCommandBuffers = cmd_bufs;
+                submit_info[0].signalSemaphoreCount = 0;
+                submit_info[0].pSignalSemaphores = NULL;
+
+                /* Queue the command buffer for execution */
+                res = vkQueueSubmit(queue, 1, submit_info, cmdFence);
+                assert(res == VK_SUCCESS);
+
+                #define FENCE_TIMEOUT 100000000
+                do {
+                    res =
+                        vkWaitForFences(device->GetUnderlyingDevice(), 1, &cmdFence, VK_TRUE, FENCE_TIMEOUT);
+                } while (res == VK_TIMEOUT);
+                assert(res == VK_SUCCESS);
+
+                vkDestroyFence(device->GetUnderlyingDevice(), cmdFence, NULL);
+
                 texInited = true;
             }
 

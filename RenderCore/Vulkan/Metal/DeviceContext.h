@@ -176,7 +176,7 @@ namespace RenderCore { namespace Metal_Vulkan
         DeviceContext(
             const ObjectFactory& factory, 
             VulkanSharedPtr<VkCommandBuffer> cmdList, 
-            GlobalPools globalPools);
+            GlobalPools& globalPools);
 		DeviceContext(const DeviceContext&) = delete;
 		DeviceContext& operator=(const DeviceContext&) = delete;
 

@@ -242,7 +242,7 @@ namespace RenderCore { namespace Metal_Vulkan
     DeviceContext::DeviceContext(
         const ObjectFactory& factory, 
         VulkanSharedPtr<VkCommandBuffer> cmdList,
-        GlobalPools globalPools)
+        GlobalPools& globalPools)
     : PipelineBuilder(factory, globalPools._mainPipelineCache.get())
     , _primaryCommandList(cmdList)
     {}

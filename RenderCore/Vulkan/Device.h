@@ -171,6 +171,7 @@ namespace RenderCore
         unsigned		_activeImageIndex;
 
         const Metal_Vulkan::ObjectFactory* _factory;
+        Metal_Vulkan::GlobalPools* _globalPools;
 
         class Image
         {

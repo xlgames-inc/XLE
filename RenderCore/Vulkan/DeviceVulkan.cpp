@@ -654,6 +654,7 @@ namespace RenderCore
         // hack -- need to implement CPU/GPU synchronisation
         vkDeviceWaitIdle(_device.get());
         _factory->FlushDestructionQueue();
+        _globalPools->_mainDescriptorPool.FlushDestroys();
 
 		_cmdBufferPendingCommit = nullptr;
 
@@ -1150,6 +1151,7 @@ namespace RenderCore
 	, _bufferDesc(bufferDesc)
 	, _cmdBufferPendingCommit(nullptr)
     , _factory(&factory)
+    , _globalPools(&globalPools)
     {
         _activeImageIndex = ~0x0u;
 

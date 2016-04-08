@@ -56,29 +56,36 @@ namespace RenderCore { namespace Metal_Vulkan
         desc_alloc_info.descriptorSetCount = (uint32_t)std::min(dst.size(), layouts.size());
         desc_alloc_info.pSetLayouts = layouts.begin();
 
-        auto dev = _device.get();
-        auto pool = _pool.get();
         VkDescriptorSet rawDescriptorSets[4] = { nullptr, nullptr, nullptr, nullptr };
 
         VkResult res;
         if (desc_alloc_info.descriptorSetCount <= dimof(rawDescriptorSets)) {
-            res = vkAllocateDescriptorSets(dev, &desc_alloc_info, rawDescriptorSets);
+            res = vkAllocateDescriptorSets(_device.get(), &desc_alloc_info, rawDescriptorSets);
             for (unsigned c=0; c<desc_alloc_info.descriptorSetCount; ++c)
                 dst[c] = VulkanUniquePtr<VkDescriptorSet>(
                     rawDescriptorSets[c],
-                    [dev, pool](VkDescriptorSet set) { vkFreeDescriptorSets(dev, pool, 1, &set); });
+                    [this](VkDescriptorSet set) { this->_pendingDestroy.push_back(set); });
         } else {
             std::vector<VkDescriptorSet> rawDescriptorsOverflow;
             rawDescriptorsOverflow.resize(desc_alloc_info.descriptorSetCount, nullptr);
-            res = vkAllocateDescriptorSets(dev, &desc_alloc_info, AsPointer(rawDescriptorsOverflow.begin()));
+            res = vkAllocateDescriptorSets(_device.get(), &desc_alloc_info, AsPointer(rawDescriptorsOverflow.begin()));
             for (unsigned c=0; c<desc_alloc_info.descriptorSetCount; ++c)
                 dst[c] = VulkanUniquePtr<VkDescriptorSet>(
                     rawDescriptorsOverflow[c],
-                    [dev, pool](VkDescriptorSet set) { vkFreeDescriptorSets(dev, pool, 1, &set); });
+                    [this](VkDescriptorSet set) { this->_pendingDestroy.push_back(set); });
         }
 
         if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while allocating descriptor set")); 
+    }
+
+    void DescriptorPool::FlushDestroys()
+    {
+        if (!_pendingDestroy.empty())
+            vkFreeDescriptorSets(
+                _device.get(), _pool.get(), 
+                (uint32_t)_pendingDestroy.size(), AsPointer(_pendingDestroy.begin()));
+        _pendingDestroy.clear();
     }
 
     DescriptorPool::DescriptorPool(const Metal_Vulkan::ObjectFactory& factory)
@@ -99,5 +106,24 @@ namespace RenderCore { namespace Metal_Vulkan
         _pool = factory.CreateDescriptorPool(descriptor_pool);
     }
     DescriptorPool::DescriptorPool() {}
-    DescriptorPool::~DescriptorPool() {}
+    DescriptorPool::~DescriptorPool() 
+    {
+        FlushDestroys();
+    }
+
+    DescriptorPool::DescriptorPool(DescriptorPool&& moveFrom) never_throws
+    : _pool(moveFrom._pool)
+    , _device(moveFrom._device)
+    , _pendingDestroy(moveFrom._pendingDestroy)
+    {
+    }
+
+    DescriptorPool& DescriptorPool::operator=(DescriptorPool&& moveFrom) never_throws
+    {
+        _pool = std::move(moveFrom._pool);
+        _device = std::move(moveFrom._device);
+        _pendingDestroy = std::move(moveFrom._pendingDestroy);
+        return *this;
+    }
+
 }}
