@@ -35,6 +35,7 @@ namespace RenderCore { namespace Metal_Vulkan
         virtual void    Destroy(VkPipelineLayout) = 0;
         virtual void    Destroy(VkBuffer) = 0;
         virtual void    Destroy(VkFence) = 0;
+        virtual void    Destroy(VkSampler) = 0;
         virtual void    Flush() = 0;
         virtual ~IDestructionQueue();
     };
@@ -93,6 +94,8 @@ namespace RenderCore { namespace Metal_Vulkan
             const VkBufferCreateInfo& createInfo) const;
 
         VulkanUniquePtr<VkFence> CreateFence(VkFenceCreateFlags flags = 0) const;
+
+        VulkanUniquePtr<VkSampler> CreateSampler(const VkSamplerCreateInfo& createInfo) const;
 
 		unsigned FindMemoryType(
             VkFlags memoryTypeBits, 

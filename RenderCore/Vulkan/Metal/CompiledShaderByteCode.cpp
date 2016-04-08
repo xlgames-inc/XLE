@@ -336,7 +336,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto translateResult = TranslateHLSLFromMem(
             bytecodeStart,
             HLSLCC_FLAG_UNIFORM_BUFFER_OBJECT | HLSLCC_FLAG_INOUT_SEMANTIC_NAMES 
-            /*| HLSLCC_FLAG_COMBINE_TEXTURE_SAMPLERS*/,
+            /* | HLSLCC_FLAG_COMBINE_TEXTURE_SAMPLERS */,
             LANG_330, &ext, &depData, 
             &glslShader);
         if (!translateResult) return false;

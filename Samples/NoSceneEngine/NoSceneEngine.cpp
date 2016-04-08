@@ -52,8 +52,6 @@ namespace VulkanTest
 {
     struct texture_object 
     {
-        VkSampler sampler;
-
         VkImage image;
         VkImageLayout imageLayout;
 
@@ -521,10 +519,6 @@ namespace Sample
 
 #if 1
             auto& factory = RenderCore::Metal::GetDefaultObjectFactory();
-            #define g_allocationCallbacks RenderCore::Metal_Vulkan::g_allocationCallbacks
-            using RenderCore::Metal_Vulkan::VulkanAPIFailure;
-            using RenderCore::Metal_Vulkan::VulkanSharedPtr;
-            (void)factory;
 
             // -------- descriptor set --------
             auto& pool = device->GetGlobalPools()._mainDescriptorPool;
@@ -535,34 +529,29 @@ namespace Sample
                 MakeIteratorRange(layouts));
 
             // -------- demo image --------
-            
-            // VkSamplerCreateInfo samplerCreateInfo = {};
-            // samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-            // samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
-            // samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
-            // samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-            // samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            // samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            // samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            // samplerCreateInfo.mipLodBias = 0.0;
-            // samplerCreateInfo.anisotropyEnable = VK_FALSE,
-            // samplerCreateInfo.maxAnisotropy = 0;
-            // samplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
-            // samplerCreateInfo.minLod = 0.0;
-            // samplerCreateInfo.maxLod = 0.0;
-            // samplerCreateInfo.compareEnable = VK_FALSE;
-            // samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-            // 
-            // /* create sampler */
-            // auto dev = factory.GetDevice().get();
-            // auto res = vkCreateSampler(dev, &samplerCreateInfo, g_allocationCallbacks, &texObj.sampler);
-            // assert(res == VK_SUCCESS);
+            VkSamplerCreateInfo samplerCreateInfo = {};
+            samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+            samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+            samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+            samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+            samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            samplerCreateInfo.mipLodBias = 0.0;
+            samplerCreateInfo.anisotropyEnable = VK_FALSE,
+            samplerCreateInfo.maxAnisotropy = 0;
+            samplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
+            samplerCreateInfo.minLod = 0.0;
+            samplerCreateInfo.maxLod = 0.0;
+            samplerCreateInfo.compareEnable = VK_FALSE;
+            samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+            auto sampler = factory.CreateSampler(samplerCreateInfo);
 
             // -------- write descriptor set --------
             VkDescriptorImageInfo imageInfo;
             imageInfo.imageLayout = texObj.imageLayout;
             imageInfo.imageView = texObj.view;
-            imageInfo.sampler = nullptr; // texObj.sampler;
+            imageInfo.sampler = sampler.get();
 
             VkWriteDescriptorSet writes[1];
             writes[0] = {};
@@ -570,7 +559,7 @@ namespace Sample
             writes[0].dstSet = descriptorSets[0].get();
             writes[0].dstBinding = 0;
             writes[0].descriptorCount = 1;
-            writes[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; // VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             writes[0].pImageInfo = &imageInfo;
             writes[0].dstArrayElement = 0;
 
@@ -591,7 +580,7 @@ namespace Sample
             auto vertexStride = sizeof(decltype(cubeGeo)::value_type);
             Metal::VertexBuffer vb(AsPointer(cubeGeo.begin()), cubeGeo.size() * vertexStride);
             metalContext->Bind(MakeResourceList(vb), (unsigned)vertexStride);
-            metalContext->Bind(Metal::ViewportDesc(0, 0, 256, 256));
+            metalContext->Bind(Metal::ViewportDesc(0, 0, 512, 512));
             metalContext->Draw((unsigned)cubeGeo.size());
         }
         CATCH(const ::Assets::Exceptions::AssetException&) {}

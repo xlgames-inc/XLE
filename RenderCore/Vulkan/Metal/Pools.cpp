@@ -92,7 +92,7 @@ namespace RenderCore { namespace Metal_Vulkan
     : _device(factory.GetDevice())
     {
         VkDescriptorPoolSize type_count[1];
-        type_count[0].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        type_count[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         type_count[0].descriptorCount = 128;
 
         VkDescriptorPoolCreateInfo descriptor_pool = {};

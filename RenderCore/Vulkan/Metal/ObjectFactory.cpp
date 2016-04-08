@@ -281,6 +281,19 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(fence);
     }
 
+    VulkanUniquePtr<VkSampler> ObjectFactory::CreateSampler(const VkSamplerCreateInfo& createInfo) const
+    {
+        auto d = _destruction.get();
+        VkSampler rawSampler = nullptr;
+        auto res = vkCreateSampler(_device.get(), &createInfo, g_allocationCallbacks, &rawSampler);
+        auto sampler = VulkanUniquePtr<VkSampler>(
+            rawSampler,
+            [d](VkSampler sampler) { d->Destroy(sampler); });
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failed while creating sampler"));
+        return std::move(sampler);
+    }
+
     unsigned ObjectFactory::FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask) const
     {
         // Search memtypes to find first index with those properties
@@ -353,6 +366,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void    Destroy(VkPipelineLayout);
         void    Destroy(VkBuffer);
         void    Destroy(VkFence);
+        void    Destroy(VkSampler);
 
         void    Flush();
 
@@ -380,6 +394,7 @@ namespace RenderCore { namespace Metal_Vulkan
             , Queue<VkPipelineLayout>           // 12
             , Queue<VkBuffer>                   // 13
             , Queue<VkFence>                    // 14
+            , Queue<VkSampler>                  // 15
         > _queues;
 
         template<int Index, typename Type>
@@ -414,6 +429,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<> inline void DestroyObjectImmediate(VkDevice device, VkPipelineLayout obj)        { vkDestroyPipelineLayout(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkBuffer obj)                { vkDestroyBuffer(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkFence obj)                 { vkDestroyFence(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkSampler obj)               { vkDestroySampler(device, obj, g_allocationCallbacks ); }
 
     template<int Index>
         inline void DeferredDestruction::FlushQueue()
@@ -439,6 +455,7 @@ namespace RenderCore { namespace Metal_Vulkan
     void    DeferredDestruction::Destroy(VkPipelineLayout obj) { DoDestroy<12>(obj); }
     void    DeferredDestruction::Destroy(VkBuffer obj) { DoDestroy<13>(obj); }
     void    DeferredDestruction::Destroy(VkFence obj) { DoDestroy<14>(obj); }
+    void    DeferredDestruction::Destroy(VkSampler obj) { DoDestroy<15>(obj); }
 
     void    DeferredDestruction::Flush()
     {
@@ -457,6 +474,7 @@ namespace RenderCore { namespace Metal_Vulkan
         FlushQueue<12>();
         FlushQueue<13>();
         FlushQueue<14>();
+        FlushQueue<15>();
     }
 
     DeferredDestruction::DeferredDestruction(VulkanSharedPtr<VkDevice> device)

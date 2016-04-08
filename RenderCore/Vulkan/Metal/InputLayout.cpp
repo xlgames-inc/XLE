@@ -248,7 +248,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			// note --  We should validate the type of this object!
             VkDescriptorSetLayoutBinding binding;
             binding.binding = (i->second._bindingPoint == ~0x0) ? unsigned(_bindings[stream].size()) : i->second._bindingPoint;
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             binding.descriptorCount = 1;
             binding.stageFlags = AsShaderStageFlag(ShaderStage::Enum(s));   // note, can we combine multiple bindings into one by using multiple bits here?
             binding.pImmutableSamplers = nullptr;
