@@ -71,7 +71,7 @@ namespace RenderCore { namespace Metal_Vulkan
         };
     }
 
-    inline auto        GetCompressionType(NativeFormat::Enum format) -> FormatCompressionType::Enum { return FormatCompressionType::None; }
+    auto        GetCompressionType(NativeFormat::Enum format) -> FormatCompressionType::Enum;
     auto        GetComponents(NativeFormat::Enum format) -> FormatComponents::Enum;
     auto        GetComponentType(NativeFormat::Enum format) -> FormatComponentType::Enum;
     unsigned    BitsPerPixel(NativeFormat::Enum format);
@@ -85,10 +85,10 @@ namespace RenderCore { namespace Metal_Vulkan
         FormatComponentType::Enum componentType,
         unsigned precision);
 
-    inline NativeFormat::Enum      AsSRGBFormat(NativeFormat::Enum inputFormat) { return inputFormat; }
-    inline NativeFormat::Enum      AsLinearFormat(NativeFormat::Enum inputFormat) { return inputFormat; }
-    inline NativeFormat::Enum      AsTypelessFormat(NativeFormat::Enum inputFormat) { return inputFormat; }
-    inline bool                    HasLinearAndSRGBFormats(NativeFormat::Enum inputFormat) { return false; }
+    NativeFormat::Enum      AsSRGBFormat(NativeFormat::Enum inputFormat);
+    NativeFormat::Enum      AsLinearFormat(NativeFormat::Enum inputFormat);
+    NativeFormat::Enum      AsTypelessFormat(NativeFormat::Enum inputFormat);
+    bool                    HasLinearAndSRGBFormats(NativeFormat::Enum inputFormat);
 
     namespace ShaderNormalizationMode
     {

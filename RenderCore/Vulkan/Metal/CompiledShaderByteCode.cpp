@@ -18,11 +18,14 @@
 #include "hlslcc.hpp"
 
 // Vulkan SDK includes -- 
+#pragma push_macro("new")
+#undef new
 #include <glslang/glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 
 // #include <glslang/SPIRV/disassemble.h>
 // #include <sstream>
+#pragma pop_macro("new")
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -336,6 +339,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto translateResult = TranslateHLSLFromMem(
             bytecodeStart,
             HLSLCC_FLAG_UNIFORM_BUFFER_OBJECT | HLSLCC_FLAG_INOUT_SEMANTIC_NAMES 
+			| HLSLCC_FLAG_PREFER_BINDINGS | HLSLCC_FLAG_ASSIGN_DESCRIPTOR_SET
             /* | HLSLCC_FLAG_COMBINE_TEXTURE_SAMPLERS */,
             LANG_330, &ext, &depData, 
             &glslShader);

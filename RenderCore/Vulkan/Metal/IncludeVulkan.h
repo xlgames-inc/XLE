@@ -16,4 +16,7 @@
     #include "../../../Core/WinAPI/IncludeWindows.h"
 #endif
 
+#pragma push_macro("new")
+#undef new
 #include "vulkan/vulkan.h"
+#pragma pop_macro("new")

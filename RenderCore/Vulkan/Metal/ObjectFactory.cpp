@@ -308,6 +308,13 @@ namespace RenderCore { namespace Metal_Vulkan
         return ~0x0u;
     }
 
+	VkFormatProperties ObjectFactory::GetFormatProperties(VkFormat fmt) const
+	{
+		VkFormatProperties formatProps;
+		vkGetPhysicalDeviceFormatProperties(_physDev, fmt, &formatProps);
+		return formatProps;
+	}
+
     void ObjectFactory::FlushDestructionQueue() const
     {
         _destruction->Flush();

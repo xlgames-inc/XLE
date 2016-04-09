@@ -8,11 +8,14 @@
 #include "../../../Utility/MemoryUtils.h"
 
 // Vulkan SDK includes -- 
+#pragma push_macro("new")
+#undef new
 #include <glslang/SPIRV/spirv.hpp>
 #include <glslang/SPIRV/doc.h>
 
 // #include <glslang/SPIRV/disassemble.h>
 // #include <sstream>
+#pragma pop_macro("new")
 
 namespace RenderCore { namespace Metal_Vulkan
 {

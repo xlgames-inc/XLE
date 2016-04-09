@@ -6,6 +6,9 @@
 
 #pragma once
 
+#include "VulkanCore.h"
+#include "IncludeVulkan.h"
+#include "../../../BufferUploads/IBufferUploads.h"
 #include "../../../Utility/IntrusivePtr.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -16,9 +19,74 @@ namespace RenderCore { namespace Metal_Vulkan
         typedef DummyResource Resource;
     }
 
+	class ObjectFactory;
+	class DeviceContext;
+
+	/// <summary>Abstraction for a device memory resource</summary>
+	/// A Resource can either be a buffer or an image. In Vulkan, both types reference a VkDeviceMemory
+	/// object that represents the actual allocation. This object maintains that allocation, and provides
+	/// interfaces for copying data.
+	///
+	/// Images and buffers are combined into a single object for convenience. This allows us to use the 
+	/// single "Desc" object to describe both, and it also fits in better with other APIs (eg, DirectX).
+	/// This adds a small amount of redundancy to the Resource object -- but it seems to be trivial.
+	class Resource
+	{
+	public:
+		using Desc = BufferUploads::BufferDesc;
+
+		void SetImageLayout(
+			DeviceContext& context, VkImageLayout oldLayout, VkImageLayout newLayout);
+
+		Resource(
+			const ObjectFactory& factory, const Desc& desc,
+			const void* initData = nullptr, size_t initDataSize = 0);
+		Resource();
+		~Resource();
+
+		VkDeviceMemory GetMemory() { return _mem.get(); }
+		VkImage GetImage() { return _underlyingImage.get(); }
+		VkBuffer GetBuffer() { return _underlyingBuffer.get(); }
+		const Desc& GetDesc() const { return _desc; }
+	protected:
+		VulkanSharedPtr<VkDeviceMemory> _mem;
+
+		VulkanSharedPtr<VkBuffer> _underlyingBuffer;
+		VulkanSharedPtr<VkImage> _underlyingImage;
+
+		Desc _desc;
+	};
+
+	class MemoryMap
+	{
+	public:
+		void*       _data;
+
+		MemoryMap(
+			VkDevice dev, VkDeviceMemory memory,
+			VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
+		MemoryMap(
+			VkDevice dev, Resource& resource,
+			VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
+		MemoryMap();
+		~MemoryMap();
+
+		MemoryMap(const MemoryMap&) = delete;
+		MemoryMap& operator=(const MemoryMap&) = delete;
+		MemoryMap(MemoryMap&&);
+		MemoryMap& operator=(MemoryMap&&);
+
+	private:
+		VkDevice _dev;
+		VkDeviceMemory _mem;
+
+		void TryUnmap();
+	};
+
     class DeviceContext;
 
 	inline void Copy(DeviceContext&, Underlying::Resource* dst, Underlying::Resource* src) {}
+	void Copy(DeviceContext&, Resource& dst, Resource& src, VkImageLayout dstLayout, VkImageLayout srcLayout);
 
     namespace Internal { static std::true_type UnsignedTest(unsigned); static std::false_type UnsignedTest(...); }
 
@@ -79,6 +147,12 @@ namespace RenderCore { namespace Metal_Vulkan
 	inline void CopyPartial(DeviceContext&, const CopyPartial_Dest& dst, const CopyPartial_Src& src) {}
 
 	inline intrusive_ptr<Underlying::Resource> Duplicate(DeviceContext& context, Underlying::Resource* inputResource) { return nullptr; }
+
+
+	VkSampleCountFlagBits AsSampleCountFlagBits(BufferUploads::TextureSamples samples);
+	void SetImageLayout(
+		VkCommandBuffer cmd, VkImage image,
+		VkImageAspectFlags aspectMask, VkImageLayout old_image_layout, VkImageLayout new_image_layout);
 }}
 
 namespace Utility

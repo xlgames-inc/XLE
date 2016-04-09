@@ -100,6 +100,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		unsigned FindMemoryType(
             VkFlags memoryTypeBits, 
             VkMemoryPropertyFlags requirementsMask = 0) const;
+		VkFormatProperties GetFormatProperties(VkFormat fmt) const;
 
         void FlushDestructionQueue() const;
 

@@ -9,6 +9,7 @@
 #include "Metal/ObjectFactory.h"
 #include "Metal/Format.h"
 #include "Metal/Pools.h"
+#include "Metal/Resource.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
@@ -894,10 +895,7 @@ namespace RenderCore
 
     
 
-    static VkSampleCountFlagBits AsSampleCountFlagBits(BufferUploads::TextureSamples samples)
-    {
-        return VK_SAMPLE_COUNT_1_BIT;
-    }
+    
 
     static VkImageTiling SelectDepthStencilTiling(VkPhysicalDevice physDev, VkFormat fmt)
     {
@@ -942,7 +940,7 @@ namespace RenderCore
             image_info.extent.depth = tex._depth;
             image_info.mipLevels = tex._mipCount;
             image_info.arrayLayers = tex._arrayCount;
-            image_info.samples = AsSampleCountFlagBits(tex._samples);
+            image_info.samples = Metal_Vulkan::AsSampleCountFlagBits(tex._samples);
             image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             image_info.queueFamilyIndexCount = 0;
             image_info.pQueueFamilyIndices = nullptr;
@@ -1069,72 +1067,6 @@ namespace RenderCore
 
     FrameBuffer::~FrameBuffer() {}
 
-    static void SetImageLayout(
-        VkCommandBuffer cmd, VkImage image,
-        VkImageAspectFlags aspectMask,
-        VkImageLayout old_image_layout,
-        VkImageLayout new_image_layout) 
-    {
-        VkImageMemoryBarrier image_memory_barrier = {};
-        image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        image_memory_barrier.pNext = nullptr;
-        image_memory_barrier.srcAccessMask = 0;
-        image_memory_barrier.dstAccessMask = 0;
-        image_memory_barrier.oldLayout = old_image_layout;
-        image_memory_barrier.newLayout = new_image_layout;
-        image_memory_barrier.image = image;
-        image_memory_barrier.subresourceRange.aspectMask = aspectMask;
-        image_memory_barrier.subresourceRange.baseMipLevel = 0;
-        image_memory_barrier.subresourceRange.levelCount = 1;
-        image_memory_barrier.subresourceRange.layerCount = 1;
-
-        if (old_image_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-            || old_image_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-            image_memory_barrier.srcAccessMask =
-                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        }
-
-        if (new_image_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-            image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        }
-
-        if (new_image_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-            image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        }
-
-        if (old_image_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-            image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        }
-
-        if (old_image_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-            image_memory_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-        }
-
-        if (new_image_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-            image_memory_barrier.srcAccessMask =
-                VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-            image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        }
-
-        if (new_image_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-            || new_image_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-            image_memory_barrier.dstAccessMask =
-                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        }
-
-        if (new_image_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-            image_memory_barrier.dstAccessMask =
-                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        }
-
-        VkPipelineStageFlags src_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        VkPipelineStageFlags dest_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-
-        vkCmdPipelineBarrier(
-            cmd, src_stages, dest_stages, 0, 0, NULL, 0, NULL,
-            1, &image_memory_barrier);
-    }
-
     PresentationChain::PresentationChain(
 		VulkanSharedPtr<VkSurfaceKHR> surface,
         VulkanSharedPtr<VkSwapchainKHR> swapChain,
@@ -1178,7 +1110,7 @@ namespace RenderCore
         // Also, more complex applications may want to combine the resolve operation into the
         // render pass for rendering to offscreen buffers.
 
-        auto vkSamples = AsSampleCountFlagBits(bufferDesc._samples);
+        auto vkSamples = Metal_Vulkan::AsSampleCountFlagBits(bufferDesc._samples);
         RenderPass::TargetInfo rtvAttachments[] = { RenderPass::TargetInfo((VkFormat)bufferDesc._nativePixelFormat, vkSamples, RenderPass::PreviousState::Clear) };
 
         const VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
@@ -1215,12 +1147,12 @@ namespace RenderCore
             BeginOneTimeSubmit(cmd.get());
 
             for (auto& i:_images)
-                SetImageLayout(
+				Metal_Vulkan::SetImageLayout(
                     cmd.get(), i._underlying, 
                     VK_IMAGE_ASPECT_COLOR_BIT,
                     VK_IMAGE_LAYOUT_UNDEFINED,
                     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-            SetImageLayout(
+			Metal_Vulkan::SetImageLayout(
                 cmd.get(), _depthStencilResource.GetImage(),
                 VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT,
                 VK_IMAGE_LAYOUT_UNDEFINED,

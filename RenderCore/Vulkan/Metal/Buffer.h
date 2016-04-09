@@ -6,9 +6,10 @@
 
 #pragma once
 
+#include "Resource.h"
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
-#include "../../BufferUploads/IBufferUploads.h"
+#include "../../../BufferUploads/IBufferUploads.h"
 #include "../../../Core/Prefix.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -16,24 +17,19 @@ namespace RenderCore { namespace Metal_Vulkan
     class ObjectFactory;
     class DeviceContext;
 
-    class Buffer
+    class Buffer : public Resource
     {
-    public:
-        using Desc = BufferUploads::BufferDesc;
+	public:
+		Buffer(
+			const ObjectFactory& factory, const Desc& desc,
+			const void* initData = nullptr, size_t initDataSize = 0);
+		Buffer();
 
-        Buffer(
-            const ObjectFactory& factory, const Desc& desc,
-            const void* initData = nullptr, size_t initDataSize = 0);
-        Buffer();
+		void    Update(DeviceContext& context, const void* data, size_t byteCount);
 
-        void    Update(DeviceContext& context, const void* data, size_t byteCount);
-
-        typedef VkBuffer    UnderlyingType;
-		UnderlyingType		GetUnderlying() const { return _underlying.get(); }
-        bool                IsGood() const { return _underlying != nullptr; }
-    protected:
-        VulkanSharedPtr<VkBuffer> _underlying;
-        VulkanSharedPtr<VkDeviceMemory> _mem;
+		typedef VkBuffer    UnderlyingType;
+		UnderlyingType		GetUnderlying() const { return _underlyingBuffer.get(); }
+		bool                IsGood() const { return _underlyingBuffer != nullptr; }
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

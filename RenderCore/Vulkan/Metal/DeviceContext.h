@@ -173,6 +173,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         GlobalPools&    GetGlobalPools();
         VkDevice        GetUnderlyingDevice();
+		const ObjectFactory& GetFactory() const { return *_factory; }
 
         DeviceContext(
             const ObjectFactory& factory, 
