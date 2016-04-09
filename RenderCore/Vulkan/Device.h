@@ -151,7 +151,7 @@ namespace RenderCore
 
         std::shared_ptr<ViewportContext> GetViewportContext() const;
         void        AcquireNextImage();
-		RenderPass* BindDefaultRenderPass(VkCommandBuffer cmd);
+		RenderPass* BindDefaultRenderPass(Metal_Vulkan::DeviceContext& context);
 
         PresentationChain(
 			VulkanSharedPtr<VkSurfaceKHR> surface, 
@@ -228,7 +228,6 @@ namespace RenderCore
     {
     public:
         virtual void*   QueryInterface(const GUID& guid);
-        VkCommandBuffer GetPrimaryCommandBuffer();
         const std::shared_ptr<Metal_Vulkan::DeviceContext>& GetMetalContext();
 
 		ThreadContextVulkan(

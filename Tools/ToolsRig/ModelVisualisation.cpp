@@ -22,7 +22,7 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/ModelUtils.h"
 #include "../../Assets/AssetUtils.h"
@@ -158,7 +158,7 @@ namespace ToolsRig
                                     desc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
                                     desc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
                                     desc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-                                    auto newDSS = Metal::ObjectFactory().CreateDepthStencilState(&desc);
+                                    auto newDSS = Metal::GetObjectFactory()->CreateDepthStencilState(&desc);
                                     metalContext->GetUnderlying()->OMSetDepthStencilState(newDSS.get(), 1+evnt._drawCallIndex);
                                 #endif
                             }

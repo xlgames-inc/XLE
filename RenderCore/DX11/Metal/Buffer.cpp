@@ -6,6 +6,7 @@
 
 #include "Buffer.h"
 #include "DeviceContext.h"
+#include "ObjectFactory.h"
 #include "DX11Utils.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Core/Exceptions.h"
@@ -35,7 +36,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     VertexBuffer::VertexBuffer(const void* data, size_t byteCount)
-        : VertexBuffer(ObjectFactory(), data, byteCount)
+        : VertexBuffer(*GetObjectFactory(), data, byteCount)
     {}
 
     VertexBuffer::VertexBuffer() {}
@@ -75,7 +76,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     IndexBuffer::IndexBuffer(const void* data, size_t byteCount)
-        : IndexBuffer(ObjectFactory(), data, byteCount)
+        : IndexBuffer(*GetObjectFactory(), data, byteCount)
     {}
 
     IndexBuffer::IndexBuffer(DeviceContext& context)
@@ -99,7 +100,7 @@ namespace RenderCore { namespace Metal_DX11
 
     ConstantBuffer::ConstantBuffer() {}
     ConstantBuffer::ConstantBuffer(const void* data, size_t byteCount, bool immutable)
-        : ConstantBuffer(ObjectFactory(), data, byteCount, immutable)
+        : ConstantBuffer(*GetObjectFactory(), data, byteCount, immutable)
     {}
 
     ConstantBuffer::ConstantBuffer(

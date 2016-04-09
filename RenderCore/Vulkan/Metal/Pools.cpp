@@ -18,16 +18,23 @@ namespace RenderCore { namespace Metal_Vulkan
 		cmd.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		cmd.commandBufferCount = 1;
 
-		auto dev = _device.get();
-		auto pool = _pool.get();
 		VkCommandBuffer rawBuffer = nullptr;
-		auto res = vkAllocateCommandBuffers(dev, &cmd, &rawBuffer);
+		auto res = vkAllocateCommandBuffers(_device.get(), &cmd, &rawBuffer);
 		VulkanSharedPtr<VkCommandBuffer> result(
 			rawBuffer,
-			[dev, pool](VkCommandBuffer buffer) { vkFreeCommandBuffers(dev, pool, 1, &buffer); });
+			[this](VkCommandBuffer buffer) { this->_pendingDestroy.push_back(buffer); });
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while creating command buffer"));
 		return result;
+	}
+
+	void CommandPool::FlushDestroys()
+	{
+		if (!_pendingDestroy.empty())
+			vkFreeCommandBuffers(
+				_device.get(), _pool.get(),
+				(uint32_t)_pendingDestroy.size(), AsPointer(_pendingDestroy.begin()));
+		_pendingDestroy.clear();
 	}
 
 	CommandPool::CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex)

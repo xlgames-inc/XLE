@@ -6,6 +6,7 @@
 
 #include "ShaderResource.h"
 #include "DeviceContext.h"
+#include "ObjectFactory.h"
 #include "../../Resource.h"
 #include "DX11Utils.h"
 
@@ -13,11 +14,17 @@ namespace RenderCore { namespace Metal_DX11
 {
 
     ShaderResourceView::ShaderResourceView(UnderlyingResource resource, NativeFormat::Enum format, int arrayCount, bool forceSingleSample)
-    {
+	: ShaderResourceView(*GetObjectFactory(*resource), resource, format, arrayCount, forceSingleSample) {}
+
+    ShaderResourceView::ShaderResourceView(UnderlyingResource resource, NativeFormat::Enum format, const MipSlice& mipSlice)
+	: ShaderResourceView(*GetObjectFactory(*resource), resource, format, mipSlice) {}
+
+	ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, UnderlyingResource resource, NativeFormat::Enum format, int arrayCount, bool forceSingleSample)
+	{
         if (resource) {
             intrusive_ptr<ID3D::ShaderResourceView> srv;
             if (format == NativeFormat::Unknown) {
-                srv = ObjectFactory(*resource).CreateShaderResourceView(resource);
+                srv = factory.CreateShaderResourceView(resource);
             } else {
                 D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
                 viewDesc.Format = AsDXGIFormat(format);
@@ -82,42 +89,43 @@ namespace RenderCore { namespace Metal_DX11
 
                 }
 
-                srv = ObjectFactory(*resource).CreateShaderResourceView(resource, &viewDesc);
+                srv = factory.CreateShaderResourceView(resource, &viewDesc);
             }
             _underlying = std::move(srv);
         }
     }
 
-    ShaderResourceView::ShaderResourceView(UnderlyingResource resource, NativeFormat::Enum format, const MipSlice& mipSlice)
-    {
-        intrusive_ptr<ID3D::ShaderResourceView> srv;
-        if (format == NativeFormat::Unknown) {
-            srv = ObjectFactory(*resource).CreateShaderResourceView(resource);
-        } else {
-            D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
-            viewDesc.Format = AsDXGIFormat(format);
+	ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, UnderlyingResource resource, NativeFormat::Enum format, const MipSlice& mipSlice)
+	{
+		intrusive_ptr<ID3D::ShaderResourceView> srv;
+		if (format == NativeFormat::Unknown) {
+			srv = factory.CreateShaderResourceView(resource);
+		} else {
+			D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
+			viewDesc.Format = AsDXGIFormat(format);
 
-            TextureDesc2D textureDesc(resource);
-            if (textureDesc.Width > 0) {
-                if (textureDesc.ArraySize > 1) {
-                    viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-                    viewDesc.Texture2DArray.MostDetailedMip = mipSlice._mostDetailedMip;
-                    viewDesc.Texture2DArray.MipLevels = mipSlice._mipLevels;
-                    viewDesc.Texture2DArray.FirstArraySlice = 0;
-                    viewDesc.Texture2DArray.ArraySize = textureDesc.ArraySize;
-                } else {
-                    viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-                    viewDesc.Texture2D.MostDetailedMip = mipSlice._mostDetailedMip;
-                    viewDesc.Texture2D.MipLevels = mipSlice._mipLevels;
-                }
-            } else {
-                assert(0);
-            }
+			TextureDesc2D textureDesc(resource);
+			if (textureDesc.Width > 0) {
+				if (textureDesc.ArraySize > 1) {
+					viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+					viewDesc.Texture2DArray.MostDetailedMip = mipSlice._mostDetailedMip;
+					viewDesc.Texture2DArray.MipLevels = mipSlice._mipLevels;
+					viewDesc.Texture2DArray.FirstArraySlice = 0;
+					viewDesc.Texture2DArray.ArraySize = textureDesc.ArraySize;
+				}
+				else {
+					viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+					viewDesc.Texture2D.MostDetailedMip = mipSlice._mostDetailedMip;
+					viewDesc.Texture2D.MipLevels = mipSlice._mipLevels;
+				}
+			} else {
+				assert(0);
+			}
 
-            srv = ObjectFactory(*resource).CreateShaderResourceView(resource, &viewDesc);
-        }
-        _underlying = std::move(srv);
-    }
+			srv = factory.CreateShaderResourceView(resource, &viewDesc);
+		}
+		_underlying = std::move(srv);
+	}
 
     ShaderResourceView ShaderResourceView::RawBuffer(UnderlyingResource res, unsigned sizeBytes, unsigned offsetBytes)
     {
@@ -128,7 +136,7 @@ namespace RenderCore { namespace Metal_DX11
         srvDesc.BufferEx.NumElements = sizeBytes / 4;
         srvDesc.BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
         return ShaderResourceView(
-            ObjectFactory(*res).CreateShaderResourceView(res, &srvDesc));
+            GetObjectFactory(*res)->CreateShaderResourceView(res, &srvDesc));
     }
 
     auto ShaderResourceView::GetResource() const -> intrusive_ptr<ID3D::Resource>

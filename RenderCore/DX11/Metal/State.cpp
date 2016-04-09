@@ -6,6 +6,7 @@
 
 #include "State.h"
 #include "DeviceContext.h"
+#include "ObjectFactory.h"
 #include "../../RenderUtils.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Core/Exceptions.h"
@@ -42,7 +43,7 @@ namespace RenderCore { namespace Metal_DX11
         samplerDesc.MinLOD = 0.f;
         samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
-        _underlying = ObjectFactory().CreateSamplerState(&samplerDesc);
+        _underlying = GetObjectFactory()->CreateSamplerState(&samplerDesc);
     }
 
     SamplerState::~SamplerState() {}
@@ -104,7 +105,7 @@ namespace RenderCore { namespace Metal_DX11
         rasterizerDesc.MultisampleEnable = true;
         rasterizerDesc.AntialiasedLineEnable = false;
 
-        _underlying = ObjectFactory().CreateRasterizerState(&rasterizerDesc);
+        _underlying = GetObjectFactory()->CreateRasterizerState(&rasterizerDesc);
     }
 
     RasterizerState::RasterizerState(
@@ -123,7 +124,7 @@ namespace RenderCore { namespace Metal_DX11
         rasterizerDesc.ScissorEnable = false;
         rasterizerDesc.MultisampleEnable = true;
         rasterizerDesc.AntialiasedLineEnable = false;
-        _underlying = ObjectFactory().CreateRasterizerState(&rasterizerDesc);
+        _underlying = GetObjectFactory()->CreateRasterizerState(&rasterizerDesc);
     }
 
     RasterizerState::RasterizerState(intrusive_ptr<ID3D::RasterizerState>&& moveFrom)
@@ -193,7 +194,7 @@ namespace RenderCore { namespace Metal_DX11
             blendStateDesc.RenderTarget[c].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
         }
 
-        _underlying = ObjectFactory().CreateBlendState(&blendStateDesc);
+        _underlying = GetObjectFactory()->CreateBlendState(&blendStateDesc);
     }
 
     BlendState::BlendState( 
@@ -227,7 +228,7 @@ namespace RenderCore { namespace Metal_DX11
             blendStateDesc.RenderTarget[c].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
         }
 
-        _underlying = ObjectFactory().CreateBlendState(&blendStateDesc);
+        _underlying = GetObjectFactory()->CreateBlendState(&blendStateDesc);
     }
 
     BlendState BlendState::OutputDisabled()
@@ -246,7 +247,7 @@ namespace RenderCore { namespace Metal_DX11
             blendStateDesc.RenderTarget[c].RenderTargetWriteMask = 0;
         }
 
-        return BlendState(ObjectFactory().CreateBlendState(&blendStateDesc));
+        return BlendState(GetObjectFactory()->CreateBlendState(&blendStateDesc));
     }
 
     BlendState BlendState::Null()
@@ -284,7 +285,7 @@ namespace RenderCore { namespace Metal_DX11
         depthStencilStateDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
         depthStencilStateDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 
-        _underlying = ObjectFactory().CreateDepthStencilState(&depthStencilStateDesc);
+        _underlying = GetObjectFactory()->CreateDepthStencilState(&depthStencilStateDesc);
     }
 
     StencilMode StencilMode::NoEffect(Comparison::Always, StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite);
@@ -312,7 +313,7 @@ namespace RenderCore { namespace Metal_DX11
         depthStencilStateDesc.BackFace.StencilPassOp = (D3D11_STENCIL_OP)backFaceStencil._onPass;
         depthStencilStateDesc.BackFace.StencilFunc = (D3D11_COMPARISON_FUNC)backFaceStencil._comparison;
 
-        _underlying = ObjectFactory().CreateDepthStencilState(&depthStencilStateDesc);
+        _underlying = GetObjectFactory()->CreateDepthStencilState(&depthStencilStateDesc);
     }
 
     DepthStencilState::DepthStencilState(DeviceContext& context)

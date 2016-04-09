@@ -40,12 +40,10 @@
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/Resource.h"
-#include "../../RenderCore/Vulkan/Metal/Pools.h"
 #include "../../RenderCore/Metal/ShaderResource.h"
-#include "../../RenderCore/Vulkan/IDeviceVulkan.h"
+#include "../../RenderCore/Metal/State.h"
 #include "../../Tools/ToolsRig/VisualisationGeo.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Math/Transformations.h"
@@ -57,7 +55,7 @@ namespace VulkanTest
     struct texture_object 
     {
         RenderCore::Metal::Resource _resource;
-        VkImageLayout imageLayout;
+		RenderCore::Metal::ImageLayout _imageLayout;
     };
 
     bool read_ppm(char const *const filename, int &width, int &height,
@@ -178,13 +176,13 @@ namespace VulkanTest
 			"texture"));
 		
 		// is it a good idea to change the layout of the staging resource before we use it?
-		stagingResource.SetImageLayout(context, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		texObj._resource.SetImageLayout(context, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		stagingResource.SetImageLayout(context, Metal::ImageLayout::Preinitialized, Metal::ImageLayout::TransferSrcOptimal);
+		texObj._resource.SetImageLayout(context, Metal::ImageLayout::Undefined, Metal::ImageLayout::TransferDstOptimal);
 		Metal::Copy(
 			context, texObj._resource, stagingResource,
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		texObj._resource.SetImageLayout(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		texObj.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::TransferSrcOptimal);
+		texObj._resource.SetImageLayout(context, Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::ShaderReadOnlyOptimal);
+		texObj._imageLayout = Metal::ImageLayout::ShaderReadOnlyOptimal;
 	}
 }
 
@@ -202,20 +200,12 @@ namespace Sample
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys);
 
     static VulkanTest::texture_object texObj = {};
-    static bool texInited = false;
 
     static void RunShaderTest(RenderCore::IThreadContext& genericThreadContext)
     {
         TRY
         {
             using namespace RenderCore;
-            auto threadContext = (IThreadContextVulkan*)genericThreadContext.QueryInterface(__uuidof(IThreadContextVulkan));
-            if (!threadContext) return;
-
-            auto genericDevice = genericThreadContext.GetDevice();
-            auto device = (IDeviceVulkan*)genericDevice->QueryInterface(__uuidof(IDeviceVulkan));
-            if (!device) return;
-
             auto& shader = ::Assets::GetAsset<Metal::ShaderProgram>(
                     "game/xleres/deferred/basic.vsh:main:vs_*",
                     "game/xleres/basic.psh:copy_bilinear:ps_*",
@@ -231,7 +221,6 @@ namespace Sample
 
             auto metalContext = Metal::DeviceContext::Get(genericThreadContext);
             metalContext->Bind(inputLayout);
-            metalContext->Bind(boundUniforms);
             metalContext->Bind(shader);
 
             auto& factory = metalContext->GetFactory();
@@ -355,68 +344,7 @@ namespace Sample
             LogInfo << "Setup frame rig and rendering context";
             auto context = renderDevice->GetImmediateContext();
 
-            if (!texInited) {
-                using namespace RenderCore;
-                auto threadContext = (IThreadContextVulkan*)context->QueryInterface(__uuidof(IThreadContextVulkan));
-                if (!threadContext) return;
-
-                auto genericDevice = context->GetDevice();
-                auto device = (IDeviceVulkan*)genericDevice->QueryInterface(__uuidof(IDeviceVulkan));
-                if (!device) return;
-
-                auto cmd = threadContext->GetPrimaryCommandBuffer();
-                auto queue = device->GetRenderingQueue();
-
-                VkCommandBufferBeginInfo cmd_buf_info = {};
-                cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-                cmd_buf_info.pNext = NULL;
-                cmd_buf_info.flags = 0;
-                cmd_buf_info.pInheritanceInfo = NULL;
-
-                auto res = vkResetCommandBuffer(cmd, 0);
-                assert(res == VK_SUCCESS);
-                res = vkBeginCommandBuffer(cmd, &cmd_buf_info);
-                assert(res == VK_SUCCESS);
-
-				auto metalContext = threadContext->GetMetalContext();
-				VulkanTest::init_image2(*metalContext.get(), texObj);
-
-                res = vkEndCommandBuffer(cmd);
-                assert(res == VK_SUCCESS);
-                const VkCommandBuffer cmd_bufs[] = {cmd};
-                VkFenceCreateInfo fenceInfo;
-                VkFence cmdFence;
-                fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-                fenceInfo.pNext = NULL;
-                fenceInfo.flags = 0;
-                vkCreateFence(device->GetUnderlyingDevice(), &fenceInfo, NULL, &cmdFence);
-
-                VkSubmitInfo submit_info[1] = {};
-                submit_info[0].pNext = NULL;
-                submit_info[0].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-                submit_info[0].waitSemaphoreCount = 0;
-                submit_info[0].pWaitSemaphores = NULL;
-                submit_info[0].pWaitDstStageMask = NULL;
-                submit_info[0].commandBufferCount = 1;
-                submit_info[0].pCommandBuffers = cmd_bufs;
-                submit_info[0].signalSemaphoreCount = 0;
-                submit_info[0].pSignalSemaphores = NULL;
-
-                /* Queue the command buffer for execution */
-                res = vkQueueSubmit(queue, 1, submit_info, cmdFence);
-                assert(res == VK_SUCCESS);
-
-                #define FENCE_TIMEOUT 100000000
-                do {
-                    res =
-                        vkWaitForFences(device->GetUnderlyingDevice(), 1, &cmdFence, VK_TRUE, FENCE_TIMEOUT);
-                } while (res == VK_TIMEOUT);
-                assert(res == VK_SUCCESS);
-
-                vkDestroyFence(device->GetUnderlyingDevice(), cmdFence, NULL);
-
-                texInited = true;
-            }
+			bool initTex = false;
 
                 //  Finally, we execute the frame loop
             for (;;) {
@@ -425,6 +353,18 @@ namespace Sample
                 }
 
                 renderDevice->BeginFrame(presentationChain.get());
+
+				if (!initTex) {
+					using namespace RenderCore;
+					auto initContext = renderDevice->CreateDeferredContext();
+					auto metalContext = Metal::DeviceContext::Get(*initContext);
+					metalContext->BeginCommandList();
+					VulkanTest::init_image2(*metalContext.get(), texObj);
+					auto cmdList = metalContext->ResolveCommandList();
+					Metal::DeviceContext::Get(*context)->CommitCommandList(*cmdList, false);
+					// VulkanTest::init_image2(*Metal::DeviceContext::Get(*context), texObj);
+					initTex = true;
+				}
 
                 RunShaderTest(*context);
 

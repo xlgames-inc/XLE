@@ -7,18 +7,55 @@
 #pragma once
 
 #include "DX11.h"
+#include "../../../BufferUploads/IBufferUploads.h"
 #include "../../../Utility/IntrusivePtr.h"
 
 namespace RenderCore { namespace Metal_DX11
 {
+	class DeviceContext;
+	class ObjectFactory;
+
     namespace Underlying
     {
         typedef ID3D::Resource      Resource;
     }
 
+	enum class ImageLayout
+	{
+		Undefined,
+		General,
+		ColorAttachmentOptimal,
+		DepthStencilAttachmentOptimal,
+		DepthStencilReadOnlyOptimal,
+		ShaderReadOnlyOptimal,
+		TransferSrcOptimal,
+		TransferDstOptimal,
+		Preinitialized,
+		PresentSrc
+	};
+
+	class Resource : public intrusive_ptr<Underlying::Resource>
+	{
+	public:
+		using Desc = BufferUploads::BufferDesc;
+
+		void SetImageLayout(
+			DeviceContext& context, ImageLayout oldLayout, ImageLayout newLayout);
+
+		Resource(
+			const ObjectFactory& factory, const Desc& desc,
+			const void* initData = nullptr, size_t initDataSize = 0);
+		Resource();
+		~Resource();
+
+		Underlying::Resource* GetImage() { return get(); }
+		Underlying::Resource* GetBuffer() { return get(); }
+	};
+
     class DeviceContext;
 
     void Copy(DeviceContext&, ID3D::Resource* dst, ID3D::Resource* src);
+	void Copy(DeviceContext&, Resource& dst, Resource& src, ImageLayout dstLayout, ImageLayout srcLayout);
 
     namespace Internal { static std::true_type UnsignedTest(unsigned); static std::false_type UnsignedTest(...); }
 

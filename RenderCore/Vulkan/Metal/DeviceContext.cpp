@@ -34,12 +34,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _inputLayout = &inputLayout;
     }
 
-    void        PipelineBuilder::Bind(const BoundUniforms& uniforms)
-    {
-        _pipelineLayout = uniforms.SharePipelineLayout(*_factory, _globalPools->_mainDescriptorPool);
-    }
-
-    void        PipelineBuilder::Bind(const ShaderProgram& shaderProgram)
+	void        PipelineBuilder::Bind(const ShaderProgram& shaderProgram)
     {
         _shaderProgram = &shaderProgram;
     }
@@ -175,8 +170,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void        DeviceContext::Bind(const ViewportDesc& viewport)
     {
+		assert(_commandList);
         vkCmdSetViewport(
-            _primaryCommandList.get(),
+            _commandList.get(),
             0, 1,
             (VkViewport*)&viewport);
 
@@ -186,7 +182,7 @@ namespace RenderCore { namespace Metal_Vulkan
             {int(viewport.Width), int(viewport.Height)},
         };
         vkCmdSetScissor(
-            _primaryCommandList.get(),
+			_commandList.get(),
             0, 1,
             &scissor);
     }
@@ -198,17 +194,19 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void        DeviceContext::BindPipeline()
     {
+		assert(_commandList);
         auto pipeline = CreatePipeline(_renderPass.get());
         vkCmdBindPipeline(
-            _primaryCommandList.get(),
+			_commandList.get(),
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             pipeline.get());
     }
 
     void        DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
+		assert(_commandList);
         vkCmdDraw(
-            _primaryCommandList.get(),
+			_commandList.get(),
             vertexCount, 1,
             startVertexLocation, 0);
     }
@@ -245,12 +243,57 @@ namespace RenderCore { namespace Metal_Vulkan
         return _factory->GetDevice().get();
     }
 
+	void		DeviceContext::BeginCommandList()
+	{
+		// Unless the context is already tied to a primary command list, we will always
+		// create a secondary command list here.
+		// Also, all command lists are marked as "one time submit"
+		if (!_commandList)
+			_commandList = _globalPools->_renderingCommandPool.Allocate(CommandPool::BufferType::Secondary);
+
+		auto res = vkResetCommandBuffer(_commandList.get(), 0);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while resetting command buffer"));
+
+		VkCommandBufferBeginInfo cmd_buf_info = {};
+		cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		cmd_buf_info.pNext = nullptr;
+		cmd_buf_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		cmd_buf_info.pInheritanceInfo = nullptr;
+		res = vkBeginCommandBuffer(_commandList.get(), &cmd_buf_info);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
+	}
+
+	void		DeviceContext::CommitCommandList(VkCommandBuffer_T& cmdList, bool preserveState)
+	{
+		assert(_commandList);
+		(void)preserveState;		// we can't handle this properly in Vulkan
+
+		const VkCommandBuffer buffers[] = { &cmdList };
+		vkCmdExecuteCommands(
+			_commandList.get(),
+			dimof(buffers), buffers);
+	}
+
+	auto        DeviceContext::ResolveCommandList() -> CommandListPtr
+	{
+		assert(_commandList);
+		auto res = vkEndCommandBuffer(_commandList.get());
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
+
+		// We will release our reference on _command list here.
+		auto result = std::move(_commandList);
+		return result;
+	}
+
     DeviceContext::DeviceContext(
         const ObjectFactory& factory, 
-        VulkanSharedPtr<VkCommandBuffer> cmdList,
-        GlobalPools& globalPools)
+        GlobalPools& globalPools,
+		VulkanSharedPtr<VkCommandBuffer> cmdList)
     : PipelineBuilder(factory, globalPools)
-    , _primaryCommandList(cmdList)
+    , _commandList(cmdList)
     {}
 
 }}

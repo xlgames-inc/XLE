@@ -7,6 +7,7 @@
 #include "GPUProfiler.h"
 #include "DX11.h"
 #include "DeviceContext.h"
+#include "ObjectFactory.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Utility/Threading/Mutex.h"
 #include "../../../Core/Exceptions.h"
@@ -34,7 +35,7 @@ namespace RenderCore { namespace Metal_DX11 { namespace GPUProfiler     /// Low 
         D3D11_QUERY_DESC queryDesc;
         queryDesc.Query      = disjoint?D3D11_QUERY_TIMESTAMP_DISJOINT:D3D11_QUERY_TIMESTAMP;
         queryDesc.MiscFlags  = 0;
-        auto query = ObjectFactory().CreateQuery(&queryDesc);
+        auto query = GetObjectFactory()->CreateQuery(&queryDesc);
 
         Query newQuery; 
         newQuery._isAllocated = false; 

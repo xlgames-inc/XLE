@@ -64,6 +64,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		return result;
 	}
 
+	static VkImageLayout AsVkImageLayout(ImageLayout input) { return (VkImageLayout)input; }
+
 	VkSampleCountFlagBits AsSampleCountFlagBits(TextureSamples samples)
 	{
 		return VK_SAMPLE_COUNT_1_BIT;
@@ -150,7 +152,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void Resource::SetImageLayout(
 		DeviceContext& context, 
-		VkImageLayout oldLayout, VkImageLayout newLayout)
+		ImageLayout oldLayout, ImageLayout newLayout)
 	{
 		assert(_desc._type == Desc::Type::Texture);
 		// unforunately, we can't just blanket aspectMask with all bits enabled.
@@ -158,10 +160,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		// bits enabled, but the documentation says that this is not allowed
 		auto aspectMask = AsImageAspectMask(_desc._bindFlags, (NativeFormat::Enum)_desc._textureDesc._nativePixelFormat);
 		Metal_Vulkan::SetImageLayout(
-			context.GetPrimaryCommandList().get(),
+			context.GetCommandList(),
 			_underlyingImage.get(), 
 			aspectMask,
-			oldLayout, newLayout);
+			AsVkImageLayout(oldLayout), AsVkImageLayout(newLayout));
 	}
 
 	Resource::Resource(
@@ -275,7 +277,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void Copy(DeviceContext& context, Resource& dst, Resource& src, VkImageLayout dstLayout, VkImageLayout srcLayout)
+	void Copy(DeviceContext& context, Resource& dst, Resource& src, ImageLayout dstLayout, ImageLayout srcLayout)
 	{
 		// Each mipmap is treated as a separate copy operation (but multiple array layers can be handled
 		// in a single operation).
@@ -301,8 +303,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto width = src.GetDesc()._textureDesc._width, height = src.GetDesc()._textureDesc._height, depth = src.GetDesc()._textureDesc._depth;
 		for (unsigned m = 0; m < mips; ++m) {
 			auto& c = copyOps[copyOperations++];
-			c.srcOffset = VkOffset3D{ 0, 0, 0 };
-			c.dstOffset = VkOffset3D{ 0, 0, 0 };
+			c.srcOffset = VkOffset3D { 0, 0, 0 };
+			c.dstOffset = VkOffset3D { 0, 0, 0 };
 			c.extent = VkExtent3D { width, height, depth };
 			c.srcSubresource.aspectMask = srcAspectMask;
 			c.srcSubresource.mipLevel = m;
@@ -319,9 +321,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 
 		vkCmdCopyImage(
-			context.GetPrimaryCommandList().get(),
-			src.GetImage(), srcLayout,
-			dst.GetImage(), dstLayout,
+			context.GetCommandList(),
+			src.GetImage(), AsVkImageLayout(srcLayout),
+			dst.GetImage(), AsVkImageLayout(dstLayout),
 			copyOperations, copyOps);
 	}
 

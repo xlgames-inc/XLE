@@ -18,7 +18,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert((byteCount & (4 - 1)) == 0);  // must be a multiple of 4
 		assert(byteCount > 0 && data);
 		vkCmdUpdateBuffer(
-			context.GetPrimaryCommandList().get(),
+			context.GetCommandList(),
 			_underlyingBuffer.get(), 0,
 			byteCount, (const uint32_t*)data);
 	}

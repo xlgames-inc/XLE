@@ -12,6 +12,8 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
+	class ObjectFactory;
+
     class MipSlice
     {
     public:
@@ -25,7 +27,9 @@ namespace RenderCore { namespace Metal_DX11
     public:
         typedef ID3D::Resource* UnderlyingResource;
         explicit ShaderResourceView(UnderlyingResource resource, NativeFormat::Enum format = NativeFormat::Unknown, int arrayCount=0, bool forceSingleSample=false);
-        explicit ShaderResourceView(UnderlyingResource resource, NativeFormat::Enum format, const MipSlice& mipSlice);
+        ShaderResourceView(UnderlyingResource resource, NativeFormat::Enum format, const MipSlice& mipSlice);
+		ShaderResourceView(const ObjectFactory& factory, UnderlyingResource resource, NativeFormat::Enum format = NativeFormat::Unknown, int arrayCount = 0, bool forceSingleSample = false);
+		ShaderResourceView(const ObjectFactory& factory, UnderlyingResource resource, NativeFormat::Enum format, const MipSlice& mipSlice);
         explicit ShaderResourceView(intrusive_ptr<ID3D::ShaderResourceView>&& resource);
         explicit ShaderResourceView(MovePTRHelper<ID3D::ShaderResourceView> resource);
         ShaderResourceView();

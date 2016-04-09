@@ -11,6 +11,7 @@
 #include "DeviceContext.h"
 #include "DX11Utils.h"
 #include "Shader.h"
+#include "ObjectFactory.h"
 #include "../../RenderUtils.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
@@ -71,7 +72,7 @@ namespace RenderCore { namespace Metal_DX11
             nativeLayout[c].InstanceDataStepRate     = layout.first[c]._instanceDataStepRate;
         }
 
-        return ObjectFactory().CreateInputLayout(
+        return GetObjectFactory()->CreateInputLayout(
             nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.second), 
             byteCode.first, byteCode.second);
     }

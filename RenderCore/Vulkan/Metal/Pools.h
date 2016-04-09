@@ -20,12 +20,16 @@ namespace RenderCore { namespace Metal_Vulkan
 		enum class BufferType { Primary, Secondary };
 		VulkanSharedPtr<VkCommandBuffer> Allocate(BufferType type);
 
+		void FlushDestroys();
+
 		CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex);
 		CommandPool();
 		~CommandPool();
 	private:
 		VulkanSharedPtr<VkCommandPool> _pool;
 		VulkanSharedPtr<VkDevice> _device;
+
+		std::vector<VkCommandBuffer> _pendingDestroy;
 	};
 
     class DescriptorPool

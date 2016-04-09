@@ -22,6 +22,20 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ObjectFactory;
 	class DeviceContext;
 
+	enum class ImageLayout
+	{
+		Undefined						= VK_IMAGE_LAYOUT_UNDEFINED,
+		General							= VK_IMAGE_LAYOUT_GENERAL,
+		ColorAttachmentOptimal			= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		DepthStencilAttachmentOptimal	= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		DepthStencilReadOnlyOptimal		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+		ShaderReadOnlyOptimal			= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		TransferSrcOptimal				= VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		TransferDstOptimal				= VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		Preinitialized					= VK_IMAGE_LAYOUT_PREINITIALIZED,
+		PresentSrc						= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+	};
+
 	/// <summary>Abstraction for a device memory resource</summary>
 	/// A Resource can either be a buffer or an image. In Vulkan, both types reference a VkDeviceMemory
 	/// object that represents the actual allocation. This object maintains that allocation, and provides
@@ -36,7 +50,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		using Desc = BufferUploads::BufferDesc;
 
 		void SetImageLayout(
-			DeviceContext& context, VkImageLayout oldLayout, VkImageLayout newLayout);
+			DeviceContext& context, ImageLayout oldLayout, ImageLayout newLayout);
 
 		Resource(
 			const ObjectFactory& factory, const Desc& desc,
@@ -86,7 +100,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class DeviceContext;
 
 	inline void Copy(DeviceContext&, Underlying::Resource* dst, Underlying::Resource* src) {}
-	void Copy(DeviceContext&, Resource& dst, Resource& src, VkImageLayout dstLayout, VkImageLayout srcLayout);
+	void Copy(DeviceContext&, Resource& dst, Resource& src, ImageLayout dstLayout, ImageLayout srcLayout);
 
     namespace Internal { static std::true_type UnsignedTest(unsigned); static std::false_type UnsignedTest(...); }
 

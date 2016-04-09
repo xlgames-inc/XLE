@@ -439,17 +439,17 @@ namespace RenderCore { namespace Metal_Vulkan
 
         vkUpdateDescriptorSets(context.GetUnderlyingDevice(), writeCount, writes, 0, nullptr);
 
-        auto cmdBuffer = context.GetPrimaryCommandList().get();
-
         VkDescriptorSet rawDescriptorSets[s_descriptorSetCount];
         for (unsigned c=0; c<s_descriptorSetCount; ++c) rawDescriptorSets[c] = _descriptorSets[c].get();
 
         vkCmdBindDescriptorSets(
-            cmdBuffer,
+			context.GetCommandList(),
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             pipelineLayout, 0, 
             dimof(rawDescriptorSets), rawDescriptorSets, 
             0, nullptr);
+
+		context.SetPipelineLayout(_pipelineLayout);
     }
 
     void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const

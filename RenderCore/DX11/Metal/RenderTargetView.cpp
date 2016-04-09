@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RenderTargetView.h"
+#include "ObjectFactory.h"
 #include "DeviceContext.h"
 #include "../../RenderUtils.h"
 #include "DX11Utils.h"
@@ -22,7 +23,7 @@ namespace RenderCore { namespace Metal_DX11
 
         intrusive_ptr<ID3D::RenderTargetView> rtv;
         if (format == NativeFormat::Unknown) {
-            rtv = ObjectFactory(*resource).CreateRenderTargetView(resource);
+            rtv = GetObjectFactory(*resource)->CreateRenderTargetView(resource);
         } else {
             TextureDesc2D textureDesc(resource);
 
@@ -47,7 +48,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture2DArray.MipSlice = arraySlice._mipMapIndex;
                 }
             }
-            rtv = ObjectFactory(*resource).CreateRenderTargetView(resource, &viewDesc);
+            rtv = GetObjectFactory(*resource)->CreateRenderTargetView(resource, &viewDesc);
         }
         _underlying = std::move(rtv);
     }
@@ -90,7 +91,7 @@ namespace RenderCore { namespace Metal_DX11
 
         intrusive_ptr<ID3D::DepthStencilView> view;
         if (format == NativeFormat::Unknown) {
-            view = ObjectFactory(*resource).CreateDepthStencilView(resource);
+            view = GetObjectFactory(*resource)->CreateDepthStencilView(resource);
         } else {
             TextureDesc2D textureDesc(resource);
 
@@ -116,7 +117,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture2DArray.MipSlice = 0;
                 }
             }
-            view = ObjectFactory(*resource).CreateDepthStencilView(resource, &viewDesc);
+            view = GetObjectFactory(*resource)->CreateDepthStencilView(resource, &viewDesc);
         }
         _underlying = std::move(view);
     }
@@ -159,7 +160,7 @@ namespace RenderCore { namespace Metal_DX11
 
         intrusive_ptr<ID3D::UnorderedAccessView> view = nullptr;
         if (format == NativeFormat::Unknown && mipSlice == 0 && !appendBuffer && !forceArray) {
-            view = ObjectFactory(*resource).CreateUnorderedAccessView(resource);
+            view = GetObjectFactory(*resource)->CreateUnorderedAccessView(resource);
         } else {
             D3D11_UNORDERED_ACCESS_VIEW_DESC viewDesc;
             viewDesc.Format = AsDXGIFormat(format);
@@ -197,7 +198,7 @@ namespace RenderCore { namespace Metal_DX11
                 }
             }
 
-            view = ObjectFactory(*resource).CreateUnorderedAccessView(resource, &viewDesc);
+            view = GetObjectFactory(*resource)->CreateUnorderedAccessView(resource, &viewDesc);
         }
         
         _underlying = std::move(view);
@@ -222,9 +223,9 @@ namespace RenderCore { namespace Metal_DX11
             if (field & Flags::AttachedCounter) {
                 viewDesc.Buffer.Flags |= D3D11_BUFFER_UAV_FLAG_COUNTER;
             }
-            view = ObjectFactory(*resource).CreateUnorderedAccessView(resource, &viewDesc);
+            view = GetObjectFactory(*resource)->CreateUnorderedAccessView(resource, &viewDesc);
         } else {
-            view = ObjectFactory(*resource).CreateUnorderedAccessView(resource);
+            view = GetObjectFactory(*resource)->CreateUnorderedAccessView(resource);
         }
 
         _underlying = std::move(view);

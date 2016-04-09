@@ -56,7 +56,6 @@ namespace RenderCore
         class __declspec( uuid("{BC1B03FD-6770-4714-82B7-D7819142ED4A}") ) ICLASSNAME(ThreadContextVulkan)
         {
         public:
-            IMETHOD VkCommandBuffer	GetPrimaryCommandBuffer() IPURE;
             IMETHOD const std::shared_ptr<Metal_Vulkan::DeviceContext>& GetMetalContext() IPURE;
             IDESTRUCTOR
         };

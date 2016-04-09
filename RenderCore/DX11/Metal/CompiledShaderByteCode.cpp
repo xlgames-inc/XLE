@@ -6,6 +6,7 @@
 
 #include "Shader.h"
 #include "DeviceContext.h"
+#include "ObjectFactory.h"
 #include "../../ShaderService.h"
 #include "../../ShaderLangUtil.h"
 #include "../../../Assets/IntermediateAssets.h"
@@ -122,7 +123,7 @@ namespace RenderCore { namespace Metal_DX11
                 //      with the current device
                 //
             if (inputShaderModel[length-1] == '*') {
-                auto featureLevel = ObjectFactory().GetUnderlying()->GetFeatureLevel();
+                auto featureLevel = GetObjectFactory()->GetUnderlying()->GetFeatureLevel();
                 const char* bestShaderModel;
                 if (featureLevel >= D3D_FEATURE_LEVEL_11_0)         { bestShaderModel = "5_0"; } 
                 else if (featureLevel >= D3D_FEATURE_LEVEL_10_0)    { bestShaderModel = "4_0"; } 

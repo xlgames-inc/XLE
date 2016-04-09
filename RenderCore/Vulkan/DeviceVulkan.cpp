@@ -529,16 +529,12 @@ namespace RenderCore
         swapChain->AcquireNextImage();
 
 		// reset and begin the primary foreground command buffer
-		auto cmdBuffer = _foregroundPrimaryContext->GetPrimaryCommandBuffer();
-		auto res = vkResetCommandBuffer(cmdBuffer, 0);
-		if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while resetting command buffer"));
+		auto& metalContext = *_foregroundPrimaryContext->GetMetalContext();
+		metalContext.BeginCommandList();
 
-		BeginOneTimeSubmit(cmdBuffer);
-		auto rp = swapChain->BindDefaultRenderPass(cmdBuffer);
-
+		auto rp = swapChain->BindDefaultRenderPass(metalContext);
         if (rp)
-            _foregroundPrimaryContext->GetMetalContext()->Bind(rp->ShareUnderlying());
+			metalContext.Bind(rp->ShareUnderlying());
     }
 
     std::shared_ptr<IThreadContext> Device::GetImmediateContext()
@@ -548,7 +544,7 @@ namespace RenderCore
 
     std::unique_ptr<IThreadContext> Device::CreateDeferredContext()
     {
-		return nullptr;
+		return std::make_unique<ThreadContextVulkan>(shared_from_this(), _objectFactory, nullptr);
     }
 
     extern char VersionString[];
@@ -656,6 +652,7 @@ namespace RenderCore
         vkDeviceWaitIdle(_device.get());
         _factory->FlushDestructionQueue();
         _globalPools->_mainDescriptorPool.FlushDestroys();
+		_globalPools->_renderingCommandPool.FlushDestroys();
 
 		_cmdBufferPendingCommit = nullptr;
 
@@ -737,7 +734,7 @@ namespace RenderCore
 	static VkClearValue ClearDepthStencil(float depth, uint32_t stencil) { VkClearValue result; result.depthStencil = VkClearDepthStencilValue { depth, stencil }; return result; }
 	static VkClearValue ClearColor(float r, float g, float b, float a) { VkClearValue result; result.color.float32[0] = r; result.color.float32[1] = g; result.color.float32[2] = b; result.color.float32[3] = a; return result; }
 
-    RenderPass* PresentationChain::BindDefaultRenderPass(VkCommandBuffer cmd)
+    RenderPass* PresentationChain::BindDefaultRenderPass(Metal_Vulkan::DeviceContext& context)
     {
         if (_activeImageIndex >= unsigned(_images.size())) return nullptr;
 		assert(!_cmdBufferPendingCommit);
@@ -757,8 +754,8 @@ namespace RenderCore
 		rp_begin.pClearValues = clearValues;
 		rp_begin.clearValueCount = dimof(clearValues);
 
-		vkCmdBeginRenderPass(cmd, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
-		_cmdBufferPendingCommit = cmd;
+		vkCmdBeginRenderPass(context.GetCommandList(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
+		_cmdBufferPendingCommit = context.GetCommandList();
 
         return &_defaultRenderPass;
 	}
@@ -1233,7 +1230,9 @@ namespace RenderCore
         VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
     : _device(device)
 	, _frameId(0)
-	, _metalContext(std::make_shared<Metal_Vulkan::DeviceContext>(factory, std::move(primaryCommandBuffer), device->GetGlobalPools()))
+	, _metalContext(
+		std::make_shared<Metal_Vulkan::DeviceContext>(
+			factory, device->GetGlobalPools(), std::move(primaryCommandBuffer)))
     {
     }
 
@@ -1265,11 +1264,6 @@ namespace RenderCore
     {
         if (guid == __uuidof(Base_ThreadContextVulkan)) { return (IThreadContextVulkan*)this; }
         return nullptr;
-    }
-
-    VkCommandBuffer ThreadContextVulkan::GetPrimaryCommandBuffer()
-    {
-        return _metalContext->GetPrimaryCommandList().get();
     }
 
     const std::shared_ptr<Metal_Vulkan::DeviceContext>& ThreadContextVulkan::GetMetalContext()

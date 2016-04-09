@@ -61,7 +61,6 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
         
         void        Bind(const BoundInputLayout& inputLayout);
-        void        Bind(const BoundUniforms& uniforms);
         void        Bind(const ShaderProgram& shaderProgram);
 
         void        Bind(Topology::Enum topology);
@@ -69,7 +68,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         VulkanUniquePtr<VkPipeline> CreatePipeline(VkRenderPass renderPass, unsigned subpass = 0);
 
-        VkPipelineLayout        GetPipelineLayout() { return _pipelineLayout.get(); }
+		void				SetPipelineLayout(VulkanSharedPtr<VkPipelineLayout> layout) { _pipelineLayout = std::move(layout); }
+        VkPipelineLayout    GetPipelineLayout() { return _pipelineLayout.get(); }
 
         PipelineBuilder(const ObjectFactory& factory, GlobalPools& globalPools);
         ~PipelineBuilder();
@@ -165,8 +165,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
 
-		void		            CommitCommandList(VkCommandBuffer_T&, bool) {}
-        const CommandListPtr&   GetPrimaryCommandList() { return _primaryCommandList; }
+		void		BeginCommandList();
+		void		CommitCommandList(VkCommandBuffer_T&, bool);
+		auto        ResolveCommandList() -> CommandListPtr;
+
+		VkCommandBuffer			GetCommandList() { assert(_commandList); return _commandList.get(); }
+        const CommandListPtr&   ShareCommandList() { assert(_commandList); return _commandList; }
 
         void        Bind(VulkanSharedPtr<VkRenderPass> renderPass);
         void        BindPipeline();
@@ -177,13 +181,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
         DeviceContext(
             const ObjectFactory& factory, 
-            VulkanSharedPtr<VkCommandBuffer> cmdList, 
-            GlobalPools& globalPools);
+            GlobalPools& globalPools,
+			VulkanSharedPtr<VkCommandBuffer> cmdList = nullptr);
 		DeviceContext(const DeviceContext&) = delete;
 		DeviceContext& operator=(const DeviceContext&) = delete;
 
     private:
-        VulkanSharedPtr<VkCommandBuffer> _primaryCommandList;
+        VulkanSharedPtr<VkCommandBuffer> _commandList;
         VulkanSharedPtr<VkRenderPass> _renderPass;
     };
 }}
