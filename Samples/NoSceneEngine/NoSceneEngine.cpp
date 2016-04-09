@@ -42,6 +42,7 @@
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Metal/Buffer.h"
+#include "../../RenderCore/Metal/Resource.h"
 #include "../../RenderCore/Vulkan/Metal/Pools.h"
 #include "../../RenderCore/Metal/ShaderResource.h"
 #include "../../RenderCore/Vulkan/IDeviceVulkan.h"
@@ -55,15 +56,8 @@ namespace VulkanTest
 {
     struct texture_object 
     {
-        VkImage image;
+        RenderCore::Metal::Resource _resource;
         VkImageLayout imageLayout;
-
-        VkDeviceMemory mem;
-        VkImageView view;
-        int32_t tex_width, tex_height;
-
-        VkDeviceMemory stagingMemory;
-        VkImage stagingImage;
     };
 
     bool read_ppm(char const *const filename, int &width, int &height,
@@ -143,314 +137,55 @@ namespace VulkanTest
         return true;
     }
 
-    void set_image_layout(VkCommandBuffer cmd, VkImage image,
-                          VkImageAspectFlags aspectMask,
-                          VkImageLayout old_image_layout,
-                          VkImageLayout new_image_layout) 
-    {
-        VkImageMemoryBarrier image_memory_barrier = {};
-        image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        image_memory_barrier.pNext = NULL;
-        image_memory_barrier.srcAccessMask = 0;
-        image_memory_barrier.dstAccessMask = 0;
-        image_memory_barrier.oldLayout = old_image_layout;
-        image_memory_barrier.newLayout = new_image_layout;
-        image_memory_barrier.image = image;
-        image_memory_barrier.subresourceRange.aspectMask = aspectMask;
-        image_memory_barrier.subresourceRange.baseMipLevel = 0;
-        image_memory_barrier.subresourceRange.levelCount = 1;
-        image_memory_barrier.subresourceRange.layerCount = 1;
+	void init_image2(
+		RenderCore::Metal::DeviceContext& context,
+		texture_object &texObj)
+	{
+		using namespace RenderCore;
+		std::string filename = "lunarg.ppm";
 
-        if (old_image_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-            image_memory_barrier.srcAccessMask =
-                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        }
+		int width = 0, height = 0;
+		if (!read_ppm(filename.c_str(), width, height, 0, nullptr)) {
+			std::cout << "Could not read texture file lunarg.ppm\n";
+			exit(-1);
+		}
 
-        if (new_image_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-            image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        }
+		auto fmt = Metal::NativeFormat::R8G8B8A8_UNORM;
+		auto bufferSize = width * height * Metal::BitsPerPixel(fmt) / 8;
+		auto buffer = std::make_unique<uint8[]>(bufferSize);
 
-        if (new_image_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-            image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        }
+		if (!read_ppm(filename.c_str(), width, height, bufferSize / height, buffer.get())) {
+			std::cout << "Could not read texture file lunarg.ppm\n";
+			exit(-1);
+		}
 
-        if (old_image_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-            image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        }
+		using namespace BufferUploads;
+		Metal::Resource stagingResource(
+			context.GetFactory(), 
+			CreateDesc(
+				BindFlag::ShaderResource,
+				0, GPUAccess::Read | GPUAccess::Write,
+				TextureDesc::Plain2D(width, height, fmt),
+				"texture"),
+			buffer.get(), bufferSize);
 
-        if (old_image_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-            image_memory_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-        }
-
-        if (new_image_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-            image_memory_barrier.srcAccessMask =
-                VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-            image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        }
-
-        if (new_image_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-            image_memory_barrier.dstAccessMask =
-                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        }
-
-        if (new_image_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-            image_memory_barrier.dstAccessMask =
-                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        }
-
-        VkPipelineStageFlags src_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        VkPipelineStageFlags dest_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-
-        vkCmdPipelineBarrier(cmd, src_stages, dest_stages, 0, 0, NULL, 0, NULL,
-                             1, &image_memory_barrier);
-    }
-
-    void init_image(
-        const RenderCore::Metal_Vulkan::ObjectFactory& factory,
-        VkQueue queue,
-        VkCommandBuffer cmd, 
-        texture_object &texObj) 
-    {
-        VkResult res;
-        std::string filename = "lunarg.ppm";
-
-        if (!read_ppm(filename.c_str(), texObj.tex_width, texObj.tex_height, 0,
-                      NULL)) {
-            std::cout << "Could not read texture file lunarg.ppm\n";
-            exit(-1);
-        }
-
-        VkFormatProperties formatProps;
-        vkGetPhysicalDeviceFormatProperties(
-            factory.GetPhysicalDevice(), VK_FORMAT_R8G8B8A8_UNORM, &formatProps);
-
-        /* See if we can use a linear tiled image for a texture, if not, we will
-         * need a staging image for the texture data */
-        bool needStaging = (!(formatProps.linearTilingFeatures &
-                              VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))
-                               ? true
-                               : false;
-
-        VkImageCreateInfo image_create_info = {};
-        image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        image_create_info.pNext = NULL;
-        image_create_info.imageType = VK_IMAGE_TYPE_2D;
-        image_create_info.format = VK_FORMAT_R8G8B8A8_UNORM;
-        image_create_info.extent.width = texObj.tex_width;
-        image_create_info.extent.height = texObj.tex_height;
-        image_create_info.extent.depth = 1;
-        image_create_info.mipLevels = 1;
-        image_create_info.arrayLayers = 1;
-        image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
-        image_create_info.tiling = VK_IMAGE_TILING_LINEAR;
-        image_create_info.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
-        image_create_info.usage = needStaging ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-                                              : VK_IMAGE_USAGE_SAMPLED_BIT;
-        image_create_info.queueFamilyIndexCount = 0;
-        image_create_info.pQueueFamilyIndices = NULL;
-        image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        image_create_info.flags = 0;
-
-        VkMemoryAllocateInfo mem_alloc = {};
-        mem_alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        mem_alloc.pNext = NULL;
-        mem_alloc.allocationSize = 0;
-        mem_alloc.memoryTypeIndex = 0;
-
-        VkImage mappableImage;
-        VkDeviceMemory mappableMemory;
-
-        VkMemoryRequirements mem_reqs;
-
-        /* Create a mappable image.  It will be the texture if linear images are ok
-         * to be textures or it will be the staging image if they are not. */
-        auto device = factory.GetDevice().get();
-        res = vkCreateImage(device, &image_create_info, NULL, &mappableImage);
-        assert(res == VK_SUCCESS);
-
-        vkGetImageMemoryRequirements(device, mappableImage, &mem_reqs);
-        assert(res == VK_SUCCESS);
-
-        mem_alloc.allocationSize = mem_reqs.size;
-
-        /* Find the memory type that is host mappable */
-        mem_alloc.memoryTypeIndex = factory.FindMemoryType(mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-        assert(mem_alloc.memoryTypeIndex < 32);
-
-        /* allocate memory */
-        res = vkAllocateMemory(device, &mem_alloc, NULL, &(mappableMemory));
-        assert(res == VK_SUCCESS);
-
-        /* bind memory */
-        res = vkBindImageMemory(device, mappableImage, mappableMemory, 0);
-        assert(res == VK_SUCCESS);
-
-        #if 1
-            set_image_layout(cmd, mappableImage, VK_IMAGE_ASPECT_COLOR_BIT,
-                             VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_GENERAL);
-
-            res = vkEndCommandBuffer(cmd);
-            assert(res == VK_SUCCESS);
-            const VkCommandBuffer cmd_bufs[] = {cmd};
-            VkFenceCreateInfo fenceInfo;
-            VkFence cmdFence;
-            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-            fenceInfo.pNext = NULL;
-            fenceInfo.flags = 0;
-            vkCreateFence(device, &fenceInfo, NULL, &cmdFence);
-
-            VkSubmitInfo submit_info[1] = {};
-            submit_info[0].pNext = NULL;
-            submit_info[0].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submit_info[0].waitSemaphoreCount = 0;
-            submit_info[0].pWaitSemaphores = NULL;
-            submit_info[0].pWaitDstStageMask = NULL;
-            submit_info[0].commandBufferCount = 1;
-            submit_info[0].pCommandBuffers = cmd_bufs;
-            submit_info[0].signalSemaphoreCount = 0;
-            submit_info[0].pSignalSemaphores = NULL;
-
-            /* Queue the command buffer for execution */
-            res = vkQueueSubmit(queue, 1, submit_info, cmdFence);
-            assert(res == VK_SUCCESS);
-        #endif
-
-        VkImageSubresource subres = {};
-        subres.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        subres.mipLevel = 0;
-        subres.arrayLayer = 0;
-
-        VkSubresourceLayout layout;
-        void *data;
-
-        /* Get the subresource layout so we know what the row pitch is */
-        vkGetImageSubresourceLayout(device, mappableImage, &subres, &layout);
-
-        /* Make sure command buffer is finished before mapping */
-        #if 1
-            #define FENCE_TIMEOUT 100000000
-            do {
-                res =
-                    vkWaitForFences(device, 1, &cmdFence, VK_TRUE, FENCE_TIMEOUT);
-            } while (res == VK_TIMEOUT);
-            assert(res == VK_SUCCESS);
-
-            vkDestroyFence(device, cmdFence, NULL);
-        #endif
-
-        res = vkMapMemory(device, mappableMemory, 0, mem_reqs.size, 0, &data);
-        assert(res == VK_SUCCESS);
-
-        /* Read the ppm file into the mappable image's memory */
-        if (!read_ppm(filename.c_str(), texObj.tex_width, texObj.tex_height,
-                      layout.rowPitch, (unsigned char *)data)) {
-            std::cout << "Could not load texture file lunarg.ppm\n";
-            exit(-1);
-        }
-
-        vkUnmapMemory(device, mappableMemory);
-
-        #if 1
-            VkCommandBufferBeginInfo cmd_buf_info = {};
-            cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            cmd_buf_info.pNext = NULL;
-            cmd_buf_info.flags = 0;
-            cmd_buf_info.pInheritanceInfo = NULL;
-
-            res = vkResetCommandBuffer(cmd, 0);
-            res = vkBeginCommandBuffer(cmd, &cmd_buf_info);
-            assert(res == VK_SUCCESS);
-        #endif
-
-        if (!needStaging) {
-            /* If we can use the linear tiled image as a texture, just do it */
-            texObj.image = mappableImage;
-            texObj.mem = mappableMemory;
-            texObj.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            set_image_layout(cmd, texObj.image, VK_IMAGE_ASPECT_COLOR_BIT,
-                             VK_IMAGE_LAYOUT_GENERAL, texObj.imageLayout);
-            /* No staging resources to free later */
-            texObj.stagingImage = VK_NULL_HANDLE;
-            texObj.stagingMemory = VK_NULL_HANDLE;
-        } else {
-            /* The mappable image cannot be our texture, so create an optimally
-             * tiled image and blit to it */
-            image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-            image_create_info.usage =
-                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-            image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-            res =
-                vkCreateImage(device, &image_create_info, NULL, &texObj.image);
-            assert(res == VK_SUCCESS);
-
-            vkGetImageMemoryRequirements(device, texObj.image, &mem_reqs);
-
-            mem_alloc.allocationSize = mem_reqs.size;
-
-            /* Find memory type - dont specify any mapping requirements */
-            mem_alloc.memoryTypeIndex = factory.FindMemoryType(mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-            assert(mem_alloc.memoryTypeIndex < 32);
-
-            /* allocate memory */
-            res = vkAllocateMemory(device, &mem_alloc, NULL, &texObj.mem);
-            assert(res == VK_SUCCESS);
-
-            /* bind memory */
-            res = vkBindImageMemory(device, texObj.image, texObj.mem, 0);
-            assert(res == VK_SUCCESS);
-
-            /* Since we're going to blit from the mappable image, set its layout to
-             * SOURCE_OPTIMAL. Side effect is that this will create info.cmd */
-            set_image_layout(cmd, mappableImage, VK_IMAGE_ASPECT_COLOR_BIT,
-                             VK_IMAGE_LAYOUT_GENERAL,
-                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-            /* Since we're going to blit to the texture image, set its layout to
-             * DESTINATION_OPTIMAL */
-            set_image_layout(cmd, texObj.image, VK_IMAGE_ASPECT_COLOR_BIT,
-                             VK_IMAGE_LAYOUT_UNDEFINED,
-                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-            VkImageCopy copy_region;
-            copy_region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            copy_region.srcSubresource.mipLevel = 0;
-            copy_region.srcSubresource.baseArrayLayer = 0;
-            copy_region.srcSubresource.layerCount = 1;
-            copy_region.srcOffset.x = 0;
-            copy_region.srcOffset.y = 0;
-            copy_region.srcOffset.z = 0;
-            copy_region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            copy_region.dstSubresource.mipLevel = 0;
-            copy_region.dstSubresource.baseArrayLayer = 0;
-            copy_region.dstSubresource.layerCount = 1;
-            copy_region.dstOffset.x = 0;
-            copy_region.dstOffset.y = 0;
-            copy_region.dstOffset.z = 0;
-            copy_region.extent.width = texObj.tex_width;
-            copy_region.extent.height = texObj.tex_height;
-            copy_region.extent.depth = 1;
-
-            /* Put the copy command into the command buffer */
-            vkCmdCopyImage(cmd, mappableImage,
-                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, texObj.image,
-                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_region);
-
-            /* Set the layout for the texture image from DESTINATION_OPTIMAL to
-             * SHADER_READ_ONLY */
-            texObj.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            set_image_layout(cmd, texObj.image, VK_IMAGE_ASPECT_COLOR_BIT,
-                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                             texObj.imageLayout);
-
-            /* Remember staging resources to free later */
-            texObj.stagingImage = mappableImage;
-            texObj.stagingMemory = mappableMemory;
-        }
-
-        
-    }
-
+		texObj._resource = Metal::Resource(
+			context.GetFactory(),
+			CreateDesc(
+				BindFlag::ShaderResource,
+				0, GPUAccess::Read | GPUAccess::Write,
+				TextureDesc::Plain2D(width, height, fmt),
+			"texture"));
+		
+		// is it a good idea to change the layout of the staging resource before we use it?
+		stagingResource.SetImageLayout(context, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		texObj._resource.SetImageLayout(context, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		Metal::Copy(
+			context, texObj._resource, stagingResource,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		texObj._resource.SetImageLayout(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		texObj.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	}
 }
 
 namespace Sample
@@ -498,10 +233,8 @@ namespace Sample
             metalContext->Bind(inputLayout);
             metalContext->Bind(boundUniforms);
             metalContext->Bind(shader);
-            metalContext->BindPipeline();
 
-#if 1
-            auto& factory = RenderCore::Metal::GetDefaultObjectFactory();
+            auto& factory = metalContext->GetFactory();
 
             // ------ uniforms -----------
             Metal::SamplerState sampler;
@@ -513,7 +246,7 @@ namespace Sample
 
             Metal::ConstantBuffer globalTransBuffer(&globalTrans, sizeof(globalTrans));
             Metal::ConstantBuffer localTransBuffer(&localTrans, sizeof(localTrans));
-            Metal::ShaderResourceView srv(factory, texObj.image);
+            Metal::ShaderResourceView srv(factory, texObj._resource.GetImage());
 
             const Metal::ConstantBuffer* cbs[] = {&globalTransBuffer, &localTransBuffer};
             const Metal::ShaderResourceView* srvs[] = {&srv};
@@ -521,13 +254,16 @@ namespace Sample
                 *metalContext,
                 Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)),
                 Metal::UniformsStream());
-#endif
 
+			// ------ final states -----------
             auto cubeGeo = ToolsRig::BuildCube();
             auto vertexStride = sizeof(decltype(cubeGeo)::value_type);
             Metal::VertexBuffer vb(AsPointer(cubeGeo.begin()), cubeGeo.size() * vertexStride);
             metalContext->Bind(MakeResourceList(vb), (unsigned)vertexStride);
             metalContext->Bind(Metal::ViewportDesc(0, 0, 512, 512));
+
+			// ------ draw! -----------
+			metalContext->BindPipeline();
             metalContext->Draw((unsigned)cubeGeo.size());
         }
         CATCH(const ::Assets::Exceptions::AssetException&) {}
@@ -642,11 +378,8 @@ namespace Sample
                 res = vkBeginCommandBuffer(cmd, &cmd_buf_info);
                 assert(res == VK_SUCCESS);
 
-                VulkanTest::init_image(
-                    RenderCore::Metal::GetDefaultObjectFactory(), 
-                    queue, cmd,  
-                    texObj);
-
+				auto metalContext = threadContext->GetMetalContext();
+				VulkanTest::init_image2(*metalContext.get(), texObj);
 
                 res = vkEndCommandBuffer(cmd);
                 assert(res == VK_SUCCESS);
