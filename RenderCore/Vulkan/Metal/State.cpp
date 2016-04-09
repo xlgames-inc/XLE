@@ -127,7 +127,7 @@ namespace RenderCore { namespace Metal_Vulkan
         samplerCreateInfo.maxLod = 0.0;
         samplerCreateInfo.compareEnable = VK_FALSE;
         samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-        _sampler = GetDefaultObjectFactory().CreateSampler(samplerCreateInfo);
+        _sampler = GetObjectFactory().CreateSampler(samplerCreateInfo);
     }
 
     SamplerState::~SamplerState() {}

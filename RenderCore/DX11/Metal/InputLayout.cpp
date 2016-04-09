@@ -72,7 +72,7 @@ namespace RenderCore { namespace Metal_DX11
             nativeLayout[c].InstanceDataStepRate     = layout.first[c]._instanceDataStepRate;
         }
 
-        return GetObjectFactory()->CreateInputLayout(
+        return GetObjectFactory().CreateInputLayout(
             nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.second), 
             byteCode.first, byteCode.second);
     }

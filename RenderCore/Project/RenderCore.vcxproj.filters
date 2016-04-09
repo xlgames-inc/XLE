@@ -92,6 +92,9 @@
     <ClInclude Include="..\Metal\ObjectFactory.h">
       <Filter>Metal</Filter>
     </ClInclude>
+    <ClInclude Include="..\ResourceDesc.h">
+      <Filter>Util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">

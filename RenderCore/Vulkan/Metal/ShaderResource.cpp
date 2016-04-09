@@ -34,10 +34,10 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     ShaderResourceView::ShaderResourceView(VkImage image, NativeFormat::Enum format)
-    : ShaderResourceView(GetDefaultObjectFactory(), image, format)
+    : ShaderResourceView(GetObjectFactory(), image, format)
     {}
 
-    ShaderResourceView::ShaderResourceView(Underlying::Resource* res, NativeFormat::Enum)
+    ShaderResourceView::ShaderResourceView(UnderlyingResourcePtr res, NativeFormat::Enum)
     { 
         _layout = VK_IMAGE_LAYOUT_UNDEFINED; 
     }

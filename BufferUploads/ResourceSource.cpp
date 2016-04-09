@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ResourceSource.h"
-#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/StringUtils.h"
@@ -141,13 +140,13 @@ namespace BufferUploads
 
     #define tdesc template<typename Desc>
 
-    tdesc auto ResourcesPool<Desc>::PoolOfLikeResources::AllocateResource(unsigned realSize, bool& deviceCreation) -> intrusive_ptr<UnderlyingResource>
+    tdesc auto ResourcesPool<Desc>::PoolOfLikeResources::AllocateResource(unsigned realSize, bool& deviceCreation) -> UnderlyingResourcePtr
         {
             Entry* front = NULL;
             if (_allocableResources.try_front(front)) {
                 Interlocked::Increment(&_recentPoolCreateCount);
                 deviceCreation = false;
-                intrusive_ptr<UnderlyingResource> result(std::move(front->_underlying));
+                UnderlyingResourcePtr result(std::move(front->_underlying));
                 _allocableResources.pop();
                 return result;
             } else {
@@ -198,17 +197,17 @@ namespace BufferUploads
             }
         }
 
-    tdesc void ResourcesPool<Desc>::PoolOfLikeResources::ReturnToPool(intrusive_ptr<UnderlyingResource>&& resource)
+    tdesc void ResourcesPool<Desc>::PoolOfLikeResources::ReturnToPool(UnderlyingResourcePtr&& resource)
         {
             Entry newEntry;
-            newEntry._underlying = std::forward<intrusive_ptr<UnderlyingResource>>(resource);
+            newEntry._underlying = std::forward<UnderlyingResourcePtr>(resource);
             newEntry._returnFrameID = _currentFrameID;
             _allocableResources.push(newEntry);
             Interlocked::Increment(&_recentReleaseCount);
         }
 
     tdesc ResourcesPool<Desc>::PoolOfLikeResources::PoolOfLikeResources(
-        ObjectFactory& underlyingDevice, const Desc& desc, unsigned retainFrames) : _desc(desc)
+			RenderCore::IDevice& underlyingDevice, const Desc& desc, unsigned retainFrames) : _desc(desc)
         {
             _peakSize = 0;
             _recentDeviceCreateCount = _recentPoolCreateCount = _recentReleaseCount = 0;
@@ -241,7 +240,8 @@ namespace BufferUploads
         return result;
     }
 
-    tdesc ResourcesPool<Desc>::ResourcesPool(RenderCore::IDevice* device, unsigned retainFrames) : _hashTableIndex(0), _retainFrames(retainFrames), _underlyingDevice(GetObjectFactory(*device))
+    tdesc ResourcesPool<Desc>::ResourcesPool(RenderCore::IDevice* device, unsigned retainFrames) 
+	: _hashTableIndex(0), _retainFrames(retainFrames), _underlyingDevice(device)
     {
         _readerCount[0] = _readerCount[1] = 0;
     }
@@ -324,7 +324,7 @@ namespace BufferUploads
         }
     
     tdesc void        ResourcesPool<Desc>::ReturnToPool(
-            uint64 resourceMarker, intrusive_ptr<UnderlyingResource>&& resource, 
+            uint64 resourceMarker, UnderlyingResourcePtr&& resource, 
             unsigned offset, unsigned size)
         {
             unsigned hashTableIndex = _hashTableIndex;
@@ -332,7 +332,7 @@ namespace BufferUploads
             HashTable& hashTable = _hashTables[hashTableIndex];
             auto entry = std::lower_bound(hashTable.begin(), hashTable.end(), resourceMarker, CompareFirst());
             if (entry != hashTable.end() && entry->first == resourceMarker) {
-                entry->second->ReturnToPool(std::forward<intrusive_ptr<UnderlyingResource>>(resource));
+                entry->second->ReturnToPool(std::forward<UnderlyingResourcePtr>(resource));
                 Interlocked::Decrement(&_readerCount[hashTableIndex]);
             } else {
                 Interlocked::Decrement(&_readerCount[hashTableIndex]);
@@ -418,7 +418,7 @@ namespace BufferUploads
                         deviceCreation = false;
                         assert((allocation+size)<=PlatformInterface::ByteCount(_prototype));
                         return make_intrusive<ResourceLocator>(
-                            intrusive_ptr<UnderlyingResource>(bestHeap->_heapResource->GetUnderlying()), 
+                            UnderlyingResourcePtr(bestHeap->_heapResource->GetUnderlying()), 
                             allocation, size, 
                             shared_from_this());
                     }
@@ -471,7 +471,7 @@ namespace BufferUploads
     }
 
     void BatchedResources::ReturnToPool(
-        uint64 resourceMarker, intrusive_ptr<UnderlyingResource>&& resource, 
+        uint64 resourceMarker, UnderlyingResourcePtr&& resource, 
         unsigned offset, unsigned size)
     {
         if (!resource) return;
@@ -874,7 +874,7 @@ namespace BufferUploads
         _pendingOperations.push_back(op);
     }
 
-    void BatchedResources::ActiveDefrag::Tick(ThreadContext& context, Underlying::Resource* sourceResource)
+    void BatchedResources::ActiveDefrag::Tick(ThreadContext& context, UnderlyingResource* sourceResource)
     {
         if (!_initialCommandListID) {
             _initialCommandListID = context.CommandList_GetUnderConstruction();
@@ -1136,7 +1136,7 @@ namespace BufferUploads
     }
 
     ResourceSource::ResourceSource(RenderCore::IDevice* device)
-    :   _underlyingDevice(RenderCore::Metal::GetObjectFactory(*device))
+    :   _underlyingDevice(device)
     {
         _flushThread = 0;
         _frameID = 0;

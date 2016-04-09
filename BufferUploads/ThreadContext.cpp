@@ -6,6 +6,7 @@
 
 #include "ThreadContext.h"
 #include "../RenderCore/IThreadContext.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/HeapUtils.h"
@@ -76,7 +77,7 @@ namespace BufferUploads
         PlatformInterface::GPUEventStack& gpuEventStack,
         bool preserveRenderState)
     {
-        auto immContext = DeviceContext::Get(commitTo);
+        auto immContext = RenderCore::Metal::DeviceContext::Get(commitTo);
         if (_requiresResolves) {
             // FUNCTION_PROFILER_RENDER_FLAT
 
@@ -339,7 +340,8 @@ namespace BufferUploads
     {
     }
 
-    CommitStep::DeferredDefragCopy::DeferredDefragCopy(Underlying::Resource* destination, Underlying::Resource* source, const std::vector<DefragStep>& steps)
+    CommitStep::DeferredDefragCopy::DeferredDefragCopy(
+		UnderlyingResource* destination, UnderlyingResource* source, const std::vector<DefragStep>& steps)
     : _destination(destination), _source(source), _steps(steps)
     {}
 

@@ -7,7 +7,7 @@
 #pragma once
 
 #include "DX11.h"
-#include "../../../BufferUploads/IBufferUploads.h"
+#include "../../ResourceDesc.h"
 #include "../../../Utility/IntrusivePtr.h"
 
 namespace RenderCore { namespace Metal_DX11
@@ -37,7 +37,7 @@ namespace RenderCore { namespace Metal_DX11
 	class Resource : public intrusive_ptr<Underlying::Resource>
 	{
 	public:
-		using Desc = BufferUploads::BufferDesc;
+		using Desc = ResourceDesc;
 
 		void SetImageLayout(
 			DeviceContext& context, ImageLayout oldLayout, ImageLayout newLayout);
@@ -116,6 +116,8 @@ namespace RenderCore { namespace Metal_DX11
     void CopyPartial(DeviceContext&, const CopyPartial_Dest& dst, const CopyPartial_Src& src);
 
     intrusive_ptr<ID3D::Resource> Duplicate(DeviceContext& context, ID3D::Resource* inputResource);
+
+	ResourceDesc ExtractDesc(Underlying::Resource& res);
 }}
 
 #pragma warning(push)

@@ -38,19 +38,19 @@ namespace RenderCore { namespace Metal_DX11
 		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
         assert(compiledShader.GetStage() == ShaderStage::Vertex);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory()->CreateVertexShader(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateVertexShader(byteCode.first, byteCode.second);
     }
 
     VertexShader::VertexShader(const CompiledShaderByteCode& compiledShader)
     {
-		auto* objFactory = GetObjectFactory();
+		auto& objFactory = GetObjectFactory();
         if (compiledShader.DynamicLinkingEnabled())
-            _classLinkage = objFactory->CreateClassLinkage();
+            _classLinkage = objFactory.CreateClassLinkage();
 
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Vertex);
             auto byteCode = compiledShader.GetByteCode();
-            _underlying = objFactory->CreateVertexShader(byteCode.first, byteCode.second, _classLinkage.get());
+            _underlying = objFactory.CreateVertexShader(byteCode.first, byteCode.second, _classLinkage.get());
         }
     }
 
@@ -75,19 +75,19 @@ namespace RenderCore { namespace Metal_DX11
         const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
         assert(compiledShader.GetStage() == ShaderStage::Pixel);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory()->CreatePixelShader(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreatePixelShader(byteCode.first, byteCode.second);
     }
 
     PixelShader::PixelShader(const CompiledShaderByteCode& compiledShader)
     {
-        auto* objFactory = GetObjectFactory();
+        auto& objFactory = GetObjectFactory();
         if (compiledShader.DynamicLinkingEnabled())
-            _classLinkage = objFactory->CreateClassLinkage();
+            _classLinkage = objFactory.CreateClassLinkage();
 
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Pixel);
             auto byteCode = compiledShader.GetByteCode();
-            _underlying = objFactory->CreatePixelShader(byteCode.first, byteCode.second, _classLinkage.get());
+            _underlying = objFactory.CreatePixelShader(byteCode.first, byteCode.second, _classLinkage.get());
         }
     }
 
@@ -137,7 +137,7 @@ namespace RenderCore { namespace Metal_DX11
 			const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
             assert(compiledShader.GetStage() == ShaderStage::Geometry);
             auto byteCode = compiledShader.GetByteCode();
-            underlying = GetObjectFactory()->CreateGeometryShader(byteCode.first, byteCode.second);
+            underlying = GetObjectFactory().CreateGeometryShader(byteCode.first, byteCode.second);
 
         } else {
 
@@ -145,13 +145,13 @@ namespace RenderCore { namespace Metal_DX11
             D3D11_SO_DECLARATION_ENTRY nativeDeclaration[D3D11_SO_STREAM_COUNT * D3D11_SO_OUTPUT_COMPONENT_COUNT];
             auto delcCount = BuildNativeDeclaration(nativeDeclaration, dimof(nativeDeclaration), soInitializers);
 
-            auto* objFactory = GetObjectFactory();
-            auto featureLevel = objFactory->GetUnderlying()->GetFeatureLevel();
+            auto& objFactory = GetObjectFactory();
+            auto featureLevel = objFactory.GetUnderlying()->GetFeatureLevel();
 
 			const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
             assert(compiledShader.GetStage() == ShaderStage::Geometry);
             auto byteCode = compiledShader.GetByteCode();
-            underlying = objFactory->CreateGeometryShaderWithStreamOutput( 
+            underlying = objFactory.CreateGeometryShaderWithStreamOutput( 
                 byteCode.first, byteCode.second,
                 nativeDeclaration, delcCount,
                 soInitializers._outputBufferStrides, soInitializers._outputBufferCount,
@@ -175,7 +175,7 @@ namespace RenderCore { namespace Metal_DX11
             intrusive_ptr<ID3D::GeometryShader> underlying;
             if (soInitializers._outputBufferCount == 0) {
 
-                underlying = GetObjectFactory()->CreateGeometryShader(byteCode.first, byteCode.second);
+                underlying = GetObjectFactory().CreateGeometryShader(byteCode.first, byteCode.second);
 
             } else {
 
@@ -183,9 +183,9 @@ namespace RenderCore { namespace Metal_DX11
                 D3D11_SO_DECLARATION_ENTRY nativeDeclaration[D3D11_SO_STREAM_COUNT * D3D11_SO_OUTPUT_COMPONENT_COUNT];
                 auto delcCount = BuildNativeDeclaration(nativeDeclaration, dimof(nativeDeclaration), soInitializers);
 
-                auto* objFactory = GetObjectFactory();
-                auto featureLevel = objFactory->GetUnderlying()->GetFeatureLevel();
-                underlying = objFactory->CreateGeometryShaderWithStreamOutput( 
+                auto& objFactory = GetObjectFactory();
+                auto featureLevel = objFactory.GetUnderlying()->GetFeatureLevel();
+                underlying = objFactory.CreateGeometryShaderWithStreamOutput( 
                     byteCode.first, byteCode.second,
                     nativeDeclaration, delcCount,
                     soInitializers._outputBufferStrides, soInitializers._outputBufferCount,
@@ -238,7 +238,7 @@ namespace RenderCore { namespace Metal_DX11
         const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable?definesTable:"");
         assert(compiledShader.GetStage() == ShaderStage::Compute);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory()->CreateComputeShader(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateComputeShader(byteCode.first, byteCode.second);
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
@@ -249,7 +249,7 @@ namespace RenderCore { namespace Metal_DX11
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Compute);
             auto byteCode = compiledShader.GetByteCode();
-            _underlying = GetObjectFactory()->CreateComputeShader(byteCode.first, byteCode.second);
+            _underlying = GetObjectFactory().CreateComputeShader(byteCode.first, byteCode.second);
         }
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
@@ -271,7 +271,7 @@ namespace RenderCore { namespace Metal_DX11
 		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable?definesTable:"");
         assert(compiledShader.GetStage() == ShaderStage::Domain);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory()->CreateDomainShader(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateDomainShader(byteCode.first, byteCode.second);
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
@@ -282,7 +282,7 @@ namespace RenderCore { namespace Metal_DX11
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Domain);
             auto byteCode = compiledShader.GetByteCode();
-            _underlying = GetObjectFactory()->CreateDomainShader(byteCode.first, byteCode.second);
+            _underlying = GetObjectFactory().CreateDomainShader(byteCode.first, byteCode.second);
         }
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
@@ -304,7 +304,7 @@ namespace RenderCore { namespace Metal_DX11
 		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable?definesTable:"");
         assert(compiledShader.GetStage() == ShaderStage::Hull);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory()->CreateHullShader(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateHullShader(byteCode.first, byteCode.second);
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
@@ -315,7 +315,7 @@ namespace RenderCore { namespace Metal_DX11
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Hull);
             auto byteCode = compiledShader.GetByteCode();
-            _underlying = GetObjectFactory()->CreateHullShader(byteCode.first, byteCode.second);
+            _underlying = GetObjectFactory().CreateHullShader(byteCode.first, byteCode.second);
         }
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();

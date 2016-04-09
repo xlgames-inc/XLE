@@ -6,6 +6,7 @@
 
 #include "RenderUtils.h"
 #include "Resource.h"
+#include "ResourceDesc.h"
 #include "Metal/Shader.h"
 
 #include "../../ConsoleRig/GlobalServices.h"
@@ -83,6 +84,14 @@ namespace RenderCore
 
         return *MainHeap;
     }
+
+	ResourceDesc::ResourceDesc()
+	{
+		_type = Type::Unknown;
+		_bindFlags = _cpuAccess = _gpuAccess = _allocationRules = 0;
+		_name[0] = '\0';
+		XlZeroMemory(_textureDesc);
+	}
 
 }
 

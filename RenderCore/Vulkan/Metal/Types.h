@@ -6,9 +6,11 @@
 
 #pragma once
 
-#include "Resource.h"
+#include "../../../Utility/IntrusivePtr.h"
+#include "../../../Utility/Threading/ThreadingUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-    typedef intrusive_ptr<Underlying::Resource>            UnderlyingQuery;
+	using DummyQuery = RefCountedObject;
+    typedef intrusive_ptr<DummyQuery>            UnderlyingQuery;
 }}

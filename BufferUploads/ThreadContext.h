@@ -12,13 +12,16 @@
 #include "Metrics.h"
 #include "ResourceLocator.h"
 #include "../RenderCore/IThreadContext_Forward.h"
-#include "../RenderCore/Metal/Resource.h"
-#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Resource.h"
+#include "../RenderCore/IDevice.h"
+#include "../RenderCore/Metal/DeviceContext.h"		// for command list ptr
 #include "../Utility/Threading/LockFree.h"
 
 namespace BufferUploads
 {
-    using namespace RenderCore::Metal;
+	using UnderlyingResource = RenderCore::Resource;
+	using UnderlyingResourcePtr = RenderCore::ResourcePtr;
+	using CommandListPtr = RenderCore::Metal::CommandListPtr;
 
         //////   C O M M I T   S T E P   //////
 
@@ -46,10 +49,10 @@ namespace BufferUploads
         class DeferredDefragCopy
         {
         public:
-            intrusive_ptr<Underlying::Resource> _destination;
-            intrusive_ptr<Underlying::Resource> _source;
+            UnderlyingResourcePtr _destination;
+            UnderlyingResourcePtr _source;
             std::vector<DefragStep> _steps;
-            DeferredDefragCopy(Underlying::Resource* destination, Underlying::Resource* source, const std::vector<DefragStep>& steps);
+            DeferredDefragCopy(UnderlyingResource* destination, UnderlyingResource* source, const std::vector<DefragStep>& steps);
             ~DeferredDefragCopy();
         };
 
@@ -80,10 +83,10 @@ namespace BufferUploads
     public:
         typedef Interlocked::Value ID;
 
-        RenderCore::Metal::CommandListPtr   _deviceCommandList;
-        mutable CommandListMetrics          _metrics;
-        CommitStep                          _commitStep;
-        ID                                  _id;
+		CommandListPtr					_deviceCommandList;
+        mutable CommandListMetrics      _metrics;
+        CommitStep                      _commitStep;
+        ID                              _id;
 
         CommandList();
         CommandList(CommandList&& moveFrom);

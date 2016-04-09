@@ -287,7 +287,7 @@ namespace BufferUploads
         auto    ProcessQueueSet(QueueSet& queueSet, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction) -> std::pair<bool,bool>;
         bool    DrainPriorityQueueSet(QueueSet& queueSet, unsigned stepMask, ThreadContext& context);
 
-        void            CopyIntoBatchedBuffer(void* destination, ResourceCreateStep* start, ResourceCreateStep* end, Underlying::Resource* resource, unsigned startOffset, unsigned offsetList[], CommandListMetrics& metricsUnderConstruction);
+        void            CopyIntoBatchedBuffer(void* destination, ResourceCreateStep* start, ResourceCreateStep* end, UnderlyingResource* resource, unsigned startOffset, unsigned offsetList[], CommandListMetrics& metricsUnderConstruction);
         static bool     SortSize_LargestToSmallest(const AssemblyLine::ResourceCreateStep& lhs, const AssemblyLine::ResourceCreateStep& rhs);
         static bool     SortSize_SmallestToLargest(const AssemblyLine::ResourceCreateStep& lhs, const AssemblyLine::ResourceCreateStep& rhs);
 
@@ -416,7 +416,7 @@ namespace BufferUploads
     }
     AssemblyLine::PrepareDataStep::~PrepareDataStep() {}
 
-    static DataPacket::SubResource SubR(unsigned mipIndex, unsigned arrayIndex)
+    static DataPacket::SubResourceId SubR(unsigned mipIndex, unsigned arrayIndex)
     {
         return DataPacket::TexSubRes(mipIndex, arrayIndex);
     }
@@ -1126,7 +1126,7 @@ namespace BufferUploads
 
     void AssemblyLine::CopyIntoBatchedBuffer(   
         void* destination, ResourceCreateStep* start, ResourceCreateStep* end,
-        Underlying::Resource* resource, unsigned startOffset, unsigned offsetList[], 
+        UnderlyingResource* resource, unsigned startOffset, unsigned offsetList[], 
         CommandListMetrics& metricsUnderConstruction)
     {
         Interlocked::Value queuedBytesAdjustment[dimof(_currentQueuedBytes)];
@@ -2307,9 +2307,9 @@ namespace BufferUploads
     class RawDataPacket_ReadBack : public DataPacket
     {
     public:
-        void*           GetData(SubResource subRes);
-        size_t          GetDataSize(SubResource subRes) const;
-        TexturePitches  GetPitches(SubResource subRes) const;
+        void*           GetData(SubResourceId subRes);
+        size_t          GetDataSize(SubResourceId subRes) const;
+        TexturePitches  GetPitches(SubResourceId subRes) const;
 
         std::shared_ptr<Marker> BeginBackgroundLoad() { return nullptr; }
 
@@ -2325,7 +2325,7 @@ namespace BufferUploads
         unsigned _arrayCount;
     };
 
-    void*     RawDataPacket_ReadBack::GetData(SubResource subRes)
+    void*     RawDataPacket_ReadBack::GetData(SubResourceId subRes)
     {
         auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
         unsigned subResIndex = mip + arrayIndex * _mipCount;
@@ -2333,7 +2333,7 @@ namespace BufferUploads
         return PtrAdd(_mappedBuffer[subResIndex].GetData(), _dataOffset);
     }
 
-    size_t          RawDataPacket_ReadBack::GetDataSize(SubResource subRes) const
+    size_t          RawDataPacket_ReadBack::GetDataSize(SubResourceId subRes) const
     {
         auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
         unsigned subResIndex = mip + arrayIndex * _mipCount;
@@ -2341,7 +2341,7 @@ namespace BufferUploads
         return _mappedBuffer[subResIndex].GetPitches()._slicePitch - _dataOffset;
     }
 
-    TexturePitches RawDataPacket_ReadBack::GetPitches(SubResource subRes) const
+    TexturePitches RawDataPacket_ReadBack::GetPitches(SubResourceId subRes) const
     {
         auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
         unsigned subResIndex = mip + arrayIndex * _mipCount;
@@ -2349,12 +2349,14 @@ namespace BufferUploads
         return _mappedBuffer[subResIndex].GetPitches();
     }
 
-    RawDataPacket_ReadBack::RawDataPacket_ReadBack(const ResourceLocator& locator, PlatformInterface::UnderlyingDeviceContext& context)
+    RawDataPacket_ReadBack::RawDataPacket_ReadBack(
+		const ResourceLocator& locator, 
+		PlatformInterface::UnderlyingDeviceContext& context)
     : _dataOffset(0)
     {
         assert(!locator.IsEmpty());
         auto resource = locator.GetUnderlying();
-        intrusive_ptr<Underlying::Resource> stagingResource;
+        intrusive_ptr<UnderlyingResource> stagingResource;
 
         auto desc = PlatformInterface::ExtractDesc(*resource);
         auto subResCount = 1u;
@@ -2374,8 +2376,7 @@ namespace BufferUploads
         using namespace PlatformInterface;
         if (RequiresStagingResourceReadBack && !(desc._cpuAccess & CPUAccess::Read)) {
             BufferDesc stagingDesc = AsStagingDesc(desc);
-            auto* factory = GetObjectFactory(*resource);
-            stagingResource = CreateResource(*factory, stagingDesc);
+            stagingResource = CreateResource(*context.GetObjectFactory(), stagingDesc);
             if (stagingResource.get()) {
                 context.ResourceCopy(*stagingResource.get(), *resource);
                 resource = stagingResource.get();
@@ -2669,7 +2670,7 @@ namespace BufferUploads
         return std::make_unique<Manager>(renderDevice);
     }
 
-    BufferDesc ExtractDesc(const RenderCore::Metal::Underlying::Resource& resource)
+    BufferDesc ExtractDesc(const RenderCore::Resource& resource)
     {
         return PlatformInterface::ExtractDesc(resource);
     }

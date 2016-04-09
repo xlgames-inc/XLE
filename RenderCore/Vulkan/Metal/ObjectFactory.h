@@ -7,7 +7,6 @@
 #pragma once
 
 #include "VulkanCore.h"
-#include "Resource.h"
 #include "IncludeVulkan.h"
 #include "../../IDevice_Forward.h"
 #include "../../../Utility/IteratorUtils.h"
@@ -17,6 +16,9 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+	class UnderlyingResourcePtr;
+	class DeviceContext;
+
     class IDestructionQueue
     {
     public:
@@ -105,8 +107,6 @@ namespace RenderCore { namespace Metal_Vulkan
         void FlushDestructionQueue() const;
 
 		ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device);
-        ObjectFactory(IDevice*);
-        ObjectFactory(Underlying::Resource&);
 		ObjectFactory();
 		~ObjectFactory();
 
@@ -118,8 +118,12 @@ namespace RenderCore { namespace Metal_Vulkan
         std::shared_ptr<IDestructionQueue> _destruction;
 	};
 
-    const ObjectFactory& GetDefaultObjectFactory();
-    void SetDefaultObjectFactory(const ObjectFactory*);
+	ObjectFactory& GetObjectFactory(IDevice& device);
+	ObjectFactory& GetObjectFactory(DeviceContext&);
+	ObjectFactory& GetObjectFactory(UnderlyingResourcePtr);
+	ObjectFactory& GetObjectFactory();
+
+    void SetDefaultObjectFactory(ObjectFactory*);
 
     extern const VkAllocationCallbacks* g_allocationCallbacks;
 }}

@@ -11,38 +11,45 @@
 
     #include "../PlatformInterface.h"
     #include "../DataPacket.h"
+	#include "../../RenderCore/IThreadContext.h"
 
     namespace BufferUploads { namespace PlatformInterface
     {
-		static Underlying::Resource*        ResPtr(const Underlying::Resource& resource) { return const_cast<Underlying::Resource*>(&resource); }
+		// static UnderlyingResource*        ResPtr(const UnderlyingResource& resource) { return const_cast<UnderlyingResource*>(&resource); }
 
-        void UnderlyingDeviceContext::PushToResource(   const Underlying::Resource& resource, const BufferDesc& desc, 
-                                                        unsigned resourceOffsetValue, const void* data, size_t dataSize,
-                                                        TexturePitches rowAndSlicePitch, 
-                                                        const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
+        void UnderlyingDeviceContext::PushToResource(
+			const UnderlyingResource& resource, const BufferDesc& desc, 
+            unsigned resourceOffsetValue, const void* data, size_t dataSize,
+            TexturePitches rowAndSlicePitch, 
+            const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
         {
         }
 
-        void UnderlyingDeviceContext::PushToStagingResource(    const Underlying::Resource& resource, const BufferDesc&desc, 
-                                                                unsigned resourceOffsetValue, const void* data, size_t dataSize, 
-                                                                TexturePitches rowAndSlicePitch, 
-                                                                const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
+        void UnderlyingDeviceContext::PushToStagingResource(
+			const UnderlyingResource& resource, const BufferDesc&desc, 
+            unsigned resourceOffsetValue, const void* data, size_t dataSize, 
+            TexturePitches rowAndSlicePitch, 
+            const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
         {
         }
 
-        void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(const Underlying::Resource& finalResource, const Underlying::Resource& staging, const BufferDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
+        void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(
+			const UnderlyingResource& finalResource, const UnderlyingResource& staging, 
+			const BufferDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
         {
         }
 
         #pragma warning(disable:4127)       // conditional expression is constant
 
-        void UnderlyingDeviceContext::ResourceCopy_DefragSteps(const Underlying::Resource& destination, const Underlying::Resource& source, const std::vector<DefragStep>& steps)
+        void UnderlyingDeviceContext::ResourceCopy_DefragSteps(
+			const UnderlyingResource& destination, const UnderlyingResource& source, 
+			const std::vector<DefragStep>& steps)
         {
         }
 
-        void UnderlyingDeviceContext::ResourceCopy(const Underlying::Resource& destination, const Underlying::Resource& source)
+        void UnderlyingDeviceContext::ResourceCopy(const UnderlyingResource& destination, const UnderlyingResource& source)
         {
-            RenderCore::Metal::Copy(*_devContext, ResPtr(destination), ResPtr(source));
+            // RenderCore::Metal::Copy(*_devContext, ResPtr(destination), ResPtr(source));
         }
 
         RenderCore::Metal::CommandListPtr UnderlyingDeviceContext::ResolveCommandList()
@@ -54,31 +61,51 @@
         {
         }
 
-        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(const Underlying::Resource& resource, MapType::Enum mapType, unsigned subResource)
+        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(const UnderlyingResource& resource, MapType::Enum mapType, unsigned subResource)
         {
             return MappedBuffer();
         }
 
-        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::MapPartial(const Underlying::Resource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource)
+        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::MapPartial(const UnderlyingResource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource)
         {
             return MappedBuffer();
         }
 
-        void UnderlyingDeviceContext::Unmap(const Underlying::Resource& resource, unsigned subResourceIndex)
+        void UnderlyingDeviceContext::Unmap(const UnderlyingResource& resource, unsigned subResourceIndex)
         {
         }
+
+		std::shared_ptr<RenderCore::IDevice> UnderlyingDeviceContext::GetObjectFactory()
+		{
+			return _renderCoreContext->GetDevice();
+		}
 
         UnderlyingDeviceContext::UnderlyingDeviceContext(RenderCore::IThreadContext& renderCoreContext) 
         : _renderCoreContext(&renderCoreContext)
         {
         }
 
-        intrusive_ptr<RenderCore::Metal::Underlying::Resource> CreateResource(ObjectFactory& device, const BufferDesc& desc, DataPacket* initialisationData)
+        RenderCore::ResourcePtr CreateResource(RenderCore::IDevice& device, const BufferDesc& desc, DataPacket* initialisationData)
         {
-			return nullptr;
+			if (initialisationData) {
+				return device.CreateResource(desc,
+					[initialisationData](unsigned mipIndex, unsigned arrayIndex) -> RenderCore::SubResourceInitData
+					{
+						RenderCore::SubResourceInitData result;
+						auto sr = DataPacket::TexSubRes(mipIndex, arrayIndex);
+						result._data = initialisationData->GetData(sr);
+						result._size = initialisationData->GetDataSize(sr);
+						auto pitches = initialisationData->GetPitches(sr);
+						result._rowPitch = pitches._rowPitch;
+						result._slicePitch = pitches._slicePitch;
+						return result;
+					});
+			} else {
+				return device.CreateResource(desc);
+			}
         }
 
-		BufferDesc ExtractDesc(const Underlying::Resource& resource)
+		BufferDesc ExtractDesc(const UnderlyingResource& resource)
         {
             BufferDesc desc;
             XlZeroMemory(desc);

@@ -7,9 +7,8 @@
 #pragma once
 
 #include "IBufferUploads.h"
-#include "../RenderCore/Metal/Resource.h"           // (for Underlying::Resource)
-#include "../Utility/Threading/ThreadingUtils.h"    // for RefCountedObject
-#include "../Utility/IntrusivePtr.h"
+#include "../RenderCore/IDevice.h" 
+#include "../Utility/Threading/ThreadingUtils.h"
 #include <memory>
 #include <vector>
 
@@ -17,9 +16,8 @@ namespace Utility { class DefragStep; }
 
 namespace BufferUploads
 {
-    typedef RenderCore::Metal::Underlying::Resource UnderlyingResource;
-
-    buffer_upload_dll_export BufferDesc ExtractDesc(const UnderlyingResource& resource);
+    using UnderlyingResource = RenderCore::Resource;
+	using UnderlyingResourcePtr = RenderCore::ResourcePtr;
 
     class IResourcePool
     {
@@ -28,7 +26,7 @@ namespace BufferUploads
             uint64 resourceMarker, UnderlyingResource* resource, 
             unsigned offset, unsigned size) = 0;
         virtual void ReturnToPool(
-            uint64 resourceMarker, intrusive_ptr<UnderlyingResource>&& resource, 
+            uint64 resourceMarker, UnderlyingResourcePtr&& resource, 
             unsigned offset, unsigned size) = 0;
         virtual ~IResourcePool() {}
     };
@@ -48,7 +46,7 @@ namespace BufferUploads
     class ResourceLocator : public RefCountedObject
     {
     public:
-        intrusive_ptr<UnderlyingResource> AdoptUnderlying();
+        UnderlyingResourcePtr AdoptUnderlying();
 
         bool IsEmpty() const { return !_resource; }
         unsigned Offset() const { return _offset; }
@@ -58,7 +56,7 @@ namespace BufferUploads
         uint64 PoolMarker() { return _poolMarker; }
 
         ResourceLocator(
-            intrusive_ptr<UnderlyingResource>&& moveFrom, unsigned offset=~unsigned(0x0), unsigned size=~unsigned(0x0), 
+            UnderlyingResourcePtr&& moveFrom, unsigned offset=~unsigned(0x0), unsigned size=~unsigned(0x0), 
             std::shared_ptr<IResourcePool> pool = nullptr, uint64 poolMarker = 0);
         ResourceLocator(ResourceLocator&& moveFrom);
         ResourceLocator& operator=(ResourceLocator&& moveFrom);
@@ -67,7 +65,7 @@ namespace BufferUploads
 
         void swap(ResourceLocator& other);
     protected:
-        intrusive_ptr<UnderlyingResource> _resource;
+        UnderlyingResourcePtr _resource;
         unsigned _offset, _size;
         std::shared_ptr<IResourcePool> _pool;
         uint64 _poolMarker;
@@ -78,7 +76,7 @@ namespace BufferUploads
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    inline intrusive_ptr<RenderCore::Metal::Underlying::Resource> ResourceLocator::AdoptUnderlying()
+    inline UnderlyingResourcePtr ResourceLocator::AdoptUnderlying()
     {
         _offset = _size = 0;
         _pool.reset();
@@ -87,10 +85,10 @@ namespace BufferUploads
     }
 
     inline ResourceLocator::ResourceLocator(
-        intrusive_ptr<RenderCore::Metal::Underlying::Resource>&& moveFrom, 
+        UnderlyingResourcePtr&& moveFrom, 
         unsigned offset, unsigned size,
         std::shared_ptr<IResourcePool> pool, uint64 poolMarker)
-    : _resource(std::forward<intrusive_ptr<RenderCore::Metal::Underlying::Resource>>(moveFrom))
+    : _resource(std::move(moveFrom))
     , _offset(offset), _size(size), _pool(pool), _poolMarker(poolMarker)
     {
         if (_pool) {

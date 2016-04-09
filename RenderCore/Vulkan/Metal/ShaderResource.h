@@ -11,6 +11,8 @@
 #include "VulkanCore.h"
 #include "../../../Core/Prefix.h"
 
+namespace RenderCore { class Resource; }
+
 namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;
@@ -31,7 +33,7 @@ namespace RenderCore { namespace Metal_Vulkan
         ~ShaderResourceView();
 		ShaderResourceView(const ObjectFactory& factory, VkImage image, NativeFormat::Enum = NativeFormat::Unknown);
         ShaderResourceView(VkImage image, NativeFormat::Enum = NativeFormat::Unknown);
-        ShaderResourceView(Underlying::Resource* res, NativeFormat::Enum = NativeFormat::Unknown);
+		ShaderResourceView(UnderlyingResourcePtr res, NativeFormat::Enum = NativeFormat::Unknown);
 
 		using UnderlyingType = VkImageView;
         using UnderlyingResource = VkImage;

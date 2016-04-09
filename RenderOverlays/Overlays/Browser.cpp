@@ -9,6 +9,7 @@
 
 #include "../../../Tools/ToolsRig/ModelVisualisation.h"
 
+#include "../../RenderCore/ResourceDesc.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -549,9 +550,9 @@ namespace Overlays
 
         const unsigned offscreenDims = ModelBrowserItemDimensions;
         auto& uploads = SceneEngine::GetBufferUploads();
-        using namespace BufferUploads;
-        BufferDesc offscreenDesc;
-        offscreenDesc._type = BufferDesc::Type::Texture;
+        using namespace RenderCore;
+        ResourceDesc offscreenDesc;
+        offscreenDesc._type = ResourceDesc::Type::Texture;
         offscreenDesc._bindFlags = BindFlag::RenderTarget | BindFlag::ShaderResource;
         offscreenDesc._cpuAccess = 0;
         offscreenDesc._gpuAccess = GPUAccess::Read | GPUAccess::Write;
@@ -561,9 +562,9 @@ namespace Overlays
         offscreenDesc._bindFlags = BindFlag::DepthStencil;
         offscreenDesc._textureDesc = TextureDesc::Plain2D(offscreenDims, offscreenDims, RenderCore::Metal::NativeFormat::D24_UNORM_S8_UINT);
         auto depthResource = uploads.Transaction_Immediate(offscreenDesc)->AdoptUnderlying();
-        pimpl->_rtv =RenderCore::Metal::RenderTargetView(offscreenResource.get());
-        pimpl->_dsv = RenderCore::Metal::DepthStencilView(depthResource.get());
-        pimpl->_srv = RenderCore::Metal::ShaderResourceView(offscreenResource.get());
+        pimpl->_rtv =RenderCore::Metal::RenderTargetView(*offscreenResource.get());
+        pimpl->_dsv = RenderCore::Metal::DepthStencilView(*depthResource.get());
+        pimpl->_srv = RenderCore::Metal::ShaderResourceView(*offscreenResource.get());
 
         pimpl->_cache = std::make_unique<ModelCache>();
 

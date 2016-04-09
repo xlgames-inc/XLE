@@ -10,7 +10,9 @@
 #include "IThreadContext_Forward.h"
 #include "../Core/Prefix.h"
 #include "../Math/Vector.h"
+#include "../Utility/IntrusivePtr.h"
 #include <memory>
+#include <functional>
 
 #if OUTPUT_DLL
     #define render_dll_export       dll_export
@@ -24,6 +26,11 @@ typedef struct _GUID GUID;
 namespace RenderCore
 {
 ////////////////////////////////////////////////////////////////////////////////
+
+	class Resource;
+	using ResourcePtr = intrusive_ptr<Resource>;
+	class ResourceDesc;
+	class SubResourceInitData;
 
     class ViewportContext
     {
@@ -195,6 +202,9 @@ namespace RenderCore
             IMETHOD std::shared_ptr<IThreadContext>     GetImmediateContext() IPURE;
             IMETHOD std::unique_ptr<IThreadContext>     CreateDeferredContext() IPURE;
 
+			using ResourceInitializer = std::function<SubResourceInitData(unsigned mipIndex, unsigned arrayIndex)>;
+			IMETHOD ResourcePtr			CreateResource(const ResourceDesc& desc, const ResourceInitializer& init = nullptr);
+
             /// <summary>Returns version information for this device</summary>
             /// Queries build number and build date information.
             /// The build number is in a format such as:
@@ -229,3 +239,11 @@ namespace RenderCore
 
 ////////////////////////////////////////////////////////////////////////////////
 }
+
+#pragma warning(push)
+#pragma warning(disable:4231)   // nonstandard extension used : 'extern' before template explicit instantiation
+/// \cond INTERNAL
+extern template Utility::intrusive_ptr<RenderCore::Resource>;
+/// \endcond
+#pragma warning(pop)
+

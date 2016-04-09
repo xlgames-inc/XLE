@@ -43,19 +43,19 @@ namespace BufferUploads
     BasicRawDataPacket::~BasicRawDataPacket()
     {}
 
-    void* BasicRawDataPacket::GetData(SubResource subRes)
+    void* BasicRawDataPacket::GetData(SubResourceId subRes)
     {
         assert(subRes == 0);
         return _data.get(); 
     }
     
-    size_t BasicRawDataPacket::GetDataSize(SubResource subRes) const
+    size_t BasicRawDataPacket::GetDataSize(SubResourceId subRes) const
     {
         assert(subRes == 0);
         return _dataSize; 
     }
 
-    TexturePitches BasicRawDataPacket::GetPitches(SubResource subRes) const
+    TexturePitches BasicRawDataPacket::GetPitches(SubResourceId subRes) const
     {
         assert(subRes == 0);
         return _pitches; 
@@ -127,9 +127,9 @@ namespace BufferUploads
     class FileDataSource : public DataPacket
     {
     public:
-        virtual void*           GetData         (SubResource subRes);
-        virtual size_t          GetDataSize     (SubResource subRes) const;
-        virtual TexturePitches  GetPitches      (SubResource subRes) const;
+        virtual void*           GetData         (SubResourceId subRes);
+        virtual size_t          GetDataSize     (SubResourceId subRes) const;
+        virtual TexturePitches  GetPitches      (SubResourceId subRes) const;
 
         virtual std::shared_ptr<Marker>     BeginBackgroundLoad();
 
@@ -157,14 +157,14 @@ namespace BufferUploads
             LPOVERLAPPED lpOverlapped);
     };
 
-    void* FileDataSource::GetData(SubResource subRes)
+    void* FileDataSource::GetData(SubResourceId subRes)
     {
         // assert(subRes == 0);
         return _pkt.get();
     }
 
-    size_t FileDataSource::GetDataSize(SubResource subRes) const           { /*assert(subRes == 0);*/ return _dataSize; }
-    TexturePitches FileDataSource::GetPitches(SubResource subRes) const    { /*assert(subRes == 0);*/ return _pitches; }
+    size_t FileDataSource::GetDataSize(SubResourceId subRes) const           { /*assert(subRes == 0);*/ return _dataSize; }
+    TexturePitches FileDataSource::GetPitches(SubResourceId subRes) const    { /*assert(subRes == 0);*/ return _pitches; }
 
     void CALLBACK FileDataSource::CompletionRoutine(
         DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered,
@@ -258,9 +258,9 @@ namespace BufferUploads
     class StreamingTexture : public DataPacket
     {
     public:
-        virtual void*           GetData         (SubResource subRes);
-        virtual size_t          GetDataSize     (SubResource subRes) const;
-        virtual TexturePitches  GetPitches      (SubResource subRes) const;
+        virtual void*           GetData         (SubResourceId subRes);
+        virtual size_t          GetDataSize     (SubResourceId subRes) const;
+        virtual TexturePitches  GetPitches      (SubResourceId subRes) const;
 
         virtual std::shared_ptr<Marker>     BeginBackgroundLoad();
 
@@ -281,7 +281,7 @@ namespace BufferUploads
         TextureLoadFlags::BitField _flags;
     };
 
-    void* StreamingTexture::GetData(SubResource subRes)
+    void* StreamingTexture::GetData(SubResourceId subRes)
     {
         auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
         auto* image = _image.GetImage(mip, arrayIndex, 0);
@@ -289,7 +289,7 @@ namespace BufferUploads
         return nullptr;
     }
 
-    size_t StreamingTexture::GetDataSize(SubResource subRes) const
+    size_t StreamingTexture::GetDataSize(SubResourceId subRes) const
     {
         auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
         auto* image = _image.GetImage(mip, arrayIndex, 0);
@@ -297,7 +297,7 @@ namespace BufferUploads
         return 0;
     }
 
-    TexturePitches StreamingTexture::GetPitches(SubResource subRes) const
+    TexturePitches StreamingTexture::GetPitches(SubResourceId subRes) const
     {
         auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
         auto* image = _image.GetImage(mip, arrayIndex, 0);

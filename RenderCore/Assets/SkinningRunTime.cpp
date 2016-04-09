@@ -13,6 +13,7 @@
 #include "DeferredShaderResource.h"
 #include "../RenderUtils.h"
 
+#include "../IDevice.h"
 #include "../Metal/Shader.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
@@ -345,8 +346,8 @@ namespace RenderCore { namespace Assets
     class TBufferTemporaryTexture
     {
     public:
-        intrusive_ptr<Metal::Underlying::Resource>      _resource;
-        intrusive_ptr<Metal::Underlying::Resource>      _stagingResource;
+        RenderCore::ResourcePtr			_resource;
+        RenderCore::ResourcePtr			_stagingResource;
         Metal::ShaderResourceView       _view;
         size_t                          _size;
         unsigned                        _lastAllocatedFrame;
@@ -1273,7 +1274,7 @@ namespace RenderCore { namespace Assets
 
     static void PushTBufferTemporaryTexture(Metal::DeviceContext* context, TBufferTemporaryTexture& tex)
     {
-        Metal::Copy(*context, tex._resource.get(), tex._stagingResource.get());
+        Metal::Copy(*context, *tex._resource.get(), *tex._stagingResource.get());
     }
 }}
 

@@ -370,7 +370,7 @@ namespace RenderCore { namespace Metal_Vulkan
                                 const UniformsStream& stream0, 
                                 const UniformsStream& stream1) const
     {
-        auto pipelineLayout = SharePipelineLayout(GetDefaultObjectFactory(), context.GetGlobalPools()._mainDescriptorPool).get();
+        auto pipelineLayout = SharePipelineLayout(GetObjectFactory(), context.GetGlobalPools()._mainDescriptorPool).get();
 
         // -------- write descriptor set --------
         const unsigned maxBindings = 16;

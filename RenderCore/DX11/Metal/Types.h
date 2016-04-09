@@ -7,6 +7,7 @@
 #pragma once
 
 #include "DX11.h"
+#include "../../../Utility/IntrusivePtr.h"
 
 namespace RenderCore { namespace Metal_DX11
 {

@@ -342,32 +342,32 @@ namespace RenderCore { namespace Metal_DX11
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	ObjectFactory* GetObjectFactory(IDevice& device)
+	ObjectFactory& GetObjectFactory(IDevice& device)
 	{
 		auto devDX = ExtractUnderlyingDevice(device);
-		if (!devDX) return nullptr;
+		if (!devDX) Throw(::Exceptions::BasicLabel("Could not get object factory associated with device"));
 		return GetObjectFactory(*devDX);
 	}
 
-	ObjectFactory* GetObjectFactory(ID3D::Device& device)
+	ObjectFactory& GetObjectFactory(ID3D::Device& device)
 	{
-		return InitAttachedData(&device)->_factory.get();
+		return *InitAttachedData(&device)->_factory.get();
 	}
 
-	ObjectFactory* GetObjectFactory(ID3D::Resource& resource)
+	ObjectFactory& GetObjectFactory(ID3D::Resource& resource)
 	{
 		ID3D::Device* dev = nullptr;
 		resource.GetDevice(&dev);
-		if (!dev) return nullptr;
+		if (!dev) Throw(::Exceptions::BasicLabel("Could not get object factory associated with device"));
 		return GetObjectFactory(*dev);
 	}
 
-	ObjectFactory* GetObjectFactory(DeviceContext& context)
+	ObjectFactory& GetObjectFactory(DeviceContext& context)
 	{
-		return &context.GetFactory();
+		return context.GetFactory();
 	}
 
-	ObjectFactory* GetObjectFactory()
+	ObjectFactory& GetObjectFactory()
 	{
 		return GetObjectFactory(*s_defaultDevice);
 	}

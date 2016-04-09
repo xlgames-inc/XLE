@@ -36,7 +36,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     VertexBuffer::VertexBuffer(const void* data, size_t byteCount)
-        : VertexBuffer(*GetObjectFactory(), data, byteCount)
+        : VertexBuffer(GetObjectFactory(), data, byteCount)
     {}
 
     VertexBuffer::VertexBuffer() {}
@@ -76,7 +76,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     IndexBuffer::IndexBuffer(const void* data, size_t byteCount)
-        : IndexBuffer(*GetObjectFactory(), data, byteCount)
+        : IndexBuffer(GetObjectFactory(), data, byteCount)
     {}
 
     IndexBuffer::IndexBuffer(DeviceContext& context)
@@ -100,7 +100,7 @@ namespace RenderCore { namespace Metal_DX11
 
     ConstantBuffer::ConstantBuffer() {}
     ConstantBuffer::ConstantBuffer(const void* data, size_t byteCount, bool immutable)
-        : ConstantBuffer(*GetObjectFactory(), data, byteCount, immutable)
+        : ConstantBuffer(GetObjectFactory(), data, byteCount, immutable)
     {}
 
     ConstantBuffer::ConstantBuffer(

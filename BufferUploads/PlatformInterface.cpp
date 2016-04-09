@@ -6,6 +6,7 @@
 
 #include "PlatformInterface.h"
 #include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/TimeUtils.h"
@@ -32,6 +33,8 @@ namespace BufferUploads
 
 namespace BufferUploads { namespace PlatformInterface
 {
+	using namespace RenderCore;
+
     static const unsigned BlockCompDim = 4;
     static unsigned    RoundBCDim(unsigned input)
     {
@@ -40,7 +43,7 @@ namespace BufferUploads { namespace PlatformInterface
         return result;
     }
 
-    static bool IsDXTCompressed(unsigned format) { return GetCompressionType(NativeFormat::Enum(format)) == FormatCompressionType::BlockCompression; }
+    static bool IsDXTCompressed(unsigned format) { return Metal::GetCompressionType(NativeFormat::Enum(format)) == Metal::FormatCompressionType::BlockCompression; }
 
     unsigned TextureDataSize(unsigned nWidth, unsigned nHeight, unsigned nDepth, unsigned mipCount, NativeFormat::Enum format)
     {
@@ -49,7 +52,7 @@ namespace BufferUploads { namespace PlatformInterface
         }
 
         const bool dxt = IsDXTCompressed(format);
-        const auto bbp = BitsPerPixel(format);
+        const auto bbp = Metal::BitsPerPixel(format);
 
         mipCount = std::max(mipCount, 1u);
         unsigned result = 0;
@@ -130,7 +133,7 @@ namespace BufferUploads { namespace PlatformInterface
     
     unsigned ByteCount(const TextureDesc& tDesc)
     {
-        unsigned bitsPerPixel = BitsPerPixel((NativeFormat::Enum)tDesc._nativePixelFormat);
+        unsigned bitsPerPixel = Metal::BitsPerPixel((NativeFormat::Enum)tDesc._nativePixelFormat);
         unsigned result = 0;
         unsigned mipMin = IsDXTCompressed((NativeFormat::Enum)tDesc._nativePixelFormat)?4:1;
         for (unsigned mipIndex=0; mipIndex<tDesc._mipCount; ++mipIndex) {
@@ -207,12 +210,12 @@ namespace BufferUploads { namespace PlatformInterface
     }
 
     UnderlyingDeviceContext::MappedBuffer::MappedBuffer(
-        UnderlyingDeviceContext& context, const Underlying::Resource& resource, 
+        UnderlyingDeviceContext& context, const UnderlyingResource& resource, 
         unsigned subResourceIndex, void* data,
         TexturePitches pitches)
     {
         _sourceContext = &context;
-        _resource.reset(const_cast<Underlying::Resource*>(&resource));
+        _resource.reset(const_cast<UnderlyingResource*>(&resource));
         _subResourceIndex = subResourceIndex;
         _data = data;
         _pitches = pitches;
@@ -313,7 +316,7 @@ namespace BufferUploads { namespace PlatformInterface
         }
     }
 
-    GPUEventStack::GPUEventStack(RenderCore::IDevice* device) : _objFactory(GetObjectFactory(*device))
+    GPUEventStack::GPUEventStack(RenderCore::IDevice* device) : _objFactory(&Metal::GetObjectFactory(*device))
     {
             //
             //      What we really want is an "event" query that holds an integer value (like the events on the 
@@ -674,7 +677,7 @@ namespace BufferUploads { namespace PlatformInterface
 
     #else
 
-        void    Resource_Register(const Underlying::Resource& resource, const char name[])
+        void    Resource_Register(const UnderlyingResource& resource, const char name[])
         {
         }
 
@@ -682,11 +685,11 @@ namespace BufferUploads { namespace PlatformInterface
         {
         }
 
-        void    Resource_SetName(const Underlying::Resource& resource, const char name[])
+        void    Resource_SetName(const UnderlyingResource& resource, const char name[])
         {
         }
 
-        void    Resource_GetName(const Underlying::Resource& resource, char buffer[], int bufferSize)
+        void    Resource_GetName(const UnderlyingResource& resource, char buffer[], int bufferSize)
         {
         }
 

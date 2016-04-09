@@ -13,7 +13,8 @@
 #include <type_traits>
 #include <tuple>
 
-namespace BufferUploads { struct TextureDesc; struct LinearBufferDesc; class DataPacket; class ResourceLocator; }
+namespace RenderCore { class TextureDesc; class LinearBufferDesc; }
+namespace BufferUploads { class DataPacket; class ResourceLocator; }
 
 namespace SceneEngine
 {
@@ -75,10 +76,10 @@ namespace SceneEngine
 
         GestaltResource();
         GestaltResource(
-            const BufferUploads::TextureDesc& desc,
+            const RenderCore::TextureDesc& desc,
             const char name[], BufferUploads::DataPacket* initialData = nullptr);
         GestaltResource(
-            const BufferUploads::LinearBufferDesc& desc,
+            const RenderCore::LinearBufferDesc& desc,
             const char name[], BufferUploads::DataPacket* initialData = nullptr,
             unsigned extraBindFlags = 0u);
         GestaltResource(GestaltResource&& moveFrom) never_throws;

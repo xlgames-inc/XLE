@@ -11,6 +11,7 @@
 #include "MemoryManagement.h"
 #include "PlatformInterface.h"
 #include "ThreadContext.h"
+#include "../RenderCore/IDevice_Forward.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 
@@ -25,7 +26,8 @@ namespace BufferUploads
     template <typename Desc> class ResourcesPool : public IResourcePool, public std::enable_shared_from_this<ResourcesPool<Desc>>
     {
     public:
-        typedef RenderCore::Metal::Underlying::Resource UnderlyingResource;
+        using UnderlyingResource = RenderCore::Resource;
+		using UnderlyingResourcePtr = RenderCore::ResourcePtr;
 
         intrusive_ptr<ResourceLocator>     CreateResource(const Desc&, unsigned realSize, bool&deviceCreation);
 
@@ -34,11 +36,11 @@ namespace BufferUploads
             unsigned offset, unsigned size);
 
         virtual void ReturnToPool(
-            uint64 resourceMarker, intrusive_ptr<UnderlyingResource>&& resource, 
+            uint64 resourceMarker, UnderlyingResourcePtr&& resource, 
             unsigned offset, unsigned size);
 
         std::vector<PoolMetrics>    CalculateMetrics() const;
-        ObjectFactory*              GetUnderlyingDevice() { return _underlyingDevice; }
+		RenderCore::IDevice*        GetUnderlyingDevice() { return _underlyingDevice; }
         void                        OnLostDevice();
         void                        Update(unsigned newFrameID);
 
@@ -48,18 +50,18 @@ namespace BufferUploads
         class PoolOfLikeResources
         {
         public:
-            auto        AllocateResource(unsigned realSize, bool& deviceCreation) -> intrusive_ptr<UnderlyingResource>;
+            auto        AllocateResource(unsigned realSize, bool& deviceCreation) -> UnderlyingResourcePtr;
             const Desc& GetDesc() const { return _desc; }
             PoolMetrics CalculateMetrics() const;
             void        Update(unsigned newFrameID);
-            void        ReturnToPool(intrusive_ptr<UnderlyingResource>&& resource);
+            void        ReturnToPool(UnderlyingResourcePtr&& resource);
 
-            PoolOfLikeResources(ObjectFactory& underlyingDevice, const Desc&, unsigned retainFrames = ~unsigned(0x0));
+            PoolOfLikeResources(RenderCore::IDevice& underlyingDevice, const Desc&, unsigned retainFrames = ~unsigned(0x0));
             ~PoolOfLikeResources();
         private:
             struct Entry
             {
-                intrusive_ptr<UnderlyingResource>  _underlying;
+                UnderlyingResourcePtr  _underlying;
                 unsigned            _returnFrameID;
             };
             LockFree::FixedSizeQueue<Entry, 512> _allocableResources;
@@ -69,7 +71,7 @@ namespace BufferUploads
             Interlocked::Value          _totalCreateSize, _totalCreateCount, _totalRealSize;
             unsigned                    _currentFrameID;
             unsigned                    _retainFrames;
-            ObjectFactory*              _underlyingDevice;
+			RenderCore::IDevice*        _underlyingDevice;
         };
 
             //
@@ -83,7 +85,7 @@ namespace BufferUploads
         unsigned                        _hashTableIndex;
         mutable Threading::Mutex        _writerLock;
         unsigned                        _retainFrames;
-        ObjectFactory*                  _underlyingDevice;
+		RenderCore::IDevice*            _underlyingDevice;
 
         struct CompareFirst
         {
@@ -98,15 +100,17 @@ namespace BufferUploads
     class BatchedResources : public IResourcePool, public std::enable_shared_from_this<BatchedResources>
     {
     public:
-        typedef RenderCore::Metal::Underlying::Resource UnderlyingResource;
-        intrusive_ptr<ResourceLocator>  Allocate(unsigned size, bool& deviceCreation, const char name[]);
+        using UnderlyingResource = RenderCore::Resource;
+		using UnderlyingResourcePtr = RenderCore::ResourcePtr;
+
+        intrusive_ptr<ResourceLocator> Allocate(unsigned size, bool& deviceCreation, const char name[]);
 
         virtual void AddRef(
             uint64 resourceMarker, UnderlyingResource* resource, 
             unsigned offset, unsigned size);
 
         virtual void ReturnToPool(
-            uint64 resourceMarker, intrusive_ptr<UnderlyingResource>&& resource, 
+            uint64 resourceMarker, UnderlyingResourcePtr&& resource, 
             unsigned offset, unsigned size);
 
             //
@@ -159,7 +163,7 @@ namespace BufferUploads
             void                QueueOperation(Operation::Enum operation, unsigned start, unsigned end);
             void                ApplyPendingOperations(HeapedResource& destination);
 
-            void                Tick(ThreadContext& context, Underlying::Resource* sourceResource);
+            void                Tick(ThreadContext& context, UnderlyingResource* sourceResource);
             bool                IsCompleted(IManager::EventListID processedEventList, ThreadContext& context);
 
             void                SetSteps(const SimpleSpanningHeap& sourceHeap, const std::vector<DefragStep>& steps);
@@ -259,7 +263,7 @@ namespace BufferUploads
         uint32                              _flushThread;
         unsigned                            _frameID;
         Threading::Mutex                    _flushDelayedReleasesLock;
-        ObjectFactory*                      _underlyingDevice;
+		RenderCore::IDevice*                _underlyingDevice;
 
         #if defined(D3D_BUFFER_UPLOAD_USE_WAITABLE_QUEUES)
             LockFree::FixedSizeQueue_Waitable<intrusive_ptr<ResourceLocator>,256> _delayedReleases;

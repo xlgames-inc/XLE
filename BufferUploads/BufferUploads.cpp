@@ -67,13 +67,5 @@ namespace BufferUploads
         _queuedPeakCreates = _queuedPeakUploads = _queuedPeakStagingCreates = _queuedPeakPrepares = 0;
         XlZeroMemory(_queuedBytes);
     }
-
-    BufferDesc::BufferDesc()
-    {
-        _type = Type::Unknown;
-        _bindFlags = _cpuAccess = _gpuAccess = _allocationRules = 0;
-        _name[0] = '\0';
-        XlZeroMemory(_textureDesc);
-    }
 }
 

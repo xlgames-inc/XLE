@@ -8,23 +8,25 @@
 
 #include "IBufferUploads.h"
 #include "DataPacket.h"     // (actually just for TexturePitches)
+#include "../RenderCore/IDevice.h"
 #include "../Utility/IntrusivePtr.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/Types.h"
-#include "../RenderCore/Metal/Resource.h"
-#include "../RenderCore/Metal/ObjectFactory.h"
+#include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 
 namespace Utility { class DefragStep; }
 
 namespace BufferUploads { namespace PlatformInterface
 {
-    using namespace RenderCore::Metal;
-    
         /////////////////////////////////////////////////////////////////////
 
-    intrusive_ptr<Underlying::Resource> CreateResource(ObjectFactory& device, const BufferDesc& desc, DataPacket* initialisationData = NULL);
-    BufferDesc      ExtractDesc(const Underlying::Resource& resource);
+	using UnderlyingQuery = RenderCore::Metal::UnderlyingQuery;
+	using UnderlyingResource = RenderCore::Resource;
+	using UnderlyingResourcePtr = RenderCore::ResourcePtr;
+	namespace NativeFormat = RenderCore::Metal::NativeFormat;
+
+	UnderlyingResourcePtr CreateResource(RenderCore::IDevice& device, const BufferDesc& desc, DataPacket* initialisationData = nullptr);
+    BufferDesc      ExtractDesc(const RenderCore::Resource& resource);
 
     unsigned        ByteCount(const BufferDesc& desc);
     unsigned        ByteCount(const TextureDesc& desc);
@@ -36,10 +38,10 @@ namespace BufferUploads { namespace PlatformInterface
                                     const void* sourceData, size_t sourceDataSize,
                                     const TextureDesc& mipMapDesc, unsigned destinationBlockRowPitch);
 
-    void            Resource_Register(const Underlying::Resource& resource, const char name[]);
+    void            Resource_Register(const UnderlyingResource& resource, const char name[]);
     void            Resource_Report(bool justVolatiles);
-    void            Resource_SetName(const Underlying::Resource& resource, const char name[]);
-    void            Resource_GetName(const Underlying::Resource& resource, char buffer[], int bufferSize);
+    void            Resource_SetName(const UnderlyingResource& resource, const char name[]);
+    void            Resource_GetName(const UnderlyingResource& resource, char buffer[], int bufferSize);
     size_t          Resource_GetAll(BufferUploads::BufferMetrics** bufferDescs);
 
     size_t          Resource_GetVideoMemoryHeadroom();
@@ -52,27 +54,27 @@ namespace BufferUploads { namespace PlatformInterface
     {
     public:
             ////////   P U S H   T O   R E S O U R C E   ////////
-        void PushToResource(    const Underlying::Resource& resource, const BufferDesc& desc, unsigned resourceOffsetValue,
+        void PushToResource(    const UnderlyingResource& resource, const BufferDesc& desc, unsigned resourceOffsetValue,
                                 const void* data, size_t dataSize,
                                 TexturePitches rowAndSlicePitch,
                                 const Box2D& box, unsigned lodLevel, unsigned arrayIndex);
 
-        void PushToStagingResource( const Underlying::Resource& resource, const BufferDesc& desc, unsigned resourceOffsetValue,
+        void PushToStagingResource( const UnderlyingResource& resource, const BufferDesc& desc, unsigned resourceOffsetValue,
                                     const void* data, size_t dataSize, TexturePitches rowAndSlicePitch,
                                     const Box2D& box, unsigned lodLevel, unsigned arrayIndex);
 
-        void UpdateFinalResourceFromStaging(const Underlying::Resource& finalResource, const Underlying::Resource& staging, 
+        void UpdateFinalResourceFromStaging(const UnderlyingResource& finalResource, const UnderlyingResource& staging,
                                             const BufferDesc& destinationDesc, unsigned lodLevelMin=~unsigned(0x0), unsigned lodLevelMax=~unsigned(0x0), unsigned stagingLODOffset=0);
 
             ////////   R E S O U R C E   C O P Y   ////////
-        void ResourceCopy_DefragSteps(const Underlying::Resource& destination, const Underlying::Resource& source, const std::vector<Utility::DefragStep>& steps);
-        void ResourceCopy(const Underlying::Resource& destination, const Underlying::Resource& source);
+        void ResourceCopy_DefragSteps(const UnderlyingResource& destination, const UnderlyingResource& source, const std::vector<Utility::DefragStep>& steps);
+        void ResourceCopy(const UnderlyingResource& destination, const UnderlyingResource& source);
 
             ////////   M A P   /   L O C K   ////////
         class MappedBuffer;
         struct MapType { enum Enum { Discard, NoOverwrite, ReadOnly, Write }; };
-        MappedBuffer Map(const Underlying::Resource& resource, MapType::Enum mapType, unsigned subResource = 0);
-        MappedBuffer MapPartial(const Underlying::Resource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource = 0);
+        MappedBuffer Map(const UnderlyingResource& resource, MapType::Enum mapType, unsigned subResource = 0);
+        MappedBuffer MapPartial(const UnderlyingResource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource = 0);
 
         class MappedBuffer
         {
@@ -86,10 +88,10 @@ namespace BufferUploads { namespace PlatformInterface
             const MappedBuffer& operator=(MappedBuffer&& moveFrom) never_throws;
             ~MappedBuffer();
         private:
-            MappedBuffer(UnderlyingDeviceContext&, const Underlying::Resource&, unsigned, void*, TexturePitches pitches);
+            MappedBuffer(UnderlyingDeviceContext&, const UnderlyingResource&, unsigned, void*, TexturePitches pitches);
 
             UnderlyingDeviceContext* _sourceContext;
-            intrusive_ptr<Underlying::Resource> _resource;
+			UnderlyingResourcePtr _resource;
             unsigned _subResourceIndex;
             void* _data;
             TexturePitches _pitches;
@@ -105,7 +107,8 @@ namespace BufferUploads { namespace PlatformInterface
         UnderlyingDeviceContext(RenderCore::IThreadContext& renderCoreContext);
         ~UnderlyingDeviceContext();
 
-        DeviceContext& GetUnderlying() { return *_devContext.get(); }
+		std::shared_ptr<RenderCore::IDevice> GetObjectFactory();
+        // RenderCore::Metal::DeviceContext& GetUnderlying() { return *_devContext.get(); }
 
         #if GFXAPI_ACTIVE == GFXAPI_DX11
             private: 
@@ -113,10 +116,10 @@ namespace BufferUploads { namespace PlatformInterface
         #endif
 
     private:
-        void Unmap(const Underlying::Resource&, unsigned _subresourceIndex);
+        void Unmap(const UnderlyingResource&, unsigned _subresourceIndex);
         friend class MappedBuffer;
         RenderCore::IThreadContext*         _renderCoreContext;
-        std::shared_ptr<DeviceContext>      _devContext;
+        // std::shared_ptr<RenderCore::Metal::DeviceContext>      _devContext;
     };
 
         /////////////////////////////////////////////////////////////////////

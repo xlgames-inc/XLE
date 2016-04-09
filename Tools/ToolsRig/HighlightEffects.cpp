@@ -10,6 +10,7 @@
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/ShaderResource.h"
+#include "../../RenderCore/Metal/Resource.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../BufferUploads/IBufferUploads.h"
@@ -45,8 +46,8 @@ namespace ToolsRig
         metalContext.Bind(Metal::Topology::TriangleStrip);
         metalContext.Unbind<Metal::BoundInputLayout>();
 
-        auto desc = BufferUploads::ExtractDesc(*inputStencil.GetResource());
-        if (desc._type != BufferUploads::BufferDesc::Type::Texture) return;
+        auto desc = Metal::ExtractDesc(*inputStencil.GetResource());
+        if (desc._type != ResourceDesc::Type::Texture) return;
 
         bool stencilInput = 
             Metal::AsTypelessFormat((Metal::NativeFormat::Enum)desc._textureDesc._nativePixelFormat) 
@@ -106,7 +107,6 @@ namespace ToolsRig
     {
             //  Still some work involved to just create a texture
             //  
-        using namespace BufferUploads;
         auto bufferDesc = CreateDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget, 0, GPUAccess::Write,
             TextureDesc::Plain2D(desc._width, desc._height, desc._format),
@@ -114,8 +114,8 @@ namespace ToolsRig
 
         auto resource = SceneEngine::GetBufferUploads().Transaction_Immediate(bufferDesc);
 
-        Metal::RenderTargetView rtv(resource->GetUnderlying());
-        Metal::ShaderResourceView srv(resource->GetUnderlying());
+        Metal::RenderTargetView rtv(*resource->GetUnderlying());
+        Metal::ShaderResourceView srv(*resource->GetUnderlying());
 
         _rtv = std::move(rtv);
         _srv = std::move(srv);

@@ -7,8 +7,10 @@
 #pragma once
 
 #include "Resource.h"
+#include "Format.h"
 #include "../../../Utility/IntrusivePtr.h"
 
+namespace RenderCore { class Resource; }
 namespace RenderCore { namespace Metal_Vulkan
 {
     class DeviceContext;
@@ -26,7 +28,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
 		RenderTargetView(DeviceContext& context) {}
-		RenderTargetView(Underlying::Resource*) {}
+		RenderTargetView(UnderlyingResourcePtr, NativeFormat::Enum = NativeFormat::Unknown) {}
         RenderTargetView() {}
         ~RenderTargetView() {}
 
@@ -35,7 +37,7 @@ namespace RenderCore { namespace Metal_Vulkan
         RenderTargetView& operator=(const RenderTargetView& cloneFrom) {}
         RenderTargetView& operator=(RenderTargetView&& moveFrom) never_throws {}
 
-		typedef Underlying::Resource*   UnderlyingType;
+		typedef Resource*   UnderlyingType;
 		UnderlyingType					GetUnderlying() const { return nullptr; }
 		bool IsGood() const { return true; }
     };
@@ -44,7 +46,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         DepthStencilView(DeviceContext& context) {}
-		DepthStencilView(Underlying::Resource*) {}
+		DepthStencilView(UnderlyingResourcePtr) {}
         DepthStencilView() {}
         ~DepthStencilView() {}
 
@@ -53,7 +55,7 @@ namespace RenderCore { namespace Metal_Vulkan
         DepthStencilView& operator=(const DepthStencilView& cloneFrom) {}
         DepthStencilView& operator=(DepthStencilView&& moveFrom) never_throws {}
 
-		typedef Underlying::Resource*   UnderlyingType;
+		typedef Resource*   UnderlyingType;
 		UnderlyingType					GetUnderlying() const { return nullptr; }
 		bool IsGood() const { return true; }
     };
@@ -71,14 +73,14 @@ namespace RenderCore { namespace Metal_Vulkan
         };
         UnorderedAccessView() {}
         ~UnorderedAccessView() {}
-		UnorderedAccessView(Underlying::Resource*) {}
+		UnorderedAccessView(UnderlyingResourcePtr) {}
 
         UnorderedAccessView(const UnorderedAccessView& cloneFrom) {}
         UnorderedAccessView(UnorderedAccessView&& moveFrom) never_throws {}
         UnorderedAccessView& operator=(const UnorderedAccessView& cloneFrom) {}
         UnorderedAccessView& operator=(UnorderedAccessView&& moveFrom) never_throws {}
 
-		typedef Underlying::Resource*   UnderlyingType;
+		typedef Resource*   UnderlyingType;
 		UnderlyingType					GetUnderlying() const { return nullptr; }
 		bool IsGood() const { return true; }
     };

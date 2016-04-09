@@ -24,7 +24,7 @@
         static bool IsDXTCompressed(unsigned format) { return GetCompressionType(NativeFormat::Enum(format)) == FormatCompressionType::BlockCompression; }
         static Underlying::Resource*        ResPtr(const Underlying::Resource& resource) { return const_cast<Underlying::Resource*>(&resource); }
 
-        static DataPacket::SubResource SubR(unsigned mipIndex, unsigned arrayIndex) { return DataPacket::TexSubRes(mipIndex, arrayIndex); }
+        static DataPacket::SubResourceId SubR(unsigned mipIndex, unsigned arrayIndex) { return DataPacket::TexSubRes(mipIndex, arrayIndex); }
 
         void UnderlyingDeviceContext::PushToResource(   const Underlying::Resource& resource, const BufferDesc& desc, 
                                                         unsigned resourceOffsetValue, const void* data, size_t dataSize,

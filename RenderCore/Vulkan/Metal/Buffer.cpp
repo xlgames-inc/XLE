@@ -26,7 +26,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	Buffer::Buffer(
 		const ObjectFactory& factory, const Desc& desc,
 		const void* initData, size_t initDataSize)
-	: Resource(factory, desc, initData, initDataSize)
+	: Resource(factory, desc, SubResourceInitData{ initData, initDataSize})
 	{
 		if (desc._type != Desc::Type::LinearBuffer)
 			Throw(::Exceptions::BasicLabel("Expecting linear buffer type"));
@@ -51,7 +51,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     VertexBuffer::VertexBuffer() {}
     VertexBuffer::VertexBuffer(const void* data, size_t byteCount)
-    : VertexBuffer(GetDefaultObjectFactory(), data, byteCount)
+    : VertexBuffer(GetObjectFactory(), data, byteCount)
     {}
 
     VertexBuffer::VertexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount)
@@ -60,7 +60,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     IndexBuffer::IndexBuffer() {}
     IndexBuffer::IndexBuffer(const void* data, size_t byteCount)
-    : IndexBuffer(GetDefaultObjectFactory(), data, byteCount)
+    : IndexBuffer(GetObjectFactory(), data, byteCount)
     {}
 
     IndexBuffer::IndexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount)
@@ -69,7 +69,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     ConstantBuffer::ConstantBuffer() {}
     ConstantBuffer::ConstantBuffer(const void* data, size_t byteCount, bool immutable)
-    : ConstantBuffer(GetDefaultObjectFactory(), data, byteCount, immutable)
+    : ConstantBuffer(GetObjectFactory(), data, byteCount, immutable)
     {}
 
     ConstantBuffer::ConstantBuffer(const ObjectFactory& factory, const void* data, size_t byteCount, bool immutable)

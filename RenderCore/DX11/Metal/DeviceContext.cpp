@@ -321,7 +321,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		ID3D::Device* dev = nullptr;
 		_underlying->GetDevice(&dev);
-		if (dev) _factory = GetObjectFactory(*dev);
+		if (dev) _factory = &GetObjectFactory(*dev);
     }
 
     DeviceContext::~DeviceContext()

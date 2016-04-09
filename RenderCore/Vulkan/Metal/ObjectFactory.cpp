@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ObjectFactory.h"
+#include "Resource.h"
 #include "../../../Core/Prefix.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -328,9 +329,6 @@ namespace RenderCore { namespace Metal_Vulkan
         _destruction = CreateDestructionQueue(_device);
     }
 
-    ObjectFactory::ObjectFactory(IDevice*) {}
-    ObjectFactory::ObjectFactory(Underlying::Resource&) {}
-
 	ObjectFactory::ObjectFactory() {}
 	ObjectFactory::~ObjectFactory() 
     {
@@ -339,17 +337,32 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
 
-    static const ObjectFactory* s_defaultObjectFactory = nullptr;
+    static ObjectFactory* s_defaultObjectFactory = nullptr;
 
-    void SetDefaultObjectFactory(const ObjectFactory* factory)
+    void SetDefaultObjectFactory(ObjectFactory* factory)
     {
         s_defaultObjectFactory = factory;
     }
 
-    const ObjectFactory& GetDefaultObjectFactory()
-    {
-        return *s_defaultObjectFactory;
-    }
+	ObjectFactory& GetObjectFactory(IDevice& device)
+	{
+		return *s_defaultObjectFactory;
+	}
+
+	ObjectFactory& GetObjectFactory(DeviceContext&)
+	{
+		return *s_defaultObjectFactory;
+	}
+
+	ObjectFactory& GetObjectFactory(UnderlyingResourcePtr)
+	{
+		return *s_defaultObjectFactory;
+	}
+
+	ObjectFactory& GetObjectFactory()
+	{
+		return *s_defaultObjectFactory;
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

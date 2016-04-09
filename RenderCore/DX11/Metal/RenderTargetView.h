@@ -26,8 +26,7 @@ namespace RenderCore { namespace Metal_DX11
     class RenderTargetView
     {
     public:
-        typedef ID3D::Resource*                 UnderlyingResource;
-        RenderTargetView(UnderlyingResource resource, NativeFormat::Enum format = NativeFormat::Unknown, const SubResourceSlice& arraySlice = SubResourceSlice());
+        RenderTargetView(ID3D::Resource& resource, NativeFormat::Enum format = NativeFormat::Unknown, const SubResourceSlice& arraySlice = SubResourceSlice());
         RenderTargetView(ID3D::RenderTargetView* resource);
         RenderTargetView(MovePTRHelper<ID3D::RenderTargetView> resource);
         RenderTargetView(DeviceContext& context);
@@ -49,8 +48,7 @@ namespace RenderCore { namespace Metal_DX11
     class DepthStencilView
     {
     public:
-        typedef ID3D::Resource*                 UnderlyingResource;
-        DepthStencilView(UnderlyingResource resource, NativeFormat::Enum format = NativeFormat::Unknown, const SubResourceSlice& arraySlice = SubResourceSlice());
+        DepthStencilView(ID3D::Resource& resource, NativeFormat::Enum format = NativeFormat::Unknown, const SubResourceSlice& arraySlice = SubResourceSlice());
         DepthStencilView(ID3D::DepthStencilView* resource);
         DepthStencilView(MovePTRHelper<ID3D::DepthStencilView> resource);
         DepthStencilView(DeviceContext& context);
@@ -80,9 +78,8 @@ namespace RenderCore { namespace Metal_DX11
             };
             typedef unsigned BitField;
         };
-        typedef ID3D::Resource*                 UnderlyingResource;
-        UnorderedAccessView(UnderlyingResource resource, NativeFormat::Enum format = NativeFormat::Unknown, unsigned mipSize = 0, bool appendBuffer = false, bool forceArray = false);
-        UnorderedAccessView(UnderlyingResource resource, Flags::BitField field);
+        UnorderedAccessView(ID3D::Resource& resource, NativeFormat::Enum format = NativeFormat::Unknown, unsigned mipSize = 0, bool appendBuffer = false, bool forceArray = false);
+        UnorderedAccessView(ID3D::Resource& resource, Flags::BitField field);
         UnorderedAccessView();
         ~UnorderedAccessView();
 

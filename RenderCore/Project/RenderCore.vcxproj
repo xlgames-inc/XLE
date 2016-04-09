@@ -104,6 +104,7 @@
     <ClInclude Include="..\MinimalShaderSource.h" />
     <ClInclude Include="..\RenderUtils.h" />
     <ClInclude Include="..\Resource.h" />
+    <ClInclude Include="..\ResourceDesc.h" />
     <ClInclude Include="..\ShaderLangUtil.h" />
     <ClInclude Include="..\ShaderService.h" />
     <ClInclude Include="..\Vulkan\Device.h" />

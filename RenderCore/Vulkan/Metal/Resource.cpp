@@ -8,11 +8,10 @@
 #include "ObjectFactory.h"
 #include "Format.h"
 #include "DeviceContext.h"
+#include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-	using namespace BufferUploads;
-
 	static VkBufferUsageFlags AsBufferUsageFlags(BindFlag::BitField bindFlags)
 	{
 		VkBufferUsageFlags result = 0;
@@ -168,13 +167,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
-		const void* initData, size_t initDataSize)
+		const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
 	: _desc(desc)
 	{
 		// Our resource can either be a linear buffer, or an image
 		// These correspond to the 2 types of Desc
 		// We need to create the buffer/image first, so we can called vkGetXXXMemoryRequirements
-		const bool hasInitData = initData && (initDataSize > 0);
+		const bool hasInitData = !!initData;
 
 		VkMemoryRequirements mem_reqs = {}; 
 		if (desc._type == Desc::Type::LinearBuffer) {
@@ -254,22 +253,66 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		_mem = factory.AllocateMemory(mem_reqs.size, memoryTypeIndex);
 
-		// after allocation, we must initialise the data
-		if (hasInitData) {
-			MemoryMap map(factory.GetDevice().get(), _mem.get());
-			std::memcpy(map._data, initData, std::min(initDataSize, (size_t)mem_reqs.size));
-		}
-
 		const VkDeviceSize offset = 0; 
 		if (_underlyingBuffer) {
+
+			// after allocation, we must initialise the data. Linear buffers don't have subresources,
+			// so it's reasonably easy
+			if (hasInitData) {
+				auto subResData = initData(0, 0);
+				if (subResData._data && subResData._size) {
+					MemoryMap map(factory.GetDevice().get(), _mem.get());
+					std::memcpy(map._data, subResData._data, std::min(subResData._size, (size_t)mem_reqs.size));
+				}
+			}
+
 			auto res = vkBindBufferMemory(factory.GetDevice().get(), _underlyingBuffer.get(), _mem.get(), offset);
 			if (res != VK_SUCCESS)
 				Throw(VulkanAPIFailure(res, "Failed while binding a buffer to device memory"));
 		} else if (_underlyingImage) {
+			
+			// Initialisation for images is more complex... We just iterate through each subresource
+			// and copy in the data.
+			if (hasInitData) {
+				auto mipCount = std::max(1u, unsigned(desc._textureDesc._mipCount));
+				auto arrayCount = std::max(1u, unsigned(desc._textureDesc._arrayCount));
+				auto aspectFlags = AsImageAspectMask(desc._bindFlags, (NativeFormat::Enum)desc._textureDesc._nativePixelFormat);
+				for (unsigned m = 0; m < mipCount; ++m) {
+					for (unsigned a = 0; a < arrayCount; ++a) {
+						auto subResData = initData(m, a);
+						if (!subResData._data || !subResData._size) continue;
+
+						VkImageSubresource subRes = { aspectFlags, m, a };
+						VkSubresourceLayout layout = {};
+						vkGetImageSubresourceLayout(
+							factory.GetDevice().get(), _underlyingImage.get(),
+							&subRes, &layout);
+
+						if (!layout.size) continue;	// couldn't find this subresource?
+
+						// todo -- we should support cases where the pitches do now line up as expected!
+						if (layout.rowPitch != subResData._rowPitch || layout.arrayPitch != subResData._slicePitch)
+							Throw(::Exceptions::BasicLabel("Row or array pitch values are not as expected. These cases not supported."));
+
+						// finally, map and copy
+						MemoryMap map(factory.GetDevice().get(), _mem.get(), layout.offset, layout.size);
+						XlCopyMemory(map._data, subResData._data, std::min(layout.size, subResData._size));
+					}
+				}
+			}
+
 			auto res = vkBindImageMemory(factory.GetDevice().get(), _underlyingImage.get(), _mem.get(), 0);
 			if (res != VK_SUCCESS)
 				Throw(VulkanAPIFailure(res, "Failed while binding an image to device memory"));
 		}
+	}
+
+	Resource::Resource(
+		const ObjectFactory& factory, const Desc& desc,
+		const SubResourceInitData& initData)
+	: Resource(factory, desc, [&initData](unsigned m, unsigned a) { if (m==0&&a==0) return initData; return SubResourceInitData{}; })
+	{
+
 	}
 
 	Resource::Resource() {}
@@ -345,9 +388,9 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	MemoryMap::MemoryMap(
-		VkDevice dev, Resource& resource,
+		VkDevice dev, UnderlyingResourcePtr resource,
 		VkDeviceSize offset, VkDeviceSize size)
-	: MemoryMap(dev, resource.GetMemory(), offset, size)
+	: MemoryMap(dev, resource.get()->GetMemory(), offset, size)
 	{}
 
 	void MemoryMap::TryUnmap()

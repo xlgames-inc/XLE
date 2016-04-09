@@ -8,17 +8,14 @@
 
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
-#include "../../../BufferUploads/IBufferUploads.h"
+#include "../../ResourceDesc.h"
 #include "../../../Utility/IntrusivePtr.h"
+#include "../../../Utility/Threading/ThreadingUtils.h"
+
+namespace RenderCore { class Resource; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-    namespace Underlying
-    {
-		class DummyResource {};
-        typedef DummyResource Resource;
-    }
-
 	class ObjectFactory;
 	class DeviceContext;
 
@@ -44,17 +41,20 @@ namespace RenderCore { namespace Metal_Vulkan
 	/// Images and buffers are combined into a single object for convenience. This allows us to use the 
 	/// single "Desc" object to describe both, and it also fits in better with other APIs (eg, DirectX).
 	/// This adds a small amount of redundancy to the Resource object -- but it seems to be trivial.
-	class Resource
+	class Resource : public RefCountedObject
 	{
 	public:
-		using Desc = BufferUploads::BufferDesc;
+		using Desc = ResourceDesc;
 
 		void SetImageLayout(
 			DeviceContext& context, ImageLayout oldLayout, ImageLayout newLayout);
 
 		Resource(
 			const ObjectFactory& factory, const Desc& desc,
-			const void* initData = nullptr, size_t initDataSize = 0);
+			const SubResourceInitData& initData = SubResourceInitData{});
+		Resource(
+			const ObjectFactory& factory, const Desc& desc,
+			const std::function<SubResourceInitData(unsigned, unsigned)>&);
 		Resource();
 		~Resource();
 
@@ -71,6 +71,20 @@ namespace RenderCore { namespace Metal_Vulkan
 		Desc _desc;
 	};
 
+	/// <summary>Helper object to catch multiple similar pointers</summary>
+	/// To help with platform abstraction, RenderCore::Resource* is actually the
+	/// same as a Metal::Resource*. This helper allows us to catch both equally.
+	class UnderlyingResourcePtr
+	{
+	public:
+		Resource* get() { return _res; }
+
+		UnderlyingResourcePtr(Resource* res) { _res = res; }
+		UnderlyingResourcePtr(RenderCore::Resource* res) { _res = (Resource*)_res; }
+	protected:
+		Resource* _res;
+	};
+
 	class MemoryMap
 	{
 	public:
@@ -80,7 +94,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkDevice dev, VkDeviceMemory memory,
 			VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
 		MemoryMap(
-			VkDevice dev, Resource& resource,
+			VkDevice dev, UnderlyingResourcePtr resource,
 			VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
 		MemoryMap();
 		~MemoryMap();
@@ -99,8 +113,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     class DeviceContext;
 
-	inline void Copy(DeviceContext&, Underlying::Resource* dst, Underlying::Resource* src) {}
-	void Copy(DeviceContext&, Resource& dst, Resource& src, ImageLayout dstLayout, ImageLayout srcLayout);
+	void Copy(DeviceContext&, UnderlyingResourcePtr dst, UnderlyingResourcePtr src, ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
     namespace Internal { static std::true_type UnsignedTest(unsigned); static std::false_type UnsignedTest(...); }
 
@@ -131,46 +144,41 @@ namespace RenderCore { namespace Metal_Vulkan
     class CopyPartial_Dest
     {
     public:
-        Underlying::Resource* _resource;
+        Resource*		_resource;
         unsigned        _subResource;
         PixelCoord      _leftTopFront;
 
         CopyPartial_Dest(
-			Underlying::Resource* dst, unsigned subres = 0u,
+			UnderlyingResourcePtr dst, unsigned subres = 0u,
             const PixelCoord leftTopFront = PixelCoord())
-        : _resource(dst), _subResource(subres), _leftTopFront(leftTopFront) {}
+        : _resource(dst.get()), _subResource(subres), _leftTopFront(leftTopFront) {}
     };
 
     class CopyPartial_Src
     {
     public:
-		Underlying::Resource* _resource;
+		Resource* _resource;
         unsigned        _subResource;
         PixelCoord      _leftTopFront;
         PixelCoord      _rightBottomBack;
 
         CopyPartial_Src(
-			Underlying::Resource* dst, unsigned subres = 0u,
+			UnderlyingResourcePtr dst, unsigned subres = 0u,
             const PixelCoord leftTopFront = PixelCoord(~0u,0,0),
             const PixelCoord rightBottomBack = PixelCoord(~0u,1,1))
-        : _resource(dst), _subResource(subres)
+        : _resource(dst.get()), _subResource(subres)
         , _leftTopFront(leftTopFront)
         , _rightBottomBack(rightBottomBack) {}
     };
 
 	inline void CopyPartial(DeviceContext&, const CopyPartial_Dest& dst, const CopyPartial_Src& src) {}
 
-	inline intrusive_ptr<Underlying::Resource> Duplicate(DeviceContext& context, Underlying::Resource* inputResource) { return nullptr; }
+	inline intrusive_ptr<Resource> Duplicate(DeviceContext& context, UnderlyingResourcePtr inputResource) { return nullptr; }
 
-
-	VkSampleCountFlagBits AsSampleCountFlagBits(BufferUploads::TextureSamples samples);
+	VkSampleCountFlagBits AsSampleCountFlagBits(TextureSamples samples);
 	void SetImageLayout(
 		VkCommandBuffer cmd, VkImage image,
 		VkImageAspectFlags aspectMask, VkImageLayout old_image_layout, VkImageLayout new_image_layout);
-}}
 
-namespace Utility
-{
-	template<> inline void intrusive_ptr_add_ref(RenderCore::Metal_Vulkan::Underlying::Resource* p) {}
-	template<> inline void intrusive_ptr_release(RenderCore::Metal_Vulkan::Underlying::Resource* p) {}
-}
+	ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
+}}

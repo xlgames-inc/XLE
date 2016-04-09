@@ -1091,7 +1091,7 @@ namespace RenderCore
 
 		_depthStencilResource = Resource(
             factory, 
-            BufferUploads::CreateDesc(
+            CreateDesc(
                 BufferUploads::BindFlag::DepthStencil,
                 0, BufferUploads::GPUAccess::Read | BufferUploads::GPUAccess::Write,
                 BufferUploads::TextureDesc::Plain2D(bufferDesc._width, bufferDesc._height, VK_FORMAT_D24_UNORM_S8_UINT, 1, 1, bufferDesc._samples),
