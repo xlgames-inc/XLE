@@ -47,7 +47,5 @@ namespace RenderCore { namespace Metal_DX11
 
     class InputElementDesc;
     typedef std::pair<const InputElementDesc*, size_t>   InputLayout;
-
-    namespace GPUProfiler { class Profiler; }
 }}
 

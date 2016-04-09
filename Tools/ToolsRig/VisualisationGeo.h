@@ -6,8 +6,6 @@
 
 #pragma once
 
-#define SELECT_VULKAN // -- HACK! we should move RenderCore::Metal::InputElementDesc out of Metal
-
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Math/Vector.h"
 #include <vector>

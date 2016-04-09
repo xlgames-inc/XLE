@@ -16,9 +16,9 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
-	static intrusive_ptr<ID3D::Device> ExtractUnderlyingDevice(RenderCore::IDevice* device)
+	static intrusive_ptr<ID3D::Device> ExtractUnderlyingDevice(RenderCore::IDevice& device)
 	{
-		auto* dx11Device = (RenderCore::IDeviceDX11*)device->QueryInterface(__uuidof(RenderCore::IDeviceDX11));
+		auto* dx11Device = (RenderCore::IDeviceDX11*)device.QueryInterface(__uuidof(RenderCore::IDeviceDX11));
 		if (dx11Device) {
 			return dx11Device->GetUnderlyingDevice();
 		}
@@ -342,7 +342,7 @@ namespace RenderCore { namespace Metal_DX11
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	ObjectFactory* GetObjectFactory(IDevice* device)
+	ObjectFactory* GetObjectFactory(IDevice& device)
 	{
 		auto devDX = ExtractUnderlyingDevice(device);
 		if (!devDX) return nullptr;

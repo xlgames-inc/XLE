@@ -13,6 +13,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
@@ -98,7 +99,7 @@ namespace SceneEngine
         blendStateDesc.RenderTarget[2].DestBlendAlpha = D3D11_BLEND_ONE;
         blendStateDesc.RenderTarget[2].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 
-        auto blendState = RenderCore::Metal::ObjectFactory().CreateBlendState(&blendStateDesc);
+        auto blendState = RenderCore::Metal::GetObjectFactory()->CreateBlendState(&blendStateDesc);
         _blendState = Metal::BlendState(std::move(blendState));
     }
 

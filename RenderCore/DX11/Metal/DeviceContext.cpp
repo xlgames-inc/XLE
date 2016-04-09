@@ -320,7 +320,7 @@ namespace RenderCore { namespace Metal_DX11
         _annotations = QueryInterfaceCast<ID3D::UserDefinedAnnotation>(_underlying);
 
 		ID3D::Device* dev = nullptr;
-		context->GetDevice(&dev);
+		_underlying->GetDevice(&dev);
 		if (dev) _factory = GetObjectFactory(*dev);
     }
 

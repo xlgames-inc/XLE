@@ -150,7 +150,7 @@ namespace BufferUploads { namespace PlatformInterface
 
         EventID _lastCompletedID;
 
-        RenderCore::Metal::ObjectFactory _objFactory;
+        RenderCore::Metal::ObjectFactory* _objFactory;
     };
 
         ///////////////////////////////////////////////////////////////////

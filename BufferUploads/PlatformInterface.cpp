@@ -256,7 +256,7 @@ namespace BufferUploads { namespace PlatformInterface
                 for (;;) {
                     const QueryID scheduleResult = Interlocked::CompareExchange(&_nextQueryIDToSchedule, nextToSchedule, thisQueryID);
                     if (scheduleResult == thisQueryID) {
-                        if (!i->_query) { i->_query = Query_CreateEvent(_objFactory); }
+                        if (!i->_query) { i->_query = Query_CreateEvent(*_objFactory); }
                         if (i->_query) { Query_End(context->GetUnderlying(), i->_query.get()); }
                         break;
                     }
@@ -313,7 +313,7 @@ namespace BufferUploads { namespace PlatformInterface
         }
     }
 
-    GPUEventStack::GPUEventStack(RenderCore::IDevice* device) : _objFactory(device)
+    GPUEventStack::GPUEventStack(RenderCore::IDevice* device) : _objFactory(GetObjectFactory(*device))
     {
             //
             //      What we really want is an "event" query that holds an integer value (like the events on the 

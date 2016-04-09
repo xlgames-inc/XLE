@@ -2374,8 +2374,8 @@ namespace BufferUploads
         using namespace PlatformInterface;
         if (RequiresStagingResourceReadBack && !(desc._cpuAccess & CPUAccess::Read)) {
             BufferDesc stagingDesc = AsStagingDesc(desc);
-            ObjectFactory tempFactory(*resource);
-            stagingResource = CreateResource(tempFactory, stagingDesc);
+            auto* factory = GetObjectFactory(*resource);
+            stagingResource = CreateResource(*factory, stagingDesc);
             if (stagingResource.get()) {
                 context.ResourceCopy(*stagingResource.get(), *resource);
                 resource = stagingResource.get();

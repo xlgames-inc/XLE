@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ResourceSource.h"
-// #include "../RenderCore/DX11/IDeviceDX11.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/StringUtils.h"
@@ -154,7 +154,7 @@ namespace BufferUploads
                 if (deviceCreation) {
                     Interlocked::Increment(&_recentDeviceCreateCount);
                     deviceCreation = true;
-                    auto result = PlatformInterface::CreateResource(_underlyingDevice, _desc, NULL);
+                    auto result = PlatformInterface::CreateResource(*_underlyingDevice, _desc, NULL);
                     if (result) {
                         #if defined(REUSABLE_RESOURCE_DEBUGGING)
                             PlatformInterface::AttachObject(
@@ -215,7 +215,7 @@ namespace BufferUploads
             _totalCreateSize = _totalCreateCount = _totalRealSize = 0;
             _currentFrameID = 0;
             _retainFrames = retainFrames;
-            _underlyingDevice = underlyingDevice;
+            _underlyingDevice = &underlyingDevice;
         }
 
     tdesc ResourcesPool<Desc>::PoolOfLikeResources::~PoolOfLikeResources()
@@ -241,7 +241,7 @@ namespace BufferUploads
         return result;
     }
 
-    tdesc ResourcesPool<Desc>::ResourcesPool(RenderCore::IDevice* device, unsigned retainFrames) : _hashTableIndex(0), _retainFrames(retainFrames), _underlyingDevice(device)
+    tdesc ResourcesPool<Desc>::ResourcesPool(RenderCore::IDevice* device, unsigned retainFrames) : _hashTableIndex(0), _retainFrames(retainFrames), _underlyingDevice(GetObjectFactory(*device))
     {
         _readerCount[0] = _readerCount[1] = 0;
     }
@@ -298,7 +298,7 @@ namespace BufferUploads
                 HashTableEntry newEntry;
                 newEntry.first = hashValue;
                 newEntry.second = std::make_shared<PoolOfLikeResources>(
-                    std::ref(_underlyingDevice), desc, _retainFrames);
+                    std::ref(*_underlyingDevice), desc, _retainFrames);
                 auto newIterator = newHashTable.insert(entry, newEntry);
                 _hashTableIndex = nextHashTableIndex;
 
@@ -1022,7 +1022,7 @@ namespace BufferUploads
                 result._flags |= deviceCreation?ResourceConstruction::Flags::DeviceConstructionInvoked:0;
             } else if (deviceCreation) {
                 result._identifier = make_intrusive<ResourceLocator>(
-                    PlatformInterface::CreateResource(_underlyingDevice, desc, PlatformInterface::SupportsResourceInitialisation?initialisationData:NULL),
+                    PlatformInterface::CreateResource(*_underlyingDevice, desc, PlatformInterface::SupportsResourceInitialisation?initialisationData:NULL),
                     0, objectSize);
                 result._flags |= PlatformInterface::SupportsResourceInitialisation?ResourceConstruction::Flags::InitialisationSuccessful:0;
                 result._flags |= ResourceConstruction::Flags::DeviceConstructionInvoked;
@@ -1136,7 +1136,7 @@ namespace BufferUploads
     }
 
     ResourceSource::ResourceSource(RenderCore::IDevice* device)
-    :   _underlyingDevice(device)
+    :   _underlyingDevice(RenderCore::Metal::GetObjectFactory(*device))
     {
         _flushThread = 0;
         _frameID = 0;

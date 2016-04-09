@@ -83,3 +83,10 @@ namespace RenderCore { namespace Metal_DX11
     }
 }}
 
+#pragma warning(push)
+#pragma warning(disable:4231)   // nonstandard extension used : 'extern' before template explicit instantiation
+/// \cond INTERNAL
+extern template Utility::intrusive_ptr<ID3D::Query>;
+/// \endcond
+#pragma warning(pop)
+

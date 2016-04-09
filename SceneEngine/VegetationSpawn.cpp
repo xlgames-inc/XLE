@@ -17,6 +17,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/RenderUtils.h"
 
 #include "../RenderCore/Assets/ModelCache.h"
@@ -154,7 +155,7 @@ namespace SceneEngine
         D3D11_QUERY_DESC queryDesc;
         queryDesc.Query = D3D11_QUERY_SO_STATISTICS;
         queryDesc.MiscFlags = 0;
-        auto streamOutputCountsQuery = Metal::ObjectFactory().CreateQuery(&queryDesc);
+        auto streamOutputCountsQuery = Metal::GetObjectFactory()->CreateQuery(&queryDesc);
 
         _streamOutputBuffers[0] = Metal::VertexBuffer(so0r->GetUnderlying());
         _streamOutputBuffers[1] = Metal::VertexBuffer(so1r->GetUnderlying());

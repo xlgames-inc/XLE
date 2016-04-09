@@ -10,10 +10,27 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
+	void Resource::SetImageLayout(
+		DeviceContext& context, ImageLayout oldLayout, ImageLayout newLayout) {}
+
+	Resource::Resource(
+		const ObjectFactory& factory, const Desc& desc,
+		const void* initData, size_t initDataSize)
+	{}
+
+	Resource::Resource() {}
+
+	Resource::~Resource() {}
+
     void Copy(DeviceContext& context, ID3D::Resource* dst, ID3D::Resource* src)
     {
         context.GetUnderlying()->CopyResource(dst, src);
     }
+
+	void Copy(DeviceContext& context, Resource& dst, Resource& src, ImageLayout dstLayout, ImageLayout srcLayout)
+	{
+		Copy(context, dst.GetImage(), src.GetImage());
+	}
 
     void CopyPartial(
         DeviceContext& context, 

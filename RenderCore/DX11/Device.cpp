@@ -7,6 +7,7 @@
 #include "Device.h"
 #include "Metal/DeviceContext.h"
 #include "Metal/State.h"
+#include "Metal/ObjectFactory.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"

@@ -34,7 +34,7 @@
 #include "../../SceneEngine/IntersectionTest.h"
 
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Metal/GPUProfiler.h"
+#include "../../RenderCore/GPUProfiler.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"

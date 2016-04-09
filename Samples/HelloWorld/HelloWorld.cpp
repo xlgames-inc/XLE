@@ -16,7 +16,7 @@
 #include "../../PlatformRig/OverlaySystem.h"
 
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Metal/GPUProfiler.h"
+#include "../../RenderCore/GPUProfiler.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Assets/Services.h"
@@ -50,7 +50,7 @@ namespace Sample
 
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
-    RenderCore::Metal::GPUProfiler::Ptr g_gpuProfiler;
+    RenderCore::GPUProfiler::Ptr g_gpuProfiler;
     Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +105,7 @@ namespace Sample
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
         renderAssetServices->InitColladaCompilers();
-        g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
+        g_gpuProfiler = RenderCore::GPUProfiler::CreateProfiler();
         RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices->GetBufferUploads());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
 

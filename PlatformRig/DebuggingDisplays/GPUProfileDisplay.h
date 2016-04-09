@@ -19,7 +19,7 @@ namespace PlatformRig { namespace Overlays
     class GPUProfileDisplay : public IWidget ///////////////////////////////////////////////////////////
     {
     public:
-        GPUProfileDisplay(RenderCore::Metal::GPUProfiler::Profiler* profiler);
+        GPUProfileDisplay(RenderCore::GPUProfiler::Profiler* profiler);
         ~GPUProfileDisplay();
         void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
@@ -53,7 +53,7 @@ namespace PlatformRig { namespace Overlays
         std::auto_ptr<GPUFrameConstruction> _currentFrame;
         GPUTime _endOfLastFrame;
 
-        RenderCore::Metal::GPUProfiler::Profiler* _profiler;
+        RenderCore::GPUProfiler::Profiler* _profiler;
 
         void    ProcessGPUEvents(const void* eventsBufferStart, const void* eventsBufferEnd);
         void    PushSectionInfo(const char id[], GPUTime selfTime);

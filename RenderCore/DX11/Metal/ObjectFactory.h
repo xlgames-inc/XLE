@@ -90,7 +90,7 @@ namespace RenderCore { namespace Metal_DX11
 		mutable Threading::Mutex _creationLock;
     };
 
-	ObjectFactory* GetObjectFactory(IDevice* device);
+	ObjectFactory* GetObjectFactory(IDevice& device);
 	ObjectFactory* GetObjectFactory(ID3D::Device& device);
 	ObjectFactory* GetObjectFactory(ID3D::Resource& resource);
 	ObjectFactory* GetObjectFactory(DeviceContext&);

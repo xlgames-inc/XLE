@@ -11,6 +11,10 @@
 #include <vector>
 #include <deque>
 
+#if GFXAPI_TARGET == GFXAPI_DX11
+	#include "DX11/Metal/IncludeDX11.h"
+#endif
+
 namespace RenderCore { namespace GPUProfiler
 {
 	using namespace RenderCore::Metal::GPUProfiler;

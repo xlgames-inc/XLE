@@ -21,7 +21,7 @@
 #include "../../SceneEngine/DynamicImposters.h"
 #include "../../SceneEngine/SceneEngineUtils.h"     // for AsDelaySteps
 
-#include "../../RenderCore/Metal/GPUProfiler.h"
+#include "../../RenderCore/GPUProfiler.h"
 #include "../../RenderCore/Assets/ModelCache.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
 

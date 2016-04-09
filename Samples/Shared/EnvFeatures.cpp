@@ -12,7 +12,7 @@
 #include "../../SceneEngine/ShallowSurface.h"
 #include "../../SceneEngine/VegetationSpawn.h"
 #include "../../SceneEngine/SceneEngineUtils.h" // for AsDelaySteps
-#include "../../RenderCore/Metal/GPUProfiler.h"
+#include "../../RenderCore/GPUProfiler.h"
 #include "../../Tools/EntityInterface/EnvironmentSettings.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
 #include "../../Assets/ConfigFileContainer.h"

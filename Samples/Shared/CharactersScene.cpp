@@ -12,7 +12,7 @@
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Metal/GPUProfiler.h"
+#include "../../RenderCore/GPUProfiler.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"

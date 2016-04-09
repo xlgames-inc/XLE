@@ -18,6 +18,7 @@
 #include "../Metal/DeviceContext.h"
 #include "../Metal/ShaderResource.h"
 #include "../Metal/Resource.h"
+#include "../Metal/ObjectFactory.h"
 
 #include "../Techniques/ResourceBox.h"
 #include "../Techniques/Techniques.h"
@@ -1185,24 +1186,24 @@ namespace RenderCore { namespace Assets
 			bufferDesc.MiscFlags = 0;
 			bufferDesc.StructureByteStride = 0;
 
-			ObjectFactory objFactory;
+			auto* objFactory = GetObjectFactory();
 
 			D3D11_SUBRESOURCE_DATA subData;
 			subData.pSysMem = sourceData;
 			subData.SysMemPitch = subData.SysMemSlicePitch = (UINT)bufferSize;
-			_resource = objFactory.CreateBuffer(&bufferDesc, sourceData?(&subData):nullptr);
+			_resource = objFactory->CreateBuffer(&bufferDesc, sourceData?(&subData):nullptr);
 
 			bufferDesc.Usage = D3D11_USAGE_STAGING;
 			bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 			bufferDesc.BindFlags = 0;
-			_stagingResource = objFactory.CreateBuffer(&bufferDesc);
+			_stagingResource = objFactory->CreateBuffer(&bufferDesc);
 
 			D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 			srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 			srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER ;
 			srvDesc.Buffer.ElementOffset = 0;
 			srvDesc.Buffer.ElementWidth = (UINT)(bufferSize / (4*sizeof(float)));
-			auto srv = objFactory.CreateShaderResourceView(_resource.get(), &srvDesc);
+			auto srv = objFactory->CreateShaderResourceView(_resource.get(), &srvDesc);
 			_view = ShaderResourceView(srv.get());
 		#endif
     }

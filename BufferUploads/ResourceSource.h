@@ -38,7 +38,7 @@ namespace BufferUploads
             unsigned offset, unsigned size);
 
         std::vector<PoolMetrics>    CalculateMetrics() const;
-        ObjectFactory*              GetUnderlyingDevice() { return &_underlyingDevice; }
+        ObjectFactory*              GetUnderlyingDevice() { return _underlyingDevice; }
         void                        OnLostDevice();
         void                        Update(unsigned newFrameID);
 
@@ -69,7 +69,7 @@ namespace BufferUploads
             Interlocked::Value          _totalCreateSize, _totalCreateCount, _totalRealSize;
             unsigned                    _currentFrameID;
             unsigned                    _retainFrames;
-            ObjectFactory               _underlyingDevice;
+            ObjectFactory*              _underlyingDevice;
         };
 
             //
@@ -83,7 +83,7 @@ namespace BufferUploads
         unsigned                        _hashTableIndex;
         mutable Threading::Mutex        _writerLock;
         unsigned                        _retainFrames;
-        ObjectFactory                   _underlyingDevice;
+        ObjectFactory*                  _underlyingDevice;
 
         struct CompareFirst
         {
@@ -259,7 +259,7 @@ namespace BufferUploads
         uint32                              _flushThread;
         unsigned                            _frameID;
         Threading::Mutex                    _flushDelayedReleasesLock;
-        ObjectFactory                       _underlyingDevice;
+        ObjectFactory*                      _underlyingDevice;
 
         #if defined(D3D_BUFFER_UPLOAD_USE_WAITABLE_QUEUES)
             LockFree::FixedSizeQueue_Waitable<intrusive_ptr<ResourceLocator>,256> _delayedReleases;

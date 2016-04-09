@@ -355,7 +355,7 @@ namespace PlatformRig { namespace Overlays
         }
     }
 
-    GPUProfileDisplay::GPUProfileDisplay(RenderCore::Metal::GPUProfiler::Profiler* profiler)
+    GPUProfileDisplay::GPUProfileDisplay(RenderCore::GPUProfiler::Profiler* profiler)
     :   _currentFrame( new GPUFrameConstruction )
     ,   _profiler(profiler)
     {
