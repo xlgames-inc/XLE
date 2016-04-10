@@ -12,6 +12,7 @@
 #include "AssetUtils.h"     // actually just needed for chunk id
 #include "DeferredShaderResource.h"
 #include "../RenderUtils.h"
+#include "../Types.h"
 
 #include "../IDevice.h"
 #include "../Metal/Shader.h"
@@ -50,7 +51,7 @@ namespace RenderCore { namespace Assets
             Desc(uint64 hash) : _hash(hash) {}
         };
 
-        std::vector<Metal::InputElementDesc> _elements;
+        std::vector<InputElementDesc> _elements;
         HashedInputAssemblies(const Desc& ) {}
     };
 
@@ -88,7 +89,7 @@ namespace RenderCore { namespace Assets
         auto& ai = Techniques::FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(desc._iaHash));
         const auto& skinningInputLayout = ai._elements;
 
-        std::vector<Metal::InputElementDesc> skinningOutputLayout;
+        std::vector<InputElementDesc> skinningOutputLayout;
         for (auto i=skinningInputLayout.cbegin(); i!=skinningInputLayout.cend(); ++i) {
             if (i->_inputSlot == 0) skinningOutputLayout.push_back(*i);
         }
@@ -378,7 +379,7 @@ namespace RenderCore { namespace Assets
                 //  This hashed input assembly will contain both the full input assembly 
                 //  for preparing skinning (with the animated elements in slot 0, and 
                 //  the skeleton binding info in slot 1)
-            Metal::InputElementDesc inputDesc[12];
+            InputElementDesc inputDesc[12];
             unsigned vertexElementCount = BuildLowLevelInputAssembly(
                 inputDesc, dimof(inputDesc),
                 scaffoldGeo._animatedVertexElements._ia._elements);
@@ -403,10 +404,10 @@ namespace RenderCore { namespace Assets
                 //  isn't a 4D float16 format, most of the time the 4D format is intended to
                 //  be a 3D format. This will break if the format is intended to truly be
                 //  4D).
-            if (    GetComponentType(Metal::NativeFormat::Enum(dst[c]._nativeFormat)) == FormatComponentType::Float
-                &&  GetComponentPrecision(Metal::NativeFormat::Enum(dst[c]._nativeFormat)) == 16) {
+            if (    GetComponentType(dst[c]._nativeFormat) == FormatComponentType::Float
+                &&  GetComponentPrecision(dst[c]._nativeFormat) == 16) {
 
-                auto components = GetComponents(Metal::NativeFormat::Enum(dst[c]._nativeFormat));
+                auto components = GetComponents(dst[c]._nativeFormat);
                 if (components == FormatComponents::RGBAlpha) {
                     components = FormatComponents::RGB;
                 }
@@ -414,7 +415,7 @@ namespace RenderCore { namespace Assets
                     FormatCompressionType::None, 
                     components, FormatComponentType::Float,
                     32);
-                if (recastFormat != NativeFormat::Unknown) {
+                if (recastFormat != Format::Unknown) {
                     dst[c]._nativeFormat = recastFormat;
                 }
             }
@@ -422,7 +423,7 @@ namespace RenderCore { namespace Assets
     }
 
     unsigned ModelRenderer::PimplWithSkinning::BuildPostSkinInputAssembly(
-        Metal::InputElementDesc dst[], unsigned dstCount,
+        InputElementDesc dst[], unsigned dstCount,
         const BoundSkinnedGeometry& scaffoldGeo)
     {
         // build the native input assembly that should be used when using
@@ -464,7 +465,7 @@ namespace RenderCore { namespace Assets
         result._techniqueInterface = ~unsigned(0x0);
         result._vertexStride = 0;
 
-        Metal::InputElementDesc inputDescForRender[12];
+        InputElementDesc inputDescForRender[12];
         auto vertexElementForRenderCount = 
             PimplWithSkinning::BuildPostSkinInputAssembly(
                 inputDescForRender, dimof(inputDescForRender), geo);
@@ -1109,8 +1110,8 @@ namespace RenderCore { namespace Assets
         using namespace RenderCore::Metal;
 
         InputElementDesc vertexInputLayout[] = {
-            InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT ),
-            InputElementDesc( "COLOR",      0, NativeFormat::R8G8B8A8_UNORM )
+            InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT ),
+            InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM )
         };
 
             //      Setup basic state --- blah, blah, blah..., 

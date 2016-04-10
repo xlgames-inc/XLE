@@ -7,10 +7,9 @@
 #pragma once
 
 #include "Resource.h"
-#include "Format.h"
 #include "../../../Utility/IntrusivePtr.h"
 
-namespace RenderCore { class Resource; }
+namespace RenderCore { class Resource; enum class Format; }
 namespace RenderCore { namespace Metal_Vulkan
 {
     class DeviceContext;
@@ -28,7 +27,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
 		RenderTargetView(DeviceContext& context) {}
-		RenderTargetView(UnderlyingResourcePtr, NativeFormat::Enum = NativeFormat::Unknown) {}
+		RenderTargetView(UnderlyingResourcePtr, Format = Format(0)) {}
         RenderTargetView() {}
         ~RenderTargetView() {}
 

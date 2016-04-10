@@ -15,6 +15,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 
 namespace Utility { class DefragStep; }
+namespace RenderCore { enum class Format; }
 
 namespace BufferUploads { namespace PlatformInterface
 {
@@ -23,14 +24,14 @@ namespace BufferUploads { namespace PlatformInterface
 	using UnderlyingQuery = RenderCore::Metal::UnderlyingQuery;
 	using UnderlyingResource = RenderCore::Resource;
 	using UnderlyingResourcePtr = RenderCore::ResourcePtr;
-	namespace NativeFormat = RenderCore::Metal::NativeFormat;
+	using NativeFormat = RenderCore::Format;
 
 	UnderlyingResourcePtr CreateResource(RenderCore::IDevice& device, const BufferDesc& desc, DataPacket* initialisationData = nullptr);
     BufferDesc      ExtractDesc(const RenderCore::Resource& resource);
 
     unsigned        ByteCount(const BufferDesc& desc);
     unsigned        ByteCount(const TextureDesc& desc);
-    unsigned        TextureDataSize(unsigned nWidth, unsigned nHeight, unsigned nDepth, unsigned mipCount, NativeFormat::Enum format);
+    unsigned        TextureDataSize(unsigned nWidth, unsigned nHeight, unsigned nDepth, unsigned mipCount, NativeFormat format);
     int64           QueryPerformanceCounter();
 
     TextureDesc     CalculateMipMapDesc(const TextureDesc& topMostMipDesc, unsigned mipMapIndex);

@@ -7,7 +7,7 @@
 #include "TechniqueMaterial.h"
 #include "ParsingContext.h"
 #include "PredefinedCBLayout.h"
-#include "../Metal/InputLayout.h"
+#include "../Types.h"
 #include "../../Assets/Assets.h"
 #include "../../Utility/StringUtils.h"
 
@@ -16,7 +16,7 @@ namespace RenderCore { namespace Techniques
     const ::Assets::ResChar* DefaultPredefinedCBLayout = "game/xleres/techniques/BasicMaterialConstants.txt";
 
     static Techniques::TechniqueInterface MakeTechInterface(
-        const Metal::InputLayout& inputLayout,
+        const InputLayout& inputLayout,
         const std::initializer_list<uint64>& objectCBs)
     {
         Techniques::TechniqueInterface techniqueInterface(inputLayout);
@@ -27,18 +27,18 @@ namespace RenderCore { namespace Techniques
         return std::move(techniqueInterface);
     }
 
-    static bool HasElement(const Metal::InputLayout& inputLayout, const char elementSemantic[])
+    static bool HasElement(const InputLayout& inputLayout, const char elementSemantic[])
     {
         auto end = &inputLayout.first[inputLayout.second];
         return std::find_if
             (
                 inputLayout.first, end,
-                [=](const Metal::InputElementDesc& element)
+                [=](const InputElementDesc& element)
                     { return !XlCompareStringI(element._semanticName.c_str(), elementSemantic); }
             ) != end;
     }
 
-    ParameterBox TechParams_SetGeo(const Metal::InputLayout& inputLayout)
+    ParameterBox TechParams_SetGeo(const InputLayout& inputLayout)
     {
         ParameterBox result;
         if (HasElement(inputLayout, "NORMAL"))          result.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);
@@ -50,7 +50,7 @@ namespace RenderCore { namespace Techniques
     }
 
     TechniqueMaterial::TechniqueMaterial(
-        const Metal::InputLayout& inputLayout,
+        const InputLayout& inputLayout,
         const std::initializer_list<uint64>& objectCBs,
         ParameterBox materialParameters)
     : _materialParameters(std::move(materialParameters))

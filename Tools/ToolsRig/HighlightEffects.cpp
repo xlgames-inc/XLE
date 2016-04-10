@@ -13,6 +13,7 @@
 #include "../../RenderCore/Metal/Resource.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderCore/Format.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../Assets/AssetUtils.h"
@@ -50,8 +51,8 @@ namespace ToolsRig
         if (desc._type != ResourceDesc::Type::Texture) return;
 
         bool stencilInput = 
-            Metal::AsTypelessFormat((Metal::NativeFormat::Enum)desc._textureDesc._nativePixelFormat) 
-            == Metal::NativeFormat::R24G8_TYPELESS;
+            AsTypelessFormat(desc._textureDesc._format) 
+            == Format::R24G8_TYPELESS;
                 
         StringMeld<64, ::Assets::ResChar> params;
         params << "ONLY_HIGHLIGHTED=" << unsigned(onlyHighlighted);
@@ -90,8 +91,8 @@ namespace ToolsRig
         {
         public:
             unsigned _width, _height;
-            Metal::NativeFormat::Enum _format;
-            Desc(unsigned width, unsigned height, Metal::NativeFormat::Enum format)
+            Format _format;
+            Desc(unsigned width, unsigned height, Format format)
                 : _width(width), _height(height), _format(format) {}
         };
 

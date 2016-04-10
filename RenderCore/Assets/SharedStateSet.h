@@ -19,6 +19,10 @@ namespace RenderCore { namespace Techniques
     class RenderStateSet;
     class PredefinedCBLayout;
 }}
+namespace RenderCore
+{
+	class InputElementDesc;
+}
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Assets
@@ -66,7 +70,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         SharedTechniqueInterface InsertTechniqueInterface(
-            const RenderCore::Metal::InputElementDesc vertexElements[], unsigned count,
+            const RenderCore::InputElementDesc vertexElements[], unsigned count,
             const uint64 textureBindPoints[], unsigned textureBindPointsCount);
 
         SharedTechniqueConfig InsertTechniqueConfig(const ::Assets::ResChar shaderName[]);

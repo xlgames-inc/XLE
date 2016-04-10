@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/Forward.h"
 #include "../Assets/Assets.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"
 #include "../Core/Types.h"
 
+namespace RenderCore { enum class Format; }
 namespace Utility { class ParameterBox; }
 namespace SceneEngine
 {
@@ -107,7 +107,7 @@ namespace SceneEngine
             /// @{
             /// Shadow texture definition
         uint32      _width, _height;
-        typedef RenderCore::Metal::NativeFormat::Enum Format;
+        using Format = RenderCore::Format;
         Format      _typelessFormat;
         Format      _writeFormat;
         Format      _readFormat;
@@ -215,7 +215,7 @@ namespace SceneEngine
 	inline ShadowProjectionDesc::ShadowProjectionDesc()
 	{
 		_width = _height = 0;
-		_typelessFormat = _writeFormat = _readFormat = RenderCore::Metal::NativeFormat::Enum(0); // RenderCore::Metal::NativeFormat::Unknown;
+		_typelessFormat = _writeFormat = _readFormat = RenderCore::Format(0); // RenderCore::Metal::NativeFormat::Unknown;
 		_worldToClip = Identity<Float4x4>();
 		_slopeScaledBias = 0.f;
 		_depthBiasClamp = 0.f;

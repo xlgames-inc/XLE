@@ -5,29 +5,29 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "VisualisationGeo.h"
-#include "../../RenderCore/Metal/InputLayout.h"
-#include "../../RenderCore/Metal/Format.h"
+#include "../../RenderCore/Types.h"
+#include "../../RenderCore/Format.h"
 
 namespace ToolsRig
 {
     namespace Internal
     {
-        static RenderCore::Metal::InputElementDesc Vertex2D_InputLayout_[] = {
-            RenderCore::Metal::InputElementDesc( "POSITION", 0, RenderCore::Metal::NativeFormat::R32G32_FLOAT ),
-            RenderCore::Metal::InputElementDesc( "TEXCOORD", 0, RenderCore::Metal::NativeFormat::R32G32_FLOAT )
+        static RenderCore::InputElementDesc Vertex2D_InputLayout_[] = {
+            RenderCore::InputElementDesc( "POSITION", 0, RenderCore::Format::R32G32_FLOAT ),
+            RenderCore::InputElementDesc( "TEXCOORD", 0, RenderCore::Format::R32G32_FLOAT )
         };
 
-        static RenderCore::Metal::InputElementDesc Vertex3D_InputLayout_[] = {
-            RenderCore::Metal::InputElementDesc( "POSITION", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
-            RenderCore::Metal::InputElementDesc(   "NORMAL", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
-            RenderCore::Metal::InputElementDesc( "TEXCOORD", 0, RenderCore::Metal::NativeFormat::R32G32_FLOAT ),
-            RenderCore::Metal::InputElementDesc( "TEXTANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT )//,
+        static RenderCore::InputElementDesc Vertex3D_InputLayout_[] = {
+            RenderCore::InputElementDesc( "POSITION", 0, RenderCore::Format::R32G32B32_FLOAT ),
+            RenderCore::InputElementDesc(   "NORMAL", 0, RenderCore::Format::R32G32B32_FLOAT ),
+            RenderCore::InputElementDesc( "TEXCOORD", 0, RenderCore::Format::R32G32_FLOAT ),
+            RenderCore::InputElementDesc( "TEXTANGENT", 0, RenderCore::Format::R32G32B32A32_FLOAT )//,
             //RenderCore::Metal::InputElementDesc( "TEXBITANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT )
         };
     }
 
-    std::pair<const RenderCore::Metal::InputElementDesc*, size_t> Vertex2D_InputLayout = std::make_pair(Internal::Vertex2D_InputLayout_, dimof(Internal::Vertex2D_InputLayout_));
-    std::pair<const RenderCore::Metal::InputElementDesc*, size_t> Vertex3D_InputLayout = std::make_pair(Internal::Vertex3D_InputLayout_, dimof(Internal::Vertex3D_InputLayout_));
+    std::pair<const RenderCore::InputElementDesc*, size_t> Vertex2D_InputLayout = std::make_pair(Internal::Vertex2D_InputLayout_, dimof(Internal::Vertex2D_InputLayout_));
+    std::pair<const RenderCore::InputElementDesc*, size_t> Vertex3D_InputLayout = std::make_pair(Internal::Vertex3D_InputLayout_, dimof(Internal::Vertex3D_InputLayout_));
 
     static void GeodesicSphere_Subdivide(const Float3 &v1, const Float3 &v2, const Float3 &v3, std::vector<Float3> &sphere_points, unsigned int depth) 
     {

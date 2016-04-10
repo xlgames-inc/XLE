@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../Metal/Format.h"
+#include "../Format.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Core/Types.h"
@@ -23,8 +23,8 @@ namespace RenderCore { namespace Assets
                             std::unique_ptr<float[], BlockSerializerDeleter<float[]>>&&  timeMarkers, 
                             DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>&&       keyPositions,
                             size_t elementSize, InterpolationType interpolationType,
-                            Metal::NativeFormat::Enum positionFormat, Metal::NativeFormat::Enum inTangentFormat, 
-                            Metal::NativeFormat::Enum outTangentFormat);
+                            Format positionFormat, Format inTangentFormat,
+                            Format outTangentFormat);
         RawAnimationCurve(RawAnimationCurve&& curve);
         RawAnimationCurve(const RawAnimationCurve& copyFrom);
         RawAnimationCurve& operator=(RawAnimationCurve&& curve);
@@ -45,12 +45,12 @@ namespace RenderCore { namespace Assets
         size_t                          _elementSize;
         InterpolationType               _interpolationType;
 
-        Metal::NativeFormat::Enum       _positionFormat;
-        Metal::NativeFormat::Enum       _inTangentFormat;
-        Metal::NativeFormat::Enum       _outTangentFormat;
+        Format       _positionFormat;
+        Format       _inTangentFormat;
+        Format       _outTangentFormat;
 
         template<typename OutType>
-            static Metal::NativeFormat::Enum   ExpectedFormat();
+            static Format   ExpectedFormat();
     };
 
     template<typename Serializer>

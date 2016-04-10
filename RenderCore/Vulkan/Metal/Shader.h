@@ -11,6 +11,8 @@
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
 
+namespace RenderCore { class InputElementDesc; }
+
 namespace RenderCore { namespace Metal_Vulkan
 {
     class Shader
@@ -54,8 +56,6 @@ namespace RenderCore { namespace Metal_Vulkan
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class InputElementDesc;
 
     class GeometryShader : public Shader
     {

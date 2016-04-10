@@ -18,6 +18,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Types.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
@@ -28,43 +29,43 @@ namespace RenderOverlays
 {
     using namespace RenderCore;
 
-    class Vertex_PC     { public: Float3 _position; unsigned _colour;                                                               Vertex_PC(Float3 position, unsigned colour) : _position(position), _colour(colour) {};                                          static Metal::InputElementDesc inputElements[]; };
-    class Vertex_PCR    { public: Float3 _position; unsigned _colour; float _radius;                                                Vertex_PCR(Float3 position, unsigned colour, float radius) : _position(position), _colour(colour), _radius(radius) {};          static Metal::InputElementDesc inputElements[]; };
-    class Vertex_PCT    { public: Float3 _position; unsigned _colour; Float2 _texCoord;                                             Vertex_PCT(Float3 position, unsigned colour, Float2 texCoord) : _position(position), _colour(colour), _texCoord(texCoord) {};   static Metal::InputElementDesc inputElements[]; };
-    class Vertex_PCCTT  { public: Float3 _position; unsigned _colour0; unsigned _colour1; Float2 _texCoord0; Float2 _texCoord1;     Vertex_PCCTT(Float3 position, unsigned colour0, unsigned colour1, Float2 texCoord0, Float2 texCoord1) : _position(position), _colour0(colour0), _colour1(colour1), _texCoord0(texCoord0), _texCoord1(texCoord1) {};   static Metal::InputElementDesc inputElements[]; };
+    class Vertex_PC     { public: Float3 _position; unsigned _colour;                                                               Vertex_PC(Float3 position, unsigned colour) : _position(position), _colour(colour) {};                                          static InputElementDesc inputElements[]; };
+    class Vertex_PCR    { public: Float3 _position; unsigned _colour; float _radius;                                                Vertex_PCR(Float3 position, unsigned colour, float radius) : _position(position), _colour(colour), _radius(radius) {};          static InputElementDesc inputElements[]; };
+    class Vertex_PCT    { public: Float3 _position; unsigned _colour; Float2 _texCoord;                                             Vertex_PCT(Float3 position, unsigned colour, Float2 texCoord) : _position(position), _colour(colour), _texCoord(texCoord) {};   static InputElementDesc inputElements[]; };
+    class Vertex_PCCTT  { public: Float3 _position; unsigned _colour0; unsigned _colour1; Float2 _texCoord0; Float2 _texCoord1;     Vertex_PCCTT(Float3 position, unsigned colour0, unsigned colour1, Float2 texCoord0, Float2 texCoord1) : _position(position), _colour0(colour0), _colour1(colour1), _texCoord0(texCoord0), _texCoord1(texCoord1) {};   static InputElementDesc inputElements[]; };
 
     static inline unsigned  HardwareColor(ColorB input)
     {
         return (uint32(input.a) << 24) | (uint32(input.b) << 16) | (uint32(input.g) << 8) | uint32(input.r);
     }
 
-    Metal::InputElementDesc Vertex_PC::inputElements[] = 
+    InputElementDesc Vertex_PC::inputElements[] = 
     {
-        Metal::InputElementDesc( "POSITION",   0, Metal::NativeFormat::R32G32B32_FLOAT ),
-        Metal::InputElementDesc( "COLOR",      0, Metal::NativeFormat::R8G8B8A8_UNORM  )
+        InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT ),
+        InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM  )
     };
 
-    Metal::InputElementDesc Vertex_PCR::inputElements[] = 
+    InputElementDesc Vertex_PCR::inputElements[] = 
     {
-        Metal::InputElementDesc( "POSITION",   0, Metal::NativeFormat::R32G32B32_FLOAT ),
-        Metal::InputElementDesc( "COLOR",      0, Metal::NativeFormat::R8G8B8A8_UNORM  ),
-        Metal::InputElementDesc( "RADIUS",     0, Metal::NativeFormat::R32_FLOAT )
+        InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT ),
+        InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM  ),
+        InputElementDesc( "RADIUS",     0, Format::R32_FLOAT )
     };
 
-    Metal::InputElementDesc Vertex_PCT::inputElements[] = 
+    InputElementDesc Vertex_PCT::inputElements[] = 
     {
-        Metal::InputElementDesc( "POSITION",   0, Metal::NativeFormat::R32G32B32_FLOAT ),
-        Metal::InputElementDesc( "COLOR",      0, Metal::NativeFormat::R8G8B8A8_UNORM  ),
-        Metal::InputElementDesc( "TEXCOORD",   0, Metal::NativeFormat::R32G32_FLOAT    )
+        InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT ),
+        InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM  ),
+        InputElementDesc( "TEXCOORD",   0, Format::R32G32_FLOAT    )
     };
 
-    Metal::InputElementDesc Vertex_PCCTT::inputElements[] = 
+    InputElementDesc Vertex_PCCTT::inputElements[] = 
     {
-        Metal::InputElementDesc( "POSITION",   0, Metal::NativeFormat::R32G32B32_FLOAT ),
-        Metal::InputElementDesc( "COLOR",      0, Metal::NativeFormat::R8G8B8A8_UNORM  ),
-        Metal::InputElementDesc( "COLOR",      1, Metal::NativeFormat::R8G8B8A8_UNORM  ),
-        Metal::InputElementDesc( "TEXCOORD",   0, Metal::NativeFormat::R32G32_FLOAT    ),
-        Metal::InputElementDesc( "TEXCOORD",   1, Metal::NativeFormat::R32G32_FLOAT    )
+        InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT ),
+        InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM  ),
+        InputElementDesc( "COLOR",      1, Format::R8G8B8A8_UNORM  ),
+        InputElementDesc( "TEXCOORD",   0, Format::R32G32_FLOAT    ),
+        InputElementDesc( "TEXCOORD",   1, Format::R32G32_FLOAT    )
     };
 
     template<> auto ImmediateOverlayContext::AsVertexFormat<Vertex_PC>() const -> VertexFormat      { return PC ; }
@@ -371,7 +372,7 @@ namespace RenderOverlays
     };
 
     Metal::ConstantBufferLayoutElement ReciprocalViewportDimensions_Elements[] = {
-        { "ReciprocalViewportDimensions", Metal::NativeFormat::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth), 0 }
+        { "ReciprocalViewportDimensions", Format::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth), 0 }
     };
     
     void ImmediateOverlayContext::SetState(const OverlayState& state) 
@@ -485,7 +486,7 @@ namespace RenderOverlays
     ImmediateOverlayContext::ShaderBox::ShaderBox(const Desc& desc)
     {
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        Metal::InputLayout inputLayout;
+        InputLayout inputLayout;
         _shaderProgram = nullptr;
 
         const char* vertexShaderSource = nullptr;

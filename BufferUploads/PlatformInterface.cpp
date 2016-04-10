@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PlatformInterface.h"
-#include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/StringFormat.h"
@@ -43,16 +43,16 @@ namespace BufferUploads { namespace PlatformInterface
         return result;
     }
 
-    static bool IsDXTCompressed(unsigned format) { return Metal::GetCompressionType(NativeFormat::Enum(format)) == Metal::FormatCompressionType::BlockCompression; }
+    static bool IsDXTCompressed(Format format) { return GetCompressionType(format) == FormatCompressionType::BlockCompression; }
 
-    unsigned TextureDataSize(unsigned nWidth, unsigned nHeight, unsigned nDepth, unsigned mipCount, NativeFormat::Enum format)
+    unsigned TextureDataSize(unsigned nWidth, unsigned nHeight, unsigned nDepth, unsigned mipCount, Format format)
     {
-        if (format == 0 /* invalid format most of the time */) {
+        if (format == Format::Unknown) {
             return 0;
         }
 
         const bool dxt = IsDXTCompressed(format);
-        const auto bbp = Metal::BitsPerPixel(format);
+        const auto bbp = BitsPerPixel(format);
 
         mipCount = std::max(mipCount, 1u);
         unsigned result = 0;
@@ -78,9 +78,9 @@ namespace BufferUploads { namespace PlatformInterface
                             const TextureDesc& mipMapDesc, unsigned destinationBlockRowPitch)
     {
         int nD3DSize;
-        bool isDXTCompressed = IsDXTCompressed((NativeFormat::Enum)mipMapDesc._nativePixelFormat);
+        bool isDXTCompressed = IsDXTCompressed(mipMapDesc._format);
         if (isDXTCompressed) {
-            nD3DSize = TextureDataSize(mipMapDesc._width, mipMapDesc._height, 1, 1, (NativeFormat::Enum)mipMapDesc._nativePixelFormat);
+            nD3DSize = TextureDataSize(mipMapDesc._width, mipMapDesc._height, 1, 1, mipMapDesc._format);
         } else {
             nD3DSize = destinationBlockRowPitch * mipMapDesc._height;
         }
@@ -92,10 +92,10 @@ namespace BufferUploads { namespace PlatformInterface
             unsigned sourceRowPitch;
             unsigned rows;
             if (isDXTCompressed) {
-                sourceRowPitch = TextureDataSize(RoundBCDim(mipMapDesc._width), BlockCompDim, 1, 1, (NativeFormat::Enum)mipMapDesc._nativePixelFormat);
+                sourceRowPitch = TextureDataSize(RoundBCDim(mipMapDesc._width), BlockCompDim, 1, 1, mipMapDesc._format);
                 rows = (mipMapDesc._height + BlockCompDim - 1) / BlockCompDim;
             } else {
-                sourceRowPitch = TextureDataSize(mipMapDesc._width, 1, 1, 1, (NativeFormat::Enum)mipMapDesc._nativePixelFormat);
+                sourceRowPitch = TextureDataSize(mipMapDesc._width, 1, 1, 1, mipMapDesc._format);
                 rows = mipMapDesc._height;
             }
 
@@ -109,7 +109,7 @@ namespace BufferUploads { namespace PlatformInterface
 
         } else {
                 // Copy data to/from video texture
-            int nPitch = TextureDataSize(mipMapDesc._width, 1, 1, 1, (NativeFormat::Enum)mipMapDesc._nativePixelFormat);
+            int nPitch = TextureDataSize(mipMapDesc._width, 1, 1, 1, mipMapDesc._format);
             assert(sourceDataSize % nPitch == 0); (void)nPitch;
             assert(size_t(destination) + sourceDataSize <= destinationDataSize);
             XlCopyMemoryAlign16((uint8*)destination, sourceData, sourceDataSize);
@@ -122,7 +122,7 @@ namespace BufferUploads { namespace PlatformInterface
         TextureDesc result = topMostMipDesc;
         result._width    = std::max(result._width  >> mipMapIndex, 1u); 
         result._height   = std::max(result._height >> mipMapIndex, 1u);
-        if (IsDXTCompressed((NativeFormat::Enum)topMostMipDesc._nativePixelFormat)) { 
+        if (IsDXTCompressed(topMostMipDesc._format)) { 
             result._width = RoundBCDim(result._width);
             result._height = RoundBCDim(result._height);
         }
@@ -133,9 +133,9 @@ namespace BufferUploads { namespace PlatformInterface
     
     unsigned ByteCount(const TextureDesc& tDesc)
     {
-        unsigned bitsPerPixel = Metal::BitsPerPixel((NativeFormat::Enum)tDesc._nativePixelFormat);
+        unsigned bitsPerPixel = BitsPerPixel(tDesc._format);
         unsigned result = 0;
-        unsigned mipMin = IsDXTCompressed((NativeFormat::Enum)tDesc._nativePixelFormat)?4:1;
+        unsigned mipMin = IsDXTCompressed(tDesc._format)?4:1;
         for (unsigned mipIndex=0; mipIndex<tDesc._mipCount; ++mipIndex) {
             result  +=  std::max(mipMin, tDesc._width>>mipIndex)
                     *   std::max(mipMin, tDesc._height>>mipIndex)

@@ -9,7 +9,6 @@
 #include "DelayedDrawCall.h"
 #include "../Metal/Format.h"
 #include "../Metal/Buffer.h"
-#include "../Resource.h"
 
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/ChunkFileAsset.h"

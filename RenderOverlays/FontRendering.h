@@ -16,7 +16,7 @@ namespace RenderOverlays
 class FontTexture2D : noncopyable
 {
 public:
-    FontTexture2D(unsigned width, unsigned height, unsigned pixelFormat);
+    FontTexture2D(unsigned width, unsigned height, RenderCore::Format pixelFormat);
     ~FontTexture2D();
 
     void*   GetUnderlying() const;

@@ -6,7 +6,7 @@
 
 #include "DataPacket.h"
 #include "PlatformInterface.h"
-#include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Format.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
@@ -80,24 +80,23 @@ namespace BufferUploads
 
     TexturePitches::TexturePitches(const TextureDesc& desc)
     {
-        using namespace RenderCore::Metal;
         _slicePitch = PlatformInterface::TextureDataSize(
             desc._width, desc._height, 1, 1, 
-            (NativeFormat::Enum)desc._nativePixelFormat);
+            desc._format);
             
             //  row pitch calculation is a little platform-specific here...
             //  (eg, DX9 and DX11 use different systems)
             //  Perhaps this could be moved into the platform interface layer
-        bool isDXT = GetCompressionType(NativeFormat::Enum(desc._nativePixelFormat)) 
-            == FormatCompressionType::BlockCompression;
+        bool isDXT = GetCompressionType(desc._format) 
+            == RenderCore::FormatCompressionType::BlockCompression;
         if (isDXT) {
             _rowPitch = PlatformInterface::TextureDataSize(
                 RoundBCDim(desc._width), BlockCompDim, 1, 1, 
-                (NativeFormat::Enum)desc._nativePixelFormat);
+                desc._format);
         } else {
             _rowPitch = PlatformInterface::TextureDataSize(
                 desc._width, 1, 1, 1, 
-                (NativeFormat::Enum)desc._nativePixelFormat);
+				desc._format);
         }
     }
 
@@ -342,11 +341,11 @@ namespace BufferUploads
             // because we need to retain that information on the resource. For example,
             // if we made R32_** formats typeless here, when we create the shader resource
             // view there would be no way to know if it was originally a R32_FLOAT, or a R32_UINT (etc)
-        auto srcFormat = (RenderCore::Metal::NativeFormat::Enum)metadata.format;
-        if (RenderCore::Metal::HasLinearAndSRGBFormats(srcFormat)) {
-            desc._nativePixelFormat = (unsigned)RenderCore::Metal::AsTypelessFormat(srcFormat);
+        auto srcFormat = (RenderCore::Format)metadata.format;
+        if (RenderCore::HasLinearAndSRGBFormats(srcFormat)) {
+            desc._format = RenderCore::AsTypelessFormat(srcFormat);
         } else {
-            desc._nativePixelFormat = (unsigned)srcFormat;
+            desc._format = srcFormat;
         }
 
         using namespace DirectX;

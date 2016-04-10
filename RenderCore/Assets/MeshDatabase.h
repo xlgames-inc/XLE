@@ -6,13 +6,18 @@
 
 #pragma once
 
-#include "../Metal/Format.h"
-#include "../Metal/InputLayout.h"
 #include "../../Utility/IteratorUtils.h"
+#include "../../Core/Types.h"
 #include <utility>
 #include <memory>
 #include <vector>
 #include <string>
+
+namespace RenderCore
+{
+	enum class Format;
+	class InputElementDesc;
+}
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
@@ -102,7 +107,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         void WriteStream(
             const Stream& stream, const void* dst, 
-            Metal::NativeFormat::Enum dstFormat, size_t dstStride, size_t dstSize) const;
+            Format dstFormat, size_t dstStride, size_t dstSize) const;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,7 +117,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     public:
         virtual const void* GetData() const = 0;
         virtual size_t GetDataSize() const = 0;
-        virtual RenderCore::Metal::NativeFormat::Enum GetFormat() const = 0;
+        virtual Format GetFormat() const = 0;
 
         virtual size_t GetStride() const = 0;
         virtual size_t GetCount() const = 0;
@@ -128,7 +133,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class NativeVBLayout
     {
     public:
-        std::vector<Metal::InputElementDesc> _elements;
+        std::vector<InputElementDesc> _elements;
         unsigned _vertexStride;
     };
 
@@ -138,18 +143,18 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         CreateRawDataSource(
             const void* dataBegin, const void* dataEnd, 
             size_t count, size_t stride,
-            Metal::NativeFormat::Enum srcFormat);
+			Format srcFormat);
 
     std::shared_ptr<IVertexSourceData>
         CreateRawDataSource(
             const void* dataBegin, const void* dataEnd, 
-            Metal::NativeFormat::Enum srcFormat);
+			Format srcFormat);
 
     std::shared_ptr<IVertexSourceData>
         CreateRawDataSource(
             std::vector<uint8>&& data, 
             size_t count, size_t stride,
-            Metal::NativeFormat::Enum srcFormat);
+			Format srcFormat);
 
     /// <summary>Remove duplicates from a stream</summary>
     /// Searches for duplicate elements in a stream, and combines them into
@@ -190,8 +195,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     /// This is typically used for copying vertex data between similar formats
     /// (for example, 32 bit floats to 16 bit floats)
     void CopyVertexData(
-        const void* dst, Metal::NativeFormat::Enum dstFmt, size_t dstStride, size_t dstDataSize,
-        const void* src, Metal::NativeFormat::Enum srcFmt, size_t srcStride, size_t srcDataSize,
+        const void* dst, Format dstFmt, size_t dstStride, size_t dstDataSize,
+        const void* src, Format srcFmt, size_t srcStride, size_t srcDataSize,
         unsigned count, 
         std::vector<unsigned> mapping = std::vector<unsigned>(),
         ProcessingFlags::BitField processingFlags = 0);

@@ -7,11 +7,11 @@
 #include "FT_Font.h"
 #include "FT_FontTexture.h"
 #include "FontRendering.h"
+#include "../RenderCore/Format.h"
 #include "../Core/Types.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/MemoryUtils.h"
-#include "../RenderCore/Metal/Format.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
@@ -364,7 +364,7 @@ static int NextPower2(int n)
 
 extern BufferUploads::IManager* gBufferUploads;
 
-FontTexture2D::FontTexture2D(unsigned width, unsigned height, unsigned pixelFormat)
+FontTexture2D::FontTexture2D(unsigned width, unsigned height, RenderCore::Format pixelFormat)
 {
     using namespace BufferUploads;
     BufferDesc desc;
@@ -437,7 +437,7 @@ bool FT_FontTextureMgr::Init(int texWidth, int texHeight)
 {
     _texWidth = NextPower2(texWidth);
     _texHeight = NextPower2(texHeight);
-    _texture = std::make_unique<FontTexture2D>(_texWidth, _texHeight, RenderCore::Metal::NativeFormat::R8_UNORM);
+    _texture = std::make_unique<FontTexture2D>(_texWidth, _texHeight, RenderCore::Format::R8_UNORM);
     _texHeap = std::make_unique<TextureHeap>(_texHeight);
     return true;
 }

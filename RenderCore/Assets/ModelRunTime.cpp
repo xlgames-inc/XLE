@@ -24,8 +24,8 @@
 #include "../Metal/State.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
-#include "../Resource.h"
 #include "../RenderUtils.h"
+#include "../Types.h"
 
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/BlockSerializer.h"
@@ -157,12 +157,12 @@ namespace RenderCore { namespace Assets
                 [=](const VertexElement& ele) { return !XlCompareStringI(ele._semanticName, name); }) != ia._elements.cend();
         }
 
-        static bool HasElement(const Metal::InputLayout& ia, const char name[])
+        static bool HasElement(const InputLayout& ia, const char name[])
         {
             auto end = &ia.first[ia.second];
             return std::find_if(
                 ia.first, end, 
-                [=](const Metal::InputElementDesc& ele) { return !XlCompareStringI(ele._semanticName.c_str(), name); }) != end;
+                [=](const InputElementDesc& ele) { return !XlCompareStringI(ele._semanticName.c_str(), name); }) != end;
         }
 
         #if defined(_DEBUG)
@@ -199,7 +199,7 @@ namespace RenderCore { namespace Assets
         #endif
 
         static SharedParameterBox BuildGeoParamBox(
-            const Metal::InputLayout& ia, 
+            const InputLayout& ia, 
             SharedStateSet& sharedStateSet, 
             ModelConstruction::ParamBoxDescriptions& paramBoxDesc, bool normalFromSkinning)
         {
@@ -407,12 +407,12 @@ namespace RenderCore { namespace Assets
             std::vector<PendingGeoUpload>  _vbUploads;
             std::vector<PendingGeoUpload>  _ibUploads;
 
-            unsigned AllocateIB(unsigned size, RenderCore::Metal::NativeFormat::Enum format)
+            unsigned AllocateIB(unsigned size, Format format)
             {
                 unsigned allocation = _ibSize;
 
                     // we have to align the index buffer offset correctly
-                unsigned indexStride = (format == RenderCore::Metal::NativeFormat::R32_UINT)?4:2;
+                unsigned indexStride = (format == Format::R32_UINT)?4:2;
                 unsigned rem = _ibSize % indexStride;
                 if (rem != 0) {
                     allocation += indexStride - rem;
@@ -460,7 +460,7 @@ namespace RenderCore { namespace Assets
     }
 
     unsigned BuildLowLevelInputAssembly(
-        Metal::InputElementDesc dst[], unsigned dstMaxCount,
+        InputElementDesc dst[], unsigned dstMaxCount,
         const VertexElement* source, unsigned sourceCount,
         unsigned lowLevelSlot)
     {
@@ -471,9 +471,9 @@ namespace RenderCore { namespace Assets
             if ((vertexElementCount+1) <= dstMaxCount) {
                     // in some cases we need multiple "slots". When we have multiple slots, the vertex data 
                     //  should be one after another in the vb (that is, not interleaved)
-                dst[vertexElementCount++] = Metal::InputElementDesc(
+                dst[vertexElementCount++] = InputElementDesc(
                     sourceElement._semanticName, sourceElement._semanticIndex,
-                    Metal::NativeFormat::Enum(sourceElement._nativeFormat), lowLevelSlot, sourceElement._alignedByteOffset);
+                    sourceElement._nativeFormat, lowLevelSlot, sourceElement._alignedByteOffset);
             }
         }
         return vertexElementCount;
@@ -773,7 +773,7 @@ namespace RenderCore { namespace Assets
         assert(mesh != _meshes.end());
 
         auto& devContext = *context._context;
-        devContext.Bind(_indexBuffer, Metal::NativeFormat::Enum(mesh->_indexFormat), mesh->_ibOffset);
+        devContext.Bind(_indexBuffer, mesh->_indexFormat, mesh->_ibOffset);
 
         const Metal::VertexBuffer* vbs[] = { &_vertexBuffer, &_vertexBuffer, &_vertexBuffer };
         static_assert(dimof(vbs) == MaxVertexStreams, "Vertex buffer array size doesn't match vertex streams");
@@ -809,7 +809,7 @@ namespace RenderCore { namespace Assets
         auto result = cm->_skinnedTechniqueInterface;
 
         auto& devContext = *context._context;
-        devContext.Bind(_indexBuffer, Metal::NativeFormat::Enum(cm->_indexFormat), cm->_ibOffset);
+        devContext.Bind(_indexBuffer, cm->_indexFormat, cm->_ibOffset);
 
 		#if GFXAPI_ACTIVE == GFXAPI_DX11
 			auto animGeo = SkinnedMesh::VertexStreams::AnimatedGeo;
@@ -869,7 +869,7 @@ namespace RenderCore { namespace Assets
             // Source file locators & vb/ib allocations
         result._indexFormat = geo._ib._format;
         result._ibOffset = workingBuffers.AllocateIB(
-            geo._ib._size, Metal::NativeFormat::Enum(result._indexFormat));
+            geo._ib._size, result._indexFormat);
         workingBuffers._ibUploads.push_back(
             PendingGeoUpload { geo._ib._offset, geo._ib._size, ~0u, result._ibOffset });
 
@@ -901,7 +901,7 @@ namespace RenderCore { namespace Assets
         }
 
             // Build vertex input layout desc
-        Metal::InputElementDesc inputDesc[12];
+        InputElementDesc inputDesc[12];
         unsigned vertexElementCount = BuildLowLevelInputAssembly(
             inputDesc, dimof(inputDesc), geo._vb._ia._elements);
         for (unsigned s=0; s!=supplements.size(); ++s)
@@ -912,7 +912,7 @@ namespace RenderCore { namespace Assets
             // Setup the geo param box and the technique interface
             // from the vertex input layout
         result._geoParamBox = ModelConstruction::BuildGeoParamBox(
-            Metal::InputLayout(inputDesc, vertexElementCount),
+            InputLayout(inputDesc, vertexElementCount),
             sharedStateSet, paramBoxDesc, normalFromSkinning);
 
         result._techniqueInterface = sharedStateSet.InsertTechniqueInterface(
@@ -972,7 +972,7 @@ namespace RenderCore { namespace Assets
             //  even fixed point formats). That means we need another technique interface
             //  for the prepared animation case!
         {
-            Metal::InputElementDesc inputDescForRender[12];
+            InputElementDesc inputDescForRender[12];
             unsigned eleCount = 
                 BuildLowLevelInputAssembly(
                     inputDescForRender, dimof(inputDescForRender),
@@ -1341,7 +1341,7 @@ namespace RenderCore { namespace Assets
                         mesh->_vertexStrides, mesh->_vbOffsets);
                     currentTechniqueInterface = mesh->_techniqueInterface;
                 }
-                context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh->_indexFormat), mesh->_ibOffset);
+                context._context->Bind(renderer._pimpl->_indexBuffer, mesh->_indexFormat, mesh->_ibOffset);
                 currentMesh = mesh;
                 currentTextureSet = ~unsigned(0x0);
             }
@@ -1466,7 +1466,7 @@ namespace RenderCore { namespace Assets
 
     VertexElement::VertexElement()
     {
-        _nativeFormat = 0; _alignedByteOffset = 0; _semanticIndex = 0;
+        _nativeFormat = Format(0); _alignedByteOffset = 0; _semanticIndex = 0;
         XlZeroMemory(_semanticName);
     }
 
@@ -1681,7 +1681,7 @@ namespace RenderCore { namespace Assets
                 << Width<5>(m._vertexStrides[0]) << " |"
                 << Width<5>(m._techniqueInterface.Value()) << " |"
                 << Width<5>(m._geoParamBox.Value()) << " |"
-                << Width<5>(m._indexFormat);
+                << Width<5>(unsigned(m._indexFormat));
         }
         for (unsigned c=0; c<_pimpl->_skinnedMeshes.size(); ++c) {
             const auto&m = _pimpl->_skinnedMeshes[c];
@@ -1697,7 +1697,7 @@ namespace RenderCore { namespace Assets
                 << Width<5>(m._vertexStrides[0]) << " |"
                 << Width<5>(m._techniqueInterface.Value()) << " |"
                 << Width<5>(m._geoParamBox.Value()) << " |"
-                << Width<5>(m._indexFormat);
+                << Width<5>(unsigned(m._indexFormat));
         }
 
         #if defined(_DEBUG)

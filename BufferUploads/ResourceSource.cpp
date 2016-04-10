@@ -92,7 +92,7 @@ namespace BufferUploads
             unsigned int heightPower = IntegerLog2(desc._height)-6;
             result |= widthPower << 8;
             result |= heightPower << 16;
-            result |= DescHash(desc._nativePixelFormat) << 24;
+            result |= DescHash(desc._format) << 24;
             result ^= DescHash(desc._mipCount) << 50;   // (gets interleaved with the pixel format -- could be trouble?)
         } else {
             uint32 temp = Hash32(&desc, PtrAdd(&desc, sizeof(desc)));
@@ -262,7 +262,7 @@ namespace BufferUploads
                         assert(desc._textureDesc._width == entry->second->GetDesc()._textureDesc._width);
                         assert(desc._textureDesc._height == entry->second->GetDesc()._textureDesc._height);
                         assert(desc._textureDesc._mipCount == entry->second->GetDesc()._textureDesc._mipCount);
-                        assert(desc._textureDesc._nativePixelFormat == entry->second->GetDesc()._textureDesc._nativePixelFormat);
+                        assert(desc._textureDesc._format == entry->second->GetDesc()._textureDesc._format);
                     }
                     auto newResource = entry->second.get()->AllocateResource(realSize, deviceCreation);
                     Interlocked::Decrement(&_readerCount[hashTableIndex]);

@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "../Metal/Forward.h"
 #include "../../Utility/MemoryUtils.h"      // (for ConstHash64)
 #include <vector>
 
 namespace Utility { class ParameterBox; }
 namespace Assets { class DirectorySearchRules; }
+namespace RenderCore { class InputElementDesc; }
 
 namespace RenderCore { namespace Assets
 {
@@ -35,7 +35,7 @@ namespace RenderCore { namespace Assets
     class GeoInputAssembly;
     class DrawCallDesc;
     GeoInputAssembly CreateGeoInputAssembly(   
-        const std::vector<Metal::InputElementDesc>& vertexInputLayout,
+        const std::vector<InputElementDesc>& vertexInputLayout,
         unsigned vertexStride);
     
     std::ostream& StreamOperator(std::ostream& stream, const GeoInputAssembly& ia);

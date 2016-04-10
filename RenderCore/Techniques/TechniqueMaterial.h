@@ -36,7 +36,7 @@ namespace RenderCore { namespace Techniques
         const PredefinedCBLayout& GetCBLayout(const ::Assets::ResChar techniqueConfig[]);
 
         TechniqueMaterial(
-            const Metal::InputLayout& inputLayout,
+            const InputLayout& inputLayout,
             const std::initializer_list<uint64>& objectCBs,
             ParameterBox materialParameters);
         TechniqueMaterial();
@@ -45,6 +45,6 @@ namespace RenderCore { namespace Techniques
         ~TechniqueMaterial();
     };
 
-    ParameterBox TechParams_SetGeo(const Metal::InputLayout& inputLayout);
+    ParameterBox TechParams_SetGeo(const InputLayout& inputLayout);
 }}
 

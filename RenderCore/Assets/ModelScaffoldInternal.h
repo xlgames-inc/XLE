@@ -12,11 +12,12 @@
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Core/Types.h"
 
+namespace RenderCore { enum class Format; }
+
 namespace RenderCore { namespace Assets 
 {
     typedef uint64 MaterialGuid;
     typedef unsigned TopologyPlaceholder;
-    typedef unsigned NativeFormatPlaceholder;
 
     #pragma pack(push)
     #pragma pack(1)
@@ -95,7 +96,7 @@ namespace RenderCore { namespace Assets
     public:
         char            _semanticName[16];  // limited max size for semantic name (only alternative is to use a hash value)
         unsigned        _semanticIndex;
-        NativeFormatPlaceholder    _nativeFormat;
+        Format			_nativeFormat;
         unsigned        _alignedByteOffset;
 
         VertexElement();
@@ -132,8 +133,8 @@ namespace RenderCore { namespace Assets
     class IndexData
     {
     public:
-        NativeFormatPlaceholder _format;
-        unsigned                _offset, _size;
+        Format		 _format;
+        unsigned    _offset, _size;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

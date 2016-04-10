@@ -7,6 +7,7 @@
 #include "Techniques.h"
 #include "ParsingContext.h"
 #include "RenderStateResolver.h"
+#include "../Types.h"
 #include "../Metal/Shader.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
@@ -31,7 +32,7 @@ namespace RenderCore { namespace Techniques
     class TechniqueInterface::Pimpl
     {
     public:
-        std::vector<Metal::InputElementDesc>        _vertexInputLayout;
+        std::vector<InputElementDesc>        _vertexInputLayout;
         std::vector<std::pair<uint64, unsigned>>    _constantBuffers;
         std::vector<std::pair<uint64, unsigned>>    _shaderResources;
 
@@ -52,12 +53,12 @@ namespace RenderCore { namespace Techniques
         for (auto i=_vertexInputLayout.cbegin(); i!=_vertexInputLayout.cend(); ++i, ++index) {
             struct PartialDesc
             {
-                unsigned                    _semanticIndex;
-                Metal::NativeFormat::Enum          _nativeFormat;
-                unsigned                    _inputSlot;
-                unsigned                    _alignedByteOffset;
-                Metal::InputClassification::Enum   _inputSlotClass;
-                unsigned                    _instanceDataStepRate;
+                unsigned        _semanticIndex;
+                Format			_nativeFormat;
+                unsigned        _inputSlot;
+                unsigned        _alignedByteOffset;
+                InputDataRate	_inputSlotClass;
+                unsigned        _instanceDataStepRate;
             } partialDesc;
 
             partialDesc._semanticIndex          = i->_semanticIndex;
@@ -108,7 +109,7 @@ namespace RenderCore { namespace Techniques
         _pimpl = std::make_unique<TechniqueInterface::Pimpl>();
     }
 
-    TechniqueInterface::TechniqueInterface(const Metal::InputLayout& vertexInputLayout)
+    TechniqueInterface::TechniqueInterface(const InputLayout& vertexInputLayout)
     {
         _pimpl = std::make_unique<TechniqueInterface::Pimpl>();
         _pimpl->_vertexInputLayout.insert(

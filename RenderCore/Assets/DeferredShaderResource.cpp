@@ -292,9 +292,9 @@ namespace RenderCore { namespace Assets
             }
         }
 
-        auto format = (Metal::NativeFormat::Enum)desc._textureDesc._nativePixelFormat;
-        if (colSpace == SourceColorSpace::SRGB) format = Metal::AsSRGBFormat(format);
-        else if (colSpace == SourceColorSpace::Linear) format = Metal::AsLinearFormat(format);
+        auto format = desc._textureDesc._format;
+        if (colSpace == SourceColorSpace::SRGB) format = AsSRGBFormat(format);
+        else if (colSpace == SourceColorSpace::Linear) format = AsLinearFormat(format);
 
         _pimpl->_srv = Metal::ShaderResourceView(_pimpl->_locator->GetUnderlying(), format);
         return ::Assets::AssetState::Ready;
@@ -311,10 +311,10 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static Metal::NativeFormat::Enum ResolveFormatImmediate(Metal::NativeFormat::Enum typelessFormat, const DecodedInitializer& init)
+    static Format ResolveFormatImmediate(Format typelessFormat, const DecodedInitializer& init)
     {
         auto result = typelessFormat;
-        if (Metal::HasLinearAndSRGBFormats(result)) {
+        if (HasLinearAndSRGBFormats(result)) {
             auto finalColSpace = init._colSpaceRequestString;
             if (finalColSpace == SourceColorSpace::Unspecified) {
                     // need to load the metadata file to get SRGB settings!
@@ -331,24 +331,24 @@ namespace RenderCore { namespace Assets
                     finalColSpace = (init._colSpaceDefault != SourceColorSpace::Unspecified) ? init._colSpaceDefault : SourceColorSpace::SRGB;
             }
 
-            if (finalColSpace == SourceColorSpace::SRGB) result = Metal::AsSRGBFormat(result);
-            else if (finalColSpace == SourceColorSpace::Linear) result = Metal::AsLinearFormat(result);
+            if (finalColSpace == SourceColorSpace::SRGB) result = AsSRGBFormat(result);
+            else if (finalColSpace == SourceColorSpace::Linear) result = AsLinearFormat(result);
         }
         return result;
     }
 
-    Metal::NativeFormat::Enum DeferredShaderResource::LoadFormat(const ::Assets::ResChar initializer[])
+	Format DeferredShaderResource::LoadFormat(const ::Assets::ResChar initializer[])
     {
         DecodedInitializer init(initializer);
 
-		Metal::NativeFormat::Enum result;
+		Format result;
 		const bool checkForShadowingFile = CheckShadowingFile(init._splitter);
 		if (checkForShadowingFile) {
 			::Assets::ResChar filename[MaxPath];
 			BuildRequestString(filename, init._splitter);
-			result = (Metal::NativeFormat::Enum)BufferUploads::LoadTextureFormat(MakeStringSection(filename))._nativePixelFormat;
+			result = BufferUploads::LoadTextureFormat(MakeStringSection(filename))._format;
 		} else
-			result = (Metal::NativeFormat::Enum)BufferUploads::LoadTextureFormat(init._splitter.AllExceptParameters())._nativePixelFormat;
+			result = BufferUploads::LoadTextureFormat(init._splitter.AllExceptParameters())._format;
 
         return ResolveFormatImmediate(result, init);
     }
@@ -386,7 +386,7 @@ namespace RenderCore { namespace Assets
         assert(desc._type == BufferDesc::Type::Texture);
         return Metal::ShaderResourceView(
             result->GetUnderlying(), 
-            ResolveFormatImmediate((Metal::NativeFormat::Enum)desc._textureDesc._nativePixelFormat, init));
+            ResolveFormatImmediate(desc._textureDesc._format, init));
     }
 
 }}

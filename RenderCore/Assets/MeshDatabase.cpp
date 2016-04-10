@@ -5,7 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MeshDatabase.h"
-#include "../Metal/Format.h"
+#include "../Format.h"
+#include "../Types.h"
+#include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Math.h"
 #include "../../Utility/StringUtils.h"
@@ -20,7 +22,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     using ::Assets::Exceptions::FormatError;
 
     enum class ComponentType { Float32, Float16, UNorm8 };
-    static std::pair<ComponentType, unsigned> BreakdownFormat(Metal::NativeFormat::Enum fmt);
+    static std::pair<ComponentType, unsigned> BreakdownFormat(Format fmt);
     static unsigned short AsFloat16(float input);
     static float AsFloat32(unsigned short f16input);
 
@@ -90,7 +92,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     void MeshDatabase::WriteStream(
         const Stream& stream,
-        const void* dst, Metal::NativeFormat::Enum dstFormat, size_t dstStride, size_t dstSize) const
+        const void* dst, Format dstFormat, size_t dstStride, size_t dstSize) const
     {
         const auto& sourceData = stream.GetSourceData();
         auto stride = sourceData.GetStride();
@@ -203,7 +205,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static RenderCore::Metal::NativeFormat::Enum CalculateFinalVBFormat(const IVertexSourceData& source, const NativeVBSettings& settings)
+    static Format CalculateFinalVBFormat(const IVertexSourceData& source, const NativeVBSettings& settings)
     {
             //
             //      Calculate a native format that matches this source data.
@@ -240,29 +242,29 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //
 
         auto brkdn = BreakdownFormat(source.GetFormat());
-        if (!brkdn.second) return Metal::NativeFormat::Unknown;
+        if (!brkdn.second) return Format::Unknown;
 
         if (source.GetFormatHint() & FormatHint::IsColor) {
-            if (brkdn.second == 1)          return Metal::NativeFormat::R8_UNORM;
-            else if (brkdn.second == 2)     return Metal::NativeFormat::R8G8_UNORM;
-            else                            return Metal::NativeFormat::R8G8B8A8_UNORM;
+            if (brkdn.second == 1)          return Format::R8_UNORM;
+            else if (brkdn.second == 2)     return Format::R8G8_UNORM;
+            else                            return Format::R8G8B8A8_UNORM;
         }
 
         if (brkdn.first == ComponentType::UNorm8) {
                 // consider also Metal::FindFormat
-            if (brkdn.second == 1)          return Metal::NativeFormat::R8_UNORM;
-            else if (brkdn.second == 2)     return Metal::NativeFormat::R8G8_UNORM;
-            else                            return Metal::NativeFormat::R8G8B8A8_UNORM;
+            if (brkdn.second == 1)          return Format::R8_UNORM;
+            else if (brkdn.second == 2)     return Format::R8G8_UNORM;
+            else                            return Format::R8G8B8A8_UNORM;
         } else {
             if (settings._use16BitFloats) {
-                if (brkdn.second == 1)          return Metal::NativeFormat::R16_FLOAT;
-                else if (brkdn.second == 2)     return Metal::NativeFormat::R16G16_FLOAT;
-                else                            return Metal::NativeFormat::R16G16B16A16_FLOAT;
+                if (brkdn.second == 1)          return Format::R16_FLOAT;
+                else if (brkdn.second == 2)     return Format::R16G16_FLOAT;
+                else                            return Format::R16G16B16A16_FLOAT;
             } else {
-                if (brkdn.second == 1)          return Metal::NativeFormat::R32_FLOAT;
-                else if (brkdn.second == 2)     return Metal::NativeFormat::R32G32_FLOAT;
-                else if (brkdn.second == 3)     return Metal::NativeFormat::R32G32B32_FLOAT;
-                else                            return Metal::NativeFormat::R32G32B32A32_FLOAT;
+                if (brkdn.second == 1)          return Format::R32_FLOAT;
+                else if (brkdn.second == 2)     return Format::R32G32_FLOAT;
+                else if (brkdn.second == 3)     return Format::R32G32B32_FLOAT;
+                else                            return Format::R32G32B32A32_FLOAT;
             }
         }
     }
@@ -290,10 +292,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             nativeElement._nativeFormat         = CalculateFinalVBFormat(stream.GetSourceData(), settings);
             nativeElement._inputSlot            = 0;
             nativeElement._alignedByteOffset    = accumulatingOffset;
-            nativeElement._inputSlotClass       = Metal::InputClassification::PerVertex;
+            nativeElement._inputSlotClass       = InputDataRate::PerVertex;
             nativeElement._instanceDataStepRate = 0;
 
-            accumulatingOffset += Metal::BitsPerPixel(nativeElement._nativeFormat)/8;
+            accumulatingOffset += BitsPerPixel(nativeElement._nativeFormat)/8;
         }
 
         result._vertexStride = accumulatingOffset;
@@ -316,27 +318,27 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         size_t GetStride() const        { return _stride; } // RenderCore::Metal::BitsPerPixel(_fmt) / 8; }
         size_t GetCount() const         { return _count; } // GetDataSize() / GetStride(); }
 
-        RenderCore::Metal::NativeFormat::Enum GetFormat() const     { return _fmt; }
+        RenderCore::Format			GetFormat() const     { return _fmt; }
         ProcessingFlags::BitField   GetProcessingFlags() const      { return 0; }
         FormatHint::BitField        GetFormatHint() const           { return 0; }
 
-        RawVertexSourceDataAdapter()    { _fmt = Metal::NativeFormat::Unknown; _count = _stride = 0; }
+        RawVertexSourceDataAdapter()    { _fmt = Format::Unknown; _count = _stride = 0; }
         RawVertexSourceDataAdapter(
             const void* start, const void* end, 
             size_t count, size_t stride,
-            Metal::NativeFormat::Enum fmt)
+            Format fmt)
         : _fmt(fmt), _rawData((const uint8*)start, (const uint8*)end), _count(count), _stride(stride) {}
 
         RawVertexSourceDataAdapter(
             std::vector<uint8>&& rawData, 
             size_t count, size_t stride,
-            Metal::NativeFormat::Enum fmt)
+            Format fmt)
         : _rawData(std::move(rawData)), _fmt(fmt), _count(count), _stride(stride) {}
 
     protected:
-        std::vector<uint8>              _rawData;
-        Metal::NativeFormat::Enum       _fmt;
-        size_t                          _count, _stride;
+        std::vector<uint8>  _rawData;
+        Format				_fmt;
+        size_t              _count, _stride;
     };
 
     IVertexSourceData::~IVertexSourceData() {}
@@ -345,7 +347,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         CreateRawDataSource(
             const void* dataBegin, const void* dataEnd, 
             size_t count, size_t stride,
-            Metal::NativeFormat::Enum srcFormat)
+            Format srcFormat)
     {
         return std::make_shared<RawVertexSourceDataAdapter>(dataBegin, dataEnd, count, stride, srcFormat);
     }
@@ -353,9 +355,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     std::shared_ptr<IVertexSourceData>
         CreateRawDataSource(
             const void* dataBegin, const void* dataEnd, 
-            Metal::NativeFormat::Enum srcFormat)
+            Format srcFormat)
     {
-        auto stride = RenderCore::Metal::BitsPerPixel(srcFormat) / 8;
+        auto stride = RenderCore::BitsPerPixel(srcFormat) / 8;
         auto count = (size_t(dataEnd) - size_t(dataBegin)) / stride;
         return CreateRawDataSource(dataBegin, dataEnd, count, stride, srcFormat);
     }
@@ -364,7 +366,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         CreateRawDataSource(
             std::vector<uint8>&& data, 
             size_t count, size_t stride,
-            Metal::NativeFormat::Enum srcFormat)
+            Format srcFormat)
     {
         return std::make_shared<RawVertexSourceDataAdapter>(std::move(data), count, stride, srcFormat);
     }
@@ -485,8 +487,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     }
 
     void CopyVertexData(
-        const void* dst, Metal::NativeFormat::Enum dstFmt, size_t dstStride, size_t dstDataSize,
-        const void* src, Metal::NativeFormat::Enum srcFmt, size_t srcStride, size_t srcDataSize,
+        const void* dst, Format dstFmt, size_t dstStride, size_t dstDataSize,
+        const void* src, Format srcFmt, size_t srcStride, size_t srcDataSize,
         unsigned count, 
         std::vector<unsigned> mapping,
         ProcessingFlags::BitField processingFlags)
@@ -752,7 +754,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             // While doing this, we will create a new IVertexSourceData
             // We want to try to keep the ordering in this new source data to be
             // similar to the old ordering.
-        const auto vertexSize = Metal::BitsPerPixel(sourceStream.GetFormat()) / 8;
+        const auto vertexSize = BitsPerPixel(sourceStream.GetFormat()) / 8;
         std::vector<uint8> finalVB;
         finalVB.reserve(vertexSize * sourceStream.GetCount());
         size_t finalVBCount = 0;
@@ -853,30 +855,30 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return outputIterator/3;
     }
 
-    std::pair<ComponentType, unsigned> BreakdownFormat(Metal::NativeFormat::Enum fmt)
+    std::pair<ComponentType, unsigned> BreakdownFormat(Format fmt)
     {
-        if (fmt == Metal::NativeFormat::Unknown) return std::make_pair(ComponentType::Float32, 0);
+        if (fmt == Format::Unknown) return std::make_pair(ComponentType::Float32, 0);
 
         auto componentType = ComponentType::Float32;
-        unsigned componentCount = Metal::GetComponentCount(Metal::GetComponents(fmt));
+        unsigned componentCount = GetComponentCount(GetComponents(fmt));
 
-        auto type = Metal::GetComponentType(fmt);
-        unsigned prec = Metal::GetComponentPrecision(fmt);
+        auto type = GetComponentType(fmt);
+        unsigned prec = GetComponentPrecision(fmt);
 
         switch (type) {
-        case Metal::FormatComponentType::Float:
+        case FormatComponentType::Float:
             assert(prec == 16 || prec == 32);
             componentType = (prec > 16) ? ComponentType::Float32 : ComponentType::Float16; 
             break;
 
-        case Metal::FormatComponentType::UnsignedFloat16:
-        case Metal::FormatComponentType::SignedFloat16:
+        case FormatComponentType::UnsignedFloat16:
+        case FormatComponentType::SignedFloat16:
             componentType = ComponentType::Float16;
             break;
 
-        case Metal::FormatComponentType::UNorm:
-        case Metal::FormatComponentType::SNorm:
-        case Metal::FormatComponentType::UNorm_SRGB:
+        case FormatComponentType::UNorm:
+        case FormatComponentType::SNorm:
+        case FormatComponentType::UNorm_SRGB:
             assert(prec==8);
             componentType = ComponentType::UNorm8;
             break;

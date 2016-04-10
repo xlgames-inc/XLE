@@ -11,6 +11,8 @@
 #include "DeferredShaderResource.h"
 #include "ModelScaffoldInternal.h"
 #include "../RenderUtils.h"
+#include "../Format.h"
+#include "../Types.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/OutputStream.h"
@@ -33,9 +35,9 @@
 namespace RenderCore { namespace Assets
 {
     Metal::ConstantBufferLayoutElement GlobalTransform_Elements[] = {
-        { "WorldToClip", Metal::NativeFormat::Matrix4x4, offsetof(Techniques::GlobalTransformConstants, _worldToClip), 0 },
-        { "FrustumCorners", Metal::NativeFormat::R32G32B32A32_FLOAT, offsetof(Techniques::GlobalTransformConstants, _frustumCorners), 4 },
-        { "WorldSpaceView", Metal::NativeFormat::R32G32B32_FLOAT, offsetof(Techniques::GlobalTransformConstants, _worldSpaceView), 0 }
+        { "WorldToClip", Format::Matrix4x4, offsetof(Techniques::GlobalTransformConstants, _worldToClip), 0 },
+        { "FrustumCorners", Format::R32G32B32A32_FLOAT, offsetof(Techniques::GlobalTransformConstants, _frustumCorners), 4 },
+        { "WorldSpaceView", Format::R32G32B32_FLOAT, offsetof(Techniques::GlobalTransformConstants, _worldSpaceView), 0 }
     };
 
     size_t GlobalTransform_ElementsCount = dimof(GlobalTransform_Elements);
@@ -43,8 +45,8 @@ namespace RenderCore { namespace Assets
         ////////////////////////////////////////////////////////////
 
     Metal::ConstantBufferLayoutElement LocalTransform_Elements[] = {
-        { "LocalToWorld",                   Metal::NativeFormat::Matrix3x4,        offsetof(Techniques::LocalTransformConstants, _localToWorld), 0      },
-        { "LocalSpaceView",                 Metal::NativeFormat::R32G32B32_FLOAT,  offsetof(Techniques::LocalTransformConstants, _localSpaceView), 0    }
+        { "LocalToWorld",                   Format::Matrix3x4,        offsetof(Techniques::LocalTransformConstants, _localToWorld), 0      },
+        { "LocalSpaceView",                 Format::R32G32B32_FLOAT,  offsetof(Techniques::LocalTransformConstants, _localSpaceView), 0    }
     };
 
     size_t LocalTransform_ElementsCount = dimof(LocalTransform_Elements);
@@ -106,7 +108,7 @@ namespace RenderCore { namespace Assets
         for (size_t c=0; c<ia._elements.size(); c++) {
             if (c != 0) stream << ", ";
             const auto& e = ia._elements[c];
-            stream << e._semanticName << "[" << e._semanticIndex << "] " << Metal::AsString((Metal::NativeFormat::Enum)e._nativeFormat);
+            stream << e._semanticName << "[" << e._semanticIndex << "] " << AsString(e._nativeFormat);
         }
         return stream;
     }
@@ -126,7 +128,7 @@ namespace RenderCore { namespace Assets
         CachedTextureFormats(const Desc&);
         ~CachedTextureFormats();
 
-        typedef std::pair<uint64, uint32> Entry;
+        typedef std::pair<uint64, Format> Entry;
         std::unique_ptr<MemoryMappedFile> _cache;
 
         class Header
@@ -153,10 +155,10 @@ namespace RenderCore { namespace Assets
 
     CachedTextureFormats::~CachedTextureFormats() {}
 
-    static bool IsDXTNormalMap(uint32 format)
+    static bool IsDXTNormalMap(Format format)
     {
-        return format >= RenderCore::Metal::NativeFormat::BC1_TYPELESS
-            && format <= RenderCore::Metal::NativeFormat::BC1_UNORM_SRGB;
+        return unsigned(format) >= unsigned(RenderCore::Format::BC1_TYPELESS)
+            && unsigned(format) <= unsigned(RenderCore::Format::BC1_UNORM_SRGB);
     }
 
     bool IsDXTNormalMap(const std::string& textureName)
@@ -183,7 +185,7 @@ namespace RenderCore { namespace Assets
         auto* end = (Entry*)PtrAdd(data, sizeof(Hdr) + sizeof(Entry) * hdr._count);
 
         auto hashName = Hash64(textureName);
-        auto* i = std::lower_bound(start, end, hashName, CompareFirst<uint64, uint32>());
+        auto* i = std::lower_bound(start, end, hashName, CompareFirst<uint64, Format>());
         if (i == end || i->first != hashName) {
             if ((hdr._count+1) > CachedTextureFormats::MaxCachedTextures) {
                 assert(0);  // cache has gotten too big
@@ -193,9 +195,9 @@ namespace RenderCore { namespace Assets
             std::move_backward(i, end, end+1);
             i->first = hashName;
             TRY {
-                i->second = (uint32)DeferredShaderResource::LoadFormat(textureName.c_str());
+                i->second = DeferredShaderResource::LoadFormat(textureName.c_str());
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-                i->second = RenderCore::Metal::NativeFormat::Unknown;
+                i->second = Format::Unknown;
             } CATCH_END
             ++hdr._count;
             return IsDXTNormalMap(i->second);
@@ -205,7 +207,7 @@ namespace RenderCore { namespace Assets
     }
 
     GeoInputAssembly CreateGeoInputAssembly(   
-        const std::vector<Metal::InputElementDesc>& vertexInputLayout,
+        const std::vector<InputElementDesc>& vertexInputLayout,
         unsigned vertexStride)
     { 
         GeoInputAssembly result;

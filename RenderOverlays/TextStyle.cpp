@@ -7,6 +7,7 @@
 #include "Font.h"
 #include "FontRendering.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Types.h"
 #include "../Assets/Assets.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
@@ -125,7 +126,6 @@ WorkingVertexSetPCT::WorkingVertexSetPCT()
 static void Flush(RenderCore::Metal::DeviceContext& renderer, WorkingVertexSetPCT& vertices)
 {
     using namespace RenderCore;
-    using namespace RenderCore::Metal;
     if (vertices.VertexCount()) {
         auto vertexBuffer = vertices.CreateBuffer();
         renderer.Bind(MakeResourceList(vertexBuffer), WorkingVertexSetPCT::VertexSize, 0);
@@ -199,19 +199,19 @@ public:
 
 TextStyleResources::TextStyleResources(const Desc& desc)
 {
+	using namespace RenderCore;
     const char vertexShaderSource[]   = "game/xleres/basic2D.vsh:P2CT:" VS_DefShaderModel;
     const char pixelShaderSource[]    = "game/xleres/basic.psh:PCT_Text:" PS_DefShaderModel;
 
-    using namespace RenderCore::Metal;
-    const auto& shaderProgram = Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, pixelShaderSource);
-    BoundInputLayout boundInputLayout(GlobalInputLayouts::PCT, shaderProgram);
+    const auto& shaderProgram = Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, pixelShaderSource);
+	Metal::BoundInputLayout boundInputLayout(RenderCore::GlobalInputLayouts::PCT, shaderProgram);
 
-    ConstantBufferLayoutElement elements[] = {
-        { "ReciprocalViewportDimensions", NativeFormat::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth), 0 }
+	Metal::ConstantBufferLayoutElement elements[] = {
+        { "ReciprocalViewportDimensions", RenderCore::Format::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth), 0 }
     };
 
-    BoundUniforms boundUniforms(shaderProgram);
-    boundUniforms.BindConstantBuffer(Hash64("ReciprocalViewportDimensions"), 0, 1, elements, dimof(elements));
+	Metal::BoundUniforms boundUniforms(shaderProgram);
+	boundUniforms.BindConstantBuffer(Hash64("ReciprocalViewportDimensions"), 0, 1, elements, dimof(elements));
 
     auto validationCallback = std::make_shared<Assets::DependencyValidation>();
     Assets::RegisterAssetDependency(validationCallback, shaderProgram.GetDependencyValidation());
@@ -231,13 +231,12 @@ float   TextStyle::Draw(
     float spaceExtra, float scale, float mx, float depth,
     unsigned colorARGB, UI_TEXT_STATE textState, bool applyDescender, Quad* q) const
 {
+	using namespace RenderCore;
     if (!_font) {
         return 0.f;
     }
 
     TRY {
-
-        using namespace RenderCore::Metal;
 
         int prevGlyph = 0;
         float xScale = scale;
@@ -289,13 +288,13 @@ float   TextStyle::Draw(
         auto& res = RenderCore::Techniques::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
         renderer->Bind(res._boundInputLayout);     // have to bind a standard P2CT input layout
         renderer->Bind(*res._shaderProgram);
-        renderer->Bind(Topology::TriangleList);
+        renderer->Bind(Metal::Topology::TriangleList);
 
-        renderer->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
-        renderer->Bind(RenderCore::Techniques::CommonResources()._cullDisable);
+        renderer->Bind(Techniques::CommonResources()._dssDisable);
+        renderer->Bind(Techniques::CommonResources()._cullDisable);
 
         {
-            ViewportDesc viewportDesc(*renderer);
+            Metal::ViewportDesc viewportDesc(*renderer);
             ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
             
             // ConstantBuffer constantBuffer(&reciprocalViewportDimensions, sizeof(reciprocalViewportDimensions));
@@ -303,7 +302,7 @@ float   TextStyle::Draw(
             auto packet = RenderCore::MakeSharedPkt(
                 (const uint8*)&reciprocalViewportDimensions, 
                 (const uint8*)PtrAdd(&reciprocalViewportDimensions, sizeof(reciprocalViewportDimensions)));
-            res._boundUniforms.Apply(*renderer, UniformsStream(), UniformsStream(&packet, nullptr, 1));
+            res._boundUniforms.Apply(*renderer, Metal::UniformsStream(), Metal::UniformsStream(&packet, nullptr, 1));
             
             // renderer->BindVS(boundLayout, constantBuffer);
             // renderer.BindVS(ResourceList<ConstantBuffer, 1>(std::make_tuple()));
@@ -352,13 +351,13 @@ float   TextStyle::Draw(
             if (tex != currentBoundTexture) {
                 Flush(*renderer, workingVertices);
 
-                ShaderResourceView::UnderlyingResource sourceTexture = 
-                    (ShaderResourceView::UnderlyingResource)tex->GetUnderlying();
+				Metal::ShaderResourceView::UnderlyingResource sourceTexture =
+                    (Metal::ShaderResourceView::UnderlyingResource)tex->GetUnderlying();
                 if (!sourceTexture) {
                     throw ::Assets::Exceptions::PendingAsset("", "Pending background upload of font texture");
                 }
 
-                ShaderResourceView shadRes(sourceTexture);
+				Metal::ShaderResourceView shadRes(sourceTexture);
                 renderer->BindPS(RenderCore::MakeResourceList(shadRes));
                 currentBoundTexture = tex;
             }

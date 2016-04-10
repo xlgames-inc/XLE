@@ -19,6 +19,11 @@
 namespace Utility { template<typename CharType> class InputStreamFormatter; }
 using namespace Utility;
 namespace Assets { class DependencyValidation; class DirectorySearchRules; }
+namespace RenderCore
+{
+	class InputElementDesc;
+	using InputLayout = std::pair<const InputElementDesc*, size_t>;
+}
 
 namespace RenderCore { namespace Techniques
 {
@@ -101,7 +106,7 @@ namespace RenderCore { namespace Techniques
         uint64  GetHashValue() const;
 
         TechniqueInterface();
-        TechniqueInterface(const Metal::InputLayout& vertexInputLayout);
+        TechniqueInterface(const InputLayout& vertexInputLayout);
         TechniqueInterface(TechniqueInterface&& moveFrom);
         TechniqueInterface&operator=(TechniqueInterface&& moveFrom);
         ~TechniqueInterface();

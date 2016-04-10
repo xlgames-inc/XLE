@@ -9,7 +9,6 @@
 #include "SceneParser.h"    // for SceneParseSettings
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/State.h"
-#include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
@@ -18,7 +17,7 @@
 #include "../RenderCore/DX11/Metal/DX11.h"
 
 namespace RenderOverlays { class Font; }
-namespace RenderCore { class ResourceDesc; class TextureDesc; namespace BindFlag { typedef unsigned BitField; } }
+namespace RenderCore { class ResourceDesc; class TextureDesc; namespace BindFlag { typedef unsigned BitField; }; enum class Format; }
 
 namespace Utility
 {
@@ -102,12 +101,12 @@ namespace SceneEngine
     class FormatStack
     {
     public:
-        typedef RenderCore::Metal::NativeFormat::Enum Format;
+        using Format = RenderCore::Format;
         Format _resourceFormat;
         Format _shaderReadFormat;
         Format _writeFormat;
 
-        FormatStack() : _resourceFormat(RenderCore::Metal::NativeFormat::Unknown), _shaderReadFormat(RenderCore::Metal::NativeFormat::Unknown), _writeFormat(RenderCore::Metal::NativeFormat::Unknown) {}
+        FormatStack() : _resourceFormat(Format(0)), _shaderReadFormat(Format(0)), _writeFormat(Format(0)) {}
         FormatStack(Format format) : _resourceFormat(format), _shaderReadFormat(format), _writeFormat(format) {}
         FormatStack(Format resourceFormat, Format shaderReadFormat, Format writeFormat) : _resourceFormat(resourceFormat), _shaderReadFormat(shaderReadFormat), _writeFormat(writeFormat) {}
     };

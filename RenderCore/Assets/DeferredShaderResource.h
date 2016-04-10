@@ -9,6 +9,8 @@
 #include "../Metal/Forward.h"
 #include "../../Assets/Assets.h"
 
+namespace RenderCore { enum class Format; }
+
 namespace RenderCore { namespace Assets 
 {
     /// <summary>Prepares a shader resource from a file source</summary>
@@ -48,7 +50,7 @@ namespace RenderCore { namespace Assets
         const ::Assets::ResChar*                Initializer() const;
 
         static Metal::ShaderResourceView LoadImmediately(const char initializer[]);
-        static Metal::NativeFormat::Enum LoadFormat(const char initializer[]);
+        static Format LoadFormat(const char initializer[]);
 
         ::Assets::AssetState GetAssetState() const;
         ::Assets::AssetState TryResolve() const;

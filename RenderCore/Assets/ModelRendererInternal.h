@@ -46,7 +46,7 @@ namespace RenderCore { namespace Assets
 
                 // indices
             UnifiedBufferOffset     _ibOffset;
-            NativeFormatPlaceholder _indexFormat;
+            Format					_indexFormat;
 
                 // vertices
             UnifiedBufferOffset _vbOffsets[MaxVertexStreams];
@@ -224,7 +224,7 @@ namespace RenderCore { namespace Assets
             const BoundSkinnedGeometry& scaffoldGeo);
 
         static unsigned BuildPostSkinInputAssembly(
-            Metal::InputElementDesc dst[],
+            InputElementDesc dst[],
             unsigned dstCount,
             const BoundSkinnedGeometry& scaffoldGeo);
 
@@ -237,12 +237,12 @@ namespace RenderCore { namespace Assets
     };
 
     unsigned BuildLowLevelInputAssembly(
-        Metal::InputElementDesc dst[], unsigned dstMaxCount,
+        InputElementDesc dst[], unsigned dstMaxCount,
         const VertexElement* source, unsigned sourceCount,
         unsigned lowLevelSlot = 0);
 
     inline unsigned BuildLowLevelInputAssembly(
-        Metal::InputElementDesc dst[], unsigned dstMaxCount,
+        InputElementDesc dst[], unsigned dstMaxCount,
         const SerializableVector<VertexElement>& source,
         unsigned lowLevelSlot = 0)
     {

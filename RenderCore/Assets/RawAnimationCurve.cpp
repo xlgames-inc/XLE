@@ -14,10 +14,10 @@
 namespace RenderCore { namespace Assets
 {
 
-    template<> Metal::NativeFormat::Enum   RawAnimationCurve::ExpectedFormat<Float4x4>()        { return Metal::NativeFormat::Matrix4x4; }
-    template<> Metal::NativeFormat::Enum   RawAnimationCurve::ExpectedFormat<Float4>()          { return Metal::NativeFormat::R32G32B32A32_FLOAT; }
-    template<> Metal::NativeFormat::Enum   RawAnimationCurve::ExpectedFormat<Float3>()          { return Metal::NativeFormat::R32G32B32_FLOAT; }
-    template<> Metal::NativeFormat::Enum   RawAnimationCurve::ExpectedFormat<float>()           { return Metal::NativeFormat::R32_FLOAT; }
+    template<> Format   RawAnimationCurve::ExpectedFormat<Float4x4>()        { return Format::Matrix4x4; }
+    template<> Format   RawAnimationCurve::ExpectedFormat<Float4>()          { return Format::R32G32B32A32_FLOAT; }
+    template<> Format   RawAnimationCurve::ExpectedFormat<Float3>()          { return Format::R32G32B32_FLOAT; }
+    template<> Format   RawAnimationCurve::ExpectedFormat<float>()           { return Format::R32_FLOAT; }
 
     static float LerpParameter(float A, float B, float input)
     {
@@ -48,11 +48,11 @@ namespace RenderCore { namespace Assets
 
         } else if (_interpolationType == Bezier || _interpolationType == Hermite) {
 
-            assert(_inTangentFormat != Metal::NativeFormat::Unknown);
-            assert(_outTangentFormat != Metal::NativeFormat::Unknown);
+            assert(_inTangentFormat != Format::Unknown);
+            assert(_outTangentFormat != Format::Unknown);
 
-            const size_t inTangentOffset = Metal::BitsPerPixel(_positionFormat)/8;
-            const size_t outTangentOffset = inTangentOffset + Metal::BitsPerPixel(_inTangentFormat)/8;
+            const size_t inTangentOffset = BitsPerPixel(_positionFormat)/8;
+            const size_t outTangentOffset = inTangentOffset + BitsPerPixel(_inTangentFormat)/8;
 
             if (_interpolationType == Bezier) {
 
@@ -105,8 +105,8 @@ namespace RenderCore { namespace Assets
                                             std::unique_ptr<float[], BlockSerializerDeleter<float[]>>&&  timeMarkers, 
                                             DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>&&       keyPositions,
                                             size_t elementSize, InterpolationType interpolationType,
-                                            Metal::NativeFormat::Enum positionFormat, Metal::NativeFormat::Enum inTangentFormat, 
-                                            Metal::NativeFormat::Enum outTangentFormat)
+                                            Format positionFormat, Format inTangentFormat,
+                                            Format outTangentFormat)
     :       _keyCount(keyCount)
     ,       _timeMarkers(std::forward<std::unique_ptr<float[], BlockSerializerDeleter<float[]>>>(timeMarkers))
     ,       _parameterData(std::forward<DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>>(keyPositions))

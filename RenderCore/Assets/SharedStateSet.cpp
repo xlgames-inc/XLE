@@ -6,6 +6,7 @@
 
 #include "SharedStateSet.h"
 #include "Material.h"
+#include "../Types.h"
 #include "../Techniques/Techniques.h"
 #include "../Techniques/CommonResources.h"
 #include "../Techniques/ParsingContext.h"
@@ -49,7 +50,7 @@ namespace RenderCore { namespace Assets
         ::Assets::DirectorySearchRules _shaderSearchDirs;
     };
 
-    static uint64 Hash(const Metal::InputElementDesc& desc)
+    static uint64 Hash(const InputElementDesc& desc)
     {
             //  hash the semantic name and the scalar parameters
             //  Note that sometimes there might be a chance of equivalent
@@ -63,7 +64,7 @@ namespace RenderCore { namespace Assets
     }
 
     SharedTechniqueInterface SharedStateSet::InsertTechniqueInterface(
-        const RenderCore::Metal::InputElementDesc vertexElements[], unsigned count,
+        const RenderCore::InputElementDesc vertexElements[], unsigned count,
         const uint64 textureBindPoints[], unsigned textureBindPointsCount)
     {
         uint64 interfHash = 0;
@@ -82,7 +83,7 @@ namespace RenderCore { namespace Assets
         if (existingInterface == hashes.cend()) {
                 //  No existing interface. We have to build a new one.
             Techniques::TechniqueInterface techniqueInterface(
-                Metal::InputLayout(vertexElements, count));
+                InputLayout(vertexElements, count));
 
             techniqueInterface.BindConstantBuffer(Techniques::ObjectCB::LocalTransform, 0, 1);
             techniqueInterface.BindConstantBuffer(Techniques::ObjectCB::BasicMaterialConstants, 1, 1);

@@ -9,7 +9,7 @@
 #include "DX11.h"
 #include "../../IDevice_Forward.h"
 #include "../../IThreadContext_Forward.h"
-#include "../../Resource.h"
+#include "../../ResourceList.h"
 #include "../../../Utility/Mixins.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include "../../../Utility/IntrusivePtr.h"
