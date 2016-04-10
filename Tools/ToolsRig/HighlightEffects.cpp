@@ -47,7 +47,7 @@ namespace ToolsRig
         metalContext.Bind(Metal::Topology::TriangleStrip);
         metalContext.Unbind<Metal::BoundInputLayout>();
 
-        auto desc = Metal::ExtractDesc(*inputStencil.GetResource());
+        auto desc = Metal::ExtractDesc(inputStencil.GetResource());
         if (desc._type != ResourceDesc::Type::Texture) return;
 
         bool stencilInput = 
