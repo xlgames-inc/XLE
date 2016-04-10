@@ -40,7 +40,7 @@ namespace ToolsRig
         const RenderCore::Assets::ResolvedMaterial& mat,
         const SystemConstants& sysConstants,
         const ::Assets::DirectorySearchRules& searchRules,
-        const RenderCore::Metal::InputLayout& geoInputLayout)
+        const RenderCore::InputLayout& geoInputLayout)
     {
         using namespace RenderCore;
         using namespace RenderCore::Techniques;

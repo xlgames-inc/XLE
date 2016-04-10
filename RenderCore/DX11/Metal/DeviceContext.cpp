@@ -136,7 +136,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->OMSetDepthStencilState(depthStencil.GetUnderlying(), stencilRef);
     }
 
-    void DeviceContext::Bind(const IndexBuffer& ib, NativeFormat::Enum indexFormat, unsigned offset)
+    void DeviceContext::Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset)
     {
         _underlying->IASetIndexBuffer(ib.GetUnderlying(), AsDXGIFormat(indexFormat), offset);
     }

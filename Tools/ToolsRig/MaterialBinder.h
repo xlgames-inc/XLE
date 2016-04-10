@@ -13,6 +13,7 @@
 
 namespace RenderCore { namespace Assets { class ResolvedMaterial; } }
 namespace RenderCore { namespace Techniques { class ParsingContext; class PredefinedCBLayout; } }
+namespace RenderCore { class InputElementDesc; using InputLayout = std::pair<const InputElementDesc*, size_t>; }
 namespace Assets { class DirectorySearchRules; }
 
 namespace ToolsRig
@@ -45,7 +46,7 @@ namespace ToolsRig
             const RenderCore::Assets::ResolvedMaterial& mat,
             const SystemConstants& sysConstants,
             const ::Assets::DirectorySearchRules& searchRules,
-            const RenderCore::Metal::InputLayout& geoInputLayout) = 0;
+            const RenderCore::InputLayout& geoInputLayout) = 0;
         virtual ~IMaterialBinder();
 
     protected:
@@ -69,7 +70,7 @@ namespace ToolsRig
             const RenderCore::Assets::ResolvedMaterial& mat,
             const SystemConstants& sysConstants,
             const ::Assets::DirectorySearchRules& searchRules,
-            const RenderCore::Metal::InputLayout& geoInputLayout);
+            const RenderCore::InputLayout& geoInputLayout);
         
         MaterialBinder(const ::Assets::ResChar shaderTypeName[]);
         virtual ~MaterialBinder();

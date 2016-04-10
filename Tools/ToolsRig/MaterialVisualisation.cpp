@@ -220,7 +220,7 @@ namespace ToolsRig
         }
 
         Metal::IndexBuffer metalIB(buffer.get(), ib._size);
-        metalContext.Bind(metalIB, (Metal::NativeFormat::Enum)ib._format);
+        metalContext.Bind(metalIB, ib._format);
     }
 
     void MaterialSceneParser::DrawModel(  
@@ -279,7 +279,7 @@ namespace ToolsRig
                     // index buffer and vertex buffer and topology
                     // then we just execute the draw command
 
-                Metal::InputElementDesc metalVertInput[16];
+                InputElementDesc metalVertInput[16];
                 unsigned eleCount = BuildLowLevelInputAssembly(metalVertInput, dimof(metalVertInput),
                     rawGeo._vb._ia._elements);
 
@@ -325,7 +325,7 @@ namespace ToolsRig
                     // index buffer and vertex buffer and topology
                     // then we just execute the draw command
 
-                Metal::InputElementDesc metalVertInput[16];
+                InputElementDesc metalVertInput[16];
                 unsigned eleCount = BuildLowLevelInputAssembly(metalVertInput, dimof(metalVertInput),
                     rawGeo._vb._ia._elements, 0);
                 eleCount += BuildLowLevelInputAssembly(

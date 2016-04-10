@@ -12,6 +12,8 @@
 #include "DX11Utils.h"
 #include "Shader.h"
 #include "ObjectFactory.h"
+#include "../../Format.h"
+#include "../../Types.h"
 #include "../../RenderUtils.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
@@ -75,82 +77,6 @@ namespace RenderCore { namespace Metal_DX11
         return GetObjectFactory().CreateInputLayout(
             nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.second), 
             byteCode.first, byteCode.second);
-    }
-
-    namespace GlobalInputLayouts
-    {
-        namespace Detail
-        {
-            static const unsigned AppendAlignedElement = ~unsigned(0x0);
-            InputElementDesc P2CT_Elements[] = 
-            {
-                InputElementDesc( "POSITION",   0, NativeFormat::R32G32_FLOAT   ),
-                InputElementDesc( "COLOR",      0, NativeFormat::R8G8B8A8_UNORM ),
-                InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT   )
-            };
-
-            InputElementDesc P2C_Elements[] = 
-            {
-                InputElementDesc( "POSITION",   0, NativeFormat::R32G32_FLOAT   ),
-                InputElementDesc( "COLOR",      0, NativeFormat::R8G8B8A8_UNORM )
-            };
-
-            InputElementDesc PCT_Elements[] = 
-            {
-                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
-                InputElementDesc( "COLOR",      0, NativeFormat::R8G8B8A8_UNORM ),
-                InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT   )
-            };
-
-            InputElementDesc P_Elements[] = 
-            {
-                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT)
-            };
-
-            InputElementDesc PC_Elements[] = 
-            {
-                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
-                InputElementDesc( "COLOR",      0, NativeFormat::R8G8B8A8_UNORM )
-            };
-
-            InputElementDesc PT_Elements[] = 
-            {
-                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
-                InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT   )
-            };
-
-            InputElementDesc PN_Elements[] = 
-            {
-                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
-                InputElementDesc( "NORMAL",   0, NativeFormat::R32G32B32_FLOAT )
-            };
-
-            InputElementDesc PNT_Elements[] = 
-            {
-                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
-                InputElementDesc( "NORMAL",   0, NativeFormat::R32G32B32_FLOAT ),
-                InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT )
-            };
-
-            InputElementDesc PNTT_Elements[] = 
-            {
-                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
-                InputElementDesc( "NORMAL",   0, NativeFormat::R32G32B32_FLOAT ),
-                InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT ),
-                InputElementDesc( "TEXTANGENT",   0, NativeFormat::R32G32B32_FLOAT ),
-                InputElementDesc( "TEXBITANGENT",   0, NativeFormat::R32G32B32_FLOAT )
-            };
-        }
-
-        InputLayout P2CT = std::make_pair(Detail::P2CT_Elements, dimof(Detail::P2CT_Elements));
-        InputLayout P2C = std::make_pair(Detail::P2C_Elements, dimof(Detail::P2C_Elements));
-        InputLayout PCT = std::make_pair(Detail::PCT_Elements, dimof(Detail::PCT_Elements));
-        InputLayout P = std::make_pair(Detail::P_Elements, dimof(Detail::P_Elements));
-        InputLayout PC = std::make_pair(Detail::PC_Elements, dimof(Detail::PC_Elements));
-        InputLayout PT = std::make_pair(Detail::PT_Elements, dimof(Detail::PT_Elements));
-        InputLayout PN = std::make_pair(Detail::PN_Elements, dimof(Detail::PN_Elements));
-        InputLayout PNT = std::make_pair(Detail::PNT_Elements, dimof(Detail::PNT_Elements));
-        InputLayout PNTT = std::make_pair(Detail::PNTT_Elements, dimof(Detail::PNTT_Elements));
     }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -322,58 +248,58 @@ namespace RenderCore { namespace Metal_DX11
         return functionResult;
     }
 
-    static NativeFormat::Enum AsNativeFormat(D3D11_SHADER_TYPE_DESC typeDesc)
+    static Format AsNativeFormat(D3D11_SHADER_TYPE_DESC typeDesc)
     {
         switch (typeDesc.Type) {
         case D3D10_SVT_INT:
             if (typeDesc.Rows <= 1) {
                 if (typeDesc.Columns == 4) {
-                    return NativeFormat::R32G32B32A32_SINT;
+                    return Format::R32G32B32A32_SINT;
                 } else if (typeDesc.Columns == 2) {
-                    return NativeFormat::R32G32_SINT;
+                    return Format::R32G32_SINT;
                 } else if (typeDesc.Columns == 1) {
-                    return NativeFormat::R32_SINT;
+                    return Format::R32_SINT;
                 } else {
-                    return NativeFormat::Unknown;
+                    return Format::Unknown;
                 }
             }
             break;
         case D3D10_SVT_UINT:
             if (typeDesc.Rows <= 1) {
                 if (typeDesc.Columns == 4) {
-                    return NativeFormat::R32G32B32A32_UINT;
+                    return Format::R32G32B32A32_UINT;
                 } else if (typeDesc.Columns == 2) {
-                    return NativeFormat::R32G32_UINT;
+                    return Format::R32G32_UINT;
                 } else if (typeDesc.Columns == 1) {
-                    return NativeFormat::R32_UINT;
+                    return Format::R32_UINT;
                 } else {
-                    return NativeFormat::Unknown;
+                    return Format::Unknown;
                 }
             }
             break;
         case D3D10_SVT_UINT8:
             if (typeDesc.Rows <= 1) {
                 if (typeDesc.Columns == 4) {
-                    return NativeFormat::R8G8B8A8_UINT;
+                    return Format::R8G8B8A8_UINT;
                 } else if (typeDesc.Columns == 2) {
-                    return NativeFormat::R8G8B8A8_UINT;
+                    return Format::R8G8B8A8_UINT;
                 } else if (typeDesc.Columns == 1) {
-                    return NativeFormat::R8G8B8A8_UINT;
+                    return Format::R8G8B8A8_UINT;
                 } else {
-                    return NativeFormat::Unknown;
+                    return Format::Unknown;
                 }
             }
             break;
         case D3D10_SVT_FLOAT:
             if (typeDesc.Rows <= 1) {
                 if (typeDesc.Columns == 4) {
-                    return NativeFormat::R32G32B32A32_FLOAT;
+                    return Format::R32G32B32A32_FLOAT;
                 } else if (typeDesc.Columns == 2) {
-                    return NativeFormat::R32G32_FLOAT;
+                    return Format::R32G32_FLOAT;
                 } else if (typeDesc.Columns == 1) {
-                    return NativeFormat::R32_FLOAT;
+                    return Format::R32_FLOAT;
                 } else {
-                    return NativeFormat::Unknown;
+                    return Format::Unknown;
                 }
             }
             break;
@@ -381,7 +307,7 @@ namespace RenderCore { namespace Metal_DX11
         default:
             break;
         }
-        return NativeFormat::Unknown;
+        return Format::Unknown;
     }
 
     bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<const char*> cbs)
@@ -541,7 +467,7 @@ namespace RenderCore { namespace Metal_DX11
                 newElement._offset = variableDesc.StartOffset;
                 newElement._arrayCount = typeDesc.Elements;
                 newElement._format = AsNativeFormat(typeDesc);
-                if (newElement._format == NativeFormat::Unknown) {
+                if (newElement._format == Format::Unknown) {
                     continue;
                 }
 

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TestDisplays.h"
+#include "../../RenderCore/Format.h"
 #include "../../Math/Geometry.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Noise.h"
@@ -764,7 +765,7 @@ namespace PlatformRig { namespace Overlays
         auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
         _buffer = bufferUploads.Transaction_Immediate(
             CreateDesc(BindFlag::RenderTarget|BindFlag::ShaderResource, 0, GPUAccess::Read|GPUAccess::Write,
-                TextureDesc::Plain2D(64, 64, Metal::NativeFormat::R8_UNORM), "ConsRasterTest"));
+                TextureDesc::Plain2D(64, 64, Format::R8_UNORM), "ConsRasterTest"));
         _bufferRTV = RTV(_buffer->GetUnderlying());
         _bufferSRV = SRV(_buffer->GetUnderlying());
         _viewport = Metal::ViewportDesc(0.f, 0.f, float(width), float(height), 0.f, 1.f);
@@ -844,7 +845,7 @@ namespace PlatformRig { namespace Overlays
             };
             Metal::VertexBuffer vb(vertices, sizeof(vertices));
             metalContext->Bind(MakeResourceList(vb), sizeof(Vertex), 0);
-            Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::P2C, shader);
+            Metal::BoundInputLayout inputLayout(GlobalInputLayouts::P2C, shader);
             metalContext->Bind(inputLayout);
 
             Float4 recipViewport(1.f / box._viewport.Width, 1.f / box._viewport.Height, 0.f, 0.f);
@@ -888,7 +889,7 @@ namespace PlatformRig { namespace Overlays
             };
             Metal::VertexBuffer vb(vertices, sizeof(vertices));
             metalContext->Bind(MakeResourceList(vb), sizeof(Vertex), 0);
-            Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::P2CT, shader);
+            Metal::BoundInputLayout inputLayout(GlobalInputLayouts::P2CT, shader);
             metalContext->Bind(inputLayout);
 
             Float4 recipViewport(1.f / mainViewport.Width, 1.f / mainViewport.Height, 0.f, 0.f);

@@ -8,7 +8,7 @@
 #include "../RenderCore/IDevice.h"
 #include "../SceneEngine/LightDesc.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
-#include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Format.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/IncludeLUA.h"
 #include "../Utility/ParameterBox.h"
@@ -436,13 +436,13 @@ namespace PlatformRig
         result._width   = settings._textureSize;
         result._height  = settings._textureSize;
         if (settings._flags & DefaultShadowFrustumSettings::Flags::HighPrecisionDepths) {
-            result._typelessFormat  = RenderCore::Metal::NativeFormat::R24G8_TYPELESS;
-            result._writeFormat     = RenderCore::Metal::NativeFormat::D24_UNORM_S8_UINT;
-            result._readFormat      = RenderCore::Metal::NativeFormat::R24_UNORM_X8_TYPELESS;
+            result._typelessFormat  = RenderCore::Format::R24G8_TYPELESS;
+            result._writeFormat     = RenderCore::Format::D24_UNORM_S8_UINT;
+            result._readFormat      = RenderCore::Format::R24_UNORM_X8_TYPELESS;
         } else {
-            result._typelessFormat  = RenderCore::Metal::NativeFormat::R16_TYPELESS;
-            result._writeFormat     = RenderCore::Metal::NativeFormat::D16_UNORM;
-            result._readFormat      = RenderCore::Metal::NativeFormat::R16_UNORM;
+            result._typelessFormat  = RenderCore::Format::R16_TYPELESS;
+            result._writeFormat     = RenderCore::Format::D16_UNORM;
+            result._readFormat      = RenderCore::Format::R16_UNORM;
         }
         
         if (settings._flags & DefaultShadowFrustumSettings::Flags::ArbitraryCascades) {

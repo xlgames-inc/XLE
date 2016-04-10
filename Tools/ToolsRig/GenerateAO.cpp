@@ -27,6 +27,7 @@
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Format.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -290,13 +291,13 @@ namespace ToolsRig
         auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
 
         #if defined(GEN_AO_DEBUG)
-            auto typelessFormat = Metal::NativeFormat::R32_TYPELESS;
-            auto dsvFormat = Metal::NativeFormat::D32_FLOAT;
-            auto srvFormat = Metal::NativeFormat::R32_FLOAT;
+            auto typelessFormat = Format::R32_TYPELESS;
+            auto dsvFormat = Format::D32_FLOAT;
+            auto srvFormat = Format::R32_FLOAT;
         #else
-            auto typelessFormat = Metal::NativeFormat::R24G8_TYPELESS;
-            auto dsvFormat = Metal::NativeFormat::D24_UNORM_S8_UINT;
-            auto srvFormat = Metal::NativeFormat::R24_UNORM_X8_TYPELESS;
+            auto typelessFormat = Format::R24G8_TYPELESS;
+            auto dsvFormat = Format::D24_UNORM_S8_UINT;
+            auto srvFormat = Format::R24_UNORM_X8_TYPELESS;
         #endif
 
         _pimpl->_cubeLocator = bufferUploads.Transaction_Immediate(
@@ -314,7 +315,7 @@ namespace ToolsRig
             CreateDesc( 
                 BindFlag::UnorderedAccess,
                 0, GPUAccess::Write,
-                TextureDesc::Plain2D(4, 4, Metal::NativeFormat::R32_FLOAT, 1, cubeFaces),
+                TextureDesc::Plain2D(4, 4, Format::R32_FLOAT, 1, cubeFaces),
                 "AoGenMini"));
         _pimpl->_miniUAV = Metal::UnorderedAccessView(_pimpl->_miniLocator->GetUnderlying());
 
@@ -485,7 +486,7 @@ namespace ToolsRig
                             PtrAdd(file.GetData(), vbStart + ele._alignedByteOffset),
                             PtrAdd(file.GetData(), vbEnd),
                             vertexCount, vbIA._vertexStride, 
-                            Metal::NativeFormat::Enum(ele._nativeFormat));
+							ele._nativeFormat);
 
                         mesh.AddStream(
                             std::move(rawSource),
@@ -603,7 +604,7 @@ namespace ToolsRig
                     CreateRawDataSource(
                         std::move(aoValues),
                         samplePoints.size(), sizeof(uint8),
-                        Metal::NativeFormat::R8_UNORM),
+						Format::R8_UNORM),
                     std::vector<unsigned>(pStream.GetVertexMap()), // shares the same vertex map
                     "PER_VERTEX_AO", 0);
 

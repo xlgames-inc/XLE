@@ -48,19 +48,19 @@ namespace RenderCore { namespace Metal_DX11
     class ConstantBufferLayoutElement
     {
     public:
-        const char*         _name;
-        NativeFormat::Enum  _format;
-        unsigned            _offset;
-        unsigned            _arrayCount;
+        const char*     _name;
+		Format			_format;
+        unsigned        _offset;
+        unsigned        _arrayCount;
     };
 
     class ConstantBufferLayoutElementHash
     {
     public:
-        uint64              _name;
-        NativeFormat::Enum  _format;
-        unsigned            _offset;
-        unsigned            _arrayCount;
+        uint64      _name;
+		Format		_format;
+        unsigned    _offset;
+        unsigned    _arrayCount;
     };
 
     class ConstantBufferLayout

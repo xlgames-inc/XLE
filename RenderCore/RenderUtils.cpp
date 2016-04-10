@@ -6,7 +6,8 @@
 
 #include "RenderUtils.h"
 #include "ResourceDesc.h"
-#include "Metal/Shader.h"
+#include "Types.h"
+#include "Format.h"
 
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/StringFormat.h"
@@ -91,6 +92,83 @@ namespace RenderCore
 		_name[0] = '\0';
 		XlZeroMemory(_textureDesc);
 	}
+
+
+	namespace GlobalInputLayouts
+    {
+        namespace Detail
+        {
+            static const unsigned AppendAlignedElement = ~unsigned(0x0);
+            InputElementDesc P2CT_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, Format::R32G32_FLOAT   ),
+                InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM ),
+                InputElementDesc( "TEXCOORD",   0, Format::R32G32_FLOAT   )
+            };
+
+            InputElementDesc P2C_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, Format::R32G32_FLOAT   ),
+                InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM )
+            };
+
+            InputElementDesc PCT_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT),
+                InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM ),
+                InputElementDesc( "TEXCOORD",   0, Format::R32G32_FLOAT   )
+            };
+
+            InputElementDesc P_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT)
+            };
+
+            InputElementDesc PC_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT),
+                InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM )
+            };
+
+            InputElementDesc PT_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT),
+                InputElementDesc( "TEXCOORD",   0, Format::R32G32_FLOAT   )
+            };
+
+            InputElementDesc PN_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT),
+                InputElementDesc( "NORMAL",   0, Format::R32G32B32_FLOAT )
+            };
+
+            InputElementDesc PNT_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT),
+                InputElementDesc( "NORMAL",   0, Format::R32G32B32_FLOAT ),
+                InputElementDesc( "TEXCOORD",   0, Format::R32G32_FLOAT )
+            };
+
+            InputElementDesc PNTT_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT),
+                InputElementDesc( "NORMAL",   0, Format::R32G32B32_FLOAT ),
+                InputElementDesc( "TEXCOORD",   0, Format::R32G32_FLOAT ),
+                InputElementDesc( "TEXTANGENT",   0, Format::R32G32B32_FLOAT ),
+                InputElementDesc( "TEXBITANGENT",   0, Format::R32G32B32_FLOAT )
+            };
+        }
+
+        InputLayout P2CT = std::make_pair(Detail::P2CT_Elements, dimof(Detail::P2CT_Elements));
+        InputLayout P2C = std::make_pair(Detail::P2C_Elements, dimof(Detail::P2C_Elements));
+        InputLayout PCT = std::make_pair(Detail::PCT_Elements, dimof(Detail::PCT_Elements));
+        InputLayout P = std::make_pair(Detail::P_Elements, dimof(Detail::P_Elements));
+        InputLayout PC = std::make_pair(Detail::PC_Elements, dimof(Detail::PC_Elements));
+        InputLayout PT = std::make_pair(Detail::PT_Elements, dimof(Detail::PT_Elements));
+        InputLayout PN = std::make_pair(Detail::PN_Elements, dimof(Detail::PN_Elements));
+        InputLayout PNT = std::make_pair(Detail::PNT_Elements, dimof(Detail::PNT_Elements));
+        InputLayout PNTT = std::make_pair(Detail::PNTT_Elements, dimof(Detail::PNTT_Elements));
+    }
 
 }
 

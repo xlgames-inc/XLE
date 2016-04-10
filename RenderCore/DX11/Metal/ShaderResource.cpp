@@ -7,24 +7,24 @@
 #include "ShaderResource.h"
 #include "DeviceContext.h"
 #include "ObjectFactory.h"
-#include "../../Resource.h"
+#include "Format.h"
 #include "DX11Utils.h"
 
 namespace RenderCore { namespace Metal_DX11
 {
 
-    ShaderResourceView::ShaderResourceView(UnderlyingResourcePtr resource, NativeFormat::Enum format, int arrayCount, bool forceSingleSample)
+    ShaderResourceView::ShaderResourceView(UnderlyingResourcePtr resource, Format format, int arrayCount, bool forceSingleSample)
 	: ShaderResourceView(GetObjectFactory(*resource.get()), resource, format, arrayCount, forceSingleSample) {}
 
-    ShaderResourceView::ShaderResourceView(UnderlyingResourcePtr resource, NativeFormat::Enum format, const MipSlice& mipSlice)
+    ShaderResourceView::ShaderResourceView(UnderlyingResourcePtr resource, Format format, const MipSlice& mipSlice)
 	: ShaderResourceView(GetObjectFactory(*resource.get()), resource, format, mipSlice) {}
 
-	ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, UnderlyingResourcePtr resource, NativeFormat::Enum format, int arrayCount, bool forceSingleSample)
+	ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, UnderlyingResourcePtr resource, Format format, int arrayCount, bool forceSingleSample)
 	{
         if (!resource.get())
 			Throw(::Exceptions::BasicLabel("Null resource passed to ShaderResourceView constructor"));
         intrusive_ptr<ID3D::ShaderResourceView> srv;
-        if (format == NativeFormat::Unknown) {
+        if (format == Format(0)) {
             srv = factory.CreateShaderResourceView(resource.get());
         } else {
             D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
@@ -95,10 +95,10 @@ namespace RenderCore { namespace Metal_DX11
         _underlying = std::move(srv);
     }
 
-	ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, UnderlyingResourcePtr resource, NativeFormat::Enum format, const MipSlice& mipSlice)
+	ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, UnderlyingResourcePtr resource, Format format, const MipSlice& mipSlice)
 	{
 		intrusive_ptr<ID3D::ShaderResourceView> srv;
-		if (format == NativeFormat::Unknown) {
+		if (format == Format(0)) {
 			srv = factory.CreateShaderResourceView(resource.get());
 		} else {
 			D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;

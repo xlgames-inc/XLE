@@ -22,6 +22,7 @@
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../../RenderCore/Format.h"
 #include "../../Math/Transformations.h"
 
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
@@ -106,7 +107,7 @@ namespace ToolsRig
         if (savedTargets.GetDepthStencilView())
             depthSrv = Metal::ShaderResourceView(Metal::ExtractResource<ID3D::Resource>(
                 savedTargets.GetDepthStencilView()).get(), 
-                Metal::NativeFormat::Enum::R24_UNORM_X8_TYPELESS);     // note -- assuming D24S8 depth buffer! We need a better way to get the depth srv
+                Format::R24_UNORM_X8_TYPELESS);     // note -- assuming D24S8 depth buffer! We need a better way to get the depth srv
 
         TRY
         {
@@ -174,7 +175,7 @@ namespace ToolsRig
         if (savedTargets.GetDepthStencilView())
             depthSrv = Metal::ShaderResourceView(Metal::ExtractResource<ID3D::Resource>(
                 savedTargets.GetDepthStencilView()).get(), 
-                Metal::NativeFormat::R24_UNORM_X8_TYPELESS);     // note -- assuming D24S8 depth buffer! We need a better way to get the depth srv
+				Format::R24_UNORM_X8_TYPELESS);     // note -- assuming D24S8 depth buffer! We need a better way to get the depth srv
 
         TRY
         {
@@ -246,7 +247,7 @@ namespace ToolsRig
 
     ManipulatorResBox::ManipulatorResBox(const Desc&)
     : _materialGenCylinder(
-        Metal::InputLayout((const Metal::InputElementDesc*)nullptr, 0),
+        InputLayout((const InputElementDesc*)nullptr, 0),
         { Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
         ParameterBox({ std::make_pair(u("SHAPE"), "4") }))
     {
@@ -318,9 +319,9 @@ namespace ToolsRig
             { Float2(screenMaxs[0], screenMaxs[1]), Float2(1.f, 1.f) }
         };
 
-        Metal::InputElementDesc vertexInputLayout[] = {
-            Metal::InputElementDesc( "POSITION", 0, Metal::NativeFormat::R32G32_FLOAT ),
-            Metal::InputElementDesc( "TEXCOORD", 0, Metal::NativeFormat::R32G32_FLOAT )
+        InputElementDesc vertexInputLayout[] = {
+            InputElementDesc( "POSITION", 0, Format::R32G32_FLOAT ),
+            InputElementDesc( "TEXCOORD", 0, Format::R32G32_FLOAT )
         };
 
         Metal::VertexBuffer vertexBuffer(vertices, sizeof(vertices));

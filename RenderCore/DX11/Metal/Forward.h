@@ -40,12 +40,8 @@ namespace RenderCore { namespace Metal_DX11
     typedef SharedPkt ConstantBufferPacket;
 
     namespace Topology { enum Enum; }
-    namespace NativeFormat { enum Enum; };
     namespace Blend { enum Enum; };
     namespace BlendOp { enum Enum; };
     namespace CullMode { enum Enum; }
-
-    class InputElementDesc;
-    typedef std::pair<const InputElementDesc*, size_t>   InputLayout;
 }}
 

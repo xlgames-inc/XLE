@@ -25,6 +25,7 @@
 #include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/ModelUtils.h"
+#include "../../RenderCore/Format.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
@@ -384,7 +385,7 @@ namespace ToolsRig
                 if (savedTargets.GetDepthStencilView())
                     depthSrv = Metal::ShaderResourceView(
                         Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView()).get(), 
-                        Metal::NativeFormat::X24_TYPELESS_G8_UINT);
+						Format::X24_TYPELESS_G8_UINT);
 
                 metalContext->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
                 ExecuteHighlightByStencil(*metalContext, depthSrv, settings, _pimpl->_settings->_colourByMaterial==2);

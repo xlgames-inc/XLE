@@ -7,6 +7,7 @@
 #include "RenderTargetView.h"
 #include "ObjectFactory.h"
 #include "DeviceContext.h"
+#include "Format.h"
 #include "../../RenderUtils.h"
 #include "DX11Utils.h"
 
@@ -15,14 +16,14 @@ namespace RenderCore { namespace Metal_DX11
 
     RenderTargetView::RenderTargetView(
 		UnderlyingResourcePtr resource,
-        NativeFormat::Enum format, const SubResourceSlice& arraySlice)
+		Format format, const SubResourceSlice& arraySlice)
     {
         if (!resource.get()) {
             Throw(::Exceptions::BasicLabel("NULL resource passed to RenderTargetView constructor"));
         }
 
         intrusive_ptr<ID3D::RenderTargetView> rtv;
-        if (format == NativeFormat::Unknown) {
+        if (format == Format(0)) {
             rtv = GetObjectFactory(*resource.get()).CreateRenderTargetView(resource.get());
         } else {
             TextureDesc2D textureDesc(resource.get());
@@ -83,14 +84,14 @@ namespace RenderCore { namespace Metal_DX11
 
     DepthStencilView::DepthStencilView(
 		UnderlyingResourcePtr resource,
-        NativeFormat::Enum format, const SubResourceSlice& arraySlice)
+		Format format, const SubResourceSlice& arraySlice)
     {
         if (!resource.get()) {
             Throw(::Exceptions::BasicLabel("NULL resource passed to DepthStencilView constructor"));
         }
 
         intrusive_ptr<ID3D::DepthStencilView> view;
-        if (format == NativeFormat::Unknown) {
+        if (format == Format(0)) {
             view = GetObjectFactory(*resource.get()).CreateDepthStencilView(resource.get());
         } else {
             TextureDesc2D textureDesc(resource.get());
@@ -152,14 +153,14 @@ namespace RenderCore { namespace Metal_DX11
 
 
 
-    UnorderedAccessView::UnorderedAccessView(UnderlyingResourcePtr resource, NativeFormat::Enum format, unsigned mipSlice, bool appendBuffer, bool forceArray)
+    UnorderedAccessView::UnorderedAccessView(UnderlyingResourcePtr resource, Format format, unsigned mipSlice, bool appendBuffer, bool forceArray)
     {
         if (!resource.get()) {
             Throw(::Exceptions::BasicLabel("NULL resource passed to UnorderedAccessView constructor"));
         }
 
         intrusive_ptr<ID3D::UnorderedAccessView> view = nullptr;
-        if (format == NativeFormat::Unknown && mipSlice == 0 && !appendBuffer && !forceArray) {
+        if (format == Format(0) && mipSlice == 0 && !appendBuffer && !forceArray) {
             view = GetObjectFactory(*resource.get()).CreateUnorderedAccessView(resource.get());
         } else {
             D3D11_UNORDERED_ACCESS_VIEW_DESC viewDesc;

@@ -15,6 +15,7 @@
 #include <vector>
 
 namespace Assets { class DependencyValidation; }
+namespace RenderCore { class InputElementDesc; }
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -64,8 +65,6 @@ namespace RenderCore { namespace Metal_DX11
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class InputElementDesc;
 
     class GeometryShader
     {

@@ -163,8 +163,8 @@ namespace VulkanTest
 			exit(-1);
 		}
 
-		auto fmt = Metal::NativeFormat::R8G8B8A8_UNORM;
-		auto bufferSize = width * height * Metal::BitsPerPixel(fmt) / 8;
+		auto fmt = Format::R8G8B8A8_UNORM;
+		auto bufferSize = width * height * BitsPerPixel(fmt) / 8;
 		auto buffer = std::make_unique<uint8[]>(bufferSize);
 
 		if (!read_ppm(filename.c_str(), width, height, bufferSize / height, buffer.get())) {

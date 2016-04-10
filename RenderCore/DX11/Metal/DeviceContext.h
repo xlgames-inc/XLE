@@ -41,8 +41,6 @@ namespace RenderCore { namespace Metal_DX11
     class BoundClassInterfaces;
 	class ObjectFactory;
 
-    namespace NativeFormat { enum Enum; }
-
     /// Container for Topology::Enum
     namespace Topology
     {
@@ -124,7 +122,7 @@ namespace RenderCore { namespace Metal_DX11
         template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess);
 
         void        Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[]);
-        void        Bind(const IndexBuffer& ib, NativeFormat::Enum indexFormat, unsigned offset=0);
+        void        Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset=0);
         void        Bind(const BoundInputLayout& inputLayout);
         void        Bind(Topology::Enum topology);
         void        Bind(const VertexShader& vertexShader);

@@ -184,7 +184,7 @@ namespace ToolsRig
 
         auto& offscreen = Techniques::FindCachedBox<CommonOffscreenTarget>(
             CommonOffscreenTarget::Desc(unsigned(viewport.Width), unsigned(viewport.Height), 
-            Metal::NativeFormat::R8G8B8A8_UNORM));
+            Format::R8G8B8A8_UNORM));
 
         const bool doDepthTest = true;
         if (constant_expression<doDepthTest>::result()) {

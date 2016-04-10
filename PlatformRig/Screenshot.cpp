@@ -17,6 +17,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Assets/Services.h"
+#include "../RenderCore/Format.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../ConsoleRig/Console.h"
@@ -41,7 +42,7 @@ namespace PlatformRig
         const void* imageData,
         UInt2 dimensions,
         unsigned rowPitch,
-        Metal::NativeFormat::Enum format)
+        Format format)
     {
             // using DirectXTex to save to disk as a TGA file...
         DirectX::Image image {
@@ -70,7 +71,7 @@ namespace PlatformRig
         const Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings,
         UInt2 sampleCount,
-        Metal::NativeFormat::Enum format, bool interleavedTiles)
+        Format format, bool interleavedTiles)
     {
         // We want to separate the view into several tiles, and render
         // each as a separate high-res render. Then we will stitch them
@@ -203,7 +204,7 @@ namespace PlatformRig
             // We will write out the raw data in some simple format
             //      -- the user can complete processing in a image editing application
         UInt2 finalImageDims(qualitySettings._dimensions[0]*sampleCount[0], qualitySettings._dimensions[1]*sampleCount[1]);
-        auto bpp = Metal::BitsPerPixel(format);
+        auto bpp = BitsPerPixel(format);
         auto finalRowPitch = finalImageDims[0]*bpp/8;
         auto rawData = BufferUploads::CreateBasicPacket(
             finalImageDims[1]*finalRowPitch, nullptr,
@@ -313,8 +314,8 @@ namespace PlatformRig
         IThreadContext& context,
         LightingParserContext& parserContext,
 		BufferUploads::DataPacket& inputImage, UInt2 dimensions,
-        Metal::NativeFormat::Enum preFilterFormat,
-        Metal::NativeFormat::Enum postFilterFormat,
+		Format preFilterFormat,
+        Format postFilterFormat,
         const SceneEngine::ToneMapSettings& toneMapSettings)
     {
                     // Now we want to do HDR resolve (on the GPU)
@@ -373,8 +374,8 @@ namespace PlatformRig
         const RenderingQualitySettings& qualitySettings,
         UInt2 sampleCount)
     {
-        auto preFilterFormat = Metal::NativeFormat::R16G16B16A16_FLOAT;
-        auto postFilterFormat = Metal::NativeFormat::R8G8B8A8_UNORM_SRGB;
+        auto preFilterFormat = Format::R16G16B16A16_FLOAT;
+        auto postFilterFormat = Format::R8G8B8A8_UNORM_SRGB;
         auto highResQual = qualitySettings;
         highResQual._dimensions[0] *= sampleCount[0];
         highResQual._dimensions[1] *= sampleCount[1];
