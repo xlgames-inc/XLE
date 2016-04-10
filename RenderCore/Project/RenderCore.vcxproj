@@ -77,6 +77,7 @@
     <ClInclude Include="..\DX11\IDeviceDX11.h">
     </ClInclude>
     <ClInclude Include="..\FlexForward.h" />
+    <ClInclude Include="..\Format.h" />
     <ClInclude Include="..\GPUProfiler.h" />
     <ClInclude Include="..\IDevice.h" />
     <ClInclude Include="..\FlexBegin.h" />
@@ -103,10 +104,11 @@
     <ClInclude Include="..\Metal\Types.h" />
     <ClInclude Include="..\MinimalShaderSource.h" />
     <ClInclude Include="..\RenderUtils.h" />
-    <ClInclude Include="..\Resource.h" />
+    <ClInclude Include="..\ResourceList.h" />
     <ClInclude Include="..\ResourceDesc.h" />
     <ClInclude Include="..\ShaderLangUtil.h" />
     <ClInclude Include="..\ShaderService.h" />
+    <ClInclude Include="..\Types.h" />
     <ClInclude Include="..\Vulkan\Device.h" />
     <ClInclude Include="..\Vulkan\IDeviceVulkan.h" />
   </ItemGroup>
@@ -124,10 +126,10 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\Format.cpp" />
     <ClCompile Include="..\GPUProfiler.cpp" />
     <ClCompile Include="..\MinimalShaderSource.cpp" />
     <ClCompile Include="..\RenderUtils.cpp" />
-    <ClCompile Include="..\Resource.cpp" />
     <ClCompile Include="..\ShaderLangUtil.cpp" />
     <ClCompile Include="..\ShaderService.cpp" />
     <ClCompile Include="..\Version.cpp" />

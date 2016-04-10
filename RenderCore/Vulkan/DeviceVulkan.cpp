@@ -507,7 +507,7 @@ namespace RenderCore
 			std::move(surface), std::move(result), _objectFactory,
             GetQueue(_underlying.get(), _physDev._renderingQueueFamily), 
             _pools,
-            BufferUploads::TextureDesc::Plain2D(swapChainExtent.width, swapChainExtent.height, chainFmt),
+            BufferUploads::TextureDesc::Plain2D(swapChainExtent.width, swapChainExtent.height, Metal_Vulkan::AsFormat(chainFmt)),
             platformValue);
     }
 
@@ -966,7 +966,7 @@ namespace RenderCore
             image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
             image_info.pNext = nullptr;
             image_info.imageType = VK_IMAGE_TYPE_2D;
-            image_info.format = (VkFormat)tex._nativePixelFormat;
+            image_info.format = Metal_Vulkan::AsVkFormat(tex._format);
             image_info.extent.width = tex._width;
             image_info.extent.height = tex._height;
             image_info.extent.depth = tex._depth;
@@ -1023,7 +1023,7 @@ namespace RenderCore
         view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         view_info.pNext = nullptr;
         view_info.image = res.GetImage();
-        view_info.format = (VkFormat)res.GetDesc()._textureDesc._nativePixelFormat;
+        view_info.format = Metal_Vulkan::AsVkFormat(res.GetDesc()._textureDesc._format);
         view_info.components.r = VK_COMPONENT_SWIZZLE_R;
         view_info.components.g = VK_COMPONENT_SWIZZLE_G;
         view_info.components.b = VK_COMPONENT_SWIZZLE_B;
@@ -1047,7 +1047,7 @@ namespace RenderCore
     }
 
     RenderTargetView::RenderTargetView(const Metal_Vulkan::ObjectFactory& factory, Resource& res)
-    : RenderTargetView(factory, res.GetImage(), (VkFormat)res.GetDesc()._textureDesc._nativePixelFormat)
+    : RenderTargetView(factory, res.GetImage(), Metal_Vulkan::AsVkFormat(res.GetDesc()._textureDesc._format))
     {}
 
 	RenderTargetView::RenderTargetView() {}
@@ -1129,7 +1129,7 @@ namespace RenderCore
             CreateDesc(
                 BufferUploads::BindFlag::DepthStencil,
                 0, BufferUploads::GPUAccess::Read | BufferUploads::GPUAccess::Write,
-                BufferUploads::TextureDesc::Plain2D(bufferDesc._width, bufferDesc._height, VK_FORMAT_D24_UNORM_S8_UINT, 1, 1, bufferDesc._samples),
+                BufferUploads::TextureDesc::Plain2D(bufferDesc._width, bufferDesc._height, Metal_Vulkan::AsFormat(VK_FORMAT_D24_UNORM_S8_UINT), 1, 1, bufferDesc._samples),
                 "DefaultDepth"));
         _dsv = DepthStencilView(factory, _depthStencilResource);
 
@@ -1143,7 +1143,7 @@ namespace RenderCore
         // render pass for rendering to offscreen buffers.
 
         auto vkSamples = Metal_Vulkan::AsSampleCountFlagBits(bufferDesc._samples);
-        RenderPass::TargetInfo rtvAttachments[] = { RenderPass::TargetInfo((VkFormat)bufferDesc._nativePixelFormat, vkSamples, RenderPass::PreviousState::Clear) };
+        RenderPass::TargetInfo rtvAttachments[] = { RenderPass::TargetInfo(Metal_Vulkan::AsVkFormat(bufferDesc._format), vkSamples, RenderPass::PreviousState::Clear) };
 
         const VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
         const bool createDepthBuffer = depthFormat != VK_FORMAT_UNDEFINED;
@@ -1158,7 +1158,7 @@ namespace RenderCore
         imageViews[1] = _dsv.GetUnderlying();
 
         for (auto& i:_images) {
-			i._rtv = RenderTargetView(factory, i._underlying, (VkFormat)bufferDesc._nativePixelFormat);
+			i._rtv = RenderTargetView(factory, i._underlying, Metal_Vulkan::AsVkFormat(bufferDesc._format));
             imageViews[0] = i._rtv.GetUnderlying();
             i._defaultFrameBuffer = FrameBuffer(factory, MakeIteratorRange(imageViews), _defaultRenderPass, bufferDesc._width, bufferDesc._height);
         }

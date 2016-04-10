@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RenderUtils.h"
-#include "Resource.h"
 #include "ResourceDesc.h"
 #include "Metal/Shader.h"
 

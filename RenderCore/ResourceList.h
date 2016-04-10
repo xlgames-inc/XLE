@@ -11,12 +11,7 @@
 
 namespace RenderCore
 {
-    #define VS_DefShaderModel   "vs_*"
-    #define GS_DefShaderModel   "gs_*"
-    #define PS_DefShaderModel   "ps_*"
-    #define CS_DefShaderModel   "cs_*"
-    #define HS_DefShaderModel   "hs_*"
-    #define DS_DefShaderModel   "ds_*"
+    
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 

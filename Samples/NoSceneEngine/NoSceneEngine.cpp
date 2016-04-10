@@ -135,7 +135,22 @@ namespace VulkanTest
         return true;
     }
 
+	namespace Internal
+	{
+		static RenderCore::SubResourceInitData SingleSubResHelper(const RenderCore::SubResourceInitData& data, unsigned m, unsigned a)
+		{
+			return (m == 0 && a == 0) ? data : RenderCore::SubResourceInitData{};
+		}
+	}
+
+	static RenderCore::IDevice::ResourceInitializer SingleSubRes(
+		const RenderCore::SubResourceInitData& initData)
+	{
+		return std::bind(&Internal::SingleSubResHelper, std::ref(initData), std::placeholders::_1, std::placeholders::_2);
+	}
+
 	void init_image2(
+		RenderCore::IDevice& dev,
 		RenderCore::Metal::DeviceContext& context,
 		texture_object &texObj)
 	{
@@ -157,31 +172,30 @@ namespace VulkanTest
 			exit(-1);
 		}
 
-		using namespace BufferUploads;
-		Metal::Resource stagingResource(
-			context.GetFactory(), 
+		auto stagingResource = dev.CreateResource(
 			CreateDesc(
 				BindFlag::ShaderResource,
 				0, GPUAccess::Read | GPUAccess::Write,
 				TextureDesc::Plain2D(width, height, fmt),
 				"texture"),
-			buffer.get(), bufferSize);
+			SingleSubRes(SubResourceInitData{ buffer.get(), bufferSize, bufferSize / height, bufferSize }));
 
-		texObj._resource = Metal::Resource(
-			context.GetFactory(),
+		auto gpuResource = dev.CreateResource(
 			CreateDesc(
 				BindFlag::ShaderResource,
 				0, GPUAccess::Read | GPUAccess::Write,
 				TextureDesc::Plain2D(width, height, fmt),
-			"texture"));
+				"texture"));
+
+		texObj._resource = Metal::Resource(gpuResource);
 		
 		// is it a good idea to change the layout of the staging resource before we use it?
-		stagingResource.SetImageLayout(context, Metal::ImageLayout::Preinitialized, Metal::ImageLayout::TransferSrcOptimal);
-		texObj._resource.SetImageLayout(context, Metal::ImageLayout::Undefined, Metal::ImageLayout::TransferDstOptimal);
+		Metal::SetImageLayout(context, stagingResource, Metal::ImageLayout::Preinitialized, Metal::ImageLayout::TransferSrcOptimal);
+		Metal::SetImageLayout(context, gpuResource, Metal::ImageLayout::Undefined, Metal::ImageLayout::TransferDstOptimal);
 		Metal::Copy(
-			context, texObj._resource, stagingResource,
+			context, gpuResource, stagingResource,
 			Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::TransferSrcOptimal);
-		texObj._resource.SetImageLayout(context, Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::ShaderReadOnlyOptimal);
+		Metal::SetImageLayout(context, gpuResource, Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::ShaderReadOnlyOptimal);
 		texObj._imageLayout = Metal::ImageLayout::ShaderReadOnlyOptimal;
 	}
 }
@@ -359,7 +373,7 @@ namespace Sample
 					auto initContext = renderDevice->CreateDeferredContext();
 					auto metalContext = Metal::DeviceContext::Get(*initContext);
 					metalContext->BeginCommandList();
-					VulkanTest::init_image2(*metalContext.get(), texObj);
+					VulkanTest::init_image2(*renderDevice, *metalContext.get(), texObj);
 					auto cmdList = metalContext->ResolveCommandList();
 					Metal::DeviceContext::Get(*context)->CommitCommandList(*cmdList, false);
 					// VulkanTest::init_image2(*Metal::DeviceContext::Get(*context), texObj);

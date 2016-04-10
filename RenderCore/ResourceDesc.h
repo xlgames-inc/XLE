@@ -13,6 +13,8 @@
 
 namespace RenderCore
 {
+	enum class Format;
+
     /// Container for CPUAccess::Enum
     namespace CPUAccess
     {
@@ -131,7 +133,7 @@ namespace RenderCore
     {
 	public:
         uint32 _width, _height, _depth;
-        unsigned _nativePixelFormat;
+        Format _format;
         struct Dimensionality { enum Enum { T1D, T2D, T3D, CubeMap }; };
         Dimensionality::Enum _dimensionality;
         uint8 _mipCount;
@@ -139,13 +141,13 @@ namespace RenderCore
         TextureSamples _samples;
 
         static TextureDesc Plain1D(
-            uint32 width, unsigned nativePixelFormat, 
+            uint32 width, Format format, 
             uint8 mipCount=1, uint16 arrayCount=0);
         static TextureDesc Plain2D(
-            uint32 width, uint32 height, unsigned nativePixelFormat, 
+            uint32 width, uint32 height, Format format, 
             uint8 mipCount=1, uint16 arrayCount=0, const TextureSamples& samples = TextureSamples::Create());
         static TextureDesc Plain3D(
-            uint32 width, uint32 height, uint32 depth, unsigned nativePixelFormat, uint8 mipCount=1);
+            uint32 width, uint32 height, uint32 depth, Format format, uint8 mipCount=1);
         static TextureDesc Empty();
     };
 
@@ -209,14 +211,14 @@ namespace RenderCore
     }
 
 	inline TextureDesc TextureDesc::Plain1D(
-		uint32 width, unsigned nativePixelFormat,
+		uint32 width, Format format,
 		uint8 mipCount, uint16 arrayCount)
 	{
 		TextureDesc result;
 		result._width = width;
 		result._height = 1;
 		result._depth = 1;
-		result._nativePixelFormat = nativePixelFormat;
+		result._format = format;
 		result._dimensionality = Dimensionality::T1D;
 		result._mipCount = mipCount;
 		result._arrayCount = arrayCount;
@@ -225,7 +227,7 @@ namespace RenderCore
 	}
 
 	inline TextureDesc TextureDesc::Plain2D(
-		uint32 width, uint32 height, unsigned nativePixelFormat,
+		uint32 width, uint32 height, Format format,
 		uint8 mipCount, uint16 arrayCount,
 		const TextureSamples& samples)
 	{
@@ -233,7 +235,7 @@ namespace RenderCore
 		result._width = width;
 		result._height = height;
 		result._depth = 1;
-		result._nativePixelFormat = nativePixelFormat;
+		result._format = format;
 		result._dimensionality = Dimensionality::T2D;
 		result._mipCount = mipCount;
 		result._arrayCount = arrayCount;
@@ -243,13 +245,13 @@ namespace RenderCore
 
 	inline TextureDesc TextureDesc::Plain3D(
 		uint32 width, uint32 height, uint32 depth,
-		unsigned nativePixelFormat, uint8 mipCount)
+		Format format, uint8 mipCount)
 	{
 		TextureDesc result;
 		result._width = width;
 		result._height = height;
 		result._depth = depth;
-		result._nativePixelFormat = nativePixelFormat;
+		result._format = format;
 		result._dimensionality = Dimensionality::T3D;
 		result._mipCount = mipCount;
 		result._arrayCount = 0;
@@ -263,7 +265,7 @@ namespace RenderCore
 		result._width = 0;
 		result._height = 0;
 		result._depth = 0;
-		result._nativePixelFormat = 0;
+		result._format = (Format)0;
 		result._dimensionality = Dimensionality::T1D;
 		result._mipCount = 0;
 		result._arrayCount = 0;

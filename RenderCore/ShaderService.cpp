@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ShaderService.h"
-#include "Resource.h"
+#include "Types.h"	// For PS_DefShaderModel
 #include "../Assets/Assets.h"
 #include "../Assets/IntermediateAssets.h"
 #include "../Assets/ArchiveCache.h"

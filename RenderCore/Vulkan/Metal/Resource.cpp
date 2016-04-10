@@ -8,6 +8,7 @@
 #include "ObjectFactory.h"
 #include "Format.h"
 #include "DeviceContext.h"
+#include "../../Format.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -46,12 +47,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		return result;
 	}
 
-	static bool IsDepthStencilFormat(NativeFormat::Enum fmt)
+	static bool IsDepthStencilFormat(Format fmt)
 	{
 		return GetComponents(fmt) == FormatComponents::Depth;
 	}
 
-	static VkImageAspectFlags AsImageAspectMask(BindFlag::BitField bindFlags, NativeFormat::Enum fmt)
+	static VkImageAspectFlags AsImageAspectMask(BindFlag::BitField bindFlags, Format fmt)
 	{
 		VkImageAspectFlags result = 0;
 		if (bindFlags & BindFlag::RenderTarget) result |= VK_IMAGE_ASPECT_COLOR_BIT;
@@ -158,7 +159,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		// unforunately, we can't just blanket aspectMask with all bits enabled.
 		// We must select a correct aspect mask. The nvidia drivers seem to be fine with all
 		// bits enabled, but the documentation says that this is not allowed
-		auto aspectMask = AsImageAspectMask(r.GetDesc()._bindFlags, (NativeFormat::Enum)r.GetDesc()._textureDesc._nativePixelFormat);
+		auto aspectMask = AsImageAspectMask(r.GetDesc()._bindFlags, r.GetDesc()._textureDesc._format);
 		Metal_Vulkan::SetImageLayout(
 			context.GetCommandList(),
 			r.GetImage(), 
@@ -201,7 +202,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				Throw(::Exceptions::BasicLabel("Invalid desc passed to buffer constructor"));
 
 			const auto& tDesc = desc._textureDesc;
-			const auto vkFormat = AsVkFormat(NativeFormat::Enum(tDesc._nativePixelFormat));
+			const auto vkFormat = AsVkFormat(tDesc._format);
 
 			VkImageCreateInfo image_create_info = {};
 			image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -277,7 +278,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (hasInitData) {
 				auto mipCount = std::max(1u, unsigned(desc._textureDesc._mipCount));
 				auto arrayCount = std::max(1u, unsigned(desc._textureDesc._arrayCount));
-				auto aspectFlags = AsImageAspectMask(desc._bindFlags, (NativeFormat::Enum)desc._textureDesc._nativePixelFormat);
+				auto aspectFlags = AsImageAspectMask(desc._bindFlags, desc._textureDesc._format);
 				for (unsigned m = 0; m < mipCount; ++m) {
 					for (unsigned a = 0; a < arrayCount; ++a) {
 						auto subResData = initData(m, a);
@@ -343,8 +344,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkImageCopy copyOps[16];
 
 		unsigned copyOperations = 0;
-		auto dstAspectMask = AsImageAspectMask(dstDesc._bindFlags, (NativeFormat::Enum)dstDesc._textureDesc._nativePixelFormat);
-		auto srcAspectMask = AsImageAspectMask(srcDesc._bindFlags, (NativeFormat::Enum)srcDesc._textureDesc._nativePixelFormat);
+		auto dstAspectMask = AsImageAspectMask(dstDesc._bindFlags, dstDesc._textureDesc._format);
+		auto srcAspectMask = AsImageAspectMask(srcDesc._bindFlags, srcDesc._textureDesc._format);
 		assert(srcAspectMask == dstAspectMask);
 
 		auto arrayCount = std::max(1u, (unsigned)srcDesc._textureDesc._arrayCount);

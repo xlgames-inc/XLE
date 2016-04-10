@@ -7,71 +7,25 @@
 #pragma once
 
 #include "VulkanCore.h"
-#include "Format.h"
 #include "ShaderReflection.h"
 #include "IncludeVulkan.h"
 #include "../../ShaderService.h"
 #include "../../RenderUtils.h"
-#include "../../../Utility/IntrusivePtr.h"
-#include "../../../Utility/MiniHeap.h"
 #include <memory>
 #include <vector>
+
+namespace RenderCore 
+{
+	class InputElementDesc;
+	using InputLayout = std::pair<const InputElementDesc*, size_t>;
+	enum class Format; 
+}
 
 namespace RenderCore { namespace Metal_Vulkan
 {
 	class DeviceContext;
 	class ConstantBuffer;
 	class ShaderResourceView;
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /// Container for InputClassification::Enum
-    namespace InputClassification
-    {
-        enum Enum { PerVertex, PerInstance };
-    }
-
-    class InputElementDesc
-    {
-    public:
-        std::string                 _semanticName;
-        unsigned                    _semanticIndex;
-        NativeFormat::Enum          _nativeFormat;
-        unsigned                    _inputSlot;
-        unsigned                    _alignedByteOffset;
-        InputClassification::Enum   _inputSlotClass;
-        unsigned                    _instanceDataStepRate;
-
-        InputElementDesc();
-        InputElementDesc(   const std::string& name, unsigned semanticIndex, 
-                            NativeFormat::Enum nativeFormat, unsigned inputSlot = 0, 
-                            unsigned alignedByteOffset = ~unsigned(0x0), 
-                            InputClassification::Enum inputSlotClass = InputClassification::PerVertex,
-                            unsigned instanceDataStepRate = 0);
-    };
-
-    typedef std::pair<const InputElementDesc*, size_t>   InputLayout;
-
-    unsigned CalculateVertexStride(
-        const InputElementDesc* start, const InputElementDesc* end,
-        unsigned slot);
-
-    unsigned HasElement(const InputElementDesc* begin, const InputElementDesc* end, const char elementSemantic[]);
-    unsigned FindElement(const InputElementDesc* begin, const InputElementDesc* end, const char elementSemantic[], unsigned semanticIndex = 0);
-
-    /// Contains some common reusable vertex input layouts
-    namespace GlobalInputLayouts
-    {
-        extern InputLayout P;
-        extern InputLayout PC;
-        extern InputLayout P2C;
-        extern InputLayout P2CT;
-        extern InputLayout PCT;
-        extern InputLayout PT;
-        extern InputLayout PN;
-        extern InputLayout PNT;
-        extern InputLayout PNTT;
-    }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -98,19 +52,19 @@ namespace RenderCore { namespace Metal_Vulkan
     class ConstantBufferLayoutElement
     {
     public:
-        const char*         _name;
-        NativeFormat::Enum  _format;
-        unsigned            _offset;
-        unsigned            _arrayCount;
+        const char*     _name;
+        Format			_format;
+        unsigned        _offset;
+        unsigned        _arrayCount;
     };
 
     class ConstantBufferLayoutElementHash
     {
     public:
-        uint64              _name;
-        NativeFormat::Enum  _format;
-        unsigned            _offset;
-        unsigned            _arrayCount;
+        uint64          _name;
+		Format			_format;
+        unsigned        _offset;
+        unsigned        _arrayCount;
     };
 
     class ConstantBufferLayout
@@ -235,20 +189,6 @@ namespace RenderCore { namespace Metal_Vulkan
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    inline InputElementDesc::InputElementDesc() {}
-    inline InputElementDesc::InputElementDesc(  const std::string& name, unsigned semanticIndex, 
-                                                NativeFormat::Enum nativeFormat, unsigned inputSlot, 
-                                                unsigned alignedByteOffset, 
-                                                InputClassification::Enum inputSlotClass,
-                                                unsigned instanceDataStepRate)
-    {
-        _semanticName = name; _semanticIndex = semanticIndex;
-        _nativeFormat = nativeFormat; _inputSlot = inputSlot;
-        _alignedByteOffset = alignedByteOffset; _inputSlotClass = inputSlotClass;
-        _instanceDataStepRate = instanceDataStepRate;
-    }
-
 
     inline UniformsStream::UniformsStream()
     {

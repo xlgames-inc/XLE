@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include "Format.h"
 #include "Resource.h"
 #include "VulkanCore.h"
+#include "../../Format.h"
 #include "../../../Core/Prefix.h"
 
 namespace RenderCore { class Resource; }
@@ -31,9 +31,9 @@ namespace RenderCore { namespace Metal_Vulkan
     public:
         ShaderResourceView();
         ~ShaderResourceView();
-		ShaderResourceView(const ObjectFactory& factory, VkImage image, NativeFormat::Enum = NativeFormat::Unknown);
-        ShaderResourceView(VkImage image, NativeFormat::Enum = NativeFormat::Unknown);
-		ShaderResourceView(UnderlyingResourcePtr res, NativeFormat::Enum = NativeFormat::Unknown);
+		ShaderResourceView(const ObjectFactory& factory, VkImage image, Format = Format::Unknown);
+        ShaderResourceView(VkImage image, Format = Format::Unknown);
+		ShaderResourceView(UnderlyingResourcePtr res, Format = Format::Unknown);
 
 		using UnderlyingType = VkImageView;
         using UnderlyingResource = VkImage;

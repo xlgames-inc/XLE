@@ -7,7 +7,7 @@
 #include "Shader.h"
 #include "ObjectFactory.h"
 #include "../../ShaderService.h"
-#include "../../Resource.h"
+#include "../../Types.h"
 #include "../../../Assets/Assets.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/StringFormat.h"

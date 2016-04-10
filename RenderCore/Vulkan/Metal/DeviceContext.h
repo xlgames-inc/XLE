@@ -9,11 +9,13 @@
 #include "State.h"
 #include "Forward.h"
 #include "VulkanCore.h"
-#include "../../Resource.h"
+#include "../../ResourceList.h"
 #include "../../IDevice_Forward.h"
 #include "../../IThreadContext_Forward.h"
 #include "../../Math/Vector.h"  // for Float4 in Clear()
 #include <memory>
+
+namespace RenderCore { enum class Format; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -129,7 +131,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess) {}
 
 		void        Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[]) {}
-        void        Bind(const IndexBuffer& ib, NativeFormat::Enum indexFormat, unsigned offset=0) {}
+        void        Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset=0) {}
         void        Bind(const VertexShader& vertexShader) {}
         void        Bind(const GeometryShader& geometryShader) {}
         void        Bind(const PixelShader& pixelShader) {}
