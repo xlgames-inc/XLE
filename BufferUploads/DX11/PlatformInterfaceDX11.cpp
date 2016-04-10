@@ -14,23 +14,28 @@
     #include "../../RenderCore/DX11/IDeviceDX11.h"
     #include "../../RenderCore/DX11/Metal/DX11Utils.h"
     #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
-    #include "../../RenderCore/Metal/Format.h"
+	#include "../../RenderCore/DX11/Metal/ObjectFactory.h"
+	#include "../../RenderCore/DX11/Metal/Format.h"
     #include "../../RenderCore/RenderUtils.h"
+	#include "../../RenderCore/Format.h"
     #include "../../Utility/HeapUtils.h"
     #include <functional>
 
     namespace BufferUploads { namespace PlatformInterface
     {
-        static bool IsDXTCompressed(unsigned format) { return GetCompressionType(NativeFormat::Enum(format)) == FormatCompressionType::BlockCompression; }
-        static Underlying::Resource*        ResPtr(const Underlying::Resource& resource) { return const_cast<Underlying::Resource*>(&resource); }
+		using namespace RenderCore;
+
+        static bool IsDXTCompressed(NativeFormat format) { return GetCompressionType(format) == FormatCompressionType::BlockCompression; }
+        static ID3D::Resource*        ResPtr(const UnderlyingResource& resource) { return const_cast<ID3D::Resource*>(reinterpret_cast<const ID3D::Resource*>(&resource)); }
 
         static DataPacket::SubResourceId SubR(unsigned mipIndex, unsigned arrayIndex) { return DataPacket::TexSubRes(mipIndex, arrayIndex); }
 
-        void UnderlyingDeviceContext::PushToResource(   const Underlying::Resource& resource, const BufferDesc& desc, 
+        void UnderlyingDeviceContext::PushToResource(   const UnderlyingResource& resource, const BufferDesc& desc,
                                                         unsigned resourceOffsetValue, const void* data, size_t dataSize,
                                                         TexturePitches rowAndSlicePitch, 
                                                         const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
         {
+			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             switch (desc._type) {
             case BufferDesc::Type::Texture:
                 {
@@ -38,7 +43,7 @@
 
                     #if defined(XL_DEBUG)
                         if (isFullUpdate) {
-                            intrusive_ptr<ID3D::Texture2D> texture = QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource));
+                            intrusive_ptr<ID3D::Texture2D> texture = Metal::QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource));
                             if (texture) {
                                 D3D11_TEXTURE2D_DESC desc;
                                 texture->GetDesc(&desc);
@@ -50,7 +55,7 @@
                     uint32 subResource = D3D11CalcSubresource(lodLevel, arrayIndex, desc._textureDesc._mipCount);
                     if (isFullUpdate) {
 
-                        _devContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), subResource, NULL, data, rowAndSlicePitch._rowPitch, rowAndSlicePitch._slicePitch);
+						metalContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), subResource, NULL, data, rowAndSlicePitch._rowPitch, rowAndSlicePitch._slicePitch);
 
                     } else {
 
@@ -61,7 +66,7 @@
                                 //  Attempt to use "ID3D11DeviceContext1", if we can get it. This version solves
                                 //  a bug in the earlier version of D3D11
                             ID3D11DeviceContext1 * devContext1Temp = nullptr;
-                            auto hresult = _devContext->GetUnderlying()->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&devContext1Temp);
+                            auto hresult = metalContext->GetUnderlying()->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&devContext1Temp);
                             intrusive_ptr<ID3D11DeviceContext1> devContext1(devContext1Temp, false);
                             if (SUCCEEDED(hresult) && devContext1) {
 
@@ -83,10 +88,10 @@
                             if (_useUpdateSubresourceWorkaround) {
 
                                  D3D11_BOX alignedBox = d3dBox;
-                                 unsigned srcBitsPerElement = BitsPerPixel(NativeFormat::Enum(desc._textureDesc._nativePixelFormat));
+                                 unsigned srcBitsPerElement = BitsPerPixel(desc._textureDesc._format);
 
                                      // convert from pixels to blocks
-                                 if (IsDXTCompressed(DXGI_FORMAT(desc._textureDesc._nativePixelFormat))) {
+                                 if (IsDXTCompressed(desc._textureDesc._format)) {
                                       alignedBox.left     /= 4;
                                       alignedBox.right    /= 4;
                                       alignedBox.top      /= 4;
@@ -97,7 +102,7 @@
                                  pAdjustedSrcData = ((const BYTE*)data) - (alignedBox.front * rowAndSlicePitch._slicePitch) - (alignedBox.top * rowAndSlicePitch._rowPitch) - (alignedBox.left * (srcBitsPerElement/8));
                             }
 
-                            TextureDesc2D destinationDesc(ResPtr(resource));
+                            Metal::TextureDesc2D destinationDesc(ResPtr(resource));
 
                             // {
                             //     char buffer[4196];
@@ -109,7 +114,7 @@
 
                             assert(pAdjustedSrcData != nullptr);
                             assert(!IsBadReadPtr(data, rowAndSlicePitch._slicePitch));
-                            _devContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), subResource, &d3dBox, pAdjustedSrcData, rowAndSlicePitch._rowPitch, rowAndSlicePitch._slicePitch);
+							metalContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), subResource, &d3dBox, pAdjustedSrcData, rowAndSlicePitch._rowPitch, rowAndSlicePitch._slicePitch);
 
                         }
                     }
@@ -134,7 +139,7 @@
                         }
                         #if defined(XL_DEBUG)
                             {
-                                intrusive_ptr<ID3D::Buffer> buffer = QueryInterfaceCast<ID3D::Buffer>(ResPtr(resource));
+                                intrusive_ptr<ID3D::Buffer> buffer = Metal::QueryInterfaceCast<ID3D::Buffer>(ResPtr(resource));
                                 if (buffer) {
                                     D3D11_BUFFER_DESC desc;
                                     buffer->GetDesc(&desc);
@@ -142,18 +147,18 @@
                                 }
                             }
                         #endif
-                        _devContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), 0, &box, data, 0, 0);
+							metalContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), 0, &box, data, 0, 0);
                     } else {
                         D3D11_MAPPED_SUBRESOURCE mappedSubresource;
                         const bool canDoNoOverwrite = _renderCoreContext->IsImmediate();
                         assert(canDoNoOverwrite || resourceOffsetValue==0);     //  this code could be dangerous when the resource offset value != 0. Map() will map the entire
                                                                                 //  resource. But when using a batched index buffer, we only want to map and write to a small part of the buffer.
-                        HRESULT hresult = _devContext->GetUnderlying()->Map(ResPtr(resource), 0, canDoNoOverwrite?D3D11_MAP_WRITE_NO_OVERWRITE:D3D11_MAP_WRITE_DISCARD, 0/*D3D11_MAP_FLAG_DO_NOT_WAIT*/, &mappedSubresource);
+                        HRESULT hresult = metalContext->GetUnderlying()->Map(ResPtr(resource), 0, canDoNoOverwrite?D3D11_MAP_WRITE_NO_OVERWRITE:D3D11_MAP_WRITE_DISCARD, 0/*D3D11_MAP_FLAG_DO_NOT_WAIT*/, &mappedSubresource);
                         assert(SUCCEEDED(hresult));
                         if (SUCCEEDED(hresult)) {
                             assert(mappedSubresource.RowPitch >= dataSize);
                             XlCopyMemoryAlign16(PtrAdd(mappedSubresource.pData, resourceOffsetValue), data, dataSize);
-                            _devContext->GetUnderlying()->Unmap(ResPtr(resource), 0);
+							metalContext->GetUnderlying()->Unmap(ResPtr(resource), 0);
                         }
                     }
                 }
@@ -161,7 +166,7 @@
             }
         }
 
-        void UnderlyingDeviceContext::PushToStagingResource(    const Underlying::Resource& resource, const BufferDesc&desc, 
+        void UnderlyingDeviceContext::PushToStagingResource(    const UnderlyingResource& resource, const BufferDesc&desc, 
                                                                 unsigned resourceOffsetValue, const void* data, size_t dataSize, 
                                                                 TexturePitches rowAndSlicePitch, 
                                                                 const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
@@ -170,10 +175,11 @@
             switch (desc._type) {
             case BufferDesc::Type::Texture:
                 {
+					auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
                     uint32 subResource = D3D11CalcSubresource(lodLevel, arrayIndex, desc._textureDesc._mipCount);
                     D3D11_MAPPED_SUBRESOURCE mappedSubresource;
                     XlZeroMemory(mappedSubresource);
-                    HRESULT hresult = _devContext->GetUnderlying()->Map(
+                    HRESULT hresult = metalContext->GetUnderlying()->Map(
                         ResPtr(resource), subResource, 
                         D3D11_MAP_WRITE, 0, &mappedSubresource);
                     assert(SUCCEEDED(hresult));
@@ -188,16 +194,17 @@
             }
         }
 
-        void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(const Underlying::Resource& finalResource, const Underlying::Resource& staging, const BufferDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
+        void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(const UnderlyingResource& finalResource, const UnderlyingResource& staging, const BufferDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
         {
+			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             using namespace RenderCore;
             if ((lodLevelMin == ~unsigned(0x0) || lodLevelMax == ~unsigned(0x0)) && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset) {
-                Metal::Copy(*_devContext, ResPtr(finalResource), ResPtr(staging));
+                Metal::Copy(*metalContext, ResPtr(finalResource), ResPtr(staging));
             } else {
                 for (unsigned a=0; a<destinationDesc._textureDesc._arrayCount; ++a) {
                     for (unsigned c=lodLevelMin; c<=lodLevelMax; ++c) {
                         Metal::CopyPartial(
-                            *_devContext,
+                            *metalContext,
                             Metal::CopyPartial_Dest(ResPtr(finalResource), D3D11CalcSubresource(c, a, destinationDesc._textureDesc._mipCount)),
                             Metal::CopyPartial_Src(ResPtr(staging), D3D11CalcSubresource(c-stagingLODOffset, a, destinationDesc._textureDesc._mipCount)));
                     }
@@ -207,17 +214,18 @@
 
         #pragma warning(disable:4127)       // conditional expression is constant
 
-        void UnderlyingDeviceContext::ResourceCopy_DefragSteps(const Underlying::Resource& destination, const Underlying::Resource& source, const std::vector<DefragStep>& steps)
+        void UnderlyingDeviceContext::ResourceCopy_DefragSteps(const UnderlyingResource& destination, const UnderlyingResource& source, const std::vector<DefragStep>& steps)
         {
             if (!UseMapBasedDefrag) {
                     //
                     //      For each adjustment, we perform one CopySubresourceRegion...
                     //
-                for (std::vector<DefragStep>::const_iterator i=steps.begin(); i!=steps.end(); ++i) {
+				auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext); 
+				for (std::vector<DefragStep>::const_iterator i=steps.begin(); i!=steps.end(); ++i) {
                     assert(i->_sourceEnd > i->_sourceStart);
                     using namespace RenderCore;
                     Metal::CopyPartial(
-                        *_devContext,
+                        *metalContext,
                         Metal::CopyPartial_Dest(ResPtr(destination), 0, i->_destination),
                         Metal::CopyPartial_Src(ResPtr(source), 0, i->_sourceStart, Metal::PixelCoord(i->_sourceEnd, 1, 1)));
                 }
@@ -234,22 +242,25 @@
             }
         }
 
-        void UnderlyingDeviceContext::ResourceCopy(const Underlying::Resource& destination, const Underlying::Resource& source)
+        void UnderlyingDeviceContext::ResourceCopy(const UnderlyingResource& destination, const UnderlyingResource& source)
         {
-            RenderCore::Metal::Copy(*_devContext, ResPtr(destination), ResPtr(source));
+			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
+            RenderCore::Metal::Copy(*metalContext, ResPtr(destination), ResPtr(source));
         }
 
         intrusive_ptr<RenderCore::Metal::CommandList> UnderlyingDeviceContext::ResolveCommandList()
         {
-            return _devContext->ResolveCommandList();
+			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
+            return metalContext->ResolveCommandList();
         }
 
         void                        UnderlyingDeviceContext::BeginCommandList()
         {
-            _devContext->BeginCommandList();
+			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
+			metalContext->BeginCommandList();
         }
 
-        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(const Underlying::Resource& resource, MapType::Enum mapType, unsigned subResource)
+        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(const UnderlyingResource& resource, MapType::Enum mapType, unsigned subResource)
         {
             // uint32 subResource = 0;
             // intrusive_ptr<ID3D::Texture2D> tex2D = QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource));
@@ -269,44 +280,51 @@
             case MapType::ReadOnly:     platformMap = D3D11_MAP_READ;               break;
             default:                    platformMap = D3D11_MAP_WRITE;              break;
             }
-            HRESULT hresult = _devContext->GetUnderlying()->Map(ResPtr(resource), subResource, platformMap, 0/*D3D11_MAP_FLAG_DO_NOT_WAIT*/, &result);
+			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
+            HRESULT hresult = metalContext->GetUnderlying()->Map(ResPtr(resource), subResource, platformMap, 0/*D3D11_MAP_FLAG_DO_NOT_WAIT*/, &result);
             if (SUCCEEDED(hresult)) {
                 return MappedBuffer(*this, resource, subResource, result.pData, TexturePitches(result.RowPitch, result.DepthPitch));
             }
             return MappedBuffer();
         }
 
-        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::MapPartial(const Underlying::Resource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource)
+        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::MapPartial(const UnderlyingResource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource)
         {
             assert(0);  // can't do partial maps in D3D11
             return MappedBuffer();
         }
 
-        void UnderlyingDeviceContext::Unmap(const Underlying::Resource& resource, unsigned subResourceIndex)
+        void UnderlyingDeviceContext::Unmap(const UnderlyingResource& resource, unsigned subResourceIndex)
         {
-            _devContext->GetUnderlying()->Unmap(ResPtr(resource), subResourceIndex);
+			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
+			metalContext->GetUnderlying()->Unmap(ResPtr(resource), subResourceIndex);
         }
+
+		std::shared_ptr<RenderCore::IDevice> UnderlyingDeviceContext::GetObjectFactory()
+		{
+			return _renderCoreContext->GetDevice();
+		}
 
         UnderlyingDeviceContext::UnderlyingDeviceContext(RenderCore::IThreadContext& renderCoreContext) 
         : _renderCoreContext(&renderCoreContext)
         {
-            _devContext = DeviceContext::Get(*_renderCoreContext);
             _useUpdateSubresourceWorkaround = false;
 
-            if (!_devContext->IsImmediate()) {
-                ID3D::Device* devicePtr = nullptr;
-                _devContext->GetUnderlying()->GetDevice(&devicePtr);
-                intrusive_ptr<ID3D::Device> device(devicePtr, false);
-
-                    //
-                    //  See D3D documentation for "ID3D11DeviceContext::UpdateSubresource'
-                    //  There's a bug in D3D related to using a deferred context when the driver
-                    //  doesn't support driver command lists. Let's check if we need to use
-                    //  the workaround for this bug...
-                    //
-                D3D11_FEATURE_DATA_THREADING threadingCaps = { FALSE, FALSE };
-                HRESULT hr = device->CheckFeatureSupport(D3D11_FEATURE_THREADING, &threadingCaps, sizeof(threadingCaps));
-                _useUpdateSubresourceWorkaround = SUCCEEDED(hr) && !threadingCaps.DriverCommandLists;
+            if (!renderCoreContext.IsImmediate()) {
+				auto dev = renderCoreContext.GetDevice();
+				IDeviceDX11* devDX11 = (IDeviceDX11*)dev->QueryInterface(__uuidof(IDeviceDX11));
+				if (devDX11) {
+						//
+						//  See D3D documentation for "ID3D11DeviceContext::UpdateSubresource'
+						//  There's a bug in D3D related to using a deferred context when the driver
+						//  doesn't support driver command lists. Let's check if we need to use
+						//  the workaround for this bug...
+						//
+					D3D11_FEATURE_DATA_THREADING threadingCaps = { FALSE, FALSE };
+					HRESULT hr = devDX11->GetUnderlyingDevice()->CheckFeatureSupport(
+						D3D11_FEATURE_THREADING, &threadingCaps, sizeof(threadingCaps));
+					_useUpdateSubresourceWorkaround = SUCCEEDED(hr) && !threadingCaps.DriverCommandLists;
+				}
             }
         }
 
@@ -323,7 +341,7 @@
             return SUCCEEDED(result) && queryValue;
         }
 
-        intrusive_ptr<ID3D::Query> Query_CreateEvent(ObjectFactory& objFactory)
+        intrusive_ptr<ID3D::Query> Query_CreateEvent(Metal::ObjectFactory& objFactory)
         {
             D3D11_QUERY_DESC queryDesc;
             queryDesc.Query      = D3D11_QUERY_EVENT;
@@ -402,8 +420,9 @@
             return result;
         }
 
-        intrusive_ptr<ID3D::Resource> CreateResource(ObjectFactory& device, const BufferDesc& desc, DataPacket* initialisationData)
+        ResourcePtr CreateResource(RenderCore::IDevice& device, const BufferDesc& desc, DataPacket* initialisationData)
         {
+			auto& factory = Metal::GetObjectFactory(device);
             D3D11_SUBRESOURCE_DATA subResources[128];
             TRY {
                 switch (desc._type) {
@@ -428,13 +447,13 @@
                             textureDesc.Width = desc._textureDesc._width;
                             textureDesc.MipLevels = desc._textureDesc._mipCount;
                             textureDesc.ArraySize = std::max(desc._textureDesc._arrayCount, uint16(1));
-                            textureDesc.Format = AsDXGIFormat((NativeFormat::Enum)desc._textureDesc._nativePixelFormat);
+                            textureDesc.Format = Metal::AsDXGIFormat(desc._textureDesc._format);
                             const bool lateInitialisation = !initialisationData; /// it must be lateInitialisation, because we don't have any initialization data
                             textureDesc.Usage = UsageForDesc(desc, lateInitialisation);
                             textureDesc.BindFlags = AsNativeBindFlags(desc._bindFlags);
                             textureDesc.CPUAccessFlags = AsNativeCPUAccessFlag(desc._cpuAccess);
                             textureDesc.MiscFlags = 0;
-                            return device.CreateTexture1D(&textureDesc, initialisationData?subResources:NULL, desc._name);
+                            return Metal::AsResourcePtr(factory.CreateTexture1D(&textureDesc, initialisationData?subResources:NULL, desc._name));
 
                         } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
                                 || desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
@@ -445,7 +464,7 @@
                             textureDesc.Height = desc._textureDesc._height;
                             textureDesc.MipLevels = desc._textureDesc._mipCount;
                             textureDesc.ArraySize = std::max(desc._textureDesc._arrayCount, uint16(1));
-                            textureDesc.Format = AsDXGIFormat((NativeFormat::Enum)desc._textureDesc._nativePixelFormat);
+                            textureDesc.Format = Metal::AsDXGIFormat(desc._textureDesc._format);
                             textureDesc.SampleDesc.Count = std::max(uint8(1),desc._textureDesc._samples._sampleCount);
                             textureDesc.SampleDesc.Quality = desc._textureDesc._samples._samplingQuality;
                             const bool lateInitialisation = !initialisationData; /// it must be lateInitialisation, because we don't have any initialization data
@@ -455,7 +474,7 @@
                             textureDesc.MiscFlags = 0;
                             if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap)
                                 textureDesc.MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;
-                            return device.CreateTexture2D(&textureDesc, initialisationData?subResources:NULL, desc._name);
+                            return Metal::AsResourcePtr(factory.CreateTexture2D(&textureDesc, initialisationData?subResources:NULL, desc._name));
 
                         } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
 
@@ -465,13 +484,13 @@
                             textureDesc.Height = desc._textureDesc._height;
                             textureDesc.Depth = desc._textureDesc._depth;
                             textureDesc.MipLevels = desc._textureDesc._mipCount;
-                            textureDesc.Format = AsDXGIFormat((NativeFormat::Enum)desc._textureDesc._nativePixelFormat);
+                            textureDesc.Format = Metal::AsDXGIFormat(desc._textureDesc._format);
                             const bool lateInitialisation = !initialisationData; /// it must be lateInitialisation, because we don't have any initialization data
                             textureDesc.Usage = UsageForDesc(desc, lateInitialisation);
                             textureDesc.BindFlags = AsNativeBindFlags(desc._bindFlags);
                             textureDesc.CPUAccessFlags = AsNativeCPUAccessFlag(desc._cpuAccess);
                             textureDesc.MiscFlags = 0;
-                            return device.CreateTexture3D(&textureDesc, initialisationData?subResources:NULL, desc._name);
+                            return Metal::AsResourcePtr(factory.CreateTexture3D(&textureDesc, initialisationData?subResources:NULL, desc._name));
 
                         } else {
                             assert(0);
@@ -510,17 +529,17 @@
                         }
                         assert(desc._bindFlags!=BindFlag::IndexBuffer || d3dDesc.BindFlags == D3D11_USAGE_DYNAMIC);
 
-                        return device.CreateBuffer(&d3dDesc, initialisationData?subResources:NULL, desc._name);
+                        return Metal::AsResourcePtr(factory.CreateBuffer(&d3dDesc, initialisationData?subResources:NULL, desc._name));
                     }
 
                 default:
                     assert(0);
                 }
             } CATCH (const RenderCore::Exceptions::GenericFailure&) {
-                return intrusive_ptr<ID3D::Resource>();
+                return ResourcePtr();
             } CATCH_END
 
-            return intrusive_ptr<ID3D::Resource>();
+            return ResourcePtr();
         }
 
         void AttachObject(ID3D::Resource* resource, const GUID& guid, IUnknown* attachableObject)
@@ -558,7 +577,7 @@
             desc._textureDesc._height = d3dDesc.Height;
             desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
             desc._textureDesc._arrayCount = uint16(d3dDesc.ArraySize);
-            desc._textureDesc._nativePixelFormat = d3dDesc.Format;
+            desc._textureDesc._format = Metal::AsFormat(d3dDesc.Format);
             desc._textureDesc._samples = BufferUploads::TextureSamples::Create();
             desc._name[0] = '\0';
             return desc;
@@ -576,7 +595,7 @@
             desc._textureDesc._height = 1;
             desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
             desc._textureDesc._arrayCount = uint16(d3dDesc.ArraySize);
-            desc._textureDesc._nativePixelFormat = d3dDesc.Format;
+            desc._textureDesc._format = Metal::AsFormat(d3dDesc.Format);
             desc._textureDesc._samples = BufferUploads::TextureSamples::Create();
             desc._name[0] = '\0';
             return desc;
@@ -594,27 +613,27 @@
             desc._textureDesc._height = d3dDesc.Height;
             desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
             desc._textureDesc._arrayCount = 1;
-            desc._textureDesc._nativePixelFormat = d3dDesc.Format;
+            desc._textureDesc._format = Metal::AsFormat(d3dDesc.Format);
             desc._textureDesc._samples = BufferUploads::TextureSamples::Create();
             desc._name[0] = '\0';
             return desc;
         }
 
-        BufferDesc ExtractDesc(const Underlying::Resource& resource)
+        BufferDesc ExtractDesc(const UnderlyingResource& resource)
         {
-            if (intrusive_ptr<ID3D::Buffer> buffer = QueryInterfaceCast<ID3D::Buffer>(ResPtr(resource))) {
+            if (intrusive_ptr<ID3D::Buffer> buffer = Metal::QueryInterfaceCast<ID3D::Buffer>(ResPtr(resource))) {
                 D3D11_BUFFER_DESC d3dDesc;
                 buffer->GetDesc(&d3dDesc);
                 return AsGenericDesc(d3dDesc);
-            } else if (intrusive_ptr<ID3D::Texture1D> texture = QueryInterfaceCast<ID3D::Texture1D>(ResPtr(resource))) {
+            } else if (intrusive_ptr<ID3D::Texture1D> texture = Metal::QueryInterfaceCast<ID3D::Texture1D>(ResPtr(resource))) {
                 D3D11_TEXTURE1D_DESC d3dDesc;
                 texture->GetDesc(&d3dDesc);
                 return AsGenericDesc(d3dDesc);
-            } else if (intrusive_ptr<ID3D::Texture2D> texture = QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource))) {
+            } else if (intrusive_ptr<ID3D::Texture2D> texture = Metal::QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource))) {
                 D3D11_TEXTURE2D_DESC d3dDesc;
                 texture->GetDesc(&d3dDesc);
                 return AsGenericDesc(d3dDesc);
-            } else if (intrusive_ptr<ID3D::Texture3D> texture = QueryInterfaceCast<ID3D::Texture3D>(ResPtr(resource))) {
+            } else if (intrusive_ptr<ID3D::Texture3D> texture = Metal::QueryInterfaceCast<ID3D::Texture3D>(ResPtr(resource))) {
                 D3D11_TEXTURE3D_DESC d3dDesc;
                 texture->GetDesc(&d3dDesc);
                 return AsGenericDesc(d3dDesc);

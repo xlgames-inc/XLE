@@ -568,12 +568,12 @@ namespace RenderCore { namespace Assets
                     //      index and vertex buffers.
                     //
                 D3D11_MAPPED_SUBRESOURCE mapping;
-                HRESULT hresult = context->GetUnderlying()->Map(globalCircularBuffer._resource.get(), 0, mapType, 0, &mapping);
+                HRESULT hresult = context->GetUnderlying()->Map((ID3D::Resource*)globalCircularBuffer._resource.get(), 0, mapType, 0, &mapping);
                 if (SUCCEEDED(hresult) && mapping.pData) {
                     WriteJointTransforms(
                         (Float3x4*)PtrAdd(mapping.pData, currentWritingPosition), packetCount, 
                         scaffold, transformationMachineResult, skeletonBinding);
-                    context->GetUnderlying()->Unmap(globalCircularBuffer._resource.get(), 0);
+                    context->GetUnderlying()->Unmap((ID3D::Resource*)globalCircularBuffer._resource.get(), 0);
                 }
 
                 tbufferTexture = globalCircularBuffer;
@@ -592,10 +592,10 @@ namespace RenderCore { namespace Assets
                         //      vertex buffers, however... which means binding a vertex buffer to a tbuffer
                         //      shader input.
                         //
-                    HRESULT hresult = context->GetUnderlying()->Map(tbufferTexture._stagingResource.get(), 0, D3D11_MAP_WRITE, 0, &mapping);
+                    HRESULT hresult = context->GetUnderlying()->Map((ID3D::Resource*)tbufferTexture._stagingResource.get(), 0, D3D11_MAP_WRITE, 0, &mapping);
                     if (SUCCEEDED(hresult) && mapping.pData) {
                         WriteJointTransforms((Float3x4*)mapping.pData, packetCount, scaffold, transformationMachineResult, skeletonBinding);
-                        context->GetUnderlying()->Unmap(tbufferTexture._stagingResource.get(), 0);
+                        context->GetUnderlying()->Unmap((ID3D::Resource*)tbufferTexture._stagingResource.get(), 0);
                     }
                     PushTBufferTemporaryTexture(context, tbufferTexture);
 
@@ -1188,24 +1188,24 @@ namespace RenderCore { namespace Assets
 			bufferDesc.MiscFlags = 0;
 			bufferDesc.StructureByteStride = 0;
 
-			auto* objFactory = GetObjectFactory();
+			auto& objFactory = GetObjectFactory();
 
 			D3D11_SUBRESOURCE_DATA subData;
 			subData.pSysMem = sourceData;
 			subData.SysMemPitch = subData.SysMemSlicePitch = (UINT)bufferSize;
-			_resource = objFactory->CreateBuffer(&bufferDesc, sourceData?(&subData):nullptr);
+			_resource = AsResourcePtr(objFactory.CreateBuffer(&bufferDesc, sourceData?(&subData):nullptr).get());
 
 			bufferDesc.Usage = D3D11_USAGE_STAGING;
 			bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 			bufferDesc.BindFlags = 0;
-			_stagingResource = objFactory->CreateBuffer(&bufferDesc);
+			_stagingResource = AsResourcePtr(objFactory.CreateBuffer(&bufferDesc).get());
 
 			D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 			srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 			srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER ;
 			srvDesc.Buffer.ElementOffset = 0;
 			srvDesc.Buffer.ElementWidth = (UINT)(bufferSize / (4*sizeof(float)));
-			auto srv = objFactory->CreateShaderResourceView(_resource.get(), &srvDesc);
+			auto srv = objFactory.CreateShaderResourceView(AsID3DResource(_resource), &srvDesc);
 			_view = ShaderResourceView(srv.get());
 		#endif
     }

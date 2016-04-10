@@ -290,6 +290,13 @@ namespace RenderCore
         return nullptr;
     }
 
+	ResourcePtr Device::CreateResource(
+		const ResourceDesc& desc,
+		const std::function<SubResourceInitData(unsigned, unsigned)>&)
+	{
+		return nullptr;
+	}
+
     extern char VersionString[];
     extern char BuildDateString[];
         

@@ -167,7 +167,7 @@ namespace BufferUploads { namespace PlatformInterface
     UnderlyingDeviceContext::MappedBuffer::~MappedBuffer()
     {
         if (_sourceContext && _data) {
-            _sourceContext->Unmap(*_resource.get(), _subResourceIndex);
+            _sourceContext->Unmap(*_resource, _subResourceIndex);
         }
     }
 
@@ -194,7 +194,7 @@ namespace BufferUploads { namespace PlatformInterface
     const UnderlyingDeviceContext::MappedBuffer& UnderlyingDeviceContext::MappedBuffer::operator=(UnderlyingDeviceContext::MappedBuffer&& moveFrom)
     {
         if (_sourceContext && _data) {
-            _sourceContext->Unmap(*_resource.get(), _subResourceIndex);
+            _sourceContext->Unmap(*_resource, _subResourceIndex);
         }
 
         _sourceContext = std::move(moveFrom._sourceContext);
@@ -210,10 +210,10 @@ namespace BufferUploads { namespace PlatformInterface
     }
 
     UnderlyingDeviceContext::MappedBuffer::MappedBuffer(
-        UnderlyingDeviceContext& context, UnderlyingResourcePtr resource, 
+        UnderlyingDeviceContext& context, const UnderlyingResource& resource, 
         unsigned subResourceIndex, void* data,
         TexturePitches pitches)
-	: _resource(std::move(resource))
+	: _resource(&resource)
     {
         _sourceContext = &context;
         _subResourceIndex = subResourceIndex;
@@ -227,7 +227,7 @@ namespace BufferUploads { namespace PlatformInterface
         //////////////////////////////////////////////////////////////////////////////////////////////
 
     #if GFXAPI_ACTIVE == GFXAPI_DX11
-        intrusive_ptr<ID3D::Query> Query_CreateEvent(ObjectFactory& factory);
+        intrusive_ptr<ID3D::Query> Query_CreateEvent(Metal::ObjectFactory& factory);
         bool    Query_IsEventTriggered(ID3D::DeviceContext* context, ID3D::Query* query);
         void    Query_End(ID3D::DeviceContext* context, ID3D::Query* query);
     #endif

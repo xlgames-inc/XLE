@@ -89,10 +89,10 @@ namespace BufferUploads { namespace PlatformInterface
             const MappedBuffer& operator=(MappedBuffer&& moveFrom) never_throws;
             ~MappedBuffer();
         private:
-            MappedBuffer(UnderlyingDeviceContext&, UnderlyingResourcePtr, unsigned, void*, TexturePitches pitches);
+            MappedBuffer(UnderlyingDeviceContext&, const UnderlyingResource&, unsigned, void*, TexturePitches pitches);
 
             UnderlyingDeviceContext* _sourceContext;
-			UnderlyingResourcePtr _resource;
+			const UnderlyingResource* _resource;
             unsigned _subResourceIndex;
             void* _data;
             TexturePitches _pitches;

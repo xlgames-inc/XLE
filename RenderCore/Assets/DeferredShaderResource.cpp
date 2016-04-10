@@ -7,7 +7,7 @@
 #include "DeferredShaderResource.h"
 #include "Services.h"
 #include "../Metal/ShaderResource.h"
-#include "../Metal/Format.h"
+#include "../Format.h"
 #include "../../Assets/AsyncLoadOperation.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/DataPacket.h"

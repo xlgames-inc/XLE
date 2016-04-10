@@ -4,7 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define SELECT_VULKAN
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "../../PlatformRig/OverlappedWindow.h"
@@ -18,6 +17,7 @@
 
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/GPUProfiler.h"
+#include "../../RenderCore/Format.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderOverlays/Font.h"
@@ -54,7 +54,7 @@ namespace VulkanTest
 {
     struct texture_object 
     {
-        RenderCore::Metal::Resource _resource;
+        RenderCore::ResourcePtr _resource;
 		RenderCore::Metal::ImageLayout _imageLayout;
     };
 
@@ -187,7 +187,7 @@ namespace VulkanTest
 				TextureDesc::Plain2D(width, height, fmt),
 				"texture"));
 
-		texObj._resource = Metal::Resource(gpuResource);
+		texObj._resource = gpuResource;
 		
 		// is it a good idea to change the layout of the staging resource before we use it?
 		Metal::SetImageLayout(context, stagingResource, Metal::ImageLayout::Preinitialized, Metal::ImageLayout::TransferSrcOptimal);
@@ -249,7 +249,7 @@ namespace Sample
 
             Metal::ConstantBuffer globalTransBuffer(&globalTrans, sizeof(globalTrans));
             Metal::ConstantBuffer localTransBuffer(&localTrans, sizeof(localTrans));
-            Metal::ShaderResourceView srv(factory, texObj._resource.GetImage());
+            Metal::ShaderResourceView srv(factory, texObj._resource);
 
             const Metal::ConstantBuffer* cbs[] = {&globalTransBuffer, &localTransBuffer};
             const Metal::ShaderResourceView* srvs[] = {&srv};

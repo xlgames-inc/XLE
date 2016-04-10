@@ -15,6 +15,7 @@
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/Shader.h"
+#include "../../RenderCore/Format.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
@@ -92,9 +93,9 @@ namespace Overlays
 		#if GFXAPI_ACTIVE == GFXAPI_DX11		// todo -- implement more generically!
 			devContext.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 			if (savedTargets.GetDepthStencilView())
-				depthSrv = ShaderResourceView(ExtractResource<ID3D::Resource>(
-					savedTargets.GetDepthStencilView()).get(), 
-					(NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
+				depthSrv = ShaderResourceView(
+					ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView()).get(), 
+					Format::R24_UNORM_X8_TYPELESS);
 		#endif
 
         auto& res = Techniques::FindCachedBoxDep2<SFDResources>(

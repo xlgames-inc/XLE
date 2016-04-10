@@ -419,7 +419,7 @@ void FontTexture2D::UpdateToTexture(BufferUploads::DataPacket* packet, int offX,
     gBufferUploads->UpdateData(_transaction, packet, BufferUploads::Box2D(offX, offY, offX+width, offY+height));
 }
 
-void* FontTexture2D::GetUnderlying() const
+RenderCore::Resource* FontTexture2D::GetUnderlying() const
 {
     if ((!_locator || _locator->IsEmpty()) && _transaction) {
         if (gBufferUploads->IsCompleted(_transaction)) {

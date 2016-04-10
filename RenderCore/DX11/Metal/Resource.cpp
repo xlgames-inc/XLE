@@ -10,26 +10,23 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
+#if 0
 	void Resource::SetImageLayout(
 		DeviceContext& context, ImageLayout oldLayout, ImageLayout newLayout) {}
-
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
 		const void* initData, size_t initDataSize)
 	{}
-
 	Resource::Resource() {}
-
 	Resource::~Resource() {}
+#endif
 
-    void Copy(DeviceContext& context, ID3D::Resource* dst, ID3D::Resource* src)
-    {
-        context.GetUnderlying()->CopyResource(dst, src);
-    }
-
-	void Copy(DeviceContext& context, Resource& dst, Resource& src, ImageLayout dstLayout, ImageLayout srcLayout)
+	void Copy(
+		DeviceContext& context, 
+		UnderlyingResourcePtr dst, UnderlyingResourcePtr src,
+		ImageLayout dstLayout, ImageLayout srcLayout)
 	{
-		Copy(context, dst.GetImage(), src.GetImage());
+		context.GetUnderlying()->CopyResource(dst.get(), src.get());
 	}
 
     void CopyPartial(
@@ -57,4 +54,37 @@ namespace RenderCore { namespace Metal_DX11
     {
         return DuplicateResource(context.GetUnderlying(), inputResource);
     }
+
+	void SetImageLayout(
+		DeviceContext& context, UnderlyingResourcePtr res,
+		ImageLayout oldLayout, ImageLayout newLayout)
+	{
+
+	}
+
+	ResourceDesc ExtractDesc(UnderlyingResourcePtr res)
+	{
+		return ResourceDesc();
+	}
+
+	ID3D::Resource* AsID3DResource(UnderlyingResourcePtr res)
+	{
+		return res.get();
+	}
+
+	RenderCore::ResourcePtr AsResourcePtr(ID3D::Resource* res)
+	{
+		res->AddRef();	// balanced by the release on destroying the new pointer
+		return ResourcePtr(
+			(Resource*)res,
+			[](Resource* r) { ((ID3D::Resource*)r)->Release(); });
+	}
+
+	RenderCore::ResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&& ptr)
+	{
+		// moving the reference count out of the given ptr (ie, no AddRef required)
+		return ResourcePtr(
+			(Resource*)ReleaseOwnership(ptr),
+			[](Resource* r) { ((ID3D::Resource*)r)->Release(); });
+	}
 }}

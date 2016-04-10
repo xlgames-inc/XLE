@@ -10,6 +10,8 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../Utility/Mixins.h"
 
+namespace RenderCore { class Resource; }
+
 namespace RenderOverlays
 {
 
@@ -19,7 +21,7 @@ public:
     FontTexture2D(unsigned width, unsigned height, RenderCore::Format pixelFormat);
     ~FontTexture2D();
 
-    void*   GetUnderlying() const;
+    RenderCore::Resource*   GetUnderlying() const;
     void    UpdateGlyphToTexture(FT_GlyphSlot glyph, int offX, int offY, int width, int height);
     void    UpdateToTexture(BufferUploads::DataPacket* packet, int offX, int offY, int width, int height);
 

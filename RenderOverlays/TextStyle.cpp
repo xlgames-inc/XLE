@@ -8,6 +8,7 @@
 #include "FontRendering.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Types.h"
+#include "../RenderCore/Format.h"
 #include "../Assets/Assets.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
@@ -351,8 +352,7 @@ float   TextStyle::Draw(
             if (tex != currentBoundTexture) {
                 Flush(*renderer, workingVertices);
 
-				Metal::ShaderResourceView::UnderlyingResource sourceTexture =
-                    (Metal::ShaderResourceView::UnderlyingResource)tex->GetUnderlying();
+				auto sourceTexture = tex->GetUnderlying();
                 if (!sourceTexture) {
                     throw ::Assets::Exceptions::PendingAsset("", "Pending background upload of font texture");
                 }

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "DX11.h"
+#include "../../IDevice.h"
 #include "../../ResourceDesc.h"
 #include "../../../Utility/IntrusivePtr.h"
 
@@ -35,6 +36,7 @@ namespace RenderCore { namespace Metal_DX11
 		PresentSrc
 	};
 
+#if 0
 	class Resource : public intrusive_ptr<Underlying::Resource>
 	{
 	public:
@@ -52,6 +54,7 @@ namespace RenderCore { namespace Metal_DX11
 		Underlying::Resource* GetImage() { return get(); }
 		Underlying::Resource* GetBuffer() { return get(); }
 	};
+#endif
 
 	/// <summary>Helper object to catch multiple similar pointers</summary>
 	/// To help with platform abstraction, RenderCore::Resource* is actually the
@@ -61,17 +64,21 @@ namespace RenderCore { namespace Metal_DX11
 	public:
 		Underlying::Resource* get() { return _res; }
 
-		UnderlyingResourcePtr(Resource* res) { _res = res->GetImage(); }
+		// UnderlyingResourcePtr(Resource* res) { _res = res->GetImage(); }
 		UnderlyingResourcePtr(RenderCore::Resource* res) { _res = (Underlying::Resource*)res; }
+		UnderlyingResourcePtr(const RenderCore::ResourcePtr& res) { _res = (Underlying::Resource*)res.get(); }
 		UnderlyingResourcePtr(Underlying::Resource* res) { _res = res; }
+		UnderlyingResourcePtr(Underlying::Resource& res) { _res = &res; }
+		UnderlyingResourcePtr(intrusive_ptr<Underlying::Resource> res) { _res = res.get(); }
 	protected:
 		Underlying::Resource* _res;
 	};
 
     class DeviceContext;
 
-    void Copy(DeviceContext&, ID3D::Resource* dst, ID3D::Resource* src);
-	void Copy(DeviceContext&, Resource& dst, Resource& src, ImageLayout dstLayout, ImageLayout srcLayout);
+	void Copy(
+		DeviceContext&, UnderlyingResourcePtr dst, UnderlyingResourcePtr src, 
+		ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
     namespace Internal { static std::true_type UnsignedTest(unsigned); static std::false_type UnsignedTest(...); }
 
@@ -133,7 +140,15 @@ namespace RenderCore { namespace Metal_DX11
 
     intrusive_ptr<ID3D::Resource> Duplicate(DeviceContext& context, ID3D::Resource* inputResource);
 
-	ResourceDesc ExtractDesc(Underlying::Resource& res);
+	void SetImageLayout(
+		DeviceContext& context, UnderlyingResourcePtr res,
+		ImageLayout oldLayout, ImageLayout newLayout);
+
+	ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
+
+	ID3D::Resource* AsID3DResource(UnderlyingResourcePtr);
+	RenderCore::ResourcePtr AsResourcePtr(ID3D::Resource*);
+	RenderCore::ResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&&);
 }}
 
 #pragma warning(push)

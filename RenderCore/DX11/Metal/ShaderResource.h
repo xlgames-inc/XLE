@@ -42,7 +42,7 @@ namespace RenderCore { namespace Metal_DX11
 
         static ShaderResourceView RawBuffer(ID3D::Resource& res, unsigned sizeBytes, unsigned offsetBytes = 0);
 
-        intrusive_ptr<ID3D::Resource>           GetResource() const;
+		intrusive_ptr<ID3D::Resource>			GetResource() const;
         
         typedef ID3D::ShaderResourceView*       UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }

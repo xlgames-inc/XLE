@@ -89,6 +89,10 @@ namespace RenderCore
         std::shared_ptr<IThreadContext>         GetImmediateContext();
         std::unique_ptr<IThreadContext>         CreateDeferredContext();
 
+		ResourcePtr CreateResource(
+			const ResourceDesc& desc,
+			const std::function<SubResourceInitData(unsigned, unsigned)>&);
+
         Device();
         ~Device();
 
