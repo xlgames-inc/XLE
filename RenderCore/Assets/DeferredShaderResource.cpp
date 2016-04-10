@@ -271,7 +271,7 @@ namespace RenderCore { namespace Assets
         if (!_pimpl->_locator || !_pimpl->_locator->GetUnderlying())
             return ::Assets::AssetState::Invalid;
 
-        auto desc = Metal::ExtractDesc(*_pimpl->_locator->GetUnderlying());
+        auto desc = Metal::ExtractDesc(_pimpl->_locator->GetUnderlying());
         if (desc._type != RenderCore::ResourceDesc::Type::Texture)
             return ::Assets::AssetState::Invalid;
 
@@ -296,7 +296,7 @@ namespace RenderCore { namespace Assets
         if (colSpace == SourceColorSpace::SRGB) format = Metal::AsSRGBFormat(format);
         else if (colSpace == SourceColorSpace::Linear) format = Metal::AsLinearFormat(format);
 
-        _pimpl->_srv = Metal::ShaderResourceView(*_pimpl->_locator->GetUnderlying(), format);
+        _pimpl->_srv = Metal::ShaderResourceView(_pimpl->_locator->GetUnderlying(), format);
         return ::Assets::AssetState::Ready;
     }
 
@@ -382,10 +382,10 @@ namespace RenderCore { namespace Assets
         if (!result)
             Throw(::Assets::Exceptions::InvalidAsset(initializer, "Failure while attempting to load texture immediately"));
 
-        auto desc = Metal::ExtractDesc(*result->GetUnderlying());
+        auto desc = Metal::ExtractDesc(result->GetUnderlying());
         assert(desc._type == BufferDesc::Type::Texture);
         return Metal::ShaderResourceView(
-            *result->GetUnderlying(), 
+            result->GetUnderlying(), 
             ResolveFormatImmediate((Metal::NativeFormat::Enum)desc._textureDesc._nativePixelFormat, init));
     }
 

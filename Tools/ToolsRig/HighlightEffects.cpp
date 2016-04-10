@@ -114,8 +114,8 @@ namespace ToolsRig
 
         auto resource = SceneEngine::GetBufferUploads().Transaction_Immediate(bufferDesc);
 
-        Metal::RenderTargetView rtv(*resource->GetUnderlying());
-        Metal::ShaderResourceView srv(*resource->GetUnderlying());
+        Metal::RenderTargetView rtv(resource->GetUnderlying());
+        Metal::ShaderResourceView srv(resource->GetUnderlying());
 
         _rtv = std::move(rtv);
         _srv = std::move(srv);

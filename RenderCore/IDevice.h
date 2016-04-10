@@ -28,7 +28,7 @@ namespace RenderCore
 ////////////////////////////////////////////////////////////////////////////////
 
 	class Resource;
-	using ResourcePtr = intrusive_ptr<Resource>;
+	using ResourcePtr = std::shared_ptr<Resource>;
 	class ResourceDesc;
 	class SubResourceInitData;
 
@@ -203,7 +203,7 @@ namespace RenderCore
             IMETHOD std::unique_ptr<IThreadContext>     CreateDeferredContext() IPURE;
 
 			using ResourceInitializer = std::function<SubResourceInitData(unsigned mipIndex, unsigned arrayIndex)>;
-			IMETHOD ResourcePtr			CreateResource(const ResourceDesc& desc, const ResourceInitializer& init = nullptr);
+			IMETHOD ResourcePtr			CreateResource(const ResourceDesc& desc, const ResourceInitializer& init = nullptr) IPURE;
 
             /// <summary>Returns version information for this device</summary>
             /// Queries build number and build date information.
@@ -239,11 +239,3 @@ namespace RenderCore
 
 ////////////////////////////////////////////////////////////////////////////////
 }
-
-#pragma warning(push)
-#pragma warning(disable:4231)   // nonstandard extension used : 'extern' before template explicit instantiation
-/// \cond INTERNAL
-extern template Utility::intrusive_ptr<RenderCore::Resource>;
-/// \endcond
-#pragma warning(pop)
-

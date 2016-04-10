@@ -35,7 +35,6 @@ namespace PlatformRig
 {
     using namespace SceneEngine;
     using namespace RenderCore;
-    using namespace BufferUploads;
 
     static void SaveImage(
         const char destinationFile[],
@@ -64,7 +63,7 @@ namespace PlatformRig
         assert(SUCCEEDED(hresult));
     }
 
-    static intrusive_ptr<DataPacket> RenderTiled(
+    static intrusive_ptr<BufferUploads::DataPacket> RenderTiled(
         IThreadContext& context,
         LightingParserContext& parserContext,
         ISceneParser& sceneParser,
@@ -206,9 +205,9 @@ namespace PlatformRig
         UInt2 finalImageDims(qualitySettings._dimensions[0]*sampleCount[0], qualitySettings._dimensions[1]*sampleCount[1]);
         auto bpp = Metal::BitsPerPixel(format);
         auto finalRowPitch = finalImageDims[0]*bpp/8;
-        auto rawData = CreateBasicPacket(
+        auto rawData = BufferUploads::CreateBasicPacket(
             finalImageDims[1]*finalRowPitch, nullptr,
-            TexturePitches(finalRowPitch, finalImageDims[1]*finalRowPitch));
+            BufferUploads::TexturePitches(finalRowPitch, finalImageDims[1]*finalRowPitch));
         auto* rawDataEnd = PtrAdd(rawData->GetData(), rawData->GetDataSize());
         (void)rawDataEnd;
 
@@ -250,16 +249,16 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static intrusive_ptr<DataPacket> BoxFilterR16G16B16A16F(
-        DataPacket& highRes, UInt2 srcDims, UInt2 downsample,
+    static intrusive_ptr<BufferUploads::DataPacket> BoxFilterR16G16B16A16F(
+		BufferUploads::DataPacket& highRes, UInt2 srcDims, UInt2 downsample,
         bool interleavedTiles)
     {
         const auto bpp = unsigned(sizeof(uint16)*4*8);
         UInt2 downsampledSize(srcDims[0] / downsample[0], srcDims[1] / downsample[1]);
         auto downsampledRowPitch = downsampledSize[0] * bpp / 8;
-        auto rawData = CreateBasicPacket(
+        auto rawData = BufferUploads::CreateBasicPacket(
             downsampledSize[1]*downsampledRowPitch, nullptr,
-            TexturePitches(downsampledRowPitch, downsampledSize[1]*downsampledRowPitch));
+			BufferUploads::TexturePitches(downsampledRowPitch, downsampledSize[1]*downsampledRowPitch));
 
         const uint16* srcData = (const uint16*)highRes.GetData();
         const auto srcRowPitch = highRes.GetPitches()._rowPitch;
@@ -310,10 +309,10 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static intrusive_ptr<DataPacket> DoToneMap(
+    static intrusive_ptr<BufferUploads::DataPacket> DoToneMap(
         IThreadContext& context,
         LightingParserContext& parserContext,
-        DataPacket& inputImage, UInt2 dimensions, 
+		BufferUploads::DataPacket& inputImage, UInt2 dimensions,
         Metal::NativeFormat::Enum preFilterFormat,
         Metal::NativeFormat::Enum postFilterFormat,
         const SceneEngine::ToneMapSettings& toneMapSettings)
@@ -324,10 +323,10 @@ namespace PlatformRig
             // the post-aa image (the operations would otherwise require special
             // 
         SceneEngine::GestaltTypes::SRV preToneMap(
-            BufferUploads::TextureDesc::Plain2D(dimensions[0], dimensions[1], preFilterFormat),
+            TextureDesc::Plain2D(dimensions[0], dimensions[1], preFilterFormat),
             "SS-PreToneMap", &inputImage);
         SceneEngine::GestaltTypes::RTV postToneMap(
-            BufferUploads::TextureDesc::Plain2D(dimensions[0], dimensions[1], postFilterFormat),
+            TextureDesc::Plain2D(dimensions[0], dimensions[1], postFilterFormat),
             "SS-PostToneMap");
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);

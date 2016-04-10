@@ -163,7 +163,7 @@ namespace BufferUploads
             void                QueueOperation(Operation::Enum operation, unsigned start, unsigned end);
             void                ApplyPendingOperations(HeapedResource& destination);
 
-            void                Tick(ThreadContext& context, UnderlyingResource* sourceResource);
+            void                Tick(ThreadContext& context, const UnderlyingResourcePtr& sourceResource);
             bool                IsCompleted(IManager::EventListID processedEventList, ThreadContext& context);
 
             void                SetSteps(const SimpleSpanningHeap& sourceHeap, const std::vector<DefragStep>& steps);

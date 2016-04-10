@@ -18,6 +18,7 @@ namespace RenderCore { namespace Metal_Vulkan
 {
 	class ObjectFactory;
 	class DeviceContext;
+	class Resource;
 
 	enum class ImageLayout
 	{
@@ -33,6 +34,21 @@ namespace RenderCore { namespace Metal_Vulkan
 		PresentSrc						= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	};
 
+	/// <summary>Helper object to catch multiple similar pointers</summary>
+	/// To help with platform abstraction, RenderCore::Resource* is actually the
+	/// same as a Metal::Resource*. This helper allows us to catch both equally.
+	class UnderlyingResourcePtr
+	{
+	public:
+		Resource* get() { return _res; }
+
+		UnderlyingResourcePtr(Resource* res) { _res = res; }
+		UnderlyingResourcePtr(RenderCore::Resource* res) { _res = (Resource*)_res; }
+		UnderlyingResourcePtr(const std::shared_ptr<RenderCore::Resource>& res) { _res = (Resource*)res.get(); }
+	protected:
+		Resource* _res;
+	};
+
 	/// <summary>Abstraction for a device memory resource</summary>
 	/// A Resource can either be a buffer or an image. In Vulkan, both types reference a VkDeviceMemory
 	/// object that represents the actual allocation. This object maintains that allocation, and provides
@@ -46,15 +62,13 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		using Desc = ResourceDesc;
 
-		void SetImageLayout(
-			DeviceContext& context, ImageLayout oldLayout, ImageLayout newLayout);
-
 		Resource(
 			const ObjectFactory& factory, const Desc& desc,
 			const SubResourceInitData& initData = SubResourceInitData{});
 		Resource(
 			const ObjectFactory& factory, const Desc& desc,
 			const std::function<SubResourceInitData(unsigned, unsigned)>&);
+		Resource(UnderlyingResourcePtr copyFrom) : Resource(*copyFrom.get()) {}
 		Resource();
 		~Resource();
 
@@ -69,20 +83,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		VulkanSharedPtr<VkImage> _underlyingImage;
 
 		Desc _desc;
-	};
-
-	/// <summary>Helper object to catch multiple similar pointers</summary>
-	/// To help with platform abstraction, RenderCore::Resource* is actually the
-	/// same as a Metal::Resource*. This helper allows us to catch both equally.
-	class UnderlyingResourcePtr
-	{
-	public:
-		Resource* get() { return _res; }
-
-		UnderlyingResourcePtr(Resource* res) { _res = res; }
-		UnderlyingResourcePtr(RenderCore::Resource* res) { _res = (Resource*)_res; }
-	protected:
-		Resource* _res;
 	};
 
 	class MemoryMap
@@ -179,6 +179,9 @@ namespace RenderCore { namespace Metal_Vulkan
 	void SetImageLayout(
 		VkCommandBuffer cmd, VkImage image,
 		VkImageAspectFlags aspectMask, VkImageLayout old_image_layout, VkImageLayout new_image_layout);
+	void SetImageLayout(
+		DeviceContext& context, UnderlyingResourcePtr res,
+		ImageLayout oldLayout, ImageLayout newLayout);
 
 	ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
 }}

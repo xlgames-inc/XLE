@@ -242,7 +242,8 @@ namespace RenderCore
 	class Device : public Base_Device, public std::enable_shared_from_this<Device>
     {
     public:
-        std::unique_ptr<IPresentationChain>     CreatePresentationChain(const void* platformValue, unsigned width, unsigned height) /*override*/;
+        std::unique_ptr<IPresentationChain>     CreatePresentationChain(
+			const void* platformValue, unsigned width, unsigned height) /*override*/;
         void    BeginFrame(IPresentationChain* presentationChain);
 
         std::pair<const char*, const char*>     GetVersionInformation();
@@ -251,6 +252,10 @@ namespace RenderCore
         std::unique_ptr<IThreadContext>         CreateDeferredContext();
 
         Metal_Vulkan::GlobalPools&              GetGlobalPools() { return _pools; }
+
+		ResourcePtr CreateResource(
+			const ResourceDesc& desc, 
+			const std::function<SubResourceInitData(unsigned, unsigned)>&);
 
         Device();
         ~Device();

@@ -210,12 +210,12 @@ namespace BufferUploads { namespace PlatformInterface
     }
 
     UnderlyingDeviceContext::MappedBuffer::MappedBuffer(
-        UnderlyingDeviceContext& context, const UnderlyingResource& resource, 
+        UnderlyingDeviceContext& context, UnderlyingResourcePtr resource, 
         unsigned subResourceIndex, void* data,
         TexturePitches pitches)
+	: _resource(std::move(resource))
     {
         _sourceContext = &context;
-        _resource.reset(const_cast<UnderlyingResource*>(&resource));
         _subResourceIndex = subResourceIndex;
         _data = data;
         _pitches = pitches;

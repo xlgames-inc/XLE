@@ -149,18 +149,19 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void Resource::SetImageLayout(
-		DeviceContext& context, 
+	void SetImageLayout(
+		DeviceContext& context, UnderlyingResourcePtr res,
 		ImageLayout oldLayout, ImageLayout newLayout)
 	{
-		assert(_desc._type == Desc::Type::Texture);
+		auto& r = *res.get();
+		assert(r.GetDesc()._type == ResourceDesc::Type::Texture);
 		// unforunately, we can't just blanket aspectMask with all bits enabled.
 		// We must select a correct aspect mask. The nvidia drivers seem to be fine with all
 		// bits enabled, but the documentation says that this is not allowed
-		auto aspectMask = AsImageAspectMask(_desc._bindFlags, (NativeFormat::Enum)_desc._textureDesc._nativePixelFormat);
+		auto aspectMask = AsImageAspectMask(r.GetDesc()._bindFlags, (NativeFormat::Enum)r.GetDesc()._textureDesc._nativePixelFormat);
 		Metal_Vulkan::SetImageLayout(
 			context.GetCommandList(),
-			_underlyingImage.get(), 
+			r.GetImage(), 
 			aspectMask,
 			AsVkImageLayout(oldLayout), AsVkImageLayout(newLayout));
 	}
@@ -318,9 +319,14 @@ namespace RenderCore { namespace Metal_Vulkan
 	Resource::Resource() {}
 	Resource::~Resource() {}
 
+	ResourceDesc ExtractDesc(UnderlyingResourcePtr res)
+	{
+		return res.get()->GetDesc();
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void Copy(DeviceContext& context, Resource& dst, Resource& src, ImageLayout dstLayout, ImageLayout srcLayout)
+	void Copy(DeviceContext& context, UnderlyingResourcePtr dst, UnderlyingResourcePtr src, ImageLayout dstLayout, ImageLayout srcLayout)
 	{
 		// Each mipmap is treated as a separate copy operation (but multiple array layers can be handled
 		// in a single operation).
@@ -328,22 +334,25 @@ namespace RenderCore { namespace Metal_Vulkan
 		//		-- in practice, that means that the size of the pixels in both cases must be the same.
 		//		When copying between compressed and uncompressed images, the uncompressed pixel size must
 		//		be equal to the compressed block size.
-		assert(dst.GetDesc()._type == Resource::Desc::Type::Texture);
-		assert(src.GetDesc()._type == Resource::Desc::Type::Texture);
+		assert(src.get() && dst.get());
+		const auto& srcDesc = src.get()->GetDesc();
+		const auto& dstDesc = dst.get()->GetDesc();
+		assert(srcDesc._type == Resource::Desc::Type::Texture);
+		assert(dstDesc._type == Resource::Desc::Type::Texture);
 
 		VkImageCopy copyOps[16];
 
 		unsigned copyOperations = 0;
-		auto dstAspectMask = AsImageAspectMask(dst.GetDesc()._bindFlags, (NativeFormat::Enum)dst.GetDesc()._textureDesc._nativePixelFormat);
-		auto srcAspectMask = AsImageAspectMask(src.GetDesc()._bindFlags, (NativeFormat::Enum)src.GetDesc()._textureDesc._nativePixelFormat);
+		auto dstAspectMask = AsImageAspectMask(dstDesc._bindFlags, (NativeFormat::Enum)dstDesc._textureDesc._nativePixelFormat);
+		auto srcAspectMask = AsImageAspectMask(srcDesc._bindFlags, (NativeFormat::Enum)srcDesc._textureDesc._nativePixelFormat);
 		assert(srcAspectMask == dstAspectMask);
 
-		auto arrayCount = std::max(1u, (unsigned)src.GetDesc()._textureDesc._arrayCount);
-		assert(arrayCount == std::max(1u, (unsigned)dst.GetDesc()._textureDesc._arrayCount));
+		auto arrayCount = std::max(1u, (unsigned)srcDesc._textureDesc._arrayCount);
+		assert(arrayCount == std::max(1u, (unsigned)dstDesc._textureDesc._arrayCount));
 		
-		auto mips = std::max(1u, (unsigned)std::min(src.GetDesc()._textureDesc._mipCount, dst.GetDesc()._textureDesc._mipCount));
+		auto mips = std::max(1u, (unsigned)std::min(srcDesc._textureDesc._mipCount, dstDesc._textureDesc._mipCount));
 		assert(mips <= dimof(copyOps));
-		auto width = src.GetDesc()._textureDesc._width, height = src.GetDesc()._textureDesc._height, depth = src.GetDesc()._textureDesc._depth;
+		auto width = srcDesc._textureDesc._width, height = srcDesc._textureDesc._height, depth = srcDesc._textureDesc._depth;
 		for (unsigned m = 0; m < mips; ++m) {
 			auto& c = copyOps[copyOperations++];
 			c.srcOffset = VkOffset3D { 0, 0, 0 };
@@ -365,8 +374,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		vkCmdCopyImage(
 			context.GetCommandList(),
-			src.GetImage(), AsVkImageLayout(srcLayout),
-			dst.GetImage(), AsVkImageLayout(dstLayout),
+			src.get()->GetImage(), AsVkImageLayout(srcLayout),
+			dst.get()->GetImage(), AsVkImageLayout(dstLayout),
 			copyOperations, copyOps);
 	}
 

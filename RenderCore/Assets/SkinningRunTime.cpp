@@ -1274,7 +1274,7 @@ namespace RenderCore { namespace Assets
 
     static void PushTBufferTemporaryTexture(Metal::DeviceContext* context, TBufferTemporaryTexture& tex)
     {
-        Metal::Copy(*context, *tex._resource.get(), *tex._stagingResource.get());
+        Metal::Copy(*context, tex._resource.get(), tex._stagingResource.get());
     }
 }}
 

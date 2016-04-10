@@ -418,7 +418,7 @@ namespace BufferUploads
                         deviceCreation = false;
                         assert((allocation+size)<=PlatformInterface::ByteCount(_prototype));
                         return make_intrusive<ResourceLocator>(
-                            UnderlyingResourcePtr(bestHeap->_heapResource->GetUnderlying()), 
+                            bestHeap->_heapResource->ShareUnderlying(), 
                             allocation, size, 
                             shared_from_this());
                     }
@@ -438,7 +438,7 @@ namespace BufferUploads
         assert(allocation != ~unsigned(0x0));
 
         auto result = make_intrusive<ResourceLocator>(
-            newHeap->_heapResource->GetUnderlying(), allocation, size, shared_from_this());
+            newHeap->_heapResource->ShareUnderlying(), allocation, size, shared_from_this());
         ScopedModifyLock(_lock);
         _heaps.push_back(std::move(newHeap));
         return result;
@@ -682,7 +682,7 @@ namespace BufferUploads
                     --_temporaryCopyBufferCountDown;
                 } else {
                     const bool useTemporaryCopyBuffer = PlatformInterface::UseMapBasedDefrag && !PlatformInterface::CanDoNooverwriteMapInBackground;
-                    existingActiveDefrag->Tick(context, useTemporaryCopyBuffer?_temporaryCopyBuffer->GetUnderlying():_activeDefragHeap->_heapResource->GetUnderlying());
+                    existingActiveDefrag->Tick(context, useTemporaryCopyBuffer?_temporaryCopyBuffer->ShareUnderlying():_activeDefragHeap->_heapResource->ShareUnderlying());
                     if (existingActiveDefrag->IsCompleted(processedEventList, context)) {
 
                             //
@@ -874,7 +874,7 @@ namespace BufferUploads
         _pendingOperations.push_back(op);
     }
 
-    void BatchedResources::ActiveDefrag::Tick(ThreadContext& context, UnderlyingResource* sourceResource)
+    void BatchedResources::ActiveDefrag::Tick(ThreadContext& context, const UnderlyingResourcePtr& sourceResource)
     {
         if (!_initialCommandListID) {
             _initialCommandListID = context.CommandList_GetUnderConstruction();
@@ -883,7 +883,7 @@ namespace BufferUploads
                 // -----<   Copy from the old resource into the new resource   >----- //
             if (PlatformInterface::UseMapBasedDefrag && !PlatformInterface::CanDoNooverwriteMapInBackground) {
                 context.GetCommitStepUnderConstruction().Add(
-                    CommitStep::DeferredDefragCopy(GetHeap()->_heapResource->GetUnderlying(), sourceResource, _steps));
+                    CommitStep::DeferredDefragCopy(GetHeap()->_heapResource->ShareUnderlying(), sourceResource, _steps));
             } else {
                 context.GetDeviceContext().ResourceCopy_DefragSteps(*GetHeap()->_heapResource->GetUnderlying(), *sourceResource, _steps);
             }
@@ -893,7 +893,7 @@ namespace BufferUploads
         if (_doneResourceCopy && !_eventId && context.CommandList_GetCommittedToImmediate() >= _initialCommandListID) {
             Event_ResourceReposition result;
             result._originalResource = sourceResource;
-            result._newResource      = GetHeap()->_heapResource->GetUnderlying();
+            result._newResource      = GetHeap()->_heapResource->ShareUnderlying();
             result._defragSteps      = _steps;
             _eventId = context.EventList_Push(result);
         }

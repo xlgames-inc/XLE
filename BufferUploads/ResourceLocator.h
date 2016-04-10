@@ -36,8 +36,8 @@ namespace BufferUploads
     class Event_ResourceReposition
     {
     public:
-        UnderlyingResource* _originalResource;
-        UnderlyingResource* _newResource;
+        UnderlyingResourcePtr _originalResource;
+        UnderlyingResourcePtr _newResource;
         std::shared_ptr<IResourcePool> _pool;
         uint64 _poolMarker;
         std::vector<Utility::DefragStep> _defragSteps;
@@ -52,6 +52,7 @@ namespace BufferUploads
         unsigned Offset() const { return _offset; }
         unsigned Size() const { return _size; }
         UnderlyingResource* GetUnderlying() const { return _resource.get(); }
+		const UnderlyingResourcePtr& ShareUnderlying() const { return _resource; }
         std::shared_ptr<IResourcePool> Pool() { return _pool; }
         uint64 PoolMarker() { return _poolMarker; }
 

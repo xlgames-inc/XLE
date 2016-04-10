@@ -8,6 +8,7 @@
 
 #include "DX11.h"
 #include "Format.h"
+#include "Resource.h"
 #include "../../../Utility/IntrusivePtr.h"
 
 namespace RenderCore { namespace Metal_DX11
@@ -25,10 +26,10 @@ namespace RenderCore { namespace Metal_DX11
     class ShaderResourceView
     {
     public:
-        explicit ShaderResourceView(ID3D::Resource& resource, NativeFormat::Enum format = NativeFormat::Unknown, int arrayCount=0, bool forceSingleSample=false);
-        ShaderResourceView(ID3D::Resource& resource, NativeFormat::Enum format, const MipSlice& mipSlice);
-		ShaderResourceView(const ObjectFactory& factory, ID3D::Resource& resource, NativeFormat::Enum format = NativeFormat::Unknown, int arrayCount = 0, bool forceSingleSample = false);
-		ShaderResourceView(const ObjectFactory& factory, ID3D::Resource& resource, NativeFormat::Enum format, const MipSlice& mipSlice);
+        explicit ShaderResourceView(UnderlyingResourcePtr resource, NativeFormat::Enum format = NativeFormat::Unknown, int arrayCount=0, bool forceSingleSample=false);
+        ShaderResourceView(UnderlyingResourcePtr resource, NativeFormat::Enum format, const MipSlice& mipSlice);
+		ShaderResourceView(const ObjectFactory& factory, UnderlyingResourcePtr resource, NativeFormat::Enum format = NativeFormat::Unknown, int arrayCount = 0, bool forceSingleSample = false);
+		ShaderResourceView(const ObjectFactory& factory, UnderlyingResourcePtr resource, NativeFormat::Enum format, const MipSlice& mipSlice);
         explicit ShaderResourceView(intrusive_ptr<ID3D::ShaderResourceView>&& resource);
         explicit ShaderResourceView(MovePTRHelper<ID3D::ShaderResourceView> resource);
         ShaderResourceView();

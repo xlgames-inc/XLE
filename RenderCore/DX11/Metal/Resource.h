@@ -10,6 +10,7 @@
 #include "../../ResourceDesc.h"
 #include "../../../Utility/IntrusivePtr.h"
 
+namespace RenderCore { class Resource; }
 namespace RenderCore { namespace Metal_DX11
 {
 	class DeviceContext;
@@ -50,6 +51,21 @@ namespace RenderCore { namespace Metal_DX11
 
 		Underlying::Resource* GetImage() { return get(); }
 		Underlying::Resource* GetBuffer() { return get(); }
+	};
+
+	/// <summary>Helper object to catch multiple similar pointers</summary>
+	/// To help with platform abstraction, RenderCore::Resource* is actually the
+	/// same as a Metal::Resource*. This helper allows us to catch both equally.
+	class UnderlyingResourcePtr
+	{
+	public:
+		Underlying::Resource* get() { return _res; }
+
+		UnderlyingResourcePtr(Resource* res) { _res = res->GetImage(); }
+		UnderlyingResourcePtr(RenderCore::Resource* res) { _res = (Underlying::Resource*)res; }
+		UnderlyingResourcePtr(Underlying::Resource* res) { _res = res; }
+	protected:
+		Underlying::Resource* _res;
 	};
 
     class DeviceContext;

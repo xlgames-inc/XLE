@@ -1192,7 +1192,7 @@ namespace BufferUploads
                 // ... check temporary transactions ...
             for (unsigned c=0; c<temporaryCount; ++c) {
                 Transaction& transaction = _transactions[c];
-                if (transaction._finalResource->GetUnderlying() == e->_originalResource) {
+                if (transaction._finalResource->GetUnderlying() == e->_originalResource.get()) {
                     auto size = PlatformInterface::ByteCount(transaction._desc);
 
                     intrusive_ptr<ResourceLocator> oldLocator = std::move(transaction._finalResource);
@@ -1212,7 +1212,7 @@ namespace BufferUploads
                 #else
                     Transaction& transaction = _transactions[_transactions.size()-c-1];
                 #endif
-                if (transaction._finalResource->GetUnderlying() == e->_originalResource) {
+                if (transaction._finalResource->GetUnderlying() == e->_originalResource.get()) {
                     auto size = PlatformInterface::ByteCount(transaction._desc);
 
                     intrusive_ptr<ResourceLocator> oldLocator = std::move(transaction._finalResource);
@@ -1395,7 +1395,7 @@ namespace BufferUploads
                     for (auto i=batchingStart; i!=batchingI; ++i, ++o) {
                         Transaction* transaction = GetTransaction(i->_id);
                         transaction->_finalResource = make_intrusive<ResourceLocator>(
-                            batchedResource->GetUnderlying(), *o, PlatformInterface::ByteCount(i->_creationDesc),
+                            batchedResource->ShareUnderlying(), *o, PlatformInterface::ByteCount(i->_creationDesc),
                             batchedResource->Pool(), batchedResource->PoolMarker());
                         ReleaseTransaction(transaction, context);
                     }
@@ -2356,7 +2356,7 @@ namespace BufferUploads
     {
         assert(!locator.IsEmpty());
         auto resource = locator.GetUnderlying();
-        intrusive_ptr<UnderlyingResource> stagingResource;
+        UnderlyingResourcePtr stagingResource;
 
         auto desc = PlatformInterface::ExtractDesc(*resource);
         auto subResCount = 1u;

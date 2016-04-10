@@ -761,7 +761,6 @@ namespace PlatformRig { namespace Overlays
 
     CRTBox::CRTBox(const Desc&)
     {
-        using namespace BufferUploads;
         auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
         _buffer = bufferUploads.Transaction_Immediate(
             CreateDesc(BindFlag::RenderTarget|BindFlag::ShaderResource, 0, GPUAccess::Read|GPUAccess::Write,

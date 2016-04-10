@@ -287,7 +287,6 @@ namespace ToolsRig
 
         const unsigned cubeFaces = 5;
 
-        using namespace BufferUploads;
         auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
 
         #if defined(GEN_AO_DEBUG)

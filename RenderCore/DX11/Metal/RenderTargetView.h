@@ -8,6 +8,7 @@
 
 #include "DX11.h"
 #include "Format.h"
+#include "Resource.h"
 #include "../../../Utility/IntrusivePtr.h"
 
 namespace RenderCore { namespace Metal_DX11
@@ -26,7 +27,7 @@ namespace RenderCore { namespace Metal_DX11
     class RenderTargetView
     {
     public:
-        RenderTargetView(ID3D::Resource& resource, NativeFormat::Enum format = NativeFormat::Unknown, const SubResourceSlice& arraySlice = SubResourceSlice());
+        RenderTargetView(UnderlyingResourcePtr resource, NativeFormat::Enum format = NativeFormat::Unknown, const SubResourceSlice& arraySlice = SubResourceSlice());
         RenderTargetView(ID3D::RenderTargetView* resource);
         RenderTargetView(MovePTRHelper<ID3D::RenderTargetView> resource);
         RenderTargetView(DeviceContext& context);
@@ -48,7 +49,7 @@ namespace RenderCore { namespace Metal_DX11
     class DepthStencilView
     {
     public:
-        DepthStencilView(ID3D::Resource& resource, NativeFormat::Enum format = NativeFormat::Unknown, const SubResourceSlice& arraySlice = SubResourceSlice());
+        DepthStencilView(UnderlyingResourcePtr resource, NativeFormat::Enum format = NativeFormat::Unknown, const SubResourceSlice& arraySlice = SubResourceSlice());
         DepthStencilView(ID3D::DepthStencilView* resource);
         DepthStencilView(MovePTRHelper<ID3D::DepthStencilView> resource);
         DepthStencilView(DeviceContext& context);
@@ -78,8 +79,8 @@ namespace RenderCore { namespace Metal_DX11
             };
             typedef unsigned BitField;
         };
-        UnorderedAccessView(ID3D::Resource& resource, NativeFormat::Enum format = NativeFormat::Unknown, unsigned mipSize = 0, bool appendBuffer = false, bool forceArray = false);
-        UnorderedAccessView(ID3D::Resource& resource, Flags::BitField field);
+        UnorderedAccessView(UnderlyingResourcePtr resource, NativeFormat::Enum format = NativeFormat::Unknown, unsigned mipSize = 0, bool appendBuffer = false, bool forceArray = false);
+        UnorderedAccessView(UnderlyingResourcePtr resource, Flags::BitField field);
         UnorderedAccessView();
         ~UnorderedAccessView();
 

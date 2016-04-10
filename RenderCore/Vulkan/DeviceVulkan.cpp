@@ -547,6 +547,41 @@ namespace RenderCore
 		return std::make_unique<ThreadContextVulkan>(shared_from_this(), _objectFactory, nullptr);
     }
 
+	namespace Internal
+	{
+		class ResourceAllocator : public std::allocator<Metal_Vulkan::Resource>
+		{
+		public:
+			pointer allocate(size_type n, std::allocator<void>::const_pointer ptr)
+			{
+				Throw(::Exceptions::BasicLabel("Allocation attempted via ResourceAllocator"));
+			}
+
+			void deallocate(pointer p, size_type n)
+			{
+				delete (Metal_Vulkan::Resource*)p;
+			}
+		};
+	}
+
+	ResourcePtr Device::CreateResource(
+		const ResourceDesc& desc,
+		const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
+	{
+		const bool useAllocateShared = true;
+		if (constant_expression<useAllocateShared>::result()) {
+			auto res = std::allocate_shared<Metal_Vulkan::Resource>(
+				Internal::ResourceAllocator(),
+				std::ref(_objectFactory), std::ref(desc), std::ref(initData));
+			return *reinterpret_cast<ResourcePtr*>(&res);
+		} else {
+			auto res = std::make_unique<Metal_Vulkan::Resource>(_objectFactory, desc, initData);
+			return ResourcePtr(
+				(RenderCore::Resource*)res.release(),
+				[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
+		}
+	}
+
     extern char VersionString[];
     extern char BuildDateString[];
         

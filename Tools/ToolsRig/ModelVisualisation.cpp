@@ -158,7 +158,7 @@ namespace ToolsRig
                                     desc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
                                     desc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
                                     desc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-                                    auto newDSS = Metal::GetObjectFactory()->CreateDepthStencilState(&desc);
+                                    auto newDSS = Metal::GetObjectFactory().CreateDepthStencilState(&desc);
                                     metalContext->GetUnderlying()->OMSetDepthStencilState(newDSS.get(), 1+evnt._drawCallIndex);
                                 #endif
                             }

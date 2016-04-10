@@ -341,8 +341,8 @@ namespace BufferUploads
     }
 
     CommitStep::DeferredDefragCopy::DeferredDefragCopy(
-		UnderlyingResource* destination, UnderlyingResource* source, const std::vector<DefragStep>& steps)
-    : _destination(destination), _source(source), _steps(steps)
+		UnderlyingResourcePtr destination, UnderlyingResourcePtr source, const std::vector<DefragStep>& steps)
+    : _destination(std::move(destination)), _source(std::move(source)), _steps(steps)
     {}
 
     CommitStep::DeferredDefragCopy::~DeferredDefragCopy()

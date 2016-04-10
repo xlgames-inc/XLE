@@ -52,7 +52,7 @@ namespace BufferUploads
             UnderlyingResourcePtr _destination;
             UnderlyingResourcePtr _source;
             std::vector<DefragStep> _steps;
-            DeferredDefragCopy(UnderlyingResource* destination, UnderlyingResource* source, const std::vector<DefragStep>& steps);
+            DeferredDefragCopy(UnderlyingResourcePtr destination, UnderlyingResourcePtr source, const std::vector<DefragStep>& steps);
             ~DeferredDefragCopy();
         };
 
