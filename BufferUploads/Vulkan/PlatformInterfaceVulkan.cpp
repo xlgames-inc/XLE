@@ -15,10 +15,8 @@
 
     namespace BufferUploads { namespace PlatformInterface
     {
-		// static UnderlyingResource*        ResPtr(const UnderlyingResource& resource) { return const_cast<UnderlyingResource*>(&resource); }
-
         void UnderlyingDeviceContext::PushToResource(
-			const UnderlyingResource& resource, const BufferDesc& desc, 
+			UnderlyingResource& resource, const BufferDesc& desc, 
             unsigned resourceOffsetValue, const void* data, size_t dataSize,
             TexturePitches rowAndSlicePitch, 
             const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
@@ -26,7 +24,7 @@
         }
 
         void UnderlyingDeviceContext::PushToStagingResource(
-			const UnderlyingResource& resource, const BufferDesc&desc, 
+			UnderlyingResource& resource, const BufferDesc&desc, 
             unsigned resourceOffsetValue, const void* data, size_t dataSize, 
             TexturePitches rowAndSlicePitch, 
             const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
@@ -34,7 +32,7 @@
         }
 
         void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(
-			const UnderlyingResource& finalResource, const UnderlyingResource& staging, 
+			UnderlyingResource& finalResource, UnderlyingResource& staging, 
 			const BufferDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
         {
         }
@@ -42,12 +40,12 @@
         #pragma warning(disable:4127)       // conditional expression is constant
 
         void UnderlyingDeviceContext::ResourceCopy_DefragSteps(
-			const UnderlyingResource& destination, const UnderlyingResource& source, 
+			UnderlyingResource& destination, UnderlyingResource& source, 
 			const std::vector<DefragStep>& steps)
         {
         }
 
-        void UnderlyingDeviceContext::ResourceCopy(const UnderlyingResource& destination, const UnderlyingResource& source)
+        void UnderlyingDeviceContext::ResourceCopy(UnderlyingResource& destination, UnderlyingResource& source)
         {
             // RenderCore::Metal::Copy(*_devContext, ResPtr(destination), ResPtr(source));
         }
@@ -61,17 +59,17 @@
         {
         }
 
-        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(const UnderlyingResource& resource, MapType::Enum mapType, unsigned subResource)
+        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(UnderlyingResource& resource, MapType::Enum mapType, unsigned subResource)
         {
             return MappedBuffer();
         }
 
-        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::MapPartial(const UnderlyingResource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource)
+        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::MapPartial(UnderlyingResource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource)
         {
             return MappedBuffer();
         }
 
-        void UnderlyingDeviceContext::Unmap(const UnderlyingResource& resource, unsigned subResourceIndex)
+        void UnderlyingDeviceContext::Unmap(UnderlyingResource& resource, unsigned subResourceIndex)
         {
         }
 
@@ -105,7 +103,7 @@
 			}
         }
 
-		BufferDesc ExtractDesc(const UnderlyingResource& resource)
+		BufferDesc ExtractDesc(UnderlyingResource& resource)
         {
             BufferDesc desc;
             XlZeroMemory(desc);

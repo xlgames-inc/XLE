@@ -33,6 +33,11 @@ namespace RenderCore { namespace Metal_Vulkan
         _layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
+	ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, UnderlyingResourcePtr image, Format fmt)
+	: ShaderResourceView(factory, image.get()->GetImage(), fmt)
+	{
+	}
+
     ShaderResourceView::ShaderResourceView(VkImage image, Format format)
     : ShaderResourceView(GetObjectFactory(), image, format)
     {}

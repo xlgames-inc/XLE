@@ -36,26 +36,6 @@ namespace RenderCore { namespace Metal_DX11
 		PresentSrc
 	};
 
-#if 0
-	class Resource : public intrusive_ptr<Underlying::Resource>
-	{
-	public:
-		using Desc = ResourceDesc;
-
-		void SetImageLayout(
-			DeviceContext& context, ImageLayout oldLayout, ImageLayout newLayout);
-
-		Resource(
-			const ObjectFactory& factory, const Desc& desc,
-			const void* initData = nullptr, size_t initDataSize = 0);
-		Resource();
-		~Resource();
-
-		Underlying::Resource* GetImage() { return get(); }
-		Underlying::Resource* GetBuffer() { return get(); }
-	};
-#endif
-
 	/// <summary>Helper object to catch multiple similar pointers</summary>
 	/// To help with platform abstraction, RenderCore::Resource* is actually the
 	/// same as a Metal::Resource*. This helper allows us to catch both equally.
@@ -64,11 +44,9 @@ namespace RenderCore { namespace Metal_DX11
 	public:
 		Underlying::Resource* get() { return _res; }
 
-		// UnderlyingResourcePtr(Resource* res) { _res = res->GetImage(); }
 		UnderlyingResourcePtr(RenderCore::Resource* res) { _res = (Underlying::Resource*)res; }
 		UnderlyingResourcePtr(const RenderCore::ResourcePtr& res) { _res = (Underlying::Resource*)res.get(); }
 		UnderlyingResourcePtr(Underlying::Resource* res) { _res = res; }
-		UnderlyingResourcePtr(Underlying::Resource& res) { _res = &res; }
 		UnderlyingResourcePtr(intrusive_ptr<Underlying::Resource> res) { _res = res.get(); }
 	protected:
 		Underlying::Resource* _res;
@@ -143,6 +121,14 @@ namespace RenderCore { namespace Metal_DX11
 	void SetImageLayout(
 		DeviceContext& context, UnderlyingResourcePtr res,
 		ImageLayout oldLayout, ImageLayout newLayout);
+
+	/////////////// Resource creation and access ///////////////
+
+	using ResourceInitializer = std::function<SubResourceInitData(unsigned mipIndex, unsigned arrayIndex)>;
+	RenderCore::ResourcePtr CreateResource(
+		const ObjectFactory& factory,
+		const ResourceDesc& desc, 
+		const ResourceInitializer& init = nullptr);
 
 	ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
 

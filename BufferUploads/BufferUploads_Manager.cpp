@@ -2670,7 +2670,7 @@ namespace BufferUploads
         return std::make_unique<Manager>(renderDevice);
     }
 
-    BufferDesc ExtractDesc(const RenderCore::Resource& resource)
+    BufferDesc ExtractDesc(RenderCore::Resource& resource)
     {
         return PlatformInterface::ExtractDesc(resource);
     }

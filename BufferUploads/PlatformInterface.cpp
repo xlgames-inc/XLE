@@ -210,7 +210,7 @@ namespace BufferUploads { namespace PlatformInterface
     }
 
     UnderlyingDeviceContext::MappedBuffer::MappedBuffer(
-        UnderlyingDeviceContext& context, const UnderlyingResource& resource, 
+        UnderlyingDeviceContext& context, UnderlyingResource& resource, 
         unsigned subResourceIndex, void* data,
         TexturePitches pitches)
 	: _resource(&resource)

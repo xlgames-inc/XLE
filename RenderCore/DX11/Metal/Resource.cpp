@@ -7,20 +7,11 @@
 #include "Resource.h"
 #include "DeviceContext.h"
 #include "DX11Utils.h"
+#include "Format.h"
+#include "ObjectFactory.h"
 
 namespace RenderCore { namespace Metal_DX11
 {
-#if 0
-	void Resource::SetImageLayout(
-		DeviceContext& context, ImageLayout oldLayout, ImageLayout newLayout) {}
-	Resource::Resource(
-		const ObjectFactory& factory, const Desc& desc,
-		const void* initData, size_t initDataSize)
-	{}
-	Resource::Resource() {}
-	Resource::~Resource() {}
-#endif
-
 	void Copy(
 		DeviceContext& context, 
 		UnderlyingResourcePtr dst, UnderlyingResourcePtr src,
@@ -58,14 +49,293 @@ namespace RenderCore { namespace Metal_DX11
 	void SetImageLayout(
 		DeviceContext& context, UnderlyingResourcePtr res,
 		ImageLayout oldLayout, ImageLayout newLayout)
-	{
+	{}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	static unsigned AsNativeCPUAccessFlag(CPUAccess::BitField bitField)
+	{
+		unsigned result = 0;
+		if (bitField & CPUAccess::Read)
+			result |= D3D11_CPU_ACCESS_READ;
+		// if cpu access is Write; we want a "D3D11_USAGE_DEFAULT" buffer with 0 write access flags
+		if ((bitField & CPUAccess::WriteDynamic) == CPUAccess::WriteDynamic)
+			result |= D3D11_CPU_ACCESS_WRITE;
+		return result;
 	}
+
+	static CPUAccess::BitField AsGenericCPUAccess(unsigned d3dFlags)
+	{
+		CPUAccess::BitField result = 0;
+		if (d3dFlags & D3D11_CPU_ACCESS_READ)
+			result |= CPUAccess::Read;
+		if (d3dFlags & D3D11_CPU_ACCESS_WRITE)
+			result |= CPUAccess::WriteDynamic;
+		return result;
+	}
+
+	static D3D11_USAGE UsageForDesc(const ResourceDesc& desc, bool lateInitialisation)
+	{
+		if (desc._gpuAccess) {
+			if ((desc._cpuAccess & CPUAccess::WriteDynamic) == CPUAccess::WriteDynamic) {   // Any resource with CPU write access must be marked as "Dynamic"! Don't set any CPU access flags for infrequent UpdateSubresource updates
+				return D3D11_USAGE_DYNAMIC;
+			} else if ((desc._cpuAccess & CPUAccess::Write) || lateInitialisation) {
+				return D3D11_USAGE_DEFAULT;
+			} else if (desc._gpuAccess & GPUAccess::Write) {
+				return D3D11_USAGE_DEFAULT;
+			} else {
+				return D3D11_USAGE_IMMUTABLE;
+			}
+		} else {
+			//  No GPU access means this can only be useful as a staging buffer...
+			return D3D11_USAGE_STAGING;
+		}
+	}
+
+	static unsigned AsNativeBindFlags(BindFlag::BitField flags)
+	{
+		unsigned result = 0;
+		if (flags & BindFlag::VertexBuffer) { result |= D3D11_BIND_VERTEX_BUFFER; }
+		if (flags & BindFlag::IndexBuffer) { result |= D3D11_BIND_INDEX_BUFFER; }
+		if (flags & BindFlag::ShaderResource) { result |= D3D11_BIND_SHADER_RESOURCE; }
+		if (flags & BindFlag::RenderTarget) { result |= D3D11_BIND_RENDER_TARGET; }
+		if (flags & BindFlag::DepthStencil) { result |= D3D11_BIND_DEPTH_STENCIL; }
+		if (flags & BindFlag::UnorderedAccess) { result |= D3D11_BIND_UNORDERED_ACCESS; }
+		if (flags & BindFlag::ConstantBuffer) { result |= D3D11_BIND_CONSTANT_BUFFER; }
+		if (flags & BindFlag::StreamOutput) { result |= D3D11_BIND_STREAM_OUTPUT; }
+		return result;
+	}
+
+	static BindFlag::BitField AsGenericBindFlags(unsigned d3dBindFlags)
+	{
+		BindFlag::BitField result = 0;
+		if (d3dBindFlags & D3D11_BIND_VERTEX_BUFFER) { result |= BindFlag::VertexBuffer; }
+		if (d3dBindFlags & D3D11_BIND_INDEX_BUFFER) { result |= BindFlag::IndexBuffer; }
+		if (d3dBindFlags & D3D11_BIND_SHADER_RESOURCE) { result |= BindFlag::ShaderResource; }
+		if (d3dBindFlags & D3D11_BIND_RENDER_TARGET) { result |= BindFlag::RenderTarget; }
+		if (d3dBindFlags & D3D11_BIND_DEPTH_STENCIL) { result |= BindFlag::DepthStencil; }
+		if (d3dBindFlags & D3D11_BIND_UNORDERED_ACCESS) { result |= BindFlag::UnorderedAccess; }
+		if (d3dBindFlags & D3D11_BIND_CONSTANT_BUFFER) { result |= BindFlag::ConstantBuffer; }
+		if (d3dBindFlags & D3D11_BIND_STREAM_OUTPUT) { result |= BindFlag::StreamOutput; }
+		return result;
+	}
+
+	RenderCore::ResourcePtr CreateResource(
+		const ObjectFactory& factory,
+		const ResourceDesc& desc,
+		const ResourceInitializer& init)
+	{
+		D3D11_SUBRESOURCE_DATA subResources[128];
+		bool hasInitData = !!init; 
+		
+		switch (desc._type) {
+		case ResourceDesc::Type::Texture:
+			{
+				if (hasInitData) {
+					for (unsigned m = 0; m<std::max(1u, unsigned(desc._textureDesc._mipCount)); ++m) {
+						for (unsigned a = 0; a<std::max(1u, unsigned(desc._textureDesc._arrayCount)); ++a) {
+							uint32 subresourceIndex = D3D11CalcSubresource(m, a, desc._textureDesc._mipCount);
+							auto initData = init(m, a);
+							subResources[subresourceIndex] = D3D11_SUBRESOURCE_DATA{initData._data, UINT(initData._rowPitch), UINT(initData._slicePitch)};
+						}
+					}
+				}
+
+				if (desc._textureDesc._dimensionality == RenderCore::TextureDesc::Dimensionality::T1D) {
+
+					D3D11_TEXTURE1D_DESC textureDesc;
+					XlZeroMemory(textureDesc);
+					textureDesc.Width = desc._textureDesc._width;
+					textureDesc.MipLevels = desc._textureDesc._mipCount;
+					textureDesc.ArraySize = std::max(desc._textureDesc._arrayCount, uint16(1));
+					textureDesc.Format = AsDXGIFormat(desc._textureDesc._format);
+					const bool lateInitialisation = !hasInitData; /// it must be lateInitialisation, because we don't have any initialization data
+					textureDesc.Usage = UsageForDesc(desc, lateInitialisation);
+					textureDesc.BindFlags = AsNativeBindFlags(desc._bindFlags);
+					textureDesc.CPUAccessFlags = AsNativeCPUAccessFlag(desc._cpuAccess);
+					if (textureDesc.Usage == D3D11_USAGE_STAGING && !textureDesc.CPUAccessFlags)		// staging resources must have either D3D11_CPU_ACCESS_WRITE or D3D11_CPU_ACCESS_READ
+						textureDesc.CPUAccessFlags = hasInitData ? D3D11_CPU_ACCESS_WRITE : D3D11_CPU_ACCESS_READ;
+					textureDesc.MiscFlags = 0;
+					return AsResourcePtr(factory.CreateTexture1D(&textureDesc, hasInitData ? subResources : nullptr, desc._name));
+
+				} else if (desc._textureDesc._dimensionality == RenderCore::TextureDesc::Dimensionality::T2D
+					|| desc._textureDesc._dimensionality == RenderCore::TextureDesc::Dimensionality::CubeMap) {
+
+					D3D11_TEXTURE2D_DESC textureDesc;
+					XlZeroMemory(textureDesc);
+					textureDesc.Width = desc._textureDesc._width;
+					textureDesc.Height = desc._textureDesc._height;
+					textureDesc.MipLevels = desc._textureDesc._mipCount;
+					textureDesc.ArraySize = std::max(desc._textureDesc._arrayCount, uint16(1));
+					textureDesc.Format = AsDXGIFormat(desc._textureDesc._format);
+					textureDesc.SampleDesc.Count = std::max(uint8(1), desc._textureDesc._samples._sampleCount);
+					textureDesc.SampleDesc.Quality = desc._textureDesc._samples._samplingQuality;
+					const bool lateInitialisation = !hasInitData; /// it must be lateInitialisation, because we don't have any initialization data
+					textureDesc.Usage = UsageForDesc(desc, lateInitialisation);
+					textureDesc.BindFlags = AsNativeBindFlags(desc._bindFlags);
+					textureDesc.CPUAccessFlags = AsNativeCPUAccessFlag(desc._cpuAccess);
+					if (textureDesc.Usage == D3D11_USAGE_STAGING && !textureDesc.CPUAccessFlags)		// staging resources must have either D3D11_CPU_ACCESS_WRITE or D3D11_CPU_ACCESS_READ
+						textureDesc.CPUAccessFlags = hasInitData ? D3D11_CPU_ACCESS_WRITE : D3D11_CPU_ACCESS_READ;
+					textureDesc.MiscFlags = 0;
+					if (desc._textureDesc._dimensionality == RenderCore::TextureDesc::Dimensionality::CubeMap)
+						textureDesc.MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;
+					return AsResourcePtr(factory.CreateTexture2D(&textureDesc, hasInitData ? subResources : nullptr, desc._name));
+
+				} else if (desc._textureDesc._dimensionality == RenderCore::TextureDesc::Dimensionality::T3D) {
+
+					D3D11_TEXTURE3D_DESC textureDesc;
+					XlZeroMemory(textureDesc);
+					textureDesc.Width = desc._textureDesc._width;
+					textureDesc.Height = desc._textureDesc._height;
+					textureDesc.Depth = desc._textureDesc._depth;
+					textureDesc.MipLevels = desc._textureDesc._mipCount;
+					textureDesc.Format = AsDXGIFormat(desc._textureDesc._format);
+					const bool lateInitialisation = !hasInitData; /// it must be lateInitialisation, because we don't have any initialization data
+					textureDesc.Usage = UsageForDesc(desc, lateInitialisation);
+					textureDesc.BindFlags = AsNativeBindFlags(desc._bindFlags);
+					textureDesc.CPUAccessFlags = AsNativeCPUAccessFlag(desc._cpuAccess);
+					if (textureDesc.Usage == D3D11_USAGE_STAGING && !textureDesc.CPUAccessFlags)		// staging resources must have either D3D11_CPU_ACCESS_WRITE or D3D11_CPU_ACCESS_READ
+						textureDesc.CPUAccessFlags = hasInitData ? D3D11_CPU_ACCESS_WRITE : D3D11_CPU_ACCESS_READ;
+					textureDesc.MiscFlags = 0;
+					return AsResourcePtr(factory.CreateTexture3D(&textureDesc, hasInitData ? subResources : nullptr, desc._name));
+
+				} else {
+					Throw(::Exceptions::BasicLabel("Unknown texture dimensionality creating resource"));
+				}
+			}
+			break;
+
+		case ResourceDesc::Type::LinearBuffer:
+			{
+				if (hasInitData) {
+					auto top = init(0,0);
+					subResources[0] = D3D11_SUBRESOURCE_DATA{top._data, UINT(top._size), UINT(top._size)};
+					hasInitData = top._data && top._size;
+				}
+
+				D3D11_BUFFER_DESC d3dDesc;
+				XlZeroMemory(d3dDesc);
+				d3dDesc.ByteWidth = desc._linearBufferDesc._sizeInBytes;
+				const bool lateInitialisation = !hasInitData;
+				d3dDesc.Usage = UsageForDesc(desc, lateInitialisation);
+				d3dDesc.BindFlags = AsNativeBindFlags(desc._bindFlags);
+				d3dDesc.CPUAccessFlags = AsNativeCPUAccessFlag(desc._cpuAccess);
+				d3dDesc.MiscFlags = 0;
+				d3dDesc.StructureByteStride = 0;
+				if (desc._bindFlags & BindFlag::StructuredBuffer) {
+					d3dDesc.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+					d3dDesc.StructureByteStride = desc._linearBufferDesc._structureByteSize;
+				}
+				if (desc._bindFlags & BindFlag::DrawIndirectArgs)
+					d3dDesc.MiscFlags |= D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
+				if (desc._bindFlags & BindFlag::RawViews)
+					d3dDesc.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+				if (d3dDesc.Usage == D3D11_USAGE_STAGING && !d3dDesc.CPUAccessFlags)		// staging resources must have either D3D11_CPU_ACCESS_WRITE or D3D11_CPU_ACCESS_READ
+					d3dDesc.CPUAccessFlags = hasInitData ? D3D11_CPU_ACCESS_WRITE : D3D11_CPU_ACCESS_READ;
+				assert(desc._bindFlags != BindFlag::IndexBuffer || d3dDesc.BindFlags == D3D11_USAGE_DYNAMIC);
+
+				return AsResourcePtr(factory.CreateBuffer(&d3dDesc, hasInitData ? subResources : nullptr, desc._name));
+			}
+
+		default:
+			Throw(::Exceptions::BasicLabel("Unknown resource type while creating resource"));
+		}
+	}
+
+	ResourceDesc AsGenericDesc(const D3D11_BUFFER_DESC& d3dDesc)
+    {
+		ResourceDesc desc;
+        desc._type = ResourceDesc::Type::LinearBuffer;
+        desc._cpuAccess = AsGenericCPUAccess(d3dDesc.CPUAccessFlags);
+        if (d3dDesc.Usage == D3D11_USAGE_DEFAULT) {
+            desc._cpuAccess |= CPUAccess::Write;
+        } else if (d3dDesc.Usage == D3D11_USAGE_DYNAMIC) {
+            desc._cpuAccess |= CPUAccess::WriteDynamic;
+        }
+        desc._gpuAccess = GPUAccess::Read;
+        desc._bindFlags = AsGenericBindFlags(d3dDesc.BindFlags);
+        desc._linearBufferDesc._sizeInBytes = d3dDesc.ByteWidth;
+        desc._name[0] = '\0';
+        return desc;
+    }
+
+	ResourceDesc AsGenericDesc(const D3D11_TEXTURE2D_DESC& d3dDesc)
+    {
+		ResourceDesc desc;
+        desc._type = ResourceDesc::Type::Texture;
+        desc._cpuAccess = AsGenericCPUAccess(d3dDesc.CPUAccessFlags);
+        desc._gpuAccess = GPUAccess::Read;
+        desc._bindFlags = AsGenericBindFlags(d3dDesc.BindFlags);
+        desc._textureDesc._dimensionality = RenderCore::TextureDesc::Dimensionality::T2D;
+        desc._textureDesc._width = d3dDesc.Width;
+        desc._textureDesc._height = d3dDesc.Height;
+        desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
+        desc._textureDesc._arrayCount = uint16(d3dDesc.ArraySize);
+        desc._textureDesc._format = AsFormat(d3dDesc.Format);
+        desc._textureDesc._samples = TextureSamples::Create();
+        desc._name[0] = '\0';
+        return desc;
+    }
+
+	ResourceDesc AsGenericDesc(const D3D11_TEXTURE1D_DESC& d3dDesc)
+    {
+		ResourceDesc desc;
+        desc._type = ResourceDesc::Type::Texture;
+        desc._cpuAccess = AsGenericCPUAccess(d3dDesc.CPUAccessFlags);
+        desc._gpuAccess = GPUAccess::Read;
+        desc._bindFlags = AsGenericBindFlags(d3dDesc.BindFlags);
+        desc._textureDesc._dimensionality = RenderCore::TextureDesc::Dimensionality::T1D;
+        desc._textureDesc._width = d3dDesc.Width;
+        desc._textureDesc._height = 1;
+        desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
+        desc._textureDesc._arrayCount = uint16(d3dDesc.ArraySize);
+        desc._textureDesc._format = AsFormat(d3dDesc.Format);
+        desc._textureDesc._samples = TextureSamples::Create();
+        desc._name[0] = '\0';
+        return desc;
+    }
+
+	ResourceDesc AsGenericDesc(const D3D11_TEXTURE3D_DESC& d3dDesc)
+    {
+		ResourceDesc desc;
+        desc._type = ResourceDesc::Type::Texture;
+        desc._cpuAccess = AsGenericCPUAccess(d3dDesc.CPUAccessFlags);
+        desc._gpuAccess = GPUAccess::Read;
+        desc._bindFlags = AsGenericBindFlags(d3dDesc.BindFlags);
+        desc._textureDesc._dimensionality = RenderCore::TextureDesc::Dimensionality::T3D;
+        desc._textureDesc._width = d3dDesc.Width;
+        desc._textureDesc._height = d3dDesc.Height;
+        desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
+        desc._textureDesc._arrayCount = 1;
+        desc._textureDesc._format = AsFormat(d3dDesc.Format);
+        desc._textureDesc._samples = TextureSamples::Create();
+        desc._name[0] = '\0';
+        return desc;
+    }
 
 	ResourceDesc ExtractDesc(UnderlyingResourcePtr res)
-	{
-		return ResourceDesc();
-	}
+    {
+        if (intrusive_ptr<ID3D::Buffer> buffer = QueryInterfaceCast<ID3D::Buffer>(res.get())) {
+            D3D11_BUFFER_DESC d3dDesc;
+            buffer->GetDesc(&d3dDesc);
+            return AsGenericDesc(d3dDesc);
+        } else if (intrusive_ptr<ID3D::Texture1D> texture = QueryInterfaceCast<ID3D::Texture1D>(res.get())) {
+            D3D11_TEXTURE1D_DESC d3dDesc;
+            texture->GetDesc(&d3dDesc);
+            return AsGenericDesc(d3dDesc);
+        } else if (intrusive_ptr<ID3D::Texture2D> texture = QueryInterfaceCast<ID3D::Texture2D>(res.get())) {
+            D3D11_TEXTURE2D_DESC d3dDesc;
+            texture->GetDesc(&d3dDesc);
+            return AsGenericDesc(d3dDesc);
+        } else if (intrusive_ptr<ID3D::Texture3D> texture = QueryInterfaceCast<ID3D::Texture3D>(res.get())) {
+            D3D11_TEXTURE3D_DESC d3dDesc;
+            texture->GetDesc(&d3dDesc);
+            return AsGenericDesc(d3dDesc);
+        }
+		ResourceDesc desc = {};
+        desc._type = ResourceDesc::Type::Unknown;
+        return desc;
+    }
 
 	ID3D::Resource* AsID3DResource(UnderlyingResourcePtr res)
 	{

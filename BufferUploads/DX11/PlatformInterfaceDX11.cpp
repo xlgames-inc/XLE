@@ -26,11 +26,9 @@
 		using namespace RenderCore;
 
         static bool IsDXTCompressed(NativeFormat format) { return GetCompressionType(format) == FormatCompressionType::BlockCompression; }
-        static ID3D::Resource*        ResPtr(const UnderlyingResource& resource) { return const_cast<ID3D::Resource*>(reinterpret_cast<const ID3D::Resource*>(&resource)); }
+        static ID3D::Resource*        ResPtr(UnderlyingResource& resource) { return Metal::AsID3DResource(&resource); }
 
-        static DataPacket::SubResourceId SubR(unsigned mipIndex, unsigned arrayIndex) { return DataPacket::TexSubRes(mipIndex, arrayIndex); }
-
-        void UnderlyingDeviceContext::PushToResource(   const UnderlyingResource& resource, const BufferDesc& desc,
+        void UnderlyingDeviceContext::PushToResource(   UnderlyingResource& resource, const BufferDesc& desc,
                                                         unsigned resourceOffsetValue, const void* data, size_t dataSize,
                                                         TexturePitches rowAndSlicePitch, 
                                                         const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
@@ -166,7 +164,7 @@
             }
         }
 
-        void UnderlyingDeviceContext::PushToStagingResource(    const UnderlyingResource& resource, const BufferDesc&desc, 
+        void UnderlyingDeviceContext::PushToStagingResource(    UnderlyingResource& resource, const BufferDesc&desc, 
                                                                 unsigned resourceOffsetValue, const void* data, size_t dataSize, 
                                                                 TexturePitches rowAndSlicePitch, 
                                                                 const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
@@ -194,7 +192,7 @@
             }
         }
 
-        void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(const UnderlyingResource& finalResource, const UnderlyingResource& staging, const BufferDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
+        void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(UnderlyingResource& finalResource, UnderlyingResource& staging, const BufferDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
         {
 			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             using namespace RenderCore;
@@ -214,7 +212,7 @@
 
         #pragma warning(disable:4127)       // conditional expression is constant
 
-        void UnderlyingDeviceContext::ResourceCopy_DefragSteps(const UnderlyingResource& destination, const UnderlyingResource& source, const std::vector<DefragStep>& steps)
+        void UnderlyingDeviceContext::ResourceCopy_DefragSteps(UnderlyingResource& destination, UnderlyingResource& source, const std::vector<DefragStep>& steps)
         {
             if (!UseMapBasedDefrag) {
                     //
@@ -242,7 +240,7 @@
             }
         }
 
-        void UnderlyingDeviceContext::ResourceCopy(const UnderlyingResource& destination, const UnderlyingResource& source)
+        void UnderlyingDeviceContext::ResourceCopy(UnderlyingResource& destination, UnderlyingResource& source)
         {
 			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             RenderCore::Metal::Copy(*metalContext, ResPtr(destination), ResPtr(source));
@@ -260,7 +258,7 @@
 			metalContext->BeginCommandList();
         }
 
-        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(const UnderlyingResource& resource, MapType::Enum mapType, unsigned subResource)
+        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(UnderlyingResource& resource, MapType::Enum mapType, unsigned subResource)
         {
             // uint32 subResource = 0;
             // intrusive_ptr<ID3D::Texture2D> tex2D = QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource));
@@ -288,13 +286,13 @@
             return MappedBuffer();
         }
 
-        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::MapPartial(const UnderlyingResource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource)
+        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::MapPartial(UnderlyingResource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource)
         {
             assert(0);  // can't do partial maps in D3D11
             return MappedBuffer();
         }
 
-        void UnderlyingDeviceContext::Unmap(const UnderlyingResource& resource, unsigned subResourceIndex)
+        void UnderlyingDeviceContext::Unmap(UnderlyingResource& resource, unsigned subResourceIndex)
         {
 			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
 			metalContext->GetUnderlying()->Unmap(ResPtr(resource), subResourceIndex);
@@ -349,299 +347,35 @@
             return objFactory.CreateQuery(&queryDesc);
         }
 
-        static unsigned AsNativeCPUAccessFlag(CPUAccess::BitField bitField)
-        {
-            unsigned result = 0;
-            if (bitField & CPUAccess::Read) {
-                result |= D3D11_CPU_ACCESS_READ;
-            } 
-                // if cpu access is Write; we want a "D3D11_USAGE_DEFAULT" buffer with 0 write access flags
-            if ((bitField & CPUAccess::WriteDynamic)==CPUAccess::WriteDynamic) {
-                result |= D3D11_CPU_ACCESS_WRITE;
-            }
-            return result;
-        }
-
-        static CPUAccess::BitField AsGenericCPUAccess(unsigned d3dFlags)
-        {
-            CPUAccess::BitField result = 0;
-            if (d3dFlags & D3D11_CPU_ACCESS_READ) {
-                result |= CPUAccess::Read;
-            }
-            if (d3dFlags & D3D11_CPU_ACCESS_WRITE) {
-                result |= CPUAccess::WriteDynamic;
-            }
-            return result;
-        }
-
-        static D3D11_USAGE UsageForDesc(const BufferDesc& desc, bool lateInitialisation)
-        {
-            if (desc._gpuAccess) {
-                if ((desc._cpuAccess & CPUAccess::WriteDynamic)==CPUAccess::WriteDynamic) {   // Any resource with CPU write access must be marked as "Dynamic"! Don't set any CPU access flags for infrequent UpdateSubresource updates
-                    return D3D11_USAGE_DYNAMIC;
-                } else if ((desc._cpuAccess & CPUAccess::Write)||lateInitialisation) {
-                    return D3D11_USAGE_DEFAULT;
-                } else if (desc._gpuAccess & GPUAccess::Write) {
-                    return D3D11_USAGE_DEFAULT;
-                } else {
-                    return D3D11_USAGE_IMMUTABLE;
-                }
-            } else {
-                    //  No GPU access means this can only be useful as a staging buffer...
-                return D3D11_USAGE_STAGING;
-            }
-        }
-
-        static unsigned AsNativeBindFlags(BindFlag::BitField flags)
-        {
-            unsigned result = 0;
-            if (flags & BindFlag::VertexBuffer)     { result |= D3D11_BIND_VERTEX_BUFFER; }
-            if (flags & BindFlag::IndexBuffer)      { result |= D3D11_BIND_INDEX_BUFFER; }
-            if (flags & BindFlag::ShaderResource)   { result |= D3D11_BIND_SHADER_RESOURCE; }
-            if (flags & BindFlag::RenderTarget)     { result |= D3D11_BIND_RENDER_TARGET; }
-            if (flags & BindFlag::DepthStencil)     { result |= D3D11_BIND_DEPTH_STENCIL; }
-            if (flags & BindFlag::UnorderedAccess)  { result |= D3D11_BIND_UNORDERED_ACCESS; }
-            if (flags & BindFlag::ConstantBuffer)   { result |= D3D11_BIND_CONSTANT_BUFFER; }
-            if (flags & BindFlag::StreamOutput)     { result |= D3D11_BIND_STREAM_OUTPUT; }
-            return result;
-        }
-
-        static BindFlag::BitField AsGenericBindFlags(unsigned d3dBindFlags)
-        {
-            BindFlag::BitField result = 0;
-            if (d3dBindFlags & D3D11_BIND_VERTEX_BUFFER)    { result |= BindFlag::VertexBuffer; }
-            if (d3dBindFlags & D3D11_BIND_INDEX_BUFFER)     { result |= BindFlag::IndexBuffer; }
-            if (d3dBindFlags & D3D11_BIND_SHADER_RESOURCE)  { result |= BindFlag::ShaderResource; }
-            if (d3dBindFlags & D3D11_BIND_RENDER_TARGET)    { result |= BindFlag::RenderTarget; }
-            if (d3dBindFlags & D3D11_BIND_DEPTH_STENCIL)    { result |= BindFlag::DepthStencil; }
-            if (d3dBindFlags & D3D11_BIND_UNORDERED_ACCESS) { result |= BindFlag::UnorderedAccess; }
-            if (d3dBindFlags & D3D11_BIND_CONSTANT_BUFFER)  { result |= BindFlag::ConstantBuffer; }
-            if (d3dBindFlags & D3D11_BIND_STREAM_OUTPUT)    { result |= BindFlag::StreamOutput; }
-            return result;
-        }
-
         ResourcePtr CreateResource(RenderCore::IDevice& device, const BufferDesc& desc, DataPacket* initialisationData)
         {
-			auto& factory = Metal::GetObjectFactory(device);
-            D3D11_SUBRESOURCE_DATA subResources[128];
-            TRY {
-                switch (desc._type) {
-                case BufferDesc::Type::Texture:
-                    {
-                        if (initialisationData) {
-                            for (unsigned l=0; l<desc._textureDesc._mipCount; ++l) {
-                                for (unsigned a=0; a<std::max(desc._textureDesc._arrayCount,uint16(1)); ++a) {
-                                    uint32 subresourceIndex = D3D11CalcSubresource(l, a, desc._textureDesc._mipCount);
-                                    subResources[subresourceIndex].pSysMem = initialisationData->GetData(SubR(l,a));
-                                    auto rowAndSlicePitch = initialisationData->GetPitches(SubR(l,a));
-                                    subResources[subresourceIndex].SysMemPitch = rowAndSlicePitch._rowPitch;
-                                    subResources[subresourceIndex].SysMemSlicePitch = rowAndSlicePitch._slicePitch;
-                                }
-                            }
-                        }
-
-                        if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
-
-                            D3D11_TEXTURE1D_DESC textureDesc;
-                            XlZeroMemory(textureDesc);
-                            textureDesc.Width = desc._textureDesc._width;
-                            textureDesc.MipLevels = desc._textureDesc._mipCount;
-                            textureDesc.ArraySize = std::max(desc._textureDesc._arrayCount, uint16(1));
-                            textureDesc.Format = Metal::AsDXGIFormat(desc._textureDesc._format);
-                            const bool lateInitialisation = !initialisationData; /// it must be lateInitialisation, because we don't have any initialization data
-                            textureDesc.Usage = UsageForDesc(desc, lateInitialisation);
-                            textureDesc.BindFlags = AsNativeBindFlags(desc._bindFlags);
-                            textureDesc.CPUAccessFlags = AsNativeCPUAccessFlag(desc._cpuAccess);
-                            textureDesc.MiscFlags = 0;
-                            return Metal::AsResourcePtr(factory.CreateTexture1D(&textureDesc, initialisationData?subResources:NULL, desc._name));
-
-                        } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
-                                || desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
-
-                            D3D11_TEXTURE2D_DESC textureDesc;
-                            XlZeroMemory(textureDesc);
-                            textureDesc.Width = desc._textureDesc._width;
-                            textureDesc.Height = desc._textureDesc._height;
-                            textureDesc.MipLevels = desc._textureDesc._mipCount;
-                            textureDesc.ArraySize = std::max(desc._textureDesc._arrayCount, uint16(1));
-                            textureDesc.Format = Metal::AsDXGIFormat(desc._textureDesc._format);
-                            textureDesc.SampleDesc.Count = std::max(uint8(1),desc._textureDesc._samples._sampleCount);
-                            textureDesc.SampleDesc.Quality = desc._textureDesc._samples._samplingQuality;
-                            const bool lateInitialisation = !initialisationData; /// it must be lateInitialisation, because we don't have any initialization data
-                            textureDesc.Usage = UsageForDesc(desc, lateInitialisation);
-                            textureDesc.BindFlags = AsNativeBindFlags(desc._bindFlags);
-                            textureDesc.CPUAccessFlags = AsNativeCPUAccessFlag(desc._cpuAccess);
-                            textureDesc.MiscFlags = 0;
-                            if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap)
-                                textureDesc.MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;
-                            return Metal::AsResourcePtr(factory.CreateTexture2D(&textureDesc, initialisationData?subResources:NULL, desc._name));
-
-                        } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
-
-                            D3D11_TEXTURE3D_DESC textureDesc;
-                            XlZeroMemory(textureDesc);
-                            textureDesc.Width = desc._textureDesc._width;
-                            textureDesc.Height = desc._textureDesc._height;
-                            textureDesc.Depth = desc._textureDesc._depth;
-                            textureDesc.MipLevels = desc._textureDesc._mipCount;
-                            textureDesc.Format = Metal::AsDXGIFormat(desc._textureDesc._format);
-                            const bool lateInitialisation = !initialisationData; /// it must be lateInitialisation, because we don't have any initialization data
-                            textureDesc.Usage = UsageForDesc(desc, lateInitialisation);
-                            textureDesc.BindFlags = AsNativeBindFlags(desc._bindFlags);
-                            textureDesc.CPUAccessFlags = AsNativeCPUAccessFlag(desc._cpuAccess);
-                            textureDesc.MiscFlags = 0;
-                            return Metal::AsResourcePtr(factory.CreateTexture3D(&textureDesc, initialisationData?subResources:NULL, desc._name));
-
-                        } else {
-                            assert(0);
-                            return nullptr;
-                        }
-                    }
-                    break;
-
-                case BufferDesc::Type::LinearBuffer:
-                    {
-                        if (initialisationData) {
-                            subResources[0].pSysMem = initialisationData->GetData();
-                            subResources[0].SysMemPitch = 
-                                subResources[0].SysMemSlicePitch = 
-                                    (UINT)initialisationData->GetDataSize();
-                        }
-
-                        D3D11_BUFFER_DESC d3dDesc;
-                        XlZeroMemory(d3dDesc);
-                        d3dDesc.ByteWidth = desc._linearBufferDesc._sizeInBytes;
-                        const bool lateInitialisation = !initialisationData;
-                        d3dDesc.Usage = UsageForDesc(desc, lateInitialisation);
-                        d3dDesc.BindFlags = AsNativeBindFlags(desc._bindFlags);
-                        d3dDesc.CPUAccessFlags = AsNativeCPUAccessFlag(desc._cpuAccess);
-                        d3dDesc.MiscFlags = 0;
-                        d3dDesc.StructureByteStride = 0;
-                        if (desc._bindFlags & BindFlag::StructuredBuffer) {
-                            d3dDesc.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-                            d3dDesc.StructureByteStride = desc._linearBufferDesc._structureByteSize;
-                        }
-                        if (desc._bindFlags & BindFlag::DrawIndirectArgs) {
-                            d3dDesc.MiscFlags |= D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
-                        }
-                        if (desc._bindFlags & BindFlag::RawViews) {
-                            d3dDesc.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
-                        }
-                        assert(desc._bindFlags!=BindFlag::IndexBuffer || d3dDesc.BindFlags == D3D11_USAGE_DYNAMIC);
-
-                        return Metal::AsResourcePtr(factory.CreateBuffer(&d3dDesc, initialisationData?subResources:NULL, desc._name));
-                    }
-
-                default:
-                    assert(0);
-                }
-            } CATCH (const RenderCore::Exceptions::GenericFailure&) {
-                return ResourcePtr();
-            } CATCH_END
-
-            return ResourcePtr();
+			if (initialisationData) {
+				return device.CreateResource(desc,
+					[initialisationData](unsigned mipIndex, unsigned arrayIndex) -> RenderCore::SubResourceInitData
+					{
+						RenderCore::SubResourceInitData result;
+						auto sr = DataPacket::TexSubRes(mipIndex, arrayIndex);
+						result._data = initialisationData->GetData(sr);
+						result._size = initialisationData->GetDataSize(sr);
+						auto pitches = initialisationData->GetPitches(sr);
+						result._rowPitch = pitches._rowPitch;
+						result._slicePitch = pitches._slicePitch;
+						return result;
+					});
+			} else {
+				return device.CreateResource(desc);
+			}
         }
+
+		BufferDesc ExtractDesc(UnderlyingResource& resource)
+		{
+			return Metal::ExtractDesc(&resource);
+		}
 
         void AttachObject(ID3D::Resource* resource, const GUID& guid, IUnknown* attachableObject)
         {
             HRESULT hresult = resource->SetPrivateDataInterface(guid, attachableObject);
             assert(SUCCEEDED(hresult)); (void)hresult;
-        }
-
-        BufferDesc AsGenericDesc(const D3D11_BUFFER_DESC& d3dDesc)
-        {
-            BufferDesc desc;
-            desc._type = BufferDesc::Type::LinearBuffer;
-            desc._cpuAccess = AsGenericCPUAccess(d3dDesc.CPUAccessFlags);
-            if (d3dDesc.Usage == D3D11_USAGE_DEFAULT) {
-                desc._cpuAccess |= CPUAccess::Write;
-            } else if (d3dDesc.Usage == D3D11_USAGE_DYNAMIC) {
-                desc._cpuAccess |= CPUAccess::WriteDynamic;
-            }
-            desc._gpuAccess = GPUAccess::Read;
-            desc._bindFlags = AsGenericBindFlags(d3dDesc.BindFlags);
-            desc._linearBufferDesc._sizeInBytes = d3dDesc.ByteWidth;
-            desc._name[0] = '\0';
-            return desc;
-        }
-
-        BufferDesc AsGenericDesc(const D3D11_TEXTURE2D_DESC& d3dDesc)
-        {
-            BufferDesc desc;
-            desc._type = BufferDesc::Type::Texture;
-            desc._cpuAccess = AsGenericCPUAccess(d3dDesc.CPUAccessFlags);
-            desc._gpuAccess = GPUAccess::Read;
-            desc._bindFlags = AsGenericBindFlags(d3dDesc.BindFlags);
-            desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T2D;
-            desc._textureDesc._width = d3dDesc.Width;
-            desc._textureDesc._height = d3dDesc.Height;
-            desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
-            desc._textureDesc._arrayCount = uint16(d3dDesc.ArraySize);
-            desc._textureDesc._format = Metal::AsFormat(d3dDesc.Format);
-            desc._textureDesc._samples = BufferUploads::TextureSamples::Create();
-            desc._name[0] = '\0';
-            return desc;
-        }
-
-        BufferDesc AsGenericDesc(const D3D11_TEXTURE1D_DESC& d3dDesc)
-        {
-            BufferDesc desc;
-            desc._type = BufferDesc::Type::Texture;
-            desc._cpuAccess = AsGenericCPUAccess(d3dDesc.CPUAccessFlags);
-            desc._gpuAccess = GPUAccess::Read;
-            desc._bindFlags = AsGenericBindFlags(d3dDesc.BindFlags);
-            desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T1D;
-            desc._textureDesc._width = d3dDesc.Width;
-            desc._textureDesc._height = 1;
-            desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
-            desc._textureDesc._arrayCount = uint16(d3dDesc.ArraySize);
-            desc._textureDesc._format = Metal::AsFormat(d3dDesc.Format);
-            desc._textureDesc._samples = BufferUploads::TextureSamples::Create();
-            desc._name[0] = '\0';
-            return desc;
-        }
-
-        BufferDesc AsGenericDesc(const D3D11_TEXTURE3D_DESC& d3dDesc)
-        {
-            BufferDesc desc;
-            desc._type = BufferDesc::Type::Texture;
-            desc._cpuAccess = AsGenericCPUAccess(d3dDesc.CPUAccessFlags);
-            desc._gpuAccess = GPUAccess::Read;
-            desc._bindFlags = AsGenericBindFlags(d3dDesc.BindFlags);
-            desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T3D;
-            desc._textureDesc._width = d3dDesc.Width;
-            desc._textureDesc._height = d3dDesc.Height;
-            desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
-            desc._textureDesc._arrayCount = 1;
-            desc._textureDesc._format = Metal::AsFormat(d3dDesc.Format);
-            desc._textureDesc._samples = BufferUploads::TextureSamples::Create();
-            desc._name[0] = '\0';
-            return desc;
-        }
-
-        BufferDesc ExtractDesc(const UnderlyingResource& resource)
-        {
-            if (intrusive_ptr<ID3D::Buffer> buffer = Metal::QueryInterfaceCast<ID3D::Buffer>(ResPtr(resource))) {
-                D3D11_BUFFER_DESC d3dDesc;
-                buffer->GetDesc(&d3dDesc);
-                return AsGenericDesc(d3dDesc);
-            } else if (intrusive_ptr<ID3D::Texture1D> texture = Metal::QueryInterfaceCast<ID3D::Texture1D>(ResPtr(resource))) {
-                D3D11_TEXTURE1D_DESC d3dDesc;
-                texture->GetDesc(&d3dDesc);
-                return AsGenericDesc(d3dDesc);
-            } else if (intrusive_ptr<ID3D::Texture2D> texture = Metal::QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource))) {
-                D3D11_TEXTURE2D_DESC d3dDesc;
-                texture->GetDesc(&d3dDesc);
-                return AsGenericDesc(d3dDesc);
-            } else if (intrusive_ptr<ID3D::Texture3D> texture = Metal::QueryInterfaceCast<ID3D::Texture3D>(ResPtr(resource))) {
-                D3D11_TEXTURE3D_DESC d3dDesc;
-                texture->GetDesc(&d3dDesc);
-                return AsGenericDesc(d3dDesc);
-            }
-            BufferDesc desc;
-            XlZeroMemory(desc);
-            desc._type = BufferDesc::Type::Unknown;
-            return desc;
         }
 
     }}

@@ -8,6 +8,7 @@
 #include "Metal/DeviceContext.h"
 #include "Metal/State.h"
 #include "Metal/ObjectFactory.h"
+#include "Metal/Resource.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
@@ -292,9 +293,9 @@ namespace RenderCore
 
 	ResourcePtr Device::CreateResource(
 		const ResourceDesc& desc,
-		const std::function<SubResourceInitData(unsigned, unsigned)>&)
+		const std::function<SubResourceInitData(unsigned, unsigned)>& init)
 	{
-		return nullptr;
+		return Metal_DX11::CreateResource(*_mainFactory, desc, init);
 	}
 
     extern char VersionString[];

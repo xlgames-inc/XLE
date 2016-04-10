@@ -57,7 +57,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkImageAspectFlags result = 0;
 		if (bindFlags & BindFlag::RenderTarget) result |= VK_IMAGE_ASPECT_COLOR_BIT;
 		if (bindFlags & BindFlag::DepthStencil) result |= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-		if (bindFlags & BindFlag::ShaderResource) {
+		if (result == 0) {
 			if (IsDepthStencilFormat(fmt)) result |= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 			else result |= VK_IMAGE_ASPECT_COLOR_BIT;
 		}

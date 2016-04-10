@@ -37,13 +37,24 @@
 #include <functional>
 
 #include "../../RenderCore/ShaderService.h"
-#include "../../RenderCore/Metal/Shader.h"
-#include "../../RenderCore/Metal/InputLayout.h"
-#include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Metal/Buffer.h"
-#include "../../RenderCore/Metal/Resource.h"
-#include "../../RenderCore/Metal/ShaderResource.h"
-#include "../../RenderCore/Metal/State.h"
+
+#include "../../RenderCore/DX11/Metal/Shader.h"
+#include "../../RenderCore/DX11/Metal/InputLayout.h"
+#include "../../RenderCore/DX11/Metal/DeviceContext.h"
+#include "../../RenderCore/DX11/Metal/Buffer.h"
+#include "../../RenderCore/DX11/Metal/Resource.h"
+#include "../../RenderCore/DX11/Metal/ShaderResource.h"
+#include "../../RenderCore/DX11/Metal/State.h"
+
+#include "../../RenderCore/Vulkan/Metal/Shader.h"
+#include "../../RenderCore/Vulkan/Metal/InputLayout.h"
+#include "../../RenderCore/Vulkan/Metal/DeviceContext.h"
+#include "../../RenderCore/Vulkan/Metal/DeviceContextImpl.h"
+#include "../../RenderCore/Vulkan/Metal/Buffer.h"
+#include "../../RenderCore/Vulkan/Metal/Resource.h"
+#include "../../RenderCore/Vulkan/Metal/ShaderResource.h"
+#include "../../RenderCore/Vulkan/Metal/State.h"
+
 #include "../../Tools/ToolsRig/VisualisationGeo.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Math/Transformations.h"
@@ -55,7 +66,7 @@ namespace VulkanTest
     struct texture_object 
     {
         RenderCore::ResourcePtr _resource;
-		RenderCore::Metal::ImageLayout _imageLayout;
+		RenderCore::Metal_Vulkan::ImageLayout _imageLayout;
     };
 
     bool read_ppm(char const *const filename, int &width, int &height,
@@ -151,7 +162,7 @@ namespace VulkanTest
 
 	void init_image2(
 		RenderCore::IDevice& dev,
-		RenderCore::Metal::DeviceContext& context,
+		RenderCore::IThreadContext& threadContext,
 		texture_object &texObj)
 	{
 		using namespace RenderCore;
@@ -174,8 +185,8 @@ namespace VulkanTest
 
 		auto stagingResource = dev.CreateResource(
 			CreateDesc(
-				BindFlag::ShaderResource,
-				0, GPUAccess::Read | GPUAccess::Write,
+				0,
+				0, 0,
 				TextureDesc::Plain2D(width, height, fmt),
 				"texture"),
 			SingleSubRes(SubResourceInitData{ buffer.get(), bufferSize, bufferSize / height, bufferSize }));
@@ -183,20 +194,28 @@ namespace VulkanTest
 		auto gpuResource = dev.CreateResource(
 			CreateDesc(
 				BindFlag::ShaderResource,
-				0, GPUAccess::Read | GPUAccess::Write,
+				0, GPUAccess::Read,
 				TextureDesc::Plain2D(width, height, fmt),
 				"texture"));
 
 		texObj._resource = gpuResource;
-		
-		// is it a good idea to change the layout of the staging resource before we use it?
-		Metal::SetImageLayout(context, stagingResource, Metal::ImageLayout::Preinitialized, Metal::ImageLayout::TransferSrcOptimal);
-		Metal::SetImageLayout(context, gpuResource, Metal::ImageLayout::Undefined, Metal::ImageLayout::TransferDstOptimal);
-		Metal::Copy(
-			context, gpuResource, stagingResource,
-			Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::TransferSrcOptimal);
-		Metal::SetImageLayout(context, gpuResource, Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::ShaderReadOnlyOptimal);
-		texObj._imageLayout = Metal::ImageLayout::ShaderReadOnlyOptimal;
+
+		auto dxContext = RenderCore::Metal_DX11::DeviceContext::Get(threadContext);
+		if (dxContext) {
+			Metal_DX11::Copy(
+				*dxContext, gpuResource, stagingResource,
+				Metal_DX11::ImageLayout::TransferDstOptimal, Metal_DX11::ImageLayout::TransferSrcOptimal);
+		} else {
+			auto vkContext = RenderCore::Metal_Vulkan::DeviceContext::Get(threadContext);
+			// is it a good idea to change the layout of the staging resource before we use it?
+			Metal_Vulkan::SetImageLayout(*vkContext, stagingResource, Metal_Vulkan::ImageLayout::Preinitialized, Metal_Vulkan::ImageLayout::TransferSrcOptimal);
+			Metal_Vulkan::SetImageLayout(*vkContext, gpuResource, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal);
+			Metal_Vulkan::Copy(
+				*vkContext, gpuResource, stagingResource,
+				Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::TransferSrcOptimal);
+			Metal_Vulkan::SetImageLayout(*vkContext, gpuResource, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal);
+			texObj._imageLayout = Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal;
+		}
 	}
 }
 
@@ -219,55 +238,118 @@ namespace Sample
     {
         TRY
         {
-            using namespace RenderCore;
-            auto& shader = ::Assets::GetAsset<Metal::ShaderProgram>(
-                    "game/xleres/deferred/basic.vsh:main:vs_*",
-                    "game/xleres/basic.psh:copy_bilinear:ps_*",
-                    "GEO_HAS_TEXCOORD=1;RES_HAS_DiffuseTexture=1");
+			genericThreadContext.InvalidateCachedState();
+			using namespace RenderCore;
 
-            Metal::BoundInputLayout inputLayout(
-                ToolsRig::Vertex3D_InputLayout,
-                shader.GetCompiledVertexShader());
+			auto dxContext = Metal_DX11::DeviceContext::Get(genericThreadContext);
+			if (dxContext) {
+				auto& shader = ::Assets::GetAsset<Metal_DX11::ShaderProgram>(
+					"game/xleres/deferred/basic.vsh:main:vs_*",
+					"game/xleres/basic.psh:copy_bilinear:ps_*",
+					"GEO_HAS_TEXCOORD=1;RES_HAS_DiffuseTexture=1");
 
-            Metal::BoundUniforms boundUniforms(shader);
-            boundUniforms.BindConstantBuffers(0, {"GlobalTransform", "LocalTransform"});
-            boundUniforms.BindShaderResources(1, {"DiffuseTexture"});
+				Metal_DX11::BoundInputLayout inputLayout(
+					ToolsRig::Vertex3D_InputLayout,
+					shader.GetCompiledVertexShader());
 
-            auto metalContext = Metal::DeviceContext::Get(genericThreadContext);
-            metalContext->Bind(inputLayout);
-            metalContext->Bind(shader);
+				Metal_DX11::BoundUniforms boundUniforms(shader);
+				boundUniforms.BindConstantBuffers(0, {"GlobalTransform", "LocalTransform"});
+				boundUniforms.BindShaderResources(0, {"DiffuseTexture"});
 
-            auto& factory = metalContext->GetFactory();
+            
+				dxContext->Bind(inputLayout);
+				dxContext->Bind(shader);
 
-            // ------ uniforms -----------
-            Metal::SamplerState sampler;
-            auto projDesc = Techniques::ProjectionDesc();
-            auto globalTrans = Techniques::BuildGlobalTransformConstants(projDesc);
-            auto localTrans = Techniques::MakeLocalTransform(
-                Identity<Float4x4>(), 
-                ExtractTranslation(projDesc._cameraToWorld));
+				dxContext->Bind(Metal_DX11::Topology::TriangleList);
+				dxContext->Bind(Metal_DX11::DepthStencilState(false, false));
+				dxContext->Bind(Metal_DX11::RasterizerState(Metal_DX11::CullMode::None));
+				dxContext->BindPS(MakeResourceList(Metal_DX11::SamplerState(), Metal_DX11::SamplerState()));
 
-            Metal::ConstantBuffer globalTransBuffer(&globalTrans, sizeof(globalTrans));
-            Metal::ConstantBuffer localTransBuffer(&localTrans, sizeof(localTrans));
-            Metal::ShaderResourceView srv(factory, texObj._resource);
+				auto& factory = dxContext->GetFactory();
 
-            const Metal::ConstantBuffer* cbs[] = {&globalTransBuffer, &localTransBuffer};
-            const Metal::ShaderResourceView* srvs[] = {&srv};
-            boundUniforms.Apply(
-                *metalContext,
-                Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)),
-                Metal::UniformsStream());
+				// ------ uniforms -----------
+				auto projDesc = Techniques::ProjectionDesc();
+				auto globalTrans = Techniques::BuildGlobalTransformConstants(projDesc);
+				auto localTrans = Techniques::MakeLocalTransform(
+					Identity<Float4x4>(), 
+					ExtractTranslation(projDesc._cameraToWorld));
 
-			// ------ final states -----------
-            auto cubeGeo = ToolsRig::BuildCube();
-            auto vertexStride = sizeof(decltype(cubeGeo)::value_type);
-            Metal::VertexBuffer vb(AsPointer(cubeGeo.begin()), cubeGeo.size() * vertexStride);
-            metalContext->Bind(MakeResourceList(vb), (unsigned)vertexStride);
-            metalContext->Bind(Metal::ViewportDesc(0, 0, 512, 512));
+				Metal_DX11::ConstantBuffer globalTransBuffer(&globalTrans, sizeof(globalTrans));
+				Metal_DX11::ConstantBuffer localTransBuffer(&localTrans, sizeof(localTrans));
+				Metal_DX11::ShaderResourceView srv(factory, texObj._resource);
 
-			// ------ draw! -----------
-			metalContext->BindPipeline();
-            metalContext->Draw((unsigned)cubeGeo.size());
+				const Metal_DX11::ConstantBuffer* cbs[] = {&globalTransBuffer, &localTransBuffer};
+				const Metal_DX11::ShaderResourceView* srvs[] = {&srv};
+				boundUniforms.Apply(
+					*dxContext,
+					Metal_DX11::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)),
+					Metal_DX11::UniformsStream());
+
+				// ------ final states -----------
+				auto cubeGeo = ToolsRig::BuildCube();
+				auto vertexStride = sizeof(decltype(cubeGeo)::value_type);
+				Metal_DX11::VertexBuffer vb(AsPointer(cubeGeo.begin()), cubeGeo.size() * vertexStride);
+				dxContext->Bind(MakeResourceList(vb), (unsigned)vertexStride);
+				dxContext->Bind(Metal_DX11::ViewportDesc(0, 0, 512, 512));
+
+				// ------ draw! -----------
+				dxContext->BindPipeline();
+				dxContext->Draw((unsigned)cubeGeo.size());
+			} else {
+				auto vkContext = Metal_Vulkan::DeviceContext::Get(genericThreadContext);
+
+				auto& shader = ::Assets::GetAsset<Metal_Vulkan::ShaderProgram>(
+					"game/xleres/deferred/basic.vsh:main:vs_*",
+					"game/xleres/basic.psh:copy_bilinear:ps_*",
+					"GEO_HAS_TEXCOORD=1;RES_HAS_DiffuseTexture=1");
+
+				Metal_Vulkan::BoundInputLayout inputLayout(
+					ToolsRig::Vertex3D_InputLayout,
+					shader.GetCompiledVertexShader());
+
+				Metal_Vulkan::BoundUniforms boundUniforms(shader);
+				boundUniforms.BindConstantBuffers(0, { "GlobalTransform", "LocalTransform" });
+				boundUniforms.BindShaderResources(0, { "DiffuseTexture" });
+
+				vkContext->Bind(inputLayout);
+				vkContext->Bind(shader);
+
+				vkContext->Bind(Metal_Vulkan::Topology::TriangleList);
+				vkContext->Bind(Metal_Vulkan::DepthStencilState(false, false));
+				vkContext->Bind(Metal_Vulkan::RasterizerState(Metal_Vulkan::CullMode::None));
+				vkContext->BindPS(MakeResourceList(Metal_Vulkan::SamplerState(), Metal_Vulkan::SamplerState()));
+
+				auto& factory = vkContext->GetFactory();
+
+				// ------ uniforms -----------
+				auto projDesc = Techniques::ProjectionDesc();
+				auto globalTrans = Techniques::BuildGlobalTransformConstants(projDesc);
+				auto localTrans = Techniques::MakeLocalTransform(
+					Identity<Float4x4>(),
+					ExtractTranslation(projDesc._cameraToWorld));
+
+				Metal_Vulkan::ConstantBuffer globalTransBuffer(&globalTrans, sizeof(globalTrans));
+				Metal_Vulkan::ConstantBuffer localTransBuffer(&localTrans, sizeof(localTrans));
+				Metal_Vulkan::ShaderResourceView srv(factory, texObj._resource);
+
+				const Metal_Vulkan::ConstantBuffer* cbs[] = { &globalTransBuffer, &localTransBuffer };
+				const Metal_Vulkan::ShaderResourceView* srvs[] = { &srv };
+				boundUniforms.Apply(
+					*vkContext,
+					Metal_Vulkan::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)),
+					Metal_Vulkan::UniformsStream());
+
+				// ------ final states -----------
+				auto cubeGeo = ToolsRig::BuildCube();
+				auto vertexStride = sizeof(decltype(cubeGeo)::value_type);
+				Metal_Vulkan::VertexBuffer vb(AsPointer(cubeGeo.begin()), cubeGeo.size() * vertexStride);
+				vkContext->Bind(MakeResourceList(vb), (unsigned)vertexStride);
+				vkContext->Bind(Metal_Vulkan::ViewportDesc(0, 0, 512, 512));
+
+				// ------ draw! -----------
+				vkContext->BindPipeline();
+				vkContext->Draw((unsigned)cubeGeo.size());
+			}
         }
         CATCH(const ::Assets::Exceptions::AssetException&) {}
         CATCH_END
@@ -370,13 +452,13 @@ namespace Sample
 
 				if (!initTex) {
 					using namespace RenderCore;
-					auto initContext = renderDevice->CreateDeferredContext();
-					auto metalContext = Metal::DeviceContext::Get(*initContext);
-					metalContext->BeginCommandList();
-					VulkanTest::init_image2(*renderDevice, *metalContext.get(), texObj);
-					auto cmdList = metalContext->ResolveCommandList();
-					Metal::DeviceContext::Get(*context)->CommitCommandList(*cmdList, false);
-					// VulkanTest::init_image2(*Metal::DeviceContext::Get(*context), texObj);
+					// auto initContext = renderDevice->CreateDeferredContext();
+					// auto metalContext = Metal::DeviceContext::Get(*initContext);
+					// metalContext->BeginCommandList();
+					// VulkanTest::init_image2(*renderDevice, *metalContext.get(), texObj);
+					// auto cmdList = metalContext->ResolveCommandList();
+					// Metal::DeviceContext::Get(*context)->CommitCommandList(*cmdList, false);
+					VulkanTest::init_image2(*renderDevice, *context, texObj);
 					initTex = true;
 				}
 

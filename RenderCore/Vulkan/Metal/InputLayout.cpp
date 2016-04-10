@@ -141,6 +141,7 @@ namespace RenderCore { namespace Metal_Vulkan
     bool BoundUniforms::BindConstantBuffer( uint64 hashName, unsigned slot, unsigned stream,
                                             const ConstantBufferLayoutElement elements[], size_t elementCount)
     {
+		stream = stream*2+0;
         bool gotBinding = false;
 
         for (unsigned s=0; s<dimof(_reflection); ++s) {
@@ -167,6 +168,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindShaderResource(uint64 hashName, unsigned slot, unsigned stream)
     {
+		stream = stream * 2 + 1;
         bool gotBinding = false;
 
         for (unsigned s=0; s<dimof(_reflection); ++s) {

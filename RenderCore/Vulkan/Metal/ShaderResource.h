@@ -32,6 +32,7 @@ namespace RenderCore { namespace Metal_Vulkan
         ShaderResourceView();
         ~ShaderResourceView();
 		ShaderResourceView(const ObjectFactory& factory, VkImage image, Format = Format::Unknown);
+		ShaderResourceView(const ObjectFactory& factory, UnderlyingResourcePtr image, Format = Format::Unknown);
         ShaderResourceView(VkImage image, Format = Format::Unknown);
 		ShaderResourceView(UnderlyingResourcePtr res, Format = Format::Unknown);
 
