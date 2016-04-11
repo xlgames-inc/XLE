@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "ResourceDesc.h"       // actually only needed for TexturePitches
+
 namespace RenderCore
 {
     enum class Format;
@@ -30,7 +32,7 @@ namespace RenderCore
         const Box2D& dst2D,
         const SubResourceInitData& srcData);
 
-    TextureDesc     CalculateMipMapDesc(const TextureDesc& topMostMipDesc, unsigned mipMapIndex);
+    TextureDesc CalculateMipMapDesc(const TextureDesc& topMostMipDesc, unsigned mipMapIndex);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //      R E S O U R C E   S I Z E S       //
@@ -39,8 +41,12 @@ namespace RenderCore
     unsigned ByteCount(
         unsigned nWidth, unsigned nHeight, unsigned nDepth, 
         unsigned mipCount, Format format);
-    unsigned        ByteCount(const TextureDesc& tDesc);
-    unsigned        ByteCount(const ResourceDesc& desc);
+    unsigned ByteCount(const TextureDesc& tDesc);
+    unsigned ByteCount(const ResourceDesc& desc);
+
+    class SubResourceOffset { public: size_t _offset; size_t _size; TexturePitches _pitches; };
+    SubResourceOffset GetSubResourceOffset(
+        const TextureDesc& tDesc, unsigned mipIndex, unsigned arrayLayer);
 
     TexturePitches MakeTexturePitches(const TextureDesc& desc);
 }

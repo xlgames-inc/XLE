@@ -44,7 +44,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		Resource* get() { return _res; }
 
 		UnderlyingResourcePtr(Resource* res) { _res = res; }
-		UnderlyingResourcePtr(RenderCore::Resource* res) { _res = (Resource*)_res; }
+		UnderlyingResourcePtr(RenderCore::Resource* res) { _res = (Resource*)res; }
 		UnderlyingResourcePtr(const std::shared_ptr<RenderCore::Resource>& res) { _res = (Resource*)res.get(); }
 	protected:
 		Resource* _res;

@@ -68,8 +68,10 @@
             unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
         {
             auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
-            if (    (lodLevelMin == ~unsigned(0x0) || lodLevelMax == ~unsigned(0x0)) 
-                &&  destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset) {
+            auto allLods = 
+                (lodLevelMin == ~unsigned(0x0) || lodLevelMin == 0u)
+                && (lodLevelMax == ~unsigned(0x0) || lodLevelMax == (std::max(1u, (unsigned)destinationDesc._textureDesc._mipCount)-1));
+            if (allLods && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset) {
                 Metal::Copy(
                     *metalContext, 
                     &finalResource, &staging,

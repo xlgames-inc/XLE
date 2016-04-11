@@ -28,10 +28,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		if (bindFlags & BindFlag::IndexBuffer) result |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 		if (bindFlags & BindFlag::ConstantBuffer) result |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		if (bindFlags & BindFlag::DrawIndirectArgs) result |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+        if (bindFlags & BindFlag::TransferSrc) result |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        if (bindFlags & BindFlag::TransferDst) result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
 		// Other Vulkan flags:
-		// VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-		// VK_BUFFER_USAGE_TRANSFER_DST_BIT
 		// VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
 		// VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
 		// VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -46,10 +46,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		if (bindFlags & BindFlag::RenderTarget) result |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		if (bindFlags & BindFlag::DepthStencil) result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 		if (bindFlags & BindFlag::UnorderedAccess) result |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+        if (bindFlags & BindFlag::TransferSrc) result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        if (bindFlags & BindFlag::TransferDst) result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 		// Other Vulkan flags:
-		// VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-		// VK_IMAGE_USAGE_TRANSFER_DST_BIT
 		// VK_IMAGE_USAGE_STORAGE_BIT
 		// VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT
 		return result;
@@ -191,9 +191,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			buf_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;   // sharing between queues
 			buf_info.flags = 0;     // flags for sparse buffers
 
-									// set this flag to enable usage with "vkCmdUpdateBuffer"
-			if ((desc._cpuAccess & CPUAccess::Write)
-				|| (desc._cpuAccess & CPUAccess::WriteDynamic))
+                    // set this flag to enable usage with "vkCmdUpdateBuffer"
+			if ((desc._cpuAccess & CPUAccess::Write) || (desc._cpuAccess & CPUAccess::WriteDynamic))
 				buf_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
 			_underlyingBuffer = factory.CreateBuffer(buf_info);
@@ -242,9 +241,37 @@ namespace RenderCore { namespace Metal_Vulkan
 					Throw(::Exceptions::BasicLabel("Hardware does not support sampling from a linear texture. A staging texture is required"));
 			}
 
-			_underlyingImage = factory.CreateImage(image_create_info);
+            // When constructing a staging (or readback) texture with multiple mip levels or array layers,
+            // we must actually allocate a "buffer". We will treat this buffer as a linear texture, and we
+            // will manually layout the miplevels within the device memory.
+            //
+            // This is because Vulkan doesn't support creating VK_IMAGE_TILING_LINEAR with more than 1
+            // mip level or array layers. However, our solution more or less emulates what would happen
+            // if it did...?! (Except, of course, we can never bind it as a sampled texture)
+            //
+            // See (for example) this post from nvidia:
+            // https://devtalk.nvidia.com/default/topic/926085/texture-memory-management/
 
-			vkGetImageMemoryRequirements(factory.GetDevice().get(), _underlyingImage.get(), &mem_reqs);
+            if (image_create_info.tiling == VK_IMAGE_TILING_LINEAR
+                && (image_create_info.mipLevels > 1 || image_create_info.arrayLayers > 1)) {
+
+                VkBufferCreateInfo buf_info = {};
+			    buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+			    buf_info.pNext = nullptr;
+			    buf_info.usage = AsBufferUsageFlags(desc._bindFlags);
+			    buf_info.size = ByteCount(tDesc);
+			    buf_info.queueFamilyIndexCount = 0;
+			    buf_info.pQueueFamilyIndices = nullptr;
+			    buf_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			    buf_info.flags = 0;
+
+                _underlyingBuffer = factory.CreateBuffer(buf_info);
+    			vkGetBufferMemoryRequirements(factory.GetDevice().get(), _underlyingBuffer.get(), &mem_reqs);
+
+            } else {
+    			_underlyingImage = factory.CreateImage(image_create_info);
+	    		vkGetImageMemoryRequirements(factory.GetDevice().get(), _underlyingImage.get(), &mem_reqs);
+            }
 		}
 
 		VkMemoryPropertyFlags memoryRequirements = 0;
@@ -260,14 +287,23 @@ namespace RenderCore { namespace Metal_Vulkan
 		const VkDeviceSize offset = 0; 
 		if (_underlyingBuffer) {
 
-			// after allocation, we must initialise the data. Linear buffers don't have subresources,
-			// so it's reasonably easy
+			// After allocation, we must initialise the data. True linear buffers don't have subresources,
+			// so it's reasonably easy. But if this buffer is really a staging texture, then we need to 
+            // copy in all of the sub resources.
 			if (hasInitData) {
-				auto subResData = initData(0, 0);
-				if (subResData._data && subResData._size) {
-					ResourceMap map(factory.GetDevice().get(), _mem.get());
-					std::memcpy(map.GetData(), subResData._data, std::min(subResData._size, (size_t)mem_reqs.size));
-				}
+                if (desc._type == Desc::Type::LinearBuffer) {
+				    auto subResData = initData(0, 0);
+				    if (subResData._data && subResData._size) {
+					    ResourceMap map(factory.GetDevice().get(), _mem.get());
+					    std::memcpy(map.GetData(), subResData._data, std::min(subResData._size, (size_t)mem_reqs.size));
+				    }
+                } else {
+                    // This is the staging texture path. Rather that getting the arrangement of subresources from
+                    // the VkImage, we specify it ourselves.
+                    CopyViaMemoryMap(
+                        factory.GetDevice().get(), nullptr, _mem.get(), 
+                        _desc._textureDesc, initData);
+                }
 			}
 
 			auto res = vkBindBufferMemory(factory.GetDevice().get(), _underlyingBuffer.get(), _mem.get(), offset);
@@ -377,10 +413,59 @@ namespace RenderCore { namespace Metal_Vulkan
                 src.get()->GetBuffer(),
                 dst.get()->GetBuffer(),
                 dimof(copyOps), copyOps);
+        } else if (dst.get()->GetImage() && src.get()->GetBuffer()) {
+            // This copy operation is typically used when initializing a texture via staging
+            // resource. The buffer probably has a "Texture" type Desc, even though the underlying
+            // resource is a buffer.
+            if (src.get()->GetDesc()._type != ResourceDesc::Type::Texture)
+                Throw(::Exceptions::BasicLabel("Buffer to image copy not implemented, except for staging resources"));
+
+            const auto& srcDesc = src.get()->GetDesc();
+		    const auto& dstDesc = dst.get()->GetDesc();
+		    assert(srcDesc._type == Resource::Desc::Type::Texture);
+		    assert(dstDesc._type == Resource::Desc::Type::Texture);
+
+            auto dstAspectMask = AsImageAspectMask(dstDesc._textureDesc._format);
+
+            VkBufferImageCopy copyOps[64];
+
+            auto arrayCount = std::max(1u, (unsigned)srcDesc._textureDesc._arrayCount);
+		    auto mips = std::max(1u, (unsigned)std::min(srcDesc._textureDesc._mipCount, dstDesc._textureDesc._mipCount));
+            unsigned width = srcDesc._textureDesc._width, height = srcDesc._textureDesc._height, depth = srcDesc._textureDesc._depth;
+            auto minDims = (GetCompressionType(srcDesc._textureDesc._format) == FormatCompressionType::BlockCompression) ? 4u : 1u;
+
+            assert(dstDesc._textureDesc._width == width);
+            assert(dstDesc._textureDesc._height == height);
+            assert(dstDesc._textureDesc._depth == depth);
+		    assert(mips*arrayCount <= dimof(copyOps));
+
+            for (unsigned m=0; m<mips; ++m) {
+                auto mipOffset = GetSubResourceOffset(srcDesc._textureDesc, m, 0);
+                for (unsigned a=0; a<arrayCount; ++a) {
+                    auto& c = copyOps[m+a*mips];
+                    c.bufferOffset = mipOffset._offset + mipOffset._pitches._arrayPitch * a;
+                    c.bufferRowLength = std::max(width, minDims);
+                    c.bufferImageHeight = std::max(height, minDims);
+                    c.imageSubresource = VkImageSubresourceLayers{ dstAspectMask, m, a, 1 };
+                    c.imageOffset = VkOffset3D{0,0,0};
+                    c.imageExtent = VkExtent3D{std::max(width, minDims), std::max(height, minDims), depth};
+                }
+
+                width >>= 1u;
+                height >>= 1u;
+                depth >>= 1u;
+            }
+
+            const auto copyOperations = mips*arrayCount;
+            vkCmdCopyBufferToImage(
+                context.GetCommandList(),
+                src.get()->GetBuffer(),
+                dst.get()->GetImage(), AsVkImageLayout(dstLayout),
+                copyOperations, copyOps);
         } else {
             // copies from buffer to image, or image to buffer are supported by Vulkan, but
             // not implemented here.
-            Throw(::Exceptions::BasicLabel("Buffer to image and image to buffer copy not implemented"));
+            Throw(::Exceptions::BasicLabel("Image to buffer copy not implemented"));
         }
 	}
 
@@ -448,12 +533,14 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    
     unsigned CopyViaMemoryMap(
         VkDevice device, VkImage image, VkDeviceMemory mem,
         const TextureDesc& desc,
         const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
     {
+        // Copy all of the subresources to device member, using a MemoryMap path.
+        // If "image" is not null, we will get the arrangement of subresources from
+        // the images. Otherwise, we will use a default arrangement of subresources.
         ResourceMap map(device, mem);
         unsigned bytesUploaded = 0;
 
@@ -461,31 +548,30 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto arrayCount = std::max(1u, unsigned(desc._arrayCount));
 		auto aspectFlags = AsImageAspectMask(desc._format);
 		for (unsigned m = 0; m < mipCount; ++m) {
+            auto mipDesc = CalculateMipMapDesc(desc, m);
 			for (unsigned a = 0; a < arrayCount; ++a) {
 				auto subResData = initData(m, a);
 				if (!subResData._data || !subResData._size) continue;
 
-				VkImageSubresource subRes = { aspectFlags, m, a };
 				VkSubresourceLayout layout = {};
-				vkGetImageSubresourceLayout(
-					device, image,
-					&subRes, &layout);
+                if (image) {
+                    VkImageSubresource subRes = { aspectFlags, m, a };
+				    vkGetImageSubresourceLayout(
+					    device, image,
+					    &subRes, &layout);
+                } else {
+                    auto offset = GetSubResourceOffset(desc, m, a);
+                    layout = VkSubresourceLayout { 
+                        offset._offset, offset._size, 
+                        offset._pitches._rowPitch, offset._pitches._arrayPitch, offset._pitches._slicePitch };
+                }
 
 				if (!layout.size) continue;	// couldn't find this subresource?
-
-				// todo -- we should support cases where the pitches do now line up as expected!
-				// if (layout.rowPitch != subResData._rowPitch || layout.arrayPitch != subResData._slicePitch)
-				// 	Throw(::Exceptions::BasicLabel("Row or array pitch values are not as expected. These cases not supported."));
-                // 
-				// // finally, copy
-                // auto uploadSize = (unsigned)std::min(layout.size, subResData._size);
-				// XlCopyMemory(PtrAdd(map.GetData(), layout.offset), subResData._data, uploadSize);
-                // bytesUploaded += uploadSize;
 
                 CopyMipLevel(
                     PtrAdd(map.GetData(), layout.offset), size_t(layout.size),
                     TexturePitches{unsigned(layout.rowPitch), unsigned(layout.depthPitch), unsigned(layout.arrayPitch)},
-                    desc, subResData);
+                    mipDesc, subResData);
 			}
 		}
         return bytesUploaded;

@@ -52,7 +52,7 @@ namespace BufferUploads
         BufferDesc result = desc;
         result._cpuAccess = CPUAccess::Write|CPUAccess::Read;
         result._gpuAccess = 0;
-        result._bindFlags = 0;
+        result._bindFlags = BindFlag::TransferSrc;
         result._allocationRules |= AllocationRules::Staging;
         return result;
     }

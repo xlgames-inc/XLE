@@ -7,18 +7,19 @@
 #include "ShaderResource.h"
 #include "ObjectFactory.h"
 #include "State.h"
+#include "Format.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
 
-    ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, VkImage image, Format)
+    ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, VkImage image, Format fmt)
     {
         VkImageViewCreateInfo view_info = {};
         view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         view_info.pNext = nullptr;
         view_info.image = image;
         view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        view_info.format = VK_FORMAT_R8G8B8A8_UNORM;
+        view_info.format = AsVkFormat(fmt); // VK_FORMAT_R8G8B8A8_UNORM;
         view_info.components.r = VK_COMPONENT_SWIZZLE_R;
         view_info.components.g = VK_COMPONENT_SWIZZLE_G;
         view_info.components.b = VK_COMPONENT_SWIZZLE_B;
@@ -42,9 +43,9 @@ namespace RenderCore { namespace Metal_Vulkan
     : ShaderResourceView(GetObjectFactory(), image, format)
     {}
 
-    ShaderResourceView::ShaderResourceView(UnderlyingResourcePtr res, Format)
+    ShaderResourceView::ShaderResourceView(UnderlyingResourcePtr image, Format fmt)
+    : ShaderResourceView(GetObjectFactory(), image.get()->GetImage(), fmt)
     { 
-        _layout = VK_IMAGE_LAYOUT_UNDEFINED; 
     }
 
     ShaderResourceView::ShaderResourceView() { _layout = VK_IMAGE_LAYOUT_UNDEFINED; }

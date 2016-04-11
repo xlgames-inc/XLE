@@ -66,7 +66,7 @@ namespace RenderCore
             auto sourceData = srcData._data;
             for (unsigned j = 0; j < rows; j++) {
                 assert((size_t(destination) + sourceRowPitch - size_t(originalDest)) <= size_t(originalDest) + destinationDataSize);
-                XlCopyMemoryAlign16(destination, sourceData, sourceRowPitch);
+                XlCopyMemory/*Align16*/(destination, sourceData, sourceRowPitch);
                 sourceData = PtrAdd(sourceData, sourceRowPitch);
                 destination = PtrAdd(destination, dstPitches._rowPitch);
             }
@@ -77,7 +77,7 @@ namespace RenderCore
             int nPitch = ByteCount(mipMapDesc._width, 1, 1, 1, mipMapDesc._format);
             assert(srcData._size % nPitch == 0); (void)nPitch;
             assert(size_t(destination) + srcData._size <= size_t(originalDest) + destinationDataSize);
-            XlCopyMemoryAlign16((uint8*)destination, srcData._data, srcData._size);
+            XlCopyMemory/*Align16*/((uint8*)destination, srcData._data, srcData._size);
             copiedBytes = (unsigned)srcData._size;
         }
 
@@ -174,29 +174,28 @@ namespace RenderCore
         return result;
     }
     
-    unsigned ByteCount(unsigned nWidth, unsigned nHeight, unsigned nDepth, unsigned mipCount, Format format)
+    unsigned ByteCount(unsigned width, unsigned height, unsigned depth, unsigned mipCount, Format format)
     {
-        if (format == Format::Unknown) {
+        if (format == Format::Unknown)
             return 0;
-        }
 
-        const bool dxt = IsBlockCompressed(format);
+        const bool blockCompressed = IsBlockCompressed(format);
         const auto bbp = BitsPerPixel(format);
 
         mipCount = std::max(mipCount, 1u);
         unsigned result = 0;
-        for (unsigned mipIterator = 0; (mipIterator < mipCount) && (nWidth || nHeight || nDepth); ++mipIterator) {
-            if (dxt) {
-                auto blockWidth = std::max((nWidth + BlockCompDim - 1u) / BlockCompDim, 1u);
-                auto blockHeight = std::max((nHeight + BlockCompDim - 1u) / BlockCompDim, 1u);
-                result += blockWidth * blockHeight * std::max(nDepth, 1u) * bbp * 16u / 8u;
-            } else {
-                result += std::max(nWidth, 1u) * std::max(nHeight, 1u) * std::max(nDepth, 1u) * bbp / 8u;
+        if (blockCompressed) {
+            for (unsigned mipIterator = 0; mipIterator < mipCount; ++mipIterator) {
+                auto blockWidth = std::max((width + BlockCompDim - 1u) / BlockCompDim, 1u);
+                auto blockHeight = std::max((height + BlockCompDim - 1u) / BlockCompDim, 1u);
+                result += blockWidth * blockHeight * std::max(depth, 1u) * bbp * 16u / 8u;
+                width >>= 1; height >>= 1; depth >>= 1;
             }
-
-            nWidth >>= 1;
-            nHeight >>= 1;
-            nDepth >>= 1;
+        } else {
+            for (unsigned mipIterator = 0; mipIterator < mipCount; ++mipIterator) {
+                result += std::max(width, 1u) * std::max(height, 1u) * std::max(depth, 1u) * bbp / 8u;
+                width >>= 1; height >>= 1; depth >>= 1;
+            }
         }
 
         return result;
@@ -217,6 +216,69 @@ namespace RenderCore
             return ByteCount(desc._textureDesc);
         }
         return 0;
+    }
+
+    SubResourceOffset GetSubResourceOffset(
+        const TextureDesc& tDesc, unsigned mipIndex, unsigned arrayLayer)
+    {
+        // Given the texture description, where do we expect to find the requested
+        // subresource?
+        // For a single arrayLayer, we will jsut have the biggest mipmap, followed by the full mipchain
+        // If there are more array layers, they will follow on afterwards
+        // So, each array layer is stored contigously with it's full array chain.
+        //
+        // Could also perhaps align the start of each array layer to some convenient boundary
+        // (eg, 16 bytes?)
+
+        assert(mipIndex < std::max(1u, (unsigned)tDesc._mipCount));
+        assert(arrayLayer < std::max(1u, (unsigned)tDesc._arrayCount));
+
+        SubResourceOffset mipOffset = { 0, 0, {} };
+        if (tDesc._format == Format::Unknown)
+            return mipOffset;
+
+        const bool blockCompressed = IsBlockCompressed(tDesc._format);
+        const auto bbp = BitsPerPixel(tDesc._format);
+
+        auto width = tDesc._width, height = tDesc._height, depth = tDesc._depth;
+        auto mipCount = std::max(1u, (unsigned)tDesc._mipCount);
+
+        auto workingOffset = 0;
+        if (blockCompressed) {
+            for (unsigned mipIterator = 0; mipIterator < mipCount; ++mipIterator) {
+                auto blockWidth = std::max((width + BlockCompDim - 1u) / BlockCompDim, 1u);
+                auto blockHeight = std::max((height + BlockCompDim - 1u) / BlockCompDim, 1u);
+                auto mipSize = blockWidth * blockHeight * std::max(depth, 1u) * bbp * 16u / 8u;
+                
+                if (mipIterator == mipIndex) {
+                    mipOffset._offset = workingOffset;
+                    mipOffset._size = mipSize;
+                    mipOffset._pitches._rowPitch = blockWidth * bbp * 16u / 8u;
+                    mipOffset._pitches._slicePitch = mipOffset._pitches._rowPitch * blockHeight;
+                }
+                
+                workingOffset += mipSize;
+                width >>= 1; height >>= 1; depth >>= 1;
+            }
+        } else {
+            for (unsigned mipIterator = 0; mipIterator < mipCount; ++mipIterator) {
+                auto mipSize = std::max(width, 1u) * std::max(height, 1u) * std::max(depth, 1u) * bbp / 8u;
+
+                if (mipIterator == mipIndex) {
+                    mipOffset._offset = workingOffset;
+                    mipOffset._size = mipSize;
+                    mipOffset._pitches._rowPitch = std::max(width, 1u) * bbp / 8u;
+                    mipOffset._pitches._slicePitch = mipOffset._pitches._rowPitch * std::max(height, 1u);
+                }
+
+                workingOffset += mipSize;
+                width >>= 1; height >>= 1; depth >>= 1;
+            }
+        }
+
+        mipOffset._pitches._arrayPitch = workingOffset;
+        mipOffset._offset += arrayLayer * mipOffset._pitches._arrayPitch;
+        return mipOffset;
     }
 
     TexturePitches MakeTexturePitches(const TextureDesc& desc)

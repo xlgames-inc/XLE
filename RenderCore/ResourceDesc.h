@@ -84,7 +84,9 @@ namespace RenderCore
             ConstantBuffer      = 1<<7,     ///< Used as a constant buffer (ie, VSSetConstantBuffers)
             StreamOutput        = 1<<8,     ///< Used as a stream-output buffer from the geomtry shader (ie, SOSetTargets)
             DrawIndirectArgs    = 1<<9,     ///< Used with DrawInstancedIndirect or DrawIndexedInstancedIndirect
-            RawViews            = 1<<10     ///< Enables use of raw shader resource views
+            RawViews            = 1<<10,    ///< Enables use of raw shader resource views
+            TransferSrc         = 1<<11,    ///< Primarily used as the source resource in a copy operation (typically for staging texture)
+            TransferDst         = 1<<12     ///< Primarily used as the destination resource in a copy operation (typically for readback textures)
         };
         typedef unsigned BitField;
     }

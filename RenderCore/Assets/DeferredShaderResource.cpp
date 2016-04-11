@@ -209,7 +209,8 @@ namespace RenderCore { namespace Assets
     DeferredShaderResource::~DeferredShaderResource()
     {
         if (_pimpl->_transaction != ~BufferUploads::TransactionID(0))
-            Services::GetBufferUploads().Transaction_End(_pimpl->_transaction);
+            if (Services::HasInstance())    // we can get here after RenderCore::Assets::Services has been destroyed (for example, as a result of a top level exception)
+                Services::GetBufferUploads().Transaction_End(_pimpl->_transaction);
     }
 
     DeferredShaderResource::DeferredShaderResource(DeferredShaderResource&& moveFrom)

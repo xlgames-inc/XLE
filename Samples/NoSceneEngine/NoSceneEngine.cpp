@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #define _CRT_SECURE_NO_WARNINGS
+#define SELECT_VULKAN
 
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/MainInputHandler.h"
@@ -55,6 +56,7 @@
 #include "../../RenderCore/Vulkan/Metal/ShaderResource.h"
 #include "../../RenderCore/Vulkan/Metal/State.h"
 
+#include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../Tools/ToolsRig/VisualisationGeo.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Math/Transformations.h"
@@ -189,7 +191,7 @@ namespace VulkanTest
 				0, 0,
 				TextureDesc::Plain2D(width, height, fmt),
 				"texture"),
-			SingleSubRes(SubResourceInitData{ buffer.get(), bufferSize, bufferSize / height, bufferSize }));
+                SingleSubRes(SubResourceInitData{ buffer.get(), bufferSize, TexturePitches { bufferSize / height, bufferSize }}));
 
 		auto gpuResource = dev.CreateResource(
 			CreateDesc(
@@ -319,8 +321,6 @@ namespace Sample
 				vkContext->Bind(Metal_Vulkan::RasterizerState(Metal_Vulkan::CullMode::None));
 				vkContext->BindPS(MakeResourceList(Metal_Vulkan::SamplerState(), Metal_Vulkan::SamplerState()));
 
-				auto& factory = vkContext->GetFactory();
-
 				// ------ uniforms -----------
 				auto projDesc = Techniques::ProjectionDesc();
 				auto globalTrans = Techniques::BuildGlobalTransformConstants(projDesc);
@@ -330,10 +330,15 @@ namespace Sample
 
 				Metal_Vulkan::ConstantBuffer globalTransBuffer(&globalTrans, sizeof(globalTrans));
 				Metal_Vulkan::ConstantBuffer localTransBuffer(&localTrans, sizeof(localTrans));
-				Metal_Vulkan::ShaderResourceView srv(factory, texObj._resource);
-
 				const Metal_Vulkan::ConstantBuffer* cbs[] = { &globalTransBuffer, &localTransBuffer };
-				const Metal_Vulkan::ShaderResourceView* srvs[] = { &srv };
+                
+                // auto& factory = vkContext->GetFactory();
+                // Metal_Vulkan::ShaderResourceView srv(factory, texObj._resource);
+				// const Metal_Vulkan::ShaderResourceView* srvs[] = { &srv };
+
+                auto& tex = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/DiffuseTexture.dds:L");
+                const Metal_Vulkan::ShaderResourceView* srvs[] = { &tex.GetShaderResource() };
+
 				boundUniforms.Apply(
 					*vkContext,
 					Metal_Vulkan::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)),
