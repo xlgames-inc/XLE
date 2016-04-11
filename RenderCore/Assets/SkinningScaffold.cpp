@@ -437,4 +437,53 @@ namespace RenderCore { namespace Assets
             scaffold->_rawMemoryBlock = std::move(chunks[0]._buffer);
         }
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    TransformationParameterSet::TransformationParameterSet()
+    {
+    }
+
+    TransformationParameterSet::TransformationParameterSet(TransformationParameterSet&& moveFrom)
+    :       _float4x4Parameters(    std::move(moveFrom._float4x4Parameters))
+    ,       _float4Parameters(      std::move(moveFrom._float4Parameters))
+    ,       _float3Parameters(      std::move(moveFrom._float3Parameters))
+    ,       _float1Parameters(      std::move(moveFrom._float1Parameters))
+    {
+
+    }
+
+    TransformationParameterSet& TransformationParameterSet::operator=(TransformationParameterSet&& moveFrom)
+    {
+        _float4x4Parameters = std::move(moveFrom._float4x4Parameters);
+        _float4Parameters   = std::move(moveFrom._float4Parameters);
+        _float3Parameters   = std::move(moveFrom._float3Parameters);
+        _float1Parameters   = std::move(moveFrom._float1Parameters);
+        return *this;
+    }
+
+    TransformationParameterSet::TransformationParameterSet(const TransformationParameterSet& copyFrom)
+    :       _float4x4Parameters(copyFrom._float4x4Parameters)
+    ,       _float4Parameters(copyFrom._float4Parameters)
+    ,       _float3Parameters(copyFrom._float3Parameters)
+    ,       _float1Parameters(copyFrom._float1Parameters)
+    {
+    }
+
+    TransformationParameterSet&  TransformationParameterSet::operator=(const TransformationParameterSet& copyFrom)
+    {
+        _float4x4Parameters = copyFrom._float4x4Parameters;
+        _float4Parameters = copyFrom._float4Parameters;
+        _float3Parameters = copyFrom._float3Parameters;
+        _float1Parameters = copyFrom._float1Parameters;
+        return *this;
+    }
+
+    void    TransformationParameterSet::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
+    {
+        ::Serialize(outputSerializer, _float4x4Parameters);
+        ::Serialize(outputSerializer, _float4Parameters);
+        ::Serialize(outputSerializer, _float3Parameters);
+        ::Serialize(outputSerializer, _float1Parameters);
+    }
 }}

@@ -12,20 +12,6 @@
 
 namespace RenderCore { namespace Techniques
 {
-    RenderStateSet::RenderStateSet()
-    {
-        _doubleSided = false;
-        _wireframe = false;
-        _writeMask = 0xf;
-        _blendType = BlendType::Basic;
-        _depthBias = 0;
-        _flag = 0;
-        
-        _forwardBlendSrc = Metal::Blend::One;
-        _forwardBlendDst = Metal::Blend::Zero;
-        _forwardBlendOp = Metal::BlendOp::NoBlending;
-    }
-
     uint64 RenderStateSet::GetHash() const
     {
         static_assert(sizeof(*this) == sizeof(uint64), "expecting StateSet to be 64 bits long");

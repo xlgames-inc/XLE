@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define _SCL_SECURE_NO_WARNINGS
+
 #include "DeferredShaderResource.h"
 #include "Services.h"
 #include "../Metal/ShaderResource.h"
@@ -15,10 +17,14 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/CompileAndAsyncManager.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Threading/CompletionThreadPool.h"
 #include "../../Foreign/tinyxml2-master/tinyxml2.h"
+
+#include "../Techniques/ResourceBox.h"
+#include <utility>
 
 #include "../../Core/WinAPI/IncludeWindows.h"
 
@@ -389,5 +395,91 @@ namespace RenderCore { namespace Assets
             ResolveFormatImmediate(desc._textureDesc._format, init));
     }
 
-}}
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class CachedTextureFormats
+    {
+    public:
+        class Desc {};
+
+        CachedTextureFormats(const Desc&);
+        ~CachedTextureFormats();
+
+        typedef std::pair<uint64, Format> Entry;
+        std::unique_ptr<MemoryMappedFile> _cache;
+
+        class Header
+        {
+        public:
+            unsigned _count;
+        };
+
+        static const unsigned MaxCachedTextures = 10*1024;
+    };
+
+    CachedTextureFormats::CachedTextureFormats(const Desc&)
+    {
+        unsigned entrySize = sizeof(Entry);
+            
+            //  use a memory mapped file for this. This way, we never have to 
+            //  worry about flushing out to disk... The OS will take care of 
+            //  committing the results to disk on exit
+        auto cache = std::make_unique<MemoryMappedFile>(
+            "int/TextureFormatCache.dat", entrySize * MaxCachedTextures + sizeof(Header),
+            MemoryMappedFile::Access::Read|MemoryMappedFile::Access::Write|MemoryMappedFile::Access::OpenAlways);
+        _cache = std::move(cache);
+    }
+
+    CachedTextureFormats::~CachedTextureFormats() {}
+
+    static bool IsDXTNormalMapFormat(Format format)
+    {
+        return unsigned(format) >= unsigned(RenderCore::Format::BC1_TYPELESS)
+            && unsigned(format) <= unsigned(RenderCore::Format::BC1_UNORM_SRGB);
+    }
+
+    bool DeferredShaderResource::IsDXTNormalMap(const ::Assets::ResChar textureName[])
+    {
+        if (!textureName || !textureName[0]) return false;
+
+        auto& cache = Techniques::FindCachedBox<CachedTextureFormats>(
+            CachedTextureFormats::Desc());
+
+        typedef CachedTextureFormats::Header Hdr;
+        typedef CachedTextureFormats::Entry Entry;
+        auto* data = cache._cache->GetData();
+        if (!data) {
+            static bool firstTime = true;
+            if (firstTime) {
+                LogAlwaysError << "Failed to open TextureFormatCache.dat! DXT normal map queries will be inefficient.";
+                firstTime = false;
+            }
+            return IsDXTNormalMapFormat(LoadFormat(textureName));
+        }
+
+        auto& hdr = *(Hdr*)data;
+        auto* start = (Entry*)PtrAdd(data, sizeof(Hdr));
+        auto* end = (Entry*)PtrAdd(data, sizeof(Hdr) + sizeof(Entry) * hdr._count);
+
+        auto hashName = Hash64(textureName);
+        auto* i = std::lower_bound(start, end, hashName, CompareFirst<uint64, Format>());
+        if (i == end || i->first != hashName) {
+            if ((hdr._count+1) > CachedTextureFormats::MaxCachedTextures) {
+                assert(0);  // cache has gotten too big
+                return false;
+            }
+
+            std::move_backward(i, end, end+1);
+            i->first = hashName;
+            TRY {
+                i->second = DeferredShaderResource::LoadFormat(textureName);
+            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
+                i->second = Format::Unknown;
+            } CATCH_END
+            ++hdr._count;
+            return IsDXTNormalMapFormat(i->second);
+        }
+
+        return IsDXTNormalMapFormat(i->second);
+    }
+}}

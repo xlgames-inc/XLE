@@ -159,5 +159,21 @@ namespace RenderCore { namespace Techniques
         const RSDepthBias& doubleSidedBias = RSDepthBias(),
         Metal::CullMode::Enum cullMode = Metal::CullMode::Enum(3));
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    inline RenderStateSet::RenderStateSet()
+    {
+        _doubleSided = false;
+        _wireframe = false;
+        _writeMask = 0xf;
+        _blendType = BlendType::Basic;
+        _depthBias = 0;
+        _flag = 0;
+        
+        _forwardBlendSrc = Metal::Blend::Enum(0); // Metal::Blend::One;
+        _forwardBlendDst = Metal::Blend::Enum(0); // Metal::Blend::Zero;
+        _forwardBlendOp = Metal::BlendOp::Enum(0); // Metal::BlendOp::NoBlending;
+    }
+
 }}
 

@@ -8,8 +8,12 @@
 #include "ModelScaffoldInternal.h"
 #include "ModelImmutableData.h"
 #include "AssetUtils.h"
+#include "../Format.h"
+#include "../Types.h"
 #include "../../Assets/ChunkFileAsset.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/StringUtils.h"
+#include "../../Utility/PtrUtils.h"
 
 namespace RenderCore { namespace Assets
 {
@@ -242,5 +246,44 @@ namespace RenderCore { namespace Assets
             scaffold->_largeBlocksOffset = chunks[1]._offset;
         }
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    std::ostream& StreamOperator(std::ostream& stream, const GeoInputAssembly& ia)
+    {
+        stream << "Stride: " << ia._vertexStride << ": ";
+        for (size_t c=0; c<ia._elements.size(); c++) {
+            if (c != 0) stream << ", ";
+            const auto& e = ia._elements[c];
+            stream << e._semanticName << "[" << e._semanticIndex << "] " << AsString(e._nativeFormat);
+        }
+        return stream;
+    }
+
+    std::ostream& StreamOperator(std::ostream& stream, const DrawCallDesc& dc)
+    {
+        return stream << "Mat: " << dc._subMaterialIndex << ", DrawIndexed(" << dc._indexCount << ", " << dc._firstIndex << ", " << dc._firstVertex << ")";
+    }
+
+    GeoInputAssembly CreateGeoInputAssembly(   
+        const std::vector<InputElementDesc>& vertexInputLayout,
+        unsigned vertexStride)
+    { 
+        GeoInputAssembly result;
+        result._vertexStride = vertexStride;
+        result._elements.reserve(vertexInputLayout.size());
+        for (auto i=vertexInputLayout.begin(); i!=vertexInputLayout.end(); ++i) {
+            RenderCore::Assets::VertexElement ele;
+            XlZeroMemory(ele);     // make sure unused space is 0
+            XlCopyNString(ele._semanticName, AsPointer(i->_semanticName.begin()), i->_semanticName.size());
+            ele._semanticName[dimof(ele._semanticName)-1] = '\0';
+            ele._semanticIndex = i->_semanticIndex;
+            ele._nativeFormat = i->_nativeFormat;
+            ele._alignedByteOffset = i->_alignedByteOffset;
+            result._elements.push_back(ele);
+        }
+        return std::move(result);
+    }
+
 
 }}

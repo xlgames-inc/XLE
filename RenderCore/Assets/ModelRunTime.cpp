@@ -304,9 +304,9 @@ namespace RenderCore { namespace Assets
                         if (searchRules) {
                             ::Assets::ResChar resolvedPath[MaxPath];
                             searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), boundNormalMapName.c_str());
-                            isDxtNormalMap = IsDXTNormalMap(resolvedPath);
+                            isDxtNormalMap = DeferredShaderResource::IsDXTNormalMap(resolvedPath);
                         } else 
-                            isDxtNormalMap = IsDXTNormalMap(boundNormalMapName);
+                            isDxtNormalMap = DeferredShaderResource::IsDXTNormalMap(boundNormalMapName.c_str());
                         materialParamBox.SetParameter((const utf8*)"RES_HAS_NormalsTexture_DXT", isDxtNormalMap);
                     }
                 }

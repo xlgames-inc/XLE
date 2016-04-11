@@ -49,8 +49,9 @@ namespace RenderCore { namespace Assets
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
         const ::Assets::ResChar*                Initializer() const;
 
-        static Metal::ShaderResourceView LoadImmediately(const char initializer[]);
-        static Format LoadFormat(const char initializer[]);
+        static Metal::ShaderResourceView LoadImmediately(const ::Assets::ResChar initializer[]);
+        static Format LoadFormat(const ::Assets::ResChar initializer[]);
+        static bool IsDXTNormalMap(const ::Assets::ResChar initializer[]);
 
         ::Assets::AssetState GetAssetState() const;
         ::Assets::AssetState TryResolve() const;

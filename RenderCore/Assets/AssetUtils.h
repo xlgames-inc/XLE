@@ -23,8 +23,6 @@ namespace RenderCore { namespace Assets
         const ParameterBox& inputMatParameters, const ParameterBox& resBindings,
         const ::Assets::DirectorySearchRules& searchRules);
 
-    bool IsDXTNormalMap(const std::string& textureName);
-
     static const uint64 ChunkType_ModelScaffold = ConstHash64<'Mode', 'lSca', 'fold'>::Value;
     static const uint64 ChunkType_ModelScaffoldLargeBlocks = ConstHash64<'Mode', 'lSca', 'fold', 'Larg'>::Value;
     static const uint64 ChunkType_AnimationSet = ConstHash64<'Anim', 'Set'>::Value;
