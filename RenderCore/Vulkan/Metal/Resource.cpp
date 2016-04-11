@@ -489,8 +489,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		    auto srcAspectMask = AsImageAspectMask(srcDesc._textureDesc._format);
 
             VkImageCopy c;
-            c.srcOffset = VkOffset3D { src._leftTopFront._values[0], src._leftTopFront._values[1], src._leftTopFront._values[2] };
-			c.dstOffset = VkOffset3D { dst._leftTopFront._values[0], dst._leftTopFront._values[1], dst._leftTopFront._values[2] };
+            c.srcOffset = VkOffset3D { (int)src._leftTopFront._values[0], (int)src._leftTopFront._values[1], (int)src._leftTopFront._values[2] };
+			c.dstOffset = VkOffset3D { (int)dst._leftTopFront._values[0], (int)dst._leftTopFront._values[1], (int)dst._leftTopFront._values[2] };
 			c.extent = VkExtent3D { 
                 src._rightBottomBack._values[0] - src._leftTopFront._values[0],
                 src._rightBottomBack._values[1] - src._leftTopFront._values[1],

@@ -390,7 +390,7 @@ FontTexture2D::~FontTexture2D()
 void FontTexture2D::UpdateGlyphToTexture(FT_GlyphSlot glyph, int offX, int offY, int width, int height)
 {
     auto packet = BufferUploads::CreateBasicPacket(
-        width*height, nullptr, RenderCore::TexturePitches{width, width*height});
+        width*height, nullptr, RenderCore::TexturePitches{unsigned(width), unsigned(width*height)});
     uint8* data = (uint8*)packet->GetData();
 
     int widthCursor = 0;
@@ -706,7 +706,7 @@ void FT_FontTextureMgr::ClearFontTextureRegion(int height, int heightEnd)
         return;
     }
 
-    auto blankBuf = BufferUploads::CreateBasicPacket(_texWidth * texHeight, nullptr, RenderCore::TexturePitches{_texWidth, _texWidth*texHeight});
+    auto blankBuf = BufferUploads::CreateBasicPacket(_texWidth * texHeight, nullptr, RenderCore::TexturePitches{unsigned(_texWidth), unsigned(_texWidth*texHeight)});
     XlSetMemory(const_cast<void*>(blankBuf->GetData()), 0, _texWidth * texHeight);
     _texture->UpdateToTexture(blankBuf.get(), 0, height, _texWidth, texHeight);
 }
