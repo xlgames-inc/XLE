@@ -208,7 +208,7 @@ namespace PlatformRig
         auto finalRowPitch = finalImageDims[0]*bpp/8;
         auto rawData = BufferUploads::CreateBasicPacket(
             finalImageDims[1]*finalRowPitch, nullptr,
-            BufferUploads::TexturePitches(finalRowPitch, finalImageDims[1]*finalRowPitch));
+            BufferUploads::TexturePitches{finalRowPitch, finalImageDims[1]*finalRowPitch});
         auto* rawDataEnd = PtrAdd(rawData->GetData(), rawData->GetDataSize());
         (void)rawDataEnd;
 
@@ -259,7 +259,7 @@ namespace PlatformRig
         auto downsampledRowPitch = downsampledSize[0] * bpp / 8;
         auto rawData = BufferUploads::CreateBasicPacket(
             downsampledSize[1]*downsampledRowPitch, nullptr,
-			BufferUploads::TexturePitches(downsampledRowPitch, downsampledSize[1]*downsampledRowPitch));
+            BufferUploads::TexturePitches{downsampledRowPitch, downsampledSize[1]*downsampledRowPitch});
 
         const uint16* srcData = (const uint16*)highRes.GetData();
         const auto srcRowPitch = highRes.GetPitches()._rowPitch;

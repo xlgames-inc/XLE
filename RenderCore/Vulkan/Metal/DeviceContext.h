@@ -12,7 +12,7 @@
 #include "../../ResourceList.h"
 #include "../../IDevice_Forward.h"
 #include "../../IThreadContext_Forward.h"
-#include "../../Math/Vector.h"  // for Float4 in Clear()
+#include "../../Utility/IteratorUtils.h"
 #include <memory>
 
 namespace RenderCore { enum class Format; }
@@ -159,10 +159,10 @@ namespace RenderCore { namespace Metal_Vulkan
         void        DrawAuto();
         void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
 
-        void        Clear(const RenderTargetView& renderTargets, const Float4& clearColour) {}
+        void        Clear(const RenderTargetView& renderTargets, const VectorPattern<float,4>& clearColour) {}
         void        Clear(const DepthStencilView& depthStencil, float depth, unsigned stencil) {}
-        void        Clear(const UnorderedAccessView& unorderedAccess, unsigned values[4]) {}
-        void        Clear(const UnorderedAccessView& unorderedAccess, float values[4]) {}
+        void        Clear(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& clearColour) {}
+        void        Clear(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& clearColour) {}
         void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil) {}
 
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);

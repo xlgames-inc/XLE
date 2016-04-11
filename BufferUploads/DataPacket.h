@@ -7,6 +7,7 @@
 #pragma once
 
 #include "IBufferUploads.h"
+#include "../RenderCore/Types.h"
 #include "../Assets/AssetUtils.h"                   // for ::Assets::PendingOperationMarker
 #include "../Utility/Threading/ThreadingUtils.h"    // for RefCountedObject
 #include "../Utility/MemoryUtils.h"
@@ -14,15 +15,7 @@
 
 namespace BufferUploads
 {
-    class TexturePitches
-    {
-    public:
-        unsigned _rowPitch;
-        unsigned _slicePitch;
-        buffer_upload_dll_export TexturePitches(const TextureDesc& desc);
-        TexturePitches(unsigned rowPitch, unsigned slicePitch);
-        TexturePitches();
-    };
+    using TexturePitches = RenderCore::TexturePitches;
 
     class DataPacket : public RefCountedObject
     {
@@ -95,13 +88,6 @@ namespace BufferUploads
         StringSection<::Assets::ResChar> filename, TextureLoadFlags::BitField flags = 0);
 
     buffer_upload_dll_export TextureDesc LoadTextureFormat(StringSection<::Assets::ResChar> filename);
-
-    inline TexturePitches::TexturePitches(unsigned rowPitch, unsigned slicePitch)
-    : _rowPitch(rowPitch), _slicePitch(slicePitch) {}
-    inline TexturePitches::TexturePitches()
-    {
-        _rowPitch = _slicePitch = 0;
-    }
 
     inline auto DataPacket::TexSubRes(unsigned mipIndex, unsigned arrayIndex) -> SubResourceId
     {

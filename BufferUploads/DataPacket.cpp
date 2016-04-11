@@ -7,6 +7,7 @@
 #include "DataPacket.h"
 #include "PlatformInterface.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/ResourceUtils.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
@@ -69,51 +70,20 @@ namespace BufferUploads
         return make_intrusive<BasicRawDataPacket>(dataSize, data, rowAndSlicePitch);
     }
 
-    static const unsigned BlockCompDim = 4;
-    static unsigned RoundBCDim(unsigned input)
-    {
-        uint32 part = input%BlockCompDim;
-        auto result = input + part?(BlockCompDim-part):0;
-        assert(!(result%BlockCompDim));
-        return result;
-    }
-
-    TexturePitches::TexturePitches(const TextureDesc& desc)
-    {
-        _slicePitch = PlatformInterface::TextureDataSize(
-            desc._width, desc._height, 1, 1, 
-            desc._format);
-            
-            //  row pitch calculation is a little platform-specific here...
-            //  (eg, DX9 and DX11 use different systems)
-            //  Perhaps this could be moved into the platform interface layer
-        bool isDXT = GetCompressionType(desc._format) 
-            == RenderCore::FormatCompressionType::BlockCompression;
-        if (isDXT) {
-            _rowPitch = PlatformInterface::TextureDataSize(
-                RoundBCDim(desc._width), BlockCompDim, 1, 1, 
-                desc._format);
-        } else {
-            _rowPitch = PlatformInterface::TextureDataSize(
-                desc._width, 1, 1, 1, 
-				desc._format);
-        }
-    }
-
     intrusive_ptr<DataPacket> CreateEmptyPacket(const BufferDesc& desc)
     {
             // Create an empty packet of the appropriate size for the given desc
             // Linear buffers are simple, but textures need a little more detail...
         if (desc._type == BufferDesc::Type::LinearBuffer) {
-            auto size = PlatformInterface::ByteCount(desc);
-            return make_intrusive<BasicRawDataPacket>(size, nullptr, TexturePitches(size, size));
+            auto size = RenderCore::ByteCount(desc);
+            return make_intrusive<BasicRawDataPacket>(size, nullptr, TexturePitches{size, size});
         } else if (desc._type == BufferDesc::Type::Texture) {
                 //  currently not supporting textures with multiple mip-maps
                 //  or multiple array slices
             assert(desc._textureDesc._mipCount <= 1);
             assert(desc._textureDesc._arrayCount <= 1);
 
-            TexturePitches pitches(desc._textureDesc);
+            auto pitches = RenderCore::MakeTexturePitches(desc._textureDesc);
             return make_intrusive<BasicRawDataPacket>(pitches._slicePitch, nullptr, pitches);
         }
 
@@ -300,8 +270,8 @@ namespace BufferUploads
     {
         auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
         auto* image = _image.GetImage(mip, arrayIndex, 0);
-        if (image) return TexturePitches(unsigned(image->rowPitch), unsigned(image->slicePitch));
-        return TexturePitches();
+        if (image) return TexturePitches{unsigned(image->rowPitch), unsigned(image->slicePitch)};
+        return TexturePitches{};
     }
 
     enum class TexFmt

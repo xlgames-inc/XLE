@@ -164,29 +164,35 @@
             }
         }
 
-        void UnderlyingDeviceContext::PushToStagingResource(    UnderlyingResource& resource, const BufferDesc&desc, 
-                                                                unsigned resourceOffsetValue, const void* data, size_t dataSize, 
-                                                                TexturePitches rowAndSlicePitch, 
-                                                                const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
+        void UnderlyingDeviceContext::PushToStagingResource(
+            UnderlyingResource& resource, const BufferDesc&desc, 
+            const ResourceInitializer& data)
         {
-            assert(box == Box2D());
+            // In D3D, we must map each subresource separately
             switch (desc._type) {
             case BufferDesc::Type::Texture:
                 {
-					auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
-                    uint32 subResource = D3D11CalcSubresource(lodLevel, arrayIndex, desc._textureDesc._mipCount);
-                    D3D11_MAPPED_SUBRESOURCE mappedSubresource;
-                    XlZeroMemory(mappedSubresource);
-                    HRESULT hresult = metalContext->GetUnderlying()->Map(
-                        ResPtr(resource), subResource, 
-                        D3D11_MAP_WRITE, 0, &mappedSubresource);
-                    assert(SUCCEEDED(hresult));
+                    auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
+                    for (unsigned m=0; m<desc._textureDesc._mipLevels; ++m)
+                        for (unsigned a=0; a<desc._textureDesc._arrayCount; ++a) {
+                            auto subResData = data(m, a);
+                            if (!subResData._data || !subResData._size) continue;
 
-                    if (SUCCEEDED(hresult) && mappedSubresource.pData) {
-                        CopyMipLevel(
-                            mappedSubresource.pData, mappedSubresource.DepthPitch, data, dataSize, 
-                            CalculateMipMapDesc(desc._textureDesc, lodLevel), mappedSubresource.RowPitch);
-                    }
+                            uint32 subResource = D3D11CalcSubresource(lodLevel, arrayIndex, desc._textureDesc._mipCount);
+                            D3D11_MAPPED_SUBRESOURCE mappedSubresource;
+                            XlZeroMemory(mappedSubresource);
+                            HRESULT hresult = metalContext->GetUnderlying()->Map(
+                                ResPtr(resource), subResource, 
+                                D3D11_MAP_WRITE, 0, &mappedSubresource);
+                            assert(SUCCEEDED(hresult));
+
+                            if (SUCCEEDED(hresult) && mappedSubresource.pData) {
+                                CopyMipLevel(
+                                    mappedSubresource.pData, mappedSubresource.DepthPitch, 
+                                    subResData._data, subResData._size, 
+                                    CalculateMipMapDesc(desc._textureDesc, lodLevel), mappedSubresource.RowPitch);
+                            }
+                        }
                 }
                 break;
             }
@@ -325,6 +331,108 @@
 				}
             }
         }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class RawDataPacket_ReadBack : public DataPacket
+    {
+    public:
+        void*           GetData(SubResourceId subRes);
+        size_t          GetDataSize(SubResourceId subRes) const;
+        TexturePitches  GetPitches(SubResourceId subRes) const;
+
+        std::shared_ptr<Marker> BeginBackgroundLoad() { return nullptr; }
+
+        RawDataPacket_ReadBack(
+            const ResourceLocator& locator, 
+            PlatformInterface::UnderlyingDeviceContext& context);
+        ~RawDataPacket_ReadBack();
+
+    protected:
+        unsigned _dataOffset;
+        std::vector<PlatformInterface::UnderlyingDeviceContext::MappedBuffer> _mappedBuffer;
+        unsigned _mipCount;
+        unsigned _arrayCount;
+    };
+
+    void*     RawDataPacket_ReadBack::GetData(SubResourceId subRes)
+    {
+        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        unsigned subResIndex = mip + arrayIndex * _mipCount;
+        assert(subResIndex < _mappedBuffer.size());
+        return PtrAdd(_mappedBuffer[subResIndex].GetData(), _dataOffset);
+    }
+
+    size_t          RawDataPacket_ReadBack::GetDataSize(SubResourceId subRes) const
+    {
+        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        unsigned subResIndex = mip + arrayIndex * _mipCount;
+        assert(subResIndex < _mappedBuffer.size());
+        return _mappedBuffer[subResIndex].GetPitches()._slicePitch - _dataOffset;
+    }
+
+    TexturePitches RawDataPacket_ReadBack::GetPitches(SubResourceId subRes) const
+    {
+        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        unsigned subResIndex = mip + arrayIndex * _mipCount;
+        assert(subResIndex < _mappedBuffer.size());
+        return _mappedBuffer[subResIndex].GetPitches();
+    }
+
+    RawDataPacket_ReadBack::RawDataPacket_ReadBack(
+		const ResourceLocator& locator, 
+		PlatformInterface::UnderlyingDeviceContext& context)
+    : _dataOffset(0)
+    {
+        assert(!locator.IsEmpty());
+        auto resource = locator.GetUnderlying();
+        UnderlyingResourcePtr stagingResource;
+
+        auto desc = PlatformInterface::ExtractDesc(*resource);
+        auto subResCount = 1u;
+        _mipCount = _arrayCount = 1u;
+        if (desc._type == BufferDesc::Type::Texture) {
+            subResCount = 
+                  std::max(1u, unsigned(desc._textureDesc._mipCount))
+                * std::max(1u, unsigned(desc._textureDesc._arrayCount));
+            _mipCount = desc._textureDesc._mipCount;
+            _arrayCount = desc._textureDesc._arrayCount;
+        }
+
+            //
+            //      If we have to read back through a staging resource, then let's create
+            //      a temporary resource and initialise it...
+            //
+        using namespace PlatformInterface;
+        if (RequiresStagingResourceReadBack && !(desc._cpuAccess & CPUAccess::Read)) {
+            BufferDesc stagingDesc = AsStagingDesc(desc);
+            stagingResource = CreateResource(*context.GetObjectFactory(), stagingDesc);
+            if (stagingResource.get()) {
+                context.ResourceCopy(*stagingResource.get(), *resource);
+                resource = stagingResource.get();
+            }
+        }
+
+        _mappedBuffer.reserve(subResCount);
+        
+        if (CanDoPartialMaps) {
+            for (unsigned c=0; c<subResCount; ++c)
+                _mappedBuffer.push_back(context.MapPartial(
+                    *resource, UnderlyingDeviceContext::MapType::ReadOnly, 
+                    locator.Offset(), locator.Size(), c));
+        } else {
+            for (unsigned c=0; c<subResCount; ++c)
+                _mappedBuffer.push_back(
+                    context.Map(*resource, UnderlyingDeviceContext::MapType::ReadOnly, c));
+            _dataOffset = (locator.Offset() != ~unsigned(0x0))?locator.Offset():0;
+        }
+    }
+
+    RawDataPacket_ReadBack::~RawDataPacket_ReadBack()
+    {
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
         void    Query_End(ID3D::DeviceContext* context, ID3D::Query* query)
         {

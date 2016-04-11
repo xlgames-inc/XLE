@@ -8,11 +8,19 @@
 #include "ObjectFactory.h"
 #include "Format.h"
 #include "DeviceContext.h"
+#include "../IDeviceVulkan.h"
+#include "../../ResourceUtils.h"
 #include "../../Format.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+    static VkDevice ExtractUnderlyingDevice(IDevice& idev)
+    {
+        auto* vulkanDevice = (RenderCore::IDeviceVulkan*)idev.QueryInterface(__uuidof(RenderCore::IDeviceVulkan));
+		return vulkanDevice ? vulkanDevice->GetUnderlyingDevice() : nullptr;
+    }
+
 	static VkBufferUsageFlags AsBufferUsageFlags(BindFlag::BitField bindFlags)
 	{
 		VkBufferUsageFlags result = 0;
@@ -52,16 +60,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		return GetComponents(fmt) == FormatComponents::Depth;
 	}
 
-	static VkImageAspectFlags AsImageAspectMask(BindFlag::BitField bindFlags, Format fmt)
+	static VkImageAspectFlags AsImageAspectMask(Format fmt)
 	{
-		VkImageAspectFlags result = 0;
-		if (bindFlags & BindFlag::RenderTarget) result |= VK_IMAGE_ASPECT_COLOR_BIT;
-		if (bindFlags & BindFlag::DepthStencil) result |= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-		if (result == 0) {
-			if (IsDepthStencilFormat(fmt)) result |= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-			else result |= VK_IMAGE_ASPECT_COLOR_BIT;
-		}
-		return result;
+		if (IsDepthStencilFormat(fmt)) return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		return VK_IMAGE_ASPECT_COLOR_BIT;
 	}
 
 	static VkImageLayout AsVkImageLayout(ImageLayout input) { return (VkImageLayout)input; }
@@ -159,7 +161,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		// unforunately, we can't just blanket aspectMask with all bits enabled.
 		// We must select a correct aspect mask. The nvidia drivers seem to be fine with all
 		// bits enabled, but the documentation says that this is not allowed
-		auto aspectMask = AsImageAspectMask(r.GetDesc()._bindFlags, r.GetDesc()._textureDesc._format);
+		auto aspectMask = AsImageAspectMask(r.GetDesc()._textureDesc._format);
 		Metal_Vulkan::SetImageLayout(
 			context.GetCommandList(),
 			r.GetImage(), 
@@ -263,8 +265,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (hasInitData) {
 				auto subResData = initData(0, 0);
 				if (subResData._data && subResData._size) {
-					MemoryMap map(factory.GetDevice().get(), _mem.get());
-					std::memcpy(map._data, subResData._data, std::min(subResData._size, (size_t)mem_reqs.size));
+					ResourceMap map(factory.GetDevice().get(), _mem.get());
+					std::memcpy(map.GetData(), subResData._data, std::min(subResData._size, (size_t)mem_reqs.size));
 				}
 			}
 
@@ -274,33 +276,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		} else if (_underlyingImage) {
 			
 			// Initialisation for images is more complex... We just iterate through each subresource
-			// and copy in the data.
+			// and copy in the data. We're going to do this with a single map -- assuming that all
+            // if any of the subresources have init data, then they must all have. 
+            // Alternatively, we could map each subresource separately... But there doesn't seem to
+            // be any advantage to that.
 			if (hasInitData) {
-				auto mipCount = std::max(1u, unsigned(desc._textureDesc._mipCount));
-				auto arrayCount = std::max(1u, unsigned(desc._textureDesc._arrayCount));
-				auto aspectFlags = AsImageAspectMask(desc._bindFlags, desc._textureDesc._format);
-				for (unsigned m = 0; m < mipCount; ++m) {
-					for (unsigned a = 0; a < arrayCount; ++a) {
-						auto subResData = initData(m, a);
-						if (!subResData._data || !subResData._size) continue;
-
-						VkImageSubresource subRes = { aspectFlags, m, a };
-						VkSubresourceLayout layout = {};
-						vkGetImageSubresourceLayout(
-							factory.GetDevice().get(), _underlyingImage.get(),
-							&subRes, &layout);
-
-						if (!layout.size) continue;	// couldn't find this subresource?
-
-						// todo -- we should support cases where the pitches do now line up as expected!
-						if (layout.rowPitch != subResData._rowPitch || layout.arrayPitch != subResData._slicePitch)
-							Throw(::Exceptions::BasicLabel("Row or array pitch values are not as expected. These cases not supported."));
-
-						// finally, map and copy
-						MemoryMap map(factory.GetDevice().get(), _mem.get(), layout.offset, layout.size);
-						XlCopyMemory(map._data, subResData._data, std::min(layout.size, subResData._size));
-					}
-				}
+                CopyViaMemoryMap(
+                    factory.GetDevice().get(), _underlyingImage.get(), _mem.get(), 
+                    _desc._textureDesc, initData);
 			}
 
 			auto res = vkBindImageMemory(factory.GetDevice().get(), _underlyingImage.get(), _mem.get(), 0);
@@ -326,60 +309,206 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void Copy(DeviceContext& context, UnderlyingResourcePtr dst, UnderlyingResourcePtr src, ImageLayout dstLayout, ImageLayout srcLayout)
 	{
-		// Each mipmap is treated as a separate copy operation (but multiple array layers can be handled
-		// in a single operation).
-		// The Vulkan API requires that the formats of each resource must be reasonably similiar
-		//		-- in practice, that means that the size of the pixels in both cases must be the same.
-		//		When copying between compressed and uncompressed images, the uncompressed pixel size must
-		//		be equal to the compressed block size.
 		assert(src.get() && dst.get());
-		const auto& srcDesc = src.get()->GetDesc();
-		const auto& dstDesc = dst.get()->GetDesc();
-		assert(srcDesc._type == Resource::Desc::Type::Texture);
-		assert(dstDesc._type == Resource::Desc::Type::Texture);
+        if (dst.get()->GetImage() && src.get()->GetImage()) {
+            // image to image copy
 
-		VkImageCopy copyOps[16];
+            // Each mipmap is treated as a separate copy operation (but multiple array layers can be handled
+		    // in a single operation).
+		    // The Vulkan API requires that the formats of each resource must be reasonably similiar
+		    //		-- in practice, that means that the size of the pixels in both cases must be the same.
+		    //		When copying between compressed and uncompressed images, the uncompressed pixel size must
+		    //		be equal to the compressed block size.
 
-		unsigned copyOperations = 0;
-		auto dstAspectMask = AsImageAspectMask(dstDesc._bindFlags, dstDesc._textureDesc._format);
-		auto srcAspectMask = AsImageAspectMask(srcDesc._bindFlags, srcDesc._textureDesc._format);
-		assert(srcAspectMask == dstAspectMask);
+		    const auto& srcDesc = src.get()->GetDesc();
+		    const auto& dstDesc = dst.get()->GetDesc();
+		    assert(srcDesc._type == Resource::Desc::Type::Texture);
+		    assert(dstDesc._type == Resource::Desc::Type::Texture);
 
-		auto arrayCount = std::max(1u, (unsigned)srcDesc._textureDesc._arrayCount);
-		assert(arrayCount == std::max(1u, (unsigned)dstDesc._textureDesc._arrayCount));
+		    VkImageCopy copyOps[16];
+
+		    unsigned copyOperations = 0;
+		    auto dstAspectMask = AsImageAspectMask(dstDesc._textureDesc._format);
+		    auto srcAspectMask = AsImageAspectMask(srcDesc._textureDesc._format);
+
+		    auto arrayCount = std::max(1u, (unsigned)srcDesc._textureDesc._arrayCount);
+		    assert(arrayCount == std::max(1u, (unsigned)dstDesc._textureDesc._arrayCount));
 		
-		auto mips = std::max(1u, (unsigned)std::min(srcDesc._textureDesc._mipCount, dstDesc._textureDesc._mipCount));
-		assert(mips <= dimof(copyOps));
-		auto width = srcDesc._textureDesc._width, height = srcDesc._textureDesc._height, depth = srcDesc._textureDesc._depth;
-		for (unsigned m = 0; m < mips; ++m) {
-			auto& c = copyOps[copyOperations++];
-			c.srcOffset = VkOffset3D { 0, 0, 0 };
-			c.dstOffset = VkOffset3D { 0, 0, 0 };
-			c.extent = VkExtent3D { width, height, depth };
-			c.srcSubresource.aspectMask = srcAspectMask;
-			c.srcSubresource.mipLevel = m;
-			c.srcSubresource.baseArrayLayer = 0;
-			c.srcSubresource.layerCount = arrayCount;
-			c.dstSubresource.aspectMask = dstAspectMask;
-			c.dstSubresource.mipLevel = m;
-			c.dstSubresource.baseArrayLayer = 0;
-			c.dstSubresource.layerCount = arrayCount;
+		    auto mips = std::max(1u, (unsigned)std::min(srcDesc._textureDesc._mipCount, dstDesc._textureDesc._mipCount));
+		    assert(mips <= dimof(copyOps));
+		    auto width = srcDesc._textureDesc._width, height = srcDesc._textureDesc._height, depth = srcDesc._textureDesc._depth;
+		    for (unsigned m = 0; m < mips; ++m) {
+                assert(copyOperations < dimof(copyOps));
+			    auto& c = copyOps[copyOperations++];
+			    c.srcOffset = VkOffset3D { 0, 0, 0 };
+			    c.dstOffset = VkOffset3D { 0, 0, 0 };
+			    c.extent = VkExtent3D { width, height, depth };
+			    c.srcSubresource.aspectMask = srcAspectMask;
+			    c.srcSubresource.mipLevel = m;
+			    c.srcSubresource.baseArrayLayer = 0;
+			    c.srcSubresource.layerCount = arrayCount;
+			    c.dstSubresource.aspectMask = dstAspectMask;
+			    c.dstSubresource.mipLevel = m;
+			    c.dstSubresource.baseArrayLayer = 0;
+			    c.dstSubresource.layerCount = arrayCount;
 
-			width = std::max(1u, width>>1);
-			height = std::max(1u, height>>1);
-			depth = std::max(1u, depth>>1);
-		}
+			    width = std::max(1u, width>>1);
+			    height = std::max(1u, height>>1);
+			    depth = std::max(1u, depth>>1);
+		    }
 
-		vkCmdCopyImage(
-			context.GetCommandList(),
-			src.get()->GetImage(), AsVkImageLayout(srcLayout),
-			dst.get()->GetImage(), AsVkImageLayout(dstLayout),
-			copyOperations, copyOps);
+		    vkCmdCopyImage(
+			    context.GetCommandList(),
+			    src.get()->GetImage(), AsVkImageLayout(srcLayout),
+			    dst.get()->GetImage(), AsVkImageLayout(dstLayout),
+			    copyOperations, copyOps);
+        } else if (dst.get()->GetBuffer() && src.get()->GetBuffer()) {
+            // buffer to buffer copy
+            const auto& srcDesc = src.get()->GetDesc();
+		    const auto& dstDesc = dst.get()->GetDesc();
+            assert(srcDesc._type == Resource::Desc::Type::Texture);
+		    assert(dstDesc._type == Resource::Desc::Type::Texture);
+            VkBufferCopy copyOps[] = 
+            {
+                VkBufferCopy{0, 0, std::min(srcDesc._linearBufferDesc._sizeInBytes, dstDesc._linearBufferDesc._sizeInBytes)}
+            };
+            vkCmdCopyBuffer(
+                context.GetCommandList(),
+                src.get()->GetBuffer(),
+                dst.get()->GetBuffer(),
+                dimof(copyOps), copyOps);
+        } else {
+            // copies from buffer to image, or image to buffer are supported by Vulkan, but
+            // not implemented here.
+            Throw(::Exceptions::BasicLabel("Buffer to image and image to buffer copy not implemented"));
+        }
 	}
+
+    void CopyPartial(
+        DeviceContext& context, 
+        const CopyPartial_Dest& dst, const CopyPartial_Src& src,
+        ImageLayout dstLayout, ImageLayout srcLayout)
+    {
+        assert(src._resource && dst._resource);
+        if (dst._resource->GetImage() && src._resource->GetImage()) {
+            // image to image copy
+            // In this case, we're going to generate only a single copy operation. This is 
+            // similar to CopySubresourceRegion in D3D
+
+            const auto& srcDesc = src._resource->GetDesc();
+		    const auto& dstDesc = dst._resource->GetDesc();
+		    assert(srcDesc._type == Resource::Desc::Type::Texture);
+		    assert(dstDesc._type == Resource::Desc::Type::Texture);
+
+		    auto dstAspectMask = AsImageAspectMask(dstDesc._textureDesc._format);
+		    auto srcAspectMask = AsImageAspectMask(srcDesc._textureDesc._format);
+
+            VkImageCopy c;
+            c.srcOffset = VkOffset3D { src._leftTopFront._values[0], src._leftTopFront._values[1], src._leftTopFront._values[2] };
+			c.dstOffset = VkOffset3D { dst._leftTopFront._values[0], dst._leftTopFront._values[1], dst._leftTopFront._values[2] };
+			c.extent = VkExtent3D { 
+                src._rightBottomBack._values[0] - src._leftTopFront._values[0],
+                src._rightBottomBack._values[1] - src._leftTopFront._values[1],
+                src._rightBottomBack._values[2] - src._leftTopFront._values[2]
+            };
+			c.srcSubresource.aspectMask = srcAspectMask;
+			c.srcSubresource.mipLevel = src._subResource._mip;
+			c.srcSubresource.baseArrayLayer = src._subResource._arrayLayer;
+			c.srcSubresource.layerCount = 1;
+			c.dstSubresource.aspectMask = dstAspectMask;
+			c.dstSubresource.mipLevel = dst._subResource._mip;
+			c.dstSubresource.baseArrayLayer = dst._subResource._arrayLayer;
+			c.dstSubresource.layerCount = 1;
+
+            vkCmdCopyImage(
+			    context.GetCommandList(),
+			    src._resource->GetImage(), AsVkImageLayout(srcLayout),
+			    dst._resource->GetImage(), AsVkImageLayout(dstLayout),
+			    1, &c);
+        } else if (dst._resource->GetBuffer() && src._resource->GetBuffer()) {
+            // buffer to buffer copy
+            const auto& srcDesc = src._resource->GetDesc();
+		    const auto& dstDesc = dst._resource->GetDesc();
+            assert(srcDesc._type == Resource::Desc::Type::Texture);
+		    assert(dstDesc._type == Resource::Desc::Type::Texture);
+            VkBufferCopy c;
+            c.srcOffset = src._leftTopFront._values[0];
+            c.dstOffset = dst._leftTopFront._values[0];
+            auto end = std::min(src._rightBottomBack._values[0], std::min(srcDesc._linearBufferDesc._sizeInBytes, dstDesc._linearBufferDesc._sizeInBytes));
+            c.size = end - src._rightBottomBack._values[0];
+            vkCmdCopyBuffer(
+                context.GetCommandList(),
+                src._resource->GetBuffer(),
+                dst._resource->GetBuffer(),
+                1, &c);
+        } else {
+            // copies from buffer to image, or image to buffer are supported by Vulkan, but
+            // not implemented here.
+            Throw(::Exceptions::BasicLabel("Buffer to image and image to buffer copy not implemented"));
+        }
+    }
+
+    
+    unsigned CopyViaMemoryMap(
+        VkDevice device, VkImage image, VkDeviceMemory mem,
+        const TextureDesc& desc,
+        const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
+    {
+        ResourceMap map(device, mem);
+        unsigned bytesUploaded = 0;
+
+		auto mipCount = std::max(1u, unsigned(desc._mipCount));
+		auto arrayCount = std::max(1u, unsigned(desc._arrayCount));
+		auto aspectFlags = AsImageAspectMask(desc._format);
+		for (unsigned m = 0; m < mipCount; ++m) {
+			for (unsigned a = 0; a < arrayCount; ++a) {
+				auto subResData = initData(m, a);
+				if (!subResData._data || !subResData._size) continue;
+
+				VkImageSubresource subRes = { aspectFlags, m, a };
+				VkSubresourceLayout layout = {};
+				vkGetImageSubresourceLayout(
+					device, image,
+					&subRes, &layout);
+
+				if (!layout.size) continue;	// couldn't find this subresource?
+
+				// todo -- we should support cases where the pitches do now line up as expected!
+				// if (layout.rowPitch != subResData._rowPitch || layout.arrayPitch != subResData._slicePitch)
+				// 	Throw(::Exceptions::BasicLabel("Row or array pitch values are not as expected. These cases not supported."));
+                // 
+				// // finally, copy
+                // auto uploadSize = (unsigned)std::min(layout.size, subResData._size);
+				// XlCopyMemory(PtrAdd(map.GetData(), layout.offset), subResData._data, uploadSize);
+                // bytesUploaded += uploadSize;
+
+                CopyMipLevel(
+                    PtrAdd(map.GetData(), layout.offset), size_t(layout.size),
+                    TexturePitches{unsigned(layout.rowPitch), unsigned(layout.depthPitch), unsigned(layout.arrayPitch)},
+                    desc, subResData);
+			}
+		}
+        return bytesUploaded;
+    }
+
+    unsigned CopyViaMemoryMap(
+        IDevice& dev, UnderlyingResourcePtr resource,
+        const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
+    {
+        assert(resource.get()->GetDesc()._type == ResourceDesc::Type::Texture);
+        return CopyViaMemoryMap(
+            ExtractUnderlyingDevice(dev), resource.get()->GetImage(), resource.get()->GetMemory(),
+            resource.get()->GetDesc()._textureDesc, initData);
+    }
+
+	ResourcePtr Duplicate(ObjectFactory&, UnderlyingResourcePtr inputResource) 
+    { 
+        Throw(::Exceptions::BasicLabel("Resource duplication not implemented"));
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	MemoryMap::MemoryMap(
+	ResourceMap::ResourceMap(
 		VkDevice dev, VkDeviceMemory memory,
 		VkDeviceSize offset, VkDeviceSize size)
 		: _dev(dev), _mem(memory)
@@ -392,39 +521,70 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto res = vkMapMemory(dev, memory, offset, size, 0, &_data);
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failed while mapping device memory"));
+
+        // we don't actually know the size or pitches in this case
+        _dataSize = 0;
+        _pitches = {};
 	}
 
-	MemoryMap::MemoryMap(
-		VkDevice dev, UnderlyingResourcePtr resource,
+	ResourceMap::ResourceMap(
+		IDevice& idev, UnderlyingResourcePtr resource,
+        Resource::SubResource subResource,
 		VkDeviceSize offset, VkDeviceSize size)
-	: MemoryMap(dev, resource.get()->GetMemory(), offset, size)
-	{}
+	{
+        auto dev = ExtractUnderlyingDevice(idev);
 
-	void MemoryMap::TryUnmap()
+        VkDeviceSize finalOffset = offset, finalSize = size;
+        _pitches = Pitches { unsigned(size), unsigned(size) };
+
+        // special case for images, where we need to take into account the requested "subresource"
+        auto* image = resource.get()->GetImage();
+        if (image) {
+            const auto& desc = resource.get()->GetDesc();
+            auto aspectMask = AsImageAspectMask(desc._textureDesc._format);
+            VkImageSubresource sub = { aspectMask, subResource._mip, subResource._arrayLayer };
+            VkSubresourceLayout layout = {};
+            vkGetImageSubresourceLayout(dev, image, &sub, &layout);
+            finalOffset += layout.offset;
+            finalSize = std::min(layout.size, finalSize);
+            _pitches = Pitches { unsigned(layout.rowPitch), unsigned(layout.depthPitch) };
+            _dataSize = finalSize;
+        } else {
+            _dataSize = resource.get()->GetDesc()._linearBufferDesc._sizeInBytes;
+        }
+
+        auto res = vkMapMemory(dev, resource.get()->GetMemory(), finalOffset, finalSize, 0, &_data);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failed while mapping device memory"));
+    }
+
+	void ResourceMap::TryUnmap()
 	{
 		vkUnmapMemory(_dev, _mem);
 	}
 
-	MemoryMap::MemoryMap() : _dev(nullptr), _mem(nullptr), _data(nullptr) {}
+    ResourceMap::ResourceMap() : _dev(nullptr), _mem(nullptr), _data(nullptr), _pitches{} {}
 
-	MemoryMap::~MemoryMap()
+	ResourceMap::~ResourceMap()
 	{
 		TryUnmap();
 	}
 
-	MemoryMap::MemoryMap(MemoryMap&& moveFrom)
+	ResourceMap::ResourceMap(ResourceMap&& moveFrom)
 	{
 		_data = moveFrom._data; moveFrom._data = nullptr;
 		_dev = moveFrom._dev; moveFrom._dev = nullptr;
 		_mem = moveFrom._mem; moveFrom._mem = nullptr;
+        _pitches = moveFrom._pitches;
 	}
 
-	MemoryMap& MemoryMap::operator=(MemoryMap&& moveFrom)
+	ResourceMap& ResourceMap::operator=(ResourceMap&& moveFrom)
 	{
 		TryUnmap();
 		_data = moveFrom._data; moveFrom._data = nullptr;
 		_dev = moveFrom._dev; moveFrom._dev = nullptr;
 		_mem = moveFrom._mem; moveFrom._mem = nullptr;
+        _pitches = moveFrom._pitches;
 		return *this;
 	}
 

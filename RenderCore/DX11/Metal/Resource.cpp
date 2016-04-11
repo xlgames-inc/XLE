@@ -136,7 +136,7 @@ namespace RenderCore { namespace Metal_DX11
 						for (unsigned a = 0; a<std::max(1u, unsigned(desc._textureDesc._arrayCount)); ++a) {
 							uint32 subresourceIndex = D3D11CalcSubresource(m, a, desc._textureDesc._mipCount);
 							auto initData = init(m, a);
-							subResources[subresourceIndex] = D3D11_SUBRESOURCE_DATA{initData._data, UINT(initData._rowPitch), UINT(initData._slicePitch)};
+							subResources[subresourceIndex] = D3D11_SUBRESOURCE_DATA{initData._data, UINT(initData._pitches._rowPitch), UINT(initData._pitches._slicePitch)};
 						}
 					}
 				}

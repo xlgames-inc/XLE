@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ResourceSource.h"
+#include "../RenderCore/ResourceUtils.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/StringUtils.h"
@@ -164,7 +165,7 @@ namespace BufferUploads
                         LogAlwaysWarningF("Warning -- failed when creating a resource in PoolOfLikeResources::AllocateResource");
                     }
                     Interlocked::Add(&_totalRealSize, realSize);
-                    Interlocked::Add(&_totalCreateSize, PlatformInterface::ByteCount(_desc));
+                    Interlocked::Add(&_totalCreateSize, RenderCore::ByteCount(_desc));
                     Interlocked::Increment(&_totalCreateCount);
                     return std::move(result);
                 }
@@ -377,7 +378,7 @@ namespace BufferUploads
     intrusive_ptr<ResourceLocator>    BatchedResources::Allocate(
         unsigned size, bool& deviceCreation, const char name[])
     {
-        if (size > PlatformInterface::ByteCount(_prototype)) {
+        if (size > RenderCore::ByteCount(_prototype)) {
             deviceCreation = false;
             return nullptr;
         }
@@ -416,7 +417,7 @@ namespace BufferUploads
                     unsigned allocation = bestHeap->Allocate(size, name);
                     if (allocation != ~unsigned(0x0)) {
                         deviceCreation = false;
-                        assert((allocation+size)<=PlatformInterface::ByteCount(_prototype));
+                        assert((allocation+size)<=RenderCore::ByteCount(_prototype));
                         return make_intrusive<ResourceLocator>(
                             bestHeap->_heapResource->ShareUnderlying(), 
                             allocation, size, 
@@ -672,7 +673,7 @@ namespace BufferUploads
 
                 if (!existingActiveDefrag->GetHeap()->_heapResource) {
                     existingActiveDefrag->GetHeap()->_heapResource = _sourcePool->CreateResource(
-                        _prototype, PlatformInterface::ByteCount(_prototype), isDeviceCreationOk);
+                        _prototype, RenderCore::ByteCount(_prototype), isDeviceCreationOk);
                     deviceCreation = isDeviceCreationOk;
                 }
 
@@ -846,9 +847,9 @@ namespace BufferUploads
 
     BatchedResources::HeapedResource::HeapedResource(const BufferDesc& desc, const intrusive_ptr<ResourceLocator>& heapResource)
     : _heapResource(heapResource)
-    , _heap(PlatformInterface::ByteCount(desc))
-    , _refCounts(PlatformInterface::ByteCount(desc))
-    , _size(PlatformInterface::ByteCount(desc))
+    , _heap(RenderCore::ByteCount(desc))
+    , _refCounts(RenderCore::ByteCount(desc))
+    , _size(RenderCore::ByteCount(desc))
     , _defragCount(0)
     , _hashLastDefrag(0)
     {}
@@ -1011,7 +1012,7 @@ namespace BufferUploads
         const bool usePooling        = UsePooling(desc);
         const bool useBatching       = usePooling && UseBatching(desc) && initialisationData;
         const bool useStaging        = !!(desc._allocationRules & AllocationRules::Staging);
-        const unsigned objectSize    = PlatformInterface::ByteCount(desc);
+        const unsigned objectSize    = RenderCore::ByteCount(desc);
 
         ResourceConstruction result;
         if (useStaging) {

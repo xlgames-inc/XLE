@@ -360,6 +360,8 @@ namespace BufferUploads
 
     void CommitStep::CommitToImmediate_PreCommandList(RenderCore::IThreadContext& immContext)
     {
+        assert(0);
+        #if 0
         if (!_deferredCopies.empty()) {
             PlatformInterface::UnderlyingDeviceContext immediateContext(immContext);
             for (auto i=_deferredCopies.begin(); i!=_deferredCopies.end(); ++i) {
@@ -373,6 +375,7 @@ namespace BufferUploads
                 }
             }
         }
+        #endif
     }
 
     void CommitStep::CommitToImmediate_PostCommandList(RenderCore::IThreadContext& immContext)

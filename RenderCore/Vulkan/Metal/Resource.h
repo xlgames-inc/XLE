@@ -8,9 +8,10 @@
 
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
+#include "../../IDevice.h"
 #include "../../ResourceDesc.h"
-#include "../../../Utility/IntrusivePtr.h"
-#include "../../../Utility/Threading/ThreadingUtils.h"
+#include "../../Types.h"
+#include "../../../Utility/IteratorUtils.h"
 
 namespace RenderCore { class Resource; }
 
@@ -57,10 +58,11 @@ namespace RenderCore { namespace Metal_Vulkan
 	/// Images and buffers are combined into a single object for convenience. This allows us to use the 
 	/// single "Desc" object to describe both, and it also fits in better with other APIs (eg, DirectX).
 	/// This adds a small amount of redundancy to the Resource object -- but it seems to be trivial.
-	class Resource : public RefCountedObject
+	class Resource
 	{
 	public:
 		using Desc = ResourceDesc;
+        struct SubResource { unsigned _mip; unsigned _arrayLayer; };
 
 		Resource(
 			const ObjectFactory& factory, const Desc& desc,
@@ -85,97 +87,119 @@ namespace RenderCore { namespace Metal_Vulkan
 		Desc _desc;
 	};
 
-	class MemoryMap
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      M E M O R Y   M A P       //
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// <summary>Locks a resource's memory for access from the CPU</summary>
+    /// This is a low level mapping operation that happens immediately. The GPU must not
+    /// be using the resource at the same time. If the GPU attempts to read while the CPU
+    /// is written, the results will be undefined.
+    /// A resource cannot be mapped more than once at the same time. However, multiple 
+    /// subresources can be mapped in a single mapping operation.
+    /// The caller is responsible for ensuring that the map is safe.
+	class ResourceMap
 	{
 	public:
-		void*       _data;
+        using Pitches = TexturePitches;
 
-		MemoryMap(
+		void*           GetData()               { return _data; }
+        const void*     GetData() const         { return _data; }
+        size_t          GetDataSize() const     { return _dataSize; }
+        Pitches         GetPitches() const      { return _pitches; }
+
+		ResourceMap(
 			VkDevice dev, VkDeviceMemory memory,
 			VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
-		MemoryMap(
-			VkDevice dev, UnderlyingResourcePtr resource,
+		ResourceMap(
+			IDevice& dev, UnderlyingResourcePtr resource,
+            Resource::SubResource subResource,
 			VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
-		MemoryMap();
-		~MemoryMap();
+		ResourceMap();
+		~ResourceMap();
 
-		MemoryMap(const MemoryMap&) = delete;
-		MemoryMap& operator=(const MemoryMap&) = delete;
-		MemoryMap(MemoryMap&&);
-		MemoryMap& operator=(MemoryMap&&);
+		ResourceMap(const ResourceMap&) = delete;
+		ResourceMap& operator=(const ResourceMap&) = delete;
+		ResourceMap(ResourceMap&&) never_throws;
+		ResourceMap& operator=(ResourceMap&&) never_throws;
 
 	private:
-		VkDevice _dev;
-		VkDeviceMemory _mem;
+		VkDevice        _dev;
+		VkDeviceMemory  _mem;
+        void*           _data;
+        size_t          _dataSize;
+        Pitches         _pitches;
 
 		void TryUnmap();
 	};
 
-    class DeviceContext;
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      C O P Y I N G       //
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void Copy(DeviceContext&, UnderlyingResourcePtr dst, UnderlyingResourcePtr src, ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
+	void Copy(
+        DeviceContext&, 
+        UnderlyingResourcePtr dst, UnderlyingResourcePtr src, 
+        ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
-    namespace Internal { static std::true_type UnsignedTest(unsigned); static std::false_type UnsignedTest(...); }
-
-    class PixelCoord
-    {
-    public:
-        unsigned _x, _y, _z;
-        PixelCoord(unsigned x=0, unsigned y=0, unsigned z=0)    { _x = x; _y = y; _z = z; }
-
-            // We can initialize from anything that looks like a collection of unsigned values
-            // This is a simple way to get casting from XLEMath::UInt2 (etc) types without
-            // having to include XLEMath headers from here.
-            // Plus, it will also work with any other types that expose a stl collection type
-            // interface.
-		template<
-			typename Source,
-			typename InternalTestType = decltype(Internal::UnsignedTest(std::declval<typename Source::value_type>())),
-			std::enable_if<InternalTestType::value>* = nullptr>
-            PixelCoord(const Source& src)
-            {
-                auto size = std::size(src);
-                unsigned c=0;
-                for (; c<std::min(unsigned(size), 3u); ++c) ((unsigned*)this)[c] = src[c];
-                for (; c<3u; ++c) ((unsigned*)this)[c] = 0u;
-            }
-    };
+    using UInt3Pattern = VectorPattern<unsigned, 3>;
 
     class CopyPartial_Dest
     {
     public:
-        Resource*		_resource;
-        unsigned        _subResource;
-        PixelCoord      _leftTopFront;
+        Resource*		        _resource;
+        Resource::SubResource   _subResource;
+        UInt3Pattern            _leftTopFront;
 
         CopyPartial_Dest(
-			UnderlyingResourcePtr dst, unsigned subres = 0u,
-            const PixelCoord leftTopFront = PixelCoord())
+            UnderlyingResourcePtr dst, Resource::SubResource subres = {},
+            const UInt3Pattern& leftTopFront = UInt3Pattern())
         : _resource(dst.get()), _subResource(subres), _leftTopFront(leftTopFront) {}
     };
 
     class CopyPartial_Src
     {
     public:
-		Resource* _resource;
-        unsigned        _subResource;
-        PixelCoord      _leftTopFront;
-        PixelCoord      _rightBottomBack;
+		Resource*               _resource;
+        Resource::SubResource   _subResource;
+        UInt3Pattern            _leftTopFront;
+        UInt3Pattern            _rightBottomBack;
 
         CopyPartial_Src(
-			UnderlyingResourcePtr dst, unsigned subres = 0u,
-            const PixelCoord leftTopFront = PixelCoord(~0u,0,0),
-            const PixelCoord rightBottomBack = PixelCoord(~0u,1,1))
+            UnderlyingResourcePtr dst, Resource::SubResource subres = {},
+            const UInt3Pattern& leftTopFront = UInt3Pattern(~0u,0,0),
+            const UInt3Pattern& rightBottomBack = UInt3Pattern(~0u,1,1))
         : _resource(dst.get()), _subResource(subres)
         , _leftTopFront(leftTopFront)
         , _rightBottomBack(rightBottomBack) {}
     };
 
-	inline void CopyPartial(DeviceContext&, const CopyPartial_Dest& dst, const CopyPartial_Src& src) {}
+	void CopyPartial(
+        DeviceContext&, 
+        const CopyPartial_Dest& dst, const CopyPartial_Src& src,
+        ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
-	inline intrusive_ptr<Resource> Duplicate(DeviceContext& context, UnderlyingResourcePtr inputResource) { return nullptr; }
+	ResourcePtr Duplicate(ObjectFactory&, UnderlyingResourcePtr inputResource);
 
-	VkSampleCountFlagBits AsSampleCountFlagBits(TextureSamples samples);
+    unsigned CopyViaMemoryMap(
+        VkDevice device, VkImage image, VkDeviceMemory mem,
+        const TextureDesc& desc,
+        const std::function<SubResourceInitData(unsigned, unsigned)>& initData);
+
+    unsigned CopyViaMemoryMap(
+        IDevice& dev, UnderlyingResourcePtr resource,
+        const std::function<SubResourceInitData(unsigned, unsigned)>& initData);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      G E T   D E S C       //
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      U T I L S       //
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 	void SetImageLayout(
 		VkCommandBuffer cmd, VkImage image,
 		VkImageAspectFlags aspectMask, VkImageLayout old_image_layout, VkImageLayout new_image_layout);
@@ -183,5 +207,5 @@ namespace RenderCore { namespace Metal_Vulkan
 		DeviceContext& context, UnderlyingResourcePtr res,
 		ImageLayout oldLayout, ImageLayout newLayout);
 
-	ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
+    VkSampleCountFlagBits AsSampleCountFlagBits(TextureSamples samples);
 }}

@@ -106,6 +106,7 @@
     <ClInclude Include="..\RenderUtils.h" />
     <ClInclude Include="..\ResourceList.h" />
     <ClInclude Include="..\ResourceDesc.h" />
+    <ClInclude Include="..\ResourceUtils.h" />
     <ClInclude Include="..\ShaderLangUtil.h" />
     <ClInclude Include="..\ShaderService.h" />
     <ClInclude Include="..\Types.h" />
@@ -130,6 +131,7 @@
     <ClCompile Include="..\GPUProfiler.cpp" />
     <ClCompile Include="..\MinimalShaderSource.cpp" />
     <ClCompile Include="..\RenderUtils.cpp" />
+    <ClCompile Include="..\ResourceUtils.cpp" />
     <ClCompile Include="..\ShaderLangUtil.cpp" />
     <ClCompile Include="..\ShaderService.cpp" />
     <ClCompile Include="..\Version.cpp" />

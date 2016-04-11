@@ -12,6 +12,7 @@
 #include "DataPacket.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/IThreadContext.h"
+#include "../RenderCore/ResourceUtils.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Threading/ThreadingUtils.h"
@@ -29,6 +30,7 @@
 
 namespace BufferUploads
 {
+    using RenderCore::Box2D;
 
                     /////////////////////////////////////////////////
                 ///////////////////   M A N A G E R   ///////////////////
@@ -60,7 +62,7 @@ namespace BufferUploads
             //  Remove the top few LODs from the desc...
         BufferDesc result = desc;
         if (result._type == BufferDesc::Type::Texture) {
-            result._textureDesc = PlatformInterface::CalculateMipMapDesc(desc._textureDesc, lodOffset);
+            result._textureDesc = RenderCore::CalculateMipMapDesc(desc._textureDesc, lodOffset);
         }
         return result;
     }
@@ -478,9 +480,9 @@ namespace BufferUploads
                         for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
                             const size_t dataSize = initialisationData->GetDataSize(SubR(m, 0));
                             if (dataSize) {
-                                TextureDesc mipMapDesc     = PlatformInterface::CalculateMipMapDesc(desc._textureDesc, m);
+                                TextureDesc mipMapDesc     = RenderCore::CalculateMipMapDesc(desc._textureDesc, m);
                                 mipMapDesc._mipCount       = 1;
-                                const size_t expectedSize  = PlatformInterface::ByteCount(mipMapDesc);
+                                const size_t expectedSize  = RenderCore::ByteCount(mipMapDesc);
                                 assert(std::max(size_t(16),dataSize) == std::max(size_t(16),expectedSize));
                             }
                         }
@@ -492,7 +494,7 @@ namespace BufferUploads
                     //      step can actually happen first, causing _currentQueuedBytes to actually go negative! it actually
                     //      happens frequently enough to create blips in the graph.
                     //  
-                Interlocked::Add(&_currentQueuedBytes[AsUploadDataType(transaction->_desc)], PlatformInterface::ByteCount(transaction->_desc));
+                Interlocked::Add(&_currentQueuedBytes[AsUploadDataType(transaction->_desc)], RenderCore::ByteCount(transaction->_desc));
                 PushStep(GetQueueSet(transaction->_creationOptions), *transaction, ResourceCreateStep(result, transaction->_desc, initialisationData));
             } else {
                 UpdateData(result, initialisationData, DefaultPartialResource(desc, *initialisationData));
@@ -729,21 +731,35 @@ namespace BufferUploads
             }
     
             PlatformInterface::UnderlyingDeviceContext deviceContext(*_device->GetImmediateContext());
-            for (unsigned l=part._lodLevelMin; l<=part._lodLevelMax; ++l) {
-                for (unsigned e=part._arrayIndexMin; e<=part._arrayIndexMax; ++e) {
-                    auto size = initialisationData->GetDataSize(SubR(l, e));
-                    const void* data = initialisationData->GetData(SubR(l, e));
-                    if (data) {
-                        deviceContext.PushToStagingResource(
-                            *stagingConstruction._identifier->GetUnderlying(), 
-                            ApplyLODOffset(desc, actualisedStagingLODOffset), 0,
-                            data, size, 
-                            initialisationData->GetPitches(SubR(l, e)),
-                            Box2D(),
-                            l - actualisedStagingLODOffset, e);
-                    }
-                }
-            }
+            // for (unsigned l=part._lodLevelMin; l<=part._lodLevelMax; ++l) {
+            //     for (unsigned e=part._arrayIndexMin; e<=part._arrayIndexMax; ++e) {
+            //         auto size = initialisationData->GetDataSize(SubR(l, e));
+            //         const void* data = initialisationData->GetData(SubR(l, e));
+            //         if (data) {
+            //             deviceContext.PushToStagingResource(
+            //                 *stagingConstruction._identifier->GetUnderlying(), 
+            //                 ApplyLODOffset(desc, actualisedStagingLODOffset), 0,
+            //                 data, size, 
+            //                 initialisationData->GetPitches(SubR(l, e)),
+            //                 l - actualisedStagingLODOffset, e);
+            //         }
+            //     }
+            // }
+            deviceContext.PushToStagingTexture(
+                *stagingConstruction._identifier->GetUnderlying(), 
+                ApplyLODOffset(desc, actualisedStagingLODOffset), Box2D(),
+                [&part, initialisationData, actualisedStagingLODOffset](unsigned mip, unsigned arrayLayer) -> RenderCore::SubResourceInitData
+                {
+                    RenderCore::SubResourceInitData result = {};
+                    if (mip<part._lodLevelMin || mip>part._lodLevelMax) return result;
+                    if (arrayLayer<part._arrayIndexMin || arrayLayer>part._arrayIndexMax) return result;
+
+                    auto dataMip = mip + actualisedStagingLODOffset;
+                    result._size = initialisationData->GetDataSize(SubR(dataMip, arrayLayer));
+                    result._data = initialisationData->GetData(SubR(dataMip, arrayLayer));
+                    result._pitches = initialisationData->GetPitches(SubR(dataMip, arrayLayer));
+                    return result;
+                });
     
             deviceContext.UpdateFinalResourceFromStaging(
                 *finalResourceConstruction._identifier->GetUnderlying(), 
@@ -1121,8 +1137,8 @@ namespace BufferUploads
         metricsUnderConstruction._wakeCount++;
     }
 
-    bool AssemblyLine::SortSize_LargestToSmallest(const AssemblyLine::ResourceCreateStep& lhs, const AssemblyLine::ResourceCreateStep& rhs)     { return PlatformInterface::ByteCount(lhs._creationDesc) > PlatformInterface::ByteCount(rhs._creationDesc); }
-    bool AssemblyLine::SortSize_SmallestToLargest(const AssemblyLine::ResourceCreateStep& lhs, const AssemblyLine::ResourceCreateStep& rhs)     { return PlatformInterface::ByteCount(lhs._creationDesc) < PlatformInterface::ByteCount(rhs._creationDesc); }
+    bool AssemblyLine::SortSize_LargestToSmallest(const AssemblyLine::ResourceCreateStep& lhs, const AssemblyLine::ResourceCreateStep& rhs)     { return RenderCore::ByteCount(lhs._creationDesc) > RenderCore::ByteCount(rhs._creationDesc); }
+    bool AssemblyLine::SortSize_SmallestToLargest(const AssemblyLine::ResourceCreateStep& lhs, const AssemblyLine::ResourceCreateStep& rhs)     { return RenderCore::ByteCount(lhs._creationDesc) < RenderCore::ByteCount(rhs._creationDesc); }
 
     void AssemblyLine::CopyIntoBatchedBuffer(   
         void* destination, ResourceCreateStep* start, ResourceCreateStep* end,
@@ -1137,7 +1153,7 @@ namespace BufferUploads
         for (ResourceCreateStep* i=start; i!=end; ++i, ++offsetWriteIterator) {
             Transaction* transaction = GetTransaction(i->_id);
             assert(transaction);
-            unsigned size = PlatformInterface::ByteCount(transaction->_desc);
+            unsigned size = RenderCore::ByteCount(transaction->_desc);
             const void* sourceData = i->_initialisationData?i->_initialisationData->GetData():NULL;
             if (sourceData && destination) {
                 assert(size == i->_initialisationData->GetDataSize());
@@ -1193,13 +1209,13 @@ namespace BufferUploads
             for (unsigned c=0; c<temporaryCount; ++c) {
                 Transaction& transaction = _transactions[c];
                 if (transaction._finalResource->GetUnderlying() == e->_originalResource.get()) {
-                    auto size = PlatformInterface::ByteCount(transaction._desc);
+                    auto size = RenderCore::ByteCount(transaction._desc);
 
                     intrusive_ptr<ResourceLocator> oldLocator = std::move(transaction._finalResource);
                     unsigned oldOffset = oldLocator->Offset();
                     Resource_Validate(*oldLocator);
 
-                    unsigned newOffsetValue = ResolveOffsetValue(oldOffset, PlatformInterface::ByteCount(transaction._desc), e->_defragSteps);
+                    unsigned newOffsetValue = ResolveOffsetValue(oldOffset, RenderCore::ByteCount(transaction._desc), e->_defragSteps);
                     transaction._finalResource = make_intrusive<ResourceLocator>(
                         e->_newResource, newOffsetValue, unsigned(size), e->_pool, e->_poolMarker);
                 }
@@ -1213,13 +1229,13 @@ namespace BufferUploads
                     Transaction& transaction = _transactions[_transactions.size()-c-1];
                 #endif
                 if (transaction._finalResource->GetUnderlying() == e->_originalResource.get()) {
-                    auto size = PlatformInterface::ByteCount(transaction._desc);
+                    auto size = RenderCore::ByteCount(transaction._desc);
 
                     intrusive_ptr<ResourceLocator> oldLocator = std::move(transaction._finalResource);
                     unsigned oldOffset = oldLocator->Offset();
                     Resource_Validate(*oldLocator);
 
-                    unsigned newOffsetValue = ResolveOffsetValue(oldOffset, PlatformInterface::ByteCount(transaction._desc), e->_defragSteps);
+                    unsigned newOffsetValue = ResolveOffsetValue(oldOffset, RenderCore::ByteCount(transaction._desc), e->_defragSteps);
                     transaction._finalResource = make_intrusive<ResourceLocator>(
                         e->_newResource, newOffsetValue, unsigned(size), e->_pool, e->_poolMarker);
                 }
@@ -1294,7 +1310,7 @@ namespace BufferUploads
                 //      Perform all batched operations before resolving a command list...
                 //
 
-            const unsigned maxSingleBatch = PlatformInterface::ByteCount(_resourceSource.GetBatchedResources().GetPrototype())/2;
+            const unsigned maxSingleBatch = RenderCore::ByteCount(_resourceSource.GetBatchedResources().GetPrototype())/2;
             auto batchingI      = batchOperation._batchedSteps.begin();
             auto batchingStart  = batchOperation._batchedSteps.begin();
             unsigned currentBatchSize = 0;
@@ -1313,7 +1329,7 @@ namespace BufferUploads
             for (;;) {
                 unsigned thisSize = 0;
                 if (batchingI!=batchOperation._batchedSteps.end()) {
-                    thisSize = MarkerHeap<uint16>::AlignSize(PlatformInterface::ByteCount(batchingI->_creationDesc));
+                    thisSize = MarkerHeap<uint16>::AlignSize(RenderCore::ByteCount(batchingI->_creationDesc));
                 }
                 if (batchingI == batchOperation._batchedSteps.end() || (currentBatchSize+thisSize) > maxSingleBatch) {
                     if (batchingI == batchingStart) {
@@ -1349,9 +1365,10 @@ namespace BufferUploads
                         const bool useMapPath = PlatformInterface::CanDoNooverwriteMapInBackground;  // the map path has some advantages; but has some problems in a background context... We could do it in a foreground context instead?
                         if (useMapPath) {
 
-                            PlatformInterface::UnderlyingDeviceContext::MapType::Enum mapType = PlatformInterface::UnderlyingDeviceContext::MapType::NoOverwrite;
-                            PlatformInterface::UnderlyingDeviceContext::MappedBuffer mappedBuffer = context.GetDeviceContext().Map(*batchedResource->GetUnderlying(), mapType);
-                            CopyIntoBatchedBuffer(mappedBuffer.GetData(), AsPointer(batchingStart), AsPointer(batchingI), batchedResource->GetUnderlying(), batchedResource->Offset(), AsPointer(offsets.begin()), metricsUnderConstruction);
+                            assert(0);
+                            // PlatformInterface::UnderlyingDeviceContext::MapType::Enum mapType = PlatformInterface::UnderlyingDeviceContext::MapType::NoOverwrite;
+                            // PlatformInterface::UnderlyingDeviceContext::MappedBuffer mappedBuffer = context.GetDeviceContext().Map(*batchedResource->GetUnderlying(), mapType);
+                            // CopyIntoBatchedBuffer(mappedBuffer.GetData(), AsPointer(batchingStart), AsPointer(batchingI), batchedResource->GetUnderlying(), batchedResource->Offset(), AsPointer(offsets.begin()), metricsUnderConstruction);
 
                         } else {
 
@@ -1362,9 +1379,10 @@ namespace BufferUploads
                                 batchedResource->GetUnderlying(), batchedResource->Offset(), 
                                 AsPointer(offsets.begin()), metricsUnderConstruction);
 
-                            context.GetDeviceContext().PushToResource(
+                            assert(_resourceSource.GetBatchedResources().GetPrototype()._type == BufferDesc::Type::LinearBuffer);
+                            context.GetDeviceContext().PushToBuffer(
                                 *batchedResource->GetUnderlying(), _resourceSource.GetBatchedResources().GetPrototype(), 
-                                batchedResource->Offset(), midwayBuffer.GetData(), currentBatchSize, TexturePitches(), Box2D(), 0, 0);
+                                batchedResource->Offset(), midwayBuffer.GetData(), currentBatchSize);
 
                         }
                     } else {
@@ -1395,7 +1413,7 @@ namespace BufferUploads
                     for (auto i=batchingStart; i!=batchingI; ++i, ++o) {
                         Transaction* transaction = GetTransaction(i->_id);
                         transaction->_finalResource = make_intrusive<ResourceLocator>(
-                            batchedResource->ShareUnderlying(), *o, PlatformInterface::ByteCount(i->_creationDesc),
+                            batchedResource->ShareUnderlying(), *o, RenderCore::ByteCount(i->_creationDesc),
                             batchedResource->Pool(), batchedResource->PoolMarker());
                         ReleaseTransaction(transaction, context);
                     }
@@ -1477,7 +1495,7 @@ namespace BufferUploads
             assert(transaction && !transaction->_finalResource);
 
             unsigned uploadRequestSize = 0;
-            const unsigned objectSize = PlatformInterface::ByteCount(transaction->_desc);
+            const unsigned objectSize = RenderCore::ByteCount(transaction->_desc);
             const UploadDataType::Enum uploadDataType = AsUploadDataType(transaction->_desc);
             if (resourceCreateStep._initialisationData) {
                 uploadRequestSize = objectSize;
@@ -1502,10 +1520,17 @@ namespace BufferUploads
                     transaction->_finalResource = std::move(construction._identifier);
                     if (transaction->_finalResource) {
                         if (resourceCreateStep._initialisationData && !(construction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
-                            context.GetDeviceContext().PushToResource(
-                                *transaction->_finalResource->GetUnderlying(), transaction->_desc, transaction->_finalResource->Offset(),
-                                resourceCreateStep._initialisationData->GetData(), resourceCreateStep._initialisationData->GetDataSize(),
-                                resourceCreateStep._initialisationData->GetPitches(), Box2D(), 0, 0);
+
+                            if (transaction->_desc._type == BufferDesc::Type::Texture) {
+                                context.GetDeviceContext().PushToTexture(
+                                    *transaction->_finalResource->GetUnderlying(), transaction->_desc,
+                                    Box2D(),
+                                    PlatformInterface::AsResourceInitializer(*resourceCreateStep._initialisationData));
+                            } else {
+                                context.GetDeviceContext().PushToBuffer(
+                                    *transaction->_finalResource->GetUnderlying(), transaction->_desc, transaction->_finalResource->Offset(),
+                                    resourceCreateStep._initialisationData->GetData(), resourceCreateStep._initialisationData->GetDataSize());
+                            }
                             ++metricsUnderConstruction._contextOperations;
                         }
 
@@ -1573,7 +1598,7 @@ namespace BufferUploads
             }
 
             transaction->_stagingResource = std::move(construction._identifier);
-            metricsUnderConstruction._bytesCreated[AsUploadDataType(stagingBufferDesc)] += PlatformInterface::ByteCount(stagingBufferDesc);
+            metricsUnderConstruction._bytesCreated[AsUploadDataType(stagingBufferDesc)] += RenderCore::ByteCount(stagingBufferDesc);
             metricsUnderConstruction._countCreations[AsUploadDataType(stagingBufferDesc)] += 1;
             metricsUnderConstruction._countDeviceCreations[AsUploadDataType(stagingBufferDesc)] += (construction._flags&ResourceSource::ResourceConstruction::Flags::DeviceConstructionInvoked)?1:0;
             transaction->_actualisedStagingLODOffset = lodOffset;
@@ -1634,18 +1659,26 @@ namespace BufferUploads
                                 //      into the staging object, and then submit to the final result.
                                 //
 
-                            for (unsigned l=uploadStep._lodLevelMin; l<=uploadStep._lodLevelMax; ++l) {
-                                unsigned size = (unsigned)uploadStep._rawData->GetDataSize(SubR(l, uploadStep._arrayIndex));
-                                auto subr = SubR(l, uploadStep._arrayIndex);
-                                context.GetDeviceContext().PushToStagingResource(
-                                    *transaction->_stagingResource->GetUnderlying(), 
-                                    ApplyLODOffset(transaction->_desc, transaction->_actualisedStagingLODOffset), 0,
-                                    uploadStep._rawData->GetData(subr), size, 
-                                    uploadStep._rawData->GetPitches(subr),
-                                    uploadStep._destinationBox, l - transaction->_actualisedStagingLODOffset, uploadStep._arrayIndex);
-                                bytesUploaded += size;
-                                ++uploadCount;
-                            }
+                            assert(uploadStep._destinationBox == Box2D());
+                            auto finalDesc = ApplyLODOffset(transaction->_desc, transaction->_actualisedStagingLODOffset);
+                            auto mipOffset = transaction->_actualisedStagingLODOffset;
+                            bytesUploaded += context.GetDeviceContext().PushToStagingTexture(
+                                *transaction->_stagingResource->GetUnderlying(), 
+                                finalDesc, Box2D(),
+                                [&uploadStep, mipOffset](unsigned mip, unsigned arrayLayer) -> RenderCore::SubResourceInitData
+                                {
+                                    RenderCore::SubResourceInitData result = {};
+                                    if (arrayLayer != uploadStep._arrayIndex) return result;
+                                    if (mip < uploadStep._lodLevelMin || mip > uploadStep._lodLevelMax) return result;
+
+                                    auto dataMip = mip + mipOffset;
+                                    result._size = uploadStep._rawData->GetDataSize(SubR(dataMip, arrayLayer));
+                                    result._data = uploadStep._rawData->GetData(SubR(dataMip, arrayLayer));
+                                    result._pitches = uploadStep._rawData->GetPitches(SubR(dataMip, arrayLayer));
+                                    return result;
+                                });
+                            ++uploadCount;
+
                             assert(transaction->_finalResource->Offset()==0||transaction->_finalResource->Offset()==~unsigned(0x0));       // resource offsets not correctly implemented
                             context.GetDeviceContext().UpdateFinalResourceFromStaging(
                                 *transaction->_finalResource->GetUnderlying(), *transaction->_stagingResource->GetUnderlying(), transaction->_desc, 
@@ -1661,17 +1694,29 @@ namespace BufferUploads
 
                             BufferDesc stagingDesc = transaction->_desc;
                             stagingDesc._cpuAccess = CPUAccess::Read|CPUAccess::Write;  // the CPUAccess::WriteDynamic flag was being sent to PushToResource(), which confused the logic below
-                            for (unsigned l=uploadStep._lodLevelMin; l<=uploadStep._lodLevelMax; ++l) {
-                                auto subr = SubR(l, uploadStep._arrayIndex);
-                                unsigned size = (unsigned)uploadStep._rawData->GetDataSize(subr);
-                                context.GetDeviceContext().PushToResource(
+
+                            if (stagingDesc._type == BufferDesc::Type::LinearBuffer) {
+                                bytesUploaded += context.GetDeviceContext().PushToBuffer(
                                     *transaction->_finalResource->GetUnderlying(), stagingDesc, transaction->_finalResource->Offset(),
-                                    uploadStep._rawData->GetData(subr), size,
-                                    uploadStep._rawData->GetPitches(subr), 
-                                    uploadStep._destinationBox, l, uploadStep._arrayIndex);
-                                bytesUploaded += size;
-                                ++uploadCount;
+                                    uploadStep._rawData->GetData(), uploadStep._rawData->GetDataSize());
+                            } else {
+                                bytesUploaded += context.GetDeviceContext().PushToTexture(
+                                    *transaction->_finalResource->GetUnderlying(), stagingDesc, 
+                                    Box2D(),
+                                    [&uploadStep](unsigned mip, unsigned arrayLayer) -> RenderCore::SubResourceInitData
+                                    {
+                                        RenderCore::SubResourceInitData result = {};
+                                        if (arrayLayer != uploadStep._arrayIndex) return result;
+                                        if (mip < uploadStep._lodLevelMin || mip > uploadStep._lodLevelMax) return result;
+
+                                        auto dataMip = mip;
+                                        result._size = uploadStep._rawData->GetDataSize(SubR(dataMip, arrayLayer));
+                                        result._data = uploadStep._rawData->GetData(SubR(dataMip, arrayLayer));
+                                        result._pitches = uploadStep._rawData->GetPitches(SubR(dataMip, arrayLayer));
+                                        return result;
+                                    });
                             }
+                            ++uploadCount;
                         }                                           //~~//////////////////////~~//
                     } else {
                         assert(uploadStep._lodLevelMin == 0 && uploadStep._lodLevelMax == 0 && uploadStep._arrayIndex <= 1);
@@ -2183,10 +2228,10 @@ namespace BufferUploads
                 for (unsigned m=0; m<transaction._desc._textureDesc._mipCount; ++m) {
                     const size_t dataSize = rawData->GetDataSize(SubR(m, 0));
                     if (dataSize) {
-                        TextureDesc mipMapDesc     = PlatformInterface::CalculateMipMapDesc(transaction._desc._textureDesc, m);
+                        TextureDesc mipMapDesc     = RenderCore::CalculateMipMapDesc(transaction._desc._textureDesc, m);
                         mipMapDesc._mipCount       = 1;
                         mipMapDesc._arrayCount     = 1;
-                        const size_t expectedSize  = PlatformInterface::ByteCount(mipMapDesc);
+                        const size_t expectedSize  = RenderCore::ByteCount(mipMapDesc);
                         assert(std::max(size_t(16),dataSize) == std::max(size_t(16),expectedSize));
                     }
                 }
@@ -2209,7 +2254,7 @@ namespace BufferUploads
 				    size += (unsigned)rawData->GetDataSize(SubR(l, e));
 
         if (transaction._desc._type == BufferDesc::Type::LinearBuffer) {
-            assert(PlatformInterface::ByteCount(transaction._desc)==unsigned(size));
+            assert(RenderCore::ByteCount(transaction._desc)==unsigned(size));
         }
         Interlocked::Add(&_currentQueuedBytes[AsUploadDataType(transaction._desc)], size);
 
@@ -2304,108 +2349,10 @@ namespace BufferUploads
     }
 
         /////////////////////////////////////////////
-    class RawDataPacket_ReadBack : public DataPacket
-    {
-    public:
-        void*           GetData(SubResourceId subRes);
-        size_t          GetDataSize(SubResourceId subRes) const;
-        TexturePitches  GetPitches(SubResourceId subRes) const;
-
-        std::shared_ptr<Marker> BeginBackgroundLoad() { return nullptr; }
-
-        RawDataPacket_ReadBack(
-            const ResourceLocator& locator, 
-            PlatformInterface::UnderlyingDeviceContext& context);
-        ~RawDataPacket_ReadBack();
-
-    protected:
-        unsigned _dataOffset;
-        std::vector<PlatformInterface::UnderlyingDeviceContext::MappedBuffer> _mappedBuffer;
-        unsigned _mipCount;
-        unsigned _arrayCount;
-    };
-
-    void*     RawDataPacket_ReadBack::GetData(SubResourceId subRes)
-    {
-        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
-        unsigned subResIndex = mip + arrayIndex * _mipCount;
-        assert(subResIndex < _mappedBuffer.size());
-        return PtrAdd(_mappedBuffer[subResIndex].GetData(), _dataOffset);
-    }
-
-    size_t          RawDataPacket_ReadBack::GetDataSize(SubResourceId subRes) const
-    {
-        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
-        unsigned subResIndex = mip + arrayIndex * _mipCount;
-        assert(subResIndex < _mappedBuffer.size());
-        return _mappedBuffer[subResIndex].GetPitches()._slicePitch - _dataOffset;
-    }
-
-    TexturePitches RawDataPacket_ReadBack::GetPitches(SubResourceId subRes) const
-    {
-        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
-        unsigned subResIndex = mip + arrayIndex * _mipCount;
-        assert(subResIndex < _mappedBuffer.size());
-        return _mappedBuffer[subResIndex].GetPitches();
-    }
-
-    RawDataPacket_ReadBack::RawDataPacket_ReadBack(
-		const ResourceLocator& locator, 
-		PlatformInterface::UnderlyingDeviceContext& context)
-    : _dataOffset(0)
-    {
-        assert(!locator.IsEmpty());
-        auto resource = locator.GetUnderlying();
-        UnderlyingResourcePtr stagingResource;
-
-        auto desc = PlatformInterface::ExtractDesc(*resource);
-        auto subResCount = 1u;
-        _mipCount = _arrayCount = 1u;
-        if (desc._type == BufferDesc::Type::Texture) {
-            subResCount = 
-                  std::max(1u, unsigned(desc._textureDesc._mipCount))
-                * std::max(1u, unsigned(desc._textureDesc._arrayCount));
-            _mipCount = desc._textureDesc._mipCount;
-            _arrayCount = desc._textureDesc._arrayCount;
-        }
-
-            //
-            //      If we have to read back through a staging resource, then let's create
-            //      a temporary resource and initialise it...
-            //
-        using namespace PlatformInterface;
-        if (RequiresStagingResourceReadBack && !(desc._cpuAccess & CPUAccess::Read)) {
-            BufferDesc stagingDesc = AsStagingDesc(desc);
-            stagingResource = CreateResource(*context.GetObjectFactory(), stagingDesc);
-            if (stagingResource.get()) {
-                context.ResourceCopy(*stagingResource.get(), *resource);
-                resource = stagingResource.get();
-            }
-        }
-
-        _mappedBuffer.reserve(subResCount);
-        
-        if (CanDoPartialMaps) {
-            for (unsigned c=0; c<subResCount; ++c)
-                _mappedBuffer.push_back(context.MapPartial(
-                    *resource, UnderlyingDeviceContext::MapType::ReadOnly, 
-                    locator.Offset(), locator.Size(), c));
-        } else {
-            for (unsigned c=0; c<subResCount; ++c)
-                _mappedBuffer.push_back(
-                    context.Map(*resource, UnderlyingDeviceContext::MapType::ReadOnly, c));
-            _dataOffset = (locator.Offset() != ~unsigned(0x0))?locator.Offset():0;
-        }
-    }
-
-    RawDataPacket_ReadBack::~RawDataPacket_ReadBack()
-    {
-    }
-        /////////////////////////////////////////////
 
     intrusive_ptr<DataPacket> Manager::Resource_ReadBack(const ResourceLocator& locator)
     {
-        return make_intrusive<RawDataPacket_ReadBack>(std::ref(locator), std::ref(_foregroundContext->GetDeviceContext()));
+        return _foregroundContext->GetDeviceContext().Readback(locator);
     }
 
     void                    Manager::Transaction_End(TransactionID id)
@@ -2459,7 +2406,7 @@ namespace BufferUploads
 
     size_t                  Manager::ByteCount(const BufferDesc& desc) const
     {
-        return PlatformInterface::ByteCount(desc);
+        return RenderCore::ByteCount(desc);
     }
 
     Manager::EventListID    Manager::EventList_GetLatestID()

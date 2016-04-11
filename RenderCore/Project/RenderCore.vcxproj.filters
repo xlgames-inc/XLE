@@ -101,6 +101,9 @@
     <ClInclude Include="..\Format.h">
       <Filter>Util</Filter>
     </ClInclude>
+    <ClInclude Include="..\ResourceUtils.h">
+      <Filter>Util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">
@@ -139,6 +142,9 @@
     </ClCompile>
     <ClCompile Include="..\GPUProfiler.cpp" />
     <ClCompile Include="..\Format.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ResourceUtils.cpp">
       <Filter>Util</Filter>
     </ClCompile>
   </ItemGroup>

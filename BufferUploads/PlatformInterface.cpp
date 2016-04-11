@@ -19,151 +19,30 @@
 // #pragma warning(disable:4127)
 #pragma warning(disable:4505)       // unreferenced local function has been removed
 
-namespace BufferUploads 
-{
-    bool operator==(const Box2D& lhs, const Box2D& rhs) 
-    {
-        return      lhs._left == rhs._left
-                &&  lhs._top == rhs._top
-                &&  lhs._right == rhs._right
-                &&  lhs._bottom == rhs._bottom
-                ;
-    }
-}
-
 namespace BufferUploads { namespace PlatformInterface
 {
 	using namespace RenderCore;
-
-    static const unsigned BlockCompDim = 4;
-    static unsigned    RoundBCDim(unsigned input)
-    {
-        auto result = (input + 3) & ~3;
-        assert(!(result%BlockCompDim));
-        return result;
-    }
-
-    static bool IsDXTCompressed(Format format) { return GetCompressionType(format) == FormatCompressionType::BlockCompression; }
-
-    unsigned TextureDataSize(unsigned nWidth, unsigned nHeight, unsigned nDepth, unsigned mipCount, Format format)
-    {
-        if (format == Format::Unknown) {
-            return 0;
-        }
-
-        const bool dxt = IsDXTCompressed(format);
-        const auto bbp = BitsPerPixel(format);
-
-        mipCount = std::max(mipCount, 1u);
-        unsigned result = 0;
-        for (unsigned mipIterator = 0; (mipIterator < mipCount) && (nWidth || nHeight || nDepth); ++mipIterator) {
-            if (dxt) {
-                auto blockWidth = std::max((nWidth + BlockCompDim - 1u) / BlockCompDim, 1u);
-                auto blockHeight = std::max((nHeight + BlockCompDim - 1u) / BlockCompDim, 1u);
-                result += blockWidth * blockHeight * std::max(nDepth, 1u) * (bbp * 16u / 8u);
-            } else {
-                result += std::max(nWidth, 1u) * std::max(nHeight, 1u) * std::max(nDepth, 1u) * (bbp / 8u);
-            }
-
-            nWidth >>= 1;
-            nHeight >>= 1;
-            nDepth >>= 1;
-        }
-
-        return result;
-    }
-
-    void CopyMipLevel(      void* destination, size_t destinationDataSize,
-                            const void* sourceData, size_t sourceDataSize,
-                            const TextureDesc& mipMapDesc, unsigned destinationBlockRowPitch)
-    {
-        int nD3DSize;
-        bool isDXTCompressed = IsDXTCompressed(mipMapDesc._format);
-        if (isDXTCompressed) {
-            nD3DSize = TextureDataSize(mipMapDesc._width, mipMapDesc._height, 1, 1, mipMapDesc._format);
-        } else {
-            nD3DSize = destinationBlockRowPitch * mipMapDesc._height;
-        }
-
-        auto originalDest = destination;
-        (void)originalDest;
-
-        if (size_t(nD3DSize) != sourceDataSize) {
-            unsigned sourceRowPitch;
-            unsigned rows;
-            if (isDXTCompressed) {
-                sourceRowPitch = TextureDataSize(RoundBCDim(mipMapDesc._width), BlockCompDim, 1, 1, mipMapDesc._format);
-                rows = (mipMapDesc._height + BlockCompDim - 1) / BlockCompDim;
-            } else {
-                sourceRowPitch = TextureDataSize(mipMapDesc._width, 1, 1, 1, mipMapDesc._format);
-                rows = mipMapDesc._height;
-            }
-
-            rows = std::min(rows, unsigned(sourceDataSize/sourceRowPitch));
-            for (unsigned j = 0; j < rows; j++) {
-                assert((size_t(destination) + sourceRowPitch - size_t(originalDest)) <= destinationDataSize);
-                XlCopyMemoryAlign16(destination, sourceData, sourceRowPitch);
-                sourceData = PtrAdd(sourceData, sourceRowPitch);
-                destination = PtrAdd(destination, destinationBlockRowPitch);
-            }
-
-        } else {
-                // Copy data to/from video texture
-            int nPitch = TextureDataSize(mipMapDesc._width, 1, 1, 1, mipMapDesc._format);
-            assert(sourceDataSize % nPitch == 0); (void)nPitch;
-            assert(size_t(destination) + sourceDataSize <= destinationDataSize);
-            XlCopyMemoryAlign16((uint8*)destination, sourceData, sourceDataSize);
-        }
-    }
-
-    TextureDesc  CalculateMipMapDesc(const TextureDesc& topMostMipDesc, unsigned mipMapIndex)
-    {
-        assert(mipMapIndex<topMostMipDesc._mipCount);
-        TextureDesc result = topMostMipDesc;
-        result._width    = std::max(result._width  >> mipMapIndex, 1u); 
-        result._height   = std::max(result._height >> mipMapIndex, 1u);
-        if (IsDXTCompressed(topMostMipDesc._format)) { 
-            result._width = RoundBCDim(result._width);
-            result._height = RoundBCDim(result._height);
-        }
-        //result._depth  = std::max(minDimension, result._depth>>mipMapIndex); 
-        result._mipCount -= uint8(mipMapIndex);
-        return result;
-    }
-    
-    unsigned ByteCount(const TextureDesc& tDesc)
-    {
-        unsigned bitsPerPixel = BitsPerPixel(tDesc._format);
-        unsigned result = 0;
-        unsigned mipMin = IsDXTCompressed(tDesc._format)?4:1;
-        for (unsigned mipIndex=0; mipIndex<tDesc._mipCount; ++mipIndex) {
-            result  +=  std::max(mipMin, tDesc._width>>mipIndex)
-                    *   std::max(mipMin, tDesc._height>>mipIndex)
-                    *   std::max(uint16(1), tDesc._arrayCount)
-                    *   bitsPerPixel
-                    /   8
-                    ;
-        }
-        return result;
-    }
-
-    unsigned ByteCount(const BufferDesc& desc)
-    {
-        if (desc._type == BufferDesc::Type::LinearBuffer) {
-            return desc._linearBufferDesc._sizeInBytes;
-        } else if (desc._type == BufferDesc::Type::Texture) {
-            return ByteCount(desc._textureDesc);
-        }
-        return 0;
-    }
 
     int64 QueryPerformanceCounter()
     {
         return Utility::GetPerformanceCounter();
     }
 
+    UnderlyingDeviceContext::ResourceInitializer AsResourceInitializer(DataPacket& pkt)
+    {
+        return [&pkt](unsigned mipIndex, unsigned arrayIndex) -> RenderCore::SubResourceInitData
+            {
+                RenderCore::SubResourceInitData result;
+                result._data = pkt.GetData(DataPacket::TexSubRes(mipIndex, arrayIndex));
+                result._size = pkt.GetDataSize(DataPacket::TexSubRes(mipIndex, arrayIndex));
+                result._pitches = pkt.GetPitches(DataPacket::TexSubRes(mipIndex, arrayIndex));
+                return result;
+            };
+    }
+
         //////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
     UnderlyingDeviceContext::MappedBuffer::~MappedBuffer()
     {
         if (_sourceContext && _data) {
@@ -220,6 +99,7 @@ namespace BufferUploads { namespace PlatformInterface
         _data = data;
         _pitches = pitches;
     }
+#endif
 
     UnderlyingDeviceContext::~UnderlyingDeviceContext() {}
 

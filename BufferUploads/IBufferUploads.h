@@ -61,16 +61,6 @@ namespace BufferUploads
     struct PoolSystemMetrics;
     struct CommandListMetrics;
 
-    class Box2D
-    {
-    public:
-        signed _left, _top, _right, _bottom;
-        Box2D() : _left(0), _top(0), _right(0), _bottom(0) {}
-        Box2D(signed left, signed top, signed right, signed bottom) : _left(left), _top(top), _right(right), _bottom(bottom) {}
-    };
-
-    bool operator==(const Box2D& lhs, const Box2D& rhs);
-
         /////////////////////////////////////////////////
 
     namespace TransactionOptions
@@ -90,11 +80,11 @@ namespace BufferUploads
     class PartialResource
     {
     public:
-        Box2D _box;
+        RenderCore::Box2D _box;
         unsigned _lodLevelMin, _lodLevelMax;
         unsigned _arrayIndexMin, _arrayIndexMax;
         
-        PartialResource(const Box2D& box = Box2D(), 
+        PartialResource(const RenderCore::Box2D& box = RenderCore::Box2D(), 
                         unsigned lodLevelMin = 0, unsigned lodLevelMax = 0,
                         unsigned arrayIndexMin = 0, unsigned arrayIndexMax = 0)
         : _box(box), _lodLevelMin(lodLevelMin), _lodLevelMax(lodLevelMax)

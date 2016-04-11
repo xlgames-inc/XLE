@@ -278,12 +278,35 @@ namespace RenderCore
 		return LinearBufferDesc{ sizeInBytes, structureByteSize };
 	}
 
+    /// <summary>Distance (in bytes) between adjacent rows, depth slices or array layers in a texture</summary>
+    /// Note that for compressed textures, the "row pitch" is always the distance between adjacent rows of
+    /// compressed blocks. Most compression formats use blocks of 4x4 pixels. So the row pitch is actually
+    /// the distance between one row of 4x4 blocks and the next row of 4x4 blocks.
+    /// Another way to think of this is to imagine that each 4x4 block is 1 pixel in a texture that is 1/16th
+    /// of the size. This may make the pitch values more clear.
+    class TexturePitches
+    {
+    public:
+        unsigned _rowPitch, _slicePitch, _arrayPitch;
+    };
+
 	class SubResourceInitData
 	{
 	public:
-		const void* _data;
-		size_t _size;
-		size_t _rowPitch;
-		size_t _slicePitch;
+		const void*     _data;
+		size_t          _size;
+		TexturePitches  _pitches;
 	};
+
+    class Box2D
+    {
+    public:
+        signed _left, _top, _right, _bottom;
+
+        Box2D() : _left(0), _top(0), _right(0), _bottom(0) {}
+        Box2D(signed left, signed top, signed right, signed bottom) 
+            : _left(left), _top(top), _right(right), _bottom(bottom) {}
+    };
+
+    bool operator==(const Box2D& lhs, const Box2D& rhs);
 }

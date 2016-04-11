@@ -148,6 +148,40 @@ namespace Utility
         {
             return IteratorRange<ArrayElement*>(&c[0], &c[Count]);
         }
+
+#pragma warning(push)
+#pragma warning(disable:4789)       // buffer '' of size 12 bytes will be overrun; 4 bytes will be written starting at offset 12
+    /// We can initialize from anything that looks like a collection of unsigned values
+    /// This is a simple way to get casting from XLEMath::UInt2 (etc) types without
+    /// having to include XLEMath headers from here.
+    /// Plus, it will also work with any other types that expose a stl collection type
+    /// interface.
+    template<typename Type, unsigned Count> 
+        class VectorPattern
+    {
+    public:
+        Type _values[Count];
+        VectorPattern(Type x=0, Type y=0, Type z=0, Type w=0)
+        { 
+            if (constant_expression<(Count > 0u)>::result()) _values[0] = x;
+            if (constant_expression<(Count > 1u)>::result()) _values[1] = y;
+            if (constant_expression<(Count > 2u)>::result()) _values[2] = z;
+            if (constant_expression<(Count > 3u)>::result()) _values[3] = w;
+        }
+
+        template<
+			typename Source,
+			std::enable_if<std::is_assignable<Type, Source>::value>* = nullptr>
+            VectorPattern(const Source& src)
+            {
+                auto size = std::size(src);
+                unsigned c=0;
+                for (; c<std::min(unsigned(size), Count); ++c) _values[c] = src[c];
+                for (; c<Count; ++c) _values[c] = 0;
+            }
+    };
+#pragma warning(pop)
+
 }
 
 using namespace Utility;

@@ -12,6 +12,7 @@
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/InvalidAssetManager.h"
 #include "../../../Utility/StringUtils.h"
+#include <sstream>
 
 // HLSL cross compiler includes --
 #define EXCLUDE_PSTDINT
