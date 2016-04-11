@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/Format.h"
-#include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Format.h"
+#include "../RenderCore/Types.h"
 #include "../RenderCore/Assets/ModelScaffoldInternal.h"
 
 namespace RenderCore { namespace Assets { namespace GeoProc { class MeshDatabase; }}}
@@ -17,7 +17,7 @@ namespace RenderCore { namespace ColladaConversion
     void GenerateNormalsAndTangents( 
         RenderCore::Assets::GeoProc::MeshDatabase& mesh, 
         unsigned normalMapTextureCoordinateSemanticIndex,
-        const void* rawIb, size_t indexCount, Metal::NativeFormat::Enum ibFormat);
+        const void* rawIb, size_t indexCount, Format ibFormat);
 
     void Transform(
         RenderCore::Assets::GeoProc::MeshDatabase& mesh, 
@@ -38,6 +38,6 @@ namespace RenderCore { namespace ColladaConversion
         const Assets::VertexElement* layoutEnd);
 
     unsigned CalculateVertexSize(
-        const Metal::InputElementDesc* layoutBegin,  
-        const Metal::InputElementDesc* layoutEnd);
+        const InputElementDesc* layoutBegin,  
+        const InputElementDesc* layoutEnd);
 }}

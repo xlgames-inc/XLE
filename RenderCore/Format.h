@@ -12,7 +12,7 @@ namespace Utility { namespace ImpliedTyping { class TypeDesc; } }
 
 namespace RenderCore 
 {
-    enum class Format
+    enum class Format : int
     {
         Unknown = 0,
 

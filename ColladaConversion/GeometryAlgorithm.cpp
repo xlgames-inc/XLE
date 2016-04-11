@@ -40,10 +40,8 @@ namespace RenderCore { namespace ColladaConversion
     void GenerateNormalsAndTangents( 
         MeshDatabase& mesh, 
         unsigned normalMapTextureCoordinateSemanticIndex,
-        const void* rawIb, size_t indexCount, Metal::NativeFormat::Enum ibFormat)
+        const void* rawIb, size_t indexCount, Format ibFormat)
 	{
-        using namespace RenderCore::Metal;
-
             // testing -- remove existing tangents & normals
         // mesh.RemoveStream(mesh.FindElement("NORMAL"));
         // mesh.RemoveStream(mesh.FindElement("TEXTANGENT"));
@@ -86,7 +84,7 @@ namespace RenderCore { namespace ColladaConversion
 
         unsigned indexStride = 2;
         unsigned indexMask = 0xffff;
-        if (ibFormat == Metal::NativeFormat::R32_UINT) { indexStride = 4; indexMask = 0xffffffff; }
+        if (ibFormat == Format::R32_UINT) { indexStride = 4; indexMask = 0xffffffff; }
         auto* ib = (const uint32*)rawIb;
 
 		auto triangleCount = indexCount / 3;   // assuming index buffer is triangle-list format
@@ -175,7 +173,7 @@ namespace RenderCore { namespace ColladaConversion
             mesh.AddStream(
                 CreateRawDataSource(
                     AsPointer(normals.cbegin()), AsPointer(normals.cend()),
-                    Metal::NativeFormat::R32G32B32_FLOAT),
+                    Format::R32G32B32_FLOAT),
                 std::vector<unsigned>(),
                 "NORMAL", 0);
         }
@@ -211,7 +209,7 @@ namespace RenderCore { namespace ColladaConversion
 
             mesh.AddStream(
                 CreateRawDataSource(
-                    AsPointer(tangents.begin()), AsPointer(tangents.cend()), Metal::NativeFormat::R32G32B32A32_FLOAT),
+                    AsPointer(tangents.begin()), AsPointer(tangents.cend()), Format::R32G32B32A32_FLOAT),
                 std::vector<unsigned>(),
                 "TEXTANGENT", 0);
 
@@ -238,24 +236,24 @@ namespace RenderCore { namespace ColladaConversion
         //     }
         // 
         //     mesh.AddStream(
-        //         AsPointer(bitangents.begin()), AsPointer(bitangents.cend()), Metal::NativeFormat::R32G32B32_FLOAT,
-        //         Use16BitFloats ? Metal::NativeFormat::R16G16B16A16_FLOAT : Metal::NativeFormat::R32G32B32_FLOAT,
+        //         AsPointer(bitangents.begin()), AsPointer(bitangents.cend()), Format::R32G32B32_FLOAT,
+        //         Use16BitFloats ? Format::R16G16B16A16_FLOAT : Format::R32G32B32_FLOAT,
         //         "TEXBITANGENT", 0);
         // 
         // }
 	}
 
     template<typename Type>
-        RenderCore::Metal::NativeFormat::Enum AsNativeFormat();
+        Format AsNativeFormat();
 
-    template<> RenderCore::Metal::NativeFormat::Enum AsNativeFormat<float>() 
-        { return RenderCore::Metal::NativeFormat::R32_FLOAT; }
-    template<> RenderCore::Metal::NativeFormat::Enum AsNativeFormat<Float2>() 
-        { return RenderCore::Metal::NativeFormat::R32G32_FLOAT; }
-    template<> RenderCore::Metal::NativeFormat::Enum AsNativeFormat<Float3>() 
-        { return RenderCore::Metal::NativeFormat::R32G32B32_FLOAT; }
-    template<> RenderCore::Metal::NativeFormat::Enum AsNativeFormat<Float4>() 
-        { return RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT; }
+    template<> Format AsNativeFormat<float>() 
+        { return Format::R32_FLOAT; }
+    template<> Format AsNativeFormat<Float2>() 
+        { return Format::R32G32_FLOAT; }
+    template<> Format AsNativeFormat<Float3>() 
+        { return Format::R32G32B32_FLOAT; }
+    template<> Format AsNativeFormat<Float4>() 
+        { return Format::R32G32B32A32_FLOAT; }
 
     // #define CHECK_FOR_NAN
     #if defined(CHECK_FOR_NAN)
@@ -288,7 +286,7 @@ namespace RenderCore { namespace ColladaConversion
 
                 // Let's make sure the new stream data is in the same format
                 // as the old one.
-            auto finalStride = Metal::BitsPerPixel(src.GetFormat())/8;
+            auto finalStride = BitsPerPixel(src.GetFormat())/8;
             auto finalFormat = src.GetFormat();
             auto pivotFormat = AsNativeFormat<PivotType>();
             if (finalFormat != pivotFormat) {
@@ -368,7 +366,7 @@ namespace RenderCore { namespace ColladaConversion
             if (type == None) continue;
 
             const auto& src = stream.GetSourceData();
-            auto componentCount = Metal::GetComponentCount(Metal::GetComponents(src.GetFormat()));
+            auto componentCount = GetComponentCount(GetComponents(src.GetFormat()));
             if (type == Point) {
                     // We can support both 3d and 2d pretty easily here. Collada generalizes to 2d well,
                     // so we might as well support it (though maybe the 3d case is by far the most common
@@ -476,8 +474,8 @@ namespace RenderCore { namespace ColladaConversion
                 if (elementReordering[c] != ~uint32(0x0)) {
                     const auto& destinationElement = destinationLayoutBegin[elementReordering[c]]; assert(&destinationElement < destinationLayoutEnd);
                     const auto& sourceElement = sourceLayoutBegin[c]; assert(&sourceElement < sourceLayoutEnd);
-                    size_t elementSize = Metal::BitsPerPixel(Metal::NativeFormat::Enum(destinationElement._nativeFormat))/8;
-                    assert(elementSize == Metal::BitsPerPixel(Metal::NativeFormat::Enum(sourceElement._nativeFormat))/8);
+                    size_t elementSize = BitsPerPixel(destinationElement._nativeFormat)/8;
+                    assert(elementSize == BitsPerPixel(sourceElement._nativeFormat)/8);
                     assert(destinationElement._alignedByteOffset + elementSize <= destinationVertexStride);
                     assert(sourceElement._alignedByteOffset + elementSize <= sourceVertexStride);
                     assert(PtrAdd(destinationVertexStart, destinationElement._alignedByteOffset+elementSize) <= PtrAdd(destinationVertexStart, vertexCount*destinationVertexStride));
@@ -498,17 +496,17 @@ namespace RenderCore { namespace ColladaConversion
     {
         unsigned result = 0;
         for (auto l=layoutBegin; l!=layoutEnd; ++l)
-            result += Metal::BitsPerPixel(Metal::NativeFormat::Enum(l->_nativeFormat));
+            result += BitsPerPixel(l->_nativeFormat);
         return result/8;
     }
 
     unsigned CalculateVertexSize(
-        const Metal::InputElementDesc* layoutBegin,  
-        const Metal::InputElementDesc* layoutEnd)
+        const InputElementDesc* layoutBegin,  
+        const InputElementDesc* layoutEnd)
     {
         unsigned result = 0;
         for (auto l=layoutBegin; l!=layoutEnd; ++l)
-            result += Metal::BitsPerPixel(Metal::NativeFormat::Enum(l->_nativeFormat));
+            result += BitsPerPixel(l->_nativeFormat);
         return result/8;
     }
 

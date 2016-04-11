@@ -66,11 +66,11 @@ namespace RenderCore { namespace ColladaConversion
         // (assuming the original data hasn't been changed)
         std::string temp;
         auto ele = FindElement(GuidReference(breakdown._baseObject), resolveContext, &IDocScopeIdResolver::FindNode);
-        if (ele) temp = AsString(ele.GetName());
-        else temp = AsString(breakdown._baseObject);
+        if (ele) temp = ColladaConversion::AsString(ele.GetName());
+        else temp = ColladaConversion::AsString(breakdown._baseObject);
 
         for (const auto&i:breakdown._scoping)
-            temp += "/" + AsString(i);
+            temp += std::string("/") + ColladaConversion::AsString(i);
         return temp;
     }
 
@@ -326,7 +326,7 @@ namespace RenderCore { namespace ColladaConversion
                     if (knownField) {
                         outDimension = knownField->second + 1;
                     } else {
-                        LogWarning << "Unknown field name " << AsString(ch._target._fieldReference) << " in animation curve target";
+                        LogWarning << "Unknown field name " << ColladaConversion::AsString(ch._target._fieldReference) << " in animation curve target";
                     }
 
                 } else {
@@ -345,28 +345,27 @@ namespace RenderCore { namespace ColladaConversion
             SimpleChannel firstChannel(animation.GetChannel(i->second), resolveContext);
             auto keyCount = firstChannel._inputSource->FindAccessorForTechnique()->GetCount();
 
-            using namespace Metal;
-            NativeFormat::Enum  
-                positionFormat    = NativeFormat::Unknown,
-                inTangentFormat   = NativeFormat::Unknown,
-                outTangentFormat  = NativeFormat::Unknown;
+            Format
+                positionFormat    = Format::Unknown,
+                inTangentFormat   = Format::Unknown,
+                outTangentFormat  = Format::Unknown;
 
             Assets::TransformationParameterSet::Type::Enum samplerType;
             
             switch (outDimension) {
-            case 1:     positionFormat = NativeFormat::R32_FLOAT; samplerType = Assets::TransformationParameterSet::Type::Float1; break;
-            case 3:     positionFormat = NativeFormat::R32G32B32_FLOAT; samplerType = Assets::TransformationParameterSet::Type::Float3; break;
-            case 4:     positionFormat = NativeFormat::R32G32B32A32_FLOAT; samplerType = Assets::TransformationParameterSet::Type::Float4; break;
-            case 16:    positionFormat = NativeFormat::Matrix4x4; samplerType = Assets::TransformationParameterSet::Type::Float4x4; break;
+            case 1:     positionFormat = Format::R32_FLOAT; samplerType = Assets::TransformationParameterSet::Type::Float1; break;
+            case 3:     positionFormat = Format::R32G32B32_FLOAT; samplerType = Assets::TransformationParameterSet::Type::Float3; break;
+            case 4:     positionFormat = Format::R32G32B32A32_FLOAT; samplerType = Assets::TransformationParameterSet::Type::Float4; break;
+            case 16:    positionFormat = Format::Matrix4x4; samplerType = Assets::TransformationParameterSet::Type::Float4x4; break;
             default:    Throw(FormatError("Out dimension in animation is invalid (%i). Expected 1, 3, 4 or 16.", outDimension));
             }
 
             if (firstChannel._inTangentsSource) inTangentFormat = positionFormat;
             if (firstChannel._outTangentsSource) outTangentFormat = positionFormat;
 
-            const auto positionBytes = Metal::BitsPerPixel(positionFormat)/8;
-            const auto inTangentBytes = Metal::BitsPerPixel(inTangentFormat)/8;
-            const auto elementBytes = positionBytes + inTangentBytes+ Metal::BitsPerPixel(outTangentFormat)/8;
+            const auto positionBytes = BitsPerPixel(positionFormat)/8;
+            const auto inTangentBytes = BitsPerPixel(inTangentFormat)/8;
+            const auto elementBytes = positionBytes + inTangentBytes+ BitsPerPixel(outTangentFormat)/8;
 
             auto keyBlock = std::unique_ptr<uint8[], BlockSerializerDeleter<uint8[]>>(
                 new uint8[elementBytes * keyCount]);

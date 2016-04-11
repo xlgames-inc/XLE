@@ -617,8 +617,7 @@ namespace RenderCore { namespace ColladaConversion
             if (i == compiledEffects.end() || !(i->first == ObjectGuid(effect._id, effect._fileHash)))
                 continue;
 
-            auto ele = formatter.BeginElement(
-                Conversion::Convert<std::basic_string<utf8>>(AsString(m->_name)).c_str());
+            auto ele = formatter.BeginElement(m->_name.AsString());
             i->second.Serialize(formatter);
             formatter.EndElement(ele);
         }

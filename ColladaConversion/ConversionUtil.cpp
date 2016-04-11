@@ -10,6 +10,7 @@
 #include "NascentCommandStream.h"
 #include "NascentRawGeometry.h"
 #include "NascentAnimController.h"
+#include "../RenderCore/Format.h"
 #include "../Assets/Assets.h"       // (for RegisterFileDependency)
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Streams/FileUtils.h"
@@ -133,35 +134,34 @@ namespace RenderCore { namespace ColladaConversion
         return half_float::detail::half2float(input);
     }
 
-    static Float4 AsFloat4(const void* rawData, Metal::NativeFormat::Enum nativeFormat)
+    static Float4 AsFloat4(const void* rawData, Format nativeFormat)
     {   
             //
             //      todo -- this needs to move to the metal layer, so it can use
             //              platform specific formats
             //
-        using namespace Metal::NativeFormat;
         switch (nativeFormat) {
-        case R32G32B32A32_FLOAT:    return *(const Float4*)rawData;
-        case R32G32B32_FLOAT:       return Float4(((const float*)rawData)[0], ((const float*)rawData)[1], ((const float*)rawData)[2], 0.f);
-        case R32G32_FLOAT:          return Float4(((const float*)rawData)[0], ((const float*)rawData)[1], 0.f, 1.f);
-        case R32_FLOAT:             return Float4(((const float*)rawData)[0], 0.f, 0.f, 1.f);
+        case Format::R32G32B32A32_FLOAT:    return *(const Float4*)rawData;
+        case Format::R32G32B32_FLOAT:       return Float4(((const float*)rawData)[0], ((const float*)rawData)[1], ((const float*)rawData)[2], 0.f);
+        case Format::R32G32_FLOAT:          return Float4(((const float*)rawData)[0], ((const float*)rawData)[1], 0.f, 1.f);
+        case Format::R32_FLOAT:             return Float4(((const float*)rawData)[0], 0.f, 0.f, 1.f);
 
-        case R10G10B10A2_UNORM:
-        case R10G10B10A2_UINT:
-        case R11G11B10_FLOAT:       
-        case B5G6R5_UNORM:
-        case B5G5R5A1_UNORM:        assert(0); return Float4(0,0,0,1);  // requires some custom adjustments (these are uncommon uses, anyway)
+        case Format::R10G10B10A2_UNORM:
+        case Format::R10G10B10A2_UINT:
+        case Format::R11G11B10_FLOAT:       
+        case Format::B5G6R5_UNORM:
+        case Format::B5G5R5A1_UNORM:        assert(0); return Float4(0,0,0,1);  // requires some custom adjustments (these are uncommon uses, anyway)
 
-        case R16G16B16A16_FLOAT:    return Float4(Float16AsFloat32(((const unsigned short*)rawData)[0]), Float16AsFloat32(((const unsigned short*)rawData)[1]), Float16AsFloat32(((const unsigned short*)rawData)[2]), Float16AsFloat32(((const unsigned short*)rawData)[3]));
-        case R16G16_FLOAT:          return Float4(Float16AsFloat32(((const unsigned short*)rawData)[0]), Float16AsFloat32(((const unsigned short*)rawData)[1]), 0.f, 1.f);
-        case R16_FLOAT:             return Float4(Float16AsFloat32(((const unsigned short*)rawData)[0]), 0.f, 0.f, 1.f);
+        case Format::R16G16B16A16_FLOAT:    return Float4(Float16AsFloat32(((const unsigned short*)rawData)[0]), Float16AsFloat32(((const unsigned short*)rawData)[1]), Float16AsFloat32(((const unsigned short*)rawData)[2]), Float16AsFloat32(((const unsigned short*)rawData)[3]));
+        case Format::R16G16_FLOAT:          return Float4(Float16AsFloat32(((const unsigned short*)rawData)[0]), Float16AsFloat32(((const unsigned short*)rawData)[1]), 0.f, 1.f);
+        case Format::R16_FLOAT:             return Float4(Float16AsFloat32(((const unsigned short*)rawData)[0]), 0.f, 0.f, 1.f);
 
-        case B8G8R8A8_UNORM:
-        case R8G8B8A8_UNORM:        return Float4(UNormAsFloat32(((const unsigned char*)rawData)[0]), UNormAsFloat32(((const unsigned char*)rawData)[1]), UNormAsFloat32(((const unsigned char*)rawData)[2]), UNormAsFloat32(((const unsigned char*)rawData)[3]));
-        case R8G8_UNORM:            return Float4(UNormAsFloat32(((const unsigned char*)rawData)[0]), UNormAsFloat32(((const unsigned char*)rawData)[1]), 0.f, 1.f);
-        case R8_UNORM:              return Float4(UNormAsFloat32(((const unsigned char*)rawData)[0]), 0.f, 0.f, 1.f);
+        case Format::B8G8R8A8_UNORM:
+        case Format::R8G8B8A8_UNORM:        return Float4(UNormAsFloat32(((const unsigned char*)rawData)[0]), UNormAsFloat32(((const unsigned char*)rawData)[1]), UNormAsFloat32(((const unsigned char*)rawData)[2]), UNormAsFloat32(((const unsigned char*)rawData)[3]));
+        case Format::R8G8_UNORM:            return Float4(UNormAsFloat32(((const unsigned char*)rawData)[0]), UNormAsFloat32(((const unsigned char*)rawData)[1]), 0.f, 1.f);
+        case Format::R8_UNORM:              return Float4(UNormAsFloat32(((const unsigned char*)rawData)[0]), 0.f, 0.f, 1.f);
         
-        case B8G8R8X8_UNORM:        return Float4(UNormAsFloat32(((const unsigned char*)rawData)[0]), UNormAsFloat32(((const unsigned char*)rawData)[1]), UNormAsFloat32(((const unsigned char*)rawData)[2]), 1.f);
+        case Format::B8G8R8X8_UNORM:        return Float4(UNormAsFloat32(((const unsigned char*)rawData)[0]), UNormAsFloat32(((const unsigned char*)rawData)[1]), UNormAsFloat32(((const unsigned char*)rawData)[2]), 1.f);
         }
 
         assert(0);
@@ -181,7 +181,7 @@ namespace RenderCore { namespace ColladaConversion
         assert(elementDesc._alignedByteOffset != ~unsigned(0x0));
         for (size_t c=0; c<vertexCount; ++c) {
             const void* v    = PtrAdd(vertexData, vertexStride*c + elementDesc._alignedByteOffset);
-            Float3 position  = Truncate(AsFloat4(v, Metal::NativeFormat::Enum(elementDesc._nativeFormat)));
+            Float3 position  = Truncate(AsFloat4(v, elementDesc._nativeFormat));
             assert(!isinf(position[0]) && !isinf(position[1]) && !isinf(position[2]));
             AddToBoundingBox(boundingBox, position, localToWorld);
         }

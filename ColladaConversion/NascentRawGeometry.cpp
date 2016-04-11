@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "NascentRawGeometry.h"
-#include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../Assets/BlockSerializer.h"
 #include "../Utility/StringUtils.h"
@@ -18,7 +18,7 @@ namespace RenderCore { namespace ColladaConversion
         DynamicArray<uint8>&&       vb,
         DynamicArray<uint8>&&       ib,
         GeoInputAssembly&&          mainDrawInputAssembly,
-        NativeFormatPlaceholder     indexFormat,
+        Format                      indexFormat,
         std::vector<DrawCallDesc>&& mainDrawCalls,
         DynamicArray<uint32>&&      unifiedVertexIndexToPositionIndex,
         std::vector<uint64>&&       matBindingSymbols)
@@ -60,7 +60,7 @@ namespace RenderCore { namespace ColladaConversion
     , _indices(nullptr, 0)
     , _unifiedVertexIndexToPositionIndex(nullptr, 0)
     {
-        _indexFormat = Metal::NativeFormat::Unknown;
+        _indexFormat = Format(0);
     }
 
     void NascentRawGeometry::Serialize(
@@ -87,7 +87,7 @@ namespace RenderCore { namespace ColladaConversion
         ::Serialize(
             outputSerializer, 
             RenderCore::Assets::IndexData 
-                { unsigned(_indexFormat), unsigned(ibOffset), unsigned(ibSize) });
+                { _indexFormat, unsigned(ibOffset), unsigned(ibSize) });
         
         ::Serialize(outputSerializer, _mainDrawCalls);
     }
@@ -98,7 +98,7 @@ namespace RenderCore { namespace ColladaConversion
         stream << "Vertex bytes: " << ByteCount(geo._vertices.size()) << std::endl;
         stream << "Index bytes: " << ByteCount(geo._indices.size()) << std::endl;
         stream << "IA: " << geo._mainDrawInputAssembly << std::endl;
-        stream << "Index fmt: " << Metal::AsString((Metal::NativeFormat::Enum)geo._indexFormat) << std::endl;
+        stream << "Index fmt: " << AsString(geo._indexFormat) << std::endl;
         unsigned c=0;
         for(const auto& dc:geo._mainDrawCalls) {
             stream << "Draw [" << c++ << "] " << dc << std::endl;

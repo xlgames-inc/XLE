@@ -207,7 +207,7 @@ inline void Serialize(
 	Serialization::NascentBlockSerializer& outputSerializer,
 	const RenderCore::Assets::IndexData& indexData)
 {
-	Serialize(outputSerializer, indexData._format);
+	Serialize(outputSerializer, (unsigned&)indexData._format);
 	Serialize(outputSerializer, indexData._offset);
 	Serialize(outputSerializer, indexData._size);
 }

@@ -71,6 +71,7 @@
     <ClCompile>
       <PreprocessorDefinitions>PROJECT_COLLADA_CONVERSION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ProjectReference />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
     <ClCompile>
@@ -231,13 +232,7 @@
       <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore_Assets.vcxproj">
-      <Project>{e767b944-6637-78fc-a32d-a7a82dc83385}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
-      <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_Techniques.vcxproj">
-      <Project>{8188bb13-0b12-c110-2a31-515435fd3bb5}</Project>
+      <Project>{ebf600b7-b82e-483c-b0ce-c74bbc60dc9a}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>

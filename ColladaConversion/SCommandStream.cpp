@@ -336,7 +336,7 @@ namespace RenderCore { namespace ColladaConversion
             if (geo == ~unsigned(0x0)) {
                 if (!scaffoldGeo)
                     Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
-                        AsString(instGeo._reference).c_str()));
+                        instGeo._reference.AsString().c_str()));
 
                 auto convertedMesh = Convert(*scaffoldGeo, mergedTransform, resolveContext, cfg);
                 if (convertedMesh._mainDrawCalls.empty()) {
@@ -348,7 +348,7 @@ namespace RenderCore { namespace ColladaConversion
                     assert(convertedMesh._unifiedVertexIndexToPositionIndex.empty());
                 
                     Throw(::Assets::Exceptions::FormatError(
-                        "Geometry object is empty (%s)", AsString(instGeo._reference).c_str()));
+                        "Geometry object is empty (%s)", instGeo._reference.AsString().c_str()));
                 }
 
                 objects._rawGeos.push_back(std::make_pair(geoId, std::move(convertedMesh)));
@@ -422,14 +422,14 @@ namespace RenderCore { namespace ColladaConversion
         auto* scaffoldController = FindElement(controllerRef, resolveContext, &IDocScopeIdResolver::FindSkinController);
         if (!scaffoldController)
             Throw(::Assets::Exceptions::FormatError("Could not find controller object to instantiate (%s)",
-                AsString(instGeo._reference).c_str()));
+                instGeo._reference.AsString().c_str()));
 
         auto controller = Convert(*scaffoldController, resolveContext, cfg);
 
         auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), controller, resolveContext, nodeRefs);
         if (!jointMatrices.size() || !jointMatrices.get())
             Throw(::Assets::Exceptions::FormatError("Skin controller object has no joints. Cannot instantiate as skinned object. (%s)",
-                AsString(instGeo._reference).c_str()));
+                instGeo._reference.AsString().c_str()));
 
             // If the the raw geometry object is already converted, then we should use it. Otherwise
             // we need to do the conversion (but store it only in a temporary -- we don't need to
@@ -444,7 +444,7 @@ namespace RenderCore { namespace ColladaConversion
                     resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
                 if (!scaffoldGeo)
                     Throw(::Assets::Exceptions::FormatError("Could not find geometry object to instantiate (%s)",
-                        AsString(instGeo._reference).c_str()));
+                        instGeo._reference.AsString().c_str()));
                 tempBuffer = Convert(*scaffoldGeo, Identity<Float4x4>(), resolveContext, cfg);
                 source = &tempBuffer;
             } else {
@@ -461,7 +461,7 @@ namespace RenderCore { namespace ColladaConversion
                 controllerId,
                 BindController(
                     *source, controller, std::move(jointMatrices),
-                    AsString(instGeo._reference).c_str())));
+                    ColladaConversion::AsString(instGeo._reference).c_str())));
 
         return NascentModelCommandStream::SkinControllerInstance(
             (unsigned)(objects._skinnedGeos.size()-1), 
@@ -523,7 +523,7 @@ namespace RenderCore { namespace ColladaConversion
                 AsPointer(geo->_mainDrawInputAssembly._elements.begin()),
                 geo->_mainDrawInputAssembly._elements.size());
 
-            if (positionDesc._nativeFormat != Metal::NativeFormat::Unknown && vertexStride) {
+            if (positionDesc._nativeFormat != Format::Unknown && vertexStride) {
                 AddToBoundingBox(
                     result, vertexBuffer, vertexStride, 
                     geo->_vertices.size() / vertexStride, positionDesc, localToWorld);
@@ -577,9 +577,9 @@ namespace RenderCore { namespace ColladaConversion
             // Both "name" and "id" are optional. Let's prioritize "name"
             //  -- if it exists. If there is no name, we'll fall back to "id"
         if (node.GetName()._end > node.GetName()._start)
-            return AsString(node.GetName()); 
+            return ColladaConversion::AsString(node.GetName()); 
         if (!node.GetId().IsEmpty())
-            return AsString(node.GetId().GetOriginal());
+            return ColladaConversion::AsString(node.GetId().GetOriginal());
         return XlDynFormatString("Unnamed%i", (unsigned)node.GetIndex());
     }
 

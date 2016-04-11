@@ -42,7 +42,7 @@ namespace ColladaConversion
     public:
         const void* GetData() const;
         size_t GetDataSize() const;
-        RenderCore::Metal::NativeFormat::Enum GetFormat() const { return _dataFormat; }
+        Format GetFormat() const { return _dataFormat; }
         size_t GetStride() const { return _stride; }
         size_t GetCount() const { return _count; }
         ProcessingFlags::BitField GetProcessingFlags() const { return _processingFlags; }
@@ -52,7 +52,7 @@ namespace ColladaConversion
         ~VertexSourceData();
 
     protected:
-        RenderCore::Metal::NativeFormat::Enum _dataFormat;
+        Format _dataFormat;
         size_t _stride;
         size_t _offset;
         size_t _count;
@@ -96,23 +96,22 @@ namespace ColladaConversion
                 Throw(FormatException("Accessor params type doesn't match source array type", source.GetLocation()));
             }*/
 
-        using namespace Metal::NativeFormat;
         unsigned parsedTypeSize;
-        Metal::NativeFormat::Enum finalFormat;
+        Format finalFormat;
         if (sourceType == DataFlow::ArrayType::Float) {
             switch (paramCount) {
-            case 1: finalFormat = R32_FLOAT; break;
-            case 2: finalFormat = R32G32_FLOAT; break;
-            case 3: finalFormat = R32G32B32_FLOAT; break;
-            default: finalFormat = R32G32B32A32_FLOAT; break;
+            case 1: finalFormat = Format::R32_FLOAT; break;
+            case 2: finalFormat = Format::R32G32_FLOAT; break;
+            case 3: finalFormat = Format::R32G32B32_FLOAT; break;
+            default: finalFormat = Format::R32G32B32A32_FLOAT; break;
             }
             parsedTypeSize = sizeof(float);
         } else if (sourceType == DataFlow::ArrayType::Int) {
             switch (paramCount) {
-            case 1: finalFormat = R32_SINT; break;
-            case 2: finalFormat = R32G32_SINT; break;
-            case 3: finalFormat = R32G32B32_SINT; break;
-            default: finalFormat = R32G32B32A32_SINT; break;
+            case 1: finalFormat = Format::R32_SINT; break;
+            case 2: finalFormat = Format::R32G32_SINT; break;
+            case 3: finalFormat = Format::R32G32B32_SINT; break;
+            default: finalFormat = Format::R32G32B32A32_SINT; break;
             }
             parsedTypeSize = sizeof(unsigned);
         } else
@@ -771,14 +770,14 @@ namespace ColladaConversion
 
             //  \todo -- sort by material id?
 
-        Metal::NativeFormat::Enum indexFormat;
+        Format indexFormat;
         std::unique_ptr<uint8[]> finalIndexBuffer;
         size_t finalIndexBufferSize;
                 
         if (finalIndexCount < 0xffff) {
 
             size_t accumulatingIndexCount = 0;
-            indexFormat = Metal::NativeFormat::R16_UINT;
+            indexFormat = Format::R16_UINT;
             finalIndexBufferSize = finalIndexCount*sizeof(uint16);
             finalIndexBuffer = std::make_unique<uint8[]>(finalIndexBufferSize);
             for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
@@ -793,7 +792,7 @@ namespace ColladaConversion
         } else {
 
             size_t accumulatingIndexCount = 0;
-            indexFormat = Metal::NativeFormat::R32_UINT;
+            indexFormat = Format::R32_UINT;
             finalIndexBufferSize = finalIndexCount*sizeof(uint32);
             finalIndexBuffer = std::make_unique<uint8[]>(finalIndexBufferSize);
             for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
@@ -1335,8 +1334,8 @@ namespace ColladaConversion
         b4._vertexBufferSize = bucket4._weightAttachments.size() * sizeof(VertexWeightAttachment<4>);
         b4._vertexBufferData = std::make_unique<uint8[]>(b4._vertexBufferSize);
         XlCopyMemory(b4._vertexBufferData.get(), AsPointer(bucket4._weightAttachments.begin()), b4._vertexBufferSize);
-        b4._vertexInputLayout.push_back(Metal::InputElementDesc(DefaultSemantic_Weights, 0, Metal::NativeFormat::R8G8B8A8_UNORM, 1, 0));
-        b4._vertexInputLayout.push_back(Metal::InputElementDesc(DefaultSemantic_JointIndices, 0, Metal::NativeFormat::R8G8B8A8_UINT, 1, 4));
+        b4._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 0, Format::R8G8B8A8_UNORM, 1, 0));
+        b4._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 0, Format::R8G8B8A8_UINT, 1, 4));
 
         UnboundSkinController::Bucket b2;
         b2._vertexBindings = std::move(bucket2._vertexBindings);
@@ -1344,8 +1343,8 @@ namespace ColladaConversion
         b2._vertexBufferSize = bucket2._weightAttachments.size() * sizeof(VertexWeightAttachment<2>);
         b2._vertexBufferData = std::make_unique<uint8[]>(b2._vertexBufferSize);
         XlCopyMemory(b2._vertexBufferData.get(), AsPointer(bucket2._weightAttachments.begin()), b2._vertexBufferSize);
-        b2._vertexInputLayout.push_back(Metal::InputElementDesc(DefaultSemantic_Weights, 0, Metal::NativeFormat::R8G8_UNORM, 1, 0));
-        b2._vertexInputLayout.push_back(Metal::InputElementDesc(DefaultSemantic_JointIndices, 0, Metal::NativeFormat::R8G8_UINT, 1, 2));
+        b2._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 0, Format::R8G8_UNORM, 1, 0));
+        b2._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 0, Format::R8G8_UINT, 1, 2));
 
         UnboundSkinController::Bucket b1;
         b1._vertexBindings = std::move(bucket1._vertexBindings);
@@ -1353,8 +1352,8 @@ namespace ColladaConversion
         b1._vertexBufferSize = bucket1._weightAttachments.size() * sizeof(VertexWeightAttachment<1>);
         b1._vertexBufferData = std::make_unique<uint8[]>(b1._vertexBufferSize);
         XlCopyMemory(b1._vertexBufferData.get(), AsPointer(bucket1._weightAttachments.begin()), b1._vertexBufferSize);
-        b1._vertexInputLayout.push_back(Metal::InputElementDesc(DefaultSemantic_Weights, 0, Metal::NativeFormat::R8_UNORM, 1, 0));
-        b1._vertexInputLayout.push_back(Metal::InputElementDesc(DefaultSemantic_JointIndices, 0, Metal::NativeFormat::R8_UINT, 1, 1));
+        b1._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 0, Format::R8_UNORM, 1, 0));
+        b1._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 0, Format::R8_UINT, 1, 1));
 
         UnboundSkinController::Bucket b0;
         b0._vertexBindings = std::move(bucket0._vertexBindings);

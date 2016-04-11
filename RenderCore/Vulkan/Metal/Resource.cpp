@@ -312,11 +312,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
 		const SubResourceInitData& initData)
-	: Resource(factory, desc, [&initData](unsigned m, unsigned a) { if (m==0&&a==0) return initData; return SubResourceInitData{}; })
-	{
-
-	}
-
+	: Resource(factory, desc, [&initData](unsigned m, unsigned a) { return (m==0&&a==0) ? initData : SubResourceInitData{}; })
+	{}
 	Resource::Resource() {}
 	Resource::~Resource() {}
 

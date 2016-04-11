@@ -7,17 +7,17 @@
 #pragma once
 
 #include "../RenderCore/Assets/ModelScaffoldInternal.h"
-#include "../RenderCore/Metal/Forward.h"    // for Metal::InputElementDesc
+#include "../RenderCore/Types.h"
 #include "../Utility/PtrUtils.h"            // for DynamicArray
 #include <vector>
 
 namespace Serialization { class NascentBlockSerializer; }
+namespace RenderCore { enum class Format; }
 
 namespace RenderCore { namespace ColladaConversion
 {
     using GeoInputAssembly = RenderCore::Assets::GeoInputAssembly;
     using DrawCallDesc = RenderCore::Assets::DrawCallDesc;
-    using NativeFormatPlaceholder = RenderCore::Assets::NativeFormatPlaceholder;
 
         ////////////////////////////////////////////////////////
 
@@ -31,7 +31,7 @@ namespace RenderCore { namespace ColladaConversion
         NascentRawGeometry(
             DynamicArray<uint8>&& vb, DynamicArray<uint8>&& ib,
             GeoInputAssembly&&              mainDrawInputAssembly,
-            NativeFormatPlaceholder         indexFormat,
+            Format                          indexFormat,
             std::vector<DrawCallDesc>&&     mainDrawCalls,
             DynamicArray<uint32>&&          unifiedVertexIndexToPositionIndex,
             std::vector<uint64>&&           matBindingSymbols);
@@ -43,7 +43,7 @@ namespace RenderCore { namespace ColladaConversion
         DynamicArray<uint8>         _indices;
 
         GeoInputAssembly            _mainDrawInputAssembly;
-        NativeFormatPlaceholder     _indexFormat;
+        Format                      _indexFormat;
         std::vector<DrawCallDesc>   _mainDrawCalls;
         std::vector<uint64>         _matBindingSymbols;
 

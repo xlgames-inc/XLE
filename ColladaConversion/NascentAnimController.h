@@ -27,7 +27,7 @@ namespace RenderCore { namespace ColladaConversion
         DynamicArray<uint8>         _unanimatedVertexElements;
         DynamicArray<uint8>         _indices;
 
-        NativeFormatPlaceholder     _indexFormat;        
+        Format                      _indexFormat;        
         GeoInputAssembly            _mainDrawUnanimatedIA;
         GeoInputAssembly            _mainDrawAnimatedIA;
 
@@ -76,13 +76,13 @@ namespace RenderCore { namespace ColladaConversion
         class Bucket
         {
         public:
-            std::vector<Metal::InputElementDesc>    _vertexInputLayout;
-            unsigned                                _weightCount;
+            std::vector<InputElementDesc>    _vertexInputLayout;
+            unsigned                         _weightCount;
 
-            std::unique_ptr<uint8[]>                _vertexBufferData;
-            size_t                                  _vertexBufferSize;
+            std::unique_ptr<uint8[]>         _vertexBufferData;
+            size_t                           _vertexBufferSize;
 
-            std::vector<uint16>                     _vertexBindings;
+            std::vector<uint16>              _vertexBindings;
 
             Bucket();
             Bucket(Bucket&& moveFrom) never_throws;

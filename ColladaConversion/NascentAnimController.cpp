@@ -143,12 +143,12 @@ namespace RenderCore { namespace ColladaConversion
             unsigned elementOffset = 0;     // reset the _alignedByteOffset members in the vertex layout
             for (auto i=unanimatedVertexLayout.begin(); i!=unanimatedVertexLayout.end();++i) {
                 i->_alignedByteOffset = elementOffset;
-                elementOffset += Metal::BitsPerPixel(Metal::NativeFormat::Enum(i->_nativeFormat))/8;
+                elementOffset += BitsPerPixel(i->_nativeFormat)/8;
             }
             elementOffset = 0;
             for (auto i=animatedVertexLayout.begin(); i!=animatedVertexLayout.end();++i) {
                 i->_alignedByteOffset = elementOffset;
-                elementOffset += Metal::BitsPerPixel(Metal::NativeFormat::Enum(i->_nativeFormat))/8;
+                elementOffset += BitsPerPixel(i->_nativeFormat)/8;
             }
         }
 
@@ -177,17 +177,17 @@ namespace RenderCore { namespace ColladaConversion
 
             //      We have to remap the index buffer, also.
         std::unique_ptr<uint8[]> newIndexBuffer = std::make_unique<uint8[]>(sourceGeo._indices.size());
-        if (sourceGeo._indexFormat == Metal::NativeFormat::R32_UINT) {
+        if (sourceGeo._indexFormat == Format::R32_UINT) {
             std::transform(
                 (const uint32*)sourceGeo._indices.begin(), (const uint32*)sourceGeo._indices.end(),
                 (uint32*)newIndexBuffer.get(),
                 [&unifiedVertexReordering](uint32 inputIndex) { return unifiedVertexReordering[inputIndex]; });
-        } else if (sourceGeo._indexFormat == Metal::NativeFormat::R16_UINT) {
+        } else if (sourceGeo._indexFormat == Format::R16_UINT) {
             std::transform(
                 (const uint16*)sourceGeo._indices.begin(), (const uint16*)sourceGeo._indices.end(),
                 (uint16*)newIndexBuffer.get(),
                 [&unifiedVertexReordering](uint16 inputIndex) -> uint16 { auto result = unifiedVertexReordering[inputIndex]; assert(result <= 0xffff); return (uint16)result; });
-        } else if (sourceGeo._indexFormat == Metal::NativeFormat::R8_UINT) {
+        } else if (sourceGeo._indexFormat == Format::R8_UINT) {
             std::transform(
                 (const uint8*)sourceGeo._indices.begin(), (const uint8*)sourceGeo._indices.end(),
                 (uint8*)newIndexBuffer.get(),
@@ -223,7 +223,7 @@ namespace RenderCore { namespace ColladaConversion
 
         assert(newUnifiedVertexIndexToPositionIndex.size()==unifiedVertexCount);
         size_t destinationWeightVertexStride = 0;
-        const std::vector<Metal::InputElementDesc>* finalWeightBufferFormat = nullptr;
+        const std::vector<InputElementDesc>* finalWeightBufferFormat = nullptr;
 
         unsigned bucketVertexSizes[bucketCount];
         for (unsigned b=0; b<bucketCount; ++b) {
@@ -284,10 +284,10 @@ namespace RenderCore { namespace ColladaConversion
                         if (sourceVertexStride == destinationWeightVertexStride) {
                             XlCopyMemory(destinationVertex, sourceVertex, sourceVertexStride);
                         } else {
-                            const Metal::InputElementDesc* dstElement = AsPointer(finalWeightBufferFormat->cbegin());
+                            const InputElementDesc* dstElement = AsPointer(finalWeightBufferFormat->cbegin());
                             for (   auto srcElement=controller._bucket[b]._vertexInputLayout.cbegin(); 
                                     srcElement!=controller._bucket[b]._vertexInputLayout.cend(); ++srcElement, ++dstElement) {
-                                unsigned elementSize = std::min(Metal::BitsPerPixel(srcElement->_nativeFormat)/8, Metal::BitsPerPixel(dstElement->_nativeFormat)/8);
+                                unsigned elementSize = std::min(BitsPerPixel(srcElement->_nativeFormat)/8, BitsPerPixel(dstElement->_nativeFormat)/8);
                                 assert(PtrAdd(destinationVertex, dstElement->_alignedByteOffset+elementSize) <= PtrAdd(skeletonBindingVertices.get(), destinationWeightVertexStride*unifiedVertexCount));
                                 assert(PtrAdd(sourceVertex, srcElement->_alignedByteOffset+elementSize) <= PtrAdd(controller._bucket[b]._vertexBufferData.get(), controller._bucket[b]._vertexBufferSize));
                                 XlCopyMemory(   PtrAdd(destinationVertex, dstElement->_alignedByteOffset), 
@@ -344,7 +344,7 @@ namespace RenderCore { namespace ColladaConversion
         auto positionDesc = FindPositionElement(
             AsPointer(animatedVertexLayout.begin()),
             animatedVertexLayout.size());
-        if (positionDesc._nativeFormat != Metal::NativeFormat::Unknown) {
+        if (positionDesc._nativeFormat != Format::Unknown) {
             AddToBoundingBox(
                 boundingBox,
                 animatedVertexBuffer.get(), animatedVertexStride, unifiedVertexCount,
@@ -419,7 +419,7 @@ namespace RenderCore { namespace ColladaConversion
         ::Serialize(
             outputSerializer, 
             RenderCore::Assets::IndexData 
-                { unsigned(_indexFormat), unsigned(ibOffset), unsigned(ibSize) });
+                { _indexFormat, unsigned(ibOffset), unsigned(ibSize) });
 
         ::Serialize(outputSerializer, _mainDrawCalls);
 
@@ -468,7 +468,7 @@ namespace RenderCore { namespace ColladaConversion
     ,       _jointMatrices(nullptr, 0)
     ,       _animatedVertexBufferSize(0)
     ,       _localBoundingBox(InvalidBoundingBox())
-    ,       _indexFormat(Metal::NativeFormat::Unknown)
+    ,       _indexFormat(Format::Unknown)
     {
     }
 
@@ -601,11 +601,11 @@ namespace RenderCore { namespace ColladaConversion
         stream << "     Animated VB bytes: " << ByteCount(geo._animatedVertexElements.size()) << " (" << geo._animatedVertexElements.size() / std::max(1u, geo._mainDrawAnimatedIA._vertexStride) << "*" << geo._mainDrawAnimatedIA._vertexStride << ")" << std::endl;
         stream << "Skele binding VB bytes: " << ByteCount(geo._skeletonBinding.size()) << " (" << geo._skeletonBinding.size() / std::max(1u, geo._skeletonBindingVertexStride) << "*" << geo._skeletonBindingVertexStride << ")" << std::endl;
         stream << "     Animated VB bytes: " << ByteCount(geo._animatedVertexBufferSize) << " (" << geo._animatedVertexBufferSize / std::max(1u, geo._mainDrawAnimatedIA._vertexStride) << "*" << geo._mainDrawAnimatedIA._vertexStride << ")" << std::endl;
-        stream << "              IB bytes: " << ByteCount(geo._indices.size()) << " (" << (geo._indices.size()*8/Metal::BitsPerPixel((Metal::NativeFormat::Enum)geo._indexFormat)) << "*" << Metal::BitsPerPixel((Metal::NativeFormat::Enum)geo._indexFormat)/8 << ")" << std::endl;
+        stream << "              IB bytes: " << ByteCount(geo._indices.size()) << " (" << (geo._indices.size()*8/BitsPerPixel(geo._indexFormat)) << "*" << BitsPerPixel(geo._indexFormat)/8 << ")" << std::endl;
         stream << " Unanimated IA: " << geo._mainDrawUnanimatedIA << std::endl;
         stream << "   Animated IA: " << geo._mainDrawAnimatedIA << std::endl;
         stream << "Preskinning IA: " << geo._preskinningIA << std::endl;
-        stream << "Index fmt: " << Metal::AsString((Metal::NativeFormat::Enum)geo._indexFormat) << std::endl;
+        stream << "Index fmt: " << AsString(geo._indexFormat) << std::endl;
         unsigned c=0;
         for(const auto& dc:geo._mainDrawCalls)
             stream << "Draw [" << c++ << "] " << dc << std::endl;
