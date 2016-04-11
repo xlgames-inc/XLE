@@ -62,6 +62,12 @@
       <Filter>Assets\Anim</Filter>
     </ClCompile>
     <ClCompile Include="..\Assets\CompilationThread.cpp" />
+    <ClCompile Include="..\Assets\ModelScaffold.cpp">
+      <Filter>Assets\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\SkinningScaffold.cpp">
+      <Filter>Assets\Anim</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\SharedStateSet.h" />

@@ -74,6 +74,7 @@
     <ClCompile Include="..\Assets\CompilationThread.cpp" />
     <ClCompile Include="..\Assets\MeshDatabase.cpp" />
     <ClCompile Include="..\Assets\ModelCache.cpp" />
+    <ClCompile Include="..\Assets\ModelScaffold.cpp" />
     <ClCompile Include="..\Assets\ModelScaffoldSerialization.cpp" />
     <ClCompile Include="..\Assets\ModelUtils.cpp" />
     <ClCompile Include="..\Assets\RawAnimationCurve.cpp" />
@@ -89,6 +90,7 @@
     <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
     <ClCompile Include="..\Assets\SharedStateSet.cpp" />
     <ClCompile Include="..\Assets\SkinningRunTime.cpp" />
+    <ClCompile Include="..\Assets\SkinningScaffold.cpp" />
     <ClCompile Include="..\Assets\TransformationCommands.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -122,9 +124,6 @@
     </ProjectReference>
     <ProjectReference Include="RenderCore.vcxproj">
       <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
-    </ProjectReference>
-    <ProjectReference Include="RenderCore_Techniques.vcxproj">
-      <Project>{8188bb13-0b12-c110-2a31-515435fd3bb5}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

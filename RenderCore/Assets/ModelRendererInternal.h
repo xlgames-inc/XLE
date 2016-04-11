@@ -251,11 +251,5 @@ namespace RenderCore { namespace Assets
             AsPointer(source.cbegin()), (unsigned)source.size(), lowLevelSlot);
     }
 
-    template <typename Type>
-        void DestroyArray(const Type* begin, const Type* end)
-        {
-            for (auto i=begin; i!=end; ++i) { i->~Type(); }
-        }
-
 }}
 
