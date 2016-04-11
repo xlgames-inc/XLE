@@ -63,33 +63,6 @@ namespace RenderCore
         class ICLASSNAME(PresentationChain)
         {
         public:
-            /// <summary>Finishes a frame, and presents it to the user</summary>
-            /// Present() is used to finish a frame, and present it to the user. 
-            /// 
-            /// The system will often stall in Present(). This is the most likely place
-            /// we need to synchronise with the hardware. So, if the CPU is running fast
-            /// and the GPU can't keep up, we'll get a stall in Present().
-            /// Normally, this is a good thing, because it means we're GPU bound.
-            ///
-            /// Back buffers get flipped when we Present(). So any new rendering after Present
-            /// will go to the next frame.
-            ///
-            /// <example>
-            /// Normally, present is used like this:
-            ///
-            ///     <code>\code
-            ///     RenderCore::IDevice* device = ...;
-            ///     RenderCore::IPresentationChain* presentationChain = ...;
-            ///     device->BeginFrame(presentationChain);
-            ///         ClearBackBufferAndDepthBuffer(device);   // (helps synchronisation in multi-GPU setups)
-            ///         DoRendering(device);
-            ///     presentationChain->Present();
-            ///     \endcode</code>
-            ///
-            ///   But in theory we can call Present at any time.
-            /// </example>
-            IMETHOD void                    Present() IPURE;
-
             /// <summary>Resizes the presentation chain</summary>
             /// Resizes the presentation chain. Normally this is called after the
             /// output window changes size. If the presentation chain size doesn't
@@ -98,6 +71,8 @@ namespace RenderCore
             ///
             /// Use the default arguments to automatically adjust to the same size as 
             /// the window.
+			///
+			/// Should not be called between BeginFrame/Present
             IMETHOD void                    Resize(unsigned newWidth=0, unsigned newHeight=0) IPURE;
 
             /// <summary>Returns a context object that will track the size of the viewport</summary>
@@ -191,13 +166,6 @@ namespace RenderCore
             /// <seealso cref="RenderCore::IDeviceDX11"/>
             /// <seealso cref="RenderCore::IDeviceOpenGLES"/>
             IMETHOD virtual void*       QueryInterface(const GUID& guid) IPURE;
-
-            /// <summary>Begins rendering of a new frame</summary>
-            /// Starts rendering of a new frame. The frame is ended with a call to RenderCore::IPresentationChain::Present();
-            /// You must pass a presentationChain. This defines how the frame will be presented to the user.
-            /// Note that rendering to offscreen surfaces can happen outside of the BeginFrame/Present boundaries.
-            /// <seealso cref="RenderCore::IPresentationChain::Present"/>
-            IMETHOD void                BeginFrame(IPresentationChain* presentationChain) IPURE;
 
             IMETHOD std::shared_ptr<IThreadContext>     GetImmediateContext() IPURE;
             IMETHOD std::unique_ptr<IThreadContext>     CreateDeferredContext() IPURE;

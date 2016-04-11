@@ -360,22 +360,22 @@ namespace BufferUploads
 
     void CommitStep::CommitToImmediate_PreCommandList(RenderCore::IThreadContext& immContext)
     {
-        assert(0);
-        #if 0
         if (!_deferredCopies.empty()) {
-            PlatformInterface::UnderlyingDeviceContext immediateContext(immContext);
-            for (auto i=_deferredCopies.begin(); i!=_deferredCopies.end(); ++i) {
-                const bool useMapPath = true;
-                if (useMapPath) {
-                    auto mappedBuffer = immediateContext.Map(*i->_destination->GetUnderlying(), PlatformInterface::UnderlyingDeviceContext::MapType::NoOverwrite);
-                    XlCopyMemoryAlign16(PtrAdd(mappedBuffer.GetData(), i->_destination->Offset()), i->_temporaryBuffer->GetData(), i->_size);
-                } else {
-                    immediateContext.PushToResource(
-                        *i->_destination->GetUnderlying(), BufferDesc(), i->_destination->Offset(), i->_temporaryBuffer->GetData(), i->_size, TexturePitches(), Box2D(), 0, 0);
-                }
-            }
+			assert(0);	// this functionality not implemented for Vulkan compatibility
+			#if 0
+				PlatformInterface::UnderlyingDeviceContext immediateContext(immContext);
+				for (auto i=_deferredCopies.begin(); i!=_deferredCopies.end(); ++i) {
+					const bool useMapPath = true;
+					if (useMapPath) {
+						auto mappedBuffer = immediateContext.Map(*i->_destination->GetUnderlying(), PlatformInterface::UnderlyingDeviceContext::MapType::NoOverwrite);
+						XlCopyMemoryAlign16(PtrAdd(mappedBuffer.GetData(), i->_destination->Offset()), i->_temporaryBuffer->GetData(), i->_size);
+					} else {
+						immediateContext.PushToResource(
+							*i->_destination->GetUnderlying(), BufferDesc(), i->_destination->Offset(), i->_temporaryBuffer->GetData(), i->_size, TexturePitches(), Box2D(), 0, 0);
+					}
+				}
+			#endif
         }
-        #endif
     }
 
     void CommitStep::CommitToImmediate_PostCommandList(RenderCore::IThreadContext& immContext)

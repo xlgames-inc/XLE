@@ -44,6 +44,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkImageLayout _layout;
 
         const SamplerState&     GetSampler() const;
+		static void Cleanup();
 
     private:
         VulkanSharedPtr<VkImageView> _underlying;

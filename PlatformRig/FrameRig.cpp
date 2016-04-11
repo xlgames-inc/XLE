@@ -192,9 +192,7 @@ namespace PlatformRig
         if (_pimpl->_updateAsyncMan)
             Assets::Services::GetAsyncMan().Update();
 
-        auto device = context.GetDevice();
-        assert(device);
-        device->BeginFrame(presChain);
+		context.BeginFrame(*presChain);
 
             //  We must invalidate the cached state at least once per frame.
             //  It appears that the driver might forget bound constant buffers
@@ -227,7 +225,7 @@ namespace PlatformRig
 
         {
             CPUProfileEvent_Conditional pEvnt("Present", cpuProfiler);
-            presChain->Present();
+            context.Present(*presChain);
         }
 
         {

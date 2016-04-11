@@ -10,6 +10,7 @@
 #include "Metal/Format.h"
 #include "Metal/Pools.h"
 #include "Metal/Resource.h"
+#include "Metal/ShaderResource.h"	// for ShaderResourceView::Cleanup
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
@@ -336,6 +337,7 @@ namespace RenderCore
 
     Device::~Device()
     {
+		Metal_Vulkan::ShaderResourceView::Cleanup();
         Metal_Vulkan::SetDefaultObjectFactory(nullptr);
 		if (_underlying.get())
 			vkDeviceWaitIdle(_underlying.get());
@@ -424,7 +426,7 @@ namespace RenderCore
 
 			_foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
 				shared_from_this(), 
-                _objectFactory,
+				GetQueue(_underlying.get(), _physDev._renderingQueueFamily),
 				_pools._renderingCommandPool.Allocate(Metal_Vulkan::CommandPool::BufferType::Primary));
 
             Metal_Vulkan::SetDefaultObjectFactory(&_objectFactory);
@@ -505,37 +507,23 @@ namespace RenderCore
 
 		return std::make_unique<PresentationChain>(
 			std::move(surface), std::move(result), _objectFactory,
-            GetQueue(_underlying.get(), _physDev._renderingQueueFamily), 
-            _pools,
             BufferUploads::TextureDesc::Plain2D(swapChainExtent.width, swapChainExtent.height, Metal_Vulkan::AsFormat(chainFmt)),
             platformValue);
     }
 
-    static void BeginOneTimeSubmit(VkCommandBuffer cmd)
-    {
-        VkCommandBufferBeginInfo cmd_buf_info = {};
-		cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		cmd_buf_info.pNext = nullptr;
-		cmd_buf_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		cmd_buf_info.pInheritanceInfo = nullptr;
-		auto res = vkBeginCommandBuffer(cmd, &cmd_buf_info);
-		if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
-    }
-
-    void    Device::BeginFrame(IPresentationChain* presentationChain)
-    {
-        PresentationChain* swapChain = checked_cast<PresentationChain*>(presentationChain);
-        swapChain->AcquireNextImage();
-
-		// reset and begin the primary foreground command buffer
-		auto& metalContext = *_foregroundPrimaryContext->GetMetalContext();
-		metalContext.BeginCommandList();
-
-		auto rp = swapChain->BindDefaultRenderPass(metalContext);
-        if (rp)
-			metalContext.Bind(rp->ShareUnderlying());
-    }
+	#if 0
+		static void BeginOneTimeSubmit(VkCommandBuffer cmd)
+		{
+			VkCommandBufferBeginInfo cmd_buf_info = {};
+			cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			cmd_buf_info.pNext = nullptr;
+			cmd_buf_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			cmd_buf_info.pInheritanceInfo = nullptr;
+			auto res = vkBeginCommandBuffer(cmd, &cmd_buf_info);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
+		}
+	#endif
 
     std::shared_ptr<IThreadContext> Device::GetImmediateContext()
     {
@@ -544,7 +532,7 @@ namespace RenderCore
 
     std::unique_ptr<IThreadContext> Device::CreateDeferredContext()
     {
-		return std::make_unique<ThreadContextVulkan>(shared_from_this(), _objectFactory, nullptr);
+		return std::make_unique<ThreadContextVulkan>(shared_from_this(), nullptr, nullptr);
     }
 
 	namespace Internal
@@ -647,78 +635,6 @@ namespace RenderCore
 		}
 	#endif
 
-    void            PresentationChain::Present()
-    {
-        if (_activeImageIndex > unsigned(_images.size())) return;
-
-		//////////////////////////////////////////////////////////////////
-
-        auto& sync = _presentSyncs[_activePresentSync];
-
-		VkSubmitInfo submitInfo;
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.pNext = nullptr;
-
-        VkSemaphore waitSema[] = { sync._onAcquireComplete.get() };
-        VkSemaphore signalSema[] = { sync._onCommandBufferComplete.get() };
-        VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		submitInfo.waitSemaphoreCount = dimof(waitSema);
-		submitInfo.pWaitSemaphores = waitSema;
-        submitInfo.signalSemaphoreCount = dimof(signalSema);
-		submitInfo.pSignalSemaphores = signalSema;
-		submitInfo.pWaitDstStageMask = &stage;
-
-		submitInfo.commandBufferCount = 0;
-		submitInfo.pCommandBuffers = nullptr;
-		if (_cmdBufferPendingCommit) {
-			vkCmdEndRenderPass(_cmdBufferPendingCommit);
-			auto res = vkEndCommandBuffer(_cmdBufferPendingCommit);
-			if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
-			submitInfo.commandBufferCount = 1;
-			submitInfo.pCommandBuffers = &_cmdBufferPendingCommit;
-		}
-
-		auto res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
-		if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
-
-        // hack -- need to implement CPU/GPU synchronisation
-        vkDeviceWaitIdle(_device.get());
-        _factory->FlushDestructionQueue();
-        _globalPools->_mainDescriptorPool.FlushDestroys();
-		_globalPools->_renderingCommandPool.FlushDestroys();
-
-		_cmdBufferPendingCommit = nullptr;
-
-		//////////////////////////////////////////////////////////////////
-
-        const VkSwapchainKHR swapChains[] = { _swapChain.get() };
-        uint32_t imageIndices[] = { _activeImageIndex };
-        const VkSemaphore waitSema_2[] = { sync._onCommandBufferComplete.get() };
-
-        VkPresentInfoKHR present;
-        present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        present.pNext = NULL;
-        present.swapchainCount = dimof(swapChains);
-        present.pSwapchains = swapChains;
-        present.pImageIndices = imageIndices;
-        present.pWaitSemaphores = waitSema_2;
-        present.waitSemaphoreCount = dimof(waitSema_2);
-        present.pResults = NULL;
-
-        res = vkQueuePresentKHR(_queue, &present);
-        if (res != VK_SUCCESS)
-            Throw(VulkanAPIFailure(res, "Failure while queuing present"));
-
-        // queue a fence -- used to avoid acquiring an image before it has completed it's present.
-        res = vkQueueSubmit(_queue, 0, nullptr, sync._presentFence.get());
-        if (res != VK_SUCCESS)
-            Throw(VulkanAPIFailure(res, "Failure while queuing post present fence"));
-
-        _activeImageIndex = ~0x0u;
-    }
-
     void            PresentationChain::Resize(unsigned newWidth, unsigned newHeight)
     {
         // todo -- we'll need to destroy and recreate the swapchain here
@@ -772,7 +688,6 @@ namespace RenderCore
     RenderPass* PresentationChain::BindDefaultRenderPass(Metal_Vulkan::DeviceContext& context)
     {
         if (_activeImageIndex >= unsigned(_images.size())) return nullptr;
-		assert(!_cmdBufferPendingCommit);
 
 		// bind the default render pass for rendering directly to the swapchain
 		VkRenderPassBeginInfo rp_begin;
@@ -790,7 +705,6 @@ namespace RenderCore
 		rp_begin.clearValueCount = dimof(clearValues);
 
 		vkCmdBeginRenderPass(context.GetCommandList(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
-		_cmdBufferPendingCommit = context.GetCommandList();
 
         return &_defaultRenderPass;
 	}
@@ -1099,23 +1013,48 @@ namespace RenderCore
 
     FrameBuffer::~FrameBuffer() {}
 
+	void PresentationChain::PresentToQueue(VkQueue queue)
+	{
+		if (_activeImageIndex > unsigned(_images.size())) return;
+
+		auto& sync = _presentSyncs[_activePresentSync];
+		const VkSwapchainKHR swapChains[] = { _swapChain.get() };
+		uint32_t imageIndices[] = { _activeImageIndex };
+		const VkSemaphore waitSema_2[] = { sync._onCommandBufferComplete.get() };
+
+		VkPresentInfoKHR present;
+		present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		present.pNext = NULL;
+		present.swapchainCount = dimof(swapChains);
+		present.pSwapchains = swapChains;
+		present.pImageIndices = imageIndices;
+		present.pWaitSemaphores = waitSema_2;
+		present.waitSemaphoreCount = dimof(waitSema_2);
+		present.pResults = NULL;
+
+		auto res = vkQueuePresentKHR(queue, &present);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while queuing present"));
+
+		// queue a fence -- used to avoid acquiring an image before it has completed it's present.
+		res = vkQueueSubmit(queue, 0, nullptr, sync._presentFence.get());
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while queuing post present fence"));
+
+		_activeImageIndex = ~0x0u;
+	}
+
     PresentationChain::PresentationChain(
 		VulkanSharedPtr<VkSurfaceKHR> surface,
         VulkanSharedPtr<VkSwapchainKHR> swapChain,
         const Metal_Vulkan::ObjectFactory& factory,
-        VkQueue queue, 
-        Metal_Vulkan::GlobalPools& globalPools,
         const BufferUploads::TextureDesc& bufferDesc,
         const void* platformValue)
     : _surface(std::move(surface))
 	, _swapChain(std::move(swapChain))
-    , _queue(queue)
     , _device(factory.GetDevice())
     , _platformValue(platformValue)
 	, _bufferDesc(bufferDesc)
-	, _cmdBufferPendingCommit(nullptr)
-    , _factory(&factory)
-    , _globalPools(&globalPools)
     {
         _activeImageIndex = ~0x0u;
 
@@ -1174,6 +1113,7 @@ namespace RenderCore
 
         // We need to set the image layout for these images we created
         // this is a little frustrating. I wonder if the GPU is just rearranging the pixel contents?
+#if 0
         if (constant_expression<false>::result()) {
             auto cmd = globalPools._renderingCommandPool.Allocate(Metal_Vulkan::CommandPool::BufferType::Primary);
             BeginOneTimeSubmit(cmd.get());
@@ -1215,6 +1155,7 @@ namespace RenderCore
             if (res != VK_SUCCESS)
 			    Throw(VulkanAPIFailure(res, "Failure while waiting for fence"));
         }
+#endif
 
     }
 
@@ -1247,9 +1188,66 @@ namespace RenderCore
 		}
 	#endif
 
+	void    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
+	{
+		PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
+		swapChain->AcquireNextImage();
+
+		auto rp = swapChain->BindDefaultRenderPass(*_metalContext);
+		if (rp)
+			_metalContext->Bind(rp->ShareUnderlying());
+	}
+
+	void            ThreadContext::Present(IPresentationChain& chain)
+	{
+		auto* swapChain = checked_cast<PresentationChain*>(&chain);
+		auto& syncs = swapChain->GetSyncs();
+
+		//////////////////////////////////////////////////////////////////
+
+		auto cmdBuffer = _metalContext->GetCommandList();
+		vkCmdEndRenderPass(cmdBuffer);
+		auto res = vkEndCommandBuffer(cmdBuffer);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
+
+		VkSubmitInfo submitInfo;
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = nullptr;
+
+		VkSemaphore waitSema[] = { syncs._onAcquireComplete.get() };
+		VkSemaphore signalSema[] = { syncs._onCommandBufferComplete.get() };
+		VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		submitInfo.waitSemaphoreCount = dimof(waitSema);
+		submitInfo.pWaitSemaphores = waitSema;
+		submitInfo.signalSemaphoreCount = dimof(signalSema);
+		submitInfo.pSignalSemaphores = signalSema;
+		submitInfo.pWaitDstStageMask = &stage;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &cmdBuffer;
+		
+		res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
+
+		// hack -- need to implement CPU/GPU synchronisation
+		vkDeviceWaitIdle(_underlyingDevice);
+		_factory->FlushDestructionQueue();
+		_globalPools->_mainDescriptorPool.FlushDestroys();
+		_globalPools->_renderingCommandPool.FlushDestroys();
+
+		//////////////////////////////////////////////////////////////////
+		swapChain->PresentToQueue(_queue);
+
+		// reset and begin the primary foreground command buffer immediately
+		_metalContext->BeginCommandList();
+	}
+
+	
+
     bool    ThreadContext::IsImmediate() const
     {
-        return true;
+        return _queue != nullptr;
     }
 
     auto ThreadContext::GetStateDesc() const -> ThreadContextStateDesc
@@ -1260,15 +1258,22 @@ namespace RenderCore
 	void ThreadContext::InvalidateCachedState() const {}
 
     ThreadContext::ThreadContext(
-        std::shared_ptr<Device> device, 
-        const Metal_Vulkan::ObjectFactory& factory, 
-        VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
+		std::shared_ptr<Device> device,
+		VkQueue queue,
+		VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
     : _device(device)
 	, _frameId(0)
 	, _metalContext(
 		std::make_shared<Metal_Vulkan::DeviceContext>(
-			factory, device->GetGlobalPools(), std::move(primaryCommandBuffer)))
+			device->GetObjectFactory(), device->GetGlobalPools(), std::move(primaryCommandBuffer)))
+	, _factory(&device->GetObjectFactory())
+	, _globalPools(&device->GetGlobalPools())
+	, _queue(queue)
+	, _underlyingDevice(device->GetUnderlyingDevice())
     {
+		// if we start with a command buffer, let's begin it immediately...
+		if (primaryCommandBuffer)
+			_metalContext->BeginCommandList();
     }
 
     ThreadContext::~ThreadContext() {}
@@ -1307,10 +1312,10 @@ namespace RenderCore
     }
 
     ThreadContextVulkan::ThreadContextVulkan(
-        std::shared_ptr<Device> device, 
-        const Metal_Vulkan::ObjectFactory& factory, 
-        VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
-    : ThreadContext(std::move(device), factory, std::move(primaryCommandBuffer))
+		std::shared_ptr<Device> device,
+		VkQueue queue,
+		VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
+    : ThreadContext(std::move(device), queue, std::move(primaryCommandBuffer))
     {}
 
 	ThreadContextVulkan::~ThreadContextVulkan() {}

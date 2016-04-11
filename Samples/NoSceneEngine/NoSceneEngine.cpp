@@ -245,7 +245,7 @@ namespace Sample
 
 			auto dxContext = Metal_DX11::DeviceContext::Get(genericThreadContext);
 			if (dxContext) {
-				auto& shader = ::Assets::GetAsset<Metal_DX11::ShaderProgram>(
+				auto& shader = ::Assets::GetAssetDep<Metal_DX11::ShaderProgram>(
 					"game/xleres/deferred/basic.vsh:main:vs_*",
 					"game/xleres/basic.psh:copy_bilinear:ps_*",
 					"GEO_HAS_TEXCOORD=1;RES_HAS_DiffuseTexture=1");
@@ -300,7 +300,7 @@ namespace Sample
 			} else {
 				auto vkContext = Metal_Vulkan::DeviceContext::Get(genericThreadContext);
 
-				auto& shader = ::Assets::GetAsset<Metal_Vulkan::ShaderProgram>(
+				auto& shader = ::Assets::GetAssetDep<Metal_Vulkan::ShaderProgram>(
 					"game/xleres/deferred/basic.vsh:main:vs_*",
 					"game/xleres/basic.psh:copy_bilinear:ps_*",
 					"GEO_HAS_TEXCOORD=1;RES_HAS_DiffuseTexture=1");
@@ -445,7 +445,18 @@ namespace Sample
             LogInfo << "Setup frame rig and rendering context";
             auto context = renderDevice->GetImmediateContext();
 
-			bool initTex = false;
+			//bool initTex = false;
+			//if (!initTex) {
+			//	using namespace RenderCore;
+			//	auto initContext = renderDevice->CreateDeferredContext();
+			//	auto metalContext = Metal::DeviceContext::Get(*initContext);
+			//	metalContext->BeginCommandList();
+			//	VulkanTest::init_image2(*renderDevice, *initContext.get(), texObj);
+			//	auto cmdList = metalContext->ResolveCommandList();
+			//	Metal::DeviceContext::Get(*context)->CommitCommandList(*cmdList, false);
+			//	// VulkanTest::init_image2(*renderDevice, *context, texObj);
+			//	initTex = true;
+			//}
 
                 //  Finally, we execute the frame loop
             for (;;) {
@@ -453,29 +464,17 @@ namespace Sample
                     break;
                 }
 
-                renderDevice->BeginFrame(presentationChain.get());
-
-				if (!initTex) {
-					using namespace RenderCore;
-					// auto initContext = renderDevice->CreateDeferredContext();
-					// auto metalContext = Metal::DeviceContext::Get(*initContext);
-					// metalContext->BeginCommandList();
-					// VulkanTest::init_image2(*renderDevice, *metalContext.get(), texObj);
-					// auto cmdList = metalContext->ResolveCommandList();
-					// Metal::DeviceContext::Get(*context)->CommitCommandList(*cmdList, false);
-					VulkanTest::init_image2(*renderDevice, *context, texObj);
-					initTex = true;
-				}
-
+				context->BeginFrame(*presentationChain);
                 RunShaderTest(*context);
-
-                presentationChain->Present();
+                context->Present(*presentationChain);
 
                     // ------- Update ----------------------------------------
                 RenderCore::Assets::Services::GetBufferUploads().Update(*context, false);
                 g_cpuProfiler.EndFrame();
                 ++FrameRenderCount;
             }
+
+			texObj._resource.reset();
         }
 
             //  There are some manual destruction operations we need to perform...

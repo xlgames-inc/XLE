@@ -459,6 +459,12 @@ namespace BufferUploads
         const bool allowInitialisationOnConstruction = PlatformInterface::SupportsResourceInitialisation || _resourceSource.WillBeBatched(desc);
         if (initialisationData) {
 
+			if (!allowInitialisationOnConstruction) {
+				// We need to make sure the "TransferDst" flag is set for the transaction -- because we know we will receive a 
+				// transfer in this case.
+				transaction->_desc._bindFlags |= BindFlag::TransferDst;
+			}
+
             auto bkgrndMarker = initialisationData->BeginBackgroundLoad();
             if (bkgrndMarker) {
                     // if we started a background load operation, we just need to add a pending

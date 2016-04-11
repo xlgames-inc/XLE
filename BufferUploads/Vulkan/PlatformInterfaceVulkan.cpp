@@ -118,7 +118,9 @@
         {
             auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             assert(metalContext);
-            return metalContext->ResolveCommandList();;
+            auto result = metalContext->ResolveCommandList();
+			metalContext->BeginCommandList();	// begin a new one immediately
+			return result;
         }
 
         void                        UnderlyingDeviceContext::BeginCommandList()

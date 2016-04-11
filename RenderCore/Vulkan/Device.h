@@ -146,32 +146,36 @@ namespace RenderCore
     class PresentationChain : public Base_PresentationChain
     {
     public:
-        void	Present() /*override*/;
         void	Resize(unsigned newWidth, unsigned newHeight) /*override*/;
 
         std::shared_ptr<ViewportContext> GetViewportContext() const;
         void        AcquireNextImage();
 		RenderPass* BindDefaultRenderPass(Metal_Vulkan::DeviceContext& context);
 
+		void PresentToQueue(VkQueue queue);
+
+		class PresentSync
+		{
+		public:
+			VulkanUniquePtr<VkSemaphore>    _onAcquireComplete;
+			VulkanUniquePtr<VkSemaphore>    _onCommandBufferComplete;
+			VulkanUniquePtr<VkFence>        _presentFence;
+		};
+		PresentSync& GetSyncs() { return _presentSyncs[_activePresentSync]; }
+
         PresentationChain(
 			VulkanSharedPtr<VkSurfaceKHR> surface, 
 			VulkanSharedPtr<VkSwapchainKHR> swapChain,			
             const Metal_Vulkan::ObjectFactory& factory,
-            VkQueue queue, 
-            Metal_Vulkan::GlobalPools& globalPools,
             const BufferUploads::TextureDesc& bufferDesc,
             const void* platformValue);
         ~PresentationChain();
     private:
 		VulkanSharedPtr<VkSurfaceKHR> _surface;
         VulkanSharedPtr<VkSwapchainKHR> _swapChain;
-        VkQueue			_queue;
         VulkanSharedPtr<VkDevice> _device;
         const void*		_platformValue;
         unsigned		_activeImageIndex;
-
-        const Metal_Vulkan::ObjectFactory* _factory;
-        Metal_Vulkan::GlobalPools* _globalPools;
 
         class Image
         {
@@ -188,15 +192,6 @@ namespace RenderCore
 		RenderPass		    _defaultRenderPass;
 		BufferUploads::TextureDesc _bufferDesc;
 
-		VkCommandBuffer     _cmdBufferPendingCommit;
-
-        class PresentSync
-        {
-        public:
-            VulkanUniquePtr<VkSemaphore>    _onAcquireComplete;
-            VulkanUniquePtr<VkSemaphore>    _onCommandBufferComplete;
-            VulkanUniquePtr<VkFence>        _presentFence;
-        };
         PresentSync     _presentSyncs[3];
         unsigned        _activePresentSync;
     };
@@ -206,6 +201,9 @@ namespace RenderCore
     class ThreadContext : public Base_ThreadContext
     {
     public:
+		void	Present(IPresentationChain&);
+		void    BeginFrame(IPresentationChain& presentationChain);
+
         bool                        IsImmediate() const;
         ThreadContextStateDesc      GetStateDesc() const;
         std::shared_ptr<IDevice>    GetDevice() const;
@@ -215,13 +213,18 @@ namespace RenderCore
 
         ThreadContext(
             std::shared_ptr<Device> device, 
-            const Metal_Vulkan::ObjectFactory& factory, 
-            VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer);
+			VkQueue queue,
+			VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer);
         ~ThreadContext();
     protected:
         std::weak_ptr<Device>           _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
 		unsigned                        _frameId;
 		std::shared_ptr<Metal_Vulkan::DeviceContext>     _metalContext;
+
+		VkDevice							_underlyingDevice;
+		VkQueue								_queue;
+		const Metal_Vulkan::ObjectFactory*	_factory;
+		Metal_Vulkan::GlobalPools*			_globalPools;
     };
 
     class ThreadContextVulkan : public ThreadContext, public Base_ThreadContextVulkan
@@ -231,9 +234,9 @@ namespace RenderCore
         const std::shared_ptr<Metal_Vulkan::DeviceContext>& GetMetalContext();
 
 		ThreadContextVulkan(
-            std::shared_ptr<Device> device, 
-            const Metal_Vulkan::ObjectFactory& factory, 
-            VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer);
+			std::shared_ptr<Device> device,
+			VkQueue queue,
+			VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer);
         ~ThreadContextVulkan();
     };
 
@@ -244,7 +247,6 @@ namespace RenderCore
     public:
         std::unique_ptr<IPresentationChain>     CreatePresentationChain(
 			const void* platformValue, unsigned width, unsigned height) /*override*/;
-        void    BeginFrame(IPresentationChain* presentationChain);
 
         std::pair<const char*, const char*>     GetVersionInformation();
 
@@ -252,10 +254,13 @@ namespace RenderCore
         std::unique_ptr<IThreadContext>         CreateDeferredContext();
 
         Metal_Vulkan::GlobalPools&              GetGlobalPools() { return _pools; }
+		Metal_Vulkan::ObjectFactory&			GetObjectFactory() { return _objectFactory; }
 
 		ResourcePtr CreateResource(
 			const ResourceDesc& desc, 
 			const std::function<SubResourceInitData(unsigned, unsigned)>&);
+
+		VkDevice	    GetUnderlyingDevice() { return _underlying.get(); }
 
         Device();
         ~Device();

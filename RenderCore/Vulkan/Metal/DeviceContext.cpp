@@ -248,19 +248,30 @@ namespace RenderCore { namespace Metal_Vulkan
 		// Unless the context is already tied to a primary command list, we will always
 		// create a secondary command list here.
 		// Also, all command lists are marked as "one time submit"
-		if (!_commandList)
+		if (!_commandList) {
 			_commandList = _globalPools->_renderingCommandPool.Allocate(CommandPool::BufferType::Secondary);
+		} else {
+			auto res = vkResetCommandBuffer(_commandList.get(), 0);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while resetting command buffer"));
+		}
 
-		auto res = vkResetCommandBuffer(_commandList.get(), 0);
-		if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while resetting command buffer"));
+		VkCommandBufferInheritanceInfo inheritInfo = {};
+		inheritInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+		inheritInfo.pNext = nullptr;
+		inheritInfo.renderPass = VK_NULL_HANDLE;
+		inheritInfo.subpass = 0;
+		inheritInfo.framebuffer = VK_NULL_HANDLE;
+		inheritInfo.occlusionQueryEnable = false;
+		inheritInfo.queryFlags = 0;
+		inheritInfo.pipelineStatistics = 0;
 
 		VkCommandBufferBeginInfo cmd_buf_info = {};
 		cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		cmd_buf_info.pNext = nullptr;
 		cmd_buf_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		cmd_buf_info.pInheritanceInfo = nullptr;
-		res = vkBeginCommandBuffer(_commandList.get(), &cmd_buf_info);
+		cmd_buf_info.pInheritanceInfo = &inheritInfo;
+		auto res = vkBeginCommandBuffer(_commandList.get(), &cmd_buf_info);
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
 	}

@@ -9,13 +9,22 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+	static VkCommandBufferLevel AsBufferLevel(CommandPool::BufferType type)
+	{
+		switch (type) {
+		default:
+		case CommandPool::BufferType::Primary: return VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		case CommandPool::BufferType::Secondary: return VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+		}
+	}
+
     VulkanSharedPtr<VkCommandBuffer> CommandPool::Allocate(BufferType type)
 	{
 		VkCommandBufferAllocateInfo cmd = {};
 		cmd.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		cmd.pNext = nullptr;
 		cmd.commandPool = _pool.get();
-		cmd.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		cmd.level = AsBufferLevel(type);
 		cmd.commandBufferCount = 1;
 
 		VkCommandBuffer rawBuffer = nullptr;

@@ -61,9 +61,43 @@ namespace RenderCore
     class ICLASSNAME(ThreadContext)
     {
     public:
+		/// <summary>Begins rendering of a new frame</summary>
+		/// Starts rendering of a new frame. The frame is ended with a call to RenderCore::IThreadContext::Present();
+		/// You must pass a presentationChain. This defines how the frame will be presented to the user.
+		/// Note that rendering to offscreen surfaces can happen outside of the BeginFrame/Present boundaries.
+		/// <seealso cref="RenderCore::IThreadContext::Present"/>
+		IMETHOD void            BeginFrame(IPresentationChain& presentationChain) IPURE;
+
+		/// <summary>Finishes a frame, and presents it to the user</summary>
+		/// Present() is used to finish a frame, and present it to the user. 
+		/// 
+		/// The system will often stall in Present(). This is the most likely place
+		/// we need to synchronise with the hardware. So, if the CPU is running fast
+		/// and the GPU can't keep up, we'll get a stall in Present().
+		/// Normally, this is a good thing, because it means we're GPU bound.
+		///
+		/// Back buffers get flipped when we Present(). So any new rendering after Present
+		/// will go to the next frame.
+		///
+		/// <example>
+		///   Normally, present is used like this:
+		///
+		///     <code>\code
+		///     RenderCore::IDevice* device = ...;
+		///     RenderCore::IPresentationChain* presentationChain = ...;
+		///     threadContext->BeginFrame(*presentationChain);
+		///         ClearBackBufferAndDepthBuffer(device);   // (helps synchronisation in multi-GPU setups)
+		///         DoRendering(device);
+		///     threadContext->Present(*presentationChain);
+		///     \endcode</code>
+		///
+		///   But in theory we can call Present at any time.
+		/// </example>
+		IMETHOD void			Present(IPresentationChain& presentationChain) IPURE;
+
         IMETHOD virtual void*   QueryInterface(const GUID& guid) IPURE;
         IMETHOD bool            IsImmediate() const IPURE;
-        IMETHOD std::shared_ptr<IDevice>    GetDevice() const IPURE;
+        IMETHOD auto			GetDevice() const -> std::shared_ptr<IDevice> IPURE;
         IMETHOD void            ClearAllBoundTargets() const IPURE;
 		IMETHOD void			InvalidateCachedState() const IPURE;
 

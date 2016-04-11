@@ -368,11 +368,12 @@ namespace RenderCore { namespace Metal_DX11
 
     void DeviceContext::PrepareForDestruction(IDevice* device, IPresentationChain* presentationChain)
     {
-        auto metalContext = Get(*device->GetImmediateContext());
+		auto immContext = device->GetImmediateContext();
+        auto metalContext = Get(*immContext);
         if (metalContext) {
             metalContext->GetUnderlying()->ClearState();
             for (unsigned c=0; c<6; ++c) {
-                device->BeginFrame(presentationChain);
+				immContext->BeginFrame(*presentationChain);
                 metalContext->GetUnderlying()->Flush();
             }
         }

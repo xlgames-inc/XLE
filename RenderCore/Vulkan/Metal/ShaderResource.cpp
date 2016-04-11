@@ -19,7 +19,7 @@ namespace RenderCore { namespace Metal_Vulkan
         view_info.pNext = nullptr;
         view_info.image = image;
         view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        view_info.format = AsVkFormat(fmt); // VK_FORMAT_R8G8B8A8_UNORM;
+        view_info.format = AsVkFormat(fmt);
         view_info.components.r = VK_COMPONENT_SWIZZLE_R;
         view_info.components.g = VK_COMPONENT_SWIZZLE_G;
         view_info.components.b = VK_COMPONENT_SWIZZLE_B;
@@ -52,11 +52,18 @@ namespace RenderCore { namespace Metal_Vulkan
     ShaderResourceView::~ShaderResourceView() {}
 
 
+	static SamplerState& GetDefaultSampler() 
+	{ 
+		static SamplerState s_defaultSampler;
+		return s_defaultSampler;
+	}
+
     const SamplerState&     ShaderResourceView::GetSampler() const
     {
-        static SamplerState result;
-        return result;
+        return GetDefaultSampler();
     }
+
+	void ShaderResourceView::Cleanup() { GetDefaultSampler().~SamplerState(); }
 
 }}
 

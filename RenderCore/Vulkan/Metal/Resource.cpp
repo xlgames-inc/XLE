@@ -162,7 +162,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		// We must select a correct aspect mask. The nvidia drivers seem to be fine with all
 		// bits enabled, but the documentation says that this is not allowed
 		auto aspectMask = AsImageAspectMask(r.GetDesc()._textureDesc._format);
-		Metal_Vulkan::SetImageLayout(
+		SetImageLayout(
 			context.GetCommandList(),
 			r.GetImage(), 
 			aspectMask,
@@ -393,11 +393,25 @@ namespace RenderCore { namespace Metal_Vulkan
 			    depth = std::max(1u, depth>>1);
 		    }
 
+			// We don't have a way to know for sure what the current layout is for the given image on the given context. 
+			// Let's just assume the previous states are as they would be in the most common cases
+			//		-- normally, this is called immediately after creation, when filling in an OPTIMAL texture with
+			//			data from a staging texture. When that happens, the src will be in layout "Preinitialized" and
+			//			the dst will be in layout "Undefined"
+			// During the transfer, the images must be in either TransferSrcOptimal, TransferDstOptimal or General.
+			// So, we must change the layout immediate before and after the transfer.
+			SetImageLayout(context, src, Metal_Vulkan::ImageLayout::Preinitialized, Metal_Vulkan::ImageLayout::TransferSrcOptimal);
+			SetImageLayout(context, dst, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal);
 		    vkCmdCopyImage(
 			    context.GetCommandList(),
 			    src.get()->GetImage(), AsVkImageLayout(srcLayout),
 			    dst.get()->GetImage(), AsVkImageLayout(dstLayout),
 			    copyOperations, copyOps);
+
+			// Switch the layout to the final layout. Here, we're assuming all of the transfers are finished, and the
+			// image will soon be used by a shader.
+			SetImageLayout(context, dst, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal);
+
         } else if (dst.get()->GetBuffer() && src.get()->GetBuffer()) {
             // buffer to buffer copy
             const auto& srcDesc = src.get()->GetDesc();
@@ -457,11 +471,13 @@ namespace RenderCore { namespace Metal_Vulkan
             }
 
             const auto copyOperations = mips*arrayCount;
+			SetImageLayout(context, dst, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal);
             vkCmdCopyBufferToImage(
                 context.GetCommandList(),
                 src.get()->GetBuffer(),
                 dst.get()->GetImage(), AsVkImageLayout(dstLayout),
                 copyOperations, copyOps);
+			SetImageLayout(context, dst, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal);
         } else {
             // copies from buffer to image, or image to buffer are supported by Vulkan, but
             // not implemented here.
