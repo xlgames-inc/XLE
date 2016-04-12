@@ -14,7 +14,7 @@
 #include "../../SceneEngine/TerrainConfig.h"
 #include "../../SceneEngine/TerrainUberSurface.h"
 #include "../../SceneEngine/TerrainScaffold.h"
-#include "../../RenderCore/Metal/Format.h"      // (for BitsPerPixel)
+#include "../../RenderCore/Format.h"      // (for BitsPerPixel)
 #include "../../Math/Vector.h"
 #include "../../ConsoleRig/IProgress.h"
 #include "../../ConsoleRig/Log.h"

@@ -13,6 +13,7 @@
 #include "../RenderCore/Metal/Resource.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Format.h"
 #include "../Assets/AssetServices.h"
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../ConsoleRig/Log.h"
@@ -20,6 +21,7 @@
 #include "../Utility/StringFormat.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
+#include "../RenderCore/DX11/Metal/Format.h"
 #include "../../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
 
 namespace SceneEngine
@@ -80,18 +82,17 @@ namespace SceneEngine
                 const unsigned expectedWidth = destinationDesc.Width >> m;
                 const unsigned expectedHeight = destinationDesc.Height >> m;
 
-                auto destFormat = destinationDesc.Format;
+                auto destFormat = RenderCore::Metal::AsFormat(destinationDesc.Format);
                 auto resamplingFormat = destFormat;
-                auto compressionType = RenderCore::Metal::GetCompressionType(RenderCore::Metal::AsNativeFormat(destFormat));
-                if (compressionType == RenderCore::Metal::FormatCompressionType::BlockCompression) {
+                auto compressionType = RenderCore::GetCompressionType(resamplingFormat);
+                if (compressionType == RenderCore::FormatCompressionType::BlockCompression) {
                         // resampling via a higher precision buffer -- just for kicks.
-                    resamplingFormat = (DXGI_FORMAT)RenderCore::Metal::NativeFormat::R16G16B16A16_FLOAT;
+                    resamplingFormat = RenderCore::Format::R16G16B16A16_FLOAT;
                 }
 
                 auto& bufferUploads = GetBufferUploads();
-                using namespace BufferUploads;
-                BufferDesc desc;
-                desc._type = BufferDesc::Type::Texture;
+                ResourceDesc desc;
+                desc._type = ResourceDesc::Type::Texture;
                 desc._bindFlags = BindFlag::UnorderedAccess;
                 desc._cpuAccess = 0;
                 desc._gpuAccess = GPUAccess::Read|GPUAccess::Write;
@@ -114,7 +115,7 @@ namespace SceneEngine
                     DirectX::Image image;
                     image.width = expectedWidth;
                     image.height = expectedHeight;
-                    image.format = resamplingFormat;
+                    image.format = Metal::AsDXGIFormat(resamplingFormat);
                     image.rowPitch = rawData->GetPitches()._rowPitch;
                     image.slicePitch = rawData->GetPitches()._slicePitch;
                     image.pixels = (uint8_t*)rawData->GetData();
@@ -128,15 +129,15 @@ namespace SceneEngine
 
                     DirectX::ScratchImage compressedImage;
                     auto hresult = DirectX::Compress(
-                        image, destFormat, DirectX::TEX_COMPRESS_DITHER | DirectX::TEX_COMPRESS_SRGB, 0.f, compressedImage);
+                        image, Metal::AsDXGIFormat(destFormat), DirectX::TEX_COMPRESS_DITHER | DirectX::TEX_COMPRESS_SRGB, 0.f, compressedImage);
                     assert(SUCCEEDED(hresult)); (void)hresult;
                     assert(compressedImage.GetImageCount()==1);
                     
                     auto& final = *compressedImage.GetImage(0,0,0);
                     desc._bindFlags = BindFlag::ShaderResource;
-                    desc._textureDesc._nativePixelFormat = destFormat;
+                    desc._textureDesc._format = destFormat;
                     auto compressedBuffer = bufferUploads.Transaction_Immediate(
-                            desc, BufferUploads::CreateBasicPacket(final.slicePitch, final.pixels, TexturePitches(unsigned(final.rowPitch), unsigned(final.slicePitch))).get());
+                        desc, BufferUploads::CreateBasicPacket(final.slicePitch, final.pixels, TexturePitches{unsigned(final.rowPitch), unsigned(final.slicePitch)}).get());
 
                     resamplingBuffer = compressedBuffer;   
                 }
@@ -288,7 +289,7 @@ namespace SceneEngine
 
     static intrusive_ptr<BufferUploads::ResourceLocator> BC5Dummy(const BufferUploads::BufferDesc& desc, uint8 x, uint8 y)
     {
-        auto tempBuffer = CreateEmptyPacket(desc);
+        auto tempBuffer = BufferUploads::CreateEmptyPacket(desc);
         struct BC5Block 
         { 
             uint8 x0; uint8 x1; uint8 tx[6];
@@ -309,7 +310,7 @@ namespace SceneEngine
 
     static intrusive_ptr<BufferUploads::ResourceLocator> R8Dummy(const BufferUploads::BufferDesc& desc, uint8 value)
     {
-        auto tempBuffer = CreateEmptyPacket(desc);
+        auto tempBuffer = BufferUploads::CreateEmptyPacket(desc);
         std::memset(tempBuffer->GetData(), 0x0, tempBuffer->GetDataSize());
         return GetBufferUploads().Transaction_Immediate(desc, tempBuffer.get());
     }
@@ -432,9 +433,8 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             // build the atlas textures
-        using namespace BufferUploads;
-        BufferDesc desc;
-        desc._type = BufferDesc::Type::Texture;
+        ResourceDesc desc;
+        desc._type = ResourceDesc::Type::Texture;
         desc._bindFlags = BindFlag::ShaderResource;
         desc._cpuAccess = 0;
         desc._gpuAccess = GPUAccess::Read;
@@ -442,26 +442,26 @@ namespace SceneEngine
         XlCopyString(desc._name, "TerrainMaterialTextures");
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
-            scaffold._diffuseDims[0], scaffold._diffuseDims[1], Metal::NativeFormat::BC1_UNORM_SRGB, 
+            scaffold._diffuseDims[0], scaffold._diffuseDims[1], Format::BC1_UNORM_SRGB, 
             (uint8)IntegerLog2(std::max(scaffold._diffuseDims[0], scaffold._diffuseDims[1]))-1, uint8(atlasTextureNames.size()));
         auto diffuseTextureArray = GetBufferUploads().Transaction_Immediate(desc);
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
-            scaffold._normalDims[0], scaffold._normalDims[1], Metal::NativeFormat::BC5_UNORM, 
+            scaffold._normalDims[0], scaffold._normalDims[1], Format::BC5_UNORM, 
             (uint8)IntegerLog2(std::max(scaffold._normalDims[0], scaffold._normalDims[1]))-1, uint8(atlasTextureNames.size()));
         auto normalTextureArray = GetBufferUploads().Transaction_Immediate(desc);
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
-            scaffold._normalDims[0], scaffold._normalDims[1], Metal::NativeFormat::BC5_UNORM);
+            scaffold._normalDims[0], scaffold._normalDims[1], Format::BC5_UNORM);
         auto bc5Dummy = BC5Dummy(desc, 0x80, 0x80);
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
-            scaffold._paramDims[0], scaffold._paramDims[1], Metal::NativeFormat::R8_UNORM, 
+            scaffold._paramDims[0], scaffold._paramDims[1], Format::R8_UNORM, 
             (uint8)IntegerLog2(std::max(scaffold._paramDims[0], scaffold._paramDims[1]))-1, uint8(atlasTextureNames.size()));
         auto roughnessTextureArray = GetBufferUploads().Transaction_Immediate(desc);
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
-            scaffold._paramDims[0], scaffold._paramDims[1], Metal::NativeFormat::R8_UNORM);
+            scaffold._paramDims[0], scaffold._paramDims[1], Format::R8_UNORM);
         auto r8Dummy = R8Dummy(desc, 0);
         
 
@@ -475,7 +475,7 @@ namespace SceneEngine
                 // --- Diffuse --->
             TRY {
                 if (texFiles._diffuse.get()[0]) {
-                    LoadTextureIntoArray(metalContext, diffuseTextureArray->GetUnderlying(), texFiles._diffuse.get(), (unsigned)std::distance(atlasTextureNames.cbegin(), i));
+                    LoadTextureIntoArray(metalContext, Metal::UnderlyingResourcePtr(diffuseTextureArray->GetUnderlying()).get(), texFiles._diffuse.get(), (unsigned)std::distance(atlasTextureNames.cbegin(), i));
                     RegisterFileDependency(_validationCallback, texFiles._diffuse.get());
                 }
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {}
@@ -485,7 +485,7 @@ namespace SceneEngine
             bool fillInDummyNormals = true;
             TRY {
                 if (texFiles._normals.get()[0]) {
-                    LoadTextureIntoArray(metalContext, normalTextureArray->GetUnderlying(), texFiles._normals.get(), (unsigned)std::distance(atlasTextureNames.cbegin(), i));
+                    LoadTextureIntoArray(metalContext, Metal::UnderlyingResourcePtr(normalTextureArray->GetUnderlying()).get(), texFiles._normals.get(), (unsigned)std::distance(atlasTextureNames.cbegin(), i));
                     RegisterFileDependency(_validationCallback, texFiles._normals.get());
                     fillInDummyNormals = false;
                 }
@@ -497,7 +497,7 @@ namespace SceneEngine
             auto index = (unsigned)std::distance(atlasTextureNames.cbegin(), i);
             TRY {
                 if (texFiles._roughness.get()[0]) {
-                    LoadTextureIntoArray(metalContext, normalTextureArray->GetUnderlying(), texFiles._roughness.get(), index);
+                    LoadTextureIntoArray(metalContext, Metal::UnderlyingResourcePtr(normalTextureArray->GetUnderlying()).get(), texFiles._roughness.get(), index);
                     RegisterFileDependency(_validationCallback, texFiles._roughness.get());
                     fillInBlackRoughness = false;
                 }
@@ -506,9 +506,9 @@ namespace SceneEngine
 
                 // on exception or missing files, we should fill in default
             if (fillInDummyNormals)
-                CopyDummy(metalContext, normalTextureArray->GetUnderlying(), bc5Dummy->GetUnderlying(), index, true);
+                CopyDummy(metalContext, Metal::UnderlyingResourcePtr(normalTextureArray->GetUnderlying()).get(), Metal::UnderlyingResourcePtr(bc5Dummy->GetUnderlying()).get(), index, true);
             if (fillInBlackRoughness)
-                CopyDummy(metalContext, roughnessTextureArray->GetUnderlying(), r8Dummy->GetUnderlying(), index, false);
+                CopyDummy(metalContext, Metal::UnderlyingResourcePtr(roughnessTextureArray->GetUnderlying()).get(), Metal::UnderlyingResourcePtr(r8Dummy->GetUnderlying()).get(), index, false);
         }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

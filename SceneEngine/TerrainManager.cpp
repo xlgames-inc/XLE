@@ -19,9 +19,9 @@
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Metal/TextureView.h"
-#include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Resource.h"
+#include "../RenderCore/ResourceUtils.h"
 #include "../Math/Transformations.h"
 #include "../Math/Geometry.h"
 #include "../Assets/Assets.h"
@@ -297,15 +297,15 @@ namespace SceneEngine
         const unsigned cachedTileCount = 1024;
 
         TerrainRendererConfig rendererCfg;
-        rendererCfg._heights = TerrainRendererConfig::Layer { heightMapElementSize, cachedTileCount, Metal::NativeFormat::R16_UINT };
+        rendererCfg._heights = TerrainRendererConfig::Layer { heightMapElementSize, cachedTileCount, Format::R16_UINT };
 
         for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c) {
             const auto& l = cfg.GetCoverageLayer(c);
             ImpliedTyping::TypeDesc t(ImpliedTyping::TypeCat(l._typeCat), uint16(l._typeCount));
 
-            auto fmt = RenderCore::Metal::AsNativeFormat(t, (Metal::ShaderNormalizationMode::Enum)l._shaderNormalizationMode);
+            auto fmt = RenderCore::AsFormat(t, (ShaderNormalizationMode)l._shaderNormalizationMode);
             if (l._typeCat == (unsigned)ImpliedTyping::TypeCat::UInt16 && l._typeCount == 2)
-                fmt = RenderCore::Metal::NativeFormat::R16G16_UNORM;        // hack! ShadowSample must be "unorm"
+                fmt = RenderCore::Format::R16G16_UNORM;        // hack! ShadowSample must be "unorm"
 
             rendererCfg._coverageLayers.push_back(
                 std::make_pair(
@@ -841,7 +841,6 @@ namespace SceneEngine
         Metal::VertexBuffer gpuOutput;
         intrusive_ptr<BufferUploads::ResourceLocator> outputRes;
         {
-            using namespace BufferUploads;
             auto desc = CreateDesc(
                 BindFlag::StreamOutput, 0, GPUAccess::Write,
                 LinearBufferDesc::Create(resultsBufferSize),

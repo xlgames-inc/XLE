@@ -384,24 +384,6 @@ namespace RenderCore { namespace Metal_DX11
 		return _stageBindings[stage]._reflection;
 	}
 
-    unsigned CalculateVertexStride(
-        const InputElementDesc* start, const InputElementDesc* end,
-        unsigned slot)
-    {
-            // note --  Assuming vertex elements are densely packed (which
-            //          they usually are).
-            //          We could also use the "_alignedByteOffset" member
-            //          to find out where the element begins and ends)
-        unsigned result = 0;
-        for (auto i=start; i<end; ++i) {
-            if (i->_inputSlot == slot) {
-                assert(i->_alignedByteOffset == (result/8) || i->_alignedByteOffset == ~unsigned(0x0));
-                result += BitsPerPixel(i->_nativeFormat);
-            }
-        }
-        return result / 8;
-    }
-
     ConstantBufferLayout::ConstantBufferLayout() { _size = 0; _elementCount = 0; }
     ConstantBufferLayout::ConstantBufferLayout(ConstantBufferLayout&& moveFrom)
     :   _elements(std::move(moveFrom._elements))
@@ -669,29 +651,6 @@ namespace RenderCore { namespace Metal_DX11
             }
         }
     }
-
-    unsigned HasElement(const InputElementDesc* begin, const InputElementDesc* end, const char elementSemantic[])
-    {
-        unsigned result = 0;
-        for (auto i = begin; i != end; ++i) {
-            if (!XlCompareStringI(i->_semanticName.c_str(), elementSemantic)) {
-                assert((result & (1 << i->_semanticIndex)) == 0);
-                result |= (1 << i->_semanticIndex);
-            }
-        }
-        return result;
-    }
-
-    unsigned FindElement(const InputElementDesc* begin, const InputElementDesc* end, const char elementSemantic[], unsigned semanticIndex)
-    {
-        for (auto i = begin; i != end; ++i)
-            if (i->_semanticIndex == semanticIndex && !XlCompareStringI(i->_semanticName.c_str(), elementSemantic))
-                return unsigned(i - begin);
-        return ~0u;
-    }
-
-
-
 
 
     void BoundClassInterfaces::Bind(uint64 hashName, unsigned bindingArrayIndex, const char instance[])

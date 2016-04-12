@@ -11,7 +11,8 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Format.h"
+#include "../RenderCore/Types.h"
 #include "../Assets/Assets.h"
 #include "../Math/Transformations.h"
 
@@ -46,8 +47,8 @@ namespace SceneEngine
             using namespace RenderCore;
             using namespace RenderCore::Metal;
             InputElementDesc vertexInputLayout[] = {
-                InputElementDesc( "POSITION", 0, NativeFormat::R32G32B32_FLOAT ),
-                InputElementDesc( "COLOR", 0, NativeFormat::R8G8B8A8_UNORM )
+                InputElementDesc( "POSITION", 0, Format::R32G32B32_FLOAT ),
+                InputElementDesc( "COLOR", 0, Format::R8G8B8A8_UNORM )
             };
 
             VertexBuffer vertexBuffer(vertices, sizeof(vertices));

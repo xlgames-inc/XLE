@@ -44,43 +44,41 @@ namespace SceneEngine
     : _desc(desc)
     {
         using namespace RenderCore;
-        using namespace RenderCore::Metal;
-        using namespace BufferUploads;
 
         ResourcePtr gbufferTextures[s_gbufferTextureCount];
-        RenderTargetView gbufferRTV[dimof(gbufferTextures)];
-        ShaderResourceView gbufferSRV[dimof(gbufferTextures)];
+        Metal::RenderTargetView gbufferRTV[dimof(gbufferTextures)];
+        Metal::ShaderResourceView gbufferSRV[dimof(gbufferTextures)];
         std::fill(gbufferTextures, &gbufferTextures[dimof(gbufferTextures)], nullptr);
 
-        auto bufferUploadsDesc = BufferUploads::CreateDesc(
+        auto bufferUploadsDesc = CreateDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
             0, GPUAccess::Write | GPUAccess::Read,
             BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, AsDXGIFormat(NativeFormat::Unknown), 1, 0, desc._sampling),
+                desc._width, desc._height, Format::Unknown, 1, 0, desc._sampling),
             "GBuffer");
         for (unsigned c=0; c<dimof(gbufferTextures); ++c) {
-            if (desc._gbufferFormats[c]._resourceFormat != NativeFormat::Unknown) {
-                bufferUploadsDesc._textureDesc._nativePixelFormat = AsDXGIFormat(desc._gbufferFormats[c]._resourceFormat);
+            if (desc._gbufferFormats[c]._resourceFormat != Format::Unknown) {
+                bufferUploadsDesc._textureDesc._format = desc._gbufferFormats[c]._resourceFormat;
                 gbufferTextures[c] = CreateResourceImmediate(bufferUploadsDesc);
-                gbufferRTV[c] = RenderTargetView(gbufferTextures[c].get(), desc._gbufferFormats[c]._writeFormat);
-                gbufferSRV[c] = ShaderResourceView(gbufferTextures[c].get(), desc._gbufferFormats[c]._shaderReadFormat);
+                gbufferRTV[c] = Metal::RenderTargetView(gbufferTextures[c]->GetUnderlying(), desc._gbufferFormats[c]._writeFormat);
+                gbufferSRV[c] = Metal::ShaderResourceView(gbufferTextures[c]->GetUnderlying(), desc._gbufferFormats[c]._shaderReadFormat);
             }
         }
 
             /////////
         
-        auto depthBufferDesc = BufferUploads::CreateDesc(
+        auto depthBufferDesc = CreateDesc(
             BindFlag::ShaderResource|BindFlag::DepthStencil,
             0, GPUAccess::Write | GPUAccess::Read,
             BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, AsDXGIFormat(desc._depthFormat._resourceFormat), 1, 0, desc._sampling),
+                desc._width, desc._height, desc._depthFormat._resourceFormat, 1, 0, desc._sampling),
             "MainDepth");
         auto msaaDepthBufferTexture = CreateResourceImmediate(depthBufferDesc);
         auto secondaryDepthBufferTexture = CreateResourceImmediate(depthBufferDesc);
-        DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture.get(), desc._depthFormat._writeFormat);
-        DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture.get(), desc._depthFormat._writeFormat);
-        ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture.get(), desc._depthFormat._shaderReadFormat);
-        ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture.get(), desc._depthFormat._shaderReadFormat);
+        Metal::DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
+        Metal::DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
+        Metal::ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
+        Metal::ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
 
             /////////
 
@@ -118,12 +116,10 @@ namespace SceneEngine
     : _desc(desc)
     {
         using namespace RenderCore;
-        using namespace RenderCore::Metal;
-        using namespace BufferUploads;
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::DepthStencil,
             BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, AsDXGIFormat(desc._depthFormat._resourceFormat), 1, 0, desc._sampling),
+                desc._width, desc._height, desc._depthFormat._resourceFormat, 1, 0, desc._sampling),
             "ForwardTarget");
 
         auto msaaDepthBufferTexture = CreateResourceImmediate(bufferUploadsDesc);
@@ -131,11 +127,11 @@ namespace SceneEngine
 
             /////////
 
-        DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture.get(), desc._depthFormat._writeFormat);
-        DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture.get(), desc._depthFormat._writeFormat);
+        Metal::DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
+        Metal::DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
 
-        ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture.get(), desc._depthFormat._shaderReadFormat);
-        ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture.get(), desc._depthFormat._shaderReadFormat);
+        Metal::ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
+        Metal::ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
 
             /////////
 
@@ -169,12 +165,10 @@ namespace SceneEngine
     LightingResolveTextureBox::LightingResolveTextureBox(const Desc& desc)
     {
         using namespace RenderCore;
-        using namespace RenderCore::Metal;
-        using namespace BufferUploads;
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
             BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, AsDXGIFormat(desc._lightingResolveFormat._resourceFormat), 1, 0, 
+                desc._width, desc._height, desc._lightingResolveFormat._resourceFormat, 1, 0, 
                 desc._sampling),
             "LightResolve");
 
@@ -182,9 +176,9 @@ namespace SceneEngine
         auto lightingResolveCopy = CreateResourceImmediate(bufferUploadsDesc);
         bufferUploadsDesc._textureDesc._samples = TextureSamples::Create();
 
-        RenderTargetView lightingResolveTarget(lightingResolveTexture.get(), desc._lightingResolveFormat._writeFormat);
-        ShaderResourceView lightingResolveSRV(lightingResolveTexture.get(), desc._lightingResolveFormat._shaderReadFormat);
-        ShaderResourceView lightingResolveCopySRV(lightingResolveCopy.get(), desc._lightingResolveFormat._shaderReadFormat);
+        Metal::RenderTargetView lightingResolveTarget(lightingResolveTexture->GetUnderlying(), desc._lightingResolveFormat._writeFormat);
+        Metal::ShaderResourceView lightingResolveSRV(lightingResolveTexture->GetUnderlying(), desc._lightingResolveFormat._shaderReadFormat);
+        Metal::ShaderResourceView lightingResolveCopySRV(lightingResolveCopy->GetUnderlying(), desc._lightingResolveFormat._shaderReadFormat);
 
         _lightingResolveTexture = std::move(lightingResolveTexture);
         _lightingResolveRTV = std::move(lightingResolveTarget);

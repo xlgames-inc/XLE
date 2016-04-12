@@ -21,6 +21,7 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Format.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Math/Matrix.h"
 #include "../Math/Transformations.h"
@@ -34,8 +35,6 @@
 namespace SceneEngine
 {
     using namespace RenderCore;
-    using namespace RenderCore::Metal;
-
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -49,12 +48,12 @@ namespace SceneEngine
             Desc(unsigned width, unsigned height, unsigned bitDepth) : _width(width), _height(height), _bitDepth(bitDepth) {}
         };
 
-        RenderCore::Metal::UnorderedAccessView  _debuggingTexture[3];
-        RenderCore::Metal::ShaderResourceView   _debuggingTextureSRV[3];
+        Metal::UnorderedAccessView  _debuggingTexture[3];
+        Metal::ShaderResourceView   _debuggingTextureSRV[3];
 
-        RenderCore::Metal::UnorderedAccessView  _lightOutputTexture;
-        RenderCore::Metal::UnorderedAccessView  _temporaryProjectedLights;
-        RenderCore::Metal::ShaderResourceView   _lightOutputTextureSRV;
+        Metal::UnorderedAccessView  _lightOutputTexture;
+        Metal::UnorderedAccessView  _temporaryProjectedLights;
+        Metal::ShaderResourceView   _lightOutputTextureSRV;
 
         TileLightingResources(const Desc& desc);
         ~TileLightingResources();
@@ -66,26 +65,26 @@ namespace SceneEngine
         auto resLocator0 = uploads.Transaction_Immediate(
             BuildRenderTargetDesc(
                 BufferUploads::BindFlag::UnorderedAccess | BufferUploads::BindFlag::ShaderResource, 
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_TYPELESS, 1),
-                "TileLighting"))->AdoptUnderlying();
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R32_TYPELESS, 1),
+                "TileLighting"));
         auto resLocator1 = uploads.Transaction_Immediate(
             BuildRenderTargetDesc(
                 BufferUploads::BindFlag::UnorderedAccess | BufferUploads::BindFlag::ShaderResource, 
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_TYPELESS, 1),
-                "TileLighting"))->AdoptUnderlying();
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R32_TYPELESS, 1),
+                "TileLighting"));
         auto resLocator2 = uploads.Transaction_Immediate(
             BuildRenderTargetDesc(
                 BufferUploads::BindFlag::UnorderedAccess | BufferUploads::BindFlag::ShaderResource, 
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R16_TYPELESS, 1),
-                "TileLighting"))->AdoptUnderlying();
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R16_TYPELESS, 1),
+                "TileLighting"));
 
-        ShaderResourceView srv0(resLocator0.get(), NativeFormat::R32_FLOAT);
-        ShaderResourceView srv1(resLocator1.get(), NativeFormat::R32_FLOAT);
-        ShaderResourceView srv2(resLocator2.get(), NativeFormat::R16_UINT);
+        Metal::ShaderResourceView srv0(resLocator0->GetUnderlying(), Format::R32_FLOAT);
+        Metal::ShaderResourceView srv1(resLocator1->GetUnderlying(), Format::R32_FLOAT);
+        Metal::ShaderResourceView srv2(resLocator2->GetUnderlying(), Format::R16_UINT);
 
-        UnorderedAccessView uav0(resLocator0.get(), NativeFormat::R32_UINT);
-        UnorderedAccessView uav1(resLocator1.get(), NativeFormat::R32_UINT);
-        UnorderedAccessView uav2(resLocator2.get(), NativeFormat::R16_UINT);
+        Metal::UnorderedAccessView uav0(resLocator0->GetUnderlying(), Format::R32_UINT);
+        Metal::UnorderedAccessView uav1(resLocator1->GetUnderlying(), Format::R32_UINT);
+        Metal::UnorderedAccessView uav2(resLocator2->GetUnderlying(), Format::R16_UINT);
 
         // UINT clearValues[4] = { 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff };
         // auto device  = MainBridge::GetInstance()->GetDevice();
@@ -99,7 +98,7 @@ namespace SceneEngine
         auto resLocator3 = uploads.Transaction_Immediate(
             BuildRenderTargetDesc(
                 BufferUploads::BindFlag::UnorderedAccess | BufferUploads::BindFlag::ShaderResource, 
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, (desc._bitDepth==16)?NativeFormat::R16G16B16A16_FLOAT:NativeFormat::R32G32B32A32_FLOAT, 1),
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, (desc._bitDepth==16)?Format::R16G16B16A16_FLOAT:Format::R32G32B32A32_FLOAT, 1),
                 "TileLighting"),
             nullptr)->AdoptUnderlying();
 
@@ -113,9 +112,9 @@ namespace SceneEngine
         bufferDesc._linearBufferDesc._sizeInBytes = 1024 * bufferDesc._linearBufferDesc._structureByteSize;
         auto resLocator4 = uploads.Transaction_Immediate(bufferDesc, nullptr)->AdoptUnderlying();
 
-        UnorderedAccessView lightOutputTexture(resLocator3.get());
-        UnorderedAccessView temporaryProjectedLights(resLocator4.get());
-        ShaderResourceView lightOutputTextureSRV(resLocator3.get());
+        Metal::UnorderedAccessView lightOutputTexture(resLocator3.get());
+        Metal::UnorderedAccessView temporaryProjectedLights(resLocator4.get());
+        Metal::ShaderResourceView lightOutputTextureSRV(resLocator3.get());
 
         _lightOutputTexture = std::move(lightOutputTexture);
         _temporaryProjectedLights = std::move(temporaryProjectedLights);
@@ -146,13 +145,13 @@ namespace SceneEngine
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         SetupVertexGeneratorShader(context);
         context.Draw(4);
-        context.UnbindPS<ShaderResourceView>(0, 4);
+        context.UnbindPS<Metal::ShaderResourceView>(0, 4);
     }
 
     RenderCore::Metal::ShaderResourceView TiledLighting_CalculateLighting(
         RenderCore::Metal::DeviceContext* context, 
         LightingParserContext& lightingParserContext,
-        ShaderResourceView& depthsSRV, ShaderResourceView& normalsSRV)
+        Metal::ShaderResourceView& depthsSRV, Metal::ShaderResourceView& normalsSRV)
     {
         const bool doTiledRenderingTest             = Tweakable("DoTileRenderingTest", false);
         const bool doClusteredRenderingTest         = Tweakable("TileClustering", true);
@@ -164,7 +163,7 @@ namespace SceneEngine
 
         if (doTiledRenderingTest && !tiledBeams) {
             CATCH_ASSETS_BEGIN
-                TextureDesc2D tDesc(depthsSRV.GetUnderlying());
+                Metal::TextureDesc2D tDesc(depthsSRV.GetUnderlying());
                 unsigned width = tDesc.Width, height = tDesc.Height, sampleCount = tDesc.SampleDesc.Count;
 
                 auto& tileLightingResources = Techniques::FindCachedBox<TileLightingResources>(
@@ -191,8 +190,8 @@ namespace SceneEngine
                 };
 
                 static float startingAngle = 0.f;
-                static ShaderResourceView lightBuffer;
-                static intrusive_ptr<ID3D::Resource> lightBufferResource;
+                static Metal::ShaderResourceView lightBuffer;
+                static intrusive_ptr<BufferUploads::ResourceLocator> lightBufferResource;
                 if (!lightBufferResource) {
                     auto& uploads = GetBufferUploads();
                     BufferUploads::BufferDesc desc;
@@ -203,10 +202,10 @@ namespace SceneEngine
                     desc._allocationRules = 0;
                     desc._linearBufferDesc._sizeInBytes = sizeof(LightStruct) * (maxLightCount+1);
                     desc._linearBufferDesc._structureByteSize = sizeof(LightStruct);
-                    lightBufferResource = uploads.Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
+                    lightBufferResource = uploads.Transaction_Immediate(desc, nullptr);
 
                     if (lightBufferResource) {
-                        lightBuffer = ShaderResourceView(lightBufferResource.get());
+                        lightBuffer = Metal::ShaderResourceView(lightBufferResource->GetUnderlying());
                     }
                 }
 
@@ -233,12 +232,14 @@ namespace SceneEngine
                     lights.push_back(LightStruct(Float3(0.f, 0.f, 0.f), 0.f, Float3(0.f, 0.f, 0.f), 0.f));
 
                     D3D11_MAPPED_SUBRESOURCE mappedRes;
-                    HRESULT hresult = context->GetUnderlying()->Map(lightBufferResource.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedRes);
+                    HRESULT hresult = context->GetUnderlying()->Map(
+                        Metal::UnderlyingResourcePtr(lightBufferResource->GetUnderlying()).get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedRes);
                     if (SUCCEEDED(hresult)) {
                         if (mappedRes.pData) {
                             XlCopyMemory(mappedRes.pData, AsPointer(lights.cbegin()), lights.size() * sizeof(LightStruct));
                         }
-                        context->GetUnderlying()->Unmap(lightBufferResource.get(), 0);
+                        context->GetUnderlying()->Unmap(
+                            Metal::UnderlyingResourcePtr(lightBufferResource->GetUnderlying()).get(), 0);
                     }
                 }
 
@@ -261,10 +262,10 @@ namespace SceneEngine
                     worldToView, 
                     fov, { 0, 0 }
                 };
-                ConstantBuffer cbuffer(&lightCulling, sizeof(lightCulling));
-                context->BindCS(MakeResourceList(lightingParserContext.GetGlobalTransformCB(), ConstantBuffer(), cbuffer));
+                Metal::ConstantBuffer cbuffer(&lightCulling, sizeof(lightCulling));
+                context->BindCS(MakeResourceList(lightingParserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(), cbuffer));
 
-                context->Bind(ResourceList<RenderTargetView, 0>(), nullptr); // reading from depth buffer (so must clear it from output)
+                context->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr); // reading from depth buffer (so must clear it from output)
 
                 context->BindCS(MakeResourceList(lightBuffer, depthsSRV, normalsSRV));
                 context->BindCS(MakeResourceList(tileLightingResources._lightOutputTexture, tileLightingResources._temporaryProjectedLights));
@@ -272,16 +273,16 @@ namespace SceneEngine
                     lightingParserContext.GetMetricsBox()->_metricsBufferUAV, 
                     tileLightingResources._debuggingTexture[0], tileLightingResources._debuggingTexture[1], tileLightingResources._debuggingTexture[2]));
 
-                context->Bind(::Assets::GetAssetDep<ComputeShader>("game/xleres/deferred/tiled.csh:PrepareLights"));
+                context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/deferred/tiled.csh:PrepareLights"));
                 context->Dispatch((tileLightCount + 256 - 1) / 256);
                         
                 char definesTable[256];
                 Utility::XlFormatString(definesTable, dimof(definesTable), "MSAA_SAMPLES=%i", sampleCount);
         
                 if (doClusteredRenderingTest) {
-                    context->Bind(::Assets::GetAssetDep<ComputeShader>("game/xleres/deferred/clustered.csh:main", definesTable));
+                    context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/deferred/clustered.csh:main", definesTable));
                 } else {
-                    context->Bind(::Assets::GetAssetDep<ComputeShader>("game/xleres/deferred/tiled.csh:main", definesTable));
+                    context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/deferred/tiled.csh:main", definesTable));
                 }
                 context->Dispatch(lightCulling._groupCounts[0], lightCulling._groupCounts[1]);
 
@@ -303,9 +304,9 @@ namespace SceneEngine
                     }
                 #endif
 
-                context->UnbindCS<UnorderedAccessView>(0, 8);
-                context->UnbindCS<ShaderResourceView>(0, 3);
-                context->Unbind<ComputeShader>();
+                context->UnbindCS<Metal::UnorderedAccessView>(0, 8);
+                context->UnbindCS<Metal::ShaderResourceView>(0, 3);
+                context->Unbind<Metal::ComputeShader>();
 
                 if (Tweakable("TiledLightingDebugging", false) && !tiledBeams) {
                     lightingParserContext._pendingOverlays.push_back(
@@ -316,12 +317,12 @@ namespace SceneEngine
             CATCH_ASSETS_END(lightingParserContext)
         }
 
-        return ShaderResourceView();
+        return Metal::ShaderResourceView();
     }
 
-    ConstantBuffer DuplicateResource(DeviceContext* context, ConstantBuffer& inputResource)
+    Metal::ConstantBuffer DuplicateResource(Metal::DeviceContext* context, Metal::ConstantBuffer& inputResource)
     {
-        return ConstantBuffer(
+        return Metal::ConstantBuffer(
             ::RenderCore::Metal_DX11::DuplicateResource(context->GetUnderlying(), inputResource.GetUnderlying()));
     }
 
@@ -365,9 +366,9 @@ namespace SceneEngine
                 uint32 globals[4] = {   (mainViewportWidth + TileWidth - 1) / TileWidth, 
                                         (mainViewportHeight + TileHeight + 1) / TileHeight, 
                                         0, 0 };
-                ConstantBufferPacket constants[]  = { ConstantBufferPacket(), ConstantBufferPacket(), MakeSharedPkt(globals) };
+                Metal::ConstantBufferPacket constants[]  = { Metal::ConstantBufferPacket(), Metal::ConstantBufferPacket(), MakeSharedPkt(globals) };
                 const Metal::ConstantBuffer* prebuiltBuffers[]   = { &savedGlobalTransform, &lightingParserContext.GetGlobalTransformCB(), nullptr };
-                uniforms.Apply(*context, lightingParserContext.GetGlobalUniformsStream(), UniformsStream(constants, prebuiltBuffers));
+                uniforms.Apply(*context, lightingParserContext.GetGlobalUniformsStream(), Metal::UniformsStream(constants, prebuiltBuffers));
                                 
                 context->BindVS(MakeResourceList(tileLightingResources._debuggingTextureSRV[0], tileLightingResources._debuggingTextureSRV[1]));
                 context->Bind(Techniques::CommonResources()._dssReadWrite);
@@ -399,7 +400,7 @@ namespace SceneEngine
                     context->Draw(globals[0]*globals[1]);
                 }
 
-                context->UnbindVS<ShaderResourceView>(0, 2);
+                context->UnbindVS<Metal::ShaderResourceView>(0, 2);
             CATCH_ASSETS_END(lightingParserContext)
         }
 

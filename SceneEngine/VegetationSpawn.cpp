@@ -18,6 +18,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/RenderUtils.h"
 
 #include "../RenderCore/Assets/ModelCache.h"
@@ -114,7 +115,6 @@ namespace SceneEngine
     {
         _isPrepared = false;
 
-        using namespace BufferUploads;
         auto& uploads = GetBufferUploads();
 
         auto bufferDesc = CreateDesc(
@@ -132,8 +132,8 @@ namespace SceneEngine
         XlSetMemory(clearedBufferData->GetData(), 0, clearedBufferData->GetDataSize());
         auto clearedTypesResource = uploads.Transaction_Immediate(bufferDesc, clearedBufferData.get());
 
-        Metal::ShaderResourceView so0srv(so0r->GetUnderlying(), Metal::NativeFormat::R32_TYPELESS); // NativeFormat::R32G32B32A32_FLOAT);
-        Metal::ShaderResourceView so1srv(so1r->GetUnderlying(), Metal::NativeFormat::R32_TYPELESS); // NativeFormat::R32_UINT);
+        Metal::ShaderResourceView so0srv(so0r->GetUnderlying(), Format::R32_TYPELESS); // NativeFormat::R32G32B32A32_FLOAT);
+        Metal::ShaderResourceView so1srv(so1r->GetUnderlying(), Format::R32_TYPELESS); // NativeFormat::R32_UINT);
 
             // create the true instancing buffers
             //      Note that it might be ideal if these were vertex buffers! But we can't make a buffer that is both a vertex buffer and structured buffer
@@ -148,14 +148,14 @@ namespace SceneEngine
         std::vector<Metal::ShaderResourceView> instanceBufferSRVs; instanceBufferSRVs.reserve(desc._bufferCount);
         for (unsigned c=0; c<desc._bufferCount; ++c) {
             auto res = uploads.Transaction_Immediate(bufferDesc);
-            instanceBufferUAVs.push_back(Metal::UnorderedAccessView(res->GetUnderlying(), Metal::NativeFormat::Unknown, 0, true));
+            instanceBufferUAVs.push_back(Metal::UnorderedAccessView(res->GetUnderlying(), Format::Unknown, 0, true));
             instanceBufferSRVs.push_back(Metal::ShaderResourceView(res->GetUnderlying()));
         }
 
         D3D11_QUERY_DESC queryDesc;
         queryDesc.Query = D3D11_QUERY_SO_STATISTICS;
         queryDesc.MiscFlags = 0;
-        auto streamOutputCountsQuery = Metal::GetObjectFactory()->CreateQuery(&queryDesc);
+        auto streamOutputCountsQuery = Metal::GetObjectFactory().CreateQuery(&queryDesc);
 
         _streamOutputBuffers[0] = Metal::VertexBuffer(so0r->GetUnderlying());
         _streamOutputBuffers[1] = Metal::VertexBuffer(so1r->GetUnderlying());
@@ -266,7 +266,7 @@ namespace SceneEngine
                 metalContext.GetUnderlying()->Begin(begunQuery);
             }
 
-            static const Metal::InputElementDesc eles[] = {
+            static const InputElementDesc eles[] = {
 
                     //  Our instance format is very simple. It's just a position and 
                     //  rotation value (in 32 bit floats)
@@ -277,14 +277,14 @@ namespace SceneEngine
                     //  buffer as small as possible, because we have to clear it 
                     //  before hand
 
-                Metal::InputElementDesc("INSTANCEPOS", 0, Metal::NativeFormat::R32G32B32A32_FLOAT),
+                InputElementDesc("INSTANCEPOS", 0, Format::R32G32B32A32_FLOAT),
                     // vertex in slot 1 must have a vertex stride that is a multiple of 4
-                Metal::InputElementDesc("INSTANCEPARAM", 0, Metal::NativeFormat::R32_UINT, 1)
+                InputElementDesc("INSTANCEPARAM", 0, Format::R32_UINT, 1)
             };
 
-            static const Metal::InputElementDesc elesTerrainNormal[] = {
-                Metal::InputElementDesc("INSTANCEPOS", 0, Metal::NativeFormat::R32G32B32A32_FLOAT),
-                Metal::InputElementDesc("INSTANCEPARAM", 0, Metal::NativeFormat::R32G32B32_FLOAT, 1)
+            static const InputElementDesc elesTerrainNormal[] = {
+                InputElementDesc("INSTANCEPOS", 0, Format::R32G32B32A32_FLOAT),
+                InputElementDesc("INSTANCEPARAM", 0, Format::R32G32B32_FLOAT, 1)
             };
 
                 //  How do we clear an SO buffer? We can't make it an unorderedaccess view or render target.
@@ -747,7 +747,6 @@ namespace SceneEngine
 
     IndirectDrawBuffer::IndirectDrawBuffer()
     {
-        using namespace BufferUploads;
         auto indirectArgsBufferDesc = CreateDesc(
             BindFlag::DrawIndirectArgs | BindFlag::VertexBuffer,
             CPUAccess::WriteDynamic, GPUAccess::Read | GPUAccess::Write,
@@ -756,7 +755,7 @@ namespace SceneEngine
 
         auto& uploads = GetBufferUploads();
         auto indirectArgsRes = uploads.Transaction_Immediate(indirectArgsBufferDesc);
-        _indirectArgsBuffer = indirectArgsRes->AdoptUnderlying();
+        _indirectArgsBuffer = Metal::VertexBuffer(indirectArgsRes->GetUnderlying());
     }
 
     IndirectDrawBuffer::~IndirectDrawBuffer()

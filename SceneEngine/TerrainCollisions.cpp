@@ -8,7 +8,6 @@
 #include "TerrainScaffold.h"
 #include "TerrainConfig.h"
 #include "../Math/Transformations.h"
-#include "../RenderCore/Resource.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/HeapUtils.h"

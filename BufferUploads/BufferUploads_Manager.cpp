@@ -1708,7 +1708,7 @@ namespace BufferUploads
                             } else {
                                 bytesUploaded += context.GetDeviceContext().PushToTexture(
                                     *transaction->_finalResource->GetUnderlying(), stagingDesc, 
-                                    Box2D(),
+                                    uploadStep._destinationBox,
                                     [&uploadStep](unsigned mip, unsigned arrayLayer) -> RenderCore::SubResourceInitData
                                     {
                                         RenderCore::SubResourceInitData result = {};

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "FluidHelper.h"
+#include "../RenderCore/Format.h"
 #include "../ConsoleRig/Log.h"
 
 namespace SceneEngine
@@ -339,7 +340,6 @@ namespace SceneEngine
     {
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
-            using namespace BufferUploads;
             auto& uploads = GetBufferUploads();
 
             auto dx = dimensions[0], dy = dimensions[1];
@@ -347,12 +347,12 @@ namespace SceneEngine
             auto desc = CreateDesc(
                 BindFlag::ShaderResource,
                 0, GPUAccess::Read|GPUAccess::Write,
-                TextureDesc::Plain2D(dx, dy, RenderCore::Metal::NativeFormat::R32_FLOAT),
+                TextureDesc::Plain2D(dx, dy, RenderCore::Format::R32_FLOAT),
                 "fluid");
 
             for (unsigned c=0; c<data.size(); ++c) {
                 const auto* srcData = data.begin() + c;
-                auto pkt = CreateBasicPacket((dx)*(dy)*sizeof(float), *srcData, TexturePitches((dx)*sizeof(float), (dy)*(dx)*sizeof(float)));
+                auto pkt = BufferUploads::CreateBasicPacket((dx)*(dy)*sizeof(float), *srcData, TexturePitches{(dx)*sizeof(float), (dy)*(dx)*sizeof(float)});
                 auto tex = uploads.Transaction_Immediate(desc, pkt.get());
                 metalContext.BindPS(MakeResourceList(c, Metal::ShaderResourceView(tex->GetUnderlying())));
             }
@@ -381,7 +381,7 @@ namespace SceneEngine
                 { Float3(wsDims[0], wsDims[1], 0.f), Float2(1.f, 1.f) }
             };
 
-            Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::PT, shader);
+            Metal::BoundInputLayout inputLayout(GlobalInputLayouts::PT, shader);
             Metal::BoundUniforms uniforms(shader);
             Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
                 
@@ -408,22 +408,21 @@ namespace SceneEngine
     {
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
-            using namespace BufferUploads;
             auto& uploads = GetBufferUploads();
 
             auto dx = dimensions[0], dy = dimensions[1], dz = dimensions[2];
             auto pktSize = dx*dy*dz*sizeof(float);
-            TexturePitches pitches(dx*sizeof(float), dy*dx*sizeof(float));
+            // TexturePitches pitches{dx*sizeof(float), dy*dx*sizeof(float)};
 
             auto desc = CreateDesc(
                 BindFlag::ShaderResource,
                 0, GPUAccess::Read|GPUAccess::Write,
-                TextureDesc::Plain3D(dx, dy, dz, RenderCore::Metal::NativeFormat::R32_FLOAT),
+                TextureDesc::Plain3D(dx, dy, dz, RenderCore::Format::R32_FLOAT),
                 "fluid");
 
             for (unsigned c=0; c<data.size(); ++c) {
                 const auto* srcData = data.begin() + c;
-                auto pkt = CreateBasicPacket(pktSize, srcData, TexturePitches((dx)*sizeof(float), (dy)*(dx)*sizeof(float)));
+                auto pkt = BufferUploads::CreateBasicPacket(pktSize, srcData, TexturePitches{(dx)*sizeof(float), (dy)*(dx)*sizeof(float)});
                 auto tex = uploads.Transaction_Immediate(desc, pkt.get());
                 metalContext.BindPS(MakeResourceList(c, Metal::ShaderResourceView(tex->GetUnderlying())));
             }
@@ -447,7 +446,7 @@ namespace SceneEngine
                 { Float3(wsDims[0], wsDims[1], 0.f), Float2(1.f, 0.f) }
             };
 
-            Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::PT, shader);
+            Metal::BoundInputLayout inputLayout(GlobalInputLayouts::PT, shader);
             Metal::BoundUniforms uniforms(shader);
             Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
                 

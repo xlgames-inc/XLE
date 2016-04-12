@@ -90,7 +90,6 @@
     <ClInclude Include="..\Metal\Detail\DXGICompatibleFormats.h" />
     <ClInclude Include="..\Metal\DeviceContext.h" />
     <ClInclude Include="..\Metal\DeviceContextImpl.h" />
-    <ClInclude Include="..\Metal\Format.h" />
     <ClInclude Include="..\Metal\Forward.h" />
     <ClInclude Include="..\Metal\GPUProfiler.h" />
     <ClInclude Include="..\Metal\InputLayout.h" />

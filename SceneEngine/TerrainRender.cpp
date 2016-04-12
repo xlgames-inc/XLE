@@ -21,6 +21,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Format.h"
 #include "../SceneEngine/LightingParserContext.h"
 
 #include "../Assets/Assets.h"
@@ -180,7 +181,7 @@ namespace SceneEngine
         const char* uintNames[]     = { "uint", "uint2", "uint3", "uint4" };
         const char* intNames[]      = { "int", "int2", "int3", "int4" };
 
-        using namespace RenderCore::Metal::NativeFormat;
+        using namespace RenderCore;
         auto compCount = (size_t)GetComponentCount(GetComponents(fmt));
         switch (GetComponentType(fmt)) {
         case FormatComponentType::UNorm:
@@ -227,7 +228,7 @@ namespace SceneEngine
         }
 
         InputElementDesc eles[] = {
-            InputElementDesc("INTERSECTION", 0, NativeFormat::R32G32B32A32_FLOAT)
+            InputElementDesc("INTERSECTION", 0, Format::R32G32B32A32_FLOAT)
         };
 
         const char* gs = "";
@@ -334,7 +335,7 @@ namespace SceneEngine
 
             auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(
                 SimplePatchBox::Desc(elementSize[0], elementSize[1], true));
-            context->Bind(simplePatchBox._simplePatchIndexBuffer, NativeFormat::R32_UINT);
+            context->Bind(simplePatchBox._simplePatchIndexBuffer, Format::R32_UINT);
             context->Bind(RenderCore::Metal::Topology::TriangleList);
             _indexDrawCount = simplePatchBox._simplePatchIndexCount;
         }

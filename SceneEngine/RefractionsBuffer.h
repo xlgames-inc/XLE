@@ -7,11 +7,11 @@
 #pragma once
 
 #include "../RenderCore/Metal/TextureView.h"
-#include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/Forward.h"
-#include "../BufferUploads/IBufferUploads.h"
-#include "../BufferUploads/ResourceLocator.h"
+#include "../RenderCore/Format.h"
+#include "../RenderCore/ResourceDesc.h"
 
+namespace BufferUploads { class ResourceLocator; }
 namespace SceneEngine
 {
     class LightingParserContext;
@@ -58,18 +58,18 @@ namespace SceneEngine
         {
         public:
             Desc(   unsigned width, unsigned height, 
-                    RenderCore::Metal::NativeFormat::Enum format, 
-                    const BufferUploads::TextureSamples& samping);
+                    RenderCore::Format format, 
+                    const RenderCore::TextureSamples& samping);
             unsigned _width, _height;
-            RenderCore::Metal::NativeFormat::Enum _format;
-            BufferUploads::TextureSamples _sampling;
+            RenderCore::Format _format;
+            RenderCore::TextureSamples _sampling;
         };
 
         DuplicateDepthBuffer(const Desc& desc);
         ~DuplicateDepthBuffer();
 
-        intrusive_ptr<ID3D::Resource>              _resource;
-        RenderCore::Metal::ShaderResourceView   _srv;
+        intrusive_ptr<BufferUploads::ResourceLocator>   _resource;
+        RenderCore::Metal::ShaderResourceView           _srv;
     };
 
     RenderCore::Metal::ShaderResourceView BuildDuplicatedDepthBuffer(

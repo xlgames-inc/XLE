@@ -34,14 +34,14 @@ namespace SceneEngine
         auto    GetUnorderedAccessView() -> RenderCore::Metal::UnorderedAccessView& { assert(_uav.GetUnderlying()); return _uav; }
 
         Int2    GetTileSize() const { return _elementSize; }
-        auto    GetFormat() const -> RenderCore::Metal::NativeFormat::Enum { return _format; }
+        auto    GetFormat() const -> RenderCore::Format { return _format; }
         void    SetPriorityMode(bool priorityMode);
         bool    GetPriorityMode() const { return _priorityMode; }
         
         TextureTileSet(
             BufferUploads::IManager& bufferUploads,
             Int2 elementSize, unsigned elementCount,
-            RenderCore::Metal::NativeFormat::Enum format,
+            RenderCore::Format format,
             bool allowModification);
         ~TextureTileSet();
 
@@ -72,7 +72,7 @@ namespace SceneEngine
         RenderCore::Metal::UnorderedAccessView          _uav;
         BufferUploads::TransactionID                    _creationTransaction;
 
-        RenderCore::Metal::NativeFormat::Enum _format;
+        RenderCore::Format _format;
 
         void    CompleteCreation();
 

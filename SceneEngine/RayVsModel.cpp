@@ -10,6 +10,8 @@
 #include "LightingParserContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Format.h"
+#include "../RenderCore/Types.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
@@ -55,14 +57,13 @@ namespace SceneEngine
 
     ModelIntersectionResources::ModelIntersectionResources(const Desc& desc)
     {
-        using namespace BufferUploads;
         auto& uploads = SceneEngine::GetBufferUploads();
 
         LinearBufferDesc lbDesc;
         lbDesc._structureByteSize = desc._elementSize;
         lbDesc._sizeInBytes = desc._elementSize * desc._elementCount;
 
-        BufferDesc bufferDesc = CreateDesc(
+        auto bufferDesc = CreateDesc(
             BindFlag::StreamOutput, 0, GPUAccess::Read | GPUAccess::Write,
             lbDesc, "ModelIntersectionBuffer");
         
@@ -71,7 +72,7 @@ namespace SceneEngine
         _cpuAccessBuffer = uploads.Transaction_Immediate(
             CreateDesc(0, CPUAccess::Read, 0, lbDesc, "ModelIntersectionCopyBuffer"));
 
-        auto pkt = CreateEmptyPacket(bufferDesc);
+        auto pkt = BufferUploads::CreateEmptyPacket(bufferDesc);
         XlSetMemory(pkt->GetData(), 0, pkt->GetDataSize());
         _clearedBuffer = uploads.Transaction_Immediate(
             CreateDesc(
@@ -224,13 +225,13 @@ namespace SceneEngine
 
         _pimpl->_oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
 
-        static const Metal::InputElementDesc eles[] = {
-            Metal::InputElementDesc("INTERSECTIONDEPTH",   0, Metal::NativeFormat::R32_FLOAT),
-            Metal::InputElementDesc("POINT",               0, Metal::NativeFormat::R32G32B32A32_FLOAT),
-            Metal::InputElementDesc("POINT",               1, Metal::NativeFormat::R32G32B32A32_FLOAT),
-            Metal::InputElementDesc("POINT",               2, Metal::NativeFormat::R32G32B32A32_FLOAT),
-            Metal::InputElementDesc("DRAWCALLINDEX",       0, Metal::NativeFormat::R32_UINT),
-            Metal::InputElementDesc("MATERIALGUID",        0, Metal::NativeFormat::R32G32_UINT)
+        static const InputElementDesc eles[] = {
+            InputElementDesc("INTERSECTIONDEPTH",   0, Format::R32_FLOAT),
+            InputElementDesc("POINT",               0, Format::R32G32B32A32_FLOAT),
+            InputElementDesc("POINT",               1, Format::R32G32B32A32_FLOAT),
+            InputElementDesc("POINT",               2, Format::R32G32B32A32_FLOAT),
+            InputElementDesc("DRAWCALLINDEX",       0, Format::R32_UINT),
+            InputElementDesc("MATERIALGUID",        0, Format::R32G32_UINT)
         };
 
         static const unsigned strides[] = { sizeof(ResultEntry) };

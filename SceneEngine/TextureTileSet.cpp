@@ -7,7 +7,7 @@
 #include "TextureTileSet.h"
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../BufferUploads/DataPacket.h"
-#include "../../RenderCore/Metal/Format.h"
+#include "../../RenderCore/Format.h"
 
 namespace SceneEngine
 {
@@ -143,7 +143,7 @@ namespace SceneEngine
         }
         assert(tile._transaction != ~BufferUploads::TransactionID(0x0));
 
-        BufferUploads::Box2D destinationBox;
+        Box2D destinationBox;
         destinationBox._left    = address[0] * _elementSize[0];
         destinationBox._top     = address[1] * _elementSize[1];
         destinationBox._right   = (address[0] + 1) * _elementSize[0];
@@ -158,12 +158,12 @@ namespace SceneEngine
         assert(tile._width != ~unsigned(0x0) && tile._height != ~unsigned(0x0));
 
             // rowPitch calculation here won't work correctly for DXT compressed formats
-        assert(Metal::GetCompressionType(_format) == Metal::FormatCompressionType::None);
-        const unsigned rowPitch = Metal::BitsPerPixel(_format) * _elementSize[0] / 8;
+        assert(GetCompressionType(_format) == FormatCompressionType::None);
+        const unsigned rowPitch = BitsPerPixel(_format) * _elementSize[0] / 8;
         const unsigned slicePitch = rowPitch * _elementSize[1];
 
         auto dataPacket = BufferUploads::CreateFileDataSource(
-            fileHandle, offset, dataSize, BufferUploads::TexturePitches(rowPitch, slicePitch));
+            fileHandle, offset, dataSize, BufferUploads::TexturePitches{rowPitch, slicePitch});
         _bufferUploads->UpdateData(
             tile._transaction, dataPacket.get(),
             BufferUploads::PartialResource(destinationBox, 0, 0, address[2], address[2]));
@@ -215,7 +215,7 @@ namespace SceneEngine
     TextureTileSet::TextureTileSet(
         BufferUploads::IManager& bufferUploads,
         Int2 elementSize, unsigned elementCount,
-        RenderCore::Metal::NativeFormat::Enum format,
+        RenderCore::Format format,
         bool allowModification)
     {
         _creationTransaction = ~BufferUploads::TransactionID(0x0);
@@ -243,9 +243,8 @@ namespace SceneEngine
             // expecting an array texture.
         assert(pageCount > 1);
 
-        using namespace BufferUploads;
-        BufferDesc desc;
-        desc._type = BufferDesc::Type::Texture;
+        ResourceDesc desc;
+        desc._type = ResourceDesc::Type::Texture;
         desc._bindFlags = BindFlag::ShaderResource;
         desc._cpuAccess = 0;
         desc._gpuAccess = GPUAccess::Read;
@@ -270,7 +269,7 @@ namespace SceneEngine
             shaderResource      = Metal::ShaderResourceView(resource->GetUnderlying());
             uav                 = Metal::UnorderedAccessView(resource->GetUnderlying());
         } else {
-            _creationTransaction = bufferUploads.Transaction_Begin(desc, (DataPacket*)nullptr, TransactionOptions::ForceCreate);
+            _creationTransaction = bufferUploads.Transaction_Begin(desc, (BufferUploads::DataPacket*)nullptr, BufferUploads::TransactionOptions::ForceCreate);
         }
 
         LRUQueue lruQueue(elementsPerPage * pageCount);

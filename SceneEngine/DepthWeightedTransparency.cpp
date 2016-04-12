@@ -8,7 +8,7 @@
 #include "GestaltResource.h"
 #include "LightingParserContext.h"
 #include "SceneEngineUtils.h"
-#include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/TextureView.h"
@@ -50,15 +50,14 @@ namespace SceneEngine
 
     DepthWeightedTransparencyBox::DepthWeightedTransparencyBox(const Desc& desc)
     {
-        using namespace BufferUploads;
         _accumulationBuffer = GestaltTypes::RTVSRV(
-            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32G32B32A32_FLOAT),
+            TextureDesc::Plain2D(desc._width, desc._height, Format::R32G32B32A32_FLOAT),
             "TransAccBuffer", nullptr);
         _modulationBuffer = GestaltTypes::RTVSRV(
-            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R16G16B16A16_FLOAT),
+            TextureDesc::Plain2D(desc._width, desc._height, Format::R16G16B16A16_FLOAT),
             "TransModulationBuffer", nullptr);
         _refractionBuffer = GestaltTypes::RTVSRV(
-            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R16G16B16A16_FLOAT),
+            TextureDesc::Plain2D(desc._width, desc._height, Format::R16G16B16A16_FLOAT),
             "TransRefractBuffer", nullptr);
 
         D3D11_BLEND_DESC blendStateDesc;
@@ -99,7 +98,7 @@ namespace SceneEngine
         blendStateDesc.RenderTarget[2].DestBlendAlpha = D3D11_BLEND_ONE;
         blendStateDesc.RenderTarget[2].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 
-        auto blendState = RenderCore::Metal::GetObjectFactory()->CreateBlendState(&blendStateDesc);
+        auto blendState = Metal::GetObjectFactory().CreateBlendState(&blendStateDesc);
         _blendState = Metal::BlendState(std::move(blendState));
     }
 

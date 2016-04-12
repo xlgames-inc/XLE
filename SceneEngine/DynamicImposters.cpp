@@ -21,6 +21,7 @@
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
+#include "../RenderCore/Format.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
@@ -117,24 +118,23 @@ namespace SceneEngine
         std::vector<Layer>  _layers;
         GestaltTypes::DSV   _tempDSV;
 
-        ImposterSpriteAtlas(UInt2 dims, UInt2 tempSurfaceDims, std::initializer_list<Metal::NativeFormat::Enum> layers);
+        ImposterSpriteAtlas(UInt2 dims, UInt2 tempSurfaceDims, std::initializer_list<Format> layers);
         ImposterSpriteAtlas(ImposterSpriteAtlas&& moveFrom) never_throws;
         ImposterSpriteAtlas& operator=(ImposterSpriteAtlas&& moveFrom) never_throws;
         ImposterSpriteAtlas();
         ~ImposterSpriteAtlas();
     };
 
-    ImposterSpriteAtlas::ImposterSpriteAtlas(UInt2 dims, UInt2 tempSurfaceDims, std::initializer_list<Metal::NativeFormat::Enum> layers)
+    ImposterSpriteAtlas::ImposterSpriteAtlas(UInt2 dims, UInt2 tempSurfaceDims, std::initializer_list<Format> layers)
     {
-        using namespace BufferUploads;
         _tempDSV = GestaltTypes::DSV(
-            TextureDesc::Plain2D(tempSurfaceDims[0], tempSurfaceDims[1], Metal::NativeFormat::D16_UNORM),
+            TextureDesc::Plain2D(tempSurfaceDims[0], tempSurfaceDims[1], Format::D16_UNORM),
             "SpriteAtlasTemp");
         _layers.reserve(layers.size());
         for (const auto& l:layers)
             _layers.emplace_back(Layer(
-                GestaltTypes::RTVSRV(TextureDesc::Plain2D(dims[0], dims[1], (unsigned)l), "SpriteAtlas"),
-                GestaltTypes::RTVSRV(TextureDesc::Plain2D(tempSurfaceDims[0], tempSurfaceDims[1], (unsigned)l), "SpriteAtlasTemp")));
+                GestaltTypes::RTVSRV(TextureDesc::Plain2D(dims[0], dims[1], l), "SpriteAtlas"),
+                GestaltTypes::RTVSRV(TextureDesc::Plain2D(tempSurfaceDims[0], tempSurfaceDims[1], l), "SpriteAtlasTemp")));
     }
 
     ImposterSpriteAtlas::ImposterSpriteAtlas(ImposterSpriteAtlas&& moveFrom) never_throws
@@ -152,13 +152,13 @@ namespace SceneEngine
     ImposterSpriteAtlas::ImposterSpriteAtlas() {}
     ImposterSpriteAtlas::~ImposterSpriteAtlas() {}
 
-    static const Metal::InputElementDesc s_inputLayout[] = 
+    static const InputElementDesc s_inputLayout[] = 
     {
-        Metal::InputElementDesc("POSITION", 0, Metal::NativeFormat::R32G32B32_FLOAT),
-        Metal::InputElementDesc("XAXIS", 0, Metal::NativeFormat::R32G32B32_FLOAT),
-        Metal::InputElementDesc("YAXIS", 0, Metal::NativeFormat::R32G32B32_FLOAT),
-        Metal::InputElementDesc("SIZE", 0, Metal::NativeFormat::R32G32_FLOAT),
-        Metal::InputElementDesc("SPRITEINDEX", 0, Metal::NativeFormat::R32_UINT)
+        InputElementDesc("POSITION", 0, Format::R32G32B32_FLOAT),
+        InputElementDesc("XAXIS", 0, Format::R32G32B32_FLOAT),
+        InputElementDesc("YAXIS", 0, Format::R32G32B32_FLOAT),
+        InputElementDesc("SIZE", 0, Format::R32G32_FLOAT),
+        InputElementDesc("SPRITEINDEX", 0, Format::R32_UINT)
     };
 
     class DynamicImposters::Pimpl
@@ -913,7 +913,7 @@ namespace SceneEngine
             // the formats we initialize for the atlas really depend on whether we're going
             // to be writing pre-lighting or post-lighting parameters to the sprites.
         _pimpl->_atlas = ImposterSpriteAtlas(
-            atlasSize, config._maxDims, { Metal::NativeFormat::R8G8B8A8_UNORM_SRGB, Metal::NativeFormat::R8G8B8A8_SNORM});
+            atlasSize, config._maxDims, { Format::R8G8B8A8_UNORM_SRGB, Format::R8G8B8A8_SNORM});
 
             // allocate the sprite table 
         _pimpl->_preparedSprites.clear();
@@ -964,7 +964,7 @@ namespace SceneEngine
             = _pimpl->_packer.LargestFreeBlock();
         
         result._bytesPerPixel = 
-            (Metal::BitsPerPixel(Metal::NativeFormat::R8G8B8A8_UNORM_SRGB) + Metal::BitsPerPixel(Metal::NativeFormat::R8G8B8A8_SNORM)) / 8;
+            (BitsPerPixel(Format::R8G8B8A8_UNORM_SRGB) + BitsPerPixel(Format::R8G8B8A8_SNORM)) / 8;
         result._layerCount = (unsigned)_pimpl->_atlas._layers.size();
 
         auto oldest = _pimpl->_lruQueue.GetOldestValue();
@@ -1004,7 +1004,7 @@ namespace SceneEngine
         _pimpl->_frameCounter = 0;
 
         _pimpl->_material = Techniques::TechniqueMaterial(
-            Metal::InputLayout(s_inputLayout, dimof(s_inputLayout)),
+            InputLayout(s_inputLayout, dimof(s_inputLayout)),
             {Hash64("SpriteTable")}, ParameterBox());
         _pimpl->_stateRes = std::make_shared<CustomStateResolver>();
 

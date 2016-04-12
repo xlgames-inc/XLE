@@ -92,9 +92,9 @@ namespace RenderCore { namespace Metal_DX11
         PixelCoord      _leftTopFront;
 
         CopyPartial_Dest(
-            ID3D::Resource* dst, unsigned subres = 0u,
+            UnderlyingResourcePtr dst, unsigned subres = 0u,
             const PixelCoord leftTopFront = PixelCoord())
-        : _resource(dst), _subResource(subres), _leftTopFront(leftTopFront) {}
+        : _resource(dst.get()), _subResource(subres), _leftTopFront(leftTopFront) {}
     };
 
     class CopyPartial_Src
@@ -106,10 +106,10 @@ namespace RenderCore { namespace Metal_DX11
         PixelCoord      _rightBottomBack;
 
         CopyPartial_Src(
-            ID3D::Resource* dst, unsigned subres = 0u,
+            UnderlyingResourcePtr dst, unsigned subres = 0u,
             const PixelCoord leftTopFront = PixelCoord(~0u,0,0),
             const PixelCoord rightBottomBack = PixelCoord(~0u,1,1))
-        : _resource(dst), _subResource(subres)
+        : _resource(dst.get()), _subResource(subres)
         , _leftTopFront(leftTopFront)
         , _rightBottomBack(rightBottomBack) {}
     };

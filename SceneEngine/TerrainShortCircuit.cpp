@@ -15,6 +15,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Format.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
@@ -37,11 +38,11 @@ namespace SceneEngine
         class Desc
         {
         public:
-            unsigned    _valueFormat;
+            Format      _valueFormat;
             unsigned    _filterType;
             unsigned    _gradientFlagsEnable;
 
-            Desc(unsigned valueFormat, unsigned filterType, bool gradientFlagsEnable)
+            Desc(Format valueFormat, unsigned filterType, bool gradientFlagsEnable)
             : _valueFormat(valueFormat), _filterType(filterType), _gradientFlagsEnable(gradientFlagsEnable)
             {}
         };
@@ -65,7 +66,7 @@ namespace SceneEngine
         const ::Assets::ResChar firstPassShader[] = "game/xleres/ui/copyterraintile.sh:WriteToMidway:cs_*";
         const ::Assets::ResChar secondPassShader[] = "game/xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
         StringMeld<64, char> defines; 
-        defines << "VALUE_FORMAT=" << desc._valueFormat << ";FILTER_TYPE=" << desc._filterType;
+        defines << "VALUE_FORMAT=" << unsigned(desc._valueFormat) << ";FILTER_TYPE=" << desc._filterType;
         auto encodedGradientFlags = desc._gradientFlagsEnable;
         if (encodedGradientFlags) defines << ";ENCODED_GRADIENT_FLAGS=1";
 
@@ -108,10 +109,10 @@ namespace SceneEngine
     ShortCircuitMidwayBox::ShortCircuitMidwayBox(const Desc& desc)
     {
         _midwayBuffer = GestaltTypes::UAV(
-            BufferUploads::TextureDesc::Plain2D(desc._dims[0], desc._dims[1], Metal::NativeFormat::R32_FLOAT),
+            BufferUploads::TextureDesc::Plain2D(desc._dims[0], desc._dims[1], Format::R32_FLOAT),
             "TerrainMidway");
         _midwayGradFlags = GestaltTypes::UAV(
-            BufferUploads::TextureDesc::Plain2D(desc._dims[0], desc._dims[1], Metal::NativeFormat::R32_UINT),
+            BufferUploads::TextureDesc::Plain2D(desc._dims[0], desc._dims[1], Format::R32_UINT),
             "TerrainMidway");
     }
 
@@ -129,7 +130,7 @@ namespace SceneEngine
             // downsampling required depends on which field we're in.
             unsigned downsample = unsigned(4-fieldIndex);
 
-            unsigned format = 0;
+            Format format = Format::Unknown;
             TextureTileSet* tileSet = nullptr;
             if (layerId == CoverageId_Heights) {
                 tileSet = _heightMapTileSet.get();
@@ -146,7 +147,7 @@ namespace SceneEngine
             const auto Filter_Bilinear = 1u;
             const auto Filter_Max = 2u;
             unsigned filterType = Filter_Bilinear;
-            if (format == 62) filterType = Filter_Max;      // (use "max" filter for integer types)
+            if (format == Format::R8_UINT) filterType = Filter_Max;      // (use "max" filter for integer types)
 
             auto& box = Techniques::FindCachedBoxDep2<ShortCircuitResources>(format, filterType, _gradientFlagsSettings._enable);
 
@@ -165,10 +166,10 @@ namespace SceneEngine
             };
 
             metalContext.GetUnderlying()->UpdateSubresource(
-                box._tileCoordsBuffer.Locator().GetUnderlying(),
+                Metal::UnderlyingResourcePtr(box._tileCoordsBuffer.Locator().GetUnderlying()).get(),
                 0, nullptr, &tileCoords, sizeof(TileCoords), sizeof(TileCoords));
 
-            const auto resSrc = BufferUploads::ExtractDesc(*upd._srv->GetResource());
+            const auto resSrc = Metal::ExtractDesc(upd._srv->GetResource());
             assert(resSrc._type == BufferUploads::BufferDesc::Type::Texture);
 
             struct Parameters
@@ -197,7 +198,7 @@ namespace SceneEngine
             box._boundLayout.Apply(metalContext, Metal::UniformsStream(), Metal::UniformsStream(pkts, srv));
 
             const unsigned threadGroupWidth = 6;
-            if (format == 0) {
+            if (format == Format::Unknown) {
                     // go via a midway buffer and handle the min/max quantization
                 auto& midwayBox = Techniques::FindCachedBox2<ShortCircuitMidwayBox>(UInt2(tile._width, tile._height));
                 metalContext.BindCS(

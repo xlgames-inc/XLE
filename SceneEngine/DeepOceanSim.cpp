@@ -18,6 +18,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Format.h"
 #include "../ConsoleRig/Console.h"
 #include "../Assets/Assets.h"
 #include "../Math/Vector.h"
@@ -290,7 +291,6 @@ namespace SceneEngine
 
     StartingSpectrumBox::StartingSpectrumBox(const Desc& desc) 
     {
-        using namespace BufferUploads;
         auto& uploads = GetBufferUploads();
 
         auto realValues      = std::make_unique<float[]>(desc._width*desc._height);
@@ -369,25 +369,25 @@ namespace SceneEngine
 
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource, 
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_UINT),
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R32_UINT),
             "FFTWorking");
         auto inputReal = 
             uploads.Transaction_Immediate(
                 bufferUploadsDesc, 
                 BufferUploads::CreateBasicPacket(
                     desc._width*desc._height*sizeof(float), realValues.get(), 
-                    TexturePitches(
+                    TexturePitches{
                         unsigned(desc._width*sizeof(float)), 
-                        unsigned(desc._width*desc._height*sizeof(float)))).get()
+                        unsigned(desc._width*desc._height*sizeof(float))}).get()
             );
         auto inputImaginary = 
             uploads.Transaction_Immediate(
                 bufferUploadsDesc, 
                 BufferUploads::CreateBasicPacket(
                     desc._width*desc._height*sizeof(float), imaginaryValues.get(), 
-                    TexturePitches(
+                    TexturePitches{
                         unsigned(desc._width*sizeof(float)), 
-                        unsigned(desc._width*desc._height*sizeof(float)))).get()
+                        unsigned(desc._width*desc._height*sizeof(float))}).get()
             );
 
         Metal::ShaderResourceView inputRealShaderResource(inputReal->GetUnderlying());
@@ -485,48 +485,47 @@ namespace SceneEngine
 
     DeepOceanSim::DeepOceanSim(const Desc& desc) 
     {
-        using namespace BufferUploads;
         auto& uploads = GetBufferUploads();
 
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::RenderTarget|BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_TYPELESS),
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R32_TYPELESS),
             "FFT");
 
             ////
         auto workingTextureReal = uploads.Transaction_Immediate(bufferUploadsDesc);
-        Metal::UnorderedAccessView workingTextureRealUVA(workingTextureReal->GetUnderlying(), Metal::NativeFormat::R32_UINT);
-        Metal::RenderTargetView workingTextureRealTarget(workingTextureReal->GetUnderlying(), Metal::NativeFormat::R32_UINT);
-        Metal::ShaderResourceView workingTextureRealShaderResource(workingTextureReal->GetUnderlying(), Metal::NativeFormat::R32_FLOAT);
+        Metal::UnorderedAccessView workingTextureRealUVA(workingTextureReal->GetUnderlying(), Format::R32_UINT);
+        Metal::RenderTargetView workingTextureRealTarget(workingTextureReal->GetUnderlying(), Format::R32_UINT);
+        Metal::ShaderResourceView workingTextureRealShaderResource(workingTextureReal->GetUnderlying(), Format::R32_FLOAT);
 
         auto workingTextureImaginary = uploads.Transaction_Immediate(bufferUploadsDesc);
-        Metal::UnorderedAccessView workingTextureImaginaryUVA(workingTextureImaginary->GetUnderlying(), Metal::NativeFormat::R32_UINT);
-        Metal::RenderTargetView workingTextureImaginaryTarget(workingTextureImaginary->GetUnderlying(), Metal::NativeFormat::R32_UINT);
-        Metal::ShaderResourceView workingTextureImaginaryShaderResource(workingTextureImaginary->GetUnderlying(), Metal::NativeFormat::R32_FLOAT);
+        Metal::UnorderedAccessView workingTextureImaginaryUVA(workingTextureImaginary->GetUnderlying(), Format::R32_UINT);
+        Metal::RenderTargetView workingTextureImaginaryTarget(workingTextureImaginary->GetUnderlying(), Format::R32_UINT);
+        Metal::ShaderResourceView workingTextureImaginaryShaderResource(workingTextureImaginary->GetUnderlying(), Format::R32_FLOAT);
 
             ////
         auto workingTextureXReal = uploads.Transaction_Immediate(bufferUploadsDesc);
-        Metal::UnorderedAccessView workingTextureXRealUVA(workingTextureXReal->GetUnderlying(), Metal::NativeFormat::R32_UINT);
-        Metal::ShaderResourceView workingTextureXRealShaderResource(workingTextureXReal->GetUnderlying(), Metal::NativeFormat::R32_FLOAT);
+        Metal::UnorderedAccessView workingTextureXRealUVA(workingTextureXReal->GetUnderlying(), Format::R32_UINT);
+        Metal::ShaderResourceView workingTextureXRealShaderResource(workingTextureXReal->GetUnderlying(), Format::R32_FLOAT);
 
         auto workingTextureXImaginary = uploads.Transaction_Immediate(bufferUploadsDesc);
-        Metal::UnorderedAccessView workingTextureXImaginaryUVA(workingTextureXImaginary->GetUnderlying(), Metal::NativeFormat::R32_UINT);
-        Metal::ShaderResourceView workingTextureXImaginaryShaderResource(workingTextureXImaginary->GetUnderlying(), Metal::NativeFormat::R32_FLOAT);
+        Metal::UnorderedAccessView workingTextureXImaginaryUVA(workingTextureXImaginary->GetUnderlying(), Format::R32_UINT);
+        Metal::ShaderResourceView workingTextureXImaginaryShaderResource(workingTextureXImaginary->GetUnderlying(), Format::R32_FLOAT);
 
             ////
         auto workingTextureYReal = uploads.Transaction_Immediate(bufferUploadsDesc);
-        Metal::UnorderedAccessView workingTextureYRealUVA(workingTextureYReal->GetUnderlying(), Metal::NativeFormat::R32_UINT);
-        Metal::ShaderResourceView workingTextureYRealShaderResource(workingTextureYReal->GetUnderlying(), Metal::NativeFormat::R32_FLOAT);
+        Metal::UnorderedAccessView workingTextureYRealUVA(workingTextureYReal->GetUnderlying(), Format::R32_UINT);
+        Metal::ShaderResourceView workingTextureYRealShaderResource(workingTextureYReal->GetUnderlying(), Format::R32_FLOAT);
 
         auto workingTextureYImaginary = uploads.Transaction_Immediate(bufferUploadsDesc);
-        Metal::UnorderedAccessView workingTextureYImaginaryUVA(workingTextureYImaginary->GetUnderlying(), Metal::NativeFormat::R32_UINT);
-        Metal::ShaderResourceView workingTextureYImaginaryShaderResource(workingTextureYImaginary->GetUnderlying(), Metal::NativeFormat::R32_FLOAT);
+        Metal::UnorderedAccessView workingTextureYImaginaryUVA(workingTextureYImaginary->GetUnderlying(), Format::R32_UINT);
+        Metal::ShaderResourceView workingTextureYImaginaryShaderResource(workingTextureYImaginary->GetUnderlying(), Format::R32_FLOAT);
 
             ////
         const unsigned normalsMipCount = IntegerLog2(std::max(desc._width, desc._height));
-        auto typelessNormalFormat = desc._useDerivativesMapForNormals?Metal::NativeFormat::R8G8_TYPELESS:Metal::NativeFormat::R8G8B8A8_TYPELESS;
-        auto uintNormalFormat = desc._useDerivativesMapForNormals?Metal::NativeFormat::R8G8_UINT:Metal::NativeFormat::R8G8B8A8_UINT;
-        auto unormNormalFormat = desc._useDerivativesMapForNormals?Metal::NativeFormat::R8G8_UNORM:Metal::NativeFormat::R8G8B8A8_UNORM;
+        auto typelessNormalFormat = desc._useDerivativesMapForNormals?Format::R8G8_TYPELESS:Format::R8G8B8A8_TYPELESS;
+        auto uintNormalFormat = desc._useDerivativesMapForNormals?Format::R8G8_UINT:Format::R8G8B8A8_UINT;
+        auto unormNormalFormat = desc._useDerivativesMapForNormals?Format::R8G8_UNORM:Format::R8G8B8A8_UNORM;
         auto normalsBufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, typelessNormalFormat, uint8(normalsMipCount)),
@@ -545,16 +544,16 @@ namespace SceneEngine
             ////
         auto foamTextureDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R8_TYPELESS),
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R8_TYPELESS),
             "Foam");
         auto foamQuantity0 = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
         auto foamQuantity1 = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
-        Metal::UnorderedAccessView foamQuantityUVA0(foamQuantity0->GetUnderlying(), Metal::NativeFormat::R8_UINT);
-        Metal::ShaderResourceView foamQuantitySRV0(foamQuantity0->GetUnderlying(), Metal::NativeFormat::R8_UNORM);
-        Metal::ShaderResourceView foamQuantitySRV20(foamQuantity0->GetUnderlying(), Metal::NativeFormat::R8_UINT);
-        Metal::UnorderedAccessView foamQuantityUVA1(foamQuantity1->GetUnderlying(), Metal::NativeFormat::R8_UINT);
-        Metal::ShaderResourceView foamQuantitySRV1(foamQuantity1->GetUnderlying(), Metal::NativeFormat::R8_UNORM);
-        Metal::ShaderResourceView foamQuantitySRV21(foamQuantity1->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+        Metal::UnorderedAccessView foamQuantityUVA0(foamQuantity0->GetUnderlying(), Format::R8_UINT);
+        Metal::ShaderResourceView foamQuantitySRV0(foamQuantity0->GetUnderlying(), Format::R8_UNORM);
+        Metal::ShaderResourceView foamQuantitySRV20(foamQuantity0->GetUnderlying(), Format::R8_UINT);
+        Metal::UnorderedAccessView foamQuantityUVA1(foamQuantity1->GetUnderlying(), Format::R8_UINT);
+        Metal::ShaderResourceView foamQuantitySRV1(foamQuantity1->GetUnderlying(), Format::R8_UNORM);
+        Metal::ShaderResourceView foamQuantitySRV21(foamQuantity1->GetUnderlying(), Format::R8_UINT);
 
             ////
         _workingTextureReal = std::move(workingTextureReal);

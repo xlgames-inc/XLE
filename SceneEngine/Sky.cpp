@@ -87,7 +87,7 @@ namespace SceneEngine
             Vertex(Float3( scale,  scale, halfScale),    Float2(1.f, 1.f))
         };
 
-        Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::PT, shader);
+        Metal::BoundInputLayout inputLayout(GlobalInputLayouts::PT, shader);
         context.Bind(inputLayout);
 
         Metal::VertexBuffer temporaryVB(&vertices, sizeof(vertices));

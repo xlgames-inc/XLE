@@ -127,7 +127,7 @@ namespace RenderCore { namespace Metal_DX11
 		_underlying = std::move(srv);
 	}
 
-    ShaderResourceView ShaderResourceView::RawBuffer(ID3D::Resource& res, unsigned sizeBytes, unsigned offsetBytes)
+    ShaderResourceView ShaderResourceView::RawBuffer(UnderlyingResourcePtr res, unsigned sizeBytes, unsigned offsetBytes)
     {
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
         srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
@@ -135,8 +135,9 @@ namespace RenderCore { namespace Metal_DX11
         srvDesc.BufferEx.FirstElement = offsetBytes / 4;
         srvDesc.BufferEx.NumElements = sizeBytes / 4;
         srvDesc.BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
+        auto r = res.get();
         return ShaderResourceView(
-            GetObjectFactory(res).CreateShaderResourceView(&res, &srvDesc));
+            GetObjectFactory(*r).CreateShaderResourceView(r, &srvDesc));
     }
 
     auto ShaderResourceView::GetResource() const -> intrusive_ptr<ID3D::Resource>

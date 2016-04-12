@@ -142,7 +142,7 @@ namespace SceneEngine
 
     ResourcePtr CreateResourceImmediate(const BufferUploads::BufferDesc& desc)
     {
-        return GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
+        return GetBufferUploads().Transaction_Immediate(desc);
     }
 
 

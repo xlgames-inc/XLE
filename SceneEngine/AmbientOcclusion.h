@@ -7,11 +7,14 @@
 #pragma once
 
 #include "../RenderCore/Metal/TextureView.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/State.h"
+#include "../RenderCore/Metal/Forward.h"
+#include "../RenderCore/Format.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/IntrusivePtr.h"
 
 class GFSDK_SSAO_Context_D3D11;
+
+namespace BufferUploads { class ResourceLocator; }
 
 namespace SceneEngine
 {
@@ -24,13 +27,13 @@ namespace SceneEngine
         {
         public:
             unsigned _width, _height;
-            RenderCore::Metal::NativeFormat::Enum _destinationFormat;
+            RenderCore::Format _destinationFormat;
             bool _useNormals;
-            RenderCore::Metal::NativeFormat::Enum _normalsResolveFormat;
+            RenderCore::Format _normalsResolveFormat;
             Desc(   unsigned width, unsigned height, 
-                    RenderCore::Metal::NativeFormat::Enum destinationFormat,
+                    RenderCore::Format destinationFormat,
                     bool useNormals,
-                    RenderCore::Metal::NativeFormat::Enum normalsResolveFormat)
+                    RenderCore::Format normalsResolveFormat)
             {
                 std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
                 _width = width;
@@ -41,13 +44,13 @@ namespace SceneEngine
             }
         };
 
-        intrusive_ptr<ID3D::Resource>           _aoTexture;
+        intrusive_ptr<BufferUploads::ResourceLocator>          _aoTexture;
         RenderCore::Metal::RenderTargetView     _aoTarget;
         RenderCore::Metal::ShaderResourceView   _aoSRV;
 
         bool                                    _useNormals;
-        RenderCore::Metal::NativeFormat::Enum   _normalsResolveFormat;
-        intrusive_ptr<ID3D::Resource>           _resolvedNormals;
+        RenderCore::Format                      _normalsResolveFormat;
+        intrusive_ptr<BufferUploads::ResourceLocator>          _resolvedNormals;
         RenderCore::Metal::ShaderResourceView   _resolvedNormalsSRV;
 
         struct ContextDeletor { void operator()(void* ptr); };

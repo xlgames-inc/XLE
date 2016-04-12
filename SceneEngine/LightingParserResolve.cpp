@@ -27,6 +27,7 @@
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/Resource.h"
+#include "../BufferUploads/ResourceLocator.h"
 
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
@@ -397,8 +398,8 @@ namespace SceneEngine
                     if (lightingResolveContext._screenSpaceReflectionsResult.IsGood())
                         Metal::Copy(
                             context,
-                            lightingResTargets._lightingResolveCopy.get(), 
-                            lightingResTargets._lightingResolveTexture.get());
+                            lightingResTargets._lightingResolveCopy->GetUnderlying(), 
+                            lightingResTargets._lightingResolveTexture->GetUnderlying());
 
                     context.BindPS(MakeResourceList(6, 
                         lightingResolveContext._tiledLightingResult, 

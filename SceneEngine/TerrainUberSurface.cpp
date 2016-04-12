@@ -21,6 +21,7 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Format.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/DataPacket.h"
@@ -152,11 +153,10 @@ namespace SceneEngine
 
     namespace Internal
     {
-        static BufferUploads::BufferDesc BuildCacheDesc(UInt2 dims, RenderCore::Metal::NativeFormat::Enum format)
+        static BufferUploads::BufferDesc BuildCacheDesc(UInt2 dims, RenderCore::Format format)
         {
-            using namespace BufferUploads;
-            BufferDesc desc;
-            desc._type = BufferDesc::Type::Texture;
+            ResourceDesc desc;
+            desc._type = ResourceDesc::Type::Texture;
             desc._bindFlags = BindFlag::UnorderedAccess | BindFlag::ShaderResource;
             desc._cpuAccess = 0;
             desc._gpuAccess = GPUAccess::Read|GPUAccess::Write;
@@ -169,9 +169,9 @@ namespace SceneEngine
         class UberSurfacePacket : public BufferUploads::DataPacket
         {
         public:
-            virtual void* GetData(SubResource subRes);
-            virtual size_t GetDataSize(SubResource subRes) const;
-            virtual BufferUploads::TexturePitches GetPitches(SubResource subRes) const;
+            virtual void* GetData(SubResourceId subRes);
+            virtual size_t GetDataSize(SubResourceId subRes) const;
+            virtual BufferUploads::TexturePitches GetPitches(SubResourceId subRes) const;
 
             virtual std::shared_ptr<Marker> BeginBackgroundLoad();
 
@@ -183,22 +183,22 @@ namespace SceneEngine
             UInt2 _dims;
         };
 
-        void* UberSurfacePacket::GetData(SubResource subRes)
+        void* UberSurfacePacket::GetData(SubResourceId subRes)
         {
             assert(subRes==0);
             return _sourceData;
         }
 
-        size_t UberSurfacePacket::GetDataSize(SubResource subRes) const
+        size_t UberSurfacePacket::GetDataSize(SubResourceId subRes) const
         {
             assert(subRes==0);
             return _stride*_dims[1];
         }
 
-        BufferUploads::TexturePitches UberSurfacePacket::GetPitches(SubResource subRes) const
+        BufferUploads::TexturePitches UberSurfacePacket::GetPitches(SubResourceId subRes) const
         {
             assert(subRes==0);
-            return BufferUploads::TexturePitches(_stride, _stride*_dims[1]);
+            return BufferUploads::TexturePitches{_stride, _stride*_dims[1]};
         }
 
         auto UberSurfacePacket::BeginBackgroundLoad() -> std::shared_ptr<Marker> { return nullptr; }
@@ -338,11 +338,10 @@ namespace SceneEngine
             FlushLockToDisk();
         }
 
-        using namespace BufferUploads;
         auto& bufferUploads = GetBufferUploads();
 
         UInt2 dims(maxs[0]-mins[0]+1, maxs[1]-mins[1]+1);
-        auto desc = Internal::BuildCacheDesc(dims, Metal::AsNativeFormat(_pimpl->_uberSurface->Format()));
+        auto desc = Internal::BuildCacheDesc(dims, AsFormat(_pimpl->_uberSurface->Format()));
         auto pkt = make_intrusive<Internal::UberSurfacePacket>(
             _pimpl->_uberSurface->GetData(mins), _pimpl->_uberSurface->GetStride(), dims);
 
@@ -365,7 +364,7 @@ namespace SceneEngine
         auto& bufferUploads = GetBufferUploads();
 
         auto dims = bottomRight - topLeft;
-        auto desc = Internal::BuildCacheDesc(dims, Metal::AsNativeFormat(_pimpl->_uberSurface->Format()));
+        auto desc = Internal::BuildCacheDesc(dims, AsFormat(_pimpl->_uberSurface->Format()));
         auto pkt = make_intrusive<Internal::UberSurfacePacket>(
             _pimpl->_uberSurface->GetData(topLeft), _pimpl->_uberSurface->GetStride(), dims);
 

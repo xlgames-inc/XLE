@@ -15,7 +15,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -85,16 +85,16 @@ namespace SceneEngine
         unsigned width, unsigned height, unsigned maxSimulationGrids, 
         bool pipeModel, bool calculateVelocities, bool calculateFoam)
     {
-        using namespace BufferUploads;
+        using namespace RenderCore;
         auto& uploads = GetBufferUploads();
 
-        auto tDesc = TextureDesc::Plain2D(width, height, Metal::NativeFormat::R32_TYPELESS, 1, uint16(maxSimulationGrids));
+        auto tDesc = TextureDesc::Plain2D(width, height, Format::R32_TYPELESS, 1, uint16(maxSimulationGrids));
         if (height<=1) {
-            tDesc = TextureDesc::Plain1D(width, Metal::NativeFormat::R32_TYPELESS, 1, uint16(maxSimulationGrids));
+            tDesc = TextureDesc::Plain1D(width, Format::R32_TYPELESS, 1, uint16(maxSimulationGrids));
         }
 
-        BufferDesc targetDesc;
-        targetDesc._type = BufferDesc::Type::Texture;
+        ResourceDesc targetDesc;
+        targetDesc._type = ResourceDesc::Type::Texture;
         targetDesc._bindFlags = BindFlag::ShaderResource|BindFlag::UnorderedAccess;
         targetDesc._cpuAccess = 0;
         targetDesc._gpuAccess = GPUAccess::Read|GPUAccess::Write;
@@ -117,8 +117,8 @@ namespace SceneEngine
 
         for (unsigned c=0; c<heightsTextureCount; ++c) {
             waterHeightsTextures[c] = uploads.Transaction_Immediate(targetDesc);
-            waterHeightsUAV[c] = UAV(waterHeightsTextures[c]->GetUnderlying(), Metal::NativeFormat::R32_FLOAT, 0, false, true);
-            waterHeightsSRV[c] = SRV(waterHeightsTextures[c]->GetUnderlying(), Metal::NativeFormat::R32_FLOAT, maxSimulationGrids);
+            waterHeightsUAV[c] = UAV(waterHeightsTextures[c]->GetUnderlying(), Format::R32_FLOAT, 0, false, true);
+            waterHeightsSRV[c] = SRV(waterHeightsTextures[c]->GetUnderlying(), Format::R32_FLOAT, maxSimulationGrids);
         }
 
             //  The pipe model always needs velocities. Otherwise, we only calculate them
@@ -126,27 +126,27 @@ namespace SceneEngine
             //  the movement of water from place to place.
 
         if (pipeModel || calculateVelocities) {
-            targetDesc._textureDesc._nativePixelFormat = Metal::NativeFormat::R32_TYPELESS;
+            targetDesc._textureDesc._format = Format::R32_TYPELESS;
             for (unsigned c=0; c<VelTextures; ++c) {
                 waterVelocitiesTexture[c] = uploads.Transaction_Immediate(targetDesc);
-                waterVelocitiesUAV[c] = UAV(waterVelocitiesTexture[c]->GetUnderlying(), Metal::NativeFormat::R32_FLOAT, 0, false, true);
-                waterVelocitiesSRV[c] = SRV(waterVelocitiesTexture[c]->GetUnderlying(), Metal::NativeFormat::R32_FLOAT, maxSimulationGrids);
+                waterVelocitiesUAV[c] = UAV(waterVelocitiesTexture[c]->GetUnderlying(), Format::R32_FLOAT, 0, false, true);
+                waterVelocitiesSRV[c] = SRV(waterVelocitiesTexture[c]->GetUnderlying(), Format::R32_FLOAT, maxSimulationGrids);
             }
         }
 
         if (!pipeModel && calculateVelocities) {
-            targetDesc._textureDesc._nativePixelFormat = Metal::NativeFormat::R32_TYPELESS;
+            targetDesc._textureDesc._format = Format::R32_TYPELESS;
             for (unsigned c=0; c<2; ++c) {
                 slopesBuffer[c] = uploads.Transaction_Immediate(targetDesc);
-                slopesBufferUAV[c] = UAV(slopesBuffer[c]->GetUnderlying(), Metal::NativeFormat::R32_FLOAT, 0, false, true);
+                slopesBufferUAV[c] = UAV(slopesBuffer[c]->GetUnderlying(), Format::R32_FLOAT, 0, false, true);
             }
         }
 
                 ////
         const unsigned normalsMipCount = IntegerLog2(std::max(width, height));
-        const auto typelessNormalFormat = Metal::NativeFormat::R8G8_TYPELESS;
-        const auto uintNormalFormat = Metal::NativeFormat::R8G8_UINT;
-        const auto unormNormalFormat = Metal::NativeFormat::R8G8_UNORM;
+        const auto typelessNormalFormat = Format::R8G8_TYPELESS;
+        const auto uintNormalFormat = Format::R8G8_UINT;
+        const auto unormNormalFormat = Format::R8G8_UNORM;
         auto normalsBufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
             BufferUploads::TextureDesc::Plain2D(width, height, typelessNormalFormat, uint8(normalsMipCount), uint8(maxSimulationGrids)),
@@ -166,13 +166,13 @@ namespace SceneEngine
         if (calculateFoam) {
             auto foamTextureDesc = BuildRenderTargetDesc(
                 BindFlag::UnorderedAccess|BindFlag::ShaderResource,
-                TextureDesc::Plain2D(width, height, Metal::NativeFormat::R8_TYPELESS, 1, uint8(maxSimulationGrids)),
+                TextureDesc::Plain2D(width, height, Format::R8_TYPELESS, 1, uint8(maxSimulationGrids)),
                 "ShallowFoam");
             for (unsigned c=0; c<2; ++c) {
                 _foamQuantity[c] = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
-                _foamQuantityUAV[c] = UAV(_foamQuantity[c]->GetUnderlying(), Metal::NativeFormat::R8_UINT);
-                _foamQuantitySRV[c] = SRV(_foamQuantity[c]->GetUnderlying(), Metal::NativeFormat::R8_UNORM);
-                _foamQuantitySRV2[c] = SRV(_foamQuantity[c]->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+                _foamQuantityUAV[c] = UAV(_foamQuantity[c]->GetUnderlying(), Format::R8_UINT);
+                _foamQuantitySRV[c] = SRV(_foamQuantity[c]->GetUnderlying(), Format::R8_UNORM);
+                _foamQuantitySRV2[c] = SRV(_foamQuantity[c]->GetUnderlying(), Format::R8_UINT);
             }
         }
     
@@ -221,7 +221,7 @@ namespace SceneEngine
 
     ShallowWaterSim::ShallowWaterSim(const Desc& desc)
     {
-        using namespace BufferUploads;
+        using namespace RenderCore;
         auto& uploads = GetBufferUploads();
 
         auto simulationGrid = std::make_unique<ShallowWaterGrid>(
@@ -237,8 +237,8 @@ namespace SceneEngine
             //
         if (desc._useLookupTable) {
             const unsigned lookupTableDimensions = 512;
-            BufferDesc targetDesc;
-            targetDesc._type = BufferDesc::Type::Texture;
+            ResourceDesc targetDesc;
+            targetDesc._type = ResourceDesc::Type::Texture;
             targetDesc._bindFlags = BindFlag::ShaderResource|BindFlag::UnorderedAccess;
             targetDesc._cpuAccess = 0;
             targetDesc._gpuAccess = GPUAccess::Read|GPUAccess::Write;
@@ -246,13 +246,13 @@ namespace SceneEngine
             targetDesc._name[0] = '\0';
             targetDesc._textureDesc = 
                 TextureDesc::Plain2D(
-                    lookupTableDimensions, lookupTableDimensions, Metal::NativeFormat::R8_TYPELESS);
+                    lookupTableDimensions, lookupTableDimensions, Format::R8_TYPELESS);
 
             auto initData = BufferUploads::CreateEmptyPacket(targetDesc);
             XlSetMemory(initData->GetData(), 0xff, initData->GetDataSize());
             _lookupTable = uploads.Transaction_Immediate(targetDesc, initData.get());
-            _lookupTableUAV = UAV(_lookupTable->GetUnderlying(), Metal::NativeFormat::R8_UINT);
-            _lookupTableSRV = SRV(_lookupTable->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+            _lookupTableUAV = UAV(_lookupTable->GetUnderlying(), Format::R8_UINT);
+            _lookupTableSRV = SRV(_lookupTable->GetUnderlying(), Format::R8_UINT);
         }
 
         _poolOfUnallocatedArrayIndices.reserve(desc._maxSimulationGrid);
@@ -1056,7 +1056,7 @@ namespace SceneEngine
         metalContext.Bind(Techniques::CommonResources()._dssReadWrite);
 
         auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(_gridDimension, _gridDimension, true));
-        metalContext.Bind(simplePatchBox._simplePatchIndexBuffer, Metal::NativeFormat::R32_UINT);
+        metalContext.Bind(simplePatchBox._simplePatchIndexBuffer, Format::R32_UINT);
 
         Metal::ConstantBuffer simulatingCB(nullptr, sizeof(CellConstants));
 
@@ -1121,7 +1121,7 @@ namespace SceneEngine
 
         auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(
             SimplePatchBox::Desc(_gridDimension, _gridDimension, true));
-        metalContext.Bind(simplePatchBox._simplePatchIndexBuffer, Metal::NativeFormat::R32_UINT);
+        metalContext.Bind(simplePatchBox._simplePatchIndexBuffer, Format::R32_UINT);
 
         Metal::ConstantBuffer simulatingCB(nullptr, sizeof(CellConstants));
         const Metal::ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };

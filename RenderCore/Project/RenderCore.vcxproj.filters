@@ -17,9 +17,6 @@
     <ClInclude Include="..\Metal\DeviceContext.h">
       <Filter>Metal</Filter>
     </ClInclude>
-    <ClInclude Include="..\Metal\Format.h">
-      <Filter>Metal</Filter>
-    </ClInclude>
     <ClInclude Include="..\Metal\InputLayout.h">
       <Filter>Metal</Filter>
     </ClInclude>

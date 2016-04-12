@@ -215,7 +215,7 @@ namespace SceneEngine
 	inline ShadowProjectionDesc::ShadowProjectionDesc()
 	{
 		_width = _height = 0;
-		_typelessFormat = _writeFormat = _readFormat = RenderCore::Format(0); // RenderCore::Metal::NativeFormat::Unknown;
+		_typelessFormat = _writeFormat = _readFormat = RenderCore::Format(0); // RenderCore::Format::Unknown;
 		_worldToClip = Identity<Float4x4>();
 		_slopeScaledBias = 0.f;
 		_depthBiasClamp = 0.f;

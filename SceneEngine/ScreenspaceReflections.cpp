@@ -24,6 +24,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Format.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../Math/Transformations.h"
@@ -88,23 +89,21 @@ namespace SceneEngine
     ScreenSpaceReflectionsResources::ScreenSpaceReflectionsResources(const Desc& desc)
     : _desc(desc)
     {
-        using namespace BufferUploads;
-    
             ////////////
         _mask = GestaltTypes::UAVSRV(
-            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R8G8_UNORM),
+            TextureDesc::Plain2D(desc._width, desc._height, Format::R8G8_UNORM),
             "SSReflMask");
 
         _reflections = GestaltTypes::RTVUAVSRV(
-            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R16G16B16A16_FLOAT), 
+            TextureDesc::Plain2D(desc._width, desc._height, Format::R16G16B16A16_FLOAT), 
             "SSRefl");
 
         _downsampledNormals = GestaltTypes::RTVSRV(
-            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R16G16B16A16_FLOAT), //R11G11B10_FLOAT), 
+            TextureDesc::Plain2D(desc._width, desc._height, Format::R16G16B16A16_FLOAT), //R11G11B10_FLOAT), 
             "SSLowNorms");
 
         _downsampledDepth = GestaltTypes::RTVSRV(
-            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_FLOAT), // NativeFormat::R16_UNORM), 
+            TextureDesc::Plain2D(desc._width, desc._height, Format::R32_FLOAT), // NativeFormat::R16_UNORM), 
             "SSLowDepths");
 
             ////////////

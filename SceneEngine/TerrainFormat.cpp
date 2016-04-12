@@ -7,8 +7,7 @@
 #include "TerrainFormat.h"
 #include "TerrainUberSurface.h"
 #include "TerrainScaffold.h"
-#include "../RenderCore/Resource.h"
-#include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Format.h"
 #include "../Assets/ChunkFile.h"
 #include "../Assets/Assets.h"
 #include "../Utility/Streams/FileUtils.h"
@@ -100,7 +99,7 @@ namespace SceneEngine
                     //          applied. When there are compression parameters (like the min and scale 
                     //          height values) _compressionDataSize specifies the amount of extra data stored
                     //          per node.
-                unsigned            _format;
+                Format              _format;
                 Compression::Type   _compressionType;
                 unsigned            _compressionDataSize;
 
@@ -304,25 +303,25 @@ namespace SceneEngine
         template<typename A, typename B> float AsScalar(std::pair<A, B> in)         { return float(in.first); }
         template<typename A, typename B> void Zero(std::pair<A, B>& dst)            { dst = std::pair<A, B>(A(0), B(0)); }
 
-        template<typename Element> Metal::NativeFormat::Enum AsFormat() { return Metal::NativeFormat::Unknown; }
+        template<typename Element> Format AsFormat() { return Format::Unknown; }
 
-        template<> Metal::NativeFormat::Enum AsFormat<float>()                      { return Metal::NativeFormat::R32_FLOAT; }
-        template<> Metal::NativeFormat::Enum AsFormat<uint16>()                     { return Metal::NativeFormat::R16_UINT; }
-        template<> Metal::NativeFormat::Enum AsFormat<uint8>()                      { return Metal::NativeFormat::R8_UINT; }
-        template<> Metal::NativeFormat::Enum AsFormat<int16>()                      { return Metal::NativeFormat::R16_SINT; }
-        template<> Metal::NativeFormat::Enum AsFormat<int8>()                       { return Metal::NativeFormat::R8_SINT; }
-        template<> Metal::NativeFormat::Enum AsFormat<std::pair<float, float>>()    { return Metal::NativeFormat::R32G32_FLOAT; }
-        template<> Metal::NativeFormat::Enum AsFormat<std::pair<uint16, uint16>>()  { return Metal::NativeFormat::R16G16_UNORM; }       // note -- UNORM (not UINT). Required for shadow samples to work right
+        template<> Format AsFormat<float>()                      { return Format::R32_FLOAT; }
+        template<> Format AsFormat<uint16>()                     { return Format::R16_UINT; }
+        template<> Format AsFormat<uint8>()                      { return Format::R8_UINT; }
+        template<> Format AsFormat<int16>()                      { return Format::R16_SINT; }
+        template<> Format AsFormat<int8>()                       { return Format::R8_SINT; }
+        template<> Format AsFormat<std::pair<float, float>>()    { return Format::R32G32_FLOAT; }
+        template<> Format AsFormat<std::pair<uint16, uint16>>()  { return Format::R16G16_UNORM; }       // note -- UNORM (not UINT). Required for shadow samples to work right
 
         class CoverageDataResult
         {
         public:
             std::vector<uint8> _compressionData;
-            Metal::NativeFormat::Enum _nativeFormat;
+            Format _nativeFormat;
             unsigned _rawDataSize;
 
             CoverageDataResult(
-                std::vector<uint8>&& compressionData, Metal::NativeFormat::Enum nativeFormat, unsigned rawDataSize)
+                std::vector<uint8>&& compressionData, Format nativeFormat, unsigned rawDataSize)
             : _compressionData(std::forward<std::vector<uint8>>(compressionData))
             , _nativeFormat(nativeFormat)
             , _rawDataSize(rawDataSize) {}
@@ -522,7 +521,7 @@ namespace SceneEngine
                 std::vector<uint8> compressionData;
                 compressionData.resize(sizeof(float)*2);
                 *(std::pair<float, float>*)AsPointer(compressionData.begin()) = std::make_pair(minValue, (maxValue - minValue) / float(compressedHeightMask));
-                return CoverageDataResult(std::move(compressionData), Metal::NativeFormat::R16_UINT, (unsigned)rawDataSize);
+                return CoverageDataResult(std::move(compressionData), Format::R16_UINT, (unsigned)rawDataSize);
 
             } else if (compression == Compression::None) {
 
@@ -531,7 +530,7 @@ namespace SceneEngine
                 return CoverageDataResult(std::vector<uint8>(), AsFormat<Element>(), (unsigned)rawDataSize);
 
             } else {
-                return CoverageDataResult(std::vector<uint8>(), Metal::NativeFormat::Unknown, 0);
+                return CoverageDataResult(std::vector<uint8>(), Format::Unknown, 0);
             }
         }
 

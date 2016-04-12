@@ -16,6 +16,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../Assets/Assets.h"
@@ -30,12 +31,11 @@
 namespace SceneEngine
 {
     using namespace RenderCore;
-    using namespace BufferUploads;
 
     class ErosionSimulation::Pimpl
     {
     public:
-        using ResLocator = intrusive_ptr<ResourceLocator>;
+        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
         using UAV = Metal::UnorderedAccessView;
         using SRV = Metal::ShaderResourceView;
 
@@ -127,7 +127,7 @@ namespace SceneEngine
         auto desc = CreateDesc(
             BindFlag::UnorderedAccess | BindFlag::ShaderResource,
             0, GPUAccess::Read|GPUAccess::Write,
-            TextureDesc::Plain2D(dimensions[0], dimensions[1], Metal::NativeFormat::R32_FLOAT),
+            TextureDesc::Plain2D(dimensions[0], dimensions[1], Format::R32_FLOAT),
             "ErosionSim");
         auto hardMaterials = bufferUploads.Transaction_Immediate(desc);
         auto softMaterials = bufferUploads.Transaction_Immediate(desc);
@@ -188,7 +188,7 @@ namespace SceneEngine
         auto inputRes = Metal::ExtractResource<ID3D::Resource>(input.GetUnderlying());
         Metal::CopyPartial(
             metalContext,
-            _pimpl->_hardMaterials->GetUnderlying(),
+            Metal::CopyPartial_Dest(_pimpl->_hardMaterials->GetUnderlying()),
             Metal::CopyPartial_Src(inputRes.get(), 0, 
                 Metal::PixelCoord(topLeft[0], topLeft[1], 0u), 
                 Metal::PixelCoord(bottomRight[0], bottomRight[1], 1u)));
@@ -202,7 +202,7 @@ namespace SceneEngine
         auto destRes = Metal::ExtractResource<ID3D::Resource>(dest.GetUnderlying());
         Metal::CopyPartial(
             metalContext,
-            destRes.get(),
+            Metal::CopyPartial_Dest(destRes.get()),
             Metal::CopyPartial_Src(_pimpl->_hardMaterials->GetUnderlying(), 0, 
                 Metal::PixelCoord(),
                 Metal::PixelCoord(bottomRight[0] - topLeft[0], bottomRight[1] - topLeft[1], 1u)));
@@ -385,7 +385,7 @@ namespace SceneEngine
                     { Float3(wsDims[0], wsDims[1], 0.f), Float2(wsDims[0], wsDims[1]) }
                 };
 
-                Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::PT, shader);
+                Metal::BoundInputLayout inputLayout(GlobalInputLayouts::PT, shader);
                 Metal::BoundUniforms uniforms(shader);
                 Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
                 

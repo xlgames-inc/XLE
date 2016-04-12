@@ -36,6 +36,7 @@
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../BufferUploads/ResourceLocator.h"
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
@@ -252,11 +253,11 @@ namespace SceneEngine
         class Desc
         {
         public:
-            Desc(unsigned width, unsigned height, Metal::NativeFormat::Enum format)
+            Desc(unsigned width, unsigned height, Format format)
                 : _width(width), _height(height), _format(format) {}
 
-            unsigned            _width, _height;
-            Metal::NativeFormat::Enum  _format;
+            unsigned    _width, _height;
+            Format      _format;
         };
 
         ResourcePtr         _postMsaaResolveTexture;
@@ -268,15 +269,14 @@ namespace SceneEngine
 
     FinalResolveResources::FinalResolveResources(const Desc& desc)
     {
-        using namespace BufferUploads;
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::AsDXGIFormat(desc._format)),
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._format),
             "FinalResolve");
         auto postMsaaResolveTexture = CreateResourceImmediate(bufferUploadsDesc);
 
-        Metal::RenderTargetView postMsaaResolveTarget(postMsaaResolveTexture.get());
-        Metal::ShaderResourceView postMsaaResolveSRV(postMsaaResolveTexture.get());
+        Metal::RenderTargetView postMsaaResolveTarget(postMsaaResolveTexture->GetUnderlying());
+        Metal::ShaderResourceView postMsaaResolveSRV(postMsaaResolveTexture->GetUnderlying());
 
         _postMsaaResolveTexture = std::move(postMsaaResolveTexture);
         _postMsaaResolveTarget = std::move(postMsaaResolveTarget);
@@ -288,7 +288,7 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         ID3D::Resource* destinationTexture,
         ID3D::Resource* sourceTexture,
-        Metal::NativeFormat::Enum resolveFormat)
+        Format resolveFormat)
     {
             // todo -- support custom resolve (tone-map aware)
             // See AMD post on this topic:
@@ -490,7 +490,8 @@ namespace SceneEngine
         TransparencyTargetsBox* oiTransTargets = nullptr;
         if (useOrderIndependentTransparency) {
             duplicatedDepthBuffer = 
-                BuildDuplicatedDepthBuffer(&metalContext, targetsBox._msaaDepthBufferTexture.get());
+                BuildDuplicatedDepthBuffer(&metalContext, 
+                    Metal::UnderlyingResourcePtr(targetsBox._msaaDepthBufferTexture->GetUnderlying()).get());
                 
             oiTransTargets = OrderIndependentTransparency_Prepare(metalContext, parserContext, duplicatedDepthBuffer);
 
@@ -603,7 +604,7 @@ namespace SceneEngine
         if (hasOITrans) {
             if (oiMode == OIMode::SortedRef) {
                 StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
-                auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&metalContext, mainTargets._msaaDepthBufferTexture.get());
+                auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&metalContext, Metal::UnderlyingResourcePtr(mainTargets._msaaDepthBufferTexture->GetUnderlying()).get());
                 auto* transTargets = OrderIndependentTransparency_Prepare(metalContext, parserContext, duplicatedDepthBuffer);
 
                 ExecuteScene(
@@ -710,7 +711,7 @@ namespace SceneEngine
         Metal::ShaderResourceView sceneSecondaryDepthsSRV;
         Metal::RenderTargetView postLightingResolveRTV;
         Metal::DepthStencilView sceneDepthsDSV;
-        ID3D::Resource* postLightingResolveTexture = nullptr;
+        ResourcePtr postLightingResolveTexture = nullptr;
 
         SavedTargets savedTargets(metalContext);
 
@@ -719,7 +720,7 @@ namespace SceneEngine
         
         bool precisionTargets = Tweakable("PrecisionTargets", false);
 
-        typedef Metal::NativeFormat::Enum NativeFormat;
+        typedef Format NativeFormat;
         auto sampling = BufferUploads::TextureSamples::Create(
             uint8(std::max(qualitySettings._samplingCount, 1u)), uint8(qualitySettings._samplingQuality));
         auto& lightingResTargets = Techniques::FindCachedBox2<LightingResolveTextureBox>(
@@ -863,14 +864,14 @@ namespace SceneEngine
                 //          not be)
                 //
             if (qualitySettings._samplingCount > 1) {
-                Metal::TextureDesc2D inputTextureDesc(postLightingResolveTexture);
+                auto inputTextureDesc = Metal::ExtractDesc(postLightingResolveTexture->GetUnderlying());
 				auto& msaaResolveRes = Techniques::FindCachedBox2<FinalResolveResources>(
-					inputTextureDesc.Width, inputTextureDesc.Height, Metal::AsNativeFormat(inputTextureDesc.Format));
+					inputTextureDesc._textureDesc._width, inputTextureDesc._textureDesc._height, inputTextureDesc._textureDesc._format);
                 LightingParser_ResolveMSAA(
                     metalContext, parserContext,
-                    msaaResolveRes._postMsaaResolveTexture.get(),
-                    postLightingResolveTexture,
-					Metal::AsNativeFormat(inputTextureDesc.Format));
+                    Metal::UnderlyingResourcePtr(msaaResolveRes._postMsaaResolveTexture->GetUnderlying()).get(),
+                    Metal::UnderlyingResourcePtr(postLightingResolveTexture->GetUnderlying()).get(),
+					inputTextureDesc._textureDesc._format);
 
                     // todo -- also resolve the depth buffer...!
                     //      here; we switch the active textures to the msaa resolved textures
@@ -892,11 +893,11 @@ namespace SceneEngine
             if (hardwareSRGBDisabled) {
                 auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
                 if (res) {
-                    auto currentFormat = Metal::AsNativeFormat(Metal::TextureDesc2D(res.get()).Format);
-                    if (Metal::GetComponentType(currentFormat) == Metal::FormatComponentType::UNorm_SRGB) {
+                    auto currentFormat = Metal::AsFormat(Metal::TextureDesc2D(res.get()).Format);
+                    if (GetComponentType(currentFormat) == FormatComponentType::UNorm_SRGB) {
                             // create a render target view with SRGB disabled (but the same colour format)
                             // todo -- make sure we're using the correct format here -- 
-                        Metal::RenderTargetView rtv(res.get(), Metal::NativeFormat::R8G8B8A8_UNORM);
+                        Metal::RenderTargetView rtv(res.get(), Format::R8G8B8A8_UNORM);
                         auto* drtv = rtv.GetUnderlying();
                         metalContext.GetUnderlying()->OMSetRenderTargets(1, &drtv, savedTargets.GetDepthStencilView());
                     } else

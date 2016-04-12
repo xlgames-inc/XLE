@@ -7,6 +7,7 @@
 #pragma once
 
 #include "DX11.h"
+#include "Resource.h"
 #include "../../../Utility/IntrusivePtr.h"
 
 namespace RenderCore { namespace Metal_DX11
@@ -28,7 +29,7 @@ namespace RenderCore { namespace Metal_DX11
         VertexBuffer(VertexBuffer&& moveFrom) never_throws;
         VertexBuffer& operator=(const VertexBuffer& cloneFrom);
         VertexBuffer& operator=(VertexBuffer&& moveFrom) never_throws;
-        VertexBuffer(intrusive_ptr<ID3D::Resource>&& cloneFrom);
+        VertexBuffer(UnderlyingResourcePtr cloneFrom);
 
         typedef ID3D::Buffer*       UnderlyingType;
         UnderlyingType              GetUnderlying() const { return _underlying.get(); }

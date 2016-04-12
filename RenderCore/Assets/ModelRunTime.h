@@ -7,7 +7,6 @@
 #pragma once
 
 #include "DelayedDrawCall.h"
-#include "../Metal/Format.h"
 #include "../Metal/Buffer.h"
 
 #include "../../Assets/AssetsCore.h"

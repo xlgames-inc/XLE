@@ -8,9 +8,10 @@
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 #include "SceneParser.h"
-#include "../RenderCore/Metal/Format.h"
-#include "../RenderCore/Metal/RenderTargetView.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../BufferUploads/IBufferUploads.h"
@@ -25,6 +26,7 @@
 #include <algorithm>
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
+#include "../RenderCore/DX11/Metal/Format.h"
 
 
     //
@@ -116,7 +118,7 @@ namespace SceneEngine
 
         GFSDK_SSAO_Status status;
         GFSDK_SSAO_Context_D3D11* tempPtr = nullptr;
-        status = GFSDK_SSAO_CreateContext_D3D11(Metal::ObjectFactory().GetUnderlying(), &tempPtr, &customHeap);
+        status = GFSDK_SSAO_CreateContext_D3D11(Metal::GetObjectFactory().GetUnderlying(), &tempPtr, &customHeap);
         if (status != GFSDK_SSAO_OK || !tempPtr) {
             Throw(RenderCore::Exceptions::GenericFailure("Failure initializing GFSDK_SSAO"));
         }
@@ -133,30 +135,26 @@ namespace SceneEngine
         }
 
             // note -- always writing to non-MSAA texture
-        using namespace BufferUploads;
         auto& uploads = GetBufferUploads();
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
-            BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, Metal::AsDXGIFormat(desc._destinationFormat)),
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._destinationFormat),
             "AOTarget");
 
-        auto aoTexture = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
-        Metal::RenderTargetView aoTarget(aoTexture.get());
-        Metal::ShaderResourceView aoSRV(aoTexture.get());
+        auto aoTexture = uploads.Transaction_Immediate(bufferUploadsDesc);
+        Metal::RenderTargetView aoTarget(aoTexture->GetUnderlying());
+        Metal::ShaderResourceView aoSRV(aoTexture->GetUnderlying());
 
-        intrusive_ptr<ID3D::Resource>  resolvedNormals;
+        intrusive_ptr<BufferUploads::ResourceLocator> resolvedNormals;
         Metal::ShaderResourceView resolvedNormalsSRV;
-        if (desc._useNormals && desc._normalsResolveFormat != Metal::NativeFormat::Unknown) {
+        if (desc._useNormals && desc._normalsResolveFormat != Format::Unknown) {
             auto bufferUploadsDesc = BuildRenderTargetDesc(
                 BindFlag::ShaderResource,
-                BufferUploads::TextureDesc::Plain2D(
-                    desc._width, desc._height, 
-                    Metal::AsDXGIFormat(desc._normalsResolveFormat)),
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._normalsResolveFormat),
                 "AONormalResolve");
 
-            resolvedNormals = uploads.Transaction_Immediate(bufferUploadsDesc, nullptr)->AdoptUnderlying();
-            resolvedNormalsSRV = Metal::ShaderResourceView(resolvedNormals.get());
+            resolvedNormals = uploads.Transaction_Immediate(bufferUploadsDesc, nullptr);
+            resolvedNormalsSRV = Metal::ShaderResourceView(resolvedNormals->GetUnderlying());
         }
 
         _aoTexture = std::move(aoTexture);
@@ -227,9 +225,9 @@ namespace SceneEngine
         inputData.DepthData.Viewport.MaxDepth = mainViewport.MaxDepth;
 
         if (resources._useNormals && normalsBuffer) {
-            if (resources._normalsResolveFormat != Metal::NativeFormat::Unknown) {
+            if (resources._normalsResolveFormat != Format::Unknown) {
                 context->GetUnderlying()->ResolveSubresource(
-                    resources._resolvedNormals.get(), 0,
+                    Metal::UnderlyingResourcePtr(resources._resolvedNormals->GetUnderlying()).get(), 0,
                     Metal::ExtractResource<ID3D::Resource>(normalsBuffer->GetUnderlying()).get(), 0,
                     Metal::AsDXGIFormat(resources._normalsResolveFormat));
                 inputData.NormalData.pFullResNormalTextureSRV = resources._resolvedNormalsSRV.GetUnderlying();
@@ -240,9 +238,9 @@ namespace SceneEngine
             //  when using UNORM normal data, use:
             // inputData.NormalData.DecodeScale =  2.f;
             // inputData.NormalData.DecodeBias  = -1.f;
-            assert(Metal::GetComponentType(
-                Metal::AsNativeFormat(Metal::TextureDesc2D(normalsBuffer->GetUnderlying()).Format))
-                == Metal::FormatComponentType::SNorm);
+            assert(GetComponentType(
+                Metal::AsFormat(Metal::TextureDesc2D(normalsBuffer->GetUnderlying()).Format))
+                == FormatComponentType::SNorm);
             inputData.NormalData.DecodeScale =  1.f;
             inputData.NormalData.DecodeBias  = 0.f;
 

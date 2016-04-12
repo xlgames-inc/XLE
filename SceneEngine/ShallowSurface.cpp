@@ -445,14 +445,14 @@ namespace SceneEngine
         matParam.SetParameter((const utf8*)"MAT_DO_REFRACTION", int(refractionsEnable));
         matParam.SetParameter((const utf8*)"SKY_PROJECTION", skyProjType);
         TechniqueMaterial simMaterial(
-            Metal::InputLayout(nullptr, 0),
+            InputLayout(nullptr, 0),
             {   ObjectCB::LocalTransform,
                 Hash64("ShallowWaterCellConstants"), Hash64("ShallowWaterLighting") },
             matParam);
 
         matParam.SetParameter((const utf8*)"SHALLOW_WATER_IS_SIMULATED", 0);
         TechniqueMaterial unsimMaterial(
-            Metal::InputLayout(nullptr, 0),
+            InputLayout(nullptr, 0),
             { ObjectCB::LocalTransform, Hash64("ShallowWaterLighting") },
             matParam);
 
@@ -489,9 +489,9 @@ namespace SceneEngine
                     });
 
                 if (i->_ib.GetUnderlying()) {
-                    metalContext.Bind(i->_ib, Metal::NativeFormat::R16_UINT);
+                    metalContext.Bind(i->_ib, Format::R16_UINT);
                 } else {
-                    metalContext.Bind(_pimpl->_defaultIB, Metal::NativeFormat::R16_UINT);
+                    metalContext.Bind(_pimpl->_defaultIB, Format::R16_UINT);
                 }
                 metalContext.DrawIndexed(i->_indexCount);
             }
@@ -517,10 +517,10 @@ namespace SceneEngine
                     });
 
                 if (grid._ib.GetUnderlying()) {
-                    metalContext.Bind(grid._ib, Metal::NativeFormat::R16_UINT);
+                    metalContext.Bind(grid._ib, Format::R16_UINT);
                     metalContext.DrawIndexed(grid._indexCount);
                 } else {
-                    metalContext.Bind(_pimpl->_unsimDefaultIB, Metal::NativeFormat::R16_UINT);
+                    metalContext.Bind(_pimpl->_unsimDefaultIB, Format::R16_UINT);
                     metalContext.DrawIndexed(6);
                 }
             }
@@ -566,7 +566,7 @@ namespace SceneEngine
         auto duplicatedDepthBuffer = Metal::Duplicate(
             metalContext, Metal::ExtractResource<ID3D::Resource>(targets.GetDepthStencilView()).get());
         Metal::ShaderResourceView secondaryDepthBufferSRV(
-            duplicatedDepthBuffer.get(), Metal::NativeFormat::R24_UNORM_X8_TYPELESS);
+            duplicatedDepthBuffer.get(), Format::R24_UNORM_X8_TYPELESS);
 
         metalContext.BindPS(MakeResourceList(9, refractionBox.GetSRV(), secondaryDepthBufferSRV));
         return true;

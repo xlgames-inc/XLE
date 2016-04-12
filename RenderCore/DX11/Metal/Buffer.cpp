@@ -49,10 +49,9 @@ namespace RenderCore { namespace Metal_DX11
     VertexBuffer::VertexBuffer(VertexBuffer&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
     VertexBuffer& VertexBuffer::operator=(VertexBuffer&& moveFrom) never_throws     { _underlying = std::move(moveFrom._underlying); return *this; }
 
-    VertexBuffer::VertexBuffer(intrusive_ptr<ID3D::Resource>&& cloneFrom)
-    {
-        _underlying = std::move(QueryInterfaceCast<ID3D::Buffer>(cloneFrom));
-    }
+    VertexBuffer::VertexBuffer(UnderlyingResourcePtr cloneFrom)
+    : _underlying(QueryInterfaceCast<ID3D::Buffer>(cloneFrom.get()))
+    {}
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 

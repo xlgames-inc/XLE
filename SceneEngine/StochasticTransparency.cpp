@@ -17,6 +17,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Format.h"
 #include "../ConsoleRig/Console.h"
 #include <tuple>
 #include <type_traits>
@@ -119,21 +120,21 @@ namespace SceneEngine
     {
         const auto alphaValues = 256u;
         const auto masksPerAlphaValue = 2048u;
-        auto masksTableData = BufferUploads::CreateBasicPacket(alphaValues*masksPerAlphaValue, nullptr, BufferUploads::TexturePitches(masksPerAlphaValue, alphaValues*masksPerAlphaValue));
+        auto masksTableData = BufferUploads::CreateBasicPacket(alphaValues*masksPerAlphaValue, nullptr, BufferUploads::TexturePitches{masksPerAlphaValue, alphaValues*masksPerAlphaValue});
         CreateCoverageMasks((uint8*)masksTableData->GetData(), masksTableData->GetDataSize(), alphaValues, masksPerAlphaValue);
         _masksTable = SRV(
-            BufferUploads::TextureDesc::Plain2D(masksPerAlphaValue, alphaValues, Metal::NativeFormat::R8_UINT),
+            BufferUploads::TextureDesc::Plain2D(masksPerAlphaValue, alphaValues, Format::R8_UINT),
             "StochasticTransMasks", masksTableData.get());
 
         auto samples = BufferUploads::TextureSamples::Create(8, 0);
         _stochasticDepths = DSVSRV(
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::D32_FLOAT, 1, 0, samples),
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::D32_FLOAT, 1, 0, samples),
             "StochasticDepths");
 
             // note --  perhaps we could re-use one of the deferred rendering MRT textures for this..?
             //          we may need 16 bit precision because this receives post-lit values 
         _blendingTexture = RTVSRV(
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R16G16B16A16_FLOAT),
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R16G16B16A16_FLOAT),
             "StochasticBlendingTexture");
 
         _secondPassBlend = Metal::BlendState(
@@ -142,17 +143,17 @@ namespace SceneEngine
 
         if (desc._recordPrimIds)
             _primIdsTexture = RTVSRV(
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_UINT, 1, 0, samples),
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R32_UINT, 1, 0, samples),
                 "StochasticPrimitiveIds");
 
         if (desc._recordOpacity)
             _opacitiesTexture = RTVSRV(
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R8_UNORM, 1, 0, samples),
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R8_UNORM, 1, 0, samples),
                 "StochasticOpacities");
 
         if (desc._recordMetrics)
             _metricsTexture = UAVSRV(
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_UINT),
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R32_UINT),
                 "StochasticMetrics");
     }
 

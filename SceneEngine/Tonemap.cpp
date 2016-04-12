@@ -14,7 +14,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
-#include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/State.h"
@@ -78,7 +78,7 @@ namespace SceneEngine
         GestaltTypes::RTVUAVSRV _bloomBuffer;
         unsigned                _width, _height;
 
-        BloomStepBuffer(unsigned width, unsigned height, Metal::NativeFormat::Enum format);
+        BloomStepBuffer(unsigned width, unsigned height, Format format);
         BloomStepBuffer();
         ~BloomStepBuffer();
 
@@ -94,11 +94,11 @@ namespace SceneEngine
         }
     };
 
-    BloomStepBuffer::BloomStepBuffer(unsigned width, unsigned height, Metal::NativeFormat::Enum format)
+    BloomStepBuffer::BloomStepBuffer(unsigned width, unsigned height, Format format)
     : _width(width), _height(height)
     , _bloomBuffer(
         GestaltTypes::RTVUAVSRV(
-            BufferUploads::TextureDesc::Plain2D(width, height, Metal::AsDXGIFormat(format)),
+            BufferUploads::TextureDesc::Plain2D(width, height, format),
             "BloomLumin"))
     {}
 
@@ -108,7 +108,7 @@ namespace SceneEngine
     class ToneMappingResources
     {
     public:
-        using NativeFormat = Metal::NativeFormat::Enum;
+        using NativeFormat = Format;
         class Desc
         {
         public:
@@ -187,7 +187,7 @@ namespace SceneEngine
         _luminanceBuffers.reserve(firstStep);
         for (signed s=firstStep; s>XlAbs(heightDifference); --s)
             _luminanceBuffers.emplace_back(GestaltTypes::UAVSRV(
-                BufferUploads::TextureDesc::Plain2D(1<<s, 1<<(s+heightDifference), Metal::AsDXGIFormat(NativeFormat::R16_FLOAT)),
+                BufferUploads::TextureDesc::Plain2D(1<<s, 1<<(s+heightDifference), Format::R16_FLOAT),
                 "Luminance"));
 
             //  We need many bloom buffers as well... start at the same size as the biggest luminance
@@ -417,15 +417,15 @@ namespace SceneEngine
             //      of the blending and blurring, we tend to get banding.
             //      Try to use a higher precision 32 bit format instead.
         const unsigned bloomBufferFormatType = Tweakable("ToneMapBloomBufferFormat", 3);
-        auto bloomBufferFormat = Metal::NativeFormat::R10G10B10A2_UNORM;
+        auto bloomBufferFormat = Format::R10G10B10A2_UNORM;
         if (bloomBufferFormatType==1) {
-            bloomBufferFormat = Metal::NativeFormat::R8G8B8A8_UNORM;
+            bloomBufferFormat = Format::R8G8B8A8_UNORM;
         } else if (bloomBufferFormatType==2) {
-            bloomBufferFormat = Metal::NativeFormat::R16G16B16A16_FLOAT;
+            bloomBufferFormat = Format::R16G16B16A16_FLOAT;
         } else if (bloomBufferFormatType==3) {
-            bloomBufferFormat = Metal::NativeFormat::R11G11B10_FLOAT;
+            bloomBufferFormat = Format::R11G11B10_FLOAT;
         } else if (bloomBufferFormatType==4) {
-            bloomBufferFormat = Metal::NativeFormat::R16_FLOAT;
+            bloomBufferFormat = Format::R16_FLOAT;
         }
         Metal::TextureDesc2D desc(inputResource.GetUnderlying());
         auto sampleCount = desc.SampleDesc.Count;
@@ -559,7 +559,7 @@ namespace SceneEngine
         D3D11_RENDER_TARGET_VIEW_DESC rtv;
         if (destinationTargets.GetRenderTargets()[0]) {
             destinationTargets.GetRenderTargets()[0]->GetDesc(&rtv);
-            return Metal::GetComponentType(Metal::AsNativeFormat(rtv.Format)) == Metal::FormatComponentType::UNorm_SRGB;
+            return GetComponentType(Metal::AsFormat(rtv.Format)) == FormatComponentType::UNorm_SRGB;
         }
         return true;
     }
@@ -665,14 +665,14 @@ namespace SceneEngine
         {
         public:
             unsigned _width, _height;
-            Metal::NativeFormat::Enum _format;
-            Desc(unsigned width, unsigned height, Metal::NativeFormat::Enum format);
+            Format _format;
+            Desc(unsigned width, unsigned height, Format format);
         };
 
         AtmosphereBlurResources(const Desc&);
         ~AtmosphereBlurResources();
 
-        intrusive_ptr<ID3D::Resource>           _blurBuffer[2];
+        intrusive_ptr<BufferUploads::ResourceLocator>           _blurBuffer[2];
         Metal::RenderTargetView     _blurBufferRTV[2];
         Metal::ShaderResourceView   _blurBufferSRV[2];
 
@@ -692,7 +692,7 @@ namespace SceneEngine
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
-    AtmosphereBlurResources::Desc::Desc(unsigned width, unsigned height, Metal::NativeFormat::Enum format)
+    AtmosphereBlurResources::Desc::Desc(unsigned width, unsigned height, Format format)
     {
         _width = width;
         _height = height;
@@ -701,20 +701,19 @@ namespace SceneEngine
 
     AtmosphereBlurResources::AtmosphereBlurResources(const Desc& desc)
     {
-        using namespace BufferUploads;
         auto& uploads = GetBufferUploads();
 
         auto bufferDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._format),
             "AtmosBlur");
-        auto bloomBuffer0 = uploads.Transaction_Immediate(bufferDesc)->AdoptUnderlying();
-        auto bloomBuffer1 = uploads.Transaction_Immediate(bufferDesc)->AdoptUnderlying();
+        auto bloomBuffer0 = uploads.Transaction_Immediate(bufferDesc);
+        auto bloomBuffer1 = uploads.Transaction_Immediate(bufferDesc);
 
-        Metal::RenderTargetView     bloomBufferRTV0(bloomBuffer0.get());
-        Metal::ShaderResourceView   bloomBufferSRV0(bloomBuffer0.get());
-        Metal::RenderTargetView     bloomBufferRTV1(bloomBuffer1.get());
-        Metal::ShaderResourceView   bloomBufferSRV1(bloomBuffer1.get());
+        Metal::RenderTargetView     bloomBufferRTV0(bloomBuffer0->GetUnderlying());
+        Metal::ShaderResourceView   bloomBufferSRV0(bloomBuffer0->GetUnderlying());
+        Metal::RenderTargetView     bloomBufferRTV1(bloomBuffer1->GetUnderlying());
+        Metal::ShaderResourceView   bloomBufferSRV1(bloomBuffer1->GetUnderlying());
 
         auto* horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", 
@@ -788,7 +787,7 @@ namespace SceneEngine
             unsigned blurBufferWidth = unsigned(viewport.Width/2);
             unsigned blurBufferHeight = unsigned(viewport.Height/2);
             auto& resources = Techniques::FindCachedBoxDep2<AtmosphereBlurResources>(
-                blurBufferWidth, blurBufferHeight, Metal::NativeFormat::R16G16B16A16_FLOAT);
+                blurBufferWidth, blurBufferHeight, Format::R16G16B16A16_FLOAT);
 
             Metal::ViewportDesc newViewport(0, 0, float(blurBufferWidth), float(blurBufferHeight), 0.f, 1.f);
             context.Bind(newViewport);
@@ -797,7 +796,7 @@ namespace SceneEngine
             SetupVertexGeneratorShader(context);
 
             auto depths = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView());
-            Metal::ShaderResourceView depthsSRV(depths.get(), Metal::NativeFormat::R24_UNORM_X8_TYPELESS);
+            Metal::ShaderResourceView depthsSRV(depths.get(), Format::R24_UNORM_X8_TYPELESS);
             auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
             Metal::ShaderResourceView inputSRV(res.get());
 

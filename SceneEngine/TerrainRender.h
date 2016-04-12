@@ -24,7 +24,7 @@ namespace SceneEngine
 {
     class LightingParserContext;
     class ITerrainFormat;
-    using CoverageFormat = RenderCore::Metal::NativeFormat::Enum;
+    using CoverageFormat = RenderCore::Format;
 
     class TerrainCellId
     {

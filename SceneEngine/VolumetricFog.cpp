@@ -23,6 +23,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Format.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -323,7 +324,7 @@ namespace SceneEngine
         ~VolumetricFogResources();
     };
 
-    static BufferUploads::BufferDesc SimGridDesc(RenderCore::Metal::NativeFormat::Enum format, UInt3 dims)
+    static BufferUploads::BufferDesc SimGridDesc(RenderCore::Format format, UInt3 dims)
     {
         return BuildRenderTargetDesc(
             BufferUploads::BindFlag::UnorderedAccess|BufferUploads::BindFlag::ShaderResource,
@@ -336,12 +337,10 @@ namespace SceneEngine
     {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        using namespace Metal::NativeFormat;
-
-        auto shadowMapFormat =  desc._highPrecision ? R32_FLOAT : R16_UNORM;
+        auto shadowMapFormat =  desc._highPrecision ? Format::R32_FLOAT : Format::R16_UNORM;
         auto renderTargetDesc = BuildRenderTargetDesc(
-            BufferUploads::BindFlag::RenderTarget|BufferUploads::BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(
+            BindFlag::RenderTarget|BindFlag::ShaderResource,
+            TextureDesc::Plain2D(
                 desc._blurredShadowSize, desc._blurredShadowSize, shadowMapFormat, 0, 
                 uint8(desc._frustumCount)), "VolFog");
         auto& uploads = GetBufferUploads();
@@ -364,22 +363,22 @@ namespace SceneEngine
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        auto densityFormat = desc._highPrecision ? R32_FLOAT : R16_FLOAT;
+        auto densityFormat = desc._highPrecision ? Format::R32_FLOAT : Format::R16_FLOAT;
         auto densityTexture = uploads.Transaction_Immediate(SimGridDesc(densityFormat, desc._gridDimensions));
         Metal::UnorderedAccessView densityUAV(densityTexture->GetUnderlying());
         Metal::ShaderResourceView densitySRV(densityTexture->GetUnderlying());
 
-        auto shadowingFormat = desc._highPrecision ? R32_FLOAT : R8_UNORM;
+        auto shadowingFormat = desc._highPrecision ? Format::R32_FLOAT : Format::R8_UNORM;
         auto inscatterShadowingTexture = uploads.Transaction_Immediate(SimGridDesc(shadowingFormat, desc._gridDimensions));
         Metal::UnorderedAccessView inscatterShadowingUAV(inscatterShadowingTexture->GetUnderlying());
         Metal::ShaderResourceView inscatterShadowingSRV(inscatterShadowingTexture->GetUnderlying());
     
-        auto transmissionFormat = desc._highPrecision ? R32_FLOAT : R16_FLOAT;
+        auto transmissionFormat = desc._highPrecision ? Format::R32_FLOAT : Format::R16_FLOAT;
         auto transmissionTexture = uploads.Transaction_Immediate(SimGridDesc(transmissionFormat, desc._gridDimensions));
         Metal::UnorderedAccessView transmissionUAV(transmissionTexture->GetUnderlying());
         Metal::ShaderResourceView transmissionSRV(transmissionTexture->GetUnderlying());
 
-        auto inScatterFormat =  desc._highPrecision ? R32_FLOAT : R16_FLOAT;
+        auto inScatterFormat =  desc._highPrecision ? Format::R32_FLOAT : Format::R16_FLOAT;
         auto inscatterFinalsTexture = uploads.Transaction_Immediate(SimGridDesc(inScatterFormat, desc._gridDimensions));
         Metal::UnorderedAccessView inscatterFinalsUAV(inscatterFinalsTexture->GetUnderlying());
         Metal::ShaderResourceView inscatterFinalsSRV(inscatterFinalsTexture->GetUnderlying());
@@ -387,8 +386,8 @@ namespace SceneEngine
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // auto inscatterPointLightsTexture = uploads.Transaction_Immediate(scatteringTextureDesc)->AdoptUnderlying();
-        // Metal::UnorderedAccessView inscatterPointLightsUnorderedAccess(inscatterPointLightsTexture.get(), Metal::NativeFormat::R32G32B32A32_FLOAT);
-        // Metal::ShaderResourceView inscatterPointLightsShaderResource(inscatterPointLightsTexture.get(), Metal::NativeFormat::R32G32B32A32_FLOAT);
+        // Metal::UnorderedAccessView inscatterPointLightsUnorderedAccess(inscatterPointLightsTexture.get(), Format::R32G32B32A32_FLOAT);
+        // Metal::ShaderResourceView inscatterPointLightsShaderResource(inscatterPointLightsTexture.get(), Format::R32G32B32A32_FLOAT);
 
         _densityValuesTexture = std::move(densityTexture);
         _densityValuesUAV = std::move(densityUAV);
@@ -458,16 +457,15 @@ namespace SceneEngine
             // X coordinate is a distance value. Generally we want to balance this so
             //      the maximum distance is the point where transmission is very low
             // Y coordinate is a value for scaling the 
-        using namespace BufferUploads;
         const unsigned width = 256, height = 256;
         const auto bufferDesc = CreateDesc(
             BindFlag::ShaderResource,
             0, GPUAccess::Read, 
-            TextureDesc::Plain2D(width, height, Metal::NativeFormat::R16_UNORM),
+            TextureDesc::Plain2D(width, height, Format::R16_UNORM),
             "VolumetricFogLookupTable");
 
         auto& bufferUploads = GetBufferUploads();
-        auto pkt = CreateEmptyPacket(bufferDesc);
+        auto pkt = BufferUploads::CreateEmptyPacket(bufferDesc);
 
         const float maxDistance = 1024.f;
         float values[width][height];

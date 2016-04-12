@@ -84,6 +84,6 @@ namespace RenderCore
         ShaderNormalizationMode norm = ShaderNormalizationMode::Integer);
 
     const char* AsString(Format);
-	Format AsNativeFormat(const char name[]);
+	Format AsFormat(const char name[]);
 }
 

@@ -25,7 +25,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Resource.h"
+#include "../RenderCore/ResourceUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/FunctionUtils.h"
 
@@ -82,11 +82,8 @@ namespace SceneEngine
         //          point of the linked list of triangles
         //  2. "lists buffer" -- this contains all of the linked lists; interleaved together
 
-        using namespace BufferUploads;
-        using namespace Metal::NativeFormat;
-
         auto& uploads = GetBufferUploads();
-        auto indexFormat = (desc._indexDepth==16) ? R16_UINT : R32_UINT;
+        auto indexFormat = (desc._indexDepth==16) ? Format::R16_UINT : Format::R32_UINT;
         unsigned indexSize = (desc._indexDepth==16) ? 2 : 4;
 
         _gridBuffer = uploads.Transaction_Immediate(
@@ -125,7 +122,7 @@ namespace SceneEngine
             CreateDesc(
                 BindFlag::RenderTarget,
                 0, GPUAccess::Read | GPUAccess::Write,
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, R8_UINT),
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R8_UINT),
                 "RTShadowsDummy"));
         _dummyRTV = RTV(_dummyTarget->GetUnderlying());
 
@@ -157,20 +154,20 @@ namespace SceneEngine
         auto& box = Techniques::FindCachedBox2<RTShadowsBox>(256, 256, 1024*1024, 32, 64*1024);
         auto oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
         
-        static const Metal::InputElementDesc soVertex[] = 
+        static const InputElementDesc soVertex[] = 
         {
-            Metal::InputElementDesc("A", 0, Metal::NativeFormat::R32G32B32A32_FLOAT),
-            Metal::InputElementDesc("B", 0, Metal::NativeFormat::R32G32_FLOAT),
-            Metal::InputElementDesc("C", 0, Metal::NativeFormat::R32G32B32A32_FLOAT),
-            Metal::InputElementDesc("D", 0, Metal::NativeFormat::R32G32B32_FLOAT)
+            InputElementDesc("A", 0, Format::R32G32B32A32_FLOAT),
+            InputElementDesc("B", 0, Format::R32G32_FLOAT),
+            InputElementDesc("C", 0, Format::R32G32B32A32_FLOAT),
+            InputElementDesc("D", 0, Format::R32G32B32_FLOAT)
         };
 
-        static const Metal::InputElementDesc il[] = 
+        static const InputElementDesc il[] = 
         {
-            Metal::InputElementDesc("A", 0, Metal::NativeFormat::R32G32B32A32_FLOAT),
-            Metal::InputElementDesc("B", 0, Metal::NativeFormat::R32G32_FLOAT),
-            Metal::InputElementDesc("C", 0, Metal::NativeFormat::R32G32B32A32_FLOAT),
-            Metal::InputElementDesc("D", 0, Metal::NativeFormat::R32G32B32_FLOAT)
+            InputElementDesc("A", 0, Format::R32G32B32A32_FLOAT),
+            InputElementDesc("B", 0, Format::R32G32_FLOAT),
+            InputElementDesc("C", 0, Format::R32G32B32A32_FLOAT),
+            InputElementDesc("D", 0, Format::R32G32B32_FLOAT)
         };
 
         metalContext.UnbindPS<Metal::ShaderResourceView>(5, 3);
@@ -258,7 +255,7 @@ namespace SceneEngine
                 "OUTPUT_PRIM_ID=1;INPUT_RAYTEST_TRIS=1");
             metalContext.Bind(shader);
 
-            Metal::BoundInputLayout inputLayout(Metal::InputLayout(il, dimof(il)), shader);
+            Metal::BoundInputLayout inputLayout(InputLayout(il, dimof(il)), shader);
             metalContext.Bind(inputLayout);
 
                 // no shader constants/resources required

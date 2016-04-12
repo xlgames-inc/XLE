@@ -40,7 +40,7 @@ namespace SceneEngine
     public:
         Metal::VertexBuffer _vertexBuffer;
         Metal::IndexBuffer _indexBuffer;
-        Metal::NativeFormat::Enum _indexFormat;
+        Format _indexFormat;
         unsigned _indexCount;
 
         Techniques::TechniqueMaterial _basicMaterial;
@@ -216,7 +216,7 @@ namespace SceneEngine
             if (prevTargets.GetDepthStencilView()) {
                 duplicatedDepthBuffer = Metal::ShaderResourceView(Metal::ExtractResource<ID3D::Resource>(
                     prevTargets.GetDepthStencilView()).get(), 
-                    Metal::NativeFormat::R24_UNORM_X8_TYPELESS);
+                    Format::R24_UNORM_X8_TYPELESS);
             }
 
                 //  Revert to the main scene targets, and "resolve" the
@@ -282,12 +282,12 @@ namespace SceneEngine
         pimpl->_indexBuffer = Metal::IndexBuffer(ibData.get(), ibDataCount*indexSize);
         pimpl->_vertexBuffer = Metal::VertexBuffer(
             AsPointer(mesh._vertices.cbegin()), mesh._vertices.size() * sizeof(DualContourMesh::Vertex));
-        pimpl->_indexFormat = (indexSize==4)?Metal::NativeFormat::R32_UINT:Metal::NativeFormat::R16_UINT;
+        pimpl->_indexFormat = (indexSize==4)?Format::R32_UINT:Format::R16_UINT;
         pimpl->_indexCount = (unsigned)ibDataCount;
 
         using namespace Techniques;
         pimpl->_basicMaterial = TechniqueMaterial(
-            Metal::GlobalInputLayouts::PN, 
+            GlobalInputLayouts::PN, 
             { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
             ParameterBox());
 
@@ -319,7 +319,7 @@ namespace SceneEngine
             using namespace RenderCore::Techniques;
 
             TechniqueMaterial material(
-                Metal::GlobalInputLayouts::PN, 
+                GlobalInputLayouts::PN, 
                 { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
                 ParameterBox());
 
@@ -345,7 +345,7 @@ namespace SceneEngine
                 Metal::IndexBuffer ib(ibData.get(), ibDataCount*indexSize);
 
                 context->Bind(MakeResourceList(vb), sizeof(DualContourMesh::Vertex), 0);
-                context->Bind(ib, (indexSize==4)?Metal::NativeFormat::R32_UINT:Metal::NativeFormat::R16_UINT);
+                context->Bind(ib, (indexSize==4)?Format::R32_UINT:Format::R16_UINT);
 
                 context->Bind(Metal::Topology::TriangleList);
                 context->Bind(Techniques::CommonResources()._dssReadWrite);

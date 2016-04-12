@@ -22,7 +22,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
-#include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/State.h"
@@ -545,11 +545,10 @@ namespace SceneEngine
 
     WaterNoiseTexture::WaterNoiseTexture(const Desc& desc)
     {
-        using namespace BufferUploads;
         const unsigned width = 512, height = 512;
         auto tDesc = CreateDesc(
             BindFlag::ShaderResource, 0, GPUAccess::Read,
-            BufferUploads::TextureDesc::Plain2D(width, height, Metal::NativeFormat::R8G8_UNORM),
+            BufferUploads::TextureDesc::Plain2D(width, height, Format::R8G8_UNORM),
             "WaterNoise");
 
         static float scale0 = 10.f;
@@ -564,7 +563,7 @@ namespace SceneEngine
             // eventually wrap back around into itself -- and so in the output
             // texture it will wrap at that point! We have one circle for X, and 
             // another for Y -- and so the final texture wraps in all directions.
-        auto pkt = CreateEmptyPacket(tDesc);
+        auto pkt = BufferUploads::CreateEmptyPacket(tDesc);
         auto data = (const uint8*)pkt->GetData(0);
         for (unsigned y=0; y<height; ++y)
             for (unsigned x=0; x<width; ++x) {
@@ -630,7 +629,7 @@ namespace SceneEngine
             patchWidth = patchHeight = dimensions;
         }
         auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(patchWidth, patchHeight, true));
-        context->Bind(simplePatchBox._simplePatchIndexBuffer, NativeFormat::R32_UINT);
+        context->Bind(simplePatchBox._simplePatchIndexBuffer, Format::R32_UINT);
 
         //////////////////////////////////////////////////////////////////////////////
 
@@ -791,7 +790,7 @@ namespace SceneEngine
             auto duplicatedDepthBuffer = DuplicateResource(
                 context->GetUnderlying(), ExtractResource<ID3D::Resource>(depthBufferSRV.GetUnderlying()).get());
             ShaderResourceView secondaryDepthBufferSRV(
-                duplicatedDepthBuffer.get(), NativeFormat::R24_UNORM_X8_TYPELESS);
+                duplicatedDepthBuffer.get(), Format::R24_UNORM_X8_TYPELESS);
             // context->GetUnderlying()->CopyResource(
             //     mainTargets._secondaryDepthBufferTexture, mainTargets._msaaDepthBufferTexture);
 

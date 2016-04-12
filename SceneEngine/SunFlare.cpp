@@ -13,6 +13,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/TextureView.h"
+#include "../RenderCore/Format.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/Techniques.h"
@@ -126,17 +127,15 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////
 
         {
-            using namespace BufferUploads;
-
             auto desc2D = CreateDesc(
                 BindFlag::ShaderResource | BindFlag::RenderTarget, 0, GPUAccess::Read | GPUAccess::Write,
-                TextureDesc::Plain2D(desc._res[0], desc._res[1], Metal::NativeFormat::R8_UNORM),
+                TextureDesc::Plain2D(desc._res[0], desc._res[1], Format::R8_UNORM),
                 "SunFlareTemp");
 
             if (desc._rowsOptimisation) {
                 auto descRows = CreateDesc(
                         BindFlag::ShaderResource | BindFlag::RenderTarget, 0, GPUAccess::Read | GPUAccess::Write,
-                        TextureDesc::Plain1D(desc._res[0], Metal::NativeFormat::R8_UNORM),
+                        TextureDesc::Plain1D(desc._res[0], Format::R8_UNORM),
                         "SunFlareTemp");
                 auto offscreen = GetBufferUploads().Transaction_Immediate(descRows);
                 _tempSRV[0] = Metal::ShaderResourceView(offscreen->GetUnderlying());

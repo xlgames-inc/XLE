@@ -139,9 +139,9 @@ namespace SceneEngine
             Desc(unsigned particleCountWidth) : _particleCountWidth(particleCountWidth) {}
         };
 
-        intrusive_ptr<ID3D::Resource>                  _simParticlesBuffer;
-        RenderCore::Metal::UnorderedAccessView      _simParticlesUAV;
-        RenderCore::Metal::ShaderResourceView       _simParticlesSRV;
+        intrusive_ptr<BufferUploads::ResourceLocator>   _simParticlesBuffer;
+        RenderCore::Metal::UnorderedAccessView          _simParticlesUAV;
+        RenderCore::Metal::ShaderResourceView           _simParticlesSRV;
 
         SimRainResources(const Desc& desc);
         ~SimRainResources();
@@ -149,12 +149,11 @@ namespace SceneEngine
 
     SimRainResources::SimRainResources(const Desc& desc)
     {
-        using namespace RenderCore::Metal;
-        using namespace BufferUploads;
+        using namespace RenderCore;
         auto& uploads = GetBufferUploads();
 
-        BufferDesc structuredBufferDesc;
-        structuredBufferDesc._type = BufferDesc::Type::LinearBuffer;
+        ResourceDesc structuredBufferDesc;
+        structuredBufferDesc._type = ResourceDesc::Type::LinearBuffer;
         structuredBufferDesc._bindFlags = BindFlag::ShaderResource|BindFlag::StructuredBuffer|BindFlag::UnorderedAccess;
         structuredBufferDesc._cpuAccess = 0;
         structuredBufferDesc._gpuAccess = GPUAccess::Write;
@@ -165,10 +164,10 @@ namespace SceneEngine
         structuredBufferDesc._linearBufferDesc._structureByteSize = structureSize;
         auto initialData = BufferUploads::CreateEmptyPacket(structuredBufferDesc);
         XlSetMemory(initialData->GetData(), 0, initialData->GetDataSize());
-        auto simParticlesBuffer = uploads.Transaction_Immediate(structuredBufferDesc, initialData.get())->AdoptUnderlying();
+        auto simParticlesBuffer = uploads.Transaction_Immediate(structuredBufferDesc, initialData.get());
 
-        UnorderedAccessView simParticlesUAV(simParticlesBuffer.get());
-        ShaderResourceView simParticlesSRV(simParticlesBuffer.get());
+        Metal::UnorderedAccessView simParticlesUAV(simParticlesBuffer->GetUnderlying());
+        Metal::ShaderResourceView simParticlesSRV(simParticlesBuffer->GetUnderlying());
 
         _simParticlesBuffer = std::move(simParticlesBuffer);
         _simParticlesUAV = std::move(simParticlesUAV);
@@ -197,7 +196,7 @@ namespace SceneEngine
             }
 
             // auto depthBufferResource = Metal::ExtractResource<ID3D::Resource>(oldTargets.GetDepthStencilView());
-            // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), Metal::NativeFormat::R24_UNORM_X8_TYPELESS);
+            // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), Format::R24_UNORM_X8_TYPELESS);
 
             auto& simulationShaderByteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(
                 "game/xleres/effects/simrain.sh:SimulateDrops:cs_*", 

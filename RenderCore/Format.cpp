@@ -329,7 +329,7 @@ namespace RenderCore
         }
     }
 
-    Format AsNativeFormat(
+    Format AsFormat(
         const ImpliedTyping::TypeDesc& type,
         ShaderNormalizationMode norm)
     {
@@ -435,7 +435,7 @@ namespace RenderCore
 
     #define STRINGIZE(X) #X
 
-    Format AsNativeFormat(const char name[])
+    Format AsFormat(const char name[])
     {
         #define _EXP(X, Y, Z, U)    if (XlEqStringI(name, STRINGIZE(X##_##Y))) return Format::X##_##Y;
             #include "Metal/Detail/DXGICompatibleFormats.h"

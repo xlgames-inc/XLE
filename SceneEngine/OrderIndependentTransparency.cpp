@@ -19,6 +19,7 @@
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Format.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../ConsoleRig/Console.h"
@@ -42,13 +43,11 @@ namespace SceneEngine
     TransparencyTargetsBox::TransparencyTargetsBox(const Desc& desc) 
     : _desc(desc)
     {
-        using namespace BufferUploads;
-
         auto& uploads = GetBufferUploads();
         auto textureIdsDesc = CreateDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
             0, GPUAccess::Read|GPUAccess::Write,
-            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_UINT),
+            TextureDesc::Plain2D(desc._width, desc._height, Format::R32_UINT),
             "Trans");
         _fragmentIdsTexture = uploads.Transaction_Immediate(textureIdsDesc);
 
@@ -74,7 +73,7 @@ namespace SceneEngine
                 CreateDesc(
                     BindFlag::RenderTarget|BindFlag::ShaderResource,
                     0, GPUAccess::Read|GPUAccess::Write,
-                    TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_UINT),
+                    TextureDesc::Plain2D(desc._width, desc._height, Format::R32_UINT),
                     "Trans"));
 
             _infiniteLoopRTV = RTV(_infiniteLoopTexture->GetUnderlying());

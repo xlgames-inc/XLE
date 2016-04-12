@@ -6,7 +6,7 @@
 
 #include "GestaltResource.h"
 #include "../RenderCore/Metal/TextureView.h"
-#include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/Assets/Services.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -29,43 +29,43 @@ namespace SceneEngine
                 InitViews<Tuple, Index+1, V...>(tuple, loc);
             }
 
-        static bool NeedTypelessFormat(Metal::NativeFormat::Enum fmt)
+        static bool NeedTypelessFormat(Format fmt)
         {
-            return (fmt >= Metal::NativeFormat::R24G8_TYPELESS && fmt <= Metal::NativeFormat::X24_TYPELESS_G8_UINT)
-                || (fmt >= Metal::NativeFormat::D32_FLOAT);
+            return (fmt >= Format::R24G8_TYPELESS && fmt <= Format::X24_TYPELESS_G8_UINT)
+                || (fmt >= Format::D32_FLOAT);
         }
 
         template<typename View>
-            static Metal::NativeFormat::Enum SpecializeFormat(Metal::NativeFormat::Enum fmt) { return fmt; }
+            static Format SpecializeFormat(Format fmt) { return fmt; }
 
         template<>
-            static Metal::NativeFormat::Enum SpecializeFormat<Metal::ShaderResourceView>(Metal::NativeFormat::Enum fmt)
+            static Format SpecializeFormat<Metal::ShaderResourceView>(Format fmt)
             { 
-                if (    fmt >= Metal::NativeFormat::R24G8_TYPELESS
-                    &&  fmt <= Metal::NativeFormat::X24_TYPELESS_G8_UINT) {
-                    return Metal::NativeFormat::R24_UNORM_X8_TYPELESS;      // only the depth parts are accessible in this way
+                if (    fmt >= Format::R24G8_TYPELESS
+                    &&  fmt <= Format::X24_TYPELESS_G8_UINT) {
+                    return Format::R24_UNORM_X8_TYPELESS;      // only the depth parts are accessible in this way
                 }
-                else if (   fmt == Metal::NativeFormat::D32_FLOAT) {
-                    return Metal::NativeFormat::R32_FLOAT;
+                else if (   fmt == Format::D32_FLOAT) {
+                    return Format::R32_FLOAT;
                 }
                 return fmt;
             }
 
         template<>
-            static Metal::NativeFormat::Enum SpecializeFormat<Metal::DepthStencilView>(Metal::NativeFormat::Enum fmt)
+            static Format SpecializeFormat<Metal::DepthStencilView>(Format fmt)
             { 
-                if (    fmt >= Metal::NativeFormat::R24G8_TYPELESS
-                    &&  fmt <= Metal::NativeFormat::X24_TYPELESS_G8_UINT) {
-                    return Metal::NativeFormat::D24_UNORM_S8_UINT;
+                if (    fmt >= Format::R24G8_TYPELESS
+                    &&  fmt <= Format::X24_TYPELESS_G8_UINT) {
+                    return Format::D24_UNORM_S8_UINT;
                 }
                 return fmt;
             }
 
         template<typename Tuple, int Index>
-            static void InitViews(Tuple&, BufferUploads::ResourceLocator&, Metal::NativeFormat::Enum) {}
+            static void InitViews(Tuple&, BufferUploads::ResourceLocator&, Format) {}
 
         template<typename Tuple, int Index, typename Top, typename... V>
-            static void InitViews(Tuple& tuple, BufferUploads::ResourceLocator& loc, Metal::NativeFormat::Enum fmt)
+            static void InitViews(Tuple& tuple, BufferUploads::ResourceLocator& loc, Format fmt)
             {
                 std::get<Index>(tuple) = Top(loc.GetUnderlying(), SpecializeFormat<Top>(fmt));
                 InitViews<Tuple, Index+1, V...>(tuple, loc, fmt);
@@ -90,14 +90,13 @@ namespace SceneEngine
             const char name[],
             BufferUploads::DataPacket* initialData)
     {
-        using namespace BufferUploads;
         auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
 
         auto tdescCopy = tdesc;
 
-        const bool needTypelessFmt = Internal::NeedTypelessFormat(Metal::NativeFormat::Enum(tdescCopy._nativePixelFormat));
+        const bool needTypelessFmt = Internal::NeedTypelessFormat(Format(tdescCopy._format));
         if (needTypelessFmt)
-            tdescCopy._nativePixelFormat = Metal::AsTypelessFormat(Metal::NativeFormat::Enum(tdescCopy._nativePixelFormat));
+            tdescCopy._format = AsTypelessFormat(Format(tdescCopy._format));
 
         auto desc = CreateDesc(
             Internal::MakeBindFlags<Views...>(),
@@ -106,7 +105,7 @@ namespace SceneEngine
         _locator = uploads.Transaction_Immediate(desc, initialData);
 
         if (needTypelessFmt) {
-            Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator, Metal::NativeFormat::Enum(tdesc._nativePixelFormat));
+            Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator, tdesc._format);
         } else {
             Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator);
         }
@@ -118,7 +117,6 @@ namespace SceneEngine
             const char name[], BufferUploads::DataPacket* initialData,
             BufferUploads::BindFlag::BitField extraBindFlags)
     {
-        using namespace BufferUploads;
         auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
 
         auto desc = CreateDesc(
