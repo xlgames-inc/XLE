@@ -94,9 +94,17 @@ namespace RenderCore
 
         case R8G8_B8G8: 
         case G8R8_G8B8:         return FormatComponents::RGB;
-
-        default:                return FormatComponents::Unknown;
         }
+
+        switch (format) {
+        case Format::R24G8_TYPELESS:
+        case Format::D24_UNORM_S8_UINT:
+        case Format::R24_UNORM_X8_TYPELESS:
+        case Format::X24_TYPELESS_G8_UINT:
+            return FormatComponents::DepthStencil;
+        }
+
+        return FormatComponents::Unknown;
     }
 
     FormatComponentType GetComponentType(Format format)

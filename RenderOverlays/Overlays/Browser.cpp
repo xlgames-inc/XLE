@@ -14,7 +14,7 @@
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Metal/RenderTargetView.h"
+#include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/IModelFormat.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"

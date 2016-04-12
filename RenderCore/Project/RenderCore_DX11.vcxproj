@@ -105,6 +105,7 @@
     <ClInclude Include="..\DX11\Metal\Shader.h" />
     <ClInclude Include="..\DX11\Metal\ShaderResource.h" />
     <ClInclude Include="..\DX11\Metal\State.h" />
+    <ClInclude Include="..\DX11\Metal\TextureView.h" />
     <ClInclude Include="..\DX11\Metal\Types.h" />
   </ItemGroup>
   <ItemGroup>

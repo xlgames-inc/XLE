@@ -140,7 +140,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	void Copy(
         DeviceContext&, 
         UnderlyingResourcePtr dst, UnderlyingResourcePtr src, 
-        ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
+        ImageLayout dstLayout = ImageLayout::TransferDstOptimal, ImageLayout srcLayout = ImageLayout::TransferSrcOptimal);
 
     using UInt3Pattern = VectorPattern<unsigned, 3>;
 
@@ -207,5 +207,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		DeviceContext& context, UnderlyingResourcePtr res,
 		ImageLayout oldLayout, ImageLayout newLayout);
 
-    VkSampleCountFlagBits AsSampleCountFlagBits(TextureSamples samples);
+    VkSampleCountFlagBits   AsSampleCountFlagBits(TextureSamples samples);
+    VkImageAspectFlags      AsImageAspectMask(Format fmt);
 }}

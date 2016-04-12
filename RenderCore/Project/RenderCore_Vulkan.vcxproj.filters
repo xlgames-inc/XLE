@@ -11,11 +11,28 @@
     <ClCompile Include="..\Vulkan\Metal\DeviceContext.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Buffer.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Pools.cpp" />
-    <ClCompile Include="..\Vulkan\Metal\ShaderResource.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Resource.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\TextureView.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\FrameBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />
     <ClInclude Include="..\Vulkan\Metal\Pools.h" />
+    <ClInclude Include="..\Vulkan\Metal\Resource.h" />
+    <ClInclude Include="..\Vulkan\Metal\Shader.h" />
+    <ClInclude Include="..\Vulkan\Metal\State.h" />
+    <ClInclude Include="..\Vulkan\Metal\Types.h" />
+    <ClInclude Include="..\Vulkan\Metal\VulkanCore.h" />
+    <ClInclude Include="..\Vulkan\Metal\Buffer.h" />
+    <ClInclude Include="..\Vulkan\Metal\DeviceContext.h" />
+    <ClInclude Include="..\Vulkan\Metal\DeviceContextImpl.h" />
+    <ClInclude Include="..\Vulkan\Metal\Format.h" />
+    <ClInclude Include="..\Vulkan\Metal\Forward.h" />
+    <ClInclude Include="..\Vulkan\Metal\GPUProfiler.h" />
+    <ClInclude Include="..\Vulkan\Metal\IncludeVulkan.h" />
+    <ClInclude Include="..\Vulkan\Metal\InputLayout.h" />
+    <ClInclude Include="..\Vulkan\Metal\ObjectFactory.h" />
+    <ClInclude Include="..\Vulkan\Metal\TextureView.h" />
+    <ClInclude Include="..\Vulkan\Metal\FrameBuffer.h" />
   </ItemGroup>
 </Project>

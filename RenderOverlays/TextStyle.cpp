@@ -25,7 +25,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
 

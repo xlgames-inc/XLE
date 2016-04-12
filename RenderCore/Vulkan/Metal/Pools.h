@@ -59,7 +59,6 @@ namespace RenderCore { namespace Metal_Vulkan
     class GlobalPools
     {
     public:
-        CommandPool						    _renderingCommandPool;
         DescriptorPool                      _mainDescriptorPool;
         VulkanSharedPtr<VkPipelineCache>    _mainPipelineCache;
 

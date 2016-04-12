@@ -249,7 +249,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		// create a secondary command list here.
 		// Also, all command lists are marked as "one time submit"
 		if (!_commandList) {
-			_commandList = _globalPools->_renderingCommandPool.Allocate(CommandPool::BufferType::Secondary);
+            if (!_cmdPool) return;
+			_commandList = _cmdPool->Allocate(_cmdBufferType);
 		} else {
 			auto res = vkResetCommandBuffer(_commandList.get(), 0);
 			if (res != VK_SUCCESS)
@@ -269,7 +270,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkCommandBufferBeginInfo cmd_buf_info = {};
 		cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		cmd_buf_info.pNext = nullptr;
-		cmd_buf_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		cmd_buf_info.flags = 0; // VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		cmd_buf_info.pInheritanceInfo = &inheritInfo;
 		auto res = vkBeginCommandBuffer(_commandList.get(), &cmd_buf_info);
 		if (res != VK_SUCCESS)
@@ -302,9 +303,10 @@ namespace RenderCore { namespace Metal_Vulkan
     DeviceContext::DeviceContext(
         const ObjectFactory& factory, 
         GlobalPools& globalPools,
-		VulkanSharedPtr<VkCommandBuffer> cmdList)
+		CommandPool& cmdPool, 
+        CommandPool::BufferType cmdBufferType)
     : PipelineBuilder(factory, globalPools)
-    , _commandList(cmdList)
+    , _cmdPool(&cmdPool), _cmdBufferType(cmdBufferType)
     {}
 
 }}

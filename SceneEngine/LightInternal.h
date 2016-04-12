@@ -7,7 +7,7 @@
 #pragma once
 
 #include "LightDesc.h"
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../Core/Types.h"
 

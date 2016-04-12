@@ -87,7 +87,7 @@ namespace BufferUploads
             && desc._width >= 64 && desc._width <= 16384
             && desc._height >= 64 && desc._height <= 16384) {
             result |= 0x1;  // set the bottom "type" bit
-            result |= (desc._dimensionality & 0x1) << 1;
+            result |= (unsigned(desc._dimensionality) & 0x1) << 1;
             result |= desc._arrayCount << 2;
             unsigned int widthPower = IntegerLog2(desc._width)-6;
             unsigned int heightPower = IntegerLog2(desc._height)-6;

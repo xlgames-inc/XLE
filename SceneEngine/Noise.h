@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 
 namespace SceneEngine
 {

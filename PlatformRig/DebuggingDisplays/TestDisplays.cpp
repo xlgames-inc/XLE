@@ -724,8 +724,7 @@ namespace PlatformRig { namespace Overlays
 
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Shader.h"
-#include "../../RenderCore/Metal/ShaderResource.h"
-#include "../../RenderCore/Metal/RenderTargetView.h"
+#include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"

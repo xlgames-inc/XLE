@@ -8,6 +8,7 @@
 
 #include "State.h"
 #include "Forward.h"
+#include "Pools.h"
 #include "VulkanCore.h"
 #include "../../ResourceList.h"
 #include "../../IDevice_Forward.h"
@@ -184,13 +185,16 @@ namespace RenderCore { namespace Metal_Vulkan
         DeviceContext(
             const ObjectFactory& factory, 
             GlobalPools& globalPools,
-			VulkanSharedPtr<VkCommandBuffer> cmdList = nullptr);
+			CommandPool& cmdPool, 
+            CommandPool::BufferType cmdBufferType);
 		DeviceContext(const DeviceContext&) = delete;
 		DeviceContext& operator=(const DeviceContext&) = delete;
 
     private:
         VulkanSharedPtr<VkCommandBuffer> _commandList;
         VulkanSharedPtr<VkRenderPass> _renderPass;
+        CommandPool* _cmdPool;
+        CommandPool::BufferType _cmdBufferType;
     };
 }}
 

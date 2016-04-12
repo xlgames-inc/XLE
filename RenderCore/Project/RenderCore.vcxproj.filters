@@ -32,9 +32,6 @@
     <ClInclude Include="..\Metal\Shader.h">
       <Filter>Metal</Filter>
     </ClInclude>
-    <ClInclude Include="..\Metal\ShaderResource.h">
-      <Filter>Metal</Filter>
-    </ClInclude>
     <ClInclude Include="..\Metal\State.h">
       <Filter>Metal</Filter>
     </ClInclude>
@@ -62,9 +59,6 @@
       <Filter>Metal</Filter>
     </ClInclude>
     <ClInclude Include="..\Metal\Forward.h">
-      <Filter>Metal</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Metal\RenderTargetView.h">
       <Filter>Metal</Filter>
     </ClInclude>
     <ClInclude Include="..\IThreadContext.h" />

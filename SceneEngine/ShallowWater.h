@@ -7,8 +7,7 @@
 #pragma once
 
 #include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/Metal/ShaderResource.h"
-#include "../RenderCore/Metal/RenderTargetView.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Utility/IntrusivePtr.h"
 #include "../Math/Vector.h"

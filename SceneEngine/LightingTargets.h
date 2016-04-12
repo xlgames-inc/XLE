@@ -9,8 +9,7 @@
 #include "SceneEngineUtils.h"
 
 #include "../RenderCore/Metal/Format.h"
-#include "../RenderCore/Metal/RenderTargetView.h"
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/InputLayout.h"
 
 #include "../BufferUploads/IBufferUploads.h"

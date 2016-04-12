@@ -71,6 +71,17 @@
             auto allLods = 
                 (lodLevelMin == ~unsigned(0x0) || lodLevelMin == 0u)
                 && (lodLevelMax == ~unsigned(0x0) || lodLevelMax == (std::max(1u, (unsigned)destinationDesc._textureDesc._mipCount)-1));
+
+            // We don't have a way to know for sure what the current layout is for the given image on the given context. 
+			// Let's just assume the previous states are as they would be in the most common cases
+			//		-- normally, this is called immediately after creation, when filling in an OPTIMAL texture with
+			//			data from a staging texture. When that happens, the src will be in layout "Preinitialized" and
+			//			the dst will be in layout "Undefined"
+			// During the transfer, the images must be in either TransferSrcOptimal, TransferDstOptimal or General.
+			// So, we must change the layout immediate before and after the transfer.
+			SetImageLayout(*metalContext, &staging, Metal_Vulkan::ImageLayout::Preinitialized, Metal_Vulkan::ImageLayout::TransferSrcOptimal);
+			SetImageLayout(*metalContext, &finalResource, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal);
+
             if (allLods && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset) {
                 Metal::Copy(
                     *metalContext, 
@@ -86,6 +97,10 @@
                     }
                 }
             }
+
+            // Switch the layout to the final layout. Here, we're assuming all of the transfers are finished, and the
+			// image will soon be used by a shader.
+			SetImageLayout(*metalContext, &finalResource, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal);
         }
 
         unsigned UnderlyingDeviceContext::PushToBuffer(

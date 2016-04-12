@@ -6,4 +6,4 @@
 
 #pragma once
 #include "Metal.h"
-#include METAL_HEADER(RenderTargetView.h)
+#include METAL_HEADER(TextureView.h)

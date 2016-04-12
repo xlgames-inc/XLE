@@ -11,7 +11,7 @@
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/Techniques/ResourceBox.h"

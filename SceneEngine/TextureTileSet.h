@@ -8,8 +8,7 @@
 
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../RenderCore/Metal/Forward.h"
-#include "../../RenderCore/Metal/ShaderResource.h"
-#include "../../RenderCore/Metal/RenderTargetView.h"
+#include "../../RenderCore/Metal/TextureView.h"
 #include "../../Math/Vector.h"
 #include "../../Utility/BitHeap.h"
 #include "../../Utility/HeapUtils.h"

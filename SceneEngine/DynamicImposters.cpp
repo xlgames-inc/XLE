@@ -10,7 +10,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/CommonResources.h"

@@ -12,7 +12,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Assets/Services.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderOverlays/Font.h"

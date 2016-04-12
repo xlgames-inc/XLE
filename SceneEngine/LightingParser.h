@@ -8,7 +8,7 @@
 
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../Math/Matrix.h"
 #include <functional>

@@ -18,7 +18,7 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Resource.h"

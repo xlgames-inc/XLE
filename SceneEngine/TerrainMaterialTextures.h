@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../../RenderCore/Metal/ShaderResource.h"
+#include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../Assets/Assets.h"

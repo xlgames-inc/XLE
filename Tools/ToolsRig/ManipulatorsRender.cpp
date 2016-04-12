@@ -12,7 +12,7 @@
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/Shader.h"
-#include "../../RenderCore/Metal/ShaderResource.h"
+#include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"

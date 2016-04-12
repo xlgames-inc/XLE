@@ -11,7 +11,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"

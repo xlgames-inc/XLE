@@ -43,7 +43,7 @@ namespace RenderCore
         Alpha, 
         Luminance, LuminanceAlpha,
         RGB, RGBAlpha,
-        RG, Depth, RGBE
+        RG, Depth, DepthStencil, RGBE
     };
 
     enum class FormatComponentType

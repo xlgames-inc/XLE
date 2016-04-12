@@ -17,7 +17,7 @@
 #include "../Metal/Shader.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
-#include "../Metal/ShaderResource.h"
+#include "../Metal/TextureView.h"
 #include "../Metal/Resource.h"
 #include "../Metal/ObjectFactory.h"
 

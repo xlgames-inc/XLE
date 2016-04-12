@@ -5,5 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
-#include "Metal.h"
-#include METAL_HEADER(ShaderResource.h)
+
+#include "ShaderResource.h"
+#include "RenderTargetView.h"

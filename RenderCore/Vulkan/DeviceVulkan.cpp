@@ -10,7 +10,8 @@
 #include "Metal/Format.h"
 #include "Metal/Pools.h"
 #include "Metal/Resource.h"
-#include "Metal/ShaderResource.h"	// for ShaderResourceView::Cleanup
+#include "Metal/TextureView.h"	// for ShaderResourceView::Cleanup
+#include "../Format.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
@@ -420,14 +421,15 @@ namespace RenderCore
 			_physDev = SelectPhysicalDeviceForRendering(_instance.get(), surface.get());
 			_underlying = CreateUnderlyingDevice(_physDev);
 			_objectFactory = Metal_Vulkan::ObjectFactory(_physDev._dev, _underlying);
-			_pools._renderingCommandPool = Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily);
             _pools._mainDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory);
             _pools._mainPipelineCache = _objectFactory.CreatePipelineCache();
 
-			_foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
+            _foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
 				shared_from_this(), 
 				GetQueue(_underlying.get(), _physDev._renderingQueueFamily),
-				_pools._renderingCommandPool.Allocate(Metal_Vulkan::CommandPool::BufferType::Primary));
+                Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily),
+				Metal_Vulkan::CommandPool::BufferType::Primary);
+            _foregroundPrimaryContext->BeginCommandList();
 
             Metal_Vulkan::SetDefaultObjectFactory(&_objectFactory);
 		}
@@ -532,7 +534,11 @@ namespace RenderCore
 
     std::unique_ptr<IThreadContext> Device::CreateDeferredContext()
     {
-		return std::make_unique<ThreadContextVulkan>(shared_from_this(), nullptr, nullptr);
+		return std::make_unique<ThreadContextVulkan>(
+            shared_from_this(), 
+            nullptr, 
+            Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily),
+            Metal_Vulkan::CommandPool::BufferType::Secondary);
     }
 
 	namespace Internal
@@ -685,7 +691,7 @@ namespace RenderCore
 	static VkClearValue ClearDepthStencil(float depth, uint32_t stencil) { VkClearValue result; result.depthStencil = VkClearDepthStencilValue { depth, stencil }; return result; }
 	static VkClearValue ClearColor(float r, float g, float b, float a) { VkClearValue result; result.color.float32[0] = r; result.color.float32[1] = g; result.color.float32[2] = b; result.color.float32[3] = a; return result; }
 
-    RenderPass* PresentationChain::BindDefaultRenderPass(Metal_Vulkan::DeviceContext& context)
+    Metal_Vulkan::FrameBufferLayout* PresentationChain::BindDefaultRenderPass(Metal_Vulkan::DeviceContext& context)
     {
         if (_activeImageIndex >= unsigned(_images.size())) return nullptr;
 
@@ -731,287 +737,6 @@ namespace RenderCore
             return rawPtrs;
         }
     }
-
-    RenderPass::RenderPass(
-        const Metal_Vulkan::ObjectFactory& factory,
-        IteratorRange<TargetInfo*> rtvAttachments,
-        TargetInfo dsvAttachment)
-    {
-        // The render targets and depth buffers slots are called "attachments"
-        // In this case, we will create a render pass with a single subpass.
-        // That subpass will reference all buffers.
-        // This sets up the slots for rendertargets and depth buffers -- but it
-        // doesn't assign the specific images.
-      
-        bool hasDepthBuffer = dsvAttachment._format != VK_FORMAT_UNDEFINED;
-
-        VkAttachmentDescription attachmentsStatic[8];
-        std::vector<VkAttachmentDescription> attachmentsOverflow;
-        VkAttachmentReference colorReferencesStatic[8];
-        std::vector<VkAttachmentReference> colorReferencesOverflow;
-
-        VkAttachmentDescription* attachments = attachmentsStatic;
-        auto attachmentCount = rtvAttachments.size() + unsigned(hasDepthBuffer);
-        if (attachmentCount > dimof(attachmentsStatic)) {
-            attachmentsOverflow.resize(attachmentCount);
-            attachments = AsPointer(attachmentsOverflow.begin());
-        }
-        XlClearMemory(attachments, sizeof(VkAttachmentDescription) * attachmentCount);
-
-        VkAttachmentReference* colorReferences = colorReferencesStatic;
-        if (rtvAttachments.size() > dimof(colorReferencesStatic)) {
-            colorReferencesOverflow.resize(rtvAttachments.size());
-            colorReferences = AsPointer(colorReferencesOverflow.begin());
-        }
-
-        // note -- 
-        //      Is it safe to set the initialLayout in the RenderPass to _UNDEFINED
-        //      every time? If we're rendering to an image that we've touched before,
-        //      does it mean we can start using the same value for initial and final layouts?
-
-        auto* i = attachments;
-        for (auto& rtv:rtvAttachments) {
-            i->format = rtv._format;
-            i->samples = rtv._samples;
-            i->loadOp = (rtv._previousState ==  PreviousState::DontCare) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            i->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            i->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            i->stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            i->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            i->finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            i->flags = 0;
-
-            colorReferences[i-attachments] = {};
-            colorReferences[i-attachments].attachment = uint32_t(i-attachments);
-            colorReferences[i-attachments].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-            ++i;
-        }
-
-        VkAttachmentReference depth_reference = {};
-
-        if (hasDepthBuffer) {
-            i->format = dsvAttachment._format;
-            i->samples = dsvAttachment._samples;
-            i->loadOp = (dsvAttachment._previousState ==  PreviousState::DontCare) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            i->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-            // note -- retaining stencil values frame to frame
-            i->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-            i->stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-            i->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            i->finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            i->flags = 0;
-
-            depth_reference.attachment = uint32_t(i - attachments);
-            depth_reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-            ++i;
-        }
-
-        VkSubpassDescription subpass = {};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.flags = 0;
-        subpass.inputAttachmentCount = 0;
-        subpass.pInputAttachments = nullptr;
-        subpass.colorAttachmentCount = uint32_t(rtvAttachments.size());
-        subpass.pColorAttachments = colorReferences;
-        subpass.pResolveAttachments = nullptr;
-        subpass.pDepthStencilAttachment = hasDepthBuffer ? &depth_reference : nullptr;
-        subpass.preserveAttachmentCount = 0;
-        subpass.pPreserveAttachments = nullptr;
-
-        VkRenderPassCreateInfo rp_info = {};
-        rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rp_info.pNext = nullptr;
-        rp_info.attachmentCount = (uint32_t)attachmentCount;
-        rp_info.pAttachments = attachments;
-        rp_info.subpassCount = 1;
-        rp_info.pSubpasses = &subpass;
-        rp_info.dependencyCount = 0;
-        rp_info.pDependencies = nullptr;
-
-        _underlying = factory.CreateRenderPass(rp_info);
-    }
-
-	RenderPass::RenderPass() {}
-
-    RenderPass::~RenderPass() {}
-
-    
-
-    
-
-    static VkImageTiling SelectDepthStencilTiling(VkPhysicalDevice physDev, VkFormat fmt)
-    {
-        // note --  flipped around the priority here from the samples (so that we usually won't
-        //          select linear tiling)
-        VkFormatProperties props;
-        vkGetPhysicalDeviceFormatProperties(physDev, fmt, &props);
-        if (props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-            return VK_IMAGE_TILING_OPTIMAL;
-        } else if (props.linearTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-            return VK_IMAGE_TILING_LINEAR;
-        } else {
-            Throw(Exceptions::BasicLabel("Format (%i) can't be used for a depth stencil", unsigned(fmt)));
-        }
-    }
-
-    static VulkanSharedPtr<VkDeviceMemory> AllocateDeviceMemory(
-        const Metal_Vulkan::ObjectFactory& factory, VkMemoryRequirements memReqs)
-    {
-        auto type = factory.FindMemoryType(memReqs.memoryTypeBits);
-        if (type >= 32)
-            Throw(Exceptions::BasicLabel("Could not find compatible memory type for image"));
-        return factory.AllocateMemory(memReqs.size, type);
-    }
-
-    Resource::Resource(const Metal_Vulkan::ObjectFactory& factory, const BufferUploads::BufferDesc& desc)
-    : _desc(desc)
-    {
-        if (desc._type == BufferUploads::BufferDesc::Type::Texture) {
-            const auto& tex = desc._textureDesc;
-
-                //
-                //  Create the "image" first....
-                //
-            VkImageCreateInfo image_info = {};
-            image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            image_info.pNext = nullptr;
-            image_info.imageType = VK_IMAGE_TYPE_2D;
-            image_info.format = Metal_Vulkan::AsVkFormat(tex._format);
-            image_info.extent.width = tex._width;
-            image_info.extent.height = tex._height;
-            image_info.extent.depth = tex._depth;
-            image_info.mipLevels = tex._mipCount;
-            image_info.arrayLayers = tex._arrayCount;
-            image_info.samples = Metal_Vulkan::AsSampleCountFlagBits(tex._samples);
-            image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            image_info.queueFamilyIndexCount = 0;
-            image_info.pQueueFamilyIndices = nullptr;
-            image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-            image_info.flags = 0;
-            image_info.tiling = SelectDepthStencilTiling(factory.GetPhysicalDevice(), image_info.format);
-
-            _image = factory.CreateImage(image_info);
-
-                //
-                //  We must decide on the right type of memory, and then allocate 
-                //  the memory buffer.
-                //
-            auto dev = factory.GetDevice().get();
-            VkMemoryRequirements mem_reqs = {};
-            vkGetImageMemoryRequirements(dev, _image.get(), &mem_reqs);
-
-            _mem = AllocateDeviceMemory(factory, mem_reqs);
-
-                //
-                //  Bind the memory to the image
-                //
-            auto res = vkBindImageMemory(dev, _image.get(), _mem.get(), 0);
-            if (res != VK_SUCCESS)
-                Throw(VulkanAPIFailure(res, "Failed while binding device memory to image"));
-
-            // Samples set the "image layout" here. But we may not need to do that for resources
-            // that will be used with a RenderPass -- since we can just setup the layout when we
-            // create the renderpass.
-        }
-    }
-
-	Resource::Resource() {}
-
-    Resource::~Resource() {}
-
-    ImageView::~ImageView() {}
-    
-	DepthStencilView::DepthStencilView() {}
-
-    DepthStencilView::DepthStencilView(const Metal_Vulkan::ObjectFactory& factory, Resource& res)
-    {
-        if (res.GetDesc()._type != BufferUploads::BufferDesc::Type::Texture)
-            Throw(Exceptions::BasicLabel("Attempting to build a DepthStencilView for a resource that is not a texture"));
-
-        VkImageViewCreateInfo view_info = {};
-        view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        view_info.pNext = nullptr;
-        view_info.image = res.GetImage();
-        view_info.format = Metal_Vulkan::AsVkFormat(res.GetDesc()._textureDesc._format);
-        view_info.components.r = VK_COMPONENT_SWIZZLE_R;
-        view_info.components.g = VK_COMPONENT_SWIZZLE_G;
-        view_info.components.b = VK_COMPONENT_SWIZZLE_B;
-        view_info.components.a = VK_COMPONENT_SWIZZLE_A;
-        view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-        view_info.subresourceRange.baseMipLevel = 0;
-        view_info.subresourceRange.levelCount = 1;
-        view_info.subresourceRange.baseArrayLayer = 0;
-        view_info.subresourceRange.layerCount = 1;
-        view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        view_info.flags = 0;
-        assert(view_info.image != VK_NULL_HANDLE);
-
-        if (view_info.format == VK_FORMAT_D16_UNORM_S8_UINT ||
-            view_info.format == VK_FORMAT_D24_UNORM_S8_UINT ||
-            view_info.format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
-            view_info.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-        }
-
-        _underlying = factory.CreateImageView(view_info);
-    }
-
-    RenderTargetView::RenderTargetView(const Metal_Vulkan::ObjectFactory& factory, Resource& res)
-    : RenderTargetView(factory, res.GetImage(), Metal_Vulkan::AsVkFormat(res.GetDesc()._textureDesc._format))
-    {}
-
-	RenderTargetView::RenderTargetView() {}
-
-    RenderTargetView::RenderTargetView(const Metal_Vulkan::ObjectFactory& factory, VkImage image, VkFormat fmt)
-    {
-        VkImageViewCreateInfo color_image_view = {};
-        color_image_view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        color_image_view.pNext = nullptr;
-        color_image_view.format = fmt;
-        color_image_view.components.r = VK_COMPONENT_SWIZZLE_R;
-        color_image_view.components.g = VK_COMPONENT_SWIZZLE_G;
-        color_image_view.components.b = VK_COMPONENT_SWIZZLE_B;
-        color_image_view.components.a = VK_COMPONENT_SWIZZLE_A;
-        color_image_view.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        color_image_view.subresourceRange.baseMipLevel = 0;
-        color_image_view.subresourceRange.levelCount = 1;
-        color_image_view.subresourceRange.baseArrayLayer = 0;
-        color_image_view.subresourceRange.layerCount = 1;
-        color_image_view.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        color_image_view.flags = 0;
-        color_image_view.image = image;
-
-        // samples set the image layout here... Maybe it's not necessary for us, because we can set it up
-        // in the render pass...?
-
-        _underlying = factory.CreateImageView(color_image_view);
-    }
-
-    FrameBuffer::FrameBuffer(
-        const Metal_Vulkan::ObjectFactory& factory,
-        IteratorRange<VkImageView*> views,
-        RenderPass& renderPass,
-        unsigned width, unsigned height)
-    {
-        VkFramebufferCreateInfo fb_info = {};
-        fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fb_info.pNext = nullptr;
-        fb_info.renderPass = renderPass.GetUnderlying();
-        fb_info.attachmentCount = (uint32_t)views.size();
-        fb_info.pAttachments = views.begin();
-        fb_info.width = width;
-        fb_info.height = height;
-        fb_info.layers = 1;
-        _underlying = factory.CreateFramebuffer(fb_info);
-    }
-
-	FrameBuffer::FrameBuffer() {}
-
-    FrameBuffer::~FrameBuffer() {}
 
 	void PresentationChain::PresentToQueue(VkQueue queue)
 	{
@@ -1063,14 +788,15 @@ namespace RenderCore
         _images.reserve(images.size());
         for (auto& i:images) _images.emplace_back(Image { i });
 
-		_depthStencilResource = Resource(
+        const auto depthFormat = Format::D24_UNORM_S8_UINT;
+		_depthStencilResource = Metal_Vulkan::Resource(
             factory, 
             CreateDesc(
                 BufferUploads::BindFlag::DepthStencil,
                 0, BufferUploads::GPUAccess::Read | BufferUploads::GPUAccess::Write,
-                BufferUploads::TextureDesc::Plain2D(bufferDesc._width, bufferDesc._height, Metal_Vulkan::AsFormat(VK_FORMAT_D24_UNORM_S8_UINT), 1, 1, bufferDesc._samples),
+                BufferUploads::TextureDesc::Plain2D(bufferDesc._width, bufferDesc._height, depthFormat, 1, 1, bufferDesc._samples),
                 "DefaultDepth"));
-        _dsv = DepthStencilView(factory, _depthStencilResource);
+        _dsv = Metal_Vulkan::DepthStencilView(factory, &_depthStencilResource, Metal_Vulkan::TextureViewWindow());
 
         // We must create a default render pass for rendering to the swap-chain images. 
         // In the most basic rendering operations, we just render directly into these buffers.
@@ -1081,25 +807,28 @@ namespace RenderCore
         // Also, more complex applications may want to combine the resolve operation into the
         // render pass for rendering to offscreen buffers.
 
-        auto vkSamples = Metal_Vulkan::AsSampleCountFlagBits(bufferDesc._samples);
-        RenderPass::TargetInfo rtvAttachments[] = { RenderPass::TargetInfo(Metal_Vulkan::AsVkFormat(bufferDesc._format), vkSamples, RenderPass::PreviousState::Clear) };
+        using TargetInfo = Metal_Vulkan::FrameBufferLayout::TargetInfo;
+        TargetInfo rtvAttachments[] = { TargetInfo(bufferDesc._format, bufferDesc._samples, Metal_Vulkan::FrameBufferLayout::PreviousState::Clear) };
 
-        const VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
-        const bool createDepthBuffer = depthFormat != VK_FORMAT_UNDEFINED;
-        RenderPass::TargetInfo depthTargetInfo;
+        const bool createDepthBuffer = depthFormat != Format::Unknown;
+        TargetInfo depthTargetInfo;
         if (constant_expression<createDepthBuffer>::result())
-            depthTargetInfo = RenderPass::TargetInfo(depthFormat, vkSamples, RenderPass::PreviousState::Clear);
+            depthTargetInfo = TargetInfo(depthFormat, bufferDesc._samples, Metal_Vulkan::FrameBufferLayout::PreviousState::Clear);
         
-        _defaultRenderPass = RenderPass(factory, MakeIteratorRange(rtvAttachments), depthTargetInfo);
+        _defaultRenderPass = Metal_Vulkan::FrameBufferLayout(factory, MakeIteratorRange(rtvAttachments), depthTargetInfo);
 
         // Now create the frame buffers to match the render pass
         VkImageView imageViews[2];
         imageViews[1] = _dsv.GetUnderlying();
 
         for (auto& i:_images) {
-			i._rtv = RenderTargetView(factory, i._underlying, Metal_Vulkan::AsVkFormat(bufferDesc._format));
+            Metal_Vulkan::TextureViewWindow window(
+                bufferDesc._format, bufferDesc._dimensionality, 
+                Metal_Vulkan::TextureViewWindow::SubResourceRange{0, bufferDesc._mipCount},
+                Metal_Vulkan::TextureViewWindow::SubResourceRange{0, bufferDesc._arrayCount});
+			i._rtv = Metal_Vulkan::RenderTargetView(factory, i._image, window);
             imageViews[0] = i._rtv.GetUnderlying();
-            i._defaultFrameBuffer = FrameBuffer(factory, MakeIteratorRange(imageViews), _defaultRenderPass, bufferDesc._width, bufferDesc._height);
+            i._defaultFrameBuffer = Metal_Vulkan::FrameBuffer(factory, MakeIteratorRange(imageViews), _defaultRenderPass, bufferDesc._width, bufferDesc._height);
         }
 
         // Create the synchronisation primitives
@@ -1161,10 +890,10 @@ namespace RenderCore
 
     PresentationChain::~PresentationChain()
     {
-		_defaultRenderPass = RenderPass();
+		_defaultRenderPass = Metal_Vulkan::FrameBufferLayout();
 		_images.clear();
-		_dsv = DepthStencilView();
-		_depthStencilResource = Resource();
+		_dsv = Metal_Vulkan::DepthStencilView();
+		_depthStencilResource = Metal_Vulkan::Resource();
 		_swapChain.reset();
 		_device.reset();
     }
@@ -1234,7 +963,7 @@ namespace RenderCore
 		vkDeviceWaitIdle(_underlyingDevice);
 		_factory->FlushDestructionQueue();
 		_globalPools->_mainDescriptorPool.FlushDestroys();
-		_globalPools->_renderingCommandPool.FlushDestroys();
+		_renderingCommandPool.FlushDestroys();
 
 		//////////////////////////////////////////////////////////////////
 		swapChain->PresentToQueue(_queue);
@@ -1257,24 +986,28 @@ namespace RenderCore
 
 	void ThreadContext::InvalidateCachedState() const {}
 
+    void ThreadContext::BeginCommandList()
+    {
+        _metalContext->BeginCommandList();
+    }
+
     ThreadContext::ThreadContext(
 		std::shared_ptr<Device> device,
 		VkQueue queue,
-		VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
+        Metal_Vulkan::CommandPool&& cmdPool,
+		Metal_Vulkan::CommandPool::BufferType cmdBufferType)
     : _device(device)
 	, _frameId(0)
+    , _renderingCommandPool(std::move(cmdPool))
 	, _metalContext(
 		std::make_shared<Metal_Vulkan::DeviceContext>(
-			device->GetObjectFactory(), device->GetGlobalPools(), primaryCommandBuffer))
+			device->GetObjectFactory(), device->GetGlobalPools(), 
+            _renderingCommandPool, cmdBufferType))
 	, _factory(&device->GetObjectFactory())
 	, _globalPools(&device->GetGlobalPools())
 	, _queue(queue)
 	, _underlyingDevice(device->GetUnderlyingDevice())
-    {
-		// if we start with a command buffer, let's begin it immediately...
-		if (primaryCommandBuffer)
-			_metalContext->BeginCommandList();
-    }
+    {}
 
     ThreadContext::~ThreadContext() {}
 
@@ -1314,8 +1047,9 @@ namespace RenderCore
     ThreadContextVulkan::ThreadContextVulkan(
 		std::shared_ptr<Device> device,
 		VkQueue queue,
-		VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer)
-    : ThreadContext(std::move(device), queue, std::move(primaryCommandBuffer))
+        Metal_Vulkan::CommandPool&& cmdPool,
+		Metal_Vulkan::CommandPool::BufferType cmdBufferType)
+    : ThreadContext(std::move(device), queue, std::move(cmdPool), cmdBufferType)
     {}
 
 	ThreadContextVulkan::~ThreadContextVulkan() {}

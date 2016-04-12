@@ -55,15 +55,20 @@ namespace RenderCore { namespace Metal_Vulkan
 		return result;
 	}
 
-	static bool IsDepthStencilFormat(Format fmt)
+	VkImageAspectFlags AsImageAspectMask(Format fmt)
 	{
-		return GetComponents(fmt) == FormatComponents::Depth;
-	}
+        // if (view_info.format == VK_FORMAT_D16_UNORM_S8_UINT ||
+        //     view_info.format == VK_FORMAT_D24_UNORM_S8_UINT ||
+        //     view_info.format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+        //     view_info.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        // }
 
-	static VkImageAspectFlags AsImageAspectMask(Format fmt)
-	{
-		if (IsDepthStencilFormat(fmt)) return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-		return VK_IMAGE_ASPECT_COLOR_BIT;
+        auto components = GetComponents(fmt);
+        switch (components) {
+        case FormatComponents::Depth:           return VK_IMAGE_ASPECT_DEPTH_BIT;
+        case FormatComponents::DepthStencil:    return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        default:                                return VK_IMAGE_ASPECT_COLOR_BIT;
+        }
 	}
 
 	static VkImageLayout AsVkImageLayout(ImageLayout input) { return (VkImageLayout)input; }
@@ -73,7 +78,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return VK_SAMPLE_COUNT_1_BIT;
 	}
 
-	static VkImageType AsImageType(TextureDesc::Dimensionality::Enum dims)
+	static VkImageType AsImageType(TextureDesc::Dimensionality dims)
 	{
 		switch (dims) {
 		case TextureDesc::Dimensionality::T1D: return VK_IMAGE_TYPE_1D;
@@ -160,6 +165,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		auto& r = *res.get();
 		assert(r.GetDesc()._type == ResourceDesc::Type::Texture);
+        if (r.GetImage()) return;   // (staging buffer case)
+
 		// unforunately, we can't just blanket aspectMask with all bits enabled.
 		// We must select a correct aspect mask. The nvidia drivers seem to be fine with all
 		// bits enabled, but the documentation says that this is not allowed
@@ -172,6 +179,15 @@ namespace RenderCore { namespace Metal_Vulkan
 			AsVkImageLayout(oldLayout), AsVkImageLayout(newLayout),
             desc._textureDesc._mipCount, desc._textureDesc._arrayCount);
 	}
+
+    static VulkanSharedPtr<VkDeviceMemory> AllocateDeviceMemory(
+        const Metal_Vulkan::ObjectFactory& factory, VkMemoryRequirements memReqs, VkMemoryPropertyFlags requirementMask)
+    {
+        auto type = factory.FindMemoryType(memReqs.memoryTypeBits, requirementMask);
+        if (type >= 32)
+            Throw(Exceptions::BasicLabel("Could not find compatible memory type for image"));
+        return factory.AllocateMemory(memReqs.size, type);
+    }
 
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
@@ -237,6 +253,18 @@ namespace RenderCore { namespace Metal_Vulkan
 			image_create_info.usage = AsImageUsageFlags(desc._bindFlags);
 
 			// minor validations
+            if (image_create_info.tiling == VK_IMAGE_TILING_OPTIMAL && (image_create_info.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+                // For depth/stencil textures, if the device doesn't support optimal tiling, they switch back to linear
+                // Maybe this is unnecessary, because the device could just define "optimal" to mean linear in this case.
+                // But the vulkan samples do something similar (though they prefer to use linear mode when it's available...?)
+                const auto formatProps = factory.GetFormatProperties(vkFormat);
+                if (!(formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+                    image_create_info.tiling = VK_IMAGE_TILING_LINEAR;
+                    if (!(formatProps.linearTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
+                        Throw(Exceptions::BasicLabel("Format (%i) can't be used for a depth stencil", unsigned(vkFormat)));
+                }
+            }
+
 			if (image_create_info.tiling == VK_IMAGE_TILING_LINEAR && (image_create_info.usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
 				const auto formatProps = factory.GetFormatProperties(vkFormat);
 				const bool canSampleLinearTexture =
@@ -278,15 +306,9 @@ namespace RenderCore { namespace Metal_Vulkan
             }
 		}
 
-		VkMemoryPropertyFlags memoryRequirements = 0;
-		if (hasInitData || desc._cpuAccess != 0)
-			memoryRequirements |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-		auto memoryTypeIndex = factory.FindMemoryType(mem_reqs.memoryTypeBits, memoryRequirements);
-		if (memoryTypeIndex >= 32)
-			Throw(::Exceptions::BasicLabel("Could not find valid memory type for buffer"));
-
-		_mem = factory.AllocateMemory(mem_reqs.size, memoryTypeIndex);
+        const auto hostVisibleReqs = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        auto memoryRequirements = (hasInitData || desc._cpuAccess != 0) ? hostVisibleReqs : 0;
+        _mem = AllocateDeviceMemory(factory, mem_reqs, memoryRequirements);
 
 		const VkDeviceSize offset = 0; 
 		if (_underlyingBuffer) {
@@ -335,7 +357,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
 		const SubResourceInitData& initData)
-	: Resource(factory, desc, [&initData](unsigned m, unsigned a) { return (m==0&&a==0) ? initData : SubResourceInitData{}; })
+	: Resource(factory, desc, (initData._size && initData._data) ? ([&initData](unsigned m, unsigned a) { return (m==0&&a==0) ? initData : SubResourceInitData{}; }) : std::function<SubResourceInitData(unsigned, unsigned)>())
 	{}
 	Resource::Resource() {}
 	Resource::~Resource() {}
@@ -397,24 +419,11 @@ namespace RenderCore { namespace Metal_Vulkan
 			    depth = std::max(1u, depth>>1);
 		    }
 
-			// We don't have a way to know for sure what the current layout is for the given image on the given context. 
-			// Let's just assume the previous states are as they would be in the most common cases
-			//		-- normally, this is called immediately after creation, when filling in an OPTIMAL texture with
-			//			data from a staging texture. When that happens, the src will be in layout "Preinitialized" and
-			//			the dst will be in layout "Undefined"
-			// During the transfer, the images must be in either TransferSrcOptimal, TransferDstOptimal or General.
-			// So, we must change the layout immediate before and after the transfer.
-			SetImageLayout(context, src, Metal_Vulkan::ImageLayout::Preinitialized, Metal_Vulkan::ImageLayout::TransferSrcOptimal);
-			SetImageLayout(context, dst, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal);
 		    vkCmdCopyImage(
 			    context.GetCommandList(),
 			    src.get()->GetImage(), AsVkImageLayout(srcLayout),
 			    dst.get()->GetImage(), AsVkImageLayout(dstLayout),
 			    copyOperations, copyOps);
-
-			// Switch the layout to the final layout. Here, we're assuming all of the transfers are finished, and the
-			// image will soon be used by a shader.
-			SetImageLayout(context, dst, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal);
 
         } else if (dst.get()->GetBuffer() && src.get()->GetBuffer()) {
             // buffer to buffer copy
@@ -475,13 +484,11 @@ namespace RenderCore { namespace Metal_Vulkan
             }
 
             const auto copyOperations = mips*arrayCount;
-			SetImageLayout(context, dst, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal);
             vkCmdCopyBufferToImage(
                 context.GetCommandList(),
                 src.get()->GetBuffer(),
                 dst.get()->GetImage(), AsVkImageLayout(dstLayout),
                 copyOperations, copyOps);
-			SetImageLayout(context, dst, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal);
         } else {
             // copies from buffer to image, or image to buffer are supported by Vulkan, but
             // not implemented here.

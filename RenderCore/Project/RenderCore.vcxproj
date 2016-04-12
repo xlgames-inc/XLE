@@ -96,10 +96,8 @@
     <ClInclude Include="..\Metal\InputLayout.h" />
     <ClInclude Include="..\Metal\Metal.h" />
     <ClInclude Include="..\Metal\ObjectFactory.h" />
-    <ClInclude Include="..\Metal\RenderTargetView.h" />
     <ClInclude Include="..\Metal\Resource.h" />
     <ClInclude Include="..\Metal\Shader.h" />
-    <ClInclude Include="..\Metal\ShaderResource.h" />
     <ClInclude Include="..\Metal\State.h" />
     <ClInclude Include="..\Metal\Types.h" />
     <ClInclude Include="..\MinimalShaderSource.h" />

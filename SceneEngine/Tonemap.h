@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../Math/Vector.h"
 
 namespace Utility { class ParameterBox; }

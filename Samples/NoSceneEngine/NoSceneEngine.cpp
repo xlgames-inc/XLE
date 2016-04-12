@@ -44,7 +44,7 @@
 #include "../../RenderCore/DX11/Metal/DeviceContext.h"
 #include "../../RenderCore/DX11/Metal/Buffer.h"
 #include "../../RenderCore/DX11/Metal/Resource.h"
-#include "../../RenderCore/DX11/Metal/ShaderResource.h"
+#include "../../RenderCore/DX11/Metal/TextureView.h"
 #include "../../RenderCore/DX11/Metal/State.h"
 
 #include "../../RenderCore/Vulkan/Metal/Shader.h"
@@ -53,7 +53,7 @@
 #include "../../RenderCore/Vulkan/Metal/DeviceContextImpl.h"
 #include "../../RenderCore/Vulkan/Metal/Buffer.h"
 #include "../../RenderCore/Vulkan/Metal/Resource.h"
-#include "../../RenderCore/Vulkan/Metal/ShaderResource.h"
+#include "../../RenderCore/Vulkan/Metal/TextureView.h"
 #include "../../RenderCore/Vulkan/Metal/State.h"
 
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
@@ -187,7 +187,7 @@ namespace VulkanTest
 
 		auto stagingResource = dev.CreateResource(
 			CreateDesc(
-				0,
+				BindFlag::TransferSrc,
 				0, 0,
 				TextureDesc::Plain2D(width, height, fmt),
 				"texture"),
@@ -195,7 +195,7 @@ namespace VulkanTest
 
 		auto gpuResource = dev.CreateResource(
 			CreateDesc(
-				BindFlag::ShaderResource,
+                BindFlag::ShaderResource | BindFlag::TransferDst,
 				0, GPUAccess::Read,
 				TextureDesc::Plain2D(width, height, fmt),
 				"texture"));

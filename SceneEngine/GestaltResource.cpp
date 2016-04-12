@@ -5,8 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "GestaltResource.h"
-#include "../RenderCore/Metal/RenderTargetView.h"
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Assets/Services.h"
 #include "../BufferUploads/IBufferUploads.h"

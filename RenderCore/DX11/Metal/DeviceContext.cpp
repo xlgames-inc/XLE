@@ -394,7 +394,7 @@ namespace RenderCore { namespace Metal_DX11
 
 intrusive_ptr<RenderCore::Metal_DX11::Underlying::Resource>;
 
-#include "ShaderResource.h"
+#include "TextureView.h"
 
 namespace RenderCore { namespace Metal_DX11
 {

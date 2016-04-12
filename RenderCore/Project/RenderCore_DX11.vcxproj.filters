@@ -34,5 +34,6 @@
     <ClInclude Include="..\DX11\Metal\Documentation.h" />
     <ClInclude Include="..\DX11\Metal\GPUProfiler.h" />
     <ClInclude Include="..\DX11\Metal\ObjectFactory.h" />
+    <ClInclude Include="..\DX11\Metal\TextureView.h" />
   </ItemGroup>
 </Project>

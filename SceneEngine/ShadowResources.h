@@ -8,8 +8,7 @@
 
 #include "SceneEngineUtils.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
-#include "../RenderCore/Metal/ShaderResource.h"
-#include "../RenderCore/Metal/RenderTargetView.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/State.h"
 #include <vector>

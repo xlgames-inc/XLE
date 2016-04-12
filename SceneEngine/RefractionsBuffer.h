@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/RenderTargetView.h"
-#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../BufferUploads/IBufferUploads.h"

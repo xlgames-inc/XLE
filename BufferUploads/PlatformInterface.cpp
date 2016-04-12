@@ -172,7 +172,7 @@ namespace BufferUploads { namespace PlatformInterface
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    static const char* AsString(TextureDesc::Dimensionality::Enum dimensionality)
+    static const char* AsString(TextureDesc::Dimensionality dimensionality)
     {
         switch (dimensionality) {
         case TextureDesc::Dimensionality::CubeMap:  return "Cube";

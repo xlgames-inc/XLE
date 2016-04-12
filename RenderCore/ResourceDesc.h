@@ -136,8 +136,8 @@ namespace RenderCore
 	public:
         uint32 _width, _height, _depth;
         Format _format;
-        struct Dimensionality { enum Enum { T1D, T2D, T3D, CubeMap }; };
-        Dimensionality::Enum _dimensionality;
+        enum class Dimensionality { Undefined, T1D, T2D, T3D, CubeMap };
+        Dimensionality _dimensionality;
         uint8 _mipCount;
         uint16 _arrayCount;
         TextureSamples _samples;

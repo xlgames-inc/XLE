@@ -20,6 +20,8 @@
 #include "Metal/DeviceContext.h"
 #include "Metal/Pools.h"
 #include "Metal/IncludeVulkan.h"
+#include "Metal/FrameBuffer.h"
+#include "Metal/TextureView.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Utility/IntrusivePtr.h"
 #include "../../Utility/IteratorUtils.h"
@@ -46,101 +48,6 @@ namespace RenderCore
 
     class Device;
 
-    namespace Metal_Vulkan
-    {
-        class ObjectFactory;
-    }
-
-	class RenderPass
-	{
-	public:
-		enum class PreviousState { DontCare, Clear };
-
-		class TargetInfo
-		{
-		public:
-			VkFormat _format;
-			VkSampleCountFlagBits _samples;
-			PreviousState _previousState;
-
-			TargetInfo(
-				VkFormat fmt = VK_FORMAT_UNDEFINED, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT,
-				PreviousState previousState = PreviousState::DontCare)
-				: _format(fmt), _samples(samples), _previousState() {}
-		};
-
-		VkRenderPass GetUnderlying() { return _underlying.get(); }
-        const VulkanSharedPtr<VkRenderPass>& ShareUnderlying() { return _underlying; }
-
-		RenderPass(
-			const Metal_Vulkan::ObjectFactory& factory,
-			IteratorRange<TargetInfo*> rtvAttachments,
-			TargetInfo dsvAttachment = TargetInfo());
-		RenderPass();
-		~RenderPass();
-
-	private:
-		VulkanSharedPtr<VkRenderPass> _underlying;
-	};
-
-	class FrameBuffer
-	{
-	public:
-		VkFramebuffer GetUnderlying() { return _underlying.get(); }
-
-		FrameBuffer(
-			const Metal_Vulkan::ObjectFactory& factory,
-			IteratorRange<VkImageView*> views,
-			RenderPass& renderPass,
-			unsigned width, unsigned height);
-		FrameBuffer();
-		~FrameBuffer();
-	private:
-		VulkanSharedPtr<VkFramebuffer> _underlying;
-	};
-
-	class Resource
-	{
-	public:
-		const BufferUploads::BufferDesc& GetDesc() const { return _desc; }
-		VkImage GetImage() const { return _image.get(); }
-		VkDeviceMemory GetDeviceMemory() const { return _mem.get(); }
-
-		Resource(
-			const Metal_Vulkan::ObjectFactory& factory,
-			const BufferUploads::BufferDesc& desc);
-		Resource();
-		~Resource();
-	private:
-		VulkanSharedPtr<VkImage> _image;
-		VulkanSharedPtr<VkDeviceMemory> _mem;
-		BufferUploads::BufferDesc _desc;
-	};
-
-	class ImageView
-	{
-	public:
-		VkImageView GetUnderlying() { return _underlying.get(); }
-		~ImageView();
-	protected:
-		VulkanSharedPtr<VkImageView> _underlying;
-	};
-
-	class DepthStencilView : public ImageView
-	{
-	public:
-		DepthStencilView(const Metal_Vulkan::ObjectFactory& factory, Resource& res);
-		DepthStencilView();
-	};
-
-	class RenderTargetView : public ImageView
-	{
-	public:
-		RenderTargetView(const Metal_Vulkan::ObjectFactory& factory, Resource& res);
-		RenderTargetView(const Metal_Vulkan::ObjectFactory& factory, VkImage image, VkFormat fmt);
-		RenderTargetView();
-	};
-
 ////////////////////////////////////////////////////////////////////////////////
 
     class PresentationChain : public Base_PresentationChain
@@ -150,7 +57,7 @@ namespace RenderCore
 
         std::shared_ptr<ViewportContext> GetViewportContext() const;
         void        AcquireNextImage();
-		RenderPass* BindDefaultRenderPass(Metal_Vulkan::DeviceContext& context);
+		Metal_Vulkan::FrameBufferLayout* BindDefaultRenderPass(Metal_Vulkan::DeviceContext& context);
 
 		void PresentToQueue(VkQueue queue);
 
@@ -180,17 +87,17 @@ namespace RenderCore
         class Image
         {
         public:
-            VkImage _underlying;
-			RenderTargetView _rtv;
-			FrameBuffer _defaultFrameBuffer;
+            VkImage _image;
+			Metal_Vulkan::RenderTargetView  _rtv;
+			Metal_Vulkan::FrameBuffer       _defaultFrameBuffer;
         };
         std::vector<Image> _images;
 
-		Resource            _depthStencilResource;
-		DepthStencilView    _dsv;
+		Metal_Vulkan::Resource              _depthStencilResource;
+		Metal_Vulkan::DepthStencilView      _dsv;
 
-		RenderPass		    _defaultRenderPass;
-		BufferUploads::TextureDesc _bufferDesc;
+		Metal_Vulkan::FrameBufferLayout     _defaultRenderPass;
+		BufferUploads::TextureDesc          _bufferDesc;
 
         PresentSync     _presentSyncs[3];
         unsigned        _activePresentSync;
@@ -210,15 +117,18 @@ namespace RenderCore
         void                        ClearAllBoundTargets() const;
         void                        IncrFrameId();
 		void						InvalidateCachedState() const;
+        void                        BeginCommandList();
 
         ThreadContext(
             std::shared_ptr<Device> device, 
 			VkQueue queue,
-			VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer);
+            Metal_Vulkan::CommandPool&& cmdPool,
+			Metal_Vulkan::CommandPool::BufferType cmdBufferType);
         ~ThreadContext();
     protected:
         std::weak_ptr<Device>           _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
 		unsigned                        _frameId;
+        Metal_Vulkan::CommandPool		_renderingCommandPool;
 		std::shared_ptr<Metal_Vulkan::DeviceContext>     _metalContext;
 
 		VkDevice							_underlyingDevice;
@@ -236,7 +146,8 @@ namespace RenderCore
 		ThreadContextVulkan(
 			std::shared_ptr<Device> device,
 			VkQueue queue,
-			VulkanSharedPtr<VkCommandBuffer> primaryCommandBuffer);
+            Metal_Vulkan::CommandPool&& cmdPool,
+			Metal_Vulkan::CommandPool::BufferType cmdBufferType);
         ~ThreadContextVulkan();
     };
 

@@ -114,7 +114,7 @@ namespace RenderCore { namespace Metal_Vulkan
             viewRaw,
             [d](VkImageView view) { d->Destroy(view); });
         if (result != VK_SUCCESS)
-            Throw(VulkanAPIFailure(result, "Failed while creating depth stencil view of resource"));
+            Throw(VulkanAPIFailure(result, "Failed while creating image view of resource"));
         return std::move(imageView);
     }
 
