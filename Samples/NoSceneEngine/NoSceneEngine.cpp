@@ -332,12 +332,14 @@ namespace Sample
 				Metal_Vulkan::ConstantBuffer localTransBuffer(&localTrans, sizeof(localTrans));
 				const Metal_Vulkan::ConstantBuffer* cbs[] = { &globalTransBuffer, &localTransBuffer };
                 
-                // auto& factory = vkContext->GetFactory();
-                // Metal_Vulkan::ShaderResourceView srv(factory, texObj._resource);
-				// const Metal_Vulkan::ShaderResourceView* srvs[] = { &srv };
-
-                auto& tex = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/DiffuseTexture.dds:L");
-                const Metal_Vulkan::ShaderResourceView* srvs[] = { &tex.GetShaderResource() };
+                #if GFXAPI_ACTIVE == GFXAPI_VULKAN
+                    auto& tex = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/DiffuseTexture.dds:L");
+                    const Metal_Vulkan::ShaderResourceView* srvs[] = { &tex.GetShaderResource() };
+                #else
+                    auto& factory = vkContext->GetFactory();
+                    Metal_Vulkan::ShaderResourceView srv(factory, texObj._resource);
+				    const Metal_Vulkan::ShaderResourceView* srvs[] = { &srv };
+                #endif
 
 				boundUniforms.Apply(
 					*vkContext,
@@ -445,18 +447,18 @@ namespace Sample
             LogInfo << "Setup frame rig and rendering context";
             auto context = renderDevice->GetImmediateContext();
 
-			//bool initTex = false;
-			//if (!initTex) {
-			//	using namespace RenderCore;
-			//	auto initContext = renderDevice->CreateDeferredContext();
-			//	auto metalContext = Metal::DeviceContext::Get(*initContext);
-			//	metalContext->BeginCommandList();
-			//	VulkanTest::init_image2(*renderDevice, *initContext.get(), texObj);
-			//	auto cmdList = metalContext->ResolveCommandList();
-			//	Metal::DeviceContext::Get(*context)->CommitCommandList(*cmdList, false);
-			//	// VulkanTest::init_image2(*renderDevice, *context, texObj);
-			//	initTex = true;
-			//}
+			bool initTex = false;
+			if (!initTex) {
+				// using namespace RenderCore;
+				// auto initContext = renderDevice->CreateDeferredContext();
+				// auto metalContext = Metal::DeviceContext::Get(*initContext);
+				// metalContext->BeginCommandList();
+				// VulkanTest::init_image2(*renderDevice, *initContext.get(), texObj);
+				// auto cmdList = metalContext->ResolveCommandList();
+				// Metal::DeviceContext::Get(*context)->CommitCommandList(*cmdList, false);
+				VulkanTest::init_image2(*renderDevice, *context, texObj);
+				initTex = true;
+			}
 
                 //  Finally, we execute the frame loop
             for (;;) {

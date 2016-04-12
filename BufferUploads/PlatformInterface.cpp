@@ -42,65 +42,6 @@ namespace BufferUploads { namespace PlatformInterface
 
         //////////////////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-    UnderlyingDeviceContext::MappedBuffer::~MappedBuffer()
-    {
-        if (_sourceContext && _data) {
-            _sourceContext->Unmap(*_resource, _subResourceIndex);
-        }
-    }
-
-    UnderlyingDeviceContext::MappedBuffer::MappedBuffer()
-    {
-        _sourceContext = 0;
-        _subResourceIndex = 0;
-        _data = 0;
-    }
-
-    UnderlyingDeviceContext::MappedBuffer::MappedBuffer(MappedBuffer&& moveFrom) never_throws
-    {
-        _sourceContext = std::move(moveFrom._sourceContext);
-        _resource = std::move(moveFrom._resource);
-        _subResourceIndex = std::move(moveFrom._subResourceIndex);
-        _data = std::move(moveFrom._data);
-        _pitches = moveFrom._pitches;
-        moveFrom._data = nullptr;
-        moveFrom._subResourceIndex = 0;
-        moveFrom._sourceContext = nullptr;
-        moveFrom._pitches = TexturePitches();
-    }
-
-    const UnderlyingDeviceContext::MappedBuffer& UnderlyingDeviceContext::MappedBuffer::operator=(UnderlyingDeviceContext::MappedBuffer&& moveFrom)
-    {
-        if (_sourceContext && _data) {
-            _sourceContext->Unmap(*_resource, _subResourceIndex);
-        }
-
-        _sourceContext = std::move(moveFrom._sourceContext);
-        _resource = std::move(moveFrom._resource);
-        _subResourceIndex = std::move(moveFrom._subResourceIndex);
-        _data = std::move(moveFrom._data);
-        _pitches = moveFrom._pitches;
-        moveFrom._data = nullptr;
-        moveFrom._subResourceIndex = 0;
-        moveFrom._sourceContext = nullptr;
-        moveFrom._pitches = TexturePitches();
-        return *this;
-    }
-
-    UnderlyingDeviceContext::MappedBuffer::MappedBuffer(
-        UnderlyingDeviceContext& context, UnderlyingResource& resource, 
-        unsigned subResourceIndex, void* data,
-        TexturePitches pitches)
-	: _resource(&resource)
-    {
-        _sourceContext = &context;
-        _subResourceIndex = subResourceIndex;
-        _data = data;
-        _pitches = pitches;
-    }
-#endif
-
     UnderlyingDeviceContext::~UnderlyingDeviceContext() {}
 
 

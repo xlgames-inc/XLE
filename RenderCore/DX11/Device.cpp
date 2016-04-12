@@ -241,16 +241,6 @@ namespace RenderCore
         return std::make_unique<PresentationChain>(std::move(result), platformValue);
     }
 
-    void    Device::BeginFrame(IPresentationChain* presentationChain)
-    {
-        PresentationChain* swapChain = checked_cast<PresentationChain*>(presentationChain);
-        swapChain->AttachToContext(_immediateContext.get(), _underlying.get());
-
-        if (!_immediateThreadContext)
-            _immediateThreadContext = std::make_shared<ThreadContextDX11>(_immediateContext, shared_from_this());
-        _immediateThreadContext->IncrFrameId();
-    }
-
     std::shared_ptr<IThreadContext> Device::GetImmediateContext()
     {
         if (!_immediateThreadContext) {
@@ -368,11 +358,6 @@ namespace RenderCore
 
     PresentationChain::~PresentationChain()
     {
-    }
-
-    void            PresentationChain::Present()
-    {
-        _underlying->Present(0, 0);
     }
 
     void            PresentationChain::Resize(unsigned newWidth, unsigned newHeight)
@@ -504,6 +489,20 @@ namespace RenderCore
 			}
 		}
 	#endif
+
+    void    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
+    {
+        PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
+        auto d = _device.lock();
+        swapChain->AttachToContext(_underlying->GetUnderlying(), d->GetUnderlyingDevice());
+        IncrFrameId();
+    }
+
+    void            ThreadContext::Present(IPresentationChain& presentationChain)
+    {
+        PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
+        swapChain->GetUnderlying()->Present(0, 0);
+    }
 
     bool    ThreadContext::IsImmediate() const
     {

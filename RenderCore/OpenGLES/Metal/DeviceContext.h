@@ -7,7 +7,7 @@
 #pragma once
 
 #include "InputLayout.h"
-#include "../../Resource.h"
+#include "../../ResourceList.h"
 #include "IndexedGLType.h"
 #include "../IDeviceOpenGLES.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"

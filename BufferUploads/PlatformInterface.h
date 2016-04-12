@@ -70,35 +70,6 @@ namespace BufferUploads { namespace PlatformInterface
         void ResourceCopy_DefragSteps(UnderlyingResource& destination, UnderlyingResource& source, const std::vector<Utility::DefragStep>& steps);
         void ResourceCopy(UnderlyingResource& destination, UnderlyingResource& source);
 
-            ////////   M A P   /   L O C K   ////////
-        // class MappedBuffer;
-        // struct MapType { enum Enum { Discard, NoOverwrite, ReadOnly, Write }; };
-        // MappedBuffer Map(UnderlyingResource& resource, MapType::Enum mapType, unsigned subResource = 0);
-        // MappedBuffer MapPartial(UnderlyingResource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource = 0);
-        // 
-        // class MappedBuffer
-        // {
-        // public:
-        //     void*           GetData()               { return _data; }
-        //     const void*     GetData() const         { return _data; }
-        //     TexturePitches  GetPitches() const      { return _pitches; }
-        // 
-        //     MappedBuffer();
-        //     MappedBuffer(MappedBuffer&& moveFrom) never_throws;
-        //     const MappedBuffer& operator=(MappedBuffer&& moveFrom) never_throws;
-        //     ~MappedBuffer();
-        // private:
-        //     MappedBuffer(UnderlyingDeviceContext&, UnderlyingResource&, unsigned, void*, TexturePitches pitches);
-        // 
-        //     UnderlyingDeviceContext* _sourceContext;
-		// 	UnderlyingResource* _resource;
-        //     unsigned _subResourceIndex;
-        //     void* _data;
-        //     TexturePitches _pitches;
-        // 
-        //     friend class UnderlyingDeviceContext;
-        // };
-
             ////////   C O M M A N D   L I S T S   ////////
         RenderCore::Metal::CommandListPtr       ResolveCommandList();
         void                                    BeginCommandList();
@@ -111,6 +82,7 @@ namespace BufferUploads { namespace PlatformInterface
         ~UnderlyingDeviceContext();
 
 		std::shared_ptr<RenderCore::IDevice> GetObjectFactory();
+        RenderCore::IThreadContext& GetUnderlying() { return *_renderCoreContext; }
         // RenderCore::Metal::DeviceContext& GetUnderlying() { return *_devContext.get(); }
 
         #if GFXAPI_ACTIVE == GFXAPI_DX11

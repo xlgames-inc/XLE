@@ -6,6 +6,7 @@
 
 #include "Shader.h"
 #include "../../RenderUtils.h"
+#include "../../Types.h"
 #include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Utility/StringUtils.h"
 #include <GLES2/gl2.h>

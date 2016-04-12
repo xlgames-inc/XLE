@@ -29,7 +29,6 @@ namespace RenderCore
     class PresentationChain : public Base_PresentationChain
     {
     public:
-        void                Present() /*override*/;
         void                Resize(unsigned newWidth, unsigned newHeight) /*override*/;
         IDXGI::SwapChain*   GetUnderlying() const { return _underlying.get(); }
 
@@ -51,6 +50,9 @@ namespace RenderCore
     class ThreadContext : public Base_ThreadContext
     {
     public:
+        void    BeginFrame(IPresentationChain& presentationChain);
+        void    Present(IPresentationChain& presentationChain) /*override*/;
+
         bool                        IsImmediate() const;
         ThreadContextStateDesc      GetStateDesc() const;
         std::shared_ptr<IDevice>    GetDevice() const;
@@ -82,7 +84,6 @@ namespace RenderCore
     {
     public:
         std::unique_ptr<IPresentationChain>     CreatePresentationChain(const void* platformValue, unsigned width, unsigned height) /*override*/;
-        void    BeginFrame(IPresentationChain* presentationChain);
 
         std::pair<const char*, const char*>     GetVersionInformation();
 
@@ -92,6 +93,8 @@ namespace RenderCore
 		ResourcePtr CreateResource(
 			const ResourceDesc& desc,
 			const std::function<SubResourceInitData(unsigned, unsigned)>&);
+
+        ID3D::Device*           GetUnderlyingDevice() { return _underlying.get(); }
 
         Device();
         ~Device();

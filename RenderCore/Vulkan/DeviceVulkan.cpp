@@ -1265,7 +1265,7 @@ namespace RenderCore
 	, _frameId(0)
 	, _metalContext(
 		std::make_shared<Metal_Vulkan::DeviceContext>(
-			device->GetObjectFactory(), device->GetGlobalPools(), std::move(primaryCommandBuffer)))
+			device->GetObjectFactory(), device->GetGlobalPools(), primaryCommandBuffer))
 	, _factory(&device->GetObjectFactory())
 	, _globalPools(&device->GetGlobalPools())
 	, _queue(queue)

@@ -88,7 +88,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkCommandBuffer cmd, VkImage image,
 		VkImageAspectFlags aspectMask,
 		VkImageLayout oldImageLayout,
-		VkImageLayout newImageLayout)
+		VkImageLayout newImageLayout,
+        unsigned mipCount = VK_REMAINING_MIP_LEVELS,
+        unsigned layerCount = VK_REMAINING_ARRAY_LAYERS)
 	{
 		VkImageMemoryBarrier image_memory_barrier = {};
 		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -100,8 +102,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		image_memory_barrier.image = image;
 		image_memory_barrier.subresourceRange.aspectMask = aspectMask;
 		image_memory_barrier.subresourceRange.baseMipLevel = 0;
-		image_memory_barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-		image_memory_barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+		image_memory_barrier.subresourceRange.levelCount = mipCount;
+		image_memory_barrier.subresourceRange.layerCount = layerCount;
 
 		if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 			|| oldImageLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
@@ -161,12 +163,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		// unforunately, we can't just blanket aspectMask with all bits enabled.
 		// We must select a correct aspect mask. The nvidia drivers seem to be fine with all
 		// bits enabled, but the documentation says that this is not allowed
-		auto aspectMask = AsImageAspectMask(r.GetDesc()._textureDesc._format);
+        const auto& desc = r.GetDesc();
+		auto aspectMask = AsImageAspectMask(desc._textureDesc._format);
 		SetImageLayout(
 			context.GetCommandList(),
 			r.GetImage(), 
 			aspectMask,
-			AsVkImageLayout(oldLayout), AsVkImageLayout(newLayout));
+			AsVkImageLayout(oldLayout), AsVkImageLayout(newLayout),
+            desc._textureDesc._mipCount, desc._textureDesc._arrayCount);
 	}
 
 	Resource::Resource(

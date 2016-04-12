@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../../Resource.h"
 #include "../../../Assets/AssetsCore.h"
 #include "../../../Utility/Mixins.h"
 #include "IndexedGLType.h"
