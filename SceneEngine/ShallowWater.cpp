@@ -115,10 +115,16 @@ namespace SceneEngine
 
         unsigned heightsTextureCount = pipeModel?1:3;
 
+		auto windowForUAVs = Metal::TextureViewWindow(
+			Format::R32_FLOAT, TextureDesc::Dimensionality::Undefined,
+			Metal::TextureViewWindow::SubResourceRange{0,1},
+			Metal::TextureViewWindow::All,
+			Metal::TextureViewWindow::Flags::ForceArray);
+
         for (unsigned c=0; c<heightsTextureCount; ++c) {
             waterHeightsTextures[c] = uploads.Transaction_Immediate(targetDesc);
-            waterHeightsUAV[c] = UAV(waterHeightsTextures[c]->GetUnderlying(), Format::R32_FLOAT, 0, false, true);
-            waterHeightsSRV[c] = SRV(waterHeightsTextures[c]->GetUnderlying(), Format::R32_FLOAT, maxSimulationGrids);
+            waterHeightsUAV[c] = UAV(waterHeightsTextures[c]->ShareUnderlying(), windowForUAVs);
+            waterHeightsSRV[c] = SRV(waterHeightsTextures[c]->ShareUnderlying(), Format::R32_FLOAT);
         }
 
             //  The pipe model always needs velocities. Otherwise, we only calculate them
@@ -129,8 +135,8 @@ namespace SceneEngine
             targetDesc._textureDesc._format = Format::R32_TYPELESS;
             for (unsigned c=0; c<VelTextures; ++c) {
                 waterVelocitiesTexture[c] = uploads.Transaction_Immediate(targetDesc);
-                waterVelocitiesUAV[c] = UAV(waterVelocitiesTexture[c]->GetUnderlying(), Format::R32_FLOAT, 0, false, true);
-                waterVelocitiesSRV[c] = SRV(waterVelocitiesTexture[c]->GetUnderlying(), Format::R32_FLOAT, maxSimulationGrids);
+                waterVelocitiesUAV[c] = UAV(waterVelocitiesTexture[c]->ShareUnderlying(), windowForUAVs);
+                waterVelocitiesSRV[c] = SRV(waterVelocitiesTexture[c]->ShareUnderlying(), Format::R32_FLOAT);
             }
         }
 
@@ -138,7 +144,7 @@ namespace SceneEngine
             targetDesc._textureDesc._format = Format::R32_TYPELESS;
             for (unsigned c=0; c<2; ++c) {
                 slopesBuffer[c] = uploads.Transaction_Immediate(targetDesc);
-                slopesBufferUAV[c] = UAV(slopesBuffer[c]->GetUnderlying(), Format::R32_FLOAT, 0, false, true);
+                slopesBufferUAV[c] = UAV(slopesBuffer[c]->ShareUnderlying(), windowForUAVs);
             }
         }
 
@@ -157,10 +163,15 @@ namespace SceneEngine
         normalsTextureUVA.reserve(normalsMipCount);
         normalsSingleMipSRV.reserve(normalsMipCount);
         for (unsigned c=0; c<normalsMipCount; ++c) {
-            normalsTextureUVA.push_back(UAV(normalsTexture->GetUnderlying(), uintNormalFormat, c, false, true));
-            normalsSingleMipSRV.push_back(SRV(normalsTexture->GetUnderlying(), uintNormalFormat, Metal::MipSlice(c, 1)));
+			auto window = Metal::TextureViewWindow(
+				uintNormalFormat, TextureDesc::Dimensionality::Undefined,
+				Metal::TextureViewWindow::SubResourceRange{c,1},
+				Metal::TextureViewWindow::All,
+				Metal::TextureViewWindow::Flags::ForceArray);
+            normalsTextureUVA.push_back(UAV(normalsTexture->ShareUnderlying(), window));
+            normalsSingleMipSRV.push_back(SRV(normalsTexture->ShareUnderlying(), window));
         }
-        SRV normalsTextureShaderResource(normalsTexture->GetUnderlying(), unormNormalFormat, Metal::MipSlice(0, normalsMipCount));
+        SRV normalsTextureShaderResource(normalsTexture->ShareUnderlying(), unormNormalFormat);
 
                 ////
         if (calculateFoam) {
@@ -170,9 +181,9 @@ namespace SceneEngine
                 "ShallowFoam");
             for (unsigned c=0; c<2; ++c) {
                 _foamQuantity[c] = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
-                _foamQuantityUAV[c] = UAV(_foamQuantity[c]->GetUnderlying(), Format::R8_UINT);
-                _foamQuantitySRV[c] = SRV(_foamQuantity[c]->GetUnderlying(), Format::R8_UNORM);
-                _foamQuantitySRV2[c] = SRV(_foamQuantity[c]->GetUnderlying(), Format::R8_UINT);
+                _foamQuantityUAV[c] = UAV(_foamQuantity[c]->ShareUnderlying(), Format::R8_UINT);
+                _foamQuantitySRV[c] = SRV(_foamQuantity[c]->ShareUnderlying(), Format::R8_UNORM);
+                _foamQuantitySRV2[c] = SRV(_foamQuantity[c]->ShareUnderlying(), Format::R8_UINT);
             }
         }
     
@@ -214,7 +225,7 @@ namespace SceneEngine
             float clearValues[4] = {0,0,0,0};
             for (unsigned c=0; c<ShallowWaterGrid::VelTextures; ++c)
                 if (grid._waterVelocitiesUAV[c].IsGood())
-                    context.Clear(grid._waterVelocitiesUAV[c], clearValues);
+                    context.ClearFloat(grid._waterVelocitiesUAV[c], clearValues);
             grid._pendingInitialClear = false;
         }
     }
@@ -251,8 +262,8 @@ namespace SceneEngine
             auto initData = BufferUploads::CreateEmptyPacket(targetDesc);
             XlSetMemory(initData->GetData(), 0xff, initData->GetDataSize());
             _lookupTable = uploads.Transaction_Immediate(targetDesc, initData.get());
-            _lookupTableUAV = UAV(_lookupTable->GetUnderlying(), Format::R8_UINT);
-            _lookupTableSRV = SRV(_lookupTable->GetUnderlying(), Format::R8_UINT);
+            _lookupTableUAV = UAV(_lookupTable->ShareUnderlying(), Format::R8_UINT);
+            _lookupTableSRV = SRV(_lookupTable->ShareUnderlying(), Format::R8_UINT);
         }
 
         _poolOfUnallocatedArrayIndices.reserve(desc._maxSimulationGrid);
@@ -796,7 +807,7 @@ namespace SceneEngine
 
             if (_lookupTableUAV.IsGood()) {
                 unsigned clearInts[] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff };
-                metalContext.Clear(_lookupTableUAV, clearInts);
+                metalContext.ClearUInt(_lookupTableUAV, clearInts);
             }
         }
 

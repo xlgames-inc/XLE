@@ -564,9 +564,9 @@ namespace Overlays
         offscreenDesc._bindFlags = BindFlag::DepthStencil;
         offscreenDesc._textureDesc = TextureDesc::Plain2D(offscreenDims, offscreenDims, RenderCore::Format::D24_UNORM_S8_UINT);
         auto depthResource = uploads.Transaction_Immediate(offscreenDesc)->AdoptUnderlying();
-        pimpl->_rtv =RenderCore::Metal::RenderTargetView(offscreenResource.get());
-        pimpl->_dsv = RenderCore::Metal::DepthStencilView(depthResource.get());
-        pimpl->_srv = RenderCore::Metal::ShaderResourceView(offscreenResource.get());
+        pimpl->_rtv = RenderCore::Metal::RenderTargetView(offscreenResource);
+        pimpl->_dsv = RenderCore::Metal::DepthStencilView(depthResource);
+        pimpl->_srv = RenderCore::Metal::ShaderResourceView(offscreenResource);
 
         pimpl->_cache = std::make_unique<ModelCache>();
 

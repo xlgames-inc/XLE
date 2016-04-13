@@ -275,28 +275,30 @@ namespace SceneEngine
             "FinalResolve");
         auto postMsaaResolveTexture = CreateResourceImmediate(bufferUploadsDesc);
 
-        Metal::RenderTargetView postMsaaResolveTarget(postMsaaResolveTexture->GetUnderlying());
-        Metal::ShaderResourceView postMsaaResolveSRV(postMsaaResolveTexture->GetUnderlying());
+        Metal::RenderTargetView postMsaaResolveTarget(postMsaaResolveTexture->ShareUnderlying());
+        Metal::ShaderResourceView postMsaaResolveSRV(postMsaaResolveTexture->ShareUnderlying());
 
         _postMsaaResolveTexture = std::move(postMsaaResolveTexture);
         _postMsaaResolveTarget = std::move(postMsaaResolveTarget);
         _postMsaaResolveSRV = std::move(postMsaaResolveSRV);
     }
 
-    void LightingParser_ResolveMSAA(
+    static void LightingParser_ResolveMSAA(
         Metal::DeviceContext& context, 
         LightingParserContext& parserContext,
-        ID3D::Resource* destinationTexture,
-        ID3D::Resource* sourceTexture,
+        RenderCore::Resource& destinationTexture,
+        RenderCore::Resource& sourceTexture,
         Format resolveFormat)
     {
-            // todo -- support custom resolve (tone-map aware)
-            // See AMD post on this topic:
-            //      http://gpuopen.com/optimized-reversible-tonemapper-for-resolve/
-        context.GetUnderlying()->ResolveSubresource(
-            destinationTexture, D3D11CalcSubresource(0,0,0),
-            sourceTexture, D3D11CalcSubresource(0,0,0),
-            Metal::AsDXGIFormat(resolveFormat));
+		#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+				// todo -- support custom resolve (tone-map aware)
+				// See AMD post on this topic:
+				//      http://gpuopen.com/optimized-reversible-tonemapper-for-resolve/
+			context.GetUnderlying()->ResolveSubresource(
+				destinationTexture, D3D11CalcSubresource(0,0,0),
+				sourceTexture, D3D11CalcSubresource(0,0,0),
+				Metal::AsDXGIFormat(resolveFormat));
+		#endif
     }
 
     void LightingParser_PostProcess(
@@ -490,8 +492,7 @@ namespace SceneEngine
         TransparencyTargetsBox* oiTransTargets = nullptr;
         if (useOrderIndependentTransparency) {
             duplicatedDepthBuffer = 
-                BuildDuplicatedDepthBuffer(&metalContext, 
-                    Metal::UnderlyingResourcePtr(targetsBox._msaaDepthBufferTexture->GetUnderlying()).get());
+                BuildDuplicatedDepthBuffer(&metalContext, *targetsBox._msaaDepthBufferTexture->GetUnderlying());
                 
             oiTransTargets = OrderIndependentTransparency_Prepare(metalContext, parserContext, duplicatedDepthBuffer);
 
@@ -604,7 +605,7 @@ namespace SceneEngine
         if (hasOITrans) {
             if (oiMode == OIMode::SortedRef) {
                 StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
-                auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&metalContext, Metal::UnderlyingResourcePtr(mainTargets._msaaDepthBufferTexture->GetUnderlying()).get());
+                auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&metalContext, *mainTargets._msaaDepthBufferTexture->GetUnderlying());
                 auto* transTargets = OrderIndependentTransparency_Prepare(metalContext, parserContext, duplicatedDepthBuffer);
 
                 ExecuteScene(
@@ -869,8 +870,8 @@ namespace SceneEngine
 					inputTextureDesc._textureDesc._width, inputTextureDesc._textureDesc._height, inputTextureDesc._textureDesc._format);
                 LightingParser_ResolveMSAA(
                     metalContext, parserContext,
-                    Metal::UnderlyingResourcePtr(msaaResolveRes._postMsaaResolveTexture->GetUnderlying()).get(),
-                    Metal::UnderlyingResourcePtr(postLightingResolveTexture->GetUnderlying()).get(),
+                    *msaaResolveRes._postMsaaResolveTexture->GetUnderlying(),
+                    *postLightingResolveTexture->GetUnderlying(),
 					inputTextureDesc._textureDesc._format);
 
                     // todo -- also resolve the depth buffer...!
@@ -891,18 +892,20 @@ namespace SceneEngine
 
             const bool hardwareSRGBDisabled = Tweakable("Tonemap_DisableHardwareSRGB", true);
             if (hardwareSRGBDisabled) {
-                auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
-                if (res) {
-                    auto currentFormat = Metal::AsFormat(Metal::TextureDesc2D(res.get()).Format);
-                    if (GetComponentType(currentFormat) == FormatComponentType::UNorm_SRGB) {
-                            // create a render target view with SRGB disabled (but the same colour format)
-                            // todo -- make sure we're using the correct format here -- 
-                        Metal::RenderTargetView rtv(res.get(), Format::R8G8B8A8_UNORM);
-                        auto* drtv = rtv.GetUnderlying();
-                        metalContext.GetUnderlying()->OMSetRenderTargets(1, &drtv, savedTargets.GetDepthStencilView());
-                    } else
-                        savedTargets.ResetToOldTargets(metalContext);
-                }
+				#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+					auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
+					if (res) {
+						auto currentFormat = Metal::AsFormat(Metal::TextureDesc2D(res.get()).Format);
+						if (GetComponentType(currentFormat) == FormatComponentType::UNorm_SRGB) {
+								// create a render target view with SRGB disabled (but the same colour format)
+								// todo -- make sure we're using the correct format here -- 
+							Metal::RenderTargetView rtv(res.get(), Format::R8G8B8A8_UNORM);
+							auto* drtv = rtv.GetUnderlying();
+							metalContext.GetUnderlying()->OMSetRenderTargets(1, &drtv, savedTargets.GetDepthStencilView());
+						} else
+							savedTargets.ResetToOldTargets(metalContext);
+					}
+				#endif
             } else {
                 savedTargets.ResetToOldTargets(metalContext);
             }
@@ -912,7 +915,7 @@ namespace SceneEngine
                 //  if we're not in MSAA mode, we can rebind the main depth buffer. But if we're in MSAA mode, we have to
                 //  resolve the depth buffer before we can do that...
             if (qualitySettings._samplingCount >= 1) {
-                savedTargets.SetDepthStencilView(sceneDepthsDSV.GetUnderlying());
+                savedTargets.SetDepthStencilView(sceneDepthsDSV);
             }
             savedTargets.ResetToOldTargets(metalContext);
         }
@@ -1089,8 +1092,7 @@ namespace SceneEngine
             LightingParser_InitBasicLightEnv(context, parserContext, *sceneParser);
 
         auto& metricsBox = Techniques::FindCachedBox2<MetricsBox>();
-        unsigned clearValues[] = {0,0,0,0};
-        context.Clear(metricsBox._metricsBufferUAV, clearValues);
+        context.ClearUInt(metricsBox._metricsBufferUAV, { 0,0,0,0 });
         parserContext.SetMetricsBox(&metricsBox);
 
         return parserContext.SetSceneParser(sceneParser);

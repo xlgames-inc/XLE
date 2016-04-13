@@ -132,8 +132,8 @@ namespace SceneEngine
         XlSetMemory(clearedBufferData->GetData(), 0, clearedBufferData->GetDataSize());
         auto clearedTypesResource = uploads.Transaction_Immediate(bufferDesc, clearedBufferData.get());
 
-        Metal::ShaderResourceView so0srv(so0r->GetUnderlying(), Format::R32_TYPELESS); // NativeFormat::R32G32B32A32_FLOAT);
-        Metal::ShaderResourceView so1srv(so1r->GetUnderlying(), Format::R32_TYPELESS); // NativeFormat::R32_UINT);
+        Metal::ShaderResourceView so0srv(so0r->ShareUnderlying(), Format::R32_TYPELESS); // NativeFormat::R32G32B32A32_FLOAT);
+        Metal::ShaderResourceView so1srv(so1r->ShareUnderlying(), Format::R32_TYPELESS); // NativeFormat::R32_UINT);
 
             // create the true instancing buffers
             //      Note that it might be ideal if these were vertex buffers! But we can't make a buffer that is both a vertex buffer and structured buffer
@@ -148,14 +148,20 @@ namespace SceneEngine
         std::vector<Metal::ShaderResourceView> instanceBufferSRVs; instanceBufferSRVs.reserve(desc._bufferCount);
         for (unsigned c=0; c<desc._bufferCount; ++c) {
             auto res = uploads.Transaction_Immediate(bufferDesc);
-            instanceBufferUAVs.push_back(Metal::UnorderedAccessView(res->GetUnderlying(), Format::Unknown, 0, true));
-            instanceBufferSRVs.push_back(Metal::ShaderResourceView(res->GetUnderlying()));
+			auto window = Metal::TextureViewWindow(
+				Format::Unknown, TextureDesc::Dimensionality::Undefined,
+				Metal::TextureViewWindow::SubResourceRange{0,1}, Metal::TextureViewWindow::All,
+				Metal::TextureViewWindow::Flags::AppendBuffer);
+            instanceBufferUAVs.push_back(Metal::UnorderedAccessView(res->ShareUnderlying(), window));
+            instanceBufferSRVs.push_back(Metal::ShaderResourceView(res->ShareUnderlying()));
         }
 
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         D3D11_QUERY_DESC queryDesc;
         queryDesc.Query = D3D11_QUERY_SO_STATISTICS;
         queryDesc.MiscFlags = 0;
-        auto streamOutputCountsQuery = Metal::GetObjectFactory().CreateQuery(&queryDesc);
+		_streamOutputCountsQuery = Metal::GetObjectFactory().CreateQuery(&queryDesc);
+#endif
 
         _streamOutputBuffers[0] = Metal::VertexBuffer(so0r->GetUnderlying());
         _streamOutputBuffers[1] = Metal::VertexBuffer(so1r->GetUnderlying());
@@ -164,7 +170,6 @@ namespace SceneEngine
         _streamOutputSRV[0] = std::move(so0srv);
         _streamOutputSRV[1] = std::move(so1srv);
         _clearedTypesResource = clearedTypesResource;
-        _streamOutputCountsQuery = std::move(streamOutputCountsQuery);
         _instanceBufferUAVs = std::move(instanceBufferUAVs);
         _instanceBufferSRVs = std::move(instanceBufferSRVs);
         _objectTypeCount = desc._bufferCount;
@@ -212,7 +217,7 @@ namespace SceneEngine
 
         using namespace RenderCore;
         auto oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
-        ID3D::Query* begunQuery = nullptr;
+        ID3D::Query* begunQuery = nullptr; (void)begunQuery;
 
         auto oldCamera = parserContext.GetProjectionDesc();
 
@@ -260,11 +265,13 @@ namespace SceneEngine
 
             metalContext.BindGS(MakeResourceList(5, Metal::ConstantBuffer(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
 
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             const bool needQuery = false;
             if (constant_expression<needQuery>::result()) {
                 begunQuery = res._streamOutputCountsQuery.get();
                 metalContext.GetUnderlying()->Begin(begunQuery);
             }
+#endif
 
             static const InputElementDesc eles[] = {
 
@@ -325,6 +332,7 @@ namespace SceneEngine
 
                 //  After the scene execute, we need to use a compute shader to separate the 
                 //  stream output data into it's bins.
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             static const unsigned MaxOutputBinCount = 8;
             ID3D::UnorderedAccessView* outputBins[MaxOutputBinCount];
             unsigned initialCounts[MaxOutputBinCount];
@@ -333,13 +341,13 @@ namespace SceneEngine
 
             auto outputBinCount = std::min((unsigned)cfg._objectTypes.size(), (unsigned)res._instanceBufferUAVs.size());
             for (unsigned c=0; c<outputBinCount; ++c) {
-                unsigned clearValues[] = { 0, 0, 0, 0 };
-                metalContext.Clear(res._instanceBufferUAVs[c], clearValues);
+                metalContext.ClearUInt(res._instanceBufferUAVs[c], { 0, 0, 0, 0 });
                 outputBins[c] = res._instanceBufferUAVs[c].GetUnderlying();
             }
 
             metalContext.BindCS(MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
             metalContext.GetUnderlying()->CSSetUnorderedAccessViews(0, outputBinCount, outputBins, initialCounts);
+#endif
 
             class InstanceSeparateConstants
             {
@@ -387,16 +395,20 @@ namespace SceneEngine
                 shaderParams.get()));
             metalContext.Dispatch(StreamOutputMaxCount / 256);
 
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
                 // unbind all of the UAVs again
             metalContext.UnbindCS<Metal::UnorderedAccessView>(0, outputBinCount);
             metalContext.UnbindCS<Metal::ShaderResourceView>(0, 2);
+#endif
 
             res._isPrepared = true;
 
         CATCH_ASSETS_END(parserContext)
 
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         if (begunQuery)
             metalContext.GetUnderlying()->End(begunQuery);
+#endif
 
             // (reset the camera transform if it's changed)
         LightingParser_SetGlobalTransform(metalContext, parserContext, oldCamera);
@@ -408,11 +420,15 @@ namespace SceneEngine
 
     static unsigned GetSOPrimitives(Metal::DeviceContext* context, ID3D::Query* query)
     {
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         auto querySize = query->GetDataSize();
         uint8 soStatsBuffer[256];
         assert(querySize <= sizeof(soStatsBuffer));
         context->GetUnderlying()->GetData(query, soStatsBuffer, std::min(querySize, (unsigned)sizeof(soStatsBuffer)), 0);
         return (unsigned)((D3D11_QUERY_DATA_SO_STATISTICS*)soStatsBuffer)->NumPrimitivesWritten;
+#else
+		return 0;
+#endif
     }
 
     bool VegetationSpawn_DrawInstances(
@@ -711,6 +727,7 @@ namespace SceneEngine
 
 namespace SceneEngine
 {
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
     void IndirectDrawBuffer::Draw(Metal::DeviceContext& metalContext)
     {
         metalContext.GetUnderlying()->DrawIndexedInstancedIndirect(_indirectArgsBuffer.GetUnderlying(), 0);
@@ -761,4 +778,14 @@ namespace SceneEngine
     IndirectDrawBuffer::~IndirectDrawBuffer()
     {
     }
+#else
+	void IndirectDrawBuffer::Draw(Metal::DeviceContext& metalContext){}
+	bool IndirectDrawBuffer::WriteParams(
+		Metal::DeviceContext& metalContext,
+		unsigned indexCountPerinstance, unsigned startIndexLocation,
+		unsigned baseVertexLocation, unsigned instanceCount){ return false; }
+	void IndirectDrawBuffer::CopyInstanceCount(Metal::DeviceContext& metalContext, Metal::UnorderedAccessView& src){}
+	IndirectDrawBuffer::IndirectDrawBuffer(){}
+	IndirectDrawBuffer::~IndirectDrawBuffer(){}
+#endif
 }

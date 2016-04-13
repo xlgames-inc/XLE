@@ -212,12 +212,14 @@ namespace SceneEngine
 
             // unbind the depth buffer, and create a shader resource view for the depth buffer
                 //  it doesn't need to be duplicated for this case
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             context->GetUnderlying()->OMSetRenderTargets(1, prevTargets.GetRenderTargets(), nullptr);
             if (prevTargets.GetDepthStencilView()) {
                 duplicatedDepthBuffer = Metal::ShaderResourceView(Metal::ExtractResource<ID3D::Resource>(
                     prevTargets.GetDepthStencilView()).get(), 
                     Format::R24_UNORM_X8_TYPELESS);
             }
+#endif
 
                 //  Revert to the main scene targets, and "resolve" the
                 //  render using the depth information from the transparent targets

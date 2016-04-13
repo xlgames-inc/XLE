@@ -231,11 +231,9 @@ namespace SceneEngine
     {
         if (!_box) return;
 
-        float clearValues[] = {0.f, 0.f, 0.f, 1.f};
-        _context->Clear(_box->_blendingTexture.RTV(), clearValues); 
+        _context->Clear(_box->_blendingTexture.RTV(), { 0.f, 0.f, 0.f, 1.f });
         if (_box->_metricsTexture.IsGood()) {
-            unsigned uavClear[] = {0,0,0,0};
-            _context->Clear(_box->_metricsTexture.UAV(), uavClear);
+            _context->ClearUInt(_box->_metricsTexture.UAV(), { 0,0,0,0 });
             _context->Bind(
                 MakeResourceList(_box->_blendingTexture.RTV()), &mainDSV, 
                 MakeResourceList(_parserContext->GetMetricsBox()->_metricsBufferUAV, _box->_metricsTexture.UAV()));

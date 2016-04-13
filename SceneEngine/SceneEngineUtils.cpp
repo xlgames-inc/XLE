@@ -33,69 +33,85 @@ namespace SceneEngine
 
     SavedTargets::SavedTargets(Metal::DeviceContext& context)
     {
-        _oldViewportCount = dimof(_oldViewports);
-        std::fill(_oldTargets, &_oldTargets[dimof(_oldTargets)], nullptr);
-        context.GetUnderlying()->OMGetRenderTargets(dimof(_oldTargets), _oldTargets, &_oldDepthTarget);
-        context.GetUnderlying()->RSGetViewports(&_oldViewportCount, (D3D11_VIEWPORT*)_oldViewports);
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			_oldViewportCount = dimof(_oldViewports);
+			std::fill(_oldTargets, &_oldTargets[dimof(_oldTargets)], nullptr);
+			context.GetUnderlying()->OMGetRenderTargets(dimof(_oldTargets), _oldTargets, &_oldDepthTarget);
+			context.GetUnderlying()->RSGetViewports(&_oldViewportCount, (D3D11_VIEWPORT*)_oldViewports);
+		#endif
     }
 
     SavedTargets::SavedTargets()
     {
-        _oldViewportCount = 0;
-        std::fill(_oldTargets, &_oldTargets[dimof(_oldTargets)], nullptr);
-        _oldDepthTarget = nullptr;
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			_oldViewportCount = 0;
+			std::fill(_oldTargets, &_oldTargets[dimof(_oldTargets)], nullptr);
+			_oldDepthTarget = nullptr;
+		#endif
     }
 
     SavedTargets::SavedTargets(SavedTargets&& moveFrom) never_throws
     {
-        _oldViewportCount = moveFrom._oldViewportCount; moveFrom._oldViewportCount = 0;
-        for (unsigned c=0; c<MaxSimultaneousRenderTargetCount; ++c) {
-            _oldTargets[c] = moveFrom._oldTargets[c];
-            _oldViewports[c] = moveFrom._oldViewports[c];
-            moveFrom._oldTargets[c] = nullptr;
-            moveFrom._oldViewports[c] = Metal::ViewportDesc();
-        }
-        _oldDepthTarget = moveFrom._oldDepthTarget; moveFrom._oldDepthTarget = nullptr;
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			_oldViewportCount = moveFrom._oldViewportCount; moveFrom._oldViewportCount = 0;
+			for (unsigned c=0; c<MaxSimultaneousRenderTargetCount; ++c) {
+				_oldTargets[c] = moveFrom._oldTargets[c];
+				_oldViewports[c] = moveFrom._oldViewports[c];
+				moveFrom._oldTargets[c] = nullptr;
+				moveFrom._oldViewports[c] = Metal::ViewportDesc();
+			}
+			_oldDepthTarget = moveFrom._oldDepthTarget; moveFrom._oldDepthTarget = nullptr;
+		#endif
     }
 
     SavedTargets& SavedTargets::operator=(SavedTargets&& moveFrom) never_throws
     {
-        _oldViewportCount = moveFrom._oldViewportCount; moveFrom._oldViewportCount = 0;
-        for (unsigned c=0; c<MaxSimultaneousRenderTargetCount; ++c) {
-            _oldTargets[c] = moveFrom._oldTargets[c];
-            _oldViewports[c] = moveFrom._oldViewports[c];
-            moveFrom._oldTargets[c] = nullptr;
-            moveFrom._oldViewports[c] = Metal::ViewportDesc();
-        }
-        _oldDepthTarget = moveFrom._oldDepthTarget; moveFrom._oldDepthTarget = nullptr;
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			_oldViewportCount = moveFrom._oldViewportCount; moveFrom._oldViewportCount = 0;
+			for (unsigned c=0; c<MaxSimultaneousRenderTargetCount; ++c) {
+				_oldTargets[c] = moveFrom._oldTargets[c];
+				_oldViewports[c] = moveFrom._oldViewports[c];
+				moveFrom._oldTargets[c] = nullptr;
+				moveFrom._oldViewports[c] = Metal::ViewportDesc();
+			}
+			_oldDepthTarget = moveFrom._oldDepthTarget; moveFrom._oldDepthTarget = nullptr;
+		#endif
         return *this;
     }
 
     SavedTargets::~SavedTargets()
     {
-         for (unsigned c=0; c<dimof(_oldTargets); ++c) {
-            if (_oldTargets[c]) {
-                _oldTargets[c]->Release();
-            }
-        }
-        if (_oldDepthTarget) {
-            _oldDepthTarget->Release();
-        }
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			for (unsigned c=0; c<dimof(_oldTargets); ++c) {
+				if (_oldTargets[c]) {
+					_oldTargets[c]->Release();
+				}
+			}
+			if (_oldDepthTarget) {
+				_oldDepthTarget->Release();
+			}
+		#endif
     }
-
-    void SavedTargets::SetDepthStencilView(ID3D::DepthStencilView* dsv)
-    {
-        if (_oldDepthTarget) {
-            _oldDepthTarget->Release();
-        }
-        _oldDepthTarget = dsv;
-        _oldDepthTarget->AddRef();
-    }
+	#if GFXAPI_ACTIVE == GFXAPI_DX11
+		void SavedTargets::SetDepthStencilView(ID3D::DepthStencilView* dsv)
+		{
+			if (_oldDepthTarget) {
+				_oldDepthTarget->Release();
+			}
+			_oldDepthTarget = dsv;
+			_oldDepthTarget->AddRef();
+		}
+	#else
+		void SavedTargets::SetDepthStencilView(const Metal::DepthStencilView& dsv)
+		{}
+	#endif
 
     void        SavedTargets::ResetToOldTargets(Metal::DeviceContext& context)
     {
-        context.GetUnderlying()->OMSetRenderTargets(dimof(_oldTargets), _oldTargets, _oldDepthTarget);
-        context.GetUnderlying()->RSSetViewports(_oldViewportCount, (D3D11_VIEWPORT*)_oldViewports);
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			context.GetUnderlying()->OMSetRenderTargets(dimof(_oldTargets), _oldTargets, _oldDepthTarget);
+			context.GetUnderlying()->RSSetViewports(_oldViewportCount, (D3D11_VIEWPORT*)_oldViewports);
+		#endif
     }
 
     BufferUploads::BufferDesc BuildRenderTargetDesc( 
@@ -103,7 +119,6 @@ namespace SceneEngine
         const BufferUploads::TextureDesc& textureDesc,
         const char name[])
     {
-        using namespace BufferUploads;
         return CreateDesc(
             bindFlags, 0, GPUAccess::Read|GPUAccess::Write,
             textureDesc, name);
@@ -360,73 +375,81 @@ namespace SceneEngine
     ProtectState::ProtectState(Metal::DeviceContext& context, States::BitField states)
     : _context(&context), _states(states)
     {
-        if (_states & States::RenderTargets || _states & States::Viewports)
-            _targets = SavedTargets(context);
-        if (_states & States::DepthStencilState)
-            _depthStencilState = Metal::DepthStencilState(context);
-        if (_states & States::BlendState) {
-            ID3D::BlendState* rawptr = nullptr;
-            context.GetUnderlying()->OMGetBlendState(&rawptr, _blendFactor, &_blendSampleMask);
-            _blendState = moveptr(rawptr);
-        }
-        if (_states & States::RasterizerState) 
-            _rasterizerState = Metal::RasterizerState(context);
-        if (_states & States::InputLayout)
-            _inputLayout = Metal::BoundInputLayout(context);
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			if (_states & States::RenderTargets || _states & States::Viewports)
+				_targets = SavedTargets(context);
+			if (_states & States::DepthStencilState)
+				_depthStencilState = Metal::DepthStencilState(context);
+			if (_states & States::BlendState) {
+				ID3D::BlendState* rawptr = nullptr;
+				context.GetUnderlying()->OMGetBlendState(&rawptr, _blendFactor, &_blendSampleMask);
+				_blendState = moveptr(rawptr);
+			}
+			if (_states & States::RasterizerState) 
+				_rasterizerState = Metal::RasterizerState(context);
+			if (_states & States::InputLayout)
+				_inputLayout = Metal::BoundInputLayout(context);
 
-        if (_states & States::VertexBuffer) {
-            ID3D::Buffer* rawptrs[s_vbCount];
-            context.GetUnderlying()->IAGetVertexBuffers(0, s_vbCount, rawptrs, _vbStrides, _vbOffsets);
-            for (unsigned c=0; c<s_vbCount; ++c)
-                _vertexBuffers[c] = moveptr(rawptrs[c]);
-        }
+			if (_states & States::VertexBuffer) {
+				ID3D::Buffer* rawptrs[s_vbCount];
+				context.GetUnderlying()->IAGetVertexBuffers(0, s_vbCount, rawptrs, _vbStrides, _vbOffsets);
+				for (unsigned c=0; c<s_vbCount; ++c)
+					_vertexBuffers[c] = moveptr(rawptrs[c]);
+			}
 
-        if (_states & States::IndexBuffer) {
-            ID3D::Buffer* rawptr = nullptr;
-            context.GetUnderlying()->IAGetIndexBuffer(&rawptr, (DXGI_FORMAT*)&_ibFormat, &_ibOffset);
-            _indexBuffer = moveptr(rawptr);
-        }
+			if (_states & States::IndexBuffer) {
+				ID3D::Buffer* rawptr = nullptr;
+				context.GetUnderlying()->IAGetIndexBuffer(&rawptr, (DXGI_FORMAT*)&_ibFormat, &_ibOffset);
+				_indexBuffer = moveptr(rawptr);
+			}
 
-        if (_states & States::Topology) {
-            context.GetUnderlying()->IAGetPrimitiveTopology((D3D11_PRIMITIVE_TOPOLOGY*)&_topology);
-        }
+			if (_states & States::Topology) {
+				context.GetUnderlying()->IAGetPrimitiveTopology((D3D11_PRIMITIVE_TOPOLOGY*)&_topology);
+			}
+		#endif
     }
 
     ProtectState::ProtectState()
     {
         _context = nullptr;
         _states = 0;
-        _ibFormat = DXGI_FORMAT_UNKNOWN;
-        _ibOffset = 0;
-        _topology = (D3D11_PRIMITIVE_TOPOLOGY)0;
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			_ibFormat = DXGI_FORMAT_UNKNOWN;
+			_ibOffset = 0;
+			_topology = (D3D11_PRIMITIVE_TOPOLOGY)0;
+		#endif
     }
 
     ProtectState::ProtectState(ProtectState&& moveFrom)
     : _targets(std::move(moveFrom._targets))
-    , _depthStencilState(std::move(moveFrom._depthStencilState))
-    , _inputLayout(std::move(moveFrom._inputLayout))
-    , _indexBuffer(std::move(moveFrom._indexBuffer))
-    , _blendState(std::move(moveFrom._blendState))
-    , _rasterizerState(std::move(moveFrom._rasterizerState))
+	#if GFXAPI_ACTIVE == GFXAPI_DX11
+		, _depthStencilState(std::move(moveFrom._depthStencilState))
+		, _inputLayout(std::move(moveFrom._inputLayout))
+		, _indexBuffer(std::move(moveFrom._indexBuffer))
+		, _blendState(std::move(moveFrom._blendState))
+		, _rasterizerState(std::move(moveFrom._rasterizerState))
+	#endif
     {
         _context = moveFrom._context; moveFrom._context = nullptr;
         _states = moveFrom._states; moveFrom._states = 0;
         
-        _ibFormat = moveFrom._ibFormat;
-        _ibOffset = moveFrom._ibOffset;
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			_ibFormat = moveFrom._ibFormat;
+			_ibOffset = moveFrom._ibOffset;
 
-        for (unsigned s=0; s<s_vbCount; ++s) {
-            _vertexBuffers[s] = std::move(moveFrom._vertexBuffers[s]);
-            _vbStrides[s] = moveFrom._vbStrides[s];
-            _vbOffsets[s] = moveFrom._vbOffsets[s];
-        }
+			for (unsigned s=0; s<s_vbCount; ++s) {
+				_vertexBuffers[s] = std::move(moveFrom._vertexBuffers[s]);
+				_vbStrides[s] = moveFrom._vbStrides[s];
+				_vbOffsets[s] = moveFrom._vbOffsets[s];
+			}
 
-        for (unsigned c=0; c<4; ++c)
-            _blendFactor[c] = moveFrom._blendFactor[c];
-        _blendSampleMask = moveFrom._blendSampleMask;
+			for (unsigned c=0; c<4; ++c)
+				_blendFactor[c] = moveFrom._blendFactor[c];
+			_blendSampleMask = moveFrom._blendSampleMask;
 
-        _viewports = moveFrom._viewports;
-        _topology = moveFrom._topology;
+			_viewports = moveFrom._viewports;
+			_topology = moveFrom._topology;
+		#endif
     }
 
     ProtectState& ProtectState::operator=(ProtectState&& moveFrom)
@@ -435,59 +458,63 @@ namespace SceneEngine
         _targets = std::move(moveFrom._targets);
         _states = moveFrom._states; moveFrom._states = 0;
 
-        _depthStencilState = std::move(moveFrom._depthStencilState);
-        _inputLayout = std::move(moveFrom._inputLayout);
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			_depthStencilState = std::move(moveFrom._depthStencilState);
+			_inputLayout = std::move(moveFrom._inputLayout);
 
-        _indexBuffer = std::move(moveFrom._indexBuffer);
-        _ibFormat = moveFrom._ibFormat;
-        _ibOffset = moveFrom._ibOffset;
+			_indexBuffer = std::move(moveFrom._indexBuffer);
+			_ibFormat = moveFrom._ibFormat;
+			_ibOffset = moveFrom._ibOffset;
 
-        for (unsigned s=0; s<s_vbCount; ++s) {
-            _vertexBuffers[s] = std::move(moveFrom._vertexBuffers[s]);
-            _vbStrides[s] = moveFrom._vbStrides[s];
-            _vbOffsets[s] = moveFrom._vbOffsets[s];
-        }
+			for (unsigned s=0; s<s_vbCount; ++s) {
+				_vertexBuffers[s] = std::move(moveFrom._vertexBuffers[s]);
+				_vbStrides[s] = moveFrom._vbStrides[s];
+				_vbOffsets[s] = moveFrom._vbOffsets[s];
+			}
 
-        _blendState = std::move(moveFrom._blendState);
-        for (unsigned c=0; c<4; ++c)
-            _blendFactor[c] = moveFrom._blendFactor[c];
-        _blendSampleMask = moveFrom._blendSampleMask;
+			_blendState = std::move(moveFrom._blendState);
+			for (unsigned c=0; c<4; ++c)
+				_blendFactor[c] = moveFrom._blendFactor[c];
+			_blendSampleMask = moveFrom._blendSampleMask;
 
-        _rasterizerState = std::move(moveFrom._rasterizerState);
+			_rasterizerState = std::move(moveFrom._rasterizerState);
 
-        _viewports = moveFrom._viewports;
-        _topology = moveFrom._topology;
+			_viewports = moveFrom._viewports;
+			_topology = moveFrom._topology;
+		#endif
         return *this;
     }
 
     void ProtectState::ResetStates()
     {
-        if (_context) {
-            if (_states & States::RenderTargets|| _states & States::Viewports)
-                _targets.ResetToOldTargets(*_context);
-            if (_states & States::DepthStencilState)
-                _context->Bind(_depthStencilState);
-            if (_states & States::BlendState)
-                _context->GetUnderlying()->OMSetBlendState(_blendState.get(), _blendFactor, _blendSampleMask);
-            if (_states & States::RasterizerState)
-                _context->Bind(_rasterizerState);
-            if (_states & States::InputLayout)
-                _context->Bind(_inputLayout);
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			if (_context) {
+				if (_states & States::RenderTargets|| _states & States::Viewports)
+					_targets.ResetToOldTargets(*_context);
+				if (_states & States::DepthStencilState)
+					_context->Bind(_depthStencilState);
+				if (_states & States::BlendState)
+					_context->GetUnderlying()->OMSetBlendState(_blendState.get(), _blendFactor, _blendSampleMask);
+				if (_states & States::RasterizerState)
+					_context->Bind(_rasterizerState);
+				if (_states & States::InputLayout)
+					_context->Bind(_inputLayout);
 
-            if (_states & States::VertexBuffer) {
-                ID3D::Buffer* rawptrs[s_vbCount];
-                for (unsigned c=0; c<s_vbCount; ++c)
-                    rawptrs[c] = _vertexBuffers[c].get();
-                _context->GetUnderlying()->IASetVertexBuffers(0, s_vbCount, rawptrs, _vbStrides, _vbOffsets);
-            }
+				if (_states & States::VertexBuffer) {
+					ID3D::Buffer* rawptrs[s_vbCount];
+					for (unsigned c=0; c<s_vbCount; ++c)
+						rawptrs[c] = _vertexBuffers[c].get();
+					_context->GetUnderlying()->IASetVertexBuffers(0, s_vbCount, rawptrs, _vbStrides, _vbOffsets);
+				}
 
-            if (_states & States::IndexBuffer)
-                _context->GetUnderlying()->IASetIndexBuffer(_indexBuffer.get(), (DXGI_FORMAT)_ibFormat, _ibOffset);
-            if (_states & States::Topology)
-                _context->GetUnderlying()->IASetPrimitiveTopology((D3D11_PRIMITIVE_TOPOLOGY)_topology);
+				if (_states & States::IndexBuffer)
+					_context->GetUnderlying()->IASetIndexBuffer(_indexBuffer.get(), (DXGI_FORMAT)_ibFormat, _ibOffset);
+				if (_states & States::Topology)
+					_context->GetUnderlying()->IASetPrimitiveTopology((D3D11_PRIMITIVE_TOPOLOGY)_topology);
 
-            _states = 0;
-        }
+				_states = 0;
+			}
+		#endif
     }
 
     ProtectState::~ProtectState()
@@ -510,8 +537,8 @@ namespace SceneEngine
             ;
         ProtectState savedStates(context, effectedStates & protectStates);
 
-        Metal::TextureDesc2D desc(dest.GetUnderlying());
-        context.Bind(Metal::ViewportDesc(0.f, 0.f, float(desc.Width), float(desc.Height)));
+		auto desc = Metal::ExtractDesc(dest);
+        context.Bind(Metal::ViewportDesc(0.f, 0.f, float(desc._textureDesc._width), float(desc._textureDesc._height)));
 
         context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &dest);
         context.Bind(Techniques::CommonResources()._dssWriteOnly);
@@ -598,18 +625,17 @@ namespace SceneEngine
 
         auto& res = Techniques::FindCachedBoxDep2<ShaderBasedCopyRes>(filter);
 
-        Metal::TextureDesc2D desc(dest.GetUnderlying());
-        context.Bind(Metal::ViewportDesc(0.f, 0.f, float(desc.Width), float(desc.Height)));
-
-        Metal::TextureDesc2D srcDesc(src.GetUnderlying());
+		auto dstDesc = Metal::ExtractDesc(dest);
+		auto srcDesc = Metal::ExtractDesc(src);
+        context.Bind(Metal::ViewportDesc(0.f, 0.f, float(dstDesc._textureDesc._width), float(dstDesc._textureDesc._height)));
 
         Float2 coords[6] = 
         {
             Float2(float(destination.first[0]), float(destination.first[1])), 
             Float2(float(destination.second[0]), float(destination.second[1])),
-            Float2(source.first[0] / float(srcDesc.Width), source.first[1] / float(srcDesc.Height)), 
-            Float2(source.second[0] / float(srcDesc.Width), source.second[1] / float(srcDesc.Height)),
-            Float2(float(desc.Width), float(desc.Height)),
+            Float2(source.first[0] / float(srcDesc._textureDesc._width), source.first[1] / float(srcDesc._textureDesc._height)),
+            Float2(source.second[0] / float(srcDesc._textureDesc._width), source.second[1] / float(srcDesc._textureDesc._height)),
+            Float2(float(dstDesc._textureDesc._width), float(dstDesc._textureDesc._height)),
             Zero<Float2>()
         };
 

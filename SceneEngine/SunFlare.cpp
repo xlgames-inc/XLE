@@ -138,18 +138,18 @@ namespace SceneEngine
                         TextureDesc::Plain1D(desc._res[0], Format::R8_UNORM),
                         "SunFlareTemp");
                 auto offscreen = GetBufferUploads().Transaction_Immediate(descRows);
-                _tempSRV[0] = Metal::ShaderResourceView(offscreen->GetUnderlying());
-                _tempRTV[0] = Metal::RenderTargetView(offscreen->GetUnderlying());
+                _tempSRV[0] = Metal::ShaderResourceView(offscreen->ShareUnderlying());
+                _tempRTV[0] = Metal::RenderTargetView(offscreen->ShareUnderlying());
             } else {
                 auto offscreen = GetBufferUploads().Transaction_Immediate(desc2D);
-                _tempSRV[0] = Metal::ShaderResourceView(offscreen->GetUnderlying());
-                _tempRTV[0] = Metal::RenderTargetView(offscreen->GetUnderlying());
+                _tempSRV[0] = Metal::ShaderResourceView(offscreen->ShareUnderlying());
+                _tempRTV[0] = Metal::RenderTargetView(offscreen->ShareUnderlying());
             }
 
             if (!desc._singlePass) {
                 auto offscreen = GetBufferUploads().Transaction_Immediate(desc2D);
-                _tempSRV[1] = Metal::ShaderResourceView(offscreen->GetUnderlying());
-                _tempRTV[1] = Metal::RenderTargetView(offscreen->GetUnderlying());
+                _tempSRV[1] = Metal::ShaderResourceView(offscreen->ShareUnderlying());
+                _tempRTV[1] = Metal::RenderTargetView(offscreen->ShareUnderlying());
             }
         }
 
@@ -274,7 +274,9 @@ namespace SceneEngine
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
                 
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
                 context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
+#endif
                 context->Bind(savedViewport);
                 context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
@@ -294,7 +296,9 @@ namespace SceneEngine
 
             } else {
 
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
                 context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
+#endif
                 context->Bind(savedViewport);
                 context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 

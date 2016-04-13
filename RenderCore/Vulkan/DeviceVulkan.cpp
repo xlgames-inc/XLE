@@ -558,22 +558,31 @@ namespace RenderCore
 		};
 	}
 
-	ResourcePtr Device::CreateResource(
+	ResourcePtr AllocateResource(
+		const Metal_Vulkan::ObjectFactory& factory,
 		const ResourceDesc& desc,
-		const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
+		const std::function<SubResourceInitData(unsigned, unsigned)>& initData = std::function<SubResourceInitData(unsigned, unsigned)>())
 	{
 		const bool useAllocateShared = true;
 		if (constant_expression<useAllocateShared>::result()) {
 			auto res = std::allocate_shared<Metal_Vulkan::Resource>(
 				Internal::ResourceAllocator(),
-				std::ref(_objectFactory), std::ref(desc), std::ref(initData));
+				std::ref(factory), std::ref(desc), std::ref(initData));
 			return *reinterpret_cast<ResourcePtr*>(&res);
-		} else {
-			auto res = std::make_unique<Metal_Vulkan::Resource>(_objectFactory, desc, initData);
+		}
+		else {
+			auto res = std::make_unique<Metal_Vulkan::Resource>(factory, desc, initData);
 			return ResourcePtr(
 				(RenderCore::Resource*)res.release(),
 				[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
 		}
+	}
+
+	ResourcePtr Device::CreateResource(
+		const ResourceDesc& desc,
+		const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
+	{
+		return AllocateResource(_objectFactory, desc, initData);
 	}
 
     extern char VersionString[];
@@ -789,14 +798,14 @@ namespace RenderCore
         for (auto& i:images) _images.emplace_back(Image { i });
 
         const auto depthFormat = Format::D24_UNORM_S8_UINT;
-		_depthStencilResource = Metal_Vulkan::Resource(
+		_depthStencilResource = AllocateResource(
             factory, 
             CreateDesc(
                 BufferUploads::BindFlag::DepthStencil,
                 0, BufferUploads::GPUAccess::Read | BufferUploads::GPUAccess::Write,
                 BufferUploads::TextureDesc::Plain2D(bufferDesc._width, bufferDesc._height, depthFormat, 1, 1, bufferDesc._samples),
                 "DefaultDepth"));
-        _dsv = Metal_Vulkan::DepthStencilView(factory, &_depthStencilResource, Metal_Vulkan::TextureViewWindow());
+        _dsv = Metal_Vulkan::DepthStencilView(factory, _depthStencilResource, Metal_Vulkan::TextureViewWindow());
 
         // We must create a default render pass for rendering to the swap-chain images. 
         // In the most basic rendering operations, we just render directly into these buffers.
@@ -893,7 +902,7 @@ namespace RenderCore
 		_defaultRenderPass = Metal_Vulkan::FrameBufferLayout();
 		_images.clear();
 		_dsv = Metal_Vulkan::DepthStencilView();
-		_depthStencilResource = Metal_Vulkan::Resource();
+		_depthStencilResource.reset();
 		_swapChain.reset();
 		_device.reset();
     }

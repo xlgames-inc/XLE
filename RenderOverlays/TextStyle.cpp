@@ -352,7 +352,7 @@ float   TextStyle::Draw(
             if (tex != currentBoundTexture) {
                 Flush(*renderer, workingVertices);
 
-				auto sourceTexture = tex->GetUnderlying();
+				auto sourceTexture = tex->ShareUnderlying();
                 if (!sourceTexture) {
                     throw ::Assets::Exceptions::PendingAsset("", "Pending background upload of font texture");
                 }

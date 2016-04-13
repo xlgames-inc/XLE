@@ -20,6 +20,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ObjectFactory;
 	class DeviceContext;
 	class Resource;
+	class TextureView;
 
 	enum class ImageLayout
 	{
@@ -42,7 +43,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		Resource* get() { return _res; }
-
+	
 		UnderlyingResourcePtr(Resource* res) { _res = res; }
 		UnderlyingResourcePtr(RenderCore::Resource* res) { _res = (Resource*)res; }
 		UnderlyingResourcePtr(const std::shared_ptr<RenderCore::Resource>& res) { _res = (Resource*)res.get(); }
@@ -78,6 +79,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkImage GetImage() { return _underlyingImage.get(); }
 		VkBuffer GetBuffer() { return _underlyingBuffer.get(); }
 		const Desc& GetDesc() const { return _desc; }
+
+		const VulkanSharedPtr<VkImage>& ShareImage() const { return _underlyingImage; }
 	protected:
 		VulkanSharedPtr<VkDeviceMemory> _mem;
 
@@ -180,6 +183,7 @@ namespace RenderCore { namespace Metal_Vulkan
         ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
 	ResourcePtr Duplicate(ObjectFactory&, UnderlyingResourcePtr inputResource);
+	ResourcePtr Duplicate(DeviceContext&, UnderlyingResourcePtr inputResource);
 
     unsigned CopyViaMemoryMap(
         VkDevice device, VkImage image, VkDeviceMemory mem,
@@ -195,6 +199,10 @@ namespace RenderCore { namespace Metal_Vulkan
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
+	ResourceDesc ExtractDesc(const TextureView& res);
+
+	class ShaderResourceView;
+	RenderCore::ResourcePtr ExtractResource(TextureView&);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //      U T I L S       //

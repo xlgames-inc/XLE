@@ -133,11 +133,11 @@ namespace SceneEngine
         auto softMaterials = bufferUploads.Transaction_Immediate(desc);
         auto softMaterialsCopy = bufferUploads.Transaction_Immediate(desc);
 
-        UAV hardMaterialsUAV(hardMaterials->GetUnderlying());
-        UAV softMaterialsUAV(softMaterials->GetUnderlying());
-        SRV hardMaterialsSRV(hardMaterials->GetUnderlying());
-        SRV softMaterialsSRV(softMaterials->GetUnderlying());
-        SRV softMaterialsCopySRV(softMaterialsCopy->GetUnderlying());
+        UAV hardMaterialsUAV(hardMaterials->ShareUnderlying());
+        UAV softMaterialsUAV(softMaterials->ShareUnderlying());
+        SRV hardMaterialsSRV(hardMaterials->ShareUnderlying());
+        SRV softMaterialsSRV(softMaterials->ShareUnderlying());
+        SRV softMaterialsCopySRV(softMaterialsCopy->ShareUnderlying());
 
         /////////////////////////////////////////////////////////////////////////////////////
 
@@ -180,18 +180,17 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext& metalContext,
         Metal::ShaderResourceView& input, UInt2 topLeft, UInt2 bottomRight)
     {
-        float clearValues[4] = { 0.f, 0.f, 0.f, 0.f };
-        metalContext.Clear(_pimpl->_softMaterialsUAV, clearValues);
-        metalContext.Clear(_pimpl->_hardMaterialsUAV, clearValues);
+        metalContext.ClearFloat(_pimpl->_softMaterialsUAV, { 0.f, 0.f, 0.f, 0.f });
+        metalContext.ClearFloat(_pimpl->_hardMaterialsUAV, { 0.f, 0.f, 0.f, 0.f });
 
             // copy
-        auto inputRes = Metal::ExtractResource<ID3D::Resource>(input.GetUnderlying());
+        auto inputRes = Metal::ExtractResource(input);
         Metal::CopyPartial(
             metalContext,
             Metal::CopyPartial_Dest(_pimpl->_hardMaterials->GetUnderlying()),
-            Metal::CopyPartial_Src(inputRes.get(), 0, 
-                Metal::PixelCoord(topLeft[0], topLeft[1], 0u), 
-                Metal::PixelCoord(bottomRight[0], bottomRight[1], 1u)));
+			Metal::CopyPartial_Src(inputRes, {}, 
+				{topLeft[0], topLeft[1], 0u}, 
+				{bottomRight[0], bottomRight[1], 1u}));
     }
 
     void ErosionSimulation::GetHeights(
@@ -199,13 +198,13 @@ namespace SceneEngine
         RenderCore::Metal::UnorderedAccessView& dest,
         UInt2 topLeft, UInt2 bottomRight)
     {
-        auto destRes = Metal::ExtractResource<ID3D::Resource>(dest.GetUnderlying());
+        auto destRes = Metal::ExtractResource(dest);
         Metal::CopyPartial(
             metalContext,
             Metal::CopyPartial_Dest(destRes.get()),
-            Metal::CopyPartial_Src(_pimpl->_hardMaterials->GetUnderlying(), 0, 
-                Metal::PixelCoord(),
-                Metal::PixelCoord(bottomRight[0] - topLeft[0], bottomRight[1] - topLeft[1], 1u)));
+			Metal::CopyPartial_Src(_pimpl->_hardMaterials->GetUnderlying(), {}, 
+				{},
+				{bottomRight[0] - topLeft[0], bottomRight[1] - topLeft[1], 1u}));
     }
 
     void    ErosionSimulation::Tick(

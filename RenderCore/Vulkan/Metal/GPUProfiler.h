@@ -50,7 +50,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		inline Query CreateQuery(bool disjoint) { return Query(); }
 		inline void BeginQuery(DeviceContext& context, Query& query) {}
 		inline void EndQuery(DeviceContext& context, Query& query) {}
-		std::pair<uint64, uint64> CalculateSynchronisation(DeviceContext& context, Query& query, Query& disjoint) { return std::make_pair(0,0); }
+		inline std::pair<uint64, uint64> CalculateSynchronisation(DeviceContext& context, Query& query, Query& disjoint) { return std::make_pair(0,0); }
 
         #if defined(GPUANNOTATIONS_ENABLE)
 
@@ -64,8 +64,8 @@ namespace RenderCore { namespace Metal_Vulkan
             class DebugAnnotation
             {
             public:
-                DebugAnnotation(DeviceContext& context, const wchar_t annotationName[]);
-                ~DebugAnnotation();
+				DebugAnnotation(DeviceContext& context, const wchar_t annotationName[]) {}
+				~DebugAnnotation() {}
             protected:
                 DeviceContext* _context;
             };

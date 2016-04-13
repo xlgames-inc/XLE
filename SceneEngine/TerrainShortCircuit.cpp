@@ -165,11 +165,13 @@ namespace SceneEngine
                 heightOffsetValue, 0, 0, 0
             };
 
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             metalContext.GetUnderlying()->UpdateSubresource(
                 Metal::UnderlyingResourcePtr(box._tileCoordsBuffer.Locator().GetUnderlying()).get(),
                 0, nullptr, &tileCoords, sizeof(TileCoords), sizeof(TileCoords));
+#endif
 
-            const auto resSrc = Metal::ExtractDesc(upd._srv->GetResource());
+            const auto resSrc = Metal::ExtractDesc(*upd._srv);
             assert(resSrc._type == BufferUploads::BufferDesc::Type::Texture);
 
             struct Parameters

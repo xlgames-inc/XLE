@@ -59,13 +59,17 @@ namespace SceneEngine
             "OI-NodeBuffer");
         _nodeListBuffer = uploads.Transaction_Immediate(nodeListBufferDesc);
 
-        _fragmentIdsTextureUAV = Metal::UnorderedAccessView(_fragmentIdsTexture->GetUnderlying());
+        _fragmentIdsTextureUAV = Metal::UnorderedAccessView(_fragmentIdsTexture->ShareUnderlying());
         _nodeListBufferUAV = Metal::UnorderedAccessView(
-            _nodeListBuffer->GetUnderlying(),
-            Metal::UnorderedAccessView::Flags::AttachedCounter);
+            _nodeListBuffer->ShareUnderlying(),
+			Metal::TextureViewWindow(
+				Format::Unknown, TextureDesc::Dimensionality::Undefined,
+				Metal::TextureViewWindow::All,
+				Metal::TextureViewWindow::All,
+				Metal::TextureViewWindow::Flags::AttachedCounter));
 
-        _fragmentIdsTextureSRV = Metal::ShaderResourceView(_fragmentIdsTexture->GetUnderlying());
-        _nodeListBufferSRV = Metal::ShaderResourceView(_nodeListBuffer->GetUnderlying());
+        _fragmentIdsTextureSRV = Metal::ShaderResourceView(_fragmentIdsTexture->ShareUnderlying());
+        _nodeListBufferSRV = Metal::ShaderResourceView(_nodeListBuffer->ShareUnderlying());
         _pendingInitialClear = true;
 
         if (desc._checkInfiniteLoops) {
@@ -76,8 +80,8 @@ namespace SceneEngine
                     TextureDesc::Plain2D(desc._width, desc._height, Format::R32_UINT),
                     "Trans"));
 
-            _infiniteLoopRTV = RTV(_infiniteLoopTexture->GetUnderlying());
-            _infiniteLoopSRV = SRV(_infiniteLoopTexture->GetUnderlying());
+            _infiniteLoopRTV = RTV(_infiniteLoopTexture->ShareUnderlying());
+            _infiniteLoopSRV = SRV(_infiniteLoopTexture->ShareUnderlying());
         }
     }
 
@@ -88,6 +92,7 @@ namespace SceneEngine
         TransparencyTargetsBox& transparencyTargets, 
         const RenderCore::Metal::ShaderResourceView& depthBufferDupe)
     {
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         SavedTargets prevTargets(metalContext);
 
         ID3D::UnorderedAccessView* uavs[] = {
@@ -108,6 +113,7 @@ namespace SceneEngine
             1, dimof(uavs), uavs, initialCounts);
 
         metalContext.BindPS(MakeResourceList(17, depthBufferDupe));
+#endif
     }
 
     TransparencyTargetsBox* OrderIndependentTransparency_Prepare(
@@ -158,6 +164,7 @@ namespace SceneEngine
         TransparencyTargetsBox& transparencyTargets,
         const Metal::ShaderResourceView& originalDepthStencilSRV)
     {
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         SavedTargets savedTargets(metalContext);
         auto resetMarker = savedTargets.MakeResetMarker(metalContext);
 
@@ -201,6 +208,7 @@ namespace SceneEngine
 
             metalContext.UnbindPS<Metal::ShaderResourceView>(0, 4);
         CATCH_ASSETS_END(parserContext)
+#endif
     }
 
 

@@ -354,7 +354,7 @@ namespace SceneEngine
                 const auto* srcData = data.begin() + c;
                 auto pkt = BufferUploads::CreateBasicPacket((dx)*(dy)*sizeof(float), *srcData, TexturePitches{(dx)*sizeof(float), (dy)*(dx)*sizeof(float)});
                 auto tex = uploads.Transaction_Immediate(desc, pkt.get());
-                metalContext.BindPS(MakeResourceList(c, Metal::ShaderResourceView(tex->GetUnderlying())));
+                metalContext.BindPS(MakeResourceList(c, Metal::ShaderResourceView(tex->ShareUnderlying())));
             }
 
             float constants[4] = { minValue, maxValue, 0.f, 0.f };
@@ -424,7 +424,7 @@ namespace SceneEngine
                 const auto* srcData = data.begin() + c;
                 auto pkt = BufferUploads::CreateBasicPacket(pktSize, srcData, TexturePitches{(dx)*sizeof(float), (dy)*(dx)*sizeof(float)});
                 auto tex = uploads.Transaction_Immediate(desc, pkt.get());
-                metalContext.BindPS(MakeResourceList(c, Metal::ShaderResourceView(tex->GetUnderlying())));
+                metalContext.BindPS(MakeResourceList(c, Metal::ShaderResourceView(tex->ShareUnderlying())));
             }
 
             float constants[4] = { minValue, maxValue, 0.f, 0.f };

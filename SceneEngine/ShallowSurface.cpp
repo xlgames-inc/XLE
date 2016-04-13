@@ -560,16 +560,16 @@ namespace SceneEngine
             unsigned(mainViewportDesc.Height*scale));
         refractionBox.Build(metalContext, parserContext, refractionStdDev);
 
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         SavedTargets targets(metalContext);
         if (!targets.GetDepthStencilView()) return false;
 
-        auto duplicatedDepthBuffer = Metal::Duplicate(
-            metalContext, Metal::ExtractResource<ID3D::Resource>(targets.GetDepthStencilView()).get());
-        Metal::ShaderResourceView secondaryDepthBufferSRV(
-            duplicatedDepthBuffer.get(), Format::R24_UNORM_X8_TYPELESS);
+        auto duplicatedDepthBuffer = Metal::Duplicate(metalContext, Metal::ExtractResource(targets.GetDepthStencilView()));
+        Metal::ShaderResourceView secondaryDepthBufferSRV(duplicatedDepthBuffer, Format::R24_UNORM_X8_TYPELESS);
 
         metalContext.BindPS(MakeResourceList(9, refractionBox.GetSRV(), secondaryDepthBufferSRV));
-        return true;
+#endif
+		return true;
     }
 
     void ShallowSurfaceManager::RenderDebugging(

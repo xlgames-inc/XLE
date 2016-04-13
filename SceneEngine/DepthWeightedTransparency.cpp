@@ -60,46 +60,48 @@ namespace SceneEngine
             TextureDesc::Plain2D(desc._width, desc._height, Format::R16G16B16A16_FLOAT),
             "TransRefractBuffer", nullptr);
 
-        D3D11_BLEND_DESC blendStateDesc;
-        blendStateDesc.AlphaToCoverageEnable = false;
-        blendStateDesc.IndependentBlendEnable = true;
-        for (unsigned c=0; c<dimof(blendStateDesc.RenderTarget); ++c) {
-            blendStateDesc.RenderTarget[c].BlendEnable = false;
-            blendStateDesc.RenderTarget[c].SrcBlend = D3D11_BLEND_ONE;
-            blendStateDesc.RenderTarget[c].DestBlend = D3D11_BLEND_ZERO;
-            blendStateDesc.RenderTarget[c].BlendOp = D3D11_BLEND_OP_ADD;
-            blendStateDesc.RenderTarget[c].SrcBlendAlpha = D3D11_BLEND_ONE;
-            blendStateDesc.RenderTarget[c].DestBlendAlpha = D3D11_BLEND_ZERO;
-            blendStateDesc.RenderTarget[c].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-            blendStateDesc.RenderTarget[c].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-        }
+		#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+			D3D11_BLEND_DESC blendStateDesc;
+			blendStateDesc.AlphaToCoverageEnable = false;
+			blendStateDesc.IndependentBlendEnable = true;
+			for (unsigned c=0; c<dimof(blendStateDesc.RenderTarget); ++c) {
+				blendStateDesc.RenderTarget[c].BlendEnable = false;
+				blendStateDesc.RenderTarget[c].SrcBlend = D3D11_BLEND_ONE;
+				blendStateDesc.RenderTarget[c].DestBlend = D3D11_BLEND_ZERO;
+				blendStateDesc.RenderTarget[c].BlendOp = D3D11_BLEND_OP_ADD;
+				blendStateDesc.RenderTarget[c].SrcBlendAlpha = D3D11_BLEND_ONE;
+				blendStateDesc.RenderTarget[c].DestBlendAlpha = D3D11_BLEND_ZERO;
+				blendStateDesc.RenderTarget[c].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+				blendStateDesc.RenderTarget[c].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+			}
 
-        blendStateDesc.RenderTarget[0].BlendEnable = true;
-        blendStateDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
-        blendStateDesc.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
-        blendStateDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-        blendStateDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-        blendStateDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
-        blendStateDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+			blendStateDesc.RenderTarget[0].BlendEnable = true;
+			blendStateDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+			blendStateDesc.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
+			blendStateDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+			blendStateDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+			blendStateDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+			blendStateDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 
-        blendStateDesc.RenderTarget[1].BlendEnable = true;
-        blendStateDesc.RenderTarget[1].SrcBlend = D3D11_BLEND_ZERO;
-        blendStateDesc.RenderTarget[1].DestBlend = D3D11_BLEND_INV_SRC_COLOR;
-        blendStateDesc.RenderTarget[1].BlendOp = D3D11_BLEND_OP_ADD;
-        blendStateDesc.RenderTarget[1].SrcBlendAlpha = D3D11_BLEND_ONE;
-        blendStateDesc.RenderTarget[1].DestBlendAlpha = D3D11_BLEND_ONE;
-        blendStateDesc.RenderTarget[1].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+			blendStateDesc.RenderTarget[1].BlendEnable = true;
+			blendStateDesc.RenderTarget[1].SrcBlend = D3D11_BLEND_ZERO;
+			blendStateDesc.RenderTarget[1].DestBlend = D3D11_BLEND_INV_SRC_COLOR;
+			blendStateDesc.RenderTarget[1].BlendOp = D3D11_BLEND_OP_ADD;
+			blendStateDesc.RenderTarget[1].SrcBlendAlpha = D3D11_BLEND_ONE;
+			blendStateDesc.RenderTarget[1].DestBlendAlpha = D3D11_BLEND_ONE;
+			blendStateDesc.RenderTarget[1].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 
-        blendStateDesc.RenderTarget[2].BlendEnable = true;
-        blendStateDesc.RenderTarget[2].SrcBlend = D3D11_BLEND_ONE;
-        blendStateDesc.RenderTarget[2].DestBlend = D3D11_BLEND_ONE;
-        blendStateDesc.RenderTarget[2].BlendOp = D3D11_BLEND_OP_ADD;
-        blendStateDesc.RenderTarget[2].SrcBlendAlpha = D3D11_BLEND_ONE;
-        blendStateDesc.RenderTarget[2].DestBlendAlpha = D3D11_BLEND_ONE;
-        blendStateDesc.RenderTarget[2].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+			blendStateDesc.RenderTarget[2].BlendEnable = true;
+			blendStateDesc.RenderTarget[2].SrcBlend = D3D11_BLEND_ONE;
+			blendStateDesc.RenderTarget[2].DestBlend = D3D11_BLEND_ONE;
+			blendStateDesc.RenderTarget[2].BlendOp = D3D11_BLEND_OP_ADD;
+			blendStateDesc.RenderTarget[2].SrcBlendAlpha = D3D11_BLEND_ONE;
+			blendStateDesc.RenderTarget[2].DestBlendAlpha = D3D11_BLEND_ONE;
+			blendStateDesc.RenderTarget[2].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 
-        auto blendState = Metal::GetObjectFactory().CreateBlendState(&blendStateDesc);
-        _blendState = Metal::BlendState(std::move(blendState));
+			auto blendState = Metal::GetObjectFactory().CreateBlendState(&blendStateDesc);
+			_blendState = Metal::BlendState(std::move(blendState));
+		#endif
     }
 
     void DepthWeightedTransparencyOp::PrepareFirstPass(const Metal::DepthStencilView* dsv)

@@ -463,7 +463,9 @@ namespace SceneEngine
                     SavedTargets savedTargets(context);
                     auto restoreMarker = savedTargets.MakeResetMarker(context);
 
-                    context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
+					#if GFXAPI_ACTIVE == GFXAPI_DX11
+						context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
+					#endif
 
                     SetupVertexGeneratorShader(context);
                     context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);

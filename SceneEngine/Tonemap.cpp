@@ -258,8 +258,8 @@ namespace SceneEngine
         context.Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
 
         TRY {
-            auto sourceDesc = Metal::TextureDesc2D(sourceTexture.GetUnderlying());
-            UInt2 sourceDims(sourceDesc.Width, sourceDesc.Height);
+            auto sourceDesc = Metal::ExtractDesc(sourceTexture);
+            UInt2 sourceDims(sourceDesc._textureDesc._width, sourceDesc._textureDesc._height);
 
             static unsigned frameIndex = 0; ++frameIndex;
             struct LuminanceConstants
@@ -427,10 +427,10 @@ namespace SceneEngine
         } else if (bloomBufferFormatType==4) {
             bloomBufferFormat = Format::R16_FLOAT;
         }
-        Metal::TextureDesc2D desc(inputResource.GetUnderlying());
-        auto sampleCount = desc.SampleDesc.Count;
+        auto desc = Metal::ExtractDesc(inputResource);
+        auto sampleCount = desc._textureDesc._samples._sampleCount;
         return Techniques::FindCachedBoxDep2<ToneMappingResources>(
-            desc.Width, desc.Height, bloomBufferFormat, sampleCount, sampleCount>1);
+            desc._textureDesc._width, desc._textureDesc._height, bloomBufferFormat, sampleCount, sampleCount>1);
     }
 
     LuminanceResult ToneMap_SampleLuminance(
@@ -553,6 +553,7 @@ namespace SceneEngine
 
     static bool IsSRGBTargetBound(Metal::DeviceContext& context)
     {
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             //  Query the destination render target to
             //  see if SRGB conversion is enabled when writing out
         SavedTargets destinationTargets(context);
@@ -561,6 +562,7 @@ namespace SceneEngine
             destinationTargets.GetRenderTargets()[0]->GetDesc(&rtv);
             return GetComponentType(Metal::AsFormat(rtv.Format)) == FormatComponentType::UNorm_SRGB;
         }
+#endif
         return true;
     }
 
@@ -710,10 +712,10 @@ namespace SceneEngine
         auto bloomBuffer0 = uploads.Transaction_Immediate(bufferDesc);
         auto bloomBuffer1 = uploads.Transaction_Immediate(bufferDesc);
 
-        Metal::RenderTargetView     bloomBufferRTV0(bloomBuffer0->GetUnderlying());
-        Metal::ShaderResourceView   bloomBufferSRV0(bloomBuffer0->GetUnderlying());
-        Metal::RenderTargetView     bloomBufferRTV1(bloomBuffer1->GetUnderlying());
-        Metal::ShaderResourceView   bloomBufferSRV1(bloomBuffer1->GetUnderlying());
+        Metal::RenderTargetView     bloomBufferRTV0(bloomBuffer0->ShareUnderlying());
+        Metal::ShaderResourceView   bloomBufferSRV0(bloomBuffer0->ShareUnderlying());
+        Metal::RenderTargetView     bloomBufferRTV1(bloomBuffer1->ShareUnderlying());
+        Metal::ShaderResourceView   bloomBufferSRV1(bloomBuffer1->ShareUnderlying());
 
         auto* horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", 
@@ -795,10 +797,14 @@ namespace SceneEngine
             context.Bind(resources._noBlending);
             SetupVertexGeneratorShader(context);
 
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             auto depths = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView());
             Metal::ShaderResourceView depthsSRV(depths.get(), Format::R24_UNORM_X8_TYPELESS);
             auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
             Metal::ShaderResourceView inputSRV(res.get());
+#else
+			Metal::ShaderResourceView depthsSRV, inputSRV;
+#endif
 
             const Metal::ShaderResourceView* blurSrvs[] = { &depthsSRV, &inputSRV };
             float blurConstants[4] = { settings._startDistance, settings._endDistance, 0.f, 0.f };
@@ -834,12 +840,14 @@ namespace SceneEngine
                 // copied blurred buffer back into main target
                 //  bind output rendertarget (but not depth buffer)
             auto savedViewport = savedTargets.GetViewports()[0];
-            context.GetUnderlying()->RSSetViewports(1, (D3D11_VIEWPORT*)&savedViewport);
+            context.Bind(savedViewport);
             context.Bind(MakeResourceList(Metal::RenderTargetView(savedTargets.GetRenderTargets()[0])), nullptr);
 
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             if (!savedTargets.GetDepthStencilView()) {
                 Throw(::Exceptions::BasicLabel("No depth stencil buffer bound using atmospheric blur render"));
             }
+#endif
 
             context.Bind(*resources._integrateDistantBlur);
             const Metal::ShaderResourceView* srvs[] = { &depthsSRV, &resources._blurBufferSRV[0] };

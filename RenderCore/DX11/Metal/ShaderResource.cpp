@@ -21,6 +21,9 @@ namespace RenderCore { namespace Metal_DX11
 
 	ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, UnderlyingResourcePtr resource, Format format, int arrayCount, bool forceSingleSample)
 	{
+		// note --	for Vulkan compatibility, this should change so that array resources
+		//			get array views by default (unless it's disabled somehow via the window)
+
         if (!resource.get())
 			Throw(::Exceptions::BasicLabel("Null resource passed to ShaderResourceView constructor"));
         intrusive_ptr<ID3D::ShaderResourceView> srv;

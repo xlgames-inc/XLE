@@ -40,6 +40,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		VertexBuffer();
         VertexBuffer(const void* data, size_t byteCount);
         VertexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount);
+		VertexBuffer(UnderlyingResourcePtr) {}
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

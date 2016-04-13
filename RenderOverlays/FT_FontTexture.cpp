@@ -433,6 +433,20 @@ RenderCore::Resource* FontTexture2D::GetUnderlying() const
     return _locator?_locator->GetUnderlying():nullptr;
 }
 
+RenderCore::ResourcePtr FontTexture2D::ShareUnderlying() const
+{
+	if ((!_locator || _locator->IsEmpty()) && _transaction) {
+		if (gBufferUploads->IsCompleted(_transaction)) {
+			_locator = gBufferUploads->GetResource(_transaction);
+			if (_locator && !_locator->IsEmpty()) {
+				gBufferUploads->Transaction_End(_transaction);
+				_transaction = ~BufferUploads::TransactionID(0x0);
+			}
+		}
+	}
+	return _locator ? _locator->ShareUnderlying() : nullptr;
+}
+
 bool FT_FontTextureMgr::Init(int texWidth, int texHeight)
 {
     _texWidth = NextPower2(texWidth);

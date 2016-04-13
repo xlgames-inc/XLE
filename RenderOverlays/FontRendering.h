@@ -7,10 +7,9 @@
 #pragma once
 
 #include "FontPrimitives.h"
+#include "../RenderCore/IDevice.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../Utility/Mixins.h"
-
-namespace RenderCore { class Resource; }
 
 namespace RenderOverlays
 {
@@ -22,6 +21,7 @@ public:
     ~FontTexture2D();
 
     RenderCore::Resource*   GetUnderlying() const;
+	RenderCore::ResourcePtr	ShareUnderlying() const;
     void    UpdateGlyphToTexture(FT_GlyphSlot glyph, int offX, int offY, int width, int height);
     void    UpdateToTexture(BufferUploads::DataPacket* packet, int offX, int offY, int width, int height);
 

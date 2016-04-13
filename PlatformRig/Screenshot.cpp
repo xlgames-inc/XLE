@@ -47,7 +47,7 @@ namespace PlatformRig
             // using DirectXTex to save to disk as a TGA file...
         DirectX::Image image {
             dimensions[0], dimensions[1],
-            Metal::AsDXGIFormat(format),
+            Metal_DX11::AsDXGIFormat(format),
             rowPitch, rowPitch * dimensions[1],
             (uint8_t*)imageData };
         auto fn = Conversion::Convert<std::wstring>(std::string(destinationFile));

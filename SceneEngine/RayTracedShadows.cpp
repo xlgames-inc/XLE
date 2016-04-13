@@ -110,13 +110,21 @@ namespace SceneEngine
                 BufferUploads::LinearBufferDesc::Create(triangleSize*desc._triangleCount, triangleSize),
                 "RTShadowsTriangles"));
 
-        _triangleBufferVB = Metal::VertexBuffer(_triangleBufferRes->GetUnderlying());
-        _triangleBufferSRV = SRV::RawBuffer(_triangleBufferRes->GetUnderlying(), triangleSize*desc._triangleCount);
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+        _triangleBufferVB = Metal::VertexBuffer(_triangleBufferRes->ShareUnderlying());
+        _triangleBufferSRV = SRV::RawBuffer(_triangleBufferRes->ShareUnderlying(), triangleSize*desc._triangleCount);
+#endif
 
-        _gridBufferUAV = UAV(_gridBuffer->GetUnderlying());
-        _gridBufferSRV = SRV(_gridBuffer->GetUnderlying());
-        _listsBufferUAV = UAV(_listsBuffer->GetUnderlying(), UAV::Flags::AttachedCounter);
-        _listsBufferSRV = SRV(_listsBuffer->GetUnderlying());
+        _gridBufferUAV = UAV(_gridBuffer->ShareUnderlying());
+        _gridBufferSRV = SRV(_gridBuffer->ShareUnderlying());
+        _listsBufferUAV = UAV(
+			_listsBuffer->ShareUnderlying(),
+			Metal::TextureViewWindow(
+				Format::Unknown, TextureDesc::Dimensionality::Undefined,
+				Metal::TextureViewWindow::All,
+				Metal::TextureViewWindow::All,
+				Metal::TextureViewWindow::Flags::AttachedCounter));
+        _listsBufferSRV = SRV(_listsBuffer->ShareUnderlying());
 
         _dummyTarget = uploads.Transaction_Immediate(
             CreateDesc(
@@ -124,7 +132,7 @@ namespace SceneEngine
                 0, GPUAccess::Read | GPUAccess::Write,
                 BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R8_UINT),
                 "RTShadowsDummy"));
-        _dummyRTV = RTV(_dummyTarget->GetUnderlying());
+        _dummyRTV = RTV(_dummyTarget->ShareUnderlying());
 
         _gridBufferViewport = Metal::ViewportDesc { 0.f, 0.f, float(desc._width), float(desc._height), 0.f, 1.f };
     }
@@ -260,8 +268,7 @@ namespace SceneEngine
 
                 // no shader constants/resources required
 
-            unsigned clearValues[] = { 0, 0, 0, 0 };
-            metalContext.Clear(box._gridBufferUAV, clearValues);
+            metalContext.ClearUInt(box._gridBufferUAV, { 0, 0, 0, 0 });
 
             metalContext.Bind(Techniques::CommonResources()._blendOpaque);
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
@@ -292,7 +299,9 @@ namespace SceneEngine
         SavedTargets savedTargets(context);
         auto restoreMarker = savedTargets.MakeResetMarker(context);
 
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
+#endif
 
         context.BindPS(MakeResourceList(5, mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2], mainTargets._msaaDepthBufferSRV));
         const bool useMsaaSamplers = mainTargets._desc._sampling._sampleCount > 1;

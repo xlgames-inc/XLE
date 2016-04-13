@@ -56,14 +56,15 @@ namespace RenderCore { namespace Metal_Vulkan
         // of the relevant information.
         auto createInfo = MakeCreateInfo(window, image, true);
         _underlying = factory.CreateImageView(createInfo);
-        _layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
-	TextureView::TextureView(const ObjectFactory& factory, UnderlyingResourcePtr image, const TextureViewWindow& window)
+	TextureView::TextureView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewWindow& window)
 	{
-        assert(image.get()->GetDesc()._type == ResourceDesc::Type::Texture);
-        assert(image.get()->GetImage());
-        const auto& tDesc = image.get()->GetDesc()._textureDesc;
+		auto res = UnderlyingResourcePtr(image).get();
+        assert(res->GetDesc()._type == ResourceDesc::Type::Texture);
+        assert(res->GetImage());
+        const auto& tDesc = res->GetDesc()._textureDesc;
         auto adjWindow = window;
 
         // Some parts of the "TextureViewWindow" can be set to "undefined". In these cases,
@@ -76,8 +77,9 @@ namespace RenderCore { namespace Metal_Vulkan
         if (adjWindow._arrayLayerRange._count == TextureViewWindow::Unlimited)
             adjWindow._arrayLayerRange._count = tDesc._arrayCount - adjWindow._arrayLayerRange._min;
 
-        auto createInfo = MakeCreateInfo(adjWindow, image.get()->GetImage(), true);
+        auto createInfo = MakeCreateInfo(adjWindow, res->GetImage(), true);
         _underlying = factory.CreateImageView(createInfo);
+		_image = image;
         _layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 
@@ -85,7 +87,7 @@ namespace RenderCore { namespace Metal_Vulkan
     : TextureView(GetObjectFactory(), image, window)
     {}
 
-    TextureView::TextureView(UnderlyingResourcePtr image, const TextureViewWindow& window)
+    TextureView::TextureView(const ResourcePtr& image, const TextureViewWindow& window)
     : TextureView(GetObjectFactory(), image, window)
     { 
     }

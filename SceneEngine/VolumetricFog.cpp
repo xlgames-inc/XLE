@@ -346,42 +346,46 @@ namespace SceneEngine
         auto& uploads = GetBufferUploads();
 
         auto shadowMapTexture = uploads.Transaction_Immediate(renderTargetDesc);
-        auto shadowMapShaderResource = Metal::ShaderResourceView(shadowMapTexture->GetUnderlying(), shadowMapFormat, desc._frustumCount);
+        auto shadowMapShaderResource = Metal::ShaderResourceView(shadowMapTexture->ShareUnderlying());
         std::vector<Metal::RenderTargetView> shadowMapRenderTargets;
-        for (int c=0; c<desc._frustumCount; ++c) {
-            shadowMapRenderTargets.emplace_back(
-                Metal::RenderTargetView(shadowMapTexture->GetUnderlying(), shadowMapFormat, Metal::SubResourceSlice(1, c)));
+        for (unsigned c=0; c<unsigned(desc._frustumCount); ++c) {
+			auto window = Metal::TextureViewWindow(
+				shadowMapFormat, TextureDesc::Dimensionality::Undefined,
+				Metal::TextureViewWindow::SubResourceRange{c,1});
+            shadowMapRenderTargets.emplace_back(Metal::RenderTargetView(shadowMapTexture->ShareUnderlying(), window));
         }
 
         auto shadowMapTextureTemp = uploads.Transaction_Immediate(renderTargetDesc);
-        auto shadowMapShaderResourceTemp = Metal::ShaderResourceView(shadowMapTextureTemp->GetUnderlying(), shadowMapFormat, desc._frustumCount);
+        auto shadowMapShaderResourceTemp = Metal::ShaderResourceView(shadowMapTextureTemp->ShareUnderlying());
         std::vector<Metal::RenderTargetView> shadowMapRenderTargetsTemp;
-        for (int c=0; c<desc._frustumCount; ++c) {
-            shadowMapRenderTargetsTemp.emplace_back(
-                Metal::RenderTargetView(shadowMapTextureTemp->GetUnderlying(), shadowMapFormat, Metal::SubResourceSlice(1, c)));
+        for (unsigned c=0; c<unsigned(desc._frustumCount); ++c) {
+			auto window = Metal::TextureViewWindow(
+				shadowMapFormat, TextureDesc::Dimensionality::Undefined,
+				Metal::TextureViewWindow::SubResourceRange{ c,1 });
+            shadowMapRenderTargetsTemp.emplace_back(Metal::RenderTargetView(shadowMapTextureTemp->ShareUnderlying(), window));
         }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         auto densityFormat = desc._highPrecision ? Format::R32_FLOAT : Format::R16_FLOAT;
         auto densityTexture = uploads.Transaction_Immediate(SimGridDesc(densityFormat, desc._gridDimensions));
-        Metal::UnorderedAccessView densityUAV(densityTexture->GetUnderlying());
-        Metal::ShaderResourceView densitySRV(densityTexture->GetUnderlying());
+        Metal::UnorderedAccessView densityUAV(densityTexture->ShareUnderlying());
+        Metal::ShaderResourceView densitySRV(densityTexture->ShareUnderlying());
 
         auto shadowingFormat = desc._highPrecision ? Format::R32_FLOAT : Format::R8_UNORM;
         auto inscatterShadowingTexture = uploads.Transaction_Immediate(SimGridDesc(shadowingFormat, desc._gridDimensions));
-        Metal::UnorderedAccessView inscatterShadowingUAV(inscatterShadowingTexture->GetUnderlying());
-        Metal::ShaderResourceView inscatterShadowingSRV(inscatterShadowingTexture->GetUnderlying());
+        Metal::UnorderedAccessView inscatterShadowingUAV(inscatterShadowingTexture->ShareUnderlying());
+        Metal::ShaderResourceView inscatterShadowingSRV(inscatterShadowingTexture->ShareUnderlying());
     
         auto transmissionFormat = desc._highPrecision ? Format::R32_FLOAT : Format::R16_FLOAT;
         auto transmissionTexture = uploads.Transaction_Immediate(SimGridDesc(transmissionFormat, desc._gridDimensions));
-        Metal::UnorderedAccessView transmissionUAV(transmissionTexture->GetUnderlying());
-        Metal::ShaderResourceView transmissionSRV(transmissionTexture->GetUnderlying());
+        Metal::UnorderedAccessView transmissionUAV(transmissionTexture->ShareUnderlying());
+        Metal::ShaderResourceView transmissionSRV(transmissionTexture->ShareUnderlying());
 
         auto inScatterFormat =  desc._highPrecision ? Format::R32_FLOAT : Format::R16_FLOAT;
         auto inscatterFinalsTexture = uploads.Transaction_Immediate(SimGridDesc(inScatterFormat, desc._gridDimensions));
-        Metal::UnorderedAccessView inscatterFinalsUAV(inscatterFinalsTexture->GetUnderlying());
-        Metal::ShaderResourceView inscatterFinalsSRV(inscatterFinalsTexture->GetUnderlying());
+        Metal::UnorderedAccessView inscatterFinalsUAV(inscatterFinalsTexture->ShareUnderlying());
+        Metal::ShaderResourceView inscatterFinalsSRV(inscatterFinalsTexture->ShareUnderlying());
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -484,7 +488,7 @@ namespace SceneEngine
                 data[y*256+x] = (unsigned short)(values[x][y] * float(0xffff) / maxValue);
 
         _table = bufferUploads.Transaction_Immediate(bufferDesc, pkt.get());
-        _tableSRV = Metal::ShaderResourceView(_table->GetUnderlying());
+        _tableSRV = Metal::ShaderResourceView(_table->ShareUnderlying());
 
         float constants[4] = { maxValue, maxDistance, 0.f, 0.f };
         _tableConstants = Metal::ConstantBuffer(constants, sizeof(constants));

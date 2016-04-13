@@ -162,8 +162,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         void        Clear(const RenderTargetView& renderTargets, const VectorPattern<float,4>& clearColour) {}
         void        Clear(const DepthStencilView& depthStencil, float depth, unsigned stencil) {}
-        void        Clear(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& clearColour) {}
-        void        Clear(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& clearColour) {}
+        void        ClearUInt(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& clearColour) {}
+        void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& clearColour) {}
         void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil) {}
 
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
@@ -174,9 +174,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		VkCommandBuffer			GetCommandList() { assert(_commandList); return _commandList.get(); }
         const CommandListPtr&   ShareCommandList() { assert(_commandList); return _commandList; }
+		bool					IsImmediate() { return false; }
 
         void        Bind(VulkanSharedPtr<VkRenderPass> renderPass);
         void        BindPipeline();
+		
+		void		InvalidateCachedState() {}
+		static void PrepareForDestruction(IDevice*, IPresentationChain*);
 
         GlobalPools&    GetGlobalPools();
         VkDevice        GetUnderlyingDevice();

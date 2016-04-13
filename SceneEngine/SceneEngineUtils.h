@@ -14,7 +14,11 @@
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"   // for DelayStep -- a forward declaration here confuses c++/cli
 
-#include "../RenderCore/DX11/Metal/DX11.h"
+#if GFXAPI_ACTIVE == GFXAPI_DX11
+	#include "../RenderCore/DX11/Metal/DX11.h"
+#else
+	#include "../RenderCore/Metal/TextureView.h"
+#endif
 
 namespace RenderOverlays { class Font; }
 namespace RenderCore { class ResourceDesc; class TextureDesc; namespace BindFlag { typedef unsigned BitField; }; enum class Format; }
@@ -28,6 +32,7 @@ namespace Utility
 namespace SceneEngine
 {
         // todo -- avoid D3D11 specific types here
+#if GFXAPI_ACTIVE == GFXAPI_DX11
     class SavedTargets
     {
     public:
@@ -71,6 +76,51 @@ namespace SceneEngine
         RenderCore::Metal::ViewportDesc _oldViewports[MaxViewportAndScissorRectCount];
         unsigned _oldViewportCount;
     };
+#else
+	class SavedTargets
+	{
+	public:
+		SavedTargets(RenderCore::Metal::DeviceContext& context);
+		SavedTargets();
+		SavedTargets(SavedTargets&& moveFrom) never_throws;
+		SavedTargets& operator=(SavedTargets&& moveFrom) never_throws;
+		~SavedTargets();
+
+		void        ResetToOldTargets(RenderCore::Metal::DeviceContext& context);
+		const RenderCore::Metal::DepthStencilView&		GetDepthStencilView() { return _oldDepthTarget; }
+		RenderCore::Metal::RenderTargetView*			GetRenderTargets() { return _oldTargets; }
+		const RenderCore::Metal::ViewportDesc*       GetViewports() { return _oldViewports; }
+
+		void SetDepthStencilView(const RenderCore::Metal::DepthStencilView& dsv);
+
+		class ResetMarker
+		{
+		public:
+			ResetMarker();
+			~ResetMarker();
+			ResetMarker(ResetMarker&&);
+			ResetMarker& operator=(ResetMarker&&);
+
+		private:
+			ResetMarker(SavedTargets& targets, RenderCore::Metal::DeviceContext& context);
+			ResetMarker(const ResetMarker&) = delete;
+			ResetMarker& operator=(const ResetMarker&) = delete;
+			SavedTargets* _targets;
+			RenderCore::Metal::DeviceContext* _context;
+			friend class SavedTargets;
+		};
+
+		ResetMarker MakeResetMarker(RenderCore::Metal::DeviceContext& context) { return ResetMarker(*this, context); }
+
+		static const unsigned MaxSimultaneousRenderTargetCount = 8; // D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT
+		static const unsigned MaxViewportAndScissorRectCount = 16;  // D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE
+	private:
+		RenderCore::Metal::RenderTargetView _oldTargets[MaxSimultaneousRenderTargetCount];
+		RenderCore::Metal::DepthStencilView _oldDepthTarget;
+		RenderCore::Metal::ViewportDesc _oldViewports[MaxViewportAndScissorRectCount];
+		unsigned _oldViewportCount;
+	};
+#endif
 
     BufferUploads::IManager& GetBufferUploads();
 
@@ -211,27 +261,29 @@ namespace SceneEngine
         SavedTargets        _targets;
         States::BitField    _states;
         
-        RenderCore::Metal::DepthStencilState    _depthStencilState;
-        RenderCore::Metal::BoundInputLayout     _inputLayout;
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			RenderCore::Metal::DepthStencilState    _depthStencilState;
+			RenderCore::Metal::BoundInputLayout     _inputLayout;
 
-        intrusive_ptr<ID3D::Buffer> _indexBuffer;
-        unsigned    _ibFormat; // DXGI_FORMAT
-        unsigned    _ibOffset;
+			intrusive_ptr<ID3D::Buffer> _indexBuffer;
+			unsigned    _ibFormat; // DXGI_FORMAT
+			unsigned    _ibOffset;
 
-        static const auto s_vbCount = 32; // D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
-        intrusive_ptr<ID3D::Buffer> _vertexBuffers[s_vbCount];
-        unsigned    _vbStrides[s_vbCount];
-        unsigned    _vbOffsets[s_vbCount];
+			static const auto s_vbCount = 32; // D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
+			intrusive_ptr<ID3D::Buffer> _vertexBuffers[s_vbCount];
+			unsigned    _vbStrides[s_vbCount];
+			unsigned    _vbOffsets[s_vbCount];
 
-        intrusive_ptr<ID3D::BlendState> _blendState;
-        float       _blendFactor[4];
-        unsigned    _blendSampleMask;
+			intrusive_ptr<ID3D::BlendState> _blendState;
+			float       _blendFactor[4];
+			unsigned    _blendSampleMask;
 
-        RenderCore::Metal::RasterizerState _rasterizerState;
+			RenderCore::Metal::RasterizerState _rasterizerState;
 
-        RenderCore::Metal::ViewportDesc _viewports;
+			RenderCore::Metal::ViewportDesc _viewports;
 
-        unsigned _topology;     // D3D11_PRIMITIVE_TOPOLOGY
+			unsigned _topology;     // D3D11_PRIMITIVE_TOPOLOGY
+		#endif
 
         void ResetStates();
     };

@@ -166,8 +166,8 @@ namespace SceneEngine
         XlSetMemory(initialData->GetData(), 0, initialData->GetDataSize());
         auto simParticlesBuffer = uploads.Transaction_Immediate(structuredBufferDesc, initialData.get());
 
-        Metal::UnorderedAccessView simParticlesUAV(simParticlesBuffer->GetUnderlying());
-        Metal::ShaderResourceView simParticlesSRV(simParticlesBuffer->GetUnderlying());
+        Metal::UnorderedAccessView simParticlesUAV(simParticlesBuffer->ShareUnderlying());
+        Metal::ShaderResourceView simParticlesSRV(simParticlesBuffer->ShareUnderlying());
 
         _simParticlesBuffer = std::move(simParticlesBuffer);
         _simParticlesUAV = std::move(simParticlesUAV);
@@ -191,9 +191,11 @@ namespace SceneEngine
                 //  first, we have to unbind the depth buffer and create a shader resource view for it
 
             SavedTargets oldTargets(*context);
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             if (!oldTargets.GetDepthStencilView()) {
                 Throw(::Exceptions::BasicLabel("Missing depth stencil view when drawing rain particles"));
             }
+#endif
 
             // auto depthBufferResource = Metal::ExtractResource<ID3D::Resource>(oldTargets.GetDepthStencilView());
             // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), Format::R24_UNORM_X8_TYPELESS);
@@ -328,9 +330,11 @@ namespace SceneEngine
                 //  first, we have to unbind the depth buffer and create a shader resource view for it
 
             SavedTargets oldTargets(*context);
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             if (!oldTargets.GetDepthStencilView()) {
                 Throw(::Exceptions::BasicLabel("Missing depth stencil view when drawing rain particles"));
             }
+#endif
 
             // auto depthBufferResource = Metal::ExtractResource<ID3D::Resource>(oldTargets.GetDepthStencilView());
             // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), NativeFormat::R24_UNORM_X8_TYPELESS);

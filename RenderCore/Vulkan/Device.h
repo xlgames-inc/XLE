@@ -93,7 +93,7 @@ namespace RenderCore
         };
         std::vector<Image> _images;
 
-		Metal_Vulkan::Resource              _depthStencilResource;
+		ResourcePtr							_depthStencilResource;
 		Metal_Vulkan::DepthStencilView      _dsv;
 
 		Metal_Vulkan::FrameBufferLayout     _defaultRenderPass;

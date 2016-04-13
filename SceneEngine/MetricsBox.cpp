@@ -21,11 +21,9 @@ namespace SceneEngine
     using namespace RenderCore;
     MetricsBox::MetricsBox(const Desc& desc) 
     {
-        using namespace BufferUploads;
-
         auto& uploads = GetBufferUploads();
-        BufferUploads::BufferDesc metricsBufferDesc;
-        metricsBufferDesc._type = BufferUploads::BufferDesc::Type::LinearBuffer;
+        ResourceDesc metricsBufferDesc;
+        metricsBufferDesc._type = ResourceDesc::Type::LinearBuffer;
         metricsBufferDesc._bindFlags = BindFlag::UnorderedAccess|BindFlag::StructuredBuffer|BindFlag::ShaderResource;
         metricsBufferDesc._cpuAccess = 0;
         metricsBufferDesc._gpuAccess = GPUAccess::Read|GPUAccess::Write;
@@ -34,8 +32,8 @@ namespace SceneEngine
         metricsBufferDesc._linearBufferDesc._sizeInBytes = metricsBufferDesc._linearBufferDesc._structureByteSize;
         auto metricsBuffer = uploads.Transaction_Immediate(metricsBufferDesc);
 
-        _metricsBufferUAV = Metal::UnorderedAccessView(metricsBuffer->GetUnderlying());
-        _metricsBufferSRV = Metal::ShaderResourceView(metricsBuffer->GetUnderlying());
+        _metricsBufferUAV = Metal::UnorderedAccessView(metricsBuffer->ShareUnderlying());
+        _metricsBufferSRV = Metal::ShaderResourceView(metricsBuffer->ShareUnderlying());
     }
 
     MetricsBox::~MetricsBox() {}

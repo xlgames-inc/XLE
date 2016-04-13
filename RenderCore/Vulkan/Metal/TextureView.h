@@ -23,26 +23,35 @@ namespace RenderCore { namespace Metal_Vulkan
         static const unsigned Unlimited = ~0x0u;
         static const SubResourceRange All;
 
+		struct Flags {
+			enum Bits { AttachedCounter = 1<<0, AppendBuffer = 1<<1, ForceArray = 1<<2 };
+			using BitField = unsigned;
+		};
+
         Format                      _format;
         SubResourceRange            _mipRange;
         SubResourceRange            _arrayLayerRange;
         TextureDesc::Dimensionality _dimensionality;
+		Flags::BitField				_flags;
 
         TextureViewWindow(
             Format format = Format(0),
             TextureDesc::Dimensionality dimensionality = TextureDesc::Dimensionality::Undefined,
             SubResourceRange mipRange = All,
-            SubResourceRange arrayLayerRange = All
-            ) : _format(format), _dimensionality(dimensionality), _mipRange(mipRange), _arrayLayerRange(arrayLayerRange) {}
+            SubResourceRange arrayLayerRange = All,
+			Flags::BitField flags = 0
+            ) : _format(format), _dimensionality(dimensionality), _mipRange(mipRange), _arrayLayerRange(arrayLayerRange), _flags(flags) {}
     };
 
     class TextureView
     {
     public:
+		using ResourcePtr = std::shared_ptr<RenderCore::Resource>;
+
         TextureView(const ObjectFactory& factory, VkImage image, const TextureViewWindow& window = TextureViewWindow());
-		TextureView(const ObjectFactory& factory, UnderlyingResourcePtr image, const TextureViewWindow& window = TextureViewWindow());
-        TextureView(VkImage image, const TextureViewWindow& window = TextureViewWindow());
-		TextureView(UnderlyingResourcePtr image, const TextureViewWindow& window = TextureViewWindow());
+		TextureView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow());
+        explicit TextureView(const VkImage image, const TextureViewWindow& window = TextureViewWindow());
+		explicit TextureView(const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow());
         TextureView();
         ~TextureView();
 
@@ -50,10 +59,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		UnderlyingType      GetUnderlying() const { return _underlying.get(); }
 		bool                IsGood() const { return _underlying != nullptr; }
 
-        VkImageLayout _layout;
+		const RenderCore::Resource*		GetResource() const { return _image.get(); }
+
+        VkImageLayout		_layout;
 
     private:
-        VulkanSharedPtr<VkImageView> _underlying;
+        VulkanSharedPtr<VkImageView>	_underlying;
+		ResourcePtr						_image;
     };
 
     // note -- in Vulkan, ShaderResourceView, RenderTargetView, DepthStencilView and UnorderedAccessView
@@ -67,11 +79,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
         ShaderResourceView(const ObjectFactory& factory, VkImage image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(factory, image, window) {}
-		ShaderResourceView(const ObjectFactory& factory, UnderlyingResourcePtr image, const TextureViewWindow& window = TextureViewWindow())
+		ShaderResourceView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(factory, image, window) {}
-        ShaderResourceView(VkImage image, const TextureViewWindow& window = TextureViewWindow())
+		explicit ShaderResourceView(VkImage image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(image, window) {}
-		ShaderResourceView(UnderlyingResourcePtr image, const TextureViewWindow& window = TextureViewWindow())
+		explicit ShaderResourceView(const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(image, window) {}
         ShaderResourceView() {}
 
@@ -86,11 +98,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
         RenderTargetView(const ObjectFactory& factory, VkImage image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(factory, image, window) {}
-		RenderTargetView(const ObjectFactory& factory, UnderlyingResourcePtr image, const TextureViewWindow& window = TextureViewWindow())
+		RenderTargetView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(factory, image, window) {}
-        RenderTargetView(VkImage image, const TextureViewWindow& window = TextureViewWindow())
+		explicit RenderTargetView(VkImage image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(image, window) {}
-		RenderTargetView(UnderlyingResourcePtr image, const TextureViewWindow& window = TextureViewWindow())
+		explicit RenderTargetView(const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(image, window) {}
         RenderTargetView() {}
     };
@@ -102,11 +114,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
         DepthStencilView(const ObjectFactory& factory, VkImage image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(factory, image, window) {}
-		DepthStencilView(const ObjectFactory& factory, UnderlyingResourcePtr image, const TextureViewWindow& window = TextureViewWindow())
+		DepthStencilView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(factory, image, window) {}
-        DepthStencilView(VkImage image, const TextureViewWindow& window = TextureViewWindow())
+		explicit DepthStencilView(VkImage image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(image, window) {}
-		DepthStencilView(UnderlyingResourcePtr image, const TextureViewWindow& window = TextureViewWindow())
+		explicit DepthStencilView(const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(image, window) {}
         DepthStencilView() {}
     };
@@ -118,11 +130,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
         UnorderedAccessView(const ObjectFactory& factory, VkImage image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(factory, image, window) {}
-		UnorderedAccessView(const ObjectFactory& factory, UnderlyingResourcePtr image, const TextureViewWindow& window = TextureViewWindow())
+		UnorderedAccessView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(factory, image, window) {}
-        UnorderedAccessView(VkImage image, const TextureViewWindow& window = TextureViewWindow())
+		explicit UnorderedAccessView(VkImage image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(image, window) {}
-		UnorderedAccessView(UnderlyingResourcePtr image, const TextureViewWindow& window = TextureViewWindow())
+		explicit UnorderedAccessView(const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(image, window) {}
         UnorderedAccessView() {}
     };

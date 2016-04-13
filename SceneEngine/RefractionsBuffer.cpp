@@ -46,10 +46,10 @@ namespace SceneEngine
         auto _refractionsTexture0 = uploads.Transaction_Immediate(targetDesc);
         auto _refractionsTexture1 = uploads.Transaction_Immediate(targetDesc);
 
-        Metal::RenderTargetView refractionsFrontTarget(_refractionsTexture0->GetUnderlying());
-        Metal::RenderTargetView refractionsBackTarget(_refractionsTexture1->GetUnderlying());
-        Metal::ShaderResourceView refractionsFrontSRV(_refractionsTexture0->GetUnderlying());
-        Metal::ShaderResourceView refractionsBackSRV(_refractionsTexture1->GetUnderlying());
+        Metal::RenderTargetView refractionsFrontTarget(_refractionsTexture0->ShareUnderlying());
+        Metal::RenderTargetView refractionsBackTarget(_refractionsTexture1->ShareUnderlying());
+        Metal::ShaderResourceView refractionsFrontSRV(_refractionsTexture0->ShareUnderlying());
+        Metal::ShaderResourceView refractionsBackSRV(_refractionsTexture1->ShareUnderlying());
 
         _refractionsTexture[0] = std::move(_refractionsTexture0);
         _refractionsTexture[1] = std::move(_refractionsTexture1);
@@ -68,6 +68,7 @@ namespace SceneEngine
         LightingParserContext& parserContext, 
         float standardDeviationForBlur)
     {
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         CATCH_ASSETS_BEGIN
 
                 // Build a refractions texture
@@ -126,6 +127,7 @@ namespace SceneEngine
             oldTargets.ResetToOldTargets(metalContext);
         
         CATCH_ASSETS_END(parserContext)
+#endif
     }
 
     static Format AsResolvableFormat(Format format)
@@ -168,7 +170,7 @@ namespace SceneEngine
 
         auto texture = uploads.Transaction_Immediate(targetDesc);
 
-        Metal::ShaderResourceView srv(texture->GetUnderlying(), AsResolvableFormat(desc._format));
+        Metal::ShaderResourceView srv(texture->ShareUnderlying(), AsResolvableFormat(desc._format));
 
         _srv = std::move(srv);
         _resource = std::move(texture);
@@ -178,36 +180,39 @@ namespace SceneEngine
     
 
     RenderCore::Metal::ShaderResourceView BuildDuplicatedDepthBuffer(
-        RenderCore::Metal::DeviceContext* context, ID3D::Resource* sourceDepthBuffer)
+        RenderCore::Metal::DeviceContext* context, 
+		RenderCore::Resource& sourceDepthBuffer)
     {
             // todo --  should we create a non-msaa depth buffer even when the input is MSAA?
             //          it might be simplier for the shader pipeline. And we don't normally need
             //          MSAA in our duplicated depth buffers;
-        Metal::TextureDesc2D textureDesc(sourceDepthBuffer);
+		auto desc = Metal::ExtractDesc(&sourceDepthBuffer);
 
         const bool resolveMSAA = true;
-        if (textureDesc.SampleDesc.Count > 1 && resolveMSAA) {
+        if (desc._textureDesc._samples._sampleCount > 1 && resolveMSAA) {
 
             DuplicateDepthBuffer::Desc d(
-                textureDesc.Width, textureDesc.Height, Metal::AsFormat(textureDesc.Format),
+				desc._textureDesc._width, desc._textureDesc._height, desc._textureDesc._format,
                 BufferUploads::TextureSamples::Create());
 
                 //  Resolve into the new buffer
             auto& box = Techniques::FindCachedBox<DuplicateDepthBuffer>(d);
-            context->GetUnderlying()->ResolveSubresource(
-                Metal::UnderlyingResourcePtr(box._resource->GetUnderlying()).get(), 0, sourceDepthBuffer, 0,
-                Metal::AsDXGIFormat(AsResolvableFormat(d._format)));
+			#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+				context->GetUnderlying()->ResolveSubresource(
+					Metal::UnderlyingResourcePtr(box._resource->GetUnderlying()).get(), 0, sourceDepthBuffer, 0,
+					Metal::AsDXGIFormat(AsResolvableFormat(d._format)));
+			#endif
             return box._srv;
 
         } else {
 
             DuplicateDepthBuffer::Desc d(
-                textureDesc.Width, textureDesc.Height, Metal::AsFormat(textureDesc.Format),
-                BufferUploads::TextureSamples::Create(uint8(textureDesc.SampleDesc.Count), uint8(textureDesc.SampleDesc.Quality)));
+				desc._textureDesc._width, desc._textureDesc._height, desc._textureDesc._format,
+				desc._textureDesc._samples);
 
                 //  Copy into the new buffer
             auto& box = Techniques::FindCachedBox<DuplicateDepthBuffer>(d);
-            Metal::Copy(*context, Metal::UnderlyingResourcePtr(box._resource->GetUnderlying()).get(), sourceDepthBuffer);
+            Metal::Copy(*context, box._resource->GetUnderlying(), &sourceDepthBuffer);
             return box._srv;
 
         }
