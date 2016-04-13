@@ -200,8 +200,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
     ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
 	ResourceDesc ExtractDesc(const TextureView& res);
-
-	class ShaderResourceView;
 	RenderCore::ResourcePtr ExtractResource(TextureView&);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

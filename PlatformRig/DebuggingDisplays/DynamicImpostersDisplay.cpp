@@ -89,15 +89,15 @@ namespace PlatformRig { namespace Overlays
             auto metalContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
             RenderCore::Metal::RenderTargetView rtv(*metalContext);
             auto srv = m->GetAtlasResource(visibleLayer);
-            RenderCore::Metal::TextureDesc2D desc(srv.GetUnderlying());
+            auto desc = RenderCore::Metal::ExtractDesc(srv);
             metalContext->Bind(RenderCore::Techniques::CommonResources()._blendOneSrcAlpha);
             SceneEngine::ShaderBasedCopy(
                 *metalContext, rtv, srv,
                 std::make_pair(textureArea._topLeft, textureArea._bottomRight),
-                std::make_pair(UInt2(0,0), UInt2(desc.Width, desc.Height)),
+                std::make_pair(UInt2(0,0), UInt2(desc._textureDesc._width, desc._textureDesc._height)),
                 SceneEngine::CopyFilter::Bilinear,
                 SceneEngine::ProtectState::States::RenderTargets);
-            atlasSize = UInt2(desc.Width, desc.Height);
+            atlasSize = UInt2(desc._textureDesc._width, desc._textureDesc._height);
         }
 
         {

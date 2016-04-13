@@ -30,6 +30,7 @@
 #include "../Core/WinAPI/IncludeWindows.h"
 #include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
 #include "../Foreign/half-1.9.2/include/half.hpp"
+#include "../RenderCore/DX11/Metal/Format.h"
 // #include <wincodec.h>        (avoiding an extra header from the winsdk by hard coding GUID_ContainerFormatTiff below)
 
 namespace PlatformRig

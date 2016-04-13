@@ -9,8 +9,8 @@
 #include "IDevice_Forward.h"
 #include "IThreadContext_Forward.h"
 #include "../Core/Prefix.h"
-#include "../Math/Vector.h"
 #include "../Utility/IntrusivePtr.h"
+#include "../Utility/IteratorUtils.h"
 #include <memory>
 #include <functional>
 
@@ -35,10 +35,10 @@ namespace RenderCore
     class ViewportContext
     {
     public:
-        UInt2 _dimensions;
+        unsigned _width, _height;
 
-        ViewportContext() : _dimensions(0,0) {}
-        ViewportContext(UInt2 dims) : _dimensions(dims) {}
+		ViewportContext() : _width(0u), _height(0u) {}
+        ViewportContext(VectorPattern<unsigned, 2> dims) : _width(dims[0]), _height(dims[1]) {}
     };
 
 #define FLEX_INTERFACE PresentationChain

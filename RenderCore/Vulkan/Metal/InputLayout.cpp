@@ -347,7 +347,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     imageInfo[imageCount] = VkDescriptorImageInfo {
                         s._resources[r]->GetSampler().GetUnderlying(),
                         s._resources[r]->GetUnderlying(),
-                        s._resources[r]->_layout };
+						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
                     writes[writeCount] = {};
                     writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

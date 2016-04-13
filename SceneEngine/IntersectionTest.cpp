@@ -359,7 +359,7 @@ namespace SceneEngine
 
     UInt2 IntersectionTestContext::GetViewportSize() const
     {
-        return _viewportContext->_dimensions;
+        return UInt2(_viewportContext->_width, _viewportContext->_height);
     }
 
     const std::shared_ptr<RenderCore::IThreadContext>& IntersectionTestContext::GetThreadContext() const

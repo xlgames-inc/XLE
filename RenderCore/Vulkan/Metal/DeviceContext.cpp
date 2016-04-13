@@ -309,5 +309,7 @@ namespace RenderCore { namespace Metal_Vulkan
     , _cmdPool(&cmdPool), _cmdBufferType(cmdBufferType)
     {}
 
+	void DeviceContext::PrepareForDestruction(IDevice*, IPresentationChain*) {}
+
 }}
 

@@ -43,6 +43,14 @@ namespace RenderCore { namespace Metal_Vulkan
             ) : _format(format), _dimensionality(dimensionality), _mipRange(mipRange), _arrayLayerRange(arrayLayerRange), _flags(flags) {}
     };
 
+	/// <summary>Shared base class for texture view objects</summary>
+	/// In Vulkan, views of shader resources can be either VkImageViews or VkBufferViews.
+	/// Both types represent an array of texels with a given format. VkBufferViews represent
+	/// single dimensional linear array. VkImageViews arrange the texels in much more complex
+	/// fashion (eg, 2D and 3D textures, with mipchains, etc).
+	///
+	/// Only VkImageViews can be used with render passes and frame buffers. But both image views
+	/// and buffer views can be used as shader resources.
     class TextureView
     {
     public:
@@ -56,15 +64,14 @@ namespace RenderCore { namespace Metal_Vulkan
         ~TextureView();
 
         using UnderlyingType = VkImageView;
-		UnderlyingType      GetUnderlying() const { return _underlying.get(); }
-		bool                IsGood() const { return _underlying != nullptr; }
+		UnderlyingType			GetUnderlying() const { return _imageView.get(); }
+		bool					IsGood() const { return _imageView != nullptr; }
 
-		const RenderCore::Resource*		GetResource() const { return _image.get(); }
-
-        VkImageLayout		_layout;
+		RenderCore::Resource*	GetResource() const { return _image.get(); }
+		const ResourcePtr&		ShareResource() const { return _image; }
 
     private:
-        VulkanSharedPtr<VkImageView>	_underlying;
+        VulkanSharedPtr<VkImageView>	_imageView;
 		ResourcePtr						_image;
     };
 
@@ -104,6 +111,7 @@ namespace RenderCore { namespace Metal_Vulkan
             : TextureView(image, window) {}
 		explicit RenderTargetView(const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(image, window) {}
+		RenderTargetView(DeviceContext&) {}
         RenderTargetView() {}
     };
 
@@ -120,7 +128,8 @@ namespace RenderCore { namespace Metal_Vulkan
             : TextureView(image, window) {}
 		explicit DepthStencilView(const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(image, window) {}
-        DepthStencilView() {}
+		DepthStencilView(DeviceContext&) {}
+		DepthStencilView() {}
     };
 
     class UnorderedAccessView : public TextureView
@@ -128,15 +137,15 @@ namespace RenderCore { namespace Metal_Vulkan
     public:
 		// using TextureView::TextureView;
 
-        UnorderedAccessView(const ObjectFactory& factory, VkImage image, const TextureViewWindow& window = TextureViewWindow())
-            : TextureView(factory, image, window) {}
+		UnorderedAccessView(const ObjectFactory& factory, VkImage image, const TextureViewWindow& window = TextureViewWindow())
+			: TextureView(factory, image, window) {}
 		UnorderedAccessView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
-            : TextureView(factory, image, window) {}
+			: TextureView(factory, image, window) {}
 		explicit UnorderedAccessView(VkImage image, const TextureViewWindow& window = TextureViewWindow())
-            : TextureView(image, window) {}
+			: TextureView(image, window) {}
 		explicit UnorderedAccessView(const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
-            : TextureView(image, window) {}
-        UnorderedAccessView() {}
+			: TextureView(image, window) {}
+		UnorderedAccessView() {}
     };
 }}
 

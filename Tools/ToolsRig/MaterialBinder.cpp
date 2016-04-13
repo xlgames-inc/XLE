@@ -26,6 +26,8 @@
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 #include <d3d11shader.h>        // D3D11_SHADER_TYPE_DESC
 
+#pragma warning(disable:4505)		// unreferenced local function has been removed
+
 namespace ToolsRig
 {
 
@@ -98,6 +100,7 @@ namespace ToolsRig
         return 0;
     }
 
+#if GFXAPI_GFXAPI_DX11
     static void WriteParameter(
         RenderCore::SharedPkt& result,
         const ParameterBox& constants,
@@ -226,6 +229,17 @@ namespace ToolsRig
 
         return finalResult;
     }
+#else
+	static std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>>
+	BuildMaterialConstants(
+		const RenderCore::Techniques::PredefinedCBLayout& cbLayout,
+		RenderCore::Metal::BoundUniforms& boundUniforms,
+		const ParameterBox& constants,
+		const IMaterialBinder::SystemConstants& systemConstantsContext,
+		UInt2 viewportDims)
+	{
+	}
+#endif
 
     static std::vector<const RenderCore::Metal::ShaderResourceView*>
         BuildBoundTextures(
@@ -235,6 +249,8 @@ namespace ToolsRig
     {
         using namespace RenderCore;
         std::vector<const Metal::ShaderResourceView*> result;
+
+#if GFXAPI_ACTIVE == GFXAPI_DX11
         std::vector<uint64> alreadyBound;
 
             //
@@ -316,6 +332,7 @@ namespace ToolsRig
                 }
             }
         }
+#endif
 
         return std::move(result);
     }
@@ -330,6 +347,8 @@ namespace ToolsRig
         const RenderCore::Techniques::PredefinedCBLayout& cbLayout)
     {
         using namespace RenderCore;
+
+#if GFXAPI_ACTIVE == GFXAPI_DX11
 
                 //
                 //      Constants / Resources
@@ -364,6 +383,7 @@ namespace ToolsRig
             Metal::UniformsStream( 
                 AsPointer(constantBufferPackets.begin()), nullptr, constantBufferPackets.size(), 
                 AsPointer(boundTextures.begin()), boundTextures.size()));
+#endif
     }
 
     IMaterialBinder::SystemConstants::SystemConstants()

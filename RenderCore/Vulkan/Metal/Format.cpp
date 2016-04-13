@@ -247,6 +247,11 @@ namespace RenderCore { namespace Metal_Vulkan
         BindFormatTypeless(Format::BC6H_TYPELESS, VK_FORMAT_BC6H_SFLOAT_BLOCK);
         BindFormatTypeless(Format::BC7_TYPELESS, VK_FORMAT_BC7_UNORM_BLOCK);
         BindFormatTypeless(Format::B8G8R8A8_TYPELESS, VK_FORMAT_B8G8R8A8_UNORM);
+		BindFormatTypeless(Format::R24_UNORM_X8_TYPELESS, VK_FORMAT_D24_UNORM_S8_UINT);
+		BindFormatTypeless(Format::R24G8_TYPELESS, VK_FORMAT_D24_UNORM_S8_UINT);
+
+		// The A8 is an awkward throughback to DX9. Ideally it should be completely removed
+		BindFormatTypeless(Format::A8_UNORM, VK_FORMAT_R8_UNORM);
 
         s_lookupTablesInitialized = true;
     }

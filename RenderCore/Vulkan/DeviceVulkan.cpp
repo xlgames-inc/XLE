@@ -657,7 +657,7 @@ namespace RenderCore
 
     std::shared_ptr<ViewportContext> PresentationChain::GetViewportContext() const
     {
-        return nullptr;
+		return _viewportContext;
     }
 
     void PresentationChain::AcquireNextImage()
@@ -791,6 +791,7 @@ namespace RenderCore
 	, _bufferDesc(bufferDesc)
     {
         _activeImageIndex = ~0x0u;
+		_viewportContext = std::make_shared<ViewportContext>(VectorPattern<unsigned, 2>(bufferDesc._width, bufferDesc._height));
 
         // We need to get pointers to each image and build the synchronization semaphores
         auto images = GetImages(_device.get(), _swapChain.get());

@@ -229,7 +229,7 @@ namespace Sample
         scene->PrepareFrame(metalContext.get());
 
         using namespace SceneEngine;
-        auto presChainDims = presentationChain->GetViewportContext()->_dimensions;
+        auto viewContext = presentationChain->GetViewportContext();
 
             //  Execute the lighting parser!
             //      This is where most rendering actually happens.
@@ -237,7 +237,7 @@ namespace Sample
             LightingParser_ExecuteScene(
                 context, lightingParserContext, *scene, scene->GetCameraDesc(),
                 RenderingQualitySettings(
-                    presChainDims, 
+                    UInt2(viewContext->_width, viewContext->_height),
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
                     Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
         }

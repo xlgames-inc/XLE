@@ -161,6 +161,7 @@ namespace Utility
     {
     public:
         Type _values[Count];
+
         VectorPattern(Type x=0, Type y=0, Type z=0, Type w=0)
         { 
             if (constant_expression<(Count > 0u)>::result()) _values[0] = x;
@@ -168,6 +169,8 @@ namespace Utility
             if (constant_expression<(Count > 2u)>::result()) _values[2] = z;
             if (constant_expression<(Count > 3u)>::result()) _values[3] = w;
         }
+
+		Type operator[](unsigned index) const { return _values[index]; }
 
         template<
 			typename Source,

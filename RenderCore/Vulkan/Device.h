@@ -99,6 +99,8 @@ namespace RenderCore
 		Metal_Vulkan::FrameBufferLayout     _defaultRenderPass;
 		BufferUploads::TextureDesc          _bufferDesc;
 
+		std::shared_ptr<ViewportContext>	_viewportContext;
+
         PresentSync     _presentSyncs[3];
         unsigned        _activePresentSync;
     };

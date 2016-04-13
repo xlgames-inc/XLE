@@ -55,32 +55,34 @@ namespace RenderCore { namespace Metal_Vulkan
         // We don't know anything about the "image" in this case. We need to rely on "image" containing all
         // of the relevant information.
         auto createInfo = MakeCreateInfo(window, image, true);
-        _underlying = factory.CreateImageView(createInfo);
-		_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        _imageView = factory.CreateImageView(createInfo);
     }
 
 	TextureView::TextureView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewWindow& window)
 	{
 		auto res = UnderlyingResourcePtr(image).get();
-        assert(res->GetDesc()._type == ResourceDesc::Type::Texture);
-        assert(res->GetImage());
-        const auto& tDesc = res->GetDesc()._textureDesc;
-        auto adjWindow = window;
+		// note --	some "buffer" objects can be used as ShaderResources... In those cases, we will arrive here,
+		//			and the calling code is probably expecting use to create a VkBufferView
+		if (res->GetImage()) {
+			assert(res->GetDesc()._type == ResourceDesc::Type::Texture);
+			assert(res->GetImage());
+			const auto& tDesc = res->GetDesc()._textureDesc;
+			auto adjWindow = window;
 
-        // Some parts of the "TextureViewWindow" can be set to "undefined". In these cases,
-        // we should fill them in with the detail from the resource.
-        if (adjWindow._format == Format(0)) adjWindow._format = tDesc._format;
-        if (adjWindow._dimensionality == TextureDesc::Dimensionality::Undefined)
-            adjWindow._dimensionality = tDesc._dimensionality;
-        if (adjWindow._mipRange._count == TextureViewWindow::Unlimited)
-            adjWindow._mipRange._count = tDesc._mipCount - adjWindow._mipRange._min;
-        if (adjWindow._arrayLayerRange._count == TextureViewWindow::Unlimited)
-            adjWindow._arrayLayerRange._count = tDesc._arrayCount - adjWindow._arrayLayerRange._min;
+			// Some parts of the "TextureViewWindow" can be set to "undefined". In these cases,
+			// we should fill them in with the detail from the resource.
+			if (adjWindow._format == Format(0)) adjWindow._format = tDesc._format;
+			if (adjWindow._dimensionality == TextureDesc::Dimensionality::Undefined)
+				adjWindow._dimensionality = tDesc._dimensionality;
+			if (adjWindow._mipRange._count == TextureViewWindow::Unlimited)
+				adjWindow._mipRange._count = tDesc._mipCount - adjWindow._mipRange._min;
+			if (adjWindow._arrayLayerRange._count == TextureViewWindow::Unlimited)
+				adjWindow._arrayLayerRange._count = tDesc._arrayCount - adjWindow._arrayLayerRange._min;
 
-        auto createInfo = MakeCreateInfo(adjWindow, res->GetImage(), true);
-        _underlying = factory.CreateImageView(createInfo);
-		_image = image;
-        _layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			auto createInfo = MakeCreateInfo(adjWindow, res->GetImage(), true);
+			_imageView = factory.CreateImageView(createInfo);
+			_image = image;
+		}
 	}
 
     TextureView::TextureView(VkImage image, const TextureViewWindow& window)
@@ -92,7 +94,7 @@ namespace RenderCore { namespace Metal_Vulkan
     { 
     }
 
-    TextureView::TextureView() { _layout = VK_IMAGE_LAYOUT_UNDEFINED; }
+    TextureView::TextureView() {}
     TextureView::~TextureView() {}
 
 

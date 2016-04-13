@@ -719,12 +719,12 @@ namespace BufferUploads
         }
     
         auto finalResourceConstruction = _resourceSource.Create(
-            desc, allowUploadByInitialisation?initialisationData:NULL, ResourceSource::CreationOptions::AllowDeviceCreation);
+            desc, allowUploadByInitialisation?initialisationData:nullptr, ResourceSource::CreationOptions::AllowDeviceCreation);
         if (!finalResourceConstruction._identifier || finalResourceConstruction._identifier->IsEmpty()) {
             return nullptr;
         }
     
-        if (!allowUploadByInitialisation || !(finalResourceConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
+        if (initialisationData && (!allowUploadByInitialisation || !(finalResourceConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful))) {
 			assert(initialisationData);
             unsigned lodOffset = requestedStagingLODOffset;
             unsigned actualisedStagingLODOffset = requestedStagingLODOffset;

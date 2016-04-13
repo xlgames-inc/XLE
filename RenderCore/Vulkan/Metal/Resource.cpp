@@ -8,6 +8,7 @@
 #include "ObjectFactory.h"
 #include "Format.h"
 #include "DeviceContext.h"
+#include "TextureView.h"
 #include "../IDeviceVulkan.h"
 #include "../../ResourceUtils.h"
 #include "../../Format.h"
@@ -367,6 +368,18 @@ namespace RenderCore { namespace Metal_Vulkan
 		return res.get()->GetDesc();
 	}
 
+	ResourceDesc ExtractDesc(const TextureView& res)
+	{
+		auto resource = res.GetResource();
+		if (!resource) return ResourceDesc();
+		return ExtractDesc(resource);
+	}
+
+	RenderCore::ResourcePtr ExtractResource(TextureView& res)
+	{
+		return res.ShareResource();
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void Copy(DeviceContext& context, UnderlyingResourcePtr dst, UnderlyingResourcePtr src, ImageLayout dstLayout, ImageLayout srcLayout)
@@ -454,7 +467,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
             auto dstAspectMask = AsImageAspectMask(dstDesc._textureDesc._format);
 
-            VkBufferImageCopy copyOps[64];
+            VkBufferImageCopy copyOps[96];
 
             auto arrayCount = std::max(1u, (unsigned)srcDesc._textureDesc._arrayCount);
 		    auto mips = std::max(1u, (unsigned)std::min(srcDesc._textureDesc._mipCount, dstDesc._textureDesc._mipCount));
@@ -618,6 +631,11 @@ namespace RenderCore { namespace Metal_Vulkan
     { 
         Throw(::Exceptions::BasicLabel("Resource duplication not implemented"));
     }
+
+	ResourcePtr Duplicate(DeviceContext&, UnderlyingResourcePtr inputResource)
+	{
+		Throw(::Exceptions::BasicLabel("Resource duplication not implemented"));
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

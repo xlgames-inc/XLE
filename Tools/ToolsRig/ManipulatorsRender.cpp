@@ -96,6 +96,7 @@ namespace ToolsRig
         Techniques::ParsingContext& parserContext,
         const Float3& centre, float radius)
     {
+#if GFXAPI_ACTIVE == GFXAPI_DX11
         auto& metalContext = *Metal::DeviceContext::Get(threadContext);
 
             // unbind the depth buffer
@@ -156,6 +157,7 @@ namespace ToolsRig
         CATCH_END
 
         savedTargets.ResetToOldTargets(metalContext);
+#endif
     }
 
     void RenderRectangleHighlight(
@@ -164,6 +166,7 @@ namespace ToolsRig
         const Float3& mins, const Float3& maxs,
 		RectangleHighlightType type)
     {
+#if GFXAPI_ACTIVE == GFXAPI_DX11
         auto& metalContext = *Metal::DeviceContext::Get(threadContext);
                 
             // unbind the depth buffer
@@ -229,6 +232,7 @@ namespace ToolsRig
         CATCH_END
 
         savedTargets.ResetToOldTargets(metalContext);
+#endif
     }
 
     class ManipulatorResBox
