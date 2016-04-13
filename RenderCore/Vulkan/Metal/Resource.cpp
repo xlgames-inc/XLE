@@ -178,7 +178,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			r.GetImage(), 
 			aspectMask,
 			AsVkImageLayout(oldLayout), AsVkImageLayout(newLayout),
-            desc._textureDesc._mipCount, desc._textureDesc._arrayCount);
+            std::max(1u, (unsigned)desc._textureDesc._mipCount), std::max(1u, (unsigned)desc._textureDesc._arrayCount));
 	}
 
     static VulkanSharedPtr<VkDeviceMemory> AllocateDeviceMemory(
@@ -281,14 +281,15 @@ namespace RenderCore { namespace Metal_Vulkan
             // will manually layout the miplevels within the device memory.
             //
             // This is because Vulkan doesn't support creating VK_IMAGE_TILING_LINEAR with more than 1
-            // mip level or array layers. However, our solution more or less emulates what would happen
+            // mip level or array layers. And linear texture must be 2D (they can't be 1d or 3d textures)
+			// However, our solution more or less emulates what would happen
             // if it did...?! (Except, of course, we can never bind it as a sampled texture)
             //
             // See (for example) this post from nvidia:
             // https://devtalk.nvidia.com/default/topic/926085/texture-memory-management/
 
             if (image_create_info.tiling == VK_IMAGE_TILING_LINEAR
-                && (image_create_info.mipLevels > 1 || image_create_info.arrayLayers > 1)) {
+                /*&& (image_create_info.mipLevels > 1 || image_create_info.arrayLayers > 1)*/) {
 
                 VkBufferCreateInfo buf_info = {};
 			    buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;

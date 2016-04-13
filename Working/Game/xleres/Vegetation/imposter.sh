@@ -98,7 +98,7 @@ VSSprite vs_main(VSSprite input)
 
 void ps_depthonly(float4 pos : SV_Position) {}
 
-#if !(MAT_ALPHA_TEST==1)
+#if !(MAT_ALPHA_TEST==1) && (VULKAN!=1)
     [earlydepthstencil]
 #endif
 float4 main(VSOutput geo) : SV_Target0

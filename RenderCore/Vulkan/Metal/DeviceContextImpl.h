@@ -19,7 +19,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			assert(_commandList);
             assert(Count <= s_maxBoundVBs);
             VkDeviceSize offsets[s_maxBoundVBs] = { offset, offset, offset, offset };
-            SetVertexStrides({stride, stride, stride, stride});
+            SetVertexStrides(VBs._startingPoint, {stride, stride, stride, stride});
             vkCmdBindVertexBuffers(
 				_commandList.get(),
                 VBs._startingPoint, Count,

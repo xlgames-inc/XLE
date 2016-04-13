@@ -35,7 +35,7 @@ void DoDitherAlphaTest(VSOutput geo, int2 pixelCoords, uint primitiveID)
 	#endif
 }
 
-#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_DITHER_SHADOWS==1)))
+#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_DITHER_SHADOWS==1))) && (VULKAN!=1)
 	[earlydepthstencil]
 #endif
 void main(VSOutput geo)

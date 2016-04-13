@@ -1669,7 +1669,9 @@ namespace BufferUploads
                                 //      into the staging object, and then submit to the final result.
                                 //
 
-                            assert(uploadStep._destinationBox == Box2D());
+                            if (!(uploadStep._destinationBox == Box2D()))
+								LogAlwaysWarning << "Upload box is not empty with PushToStagingTexture. Result will be incorrect.";
+
                             auto finalDesc = ApplyLODOffset(transaction->_desc, transaction->_actualisedStagingLODOffset);
                             auto mipOffset = transaction->_actualisedStagingLODOffset;
                             bytesUploaded += context.GetDeviceContext().PushToStagingTexture(

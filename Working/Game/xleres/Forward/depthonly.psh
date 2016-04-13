@@ -39,7 +39,7 @@
 
 #else
 
-	#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
+	#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))) && (VULKAN!=1)
 		[earlydepthstencil]
 	#endif
 	void main(VSOutput geo)

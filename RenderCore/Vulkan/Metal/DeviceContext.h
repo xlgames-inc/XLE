@@ -67,7 +67,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(const ShaderProgram& shaderProgram);
 
         void        Bind(Topology::Enum topology);
-        void        SetVertexStrides(std::initializer_list<unsigned> vertexStrides);
+        void        SetVertexStrides(unsigned first, std::initializer_list<unsigned> vertexStrides);
 
         VulkanUniquePtr<VkPipeline> CreatePipeline(VkRenderPass renderPass, unsigned subpass = 0);
 
@@ -131,8 +131,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess) {}
 
-		void        Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[]) {}
-        void        Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset=0) {}
+		void        Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[]);
+        void        Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset=0);
         void        Bind(const VertexShader& vertexShader) {}
         void        Bind(const GeometryShader& geometryShader) {}
         void        Bind(const PixelShader& pixelShader) {}
@@ -177,7 +177,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		bool					IsImmediate() { return false; }
 
         void        Bind(VulkanSharedPtr<VkRenderPass> renderPass);
-        void        BindPipeline();
 		
 		void		InvalidateCachedState() {}
 		static void PrepareForDestruction(IDevice*, IPresentationChain*);
@@ -199,6 +198,8 @@ namespace RenderCore { namespace Metal_Vulkan
         VulkanSharedPtr<VkRenderPass> _renderPass;
         CommandPool* _cmdPool;
         CommandPool::BufferType _cmdBufferType;
+
+		void        BindPipeline();
     };
 }}
 

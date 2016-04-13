@@ -568,7 +568,7 @@ namespace RenderOverlays
             Metal::BoundInputLayout boundInputLayout(inputLayout, *_shaderProgram);
             Metal::BoundUniforms boundUniforms(*_shaderProgram);
             boundUniforms.BindConstantBuffer(
-                Hash64("ReciprocalViewportDimensions"), 0, 1,
+                Hash64("ReciprocalViewportDimensionsCB"), 0, 1,
                 ReciprocalViewportDimensions_Elements, dimof(ReciprocalViewportDimensions_Elements));
             Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
 

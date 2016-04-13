@@ -161,7 +161,7 @@ namespace Overlays
         const ShaderResourceView* resources[] = { &srv };
         const ConstantBuffer* cnsts[] = { &reciprocalViewportDimensions, &scrollConstantsBuffer };
         BoundUniforms boundLayout(shaderProgram);
-        boundLayout.BindConstantBuffer(Hash64("ReciprocalViewportDimensions"), 0, 1);
+        boundLayout.BindConstantBuffer(Hash64("ReciprocalViewportDimensionsCB"), 0, 1);
         boundLayout.BindConstantBuffer(Hash64("ScrollConstants"), 1, 1);
         boundLayout.BindShaderResource(Hash64("DiffuseTexture"), 0, 1);
         boundLayout.Apply(*context, UniformsStream(), UniformsStream(nullptr, cnsts, dimof(cnsts), resources, dimof(resources)));

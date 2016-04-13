@@ -8,7 +8,7 @@
 #include "../Objects/IllumShader/PerPixel.h"
 #include "../Lighting/Forward.h"
 
-#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1)) && (VULKAN!=1)
 	[earlydepthstencil]
 #endif
 float4 main(VSOutput geo, SystemInputs sys) : SV_Target0

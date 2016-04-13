@@ -8,7 +8,9 @@
 #include "ObjectFactory.h"
 #include "InputLayout.h"
 #include "Shader.h"
+#include "Buffer.h"
 #include "Pools.h"
+#include "../../Format.h"
 #include "../IDeviceVulkan.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -49,10 +51,10 @@ namespace RenderCore { namespace Metal_Vulkan
         _topology = AsNativeTopology(topology);
     }
 
-    void        PipelineBuilder::SetVertexStrides(std::initializer_list<unsigned> vertexStrides)
+    void        PipelineBuilder::SetVertexStrides(unsigned first, std::initializer_list<unsigned> vertexStrides)
     {
-        for (unsigned c=0; c<vertexStrides.size() && c < dimof(_vertexStrides); ++c)
-            _vertexStrides[c] = vertexStrides.begin()[c];
+        for (unsigned c=0; (first+c)<vertexStrides.size() && c < dimof(_vertexStrides); ++c)
+            _vertexStrides[first+c] = vertexStrides.begin()[c];
     }
 
     static VkPipelineShaderStageCreateInfo BuildShaderStage(
@@ -187,6 +189,36 @@ namespace RenderCore { namespace Metal_Vulkan
             &scissor);
     }
 
+	void        DeviceContext::Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset)
+	{
+		assert(_commandList);
+		vkCmdBindIndexBuffer(
+			_commandList.get(),
+			ib.GetUnderlying(),
+			offset,
+			indexFormat == Format::R32_UINT ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
+	}
+
+	void        DeviceContext::Bind(
+		unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], 
+		const unsigned strides[], const unsigned offsets[])
+	{
+		assert(_commandList);
+		assert(bufferCount <= s_maxBoundVBs);
+		SetVertexStrides(startSlot, std::initializer_list<unsigned>(strides, &strides[bufferCount]));
+		VkBuffer buffers[s_maxBoundVBs];
+		VkDeviceSize vkOffsets[s_maxBoundVBs];
+		for (unsigned c=0; c<bufferCount; ++c) {
+			buffers[c] = VBs[c]->GetUnderlying();
+			vkOffsets[c] = offsets[c];
+		}
+		vkCmdBindVertexBuffers(
+			_commandList.get(),
+			startSlot, bufferCount,
+			buffers, vkOffsets);
+	}
+
+
     void        DeviceContext::Bind(VulkanSharedPtr<VkRenderPass> renderPass)
     {
         _renderPass = std::move(renderPass);
@@ -205,6 +237,7 @@ namespace RenderCore { namespace Metal_Vulkan
     void        DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
 		assert(_commandList);
+		BindPipeline();
         vkCmdDraw(
 			_commandList.get(),
             vertexCount, 1,
@@ -213,6 +246,13 @@ namespace RenderCore { namespace Metal_Vulkan
     
     void        DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
+		assert(_commandList);
+		BindPipeline();
+		vkCmdDrawIndexed(
+			_commandList.get(),
+			indexCount, 1,
+			startIndexLocation, baseVertexLocation,
+			0);
     }
 
     void        DeviceContext::DrawAuto() 

@@ -92,7 +92,7 @@ struct PSInput_Basic
 	float2 _texCoord : TEXCOORD0;
 };
 
-cbuffer ReciprocalViewportDimensions
+cbuffer ReciprocalViewportDimensionsCB
 {
 	float2 ReciprocalViewportDimensions;
 }

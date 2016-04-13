@@ -344,7 +344,7 @@ namespace ToolsRig
         const Metal::ShaderResourceView* resources[] = { &srv };
         const Metal::ConstantBuffer* cnsts[] = { &reciprocalViewportDimensions };
         Metal::BoundUniforms boundLayout(shaderProgram);
-        boundLayout.BindConstantBuffer(Hash64("ReciprocalViewportDimensions"), 0, 1);
+        boundLayout.BindConstantBuffer(Hash64("ReciprocalViewportDimensionsCB"), 0, 1);
         boundLayout.BindShaderResource(Hash64("DiffuseTexture"), 0, 1);
         boundLayout.Apply(metalContext, Metal::UniformsStream(), Metal::UniformsStream(nullptr, cnsts, dimof(cnsts), resources, dimof(resources)));
 

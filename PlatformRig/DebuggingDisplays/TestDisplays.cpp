@@ -851,7 +851,7 @@ namespace PlatformRig { namespace Overlays
             SharedPkt constants[] = { MakeSharedPkt(recipViewport) };
 
             Metal::BoundUniforms uniforms(shader);
-            uniforms.BindConstantBuffers(1, {"ReciprocalViewportDimensions"});
+            uniforms.BindConstantBuffers(1, {"ReciprocalViewportDimensionsCB"});
             uniforms.Apply(
                 *metalContext, context->GetGlobalUniformsStream(),
                 Metal::UniformsStream(constants));
@@ -897,7 +897,7 @@ namespace PlatformRig { namespace Overlays
 
             Metal::BoundUniforms uniforms(shader);
             uniforms.BindShaderResources(1, {"DiffuseTexture"});
-            uniforms.BindConstantBuffers(1, {"ReciprocalViewportDimensions"});
+            uniforms.BindConstantBuffers(1, {"ReciprocalViewportDimensionsCB"});
             uniforms.Apply(
                 *metalContext, context->GetGlobalUniformsStream(),
                 Metal::UniformsStream(constants, srvs));
