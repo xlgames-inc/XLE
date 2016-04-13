@@ -1022,10 +1022,16 @@ namespace BufferUploads
                 result._identifier = _pooledGeometryBuffers->CreateResource(AdjustDescForReusableResource(desc), objectSize, deviceCreation);
                 result._flags |= deviceCreation?ResourceConstruction::Flags::DeviceConstructionInvoked:0;
             } else if (deviceCreation) {
+				auto supportInit = 
+					desc._type == BufferDesc::Type::Texture
+						? PlatformInterface::SupportsResourceInitialisation_Texture
+						: PlatformInterface::SupportsResourceInitialisation_Buffer;
+				auto initPkt = supportInit ? initialisationData : nullptr;
+
                 result._identifier = make_intrusive<ResourceLocator>(
-                    PlatformInterface::CreateResource(*_underlyingDevice, desc, PlatformInterface::SupportsResourceInitialisation?initialisationData:NULL),
+                    PlatformInterface::CreateResource(*_underlyingDevice, desc, initPkt),
                     0, objectSize);
-                result._flags |= PlatformInterface::SupportsResourceInitialisation?ResourceConstruction::Flags::InitialisationSuccessful:0;
+                result._flags |= initPkt ? ResourceConstruction::Flags::InitialisationSuccessful : 0;
                 result._flags |= ResourceConstruction::Flags::DeviceConstructionInvoked;
                 if (!result._identifier || result._identifier->IsEmpty()) {
                     // LogAlwaysWarningF("Warning -- Failed to create device buffer for resource (%s)", Description(desc).c_str());

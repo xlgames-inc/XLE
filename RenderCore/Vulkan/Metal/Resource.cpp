@@ -226,6 +226,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			const auto& tDesc = desc._textureDesc;
 			const auto vkFormat = AsVkFormat(tDesc._format);
 
+			assert(vkFormat != VK_FORMAT_UNDEFINED);
+
 			VkImageCreateInfo image_create_info = {};
 			image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 			image_create_info.pNext = nullptr;

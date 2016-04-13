@@ -240,7 +240,7 @@ namespace BufferUploads
         };
 
         static const unsigned CreateStepQueueLength      = 1*1024;
-        static const unsigned UpdateDataQueueLength      = PlatformInterface::SupportsResourceInitialisation ? 128 : 1*1024;
+        static const unsigned UpdateDataQueueLength      = PlatformInterface::SupportsResourceInitialisation_Texture ? 128 : 1*1024;
         static const unsigned StagingBufferQueueLength   = PlatformInterface::RequiresStagingTextureUpload ? UpdateDataQueueLength : 64;
 
         class QueueSet
@@ -456,7 +456,11 @@ namespace BufferUploads
         transaction->_creationOptions = flags;
         // transaction->_creationFrameID = PlatformInterface::GetFrameID();
         
-        const bool allowInitialisationOnConstruction = PlatformInterface::SupportsResourceInitialisation || _resourceSource.WillBeBatched(desc);
+        bool allowInitialisationOnConstruction = 
+			desc._type != BufferDesc::Type::Texture
+			? PlatformInterface::SupportsResourceInitialisation_Texture
+			: PlatformInterface::SupportsResourceInitialisation_Buffer;
+		allowInitialisationOnConstruction |= _resourceSource.WillBeBatched(desc);
         if (initialisationData) {
 
 			if (!allowInitialisationOnConstruction) {

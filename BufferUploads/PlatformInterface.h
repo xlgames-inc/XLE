@@ -140,7 +140,8 @@ namespace BufferUploads { namespace PlatformInterface
         //          Use these to customise behaviour for platforms
         //          without lots of #if defined(...) type code
     #if GFXAPI_ACTIVE == GFXAPI_DX11
-        static const bool SupportsResourceInitialisation = true;
+		static const bool SupportsResourceInitialisation_Texture = true;
+		static const bool SupportsResourceInitialisation_Buffer = true;
         static const bool RequiresStagingTextureUpload = false;
         static const bool RequiresStagingResourceReadBack = true;
         static const bool CanDoNooverwriteMapInBackground = false;
@@ -149,7 +150,8 @@ namespace BufferUploads { namespace PlatformInterface
         static const bool CanDoPartialMaps = false;
         static const bool NonVolatileResourcesTakeSystemMemory = false;
     #elif GFXAPI_ACTIVE == GFXAPI_DX9
-        static const bool SupportsResourceInitialisation = false;
+		static const bool SupportsResourceInitialisation_Texture = false;
+		static const bool SupportsResourceInitialisation_Buffer = false;
         static const bool RequiresStagingTextureUpload = true;
         static const bool RequiresStagingResourceReadBack = false;
         static const bool CanDoNooverwriteMapInBackground = true;
@@ -158,7 +160,8 @@ namespace BufferUploads { namespace PlatformInterface
         static const bool CanDoPartialMaps = true;
         static const bool NonVolatileResourcesTakeSystemMemory = true;
     #elif GFXAPI_ACTIVE == GFXAPI_OPENGLES
-        static const bool SupportsResourceInitialisation = true;
+        static const bool SupportsResourceInitialisation_Texture = true;
+		static const bool SupportsResourceInitialisation_Buffer = true;
         static const bool RequiresStagingTextureUpload = false;
         static const bool RequiresStagingResourceReadBack = true;
         static const bool CanDoNooverwriteMapInBackground = false;
@@ -168,7 +171,8 @@ namespace BufferUploads { namespace PlatformInterface
         static const bool NonVolatileResourcesTakeSystemMemory = false;
 	#elif GFXAPI_ACTIVE == GFXAPI_VULKAN
 		// Vulkan capabilities haven't been tested!
-		static const bool SupportsResourceInitialisation = false;
+		static const bool SupportsResourceInitialisation_Texture = false;
+		static const bool SupportsResourceInitialisation_Buffer = true;
 		static const bool RequiresStagingTextureUpload = true;
 		static const bool RequiresStagingResourceReadBack = true;
 		static const bool CanDoNooverwriteMapInBackground = true;
