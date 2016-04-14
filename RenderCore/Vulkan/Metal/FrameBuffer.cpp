@@ -57,7 +57,7 @@ namespace RenderCore { namespace Metal_Vulkan
             i->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             i->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             i->stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            i->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            i->initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
             i->finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
             i->flags = 0;
 
@@ -80,7 +80,7 @@ namespace RenderCore { namespace Metal_Vulkan
             i->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
             i->stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-            i->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            i->initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             i->finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             i->flags = 0;
 

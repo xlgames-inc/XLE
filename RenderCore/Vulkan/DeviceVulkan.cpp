@@ -507,25 +507,20 @@ namespace RenderCore
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failure while creating swap chain"));
 
-		return std::make_unique<PresentationChain>(
+		auto finalChain = std::make_unique<PresentationChain>(
 			std::move(surface), std::move(result), _objectFactory,
             BufferUploads::TextureDesc::Plain2D(swapChainExtent.width, swapChainExtent.height, Metal_Vulkan::AsFormat(chainFmt)),
             platformValue);
-    }
 
-	#if 0
-		static void BeginOneTimeSubmit(VkCommandBuffer cmd)
-		{
-			VkCommandBufferBeginInfo cmd_buf_info = {};
-			cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			cmd_buf_info.pNext = nullptr;
-			cmd_buf_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-			cmd_buf_info.pInheritanceInfo = nullptr;
-			auto res = vkBeginCommandBuffer(cmd, &cmd_buf_info);
-			if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
-		}
-	#endif
+        // (synchronously) set the initial layouts for the presentation chain images
+        // It's a bit odd, but the Vulkan samples do this
+        finalChain->SetInitialLayout(
+            _objectFactory,
+            _foregroundPrimaryContext->GetRenderingCommandPool(),
+            _foregroundPrimaryContext->GetQueue());
+
+        return std::move(finalChain);
+    }
 
     std::shared_ptr<IThreadContext> Device::GetImmediateContext()
     {
@@ -849,53 +844,65 @@ namespace RenderCore
             _presentSyncs[c]._presentFence = factory.CreateFence(VK_FENCE_CREATE_SIGNALED_BIT);
         }
         _activePresentSync = 0;
+    }
 
+    static void BeginOneTimeSubmit(VkCommandBuffer cmd)
+    {
+		VkCommandBufferBeginInfo cmd_buf_info = {};
+		cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		cmd_buf_info.pNext = nullptr;
+		cmd_buf_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		cmd_buf_info.pInheritanceInfo = nullptr;
+		auto res = vkBeginCommandBuffer(cmd, &cmd_buf_info);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
+	}
+
+    void PresentationChain::SetInitialLayout(
+        const Metal_Vulkan::ObjectFactory& factory, 
+        Metal_Vulkan::CommandPool& cmdPool, VkQueue queue)
+    {
         // We need to set the image layout for these images we created
         // this is a little frustrating. I wonder if the GPU is just rearranging the pixel contents?
-#if 0
-        if (constant_expression<false>::result()) {
-            auto cmd = globalPools._renderingCommandPool.Allocate(Metal_Vulkan::CommandPool::BufferType::Primary);
-            BeginOneTimeSubmit(cmd.get());
+        auto cmd = cmdPool.Allocate(Metal_Vulkan::CommandPool::BufferType::Primary);
+        BeginOneTimeSubmit(cmd.get());
 
-            for (auto& i:_images)
-				Metal_Vulkan::SetImageLayout(
-                    cmd.get(), i._underlying, 
-                    VK_IMAGE_ASPECT_COLOR_BIT,
-                    VK_IMAGE_LAYOUT_UNDEFINED,
-                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        for (auto& i:_images)
 			Metal_Vulkan::SetImageLayout(
-                cmd.get(), _depthStencilResource.GetImage(),
-                VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT,
+                cmd.get(), i._image, 
+                VK_IMAGE_ASPECT_COLOR_BIT,
                 VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1, 1);
+		Metal_Vulkan::SetImageLayout(
+            cmd.get(), Metal_Vulkan::UnderlyingResourcePtr(_depthStencilResource).get()->GetImage(),
+            VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1, 1);
 
-            auto res = vkEndCommandBuffer(cmd.get());
-            if (res != VK_SUCCESS)
-			    Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
+        auto res = vkEndCommandBuffer(cmd.get());
+        if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
 
-            auto cmdRaw = cmd.get();
-            VkSubmitInfo submitInfo;
-		    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		    submitInfo.pNext = nullptr;
-		    submitInfo.waitSemaphoreCount = 0;
-		    submitInfo.pWaitSemaphores = nullptr;
-		    submitInfo.pWaitDstStageMask = nullptr;
-			submitInfo.commandBufferCount = 1;
-			submitInfo.pCommandBuffers = &cmdRaw;
-		    submitInfo.signalSemaphoreCount = 0;
-		    submitInfo.pSignalSemaphores = nullptr;
+        auto cmdRaw = cmd.get();
+        VkSubmitInfo submitInfo;
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = nullptr;
+		submitInfo.waitSemaphoreCount = 0;
+		submitInfo.pWaitSemaphores = nullptr;
+		submitInfo.pWaitDstStageMask = nullptr;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &cmdRaw;
+		submitInfo.signalSemaphoreCount = 0;
+		submitInfo.pSignalSemaphores = nullptr;
 
-            auto fence = factory.CreateFence();
-            res = vkQueueSubmit(_queue, 1, &submitInfo, fence.get());
-		    if (res != VK_SUCCESS)
-			    Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
-            VkFence fences[] = { fence.get() };
-            res = vkWaitForFences(factory.GetDevice().get(), dimof(fences), fences, true, UINT64_MAX);
-            if (res != VK_SUCCESS)
-			    Throw(VulkanAPIFailure(res, "Failure while waiting for fence"));
-        }
-#endif
-
+        auto fence = factory.CreateFence();
+        res = vkQueueSubmit(queue, 1, &submitInfo, fence.get());
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
+        VkFence fences[] = { fence.get() };
+        res = vkWaitForFences(factory.GetDevice().get(), dimof(fences), fences, true, UINT64_MAX);
+        if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while waiting for fence"));
     }
 
     PresentationChain::~PresentationChain()

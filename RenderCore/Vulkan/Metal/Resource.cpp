@@ -95,8 +95,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkImageAspectFlags aspectMask,
 		VkImageLayout oldImageLayout,
 		VkImageLayout newImageLayout,
-        unsigned mipCount = VK_REMAINING_MIP_LEVELS,
-        unsigned layerCount = VK_REMAINING_ARRAY_LAYERS)
+        unsigned mipCount,
+        unsigned layerCount)
 	{
 		VkImageMemoryBarrier image_memory_barrier = {};
 		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;

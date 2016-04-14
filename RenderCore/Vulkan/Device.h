@@ -60,6 +60,9 @@ namespace RenderCore
 		Metal_Vulkan::FrameBufferLayout* BindDefaultRenderPass(Metal_Vulkan::DeviceContext& context);
 
 		void PresentToQueue(VkQueue queue);
+        void SetInitialLayout(
+            const Metal_Vulkan::ObjectFactory& factory, 
+            Metal_Vulkan::CommandPool& cmdPool, VkQueue queue);
 
 		class PresentSync
 		{
@@ -120,6 +123,9 @@ namespace RenderCore
         void                        IncrFrameId();
 		void						InvalidateCachedState() const;
         void                        BeginCommandList();
+
+        Metal_Vulkan::CommandPool&  GetRenderingCommandPool()   { return _renderingCommandPool; }
+        VkQueue                     GetQueue()                  { return _queue; }
 
         ThreadContext(
             std::shared_ptr<Device> device, 

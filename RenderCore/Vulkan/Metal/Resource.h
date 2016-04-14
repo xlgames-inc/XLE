@@ -208,7 +208,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void SetImageLayout(
 		VkCommandBuffer cmd, VkImage image,
-		VkImageAspectFlags aspectMask, VkImageLayout old_image_layout, VkImageLayout new_image_layout);
+		VkImageAspectFlags aspectMask, VkImageLayout old_image_layout, VkImageLayout new_image_layout,
+        unsigned mipCount = VK_REMAINING_MIP_LEVELS,
+        unsigned layerCount = VK_REMAINING_ARRAY_LAYERS);
 	void SetImageLayout(
 		DeviceContext& context, UnderlyingResourcePtr res,
 		ImageLayout oldLayout, ImageLayout newLayout);
