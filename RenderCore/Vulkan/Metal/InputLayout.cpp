@@ -142,28 +142,41 @@ namespace RenderCore { namespace Metal_Vulkan
     bool BoundUniforms::BindConstantBuffer( uint64 hashName, unsigned slot, unsigned stream,
                                             const ConstantBufferLayoutElement elements[], size_t elementCount)
     {
-		if (stream != 0) return false;
-
-		stream = stream*2+0;
+		auto descSet = 0u;
         bool gotBinding = false;
 
         for (unsigned s=0; s<dimof(_reflection); ++s) {
             auto i = LowerBound(_reflection[s]._uniformQuickLookup, hashName);
             if (i == _reflection[s]._uniformQuickLookup.end() || i->first != hashName) continue;
 
-            assert(i->second._descriptorSet == stream);
-            assert(stream < s_descriptorSetCount);
+            assert(i->second._descriptorSet == descSet);
+            assert(descSet < s_descriptorSetCount);
 
-			// note --  expecting this object to be a uniform block. We should
-            //          do another lookup to check the type of the object.
-			VkDescriptorSetLayoutBinding binding = {};
-            binding.binding = i->second._bindingPoint;
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;     // (note, see also VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
-            binding.descriptorCount = 1;
-            binding.stageFlags = AsShaderStageFlag(ShaderStage::Enum(s));   // note, can we combine multiple bindings into one by using multiple bits here?
-            binding.pImmutableSamplers = nullptr;
-			if (_bindings[stream].size() <= slot) _bindings[stream].resize(slot+1, VkDescriptorSetLayoutBinding{});
-            _bindings[stream][slot] = binding;
+            auto shaderBindingPoint = i->second._bindingPoint;
+            unsigned descSetBindingPoint;
+
+            auto existing = std::find_if(
+                _bindings[descSet].begin(), _bindings[descSet].end(), 
+                [shaderBindingPoint](const VkDescriptorSetLayoutBinding& b) { return b.binding == shaderBindingPoint; });
+            if (existing != _bindings[descSet].end()) {
+                // normally this only happens when we want to add another shader stage to the same binding
+                existing->stageFlags |= AsShaderStageFlag(ShaderStage::Enum(s));
+            } else {
+			    // note --  expecting this object to be a uniform block. We should
+                //          do another lookup to check the type of the object.
+			    VkDescriptorSetLayoutBinding binding = {};
+                binding.binding = shaderBindingPoint;
+                binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;     // (note, see also VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+                binding.descriptorCount = 1;
+                binding.stageFlags = AsShaderStageFlag(ShaderStage::Enum(s));   // note, can we combine multiple bindings into one by using multiple bits here?
+                binding.pImmutableSamplers = nullptr;
+			
+                _bindings[descSet].push_back(binding);
+            }
+
+            if (_cbBindingIndices[stream].size() <= slot) _cbBindingIndices[stream].resize(slot+1, ~0u);
+            descSetBindingPoint = (shaderBindingPoint & 0xffff) | (descSet << 16);
+            _cbBindingIndices[stream][slot] = descSetBindingPoint;
             gotBinding = true;
         }
 
@@ -172,27 +185,40 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindShaderResource(uint64 hashName, unsigned slot, unsigned stream)
     {
-		if (stream != 0) return false;
-
-		stream = stream * 2 + 1;
+		auto descSet = 1u;
         bool gotBinding = false;
 
         for (unsigned s=0; s<dimof(_reflection); ++s) {
             auto i = LowerBound(_reflection[s]._uniformQuickLookup, hashName);
             if (i == _reflection[s]._uniformQuickLookup.end() || i->first != hashName) continue;
 
-            assert(i->second._descriptorSet == stream);
-            assert(stream < s_descriptorSetCount);
+            assert(i->second._descriptorSet == descSet);
+            assert(descSet < s_descriptorSetCount);
 
-			// note --  We should validate the type of this object!
-			VkDescriptorSetLayoutBinding binding = {};
-            binding.binding = i->second._bindingPoint;
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            binding.descriptorCount = 1;
-            binding.stageFlags = AsShaderStageFlag(ShaderStage::Enum(s));   // note, can we combine multiple bindings into one by using multiple bits here?
-            binding.pImmutableSamplers = nullptr;
-			if (_bindings[stream].size() <= slot) _bindings[stream].resize(slot+1, VkDescriptorSetLayoutBinding{});
-            _bindings[stream][slot] = binding;
+            auto shaderBindingPoint = i->second._bindingPoint;
+            unsigned descSetBindingPoint;
+
+            auto existing = std::find_if(
+                _bindings[descSet].begin(), _bindings[descSet].end(), 
+                [shaderBindingPoint](const VkDescriptorSetLayoutBinding& b) { return b.binding == shaderBindingPoint; });
+            if (existing != _bindings[descSet].end()) {
+                // normally this only happens when we want to add another shader stage to the same binding
+                existing->stageFlags |= AsShaderStageFlag(ShaderStage::Enum(s));
+            } else {
+			    // note --  We should validate the type of this object!
+			    VkDescriptorSetLayoutBinding binding = {};
+                binding.binding = i->second._bindingPoint;
+                binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                binding.descriptorCount = 1;
+                binding.stageFlags = AsShaderStageFlag(ShaderStage::Enum(s));   // note, can we combine multiple bindings into one by using multiple bits here?
+                binding.pImmutableSamplers = nullptr;
+                
+                _bindings[descSet].push_back(binding);
+            }
+
+            if (_srBindingIndices[stream].size() <= slot) _srBindingIndices[stream].resize(slot+1, ~0u);
+            descSetBindingPoint = (shaderBindingPoint & 0xffff) | (descSet << 16);
+            _srBindingIndices[stream][slot] = descSetBindingPoint;
             gotBinding = true;
         }
 
@@ -226,7 +252,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 assert(!IsCBType(i.descriptorType));
         #endif
 
-		if (_bindings[uniformsStream * 2 + 0].size() < cbs.size()) _bindings[uniformsStream * 2 + 0].resize(cbs.size(), VkDescriptorSetLayoutBinding{});
+		if (_cbBindingIndices[uniformsStream].size() < cbs.size()) _cbBindingIndices[uniformsStream].resize(cbs.size(), ~0u);
         bool result = true;
         for (auto c=cbs.begin(); c<cbs.end(); ++c)
             result &= BindConstantBuffer(Hash64(*c), unsigned(c-cbs.begin()), uniformsStream);
@@ -243,7 +269,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 assert(!IsCBType(i.descriptorType));
         #endif
 
-		if (_bindings[uniformsStream * 2 + 0].size() < cbs.size()) _bindings[uniformsStream * 2 + 0].resize(cbs.size(), VkDescriptorSetLayoutBinding{});
+		if (_cbBindingIndices[uniformsStream].size() < cbs.size()) _cbBindingIndices[uniformsStream].resize(cbs.size(), ~0u);
 		bool result = true;
         for (auto c=cbs.begin(); c<cbs.end(); ++c)
             result &= BindConstantBuffer(*c, unsigned(c-cbs.begin()), uniformsStream);
@@ -258,7 +284,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 assert(!IsShaderResType(i.descriptorType));
         #endif
 
-		if (_bindings[uniformsStream * 2 + 1].size() < res.size()) _bindings[uniformsStream * 2 + 1].resize(res.size(), VkDescriptorSetLayoutBinding{});
+		if (_srBindingIndices[uniformsStream].size() < res.size()) _srBindingIndices[uniformsStream].resize(res.size(), ~0u);
 		bool result = true;
         for (auto c=res.begin(); c<res.end(); ++c)
             result &= BindShaderResource(Hash64(*c), unsigned(c-res.begin()), uniformsStream);
@@ -273,7 +299,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 assert(!IsShaderResType(i.descriptorType));
         #endif
 
-		if (_bindings[uniformsStream * 2 + 1].size() < res.size()) _bindings[uniformsStream * 2 + 1].resize(res.size(), VkDescriptorSetLayoutBinding{});
+		if (_srBindingIndices[uniformsStream].size() < res.size()) _srBindingIndices[uniformsStream].resize(res.size(), ~0u);
 		bool result = true;
         for (auto c=res.begin(); c<res.end(); ++c)
             result &= BindShaderResource(*c, unsigned(c-res.begin()), uniformsStream);
@@ -319,24 +345,26 @@ namespace RenderCore { namespace Metal_Vulkan
 
         unsigned writeCount = 0, bufferCount = 0, imageCount = 0;
 
-		const UniformsStream* streams[] = { &stream0 }; // , &stream1 };
+		const UniformsStream* streams[] = { &stream0, &stream1 };
 
         for (unsigned stri=0; stri<dimof(streams); ++stri) {
             const auto& s = *streams[stri];
 
-			auto maxCbs = _bindings[stri*2+0].size();
+			auto maxCbs = _cbBindingIndices[stri].size();
             for (unsigned p=0; p<std::min(s._packetCount, maxCbs); ++p) {
                 if (s._prebuiltBuffers[p]) {
 
                     assert(bufferCount < dimof(bufferInfo));
                     assert(writeCount < dimof(writes));
 
+                    auto dstBinding = _cbBindingIndices[stri][p];
+                    if (dstBinding == ~0u) continue;
                     bufferInfo[bufferCount] = VkDescriptorBufferInfo{s._prebuiltBuffers[p]->GetUnderlying(), 0, VK_WHOLE_SIZE};
 
                     writes[writeCount] = {};
                     writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    writes[writeCount].dstSet = _descriptorSets[stri*2+0].get();
-                    writes[writeCount].dstBinding = p;
+                    writes[writeCount].dstSet = _descriptorSets[dstBinding>>16].get();
+                    writes[writeCount].dstBinding = dstBinding&0xffff;
                     writes[writeCount].descriptorCount = 1;
                     writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                     writes[writeCount].pBufferInfo = &bufferInfo[bufferCount];
@@ -349,13 +377,15 @@ namespace RenderCore { namespace Metal_Vulkan
                 }
             }
 
-			auto maxSrvs = _bindings[stri*2+1].size();
+			auto maxSrvs = _srBindingIndices[stri].size();
             for (unsigned r=0; r<std::min(s._resourceCount, maxSrvs); ++r) {
                 if (s._resources[r]) {
 
                     assert(imageCount < dimof(imageInfo));
                     assert(writeCount < dimof(writes));
 
+                    auto dstBinding = _srBindingIndices[stri][r];
+                    if (dstBinding == ~0u) continue;
                     imageInfo[imageCount] = VkDescriptorImageInfo {
                         s._resources[r]->GetSampler().GetUnderlying(),
                         s._resources[r]->GetUnderlying(),
@@ -363,8 +393,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
                     writes[writeCount] = {};
                     writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    writes[writeCount].dstSet = _descriptorSets[stri*2+1].get();
-                    writes[writeCount].dstBinding = r;
+                    writes[writeCount].dstSet = _descriptorSets[dstBinding>>16].get();
+                    writes[writeCount].dstBinding = dstBinding&0xffff;
                     writes[writeCount].descriptorCount = 1;
                     writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                     writes[writeCount].pImageInfo = &imageInfo[imageCount];
@@ -376,13 +406,13 @@ namespace RenderCore { namespace Metal_Vulkan
             }
         }
 
-        if (!writeCount) return;
-
-        vkUpdateDescriptorSets(context.GetUnderlyingDevice(), writeCount, writes, 0, nullptr);
-
+        if (writeCount)
+            vkUpdateDescriptorSets(context.GetUnderlyingDevice(), writeCount, writes, 0, nullptr);
+        
+        
         VkDescriptorSet rawDescriptorSets[s_descriptorSetCount];
         for (unsigned c=0; c<s_descriptorSetCount; ++c) rawDescriptorSets[c] = _descriptorSets[c].get();
-
+        
         vkCmdBindDescriptorSets(
 			context.GetCommandList(),
             VK_PIPELINE_BIND_POINT_GRAPHICS,

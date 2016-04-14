@@ -71,6 +71,16 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
+    void				PipelineBuilder::SetPipelineLayout(VulkanSharedPtr<VkPipelineLayout> layout) 
+    { 
+        _pipelineLayout = std::move(layout); 
+    }
+    
+    VkPipelineLayout    PipelineBuilder::GetPipelineLayout() 
+    { 
+        return _pipelineLayout.get(); 
+    }
+
     VulkanUniquePtr<VkPipeline> PipelineBuilder::CreatePipeline(VkRenderPass renderPass, unsigned subpass)
     {
         if (!_shaderProgram) return nullptr;
@@ -142,7 +152,7 @@ namespace RenderCore { namespace Metal_Vulkan
         pipeline.layout = _pipelineLayout.get();
         pipeline.basePipelineHandle = VK_NULL_HANDLE;
         pipeline.basePipelineIndex = 0;
-        pipeline.flags = 0;
+        pipeline.flags = 0; // VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
         pipeline.pVertexInputState = &vi;
         pipeline.pInputAssemblyState = &ia;
         pipeline.pRasterizationState = &_rasterizerState;
@@ -164,6 +174,7 @@ namespace RenderCore { namespace Metal_Vulkan
     : _factory(&factory), _globalPools(&globalPools)
     {
         _inputLayout = nullptr;
+        _shaderProgram = nullptr;
         _topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         for (auto& v:_vertexStrides) v = 0;
     }
@@ -228,10 +239,12 @@ namespace RenderCore { namespace Metal_Vulkan
     {
 		assert(_commandList);
         auto pipeline = CreatePipeline(_renderPass.get());
-        vkCmdBindPipeline(
-			_commandList.get(),
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            pipeline.get());
+        if (pipeline)
+            vkCmdBindPipeline(
+			    _commandList.get(),
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                pipeline.get());
+        Bind(ViewportDesc(0.f, 0.f, 512.f, 512.f));
     }
 
     void        DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
@@ -248,11 +261,11 @@ namespace RenderCore { namespace Metal_Vulkan
     {
 		assert(_commandList);
 		BindPipeline();
-		vkCmdDrawIndexed(
-			_commandList.get(),
-			indexCount, 1,
-			startIndexLocation, baseVertexLocation,
-			0);
+		// vkCmdDrawIndexed(
+		// 	_commandList.get(),
+		// 	indexCount, 1,
+		// 	startIndexLocation, baseVertexLocation,
+		// 	0);
     }
 
     void        DeviceContext::DrawAuto() 
@@ -285,6 +298,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void		DeviceContext::BeginCommandList()
 	{
+        // hack -- clear some state
+        _inputLayout = nullptr;
+        _shaderProgram = nullptr;
+        _pipelineLayout = nullptr;
+        _topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        for (auto& v:_vertexStrides) v = 0;
+
 		// Unless the context is already tied to a primary command list, we will always
 		// create a secondary command list here.
 		// Also, all command lists are marked as "one time submit"

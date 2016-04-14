@@ -65,6 +65,9 @@
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../SceneEngine/ShaderLightDesc.h"      // todo -- this should really be in RenderCore::Techniques
+
+#pragma warning(disable:4505)
 
 unsigned FrameRenderCount = 0;
 
@@ -399,6 +402,23 @@ namespace Sample
         return projDesc;
     }
 
+    SceneEngine::ShaderLightDesc::BasicEnvironment MakeBasicLightingEnvironment()
+    {
+        SceneEngine::ShaderLightDesc::BasicEnvironment env;
+        env._ambient =  { Float3(0.f, 0.f, 0.f), 1.f, 0.f, {0, 0, 0} };
+        env._rangeFog = { Float3(0.f, 0.f, 0.f), 1.f };
+        env._volumeFog = { 1.f, 0.f, 100.f, 0, Float3(0.f, 0.f, 0.f), 0, Float3(0.f, 0.f, 0.f), 0 };
+        env._dominant[0] = {
+            Float3(0.f, 0.f, 10.f), 1000.f, 
+            Float3(1.f, 1.f, 1.f),  1000.f,
+            Float3(1.f, 1.f, 1.f),  1000.f,
+            Float3(1.f, 0.f, 0.f),  1.f,
+            Float3(0.f, 1.f, 0.f),  1.f,
+            Float3(0.f, 0.f, 1.f),  0
+        };
+        return env;
+    }
+
     static void RunModelTest(
         RenderCore::IThreadContext& genericThreadContext,
         RenderCore::Techniques::ParsingContext& parserContext)
@@ -422,13 +442,27 @@ namespace Sample
                     *vkContext, Techniques::TechniqueContext::CB_GlobalTransform,
                     &globalTransform, sizeof(globalTransform));
 
+                struct GlobalCBuffer
+                {
+                    float _time; unsigned _samplingPassIndex; 
+                    unsigned _samplingPassCount; unsigned _dummy;
+                } globalStateCB { time, 0, 1, 0 };
+                parserContext.SetGlobalCB(
+                    *vkContext, Techniques::TechniqueContext::CB_GlobalState,
+                    &globalStateCB, sizeof(globalStateCB));
+
+                auto env = MakeBasicLightingEnvironment();
+                parserContext.SetGlobalCB(
+                    *vkContext, Techniques::TechniqueContext::CB_BasicLightingEnvironment,
+                    &env, sizeof(env));
+
                 using namespace RenderCore::Assets;
                 static auto sharedStateSet = std::make_unique<RenderCore::Assets::SharedStateSet>(
                     RenderCore::Assets::Services::GetTechniqueConfigDirs());
                 static std::unique_ptr<RenderCore::Assets::ModelRenderer> modelRenderer;
                 if (!modelRenderer) {
-                    const char sampleAsset[] = "game/model/galleon/galleon.dae";
-                    const char sampleMaterial[] = "game/model/galleon/galleon.material";
+                    const char sampleAsset[] = "game/model/simple/box.dae";
+                    const char sampleMaterial[] = "game/model/simple/box.dae";
                     auto& scaffold = ::Assets::GetAssetComp<ModelScaffold>(sampleAsset);
                     auto& matScaffold = ::Assets::GetAssetComp<MaterialScaffold>(sampleMaterial, sampleAsset);
 
@@ -560,7 +594,7 @@ namespace Sample
                 }
 
 				context->BeginFrame(*presentationChain);
-                RunShaderTest(*context);
+                // RunShaderTest(*context);
                 RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext);
                 RunModelTest(*context, parserContext);
                 context->Present(*presentationChain);

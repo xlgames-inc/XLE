@@ -104,7 +104,7 @@
 
             // Is it reasonable to go back to preinitialised? If we don't do this, the texture can be reused and the next time we attempt to
             // switch it to TransferSrcOptimal, we will get a warning.
-            SetImageLayout(*metalContext, &staging, Metal_Vulkan::ImageLayout::TransferSrcOptimal, Metal_Vulkan::ImageLayout::General);
+            // SetImageLayout(*metalContext, &staging, Metal_Vulkan::ImageLayout::TransferSrcOptimal, Metal_Vulkan::ImageLayout::General);
         }
 
         unsigned UnderlyingDeviceContext::PushToBuffer(

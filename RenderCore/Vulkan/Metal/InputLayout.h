@@ -163,6 +163,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         static const unsigned s_descriptorSetCount = 4;
         std::vector<VkDescriptorSetLayoutBinding>   _bindings[s_descriptorSetCount];
+        std::vector<uint32>                         _cbBindingIndices[s_descriptorSetCount];
+        std::vector<uint32>                         _srBindingIndices[s_descriptorSetCount];
 
         mutable VulkanSharedPtr<VkPipelineLayout>           _pipelineLayout;
         mutable VulkanUniquePtr<VkDescriptorSetLayout>      _layouts[s_descriptorSetCount];

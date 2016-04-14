@@ -71,8 +71,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         VulkanUniquePtr<VkPipeline> CreatePipeline(VkRenderPass renderPass, unsigned subpass = 0);
 
-		void				SetPipelineLayout(VulkanSharedPtr<VkPipelineLayout> layout) { _pipelineLayout = std::move(layout); }
-        VkPipelineLayout    GetPipelineLayout() { return _pipelineLayout.get(); }
+		void				SetPipelineLayout(VulkanSharedPtr<VkPipelineLayout> layout);
+        VkPipelineLayout    GetPipelineLayout();
 
         PipelineBuilder(const ObjectFactory& factory, GlobalPools& globalPools);
         ~PipelineBuilder();
