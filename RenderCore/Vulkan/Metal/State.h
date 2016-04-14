@@ -296,6 +296,9 @@ namespace RenderCore { namespace Metal_Vulkan
                     Blend::Enum alphaSrcBlend,
                     Blend::Enum alphaDstBlend);
 
+        BlendState(const BlendState&);
+        BlendState& operator=(const BlendState&);
+
 		static BlendState Null() { return BlendState(); }
 
         using UnderlyingType = const BlendState*;

@@ -154,24 +154,25 @@ namespace RenderCore { namespace Metal_Vulkan
                     const UniformsStream& stream0, const UniformsStream& stream1) const;
         void UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const;
 
-        const VulkanSharedPtr<VkPipelineLayout>& SharePipelineLayout(
-            const ObjectFactory& factory, 
-            DescriptorPool& descriptorPool) const;
-
     private:
         SPIRVReflection _reflection[ShaderStage::Max];
 
-        static const unsigned s_descriptorSetCount = 4;
-        std::vector<VkDescriptorSetLayoutBinding>   _bindings[s_descriptorSetCount];
-        std::vector<uint32>                         _cbBindingIndices[s_descriptorSetCount];
-        std::vector<uint32>                         _srBindingIndices[s_descriptorSetCount];
+        static const unsigned s_descriptorSetCount = 2;
+        static const unsigned s_streamCount = 2;
+        std::vector<VkDescriptorSetLayoutBinding>       _bindings[s_descriptorSetCount];
+        std::vector<uint32>                             _cbBindingIndices[s_streamCount];
+        std::vector<uint32>                             _srBindingIndices[s_streamCount];
 
-        mutable VulkanSharedPtr<VkPipelineLayout>           _pipelineLayout;
-        mutable VulkanUniquePtr<VkDescriptorSetLayout>      _layouts[s_descriptorSetCount];
+        mutable VulkanSharedPtr<VkPipelineLayout>       _pipelineLayout;
+        mutable VulkanUniquePtr<VkDescriptorSetLayout>  _layouts[s_descriptorSetCount];
 
-        mutable VulkanUniquePtr<VkDescriptorSet>            _descriptorSets[s_descriptorSetCount];
+        mutable VulkanUniquePtr<VkDescriptorSet>        _descriptorSets[s_descriptorSetCount];
 
-        VulkanUniquePtr<VkDescriptorSetLayout>      CreateLayout(const ObjectFactory& factory, unsigned streamIndex) const;
+        VulkanUniquePtr<VkDescriptorSetLayout>      CreateLayout(const ObjectFactory& factory, unsigned descriptorSet) const;
+
+        void BuildPipelineLayout(
+            const ObjectFactory& factory, 
+            DescriptorPool& descriptorPool) const;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

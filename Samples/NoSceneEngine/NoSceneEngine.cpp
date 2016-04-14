@@ -461,8 +461,10 @@ namespace Sample
                     RenderCore::Assets::Services::GetTechniqueConfigDirs());
                 static std::unique_ptr<RenderCore::Assets::ModelRenderer> modelRenderer;
                 if (!modelRenderer) {
-                    const char sampleAsset[] = "game/model/simple/box.dae";
-                    const char sampleMaterial[] = "game/model/simple/box.dae";
+                    // const char sampleAsset[] = "game/model/simple/box.dae";
+                    // const char sampleMaterial[] = "game/model/simple/box.dae";
+                    const char sampleAsset[] = "game/model/galleon/galleon.dae";
+                    const char sampleMaterial[] = "game/model/galleon/galleon.material";
                     auto& scaffold = ::Assets::GetAssetComp<ModelScaffold>(sampleAsset);
                     auto& matScaffold = ::Assets::GetAssetComp<MaterialScaffold>(sampleMaterial, sampleAsset);
 
@@ -477,6 +479,11 @@ namespace Sample
                 auto captureMarker = sharedStateSet->CaptureState(
                     *vkContext, 
                     parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+
+                vkContext->Bind(Metal_Vulkan::DepthStencilState(true, true));
+				vkContext->Bind(Metal_Vulkan::RasterizerState());
+                vkContext->Bind(Metal_Vulkan::BlendState());
+				vkContext->BindPS(MakeResourceList(Metal_Vulkan::SamplerState(), Metal_Vulkan::SamplerState()));
 
                     //  Finally, we can render the object!
                 modelRenderer->Render(

@@ -199,7 +199,7 @@ namespace RenderCore { namespace Metal_Vulkan
         CommandPool* _cmdPool;
         CommandPool::BufferType _cmdBufferType;
 
-		void        BindPipeline();
+		bool    BindPipeline();
     };
 }}
 

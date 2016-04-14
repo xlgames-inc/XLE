@@ -944,11 +944,13 @@ namespace RenderCore
 
 		//////////////////////////////////////////////////////////////////
 
-		auto cmdBuffer = _metalContext->GetCommandList();
-		vkCmdEndRenderPass(cmdBuffer);
-		auto res = vkEndCommandBuffer(cmdBuffer);
-		if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
+		// auto cmdBuffer = _metalContext->GetCommandList();
+		// vkCmdEndRenderPass(cmdBuffer);
+		// auto res = vkEndCommandBuffer(cmdBuffer);
+		// if (res != VK_SUCCESS)
+		// 	Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
+
+        auto cmdBuffer = _metalContext->ResolveCommandList();
 
 		VkSubmitInfo submitInfo;
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -956,16 +958,17 @@ namespace RenderCore
 
 		VkSemaphore waitSema[] = { syncs._onAcquireComplete.get() };
 		VkSemaphore signalSema[] = { syncs._onCommandBufferComplete.get() };
+        VkCommandBuffer rawCmdBuffers[] = { cmdBuffer.get() };
 		VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 		submitInfo.waitSemaphoreCount = dimof(waitSema);
 		submitInfo.pWaitSemaphores = waitSema;
 		submitInfo.signalSemaphoreCount = dimof(signalSema);
 		submitInfo.pSignalSemaphores = signalSema;
 		submitInfo.pWaitDstStageMask = &stage;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &cmdBuffer;
+		submitInfo.commandBufferCount = dimof(rawCmdBuffers);
+		submitInfo.pCommandBuffers = rawCmdBuffers;
 		
-		res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
+		auto res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
 

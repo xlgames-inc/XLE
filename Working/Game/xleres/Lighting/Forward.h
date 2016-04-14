@@ -30,7 +30,7 @@ float3 ResolveLitColor(
 			[unroll] for (uint c=0; c<BASIC_LIGHT_COUNT; ++c)
 				shadowing[c] = 1.f;
 
-			#if SHADOW_CASCADE_MODE!=0
+			#if SHADOW_CASCADE_MODE!=0 && (VULKAN!=1)
 				bool enableNearCascade = false;
 				#if SHADOW_ENABLE_NEAR_CASCADE != 0
 					enableNearCascade = true;

@@ -235,37 +235,41 @@ namespace RenderCore { namespace Metal_Vulkan
         _renderPass = std::move(renderPass);
     }
 
-    void        DeviceContext::BindPipeline()
+    bool        DeviceContext::BindPipeline()
     {
 		assert(_commandList);
         auto pipeline = CreatePipeline(_renderPass.get());
-        if (pipeline)
+        if (pipeline) {
             vkCmdBindPipeline(
 			    _commandList.get(),
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                 pipeline.get());
-        Bind(ViewportDesc(0.f, 0.f, 512.f, 512.f));
+            Bind(ViewportDesc(0.f, 0.f, 512.f, 512.f));
+            return true;
+        }
+
+        return false;
     }
 
     void        DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
 		assert(_commandList);
-		BindPipeline();
-        vkCmdDraw(
-			_commandList.get(),
-            vertexCount, 1,
-            startVertexLocation, 0);
+		if (BindPipeline())
+            vkCmdDraw(
+			    _commandList.get(),
+                vertexCount, 1,
+                startVertexLocation, 0);
     }
     
     void        DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
 		assert(_commandList);
-		BindPipeline();
-		// vkCmdDrawIndexed(
-		// 	_commandList.get(),
-		// 	indexCount, 1,
-		// 	startIndexLocation, baseVertexLocation,
-		// 	0);
+		if (BindPipeline())
+		    vkCmdDrawIndexed(
+			    _commandList.get(),
+			    indexCount, 1,
+			    startIndexLocation, baseVertexLocation,
+			    0);
     }
 
     void        DeviceContext::DrawAuto() 

@@ -251,6 +251,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (tDesc._dimensionality == TextureDesc::Dimensionality::CubeMap)
 				image_create_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
+            if (HasLinearAndSRGBFormats(tDesc._format))
+                image_create_info.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+
 			// The tiling, initialLayout and usage flags depend on the bind flags and cpu/gpu usage
 			// set in the input desc (and also if we have initData provided)
 			// Tiling can only be OPTIMAL or LINEAR, 

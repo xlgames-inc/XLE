@@ -70,6 +70,23 @@ namespace RenderCore { namespace Metal_Vulkan
         Blend::Enum alphaDstBlend)
     : BlendState() {}
 
+    BlendState::BlendState(const BlendState& cloneFrom)
+    {
+        *(VkPipelineColorBlendStateCreateInfo*)this = *(VkPipelineColorBlendStateCreateInfo*)&cloneFrom;
+        for (unsigned c=0; c<attachmentCount; ++c)
+            _attachments[c] = cloneFrom._attachments[c];
+        pAttachments = _attachments;
+    }
+
+    BlendState& BlendState::operator=(const BlendState& cloneFrom)
+    {
+        *(VkPipelineColorBlendStateCreateInfo*)this = *(VkPipelineColorBlendStateCreateInfo*)&cloneFrom;
+        for (unsigned c=0; c<attachmentCount; ++c)
+            _attachments[c] = cloneFrom._attachments[c];
+        pAttachments = _attachments;
+        return *this;
+    }
+
     StencilMode StencilMode::NoEffect(Comparison::Always, StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite);
     StencilMode StencilMode::AlwaysWrite(Comparison::Always, StencilOp::Replace, StencilOp::DontWrite, StencilOp::DontWrite);
 
@@ -78,8 +95,8 @@ namespace RenderCore { namespace Metal_Vulkan
         sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         pNext = nullptr;
         flags = 0;
-        depthTestEnable = VK_FALSE;
-        depthWriteEnable = VK_FALSE;
+        depthTestEnable = VK_TRUE;
+        depthWriteEnable = VK_TRUE;
         depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
         depthBoundsTestEnable = VK_FALSE;
         minDepthBounds = 0;

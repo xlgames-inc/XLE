@@ -307,35 +307,48 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     VulkanUniquePtr<VkDescriptorSetLayout> 
-        BoundUniforms::CreateLayout(const ObjectFactory& factory, unsigned streamIndex) const
+        BoundUniforms::CreateLayout(const ObjectFactory& factory, unsigned descriptorSet) const
     {
-        return factory.CreateDescriptorSetLayout(MakeIteratorRange(_bindings[streamIndex]));
+        return factory.CreateDescriptorSetLayout(MakeIteratorRange(_bindings[descriptorSet]));
     }
 
-    const VulkanSharedPtr<VkPipelineLayout>& BoundUniforms::SharePipelineLayout(
+    void BoundUniforms::BuildPipelineLayout(
         const ObjectFactory& factory,
         DescriptorPool& descriptorPool) const
     {
         if (!_pipelineLayout) {
-            for (unsigned c=0; c<s_descriptorSetCount; ++c)
-                _layouts[c] = CreateLayout(factory, c);
-
             VkDescriptorSetLayout rawLayouts[s_descriptorSetCount];
-            for (unsigned c=0; c<s_descriptorSetCount; ++c) rawLayouts[c] = _layouts[c].get();
+            for (unsigned c=0; c<s_descriptorSetCount; ++c) {
+                _layouts[c] = CreateLayout(factory, c);
+                rawLayouts[c] = _layouts[c].get();
+            }
             _pipelineLayout = factory.CreatePipelineLayout(MakeIteratorRange(rawLayouts));
 
             descriptorPool.Allocate(
                 MakeIteratorRange(_descriptorSets),
                 MakeIteratorRange(rawLayouts));
+
+            // for (unsigned c=0; c<s_descriptorSetCount; c++) {
+            //     VulkanUniquePtr<VkDescriptorSet> ds[1];
+            //     VkDescriptorSetLayout rl[] = { rawLayouts[c] };
+            //     descriptorPool.Allocate(MakeIteratorRange(ds), MakeIteratorRange(rl));
+            //     _descriptorSets[c] = std::move(ds[0]);
+            // }
         }
-        return _pipelineLayout;
     }
 
     void BoundUniforms::Apply(  DeviceContext& context, 
                                 const UniformsStream& stream0, 
                                 const UniformsStream& stream1) const
     {
-        auto pipelineLayout = SharePipelineLayout(GetObjectFactory(), context.GetGlobalPools()._mainDescriptorPool).get();
+        BuildPipelineLayout(GetObjectFactory(), context.GetGlobalPools()._mainDescriptorPool);
+
+        // VkDescriptorSetLayout rawLayouts[s_descriptorSetCount];
+        // for (unsigned c=0; c<s_descriptorSetCount; ++c)
+        //     rawLayouts[c] = _layouts[c].get();
+        // context.GetGlobalPools()._mainDescriptorPool.Allocate(
+        //     MakeIteratorRange(_descriptorSets),
+        //     MakeIteratorRange(rawLayouts));
 
         // -------- write descriptor set --------
         const unsigned maxBindings = 16;
@@ -360,6 +373,12 @@ namespace RenderCore { namespace Metal_Vulkan
                     auto dstBinding = _cbBindingIndices[stri][p];
                     if (dstBinding == ~0u) continue;
                     bufferInfo[bufferCount] = VkDescriptorBufferInfo{s._prebuiltBuffers[p]->GetUnderlying(), 0, VK_WHOLE_SIZE};
+
+                    #if defined(_DEBUG) // check for duplicate descriptor writes
+                        for (unsigned w=0; w<writeCount; ++w)
+                            assert( writes[w].dstBinding != (dstBinding&0xffff)
+                                ||  writes[w].dstSet != _descriptorSets[dstBinding>>16].get());
+                    #endif
 
                     writes[writeCount] = {};
                     writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -391,6 +410,12 @@ namespace RenderCore { namespace Metal_Vulkan
                         s._resources[r]->GetUnderlying(),
 						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
+                    #if defined(_DEBUG) // check for duplicate descriptor writes
+                        for (unsigned w=0; w<writeCount; ++w)
+                            assert( writes[w].dstBinding != (dstBinding&0xffff)
+                                ||  writes[w].dstSet != _descriptorSets[dstBinding>>16].get());
+                    #endif
+
                     writes[writeCount] = {};
                     writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                     writes[writeCount].dstSet = _descriptorSets[dstBinding>>16].get();
@@ -406,17 +431,20 @@ namespace RenderCore { namespace Metal_Vulkan
             }
         }
 
+        // note --  vkUpdateDescriptorSets happens immediately, regardless of command list progress.
+        //          Ideally we don't really want to have to update these constantly... Once they are 
+        //          set, maybe we can just reuse them?
         if (writeCount)
             vkUpdateDescriptorSets(context.GetUnderlyingDevice(), writeCount, writes, 0, nullptr);
         
-        
         VkDescriptorSet rawDescriptorSets[s_descriptorSetCount];
-        for (unsigned c=0; c<s_descriptorSetCount; ++c) rawDescriptorSets[c] = _descriptorSets[c].get();
+        for (unsigned c=0; c<s_descriptorSetCount; ++c)
+            rawDescriptorSets[c] = _descriptorSets[c].get();
         
         vkCmdBindDescriptorSets(
 			context.GetCommandList(),
             VK_PIPELINE_BIND_POINT_GRAPHICS,
-            pipelineLayout, 0, 
+            _pipelineLayout.get(), 0, 
             dimof(rawDescriptorSets), rawDescriptorSets, 
             0, nullptr);
 
