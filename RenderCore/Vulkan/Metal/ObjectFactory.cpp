@@ -398,10 +398,14 @@ namespace RenderCore { namespace Metal_Vulkan
         template<typename Type>
             using Queue = std::vector<Type>;
 
+            // note --  the order here represents the order in  which objects
+            //          of each type will be deleted. It can be significant,
+            //          for example VkDeviceMemory objects must be deleted after
+            //          the VkImage/VkBuffer objects that reference them.
         std::tuple<
               Queue<VkCommandPool>              // 0
             , Queue<VkSemaphore>                // 1
-            , Queue<VkDeviceMemory>             // 2
+            , Queue<VkFence>                    // 2
             , Queue<VkRenderPass>               // 3
             , Queue<VkImage>                    // 4
             , Queue<VkImageView>                // 5
@@ -413,7 +417,7 @@ namespace RenderCore { namespace Metal_Vulkan
             , Queue<VkPipelineCache>            // 11
             , Queue<VkPipelineLayout>           // 12
             , Queue<VkBuffer>                   // 13
-            , Queue<VkFence>                    // 14
+            , Queue<VkDeviceMemory>             // 14
             , Queue<VkSampler>                  // 15
         > _queues;
 
@@ -436,7 +440,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<typename Type> void DestroyObjectImmediate(VkDevice device, Type obj);
     template<> inline void DestroyObjectImmediate(VkDevice device, VkCommandPool obj)           { vkDestroyCommandPool(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkSemaphore obj)             { vkDestroySemaphore(device, obj, g_allocationCallbacks ); }
-    template<> inline void DestroyObjectImmediate(VkDevice device, VkDeviceMemory obj)          { vkFreeMemory(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkFence obj)                 { vkDestroyFence(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkRenderPass obj)            { vkDestroyRenderPass(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkImage obj)                 { vkDestroyImage(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkImageView obj)             { vkDestroyImageView(device, obj, g_allocationCallbacks ); }
@@ -448,7 +452,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<> inline void DestroyObjectImmediate(VkDevice device, VkPipelineCache obj)         { vkDestroyPipelineCache(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkPipelineLayout obj)        { vkDestroyPipelineLayout(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkBuffer obj)                { vkDestroyBuffer(device, obj, g_allocationCallbacks ); }
-    template<> inline void DestroyObjectImmediate(VkDevice device, VkFence obj)                 { vkDestroyFence(device, obj, g_allocationCallbacks ); }
+    template<> inline void DestroyObjectImmediate(VkDevice device, VkDeviceMemory obj)          { vkFreeMemory(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkSampler obj)               { vkDestroySampler(device, obj, g_allocationCallbacks ); }
 
     template<int Index>
@@ -462,7 +466,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void    DeferredDestruction::Destroy(VkCommandPool obj) { DoDestroy<0>(obj); }
     void    DeferredDestruction::Destroy(VkSemaphore obj) { DoDestroy<1>(obj); }
-    void    DeferredDestruction::Destroy(VkDeviceMemory obj) { DoDestroy<2>(obj); }
+    void    DeferredDestruction::Destroy(VkFence obj) { DoDestroy<2>(obj); }
     void    DeferredDestruction::Destroy(VkRenderPass obj) { DoDestroy<3>(obj); }
     void    DeferredDestruction::Destroy(VkImage obj) { DoDestroy<4>(obj); }
     void    DeferredDestruction::Destroy(VkImageView obj) { DoDestroy<5>(obj); }
@@ -474,7 +478,7 @@ namespace RenderCore { namespace Metal_Vulkan
     void    DeferredDestruction::Destroy(VkPipelineCache obj) { DoDestroy<11>(obj); }
     void    DeferredDestruction::Destroy(VkPipelineLayout obj) { DoDestroy<12>(obj); }
     void    DeferredDestruction::Destroy(VkBuffer obj) { DoDestroy<13>(obj); }
-    void    DeferredDestruction::Destroy(VkFence obj) { DoDestroy<14>(obj); }
+    void    DeferredDestruction::Destroy(VkDeviceMemory obj) { DoDestroy<14>(obj); }
     void    DeferredDestruction::Destroy(VkSampler obj) { DoDestroy<15>(obj); }
 
     void    DeferredDestruction::Flush()

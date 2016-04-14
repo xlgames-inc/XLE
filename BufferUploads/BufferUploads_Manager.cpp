@@ -457,7 +457,7 @@ namespace BufferUploads
         // transaction->_creationFrameID = PlatformInterface::GetFrameID();
         
         bool allowInitialisationOnConstruction = 
-			desc._type != BufferDesc::Type::Texture
+			(desc._type == BufferDesc::Type::Texture)
 			? PlatformInterface::SupportsResourceInitialisation_Texture
 			: PlatformInterface::SupportsResourceInitialisation_Buffer;
 		allowInitialisationOnConstruction |= _resourceSource.WillBeBatched(desc);

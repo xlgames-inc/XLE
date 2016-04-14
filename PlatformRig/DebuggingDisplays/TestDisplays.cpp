@@ -820,8 +820,7 @@ namespace PlatformRig { namespace Overlays
 
         TRY
         {
-            float clearCol[] = {0.f, 0.f, 0.f, 0.f};
-            metalContext->Clear(box._bufferRTV, clearCol);
+            metalContext->Clear(box._bufferRTV, {0.f, 0.f, 0.f, 0.f});
             metalContext->Bind(MakeResourceList(box._bufferRTV), nullptr);
             metalContext->Bind(box._viewport);
 

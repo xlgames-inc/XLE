@@ -129,6 +129,10 @@ namespace RenderCore { namespace Metal_Vulkan
 			image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		}
 
+        if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+			image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		}
+
 		if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
 			image_memory_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 		}

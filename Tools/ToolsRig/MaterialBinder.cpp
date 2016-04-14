@@ -231,13 +231,14 @@ namespace ToolsRig
     }
 #else
 	static std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>>
-	BuildMaterialConstants(
-		const RenderCore::Techniques::PredefinedCBLayout& cbLayout,
-		RenderCore::Metal::BoundUniforms& boundUniforms,
-		const ParameterBox& constants,
-		const IMaterialBinder::SystemConstants& systemConstantsContext,
-		UInt2 viewportDims)
+	    BuildMaterialConstants(
+		    const RenderCore::Techniques::PredefinedCBLayout& cbLayout,
+		    RenderCore::Metal::BoundUniforms& boundUniforms,
+		    const ParameterBox& constants,
+		    const IMaterialBinder::SystemConstants& systemConstantsContext,
+		    UInt2 viewportDims)
 	{
+        return std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>>();
 	}
 #endif
 

@@ -61,6 +61,11 @@
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Math/Transformations.h"
 
+#include "../../RenderCore/Assets/ModelRunTime.h"
+#include "../../RenderCore/Assets/SharedStateSet.h"
+#include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
+
 unsigned FrameRenderCount = 0;
 
 namespace VulkanTest
@@ -354,9 +359,97 @@ namespace Sample
 				vkContext->Bind(Metal_Vulkan::ViewportDesc(0, 0, 512, 512));
 
 				// ------ draw! -----------
-				vkContext->BindPipeline();
+				// vkContext->BindPipeline();
 				vkContext->Draw((unsigned)cubeGeo.size());
 			}
+        }
+        CATCH(const ::Assets::Exceptions::AssetException&) {}
+        CATCH_END
+    }
+
+    static RenderCore::Techniques::CameraDesc GetDefaultCamera(float time)
+    { 
+        RenderCore::Techniques::CameraDesc result;
+        static const auto camDist = 50.f;
+        const auto camHeight = 7.5f;
+        const auto secondsPerRotation = 40.f;
+        const auto rotationSpeed = -gPI * 2.f / secondsPerRotation;
+        Float3 cameraForward(XlCos(time * rotationSpeed), XlSin(time * rotationSpeed), 0.f);
+        Float3 cameraPosition = -camDist * cameraForward + Float3(0.f, 0.f, camHeight);
+        result._cameraToWorld = MakeCameraToWorld(cameraForward, Float3(0.f, 0.f, 1.f), cameraPosition);
+        result._farClip = 1000.f;
+        return result;
+    }
+
+    static RenderCore::Techniques::ProjectionDesc BuildProjectionDesc(
+        const RenderCore::Techniques::CameraDesc& sceneCamera,
+        UInt2 viewportDims)
+    {
+        const float aspectRatio = viewportDims[0] / float(viewportDims[1]);
+        auto cameraToProjection = RenderCore::Techniques::Projection(sceneCamera, aspectRatio);
+
+        RenderCore::Techniques::ProjectionDesc projDesc;
+        projDesc._verticalFov = sceneCamera._verticalFieldOfView;
+        projDesc._aspectRatio = aspectRatio;
+        projDesc._nearClip = sceneCamera._nearClip;
+        projDesc._farClip = sceneCamera._farClip;
+        projDesc._worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), cameraToProjection);
+        projDesc._cameraToProjection = cameraToProjection;
+        projDesc._cameraToWorld = sceneCamera._cameraToWorld;
+        return projDesc;
+    }
+
+    static void RunModelTest(
+        RenderCore::IThreadContext& genericThreadContext,
+        RenderCore::Techniques::ParsingContext& parserContext)
+    {
+        TRY
+        {
+			genericThreadContext.InvalidateCachedState();
+			using namespace RenderCore;
+
+			auto vkContext = Metal_Vulkan::DeviceContext::Get(genericThreadContext);
+			if (vkContext) {
+
+                static float time = 0.f;
+                time += 1.0f/60.f;
+                auto camera = GetDefaultCamera(time);
+
+                auto projDesc = BuildProjectionDesc(camera, UInt2(512, 512));
+                parserContext.GetProjectionDesc() = projDesc;
+                auto globalTransform = RenderCore::Techniques::BuildGlobalTransformConstants(projDesc);
+                parserContext.SetGlobalCB(
+                    *vkContext, Techniques::TechniqueContext::CB_GlobalTransform,
+                    &globalTransform, sizeof(globalTransform));
+
+                using namespace RenderCore::Assets;
+                static auto sharedStateSet = std::make_unique<RenderCore::Assets::SharedStateSet>(
+                    RenderCore::Assets::Services::GetTechniqueConfigDirs());
+                static std::unique_ptr<RenderCore::Assets::ModelRenderer> modelRenderer;
+                if (!modelRenderer) {
+                    const char sampleAsset[] = "game/model/galleon/galleon.dae";
+                    const char sampleMaterial[] = "game/model/galleon/galleon.material";
+                    auto& scaffold = ::Assets::GetAssetComp<ModelScaffold>(sampleAsset);
+                    auto& matScaffold = ::Assets::GetAssetComp<MaterialScaffold>(sampleMaterial, sampleAsset);
+
+                    auto searchRules = ::Assets::DefaultDirectorySearchRules(sampleAsset);
+                    const unsigned levelOfDetail = 0;
+                    modelRenderer = std::unique_ptr<ModelRenderer>(
+                        new ModelRenderer(
+                            scaffold, matScaffold, ModelRenderer::Supplements(),
+                            *sharedStateSet, &searchRules, levelOfDetail));
+                }
+
+                auto captureMarker = sharedStateSet->CaptureState(
+                    *vkContext, 
+                    parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+
+                    //  Finally, we can render the object!
+                modelRenderer->Render(
+                    RenderCore::Assets::ModelRendererContext(*vkContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward),
+                    *sharedStateSet, Identity<Float4x4>());
+
+            }
         }
         CATCH(const ::Assets::Exceptions::AssetException&) {}
         CATCH_END
@@ -449,14 +542,14 @@ namespace Sample
 
 			bool initTex = false;
 			if (!initTex) {
-				// using namespace RenderCore;
-				// auto initContext = renderDevice->CreateDeferredContext();
-				// auto metalContext = Metal::DeviceContext::Get(*initContext);
-				// metalContext->BeginCommandList();
-				// VulkanTest::init_image2(*renderDevice, *initContext.get(), texObj);
-				// auto cmdList = metalContext->ResolveCommandList();
-				// Metal::DeviceContext::Get(*context)->CommitCommandList(*cmdList, false);
-				VulkanTest::init_image2(*renderDevice, *context, texObj);
+				using namespace RenderCore;
+				auto initContext = renderDevice->CreateDeferredContext();
+				auto metalContext = Metal::DeviceContext::Get(*initContext);
+				metalContext->BeginCommandList();
+				VulkanTest::init_image2(*renderDevice, *initContext.get(), texObj);
+				auto cmdList = metalContext->ResolveCommandList();
+				Metal::DeviceContext::Get(*context)->CommitCommandList(*cmdList, false);
+				// VulkanTest::init_image2(*renderDevice, *context, texObj);
 				initTex = true;
 			}
 
@@ -468,6 +561,8 @@ namespace Sample
 
 				context->BeginFrame(*presentationChain);
                 RunShaderTest(*context);
+                RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext);
+                RunModelTest(*context, parserContext);
                 context->Present(*presentationChain);
 
                     // ------- Update ----------------------------------------

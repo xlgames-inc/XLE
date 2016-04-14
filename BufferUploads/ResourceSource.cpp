@@ -1023,9 +1023,9 @@ namespace BufferUploads
                 result._flags |= deviceCreation?ResourceConstruction::Flags::DeviceConstructionInvoked:0;
             } else if (deviceCreation) {
 				auto supportInit = 
-					desc._type == BufferDesc::Type::Texture
-						? PlatformInterface::SupportsResourceInitialisation_Texture
-						: PlatformInterface::SupportsResourceInitialisation_Buffer;
+					(desc._type == BufferDesc::Type::Texture)
+					? PlatformInterface::SupportsResourceInitialisation_Texture
+					: PlatformInterface::SupportsResourceInitialisation_Buffer;
 				auto initPkt = supportInit ? initialisationData : nullptr;
 
                 result._identifier = make_intrusive<ResourceLocator>(
