@@ -151,8 +151,9 @@ namespace SceneEngine
 
             auto& box = Techniques::FindCachedBoxDep2<ShortCircuitResources>(format, filterType, _gradientFlagsSettings._enable);
 
-            float temp = FLT_MAX;
             const float heightOffsetValue = 5000.f; // (height values are shifted by this constant in the shader to get around issues with negative heights
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+            float temp = FLT_MAX;
             struct TileCoords
             {
                 float minHeight, heightScale;
@@ -165,7 +166,6 @@ namespace SceneEngine
                 heightOffsetValue, 0, 0, 0
             };
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             metalContext.GetUnderlying()->UpdateSubresource(
                 Metal::UnderlyingResourcePtr(box._tileCoordsBuffer.Locator().GetUnderlying()).get(),
                 0, nullptr, &tileCoords, sizeof(TileCoords), sizeof(TileCoords));

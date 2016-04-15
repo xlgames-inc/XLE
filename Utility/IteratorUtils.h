@@ -187,6 +187,13 @@ namespace Utility
 
 }
 
+// support for missing "std::size" in earlier versions of visual studio STL
+#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER <= 1800)
+    namespace std
+    {
+        template<typename ValueType, size_t N>
+            /*constexpr*/ size_t size(ValueType (&c)[N]) { return N; }
+    }
+#endif
+
 using namespace Utility;
-
-
