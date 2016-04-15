@@ -90,78 +90,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
-	void SetImageLayout(
-		VkCommandBuffer cmd, VkImage image,
-		VkImageAspectFlags aspectMask,
-		VkImageLayout oldImageLayout,
-		VkImageLayout newImageLayout,
-        unsigned mipCount,
-        unsigned layerCount)
-	{
-		VkImageMemoryBarrier image_memory_barrier = {};
-		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		image_memory_barrier.pNext = nullptr;
-		image_memory_barrier.srcAccessMask = 0;
-		image_memory_barrier.dstAccessMask = 0;
-		image_memory_barrier.oldLayout = oldImageLayout;
-		image_memory_barrier.newLayout = newImageLayout;
-		image_memory_barrier.image = image;
-		image_memory_barrier.subresourceRange.aspectMask = aspectMask;
-		image_memory_barrier.subresourceRange.baseMipLevel = 0;
-		image_memory_barrier.subresourceRange.levelCount = mipCount;
-		image_memory_barrier.subresourceRange.layerCount = layerCount;
-
-		if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-			|| oldImageLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-			image_memory_barrier.srcAccessMask =
-				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		}
-
-		if (newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-			image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		}
-
-		if (newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-			image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-		}
-
-		if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-			image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		}
-
-        if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-			image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-		}
-
-		if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-			image_memory_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-		}
-
-		if (newImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-			image_memory_barrier.srcAccessMask =
-				VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-			image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		}
-
-		if (newImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-			|| newImageLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-			image_memory_barrier.dstAccessMask =
-				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		}
-
-		if (newImageLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-			image_memory_barrier.dstAccessMask =
-				VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		}
-
-		VkPipelineStageFlags src_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		VkPipelineStageFlags dest_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-
-		vkCmdPipelineBarrier(
-			cmd, src_stages, dest_stages, 0, 0, nullptr, 0, nullptr,
-			1, &image_memory_barrier);
-	}
-
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void SetImageLayout(
@@ -177,8 +105,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		// bits enabled, but the documentation says that this is not allowed
         const auto& desc = r.GetDesc();
 		auto aspectMask = AsImageAspectMask(desc._textureDesc._format);
-		SetImageLayout(
-			context.GetCommandList(),
+		context.SetImageLayout(
 			r.GetImage(), 
 			aspectMask,
 			AsVkImageLayout(oldLayout), AsVkImageLayout(newLayout),
@@ -442,8 +369,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			    depth = std::max(1u, depth>>1);
 		    }
 
-		    vkCmdCopyImage(
-			    context.GetCommandList(),
+		    context.CmdCopyImage(
 			    src.get()->GetImage(), AsVkImageLayout(srcLayout),
 			    dst.get()->GetImage(), AsVkImageLayout(dstLayout),
 			    copyOperations, copyOps);
@@ -458,8 +384,7 @@ namespace RenderCore { namespace Metal_Vulkan
             {
                 VkBufferCopy{0, 0, std::min(srcDesc._linearBufferDesc._sizeInBytes, dstDesc._linearBufferDesc._sizeInBytes)}
             };
-            vkCmdCopyBuffer(
-                context.GetCommandList(),
+            context.CmdCopyBuffer(
                 src.get()->GetBuffer(),
                 dst.get()->GetBuffer(),
                 dimof(copyOps), copyOps);
@@ -507,8 +432,7 @@ namespace RenderCore { namespace Metal_Vulkan
             }
 
             const auto copyOperations = mips*arrayCount;
-            vkCmdCopyBufferToImage(
-                context.GetCommandList(),
+            context.CmdCopyBufferToImage(
                 src.get()->GetBuffer(),
                 dst.get()->GetImage(), AsVkImageLayout(dstLayout),
                 copyOperations, copyOps);
@@ -555,8 +479,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			c.dstSubresource.baseArrayLayer = dst._subResource._arrayLayer;
 			c.dstSubresource.layerCount = 1;
 
-            vkCmdCopyImage(
-			    context.GetCommandList(),
+            context.CmdCopyImage(
 			    src._resource->GetImage(), AsVkImageLayout(srcLayout),
 			    dst._resource->GetImage(), AsVkImageLayout(dstLayout),
 			    1, &c);
@@ -571,8 +494,7 @@ namespace RenderCore { namespace Metal_Vulkan
             c.dstOffset = dst._leftTopFront._values[0];
             auto end = std::min(src._rightBottomBack._values[0], std::min(srcDesc._linearBufferDesc._sizeInBytes, dstDesc._linearBufferDesc._sizeInBytes));
             c.size = end - src._rightBottomBack._values[0];
-            vkCmdCopyBuffer(
-                context.GetCommandList(),
+            context.CmdCopyBuffer(
                 src._resource->GetBuffer(),
                 dst._resource->GetBuffer(),
                 1, &c);

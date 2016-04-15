@@ -9,6 +9,7 @@
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
 #include "../../../Utility/IteratorUtils.h"
+#include "../../../Utility/Threading/Mutex.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -25,11 +26,15 @@ namespace RenderCore { namespace Metal_Vulkan
 		CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex);
 		CommandPool();
 		~CommandPool();
+
+        CommandPool(CommandPool&& moveFrom);
+        CommandPool& operator=(CommandPool&& moveFrom);
 	private:
 		VulkanSharedPtr<VkCommandPool> _pool;
 		VulkanSharedPtr<VkDevice> _device;
 
 		std::vector<VkCommandBuffer> _pendingDestroy;
+        Threading::Mutex _lock;
 	};
 
     class DescriptorPool

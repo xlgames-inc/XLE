@@ -9,6 +9,7 @@
 #include "InputLayout.h"
 #include "Shader.h"
 #include "Buffer.h"
+#include "FrameBuffer.h"
 #include "Pools.h"
 #include "../../Format.h"
 #include "../IDeviceVulkan.h"
@@ -18,27 +19,36 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void        PipelineBuilder::Bind(const RasterizerState& rasterizer)
     {
+        _pipelineStale = true;
         _rasterizerState = rasterizer;
     }
     
     void        PipelineBuilder::Bind(const BlendState& blendState)
     {
+        _pipelineStale = true;
         _blendState = blendState;
     }
     
     void        PipelineBuilder::Bind(const DepthStencilState& depthStencilState, unsigned stencilRef)
     {
+        _pipelineStale = true;
         _depthStencilState = depthStencilState;
     }
 
     void        PipelineBuilder::Bind(const BoundInputLayout& inputLayout)
     {
-        _inputLayout = &inputLayout;
+        if (_inputLayout != &inputLayout) {
+            _pipelineStale = true;
+            _inputLayout = &inputLayout;
+        }
     }
 
 	void        PipelineBuilder::Bind(const ShaderProgram& shaderProgram)
     {
-        _shaderProgram = &shaderProgram;
+        if (_shaderProgram != &shaderProgram) {
+            _shaderProgram = &shaderProgram;
+            _pipelineStale = true;
+        }
     }
 
     static VkPrimitiveTopology AsNativeTopology(Topology::Enum topology)
@@ -48,13 +58,21 @@ namespace RenderCore { namespace Metal_Vulkan
     
     void        PipelineBuilder::Bind(Topology::Enum topology)
     {
-        _topology = AsNativeTopology(topology);
+        auto native = AsNativeTopology(topology);
+        if (native != _topology) {
+            _pipelineStale = true;
+            _topology = native;
+        }
     }
 
     void        PipelineBuilder::SetVertexStrides(unsigned first, std::initializer_list<unsigned> vertexStrides)
     {
-        for (unsigned c=0; (first+c)<vertexStrides.size() && c < dimof(_vertexStrides); ++c)
-            _vertexStrides[first+c] = vertexStrides.begin()[c];
+        for (unsigned c=0; (first+c)<vertexStrides.size() && c < dimof(_vertexStrides); ++c) {
+            if (_vertexStrides[first+c] != vertexStrides.begin()[c]) {
+                _vertexStrides[first+c] = vertexStrides.begin()[c];
+                _pipelineStale = true;
+            }
+        }
     }
 
     static VkPipelineShaderStageCreateInfo BuildShaderStage(
@@ -73,7 +91,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void				PipelineBuilder::SetPipelineLayout(VulkanSharedPtr<VkPipelineLayout> layout) 
     { 
-        _pipelineLayout = std::move(layout); 
+        if (_pipelineLayout != layout) {
+            _pipelineStale = true;
+            _pipelineLayout = std::move(layout); 
+        }
     }
     
     VkPipelineLayout    PipelineBuilder::GetPipelineLayout() 
@@ -167,7 +188,9 @@ namespace RenderCore { namespace Metal_Vulkan
         pipeline.renderPass = renderPass;
         pipeline.subpass = subpass;
 
-        return _factory->CreateGraphicsPipeline(_globalPools->_mainPipelineCache.get(), pipeline);
+        auto result = _factory->CreateGraphicsPipeline(_globalPools->_mainPipelineCache.get(), pipeline);
+        _pipelineStale = false;
+        return std::move(result);
     }
 
     PipelineBuilder::PipelineBuilder(const ObjectFactory& factory, GlobalPools& globalPools)
@@ -176,6 +199,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _inputLayout = nullptr;
         _shaderProgram = nullptr;
         _topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        _pipelineStale = true;
         for (auto& v:_vertexStrides) v = 0;
     }
 
@@ -203,7 +227,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	void        DeviceContext::Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset)
 	{
 		assert(_commandList);
-		vkCmdBindIndexBuffer(
+        vkCmdBindIndexBuffer(
 			_commandList.get(),
 			ib.GetUnderlying(),
 			offset,
@@ -223,7 +247,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			buffers[c] = VBs[c]->GetUnderlying();
 			vkOffsets[c] = offsets[c];
 		}
-		vkCmdBindVertexBuffers(
+        vkCmdBindVertexBuffers(
 			_commandList.get(),
 			startSlot, bufferCount,
 			buffers, vkOffsets);
@@ -238,6 +262,8 @@ namespace RenderCore { namespace Metal_Vulkan
     bool        DeviceContext::BindPipeline()
     {
 		assert(_commandList);
+        if (!_pipelineStale) return true;
+
         auto pipeline = CreatePipeline(_renderPass.get());
         if (pipeline) {
             vkCmdBindPipeline(
@@ -248,28 +274,31 @@ namespace RenderCore { namespace Metal_Vulkan
             return true;
         }
 
+        assert(0);
         return false;
     }
 
     void        DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
 		assert(_commandList);
-		if (BindPipeline())
+		if (BindPipeline()) {
             vkCmdDraw(
 			    _commandList.get(),
                 vertexCount, 1,
                 startVertexLocation, 0);
+        }
     }
     
     void        DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
 		assert(_commandList);
-		if (BindPipeline())
+		if (BindPipeline()) {
 		    vkCmdDrawIndexed(
 			    _commandList.get(),
 			    indexCount, 1,
 			    startIndexLocation, baseVertexLocation,
 			    0);
+        }
     }
 
     void        DeviceContext::DrawAuto() 
@@ -308,6 +337,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _pipelineLayout = nullptr;
         _topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         for (auto& v:_vertexStrides) v = 0;
+        _pipelineStale = true;
 
 		// Unless the context is already tied to a primary command list, we will always
 		// create a secondary command list here.
@@ -336,7 +366,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		cmd_buf_info.pNext = nullptr;
 		cmd_buf_info.flags = 0; // VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		cmd_buf_info.pInheritanceInfo = &inheritInfo;
-		auto res = vkBeginCommandBuffer(_commandList.get(), &cmd_buf_info);
+        auto res = vkBeginCommandBuffer(_commandList.get(), &cmd_buf_info);
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
 	}
@@ -347,7 +377,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		(void)preserveState;		// we can't handle this properly in Vulkan
 
 		const VkCommandBuffer buffers[] = { &cmdList };
-		vkCmdExecuteCommands(
+        vkCmdExecuteCommands(
 			_commandList.get(),
 			dimof(buffers), buffers);
 	}
@@ -363,6 +393,189 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto result = std::move(_commandList);
 		return result;
 	}
+
+    static VkClearValue ClearDepthStencil(float depth, uint32_t stencil) { VkClearValue result; result.depthStencil = VkClearDepthStencilValue { depth, stencil }; return result; }
+	static VkClearValue ClearColor(float r, float g, float b, float a) { VkClearValue result; result.color.float32[0] = r; result.color.float32[1] = g; result.color.float32[2] = b; result.color.float32[3] = a; return result; }
+
+    void        DeviceContext::BeginRenderPass(
+        FrameBufferLayout& fbLayout, FrameBuffer& fb,
+        VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent)
+    {
+        VkRenderPassBeginInfo rp_begin;
+		rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		rp_begin.pNext = nullptr;
+		rp_begin.renderPass = fbLayout.GetUnderlying();
+		rp_begin.framebuffer = fb.GetUnderlying();
+		rp_begin.renderArea.offset.x = offset[0];
+		rp_begin.renderArea.offset.y = offset[1];
+		rp_begin.renderArea.extent.width = extent[0];
+		rp_begin.renderArea.extent.height = extent[1];
+		
+		VkClearValue clearValues[] = { ClearColor(0.5f, 0.25f, 1.f, 1.f), ClearDepthStencil(1.f, 0) };
+		rp_begin.pClearValues = clearValues;
+		rp_begin.clearValueCount = dimof(clearValues);
+
+        vkCmdBeginRenderPass(_commandList.get(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
+    }
+
+    void DeviceContext::EndRenderPass()
+    {
+		vkCmdEndRenderPass(_commandList.get());
+    }
+
+    void DeviceContext::SetImageLayout(
+		VkImage image,
+		VkImageAspectFlags aspectMask,
+		VkImageLayout oldImageLayout,
+		VkImageLayout newImageLayout,
+        unsigned mipCount,
+        unsigned layerCount)
+	{
+        Metal_Vulkan::SetImageLayout(
+            _commandList.get(), image, aspectMask, 
+            oldImageLayout, newImageLayout,
+            mipCount, layerCount);
+    }
+
+    void SetImageLayout(
+        VkCommandBuffer commandBuffer,
+		VkImage image,
+		VkImageAspectFlags aspectMask,
+		VkImageLayout oldImageLayout,
+		VkImageLayout newImageLayout,
+        unsigned mipCount,
+        unsigned layerCount)
+    {
+		VkImageMemoryBarrier image_memory_barrier = {};
+		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		image_memory_barrier.pNext = nullptr;
+		image_memory_barrier.srcAccessMask = 0;
+		image_memory_barrier.dstAccessMask = 0;
+		image_memory_barrier.oldLayout = oldImageLayout;
+		image_memory_barrier.newLayout = newImageLayout;
+		image_memory_barrier.image = image;
+		image_memory_barrier.subresourceRange.aspectMask = aspectMask;
+		image_memory_barrier.subresourceRange.baseMipLevel = 0;
+		image_memory_barrier.subresourceRange.levelCount = mipCount;
+		image_memory_barrier.subresourceRange.layerCount = layerCount;
+
+		if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+			|| oldImageLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+			image_memory_barrier.srcAccessMask =
+				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		}
+
+		if (newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+			image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		}
+
+		if (newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+			image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		}
+
+		if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+			image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		}
+
+        if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+			image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		}
+
+		if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
+			image_memory_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		}
+
+		if (newImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+			image_memory_barrier.srcAccessMask =
+				VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+			image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		}
+
+		if (newImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+			|| newImageLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+			image_memory_barrier.dstAccessMask =
+				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		}
+
+		if (newImageLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+			image_memory_barrier.dstAccessMask =
+				VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		}
+
+		VkPipelineStageFlags src_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		VkPipelineStageFlags dest_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+        vkCmdPipelineBarrier(
+			commandBuffer, src_stages, dest_stages, 0, 0, nullptr, 0, nullptr,
+			1, &image_memory_barrier);
+	}
+
+    void DeviceContext::CmdUpdateBuffer(
+        VkBuffer buffer, VkDeviceSize offset, 
+        VkDeviceSize byteCount, const void* data)
+    {
+        assert(byteCount <= 65536); // this restriction is imposed by Vulkan
+		assert((byteCount & (4 - 1)) == 0);  // must be a multiple of 4
+		assert(byteCount > 0 && data);
+        vkCmdUpdateBuffer(
+			_commandList.get(),
+			buffer, 0,
+			byteCount, (const uint32_t*)data);
+    }
+
+    void DeviceContext::CmdBindDescriptorSets(
+        VkPipelineBindPoint pipelineBindPoint,
+        VkPipelineLayout layout,
+        uint32_t firstSet,
+        uint32_t descriptorSetCount,
+        const VkDescriptorSet* pDescriptorSets,
+        uint32_t dynamicOffsetCount,
+        const uint32_t* pDynamicOffsets)
+    {
+        vkCmdBindDescriptorSets(
+            _commandList.get(),
+            pipelineBindPoint, layout, firstSet, 
+            descriptorSetCount, pDescriptorSets,
+            dynamicOffsetCount, pDynamicOffsets);
+    }
+
+    void DeviceContext::CmdCopyBuffer(
+        VkBuffer srcBuffer,
+        VkBuffer dstBuffer,
+        uint32_t regionCount,
+        const VkBufferCopy* pRegions)
+    {
+        vkCmdCopyBuffer(_commandList.get(), srcBuffer, dstBuffer, regionCount, pRegions);
+    }
+
+    void DeviceContext::CmdCopyImage(
+        VkImage srcImage,
+        VkImageLayout srcImageLayout,
+        VkImage dstImage,
+        VkImageLayout dstImageLayout,
+        uint32_t regionCount,
+        const VkImageCopy* pRegions)
+    {
+        vkCmdCopyImage(
+            _commandList.get(), 
+            srcImage, srcImageLayout, 
+            dstImage, dstImageLayout, 
+            regionCount, pRegions);
+    }
+
+    void DeviceContext::CmdCopyBufferToImage(
+        VkBuffer srcBuffer,
+        VkImage dstImage,
+        VkImageLayout dstImageLayout,
+        uint32_t regionCount,
+        const VkBufferImageCopy* pRegions)
+    {
+        vkCmdCopyBufferToImage(
+            _commandList.get(),
+            srcBuffer, 
+            dstImage, dstImageLayout,
+            regionCount, pRegions);
+    }
 
     DeviceContext::DeviceContext(
         const ObjectFactory& factory, 

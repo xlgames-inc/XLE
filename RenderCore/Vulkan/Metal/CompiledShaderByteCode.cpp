@@ -342,7 +342,7 @@ namespace RenderCore { namespace Metal_Vulkan
             HLSLCC_FLAG_UNIFORM_BUFFER_OBJECT | HLSLCC_FLAG_INOUT_SEMANTIC_NAMES 
 			| HLSLCC_FLAG_PREFER_BINDINGS | HLSLCC_FLAG_ASSIGN_DESCRIPTOR_SET
             /* | HLSLCC_FLAG_COMBINE_TEXTURE_SAMPLERS */,
-            LANG_330, &ext, &depData, 
+            LANG_440, &ext, &depData, 
             &glslShader);
         if (!translateResult) return false;
         

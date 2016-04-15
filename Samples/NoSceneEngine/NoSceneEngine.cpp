@@ -405,13 +405,13 @@ namespace Sample
     SceneEngine::ShaderLightDesc::BasicEnvironment MakeBasicLightingEnvironment()
     {
         SceneEngine::ShaderLightDesc::BasicEnvironment env;
-        env._ambient =  { Float3(0.f, 0.f, 0.f), 1.f, 0.f, {0, 0, 0} };
+        env._ambient =  { Float3(1.f, 1.f, 1.f), 1.f, 0.f, {0, 0, 0} };
         env._rangeFog = { Float3(0.f, 0.f, 0.f), 1.f };
         env._volumeFog = { 1.f, 0.f, 100.f, 0, Float3(0.f, 0.f, 0.f), 0, Float3(0.f, 0.f, 0.f), 0 };
         env._dominant[0] = {
-            Float3(0.f, 0.f, 10.f), 1000.f, 
-            Float3(1.f, 1.f, 1.f),  1000.f,
-            Float3(1.f, 1.f, 1.f),  1000.f,
+            Normalize(Float3(-5.f, 1.f, 1.f)), 1000.f, 
+            Float3(5.f, 5.f, 5.f),  1000.f,
+            Float3(5.f, 5.f, 5.f),  1000.f,
             Float3(1.f, 0.f, 0.f),  1.f,
             Float3(0.f, 1.f, 0.f),  1.f,
             Float3(0.f, 0.f, 1.f),  0

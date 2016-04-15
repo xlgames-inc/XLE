@@ -15,6 +15,7 @@
 #include "../../IThreadContext_Forward.h"
 #include "../../Utility/IteratorUtils.h"
 #include <memory>
+#include <sstream>
 
 namespace RenderCore { enum class Format; }
 
@@ -23,6 +24,8 @@ namespace RenderCore { namespace Metal_Vulkan
     static const unsigned s_maxBoundVBs = 4;
 
     class GlobalPools;
+    class FrameBufferLayout;
+    class FrameBuffer;
 
     /// Container for Topology::Enum
     namespace Topology
@@ -93,6 +96,8 @@ namespace RenderCore { namespace Metal_Vulkan
         const ObjectFactory*    _factory;
         GlobalPools*            _globalPools;
         unsigned                _vertexStrides[s_maxBoundVBs];
+
+        bool            _pipelineStale;
     };
 
     using CommandList = VkCommandBuffer;
@@ -172,8 +177,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		void		CommitCommandList(VkCommandBuffer_T&, bool);
 		auto        ResolveCommandList() -> CommandListPtr;
 
-		VkCommandBuffer			GetCommandList() { assert(_commandList); return _commandList.get(); }
-        const CommandListPtr&   ShareCommandList() { assert(_commandList); return _commandList; }
+		// VkCommandBuffer			GetCommandList() { assert(_commandList); return _commandList.get(); }
+        // const CommandListPtr&   ShareCommandList() { assert(_commandList); return _commandList; }
 		bool					IsImmediate() { return false; }
 
         void        Bind(VulkanSharedPtr<VkRenderPass> renderPass);
@@ -184,6 +189,50 @@ namespace RenderCore { namespace Metal_Vulkan
         GlobalPools&    GetGlobalPools();
         VkDevice        GetUnderlyingDevice();
 		const ObjectFactory& GetFactory() const { return *_factory; }
+
+        bool        BindPipeline();
+
+        void BeginRenderPass(
+            FrameBufferLayout& fbLayout, FrameBuffer& fb,
+            VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent);
+        void EndRenderPass();
+        void SetImageLayout(
+		    VkImage image,
+		    VkImageAspectFlags aspectMask,
+		    VkImageLayout oldImageLayout,
+		    VkImageLayout newImageLayout,
+            unsigned mipCount,
+            unsigned layerCount);
+
+        void CmdUpdateBuffer(
+            VkBuffer buffer, VkDeviceSize offset, 
+            VkDeviceSize byteCount, const void* data);
+        void CmdBindDescriptorSets(
+            VkPipelineBindPoint pipelineBindPoint,
+            VkPipelineLayout layout,
+            uint32_t firstSet,
+            uint32_t descriptorSetCount,
+            const VkDescriptorSet* pDescriptorSets,
+            uint32_t dynamicOffsetCount,
+            const uint32_t* pDynamicOffsets);
+        void CmdCopyBuffer(
+            VkBuffer srcBuffer,
+            VkBuffer dstBuffer,
+            uint32_t regionCount,
+            const VkBufferCopy* pRegions);
+        void CmdCopyImage(
+            VkImage srcImage,
+            VkImageLayout srcImageLayout,
+            VkImage dstImage,
+            VkImageLayout dstImageLayout,
+            uint32_t regionCount,
+            const VkImageCopy* pRegions);
+        void CmdCopyBufferToImage(
+            VkBuffer srcBuffer,
+            VkImage dstImage,
+            VkImageLayout dstImageLayout,
+            uint32_t regionCount,
+            const VkBufferImageCopy* pRegions);
 
         DeviceContext(
             const ObjectFactory& factory, 
@@ -198,8 +247,15 @@ namespace RenderCore { namespace Metal_Vulkan
         VulkanSharedPtr<VkRenderPass> _renderPass;
         CommandPool* _cmdPool;
         CommandPool::BufferType _cmdBufferType;
-
-		bool    BindPipeline();
     };
+
+    void SetImageLayout(
+        VkCommandBuffer commandBuffer,
+		VkImage image,
+		VkImageAspectFlags aspectMask,
+		VkImageLayout oldImageLayout,
+		VkImageLayout newImageLayout,
+        unsigned mipCount,
+        unsigned layerCount);
 }}
 

@@ -22,13 +22,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const bool useUpdateBuffer = false;
         if (constant_expression<useUpdateBuffer>::result()) {
 		    assert(IsGood());
-		    assert(byteCount <= 65536);
-		    assert((byteCount & (4 - 1)) == 0);  // must be a multiple of 4
-		    assert(byteCount > 0 && data);
-		    vkCmdUpdateBuffer(
-			    context.GetCommandList(),
-			    _underlyingBuffer.get(), 0,
-			    byteCount, (const uint32_t*)data);
+            context.CmdUpdateBuffer(_underlyingBuffer.get(), 0, byteCount, data);
         } else {
             Resource updatedRes(GetObjectFactory(context), GetDesc(), SubResourceInitData{ data, byteCount });
             *(Resource*)this = std::move(updatedRes);

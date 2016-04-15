@@ -692,29 +692,14 @@ namespace RenderCore
             Throw(VulkanAPIFailure(res, "Failure during acquire next image"));
     }
 
-	static VkClearValue ClearDepthStencil(float depth, uint32_t stencil) { VkClearValue result; result.depthStencil = VkClearDepthStencilValue { depth, stencil }; return result; }
-	static VkClearValue ClearColor(float r, float g, float b, float a) { VkClearValue result; result.color.float32[0] = r; result.color.float32[1] = g; result.color.float32[2] = b; result.color.float32[3] = a; return result; }
-
     Metal_Vulkan::FrameBufferLayout* PresentationChain::BindDefaultRenderPass(Metal_Vulkan::DeviceContext& context)
     {
         if (_activeImageIndex >= unsigned(_images.size())) return nullptr;
 
 		// bind the default render pass for rendering directly to the swapchain
-		VkRenderPassBeginInfo rp_begin;
-		rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		rp_begin.pNext = nullptr;
-		rp_begin.renderPass = _defaultRenderPass.GetUnderlying();
-		rp_begin.framebuffer = _images[_activeImageIndex]._defaultFrameBuffer.GetUnderlying();
-		rp_begin.renderArea.offset.x = 0;
-		rp_begin.renderArea.offset.y = 0;
-		rp_begin.renderArea.extent.width = _bufferDesc._width;
-		rp_begin.renderArea.extent.height = _bufferDesc._height;
-		
-		VkClearValue clearValues[] = { ClearColor(0.5f, 0.25f, 1.f, 1.f), ClearDepthStencil(1.f, 0) };
-		rp_begin.pClearValues = clearValues;
-		rp_begin.clearValueCount = dimof(clearValues);
-
-		vkCmdBeginRenderPass(context.GetCommandList(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
+		context.BeginRenderPass(
+            _defaultRenderPass, _images[_activeImageIndex]._defaultFrameBuffer,
+            {0,0}, {_bufferDesc._width, _bufferDesc._height});
 
         return &_defaultRenderPass;
 	}
@@ -951,12 +936,7 @@ namespace RenderCore
 
 		//////////////////////////////////////////////////////////////////
 
-		// auto cmdBuffer = _metalContext->GetCommandList();
-		// vkCmdEndRenderPass(cmdBuffer);
-		// auto res = vkEndCommandBuffer(cmdBuffer);
-		// if (res != VK_SUCCESS)
-		// 	Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
-
+        _metalContext->EndRenderPass();
         auto cmdBuffer = _metalContext->ResolveCommandList();
 
 		VkSubmitInfo submitInfo;
@@ -1033,14 +1013,6 @@ namespace RenderCore
 
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
     {
-        // Find a pointer back to the IDevice object associated with this 
-        // thread context...
-        // There are two ways to do this:
-        //  1) get the D3D::IDevice from the DeviceContext
-        //  2) there is a pointer back to the RenderCore::IDevice() hidden within
-        //      the D3D::IDevice
-        // Or, we could just store a std::shared_ptr back to the device within
-        // this object.
         return _device.lock();
     }
 

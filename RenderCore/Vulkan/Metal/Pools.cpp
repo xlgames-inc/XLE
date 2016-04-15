@@ -20,6 +20,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
     VulkanSharedPtr<VkCommandBuffer> CommandPool::Allocate(BufferType type)
 	{
+        std::unique_lock<std::mutex> guard(_lock, std::try_to_lock);
+        if (!guard.owns_lock())
+            Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
+
 		VkCommandBufferAllocateInfo cmd = {};
 		cmd.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		cmd.pNext = nullptr;
@@ -39,12 +43,45 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void CommandPool::FlushDestroys()
 	{
+        std::unique_lock<std::mutex> guard(_lock, std::try_to_lock);
+        if (!guard.owns_lock())
+            Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::FlushDestroys. Multiple threads attempting to use the same object."));
+
 		if (!_pendingDestroy.empty())
 			vkFreeCommandBuffers(
 				_device.get(), _pool.get(),
 				(uint32_t)_pendingDestroy.size(), AsPointer(_pendingDestroy.begin()));
 		_pendingDestroy.clear();
 	}
+
+    CommandPool::CommandPool(CommandPool&& moveFrom)
+    {
+        std::unique_lock<std::mutex> guard(moveFrom._lock, std::try_to_lock);
+        if (!guard.owns_lock())
+            Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
+
+        _pool = std::move(moveFrom._pool);
+        _device = std::move(moveFrom._device);
+        _pendingDestroy = std::move(moveFrom._pendingDestroy);
+    }
+    
+    CommandPool& CommandPool::operator=(CommandPool&& moveFrom)
+    {
+        // note -- locking both mutexes here.
+        //  because we're using try_lock(), it should prevent deadlocks
+        std::unique_lock<std::mutex> guard(moveFrom._lock, std::try_to_lock);
+        if (!guard.owns_lock())
+            Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
+
+        std::unique_lock<std::mutex> guard2(_lock, std::try_to_lock);
+        if (!guard2.owns_lock())
+            Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
+
+        _pool = std::move(moveFrom._pool);
+        _device = std::move(moveFrom._device);
+        _pendingDestroy = std::move(moveFrom._pendingDestroy);
+        return *this;
+    }
 
 	CommandPool::CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex)
 	: _device(factory.GetDevice())

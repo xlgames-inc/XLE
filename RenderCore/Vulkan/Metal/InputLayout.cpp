@@ -142,6 +142,7 @@ namespace RenderCore { namespace Metal_Vulkan
     bool BoundUniforms::BindConstantBuffer( uint64 hashName, unsigned slot, unsigned stream,
                                             const ConstantBufferLayoutElement elements[], size_t elementCount)
     {
+        assert(!_pipelineLayout);
 		auto descSet = 0u;
         bool gotBinding = false;
 
@@ -185,6 +186,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindShaderResource(uint64 hashName, unsigned slot, unsigned stream)
     {
+        assert(!_pipelineLayout);
 		auto descSet = 1u;
         bool gotBinding = false;
 
@@ -244,6 +246,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<const char*> cbs)
     {
+        assert(!_pipelineLayout);
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
         assert(uniformsStream < s_descriptorSetCount);
@@ -261,6 +264,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<uint64> cbs)
     {
+        assert(!_pipelineLayout);
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
         assert(uniformsStream < s_descriptorSetCount);
@@ -278,6 +282,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res)
     {
+        assert(!_pipelineLayout);
         assert(uniformsStream < s_descriptorSetCount);
         #if defined(_DEBUG)
             for (const auto& i:_bindings[uniformsStream*2+1])
@@ -293,6 +298,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res)
     {
+        assert(!_pipelineLayout);
         assert(uniformsStream < s_descriptorSetCount);
         #if defined(_DEBUG)
             for (const auto& i:_bindings[uniformsStream*2+1])
@@ -312,6 +318,8 @@ namespace RenderCore { namespace Metal_Vulkan
         return factory.CreateDescriptorSetLayout(MakeIteratorRange(_bindings[descriptorSet]));
     }
 
+    static const bool s_reallocateDescriptorSets = true;
+
     void BoundUniforms::BuildPipelineLayout(
         const ObjectFactory& factory,
         DescriptorPool& descriptorPool) const
@@ -324,16 +332,10 @@ namespace RenderCore { namespace Metal_Vulkan
             }
             _pipelineLayout = factory.CreatePipelineLayout(MakeIteratorRange(rawLayouts));
 
-            descriptorPool.Allocate(
-                MakeIteratorRange(_descriptorSets),
-                MakeIteratorRange(rawLayouts));
-
-            // for (unsigned c=0; c<s_descriptorSetCount; c++) {
-            //     VulkanUniquePtr<VkDescriptorSet> ds[1];
-            //     VkDescriptorSetLayout rl[] = { rawLayouts[c] };
-            //     descriptorPool.Allocate(MakeIteratorRange(ds), MakeIteratorRange(rl));
-            //     _descriptorSets[c] = std::move(ds[0]);
-            // }
+            if (constant_expression<!s_reallocateDescriptorSets>::result())
+                descriptorPool.Allocate(
+                    MakeIteratorRange(_descriptorSets),
+                    MakeIteratorRange(rawLayouts));
         }
     }
 
@@ -343,12 +345,29 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         BuildPipelineLayout(GetObjectFactory(), context.GetGlobalPools()._mainDescriptorPool);
 
-        // VkDescriptorSetLayout rawLayouts[s_descriptorSetCount];
-        // for (unsigned c=0; c<s_descriptorSetCount; ++c)
-        //     rawLayouts[c] = _layouts[c].get();
-        // context.GetGlobalPools()._mainDescriptorPool.Allocate(
-        //     MakeIteratorRange(_descriptorSets),
-        //     MakeIteratorRange(rawLayouts));
+        // There's currently a problem reusing descriptor sets from frame to frame. I'm not sure
+        // what the issue is, but causes an error deep within Vulkan. The validation errors don't
+        // report the issue, but just say that "You must call vkBeginCommandBuffer() before this call to ..."
+        // Allocating a fresh descriptor set before every write appears to solve this problem.
+        //
+        // It seems like we could do with better management of the descriptor sets. Allocating new sets
+        // frequently might be ok... But in that case, we should use a "pool" that can be reset once
+        // per frame (as opposed to calling "free" for every separate descriptor.
+        //
+        // In some cases, we might want descriptor sets that are permanent. Ie, we allocate them while
+        // loading a model, and then keep them around over multiple frames. For these cases, we could
+        // have a separate pool with the VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT flag set.
+        //
+        // We have to be careful because vkUpdateDescriptorSets happens immediately -- like mapping
+        // a texture. That makes the memory management more complicated.
+        if (constant_expression<s_reallocateDescriptorSets>::result()) {
+            VkDescriptorSetLayout rawLayouts[s_descriptorSetCount];
+            for (unsigned c=0; c<s_descriptorSetCount; ++c)
+                rawLayouts[c] = _layouts[c].get();
+            context.GetGlobalPools()._mainDescriptorPool.Allocate(
+                MakeIteratorRange(_descriptorSets),
+                MakeIteratorRange(rawLayouts));
+        }
 
         // -------- write descriptor set --------
         const unsigned maxBindings = 16;
@@ -441,14 +460,13 @@ namespace RenderCore { namespace Metal_Vulkan
         for (unsigned c=0; c<s_descriptorSetCount; ++c)
             rawDescriptorSets[c] = _descriptorSets[c].get();
         
-        vkCmdBindDescriptorSets(
-			context.GetCommandList(),
+        context.SetPipelineLayout(_pipelineLayout);
+        context.BindPipeline();
+        context.CmdBindDescriptorSets(
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             _pipelineLayout.get(), 0, 
             dimof(rawDescriptorSets), rawDescriptorSets, 
             0, nullptr);
-
-		context.SetPipelineLayout(_pipelineLayout);
     }
 
     void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const
