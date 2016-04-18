@@ -148,4 +148,21 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     SamplerState::~SamplerState() {}
+
+
+    ViewportDesc::ViewportDesc(const DeviceContext& context)
+    {
+        TopLeftX = TopLeftY = 0.f;
+        Width = Height = 512.f;
+        MinDepth = 0.f;
+        MaxDepth = 1.f;
+    }
+
+    ViewportDesc::ViewportDesc()
+    {
+        TopLeftX = TopLeftY = 0.f;
+        Width = Height = 0.f;
+        MinDepth = 0.f;
+        MaxDepth = 1.f;
+    }
 }}

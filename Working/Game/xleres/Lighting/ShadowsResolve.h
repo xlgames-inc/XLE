@@ -171,7 +171,11 @@ float CalculateShadowCasterDistance(
 float TestShadow(float2 texCoord, uint arrayIndex, float comparisonDistance)
 {
         // these two methods should return the same result (and probably have similiar performance...)
-    const bool useGatherCmpRed = false;
+    #if (VULKAN!=1)
+        const bool useGatherCmpRed = false;
+    #else
+        const bool useGatherCmpRed = true;  // SampleCmpLevelZero produces incorrect code in Vulkan for 2d shadow array
+    #endif
     if (!useGatherCmpRed) {
         return ShadowTextures.SampleCmpLevelZero(ShadowSampler, float3(texCoord, float(arrayIndex)), comparisonDistance);
     } else {

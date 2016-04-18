@@ -227,33 +227,12 @@ namespace RenderCore { namespace Metal_Vulkan
         return gotBinding;
     }
 
-    static bool IsCBType(VkDescriptorType type)
-    {
-        return type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-            || type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-            || type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
-            || type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
-            ;
-    }
-
-    static bool IsShaderResType(VkDescriptorType type)
-    {
-        return type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-            || type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
-            || type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-            ;
-    }
-
     bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<const char*> cbs)
     {
         assert(!_pipelineLayout);
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
         assert(uniformsStream < s_descriptorSetCount);
-        #if defined(_DEBUG)
-            for (const auto& i:_bindings[uniformsStream*2+0])
-                assert(!IsCBType(i.descriptorType));
-        #endif
 
 		if (_cbBindingIndices[uniformsStream].size() < cbs.size()) _cbBindingIndices[uniformsStream].resize(cbs.size(), ~0u);
         bool result = true;
@@ -268,10 +247,6 @@ namespace RenderCore { namespace Metal_Vulkan
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
         assert(uniformsStream < s_descriptorSetCount);
-        #if defined(_DEBUG)
-            for (const auto& i:_bindings[uniformsStream*2+0])
-                assert(!IsCBType(i.descriptorType));
-        #endif
 
 		if (_cbBindingIndices[uniformsStream].size() < cbs.size()) _cbBindingIndices[uniformsStream].resize(cbs.size(), ~0u);
 		bool result = true;
@@ -284,10 +259,6 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         assert(!_pipelineLayout);
         assert(uniformsStream < s_descriptorSetCount);
-        #if defined(_DEBUG)
-            for (const auto& i:_bindings[uniformsStream*2+1])
-                assert(!IsShaderResType(i.descriptorType));
-        #endif
 
 		if (_srBindingIndices[uniformsStream].size() < res.size()) _srBindingIndices[uniformsStream].resize(res.size(), ~0u);
 		bool result = true;
@@ -300,10 +271,6 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         assert(!_pipelineLayout);
         assert(uniformsStream < s_descriptorSetCount);
-        #if defined(_DEBUG)
-            for (const auto& i:_bindings[uniformsStream*2+1])
-                assert(!IsShaderResType(i.descriptorType));
-        #endif
 
 		if (_srBindingIndices[uniformsStream].size() < res.size()) _srBindingIndices[uniformsStream].resize(res.size(), ~0u);
 		bool result = true;
@@ -384,7 +351,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			auto maxCbs = _cbBindingIndices[stri].size();
             for (unsigned p=0; p<std::min(s._packetCount, maxCbs); ++p) {
-                if (s._prebuiltBuffers[p]) {
+                if (s._prebuiltBuffers && s._prebuiltBuffers[p]) {
 
                     assert(bufferCount < dimof(bufferInfo));
                     assert(writeCount < dimof(writes));
@@ -417,7 +384,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			auto maxSrvs = _srBindingIndices[stri].size();
             for (unsigned r=0; r<std::min(s._resourceCount, maxSrvs); ++r) {
-                if (s._resources[r]) {
+                if (s._resources && s._resources[r]) {
 
                     assert(imageCount < dimof(imageInfo));
                     assert(writeCount < dimof(writes));

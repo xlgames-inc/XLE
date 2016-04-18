@@ -422,11 +422,11 @@ namespace RenderCore { namespace Metal_Vulkan
         float MinDepth;
         float MaxDepth;
 
-		ViewportDesc(const DeviceContext& context) {}
         ViewportDesc(float topLeftX, float topLeftY, float width, float height, float minDepth=0.f, float maxDepth=1.f)
             : TopLeftX(topLeftX), TopLeftY(topLeftY), Width(width), Height(height)
             , MinDepth(minDepth), MaxDepth(maxDepth) {}
-        ViewportDesc() {}
+        ViewportDesc(const DeviceContext& context);
+        ViewportDesc();
     };
 }}
 
