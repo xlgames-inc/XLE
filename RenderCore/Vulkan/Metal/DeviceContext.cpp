@@ -9,10 +9,13 @@
 #include "InputLayout.h"
 #include "Shader.h"
 #include "Buffer.h"
+#include "State.h"
+#include "TextureView.h"
 #include "FrameBuffer.h"
 #include "Pools.h"
 #include "../../Format.h"
 #include "../IDeviceVulkan.h"
+#include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -89,7 +92,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
-    void				PipelineBuilder::SetPipelineLayout(VulkanSharedPtr<VkPipelineLayout> layout) 
+    void				PipelineBuilder::SetPipelineLayout(const VulkanSharedPtr<VkPipelineLayout>& layout) 
     { 
         if (_pipelineLayout != layout) {
             _pipelineStale = true;
@@ -262,6 +265,20 @@ namespace RenderCore { namespace Metal_Vulkan
     bool        DeviceContext::BindPipeline()
     {
 		assert(_commandList);
+
+        // If we've been using the pipeline layout builder directly, then we
+        // must flush those changes down to the PipelineBuilder
+        if (_pipelineLayoutBuilder.HasChanges()) {
+            SetPipelineLayout(_pipelineLayoutBuilder.SharePipelineLayout());
+            VkDescriptorSet descSets[2];
+            _pipelineLayoutBuilder.GetDescriptorSets(MakeIteratorRange(descSets));
+            CmdBindDescriptorSets(
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                _pipelineLayout.get(), 0, 
+                dimof(descSets), descSets, 
+                0, nullptr);
+        }
+
         if (!_pipelineStale) return true;
 
         auto pipeline = CreatePipeline(_renderPass.get());
@@ -338,6 +355,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         for (auto& v:_vertexStrides) v = 0;
         _pipelineStale = true;
+        _pipelineLayoutBuilder.Reset();
 
 		// Unless the context is already tied to a primary command list, we will always
 		// create a secondary command list here.
@@ -584,9 +602,278 @@ namespace RenderCore { namespace Metal_Vulkan
         CommandPool::BufferType cmdBufferType)
     : PipelineBuilder(factory, globalPools)
     , _cmdPool(&cmdPool), _cmdBufferType(cmdBufferType)
+    , _pipelineLayoutBuilder(factory, globalPools._mainDescriptorPool)
     {}
 
 	void DeviceContext::PrepareForDestruction(IDevice*, IPresentationChain*) {}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class PipelineLayoutBuilder::Pimpl
+    {
+    public:
+        static const unsigned s_pendingBufferLength = 32;
+        static const unsigned s_descriptorSetCount = 2;
+        static const unsigned s_maxBindings = 32;
+
+        VkDescriptorBufferInfo  _bufferInfo[s_pendingBufferLength];
+        VkDescriptorImageInfo   _imageInfo[s_pendingBufferLength];
+        VkWriteDescriptorSet    _writes[s_pendingBufferLength];
+
+        unsigned _pendingWrites;
+        unsigned _pendingImageInfos;
+        unsigned _pendingBufferInfos;
+
+        VulkanSharedPtr<VkPipelineLayout>       _pipelineLayout;
+        VulkanUniquePtr<VkDescriptorSetLayout>  _layouts[s_descriptorSetCount];
+
+        VulkanUniquePtr<VkDescriptorSet> _activeDescSets[s_descriptorSetCount];
+
+        uint64 _sinceLastFlush[s_descriptorSetCount];
+        uint64 _slotsFilled[s_descriptorSetCount];
+
+        DescriptorPool* _descriptorPool;
+
+        template<typename BindingInfo> void WriteBinding(unsigned bindingPoint, unsigned descriptorSet, VkDescriptorType type, const BindingInfo& bindingInfo);
+        template<typename BindingInfo> BindingInfo& AllocateInfo(const BindingInfo& init);
+    };
+
+    template<typename BindingInfo> static BindingInfo*& InfoPtr(VkWriteDescriptorSet& writeDesc);
+    template<> static VkDescriptorImageInfo*& InfoPtr(VkWriteDescriptorSet& writeDesc)
+    {
+        return *const_cast<VkDescriptorImageInfo**>(&writeDesc.pImageInfo);
+    }
+
+    template<> static VkDescriptorBufferInfo*& InfoPtr(VkWriteDescriptorSet& writeDesc)
+    {
+        return *const_cast<VkDescriptorBufferInfo**>(&writeDesc.pBufferInfo);
+    }
+
+    template<> 
+        VkDescriptorImageInfo& PipelineLayoutBuilder::Pimpl::AllocateInfo(const VkDescriptorImageInfo& init)
+    {
+        assert(_pendingImageInfos < s_pendingBufferLength);
+        auto& i = _imageInfo[_pendingImageInfos++];
+        i = init;
+        return i;
+    }
+
+    template<> 
+        VkDescriptorBufferInfo& PipelineLayoutBuilder::Pimpl::AllocateInfo(const VkDescriptorBufferInfo& init)
+    {
+        assert(_pendingBufferInfos < s_pendingBufferLength);
+        auto& i = _bufferInfo[_pendingBufferInfos++];
+        i = init;
+        return i;
+    }
+
+    template<typename BindingInfo>
+        void    PipelineLayoutBuilder::Pimpl::WriteBinding(unsigned bindingPoint, unsigned descriptorSet, VkDescriptorType type, const BindingInfo& bindingInfo)
+    {
+        if (_sinceLastFlush[descriptorSet] & (1ull<<bindingPoint)) {
+            // we already have a pending write to this slot. Let's find it, and just
+            // update the details with the new view.
+            bool foundExisting = false; (void)foundExisting;
+            for (unsigned p=0; p<_pendingWrites; ++p) {
+                auto& w = _writes[p];
+                if (w.descriptorType == type && w.dstBinding == bindingPoint) {
+                    *InfoPtr<BindingInfo>(w) = bindingInfo;
+                    foundExisting = true;
+                    break;
+                }
+            }
+            assert(foundExisting);
+        } else {
+            _sinceLastFlush[descriptorSet] |= 1ull<<bindingPoint;
+
+            assert(_pendingWrites < Pimpl::s_pendingBufferLength);
+            auto& w = _writes[_pendingWrites++];
+            w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            w.pNext = nullptr;
+            w.dstSet = nullptr;
+            w.dstBinding = bindingPoint;
+            w.dstArrayElement = 0;
+            w.descriptorCount = 1;
+            w.descriptorType = type;
+
+            InfoPtr<BindingInfo>(w) = &AllocateInfo(bindingInfo);
+        }
+    }
+
+    void    PipelineLayoutBuilder::Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images)
+    {
+        const auto descriptorSet = 1u;
+        for (unsigned c=0; c<unsigned(images.size()); ++c) {
+            if (!images[c]) continue;
+            unsigned binding = startingPoint + c;
+            _pimpl->WriteBinding(
+                binding, descriptorSet, 
+                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                VkDescriptorImageInfo {
+                    ShaderResourceView::GetSampler().GetUnderlying(),
+                    images[c], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+        }
+    }
+
+    void    PipelineLayoutBuilder::Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers)
+    {
+        const auto descriptorSet = 0u;
+        for (unsigned c=0; c<unsigned(uniformBuffers.size()); ++c) {
+            if (!uniformBuffers[c]) continue;
+            unsigned binding = startingPoint + c;
+            _pimpl->WriteBinding(
+                binding, descriptorSet, 
+                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                VkDescriptorBufferInfo { uniformBuffers[c], 0, VK_WHOLE_SIZE });
+        }
+    }
+
+    VkPipelineLayout                            PipelineLayoutBuilder::GetPipelineLayout()
+    {
+        return _pimpl->_pipelineLayout.get();
+    }
+
+    const VulkanSharedPtr<VkPipelineLayout>&    PipelineLayoutBuilder::SharePipelineLayout()
+    {
+        return _pimpl->_pipelineLayout;
+    }
+
+    void    PipelineLayoutBuilder::GetDescriptorSets(IteratorRange<VkDescriptorSet*> dst)
+    {
+        // If we've had any changes this last time, we must create new
+        // descriptor sets. We will use vkUpdateDescriptorSets to fill in these
+        // sets with the latest changes. Note that this will require copy across the
+        // bindings that haven't changed.
+        if (_pimpl->_pendingWrites) {
+            VulkanUniquePtr<VkDescriptorSet> newSets[Pimpl::s_descriptorSetCount];
+            VkDescriptorSetLayout rawLayouts[Pimpl::s_descriptorSetCount];
+            for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c)
+                rawLayouts[c] = _pimpl->_layouts[c].get();
+            _pimpl->_descriptorPool->Allocate(MakeIteratorRange(newSets), MakeIteratorRange(rawLayouts));
+
+            assert(_pimpl->_pendingWrites);
+            for (unsigned c=0; c<_pimpl->_pendingWrites; ++c) {
+                if (_pimpl->_writes[c].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+                    _pimpl->_writes[c].dstSet = newSets[1].get();
+                } else {
+                    _pimpl->_writes[c].dstSet = newSets[0].get();
+                }
+            }
+
+            VkCopyDescriptorSet copies[Pimpl::s_maxBindings * Pimpl::s_descriptorSetCount];
+            unsigned copyCount = 0;
+            for (unsigned s=0; s<Pimpl::s_descriptorSetCount; ++s) {
+                if (!_pimpl->_activeDescSets[s]) continue;
+
+                auto filledButNotWritten = _pimpl->_slotsFilled[s] & ~_pimpl->_sinceLastFlush[s];
+                for (unsigned b=0; b<Pimpl::s_maxBindings; ++b) {
+                    if (filledButNotWritten & (1ull<<b)) {
+                        assert(copyCount < dimof(copies));
+                        auto& cpy = copies[copyCount++];
+                        cpy.sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
+                        cpy.pNext = nullptr;
+
+                        cpy.srcSet = _pimpl->_activeDescSets[s].get();
+                        cpy.srcBinding = b;
+                        cpy.srcArrayElement = 0;
+
+                        cpy.dstSet = newSets[s].get();
+                        cpy.dstBinding = b;
+                        cpy.dstArrayElement = 0;
+                        cpy.descriptorCount = 1;        // (we can set this higher to set multiple sequential descriptors)
+                    }
+                }
+            }
+
+            vkUpdateDescriptorSets(
+                _pimpl->_descriptorPool->GetDevice(), 
+                _pimpl->_pendingWrites, _pimpl->_writes, 
+                copyCount, copies);
+
+            _pimpl->_pendingWrites = 0;
+            _pimpl->_pendingImageInfos = 0;
+            _pimpl->_pendingBufferInfos = 0;
+
+            for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c) {
+                _pimpl->_slotsFilled[c] |= _pimpl->_sinceLastFlush[c];
+                _pimpl->_sinceLastFlush[c] = 0ull;
+                _pimpl->_activeDescSets[c] = std::move(newSets[c]);
+            }
+        }
+
+        for (unsigned c=0; c<unsigned(dst.size()); ++c)
+            dst[c] = (c < Pimpl::s_descriptorSetCount) ? _pimpl->_activeDescSets[c].get() : nullptr;
+    }
+
+    bool    PipelineLayoutBuilder::HasChanges() const
+    {
+        return _pimpl->_pendingWrites != 0;
+    }
+
+    void    PipelineLayoutBuilder::Reset()
+    {
+        _pimpl->_pendingWrites = 0u;
+        _pimpl->_pendingImageInfos = 0u;
+        _pimpl->_pendingBufferInfos = 0u;
+
+        XlZeroMemory(_pimpl->_bufferInfo);
+        XlZeroMemory(_pimpl->_imageInfo);
+        XlZeroMemory(_pimpl->_writes);
+
+        for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c) {
+            _pimpl->_sinceLastFlush[c] = 0x0u;
+            _pimpl->_slotsFilled[c] = 0x0u;
+            _pimpl->_activeDescSets[c] = nullptr;
+        }
+    }
+
+    PipelineLayoutBuilder::PipelineLayoutBuilder(const ObjectFactory& factory, DescriptorPool& descPool)
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_pendingWrites = 0u;
+        _pimpl->_pendingImageInfos = 0u;
+        _pimpl->_pendingBufferInfos = 0u;
+        _pimpl->_descriptorPool = &descPool;
+
+        XlZeroMemory(_pimpl->_bufferInfo);
+        XlZeroMemory(_pimpl->_imageInfo);
+        XlZeroMemory(_pimpl->_writes);
+
+        for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c) {
+            _pimpl->_sinceLastFlush[c] = 0x0u;
+            _pimpl->_slotsFilled[c] = 0x0u;
+            _pimpl->_activeDescSets[c] = nullptr;
+        }
+
+        // We will create generic descriptor set layouts that provide a large number of 
+        // binding points. It's not clear if there's any inefficiency if our layout has
+        // so many binding points that it is a large superset of any given shader.
+        
+        VkDescriptorSetLayout rawLayouts[Pimpl::s_descriptorSetCount];
+        for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c) {
+            VkDescriptorSetLayoutBinding bindings[Pimpl::s_maxBindings];
+            VkDescriptorType type = 
+                (c==1) 
+                ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+                : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            for (unsigned b=0; b<Pimpl::s_maxBindings; ++b) {
+                bindings[b] = VkDescriptorSetLayoutBinding {
+                    b, type, 1, 
+                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                    nullptr };
+            }
+
+            _pimpl->_layouts[c] = factory.CreateDescriptorSetLayout(MakeIteratorRange(bindings));
+            rawLayouts[c] = _pimpl->_layouts[c].get();
+        }
+
+        _pimpl->_pipelineLayout = factory.CreatePipelineLayout(MakeIteratorRange(rawLayouts));
+    }
+
+    PipelineLayoutBuilder::~PipelineLayoutBuilder()
+    {
+    }
 
 }}
 

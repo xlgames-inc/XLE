@@ -104,7 +104,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return s_defaultSampler;
 	}
 
-    const SamplerState&     ShaderResourceView::GetSampler() const
+    const SamplerState&     ShaderResourceView::GetSampler()
     {
         return GetDefaultSampler();
     }

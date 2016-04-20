@@ -157,7 +157,9 @@ namespace RenderCore { namespace Assets
         Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const
     {
         context.Bind(bindingBox._boundInputLayout);
-        context.Bind(bindingBox._geometryShader);
+        #if GFXAPI_ACTIVE == GFXAPI_DX11        // platformtemp
+            context.Bind(bindingBox._geometryShader);
+        #endif
 
         context.Unbind<Metal::PixelShader>();
         context.Bind(Metal::Topology::PointList);
@@ -173,13 +175,15 @@ namespace RenderCore { namespace Assets
 
     static void SetSkinningShader(Metal::DeviceContext& context, SkinningBindingBox& bindingBox, unsigned materialIndexValue)
     {
-        if (materialIndexValue == 4)         context.Bind(bindingBox._skinningVertexShaderP4);
-        else if (materialIndexValue == 2)    context.Bind(bindingBox._skinningVertexShaderP2);
-        else if (materialIndexValue == 1)    context.Bind(bindingBox._skinningVertexShaderP1);
-        else {
-            assert(materialIndexValue == 0);
-            context.Bind(bindingBox._skinningVertexShaderP0);
-        }
+        #if GFXAPI_ACTIVE == GFXAPI_DX11        // platformtemp
+            if (materialIndexValue == 4)         context.Bind(bindingBox._skinningVertexShaderP4);
+            else if (materialIndexValue == 2)    context.Bind(bindingBox._skinningVertexShaderP2);
+            else if (materialIndexValue == 1)    context.Bind(bindingBox._skinningVertexShaderP1);
+            else {
+                assert(materialIndexValue == 0);
+                context.Bind(bindingBox._skinningVertexShaderP0);
+            }
+        #endif
     }
 
     static void WriteJointTransforms(   Float3x4 destination[], size_t destinationCount,

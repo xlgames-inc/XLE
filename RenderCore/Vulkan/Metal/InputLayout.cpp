@@ -428,7 +428,6 @@ namespace RenderCore { namespace Metal_Vulkan
             rawDescriptorSets[c] = _descriptorSets[c].get();
         
         context.SetPipelineLayout(_pipelineLayout);
-        context.BindPipeline();
         context.CmdBindDescriptorSets(
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             _pipelineLayout.get(), 0, 

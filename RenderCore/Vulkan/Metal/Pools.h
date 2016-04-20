@@ -45,6 +45,7 @@ namespace RenderCore { namespace Metal_Vulkan
             IteratorRange<const VkDescriptorSetLayout*> layouts);
 
         void FlushDestroys();
+        VkDevice GetDevice() { return _device.get(); }
 
         DescriptorPool(const Metal_Vulkan::ObjectFactory& factory);
         DescriptorPool();

@@ -94,7 +94,7 @@ namespace RenderCore { namespace Metal_Vulkan
             : TextureView(image, window) {}
         ShaderResourceView() {}
 
-		const SamplerState&     GetSampler() const;
+		static const SamplerState&     GetSampler();
 		static void Cleanup();
     };
 

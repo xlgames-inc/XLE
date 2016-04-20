@@ -74,7 +74,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         VulkanUniquePtr<VkPipeline> CreatePipeline(VkRenderPass renderPass, unsigned subpass = 0);
 
-		void				SetPipelineLayout(VulkanSharedPtr<VkPipelineLayout> layout);
+        void                SetPipelineLayout(const VulkanSharedPtr<VkPipelineLayout>& layout);
         VkPipelineLayout    GetPipelineLayout();
 
         PipelineBuilder(const ObjectFactory& factory, GlobalPools& globalPools);
@@ -100,6 +100,30 @@ namespace RenderCore { namespace Metal_Vulkan
         bool            _pipelineStale;
     };
 
+    class PipelineLayoutBuilder
+    {
+    public:
+        enum class Stage { Vertex, Pixel, Geometry, Compute, Hull, Domain, Max };
+        void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images);
+        void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
+
+        VkPipelineLayout                            GetPipelineLayout();
+        const VulkanSharedPtr<VkPipelineLayout>&    SharePipelineLayout();
+
+        void    GetDescriptorSets(IteratorRange<VkDescriptorSet*> dst);
+        bool    HasChanges() const;
+        void    Reset();
+
+        PipelineLayoutBuilder(const ObjectFactory& factory, DescriptorPool& descPool);
+        ~PipelineLayoutBuilder();
+
+        PipelineLayoutBuilder(const PipelineLayoutBuilder&) = delete;
+        PipelineLayoutBuilder& operator=(const PipelineLayoutBuilder&) = delete;
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
+
     using CommandList = VkCommandBuffer;
     using CommandListPtr = VulkanSharedPtr<VkCommandBuffer>;
 
@@ -108,28 +132,28 @@ namespace RenderCore { namespace Metal_Vulkan
     public:
 		template<int Count> void    Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset=0);
 
-        template<int Count> void    BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources) {}
-        template<int Count> void    BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources) {}
-        template<int Count> void    BindCS(const ResourceList<ShaderResourceView, Count>& shaderResources) {}
-        template<int Count> void    BindGS(const ResourceList<ShaderResourceView, Count>& shaderResources) {}
-        template<int Count> void    BindHS(const ResourceList<ShaderResourceView, Count>& shaderResources) {}
-        template<int Count> void    BindDS(const ResourceList<ShaderResourceView, Count>& shaderResources) {}
+        template<int Count> void    BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindCS(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindGS(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindHS(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindDS(const ResourceList<ShaderResourceView, Count>& shaderResources);
 
-        template<int Count> void    BindVS(const ResourceList<SamplerState, Count>& samplerStates) {}
-        template<int Count> void    BindPS(const ResourceList<SamplerState, Count>& samplerStates) {}
-        template<int Count> void    BindGS(const ResourceList<SamplerState, Count>& samplerStates) {}
-        template<int Count> void    BindCS(const ResourceList<SamplerState, Count>& samplerStates) {}
-        template<int Count> void    BindHS(const ResourceList<SamplerState, Count>& samplerStates) {}
-        template<int Count> void    BindDS(const ResourceList<SamplerState, Count>& samplerStates) {}
+        template<int Count> void    BindVS(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindPS(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindGS(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindCS(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindHS(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindDS(const ResourceList<SamplerState, Count>& samplerStates);
 
-        template<int Count> void    BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers) {}
-        template<int Count> void    BindPS(const ResourceList<ConstantBuffer, Count>& constantBuffers) {}
-        template<int Count> void    BindCS(const ResourceList<ConstantBuffer, Count>& constantBuffers) {}
-        template<int Count> void    BindGS(const ResourceList<ConstantBuffer, Count>& constantBuffers) {}
-        template<int Count> void    BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers) {}
-        template<int Count> void    BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers) {}
+        template<int Count> void    BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindPS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindCS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindGS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
 
-		template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil) {}
+		template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
 		template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess) {}
 
 		template<int Count> void    BindSO(const ResourceList<VertexBuffer, Count>& buffers, unsigned offset=0) {}
@@ -138,15 +162,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void        Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[]);
         void        Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset=0);
-        void        Bind(const VertexShader& vertexShader) {}
-        void        Bind(const GeometryShader& geometryShader) {}
-        void        Bind(const PixelShader& pixelShader) {}
-        void        Bind(const ComputeShader& computeShader) {}
-        void        Bind(const DomainShader& domainShader) {}
-        void        Bind(const HullShader& hullShader) {}
-        void        Bind(const DeepShaderProgram& deepShaderProgram) {}
         void        Bind(const ViewportDesc& viewport);
 
+        void        Bind(const ComputeShader& computeShader) {}
+
+        void        Bind(const DeepShaderProgram& deepShaderProgram) {}
         void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage) {}
         void        Bind(const DeepShaderProgram& deepShaderProgram, const BoundClassInterfaces& dynLinkage) {}
 
@@ -243,10 +263,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		DeviceContext& operator=(const DeviceContext&) = delete;
 
     private:
-        VulkanSharedPtr<VkCommandBuffer> _commandList;
-        VulkanSharedPtr<VkRenderPass> _renderPass;
-        CommandPool* _cmdPool;
-        CommandPool::BufferType _cmdBufferType;
+        VulkanSharedPtr<VkCommandBuffer>    _commandList;
+        VulkanSharedPtr<VkRenderPass>       _renderPass;
+        CommandPool*                        _cmdPool;
+        CommandPool::BufferType             _cmdBufferType;
+        PipelineLayoutBuilder               _pipelineLayoutBuilder;
     };
 
     void SetImageLayout(
@@ -257,5 +278,128 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkImageLayout newImageLayout,
         unsigned mipCount,
         unsigned layerCount);
+
+
+    template<int Count> 
+        void DeviceContext::Bind(
+            const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil) 
+        {
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+        {
+            _pipelineLayoutBuilder.Bind(
+                PipelineLayoutBuilder::Stage::Vertex, 
+                shaderResources._startingPoint,
+                MakeIteratorRange(shaderResources._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+        {
+            _pipelineLayoutBuilder.Bind(
+                PipelineLayoutBuilder::Stage::Pixel, 
+                shaderResources._startingPoint,
+                MakeIteratorRange(shaderResources._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindCS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+        {
+            _pipelineLayoutBuilder.Bind(
+                PipelineLayoutBuilder::Stage::Compute, 
+                shaderResources._startingPoint,
+                MakeIteratorRange(shaderResources._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindGS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+        {
+            _pipelineLayoutBuilder.Bind(
+                PipelineLayoutBuilder::Stage::Geometry, 
+                shaderResources._startingPoint,
+                MakeIteratorRange(shaderResources._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindHS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+        {
+            _pipelineLayoutBuilder.Bind(
+                PipelineLayoutBuilder::Stage::Hull, 
+                shaderResources._startingPoint,
+                MakeIteratorRange(shaderResources._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindDS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+        {
+            _pipelineLayoutBuilder.Bind(
+                PipelineLayoutBuilder::Stage::Domain, 
+                shaderResources._startingPoint,
+                MakeIteratorRange(shaderResources._buffers));
+        }
+
+    template<int Count> void    DeviceContext::BindVS(const ResourceList<SamplerState, Count>& samplerStates) {}
+    template<int Count> void    DeviceContext::BindPS(const ResourceList<SamplerState, Count>& samplerStates) {}
+    template<int Count> void    DeviceContext::BindGS(const ResourceList<SamplerState, Count>& samplerStates) {}
+    template<int Count> void    DeviceContext::BindCS(const ResourceList<SamplerState, Count>& samplerStates) {}
+    template<int Count> void    DeviceContext::BindHS(const ResourceList<SamplerState, Count>& samplerStates) {}
+    template<int Count> void    DeviceContext::BindDS(const ResourceList<SamplerState, Count>& samplerStates) {}
+
+    template<int Count> 
+        void    DeviceContext::BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+        {
+            _pipelineLayoutBuilder.Bind(
+                PipelineLayoutBuilder::Stage::Vertex, 
+                constantBuffers._startingPoint,
+                MakeIteratorRange(constantBuffers._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindPS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+        {
+            _pipelineLayoutBuilder.Bind(
+                PipelineLayoutBuilder::Stage::Pixel, 
+                constantBuffers._startingPoint,
+                MakeIteratorRange(constantBuffers._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindCS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+        {
+            _pipelineLayoutBuilder.Bind(
+                PipelineLayoutBuilder::Stage::Compute, 
+                constantBuffers._startingPoint,
+                MakeIteratorRange(constantBuffers._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindGS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+        {
+            _pipelineLayoutBuilder.Bind(
+                PipelineLayoutBuilder::Stage::Geometry, 
+                constantBuffers._startingPoint,
+                MakeIteratorRange(constantBuffers._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+        {
+            _pipelineLayoutBuilder.Bind(
+                PipelineLayoutBuilder::Stage::Hull, 
+                constantBuffers._startingPoint,
+                MakeIteratorRange(constantBuffers._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+        {
+            _pipelineLayoutBuilder.Bind(
+                PipelineLayoutBuilder::Stage::Domain, 
+                constantBuffers._startingPoint,
+                MakeIteratorRange(constantBuffers._buffers));
+        }
+
 }}
 
