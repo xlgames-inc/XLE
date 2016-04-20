@@ -619,7 +619,7 @@ namespace RenderCore
 		return _viewportContext;
     }
 
-    void PresentationChain::AcquireNextImage()
+    Metal_Vulkan::RenderTargetView* PresentationChain::AcquireNextImage()
     {
         _activePresentSync = (_activePresentSync+1) % dimof(_presentSyncs);
         auto& sync = _presentSyncs[_activePresentSync];
@@ -654,19 +654,9 @@ namespace RenderCore
         // return codes
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failure during acquire next image"));
+
+        return &_images[_activeImageIndex]._rtv;
     }
-
-    Metal_Vulkan::FrameBufferLayout* PresentationChain::BindDefaultRenderPass(Metal_Vulkan::DeviceContext& context)
-    {
-        if (_activeImageIndex >= unsigned(_images.size())) return nullptr;
-
-		// bind the default render pass for rendering directly to the swapchain
-		context.BeginRenderPass(
-            _defaultRenderPass, _images[_activeImageIndex]._defaultFrameBuffer,
-            {0,0}, {_bufferDesc._width, _bufferDesc._height});
-
-        return &_defaultRenderPass;
-	}
 
     static std::vector<VkImage> GetImages(VkDevice dev, VkSwapchainKHR swapChain)
     {
@@ -781,8 +771,6 @@ namespace RenderCore
                 Metal_Vulkan::TextureViewWindow::SubResourceRange{0, bufferDesc._mipCount},
                 Metal_Vulkan::TextureViewWindow::SubResourceRange{0, bufferDesc._arrayCount});
 			i._rtv = Metal_Vulkan::RenderTargetView(factory, i._image, window);
-            imageViews[0] = i._rtv.GetUnderlying();
-            i._defaultFrameBuffer = Metal_Vulkan::FrameBuffer(factory, MakeIteratorRange(imageViews), _defaultRenderPass, bufferDesc._width, bufferDesc._height);
         }
 
         // Create the synchronisation primitives
@@ -822,11 +810,11 @@ namespace RenderCore
                 VK_IMAGE_ASPECT_COLOR_BIT,
                 VK_IMAGE_LAYOUT_UNDEFINED,
                 VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1, 1);
-		Metal_Vulkan::SetImageLayout(
-            cmd.get(), Metal_Vulkan::UnderlyingResourcePtr(_depthStencilResource).get()->GetImage(),
-            VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1, 1);
+		// Metal_Vulkan::SetImageLayout(
+        //     cmd.get(), Metal_Vulkan::UnderlyingResourcePtr(_depthStencilResource).get()->GetImage(),
+        //     VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT,
+        //     VK_IMAGE_LAYOUT_UNDEFINED,
+        //     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1, 1);
 
         auto res = vkEndCommandBuffer(cmd.get());
         if (res != VK_SUCCESS)
@@ -856,10 +844,7 @@ namespace RenderCore
 
     PresentationChain::~PresentationChain()
     {
-		_defaultRenderPass = Metal_Vulkan::FrameBufferLayout();
 		_images.clear();
-		_dsv = Metal_Vulkan::DepthStencilView();
-		_depthStencilResource.reset();
 		_swapChain.reset();
 		_device.reset();
     }
@@ -886,11 +871,8 @@ namespace RenderCore
 	void    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
 	{
 		PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
-		swapChain->AcquireNextImage();
-
-		auto rp = swapChain->BindDefaultRenderPass(*_metalContext);
-		if (rp)
-			_metalContext->Bind(rp->ShareUnderlying());
+		auto nextImage = swapChain->AcquireNextImage();
+        _metalContext->SetPresentationDestination(nextImage);
 	}
 
 	void            ThreadContext::Present(IPresentationChain& chain)

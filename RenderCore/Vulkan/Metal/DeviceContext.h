@@ -56,33 +56,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	        PatchList14 = 46,       // D3D11_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST	= 46,
 	        PatchList15 = 47,       // D3D11_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST	= 47,
 	        PatchList16 = 48        // D3D11_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST	= 48
-
-#if 0
-            PointList       = 0,    // VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
-            LineList        = 1,    // VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
-            LineStrip       = 2,    // VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
-            TriangleList    = 3,    // VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-            TriangleStrip   = 4,    // VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP
-            LineListAdj     = 6,    // VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY
-
-
-            PatchList1      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList2      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList3      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList4      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList5      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList6      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList7      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList8      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList9      = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList10     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList11     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList12     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList13     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList14     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList15     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-	        PatchList16     = 10    // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-#endif
         };
     }
 
@@ -225,10 +198,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void		BeginCommandList();
 		void		CommitCommandList(VkCommandBuffer_T&, bool);
 		auto        ResolveCommandList() -> CommandListPtr;
-
-		// VkCommandBuffer			GetCommandList() { assert(_commandList); return _commandList.get(); }
-        // const CommandListPtr&   ShareCommandList() { assert(_commandList); return _commandList; }
-		bool					IsImmediate() { return false; }
+		bool		IsImmediate() { return false; }
 
         void        Bind(VulkanSharedPtr<VkRenderPass> renderPass);
 		
@@ -242,8 +212,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
         bool        BindPipeline();
 
+        void        SetPresentationDestination(RenderTargetView* presentationDestination) { _presentationDestination = presentationDestination; }
+
         void BeginRenderPass(
-            FrameBufferLayout& fbLayout, FrameBuffer& fb,
+            const FrameBufferLayout& fbLayout, const FrameBuffer& fb,
             VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent);
         void EndRenderPass();
         void SetImageLayout(
@@ -254,6 +226,8 @@ namespace RenderCore { namespace Metal_Vulkan
             unsigned mipCount,
             unsigned layerCount);
 
+        ///////////// Command buffer layer /////////////
+        //      (todo -- consider moving to a utility class)
         void CmdUpdateBuffer(
             VkBuffer buffer, VkDeviceSize offset, 
             VkDeviceSize byteCount, const void* data);
@@ -299,6 +273,7 @@ namespace RenderCore { namespace Metal_Vulkan
         CommandPool::BufferType             _cmdBufferType;
         DescriptorSetBuilder                _descriptorSetBuilder;
         bool                                _hideDescriptorSetBuilder;
+        RenderTargetView*                   _presentationDestination;
     };
 
     void SetImageLayout(

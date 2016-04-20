@@ -53,11 +53,10 @@ namespace RenderCore
     class PresentationChain : public Base_PresentationChain
     {
     public:
-        void	Resize(unsigned newWidth, unsigned newHeight) /*override*/;
+        void Resize(unsigned newWidth, unsigned newHeight) /*override*/;
 
         std::shared_ptr<ViewportContext> GetViewportContext() const;
-        void        AcquireNextImage();
-		Metal_Vulkan::FrameBufferLayout* BindDefaultRenderPass(Metal_Vulkan::DeviceContext& context);
+        Metal_Vulkan::RenderTargetView* AcquireNextImage();
 
 		void PresentToQueue(VkQueue queue);
         void SetInitialLayout(
@@ -90,18 +89,15 @@ namespace RenderCore
         class Image
         {
         public:
-            VkImage _image;
-			Metal_Vulkan::RenderTargetView  _rtv;
-			Metal_Vulkan::FrameBuffer       _defaultFrameBuffer;
+            VkImage                             _image;
+			Metal_Vulkan::RenderTargetView      _rtv;
         };
         std::vector<Image> _images;
 
-		ResourcePtr							_depthStencilResource;
-		Metal_Vulkan::DepthStencilView      _dsv;
+		// ResourcePtr							_depthStencilResource;
+		// Metal_Vulkan::DepthStencilView      _dsv;
 
-		Metal_Vulkan::FrameBufferLayout     _defaultRenderPass;
 		BufferUploads::TextureDesc          _bufferDesc;
-
 		std::shared_ptr<ViewportContext>	_viewportContext;
 
         PresentSync     _presentSyncs[3];

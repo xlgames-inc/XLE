@@ -451,7 +451,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	static VkClearValue ClearColor(float r, float g, float b, float a) { VkClearValue result; result.color.float32[0] = r; result.color.float32[1] = g; result.color.float32[2] = b; result.color.float32[3] = a; return result; }
 
     void        DeviceContext::BeginRenderPass(
-        FrameBufferLayout& fbLayout, FrameBuffer& fb,
+        const FrameBufferLayout& fbLayout, const FrameBuffer& fb,
         VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent)
     {
         VkRenderPassBeginInfo rp_begin;
@@ -639,6 +639,7 @@ namespace RenderCore { namespace Metal_Vulkan
     , _cmdPool(&cmdPool), _cmdBufferType(cmdBufferType)
     , _descriptorSetBuilder(factory, globalPools._mainDescriptorPool, globalPools._dummyResources)
     , _hideDescriptorSetBuilder(false)
+    , _presentationDestination(nullptr)
     {}
 
 	void DeviceContext::PrepareForDestruction(IDevice*, IPresentationChain*) {}
