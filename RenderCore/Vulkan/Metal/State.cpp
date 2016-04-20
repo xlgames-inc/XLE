@@ -130,20 +130,24 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         VkSamplerCreateInfo samplerCreateInfo = {};
         samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerCreateInfo.pNext = nullptr;
+        samplerCreateInfo.flags = 0;
         samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
         samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
         samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-        samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         samplerCreateInfo.mipLodBias = 0.0;
         samplerCreateInfo.anisotropyEnable = VK_FALSE,
         samplerCreateInfo.maxAnisotropy = 0;
+        samplerCreateInfo.compareEnable = VK_FALSE;
         samplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
         samplerCreateInfo.minLod = 0.0;
-        samplerCreateInfo.maxLod = 0.0;
+        samplerCreateInfo.maxLod = 13.0f;
         samplerCreateInfo.compareEnable = VK_FALSE;
         samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;       // (interesting)
         _sampler = GetObjectFactory().CreateSampler(samplerCreateInfo);
     }
 

@@ -222,8 +222,7 @@ namespace RenderCore { namespace Metal_Vulkan
             // See (for example) this post from nvidia:
             // https://devtalk.nvidia.com/default/topic/926085/texture-memory-management/
 
-            if (image_create_info.tiling == VK_IMAGE_TILING_LINEAR
-                /*&& (image_create_info.mipLevels > 1 || image_create_info.arrayLayers > 1)*/) {
+            if (image_create_info.tiling == VK_IMAGE_TILING_LINEAR && (desc._gpuAccess == 0)) {
 
                 VkBufferCreateInfo buf_info = {};
 			    buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -316,6 +315,43 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		return res.ShareResource();
 	}
+
+    namespace Internal
+	{
+		class ResourceAllocator : public std::allocator<Metal_Vulkan::Resource>
+		{
+		public:
+			pointer allocate(size_type n, std::allocator<void>::const_pointer ptr)
+			{
+				Throw(::Exceptions::BasicLabel("Allocation attempted via ResourceAllocator"));
+			}
+
+			void deallocate(pointer p, size_type n)
+			{
+				delete (Metal_Vulkan::Resource*)p;
+			}
+		};
+	}
+
+    ResourcePtr Resource::Allocate(
+        const ObjectFactory& factory,
+		const ResourceDesc& desc,
+		const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
+    {
+        const bool useAllocateShared = true;
+		if (constant_expression<useAllocateShared>::result()) {
+			auto res = std::allocate_shared<Metal_Vulkan::Resource>(
+				Internal::ResourceAllocator(),
+				std::ref(factory), std::ref(desc), std::ref(initData));
+			return *reinterpret_cast<ResourcePtr*>(&res);
+		}
+		else {
+			auto res = std::make_unique<Metal_Vulkan::Resource>(factory, desc, initData);
+			return ResourcePtr(
+				(RenderCore::Resource*)res.release(),
+				[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
+		}
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

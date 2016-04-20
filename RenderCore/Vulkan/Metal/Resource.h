@@ -81,6 +81,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		const Desc& GetDesc() const { return _desc; }
 
 		const VulkanSharedPtr<VkImage>& ShareImage() const { return _underlyingImage; }
+
+        static ResourcePtr Allocate(
+            const Metal_Vulkan::ObjectFactory& factory,
+		    const ResourceDesc& desc,
+		    const std::function<SubResourceInitData(unsigned, unsigned)>& initData = std::function<SubResourceInitData(unsigned, unsigned)>());
 	protected:
 		VulkanSharedPtr<VkDeviceMemory> _mem;
 

@@ -538,7 +538,7 @@ namespace SceneEngine
 
         _uniforms = Metal::BoundUniforms(*_shaderProgram);
         _uniforms.BindConstantBuffers(1, {"ToneMapSettings", "ColorGradingSettings"});
-        _uniforms.BindShaderResources(1, {"LuminanceBuffer", "BloomMap"});
+        _uniforms.BindShaderResources(1, {"InputTexture", "LuminanceBuffer", "BloomMap"});
         RenderCore::Techniques::TechniqueContext::BindGlobalUniforms(_uniforms);
 
         _validationCallback = _shaderProgram->GetDependencyValidation();
@@ -599,6 +599,7 @@ namespace SceneEngine
                             MakeSharedPkt(colorGradingSettings) 
                         };
                         const Metal::ShaderResourceView* srvs[] = {
+                            &inputResource,
                             &luminanceResult._propertiesBuffer, &luminanceResult._bloomBuffer
                         };
                         box._uniforms.Apply(context, parserContext.GetGlobalUniformsStream(), Metal::UniformsStream(cbs, srvs));
@@ -621,9 +622,9 @@ namespace SceneEngine
                     //      -- then we have to bind a copy shader
                 context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/basic.psh:fake_tonemap:ps_*"));
+                context.BindPS(MakeResourceList(inputResource));
             }
             
-            context.BindPS(MakeResourceList(inputResource));
             ExecuteOpaqueFullScreenPass(context);
         CATCH_ASSETS_END(parserContext)
     }

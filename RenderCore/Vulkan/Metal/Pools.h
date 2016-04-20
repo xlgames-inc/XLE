@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "TextureView.h"
+#include "Buffer.h"
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
 #include "../../../Utility/IteratorUtils.h"
@@ -62,11 +64,23 @@ namespace RenderCore { namespace Metal_Vulkan
         std::vector<VkDescriptorSet> _pendingDestroy;
     };
 
+    class DummyResources
+    {
+    public:
+        ResourcePtr         _blankTexture;
+        ShaderResourceView  _blankSrv;
+        Buffer              _blankBuffer;
+
+        DummyResources(const ObjectFactory& factory);
+        DummyResources();
+    };
+
     class GlobalPools
     {
     public:
         DescriptorPool                      _mainDescriptorPool;
         VulkanSharedPtr<VkPipelineCache>    _mainPipelineCache;
+        DummyResources                      _dummyResources;
 
         GlobalPools() {}
         GlobalPools(const GlobalPools&) = delete;

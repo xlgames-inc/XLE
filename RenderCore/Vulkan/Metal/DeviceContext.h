@@ -32,6 +32,32 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         enum Enum
         {
+            PointList       = 1,    // D3D11_PRIMITIVE_TOPOLOGY_POINTLIST,
+            LineList        = 2,    // D3D11_PRIMITIVE_TOPOLOGY_LINELIST,
+            LineStrip       = 3,    // D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP,
+            TriangleList    = 4,    // D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
+            TriangleStrip   = 5,    // D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP
+            LineListAdj     = 10,   // D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ
+
+
+            PatchList1 = 33,        // D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST	= 33,
+	        PatchList2 = 34,        // D3D11_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST	= 34,
+	        PatchList3 = 35,        // D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST	= 35,
+	        PatchList4 = 36,        // D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST	= 36,
+	        PatchList5 = 37,        // D3D11_PRIMITIVE_TOPOLOGY_5_CONTROL_POINT_PATCHLIST	= 37,
+	        PatchList6 = 38,        // D3D11_PRIMITIVE_TOPOLOGY_6_CONTROL_POINT_PATCHLIST	= 38,
+	        PatchList7 = 39,        // D3D11_PRIMITIVE_TOPOLOGY_7_CONTROL_POINT_PATCHLIST	= 39,
+	        PatchList8 = 40,        // D3D11_PRIMITIVE_TOPOLOGY_8_CONTROL_POINT_PATCHLIST	= 40,
+	        PatchList9 = 41,        // D3D11_PRIMITIVE_TOPOLOGY_9_CONTROL_POINT_PATCHLIST	= 41,
+	        PatchList10 = 42,       // D3D11_PRIMITIVE_TOPOLOGY_10_CONTROL_POINT_PATCHLIST	= 42,
+	        PatchList11 = 43,       // D3D11_PRIMITIVE_TOPOLOGY_11_CONTROL_POINT_PATCHLIST	= 43,
+	        PatchList12 = 44,       // D3D11_PRIMITIVE_TOPOLOGY_12_CONTROL_POINT_PATCHLIST	= 44,
+	        PatchList13 = 45,       // D3D11_PRIMITIVE_TOPOLOGY_13_CONTROL_POINT_PATCHLIST	= 45,
+	        PatchList14 = 46,       // D3D11_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST	= 46,
+	        PatchList15 = 47,       // D3D11_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST	= 47,
+	        PatchList16 = 48        // D3D11_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST	= 48
+
+#if 0
             PointList       = 0,    // VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
             LineList        = 1,    // VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
             LineStrip       = 2,    // VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
@@ -56,6 +82,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	        PatchList14     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
 	        PatchList15     = 10,   // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
 	        PatchList16     = 10    // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+#endif
         };
     }
 
@@ -100,7 +127,7 @@ namespace RenderCore { namespace Metal_Vulkan
         bool            _pipelineStale;
     };
 
-    class PipelineLayoutBuilder
+    class DescriptorSetBuilder
     {
     public:
         enum class Stage { Vertex, Pixel, Geometry, Compute, Hull, Domain, Max };
@@ -114,11 +141,13 @@ namespace RenderCore { namespace Metal_Vulkan
         bool    HasChanges() const;
         void    Reset();
 
-        PipelineLayoutBuilder(const ObjectFactory& factory, DescriptorPool& descPool);
-        ~PipelineLayoutBuilder();
+        DescriptorSetBuilder(
+            const ObjectFactory& factory, DescriptorPool& descPool, 
+            DummyResources& dummyResources);
+        ~DescriptorSetBuilder();
 
-        PipelineLayoutBuilder(const PipelineLayoutBuilder&) = delete;
-        PipelineLayoutBuilder& operator=(const PipelineLayoutBuilder&) = delete;
+        DescriptorSetBuilder(const DescriptorSetBuilder&) = delete;
+        DescriptorSetBuilder& operator=(const DescriptorSetBuilder&) = delete;
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
@@ -205,6 +234,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		
 		void		InvalidateCachedState() {}
 		static void PrepareForDestruction(IDevice*, IPresentationChain*);
+        void        SetHideDescriptorSetBuilder() { _hideDescriptorSetBuilder = true; }
 
         GlobalPools&    GetGlobalPools();
         VkDevice        GetUnderlyingDevice();
@@ -267,7 +297,8 @@ namespace RenderCore { namespace Metal_Vulkan
         VulkanSharedPtr<VkRenderPass>       _renderPass;
         CommandPool*                        _cmdPool;
         CommandPool::BufferType             _cmdBufferType;
-        PipelineLayoutBuilder               _pipelineLayoutBuilder;
+        DescriptorSetBuilder                _descriptorSetBuilder;
+        bool                                _hideDescriptorSetBuilder;
     };
 
     void SetImageLayout(
@@ -289,8 +320,9 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _pipelineLayoutBuilder.Bind(
-                PipelineLayoutBuilder::Stage::Vertex, 
+            _hideDescriptorSetBuilder = false;
+            _descriptorSetBuilder.Bind(
+                DescriptorSetBuilder::Stage::Vertex, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
         }
@@ -298,8 +330,9 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _pipelineLayoutBuilder.Bind(
-                PipelineLayoutBuilder::Stage::Pixel, 
+            _hideDescriptorSetBuilder = false;
+            _descriptorSetBuilder.Bind(
+                DescriptorSetBuilder::Stage::Pixel, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
         }
@@ -307,8 +340,9 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindCS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _pipelineLayoutBuilder.Bind(
-                PipelineLayoutBuilder::Stage::Compute, 
+            _hideDescriptorSetBuilder = false;
+            _descriptorSetBuilder.Bind(
+                DescriptorSetBuilder::Stage::Compute, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
         }
@@ -316,8 +350,9 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindGS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _pipelineLayoutBuilder.Bind(
-                PipelineLayoutBuilder::Stage::Geometry, 
+            _hideDescriptorSetBuilder = false;
+            _descriptorSetBuilder.Bind(
+                DescriptorSetBuilder::Stage::Geometry, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
         }
@@ -325,8 +360,9 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindHS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _pipelineLayoutBuilder.Bind(
-                PipelineLayoutBuilder::Stage::Hull, 
+            _hideDescriptorSetBuilder = false;
+            _descriptorSetBuilder.Bind(
+                DescriptorSetBuilder::Stage::Hull, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
         }
@@ -334,8 +370,9 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindDS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _pipelineLayoutBuilder.Bind(
-                PipelineLayoutBuilder::Stage::Domain, 
+            _hideDescriptorSetBuilder = false;
+            _descriptorSetBuilder.Bind(
+                DescriptorSetBuilder::Stage::Domain, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
         }
@@ -350,8 +387,9 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _pipelineLayoutBuilder.Bind(
-                PipelineLayoutBuilder::Stage::Vertex, 
+            _hideDescriptorSetBuilder = false;
+            _descriptorSetBuilder.Bind(
+                DescriptorSetBuilder::Stage::Vertex, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
         }
@@ -359,8 +397,9 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindPS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _pipelineLayoutBuilder.Bind(
-                PipelineLayoutBuilder::Stage::Pixel, 
+            _hideDescriptorSetBuilder = false;
+            _descriptorSetBuilder.Bind(
+                DescriptorSetBuilder::Stage::Pixel, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
         }
@@ -368,8 +407,9 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindCS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _pipelineLayoutBuilder.Bind(
-                PipelineLayoutBuilder::Stage::Compute, 
+            _hideDescriptorSetBuilder = false;
+            _descriptorSetBuilder.Bind(
+                DescriptorSetBuilder::Stage::Compute, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
         }
@@ -377,8 +417,9 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindGS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _pipelineLayoutBuilder.Bind(
-                PipelineLayoutBuilder::Stage::Geometry, 
+            _hideDescriptorSetBuilder = false;
+            _descriptorSetBuilder.Bind(
+                DescriptorSetBuilder::Stage::Geometry, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
         }
@@ -386,8 +427,9 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _pipelineLayoutBuilder.Bind(
-                PipelineLayoutBuilder::Stage::Hull, 
+            _hideDescriptorSetBuilder = false;
+            _descriptorSetBuilder.Bind(
+                DescriptorSetBuilder::Stage::Hull, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
         }
@@ -395,8 +437,9 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _pipelineLayoutBuilder.Bind(
-                PipelineLayoutBuilder::Stage::Domain, 
+            _hideDescriptorSetBuilder = false;
+            _descriptorSetBuilder.Bind(
+                DescriptorSetBuilder::Stage::Domain, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
         }

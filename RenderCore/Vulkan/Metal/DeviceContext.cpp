@@ -15,6 +15,7 @@
 #include "Pools.h"
 #include "../../Format.h"
 #include "../IDeviceVulkan.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -54,14 +55,47 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    static VkPrimitiveTopology AsNativeTopology(Topology::Enum topology)
+    static VkPrimitiveTopology AsNative(Topology::Enum topo)
     {
-        return (VkPrimitiveTopology)topology;
+        switch (topo)
+        {
+        case Topology::PointList: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+        case Topology::LineList: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        case Topology::LineStrip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+        default:
+        case Topology::TriangleList: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        case Topology::TriangleStrip: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+        case Topology::LineListAdj: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
+
+        case Topology::PatchList1:
+        /*case Topology::PatchList2:
+        case Topology::PatchList3:
+        case Topology::PatchList4:
+        case Topology::PatchList5:
+        case Topology::PatchList6:
+        case Topology::PatchList7:
+        case Topology::PatchList8:
+        case Topology::PatchList9:
+        case Topology::PatchList10:
+        case Topology::PatchList11:
+        case Topology::PatchList12:
+        case Topology::PatchList13:
+        case Topology::PatchList14:
+        case Topology::PatchList15:
+        case Topology::PatchList16:*/
+            return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+        }
+
+        // other Vulkan topologies:
+        // VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN
+        // VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY
+        // VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY
+        // VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY
     }
     
     void        PipelineBuilder::Bind(Topology::Enum topology)
     {
-        auto native = AsNativeTopology(topology);
+        auto native = AsNative(topology);
         if (native != _topology) {
             _pipelineStale = true;
             _topology = native;
@@ -146,7 +180,7 @@ namespace RenderCore { namespace Metal_Vulkan
         ia.pNext = nullptr;
         ia.flags = 0;
         ia.primitiveRestartEnable = VK_FALSE;
-        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        ia.topology = _topology;
 
         VkPipelineViewportStateCreateInfo vp = {};
         vp.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -268,10 +302,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
         // If we've been using the pipeline layout builder directly, then we
         // must flush those changes down to the PipelineBuilder
-        if (_pipelineLayoutBuilder.HasChanges()) {
-            SetPipelineLayout(_pipelineLayoutBuilder.SharePipelineLayout());
+        if (!_hideDescriptorSetBuilder && _descriptorSetBuilder.HasChanges()) {
+            SetPipelineLayout(_descriptorSetBuilder.SharePipelineLayout());
             VkDescriptorSet descSets[2];
-            _pipelineLayoutBuilder.GetDescriptorSets(MakeIteratorRange(descSets));
+            _descriptorSetBuilder.GetDescriptorSets(MakeIteratorRange(descSets));
             CmdBindDescriptorSets(
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                 _pipelineLayout.get(), 0, 
@@ -355,7 +389,8 @@ namespace RenderCore { namespace Metal_Vulkan
         _topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         for (auto& v:_vertexStrides) v = 0;
         _pipelineStale = true;
-        _pipelineLayoutBuilder.Reset();
+        _hideDescriptorSetBuilder = false;
+        _descriptorSetBuilder.Reset();
 
 		// Unless the context is already tied to a primary command list, we will always
 		// create a secondary command list here.
@@ -602,7 +637,8 @@ namespace RenderCore { namespace Metal_Vulkan
         CommandPool::BufferType cmdBufferType)
     : PipelineBuilder(factory, globalPools)
     , _cmdPool(&cmdPool), _cmdBufferType(cmdBufferType)
-    , _pipelineLayoutBuilder(factory, globalPools._mainDescriptorPool)
+    , _descriptorSetBuilder(factory, globalPools._mainDescriptorPool, globalPools._dummyResources)
+    , _hideDescriptorSetBuilder(false)
     {}
 
 	void DeviceContext::PrepareForDestruction(IDevice*, IPresentationChain*) {}
@@ -610,12 +646,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class PipelineLayoutBuilder::Pimpl
+    class DescriptorSetBuilder::Pimpl
     {
     public:
         static const unsigned s_pendingBufferLength = 32;
         static const unsigned s_descriptorSetCount = 2;
-        static const unsigned s_maxBindings = 32;
+        static const unsigned s_maxBindings = 16u;
 
         VkDescriptorBufferInfo  _bufferInfo[s_pendingBufferLength];
         VkDescriptorImageInfo   _imageInfo[s_pendingBufferLength];
@@ -628,7 +664,8 @@ namespace RenderCore { namespace Metal_Vulkan
         VulkanSharedPtr<VkPipelineLayout>       _pipelineLayout;
         VulkanUniquePtr<VkDescriptorSetLayout>  _layouts[s_descriptorSetCount];
 
-        VulkanUniquePtr<VkDescriptorSet> _activeDescSets[s_descriptorSetCount];
+        VulkanUniquePtr<VkDescriptorSet>        _activeDescSets[s_descriptorSetCount];
+        VulkanUniquePtr<VkDescriptorSet>        _defaultDescSets[s_descriptorSetCount];
 
         uint64 _sinceLastFlush[s_descriptorSetCount];
         uint64 _slotsFilled[s_descriptorSetCount];
@@ -651,7 +688,7 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     template<> 
-        VkDescriptorImageInfo& PipelineLayoutBuilder::Pimpl::AllocateInfo(const VkDescriptorImageInfo& init)
+        VkDescriptorImageInfo& DescriptorSetBuilder::Pimpl::AllocateInfo(const VkDescriptorImageInfo& init)
     {
         assert(_pendingImageInfos < s_pendingBufferLength);
         auto& i = _imageInfo[_pendingImageInfos++];
@@ -660,7 +697,7 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     template<> 
-        VkDescriptorBufferInfo& PipelineLayoutBuilder::Pimpl::AllocateInfo(const VkDescriptorBufferInfo& init)
+        VkDescriptorBufferInfo& DescriptorSetBuilder::Pimpl::AllocateInfo(const VkDescriptorBufferInfo& init)
     {
         assert(_pendingBufferInfos < s_pendingBufferLength);
         auto& i = _bufferInfo[_pendingBufferInfos++];
@@ -669,8 +706,13 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     template<typename BindingInfo>
-        void    PipelineLayoutBuilder::Pimpl::WriteBinding(unsigned bindingPoint, unsigned descriptorSet, VkDescriptorType type, const BindingInfo& bindingInfo)
+        void    DescriptorSetBuilder::Pimpl::WriteBinding(unsigned bindingPoint, unsigned descriptorSet, VkDescriptorType type, const BindingInfo& bindingInfo)
     {
+        if (bindingPoint >= s_maxBindings) {
+            LogWarning << "Cannot bind to binding point " << bindingPoint;
+            return;
+        }
+
         if (_sinceLastFlush[descriptorSet] & (1ull<<bindingPoint)) {
             // we already have a pending write to this slot. Let's find it, and just
             // update the details with the new view.
@@ -701,7 +743,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    void    PipelineLayoutBuilder::Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images)
+    void    DescriptorSetBuilder::Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images)
     {
         const auto descriptorSet = 1u;
         for (unsigned c=0; c<unsigned(images.size()); ++c) {
@@ -716,7 +758,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    void    PipelineLayoutBuilder::Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers)
+    void    DescriptorSetBuilder::Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers)
     {
         const auto descriptorSet = 0u;
         for (unsigned c=0; c<unsigned(uniformBuffers.size()); ++c) {
@@ -729,17 +771,17 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    VkPipelineLayout                            PipelineLayoutBuilder::GetPipelineLayout()
+    VkPipelineLayout                            DescriptorSetBuilder::GetPipelineLayout()
     {
         return _pimpl->_pipelineLayout.get();
     }
 
-    const VulkanSharedPtr<VkPipelineLayout>&    PipelineLayoutBuilder::SharePipelineLayout()
+    const VulkanSharedPtr<VkPipelineLayout>&    DescriptorSetBuilder::SharePipelineLayout()
     {
         return _pimpl->_pipelineLayout;
     }
 
-    void    PipelineLayoutBuilder::GetDescriptorSets(IteratorRange<VkDescriptorSet*> dst)
+    void    DescriptorSetBuilder::GetDescriptorSets(IteratorRange<VkDescriptorSet*> dst)
     {
         // If we've had any changes this last time, we must create new
         // descriptor sets. We will use vkUpdateDescriptorSets to fill in these
@@ -764,7 +806,8 @@ namespace RenderCore { namespace Metal_Vulkan
             VkCopyDescriptorSet copies[Pimpl::s_maxBindings * Pimpl::s_descriptorSetCount];
             unsigned copyCount = 0;
             for (unsigned s=0; s<Pimpl::s_descriptorSetCount; ++s) {
-                if (!_pimpl->_activeDescSets[s]) continue;
+                auto set = _pimpl->_activeDescSets[s].get();
+                if (!set) set = _pimpl->_defaultDescSets[s].get();
 
                 auto filledButNotWritten = _pimpl->_slotsFilled[s] & ~_pimpl->_sinceLastFlush[s];
                 for (unsigned b=0; b<Pimpl::s_maxBindings; ++b) {
@@ -774,7 +817,7 @@ namespace RenderCore { namespace Metal_Vulkan
                         cpy.sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
                         cpy.pNext = nullptr;
 
-                        cpy.srcSet = _pimpl->_activeDescSets[s].get();
+                        cpy.srcSet = set;
                         cpy.srcBinding = b;
                         cpy.srcArrayElement = 0;
 
@@ -806,12 +849,12 @@ namespace RenderCore { namespace Metal_Vulkan
             dst[c] = (c < Pimpl::s_descriptorSetCount) ? _pimpl->_activeDescSets[c].get() : nullptr;
     }
 
-    bool    PipelineLayoutBuilder::HasChanges() const
+    bool    DescriptorSetBuilder::HasChanges() const
     {
         return _pimpl->_pendingWrites != 0;
     }
 
-    void    PipelineLayoutBuilder::Reset()
+    void    DescriptorSetBuilder::Reset()
     {
         _pimpl->_pendingWrites = 0u;
         _pimpl->_pendingImageInfos = 0u;
@@ -823,28 +866,16 @@ namespace RenderCore { namespace Metal_Vulkan
 
         for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c) {
             _pimpl->_sinceLastFlush[c] = 0x0u;
-            _pimpl->_slotsFilled[c] = 0x0u;
             _pimpl->_activeDescSets[c] = nullptr;
         }
     }
 
-    PipelineLayoutBuilder::PipelineLayoutBuilder(const ObjectFactory& factory, DescriptorPool& descPool)
+    DescriptorSetBuilder::DescriptorSetBuilder(
+        const ObjectFactory& factory, DescriptorPool& descPool, 
+        DummyResources& defResources)
     {
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_pendingWrites = 0u;
-        _pimpl->_pendingImageInfos = 0u;
-        _pimpl->_pendingBufferInfos = 0u;
         _pimpl->_descriptorPool = &descPool;
-
-        XlZeroMemory(_pimpl->_bufferInfo);
-        XlZeroMemory(_pimpl->_imageInfo);
-        XlZeroMemory(_pimpl->_writes);
-
-        for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c) {
-            _pimpl->_sinceLastFlush[c] = 0x0u;
-            _pimpl->_slotsFilled[c] = 0x0u;
-            _pimpl->_activeDescSets[c] = nullptr;
-        }
 
         // We will create generic descriptor set layouts that provide a large number of 
         // binding points. It's not clear if there's any inefficiency if our layout has
@@ -869,9 +900,29 @@ namespace RenderCore { namespace Metal_Vulkan
         }
 
         _pimpl->_pipelineLayout = factory.CreatePipelineLayout(MakeIteratorRange(rawLayouts));
+
+        Reset();
+
+        // Create the default resources binding sets...
+        VkBuffer defaultBuffers[Pimpl::s_maxBindings];
+        VkImageView defaultImages[Pimpl::s_maxBindings];
+        for (unsigned c=0; c<Pimpl::s_maxBindings; ++c) {
+            defaultBuffers[c] = defResources._blankBuffer.GetUnderlying();
+            defaultImages[c] = defResources._blankSrv.GetUnderlying();
+        }
+        Bind(Stage::Vertex, 0, IteratorRange<const VkBuffer*>(defaultBuffers, &defaultBuffers[dimof(defaultBuffers)]));
+        Bind(Stage::Vertex, 0, IteratorRange<const VkImageView*>(defaultImages, &defaultImages[dimof(defaultImages)]));
+
+        // Create the descriptor sets, and then move them into "_defaultDescSets"
+        // Note that these sets must come from a non-resetable permanent pool
+        GetDescriptorSets(IteratorRange<VkDescriptorSet*>());
+        for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c) {
+            _pimpl->_defaultDescSets[c] = std::move(_pimpl->_activeDescSets[c]);
+            _pimpl->_slotsFilled[c] = (1ull<<uint64(Pimpl::s_maxBindings))-1ull;  // set every bit up to the slot count
+        }
     }
 
-    PipelineLayoutBuilder::~PipelineLayoutBuilder()
+    DescriptorSetBuilder::~DescriptorSetBuilder()
     {
     }
 

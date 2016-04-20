@@ -294,20 +294,14 @@ float   TextStyle::Draw(
         renderer->Bind(Techniques::CommonResources()._dssDisable);
         renderer->Bind(Techniques::CommonResources()._cullDisable);
 
-        {
-            Metal::ViewportDesc viewportDesc(*renderer);
-            ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
+        Metal::ViewportDesc viewportDesc(*renderer);
+        ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
             
-            // ConstantBuffer constantBuffer(&reciprocalViewportDimensions, sizeof(reciprocalViewportDimensions));
-            // std::shared_ptr<std::vector<uint8>> packet = constantBuffer.GetUnderlying();
-            auto packet = RenderCore::MakeSharedPkt(
-                (const uint8*)&reciprocalViewportDimensions, 
-                (const uint8*)PtrAdd(&reciprocalViewportDimensions, sizeof(reciprocalViewportDimensions)));
-            res._boundUniforms.Apply(*renderer, Metal::UniformsStream(), Metal::UniformsStream(&packet, nullptr, 1));
+        auto packet = RenderCore::MakeSharedPkt(
+            (const uint8*)&reciprocalViewportDimensions, 
+            (const uint8*)PtrAdd(&reciprocalViewportDimensions, sizeof(reciprocalViewportDimensions)));
+        // res._boundUniforms.Apply(*renderer, Metal::UniformsStream(), Metal::UniformsStream(&packet, nullptr, 1));
             
-            // renderer->BindVS(boundLayout, constantBuffer);
-            // renderer.BindVS(ResourceList<ConstantBuffer, 1>(std::make_tuple()));
-        }
         const FontTexture2D *   currentBoundTexture = nullptr;
         WorkingVertexSetPCT     workingVertices;
 
@@ -358,7 +352,9 @@ float   TextStyle::Draw(
                 }
 
 				Metal::ShaderResourceView shadRes(sourceTexture);
-                renderer->BindPS(RenderCore::MakeResourceList(shadRes));
+                const Metal::ShaderResourceView* srvs[] = { &shadRes };
+                // renderer->BindPS(RenderCore::MakeResourceList(shadRes));
+                res._boundUniforms.Apply(*renderer, Metal::UniformsStream(), Metal::UniformsStream(&packet, nullptr, 1, srvs, dimof(srvs)));
                 currentBoundTexture = tex;
             }
 

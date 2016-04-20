@@ -346,6 +346,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		const UniformsStream* streams[] = { &stream0, &stream1 };
 
+        uint64 descSetWrites[s_descriptorSetCount] = { 0x0ull, 0x0ull };
+
         for (unsigned stri=0; stri<dimof(streams); ++stri) {
             const auto& s = *streams[stri];
 
@@ -375,6 +377,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     writes[writeCount].pBufferInfo = &bufferInfo[bufferCount];
                     writes[writeCount].dstArrayElement = 0;
 
+                    descSetWrites[dstBinding>>16] |= 1ull << uint64(dstBinding&0xffff);
                     ++writeCount;
                     ++bufferCount;
                 } else if (s._packets[p]) {
@@ -411,9 +414,65 @@ namespace RenderCore { namespace Metal_Vulkan
                     writes[writeCount].pImageInfo = &imageInfo[imageCount];
                     writes[writeCount].dstArrayElement = 0;
 
+                    descSetWrites[dstBinding>>16] |= 1ull << uint64(dstBinding&0xffff);
                     ++writeCount;
                     ++imageCount;
                 }
+            }
+        }
+
+        // Any locations referenced by the descriptor layout, by not written by the values in
+        // the streams must now be filled in with the defaults.
+        // Vulkan doesn't seem to have well defined behaviour for descriptor set entries that
+        // are part of the layout, but never written.
+        // We can do this with "write" operations, or with "copy" operations. I'm assuming that there's
+        // no major performance difference, so I'll just use writes.
+        assert(bufferCount < dimof(bufferInfo));
+        assert(imageCount < dimof(imageInfo));
+        auto blankBuffer = bufferCount;
+        auto blankImage = imageCount;
+        auto& globalPools = context.GetGlobalPools();
+        bufferInfo[bufferCount++] = VkDescriptorBufferInfo { 
+            globalPools._dummyResources._blankBuffer.GetUnderlying(),
+            0, VK_WHOLE_SIZE };
+        imageInfo[imageCount++] = VkDescriptorImageInfo {
+            ShaderResourceView::GetSampler().GetUnderlying(),
+            globalPools._dummyResources._blankSrv.GetUnderlying(),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+
+        for (unsigned s=0; s<s_streamCount; ++s) {
+            for (auto b:_cbBindingIndices[s]) {
+                if (b == ~0u || (descSetWrites[b>>16] & (1ull<<uint64(b&0xffff)))) continue;
+
+                assert(writeCount < dimof(writes));
+                writes[writeCount] = {};
+                writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writes[writeCount].dstSet = _descriptorSets[b>>16].get();
+                writes[writeCount].dstBinding = b&0xffff;
+                writes[writeCount].descriptorCount = 1;
+                writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                writes[writeCount].pBufferInfo = &bufferInfo[blankBuffer];
+                writes[writeCount].dstArrayElement = 0;
+
+                descSetWrites[b>>16] |= 1ull << uint64(b&0xffff);
+                ++writeCount;
+            }
+
+            for (auto b:_srBindingIndices[s]) {
+                if (b == ~0u || (descSetWrites[b>>16] & (1ull<<uint64(b&0xffff)))) continue;
+
+                assert(writeCount < dimof(writes));
+                writes[writeCount] = {};
+                writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writes[writeCount].dstSet = _descriptorSets[b>>16].get();
+                writes[writeCount].dstBinding = b&0xffff;
+                writes[writeCount].descriptorCount = 1;
+                writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                writes[writeCount].pImageInfo = &imageInfo[blankImage];
+                writes[writeCount].dstArrayElement = 0;
+
+                descSetWrites[b>>16] |= 1ull << uint64(b&0xffff);
+                ++writeCount;
             }
         }
 
@@ -428,6 +487,7 @@ namespace RenderCore { namespace Metal_Vulkan
             rawDescriptorSets[c] = _descriptorSets[c].get();
         
         context.SetPipelineLayout(_pipelineLayout);
+        context.SetHideDescriptorSetBuilder();
         context.CmdBindDescriptorSets(
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             _pipelineLayout.get(), 0, 

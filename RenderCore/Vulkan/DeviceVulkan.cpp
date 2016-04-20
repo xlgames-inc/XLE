@@ -421,8 +421,11 @@ namespace RenderCore
 			_physDev = SelectPhysicalDeviceForRendering(_instance.get(), surface.get());
 			_underlying = CreateUnderlyingDevice(_physDev);
 			_objectFactory = Metal_Vulkan::ObjectFactory(_physDev._dev, _underlying);
+            Metal_Vulkan::SetDefaultObjectFactory(&_objectFactory);
+
             _pools._mainDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory);
             _pools._mainPipelineCache = _objectFactory.CreatePipelineCache();
+            _pools._dummyResources = Metal_Vulkan::DummyResources(_objectFactory);
 
             _foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
 				shared_from_this(), 
@@ -430,8 +433,6 @@ namespace RenderCore
                 Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily),
 				Metal_Vulkan::CommandPool::BufferType::Primary);
             _foregroundPrimaryContext->BeginCommandList();
-
-            Metal_Vulkan::SetDefaultObjectFactory(&_objectFactory);
 		}
 
         // The following is based on the "initswapchain" sample from the vulkan SDK
@@ -536,48 +537,11 @@ namespace RenderCore
             Metal_Vulkan::CommandPool::BufferType::Secondary);
     }
 
-	namespace Internal
-	{
-		class ResourceAllocator : public std::allocator<Metal_Vulkan::Resource>
-		{
-		public:
-			pointer allocate(size_type n, std::allocator<void>::const_pointer ptr)
-			{
-				Throw(::Exceptions::BasicLabel("Allocation attempted via ResourceAllocator"));
-			}
-
-			void deallocate(pointer p, size_type n)
-			{
-				delete (Metal_Vulkan::Resource*)p;
-			}
-		};
-	}
-
-	ResourcePtr AllocateResource(
-		const Metal_Vulkan::ObjectFactory& factory,
-		const ResourceDesc& desc,
-		const std::function<SubResourceInitData(unsigned, unsigned)>& initData = std::function<SubResourceInitData(unsigned, unsigned)>())
-	{
-		const bool useAllocateShared = true;
-		if (constant_expression<useAllocateShared>::result()) {
-			auto res = std::allocate_shared<Metal_Vulkan::Resource>(
-				Internal::ResourceAllocator(),
-				std::ref(factory), std::ref(desc), std::ref(initData));
-			return *reinterpret_cast<ResourcePtr*>(&res);
-		}
-		else {
-			auto res = std::make_unique<Metal_Vulkan::Resource>(factory, desc, initData);
-			return ResourcePtr(
-				(RenderCore::Resource*)res.release(),
-				[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
-		}
-	}
-
 	ResourcePtr Device::CreateResource(
 		const ResourceDesc& desc,
 		const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
 	{
-		return AllocateResource(_objectFactory, desc, initData);
+		return Metal_Vulkan::Resource::Allocate(_objectFactory, desc, initData);
 	}
 
     extern char VersionString[];
@@ -779,7 +743,7 @@ namespace RenderCore
         for (auto& i:images) _images.emplace_back(Image { i });
 
         const auto depthFormat = Format::D24_UNORM_S8_UINT;
-		_depthStencilResource = AllocateResource(
+		_depthStencilResource = Metal_Vulkan::Resource::Allocate(
             factory, 
             CreateDesc(
                 BufferUploads::BindFlag::DepthStencil,

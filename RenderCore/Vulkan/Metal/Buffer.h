@@ -27,7 +27,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void    Update(DeviceContext& context, const void* data, size_t byteCount);
 
-		typedef VkBuffer    UnderlyingType;
+		using UnderlyingType = VkBuffer;
 		UnderlyingType		GetUnderlying() const { return _underlyingBuffer.get(); }
 		bool                IsGood() const { return _underlyingBuffer != nullptr; }
     };

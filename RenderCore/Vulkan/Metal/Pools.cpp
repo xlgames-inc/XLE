@@ -6,6 +6,7 @@
 
 #include "Pools.h"
 #include "ObjectFactory.h"
+#include "../../Format.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -181,5 +182,32 @@ namespace RenderCore { namespace Metal_Vulkan
         _pendingDestroy = std::move(moveFrom._pendingDestroy);
         return *this;
     }
+
+    static ResourcePtr CreateDummyTexture(const ObjectFactory& factory)
+    {
+        auto desc = CreateDesc(BindFlag::ShaderResource, CPUAccess::Write, GPUAccess::Read, TextureDesc::Plain2D(32, 32, Format::R8G8B8A8_UNORM), "DummyTexture");
+        uint32 dummyData[32*32];
+        std::memset(dummyData, 0, sizeof(dummyData));
+        return Resource::Allocate(
+            factory, desc, 
+            [&dummyData](unsigned, unsigned)
+            {
+                return SubResourceInitData{dummyData, 32*32*4, TexturePitches{32*4, 32*32*4}};
+            });
+    }
+
+    DummyResources::DummyResources(const ObjectFactory& factory)
+    : _blankTexture(CreateDummyTexture(factory))
+    , _blankSrv(factory, _blankTexture)
+    {
+        uint8 blankData[4096];
+        std::memset(blankData, 0, sizeof(blankData));
+        _blankBuffer = Buffer(
+            factory, 
+            CreateDesc(BindFlag::ConstantBuffer, 0, GPUAccess::Read, LinearBufferDesc::Create(sizeof(blankData)), "DummyBuffer"),
+            blankData);
+    }
+
+    DummyResources::DummyResources() {}
 
 }}
