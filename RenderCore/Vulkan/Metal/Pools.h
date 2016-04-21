@@ -9,6 +9,7 @@
 #include "TextureView.h"
 #include "Buffer.h"
 #include "State.h"
+#include "FrameBuffer.h"
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
 #include "../../../Utility/IteratorUtils.h"
@@ -87,6 +88,7 @@ namespace RenderCore { namespace Metal_Vulkan
         DescriptorPool                      _mainDescriptorPool;
         VulkanSharedPtr<VkPipelineCache>    _mainPipelineCache;
         DummyResources                      _dummyResources;
+        FrameBufferCache                    _mainFrameBufferCache;
 
         GlobalPools();
         ~GlobalPools();

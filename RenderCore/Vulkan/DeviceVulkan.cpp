@@ -819,13 +819,50 @@ namespace RenderCore
 	{
 		PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
 		auto nextImage = swapChain->AcquireNextImage();
-        _metalContext->SetPresentationTarget(nextImage);
+        _metalContext->SetPresentationTarget(nextImage, {swapChain->GetBufferDesc()._width, swapChain->GetBufferDesc()._height});
 	}
+
+    void    ThreadContext::BeginRenderPass(
+        const FrameBufferDesc& fbDesc, const FrameBufferProperties& props, 
+        const RenderPassBeginDesc& beginInfo)
+    {
+        if (_renderPass)
+            Throw(::Exceptions::BasicLabel("Cannot begin render pass, because another render pass has already been begun"));
+
+        auto adjProps = props;
+        if (adjProps._outputWidth == 0u && adjProps._outputHeight == 0u) {
+            adjProps._outputWidth = _metalContext->GetPresentationTargetDims()[0];
+            adjProps._outputHeight = _metalContext->GetPresentationTargetDims()[1];
+        }
+        _renderPass = std::make_unique<Metal_Vulkan::RenderPassInstance>(
+            *_metalContext,
+            fbDesc, adjProps,
+            ~0ull,
+            _globalPools->_mainFrameBufferCache,
+            beginInfo);
+    }
+
+    void    ThreadContext::NextSubpass()
+    {
+        if (!_renderPass)
+            Throw(::Exceptions::BasicLabel("Cannot proceed to next subpass, because no render pass has been begun"));
+        _renderPass->NextSubpass();
+    }
+
+    void    ThreadContext::EndRenderPass()
+    {
+        if (!_renderPass)
+            Throw(::Exceptions::BasicLabel("Cannot end render pass, because no render pass has been begun"));
+        _renderPass.reset();
+    }
 
 	void            ThreadContext::Present(IPresentationChain& chain)
 	{
 		auto* swapChain = checked_cast<PresentationChain*>(&chain);
 		auto& syncs = swapChain->GetSyncs();
+
+        // end the current render pass, if one has been begun -- 
+        _renderPass.reset();
 
 		//////////////////////////////////////////////////////////////////
 

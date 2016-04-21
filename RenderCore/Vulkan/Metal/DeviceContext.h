@@ -10,6 +10,7 @@
 #include "Forward.h"
 #include "Pools.h"
 #include "VulkanCore.h"
+#include "IncludeVulkan.h"
 #include "../../ResourceList.h"
 #include "../../IDevice_Forward.h"
 #include "../../IThreadContext_Forward.h"
@@ -24,7 +25,6 @@ namespace RenderCore { namespace Metal_Vulkan
     static const unsigned s_maxBoundVBs = 4;
 
     class GlobalPools;
-    class FrameBufferLayout;
     class FrameBuffer;
 
     /// Container for Topology::Enum
@@ -210,13 +210,14 @@ namespace RenderCore { namespace Metal_Vulkan
 
         bool        BindPipeline();
 
-        void        SetPresentationTarget(RenderTargetView* presentationTarget) { _presentationTarget = presentationTarget; }
+        void        SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims) { _presentationTarget = presentationTarget; _presentationTargetDims = dims; }
         RenderTargetView* GetPresentationTarget() { return _presentationTarget; }
+        VectorPattern<unsigned,2> GetPresentationTargetDims() { return _presentationTargetDims; }
 
         void BeginRenderPass(
-            const FrameBufferLayout& fbLayout, const FrameBuffer& fb,
+            VkRenderPass fbLayout, const FrameBuffer& fb,
             VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
-            IteratorRange<const VkClearValue*> clearValues);
+            IteratorRange<const ClearValue*> clearValues);
         void EndRenderPass();
         void SetImageLayout(
 		    VkImage image,
@@ -257,6 +258,7 @@ namespace RenderCore { namespace Metal_Vulkan
             VkImageLayout dstImageLayout,
             uint32_t regionCount,
             const VkBufferImageCopy* pRegions);
+        void CmdNextSubpass(VkSubpassContents);
 
         DeviceContext(
             const ObjectFactory& factory, 
@@ -273,7 +275,9 @@ namespace RenderCore { namespace Metal_Vulkan
         CommandPool::BufferType             _cmdBufferType;
         DescriptorSetBuilder                _descriptorSetBuilder;
         bool                                _hideDescriptorSetBuilder;
+
         RenderTargetView*                   _presentationTarget;
+        VectorPattern<unsigned,2>           _presentationTargetDims;
     };
 
     void SetImageLayout(

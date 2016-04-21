@@ -78,6 +78,7 @@
     </ClInclude>
     <ClInclude Include="..\FlexForward.h" />
     <ClInclude Include="..\Format.h" />
+    <ClInclude Include="..\FrameBufferDesc.h" />
     <ClInclude Include="..\GPUProfiler.h" />
     <ClInclude Include="..\IDevice.h" />
     <ClInclude Include="..\FlexBegin.h" />
@@ -125,6 +126,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\Format.cpp" />
+    <ClCompile Include="..\FrameBufferDesc.cpp" />
     <ClCompile Include="..\GPUProfiler.cpp" />
     <ClCompile Include="..\MinimalShaderSource.cpp" />
     <ClCompile Include="..\RenderUtils.cpp" />

@@ -442,27 +442,27 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
     void        DeviceContext::BeginRenderPass(
-        const FrameBufferLayout& fbLayout, const FrameBuffer& fb,
+        VkRenderPass fbLayout, const FrameBuffer& fb,
         VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
-        IteratorRange<const VkClearValue*> clearValues)
+        IteratorRange<const ClearValue*> clearValues)
     {
         if (_renderPass)
             Throw(::Exceptions::BasicLabel("Attempting to begin a render pass while another render pass is already in progress"));
         VkRenderPassBeginInfo rp_begin;
 		rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		rp_begin.pNext = nullptr;
-		rp_begin.renderPass = fbLayout.GetUnderlying();
+		rp_begin.renderPass = fbLayout;
 		rp_begin.framebuffer = fb.GetUnderlying();
 		rp_begin.renderArea.offset.x = offset[0];
 		rp_begin.renderArea.offset.y = offset[1];
 		rp_begin.renderArea.extent.width = extent[0];
 		rp_begin.renderArea.extent.height = extent[1];
 		
-		rp_begin.pClearValues = clearValues.begin();
+		rp_begin.pClearValues = (const VkClearValue*)clearValues.begin();
 		rp_begin.clearValueCount = (uint32_t)clearValues.size();
 
         vkCmdBeginRenderPass(_commandList.get(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
-        _renderPass = fbLayout.GetUnderlying();
+        _renderPass = fbLayout;
     }
 
     void DeviceContext::EndRenderPass()
@@ -625,6 +625,11 @@ namespace RenderCore { namespace Metal_Vulkan
             regionCount, pRegions);
     }
 
+    void DeviceContext::CmdNextSubpass(VkSubpassContents contents)
+    {
+        vkCmdNextSubpass(_commandList.get(), contents);
+    }
+
     DeviceContext::DeviceContext(
         const ObjectFactory& factory, 
         GlobalPools& globalPools,
@@ -635,6 +640,7 @@ namespace RenderCore { namespace Metal_Vulkan
     , _descriptorSetBuilder(factory, globalPools._mainDescriptorPool, globalPools._dummyResources)
     , _hideDescriptorSetBuilder(false)
     , _presentationTarget(nullptr)
+    , _presentationTargetDims(0, 0)
     , _renderPass(nullptr)
     {}
 

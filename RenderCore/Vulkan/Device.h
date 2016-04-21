@@ -57,6 +57,7 @@ namespace RenderCore
 
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
         Metal_Vulkan::RenderTargetView* AcquireNextImage();
+        const BufferUploads::TextureDesc& GetBufferDesc() { return _bufferDesc; }
 
 		void PresentToQueue(VkQueue queue);
         void SetInitialLayout(
@@ -112,6 +113,10 @@ namespace RenderCore
 		void	Present(IPresentationChain&);
 		void    BeginFrame(IPresentationChain& presentationChain);
 
+        void    BeginRenderPass(const FrameBufferDesc& fbDesc, const FrameBufferProperties& props, const RenderPassBeginDesc& beginInfo);
+        void    NextSubpass();
+        void    EndRenderPass();
+
         bool                        IsImmediate() const;
         ThreadContextStateDesc      GetStateDesc() const;
         std::shared_ptr<IDevice>    GetDevice() const;
@@ -139,6 +144,8 @@ namespace RenderCore
 		VkQueue								_queue;
 		const Metal_Vulkan::ObjectFactory*	_factory;
 		Metal_Vulkan::GlobalPools*			_globalPools;
+
+        std::unique_ptr<Metal_Vulkan::RenderPassInstance> _renderPass;
     };
 
     class ThreadContextVulkan : public ThreadContext, public Base_ThreadContextVulkan

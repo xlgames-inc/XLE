@@ -638,8 +638,8 @@ namespace Sample
 			}
 
                 //  Frame buffer layout
-            using Attachment = RenderCore::Metal::AttachmentDesc;
-            using Subpass = RenderCore::Metal::SubpassDesc;
+            using Attachment = RenderCore::AttachmentDesc;
+            using Subpass = RenderCore::SubpassDesc;
             Attachment attachments[] = 
             {
                 // Presentation chain target
@@ -664,13 +664,11 @@ namespace Sample
                 Subpass({}, {MainTarget}, MainDepthStencil)
             };
 
-            RenderCore::Metal::FrameBufferLayout fbLayout(
-                RenderCore::Metal_Vulkan::GetObjectFactory(*renderDevice),
+            RenderCore::FrameBufferDesc fbLayout(
                 MakeIteratorRange(attachments),
                 MakeIteratorRange(subpasses),
                 presentationChain->GetDesc()->_format,
                 presentationChain->GetDesc()->_samples);
-            RenderCore::Metal::FrameBufferCache fbCache;
 
                 //  Finally, we execute the frame loop
             for (;;) {
@@ -679,19 +677,14 @@ namespace Sample
                 }
 
 				context->BeginFrame(*presentationChain);
+                context->BeginRenderPass(
+                    fbLayout, 
+                    RenderCore::FrameBufferProperties{},
+                    {RenderCore::MakeClearValue(.5f, .3f, .1f, 1.f), RenderCore::MakeClearValue(1.f, 0)});
 
-                {
-                    auto metalContext = RenderCore::Metal_Vulkan::DeviceContext::Get(*context);
-                    RenderCore::Metal_Vulkan::ViewportDesc viewport(*metalContext);
-                    RenderCore::Metal_Vulkan::RenderPassInstance rp(
-                        *metalContext,
-                        fbLayout, RenderCore::Metal_Vulkan::FrameBufferProperties{unsigned(viewport.Width), unsigned(viewport.Height), 0u},
-                        0ull, fbCache,
-                        {ClearColor(.5f, .3f, .1f, 1.f), ClearDepthStencil(1.f, 0)});
-                    // RunShaderTest(*context);
-                    RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext);
-                    RunModelTest(*context, parserContext);
-                }
+                // RunShaderTest(*context);
+                RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext);
+                RunModelTest(*context, parserContext);
                 context->Present(*presentationChain);
 
                     // ------- Update ----------------------------------------

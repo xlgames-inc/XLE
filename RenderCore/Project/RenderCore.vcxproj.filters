@@ -95,6 +95,9 @@
     <ClInclude Include="..\ResourceUtils.h">
       <Filter>Util</Filter>
     </ClInclude>
+    <ClInclude Include="..\FrameBufferDesc.h">
+      <Filter>Util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">
@@ -136,6 +139,9 @@
       <Filter>Util</Filter>
     </ClCompile>
     <ClCompile Include="..\ResourceUtils.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\FrameBufferDesc.cpp">
       <Filter>Util</Filter>
     </ClCompile>
   </ItemGroup>

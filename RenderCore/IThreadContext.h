@@ -29,6 +29,10 @@ namespace RenderCore
         unsigned _frameId;
     };
 
+    class FrameBufferDesc;
+    class FrameBufferProperties;
+    class RenderPassBeginDesc;
+
 #define FLEX_INTERFACE ThreadContext
 /*-----------------*/ #include "FlexBegin.h" /*-----------------*/
 
@@ -94,6 +98,10 @@ namespace RenderCore
 		///   But in theory we can call Present at any time.
 		/// </example>
 		IMETHOD void			Present(IPresentationChain& presentationChain) IPURE;
+
+        IMETHOD void            BeginRenderPass(const FrameBufferDesc& fbDesc, const FrameBufferProperties& props, const RenderPassBeginDesc& beginInfo) IPURE;
+        IMETHOD void            NextSubpass() IPURE;
+        IMETHOD void            EndRenderPass() IPURE;
 
         IMETHOD virtual void*   QueryInterface(const GUID& guid) IPURE;
         IMETHOD bool            IsImmediate() const IPURE;

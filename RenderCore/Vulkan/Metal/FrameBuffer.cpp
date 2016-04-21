@@ -56,15 +56,13 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    FrameBufferLayout::FrameBufferLayout(
+    VulkanUniquePtr<VkRenderPass> CreateRenderPass(
         const Metal_Vulkan::ObjectFactory& factory,
-        IteratorRange<AttachmentDesc*> attachments,
-        IteratorRange<SubpassDesc*> subpasses,
-        Format outputFormat, const TextureSamples& samples)
-    : _attachments(attachments.begin(), attachments.end())
-    , _subpasses(subpasses.begin(), subpasses.end())
-    , _samples(samples)
+        const FrameBufferDesc& layout)
     {
+        auto attachments = layout.GetAttachments();
+        auto subpasses = layout.GetSubpasses();
+
         std::vector<VkAttachmentDescription> attachmentDesc;
         attachmentDesc.reserve(attachments.size());
         for (auto&a:attachments) {
@@ -91,12 +89,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
             if (a._flags & AttachmentDesc::Flags::UsePresentationChainBuffer) {
                 assert(!isDepthStencil);
-                desc.format = AsVkFormat(outputFormat);
-                desc.samples = AsSampleCountFlagBits(samples);
+                desc.format = AsVkFormat(layout.GetOutputFormat());
+                desc.samples = AsSampleCountFlagBits(layout.GetSamples());
                 desc.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                 desc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
             } else if (a._flags & AttachmentDesc::Flags::Multisampled) {
-                desc.samples = AsSampleCountFlagBits(samples);
+                desc.samples = AsSampleCountFlagBits(layout.GetSamples());
             }
 
             // note --  do we need to set VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL or 
@@ -189,13 +187,8 @@ namespace RenderCore { namespace Metal_Vulkan
         rp_info.dependencyCount = 0;
         rp_info.pDependencies = nullptr;
 
-        _underlying = factory.CreateRenderPass(rp_info);
+        return factory.CreateRenderPass(rp_info);
     }
-
-	FrameBufferLayout::FrameBufferLayout() {}
-
-    FrameBufferLayout::~FrameBufferLayout() {}
-
 
     namespace Internal
     {
@@ -204,7 +197,7 @@ namespace RenderCore { namespace Metal_Vulkan
             Input = 1<<0, Output = 1<<1, DepthStencil = 1<<2
         };
     }
-    static unsigned GetAttachmentUsage(const FrameBufferLayout& layout, unsigned attachmentIndex)
+    static unsigned GetAttachmentUsage(const FrameBufferDesc& layout, unsigned attachmentIndex)
     {
         unsigned result = 0u;
         for (auto& s:layout.GetSubpasses()) {
@@ -223,15 +216,16 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     FrameBuffer::FrameBuffer(
-        const Metal_Vulkan::ObjectFactory& factory,
-		const FrameBufferLayout& layout,
+        const ObjectFactory& factory,
+        const FrameBufferDesc& fbDesc,
+		VkRenderPass layout,
 		const FrameBufferProperties& props,
         const RenderTargetView* presentationChainTarget)
     {
         // We must create the frame buffer, including all resources and views required.
         // Here, some resources can come from the presentation chain. But other resources will
         // be created an attached to this object.
-        auto attachments = layout.GetAttachments();
+        auto attachments = fbDesc.GetAttachments();
         _views.reserve(attachments.size());
         std::vector<VkImageView> rawViews;
         rawViews.reserve(attachments.size());
@@ -269,7 +263,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 "attachment");
 
             if (a._flags & AttachmentDesc::Flags::Multisampled)
-                desc._textureDesc._samples = layout.GetSamples();
+                desc._textureDesc._samples = fbDesc.GetSamples();
 
             // Look at how the attachment is used by the subpasses to figure out what the
             // bind flags should be.
@@ -279,7 +273,7 @@ namespace RenderCore { namespace Metal_Vulkan
             //          "depthStencil", or "preserve" in the final subpass could be used
             //          in some other way afterwards. For example, one render pass could
             //          generate shadow textures for uses in future render passes?
-            auto usage = GetAttachmentUsage(layout, aIndex);
+            auto usage = GetAttachmentUsage(fbDesc, aIndex);
             if (usage & unsigned(Internal::AttachmentUsage::Input)
                 || a._flags & AttachmentDesc::Flags::ShaderResource) {
                 desc._bindFlags |= BindFlag::ShaderResource;
@@ -311,7 +305,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkFramebufferCreateInfo fb_info = {};
         fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fb_info.pNext = nullptr;
-        fb_info.renderPass = layout.GetUnderlying();
+        fb_info.renderPass = layout;
         fb_info.attachmentCount = (uint32_t)rawViews.size();
         fb_info.pAttachments = AsPointer(rawViews.begin());
         fb_info.width = props._outputWidth;
@@ -336,6 +330,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    void            RenderPassInstance::NextSubpass()
+    {
+        if (_attachedContext)
+            _attachedContext->CmdNextSubpass(VK_SUBPASS_CONTENTS_INLINE);
+    }
+
     void            RenderPassInstance::End()
     {
         if (_attachedContext)
@@ -352,22 +352,28 @@ namespace RenderCore { namespace Metal_Vulkan
 
     RenderPassInstance::RenderPassInstance(
         DeviceContext& context,
-        const FrameBufferLayout& layout,
+        const FrameBufferDesc& layout,
 		const FrameBufferProperties& props,
         uint64 hashName,
         FrameBufferCache& cache,
-        const BeginInfo& beginInfo)
+        const RenderPassBeginDesc& beginInfo)
     {
         // We need to allocate the particular frame buffer we're going to use
         // And then we'll call BeginRenderPass to begin the render pass
-        _frameBuffer = cache.BuildFrameBuffer(context.GetFactory(), layout, props, context.GetPresentationTarget(), hashName);
+        auto renderPass = cache.BuildFrameBufferLayout(context.GetFactory(), layout);
+        _frameBuffer = cache.BuildFrameBuffer(
+            context.GetFactory(), layout, 
+            renderPass,
+            props, context.GetPresentationTarget(), hashName);
         assert(_frameBuffer);
         auto ext = beginInfo._extent;
         if (ext[0] == 0 && ext[1] == 0) {
             ext[0] = props._outputWidth - beginInfo._offset[0];
             ext[1] = props._outputHeight - beginInfo._offset[1];
         }
-        context.BeginRenderPass(layout, *_frameBuffer, beginInfo._offset, ext, beginInfo._clearValues);
+        context.BeginRenderPass(
+            renderPass, *_frameBuffer, beginInfo._offset, ext, 
+            beginInfo._clearValues);
         _attachedContext = &context;
     }
     
@@ -378,16 +384,36 @@ namespace RenderCore { namespace Metal_Vulkan
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class FrameBufferCache::Pimpl {};
+    class FrameBufferCache::Pimpl 
+    {
+    public:
+        std::vector<std::pair<uint64, VulkanUniquePtr<VkRenderPass>>> _layouts;
+    };
 
     std::shared_ptr<FrameBuffer> FrameBufferCache::BuildFrameBuffer(
 		const ObjectFactory& factory,
-		const FrameBufferLayout& layout,
+		const FrameBufferDesc& desc,
+		VkRenderPass layout,
 		const FrameBufferProperties& props,
         const RenderTargetView* presentationChainTarget,
         uint64 hashName)
     {
-        return std::make_shared<FrameBuffer>(factory, layout, props, presentationChainTarget);
+        return std::make_shared<FrameBuffer>(factory, desc, layout, props, presentationChainTarget);
+    }
+
+    VkRenderPass FrameBufferCache::BuildFrameBufferLayout(
+        const ObjectFactory& factory,
+        const FrameBufferDesc& desc)
+    {
+        auto hash = desc.GetHash();
+        auto i = LowerBound(_pimpl->_layouts, hash);
+        if (i != _pimpl->_layouts.end() && i->first == hash)
+            return i->second.get();
+
+        auto rp = CreateRenderPass(factory, desc);
+        auto result = rp.get();
+        _pimpl->_layouts.insert(i, std::make_pair(hash, std::move(rp)));
+        return result;
     }
 
     FrameBufferCache::FrameBufferCache()
@@ -400,22 +426,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    SubpassDesc::SubpassDesc()
-    : _depthStencil(Unused)
-    {
-    }
-
-    SubpassDesc::SubpassDesc(
-        std::initializer_list<unsigned> input, 
-        std::initializer_list<unsigned> output,
-        unsigned depthStencil,
-        std::initializer_list<unsigned> preserve)
-    : _input(input.begin(), input.end())
-    , _output(output.begin(), output.end())
-    , _depthStencil(depthStencil)
-    , _preserve(preserve.begin(), preserve.end())
-    {
-    }
+    
 
 
 }}
