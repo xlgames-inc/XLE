@@ -347,6 +347,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		const UniformsStream* streams[] = { &stream0, &stream1 };
 
         uint64 descSetWrites[s_descriptorSetCount] = { 0x0ull, 0x0ull };
+        auto& globalPools = context.GetGlobalPools();
 
         for (unsigned stri=0; stri<dimof(streams); ++stri) {
             const auto& s = *streams[stri];
@@ -395,7 +396,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     auto dstBinding = _srBindingIndices[stri][r];
                     if (dstBinding == ~0u) continue;
                     imageInfo[imageCount] = VkDescriptorImageInfo {
-                        s._resources[r]->GetSampler().GetUnderlying(),
+                        globalPools._dummyResources._blankSampler->GetUnderlying(),
                         s._resources[r]->GetUnderlying(),
 						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
@@ -431,12 +432,11 @@ namespace RenderCore { namespace Metal_Vulkan
         assert(imageCount < dimof(imageInfo));
         auto blankBuffer = bufferCount;
         auto blankImage = imageCount;
-        auto& globalPools = context.GetGlobalPools();
         bufferInfo[bufferCount++] = VkDescriptorBufferInfo { 
             globalPools._dummyResources._blankBuffer.GetUnderlying(),
             0, VK_WHOLE_SIZE };
         imageInfo[imageCount++] = VkDescriptorImageInfo {
-            ShaderResourceView::GetSampler().GetUnderlying(),
+            globalPools._dummyResources._blankSampler->GetUnderlying(),
             globalPools._dummyResources._blankSrv.GetUnderlying(),
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 

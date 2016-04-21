@@ -97,19 +97,5 @@ namespace RenderCore { namespace Metal_Vulkan
     TextureView::TextureView() {}
     TextureView::~TextureView() {}
 
-
-	static SamplerState& GetDefaultSampler() 
-	{ 
-		static SamplerState s_defaultSampler;
-		return s_defaultSampler;
-	}
-
-    const SamplerState&     ShaderResourceView::GetSampler()
-    {
-        return GetDefaultSampler();
-    }
-
-	void ShaderResourceView::Cleanup() { GetDefaultSampler().~SamplerState(); }
-
 }}
 

@@ -8,6 +8,7 @@
 #include "Format.h"
 #include "Resource.h"
 #include "TextureView.h"
+#include "DeviceContext.h"
 #include "ObjectFactory.h"
 #include "../../Format.h"
 #include "../../../Utility/MemoryUtils.h"
@@ -57,9 +58,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
     FrameBufferLayout::FrameBufferLayout(
         const Metal_Vulkan::ObjectFactory& factory,
-        const FrameBufferProperties& properties,
         IteratorRange<AttachmentDesc*> attachments,
-        IteratorRange<SubpassDesc*> subpasses)
+        IteratorRange<SubpassDesc*> subpasses,
+        Format outputFormat, const TextureSamples& samples)
+    : _attachments(attachments.begin(), attachments.end())
+    , _subpasses(subpasses.begin(), subpasses.end())
+    , _samples(samples)
     {
         std::vector<VkAttachmentDescription> attachmentDesc;
         attachmentDesc.reserve(attachments.size());
@@ -82,12 +86,17 @@ namespace RenderCore { namespace Metal_Vulkan
                 desc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             }
 
+            desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            desc.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
             if (a._flags & AttachmentDesc::Flags::UsePresentationChainBuffer) {
                 assert(!isDepthStencil);
-                desc.format = AsVkFormat(properties._outputFormat);
-                desc.samples = AsSampleCountFlagBits(properties._samples);
+                desc.format = AsVkFormat(outputFormat);
+                desc.samples = AsSampleCountFlagBits(samples);
+                desc.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                desc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
             } else if (a._flags & AttachmentDesc::Flags::Multisampled) {
-                desc.samples = AsSampleCountFlagBits(properties._samples);
+                desc.samples = AsSampleCountFlagBits(samples);
             }
 
             // note --  do we need to set VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL or 
@@ -159,15 +168,15 @@ namespace RenderCore { namespace Metal_Vulkan
         // we need to do a fixup pass over all of the subpasses to generate correct pointers
         for (auto&p:subpassDesc) {
             if (p.pInputAttachments)
-                p.pInputAttachments = AsPointer(attachReferences.begin()) + size_t(p.pInputAttachments-1);
+                p.pInputAttachments = AsPointer(attachReferences.begin()) + size_t(p.pInputAttachments)-1;
             if (p.pColorAttachments)
-                p.pColorAttachments = AsPointer(attachReferences.begin()) + size_t(p.pColorAttachments-1);
+                p.pColorAttachments = AsPointer(attachReferences.begin()) + size_t(p.pColorAttachments)-1;
             if (p.pResolveAttachments)
-                p.pResolveAttachments = AsPointer(attachReferences.begin()) + size_t(p.pResolveAttachments-1);
+                p.pResolveAttachments = AsPointer(attachReferences.begin()) + size_t(p.pResolveAttachments)-1;
             if (p.pDepthStencilAttachment)
-                p.pDepthStencilAttachment = AsPointer(attachReferences.begin()) + size_t(p.pDepthStencilAttachment-1);
+                p.pDepthStencilAttachment = AsPointer(attachReferences.begin()) + size_t(p.pDepthStencilAttachment)-1;
             if (p.pPreserveAttachments)
-                p.pPreserveAttachments = AsPointer(preserveAttachments.begin()) + size_t(p.pPreserveAttachments-1);
+                p.pPreserveAttachments = AsPointer(preserveAttachments.begin()) + size_t(p.pPreserveAttachments)-1;
         }
 
         VkRenderPassCreateInfo rp_info = {};
@@ -217,7 +226,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const Metal_Vulkan::ObjectFactory& factory,
 		const FrameBufferLayout& layout,
 		const FrameBufferProperties& props,
-        const RenderTargetView& presentationChainTarget)
+        const RenderTargetView* presentationChainTarget)
     {
         // We must create the frame buffer, including all resources and views required.
         // Here, some resources can come from the presentation chain. But other resources will
@@ -231,8 +240,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
             // Often, we will end up binding the presentation chain image as one our our attachments
             if (a._flags & AttachmentDesc::Flags::UsePresentationChainBuffer) {
-                rawViews.push_back(presentationChainTarget.GetUnderlying());
-                _views.emplace_back(presentationChainTarget);
+                if (!presentationChainTarget)
+                    Throw(::Exceptions::BasicLabel("Frame buffer layout expects a presentation chain target, but none was provided"));
+                rawViews.push_back(presentationChainTarget->GetUnderlying());
+                _views.push_back(*presentationChainTarget);
                 continue;
             }
 
@@ -244,7 +255,7 @@ namespace RenderCore { namespace Metal_Vulkan
             //          the documentation suggest that the frame buffer dims should always be equal
             //          or smaller to the image views...?
             unsigned attachmentWidth, attachmentHeight;
-            if (a._dimsMode == AttachmentDesc::DimensionsMode::OutputRelative) {
+            if (a._dimsMode == AttachmentDesc::DimensionsMode::Absolute) {
                 attachmentWidth = unsigned(a._width);
                 attachmentHeight = unsigned(a._height);
             } else {
@@ -258,7 +269,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 "attachment");
 
             if (a._flags & AttachmentDesc::Flags::Multisampled)
-                desc._textureDesc._samples = props._samples;
+                desc._textureDesc._samples = layout.GetSamples();
 
             // Look at how the attachment is used by the subpasses to figure out what the
             // bind flags should be.
@@ -305,15 +316,107 @@ namespace RenderCore { namespace Metal_Vulkan
         fb_info.pAttachments = AsPointer(rawViews.begin());
         fb_info.width = props._outputWidth;
         fb_info.height = props._outputHeight;
-        fb_info.layers = props._outputLayers;
+        fb_info.layers = std::max(1u, props._outputLayers);
         _underlying = factory.CreateFramebuffer(fb_info);
 
         // todo --  do we need to create a "patch up" command buffer to assign the starting image layouts
         //          for all of the images we created?
     }
 
+    const TextureView& FrameBuffer::GetAttachment(unsigned index) const
+    {
+        if (index >= _views.size())
+            Throw(::Exceptions::BasicLabel("Invalid attachment index passed to FrameBuffer::GetAttachment()"));
+        return _views[index];
+    }
+
 	FrameBuffer::FrameBuffer() {}
 
     FrameBuffer::~FrameBuffer() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void            RenderPassInstance::End()
+    {
+        if (_attachedContext)
+            _attachedContext->EndRenderPass();
+    }
+
+    const TextureView&  RenderPassInstance::GetAttachment(unsigned index)
+    {
+        // We can call this function during the render pass... However normally if we 
+        // want to use a render target, we should do it after the render pass has been
+        // ended (with RenderPassInstance::End())
+        return _frameBuffer->GetAttachment(index);
+    }
+
+    RenderPassInstance::RenderPassInstance(
+        DeviceContext& context,
+        const FrameBufferLayout& layout,
+		const FrameBufferProperties& props,
+        uint64 hashName,
+        FrameBufferCache& cache,
+        const BeginInfo& beginInfo)
+    {
+        // We need to allocate the particular frame buffer we're going to use
+        // And then we'll call BeginRenderPass to begin the render pass
+        _frameBuffer = cache.BuildFrameBuffer(context.GetFactory(), layout, props, context.GetPresentationTarget(), hashName);
+        assert(_frameBuffer);
+        auto ext = beginInfo._extent;
+        if (ext[0] == 0 && ext[1] == 0) {
+            ext[0] = props._outputWidth - beginInfo._offset[0];
+            ext[1] = props._outputHeight - beginInfo._offset[1];
+        }
+        context.BeginRenderPass(layout, *_frameBuffer, beginInfo._offset, ext, beginInfo._clearValues);
+        _attachedContext = &context;
+    }
+    
+    RenderPassInstance::~RenderPassInstance() 
+    {
+        End();
+    }
+    
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class FrameBufferCache::Pimpl {};
+
+    std::shared_ptr<FrameBuffer> FrameBufferCache::BuildFrameBuffer(
+		const ObjectFactory& factory,
+		const FrameBufferLayout& layout,
+		const FrameBufferProperties& props,
+        const RenderTargetView* presentationChainTarget,
+        uint64 hashName)
+    {
+        return std::make_shared<FrameBuffer>(factory, layout, props, presentationChainTarget);
+    }
+
+    FrameBufferCache::FrameBufferCache()
+    {
+        _pimpl = std::make_unique<Pimpl>();
+    }
+
+    FrameBufferCache::~FrameBufferCache()
+    {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    SubpassDesc::SubpassDesc()
+    : _depthStencil(Unused)
+    {
+    }
+
+    SubpassDesc::SubpassDesc(
+        std::initializer_list<unsigned> input, 
+        std::initializer_list<unsigned> output,
+        unsigned depthStencil,
+        std::initializer_list<unsigned> preserve)
+    : _input(input.begin(), input.end())
+    , _output(output.begin(), output.end())
+    , _depthStencil(depthStencil)
+    , _preserve(preserve.begin(), preserve.end())
+    {
+    }
+
+
 }}
 

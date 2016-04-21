@@ -10,6 +10,7 @@
 #include "../Core/Prefix.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/IntrusivePtr.h"
+#include "../Utility/IteratorUtils.h"   // for VectorPattern
 
 namespace RenderCore
 {
@@ -175,6 +176,22 @@ namespace RenderCore
 
 		ResourceDesc();
     };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class PresentationChainDesc
+    {
+    public:
+        unsigned _width, _height;
+        Format _format;
+        TextureSamples _samples;
+
+        PresentationChainDesc() : _width(0u), _height(0u), _format(Format(0)), _samples(TextureSamples::Create(0,0)) {}
+        PresentationChainDesc(VectorPattern<unsigned, 2> dims, Format format = Format(0), TextureSamples samples = TextureSamples::Create(0,0))
+        : _width(dims[0]), _height(dims[1]), _format(format), _samples(samples) {}
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     inline ResourceDesc CreateDesc(
         BindFlag::BitField bindFlags,

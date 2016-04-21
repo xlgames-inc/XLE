@@ -171,6 +171,7 @@ namespace Utility
         }
 
 		Type operator[](unsigned index) const { return _values[index]; }
+        Type& operator[](unsigned index) { return _values[index]; }
 
         template<
 			typename Source,

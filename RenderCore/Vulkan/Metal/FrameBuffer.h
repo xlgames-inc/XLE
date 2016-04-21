@@ -64,10 +64,10 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         static unsigned const Unused = ~0u;
-        IteratorRange<unsigned*> _input;
-        IteratorRange<unsigned*> _output;
+        IteratorRange<const unsigned*> _input;
+        IteratorRange<const unsigned*> _output;
         unsigned _depthStencil;
-        IteratorRange<unsigned*> _preserve;
+        IteratorRange<const unsigned*> _preserve;
 
         SubpassDesc();
         SubpassDesc(
@@ -81,24 +81,23 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         unsigned _outputWidth, _outputHeight, _outputLayers;
-        Format _outputFormat;
-        TextureSamples _samples;
     };
 
     class FrameBufferLayout
 	{
 	public:
-		VkRenderPass GetUnderlying() const { return _underlying.get(); }
-        const VulkanSharedPtr<VkRenderPass>& ShareUnderlying() { return _underlying; }
+		VkRenderPass GetUnderlying() const                          { return _underlying.get(); }
+        const VulkanSharedPtr<VkRenderPass>& ShareUnderlying()      { return _underlying; }
 
         IteratorRange<const AttachmentDesc*> GetAttachments() const { return MakeIteratorRange(_attachments); }
-        IteratorRange<const SubpassDesc*> GetSubpasses() const { return MakeIteratorRange(_subpasses); }
+        IteratorRange<const SubpassDesc*> GetSubpasses() const      { return MakeIteratorRange(_subpasses); }
+        TextureSamples GetSamples() const                           { return _samples; }
 
 		FrameBufferLayout(
             const ObjectFactory& factory,
-            const FrameBufferProperties& properties,        // (uses just the _outputFormat and _samples members)
             IteratorRange<AttachmentDesc*> attachments,
-            IteratorRange<SubpassDesc*> subpasses);
+            IteratorRange<SubpassDesc*> subpasses,
+            Format outputFormat, const TextureSamples& samples);
 		FrameBufferLayout();
 		~FrameBufferLayout();
 
@@ -106,19 +105,20 @@ namespace RenderCore { namespace Metal_Vulkan
 		VulkanSharedPtr<VkRenderPass>   _underlying;
         std::vector<AttachmentDesc>     _attachments;
         std::vector<SubpassDesc>        _subpasses;
-        FrameBufferProperties           _properties;
+        TextureSamples _samples;
 	};
     
     class FrameBuffer
 	{
 	public:
 		VkFramebuffer GetUnderlying() const { return _underlying.get(); }
+        const TextureView& GetAttachment(unsigned index) const;
 
 		FrameBuffer(
 			const ObjectFactory& factory,
 			const FrameBufferLayout& layout,
 			const FrameBufferProperties& props,
-            const RenderTargetView& presentationChainTarget);
+            const RenderTargetView* presentationChainTarget);
 		FrameBuffer();
 		~FrameBuffer();
 	private:
@@ -126,6 +126,29 @@ namespace RenderCore { namespace Metal_Vulkan
         std::vector<TextureView> _views;
 	};
 
+    /// <summary>Stores a set of retained frame buffers, which can be reused frame-to-frame</summary>
+    /// Client code typically just wants to define the size and formats of frame buffers, without
+    /// manually retaining and managing the objects themselves. It's a result of typical usage patterns
+    /// of RenderPassInstance.
+    ///
+    /// This helper class allows client code to simply declare what it needs and the actual management 
+    /// of the device objects will be handled within the cache.
+    class FrameBufferCache
+    {
+    public:
+        std::shared_ptr<FrameBuffer> BuildFrameBuffer(
+			const ObjectFactory& factory,
+			const FrameBufferLayout& layout,
+			const FrameBufferProperties& props,
+            const RenderTargetView* presentationChainTarget,
+            uint64 hashName);
+
+        FrameBufferCache();
+        ~FrameBufferCache();
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
 
     /// <summary>Begins and ends a render pass on the given context</summary>
     /// Creates and begins a render pass using the given frame buffer layout. This will also automatically
@@ -141,17 +164,22 @@ namespace RenderCore { namespace Metal_Vulkan
     class RenderPassInstance
     {
     public:
-        void            End();
-        TextureView*    GetAttachment(unsigned index);
+        void                End();
+        const TextureView&  GetAttachment(unsigned index);
 
         class BeginInfo
         {
         public:
+            IteratorRange<const VkClearValue*>    _clearValues;
             VectorPattern<int, 2>           _offset;
             VectorPattern<unsigned, 2>      _extent;
-            IteratorRange<VkClearValue*>    _clearValues;
 
-            BeginInfo() : _offset(0,0), _extent(0,0), _clearValues(nullptr, nullptr) {}
+            BeginInfo(
+                std::initializer_list<VkClearValue> clearValues = {},
+                VectorPattern<int, 2> offset = {0,0},
+                VectorPattern<unsigned, 2> extent = {0,0})
+            : _clearValues(clearValues.begin(), clearValues.end())
+            , _offset(offset), _extent(extent) {}
         };
 
         RenderPassInstance(
@@ -159,7 +187,12 @@ namespace RenderCore { namespace Metal_Vulkan
             const FrameBufferLayout& layout,
 			const FrameBufferProperties& props,
             uint64 hashName,
+            FrameBufferCache& cache,
             const BeginInfo& beginInfo = BeginInfo());
         ~RenderPassInstance();
+
+    private:
+        std::shared_ptr<FrameBuffer> _frameBuffer;
+        DeviceContext* _attachedContext;
     };
 }}

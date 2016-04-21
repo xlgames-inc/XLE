@@ -55,7 +55,7 @@ namespace RenderCore
     public:
         void Resize(unsigned newWidth, unsigned newHeight) /*override*/;
 
-        std::shared_ptr<ViewportContext> GetViewportContext() const;
+        const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
         Metal_Vulkan::RenderTargetView* AcquireNextImage();
 
 		void PresentToQueue(VkQueue queue);
@@ -80,9 +80,9 @@ namespace RenderCore
             const void* platformValue);
         ~PresentationChain();
     private:
-		VulkanSharedPtr<VkSurfaceKHR> _surface;
+		VulkanSharedPtr<VkSurfaceKHR>   _surface;
         VulkanSharedPtr<VkSwapchainKHR> _swapChain;
-        VulkanSharedPtr<VkDevice> _device;
+        VulkanSharedPtr<VkDevice>       _device;
         const void*		_platformValue;
         unsigned		_activeImageIndex;
 
@@ -97,8 +97,8 @@ namespace RenderCore
 		// ResourcePtr							_depthStencilResource;
 		// Metal_Vulkan::DepthStencilView      _dsv;
 
-		BufferUploads::TextureDesc          _bufferDesc;
-		std::shared_ptr<ViewportContext>	_viewportContext;
+		BufferUploads::TextureDesc              _bufferDesc;
+		std::shared_ptr<PresentationChainDesc>	_desc;
 
         PresentSync     _presentSyncs[3];
         unsigned        _activePresentSync;

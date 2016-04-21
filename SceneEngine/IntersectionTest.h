@@ -14,7 +14,7 @@
 #include <memory>
 
 namespace RenderCore { namespace Techniques { class CameraDesc; class TechniqueContext; }}
-namespace RenderCore { class ViewportContext; }
+namespace RenderCore { class PresentationChainDesc; }
 
 namespace SceneEngine
 {
@@ -57,18 +57,18 @@ namespace SceneEngine
         IntersectionTestContext(
             std::shared_ptr<RenderCore::IThreadContext> threadContext,
             const RenderCore::Techniques::CameraDesc& cameraDesc,
-            std::shared_ptr<RenderCore::ViewportContext> viewportContext,
+            std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
         IntersectionTestContext(
             std::shared_ptr<RenderCore::IThreadContext> threadContext,
             std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
-            std::shared_ptr<RenderCore::ViewportContext> viewportContext,
+            std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
         ~IntersectionTestContext();
     protected:
         std::shared_ptr<RenderCore::IThreadContext> _threadContext;
         std::shared_ptr<ISceneParser> _sceneParser;
-        std::shared_ptr<RenderCore::ViewportContext> _viewportContext;
+        std::shared_ptr<RenderCore::PresentationChainDesc> _viewportContext;
         RenderCore::Techniques::CameraDesc _cameraDesc;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext>  _techniqueContext;
     };

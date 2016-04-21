@@ -55,6 +55,8 @@
 #include "../../RenderCore/Vulkan/Metal/Resource.h"
 #include "../../RenderCore/Vulkan/Metal/TextureView.h"
 #include "../../RenderCore/Vulkan/Metal/State.h"
+#include "../../RenderCore/Vulkan/Metal/FrameBuffer.h"
+#include "../../RenderCore/Vulkan/Metal/ObjectFactory.h"
 
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../Tools/ToolsRig/VisualisationGeo.h"
@@ -419,6 +421,44 @@ namespace Sample
         return env;
     }
 
+    class ModelTestBox
+    {
+    public:
+        class Desc {};
+
+        std::unique_ptr<RenderCore::Assets::SharedStateSet> _sharedStateSet;
+        std::unique_ptr<RenderCore::Assets::ModelRenderer> _modelRenderer;
+
+        ModelTestBox(const Desc&);
+        ~ModelTestBox();
+
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const
+            { return _modelRenderer->GetDependencyValidation(); }
+    };
+
+    ModelTestBox::ModelTestBox(const Desc&)
+    {
+        using namespace RenderCore::Assets;
+        // const char sampleAsset[] = "game/model/simple/box.dae";
+        // const char sampleMaterial[] = "game/model/simple/box.dae";
+        const char sampleAsset[] = "game/model/galleon/galleon.dae";
+        const char sampleMaterial[] = "game/model/galleon/galleon.material";
+        auto& scaffold = ::Assets::GetAssetComp<ModelScaffold>(sampleAsset);
+        auto& matScaffold = ::Assets::GetAssetComp<MaterialScaffold>(sampleMaterial, sampleAsset);
+
+        _sharedStateSet = std::make_unique<RenderCore::Assets::SharedStateSet>(
+            RenderCore::Assets::Services::GetTechniqueConfigDirs());
+
+        auto searchRules = ::Assets::DefaultDirectorySearchRules(sampleAsset);
+        const unsigned levelOfDetail = 0;
+        _modelRenderer = std::unique_ptr<ModelRenderer>(
+            new ModelRenderer(
+                scaffold, matScaffold, ModelRenderer::Supplements(),
+                *_sharedStateSet, &searchRules, levelOfDetail));
+    }
+
+    ModelTestBox::~ModelTestBox() {}
+
     static void RunModelTest(
         RenderCore::IThreadContext& genericThreadContext,
         RenderCore::Techniques::ParsingContext& parserContext)
@@ -430,6 +470,14 @@ namespace Sample
 
 			auto vkContext = Metal_Vulkan::DeviceContext::Get(genericThreadContext);
 			if (vkContext) {
+
+                auto& horizBlur = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                    "game/xleres/deferred/resolvelight.psh:main:ps_5_0",
+                    "GBUFFER_TYPE=1;MSAA_SAMPLES=0;SHADOW_CASCADE_MODE=1;SHADOW_ENABLE_NEAR_CASCADE=0;SHADOW_RESOLVE_MODEL=1;SHADOW_RT_HYBRID=0;LIGHT_SHAPE=0;DIFFUSE_METHOD=0;HAS_SCREENSPACE_AO=0");
+
+                horizBlur.GetCompiledPixelShader().GetByteCode();
+                horizBlur.GetCompiledVertexShader().GetByteCode();
 
                 static float time = 0.f;
                 time += 1.0f/60.f;
@@ -456,27 +504,9 @@ namespace Sample
                     *vkContext, Techniques::TechniqueContext::CB_BasicLightingEnvironment,
                     &env, sizeof(env));
 
-                using namespace RenderCore::Assets;
-                static auto sharedStateSet = std::make_unique<RenderCore::Assets::SharedStateSet>(
-                    RenderCore::Assets::Services::GetTechniqueConfigDirs());
-                static std::unique_ptr<RenderCore::Assets::ModelRenderer> modelRenderer;
-                if (!modelRenderer) {
-                    // const char sampleAsset[] = "game/model/simple/box.dae";
-                    // const char sampleMaterial[] = "game/model/simple/box.dae";
-                    const char sampleAsset[] = "game/model/galleon/galleon.dae";
-                    const char sampleMaterial[] = "game/model/galleon/galleon.material";
-                    auto& scaffold = ::Assets::GetAssetComp<ModelScaffold>(sampleAsset);
-                    auto& matScaffold = ::Assets::GetAssetComp<MaterialScaffold>(sampleMaterial, sampleAsset);
+                auto& box = RenderCore::Techniques::FindCachedBoxDep2<ModelTestBox>();
 
-                    auto searchRules = ::Assets::DefaultDirectorySearchRules(sampleAsset);
-                    const unsigned levelOfDetail = 0;
-                    modelRenderer = std::unique_ptr<ModelRenderer>(
-                        new ModelRenderer(
-                            scaffold, matScaffold, ModelRenderer::Supplements(),
-                            *sharedStateSet, &searchRules, levelOfDetail));
-                }
-
-                auto captureMarker = sharedStateSet->CaptureState(
+                auto captureMarker = box._sharedStateSet->CaptureState(
                     *vkContext, 
                     parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
@@ -486,15 +516,18 @@ namespace Sample
 				vkContext->BindPS(MakeResourceList(Metal_Vulkan::SamplerState(), Metal_Vulkan::SamplerState()));
 
                     //  Finally, we can render the object!
-                modelRenderer->Render(
+                box._modelRenderer->Render(
                     RenderCore::Assets::ModelRendererContext(*vkContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward),
-                    *sharedStateSet, Identity<Float4x4>());
+                    *box._sharedStateSet, Identity<Float4x4>());
 
             }
         }
         CATCH(const ::Assets::Exceptions::AssetException&) {}
         CATCH_END
     }
+
+    static VkClearValue ClearDepthStencil(float depth, uint32_t stencil) { VkClearValue result; result.depthStencil = VkClearDepthStencilValue { depth, stencil }; return result; }
+	static VkClearValue ClearColor(float r, float g, float b, float a) { VkClearValue result; result.color.float32[0] = r; result.color.float32[1] = g; result.color.float32[2] = b; result.color.float32[3] = a; return result; }
 
     void ExecuteSample()
     {
@@ -543,6 +576,16 @@ namespace Sample
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
         
         {
+            auto cleanup = MakeAutoCleanup(
+                [&assetServices]()
+                {
+                    texObj._resource.reset();
+                    assetServices->GetAssetSets().Clear();
+                    RenderCore::Techniques::ResourceBoxes_Shutdown();
+                    RenderOverlays::CleanupFontSystem();
+                    TerminateFileSystemMonitoring();
+                });
+
                 // currently we need to maintain a reference on these two fonts -- 
             auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
             auto defaultFont1 = RenderOverlays::GetX2Font("Vera", 16);
@@ -594,6 +637,41 @@ namespace Sample
 				initTex = true;
 			}
 
+                //  Frame buffer layout
+            using Attachment = RenderCore::Metal::AttachmentDesc;
+            using Subpass = RenderCore::Metal::SubpassDesc;
+            Attachment attachments[] = 
+            {
+                // Presentation chain target
+                {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    RenderCore::Format::Unknown,
+                    Attachment::LoadStore::Clear, Attachment::LoadStore::Retain,
+                    Attachment::LoadStore::DontCare,Attachment::LoadStore::DontCare,
+                    Attachment::Flags::UsePresentationChainBuffer },
+
+                // Main depth stencil
+                {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    RenderCore::Format::D24_UNORM_S8_UINT,
+                    Attachment::LoadStore::Clear, Attachment::LoadStore::DontCare,
+                    Attachment::LoadStore::DontCare,Attachment::LoadStore::DontCare,
+                    Attachment::Flags::Multisampled }
+            };
+            const unsigned MainTarget = 0;
+            const unsigned MainDepthStencil = 1;
+
+            Subpass subpasses[] = 
+            {
+                Subpass({}, {MainTarget}, MainDepthStencil)
+            };
+
+            RenderCore::Metal::FrameBufferLayout fbLayout(
+                RenderCore::Metal_Vulkan::GetObjectFactory(*renderDevice),
+                MakeIteratorRange(attachments),
+                MakeIteratorRange(subpasses),
+                presentationChain->GetDesc()->_format,
+                presentationChain->GetDesc()->_samples);
+            RenderCore::Metal::FrameBufferCache fbCache;
+
                 //  Finally, we execute the frame loop
             for (;;) {
                 if (OverlappedWindow::DoMsgPump() == OverlappedWindow::PumpResult::Terminate) {
@@ -601,9 +679,19 @@ namespace Sample
                 }
 
 				context->BeginFrame(*presentationChain);
-                // RunShaderTest(*context);
-                RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext);
-                RunModelTest(*context, parserContext);
+
+                {
+                    auto metalContext = RenderCore::Metal_Vulkan::DeviceContext::Get(*context);
+                    RenderCore::Metal_Vulkan::ViewportDesc viewport(*metalContext);
+                    RenderCore::Metal_Vulkan::RenderPassInstance rp(
+                        *metalContext,
+                        fbLayout, RenderCore::Metal_Vulkan::FrameBufferProperties{unsigned(viewport.Width), unsigned(viewport.Height), 0u},
+                        0ull, fbCache,
+                        {ClearColor(.5f, .3f, .1f, 1.f), ClearDepthStencil(1.f, 0)});
+                    // RunShaderTest(*context);
+                    RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext);
+                    RunModelTest(*context, parserContext);
+                }
                 context->Present(*presentationChain);
 
                     // ------- Update ----------------------------------------
@@ -615,23 +703,10 @@ namespace Sample
 			texObj._resource.reset();
         }
 
-            //  There are some manual destruction operations we need to perform...
-            //  (note that currently some shutdown steps might get skipped if we get 
-            //  an unhandled exception)
-            //  Before we go too far, though, let's log a list of active assets.
-        LogInfo << "Starting shutdown";
-        assetServices->GetAssetSets().LogReport();
-        // RenderCore::Metal::DeviceContext::PrepareForDestruction(renderDevice.get(), presentationChain.get());
-
         g_gpuProfiler.reset();
-
-        assetServices->GetAssetSets().Clear();
-        RenderCore::Techniques::ResourceBoxes_Shutdown();
-        RenderOverlays::CleanupFontSystem();
 
         renderAssetServices.reset();
         assetServices.reset();
-        TerminateFileSystemMonitoring();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -199,8 +199,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		void		CommitCommandList(VkCommandBuffer_T&, bool);
 		auto        ResolveCommandList() -> CommandListPtr;
 		bool		IsImmediate() { return false; }
-
-        void        Bind(VulkanSharedPtr<VkRenderPass> renderPass);
 		
 		void		InvalidateCachedState() {}
 		static void PrepareForDestruction(IDevice*, IPresentationChain*);
@@ -212,11 +210,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
         bool        BindPipeline();
 
-        void        SetPresentationDestination(RenderTargetView* presentationDestination) { _presentationDestination = presentationDestination; }
+        void        SetPresentationTarget(RenderTargetView* presentationTarget) { _presentationTarget = presentationTarget; }
+        RenderTargetView* GetPresentationTarget() { return _presentationTarget; }
 
         void BeginRenderPass(
             const FrameBufferLayout& fbLayout, const FrameBuffer& fb,
-            VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent);
+            VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
+            IteratorRange<const VkClearValue*> clearValues);
         void EndRenderPass();
         void SetImageLayout(
 		    VkImage image,
@@ -268,12 +268,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
     private:
         VulkanSharedPtr<VkCommandBuffer>    _commandList;
-        VulkanSharedPtr<VkRenderPass>       _renderPass;
+        VkRenderPass                        _renderPass;
         CommandPool*                        _cmdPool;
         CommandPool::BufferType             _cmdBufferType;
         DescriptorSetBuilder                _descriptorSetBuilder;
         bool                                _hideDescriptorSetBuilder;
-        RenderTargetView*                   _presentationDestination;
+        RenderTargetView*                   _presentationTarget;
     };
 
     void SetImageLayout(

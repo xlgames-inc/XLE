@@ -290,12 +290,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			buffers, vkOffsets);
 	}
 
-
-    void        DeviceContext::Bind(VulkanSharedPtr<VkRenderPass> renderPass)
-    {
-        _renderPass = std::move(renderPass);
-    }
-
     bool        DeviceContext::BindPipeline()
     {
 		assert(_commandList);
@@ -315,7 +309,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         if (!_pipelineStale) return true;
 
-        auto pipeline = CreatePipeline(_renderPass.get());
+        auto pipeline = CreatePipeline(_renderPass);
         if (pipeline) {
             vkCmdBindPipeline(
 			    _commandList.get(),
@@ -447,13 +441,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		return result;
 	}
 
-    static VkClearValue ClearDepthStencil(float depth, uint32_t stencil) { VkClearValue result; result.depthStencil = VkClearDepthStencilValue { depth, stencil }; return result; }
-	static VkClearValue ClearColor(float r, float g, float b, float a) { VkClearValue result; result.color.float32[0] = r; result.color.float32[1] = g; result.color.float32[2] = b; result.color.float32[3] = a; return result; }
-
     void        DeviceContext::BeginRenderPass(
         const FrameBufferLayout& fbLayout, const FrameBuffer& fb,
-        VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent)
+        VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
+        IteratorRange<const VkClearValue*> clearValues)
     {
+        if (_renderPass)
+            Throw(::Exceptions::BasicLabel("Attempting to begin a render pass while another render pass is already in progress"));
         VkRenderPassBeginInfo rp_begin;
 		rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		rp_begin.pNext = nullptr;
@@ -464,16 +458,17 @@ namespace RenderCore { namespace Metal_Vulkan
 		rp_begin.renderArea.extent.width = extent[0];
 		rp_begin.renderArea.extent.height = extent[1];
 		
-		VkClearValue clearValues[] = { ClearColor(0.5f, 0.25f, 1.f, 1.f), ClearDepthStencil(1.f, 0) };
-		rp_begin.pClearValues = clearValues;
-		rp_begin.clearValueCount = dimof(clearValues);
+		rp_begin.pClearValues = clearValues.begin();
+		rp_begin.clearValueCount = (uint32_t)clearValues.size();
 
         vkCmdBeginRenderPass(_commandList.get(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
+        _renderPass = fbLayout.GetUnderlying();
     }
 
     void DeviceContext::EndRenderPass()
     {
 		vkCmdEndRenderPass(_commandList.get());
+        _renderPass = nullptr;
     }
 
     void DeviceContext::SetImageLayout(
@@ -639,7 +634,8 @@ namespace RenderCore { namespace Metal_Vulkan
     , _cmdPool(&cmdPool), _cmdBufferType(cmdBufferType)
     , _descriptorSetBuilder(factory, globalPools._mainDescriptorPool, globalPools._dummyResources)
     , _hideDescriptorSetBuilder(false)
-    , _presentationDestination(nullptr)
+    , _presentationTarget(nullptr)
+    , _renderPass(nullptr)
     {}
 
 	void DeviceContext::PrepareForDestruction(IDevice*, IPresentationChain*) {}
@@ -672,6 +668,7 @@ namespace RenderCore { namespace Metal_Vulkan
         uint64 _slotsFilled[s_descriptorSetCount];
 
         DescriptorPool* _descriptorPool;
+        VkSampler _dummySampler;
 
         template<typename BindingInfo> void WriteBinding(unsigned bindingPoint, unsigned descriptorSet, VkDescriptorType type, const BindingInfo& bindingInfo);
         template<typename BindingInfo> BindingInfo& AllocateInfo(const BindingInfo& init);
@@ -754,7 +751,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 binding, descriptorSet, 
                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                 VkDescriptorImageInfo {
-                    ShaderResourceView::GetSampler().GetUnderlying(),
+                    _pimpl->_dummySampler,
                     images[c], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
         }
     }
@@ -877,6 +874,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_descriptorPool = &descPool;
+        _pimpl->_dummySampler = defResources._blankSampler->GetUnderlying();
 
         // We will create generic descriptor set layouts that provide a large number of 
         // binding points. It's not clear if there's any inefficiency if our layout has

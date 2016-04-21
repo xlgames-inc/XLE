@@ -199,6 +199,7 @@ namespace RenderCore { namespace Metal_Vulkan
     DummyResources::DummyResources(const ObjectFactory& factory)
     : _blankTexture(CreateDummyTexture(factory))
     , _blankSrv(factory, _blankTexture)
+    , _blankSampler(std::make_unique<SamplerState>())
     {
         uint8 blankData[4096];
         std::memset(blankData, 0, sizeof(blankData));
@@ -209,5 +210,25 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     DummyResources::DummyResources() {}
+    DummyResources::~DummyResources() {}
+
+    DummyResources::DummyResources(DummyResources&& moveFrom) never_throws
+    : _blankTexture(std::move(moveFrom._blankTexture))
+    , _blankSrv(std::move(moveFrom._blankSrv))
+    , _blankBuffer(std::move(moveFrom._blankBuffer))
+    , _blankSampler(std::move(moveFrom._blankSampler))
+    {}
+
+    DummyResources& DummyResources::operator=(DummyResources&& moveFrom) never_throws
+    {
+        _blankTexture = std::move(moveFrom._blankTexture);
+        _blankSrv = std::move(moveFrom._blankSrv);
+        _blankBuffer = std::move(moveFrom._blankBuffer);
+        _blankSampler = std::move(moveFrom._blankSampler);
+        return *this;
+    }
+
+    GlobalPools::GlobalPools() {}
+    GlobalPools::~GlobalPools() {}
 
 }}

@@ -144,6 +144,7 @@ namespace BufferUploads
         ThreadContext(std::shared_ptr<RenderCore::IThreadContext> underlyingContext);
         ~ThreadContext();
     private:
+        std::shared_ptr<RenderCore::IThreadContext> _underlyingContext;
         CommandListMetrics _commandListUnderConstruction;
         CommitStep _commitStepUnderConstruction;
         LockFree::FixedSizeQueue<CommandList, 32> _queuedCommandLists;
@@ -151,7 +152,6 @@ namespace BufferUploads
             LockFree::FixedSizeQueue<CommandListMetrics, 32> _recentRetirements;
         #endif
         PlatformInterface::UnderlyingDeviceContext _deviceContext;
-        std::shared_ptr<RenderCore::IThreadContext> _underlyingContext;
 
         TimeMarker  _lastResolve;
         TimeMarker  _tickFrequency;

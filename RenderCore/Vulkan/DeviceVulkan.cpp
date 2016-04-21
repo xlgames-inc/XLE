@@ -338,7 +338,6 @@ namespace RenderCore
 
     Device::~Device()
     {
-		Metal_Vulkan::ShaderResourceView::Cleanup();
         Metal_Vulkan::SetDefaultObjectFactory(nullptr);
 		if (_underlying.get())
 			vkDeviceWaitIdle(_underlying.get());
@@ -589,34 +588,14 @@ namespace RenderCore
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-	#if 0
-		static void SubmitSemaphoreSignal(VkQueue queue, VkSemaphore semaphore)
-		{
-			VkSubmitInfo submitInfo;
-			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-			submitInfo.pNext = nullptr;
-			submitInfo.waitSemaphoreCount = 0;
-			submitInfo.pWaitSemaphores = nullptr;
-			submitInfo.pWaitDstStageMask = nullptr;
-			submitInfo.commandBufferCount = 0;
-			submitInfo.pCommandBuffers = nullptr;
-			submitInfo.signalSemaphoreCount = 1;
-			submitInfo.pSignalSemaphores= &semaphore;
-
-			auto res = vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-			if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
-		}
-	#endif
-
     void            PresentationChain::Resize(unsigned newWidth, unsigned newHeight)
     {
         // todo -- we'll need to destroy and recreate the swapchain here
     }
 
-    std::shared_ptr<ViewportContext> PresentationChain::GetViewportContext() const
+    const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const
     {
-		return _viewportContext;
+		return _desc;
     }
 
     Metal_Vulkan::RenderTargetView* PresentationChain::AcquireNextImage()
@@ -725,52 +704,20 @@ namespace RenderCore
 	, _bufferDesc(bufferDesc)
     {
         _activeImageIndex = ~0x0u;
-		_viewportContext = std::make_shared<ViewportContext>(VectorPattern<unsigned, 2>(bufferDesc._width, bufferDesc._height));
+		_desc = std::make_shared<PresentationChainDesc>(
+            VectorPattern<unsigned, 2>(bufferDesc._width, bufferDesc._height),
+            bufferDesc._format, _bufferDesc._samples);
 
         // We need to get pointers to each image and build the synchronization semaphores
         auto images = GetImages(_device.get(), _swapChain.get());
         _images.reserve(images.size());
-        for (auto& i:images) _images.emplace_back(Image { i });
-
-        const auto depthFormat = Format::D24_UNORM_S8_UINT;
-		_depthStencilResource = Metal_Vulkan::Resource::Allocate(
-            factory, 
-            CreateDesc(
-                BufferUploads::BindFlag::DepthStencil,
-                0, BufferUploads::GPUAccess::Read | BufferUploads::GPUAccess::Write,
-                BufferUploads::TextureDesc::Plain2D(bufferDesc._width, bufferDesc._height, depthFormat, 1, 1, bufferDesc._samples),
-                "DefaultDepth"));
-        _dsv = Metal_Vulkan::DepthStencilView(factory, _depthStencilResource, Metal_Vulkan::TextureViewWindow());
-
-        // We must create a default render pass for rendering to the swap-chain images. 
-        // In the most basic rendering operations, we just render directly into these buffers.
-        // More complex applications may render into separate buffers, and then resolve onto 
-        // the swap chain buffers. In those cases, the use of PresentationChain may be radically
-        // different (eg, we don't even need to call AcquireNextImage() until we're ready to
-        // do the resolve).
-        // Also, more complex applications may want to combine the resolve operation into the
-        // render pass for rendering to offscreen buffers.
-
-        using TargetInfo = Metal_Vulkan::FrameBufferLayout::TargetInfo;
-        TargetInfo rtvAttachments[] = { TargetInfo(bufferDesc._format, bufferDesc._samples, Metal_Vulkan::FrameBufferLayout::PreviousState::Clear) };
-
-        const bool createDepthBuffer = depthFormat != Format::Unknown;
-        TargetInfo depthTargetInfo;
-        if (constant_expression<createDepthBuffer>::result())
-            depthTargetInfo = TargetInfo(depthFormat, bufferDesc._samples, Metal_Vulkan::FrameBufferLayout::PreviousState::Clear);
-        
-        _defaultRenderPass = Metal_Vulkan::FrameBufferLayout(factory, MakeIteratorRange(rtvAttachments), depthTargetInfo);
-
-        // Now create the frame buffers to match the render pass
-        VkImageView imageViews[2];
-        imageViews[1] = _dsv.GetUnderlying();
-
-        for (auto& i:_images) {
+        for (auto& i:images) {
             Metal_Vulkan::TextureViewWindow window(
                 bufferDesc._format, bufferDesc._dimensionality, 
                 Metal_Vulkan::TextureViewWindow::SubResourceRange{0, bufferDesc._mipCount},
                 Metal_Vulkan::TextureViewWindow::SubResourceRange{0, bufferDesc._arrayCount});
-			i._rtv = Metal_Vulkan::RenderTargetView(factory, i._image, window);
+            _images.emplace_back(
+                Image { i, Metal_Vulkan::RenderTargetView(factory, i, window) });
         }
 
         // Create the synchronisation primitives
@@ -872,7 +819,7 @@ namespace RenderCore
 	{
 		PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
 		auto nextImage = swapChain->AcquireNextImage();
-        _metalContext->SetPresentationDestination(nextImage);
+        _metalContext->SetPresentationTarget(nextImage);
 	}
 
 	void            ThreadContext::Present(IPresentationChain& chain)
@@ -882,7 +829,6 @@ namespace RenderCore
 
 		//////////////////////////////////////////////////////////////////
 
-        _metalContext->EndRenderPass();
         auto cmdBuffer = _metalContext->ResolveCommandList();
 
 		VkSubmitInfo submitInfo;
@@ -906,7 +852,9 @@ namespace RenderCore
 			Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
 
 		// hack -- need to implement CPU/GPU synchronisation
-		vkDeviceWaitIdle(_underlyingDevice);
+		res = vkDeviceWaitIdle(_underlyingDevice);
+        if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while waiting for device idle"));
 		_factory->FlushDestructionQueue();
 		_globalPools->_mainDescriptorPool.FlushDestroys();
 		_renderingCommandPool.FlushDestroys();

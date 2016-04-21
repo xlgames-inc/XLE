@@ -8,6 +8,7 @@
 
 #include "TextureView.h"
 #include "Buffer.h"
+#include "State.h"
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
 #include "../../../Utility/IteratorUtils.h"
@@ -70,9 +71,14 @@ namespace RenderCore { namespace Metal_Vulkan
         ResourcePtr         _blankTexture;
         ShaderResourceView  _blankSrv;
         Buffer              _blankBuffer;
+        std::unique_ptr<SamplerState> _blankSampler;
 
         DummyResources(const ObjectFactory& factory);
         DummyResources();
+        ~DummyResources();
+
+        DummyResources(DummyResources&& moveFrom) never_throws;
+        DummyResources& operator=(DummyResources&& moveFrom) never_throws;
     };
 
     class GlobalPools
@@ -82,7 +88,8 @@ namespace RenderCore { namespace Metal_Vulkan
         VulkanSharedPtr<VkPipelineCache>    _mainPipelineCache;
         DummyResources                      _dummyResources;
 
-        GlobalPools() {}
+        GlobalPools();
+        ~GlobalPools();
         GlobalPools(const GlobalPools&) = delete;
         GlobalPools& operator=(const GlobalPools&) = delete;
     };

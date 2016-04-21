@@ -10,7 +10,6 @@
 #include "IThreadContext_Forward.h"
 #include "../Core/Prefix.h"
 #include "../Utility/IntrusivePtr.h"
-#include "../Utility/IteratorUtils.h"
 #include <memory>
 #include <functional>
 
@@ -31,15 +30,7 @@ namespace RenderCore
 	using ResourcePtr = std::shared_ptr<Resource>;
 	class ResourceDesc;
 	class SubResourceInitData;
-
-    class ViewportContext
-    {
-    public:
-        unsigned _width, _height;
-
-		ViewportContext() : _width(0u), _height(0u) {}
-        ViewportContext(VectorPattern<unsigned, 2> dims) : _width(dims[0]), _height(dims[1]) {}
-    };
+    class PresentationChainDesc;
 
 #define FLEX_INTERFACE PresentationChain
 /*-----------------*/ #include "FlexBegin.h" /*-----------------*/
@@ -76,7 +67,7 @@ namespace RenderCore
             IMETHOD void                    Resize(unsigned newWidth=0, unsigned newHeight=0) IPURE;
 
             /// <summary>Returns a context object that will track the size of the viewport</summary>
-            IMETHOD std::shared_ptr<ViewportContext>        GetViewportContext() const IPURE;
+            IMETHOD const std::shared_ptr<PresentationChainDesc>&   GetDesc() const IPURE;
             IDESTRUCTOR
         };
 

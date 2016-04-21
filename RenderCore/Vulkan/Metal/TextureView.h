@@ -93,9 +93,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		explicit ShaderResourceView(const ResourcePtr& image, const TextureViewWindow& window = TextureViewWindow())
             : TextureView(image, window) {}
         ShaderResourceView() {}
-
-		static const SamplerState&     GetSampler();
-		static void Cleanup();
     };
 
     class RenderTargetView : public TextureView
