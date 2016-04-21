@@ -20,9 +20,18 @@ namespace RenderCore { namespace Metal_Vulkan
         switch (loadStore)
         {
         default:
-        case AttachmentDesc::LoadStore::DontCare: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        case AttachmentDesc::LoadStore::Retain: return VK_ATTACHMENT_LOAD_OP_LOAD;
-        case AttachmentDesc::LoadStore::Clear: return VK_ATTACHMENT_LOAD_OP_CLEAR;
+        case AttachmentDesc::LoadStore::DontCare: 
+        case AttachmentDesc::LoadStore::DontCare_RetainStencil: 
+        case AttachmentDesc::LoadStore::DontCare_ClearStencil: 
+            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        case AttachmentDesc::LoadStore::Retain: 
+        case AttachmentDesc::LoadStore::Retain_RetainStencil: 
+        case AttachmentDesc::LoadStore::Retain_ClearStencil: 
+            return VK_ATTACHMENT_LOAD_OP_LOAD;
+        case AttachmentDesc::LoadStore::Clear: 
+        case AttachmentDesc::LoadStore::Clear_RetainStencil: 
+        case AttachmentDesc::LoadStore::Clear_ClearStencil: 
+            return VK_ATTACHMENT_LOAD_OP_CLEAR;
         }
     }
 
@@ -32,8 +41,58 @@ namespace RenderCore { namespace Metal_Vulkan
         {
         default:
         case AttachmentDesc::LoadStore::Clear: 
-        case AttachmentDesc::LoadStore::DontCare: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        case AttachmentDesc::LoadStore::Retain: return VK_ATTACHMENT_STORE_OP_STORE;
+        case AttachmentDesc::LoadStore::Clear_RetainStencil: 
+        case AttachmentDesc::LoadStore::Clear_ClearStencil: 
+        case AttachmentDesc::LoadStore::DontCare: 
+        case AttachmentDesc::LoadStore::DontCare_RetainStencil: 
+        case AttachmentDesc::LoadStore::DontCare_ClearStencil: 
+            return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        case AttachmentDesc::LoadStore::Retain: 
+        case AttachmentDesc::LoadStore::Retain_RetainStencil: 
+        case AttachmentDesc::LoadStore::Retain_ClearStencil: 
+            return VK_ATTACHMENT_STORE_OP_STORE;
+        }
+    }
+
+    static VkAttachmentLoadOp AsLoadOpStencil(AttachmentDesc::LoadStore loadStore)
+    {
+        switch (loadStore)
+        {
+        default:
+        case AttachmentDesc::LoadStore::Clear: 
+        case AttachmentDesc::LoadStore::DontCare: 
+        case AttachmentDesc::LoadStore::Retain: 
+            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+
+        case AttachmentDesc::LoadStore::Clear_ClearStencil: 
+        case AttachmentDesc::LoadStore::DontCare_ClearStencil: 
+        case AttachmentDesc::LoadStore::Retain_ClearStencil: 
+            return VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+        case AttachmentDesc::LoadStore::Clear_RetainStencil: 
+        case AttachmentDesc::LoadStore::DontCare_RetainStencil: 
+        case AttachmentDesc::LoadStore::Retain_RetainStencil: 
+            return VK_ATTACHMENT_LOAD_OP_LOAD;
+        }
+    }
+
+    static VkAttachmentStoreOp AsStoreOpStencil(AttachmentDesc::LoadStore loadStore)
+    {
+        switch (loadStore)
+        {
+        default:
+        case AttachmentDesc::LoadStore::Clear: 
+        case AttachmentDesc::LoadStore::DontCare: 
+        case AttachmentDesc::LoadStore::Retain: 
+        case AttachmentDesc::LoadStore::Clear_ClearStencil: 
+        case AttachmentDesc::LoadStore::DontCare_ClearStencil: 
+        case AttachmentDesc::LoadStore::Retain_ClearStencil: 
+            return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+        case AttachmentDesc::LoadStore::Clear_RetainStencil: 
+        case AttachmentDesc::LoadStore::DontCare_RetainStencil: 
+        case AttachmentDesc::LoadStore::Retain_RetainStencil: 
+            return VK_ATTACHMENT_STORE_OP_STORE;
         }
     }
 
@@ -72,8 +131,8 @@ namespace RenderCore { namespace Metal_Vulkan
             desc.samples = VK_SAMPLE_COUNT_1_BIT;
             desc.loadOp = AsLoadOp(a._loadFromPreviousPhase);
             desc.storeOp = AsStoreOp(a._storeToNextPhase);
-            desc.stencilLoadOp = AsLoadOp(a._stencilLoad);
-            desc.stencilStoreOp = AsStoreOp(a._stencilStore);
+            desc.stencilLoadOp = AsLoadOpStencil(a._loadFromPreviousPhase);
+            desc.stencilStoreOp = AsStoreOpStencil(a._storeToNextPhase);
 
             desc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             desc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;

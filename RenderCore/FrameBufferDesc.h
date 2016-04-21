@@ -29,11 +29,13 @@ namespace RenderCore
 
         Format _format;
 
-        enum class LoadStore { DontCare, Retain, Clear };
+        enum class LoadStore { 
+            DontCare, Retain, Clear,
+            DontCare_RetainStencil, Retain_RetainStencil, Clear_RetainStencil,
+            DontCare_ClearStencil, Retain_ClearStencil, Clear_ClearStencil
+        };
         LoadStore _loadFromPreviousPhase;       ///< equivalent to "load op" in a Vulkan attachment
         LoadStore _storeToNextPhase;            ///< equivalent to "store op" in a Vulkan attachment
-
-        LoadStore _stencilLoad, _stencilStore;
 
         struct Flags
         {
@@ -58,16 +60,16 @@ namespace RenderCore
     {
     public:
         static unsigned const Unused = ~0u;
-        IteratorRange<const unsigned*> _input;
         IteratorRange<const unsigned*> _output;
         unsigned _depthStencil;
+        IteratorRange<const unsigned*> _input;
         IteratorRange<const unsigned*> _preserve;
 
         SubpassDesc();
         SubpassDesc(
-            std::initializer_list<unsigned> input, 
             std::initializer_list<unsigned> output,
             unsigned depthStencil = Unused,
+            std::initializer_list<unsigned> input = {}, 
             std::initializer_list<unsigned> preserve = {});
     };
 

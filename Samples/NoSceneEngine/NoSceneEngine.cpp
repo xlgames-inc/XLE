@@ -646,14 +646,12 @@ namespace Sample
                 {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::Unknown,
                     Attachment::LoadStore::Clear, Attachment::LoadStore::Retain,
-                    Attachment::LoadStore::DontCare,Attachment::LoadStore::DontCare,
                     Attachment::Flags::UsePresentationChainBuffer },
 
                 // Main depth stencil
                 {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::D24_UNORM_S8_UINT,
                     Attachment::LoadStore::Clear, Attachment::LoadStore::DontCare,
-                    Attachment::LoadStore::DontCare,Attachment::LoadStore::DontCare,
                     Attachment::Flags::Multisampled }
             };
             const unsigned MainTarget = 0;
@@ -661,7 +659,7 @@ namespace Sample
 
             Subpass subpasses[] = 
             {
-                Subpass({}, {MainTarget}, MainDepthStencil)
+                Subpass({MainTarget}, MainDepthStencil)
             };
 
             RenderCore::FrameBufferDesc fbLayout(

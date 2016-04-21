@@ -774,7 +774,7 @@ namespace SceneEngine
     void Ocean_Execute( DeviceContext* context, LightingParserContext& parserContext,
                         const DeepOceanSimSettings& settings,
                         const OceanLightingSettings& lightingSettings,
-                        ShaderResourceView& depthBufferSRV)
+                        const ShaderResourceView& depthBufferSRV)
     {
         if (!settings._enable) return;
 

@@ -25,7 +25,7 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         const DeepOceanSimSettings& settings,
         const OceanLightingSettings& lightingSettings,
-        RenderCore::Metal::ShaderResourceView& depthBufferSRV);
+        const RenderCore::Metal::ShaderResourceView& depthBufferSRV);
 
     void FFT_DoDebugging(RenderCore::Metal::DeviceContext* context);
 

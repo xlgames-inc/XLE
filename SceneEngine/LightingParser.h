@@ -149,7 +149,7 @@ namespace SceneEngine
 
         ///////////////////////////////////////////////////////////////////////////
 
-    class MainTargetsBox;
+    class MainTargets;
 
     /// <summary>The LightingResolveContext is used by lighting operations during the gbuffer resolve step</summary>
     /// Don't confuse with LightingParserContext. This is a different context object, representing
@@ -165,7 +165,7 @@ namespace SceneEngine
         Pass::Enum  GetCurrentPass() const;
         bool        UseMsaaSamplers() const;
         unsigned    GetSamplingCount() const;
-        MainTargetsBox& GetMainTargets() const;
+        MainTargets& GetMainTargets() const;
 
         typedef void ResolveFn(MetalContext*, LightingParserContext&, LightingResolveContext&, unsigned resolvePass);
         void        AppendResolve(std::function<ResolveFn>&& fn);
@@ -181,13 +181,13 @@ namespace SceneEngine
 
         std::vector<std::function<ResolveFn>>       _queuedResolveFunctions;
 
-        LightingResolveContext(MainTargetsBox& mainTargets);
+        LightingResolveContext(MainTargets& mainTargets);
         ~LightingResolveContext();
     private:
         unsigned _samplingCount;
         bool _useMsaaSamplers;
         Pass::Enum _pass;
-        MainTargetsBox* _mainTargets;
+        MainTargets* _mainTargets;
     };
 
     /// <summary>Plug-in for the lighting parser</summary>

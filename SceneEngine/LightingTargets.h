@@ -16,108 +16,16 @@
 
 namespace SceneEngine
 {
-    class MainTargetsBox
+    class MainTargets
     {
     public:
-        static const unsigned s_gbufferTextureCount = 3;
-        class Desc
-        {
-        public:
-            Desc(   unsigned width, unsigned height, 
-                    const FormatStack& diffuseFormat, const FormatStack& normalFormat, 
-                    const FormatStack& parametersFormat, const FormatStack& depthFormat,
-                    const BufferUploads::TextureSamples& sampling);
+        using SRV = RenderCore::Metal::ShaderResourceView;
 
-            unsigned _width, _height;
-
-            FormatStack _gbufferFormats[s_gbufferTextureCount];
-            FormatStack _depthFormat;
-            BufferUploads::TextureSamples _sampling;
-        };
-
-        MainTargetsBox(const Desc& desc);
-        ~MainTargetsBox();
-
-        Desc _desc;
-        ResourcePtr  _gbufferTextures[s_gbufferTextureCount];
-        ResourcePtr  _msaaDepthBufferTexture;
-        ResourcePtr  _secondaryDepthBufferTexture;
-
-        typedef RenderCore::Metal::RenderTargetView RTV;
-        typedef RenderCore::Metal::DepthStencilView DSV;
-        typedef RenderCore::Metal::ShaderResourceView SRV;
-
-        RTV _gbufferRTVs[s_gbufferTextureCount];
-
-        DSV _msaaDepthBuffer;
-        DSV _secondaryDepthBuffer;
-
-        SRV _gbufferRTVsSRV[s_gbufferTextureCount];
-        SRV _msaaDepthBufferSRV;
-        SRV _secondaryDepthBufferSRV;
+        unsigned        GetGBufferType() const;
+        RenderCore::TextureSamples GetSampling() const;
+        const SRV&      GetGBufferSRV(unsigned index) const;
+        const SRV&      GetMainDepthsSRV() const;
     };
-
-    class ForwardTargetsBox
-    {
-    public:
-        class Desc
-        {
-        public:
-            Desc(   unsigned width, unsigned height, 
-                    const FormatStack& depthFormat,
-                    const BufferUploads::TextureSamples& sampling);
-
-            unsigned _width, _height;
-            FormatStack _depthFormat;
-            BufferUploads::TextureSamples _sampling;
-        };
-
-        ForwardTargetsBox(const Desc& desc);
-        ~ForwardTargetsBox();
-
-        Desc _desc;
-        ResourcePtr  _msaaDepthBufferTexture;
-        ResourcePtr  _secondaryDepthBufferTexture;
-
-        typedef RenderCore::Metal::DepthStencilView DSV;
-        typedef RenderCore::Metal::ShaderResourceView SRV;
-
-        DSV _msaaDepthBuffer;
-        DSV _secondaryDepthBuffer;
-
-        SRV _msaaDepthBufferSRV;
-        SRV _secondaryDepthBufferSRV;
-    };
-
-    class LightingResolveTextureBox
-    {
-    public:
-        class Desc
-        {
-        public:
-            Desc(   unsigned width, unsigned height, 
-                    const FormatStack& lightingResolveFormat,
-                    const BufferUploads::TextureSamples& sampling);
-
-            unsigned _width, _height;
-            FormatStack _lightingResolveFormat;
-            BufferUploads::TextureSamples _sampling;
-        };
-
-        typedef RenderCore::Metal::RenderTargetView RTV;
-        typedef RenderCore::Metal::ShaderResourceView SRV;
-
-        ResourcePtr     _lightingResolveTexture;
-        RTV             _lightingResolveRTV;
-        SRV             _lightingResolveSRV;
-
-        ResourcePtr     _lightingResolveCopy;
-        SRV             _lightingResolveCopySRV;
-
-        LightingResolveTextureBox(const Desc& desc);
-        ~LightingResolveTextureBox();
-    };
-
 
     class LightingResolveShaders
     {
@@ -278,11 +186,11 @@ namespace SceneEngine
 
  
     #if defined(_DEBUG)
-        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, MainTargetsBox& mainTargets);
+        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, MainTargets& mainTargets);
     #endif
 
     class LightingParserContext;
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, MainTargetsBox& mainTargets, unsigned debuggingType);
+    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, MainTargets& mainTargets, unsigned debuggingType);
 
 }
 

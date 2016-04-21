@@ -311,7 +311,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return ExtractDesc(resource);
 	}
 
-	RenderCore::ResourcePtr ExtractResource(TextureView& res)
+	RenderCore::ResourcePtr ExtractResource(const TextureView& res)
 	{
 		return res.ShareResource();
 	}

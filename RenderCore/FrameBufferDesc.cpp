@@ -17,9 +17,9 @@ namespace RenderCore
     }
 
     SubpassDesc::SubpassDesc(
-        std::initializer_list<unsigned> input, 
         std::initializer_list<unsigned> output,
         unsigned depthStencil,
+        std::initializer_list<unsigned> input, 
         std::initializer_list<unsigned> preserve)
     : _input(input.begin(), input.end())
     , _output(output.begin(), output.end())

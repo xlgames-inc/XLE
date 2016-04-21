@@ -15,6 +15,6 @@ namespace SceneEngine
     void SunFlare_Execute(
         RenderCore::Metal::DeviceContext* context,
         LightingParserContext& parserContext,
-        RenderCore::Metal::ShaderResourceView& depthsSRV);
+        const RenderCore::Metal::ShaderResourceView& depthsSRV);
 }
 

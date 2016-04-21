@@ -571,7 +571,7 @@ namespace ToolsRig
             auto cam = AsCameraDesc(*_camera);
             IntersectionTestContext testContext(
                 _threadContext, cam, 
-                std::make_shared<RenderCore::ViewportContext>(PlatformRig::InputTranslator::s_hackWindowSize),
+                std::make_shared<RenderCore::PresentationChainDesc>(PlatformRig::InputTranslator::s_hackWindowSize),
                 _techniqueContext);
             auto worldSpaceRay = testContext.CalculateWorldSpaceRay(
                 evnt._mousePosition);

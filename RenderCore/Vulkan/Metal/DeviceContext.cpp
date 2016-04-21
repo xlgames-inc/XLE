@@ -791,6 +791,8 @@ namespace RenderCore { namespace Metal_Vulkan
         // descriptor sets. We will use vkUpdateDescriptorSets to fill in these
         // sets with the latest changes. Note that this will require copy across the
         // bindings that haven't changed.
+        // It turns out that copying using VkCopyDescriptorSet is probably going to be
+        // slow. We should try a different approach.
         if (_pimpl->_pendingWrites) {
             VulkanUniquePtr<VkDescriptorSet> newSets[Pimpl::s_descriptorSetCount];
             VkDescriptorSetLayout rawLayouts[Pimpl::s_descriptorSetCount];

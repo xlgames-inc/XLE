@@ -28,6 +28,7 @@
 #include "RayTracedShadows.h"
 
 #include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
@@ -55,8 +56,7 @@ namespace SceneEngine
     void LightingParser_ResolveGBuffer( 
         Metal::DeviceContext& context,
         LightingParserContext& parserContext,
-        MainTargetsBox& mainTargets,
-        LightingResolveTextureBox& lightingResTargets);
+        MainTargets& mainTargets);
 
     class LightResolveResourcesRes
     {
@@ -168,18 +168,7 @@ namespace SceneEngine
         context.Unbind<Metal::GeometryShader>();
     }
 
-    static void ClearDeferredBuffers(Metal::DeviceContext& context, MainTargetsBox& mainTargets)
-    {
-        if (mainTargets._gbufferRTVs[0].GetUnderlying())
-            context.Clear(mainTargets._gbufferRTVs[0], Float4(0.33f, 0.33f, 0.33f, 1.f));
-        if (mainTargets._gbufferRTVs[1].GetUnderlying())
-            context.Clear(mainTargets._gbufferRTVs[1], Float4(0.f, 0.f, 0.f, 0.f));
-        if (mainTargets._gbufferRTVs[2].GetUnderlying())
-            context.Clear(mainTargets._gbufferRTVs[2], Float4(0.f, 0.f, 0.f, 0.f));
-        context.Clear(mainTargets._msaaDepthBuffer, 1.f, 0);
-    }
-
-    void LightingParser_SetGlobalTransform( 
+    void LightingParser_SetGlobalTransform(
         Metal::DeviceContext& context, 
         LightingParserContext& parserContext, 
         const RenderCore::Techniques::ProjectionDesc& projDesc)
@@ -229,22 +218,6 @@ namespace SceneEngine
         projDesc._cameraToProjection = cameraToProjection;
         projDesc._cameraToWorld = cameraToWorld;
         return projDesc;
-    }
-
-    void LightingParser_LateGBufferRender(
-        Metal::DeviceContext& context, 
-        LightingParserContext& parserContext,
-        MainTargetsBox& mainTargets)
-    {
-        Metal::GPUProfiler::DebugAnnotation anno(context, L"LateGBuffer");
-
-        #if defined(_DEBUG)
-            auto& saveGBuffer = Tweakable("SaveGBuffer", false);
-            if (saveGBuffer) {
-                SaveGBuffer(context, mainTargets);
-                saveGBuffer = false;
-            }
-        #endif
     }
 
     class FinalResolveResources
@@ -311,7 +284,7 @@ namespace SceneEngine
     void LightingParser_PreTranslucency(    
         Metal::DeviceContext& context, 
         LightingParserContext& parserContext,
-        Metal::ShaderResourceView& depthsSRV)
+        const Metal::ShaderResourceView& depthsSRV)
     {
         Metal::GPUProfiler::DebugAnnotation anno(context, L"PreTranslucency");
 
@@ -340,8 +313,8 @@ namespace SceneEngine
     void LightingParser_PostGBufferEffects(    
         Metal::DeviceContext& context, 
         LightingParserContext& parserContext,
-        Metal::ShaderResourceView& depthsSRV,
-        Metal::ShaderResourceView& normalsSRV)
+        const Metal::ShaderResourceView& depthsSRV,
+        const Metal::ShaderResourceView& normalsSRV)
     {
         Metal::GPUProfiler::DebugAnnotation anno(context, L"PostGBuffer");
         
@@ -538,14 +511,14 @@ namespace SceneEngine
         Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext,
         PreparedScene& preparedScene,
-        MainTargetsBox& mainTargets)
+        MainTargets& mainTargets)
     {
         //////////////////////////////////////////////////////////////////////////////////////////////////
             //  Render translucent objects (etc)
             //  everything after the gbuffer resolve
         LightingParser_PreTranslucency(
             metalContext, parserContext, 
-            mainTargets._msaaDepthBufferSRV);
+            mainTargets.GetMainDepthsSRV());
 
         ReturnToSteadyState(metalContext);
 
@@ -572,7 +545,7 @@ namespace SceneEngine
         switch (Tweakable("OITransMode", 1)) {
         case 1:     oiMode = OIMode::Stochastic; break;
         case 2:     oiMode = OIMode::DepthWeighted; break;
-        case 3:     oiMode = (mainTargets._desc._sampling._sampleCount <= 1) ? OIMode::SortedRef : OIMode::Stochastic; break;
+        case 3:     oiMode = (mainTargets.GetSampling()._sampleCount <= 1) ? OIMode::SortedRef : OIMode::Stochastic; break;
         default:    oiMode = OIMode::Unordered; break;
         }
 
@@ -670,11 +643,247 @@ namespace SceneEngine
         //////////////////////////////////////////////////////////////////////////////////////////////////
         LightingParser_PostGBufferEffects(
             metalContext, parserContext, 
-            mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]);
+            mainTargets.GetMainDepthsSRV(), mainTargets.GetGBufferSRV(1));
 
         for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
             (*p)->OnPostSceneRender(metalContext, parserContext, SPS::BatchFilter::Transparent, TechniqueIndex_General);
     }
+
+    class RenderPassFragment
+    {
+    public:
+        using SystemName = uint32;
+        class Attachment
+        {
+        public:
+            SystemName _name;
+            RenderCore::AttachmentDesc _desc;
+        };
+        class Subpass
+        {
+        public:
+            SystemName _name;
+            RenderCore::SubpassDesc _desc;
+        };
+        std::vector<Attachment>     _definedAttachments;
+        std::vector<Subpass>        _subpasses;
+    };
+
+    class FrameBufferDescBox
+    {
+    public:
+        class Desc
+        {
+        public:
+            RenderingQualitySettings _qualSettings;
+            bool        _precisionTargets;
+            bool        _retainGBufferContents;
+            Desc(const RenderingQualitySettings& qualSettings, bool precisionTargets, bool retainGBufferContents) 
+            {
+                std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
+                _qualSettings = qualSettings;
+                _precisionTargets = precisionTargets;
+                _retainGBufferContents = retainGBufferContents;
+            }
+        };
+
+        RenderPassFragment _baseFragment;
+        RenderPassFragment _gbufferMode1;
+        RenderPassFragment _gbufferMode2;
+        RenderPassFragment _resolveLighting;
+
+        FrameBufferDescBox(const Desc& d);
+    };
+
+    static const RenderPassFragment::SystemName s_multisampledDepth = 0u;
+    static const RenderPassFragment::SystemName s_lightResolve = 1u;
+    static const RenderPassFragment::SystemName s_gbufferDiffuse = 2u;
+    static const RenderPassFragment::SystemName s_gbufferNormals = 3u;
+    static const RenderPassFragment::SystemName s_gbufferParameters = 4u;
+    static const RenderPassFragment::SystemName s_nameMax = 64u;
+
+    static const RenderPassFragment::SystemName s_renderToGBuffer = 0u;
+    static const RenderPassFragment::SystemName s_resolveLighting = 1u;
+
+    FrameBufferDescBox::FrameBufferDescBox(const Desc& desc)
+    {
+        // This render pass will include just rendering to the gbuffer and doing the initial
+        // lighting resolve.
+        //
+        // Typically after this we have a number of smaller render passes (such as rendering
+        // transparent geometry, performing post processing, MSAA resolve, tone mapping, etc)
+        //
+        // We could attempt to combine more steps into this one render pass.. But it might become
+        // awkward. For example, if we know we have only simple translucent geometry, we could
+        // add in a subpass for rendering that geometry.
+        //
+        // We can elect to retain or discard the gbuffer contents after the lighting resolve. Frequently
+        // the gbuffer contents are useful for various effects.
+
+        using Attachment = RenderCore::AttachmentDesc;
+        using Subpass = RenderCore::SubpassDesc;
+        _baseFragment = RenderPassFragment {
+            {
+                // Main multisampled depth stencil
+                { s_multisampledDepth, {  
+                    Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    RenderCore::Format::D24_UNORM_S8_UINT,
+                    Attachment::LoadStore::Clear, Attachment::LoadStore::DontCare,
+                    Attachment::Flags::Multisampled }},
+
+                // light resolve target
+                { s_lightResolve, { Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    (!desc._precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
+                    Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
+                    Attachment::Flags::Multisampled }}
+            },
+        };
+
+        _gbufferMode1 = RenderPassFragment {
+            {
+                    // Generally the deferred pixel shader will just copy information from the albedo
+                    // texture into the first deferred buffer. So the first deferred buffer should
+                    // have the same pixel format as much input textures.
+                    // Usually this is an 8 bit SRGB format, so the first deferred buffer should also
+                    // be 8 bit SRGB. So long as we don't do a lot of processing in the deferred pixel shader
+                    // that should be enough precision.
+                    //      .. however, it possible some clients might prefer 10 or 16 bit albedo textures
+                    //      In these cases, the first buffer should be a matching format.
+                { s_gbufferDiffuse,
+                    {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                        (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM_SRGB : Format::R32G32B32A32_FLOAT,
+                        Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
+                        Attachment::Flags::Multisampled }},
+
+                { s_gbufferNormals,
+                    {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                        (!desc._precisionTargets) ? Format::R8G8B8A8_SNORM : Format::R32G32B32A32_FLOAT,
+                        Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
+                        Attachment::Flags::Multisampled }},
+
+                { s_gbufferParameters,
+                    {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                        (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM : Format::R32G32B32A32_FLOAT,
+                        Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
+                        Attachment::Flags::Multisampled }}
+            },
+            {
+                // render first to the gbuffer
+                { s_renderToGBuffer,
+                    Subpass({s_gbufferDiffuse, s_gbufferNormals, s_gbufferParameters}, s_multisampledDepth) }
+            }
+        };
+
+        _gbufferMode2 = RenderPassFragment {
+            {
+                    // Generally the deferred pixel shader will just copy information from the albedo
+                    // texture into the first deferred buffer. So the first deferred buffer should
+                    // have the same pixel format as much input textures.
+                    // Usually this is an 8 bit SRGB format, so the first deferred buffer should also
+                    // be 8 bit SRGB. So long as we don't do a lot of processing in the deferred pixel shader
+                    // that should be enough precision.
+                    //      .. however, it possible some clients might prefer 10 or 16 bit albedo textures
+                    //      In these cases, the first buffer should be a matching format.
+                { s_gbufferDiffuse,
+                    {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                        (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM_SRGB : Format::R32G32B32A32_FLOAT,
+                        Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
+                        Attachment::Flags::Multisampled }},
+
+                { s_gbufferNormals,
+                    {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                        (!desc._precisionTargets) ? Format::R8G8B8A8_SNORM : Format::R32G32B32A32_FLOAT,
+                        Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
+                        Attachment::Flags::Multisampled }}
+            },
+            {
+                // render first to the gbuffer
+                { s_renderToGBuffer,
+                    Subpass({s_gbufferDiffuse, s_gbufferNormals}, s_multisampledDepth) }
+            }
+        };
+
+        _resolveLighting = RenderPassFragment {
+            {},
+            {
+                // now resolve lighting
+                { s_resolveLighting,
+                    Subpass({s_lightResolve}, Subpass::Unused, {s_gbufferDiffuse, s_gbufferNormals, s_gbufferParameters, s_multisampledDepth})}
+            }
+        };
+
+        // auto outputFormat = Format::R8G8B8A8_UNORM_SRGB;
+        // _fbLayout = RenderCore::FrameBufferDesc(
+        //     MakeIteratorRange(attachments),
+        //     MakeIteratorRange(subpasses),
+        //     outputFormat,
+        //     TextureSamples::Create(desc._qualSettings._samplingCount, desc._qualSettings._samplingQuality));
+    }
+
+    class PatchedFrameBufferDesc
+    {
+    public:
+        RenderCore::FrameBufferDesc _fbDesc;
+        std::vector<RenderPassFragment::SystemName> _subpassNames;
+
+        PatchedFrameBufferDesc(
+            IteratorRange<const RenderPassFragment*> fragments,
+            IteratorRange<RenderPassFragment::SystemName*> outputAttachments,
+            Format outputFormat, const TextureSamples& samples);
+        ~PatchedFrameBufferDesc();
+    };
+
+    RenderCore::FrameBufferDesc PatchFrameBufferDesc(
+        IteratorRange<const RenderPassFragment*> fragments,
+        IteratorRange<const RenderPassFragment::SystemName*> outputAttachments,
+        Format outputFormat, const TextureSamples& samples)
+    {
+        // Taking a set of "fragments" of a render pass, attempt to patch them together
+        // to generate a single structure. While doing this, we can generate a mapping
+        // from attachment "names" to their actual location in the result.
+        //
+        // This gives us some flexibility for how granular the final render pass objects
+        // are. We can use the subpass names to attach functions so the right code gets
+        // executed for each subpass.
+        //
+        // While building the result, we should manage the "preserved" attachments for
+        // each subpass. These are attachments that will not be immediately used, but
+        // might be required for future subpasses.
+        // We should also thinking about setting the "retain" flags for attachments that
+        // might be required after the render pass has completed.
+        // If a subpass refers to an attachment that has never been defined, we silently
+        // set it to Unused
+        unsigned namesToAttachmentIndex[s_nameMax];
+        std::memset(namesToAttachmentIndex, 0xff, sizeof(namesToAttachmentIndex));
+        std::vector<AttachmentDesc> attachments;
+        for (auto&f:fragments) {
+            for (auto&a:f._definedAttachments) {
+                if (a._name >= s_nameMax)
+                    Throw(::Exceptions::BasicLabel("Attachment name is too big"));
+
+                auto existing = namesToAttachmentIndex[a._name];
+                if (existing != ~0u) {
+                    if (!IsCompatible(a._desc, attachments[existing]))
+                        Throw(::Exceptions::BasicLabel("Multiple incompatible attachments assigned to the same name"));
+                } else {
+                    namesToAttachmentIndex[a._name] = (unsigned)attachments.size();
+                    AttachmentDesc newAttach = a._desc;
+
+                    auto o = std::find(outputAttachments.cbegin(), outputAttachments.cend(), a._name);
+                    if (o != outputAttachments.cend()) {
+                        // This is an output attachment. We need to mark it to retain it, and 
+                        // set the "ShaderResource" flag.
+                        // For depth stencil resources, we will assume the same flag applies to
+                        // both the depth values and the stencil values.
+                        newAttach._storeToNextPhase = AttachmentDesc::LoadStore::Retain_RetainStencil;
+                        newAttach._flags |= AttachmentDesc::Flags::ShaderResource;
+                    }
+                }
+            }
+        }
+    }
+
+    PatchedFrameBufferDesc::~PatchedFrameBufferDesc() {}
 
     void LightingParser_MainScene(
         IThreadContext& context,
@@ -707,27 +916,29 @@ namespace SceneEngine
                 //
             ////////////////////////////////////////////////////////////////////
 
-        Metal::ShaderResourceView postLightingResolveSRV;
-        Metal::ShaderResourceView sceneDepthsSRV;
-        Metal::ShaderResourceView sceneSecondaryDepthsSRV;
-        Metal::RenderTargetView postLightingResolveRTV;
-        Metal::DepthStencilView sceneDepthsDSV;
-        ResourcePtr postLightingResolveTexture = nullptr;
+        // Metal::ShaderResourceView postLightingResolveSRV;
+        // Metal::ShaderResourceView sceneDepthsSRV;
+        // Metal::ShaderResourceView sceneSecondaryDepthsSRV;
+        // Metal::RenderTargetView postLightingResolveRTV;
+        // Metal::DepthStencilView sceneDepthsDSV;
+        // ResourcePtr postLightingResolveTexture = nullptr;
+        // 
+        // SavedTargets savedTargets(metalContext);
+        // 
+        // Metal::ViewportDesc mainViewport(  
+        //     0.f, 0.f, float(qualitySettings._dimensions[0]), float(qualitySettings._dimensions[1]), 0.f, 1.f);
+        // 
+        // bool precisionTargets = Tweakable("PrecisionTargets", false);
+        // 
+        // typedef Format NativeFormat;
+        // auto sampling = BufferUploads::TextureSamples::Create(
+        //     uint8(std::max(qualitySettings._samplingCount, 1u)), uint8(qualitySettings._samplingQuality));
+        // auto& lightingResTargets = Techniques::FindCachedBox2<LightingResolveTextureBox>(
+        //     unsigned(mainViewport.Width), unsigned(mainViewport.Height),
+        //     (!precisionTargets) ? FormatStack(NativeFormat::R16G16B16A16_FLOAT) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
+        //     sampling);
 
-        SavedTargets savedTargets(metalContext);
-
-        Metal::ViewportDesc mainViewport(  
-            0.f, 0.f, float(qualitySettings._dimensions[0]), float(qualitySettings._dimensions[1]), 0.f, 1.f);
-        
-        bool precisionTargets = Tweakable("PrecisionTargets", false);
-
-        typedef Format NativeFormat;
-        auto sampling = BufferUploads::TextureSamples::Create(
-            uint8(std::max(qualitySettings._samplingCount, 1u)), uint8(qualitySettings._samplingQuality));
-        auto& lightingResTargets = Techniques::FindCachedBox2<LightingResolveTextureBox>(
-            unsigned(mainViewport.Width), unsigned(mainViewport.Height),
-            (!precisionTargets) ? FormatStack(NativeFormat::R16G16B16A16_FLOAT) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
-            sampling);
+        auto& fbLayoutBox = Techniques::FindCachedBox2<FrameBufferDescBox>(qualitySettings);
 
         if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Deferred) {
 
@@ -736,43 +947,36 @@ namespace SceneEngine
                 //      Get the gbuffer render targets for this frame
                 //
 
-                // Generally the deferred pixel shader will just copy information from the albedo
-                // texture into the first deferred buffer. So the first deferred buffer should
-                // have the same pixel format as much input textures.
-                // Usually this is an 8 bit SRGB format, so the first deferred buffer should also
-                // be 8 bit SRGB. So long as we don't do a lot of processing in the deferred pixel shader
-                // that should be enough precision.
-                //      .. however, it possible some clients might prefer 10 or 16 bit albedo textures
-                //      In these cases, the first buffer should be a matching format.
             const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
-            auto& mainTargets = Techniques::FindCachedBox2<MainTargetsBox>(
-                unsigned(mainViewport.Width), unsigned(mainViewport.Height),
-                (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM_SRGB) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
-                (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_SNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
-                FormatStack(enableParametersBuffer ? ((!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT)) : NativeFormat::Unknown),
-                FormatStack(
-                    NativeFormat(DXGI_FORMAT_R24G8_TYPELESS), 
-                    NativeFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS), 
-                    NativeFormat(DXGI_FORMAT_D24_UNORM_S8_UINT)),
-                sampling);
+            unsigned gbufferType = enableParametersBuffer?1:2;
 
             auto& globalState = parserContext.GetTechniqueContext()._globalEnvironmentState;
-            globalState.SetParameter((const utf8*)"GBUFFER_TYPE", enableParametersBuffer?1:2);
+            globalState.SetParameter((const utf8*)"GBUFFER_TYPE", gbufferType);
+
+            // auto& mainTargets = Techniques::FindCachedBox2<MainTargetsBox>(
+            //     unsigned(mainViewport.Width), unsigned(mainViewport.Height),
+            //     (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM_SRGB) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
+            //     (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_SNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
+            //     FormatStack(enableParametersBuffer ? ((!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT)) : NativeFormat::Unknown),
+            //     FormatStack(
+            //         NativeFormat(DXGI_FORMAT_R24G8_TYPELESS), 
+            //         NativeFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS), 
+            //         NativeFormat(DXGI_FORMAT_D24_UNORM_S8_UINT)),
+            //     sampling);
 
             TRY {
 
                     //
                 //////////////////////////////////////////////////////////////////////////////////////
-                    //      Bind and clear gbuffer
+                    //      Bind the gbuffer, begin the render pass
                     //
 
-                metalContext.Bind(
-                    MakeResourceList(   
-                        mainTargets._gbufferRTVs[0], 
-                        mainTargets._gbufferRTVs[1], 
-                        mainTargets._gbufferRTVs[2]), 
-                    &mainTargets._msaaDepthBuffer);
-                ClearDeferredBuffers(metalContext, mainTargets);
+                context.BeginRenderPass(
+                    fbLayoutBox._fbLayout,
+                    FrameBufferProperties{qualitySettings._dimensions[0], qualitySettings._dimensions[1]},
+                    RenderPassBeginDesc{});
+
+                Metal::ViewportDesc mainViewport(0.f, 0.f, (float)qualitySettings._dimensions[0], (float)qualitySettings._dimensions[1]);
                 metalContext.Bind(mainViewport);
 
                     //
@@ -787,13 +991,14 @@ namespace SceneEngine
                     context, parserContext, SPS::BatchFilter::General,
                     preparedScene,
                     TechniqueIndex_Deferred, L"MainScene-OpaqueGBuffer");
-                for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p) {
+                for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
                     (*p)->OnPostSceneRender(metalContext, parserContext, SPS::BatchFilter::General, TechniqueIndex_Deferred);
-                }
-                LightingParser_LateGBufferRender(metalContext, parserContext, mainTargets);
-                LightingParser_ResolveGBuffer(metalContext, parserContext, mainTargets, lightingResTargets);
+
+                context.NextSubpass();
+                LightingParser_ResolveGBuffer(metalContext, parserContext, mainTargets);
+                context.EndRenderPass();
             } 
-            CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(metalContext); }
+            CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); context.EndRenderPass(); }
             CATCH_END
 
                 // Post lighting resolve operations... (must rebind the depth buffer)

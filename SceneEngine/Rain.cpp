@@ -179,8 +179,8 @@ namespace SceneEngine
 
     void    Rain_RenderSimParticles(RenderCore::Metal::DeviceContext* context, 
                                     LightingParserContext& parserContext,
-                                    RenderCore::Metal::ShaderResourceView& depthsSRV,
-                                    RenderCore::Metal::ShaderResourceView& normalsSRV)
+                                    const RenderCore::Metal::ShaderResourceView& depthsSRV,
+                                    const RenderCore::Metal::ShaderResourceView& normalsSRV)
     {
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
@@ -318,8 +318,8 @@ namespace SceneEngine
 
     void    SparkParticleTest_RenderSimParticles(   RenderCore::Metal::DeviceContext* context, 
                                                     LightingParserContext& parserContext,
-                                                    RenderCore::Metal::ShaderResourceView& depthsSRV,
-                                                    RenderCore::Metal::ShaderResourceView& normalsSRV)
+                                                    const RenderCore::Metal::ShaderResourceView& depthsSRV,
+                                                    const RenderCore::Metal::ShaderResourceView& normalsSRV)
     {
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;

@@ -14,7 +14,7 @@ namespace SceneEngine
     class LightingParserContext;
     class ShadowProjectionDesc;
     class PreparedRTShadowFrustum;
-    class MainTargetsBox;
+    class MainTargets;
     class PreparedScene;
 
     PreparedRTShadowFrustum PrepareRTShadows(
@@ -27,5 +27,5 @@ namespace SceneEngine
 
     void RTShadows_DrawMetrics(
         RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, 
-        MainTargetsBox& mainTargets);
+        MainTargets& mainTargets);
 }
