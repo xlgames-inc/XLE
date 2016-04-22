@@ -129,7 +129,7 @@ namespace SceneEngine
 
     static void SetupStateForDeferredLightingResolve(   
         Metal::DeviceContext& context, 
-        MainTargets& mainTargets, 
+        IMainTargets& mainTargets, 
         LightingResolveResources& resolveRes,
         bool doSampleFrequencyOptimisation)
     {
@@ -149,8 +149,11 @@ namespace SceneEngine
         }
 
         context.BindPS(MakeResourceList(
-            mainTargets.GetGBufferSRV(0), mainTargets.GetGBufferSRV(1), mainTargets.GetGBufferSRV(2), 
-            Metal::ShaderResourceView(), mainTargets.GetMainDepthsSRV()));
+            mainTargets.GetSRV(IMainTargets::GBufferDiffuse),
+            mainTargets.GetSRV(IMainTargets::GBufferNormals),
+            mainTargets.GetSRV(IMainTargets::GBufferParameters),
+            Metal::ShaderResourceView(), 
+            mainTargets.GetSRV(IMainTargets::MultisampledDepth)));
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -256,16 +259,80 @@ namespace SceneEngine
         return result;
     }
 
-    void LightingParser_ResolveGBuffer(
-        Metal::DeviceContext& context, LightingParserContext& parserContext, MainTargets& mainTargets)
+    class ResolveFBDescBox
     {
-        Metal::GPUProfiler::DebugAnnotation anno(context, L"ResolveGBuffer");
+    public:
+        class Desc
+        {
+        public:
+            TextureSamples _samples;
+            unsigned _gbufferMode;
+            bool _precisionTargets;
+            Desc(TextureSamples samples, unsigned gbufferMode, bool precisionTargets) 
+            {
+                std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
+                _samples = samples;
+                _gbufferMode = gbufferMode;
+                _precisionTargets = precisionTargets;
+            }
+        };
+
+        FrameBufferDesc _resolveLighting;
+
+        ResolveFBDescBox(const Desc& d);
+    };
+
+    ResolveFBDescBox::ResolveFBDescBox(const Desc& desc)
+    {
+        using Attachment = RenderCore::AttachmentDesc;
+        using Subpass = RenderCore::SubpassDesc;
+
+        Attachment resolveAttaches[] = 
+        {
+            // light resolve target
+            {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                (!desc._precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
+                Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
+                IMainTargets::LightResolve, Attachment::Flags::Multisampled }
+        };
+
+        if (desc._gbufferMode == 1) {
+
+            _resolveLighting = FrameBufferDesc(
+                MakeIteratorRange(resolveAttaches),
+                {
+                    // now resolve lighting
+                    Subpass({IMainTargets::LightResolve}, Subpass::Unused, {IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals, IMainTargets::GBufferParameters})
+                },
+                desc._samples);
+            
+        } else {
+                    
+            _resolveLighting = FrameBufferDesc(
+                MakeIteratorRange(resolveAttaches),
+                {
+                    // now resolve lighting
+                    Subpass({IMainTargets::LightResolve}, Subpass::Unused, {IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals})
+                },
+                desc._samples);
+        }
+    }
+
+    void LightingParser_ResolveGBuffer(
+        Metal::DeviceContext& metalContext, LightingParserContext& parserContext, IMainTargets& mainTargets)
+    {
+        Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"ResolveGBuffer");
 
         const bool doSampleFrequencyOptimisation = Tweakable("SampleFrequencyOptimisation", true);
 
         LightingResolveContext lightingResolveContext(mainTargets);
         const unsigned samplingCount = lightingResolveContext.GetSamplingCount();
         const bool useMsaaSamplers = lightingResolveContext.UseMsaaSamplers();
+
+        bool precisionTargets = Tweakable("PrecisionTargets", false);
+        auto sampling = TextureSamples::Create(
+            uint8(std::max(mainTargets.GetQualitySettings()._samplingCount, 1u)), 
+            uint8(mainTargets.GetQualitySettings()._samplingQuality));
 
         auto& resolveRes = Techniques::FindCachedBoxDep2<LightingResolveResources>(samplingCount);
 
@@ -292,10 +359,10 @@ namespace SceneEngine
 #endif
 
         {
-            Metal::GPUProfiler::DebugAnnotation anno(context, L"Prepare");
+            Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Prepare");
             for (auto i=parserContext._plugins.cbegin(); i!=parserContext._plugins.cend(); ++i) {
                 CATCH_ASSETS_BEGIN
-                    (*i)->OnLightingResolvePrepare(context, parserContext, lightingResolveContext);
+                    (*i)->OnLightingResolvePrepare(metalContext, parserContext, lightingResolveContext);
                 CATCH_ASSETS_END(parserContext)
             }
         }
@@ -335,15 +402,24 @@ namespace SceneEngine
                 //
 
         CATCH_ASSETS_BEGIN
-            SetupStateForDeferredLightingResolve(context, mainTargets, resolveRes, doSampleFrequencyOptimisation);
-            auto resourceBindRes = LightingParser_BindLightResolveResources(context, parserContext);
+            SetupStateForDeferredLightingResolve(metalContext, mainTargets, resolveRes, doSampleFrequencyOptimisation);
+            auto resourceBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext);
 
-            context.BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
-            context.BindPS(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
+            metalContext.BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
+            metalContext.BindPS(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
 
                 // note -- if we do ambient first, we can avoid this clear (by rendering the ambient opaque)
             // float clearColour[] = { 0.f, 0.f, 0.f, 1.f };
             // context.Clear(lightingResTargets._lightingResolveRTV, clearColour);
+
+            auto& fbDescBox = Techniques::FindCachedBox2<ResolveFBDescBox>(sampling, mainTargets.GetGBufferType(), precisionTargets);
+
+            Metal::RenderPassInstance rpi(
+                metalContext,
+                fbDescBox._resolveLighting,
+                FrameBufferProperties{mainTargets.GetQualitySettings()._dimensions[0], mainTargets.GetQualitySettings()._dimensions[1]},
+                0u, mainTargets.GetFrameBufferCache(),
+                RenderPassBeginDesc{});
                        
             const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;
             for (unsigned c=0; c<passCount; ++c) {
@@ -352,10 +428,10 @@ namespace SceneEngine
 
                     // -------- -------- -------- -------- -------- --------
 
-                ResolveLights(context, parserContext, lightingResolveContext);
+                ResolveLights(metalContext, parserContext, lightingResolveContext);
 
                 CATCH_ASSETS_BEGIN
-                    Metal::GPUProfiler::DebugAnnotation anno(context, L"Ambient");
+                    Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Ambient");
 
                     auto globalLightDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
 
@@ -370,7 +446,7 @@ namespace SceneEngine
                             resourceBindRes._skyTextureProjection, resourceBindRes._hasDiffuseIBL && resourceBindRes._hasSpecularIBL,
                             globalLightDesc._doRangeFog, Tweakable("IBLRef", false));
 
-                    Metal::ViewportDesc vdesc(context);
+                    Metal::ViewportDesc vdesc(metalContext);
                     struct AmbientResolveCBuffer
                     {
                         ShaderLightDesc::Ambient light;
@@ -384,7 +460,7 @@ namespace SceneEngine
 
                     auto ambientLightPacket = MakeSharedPkt(ambientcbuffer);
                     ambientResolveShaders._ambientLightUniforms->Apply(
-                        context, parserContext.GetGlobalUniformsStream(),
+                        metalContext, parserContext.GetGlobalUniformsStream(),
                         Metal::UniformsStream(&ambientLightPacket, nullptr, 1));
 
                     #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
@@ -402,8 +478,8 @@ namespace SceneEngine
                             lightingResTargets._lightingResolveCopySRV));
                     #endif
 
-                    context.Bind(*ambientResolveShaders._ambientLight);
-                    context.Draw(4);
+                    metalContext.Bind(*ambientResolveShaders._ambientLight);
+                    metalContext.Draw(4);
                 CATCH_ASSETS_END(parserContext)
 
                     //-------- do sky --------
@@ -428,7 +504,7 @@ namespace SceneEngine
 
                 for (auto i=lightingResolveContext._queuedResolveFunctions.cbegin();
                     i!=lightingResolveContext._queuedResolveFunctions.cend(); ++i) {
-                    (*i)(&context, parserContext, lightingResolveContext, c);
+                    (*i)(&metalContext, parserContext, lightingResolveContext, c);
                 }
 
                     // -------- -------- -------- -------- -------- --------
@@ -436,13 +512,12 @@ namespace SceneEngine
             }
         CATCH_ASSETS_END(parserContext)
 
-        context.UnbindPS<Metal::ShaderResourceView>(0, 9);
+        metalContext.UnbindPS<Metal::ShaderResourceView>(0, 9);
 
             // reset some of the states to more common defaults...
-        context.Bind(Techniques::CommonResources()._defaultRasterizer);
-        context.Bind(Techniques::CommonResources()._dssReadWrite);
+        metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);
+        metalContext.Bind(Techniques::CommonResources()._dssReadWrite);
         
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         // note -- we need to change the frame buffer desc if any of these are enabled
         // because the gbuffer needs to be retained and read from in a debugging phase
         auto debugging = Tweakable("DeferredDebugging", 0);
@@ -459,7 +534,7 @@ namespace SceneEngine
         if (Tweakable("LightResolveDebugging", false)) {
                 // we use the lamdba to store a copy of lightingResolveContext
             parserContext._pendingOverlays.push_back(
-                [&mainTargets, lightingResolveContext, &lightingResTargets, &resolveRes, doSampleFrequencyOptimisation](RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext)
+                [&mainTargets, lightingResolveContext, &resolveRes, doSampleFrequencyOptimisation](RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext)
                 {
                     SavedTargets savedTargets(context);
                     auto restoreMarker = savedTargets.MakeResetMarker(context);
@@ -472,22 +547,24 @@ namespace SceneEngine
                     context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
                     context.Bind(Techniques::CommonResources()._dssDisable);
                     context.BindPS(MakeResourceList(
-                        mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2], 
-                        Metal::ShaderResourceView(), mainTargets._msaaDepthBufferSRV));
+                        mainTargets.GetSRV(IMainTargets::GBufferDiffuse),
+                        mainTargets.GetSRV(IMainTargets::GBufferNormals),
+                        mainTargets.GetSRV(IMainTargets::GBufferParameters),
+                        Metal::ShaderResourceView(), 
+                        mainTargets.GetSRV(IMainTargets::MultisampledDepth)));
 
                     LightingParser_BindLightResolveResources(context, parserContext);
 
                     context.BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
                     context.BindPS(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
 
-                    ResolveLights(context, parserContext, mainTargets, lightingResolveContext, true);
+                    ResolveLights(context, parserContext, lightingResolveContext, true);
 
                     context.UnbindPS<Metal::ShaderResourceView>(0, 9);
                     context.Bind(Techniques::CommonResources()._defaultRasterizer);
                     context.Bind(Techniques::CommonResources()._dssReadWrite);
                 });
         }
-#endif
     }
 
     static void ResolveLights(  Metal::DeviceContext& context,
@@ -661,7 +738,7 @@ namespace SceneEngine
     auto            LightingResolveContext::GetCurrentPass() const -> Pass::Enum { return _pass; }
     bool            LightingResolveContext::UseMsaaSamplers() const     { return _useMsaaSamplers; }
     unsigned        LightingResolveContext::GetSamplingCount() const    { return _samplingCount; }
-    MainTargets&    LightingResolveContext::GetMainTargets() const      { return *_mainTargets; }
+    IMainTargets&   LightingResolveContext::GetMainTargets() const      { return *_mainTargets; }
     void            LightingResolveContext::AppendResolve(std::function<ResolveFn>&& fn) 
     {
             // It's not safe to all this function after the "prepare" step
@@ -673,7 +750,7 @@ namespace SceneEngine
     }
     void            LightingResolveContext::SetPass(Pass::Enum newPass) { _pass = newPass; }
 
-    LightingResolveContext::LightingResolveContext(MainTargets& mainTargets)
+    LightingResolveContext::LightingResolveContext(IMainTargets& mainTargets)
     : _mainTargets(&mainTargets)
     , _pass(Pass::Prepare)
     {

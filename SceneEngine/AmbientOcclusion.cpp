@@ -191,8 +191,8 @@ namespace SceneEngine
     void AmbientOcclusion_Render(   Metal::DeviceContext* context,
                                     LightingParserContext& parserContext,
                                     AmbientOcclusionResources& resources,
-                                    Metal::ShaderResourceView& depthBuffer,
-                                    Metal::ShaderResourceView* normalsBuffer,
+                                    const Metal::ShaderResourceView& depthBuffer,
+                                    const Metal::ShaderResourceView* normalsBuffer,
                                     const Metal::ViewportDesc& mainViewport)
     {
             // Not working for orthogonal projection matrices
@@ -304,7 +304,7 @@ namespace SceneEngine
     void AmbientOcclusion_Render(
         DeviceContext*,
         LightingParserContext&, AmbientOcclusionResources&,
-        ShaderResourceView&, ShaderResourceView*,
+        const ShaderResourceView&, const ShaderResourceView*,
         const ViewportDesc&)
     {
     }

@@ -64,8 +64,8 @@ namespace SceneEngine
     void AmbientOcclusion_Render(   RenderCore::Metal::DeviceContext* context,
                                     LightingParserContext& parserContext,
                                     AmbientOcclusionResources& resources,
-                                    RenderCore::Metal::ShaderResourceView& depthBuffer,
-                                    RenderCore::Metal::ShaderResourceView* normalsBuffer,
+                                    const RenderCore::Metal::ShaderResourceView& depthBuffer,
+                                    const RenderCore::Metal::ShaderResourceView* normalsBuffer,
                                     const RenderCore::Metal::ViewportDesc& mainViewport);
     /// @}
 }

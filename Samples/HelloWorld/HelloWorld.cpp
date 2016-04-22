@@ -229,7 +229,7 @@ namespace Sample
         scene->PrepareFrame(metalContext.get());
 
         using namespace SceneEngine;
-        auto viewContext = presentationChain->GetViewportContext();
+        auto viewContext = presentationChain->GetDesc();
 
             //  Execute the lighting parser!
             //      This is where most rendering actually happens.

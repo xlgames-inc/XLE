@@ -64,19 +64,19 @@ namespace RenderCore
     {
     public:
         static const AttachmentDesc::Name Unused = ~0u;
-        IteratorRange<const AttachmentDesc::Name*> _output;
+        std::vector<AttachmentDesc::Name> _output;
         AttachmentDesc::Name _depthStencil;
-        IteratorRange<const AttachmentDesc::Name*> _input;
-        IteratorRange<const AttachmentDesc::Name*> _preserve;
-        IteratorRange<const AttachmentDesc::Name*> _resolve;
+        std::vector<AttachmentDesc::Name> _input;
+        std::vector<AttachmentDesc::Name> _preserve;
+        std::vector<AttachmentDesc::Name> _resolve;
 
         SubpassDesc();
         SubpassDesc(
-            std::initializer_list<AttachmentDesc::Name> output,
+            IteratorRange<const AttachmentDesc::Name*> output,
             unsigned depthStencil = Unused,
-            std::initializer_list<AttachmentDesc::Name> input = {}, 
-            std::initializer_list<AttachmentDesc::Name> preserve = {},
-            std::initializer_list<AttachmentDesc::Name> resolve = {});
+            IteratorRange<const AttachmentDesc::Name*> input = {}, 
+            IteratorRange<const AttachmentDesc::Name*> preserve = {},
+            IteratorRange<const AttachmentDesc::Name*> resolve = {});
     };
 
     class FrameBufferDesc
@@ -88,8 +88,8 @@ namespace RenderCore
         uint64                                  GetHash() const         { return _hash; }
 
 		FrameBufferDesc(
-            IteratorRange<AttachmentDesc*> attachments,
-            IteratorRange<SubpassDesc*> subpasses,
+            IteratorRange<const AttachmentDesc*> attachments,
+            IteratorRange<const SubpassDesc*> subpasses,
             const TextureSamples& samples);
 		FrameBufferDesc();
 		~FrameBufferDesc();

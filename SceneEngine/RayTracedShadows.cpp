@@ -294,7 +294,7 @@ namespace SceneEngine
 
     void RTShadows_DrawMetrics(
         RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext, MainTargetsBox& mainTargets)
+        LightingParserContext& parserContext, IMainTargets& mainTargets)
     {
         SavedTargets savedTargets(context);
         auto restoreMarker = savedTargets.MakeResetMarker(context);
@@ -303,8 +303,8 @@ namespace SceneEngine
         context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
 #endif
 
-        context.BindPS(MakeResourceList(5, mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2], mainTargets._msaaDepthBufferSRV));
-        const bool useMsaaSamplers = mainTargets._desc._sampling._sampleCount > 1;
+        context.BindPS(MakeResourceList(5, mainTargets.GetSRV(IMainTargets::GBufferDiffuse), mainTargets.GetSRV(IMainTargets::GBufferNormals), mainTargets.GetSRV(IMainTargets::GBufferParameters), mainTargets.GetSRV(IMainTargets::MultisampledDepth)));
+        const bool useMsaaSamplers = mainTargets.GetSampling()._sampleCount > 1;
 
         StringMeld<256> defines;
         defines << "SHADOW_CASCADE_MODE=2";
@@ -325,7 +325,7 @@ namespace SceneEngine
 
         for (const auto& p:parserContext._preparedRTShadows) {
             const Metal::ShaderResourceView* srvs[] = 
-                { &p.second._listHeadSRV, &p.second._linkedListsSRV, &p.second._trianglesSRV, &mainTargets._msaaDepthBufferSRV };
+                { &p.second._listHeadSRV, &p.second._linkedListsSRV, &p.second._trianglesSRV, &mainTargets.GetSRV(IMainTargets::MultisampledDepth) };
 
             SharedPkt constants[2];
             const Metal::ConstantBuffer* prebuiltConstants[2] = {nullptr, nullptr};

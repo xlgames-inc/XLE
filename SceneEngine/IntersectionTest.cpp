@@ -377,7 +377,7 @@ namespace SceneEngine
     IntersectionTestContext::IntersectionTestContext(
         std::shared_ptr<RenderCore::IThreadContext> threadContext,
         const RenderCore::Techniques::CameraDesc& cameraDesc,
-        std::shared_ptr<RenderCore::ViewportContext> viewportContext,
+        std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
     : _threadContext(threadContext)
     , _cameraDesc(cameraDesc)
@@ -388,7 +388,7 @@ namespace SceneEngine
     IntersectionTestContext::IntersectionTestContext(
         std::shared_ptr<RenderCore::IThreadContext> threadContext,
         std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
-        std::shared_ptr<RenderCore::ViewportContext> viewportContext,
+        std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
     : _threadContext(threadContext)
     , _sceneParser(sceneParser)

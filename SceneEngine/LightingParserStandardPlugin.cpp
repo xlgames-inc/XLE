@@ -41,7 +41,7 @@ namespace SceneEngine
         resolveContext._tiledLightingResult = 
             TiledLighting_CalculateLighting(
                 &context, parserContext,
-                resolveContext.GetMainTargets()._msaaDepthBufferSRV, resolveContext.GetMainTargets()._gbufferRTVsSRV[1]);
+                resolveContext.GetMainTargets().GetSRV(IMainTargets::MultisampledDepth), resolveContext.GetMainTargets().GetSRV(IMainTargets::GBufferNormals));
     }
 
     static void AmbientOcclusion_Prepare(   DeviceContext& context,
@@ -52,10 +52,10 @@ namespace SceneEngine
             const bool useNormals = Tweakable("AO_UseNormals", true);
             auto& mainTargets = resolveContext.GetMainTargets();
             auto& aoRes = Techniques::FindCachedBox2<AmbientOcclusionResources>(
-                mainTargets._desc._width, mainTargets._desc._height, Format::R8_UNORM,
+                mainTargets.GetDimensions()[0], mainTargets.GetDimensions()[1], Format::R8_UNORM,
                 useNormals, (useNormals && resolveContext.GetSamplingCount() > 1)?Format::R8G8B8A8_SNORM:Format::Unknown);
             ViewportDesc mainViewportDesc(context);
-            AmbientOcclusion_Render(&context, parserContext, aoRes, mainTargets._msaaDepthBufferSRV, &mainTargets._gbufferRTVsSRV[1], mainViewportDesc);
+            AmbientOcclusion_Render(&context, parserContext, aoRes, mainTargets.GetSRV(IMainTargets::MultisampledDepth), &mainTargets.GetSRV(IMainTargets::GBufferNormals), mainViewportDesc);
             resolveContext._ambientOcclusionResult = aoRes._aoSRV;
         }
     }
@@ -68,9 +68,9 @@ namespace SceneEngine
             auto& mainTargets = resolveContext.GetMainTargets();
             resolveContext._screenSpaceReflectionsResult = ScreenSpaceReflections_BuildTextures(
                 context, parserContext,
-                unsigned(mainTargets._desc._width), unsigned(mainTargets._desc._height), resolveContext.UseMsaaSamplers(),
-                mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2],
-                mainTargets._msaaDepthBufferSRV);
+                unsigned(mainTargets.GetDimensions()[0]), unsigned(mainTargets.GetDimensions()[1]), resolveContext.UseMsaaSamplers(),
+                mainTargets.GetSRV(IMainTargets::GBufferDiffuse), mainTargets.GetSRV(IMainTargets::GBufferNormals), mainTargets.GetSRV(IMainTargets::GBufferParameters),
+                mainTargets.GetSRV(IMainTargets::MultisampledDepth));
         }
     }
 

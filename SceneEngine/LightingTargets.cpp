@@ -22,7 +22,7 @@
 
 namespace SceneEngine
 {
-
+#if 0
     MainTargetsBox::Desc::Desc( unsigned width, unsigned height, 
                                 const FormatStack& diffuseFormat, const FormatStack& normalFormat, 
                                 const FormatStack& parametersFormat, const FormatStack& depthFormat,
@@ -191,6 +191,7 @@ namespace SceneEngine
     LightingResolveTextureBox::~LightingResolveTextureBox()
     {
     }
+#endif
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -486,7 +487,7 @@ namespace SceneEngine
 
 
     #if defined(_DEBUG)
-        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, MainTargetsBox& mainTargets)
+        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, IMainTargets& mainTargets)
         {
             #if 0
                 using namespace BufferUploads;
@@ -517,7 +518,7 @@ namespace SceneEngine
     #endif
 
 
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, MainTargetsBox& mainTargets, unsigned debuggingType)
+    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, IMainTargets& mainTargets, unsigned debuggingType)
     {
         using namespace RenderCore;
 
@@ -525,7 +526,7 @@ namespace SceneEngine
         if (debuggingType == 2)
             ps = "game/xleres/deferred/debugging.psh:GenericDebugging:!ps_*";
 
-        const bool useMsaaSamplers = mainTargets._desc._sampling._sampleCount > 1;
+        const bool useMsaaSamplers = mainTargets.GetSampling()._sampleCount > 1;
         StringMeld<256> meld;
         meld << useMsaaSamplers?"MSAA_SAMPLERS=1":"";
         bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
@@ -546,7 +547,7 @@ namespace SceneEngine
             context.Bind(debuggingShader);
         }
 
-        context.BindPS(MakeResourceList(5, mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2], mainTargets._msaaDepthBufferSRV));
+        context.BindPS(MakeResourceList(5, mainTargets.GetSRV(IMainTargets::GBufferDiffuse), mainTargets.GetSRV(IMainTargets::GBufferNormals), mainTargets.GetSRV(IMainTargets::GBufferParameters), mainTargets.GetSRV(IMainTargets::MultisampledDepth)));
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         SetupVertexGeneratorShader(context);
         context.Draw(4);

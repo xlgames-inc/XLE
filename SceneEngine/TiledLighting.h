@@ -15,8 +15,8 @@ namespace SceneEngine
     RenderCore::Metal::ShaderResourceView TiledLighting_CalculateLighting(
         RenderCore::Metal::DeviceContext* context, 
         LightingParserContext& lightingParserContext,
-        RenderCore::Metal::ShaderResourceView& depthsSRV, 
-        RenderCore::Metal::ShaderResourceView& normalsSRV);
+        const RenderCore::Metal::ShaderResourceView& depthsSRV, 
+        const RenderCore::Metal::ShaderResourceView& normalsSRV);
 
     void TiledLighting_RenderBeamsDebugging(  
         RenderCore::Metal::DeviceContext* context, 

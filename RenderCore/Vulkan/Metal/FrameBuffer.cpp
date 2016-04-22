@@ -260,9 +260,9 @@ namespace RenderCore { namespace Metal_Vulkan
         {
             std::vector<SubpassDep> outputDeps;
             const auto& finalSubpass = subpasses[subpasses.size()-1];
-            BuildOutputDeps(outputDeps, finalSubpass._output, attachments, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-            BuildOutputDeps(outputDeps, finalSubpass._preserve, attachments, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-            BuildOutputDeps(outputDeps, finalSubpass._resolve, attachments, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+            BuildOutputDeps(outputDeps, MakeIteratorRange(finalSubpass._output), attachments, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+            BuildOutputDeps(outputDeps, MakeIteratorRange(finalSubpass._preserve), attachments, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+            BuildOutputDeps(outputDeps, MakeIteratorRange(finalSubpass._resolve), attachments, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
             if (finalSubpass._depthStencil != SubpassDesc::Unused)
                 BuildOutputDeps(
                     outputDeps, 
@@ -458,7 +458,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 result |= unsigned(Internal::AttachmentUsage::Input);
 
             auto o = std::find(s._output.begin(), s._output.end(), attachment);
-            if (o != s._input.end()) 
+            if (o != s._output.end()) 
                 result |= unsigned(Internal::AttachmentUsage::Output);
 
             if (s._depthStencil == attachment)

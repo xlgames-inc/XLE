@@ -15,10 +15,10 @@ namespace SceneEngine
         ScreenSpaceReflections_BuildTextures(  RenderCore::Metal::DeviceContext* context, 
                                                 LightingParserContext& parserContext,
                                                 unsigned width, unsigned height, bool useMsaaSamplers, 
-                                                RenderCore::Metal::ShaderResourceView& gbufferDiffuse,
-                                                RenderCore::Metal::ShaderResourceView& gbufferNormals,
-                                                RenderCore::Metal::ShaderResourceView& gbufferParam,
-                                                RenderCore::Metal::ShaderResourceView& depthsSRV);
+                                                const RenderCore::Metal::ShaderResourceView& gbufferDiffuse,
+                                                const RenderCore::Metal::ShaderResourceView& gbufferNormals,
+                                                const RenderCore::Metal::ShaderResourceView& gbufferParam,
+                                                const RenderCore::Metal::ShaderResourceView& depthsSRV);
 }
 
 

@@ -151,7 +151,7 @@ namespace SceneEngine
     RenderCore::Metal::ShaderResourceView TiledLighting_CalculateLighting(
         RenderCore::Metal::DeviceContext* context, 
         LightingParserContext& lightingParserContext,
-        Metal::ShaderResourceView& depthsSRV, Metal::ShaderResourceView& normalsSRV)
+        const Metal::ShaderResourceView& depthsSRV, const Metal::ShaderResourceView& normalsSRV)
     {
         const bool doTiledRenderingTest             = Tweakable("DoTileRenderingTest", false);
         const bool doClusteredRenderingTest         = Tweakable("TileClustering", true);

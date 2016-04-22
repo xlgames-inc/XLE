@@ -11,11 +11,14 @@
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Vulkan/Metal/FrameBuffer.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 
 namespace SceneEngine
 {
+    class RenderingQualitySettings;
+
     class IMainTargets
     {
     public:
@@ -29,8 +32,11 @@ namespace SceneEngine
 
         using SRV = RenderCore::Metal::ShaderResourceView;
 
-        virtual unsigned        GetGBufferType() const = 0;
-        virtual RenderCore::TextureSamples GetSampling() const = 0;
+        virtual unsigned                        GetGBufferType() const = 0;
+        virtual RenderCore::TextureSamples      GetSampling() const = 0;
+        virtual const RenderingQualitySettings& GetQualitySettings() const = 0;
+        virtual RenderCore::Metal::FrameBufferCache& GetFrameBufferCache();
+        virtual VectorPattern<unsigned, 2>      GetDimensions() const = 0;
 
         virtual const SRV&      GetSRV(Name) const = 0;
     };
@@ -194,11 +200,11 @@ namespace SceneEngine
 
  
     #if defined(_DEBUG)
-        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, MainTargets& mainTargets);
+        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, IMainTargets& mainTargets);
     #endif
 
     class LightingParserContext;
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, MainTargets& mainTargets, unsigned debuggingType);
+    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, IMainTargets& mainTargets, unsigned debuggingType);
 
 }
 

@@ -17,11 +17,11 @@ namespace RenderCore
     }
 
     SubpassDesc::SubpassDesc(
-        std::initializer_list<AttachmentDesc::Name> output,
+        IteratorRange<const AttachmentDesc::Name*> output,
         unsigned depthStencil,
-        std::initializer_list<AttachmentDesc::Name> input, 
-        std::initializer_list<AttachmentDesc::Name> preserve,
-        std::initializer_list<AttachmentDesc::Name> resolve)
+        IteratorRange<const AttachmentDesc::Name*> input, 
+        IteratorRange<const AttachmentDesc::Name*> preserve,
+        IteratorRange<const AttachmentDesc::Name*> resolve)
     : _input(input.begin(), input.end())
     , _output(output.begin(), output.end())
     , _depthStencil(depthStencil)
@@ -31,8 +31,8 @@ namespace RenderCore
     }
 
     FrameBufferDesc::FrameBufferDesc(
-        IteratorRange<AttachmentDesc*> attachments,
-        IteratorRange<SubpassDesc*> subpasses,
+        IteratorRange<const AttachmentDesc*> attachments,
+        IteratorRange<const SubpassDesc*> subpasses,
         const TextureSamples& samples)
     : _attachments(attachments.begin(), attachments.end())
     , _subpasses(subpasses.begin(), subpasses.end())

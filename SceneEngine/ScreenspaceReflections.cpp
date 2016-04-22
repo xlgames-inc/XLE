@@ -276,10 +276,10 @@ namespace SceneEngine
         ScreenSpaceReflections_BuildTextures(   Metal::DeviceContext* context, 
                                                 LightingParserContext& parserContext,
                                                 unsigned width, unsigned height, bool useMsaaSamplers, 
-                                                Metal::ShaderResourceView& gbufferDiffuse,
-                                                Metal::ShaderResourceView& gbufferNormals,
-                                                Metal::ShaderResourceView& gbufferParam,
-                                                Metal::ShaderResourceView& depthsSRV)
+                                                const Metal::ShaderResourceView& gbufferDiffuse,
+                                                const Metal::ShaderResourceView& gbufferNormals,
+                                                const Metal::ShaderResourceView& gbufferParam,
+                                                const Metal::ShaderResourceView& depthsSRV)
     {
             //
             //      Build textures and resources related to screen space textures
