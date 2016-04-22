@@ -102,17 +102,189 @@ namespace RenderCore { namespace Metal_Vulkan
         return comp == FormatComponents::Depth || comp == FormatComponents::DepthStencil;
     }
 
-    static VkImageLayout AsShaderReadLayout(VkImageLayout layout)
+    // static VkImageLayout AsShaderReadLayout(VkImageLayout layout)
+    // {
+    //     switch (layout)
+    //     {
+    //     case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+    //         return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    //     case VK_IMAGE_LAYOUT_GENERAL:
+    //         return VK_IMAGE_LAYOUT_GENERAL;
+    //     default:
+    //         return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    //     }
+    // }
+
+    static VkImageLayout AsShaderReadLayout(Format format)
     {
-        switch (layout)
-        {
-        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+        if (IsDepthStencilFormat(format))
             return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-        case VK_IMAGE_LAYOUT_GENERAL:
-            return VK_IMAGE_LAYOUT_GENERAL;
-        default:
-            return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+
+    static unsigned FindAttachmentIndex(IteratorRange<const AttachmentDesc*> attachments, AttachmentDesc::Name name)
+    {
+        auto i = std::find_if(
+            attachments.begin(), attachments.end(), 
+            [name](const AttachmentDesc& desc) { return desc._name == name; });
+        if (i != attachments.end())
+            return (unsigned)std::distance(attachments.begin(), i);
+        return ~0u;
+    }
+
+    struct SubpassDep
+    {
+        unsigned                _srcSubpassIndex;
+        AttachmentDesc::Name    _attachment;
+        VkAccessFlags           _srcAccessFlags;
+        VkAccessFlags           _dstAccessFlags;
+
+        static bool Compare(const SubpassDep& lhs, const SubpassDep& rhs)
+        {
+            if (lhs._srcSubpassIndex < rhs._srcSubpassIndex) return true;
+            if (lhs._srcSubpassIndex > rhs._srcSubpassIndex) return false;
+            if (lhs._attachment < rhs._attachment) return true;
+            if (lhs._attachment > rhs._attachment) return false;
+            return lhs._srcAccessFlags < rhs._srcAccessFlags;
         }
+    };
+
+    static SubpassDep FindWriter(IteratorRange<const SubpassDesc*> subpasses, AttachmentDesc::Name attachment)
+    {
+        // Here, we return VK_SUBPASS_EXTERNAL when we cannot find the attachment (meaning that it might be written
+        // by something outside of the render pass)
+        if (subpasses.empty()) return { VK_SUBPASS_EXTERNAL, attachment, 0, 0 };
+        for (int i=int(subpasses.size()-1); i>=0; --i) {
+            auto& p = subpasses[i];
+            // Is "attachment" listed amongst the output attachments?
+            for (auto q:p._output) {
+                if (q == attachment) return SubpassDep { i, attachment, (VkAccessFlags)VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0 };
+            }
+            for (auto q:p._resolve) {
+                if (q == attachment) return { i, attachment, (VkAccessFlags)VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0 };
+            }
+            if (p._depthStencil == attachment) return { i, attachment, (VkAccessFlags)VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 0 };
+        }
+        return { VK_SUBPASS_EXTERNAL, attachment, 0 };
+    }
+
+    static bool IsRetained(AttachmentDesc::LoadStore loadStore)
+    {
+        return  loadStore == AttachmentDesc::LoadStore::Retain
+            ||  loadStore == AttachmentDesc::LoadStore::Retain_RetainStencil
+            ||  loadStore == AttachmentDesc::LoadStore::Retain_ClearStencil
+            ||  loadStore == AttachmentDesc::LoadStore::DontCare_RetainStencil
+            ||  loadStore == AttachmentDesc::LoadStore::Clear_RetainStencil;
+    }
+
+    static void BuildOutputDeps(
+        std::vector<SubpassDep>& result,
+        IteratorRange<const AttachmentDesc::Name*> attachmentsToTest,
+        IteratorRange<const AttachmentDesc*> attachments,
+        VkAccessFlags srcAccessFlags)
+    {
+        for (auto ai:attachmentsToTest) {
+            auto a = std::find_if(
+                attachments.begin(), attachments.end(),
+                [ai](const AttachmentDesc& adesc) { return adesc._name == ai; });
+            if (a == attachments.end()) { assert(0); continue; }   // couldn't find it?
+
+            bool isRetainStore = IsRetained(a->_storeToNextPhase);
+            if (!isRetainStore) continue;
+
+            VkAccessFlags dstAccessFlags = 0;
+            if (a->_flags & AttachmentDesc::Flags::ShaderResource)
+                dstAccessFlags |= VK_ACCESS_SHADER_READ_BIT;
+            if (a->_flags & AttachmentDesc::Flags::TransferSource)
+                dstAccessFlags |= VK_ACCESS_TRANSFER_READ_BIT;
+            if (!dstAccessFlags) continue;
+
+            result.push_back(SubpassDep{0, ai, srcAccessFlags, dstAccessFlags});
+        }
+    }
+
+    static std::vector<VkSubpassDependency> CalculateDependencies(const FrameBufferDesc& layout)
+    {
+        const auto& subpasses = layout.GetSubpasses();
+        const auto& attachments = layout.GetAttachments();
+
+        if (subpasses.empty())
+            return std::vector<VkSubpassDependency>();
+
+        // We must manually go through and detect dependencies between sub passes.
+        // For every input attachment, there must be a dependency on the last subpass that wrote to it.
+        // For an output attachment do we also need a dependency on the last subpass that reads from it or writes to it?
+        // Let's ignore cases like 2 separate subpasses writing to the same attachment, that is later read by another subpass
+        std::vector<VkSubpassDependency> result;
+        for (unsigned c=0;c<unsigned(subpasses.size()); ++c) {
+            // Check each input dependency, and look for previous subpasses that wrote to it
+            std::vector<SubpassDep> dependencies;
+            const auto& subpass = subpasses[c];
+            for (unsigned i=0;i<(unsigned)subpass._input.size(); ++i)
+                dependencies.push_back(
+                    FindWriter(MakeIteratorRange(subpasses.begin(), subpasses.begin()+c), subpass._input[i]));
+
+            std::sort(dependencies.begin(), dependencies.end(), SubpassDep::Compare);
+            auto newEnd = std::unique(dependencies.begin(), dependencies.end(), SubpassDep::Compare);
+            
+            // for each of these dependencies, create a VkSubpassDependency
+            
+            for (auto d=dependencies.begin(); d!=newEnd; ++d) {
+                // note --  we actually need to know the last write to the resource in
+                //          order to calculate "srcStageMask". We might need to add some flags
+                //          in the input to handle this case for external dependencies.
+                auto srcAccessFlags = d->_srcAccessFlags;
+                if (!srcAccessFlags) {
+                    // find the particular attachment and look for flags
+                    auto a = std::find_if(
+                        attachments.begin(), attachments.end(),
+                        [d](const AttachmentDesc& adesc) { return adesc._name == d->_attachment; });
+                    if (a != attachments.end()) {
+                        srcAccessFlags = IsDepthStencilFormat(a->_format)
+                            ?VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                    } else 
+                        srcAccessFlags = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;  // (just assume color attachment write)
+                }
+
+                result.push_back(
+                    VkSubpassDependency {
+                        d->_srcSubpassIndex, c, 
+                        d->_srcAccessFlags, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+                        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        0});
+            }
+        }
+
+        // We must also generate "output" dependencies for any resources that are written or preserved by the final subpass
+        // this is only required for resources that might be used by future render passes (or in some other fashion)
+        {
+            std::vector<SubpassDep> outputDeps;
+            const auto& finalSubpass = subpasses[subpasses.size()-1];
+            BuildOutputDeps(outputDeps, finalSubpass._output, attachments, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+            BuildOutputDeps(outputDeps, finalSubpass._preserve, attachments, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+            BuildOutputDeps(outputDeps, finalSubpass._resolve, attachments, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+            if (finalSubpass._depthStencil != SubpassDesc::Unused)
+                BuildOutputDeps(
+                    outputDeps, 
+                    MakeIteratorRange(&finalSubpass._depthStencil, &finalSubpass._depthStencil + 1),
+                    attachments, 
+                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+        
+            std::sort(outputDeps.begin(), outputDeps.end(), SubpassDep::Compare);
+            auto newEnd = std::unique(outputDeps.begin(), outputDeps.end(), SubpassDep::Compare);
+            
+            // for each of these dependencies, create a VkSubpassDependency
+            
+            for (auto d=outputDeps.begin(); d!=newEnd; ++d)
+                result.push_back(
+                    VkSubpassDependency {
+                        d->_srcSubpassIndex, VK_SUBPASS_EXTERNAL, 
+                        d->_srcAccessFlags, d->_dstAccessFlags,
+                        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        0});
+        }
+
+        return result;
     }
 
     VulkanUniquePtr<VkRenderPass> CreateRenderPass(
@@ -146,15 +318,15 @@ namespace RenderCore { namespace Metal_Vulkan
             desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             desc.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-            if (a._flags & AttachmentDesc::Flags::UsePresentationChainBuffer) {
+            if (a._name == 0u) {
+                // we assume that name "0" is always bound to a presentable buffer
                 assert(!isDepthStencil);
-                desc.format = AsVkFormat(layout.GetOutputFormat());
-                desc.samples = AsSampleCountFlagBits(layout.GetSamples());
                 desc.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                 desc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            } else if (a._flags & AttachmentDesc::Flags::Multisampled) {
+            } 
+            
+            if (a._flags & AttachmentDesc::Flags::Multisampled)
                 desc.samples = AsSampleCountFlagBits(layout.GetSamples());
-            }
 
             // note --  do we need to set VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL or 
             //          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL as appropriate for input attachments
@@ -181,9 +353,11 @@ namespace RenderCore { namespace Metal_Vulkan
             for (auto& a:p._input) {
                 // presumably we want to shader the shader read only layout modes in these cases.
                 if (a != SubpassDesc::Unused) {
-                    assert(a < attachmentDesc.size());
-                    auto layout = AsShaderReadLayout(attachmentDesc[a].finalLayout);
-                    attachReferences.push_back(VkAttachmentReference{a, layout});
+                    auto attachmentIndex = FindAttachmentIndex(attachments, a);
+                    assert(attachmentIndex < attachmentDesc.size());
+                    // auto layout = AsShaderReadLayout(attachmentDesc[attachmentIndex].finalLayout);
+                    auto layout = AsShaderReadLayout(attachments[attachmentIndex]._format);
+                    attachReferences.push_back(VkAttachmentReference{attachmentIndex, layout});
                 } else {
                     attachReferences.push_back(VkAttachmentReference{VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_UNDEFINED});
                 }
@@ -194,9 +368,10 @@ namespace RenderCore { namespace Metal_Vulkan
             auto beforeOutputs = attachReferences.size();
             for (auto& a:p._output) {
                 if (a != SubpassDesc::Unused) {
-                    assert(a < attachmentDesc.size());
+                    auto attachmentIndex = FindAttachmentIndex(attachments, a);
+                    assert(attachmentIndex < attachmentDesc.size());
                     auto layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;        // basically should be VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL, I guess?
-                    attachReferences.push_back(VkAttachmentReference{a, layout});
+                    attachReferences.push_back(VkAttachmentReference{attachmentIndex, layout});
                 } else {
                     attachReferences.push_back(VkAttachmentReference{VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_UNDEFINED});
                 }
@@ -206,19 +381,35 @@ namespace RenderCore { namespace Metal_Vulkan
             desc.pResolveAttachments = nullptr; // not supported
 
             if (p._depthStencil != SubpassDesc::Unused) {
+                auto attachmentIndex = FindAttachmentIndex(attachments, p._depthStencil);
                 desc.pDepthStencilAttachment = (const VkAttachmentReference*)(attachReferences.size()+1);
-                attachReferences.push_back(VkAttachmentReference{p._depthStencil, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL});
+                attachReferences.push_back(VkAttachmentReference{attachmentIndex, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL});
             } else {
                 desc.pDepthStencilAttachment = nullptr;
             }
 
             auto beforePreserve = preserveAttachments.size();
             for (auto&a:p._preserve) {
-                assert(a < attachmentDesc.size());
-                preserveAttachments.push_back(a);
+                auto attachmentIndex = FindAttachmentIndex(attachments, a);
+                assert(attachmentIndex < attachmentDesc.size());
+                preserveAttachments.push_back(attachmentIndex);
             }
             desc.pPreserveAttachments = (const uint32_t*)(beforePreserve+1);
             desc.preserveAttachmentCount = uint32_t(preserveAttachments.size() - beforePreserve);
+
+            if (!p._resolve.empty()) {
+                assert(p._resolve.size() == p._output.size());
+                auto beforeResolve = attachReferences.size();
+                for (auto&a:p._resolve) {
+                    auto attachmentIndex = FindAttachmentIndex(attachments, a);
+                    assert(attachmentIndex < attachmentDesc.size());
+                    attachReferences.push_back(VkAttachmentReference{attachmentIndex, attachmentDesc[attachmentIndex].finalLayout});
+                }
+                desc.pResolveAttachments = (const VkAttachmentReference*)(beforeResolve+1);
+            } else {
+                desc.pResolveAttachments = nullptr;
+            }
+
             subpassDesc.push_back(desc);
         }
 
@@ -236,6 +427,8 @@ namespace RenderCore { namespace Metal_Vulkan
                 p.pPreserveAttachments = AsPointer(preserveAttachments.begin()) + size_t(p.pPreserveAttachments)-1;
         }
 
+        auto dependencies = CalculateDependencies(layout);
+
         VkRenderPassCreateInfo rp_info = {};
         rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         rp_info.pNext = nullptr;
@@ -243,8 +436,8 @@ namespace RenderCore { namespace Metal_Vulkan
         rp_info.pAttachments = AsPointer(attachmentDesc.begin());
         rp_info.subpassCount = (uint32_t)subpassDesc.size();
         rp_info.pSubpasses = AsPointer(subpassDesc.begin());
-        rp_info.dependencyCount = 0;
-        rp_info.pDependencies = nullptr;
+        rp_info.dependencyCount = (uint32_t)dependencies.size();
+        rp_info.pDependencies = AsPointer(dependencies.begin());
 
         return factory.CreateRenderPass(rp_info);
     }
@@ -256,19 +449,19 @@ namespace RenderCore { namespace Metal_Vulkan
             Input = 1<<0, Output = 1<<1, DepthStencil = 1<<2
         };
     }
-    static unsigned GetAttachmentUsage(const FrameBufferDesc& layout, unsigned attachmentIndex)
+    static unsigned GetAttachmentUsage(const FrameBufferDesc& layout, AttachmentDesc::Name attachment)
     {
         unsigned result = 0u;
         for (auto& s:layout.GetSubpasses()) {
-            auto i = std::find(s._input.begin(), s._input.end(), attachmentIndex);
+            auto i = std::find(s._input.begin(), s._input.end(), attachment);
             if (i != s._input.end()) 
                 result |= unsigned(Internal::AttachmentUsage::Input);
 
-            auto o = std::find(s._output.begin(), s._output.end(), attachmentIndex);
+            auto o = std::find(s._output.begin(), s._output.end(), attachment);
             if (o != s._input.end()) 
                 result |= unsigned(Internal::AttachmentUsage::Output);
 
-            if (s._depthStencil == attachmentIndex)
+            if (s._depthStencil == attachment)
                 result |= unsigned(Internal::AttachmentUsage::DepthStencil);
         }
         return result;
@@ -279,7 +472,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const FrameBufferDesc& fbDesc,
 		VkRenderPass layout,
 		const FrameBufferProperties& props,
-        const RenderTargetView* presentationChainTarget)
+        NamedResources& namedResources)
     {
         // We must create the frame buffer, including all resources and views required.
         // Here, some resources can come from the presentation chain. But other resources will
@@ -288,15 +481,15 @@ namespace RenderCore { namespace Metal_Vulkan
         _views.reserve(attachments.size());
         std::vector<VkImageView> rawViews;
         rawViews.reserve(attachments.size());
-        for (unsigned aIndex = 0; aIndex < attachments.size(); ++aIndex) {
-            const auto& a = attachments[aIndex];
+        for (const auto&a:attachments) {
 
-            // Often, we will end up binding the presentation chain image as one our our attachments
-            if (a._flags & AttachmentDesc::Flags::UsePresentationChainBuffer) {
-                if (!presentationChainTarget)
-                    Throw(::Exceptions::BasicLabel("Frame buffer layout expects a presentation chain target, but none was provided"));
-                rawViews.push_back(presentationChainTarget->GetUnderlying());
-                _views.push_back(*presentationChainTarget);
+            // First, look for an existing resource that is bound with this name.
+            const TextureView* existingView = namedResources.GetRTV(a._name);
+            if (existingView == nullptr)
+                existingView = namedResources.GetSRV(a._name);
+            if (existingView != nullptr) {
+                rawViews.push_back(existingView->GetUnderlying());
+                _views.push_back(*existingView);
                 continue;
             }
 
@@ -332,7 +525,7 @@ namespace RenderCore { namespace Metal_Vulkan
             //          "depthStencil", or "preserve" in the final subpass could be used
             //          in some other way afterwards. For example, one render pass could
             //          generate shadow textures for uses in future render passes?
-            auto usage = GetAttachmentUsage(fbDesc, aIndex);
+            auto usage = GetAttachmentUsage(fbDesc, a._name);
             if (usage & unsigned(Internal::AttachmentUsage::Input)
                 || a._flags & AttachmentDesc::Flags::ShaderResource) {
                 desc._bindFlags |= BindFlag::ShaderResource;
@@ -356,7 +549,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
             // note -- it might be handy to have a cache of "device memory" that could be reused here?
             auto image = Resource::Allocate(factory, desc);
-            TextureView view(factory, image);
+            ShaderResourceView view(factory, image);
+
+            // register in the named resources (if it's marked as a store resource, or used as input somewhere)
+            if (IsRetained(a._storeToNextPhase) || (usage & unsigned(Internal::AttachmentUsage::Input)))
+                namedResources.Bind(a._name, view);
+
             rawViews.push_back(view.GetUnderlying());
             _views.emplace_back(std::move(view));
         }
@@ -423,7 +621,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _frameBuffer = cache.BuildFrameBuffer(
             context.GetFactory(), layout, 
             renderPass,
-            props, context.GetPresentationTarget(), hashName);
+            props, context.GetNamedResources(), hashName);
         assert(_frameBuffer);
         auto ext = beginInfo._extent;
         if (ext[0] == 0 && ext[1] == 0) {
@@ -431,7 +629,7 @@ namespace RenderCore { namespace Metal_Vulkan
             ext[1] = props._outputHeight - beginInfo._offset[1];
         }
         context.BeginRenderPass(
-            renderPass, *_frameBuffer, beginInfo._offset, ext, 
+            renderPass, *_frameBuffer, layout.GetSamples(), beginInfo._offset, ext, 
             beginInfo._clearValues);
         _attachedContext = &context;
     }
@@ -454,10 +652,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		const FrameBufferDesc& desc,
 		VkRenderPass layout,
 		const FrameBufferProperties& props,
-        const RenderTargetView* presentationChainTarget,
+        NamedResources& namedResources,
         uint64 hashName)
     {
-        return std::make_shared<FrameBuffer>(factory, desc, layout, props, presentationChainTarget);
+        return std::make_shared<FrameBuffer>(factory, desc, layout, props, namedResources);
     }
 
     VkRenderPass FrameBufferCache::BuildFrameBufferLayout(
@@ -485,8 +683,56 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    
+    static const unsigned s_maxBoundTargets = 64;
 
+    class NamedResources::Pimpl
+    {
+    public:
+        ShaderResourceView  _srv[s_maxBoundTargets];
+        RenderTargetView    _rtv[s_maxBoundTargets];
+    };
+    
+    const ShaderResourceView*   NamedResources::GetSRV(AttachmentDesc::Name name) const
+    {
+        if (name >= s_maxBoundTargets) return nullptr;
+        if (!_pimpl->_srv[name].IsGood()) return nullptr;
+        return &_pimpl->_srv[name];
+    }
+
+    const RenderTargetView*     NamedResources::GetRTV(AttachmentDesc::Name name) const
+    {
+        if (name >= s_maxBoundTargets) return nullptr;
+        if (!_pimpl->_rtv[name].IsGood()) return nullptr;
+        return &_pimpl->_rtv[name];
+    }
+
+    void NamedResources::Bind(AttachmentDesc::Name name, const ShaderResourceView& srv)
+    {
+        if (name >= s_maxBoundTargets) return;
+        _pimpl->_srv[name] = srv;
+    }
+
+    void NamedResources::Bind(AttachmentDesc::Name name, const RenderTargetView& rtv)
+    {
+        if (name >= s_maxBoundTargets) return;
+        _pimpl->_rtv[name] = rtv;
+    }
+
+    void NamedResources::UnbindAll()
+    {
+        for (unsigned c=0; c<s_maxBoundTargets; ++c) {
+            _pimpl->_srv[c] = ShaderResourceView();
+            _pimpl->_rtv[c] = RenderTargetView();
+        }
+    }
+
+    NamedResources::NamedResources()
+    {
+        _pimpl = std::make_unique<Pimpl>();
+    }
+
+    NamedResources::~NamedResources()
+    {}
 
 }}
 

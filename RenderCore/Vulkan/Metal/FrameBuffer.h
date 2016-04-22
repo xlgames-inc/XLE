@@ -9,15 +9,34 @@
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
 #include "../../FrameBufferDesc.h"
+#include <memory>
 
 namespace RenderCore { enum class Format; }
 namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;
     class RenderTargetView;
+    class ShaderResourceView;
     class TextureView;
     class DeviceContext;
     
+    class NamedResources
+    {
+    public:
+        const ShaderResourceView*   GetSRV(AttachmentDesc::Name name) const;
+        const RenderTargetView*     GetRTV(AttachmentDesc::Name name) const;
+
+        void Bind(AttachmentDesc::Name name, const ShaderResourceView& srv);
+        void Bind(AttachmentDesc::Name name, const RenderTargetView& rtv);
+        void UnbindAll();
+
+        NamedResources();
+        ~NamedResources();
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
+
     class FrameBuffer
 	{
 	public:
@@ -29,7 +48,7 @@ namespace RenderCore { namespace Metal_Vulkan
             const FrameBufferDesc& desc,
 			VkRenderPass layout,
 			const FrameBufferProperties& props,
-            const RenderTargetView* presentationChainTarget);
+            NamedResources& namedResources);
 		FrameBuffer();
 		~FrameBuffer();
 	private:
@@ -52,7 +71,7 @@ namespace RenderCore { namespace Metal_Vulkan
             const FrameBufferDesc& desc,
 			VkRenderPass layout,
 			const FrameBufferProperties& props,
-            const RenderTargetView* presentationChainTarget,
+            NamedResources& namedResources,
             uint64 hashName);
 
         VkRenderPass BuildFrameBufferLayout(

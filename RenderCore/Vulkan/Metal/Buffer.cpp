@@ -13,19 +13,36 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void    Buffer::Update(DeviceContext& context, const void* data, size_t byteCount)
 	{
-        // note --  there is a problem wiht vkCmdUpdateBuffer here... It can't normally
+        // note --  there is a problem with vkCmdUpdateBuffer here... It can't normally
         //          be used during a render pass (but creating a new buffer and mapping
         //          it will work). However, creating a new buffer is still non ideal
         //          ... ideally we want to be using "push constants" for buffers that
-        //          change during the render pass (or, at least, update all of the command
-        //          buffers before the render pass!)
-        const bool useUpdateBuffer = false;
-        if (constant_expression<useUpdateBuffer>::result()) {
+        //          change during the render pass (or, at least, update all of the
+        //          buffers before the render pass!).
+        //          Probably we need to be much more strict with when we create and
+        //          push data to all buffer and image types.
+        const bool useUpdateBuffer = !context.IsInRenderPass();
+        if (useUpdateBuffer) {
 		    assert(IsGood());
             context.CmdUpdateBuffer(_underlyingBuffer.get(), 0, byteCount, data);
         } else {
             Resource updatedRes(GetObjectFactory(context), GetDesc(), SubResourceInitData{ data, byteCount });
             *(Resource*)this = std::move(updatedRes);
+
+            // We ideally need to add a memory barrier to prevent reading from this buffer 
+            // until the CPU write is completed... But we can't actually do this during a render pass!
+            // VkBufferMemoryBarrier buf_barrier = {};
+            // buf_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+            // buf_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+            // buf_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            // buf_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            // buf_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            // buf_barrier.buffer = GetUnderlying();
+            // buf_barrier.offset = 0;
+            // buf_barrier.size = VK_WHOLE_SIZE;
+            // context.CmdPipelineBarrier(
+            //     VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+            //     0, 0, nullptr, 1, &buf_barrier, 0, nullptr);
         }
 	}
 

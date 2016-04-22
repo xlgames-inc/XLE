@@ -12,6 +12,7 @@
 #include "../IDeviceVulkan.h"
 #include "../../ResourceUtils.h"
 #include "../../Format.h"
+#include "../../Utility/BitUtils.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -76,7 +77,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	VkSampleCountFlagBits AsSampleCountFlagBits(TextureSamples samples)
 	{
-		return VK_SAMPLE_COUNT_1_BIT;
+        // we just want to isolate the most significant bit. If it's already a power
+        // of two, then we can just return as is.
+        assert(IsPowerOfTwo(samples._sampleCount));
+        assert(samples._sampleCount > 0);
+        return (VkSampleCountFlagBits)samples._sampleCount;
 	}
 
 	static VkImageType AsImageType(TextureDesc::Dimensionality dims)

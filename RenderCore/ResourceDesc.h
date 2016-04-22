@@ -186,8 +186,8 @@ namespace RenderCore
         Format _format;
         TextureSamples _samples;
 
-        PresentationChainDesc() : _width(0u), _height(0u), _format(Format(0)), _samples(TextureSamples::Create(0,0)) {}
-        PresentationChainDesc(VectorPattern<unsigned, 2> dims, Format format = Format(0), TextureSamples samples = TextureSamples::Create(0,0))
+        PresentationChainDesc() : _width(0u), _height(0u), _format(Format(0)), _samples(TextureSamples::Create()) {}
+        PresentationChainDesc(VectorPattern<unsigned, 2> dims, Format format = Format(0), TextureSamples samples = TextureSamples::Create())
         : _width(dims[0]), _height(dims[1]), _format(format), _samples(samples) {}
     };
 

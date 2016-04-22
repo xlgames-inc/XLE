@@ -29,22 +29,26 @@ namespace RenderCore
 
         Format _format;
 
-        enum class LoadStore { 
-            DontCare, Retain, Clear,
-            DontCare_RetainStencil, Retain_RetainStencil, Clear_RetainStencil,
-            DontCare_ClearStencil, Retain_ClearStencil, Clear_ClearStencil
+        enum class LoadStore
+        {
+            DontCare,                   Retain,                 Clear,
+            DontCare_RetainStencil,     Retain_RetainStencil,   Clear_RetainStencil,
+            DontCare_ClearStencil,      Retain_ClearStencil,    Clear_ClearStencil
         };
         LoadStore _loadFromPreviousPhase;       ///< equivalent to "load op" in a Vulkan attachment
         LoadStore _storeToNextPhase;            ///< equivalent to "store op" in a Vulkan attachment
+
+        using Name = uint32;
+        static const Name Unnamed = ~0u;
+        Name _name;
 
         struct Flags
         {
             enum Enum
             {
-                UsePresentationChainBuffer = 1<<0,  ///< use the output buffer from the presentation chain
-                Multisampled = 1<<1,                ///< use the current multisample settings (otherwise just set to single sampled mode)
-                ShaderResource = 1<<2,              ///< allow binding as a shader resource after the render pass has finished
-                TransferSource = 1<<3               ///< allow binding as a transfer source after the render pass has finished
+                Multisampled = 1<<0,            ///< use the current multisample settings (otherwise just set to single sampled mode)
+                ShaderResource = 1<<1,          ///< allow binding as a shader resource after the render pass has finished
+                TransferSource = 1<<2           ///< allow binding as a transfer source after the render pass has finished
             };
             using BitField = unsigned;
         };
@@ -59,33 +63,34 @@ namespace RenderCore
     class SubpassDesc
     {
     public:
-        static unsigned const Unused = ~0u;
-        IteratorRange<const unsigned*> _output;
-        unsigned _depthStencil;
-        IteratorRange<const unsigned*> _input;
-        IteratorRange<const unsigned*> _preserve;
+        static const AttachmentDesc::Name Unused = ~0u;
+        IteratorRange<const AttachmentDesc::Name*> _output;
+        AttachmentDesc::Name _depthStencil;
+        IteratorRange<const AttachmentDesc::Name*> _input;
+        IteratorRange<const AttachmentDesc::Name*> _preserve;
+        IteratorRange<const AttachmentDesc::Name*> _resolve;
 
         SubpassDesc();
         SubpassDesc(
-            std::initializer_list<unsigned> output,
+            std::initializer_list<AttachmentDesc::Name> output,
             unsigned depthStencil = Unused,
-            std::initializer_list<unsigned> input = {}, 
-            std::initializer_list<unsigned> preserve = {});
+            std::initializer_list<AttachmentDesc::Name> input = {}, 
+            std::initializer_list<AttachmentDesc::Name> preserve = {},
+            std::initializer_list<AttachmentDesc::Name> resolve = {});
     };
 
     class FrameBufferDesc
 	{
 	public:
-        IteratorRange<const AttachmentDesc*> GetAttachments() const { return MakeIteratorRange(_attachments); }
-        IteratorRange<const SubpassDesc*> GetSubpasses() const      { return MakeIteratorRange(_subpasses); }
-        TextureSamples GetSamples() const                           { return _samples; }
-        Format GetOutputFormat() const                              { return _outputFormat; }
-        uint64 GetHash() const                                      { return _hash; }
+        IteratorRange<const AttachmentDesc*>    GetAttachments() const  { return MakeIteratorRange(_attachments); }
+        IteratorRange<const SubpassDesc*>       GetSubpasses() const    { return MakeIteratorRange(_subpasses); }
+        TextureSamples                          GetSamples() const      { return _samples; }
+        uint64                                  GetHash() const         { return _hash; }
 
 		FrameBufferDesc(
             IteratorRange<AttachmentDesc*> attachments,
             IteratorRange<SubpassDesc*> subpasses,
-            Format outputFormat, const TextureSamples& samples);
+            const TextureSamples& samples);
 		FrameBufferDesc();
 		~FrameBufferDesc();
 
@@ -93,7 +98,6 @@ namespace RenderCore
         std::vector<AttachmentDesc>     _attachments;
         std::vector<SubpassDesc>        _subpasses;
         TextureSamples                  _samples;
-        Format                          _outputFormat;
         uint64                          _hash;
 	};
 

@@ -16,15 +16,23 @@
 
 namespace SceneEngine
 {
-    class MainTargets
+    class IMainTargets
     {
     public:
+        using Name = uint32;
+        static const Name MultisampledDepth = 2u;
+        static const Name LightResolve = 3u;
+        static const Name GBufferDiffuse = 4u;
+        static const Name GBufferNormals = 5u;
+        static const Name GBufferParameters = 6u;
+        static const Name PostMSAALightResolve = 7u;
+
         using SRV = RenderCore::Metal::ShaderResourceView;
 
-        unsigned        GetGBufferType() const;
-        RenderCore::TextureSamples GetSampling() const;
-        const SRV&      GetGBufferSRV(unsigned index) const;
-        const SRV&      GetMainDepthsSRV() const;
+        virtual unsigned        GetGBufferType() const = 0;
+        virtual RenderCore::TextureSamples GetSampling() const = 0;
+
+        virtual const SRV&      GetSRV(Name) const = 0;
     };
 
     class LightingResolveShaders

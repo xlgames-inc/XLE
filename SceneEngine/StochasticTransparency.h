@@ -16,7 +16,7 @@ namespace SceneEngine
     class StochasticTransparencyOp
     {
     public:
-        void PrepareFirstPass(RenderCore::Metal::ShaderResourceView& mainDSV);
+        void PrepareFirstPass(const RenderCore::Metal::ShaderResourceView& mainDSV);
         void PrepareSecondPass(RenderCore::Metal::DepthStencilView& mainDSV);
         void Resolve();
 

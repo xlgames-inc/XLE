@@ -139,7 +139,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return _pipelineLayout.get(); 
     }
 
-    VulkanUniquePtr<VkPipeline> PipelineBuilder::CreatePipeline(VkRenderPass renderPass, unsigned subpass)
+    VulkanUniquePtr<VkPipeline> PipelineBuilder::CreatePipeline(VkRenderPass renderPass, unsigned subpass, TextureSamples samples)
     {
         if (!_shaderProgram) return nullptr;
 
@@ -198,7 +198,7 @@ namespace RenderCore { namespace Metal_Vulkan
         ms.pNext = nullptr;
         ms.flags = 0;
         ms.pSampleMask = nullptr;
-        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        ms.rasterizationSamples = AsSampleCountFlagBits(samples);
         ms.sampleShadingEnable = VK_FALSE;
         ms.alphaToCoverageEnable = VK_FALSE;
         ms.alphaToOneEnable = VK_FALSE;
@@ -309,7 +309,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         if (!_pipelineStale) return true;
 
-        auto pipeline = CreatePipeline(_renderPass);
+        auto pipeline = CreatePipeline(_renderPass, _renderPassSubpass, _renderPassSamples);
         if (pipeline) {
             vkCmdBindPipeline(
 			    _commandList.get(),
@@ -443,6 +443,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void        DeviceContext::BeginRenderPass(
         VkRenderPass fbLayout, const FrameBuffer& fb,
+        TextureSamples samples,
         VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
         IteratorRange<const ClearValue*> clearValues)
     {
@@ -463,12 +464,34 @@ namespace RenderCore { namespace Metal_Vulkan
 
         vkCmdBeginRenderPass(_commandList.get(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
         _renderPass = fbLayout;
+        _renderPassSamples = samples;
+        _renderPassSubpass = 0u;
+        _pipelineStale = true;
     }
 
     void DeviceContext::EndRenderPass()
     {
 		vkCmdEndRenderPass(_commandList.get());
         _renderPass = nullptr;
+        _renderPassSamples = TextureSamples::Create();
+        _renderPassSubpass = 0u;
+        _pipelineStale = true;
+    }
+
+    bool DeviceContext::IsInRenderPass() const
+    {
+        return _renderPass != nullptr;
+    }
+
+    void                        DeviceContext::SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims)
+    {
+        _namedResources.Bind(0u, *presentationTarget);
+        _presentationTargetDims = dims;
+    }
+
+    VectorPattern<unsigned,2>   DeviceContext::GetPresentationTargetDims()
+    {
+        return _presentationTargetDims;
     }
 
     void DeviceContext::SetImageLayout(
@@ -628,6 +651,28 @@ namespace RenderCore { namespace Metal_Vulkan
     void DeviceContext::CmdNextSubpass(VkSubpassContents contents)
     {
         vkCmdNextSubpass(_commandList.get(), contents);
+        _pipelineStale = true;
+        ++_renderPassSubpass;
+    }
+
+    void DeviceContext::CmdPipelineBarrier(
+        VkPipelineStageFlags            srcStageMask,
+        VkPipelineStageFlags            dstStageMask,
+        VkDependencyFlags               dependencyFlags,
+        uint32_t                        memoryBarrierCount,
+        const VkMemoryBarrier*          pMemoryBarriers,
+        uint32_t                        bufferMemoryBarrierCount,
+        const VkBufferMemoryBarrier*    pBufferMemoryBarriers,
+        uint32_t                        imageMemoryBarrierCount,
+        const VkImageMemoryBarrier*     pImageMemoryBarriers)
+    {
+        vkCmdPipelineBarrier(
+            _commandList.get(),
+            srcStageMask, dstStageMask,
+            dependencyFlags, 
+            memoryBarrierCount, pMemoryBarriers,
+            bufferMemoryBarrierCount, pBufferMemoryBarriers,
+            imageMemoryBarrierCount, pImageMemoryBarriers);
     }
 
     DeviceContext::DeviceContext(
@@ -639,9 +684,9 @@ namespace RenderCore { namespace Metal_Vulkan
     , _cmdPool(&cmdPool), _cmdBufferType(cmdBufferType)
     , _descriptorSetBuilder(factory, globalPools._mainDescriptorPool, globalPools._dummyResources)
     , _hideDescriptorSetBuilder(false)
-    , _presentationTarget(nullptr)
-    , _presentationTargetDims(0, 0)
     , _renderPass(nullptr)
+    , _renderPassSubpass(0u)
+    , _renderPassSamples(TextureSamples::Create())
     {}
 
 	void DeviceContext::PrepareForDestruction(IDevice*, IPresentationChain*) {}

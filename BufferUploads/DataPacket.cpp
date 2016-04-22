@@ -302,7 +302,7 @@ namespace BufferUploads
         desc._depth = uint32(metadata.depth);
         desc._arrayCount = uint8(metadata.arraySize);
         desc._mipCount = uint8(metadata.mipLevels);
-        desc._samples = TextureSamples();
+        desc._samples = TextureSamples::Create();
 
             // we need to use a "typeless" format for any pixel formats that can
             // cast to to SRGB or linear versions. This allows the caller to use

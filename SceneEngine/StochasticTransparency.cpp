@@ -175,7 +175,7 @@ namespace SceneEngine
         }
     }
 
-    void StochasticTransparencyOp::PrepareFirstPass(Metal::ShaderResourceView& mainDSV)
+    void StochasticTransparencyOp::PrepareFirstPass(const Metal::ShaderResourceView& mainDSV)
     {
             // Bind the resources we'll need for the initial passes
         Metal::ViewportDesc viewport(*_context);

@@ -56,7 +56,7 @@ namespace SceneEngine
     void LightingParser_ResolveGBuffer( 
         Metal::DeviceContext& context,
         LightingParserContext& parserContext,
-        MainTargets& mainTargets);
+        IMainTargets& mainTargets);
 
     class LightResolveResourcesRes
     {
@@ -220,42 +220,6 @@ namespace SceneEngine
         return projDesc;
     }
 
-    class FinalResolveResources
-    {
-    public:
-        class Desc
-        {
-        public:
-            Desc(unsigned width, unsigned height, Format format)
-                : _width(width), _height(height), _format(format) {}
-
-            unsigned    _width, _height;
-            Format      _format;
-        };
-
-        ResourcePtr         _postMsaaResolveTexture;
-        Metal::RenderTargetView    _postMsaaResolveTarget;
-        Metal::ShaderResourceView  _postMsaaResolveSRV;
-
-        FinalResolveResources(const Desc& desc);
-    };
-
-    FinalResolveResources::FinalResolveResources(const Desc& desc)
-    {
-        auto bufferUploadsDesc = BuildRenderTargetDesc(
-            BindFlag::ShaderResource|BindFlag::RenderTarget,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._format),
-            "FinalResolve");
-        auto postMsaaResolveTexture = CreateResourceImmediate(bufferUploadsDesc);
-
-        Metal::RenderTargetView postMsaaResolveTarget(postMsaaResolveTexture->ShareUnderlying());
-        Metal::ShaderResourceView postMsaaResolveSRV(postMsaaResolveTexture->ShareUnderlying());
-
-        _postMsaaResolveTexture = std::move(postMsaaResolveTexture);
-        _postMsaaResolveTarget = std::move(postMsaaResolveTarget);
-        _postMsaaResolveSRV = std::move(postMsaaResolveSRV);
-    }
-
     static void LightingParser_ResolveMSAA(
         Metal::DeviceContext& context, 
         LightingParserContext& parserContext,
@@ -413,9 +377,9 @@ namespace SceneEngine
         Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
         PreparedScene& preparedScene,
-        ForwardTargetsBox& targetsBox,
-        unsigned sampleCount)
+        IMainTargets& targets)
     {
+        const auto sampleCount = targets.GetSampling()._sampleCount;
         auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
@@ -511,14 +475,14 @@ namespace SceneEngine
         Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext,
         PreparedScene& preparedScene,
-        MainTargets& mainTargets)
+        IMainTargets& mainTargets)
     {
         //////////////////////////////////////////////////////////////////////////////////////////////////
             //  Render translucent objects (etc)
             //  everything after the gbuffer resolve
         LightingParser_PreTranslucency(
             metalContext, parserContext, 
-            mainTargets.GetMainDepthsSRV());
+            mainTargets.GetSRV(IMainTargets::MultisampledDepth));
 
         ReturnToSteadyState(metalContext);
 
@@ -587,7 +551,7 @@ namespace SceneEngine
                     TechniqueIndex_OrderIndependentTransparency, L"MainScene-PostGBuffer-OI");
 
                     // note; we use the main depth buffer for this call (not the duplicated buffer)
-                OrderIndependentTransparency_Resolve(metalContext, parserContext, *transTargets, mainTargets._msaaDepthBufferSRV);
+                OrderIndependentTransparency_Resolve(metalContext, parserContext, *transTargets, mainTargets.GetSRV(IMainTargets::MultisampledDepth));
             } else if (oiMode == OIMode::Stochastic) {
                 StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
                 SavedTargets savedTargets(metalContext);
@@ -601,7 +565,7 @@ namespace SceneEngine
                     //
                     // Note that we may need to modify this a little bit while rendering with
                     // MSAA
-                stochTransOp.PrepareFirstPass(mainTargets._msaaDepthBufferSRV);
+                stochTransOp.PrepareFirstPass(mainTargets.GetSRV(IMainTargets::MultisampledDepth));
                 ExecuteScene(
                     context, parserContext, SPS::BatchFilter::OITransparent,
                     preparedScene,
@@ -643,7 +607,8 @@ namespace SceneEngine
         //////////////////////////////////////////////////////////////////////////////////////////////////
         LightingParser_PostGBufferEffects(
             metalContext, parserContext, 
-            mainTargets.GetMainDepthsSRV(), mainTargets.GetGBufferSRV(1));
+            mainTargets.GetSRV(IMainTargets::MultisampledDepth), 
+            mainTargets.GetSRV(IMainTargets::GBufferNormals));
 
         for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
             (*p)->OnPostSceneRender(metalContext, parserContext, SPS::BatchFilter::Transparent, TechniqueIndex_General);
@@ -652,21 +617,9 @@ namespace SceneEngine
     class RenderPassFragment
     {
     public:
-        using SystemName = uint32;
-        class Attachment
-        {
-        public:
-            SystemName _name;
-            RenderCore::AttachmentDesc _desc;
-        };
-        class Subpass
-        {
-        public:
-            SystemName _name;
-            RenderCore::SubpassDesc _desc;
-        };
-        std::vector<Attachment>     _definedAttachments;
-        std::vector<Subpass>        _subpasses;
+        using SystemName = RenderCore::AttachmentDesc::Name;
+        std::vector<RenderCore::AttachmentDesc>     _attachments;
+        std::vector<RenderCore::SubpassDesc>        _subpasses;
     };
 
     class FrameBufferDescBox
@@ -677,13 +630,11 @@ namespace SceneEngine
         public:
             RenderingQualitySettings _qualSettings;
             bool        _precisionTargets;
-            bool        _retainGBufferContents;
-            Desc(const RenderingQualitySettings& qualSettings, bool precisionTargets, bool retainGBufferContents) 
+            Desc(const RenderingQualitySettings& qualSettings, bool precisionTargets) 
             {
                 std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
                 _qualSettings = qualSettings;
                 _precisionTargets = precisionTargets;
-                _retainGBufferContents = retainGBufferContents;
             }
         };
 
@@ -695,15 +646,8 @@ namespace SceneEngine
         FrameBufferDescBox(const Desc& d);
     };
 
-    static const RenderPassFragment::SystemName s_multisampledDepth = 0u;
-    static const RenderPassFragment::SystemName s_lightResolve = 1u;
-    static const RenderPassFragment::SystemName s_gbufferDiffuse = 2u;
-    static const RenderPassFragment::SystemName s_gbufferNormals = 3u;
-    static const RenderPassFragment::SystemName s_gbufferParameters = 4u;
-    static const RenderPassFragment::SystemName s_nameMax = 64u;
-
-    static const RenderPassFragment::SystemName s_renderToGBuffer = 0u;
-    static const RenderPassFragment::SystemName s_resolveLighting = 1u;
+    static const RenderPassFragment::SystemName s_renderToGBuffer = 1u;
+    static const RenderPassFragment::SystemName s_resolveLighting = 2u;
 
     FrameBufferDescBox::FrameBufferDescBox(const Desc& desc)
     {
@@ -725,17 +669,16 @@ namespace SceneEngine
         _baseFragment = RenderPassFragment {
             {
                 // Main multisampled depth stencil
-                { s_multisampledDepth, {  
-                    Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::D24_UNORM_S8_UINT,
                     Attachment::LoadStore::Clear, Attachment::LoadStore::DontCare,
-                    Attachment::Flags::Multisampled }},
+                    IMainTargets::MultisampledDepth, Attachment::Flags::Multisampled },
 
                 // light resolve target
-                { s_lightResolve, { Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     (!desc._precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
                     Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
-                    Attachment::Flags::Multisampled }}
+                    IMainTargets::LightResolve, Attachment::Flags::Multisampled }
             },
         };
 
@@ -749,28 +692,26 @@ namespace SceneEngine
                     // that should be enough precision.
                     //      .. however, it possible some clients might prefer 10 or 16 bit albedo textures
                     //      In these cases, the first buffer should be a matching format.
-                { s_gbufferDiffuse,
-                    {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
-                        (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM_SRGB : Format::R32G32B32A32_FLOAT,
-                        Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
-                        Attachment::Flags::Multisampled }},
+                {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM_SRGB : Format::R32G32B32A32_FLOAT,
+                    Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
+                    IMainTargets::GBufferDiffuse, Attachment::Flags::Multisampled },
 
-                { s_gbufferNormals,
-                    {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
-                        (!desc._precisionTargets) ? Format::R8G8B8A8_SNORM : Format::R32G32B32A32_FLOAT,
-                        Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
-                        Attachment::Flags::Multisampled }},
+                {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    (!desc._precisionTargets) ? Format::R8G8B8A8_SNORM : Format::R32G32B32A32_FLOAT,
+                    Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
+                    IMainTargets::GBufferNormals, Attachment::Flags::Multisampled },
 
-                { s_gbufferParameters,
-                    {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
-                        (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM : Format::R32G32B32A32_FLOAT,
-                        Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
-                        Attachment::Flags::Multisampled }}
+                {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM : Format::R32G32B32A32_FLOAT,
+                    Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
+                    IMainTargets::GBufferParameters, Attachment::Flags::Multisampled }
             },
             {
                 // render first to the gbuffer
-                { s_renderToGBuffer,
-                    Subpass({s_gbufferDiffuse, s_gbufferNormals, s_gbufferParameters}, s_multisampledDepth) }
+                Subpass(
+                    {IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals, IMainTargets::GBufferParameters}, 
+                    IMainTargets::MultisampledDepth)
             }
         };
 
@@ -784,22 +725,19 @@ namespace SceneEngine
                     // that should be enough precision.
                     //      .. however, it possible some clients might prefer 10 or 16 bit albedo textures
                     //      In these cases, the first buffer should be a matching format.
-                { s_gbufferDiffuse,
-                    {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
-                        (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM_SRGB : Format::R32G32B32A32_FLOAT,
-                        Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
-                        Attachment::Flags::Multisampled }},
+                {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM_SRGB : Format::R32G32B32A32_FLOAT,
+                    Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
+                    IMainTargets::GBufferDiffuse, Attachment::Flags::Multisampled },
 
-                { s_gbufferNormals,
-                    {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
-                        (!desc._precisionTargets) ? Format::R8G8B8A8_SNORM : Format::R32G32B32A32_FLOAT,
-                        Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
-                        Attachment::Flags::Multisampled }}
+                {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    (!desc._precisionTargets) ? Format::R8G8B8A8_SNORM : Format::R32G32B32A32_FLOAT,
+                    Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
+                    IMainTargets::GBufferNormals, Attachment::Flags::Multisampled }
             },
             {
                 // render first to the gbuffer
-                { s_renderToGBuffer,
-                    Subpass({s_gbufferDiffuse, s_gbufferNormals}, s_multisampledDepth) }
+                Subpass({IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals}, IMainTargets::MultisampledDepth)
             }
         };
 
@@ -807,8 +745,7 @@ namespace SceneEngine
             {},
             {
                 // now resolve lighting
-                { s_resolveLighting,
-                    Subpass({s_lightResolve}, Subpass::Unused, {s_gbufferDiffuse, s_gbufferNormals, s_gbufferParameters, s_multisampledDepth})}
+                Subpass({IMainTargets::LightResolve}, Subpass::Unused)
             }
         };
 
@@ -820,6 +757,7 @@ namespace SceneEngine
         //     TextureSamples::Create(desc._qualSettings._samplingCount, desc._qualSettings._samplingQuality));
     }
 
+#if 0
     class PatchedFrameBufferDesc
     {
     public:
@@ -861,6 +799,12 @@ namespace SceneEngine
                 if (a._name >= s_nameMax)
                     Throw(::Exceptions::BasicLabel("Attachment name is too big"));
 
+                // Do we need to go through some resolution step to match the requested attachment
+                // to some actual attachment?
+                // During this step, we could reuse temporaries, or manage duplicate of depth buffers
+                // and refraction targets...?
+                // We could also have some higher level concept for resolving actual pixel formats
+
                 auto existing = namesToAttachmentIndex[a._name];
                 if (existing != ~0u) {
                     if (!IsCompatible(a._desc, attachments[existing]))
@@ -884,6 +828,7 @@ namespace SceneEngine
     }
 
     PatchedFrameBufferDesc::~PatchedFrameBufferDesc() {}
+#endif
 
     void LightingParser_MainScene(
         IThreadContext& context,
@@ -927,18 +872,20 @@ namespace SceneEngine
         // 
         // Metal::ViewportDesc mainViewport(  
         //     0.f, 0.f, float(qualitySettings._dimensions[0]), float(qualitySettings._dimensions[1]), 0.f, 1.f);
-        // 
-        // bool precisionTargets = Tweakable("PrecisionTargets", false);
-        // 
+
+        bool precisionTargets = Tweakable("PrecisionTargets", false);
+
         // typedef Format NativeFormat;
-        // auto sampling = BufferUploads::TextureSamples::Create(
-        //     uint8(std::max(qualitySettings._samplingCount, 1u)), uint8(qualitySettings._samplingQuality));
+        auto sampling = TextureSamples::Create(
+            uint8(std::max(qualitySettings._samplingCount, 1u)), uint8(qualitySettings._samplingQuality));
         // auto& lightingResTargets = Techniques::FindCachedBox2<LightingResolveTextureBox>(
         //     unsigned(mainViewport.Width), unsigned(mainViewport.Height),
         //     (!precisionTargets) ? FormatStack(NativeFormat::R16G16B16A16_FLOAT) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
         //     sampling);
 
         auto& fbLayoutBox = Techniques::FindCachedBox2<FrameBufferDescBox>(qualitySettings);
+
+        IMainTargets* mainTargets = nullptr;
 
         if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Deferred) {
 
@@ -964,15 +911,21 @@ namespace SceneEngine
             //         NativeFormat(DXGI_FORMAT_D24_UNORM_S8_UINT)),
             //     sampling);
 
-            TRY {
+            CATCH_ASSETS_BEGIN
 
                     //
                 //////////////////////////////////////////////////////////////////////////////////////
                     //      Bind the gbuffer, begin the render pass
                     //
 
+                auto& fbDescBox = Techniques::FindCachedBox2<FrameBufferDescBox>(qualitySettings, precisionTargets);
+                FrameBufferDesc fbDesc(
+                    MakeIteratorRange(fbDescBox._baseFragment._attachments),
+                    MakeIteratorRange(fbDescBox._baseFragment._subpasses),
+                    Format::Unknown, sampling);
+
                 context.BeginRenderPass(
-                    fbLayoutBox._fbLayout,
+                    fbDesc,
                     FrameBufferProperties{qualitySettings._dimensions[0], qualitySettings._dimensions[1]},
                     RenderPassBeginDesc{});
 
@@ -991,36 +944,29 @@ namespace SceneEngine
                     context, parserContext, SPS::BatchFilter::General,
                     preparedScene,
                     TechniqueIndex_Deferred, L"MainScene-OpaqueGBuffer");
+                context.EndRenderPass();
+
                 for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
                     (*p)->OnPostSceneRender(metalContext, parserContext, SPS::BatchFilter::General, TechniqueIndex_Deferred);
 
-                context.NextSubpass();
-                LightingParser_ResolveGBuffer(metalContext, parserContext, mainTargets);
+                FrameBufferDesc resolveFbDesc(
+                    MakeIteratorRange(fbDescBox._resolveLighting._attachments),
+                    MakeIteratorRange(fbDescBox._resolveLighting._subpasses),
+                    Format::Unknown, sampling);
+                context.BeginRenderPass(
+                    fbDesc,
+                    FrameBufferProperties{qualitySettings._dimensions[0], qualitySettings._dimensions[1]},
+                    RenderPassBeginDesc{});
+                LightingParser_ResolveGBuffer(metalContext, parserContext, *mainTargets);
                 context.EndRenderPass();
-            } 
-            CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); context.EndRenderPass(); }
-            CATCH_END
+            CATCH_ASSETS_END(parserContext)
 
                 // Post lighting resolve operations... (must rebind the depth buffer)
-            metalContext.Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
-            metalContext.Bind(
-                MakeResourceList(lightingResTargets._lightingResolveRTV), 
-                &mainTargets._msaaDepthBuffer);
             metalContext.Bind(Techniques::CommonResources()._dssReadOnly);
 
-            TRY {
-                LightingParser_DeferredPostGBuffer(context, metalContext, parserContext, preparedScene, mainTargets);
-            }
-            CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(metalContext); }
-            CATCH_END
-
-            sceneDepthsSRV              = mainTargets._msaaDepthBufferSRV;
-            sceneSecondaryDepthsSRV     = mainTargets._secondaryDepthBufferSRV;
-            sceneDepthsDSV              = mainTargets._msaaDepthBuffer;
-
-            postLightingResolveSRV      = lightingResTargets._lightingResolveSRV;
-            postLightingResolveTexture  = lightingResTargets._lightingResolveTexture.get();
-            postLightingResolveRTV      = lightingResTargets._lightingResolveRTV;
+            CATCH_ASSETS_BEGIN
+                LightingParser_DeferredPostGBuffer(context, metalContext, parserContext, preparedScene, *mainTargets);
+            CATCH_ASSETS_END(parserContext)
 
         } else if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Forward) {
 
@@ -1039,28 +985,14 @@ namespace SceneEngine
             if (!parserContext._preparedDMShadows.empty())
                 BindShadowsForForwardResolve(metalContext, parserContext, parserContext._preparedDMShadows[0].second);
 
-            ForwardLightingModel_Render(context, metalContext, parserContext, preparedScene, mainTargets, sampling._sampleCount);
-
-            sceneDepthsSRV              = mainTargets._msaaDepthBufferSRV;
-            sceneSecondaryDepthsSRV     = mainTargets._secondaryDepthBufferSRV;
-            sceneDepthsDSV              = mainTargets._msaaDepthBuffer;
-
-            postLightingResolveSRV      = lightingResTargets._lightingResolveSRV;
-            postLightingResolveTexture  = lightingResTargets._lightingResolveTexture.get();
-            postLightingResolveRTV      = lightingResTargets._lightingResolveRTV;
+            ForwardLightingModel_Render(context, metalContext, parserContext, preparedScene, mainTargets);
 
         }
 
         {
             Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Resolve-MSAA-HDR");
 
-            auto toneMapSettings = parserContext.GetSceneParser()->GetToneMapSettings();
-            LuminanceResult luminanceResult;
-            if (parserContext.GetSceneParser()->GetToneMapSettings()._flags & ToneMapSettings::Flags::EnableToneMap) {
-                    //  (must resolve luminance early, because we use it during the MSAA resolve)
-                luminanceResult = ToneMap_SampleLuminance(
-                    metalContext, parserContext, toneMapSettings, postLightingResolveSRV);
-            }
+            auto postLightingResolve = IMainTargets::LightResolve;
 
                 //
                 //      Post lighting resolve operations...
@@ -1081,9 +1013,7 @@ namespace SceneEngine
 
                     // todo -- also resolve the depth buffer...!
                     //      here; we switch the active textures to the msaa resolved textures
-                postLightingResolveTexture = msaaResolveRes._postMsaaResolveTexture.get();
-                postLightingResolveSRV = msaaResolveRes._postMsaaResolveSRV;
-                postLightingResolveRTV = msaaResolveRes._postMsaaResolveTarget;
+                postLightingResolve = IMainTargets::PostMSAALightResolve;
             }
             metalContext.Bind(MakeResourceList(postLightingResolveRTV), nullptr);       // we don't have a single-sample depths target at this time (only multisample)
             LightingParser_PostProcess(metalContext, parserContext);
@@ -1115,7 +1045,17 @@ namespace SceneEngine
                 savedTargets.ResetToOldTargets(metalContext);
             }
 
-            ToneMap_Execute(metalContext, parserContext, luminanceResult, toneMapSettings, postLightingResolveSRV);
+            auto toneMapSettings = parserContext.GetSceneParser()->GetToneMapSettings();
+            LuminanceResult luminanceResult;
+            if (parserContext.GetSceneParser()->GetToneMapSettings()._flags & ToneMapSettings::Flags::EnableToneMap) {
+                    //  (must resolve luminance early, because we use it during the MSAA resolve)
+                luminanceResult = ToneMap_SampleLuminance(
+                    metalContext, parserContext, toneMapSettings, 
+                    mainTargets->GetSRV(IMainTargets::LightResolve));
+            }
+            ToneMap_Execute(
+                metalContext, parserContext, luminanceResult, toneMapSettings, 
+                mainTargets->GetSRV(postLightingResolve));
 
                 //  if we're not in MSAA mode, we can rebind the main depth buffer. But if we're in MSAA mode, we have to
                 //  resolve the depth buffer before we can do that...

@@ -9,6 +9,7 @@
 #include "State.h"
 #include "Forward.h"
 #include "Pools.h"
+#include "FrameBuffer.h"        // for NamedResources
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
 #include "../../ResourceList.h"
@@ -72,7 +73,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(Topology::Enum topology);
         void        SetVertexStrides(unsigned first, std::initializer_list<unsigned> vertexStrides);
 
-        VulkanUniquePtr<VkPipeline> CreatePipeline(VkRenderPass renderPass, unsigned subpass = 0);
+        VulkanUniquePtr<VkPipeline> CreatePipeline(VkRenderPass renderPass, unsigned subpass, TextureSamples samples);
 
         void                SetPipelineLayout(const VulkanSharedPtr<VkPipelineLayout>& layout);
         VkPipelineLayout    GetPipelineLayout();
@@ -155,12 +156,12 @@ namespace RenderCore { namespace Metal_Vulkan
         template<int Count> void    BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
         template<int Count> void    BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
 
-		template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
 		template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess) {}
 
 		template<int Count> void    BindSO(const ResourceList<VertexBuffer, Count>& buffers, unsigned offset=0) {}
 
-		template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess) {}
+		template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
+        template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess) {}
 
 		void        Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[]);
         void        Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset=0);
@@ -210,15 +211,18 @@ namespace RenderCore { namespace Metal_Vulkan
 
         bool        BindPipeline();
 
-        void        SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims) { _presentationTarget = presentationTarget; _presentationTargetDims = dims; }
-        RenderTargetView* GetPresentationTarget() { return _presentationTarget; }
-        VectorPattern<unsigned,2> GetPresentationTargetDims() { return _presentationTargetDims; }
+        void                        SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims);
+        VectorPattern<unsigned,2>   GetPresentationTargetDims();
+
+        NamedResources& GetNamedResources() { return _namedResources; }
 
         void BeginRenderPass(
             VkRenderPass fbLayout, const FrameBuffer& fb,
+            TextureSamples samples,
             VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
             IteratorRange<const ClearValue*> clearValues);
         void EndRenderPass();
+        bool IsInRenderPass() const;
         void SetImageLayout(
 		    VkImage image,
 		    VkImageAspectFlags aspectMask,
@@ -259,6 +263,16 @@ namespace RenderCore { namespace Metal_Vulkan
             uint32_t regionCount,
             const VkBufferImageCopy* pRegions);
         void CmdNextSubpass(VkSubpassContents);
+        void CmdPipelineBarrier(
+            VkPipelineStageFlags            srcStageMask,
+            VkPipelineStageFlags            dstStageMask,
+            VkDependencyFlags               dependencyFlags,
+            uint32_t                        memoryBarrierCount,
+            const VkMemoryBarrier*          pMemoryBarriers,
+            uint32_t                        bufferMemoryBarrierCount,
+            const VkBufferMemoryBarrier*    pBufferMemoryBarriers,
+            uint32_t                        imageMemoryBarrierCount,
+            const VkImageMemoryBarrier*     pImageMemoryBarriers);
 
         DeviceContext(
             const ObjectFactory& factory, 
@@ -270,13 +284,17 @@ namespace RenderCore { namespace Metal_Vulkan
 
     private:
         VulkanSharedPtr<VkCommandBuffer>    _commandList;
+
         VkRenderPass                        _renderPass;
+        TextureSamples                      _renderPassSamples;
+        unsigned                            _renderPassSubpass;
+
         CommandPool*                        _cmdPool;
         CommandPool::BufferType             _cmdBufferType;
         DescriptorSetBuilder                _descriptorSetBuilder;
         bool                                _hideDescriptorSetBuilder;
 
-        RenderTargetView*                   _presentationTarget;
+        NamedResources                      _namedResources;
         VectorPattern<unsigned,2>           _presentationTargetDims;
     };
 
