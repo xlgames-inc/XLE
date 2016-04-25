@@ -14,6 +14,7 @@
     <ClCompile Include="..\Vulkan\Metal\Resource.cpp" />
     <ClCompile Include="..\Vulkan\Metal\TextureView.cpp" />
     <ClCompile Include="..\Vulkan\Metal\FrameBuffer.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\PipelineLayout.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />
@@ -34,5 +35,6 @@
     <ClInclude Include="..\Vulkan\Metal\ObjectFactory.h" />
     <ClInclude Include="..\Vulkan\Metal\TextureView.h" />
     <ClInclude Include="..\Vulkan\Metal\FrameBuffer.h" />
+    <ClInclude Include="..\Vulkan\Metal\PipelineLayout.h" />
   </ItemGroup>
 </Project>

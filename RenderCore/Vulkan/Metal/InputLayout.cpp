@@ -187,7 +187,7 @@ namespace RenderCore { namespace Metal_Vulkan
     bool BoundUniforms::BindShaderResource(uint64 hashName, unsigned slot, unsigned stream)
     {
         assert(!_pipelineLayout);
-		auto descSet = 1u;
+		auto descSet = 0u;
         bool gotBinding = false;
 
         for (unsigned s=0; s<dimof(_reflection); ++s) {
@@ -346,7 +346,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		const UniformsStream* streams[] = { &stream0, &stream1 };
 
-        uint64 descSetWrites[s_descriptorSetCount] = { 0x0ull, 0x0ull };
+        uint64 descSetWrites[s_descriptorSetCount] = { 0x0ull };
         auto& globalPools = context.GetGlobalPools();
 
         for (unsigned stri=0; stri<dimof(streams); ++stri) {

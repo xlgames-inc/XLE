@@ -95,9 +95,6 @@ namespace RenderCore
         };
         std::vector<Image> _images;
 
-		// ResourcePtr							_depthStencilResource;
-		// Metal_Vulkan::DepthStencilView      _dsv;
-
 		BufferUploads::TextureDesc              _bufferDesc;
 		std::shared_ptr<PresentationChainDesc>	_desc;
 
@@ -131,6 +128,7 @@ namespace RenderCore
         ThreadContext(
             std::shared_ptr<Device> device, 
 			VkQueue queue,
+            Metal_Vulkan::PipelineLayout& globalPipelineLayout,
             Metal_Vulkan::CommandPool&& cmdPool,
 			Metal_Vulkan::CommandPool::BufferType cmdBufferType);
         ~ThreadContext();
@@ -157,6 +155,7 @@ namespace RenderCore
 		ThreadContextVulkan(
 			std::shared_ptr<Device> device,
 			VkQueue queue,
+            Metal_Vulkan::PipelineLayout& globalPipelineLayout,
             Metal_Vulkan::CommandPool&& cmdPool,
 			Metal_Vulkan::CommandPool::BufferType cmdBufferType);
         ~ThreadContextVulkan();
@@ -193,6 +192,7 @@ namespace RenderCore
 		Metal_Vulkan::ObjectFactory		    _objectFactory;
         Metal_Vulkan::GlobalPools           _pools;
 
+        std::shared_ptr<Metal_Vulkan::PipelineLayout> _pipelineLayout;
 		std::shared_ptr<ThreadContextVulkan>	_foregroundPrimaryContext;
     };
 
@@ -203,7 +203,8 @@ namespace RenderCore
 		VkInstance	    GetVulkanInstance();
 		VkDevice	    GetUnderlyingDevice();
         VkQueue         GetRenderingQueue();
-        Metal_Vulkan::GlobalPools&      GetGlobalPools();
+        Metal_Vulkan::GlobalPools& GetGlobalPools();
+        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& ShareGlobalPipelineLayout();
         
         DeviceVulkan();
         ~DeviceVulkan();

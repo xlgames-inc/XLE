@@ -13,6 +13,7 @@
 #include "TextureView.h"
 #include "FrameBuffer.h"
 #include "Pools.h"
+#include "PipelineLayout.h"
 #include "../../Format.h"
 #include "../IDeviceVulkan.h"
 #include "../../ConsoleRig/Log.h"
@@ -139,7 +140,9 @@ namespace RenderCore { namespace Metal_Vulkan
         return _pipelineLayout.get(); 
     }
 
-    VulkanUniquePtr<VkPipeline> PipelineBuilder::CreatePipeline(VkRenderPass renderPass, unsigned subpass, TextureSamples samples)
+    VulkanUniquePtr<VkPipeline> PipelineBuilder::CreatePipeline(
+        VkRenderPass renderPass, unsigned subpass, 
+        TextureSamples samples)
     {
         if (!_shaderProgram || !renderPass) return nullptr;
 
@@ -207,7 +210,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkGraphicsPipelineCreateInfo pipeline = {};
         pipeline.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipeline.pNext = nullptr;
-        pipeline.layout = _pipelineLayout.get();
+        pipeline.layout = _globalPipelineLayout->GetUnderlying(); // _pipelineLayout.get();
         pipeline.basePipelineHandle = VK_NULL_HANDLE;
         pipeline.basePipelineIndex = 0;
         pipeline.flags = 0; // VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
@@ -230,8 +233,9 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(result);
     }
 
-    PipelineBuilder::PipelineBuilder(const ObjectFactory& factory, GlobalPools& globalPools)
+    PipelineBuilder::PipelineBuilder(const ObjectFactory& factory, GlobalPools& globalPools, PipelineLayout& pipelineLayout)
     : _factory(&factory), _globalPools(&globalPools)
+    , _globalPipelineLayout(&pipelineLayout)
     {
         _inputLayout = nullptr;
         _shaderProgram = nullptr;
@@ -679,9 +683,10 @@ namespace RenderCore { namespace Metal_Vulkan
     DeviceContext::DeviceContext(
         const ObjectFactory& factory, 
         GlobalPools& globalPools,
+        PipelineLayout& globalPipelineLayout,
 		CommandPool& cmdPool, 
         CommandPool::BufferType cmdBufferType)
-    : PipelineBuilder(factory, globalPools)
+    : PipelineBuilder(factory, globalPools, globalPipelineLayout)
     , _cmdPool(&cmdPool), _cmdBufferType(cmdBufferType)
     , _descriptorSetBuilder(factory, globalPools._mainDescriptorPool, globalPools._dummyResources)
     , _hideDescriptorSetBuilder(false)

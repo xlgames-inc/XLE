@@ -16,7 +16,7 @@
 
 namespace RenderCore
 {
-    namespace Metal_Vulkan { class DeviceContext; class GlobalPools; }
+    namespace Metal_Vulkan { class DeviceContext; class GlobalPools; class PipelineLayout; }
 
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -33,6 +33,7 @@ namespace RenderCore
 		    IMETHOD VkDevice	GetUnderlyingDevice() IPURE;
             IMETHOD VkQueue     GetRenderingQueue() IPURE;
             IMETHOD Metal_Vulkan::GlobalPools& GetGlobalPools() IPURE;
+            IMETHOD const std::shared_ptr<Metal_Vulkan::PipelineLayout>& ShareGlobalPipelineLayout() IPURE;
             IDESTRUCTOR
         };
 

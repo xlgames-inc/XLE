@@ -157,7 +157,7 @@ namespace RenderCore { namespace Metal_Vulkan
     private:
         SPIRVReflection _reflection[ShaderStage::Max];
 
-        static const unsigned s_descriptorSetCount = 2;
+        static const unsigned s_descriptorSetCount = 1;
         static const unsigned s_streamCount = 2;
         std::vector<VkDescriptorSetLayoutBinding>       _bindings[s_descriptorSetCount];
         std::vector<uint32>                             _cbBindingIndices[s_streamCount];

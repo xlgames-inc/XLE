@@ -27,6 +27,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     class GlobalPools;
     class FrameBuffer;
+    class PipelineLayout;
 
     /// Container for Topology::Enum
     namespace Topology
@@ -78,7 +79,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void                SetPipelineLayout(const VulkanSharedPtr<VkPipelineLayout>& layout);
         VkPipelineLayout    GetPipelineLayout();
 
-        PipelineBuilder(const ObjectFactory& factory, GlobalPools& globalPools);
+        PipelineBuilder(const ObjectFactory& factory, GlobalPools& globalPools, PipelineLayout& pipelineLayout);
         ~PipelineBuilder();
 
         PipelineBuilder(const PipelineBuilder&) = delete;
@@ -92,7 +93,8 @@ namespace RenderCore { namespace Metal_Vulkan
         const BoundInputLayout* _inputLayout;       // note -- unprotected pointer
         const ShaderProgram*    _shaderProgram;
 
-        VulkanSharedPtr<VkPipelineLayout> _pipelineLayout;
+        VulkanSharedPtr<VkPipelineLayout>   _pipelineLayout;
+        PipelineLayout *                    _globalPipelineLayout;
 
         const ObjectFactory*    _factory;
         GlobalPools*            _globalPools;
@@ -277,6 +279,7 @@ namespace RenderCore { namespace Metal_Vulkan
         DeviceContext(
             const ObjectFactory& factory, 
             GlobalPools& globalPools,
+            PipelineLayout& globalPipelineLayout,
 			CommandPool& cmdPool, 
             CommandPool::BufferType cmdBufferType);
 		DeviceContext(const DeviceContext&) = delete;
@@ -296,6 +299,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         NamedResources                      _namedResources;
         VectorPattern<unsigned,2>           _presentationTargetDims;
+
+        
     };
 
     void SetImageLayout(

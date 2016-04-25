@@ -7,17 +7,19 @@
 #if !defined(COMMON_RESOURCES_H)
 #define COMMON_RESOURCES_H
 
-Texture2D		DiffuseTexture          : register(t0);
-Texture2D		NormalsTexture          : register(t1);
-Texture2D       ParametersTexture       : register(t2);
+#include "Binding.h"
 
-SamplerState	DefaultSampler          : register(s0);
-SamplerState	ClampingSampler         : register(s1);
-SamplerState    AnisotropicSampler      : register(s2);
-SamplerState    PointClampSampler       : register(s3);
-SamplerState    WrapUSampler            : register(s6);
+Texture2D		DiffuseTexture          : TEXTURE_BOUND(0);
+Texture2D		NormalsTexture          : TEXTURE_BOUND(1);
+Texture2D       ParametersTexture       : TEXTURE_BOUND(2);
 
-Texture2D       NormalsFittingTexture   : register(t14);
+SamplerState	DefaultSampler          : SAMPLER_GLOBAL(0);
+SamplerState	ClampingSampler         : SAMPLER_GLOBAL(1);
+SamplerState    AnisotropicSampler      : SAMPLER_GLOBAL(2);
+SamplerState    PointClampSampler       : SAMPLER_GLOBAL(3);
+SamplerState    WrapUSampler            : SAMPLER_GLOBAL(6);
+
+Texture2D       NormalsFittingTexture   : TEXTURE_GLOBAL(2);
 
 #if !defined(PREFER_ANISOTROPIC) || PREFER_ANISOTROPIC==0
     #define MaybeAnisotropicSampler   DefaultSampler
