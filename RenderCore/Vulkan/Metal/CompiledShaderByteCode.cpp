@@ -11,7 +11,12 @@
 #include "../../ShaderLangUtil.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/InvalidAssetManager.h"
+#include "../../../Assets/AssetUtils.h"
+#include "../../../Assets/IntermediateAssets.h"
 #include "../../../Utility/StringUtils.h"
+#include "../../../Utility/Streams/StreamDOM.h"
+#include "../../../Utility/Streams/StreamFormatter.h"
+#include "../../../Utility/Streams/FileUtils.h"
 #include <sstream>
 
 // HLSL cross compiler includes --
@@ -37,6 +42,130 @@ namespace RenderCore { namespace Metal_Vulkan
 {
     using ::Assets::ResChar;
 
+    class RootSignature
+    {
+    public:
+        class Binding
+        {
+        public:
+            enum Type { Sampler, Resource, SamplerAndResource, ConstantBuffer, UnorderedAccess, InputAttachment, Unknown };
+            Type        _type;
+            unsigned    _bindingIndex;
+        };
+
+        class DescriptorSetLayout
+        {
+        public:
+            std::string             _name;
+            std::vector<Binding>    _bindings;
+        };
+
+        std::vector<DescriptorSetLayout> _descriptorSets;
+
+        const ::Assets::DependentFileState& GetDependentFileState() const { return _dependentFileState; };
+        const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+
+        RootSignature(const ::Assets::ResChar filename[]);
+        ~RootSignature();
+    private:
+        ::Assets::DependentFileState _dependentFileState;
+        ::Assets::DepValPtr _depVal;
+    };
+
+    static RootSignature::Binding::Type AsBindingType(char type)
+    {
+        // convert between HLSL style register binding indices to a type enum
+        switch (type) {
+        case 'b': return RootSignature::Binding::Type::ConstantBuffer;
+        case 's': return RootSignature::Binding::Type::Sampler;
+        case 't': return RootSignature::Binding::Type::Resource;
+        case 'u': return RootSignature::Binding::Type::UnorderedAccess;
+        default:
+            return RootSignature::Binding::Type::Unknown;
+        }
+    }
+
+    static RootSignature::DescriptorSetLayout ReadDescSet(DocElementHelper<InputStreamFormatter<char>>& element)
+    {
+        // Create a DescriptorSetLayout from the given document element
+        // The element should be a series of attributes of the form
+        //      b11..20
+	    //      t11..20
+        //      u3
+        //
+        // A single character represents the type. It should be followed by 
+        // either a single number or an (inclusive) range.
+        // SM5.1 adds a "space" parameter to allow for overlaps. But we don't support this currently.
+        RootSignature::DescriptorSetLayout result;
+        result._name = element.Name().AsString();
+        for (auto a=element.FirstAttribute(); a; a=a.Next()) {
+            if (a.Name().Empty()) continue;
+
+            auto type = AsBindingType(a.Name()[0]);
+
+            char* endPt = nullptr;
+            auto start = std::strtoul(&a.Name()[1], &endPt, 10);
+            auto end = start;
+            if (endPt && endPt[0] == '.' && endPt[1] == '.')
+                end = std::strtoul(endPt+2, &endPt, 10);
+
+            // Add bindings between the start and end (inclusive)
+            for (auto i=start; i<=end; ++i)
+                result._bindings.push_back(RootSignature::Binding{type, i});
+        }
+        return std::move(result);
+    }
+
+    RootSignature::RootSignature(const ::Assets::ResChar filename[])
+    {
+        // attempt to load the source file and extract the root signature
+        size_t fileSize = 0;
+        auto block = LoadFileAsMemoryBlock(filename, &fileSize);
+        if (!block || !fileSize)
+            Throw(::Exceptions::BasicLabel("Failure while attempting to load root signature (%s)", filename));
+
+        _dependentFileState = Assets::IntermediateAssets::Store::GetDependentFileState(filename);
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterFileDependency(_depVal, filename);
+
+        InputStreamFormatter<char> formatter(
+            MemoryMappedInputStream(block.get(), PtrAdd(block.get(), fileSize)));
+        Document<InputStreamFormatter<char>> doc(formatter);
+
+        std::vector<DescriptorSetLayout> descSets;
+        std::vector<StringSection<>> descSetNames;
+
+        std::vector<StringSection<>> rootSig;
+
+        for (auto a=doc.FirstChild(); a; a=a.NextSibling()) {
+            // each element can either be a root signature or a descriptor set.
+            auto name = a.Name();
+            if (XlEqString(name, "RootSignature")) {
+                for (auto e=a.FirstAttribute();e;e=e.Next()) {
+                    if (XlEqString(e.Name(), "Set") && !e.Value().Empty())
+                        rootSig.push_back(e.Value());
+                }
+            } else {
+                descSets.emplace_back(ReadDescSet(a));
+                descSetNames.push_back(name);
+            }
+        }
+        
+        // We've loaded the descriptor sets and the root signature. We need to re-arrange
+        // our descriptor set layouts into the order that they are referenced.
+
+        for (const auto& s:rootSig) {
+            auto i = std::find_if(descSetNames.begin(), descSetNames.end(), 
+                [s](const StringSection<>& compare) { return XlEqString(s, compare); });
+            if (i == descSetNames.end())
+                Throw(::Exceptions::BasicLabel("Could not find descriptor set referenced by root signature (%s)", s.AsString().c_str()));
+            auto& src = descSets[std::distance(descSetNames.begin(), i)];
+            _descriptorSets.emplace_back(std::move(src));
+        }
+    }
+
+    RootSignature::~RootSignature() {}
+
     class HLSLToSPIRVCompiler : public ShaderService::ILowLevelCompiler
     {
     public:
@@ -56,11 +185,17 @@ namespace RenderCore { namespace Metal_Vulkan
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
 
-        HLSLToSPIRVCompiler(std::shared_ptr<ShaderService::ILowLevelCompiler> hlslCompiler);
+        HLSLToSPIRVCompiler(std::shared_ptr<ShaderService::ILowLevelCompiler> hlslCompiler, const ::Assets::ResChar rootSignFilename[]);
         ~HLSLToSPIRVCompiler();
 
     private:
         std::shared_ptr<ShaderService::ILowLevelCompiler> _hlslCompiler;
+
+        mutable std::shared_ptr<RootSignature> _rootSignature;
+        ::Assets::rstring _rootSignatureFilename;
+        mutable Threading::Mutex _rootSignatureLock;
+
+        std::shared_ptr<RootSignature> GetRootSignature() const;
 
         static std::weak_ptr<HLSLToSPIRVCompiler> s_instance;
         friend std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler();
@@ -308,6 +443,83 @@ namespace RenderCore { namespace Metal_Vulkan
         return true;
     }
 
+    static ResourceGroup ResourceTypeToResourceGroup(ResourceType eType)
+    {
+	    switch(eType)
+	    {
+	    case RTYPE_CBUFFER:
+		    return RGROUP_CBUFFER;
+
+	    case RTYPE_SAMPLER:
+		    return RGROUP_SAMPLER;
+
+	    case RTYPE_TEXTURE:
+	    case RTYPE_BYTEADDRESS:
+	    case RTYPE_STRUCTURED:
+		    return RGROUP_TEXTURE;
+
+	    case RTYPE_UAV_RWTYPED:
+	    case RTYPE_UAV_RWSTRUCTURED:
+	    case RTYPE_UAV_RWBYTEADDRESS:
+	    case RTYPE_UAV_APPEND_STRUCTURED:
+	    case RTYPE_UAV_CONSUME_STRUCTURED:
+	    case RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER:
+		    return RGROUP_UAV;
+
+	    case RTYPE_TBUFFER:
+		    assert(0); // Need to find out which group this belongs to
+		    return RGROUP_TEXTURE;
+	    }
+
+	    assert(0);
+	    return RGROUP_CBUFFER;
+    }
+
+    static RootSignature::Binding::Type AsBindingType(ResourceBinding* srcResBinding, ConstantBuffer* srcCBBinding)
+    {
+        if (srcCBBinding) return RootSignature::Binding::ConstantBuffer;
+        if (!srcResBinding) return RootSignature::Binding::Unknown;
+
+        auto group = ResourceTypeToResourceGroup(srcResBinding->eType);
+        switch (group) {
+        case RGROUP_CBUFFER:    return RootSignature::Binding::ConstantBuffer;
+        case RGROUP_TEXTURE:    return RootSignature::Binding::Resource;
+        case RGROUP_SAMPLER:    return RootSignature::Binding::Sampler;
+        case RGROUP_UAV:        return RootSignature::Binding::UnorderedAccess;
+        }
+        return RootSignature::Binding::Unknown;
+    }
+
+    uint32_t __cdecl EvaluateBinding(
+        void* userData,
+        GLSLResourceBinding* dstBinding, 
+        ResourceBinding* srcResBinding,
+        ConstantBuffer* srcCBBinding,
+        uint32_t bindPoint, uint32_t shaderStage)
+    {
+        // Attempt to find this binding in our root signature, and return the binding
+        // index and set associated with it!
+        auto& rootSig = *(RootSignature*)userData;
+        auto type = AsBindingType(srcResBinding, srcCBBinding);
+        if (type == RootSignature::Binding::Unknown) return 0;
+
+        for (unsigned setIndex=0; setIndex<(unsigned)rootSig._descriptorSets.size(); ++setIndex) {
+            auto& set = rootSig._descriptorSets[setIndex];
+            for (unsigned finalBind=0; finalBind<(unsigned)set._bindings.size(); ++finalBind)
+                if (    set._bindings[finalBind]._bindingIndex == bindPoint
+                    &&  set._bindings[finalBind]._type == type) {
+                    // found it!
+                    dstBinding->_locationIndex = ~0u;
+                    dstBinding->_bindingIndex = finalBind;
+                    dstBinding->_setIndex = setIndex;
+                    dstBinding->_flags = 0;
+                    return 1;
+                }
+        }
+
+        return 0;
+    }
+
     bool HLSLToSPIRVCompiler::DoLowLevelCompile(
         /*out*/ std::shared_ptr<std::vector<uint8>>& payload,
         /*out*/ std::shared_ptr<std::vector<uint8>>& errors,
@@ -327,6 +539,10 @@ namespace RenderCore { namespace Metal_Vulkan
             sourceCode, sourceCodeLength, shaderPath, definesTable);
         if (!hlslGood) return false;
 
+        // We need to load the root signature and add it as a dependency
+        auto rootSig = GetRootSignature();
+        dependencies.push_back(rootSig->GetDependentFileState());
+
         // Second, HLSL bytecode -> GLSL source
         // We're going to be using James-Jones' cross compiler: 
         //      https://github.com/James-Jones/HLSLCrossCompiler
@@ -341,9 +557,9 @@ namespace RenderCore { namespace Metal_Vulkan
         auto translateResult = TranslateHLSLFromMem(
             bytecodeStart,
             HLSLCC_FLAG_UNIFORM_BUFFER_OBJECT | HLSLCC_FLAG_INOUT_SEMANTIC_NAMES 
-			| HLSLCC_FLAG_PREFER_BINDINGS | HLSLCC_FLAG_ASSIGN_DESCRIPTOR_SET
             /* | HLSLCC_FLAG_COMBINE_TEXTURE_SAMPLERS */,
             LANG_440, &ext, &depData, 
+            (EvaluateBindingFn)&EvaluateBinding, rootSig.get(),
             &glslShader);
         if (!translateResult) return false;
         
@@ -361,10 +577,20 @@ namespace RenderCore { namespace Metal_Vulkan
         return "No metrics for SPIR-V shaders currently";
     }
     
+    std::shared_ptr<RootSignature> HLSLToSPIRVCompiler::GetRootSignature() const
+    {
+        // this method can be called simulateously from multiple threads
+        ScopedLock(_rootSignatureLock);
+        if (!_rootSignature || _rootSignature->GetDependencyValidation()->GetValidationIndex() != 0)
+            _rootSignature = std::make_shared<RootSignature>(_rootSignatureFilename.c_str());
+        return _rootSignature;
+    }
+
     std::weak_ptr<HLSLToSPIRVCompiler> HLSLToSPIRVCompiler::s_instance;
 
-    HLSLToSPIRVCompiler::HLSLToSPIRVCompiler(std::shared_ptr<ShaderService::ILowLevelCompiler> hlslCompiler) 
+    HLSLToSPIRVCompiler::HLSLToSPIRVCompiler(std::shared_ptr<ShaderService::ILowLevelCompiler> hlslCompiler, const ::Assets::ResChar rootSignFilename[]) 
     : _hlslCompiler(std::move(hlslCompiler))
+    , _rootSignatureFilename(rootSignFilename)
     {
         bool initResult = glslang::InitializeProcess();
         if (!initResult)
@@ -383,7 +609,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         auto hlslCompiler = Metal_DX11::CreateVulkanPrecompiler();
 
-        result = std::make_shared<HLSLToSPIRVCompiler>(hlslCompiler);
+        result = std::make_shared<HLSLToSPIRVCompiler>(hlslCompiler, "game/xleres/System/RootSignature.cfg");
         HLSLToSPIRVCompiler::s_instance = result;
         return std::move(result);
     }
