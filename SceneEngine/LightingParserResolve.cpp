@@ -266,13 +266,11 @@ namespace SceneEngine
         {
         public:
             TextureSamples _samples;
-            unsigned _gbufferMode;
             bool _precisionTargets;
-            Desc(TextureSamples samples, unsigned gbufferMode, bool precisionTargets) 
+            Desc(TextureSamples samples, bool precisionTargets) 
             {
                 std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
                 _samples = samples;
-                _gbufferMode = gbufferMode;
                 _precisionTargets = precisionTargets;
             }
         };
@@ -296,26 +294,16 @@ namespace SceneEngine
                 IMainTargets::LightResolve, Attachment::Flags::Multisampled }
         };
 
-        if (desc._gbufferMode == 1) {
-
-            _resolveLighting = FrameBufferDesc(
-                MakeIteratorRange(resolveAttaches),
-                {
-                    // now resolve lighting
-                    Subpass({IMainTargets::LightResolve}, Subpass::Unused, {IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals, IMainTargets::GBufferParameters})
-                },
-                desc._samples);
-            
-        } else {
-                    
-            _resolveLighting = FrameBufferDesc(
-                MakeIteratorRange(resolveAttaches),
-                {
-                    // now resolve lighting
-                    Subpass({IMainTargets::LightResolve}, Subpass::Unused, {IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals})
-                },
-                desc._samples);
-        }
+        // note --  the gbuffer isn't considered an "input attachment" here...
+        //          If we combined the gbuffer generation and lighting resolve into a single render pass,
+        //          we could just use the gbuffer as an input attachment
+        _resolveLighting = FrameBufferDesc(
+            MakeIteratorRange(resolveAttaches),
+            {
+                // now resolve lighting
+                Subpass({IMainTargets::LightResolve}, Subpass::Unused)
+            },
+            desc._samples);
     }
 
     void LightingParser_ResolveGBuffer(
@@ -412,7 +400,7 @@ namespace SceneEngine
             // float clearColour[] = { 0.f, 0.f, 0.f, 1.f };
             // context.Clear(lightingResTargets._lightingResolveRTV, clearColour);
 
-            auto& fbDescBox = Techniques::FindCachedBox2<ResolveFBDescBox>(sampling, mainTargets.GetGBufferType(), precisionTargets);
+            auto& fbDescBox = Techniques::FindCachedBox2<ResolveFBDescBox>(sampling, precisionTargets);
 
             Metal::RenderPassInstance rpi(
                 metalContext,

@@ -242,6 +242,18 @@ namespace Sample
                     Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
         }
 
+        // begin a default render pass just rendering to the presentation buffer (which is always target "0")
+        RenderCore::FrameBufferDesc fbDesc(
+            {},
+            {
+                RenderCore::SubpassDesc({0})
+            },
+            RenderCore::TextureSamples::Create());
+        context.BeginRenderPass(
+            fbDesc,
+            RenderCore::FrameBufferProperties{viewContext->_width, viewContext->_height, 0u},
+            RenderCore::RenderPassBeginDesc());
+
             //  If we need to, we can render outside of the lighting parser.
             //  We just need to to use the device context to perform any rendering
             //  operations here.
@@ -260,6 +272,8 @@ namespace Sample
         if (overlaySys) {
             overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());
         }
+
+        context.EndRenderPass();
 
         return PlatformRig::FrameRig::RenderResult(hasPendingResources);
     }

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "FrameBufferDesc.h"
+#include "Format.h"
 #include "../Utility/MemoryUtils.h"
 
 namespace RenderCore
@@ -30,6 +31,15 @@ namespace RenderCore
     {
     }
 
+    static bool HasAttachment(
+        IteratorRange<const AttachmentDesc*> attachments,
+        AttachmentDesc::Name name)
+    {
+        for (const auto&i:attachments)
+            if (i._name == name) return true;
+        return false;
+    }
+
     FrameBufferDesc::FrameBufferDesc(
         IteratorRange<const AttachmentDesc*> attachments,
         IteratorRange<const SubpassDesc*> subpasses,
@@ -38,6 +48,44 @@ namespace RenderCore
     , _subpasses(subpasses.begin(), subpasses.end())
     , _samples(samples)
     {
+        // We can also have "implied" attachments. These are attachments that are referenced but not explicitly
+        // declared. These only color, depth/stencil and resolve attachments can be implied. We must make some 
+        // assumptions about format, layout, etc.
+        for (auto&p:subpasses) {
+            for (auto& a:p._output)
+                if (!HasAttachment(MakeIteratorRange(_attachments), a))
+                    _attachments.push_back(
+                        AttachmentDesc{
+                            AttachmentDesc::DimensionsMode::OutputRelative,
+                            1.f, 1.f,
+                            Format::R8G8B8A8_UNORM_SRGB,
+                            AttachmentDesc::LoadStore::Retain_RetainStencil,
+                            AttachmentDesc::LoadStore::Retain_RetainStencil,
+                            a, 0});
+
+            if (    p._depthStencil != SubpassDesc::Unused 
+                &&  !HasAttachment(MakeIteratorRange(_attachments), p._depthStencil))
+                _attachments.push_back(
+                    AttachmentDesc{
+                        AttachmentDesc::DimensionsMode::OutputRelative,
+                        1.f, 1.f,
+                        Format::D24_UNORM_S8_UINT,
+                        AttachmentDesc::LoadStore::Retain_RetainStencil,
+                        AttachmentDesc::LoadStore::Retain_RetainStencil,
+                        p._depthStencil, 0});
+
+            for (auto& a:p._resolve)
+                if (!HasAttachment(MakeIteratorRange(_attachments), a))
+                    _attachments.push_back(
+                        AttachmentDesc{
+                            AttachmentDesc::DimensionsMode::OutputRelative,
+                            1.f, 1.f,
+                            Format::R8G8B8A8_UNORM_SRGB,
+                            AttachmentDesc::LoadStore::Retain_RetainStencil,
+                            AttachmentDesc::LoadStore::Retain_RetainStencil,
+                            a, 0});
+        }
+
         // Calculate the hash value for this description by combining
         // together the hashes of the members.
         _hash = DefaultSeed64;

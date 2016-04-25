@@ -141,7 +141,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     VulkanUniquePtr<VkPipeline> PipelineBuilder::CreatePipeline(VkRenderPass renderPass, unsigned subpass, TextureSamples samples)
     {
-        if (!_shaderProgram) return nullptr;
+        if (!_shaderProgram || !renderPass) return nullptr;
 
         VkPipelineShaderStageCreateInfo shaderStages[3];
         uint32_t shaderStageCount = 0;
@@ -309,6 +309,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         if (!_pipelineStale) return true;
 
+        assert(_renderPass);
         auto pipeline = CreatePipeline(_renderPass, _renderPassSubpass, _renderPassSamples);
         if (pipeline) {
             vkCmdBindPipeline(

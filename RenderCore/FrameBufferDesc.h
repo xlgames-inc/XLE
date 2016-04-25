@@ -90,7 +90,7 @@ namespace RenderCore
 		FrameBufferDesc(
             IteratorRange<const AttachmentDesc*> attachments,
             IteratorRange<const SubpassDesc*> subpasses,
-            const TextureSamples& samples);
+            const TextureSamples& samples = TextureSamples::Create());
 		FrameBufferDesc();
 		~FrameBufferDesc();
 
