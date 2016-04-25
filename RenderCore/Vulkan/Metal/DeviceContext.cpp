@@ -127,19 +127,6 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
-    void				PipelineBuilder::SetPipelineLayout(const VulkanSharedPtr<VkPipelineLayout>& layout) 
-    { 
-        if (_pipelineLayout != layout) {
-            _pipelineStale = true;
-            _pipelineLayout = std::move(layout); 
-        }
-    }
-    
-    VkPipelineLayout    PipelineBuilder::GetPipelineLayout() 
-    { 
-        return _pipelineLayout.get(); 
-    }
-
     VulkanUniquePtr<VkPipeline> PipelineBuilder::CreatePipeline(
         VkRenderPass renderPass, unsigned subpass, 
         TextureSamples samples)
@@ -233,6 +220,11 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(result);
     }
 
+    PipelineLayout& PipelineBuilder::GetGlobalPipelineLayout()
+    {
+        return *_globalPipelineLayout;
+    }
+
     PipelineBuilder::PipelineBuilder(const ObjectFactory& factory, GlobalPools& globalPools, PipelineLayout& pipelineLayout)
     : _factory(&factory), _globalPools(&globalPools)
     , _globalPipelineLayout(&pipelineLayout)
@@ -300,14 +292,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
         // If we've been using the pipeline layout builder directly, then we
         // must flush those changes down to the PipelineBuilder
-        if (!_hideDescriptorSetBuilder && _descriptorSetBuilder.HasChanges()) {
-            SetPipelineLayout(_descriptorSetBuilder.SharePipelineLayout());
-            VkDescriptorSet descSets[2];
-            _descriptorSetBuilder.GetDescriptorSets(MakeIteratorRange(descSets));
+        if (!_dynamicBindings.HasChanges()) {
+            VkDescriptorSet descSets[1];
+            _dynamicBindings.GetDescriptorSets(MakeIteratorRange(descSets));
             CmdBindDescriptorSets(
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _pipelineLayout.get(), 0, 
-                dimof(descSets), descSets, 
+                _globalPipelineLayout->GetUnderlying(), 
+                _dynamicBindingsSlot, dimof(descSets), descSets, 
                 0, nullptr);
         }
 
@@ -384,12 +375,11 @@ namespace RenderCore { namespace Metal_Vulkan
         // hack -- clear some state
         _inputLayout = nullptr;
         _shaderProgram = nullptr;
-        _pipelineLayout = nullptr;
         _topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         for (auto& v:_vertexStrides) v = 0;
         _pipelineStale = true;
-        _hideDescriptorSetBuilder = false;
-        _descriptorSetBuilder.Reset();
+        _dynamicBindings.Reset();
+        _globalPipelineLayout->RebuildLayout(*_factory); // (rebuild if necessary)
 
 		// Unless the context is already tied to a primary command list, we will always
 		// create a secondary command list here.
@@ -681,18 +671,20 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     DeviceContext::DeviceContext(
-        const ObjectFactory& factory, 
-        GlobalPools& globalPools,
-        PipelineLayout& globalPipelineLayout,
-		CommandPool& cmdPool, 
+        const ObjectFactory&    factory, 
+        GlobalPools&            globalPools,
+        PipelineLayout&         globalPipelineLayout,
+		CommandPool&            cmdPool, 
         CommandPool::BufferType cmdBufferType)
     : PipelineBuilder(factory, globalPools, globalPipelineLayout)
     , _cmdPool(&cmdPool), _cmdBufferType(cmdBufferType)
-    , _descriptorSetBuilder(factory, globalPools._mainDescriptorPool, globalPools._dummyResources)
-    , _hideDescriptorSetBuilder(false)
     , _renderPass(nullptr)
     , _renderPassSubpass(0u)
     , _renderPassSamples(TextureSamples::Create())
+    , _dynamicBindings(
+        factory, globalPools._mainDescriptorPool, globalPools._dummyResources, 
+        globalPipelineLayout.GetDescriptorSetLayout(1), globalPipelineLayout.ShareRootSignature()->_descriptorSets[1])
+    , _dynamicBindingsSlot(1u)
     {}
 
 	void DeviceContext::PrepareForDestruction(IDevice*, IPresentationChain*) {}
@@ -704,7 +696,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         static const unsigned s_pendingBufferLength = 32;
-        static const unsigned s_descriptorSetCount = 2;
+        static const unsigned s_descriptorSetCount = 1;
         static const unsigned s_maxBindings = 16u;
 
         VkDescriptorBufferInfo  _bufferInfo[s_pendingBufferLength];
@@ -715,17 +707,18 @@ namespace RenderCore { namespace Metal_Vulkan
         unsigned _pendingImageInfos;
         unsigned _pendingBufferInfos;
 
-        VulkanSharedPtr<VkPipelineLayout>       _pipelineLayout;
-        VulkanUniquePtr<VkDescriptorSetLayout>  _layouts[s_descriptorSetCount];
+        VkDescriptorSetLayout               _layouts[s_descriptorSetCount];
+        VulkanUniquePtr<VkDescriptorSet>    _activeDescSets[s_descriptorSetCount];
+        VulkanUniquePtr<VkDescriptorSet>    _defaultDescSets[s_descriptorSetCount];
 
-        VulkanUniquePtr<VkDescriptorSet>        _activeDescSets[s_descriptorSetCount];
-        VulkanUniquePtr<VkDescriptorSet>        _defaultDescSets[s_descriptorSetCount];
+        uint64              _sinceLastFlush[s_descriptorSetCount];
+        uint64              _slotsFilled[s_descriptorSetCount];
 
-        uint64 _sinceLastFlush[s_descriptorSetCount];
-        uint64 _slotsFilled[s_descriptorSetCount];
+        DescriptorPool*     _descriptorPool;
+        VkSampler           _dummySampler;
 
-        DescriptorPool* _descriptorPool;
-        VkSampler _dummySampler;
+        unsigned    _srvMapping[s_maxBindings];
+        unsigned    _cbMapping[s_maxBindings];
 
         template<typename BindingInfo> void WriteBinding(unsigned bindingPoint, unsigned descriptorSet, VkDescriptorType type, const BindingInfo& bindingInfo);
         template<typename BindingInfo> BindingInfo& AllocateInfo(const BindingInfo& init);
@@ -800,12 +793,16 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void    DescriptorSetBuilder::Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images)
     {
-        const auto descriptorSet = 1u;
+        const auto descriptorSet = 0u;
         for (unsigned c=0; c<unsigned(images.size()); ++c) {
             if (!images[c]) continue;
             unsigned binding = startingPoint + c;
+            assert(binding < Pimpl::s_maxBindings);
+
+            if (_pimpl->_srvMapping[binding] == ~0u) continue;
+
             _pimpl->WriteBinding(
-                binding, descriptorSet, 
+                _pimpl->_srvMapping[binding], descriptorSet, 
                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                 VkDescriptorImageInfo {
                     _pimpl->_dummySampler,
@@ -819,21 +816,15 @@ namespace RenderCore { namespace Metal_Vulkan
         for (unsigned c=0; c<unsigned(uniformBuffers.size()); ++c) {
             if (!uniformBuffers[c]) continue;
             unsigned binding = startingPoint + c;
+            assert(binding < Pimpl::s_maxBindings);
+
+            if (_pimpl->_cbMapping[binding] != ~0u) continue;
+
             _pimpl->WriteBinding(
-                binding, descriptorSet, 
+                _pimpl->_cbMapping[binding], descriptorSet, 
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                 VkDescriptorBufferInfo { uniformBuffers[c], 0, VK_WHOLE_SIZE });
         }
-    }
-
-    VkPipelineLayout                            DescriptorSetBuilder::GetPipelineLayout()
-    {
-        return _pimpl->_pipelineLayout.get();
-    }
-
-    const VulkanSharedPtr<VkPipelineLayout>&    DescriptorSetBuilder::SharePipelineLayout()
-    {
-        return _pimpl->_pipelineLayout;
     }
 
     void    DescriptorSetBuilder::GetDescriptorSets(IteratorRange<VkDescriptorSet*> dst)
@@ -844,20 +835,16 @@ namespace RenderCore { namespace Metal_Vulkan
         // bindings that haven't changed.
         // It turns out that copying using VkCopyDescriptorSet is probably going to be
         // slow. We should try a different approach.
-        if (_pimpl->_pendingWrites) {
+        if (_pimpl->_pendingWrites || !_pimpl->_activeDescSets[0]) {
             VulkanUniquePtr<VkDescriptorSet> newSets[Pimpl::s_descriptorSetCount];
-            VkDescriptorSetLayout rawLayouts[Pimpl::s_descriptorSetCount];
-            for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c)
-                rawLayouts[c] = _pimpl->_layouts[c].get();
-            _pimpl->_descriptorPool->Allocate(MakeIteratorRange(newSets), MakeIteratorRange(rawLayouts));
+            _pimpl->_descriptorPool->Allocate(MakeIteratorRange(newSets), MakeIteratorRange(_pimpl->_layouts));
 
-            assert(_pimpl->_pendingWrites);
             for (unsigned c=0; c<_pimpl->_pendingWrites; ++c) {
-                if (_pimpl->_writes[c].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
-                    _pimpl->_writes[c].dstSet = newSets[1].get();
-                } else {
+                // if (_pimpl->_writes[c].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+                //     _pimpl->_writes[c].dstSet = newSets[1].get();
+                // } else {
                     _pimpl->_writes[c].dstSet = newSets[0].get();
-                }
+                // }
             }
 
             VkCopyDescriptorSet copies[Pimpl::s_maxBindings * Pimpl::s_descriptorSetCount];
@@ -928,36 +915,38 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     DescriptorSetBuilder::DescriptorSetBuilder(
-        const ObjectFactory& factory, DescriptorPool& descPool, 
-        DummyResources& defResources)
+        const ObjectFactory& factory,
+        DescriptorPool& descPool, 
+        DummyResources& defResources,
+        VkDescriptorSetLayout layout,
+        const DescriptorSetSignature& signature)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_descriptorPool = &descPool;
         _pimpl->_dummySampler = defResources._blankSampler->GetUnderlying();
+        _pimpl->_layouts[0] = layout;
 
-        // We will create generic descriptor set layouts that provide a large number of 
-        // binding points. It's not clear if there's any inefficiency if our layout has
-        // so many binding points that it is a large superset of any given shader.
-        
-        VkDescriptorSetLayout rawLayouts[Pimpl::s_descriptorSetCount];
         for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c) {
-            VkDescriptorSetLayoutBinding bindings[Pimpl::s_maxBindings];
-            VkDescriptorType type = 
-                (c==1) 
-                ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            for (unsigned b=0; b<Pimpl::s_maxBindings; ++b) {
-                bindings[b] = VkDescriptorSetLayoutBinding {
-                    b, type, 1, 
-                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                    nullptr };
-            }
-
-            _pimpl->_layouts[c] = factory.CreateDescriptorSetLayout(MakeIteratorRange(bindings));
-            rawLayouts[c] = _pimpl->_layouts[c].get();
+            _pimpl->_slotsFilled[c] = 0x0ull;
+            _pimpl->_sinceLastFlush[c] = 0x0ull;
         }
 
-        _pimpl->_pipelineLayout = factory.CreatePipelineLayout(MakeIteratorRange(rawLayouts));
+        // We need to make a mapping between the HLSL binding numbers and types
+        // and the binding index in our descriptor set
+
+        for (auto& m:_pimpl->_srvMapping) m = ~0u;
+        for (auto& m:_pimpl->_cbMapping) m = ~0u;
+
+        for (unsigned bIndex=0; bIndex<(unsigned)signature._bindings.size(); ++bIndex) {
+            const auto& b = signature._bindings[bIndex];
+            assert(b._hlslBindingIndex < Pimpl::s_maxBindings);
+            if (b._type == DescriptorSetBindingSignature::Type::Resource) {
+                assert(_pimpl->_srvMapping[b._hlslBindingIndex] == ~0u);
+                _pimpl->_srvMapping[b._hlslBindingIndex] = bIndex;
+            } else if (b._type == DescriptorSetBindingSignature::Type::ConstantBuffer) {
+                _pimpl->_cbMapping[b._hlslBindingIndex] = bIndex;
+            }
+        }
 
         Reset();
 
@@ -965,8 +954,8 @@ namespace RenderCore { namespace Metal_Vulkan
         VkBuffer defaultBuffers[Pimpl::s_maxBindings];
         VkImageView defaultImages[Pimpl::s_maxBindings];
         for (unsigned c=0; c<Pimpl::s_maxBindings; ++c) {
-            defaultBuffers[c] = defResources._blankBuffer.GetUnderlying();
-            defaultImages[c] = defResources._blankSrv.GetUnderlying();
+            defaultBuffers[c] = (_pimpl->_cbMapping[c] != ~0u) ? defResources._blankBuffer.GetUnderlying() : nullptr;
+            defaultImages[c] = (_pimpl->_srvMapping[c] != ~0u) ? defResources._blankSrv.GetUnderlying() : nullptr;
         }
         Bind(Stage::Vertex, 0, IteratorRange<const VkBuffer*>(defaultBuffers, &defaultBuffers[dimof(defaultBuffers)]));
         Bind(Stage::Vertex, 0, IteratorRange<const VkImageView*>(defaultImages, &defaultImages[dimof(defaultImages)]));
@@ -974,10 +963,8 @@ namespace RenderCore { namespace Metal_Vulkan
         // Create the descriptor sets, and then move them into "_defaultDescSets"
         // Note that these sets must come from a non-resetable permanent pool
         GetDescriptorSets(IteratorRange<VkDescriptorSet*>());
-        for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c) {
+        for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c)
             _pimpl->_defaultDescSets[c] = std::move(_pimpl->_activeDescSets[c]);
-            _pimpl->_slotsFilled[c] = (1ull<<uint64(Pimpl::s_maxBindings))-1ull;  // set every bit up to the slot count
-        }
     }
 
     DescriptorSetBuilder::~DescriptorSetBuilder()

@@ -36,25 +36,25 @@ namespace RenderCore { namespace Metal_Vulkan
         std::unique_ptr<Pimpl> _pimpl;
     };
 
+    class DescriptorSetBindingSignature
+    {
+    public:
+        enum class Type { Sampler, Resource, SamplerAndResource, ConstantBuffer, UnorderedAccess, InputAttachment, Unknown };
+        Type        _type;
+        unsigned    _hlslBindingIndex;  // this is the binding number as it appears in the HLSL code
+    };
+
+    class DescriptorSetSignature
+    {
+    public:
+        std::string             _name;
+        std::vector<DescriptorSetBindingSignature>    _bindings;
+    };
+        
     class RootSignature
     {
     public:
-        class Binding
-        {
-        public:
-            enum Type { Sampler, Resource, SamplerAndResource, ConstantBuffer, UnorderedAccess, InputAttachment, Unknown };
-            Type        _type;
-            unsigned    _bindingIndex;
-        };
-
-        class DescriptorSetLayout
-        {
-        public:
-            std::string             _name;
-            std::vector<Binding>    _bindings;
-        };
-
-        std::vector<DescriptorSetLayout> _descriptorSets;
+        std::vector<DescriptorSetSignature> _descriptorSets;
 
         const ::Assets::DependentFileState& GetDependentFileState() const { return _dependentFileState; };
         const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }

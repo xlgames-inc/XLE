@@ -13,6 +13,7 @@
 #include "DeviceContext.h"
 #include "Pools.h"
 #include "Format.h"
+#include "PipelineLayout.h"
 #include "../../Format.h"
 #include "../../Types.h"
 #include "../../ShaderService.h"
@@ -142,7 +143,7 @@ namespace RenderCore { namespace Metal_Vulkan
     bool BoundUniforms::BindConstantBuffer( uint64 hashName, unsigned slot, unsigned stream,
                                             const ConstantBufferLayoutElement elements[], size_t elementCount)
     {
-        assert(!_pipelineLayout);
+        // assert(!_pipelineLayout);
 		auto descSet = 0u;
         bool gotBinding = false;
 
@@ -186,7 +187,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindShaderResource(uint64 hashName, unsigned slot, unsigned stream)
     {
-        assert(!_pipelineLayout);
+        // assert(!_pipelineLayout);
 		auto descSet = 0u;
         bool gotBinding = false;
 
@@ -229,7 +230,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<const char*> cbs)
     {
-        assert(!_pipelineLayout);
+        // assert(!_pipelineLayout);
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
         assert(uniformsStream < s_descriptorSetCount);
@@ -243,7 +244,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<uint64> cbs)
     {
-        assert(!_pipelineLayout);
+        // assert(!_pipelineLayout);
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
         assert(uniformsStream < s_descriptorSetCount);
@@ -257,7 +258,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res)
     {
-        assert(!_pipelineLayout);
+        // assert(!_pipelineLayout);
         assert(uniformsStream < s_descriptorSetCount);
 
 		if (_srBindingIndices[uniformsStream].size() < res.size()) _srBindingIndices[uniformsStream].resize(res.size(), ~0u);
@@ -269,7 +270,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res)
     {
-        assert(!_pipelineLayout);
+        // assert(!_pipelineLayout);
         assert(uniformsStream < s_descriptorSetCount);
 
 		if (_srBindingIndices[uniformsStream].size() < res.size()) _srBindingIndices[uniformsStream].resize(res.size(), ~0u);
@@ -279,13 +280,14 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
+    static const bool s_reallocateDescriptorSets = true;
+
+#if 0
     VulkanUniquePtr<VkDescriptorSetLayout> 
         BoundUniforms::CreateLayout(const ObjectFactory& factory, unsigned descriptorSet) const
     {
         return factory.CreateDescriptorSetLayout(MakeIteratorRange(_bindings[descriptorSet]));
     }
-
-    static const bool s_reallocateDescriptorSets = true;
 
     void BoundUniforms::BuildPipelineLayout(
         const ObjectFactory& factory,
@@ -305,12 +307,13 @@ namespace RenderCore { namespace Metal_Vulkan
                     MakeIteratorRange(rawLayouts));
         }
     }
+#endif
 
     void BoundUniforms::Apply(  DeviceContext& context, 
                                 const UniformsStream& stream0, 
                                 const UniformsStream& stream1) const
     {
-        BuildPipelineLayout(GetObjectFactory(), context.GetGlobalPools()._mainDescriptorPool);
+        // BuildPipelineLayout(GetObjectFactory(), context.GetGlobalPools()._mainDescriptorPool);
 
         // There's currently a problem reusing descriptor sets from frame to frame. I'm not sure
         // what the issue is, but causes an error deep within Vulkan. The validation errors don't
@@ -330,7 +333,8 @@ namespace RenderCore { namespace Metal_Vulkan
         if (constant_expression<s_reallocateDescriptorSets>::result()) {
             VkDescriptorSetLayout rawLayouts[s_descriptorSetCount];
             for (unsigned c=0; c<s_descriptorSetCount; ++c)
-                rawLayouts[c] = _layouts[c].get();
+                rawLayouts[c] = context.GetGlobalPipelineLayout().GetDescriptorSetLayout(c);
+                // _layouts[c].get();
             context.GetGlobalPools()._mainDescriptorPool.Allocate(
                 MakeIteratorRange(_descriptorSets),
                 MakeIteratorRange(rawLayouts));
@@ -354,7 +358,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			auto maxCbs = _cbBindingIndices[stri].size();
             for (unsigned p=0; p<std::min(s._packetCount, maxCbs); ++p) {
-                if (s._prebuiltBuffers && s._prebuiltBuffers[p]) {
+                if (s._prebuiltBuffers && s._prebuiltBuffers[p] && s._prebuiltBuffers[p]->IsGood()) {
 
                     assert(bufferCount < dimof(bufferInfo));
                     assert(writeCount < dimof(writes));
@@ -381,7 +385,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     descSetWrites[dstBinding>>16] |= 1ull << uint64(dstBinding&0xffff);
                     ++writeCount;
                     ++bufferCount;
-                } else if (s._packets[p]) {
+                } else if (s._packets && s._packets[p]) {
                     // todo -- append these onto a large buffer, or use push constant updates
                 }
             }
@@ -486,12 +490,13 @@ namespace RenderCore { namespace Metal_Vulkan
         for (unsigned c=0; c<s_descriptorSetCount; ++c)
             rawDescriptorSets[c] = _descriptorSets[c].get();
         
-        context.SetPipelineLayout(_pipelineLayout);
-        context.SetHideDescriptorSetBuilder();
+        // context.SetPipelineLayout(_pipelineLayout);
+        // context.SetHideDescriptorSetBuilder();
         context.CmdBindDescriptorSets(
             VK_PIPELINE_BIND_POINT_GRAPHICS,
-            _pipelineLayout.get(), 0, 
-            dimof(rawDescriptorSets), rawDescriptorSets, 
+            // _pipelineLayout.get(), 
+            context.GetGlobalPipelineLayout().GetUnderlying(),
+            0, dimof(rawDescriptorSets), rawDescriptorSets, 
             0, nullptr);
     }
 

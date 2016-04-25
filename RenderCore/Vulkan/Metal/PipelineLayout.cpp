@@ -39,15 +39,15 @@ namespace RenderCore { namespace Metal_Vulkan
         return _pimpl->_pipelineLayout.get();
     }
 
-    static VkDescriptorType AsDescriptorType(RootSignature::Binding::Type type)
+    static VkDescriptorType AsDescriptorType(DescriptorSetBindingSignature::Type type)
     {
         switch (type) {
-        case RootSignature::Binding::Type::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case RootSignature::Binding::Type::Resource: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        case RootSignature::Binding::Type::SamplerAndResource: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        case RootSignature::Binding::Type::ConstantBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        case RootSignature::Binding::Type::InputAttachment: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-        case RootSignature::Binding::Type::UnorderedAccess:
+        case DescriptorSetBindingSignature::Type::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case DescriptorSetBindingSignature::Type::Resource: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        case DescriptorSetBindingSignature::Type::SamplerAndResource: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        case DescriptorSetBindingSignature::Type::ConstantBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case DescriptorSetBindingSignature::Type::InputAttachment: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        case DescriptorSetBindingSignature::Type::UnorderedAccess:
         default:
             return VK_DESCRIPTOR_TYPE_SAMPLER;
         }
@@ -55,16 +55,16 @@ namespace RenderCore { namespace Metal_Vulkan
 
     static VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
         const ObjectFactory& factory, 
-        const RootSignature::DescriptorSetLayout& srcLayout)
+        const DescriptorSetSignature& srcLayout)
     {
         // The "root signature" bindings correspond very closely with the
         // DescriptorSetLayout
         std::vector<VkDescriptorSetLayoutBinding> bindings;
         bindings.reserve(srcLayout._bindings.size());
-        for (const auto& b:srcLayout._bindings) {
+        for (unsigned bIndex=0; bIndex<(unsigned)srcLayout._bindings.size(); ++bIndex) {
             VkDescriptorSetLayoutBinding dstBinding = {};
-            dstBinding.binding = b._bindingIndex;
-            dstBinding.descriptorType = AsDescriptorType(b._type);
+            dstBinding.binding = bIndex;
+            dstBinding.descriptorType = AsDescriptorType(srcLayout._bindings[bIndex]._type);
             dstBinding.descriptorCount = 1;
             dstBinding.stageFlags = VK_SHADER_STAGE_ALL;
             dstBinding.pImmutableSamplers = nullptr;
@@ -98,6 +98,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
 
         _pimpl->_pipelineLayout = factory.CreatePipelineLayout(MakeIteratorRange(rawDescriptorSetLayouts));
+        _pimpl->_pendingLayoutRebuild = false;
     }
 
     std::shared_ptr<RootSignature> PipelineLayout::ShareRootSignature()
@@ -118,6 +119,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_pendingLayoutRebuild = true;
         _pimpl->_rootSignatureFilename = rootSignatureCfg;
+        RebuildLayout(objectFactory);
     }
 
     PipelineLayout::~PipelineLayout()
@@ -125,20 +127,20 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static RootSignature::Binding::Type AsBindingType(char type)
+    static DescriptorSetBindingSignature::Type AsBindingType(char type)
     {
         // convert between HLSL style register binding indices to a type enum
         switch (type) {
-        case 'b': return RootSignature::Binding::Type::ConstantBuffer;
-        case 's': return RootSignature::Binding::Type::Sampler;
-        case 't': return RootSignature::Binding::Type::Resource;
-        case 'u': return RootSignature::Binding::Type::UnorderedAccess;
+        case 'b': return DescriptorSetBindingSignature::Type::ConstantBuffer;
+        case 's': return DescriptorSetBindingSignature::Type::Sampler;
+        case 't': return DescriptorSetBindingSignature::Type::Resource;
+        case 'u': return DescriptorSetBindingSignature::Type::UnorderedAccess;
         default:
-            return RootSignature::Binding::Type::Unknown;
+            return DescriptorSetBindingSignature::Type::Unknown;
         }
     }
 
-    static RootSignature::DescriptorSetLayout ReadDescSet(DocElementHelper<InputStreamFormatter<char>>& element)
+    static DescriptorSetSignature ReadDescSet(DocElementHelper<InputStreamFormatter<char>>& element)
     {
         // Create a DescriptorSetLayout from the given document element
         // The element should be a series of attributes of the form
@@ -149,7 +151,7 @@ namespace RenderCore { namespace Metal_Vulkan
         // A single character represents the type. It should be followed by 
         // either a single number or an (inclusive) range.
         // SM5.1 adds a "space" parameter to allow for overlaps. But we don't support this currently.
-        RootSignature::DescriptorSetLayout result;
+        DescriptorSetSignature result;
         result._name = element.Name().AsString();
         for (auto a=element.FirstAttribute(); a; a=a.Next()) {
             if (a.Name().Empty()) continue;
@@ -164,7 +166,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
             // Add bindings between the start and end (inclusive)
             for (auto i=start; i<=end; ++i)
-                result._bindings.push_back(RootSignature::Binding{type, i});
+                result._bindings.push_back(DescriptorSetBindingSignature{type, i});
         }
         return std::move(result);
     }
@@ -185,7 +187,7 @@ namespace RenderCore { namespace Metal_Vulkan
             MemoryMappedInputStream(block.get(), PtrAdd(block.get(), fileSize)));
         Document<InputStreamFormatter<char>> doc(formatter);
 
-        std::vector<DescriptorSetLayout> descSets;
+        std::vector<DescriptorSetSignature> descSets;
         std::vector<StringSection<>> descSetNames;
 
         std::vector<StringSection<>> rootSig;

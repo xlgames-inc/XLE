@@ -347,19 +347,19 @@ namespace RenderCore { namespace Metal_Vulkan
 	    return RGROUP_CBUFFER;
     }
 
-    static RootSignature::Binding::Type AsBindingType(ResourceBinding* srcResBinding, ConstantBuffer* srcCBBinding)
+    static DescriptorSetBindingSignature::Type AsBindingType(ResourceBinding* srcResBinding, ConstantBuffer* srcCBBinding)
     {
-        if (srcCBBinding) return RootSignature::Binding::ConstantBuffer;
-        if (!srcResBinding) return RootSignature::Binding::Unknown;
+        if (srcCBBinding) return DescriptorSetBindingSignature::Type::ConstantBuffer;
+        if (!srcResBinding) return DescriptorSetBindingSignature::Type::Unknown;
 
         auto group = ResourceTypeToResourceGroup(srcResBinding->eType);
         switch (group) {
-        case RGROUP_CBUFFER:    return RootSignature::Binding::ConstantBuffer;
-        case RGROUP_TEXTURE:    return RootSignature::Binding::Resource;
-        case RGROUP_SAMPLER:    return RootSignature::Binding::Sampler;
-        case RGROUP_UAV:        return RootSignature::Binding::UnorderedAccess;
+        case RGROUP_CBUFFER:    return DescriptorSetBindingSignature::Type::ConstantBuffer;
+        case RGROUP_TEXTURE:    return DescriptorSetBindingSignature::Type::Resource;
+        case RGROUP_SAMPLER:    return DescriptorSetBindingSignature::Type::Sampler;
+        case RGROUP_UAV:        return DescriptorSetBindingSignature::Type::UnorderedAccess;
         }
-        return RootSignature::Binding::Unknown;
+        return DescriptorSetBindingSignature::Type::Unknown;
     }
 
     uint32_t __cdecl EvaluateBinding(
@@ -373,12 +373,12 @@ namespace RenderCore { namespace Metal_Vulkan
         // index and set associated with it!
         auto& rootSig = *(RootSignature*)userData;
         auto type = AsBindingType(srcResBinding, srcCBBinding);
-        if (type == RootSignature::Binding::Unknown) return 0;
+        if (type == DescriptorSetBindingSignature::Type::Unknown) return 0;
 
         for (unsigned setIndex=0; setIndex<(unsigned)rootSig._descriptorSets.size(); ++setIndex) {
             auto& set = rootSig._descriptorSets[setIndex];
             for (unsigned finalBind=0; finalBind<(unsigned)set._bindings.size(); ++finalBind)
-                if (    set._bindings[finalBind]._bindingIndex == bindPoint
+                if (    set._bindings[finalBind]._hlslBindingIndex == bindPoint
                     &&  set._bindings[finalBind]._type == type) {
                     // found it!
                     dstBinding->_locationIndex = ~0u;
