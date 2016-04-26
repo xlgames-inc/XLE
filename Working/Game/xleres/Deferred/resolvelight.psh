@@ -13,12 +13,13 @@
 #include "resolveutil.h"
 #include "../System/LoadGBuffer.h"
 #include "../Colour.h" // for LightingScale
+#include "../Binding.h"
 
 #if HAS_SCREENSPACE_AO==1
     Texture2D<float>	AmbientOcclusion : register(t5);
 #endif
 
-cbuffer LightBuffer
+cbuffer LightBuffer CB_BOUND1_1
 {
 	LightDesc Light;
 }

@@ -47,11 +47,11 @@ namespace RenderCore { namespace Metal_Vulkan
     static VkDescriptorType AsDescriptorType(DescriptorSetBindingSignature::Type type)
     {
         switch (type) {
-        case DescriptorSetBindingSignature::Type::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case DescriptorSetBindingSignature::Type::Resource: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        case DescriptorSetBindingSignature::Type::SamplerAndResource: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        case DescriptorSetBindingSignature::Type::ConstantBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        case DescriptorSetBindingSignature::Type::InputAttachment: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        case DescriptorSetBindingSignature::Type::Sampler:              return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case DescriptorSetBindingSignature::Type::Resource:             return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case DescriptorSetBindingSignature::Type::SamplerAndResource:   return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        case DescriptorSetBindingSignature::Type::ConstantBuffer:       return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case DescriptorSetBindingSignature::Type::InputAttachment:      return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
         case DescriptorSetBindingSignature::Type::UnorderedAccess:
         default:
             return VK_DESCRIPTOR_TYPE_SAMPLER;
@@ -114,6 +114,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     break;
 
                 case DescriptorSetBindingSignature::Type::SamplerAndResource:
+                    ++result._samplerCount;
                     ++result._sampledImageCount;
                     break;
 
@@ -149,6 +150,7 @@ namespace RenderCore { namespace Metal_Vulkan
             DescSetLimits totalLimits = {};
             for (const auto& s:sig._descriptorSets) {
                 auto ds = BuildLimits(s);
+                // not really clear how these ones work...?
                 if (    ds._sampledImageCount > limits.maxDescriptorSetSampledImages
                     ||  ds._samplerCount > limits.maxPerStageDescriptorSamplers
                     ||  ds._uniformBufferCount > limits.maxPerStageDescriptorUniformBuffers
@@ -235,8 +237,7 @@ namespace RenderCore { namespace Metal_Vulkan
         case 's': return DescriptorSetBindingSignature::Type::Sampler;
         case 't': return DescriptorSetBindingSignature::Type::Resource;
         case 'u': return DescriptorSetBindingSignature::Type::UnorderedAccess;
-        default:
-            return DescriptorSetBindingSignature::Type::Unknown;
+        default:  return DescriptorSetBindingSignature::Type::Unknown;
         }
     }
 

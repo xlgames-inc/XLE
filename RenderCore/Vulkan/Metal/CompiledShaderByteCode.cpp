@@ -347,7 +347,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	    return RGROUP_CBUFFER;
     }
 
-    static DescriptorSetBindingSignature::Type AsBindingType(ResourceBinding* srcResBinding, ConstantBuffer* srcCBBinding)
+    static DescriptorSetBindingSignature::Type AsBindingType(ResourceBinding* srcResBinding, ::ConstantBuffer* srcCBBinding)
     {
         if (srcCBBinding) return DescriptorSetBindingSignature::Type::ConstantBuffer;
         if (!srcResBinding) return DescriptorSetBindingSignature::Type::Unknown;
@@ -355,7 +355,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto group = ResourceTypeToResourceGroup(srcResBinding->eType);
         switch (group) {
         case RGROUP_CBUFFER:    return DescriptorSetBindingSignature::Type::ConstantBuffer;
-        case RGROUP_TEXTURE:    return DescriptorSetBindingSignature::Type::Resource;
+        case RGROUP_TEXTURE:    return DescriptorSetBindingSignature::Type::SamplerAndResource;
         case RGROUP_SAMPLER:    return DescriptorSetBindingSignature::Type::Sampler;
         case RGROUP_UAV:        return DescriptorSetBindingSignature::Type::UnorderedAccess;
         }
@@ -366,7 +366,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void* userData,
         GLSLResourceBinding* dstBinding, 
         ResourceBinding* srcResBinding,
-        ConstantBuffer* srcCBBinding,
+        ::ConstantBuffer* srcCBBinding,
         uint32_t bindPoint, uint32_t shaderStage)
     {
         // Attempt to find this binding in our root signature, and return the binding
@@ -431,7 +431,7 @@ namespace RenderCore { namespace Metal_Vulkan
             HLSLCC_FLAG_UNIFORM_BUFFER_OBJECT | HLSLCC_FLAG_INOUT_SEMANTIC_NAMES 
             /* | HLSLCC_FLAG_COMBINE_TEXTURE_SAMPLERS */,
             LANG_440, &ext, &depData, 
-            (EvaluateBindingFn)&EvaluateBinding, rootSig.get(),
+            &EvaluateBinding, rootSig.get(),
             &glslShader);
         if (!translateResult) return false;
         

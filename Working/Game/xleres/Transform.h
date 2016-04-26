@@ -9,7 +9,7 @@
 
 #include "Binding.h"
 
-cbuffer GlobalTransform : CB_BOUND0_0
+cbuffer GlobalTransform CB_BOUND0_0
 {
 	row_major float4x4 WorldToClip;
 	float4 FrustumCorners[4];
@@ -19,14 +19,14 @@ cbuffer GlobalTransform : CB_BOUND0_0
     row_major float4x4 CameraBasis;
 }
 
-cbuffer LocalTransform : CB_BOUND1_1
+cbuffer LocalTransform CB_BOUND1_1
 {
 	row_major float3x4 LocalToWorld;
 	float3 LocalSpaceView;
 	uint2 MaterialGuid;
 }
 
-cbuffer GlobalState : CB_BOUND0_2
+cbuffer GlobalState CB_BOUND0_2
 {
 	float Time;
 	uint GlobalSamplingPassIndex;

@@ -18,7 +18,7 @@
 // in one go (as opposed to other models, where a single light is
 // resolved at a time). This cbuffer holds the settings for all
 // of the lights in the scene.
-cbuffer BasicLightingEnvironment : CB_BOUND0_3
+cbuffer BasicLightingEnvironment CB_BOUND0_3
 {
     AmbientDesc BasicAmbient;
     RangeFogDesc BasicRangeFog;

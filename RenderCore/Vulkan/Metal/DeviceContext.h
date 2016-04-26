@@ -107,6 +107,7 @@ namespace RenderCore { namespace Metal_Vulkan
         enum class Stage { Vertex, Pixel, Geometry, Compute, Hull, Domain, Max };
         void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images);
         void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
+        void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
 
         void    GetDescriptorSets(IteratorRange<VkDescriptorSet*> dst);
         bool    HasChanges() const;
@@ -116,7 +117,8 @@ namespace RenderCore { namespace Metal_Vulkan
             const ObjectFactory& factory, DescriptorPool& descPool, 
             DummyResources& dummyResources,
             VkDescriptorSetLayout layout,
-            const DescriptorSetSignature& signature, int cbBindingOffset, int srvBindingOffset);
+            const DescriptorSetSignature& signature, 
+            int cbBindingOffset, int srvBindingOffset, int samplerBindingOffset);
         ~DescriptorSetBuilder();
 
         DescriptorSetBuilder(const DescriptorSetBuilder&) = delete;
@@ -154,6 +156,27 @@ namespace RenderCore { namespace Metal_Vulkan
         template<int Count> void    BindGS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
         template<int Count> void    BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
         template<int Count> void    BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+
+        template<int Count> void    BindVS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindPS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindCS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindGS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindHS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindDS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
+
+        template<int Count> void    BindVS_G(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindPS_G(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindGS_G(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindCS_G(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindHS_G(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindDS_G(const ResourceList<SamplerState, Count>& samplerStates);
+
+        template<int Count> void    BindVS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindPS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindCS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindGS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindHS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindDS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
 
 		template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess) {}
 
@@ -302,7 +325,6 @@ namespace RenderCore { namespace Metal_Vulkan
         VectorPattern<unsigned,2>           _presentationTargetDims;
 
         std::vector<VkDescriptorSet>        _descriptorSets;
-        bool                                _descriptorSetsDirty;
     };
 
     void SetImageLayout(
@@ -314,6 +336,7 @@ namespace RenderCore { namespace Metal_Vulkan
         unsigned mipCount,
         unsigned layerCount);
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<int Count> 
         void DeviceContext::Bind(
@@ -375,12 +398,53 @@ namespace RenderCore { namespace Metal_Vulkan
                 MakeIteratorRange(shaderResources._buffers));
         }
 
-    template<int Count> void    DeviceContext::BindVS(const ResourceList<SamplerState, Count>& samplerStates) {}
-    template<int Count> void    DeviceContext::BindPS(const ResourceList<SamplerState, Count>& samplerStates) {}
-    template<int Count> void    DeviceContext::BindGS(const ResourceList<SamplerState, Count>& samplerStates) {}
-    template<int Count> void    DeviceContext::BindCS(const ResourceList<SamplerState, Count>& samplerStates) {}
-    template<int Count> void    DeviceContext::BindHS(const ResourceList<SamplerState, Count>& samplerStates) {}
-    template<int Count> void    DeviceContext::BindDS(const ResourceList<SamplerState, Count>& samplerStates) {}
+    template<int Count> 
+        void    DeviceContext::BindVS(const ResourceList<SamplerState, Count>& samplerStates) 
+        {
+            _dynamicBindings.Bind(
+                DescriptorSetBuilder::Stage::Vertex, 
+                samplerStates._startingPoint,
+                MakeIteratorRange(samplerStates._buffers));
+        }
+    template<int Count> void    DeviceContext::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
+        {
+            _dynamicBindings.Bind(
+                DescriptorSetBuilder::Stage::Pixel, 
+                samplerStates._startingPoint,
+                MakeIteratorRange(samplerStates._buffers));
+        }
+
+    template<int Count> void    DeviceContext::BindGS(const ResourceList<SamplerState, Count>& samplerStates)
+        {
+            _dynamicBindings.Bind(
+                DescriptorSetBuilder::Stage::Geometry, 
+                samplerStates._startingPoint,
+                MakeIteratorRange(samplerStates._buffers));
+        }
+
+    template<int Count> void    DeviceContext::BindCS(const ResourceList<SamplerState, Count>& samplerStates)
+        {
+            _dynamicBindings.Bind(
+                DescriptorSetBuilder::Stage::Compute, 
+                samplerStates._startingPoint,
+                MakeIteratorRange(samplerStates._buffers));
+        }
+
+    template<int Count> void    DeviceContext::BindHS(const ResourceList<SamplerState, Count>& samplerStates)
+        {
+            _dynamicBindings.Bind(
+                DescriptorSetBuilder::Stage::Hull, 
+                samplerStates._startingPoint,
+                MakeIteratorRange(samplerStates._buffers));
+        }
+
+    template<int Count> void    DeviceContext::BindDS(const ResourceList<SamplerState, Count>& samplerStates)
+        {
+            _dynamicBindings.Bind(
+                DescriptorSetBuilder::Stage::Domain, 
+                samplerStates._startingPoint,
+                MakeIteratorRange(samplerStates._buffers));
+        }
 
     template<int Count> 
         void    DeviceContext::BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
@@ -431,6 +495,165 @@ namespace RenderCore { namespace Metal_Vulkan
         void    DeviceContext::BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
             _dynamicBindings.Bind(
+                DescriptorSetBuilder::Stage::Domain, 
+                constantBuffers._startingPoint,
+                MakeIteratorRange(constantBuffers._buffers));
+        }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<int Count> 
+        void    DeviceContext::BindVS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Vertex, 
+                shaderResources._startingPoint,
+                MakeIteratorRange(shaderResources._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindPS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Pixel, 
+                shaderResources._startingPoint,
+                MakeIteratorRange(shaderResources._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindCS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Compute, 
+                shaderResources._startingPoint,
+                MakeIteratorRange(shaderResources._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindGS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Geometry, 
+                shaderResources._startingPoint,
+                MakeIteratorRange(shaderResources._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindHS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Hull, 
+                shaderResources._startingPoint,
+                MakeIteratorRange(shaderResources._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindDS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Domain, 
+                shaderResources._startingPoint,
+                MakeIteratorRange(shaderResources._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindVS_G(const ResourceList<SamplerState, Count>& samplerStates) 
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Vertex, 
+                samplerStates._startingPoint,
+                MakeIteratorRange(samplerStates._buffers));
+        }
+    template<int Count> void    DeviceContext::BindPS_G(const ResourceList<SamplerState, Count>& samplerStates)
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Pixel, 
+                samplerStates._startingPoint,
+                MakeIteratorRange(samplerStates._buffers));
+        }
+
+    template<int Count> void    DeviceContext::BindGS_G(const ResourceList<SamplerState, Count>& samplerStates)
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Geometry, 
+                samplerStates._startingPoint,
+                MakeIteratorRange(samplerStates._buffers));
+        }
+
+    template<int Count> void    DeviceContext::BindCS_G(const ResourceList<SamplerState, Count>& samplerStates)
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Compute, 
+                samplerStates._startingPoint,
+                MakeIteratorRange(samplerStates._buffers));
+        }
+
+    template<int Count> void    DeviceContext::BindHS_G(const ResourceList<SamplerState, Count>& samplerStates)
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Hull, 
+                samplerStates._startingPoint,
+                MakeIteratorRange(samplerStates._buffers));
+        }
+
+    template<int Count> void    DeviceContext::BindDS_G(const ResourceList<SamplerState, Count>& samplerStates)
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Domain, 
+                samplerStates._startingPoint,
+                MakeIteratorRange(samplerStates._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindVS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Vertex, 
+                constantBuffers._startingPoint,
+                MakeIteratorRange(constantBuffers._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindPS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Pixel, 
+                constantBuffers._startingPoint,
+                MakeIteratorRange(constantBuffers._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindCS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Compute, 
+                constantBuffers._startingPoint,
+                MakeIteratorRange(constantBuffers._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindGS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Geometry, 
+                constantBuffers._startingPoint,
+                MakeIteratorRange(constantBuffers._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindHS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+        {
+            _globalBindings.Bind(
+                DescriptorSetBuilder::Stage::Hull, 
+                constantBuffers._startingPoint,
+                MakeIteratorRange(constantBuffers._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindDS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+        {
+            _globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Domain, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));

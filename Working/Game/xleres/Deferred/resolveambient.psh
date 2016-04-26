@@ -14,8 +14,9 @@
 #include "../Lighting/RangeFogResolve.h"
 #include "../System/LoadGBuffer.h"
 #include "../Colour.h"	// for LightingScale
+#include "../Binding.h"
 
-cbuffer AmbientLightBuffer
+cbuffer AmbientLightBuffer CB_BOUND1_1
 {
 	AmbientDesc Ambient;
 	RangeFogDesc RangeFog;

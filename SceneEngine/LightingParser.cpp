@@ -136,18 +136,18 @@ namespace SceneEngine
             samplerAnisotrophic(Metal::FilterMode::Anisotropic),
             samplerPoint(Metal::FilterMode::Point, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp),
             samplerWrapU(Metal::FilterMode::Trilinear, Metal::AddressMode::Wrap, Metal::AddressMode::Clamp);
-        context.BindPS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
-        context.BindVS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
-        context.BindPS(RenderCore::MakeResourceList(6, samplerWrapU));
+        context.BindPS_G(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
+        context.BindVS_G(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
+        context.BindPS_G(RenderCore::MakeResourceList(6, samplerWrapU));
 
         const auto& normalsFittingResource = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/normalsfitting.dds:LT").GetShaderResource();
 		const auto& distintColors = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/distinctcolors.dds:T").GetShaderResource();
-        context.BindPS(RenderCore::MakeResourceList(14, normalsFittingResource, distintColors));
-        context.BindCS(RenderCore::MakeResourceList(14, normalsFittingResource));
+        context.BindPS_G(RenderCore::MakeResourceList(14, normalsFittingResource, distintColors));
+        context.BindCS_G(RenderCore::MakeResourceList(14, normalsFittingResource));
 
             // perlin noise resources in standard slots
         auto& perlinNoiseRes = Techniques::FindCachedBox2<PerlinNoiseResources>();
-        context.BindPS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+        context.BindPS_G(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             // procedural scratch texture for scratches test
         // context.BindPS(MakeResourceList(18, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchnorm.dds:L").GetShaderResource()));

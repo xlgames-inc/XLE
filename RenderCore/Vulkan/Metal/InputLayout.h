@@ -159,19 +159,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
         static const unsigned s_descriptorSetCount = 1;
         static const unsigned s_streamCount = 2;
-        std::vector<VkDescriptorSetLayoutBinding>       _bindings[s_descriptorSetCount];
-        std::vector<uint32>                             _cbBindingIndices[s_streamCount];
-        std::vector<uint32>                             _srBindingIndices[s_streamCount];
+        std::vector<uint32> _cbBindingIndices[s_streamCount];
+        std::vector<uint32> _srvBindingIndices[s_streamCount];
+        uint64  _shaderBindingMask[s_descriptorSetCount];
 
-        // mutable VulkanSharedPtr<VkPipelineLayout>       _pipelineLayout;
-        // mutable VulkanUniquePtr<VkDescriptorSetLayout>  _layouts[s_descriptorSetCount];
+        mutable VulkanUniquePtr<VkDescriptorSet> _descriptorSets[s_descriptorSetCount];
 
-        mutable VulkanUniquePtr<VkDescriptorSet>        _descriptorSets[s_descriptorSetCount];
-
-        // VulkanUniquePtr<VkDescriptorSetLayout>      CreateLayout(const ObjectFactory& factory, unsigned descriptorSet) const;
-        // void BuildPipelineLayout(
-        //     const ObjectFactory& factory, 
-        //     DescriptorPool& descriptorPool) const;
+        void BuildShaderBindingMask();
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

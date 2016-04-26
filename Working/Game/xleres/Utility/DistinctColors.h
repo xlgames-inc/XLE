@@ -10,6 +10,8 @@
 #if !defined(DISTINCT_COLORS)
 #define DISTINCT_COLORS
 
+#include "../Binding.h"
+
 #if 0
     static const uint ColourListCount = 47;
     static const uint3 ColourList[47] =
@@ -36,7 +38,7 @@
     }
 #else
 
-    Texture1D DistinctColors : register(t15);
+    Texture1D DistinctColors TEXTURE_GLOBAL_15;
     float3 GetDistinctFloatColour(uint index)
     {
         uint dims;

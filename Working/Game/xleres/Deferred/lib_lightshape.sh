@@ -6,6 +6,7 @@
 
 #include "../Lighting/LightShapes.h"
 #include "../System/LoadGBuffer.h"
+#include "../Binding.h"
 
 #if MSAA_SAMPLES > 1
     #define MAYBE_SAMPLE_INDEX , uint sampleIndex
@@ -21,7 +22,7 @@
 // For example, another library might have GlobalTransform bound to
 // constant buffer slot 0. So we have to have move LightBuffer to
 // a free slot.
-cbuffer LightBuffer : register(b1)
+cbuffer LightBuffer CB_BOUND1_1
 {
     LightDesc Light;
 }

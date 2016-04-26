@@ -9,10 +9,11 @@
 
 #include "../TextureAlgorithm.h"		// for LoadFloat1
 #include "../TransformAlgorithm.h"		// float NDC->linear conversions
+#include "../Binding.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Texture2D_MaybeMS<float>	DepthTexture	 	: register(t4);
+Texture2D_MaybeMS<float>	DepthTexture	 	TEXTURE_DYNAMIC_4;
 
 float GetLinear0To1Depth(int2 pixelCoords, uint sampleIndex)
 {

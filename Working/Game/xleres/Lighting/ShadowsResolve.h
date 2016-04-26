@@ -26,7 +26,7 @@ Texture2D		NoiseTexture	: register(t10);
 static const bool ShadowsPerspectiveProjection = false;
 
 static const uint FilterKernelSize = 32;
-cbuffer ShadowParameters : register(b12)
+cbuffer ShadowParameters
 {
     // #define PACK_FILTER_KERNEL
     #if defined(PACK_FILTER_KERNEL)
@@ -36,7 +36,7 @@ cbuffer ShadowParameters : register(b12)
     #endif
 }
 
-cbuffer ShadowResolveParameters : register(b11)
+cbuffer ShadowResolveParameters
 {
     float ShadowBiasWorldSpace;
     float TanBlurAngle;

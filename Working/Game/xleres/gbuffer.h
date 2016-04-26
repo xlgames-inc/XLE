@@ -7,7 +7,10 @@
 #if !defined(GBUFFER_H)
 #define GBUFFER_H
 
-#include "CommonResources.h"
+#include "Binding.h"
+#include "CommonResources.h"    // for ClampingSampler
+
+Texture2D       NormalsFittingTexture TEXTURE_GLOBAL_14;
 
 static const bool SignedNormalOutput = true;
 
