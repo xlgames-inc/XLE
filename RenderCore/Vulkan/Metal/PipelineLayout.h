@@ -22,6 +22,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         VkDescriptorSetLayout       GetDescriptorSetLayout(unsigned index);
+        unsigned                    GetDescriptorSetCount();
         VkPipelineLayout            GetUnderlying();
 
         std::shared_ptr<RootSignature> ShareRootSignature();

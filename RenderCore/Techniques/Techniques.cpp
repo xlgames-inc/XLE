@@ -994,13 +994,11 @@ namespace RenderCore { namespace Techniques
             //  _globalUniformsStream
         static auto HashGlobalTransform             = Hash64("GlobalTransform");
         static auto HashGlobalState                 = Hash64("GlobalState");
-        static auto HashFogSettings                 = Hash64("FogSettings");
         static auto HashShadowProjection            = Hash64("ArbitraryShadowProjection");
         static auto HashOrthoShadowProjection       = Hash64("OrthogonalShadowProjection");
         static auto HashBasicLightingEnvironment    = Hash64("BasicLightingEnvironment");
         binding.BindConstantBuffer(HashGlobalTransform, CB_GlobalTransform, 0);
         binding.BindConstantBuffer(HashGlobalState, CB_GlobalState, 0);
-        binding.BindConstantBuffer(HashFogSettings, CB_FogSettings, 0);
         binding.BindConstantBuffer(HashShadowProjection, CB_ShadowProjection, 0);
         binding.BindConstantBuffer(HashOrthoShadowProjection, CB_OrthoShadowProjection, 0);
         binding.BindConstantBuffer(HashBasicLightingEnvironment, CB_BasicLightingEnvironment, 0);
@@ -1012,13 +1010,11 @@ namespace RenderCore { namespace Techniques
             //  _globalUniformsStream
         static auto HashGlobalTransform             = Hash64("GlobalTransform");
         static auto HashGlobalState                 = Hash64("GlobalState");
-        static auto HashFogSettings                 = Hash64("FogSettings");
-        static auto HashShadowProjection            = Hash64("ShadowProjection");
+        static auto HashShadowProjection            = Hash64("ArbitraryShadowProjection");
         static auto HashOrthoShadowProjection       = Hash64("OrthogonalShadowProjection");
         static auto HashBasicLightingEnvironment    = Hash64("BasicLightingEnvironment");
         binding.BindConstantBuffer(HashGlobalTransform, CB_GlobalTransform, 0);
         binding.BindConstantBuffer(HashGlobalState, CB_GlobalState, 0);
-        binding.BindConstantBuffer(HashFogSettings, CB_FogSettings, 0);
         binding.BindConstantBuffer(HashShadowProjection, CB_ShadowProjection, 0);
         binding.BindConstantBuffer(HashOrthoShadowProjection, CB_OrthoShadowProjection, 0);
         binding.BindConstantBuffer(HashBasicLightingEnvironment, CB_BasicLightingEnvironment, 0);

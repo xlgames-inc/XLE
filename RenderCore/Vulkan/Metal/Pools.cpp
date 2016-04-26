@@ -145,12 +145,12 @@ namespace RenderCore { namespace Metal_Vulkan
     DescriptorPool::DescriptorPool(const Metal_Vulkan::ObjectFactory& factory)
     : _device(factory.GetDevice())
     {
-        VkDescriptorPoolSize type_count[2];
-        type_count[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        type_count[0].descriptorCount = 256;
-
-        type_count[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        type_count[1].descriptorCount = 256;
+        VkDescriptorPoolSize type_count[] = 
+        {
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 256},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 256},
+            {VK_DESCRIPTOR_TYPE_SAMPLER, 256}
+        };
 
         VkDescriptorPoolCreateInfo descriptor_pool = {};
         descriptor_pool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

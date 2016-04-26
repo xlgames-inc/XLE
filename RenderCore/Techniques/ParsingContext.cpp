@@ -78,11 +78,11 @@ namespace RenderCore { namespace Techniques
             new(_projectionDesc.get()) ProjectionDesc();
         #pragma pop_macro("new")
 
-        for (unsigned c=0; c<dimof(_globalCBs); ++c) {
-            _globalUniformsConstantBuffers.push_back(&_globalCBs[c]);
-        }
+        static_assert(dimof(_globalCBs) == dimof(_globalUniformsConstantBuffers), "Expecting equivalent array lengths");
+        for (unsigned c=0; c<dimof(_globalCBs); ++c)
+            _globalUniformsConstantBuffers[c] = &_globalCBs[c];
         _globalUniformsStream = std::make_unique<RenderCore::Metal::UniformsStream>(
-            nullptr, AsPointer(_globalUniformsConstantBuffers.begin()), _globalUniformsConstantBuffers.size());
+            nullptr, _globalUniformsConstantBuffers, dimof(_globalUniformsConstantBuffers));
     }
 
     ParsingContext::~ParsingContext() {}

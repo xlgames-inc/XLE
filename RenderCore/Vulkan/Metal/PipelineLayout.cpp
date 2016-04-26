@@ -34,6 +34,11 @@ namespace RenderCore { namespace Metal_Vulkan
         return _pimpl->_descriptorSetLayout[index].get();
     }
 
+    unsigned                    PipelineLayout::GetDescriptorSetCount()
+    {
+        return (unsigned)_pimpl->_descriptorSetLayout.size();
+    }
+
     VkPipelineLayout            PipelineLayout::GetUnderlying()
     {
         return _pimpl->_pipelineLayout.get();
@@ -66,12 +71,103 @@ namespace RenderCore { namespace Metal_Vulkan
             dstBinding.binding = bIndex;
             dstBinding.descriptorType = AsDescriptorType(srcLayout._bindings[bIndex]._type);
             dstBinding.descriptorCount = 1;
-            dstBinding.stageFlags = VK_SHADER_STAGE_ALL;
+            dstBinding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
             dstBinding.pImmutableSamplers = nullptr;
             bindings.push_back(dstBinding);
         }
         return factory.CreateDescriptorSetLayout(MakeIteratorRange(bindings));
     }
+
+    #if defined(_DEBUG)
+        class DescSetLimits
+        {
+        public:
+            unsigned _sampledImageCount;
+            unsigned _samplerCount;
+            unsigned _uniformBufferCount;
+            unsigned _storageBufferCount;
+            unsigned _storageImageCount;
+            unsigned _inputAttachmentCount;
+
+            void Add(const DescSetLimits& other)
+            {
+                _sampledImageCount += other._sampledImageCount;
+                _samplerCount += other._samplerCount;
+                _uniformBufferCount += other._uniformBufferCount;
+                _storageBufferCount += other._storageBufferCount;
+                _storageImageCount += other._storageImageCount;
+                _inputAttachmentCount += other._inputAttachmentCount;
+            }
+        };
+
+        static DescSetLimits BuildLimits(const DescriptorSetSignature& setSig)
+        {
+            DescSetLimits result = {};
+            for (auto& b:setSig._bindings) {
+                switch (b._type) {
+                case DescriptorSetBindingSignature::Type::Sampler:
+                    ++result._samplerCount;
+                    break;
+
+                case DescriptorSetBindingSignature::Type::Resource:
+                    ++result._sampledImageCount;
+                    break;
+
+                case DescriptorSetBindingSignature::Type::SamplerAndResource:
+                    ++result._sampledImageCount;
+                    break;
+
+                case DescriptorSetBindingSignature::Type::ConstantBuffer:
+                    ++result._uniformBufferCount;
+                    break;
+
+                case DescriptorSetBindingSignature::Type::InputAttachment:
+                    ++result._inputAttachmentCount;
+                    break;
+                }
+            }
+            return result;
+        }
+
+        static void ValidateRootSignature(VkPhysicalDevice physDev, const RootSignature& sig)
+        {
+            // Validate the root signature against the physical device, and throw an exception
+            // if there are problems.
+            // Things to check:
+            //      VkPhysicalDeviceLimits.maxBoundDescriptorSets
+            //      VkPhysicalDeviceLimits.maxPerStageDescriptor*
+            //      VkPhysicalDeviceLimits.maxDescriptorSet*
+
+            VkPhysicalDeviceProperties props;
+			vkGetPhysicalDeviceProperties(physDev, &props);
+            const auto& limits = props.limits;
+
+            if (sig._descriptorSets.size() > limits.maxBoundDescriptorSets)
+                Throw(::Exceptions::BasicLabel("Root signature exceeds the maximum number of bound descriptor sets supported by device"));
+
+            // Here, we are assuming all descriptors apply equally to all stages.
+            DescSetLimits totalLimits = {};
+            for (const auto& s:sig._descriptorSets) {
+                auto ds = BuildLimits(s);
+                if (    ds._sampledImageCount > limits.maxDescriptorSetSampledImages
+                    ||  ds._samplerCount > limits.maxPerStageDescriptorSamplers
+                    ||  ds._uniformBufferCount > limits.maxPerStageDescriptorUniformBuffers
+                    ||  ds._storageBufferCount > limits.maxPerStageDescriptorStorageBuffers
+                    ||  ds._storageImageCount > limits.maxPerStageDescriptorStorageImages
+                    ||  ds._inputAttachmentCount > limits.maxPerStageDescriptorInputAttachments)
+                    Throw(::Exceptions::BasicLabel("Root signature exceeds the maximum number of bound resources in a single descriptor set that is supported by the device"));
+                totalLimits.Add(ds);
+            }
+
+            if (    totalLimits._sampledImageCount > limits.maxDescriptorSetSampledImages
+                ||  totalLimits._samplerCount > limits.maxPerStageDescriptorSamplers
+                ||  totalLimits._uniformBufferCount > limits.maxPerStageDescriptorUniformBuffers
+                ||  totalLimits._storageBufferCount > limits.maxPerStageDescriptorStorageBuffers
+                ||  totalLimits._storageImageCount > limits.maxPerStageDescriptorStorageImages
+                ||  totalLimits._inputAttachmentCount > limits.maxPerStageDescriptorInputAttachments)
+                Throw(::Exceptions::BasicLabel("Root signature exceeds the maximum number of bound resources per stage that is supported by the device"));
+        }
+    #endif
 
     void PipelineLayout::RebuildLayout(const ObjectFactory& factory)
     {
@@ -86,6 +182,10 @@ namespace RenderCore { namespace Metal_Vulkan
         _pimpl->_descriptorSetLayout.clear();
         _pimpl->_pipelineLayout.reset();
         auto rootSig = ShareRootSignature();
+
+        #if defined(_DEBUG)
+            ValidateRootSignature(factory.GetPhysicalDevice(), *rootSig);
+        #endif
 
         std::vector<VkDescriptorSetLayout> rawDescriptorSetLayouts;
         _pimpl->_descriptorSetLayout.reserve(rootSig->_descriptorSets.size());

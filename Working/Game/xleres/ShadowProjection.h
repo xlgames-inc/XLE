@@ -8,10 +8,11 @@
 #define SHADOW_PROJECTION_H
 
 #include "MainGeometry.h"
+#include "Binding.h"
 
 static const uint ShadowMaxSubProjections = 6;
 
-cbuffer ArbitraryShadowProjection
+cbuffer ArbitraryShadowProjection : CB_BOUND0_4
 {
         // note --
         //      I've used this order to try to reduce the
@@ -25,7 +26,7 @@ cbuffer ArbitraryShadowProjection
     row_major float4x4 ShadowWorldToProj[ShadowMaxSubProjections];
 }
 
-cbuffer OrthogonalShadowProjection
+cbuffer OrthogonalShadowProjection : CB_BOUND0_5
 {
 	row_major float3x4 OrthoShadowWorldToProj;
     float4 OrthoShadowMinimalProjection;

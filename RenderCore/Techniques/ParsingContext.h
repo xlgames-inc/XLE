@@ -76,14 +76,14 @@ namespace RenderCore { namespace Techniques
         ParsingContext(const ParsingContext&) = delete;
 
     protected:
-        Metal::ConstantBuffer   _globalCBs[6];
+        Metal::ConstantBuffer   _globalCBs[5];
 
         std::unique_ptr<TechniqueContext>   _techniqueContext;
         AlignedUniquePtr<ProjectionDesc>    _projectionDesc;
         std::shared_ptr<IStateSetResolver>  _stateSetResolver;
 
         std::unique_ptr<Metal::UniformsStream>      _globalUniformsStream;
-        std::vector<const Metal::ConstantBuffer*>   _globalUniformsConstantBuffers;
+        const Metal::ConstantBuffer*                _globalUniformsConstantBuffers[5];
     };
 
     /// <summary>Utility macros for catching asset exceptions</summary>

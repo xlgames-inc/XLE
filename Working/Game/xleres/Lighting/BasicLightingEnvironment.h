@@ -8,6 +8,7 @@
 #define BASIC_LIGHTING_ENVIRONMENT_H
 
 #include "LightDesc.h"
+#include "../Binding.h"
 
 #if !defined(BASIC_LIGHT_COUNT)
     #define BASIC_LIGHT_COUNT 1
@@ -17,7 +18,7 @@
 // in one go (as opposed to other models, where a single light is
 // resolved at a time). This cbuffer holds the settings for all
 // of the lights in the scene.
-cbuffer BasicLightingEnvironment : register(b10)
+cbuffer BasicLightingEnvironment : CB_BOUND0_3
 {
     AmbientDesc BasicAmbient;
     RangeFogDesc BasicRangeFog;

@@ -44,7 +44,11 @@ struct VSInput //////////////////////////////////////////////////////
             // don't output to further pipeline stages.
         #if MAT_VCOLOR_IS_ANIM_PARAM!=1 || VIS_ANIM_PARAM!=0
             #if !defined(OUTPUT_COLOUR)
-                #define OUTPUT_COLOUR 1
+                #if MAT_MODULATE_VERTEX_ALPHA
+                    #define OUTPUT_COLOUR 1
+                #else
+                    #define OUTPUT_COLOUR 2
+                #endif
             #endif
         #endif
     #endif

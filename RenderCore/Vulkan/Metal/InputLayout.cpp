@@ -490,14 +490,8 @@ namespace RenderCore { namespace Metal_Vulkan
         for (unsigned c=0; c<s_descriptorSetCount; ++c)
             rawDescriptorSets[c] = _descriptorSets[c].get();
         
-        // context.SetPipelineLayout(_pipelineLayout);
-        // context.SetHideDescriptorSetBuilder();
-        context.CmdBindDescriptorSets(
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            // _pipelineLayout.get(), 
-            context.GetGlobalPipelineLayout().GetUnderlying(),
-            0, dimof(rawDescriptorSets), rawDescriptorSets, 
-            0, nullptr);
+        static_assert(dimof(rawDescriptorSets) == 1, "Expecting just a single descriptor set");
+        context.BindDescriptorSet(0, rawDescriptorSets[0]);
     }
 
     void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const

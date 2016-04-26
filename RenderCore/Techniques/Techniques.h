@@ -225,10 +225,9 @@ namespace RenderCore { namespace Techniques
 
         static const unsigned CB_GlobalTransform = 0;
         static const unsigned CB_GlobalState = 1;
-        static const unsigned CB_FogSettings = 2;
-        static const unsigned CB_ShadowProjection = 3;
-        static const unsigned CB_OrthoShadowProjection = 4;
-        static const unsigned CB_BasicLightingEnvironment = 5;
+        static const unsigned CB_ShadowProjection = 2;
+        static const unsigned CB_OrthoShadowProjection = 3;
+        static const unsigned CB_BasicLightingEnvironment = 4;
     };
 
 }}

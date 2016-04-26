@@ -459,6 +459,40 @@ namespace Sample
 
     ModelTestBox::~ModelTestBox() {}
 
+    static void SetupLightingParser(
+        RenderCore::IThreadContext& genericThreadContext,
+        RenderCore::Techniques::ParsingContext& parserContext)
+    {
+        using namespace RenderCore;
+        auto vkContext = Metal_Vulkan::DeviceContext::Get(genericThreadContext);
+		if (!vkContext) return;
+
+        static float time = 0.f;
+        time += 1.0f/60.f;
+        auto camera = GetDefaultCamera(time);
+
+        auto projDesc = BuildProjectionDesc(camera, UInt2(512, 512));
+        parserContext.GetProjectionDesc() = projDesc;
+        auto globalTransform = RenderCore::Techniques::BuildGlobalTransformConstants(projDesc);
+        parserContext.SetGlobalCB(
+            *vkContext, Techniques::TechniqueContext::CB_GlobalTransform,
+            &globalTransform, sizeof(globalTransform));
+
+        struct GlobalCBuffer
+        {
+            float _time; unsigned _samplingPassIndex; 
+            unsigned _samplingPassCount; unsigned _dummy;
+        } globalStateCB { time, 0, 1, 0 };
+        parserContext.SetGlobalCB(
+            *vkContext, Techniques::TechniqueContext::CB_GlobalState,
+            &globalStateCB, sizeof(globalStateCB));
+
+        auto env = MakeBasicLightingEnvironment();
+        parserContext.SetGlobalCB(
+            *vkContext, Techniques::TechniqueContext::CB_BasicLightingEnvironment,
+            &env, sizeof(env));
+    }
+
     static void RunModelTest(
         RenderCore::IThreadContext& genericThreadContext,
         RenderCore::Techniques::ParsingContext& parserContext)
@@ -478,31 +512,6 @@ namespace Sample
 
                 horizBlur.GetCompiledPixelShader().GetByteCode();
                 horizBlur.GetCompiledVertexShader().GetByteCode();
-
-                static float time = 0.f;
-                time += 1.0f/60.f;
-                auto camera = GetDefaultCamera(time);
-
-                auto projDesc = BuildProjectionDesc(camera, UInt2(512, 512));
-                parserContext.GetProjectionDesc() = projDesc;
-                auto globalTransform = RenderCore::Techniques::BuildGlobalTransformConstants(projDesc);
-                parserContext.SetGlobalCB(
-                    *vkContext, Techniques::TechniqueContext::CB_GlobalTransform,
-                    &globalTransform, sizeof(globalTransform));
-
-                struct GlobalCBuffer
-                {
-                    float _time; unsigned _samplingPassIndex; 
-                    unsigned _samplingPassCount; unsigned _dummy;
-                } globalStateCB { time, 0, 1, 0 };
-                parserContext.SetGlobalCB(
-                    *vkContext, Techniques::TechniqueContext::CB_GlobalState,
-                    &globalStateCB, sizeof(globalStateCB));
-
-                auto env = MakeBasicLightingEnvironment();
-                parserContext.SetGlobalCB(
-                    *vkContext, Techniques::TechniqueContext::CB_BasicLightingEnvironment,
-                    &env, sizeof(env));
 
                 auto& box = RenderCore::Techniques::FindCachedBoxDep2<ModelTestBox>();
 
@@ -788,19 +797,20 @@ namespace Sample
                 }
 
 				context->BeginFrame(*presentationChain);
-                context->BeginRenderPass(
-                    fbLayout, 
-                    RenderCore::FrameBufferProperties{},
-                    {RenderCore::MakeClearValue(.5f, .3f, .1f, 1.f), RenderCore::MakeClearValue(1.f, 0)});
+                // context->BeginRenderPass(
+                //     fbLayout, 
+                //     RenderCore::FrameBufferProperties{},
+                //     {RenderCore::MakeClearValue(.5f, .3f, .1f, 1.f), RenderCore::MakeClearValue(1.f, 0)});
 
                 // RunShaderTest(*context);
                 RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext);
-                RunModelTest(*context, parserContext);
-                context->EndRenderPass();
+                SetupLightingParser(*context, parserContext);
+                // RunModelTest(*context, parserContext);
+                // context->EndRenderPass();
                 RunRenderPassTest(
                     *context, parserContext, 
                     presentationChain->GetDesc()->_format,
-                    RenderCore::TextureSamples::Create(2));
+                    RenderCore::TextureSamples::Create()); // 2));
                 context->Present(*presentationChain);
 
                     // ------- Update ----------------------------------------

@@ -7,9 +7,11 @@
 #if !defined(BASIC_MATERIAL_H)
 #define BASIC_MATERIAL_H
 
+#include "Binding.h"
+
     //  This cbuffer contains basic constants are used frequently enough that
     //  we can add support for them in most shaders.
-cbuffer BasicMaterialConstants
+cbuffer BasicMaterialConstants : CB_BOUND1_6
 {
 	float3  MaterialDiffuse;
     float   Opacity;

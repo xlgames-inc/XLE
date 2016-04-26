@@ -116,7 +116,7 @@ namespace RenderCore { namespace Metal_Vulkan
             const ObjectFactory& factory, DescriptorPool& descPool, 
             DummyResources& dummyResources,
             VkDescriptorSetLayout layout,
-            const DescriptorSetSignature& signature);
+            const DescriptorSetSignature& signature, int cbBindingOffset, int srvBindingOffset);
         ~DescriptorSetBuilder();
 
         DescriptorSetBuilder(const DescriptorSetBuilder&) = delete;
@@ -208,6 +208,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		const ObjectFactory& GetFactory() const { return *_factory; }
 
         bool        BindPipeline();
+        void        BindDescriptorSet(unsigned index, VkDescriptorSet set);
 
         void                        SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims);
         VectorPattern<unsigned,2>   GetPresentationTargetDims();
@@ -294,10 +295,14 @@ namespace RenderCore { namespace Metal_Vulkan
         DescriptorSetBuilder                _dynamicBindings;
         unsigned                            _dynamicBindingsSlot;
 
+        DescriptorSetBuilder                _globalBindings;
+        unsigned                            _globalBindingsSlot;
+
         NamedResources                      _namedResources;
         VectorPattern<unsigned,2>           _presentationTargetDims;
 
-        
+        std::vector<VkDescriptorSet>        _descriptorSets;
+        bool                                _descriptorSetsDirty;
     };
 
     void SetImageLayout(

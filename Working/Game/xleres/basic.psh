@@ -6,25 +6,28 @@
 
 #include "CommonResources.h"
 #include "Colour.h"
+#include "Binding.h"
+
+Texture2D		InputTexture : TEXTURE_DYNAMIC_0;
 
 float4 copy(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
-	return DiffuseTexture.Load(int3(position.xy, 0));
+	return InputTexture.Load(int3(position.xy, 0));
 }
 
 float copy_depth(float4 position : SV_Position) : SV_Depth
 {
-	return DiffuseTexture.Load(int3(position.xy, 0)).r;
+	return InputTexture.Load(int3(position.xy, 0)).r;
 }
 
 float4 fake_tonemap(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
-	return float4(DiffuseTexture.Load(int3(position.xy, 0)).rgb / LightingScale, 1.f);
+	return float4(InputTexture.Load(int3(position.xy, 0)).rgb / LightingScale, 1.f);
 }
 
 float4 copy_bilinear(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
-	return DiffuseTexture.SampleLevel(ClampingSampler, texCoord, 0);
+	return InputTexture.SampleLevel(ClampingSampler, texCoord, 0);
 }
 
 cbuffer ScreenSpaceOutput
@@ -36,10 +39,10 @@ cbuffer ScreenSpaceOutput
 
 float4 copy_boxfilter(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
-	// return DiffuseTexture.SampleLevel(ClampingSampler, texCoord, 0);
+	// return InputTexture.SampleLevel(ClampingSampler, texCoord, 0);
 
 	uint2 dims;
-	DiffuseTexture.GetDimensions(dims.x, dims.y);
+	InputTexture.GetDimensions(dims.x, dims.y);
 
 	uint2 inputMin = uint2(InputMin * dims);
 	uint2 inputMax = uint2(InputMax * dims);
@@ -52,7 +55,7 @@ float4 copy_boxfilter(float4 position : SV_Position, float2 texCoord : TEXCOORD0
 			uint3 coord = uint3(x,y,0);
 			coord.x = clamp(coord.x, inputMin.x, inputMax.x-1);
 			coord.y = clamp(coord.y, inputMin.y, inputMax.y-1);
-			result += DiffuseTexture.Load(coord);
+			result += InputTexture.Load(coord);
 		}
 	return result / float((one.x - zero.x) * (one.y - zero.y));
 }
@@ -60,7 +63,7 @@ float4 copy_boxfilter(float4 position : SV_Position, float2 texCoord : TEXCOORD0
 float4 copy_boxfilter_alphacomplementweight(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
 	uint2 dims;
-	DiffuseTexture.GetDimensions(dims.x, dims.y);
+	InputTexture.GetDimensions(dims.x, dims.y);
 
 	uint2 inputMin = uint2(InputMin * dims);
 	uint2 inputMax = uint2(InputMax * dims);
@@ -74,7 +77,7 @@ float4 copy_boxfilter_alphacomplementweight(float4 position : SV_Position, float
 			uint3 coord = uint3(x,y,0);
 			coord.x = clamp(coord.x, inputMin.x, inputMax.x-1);
 			coord.y = clamp(coord.y, inputMin.y, inputMax.y-1);
-			float4 sample = DiffuseTexture.Load(coord);
+			float4 sample = InputTexture.Load(coord);
 			float weight = 1.f-sample.a;
 			rgbWeightSum += weight;
 			result.rgb += sample.rgb * weight;
@@ -87,7 +90,7 @@ float4 copy_boxfilter_alphacomplementweight(float4 position : SV_Position, float
 
 float4 copy_point(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
-	return DiffuseTexture.SampleLevel(PointClampSampler, texCoord, 0);
+	return InputTexture.SampleLevel(PointClampSampler, texCoord, 0);
 }
 
 float4 fill_gradient(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
@@ -98,7 +101,7 @@ float4 fill_gradient(float4 position : SV_Position, float2 texCoord : TEXCOORD0)
 float4 PCT_Text( float4 input : SV_Position, float4 color : COLOR0, float2 texCoord : TEXCOORD0 ) : SV_Target0
 {
 	return float4(	color.rgb,
-					color.a * DiffuseTexture.Sample(DefaultSampler, texCoord).r);
+					color.a * InputTexture.Sample(DefaultSampler, texCoord).r);
 }
 
 float4 P( float4 input : SV_Position ) : SV_Target0
@@ -113,7 +116,7 @@ float4 PC( float4 input : SV_Position, float4 color : COLOR0 ) : SV_Target0
 
 float4 PCT( float4 input : SV_Position, float4 color : COLOR0, float2 texCoord : TEXCOORD0 ) : SV_Target0
 {
-	return DiffuseTexture.Sample(DefaultSampler, texCoord) * color;
+	return InputTexture.Sample(DefaultSampler, texCoord) * color;
 }
 
 cbuffer ScrollConstants
@@ -124,5 +127,5 @@ cbuffer ScrollConstants
 float4 copy_point_scrolllimit(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
 	float alpha = saturate((position.y - ScrollAreaMin) / 12.f) * saturate((ScrollAreaMax - position.y) / 12.f);
-	return float4(DiffuseTexture.SampleLevel(PointClampSampler, texCoord, 0).rgb, alpha);
+	return float4(InputTexture.SampleLevel(PointClampSampler, texCoord, 0).rgb, alpha);
 }
