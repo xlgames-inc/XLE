@@ -253,9 +253,9 @@ namespace SceneEngine
             //      We might use a log-average method for this, but we have to
             //      be careful about floating point accuracy.
             //
-        SavedTargets savedTargets(context);
-        auto resetTargets = savedTargets.MakeResetMarker(context);
-        context.Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
+        // SavedTargets savedTargets(context);
+        // auto resetTargets = savedTargets.MakeResetMarker(context);
+        // context.Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
 
         TRY {
             auto sourceDesc = Metal::ExtractDesc(sourceTexture);
@@ -339,6 +339,7 @@ namespace SceneEngine
                 BuildGaussianFilteringWeights(filteringWeights, settings._bloomBlurStdDev, 11);
                 context.BindPS(MakeResourceList(Metal::ConstantBuffer(filteringWeights, sizeof(filteringWeights))));
 
+#if 0 // platformtemp
                 context.Bind(Techniques::CommonResources()._dssDisable);
 
                 auto& horizBlur = ::Assets::GetAssetDep<Metal::ShaderProgram>(
@@ -357,7 +358,13 @@ namespace SceneEngine
                 // context->GetUnderlying()->RSSetViewports(1, &newViewport);
                 context.Bind(Metal::Topology::TriangleStrip);
             
+                // note --  for Vulkan, it may be more convenient to do this with compute shaders, as well
+                //          That would avoid having to play around with viewports and blend modes
+                //          Nothing here fundamentally requires the graphics pipeline; though it should parallelize
+                //          in a way that is typical for pixel shaders...?
                 for (auto i=resources._bloomBuffers.crbegin(); ;) {
+
+                    assert(i->_width >= 32 && i->_height >= 32);
 
                     Metal::ViewportDesc newViewport(0, 0, (float)i->_width, (float)i->_height, 0.f, 1.f);
                     context.Bind(newViewport);
@@ -398,6 +405,7 @@ namespace SceneEngine
                     context.Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
 
                 }
+#endif
             }
             return true;
         }
@@ -544,13 +552,7 @@ namespace SceneEngine
         _validationCallback = _shaderProgram->GetDependencyValidation();
     }
 
-    static void ExecuteOpaqueFullScreenPass(Metal::DeviceContext& context)
-    {
-        SetupVertexGeneratorShader(context);
-        context.Bind(Techniques::CommonResources()._blendOpaque);
-        context.Draw(4);
-    }
-
+#if 0
     static bool IsSRGBTargetBound(Metal::DeviceContext& context)
     {
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
@@ -565,16 +567,20 @@ namespace SceneEngine
 #endif
         return true;
     }
+#endif
 
     void ToneMap_Execute(
         Metal::DeviceContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext, 
         const LuminanceResult& luminanceResult,
         const ToneMapSettings& settings,
+        const RenderCore::FrameBufferDesc& destination,
         const Metal::ShaderResourceView& inputResource)
     {
-        ProtectState protectState(context, ProtectState::States::BlendState);
-        bool hardwareSRGBEnabled = IsSRGBTargetBound(context);
+        // ProtectState protectState(context, ProtectState::States::BlendState);
+        // bool hardwareSRGBEnabled = IsSRGBTargetBound(context);
+
+        bool hardwareSRGBEnabled = RenderCore::GetComponentType(destination.GetAttachments()[0]._format) == RenderCore::FormatComponentType::UNorm_SRGB;
 
         CATCH_ASSETS_BEGIN
             bool bindCopyShader = true;
@@ -625,7 +631,14 @@ namespace SceneEngine
                 context.BindPS(MakeResourceList(inputResource));
             }
             
-            ExecuteOpaqueFullScreenPass(context);
+            RenderCore::Metal::FrameBufferCache fbCache;
+            RenderCore::Metal::RenderPassInstance rpi(
+                context, destination,
+                FrameBufferProperties{}, 0u, fbCache);
+
+            SetupVertexGeneratorShader(context);
+            context.Bind(Techniques::CommonResources()._blendOpaque);
+            context.Draw(4);
         CATCH_ASSETS_END(parserContext)
     }
 

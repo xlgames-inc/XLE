@@ -23,6 +23,7 @@ namespace SceneEngine
     {
     public:
         using Name = uint32;
+        static const Name PresentationTarget = 0u;
         static const Name MultisampledDepth = 2u;
         static const Name LightResolve = 3u;
         static const Name GBufferDiffuse = 4u;

@@ -426,13 +426,19 @@ namespace RenderCore
             _pools._mainPipelineCache = _objectFactory.CreatePipelineCache();
             _pools._dummyResources = Metal_Vulkan::DummyResources(_objectFactory);
 
-            _pipelineLayout = std::make_shared<Metal_Vulkan::PipelineLayout>(
-                _objectFactory, "game/xleres/System/RootSignature.cfg");
+            _graphicsPipelineLayout = std::make_shared<Metal_Vulkan::PipelineLayout>(
+                _objectFactory, "game/xleres/System/RootSignature.cfg",
+                VK_SHADER_STAGE_ALL_GRAPHICS);
+
+            _computePipelineLayout = std::make_shared<Metal_Vulkan::PipelineLayout>(
+                _objectFactory, "game/xleres/System/RootSignatureCS.cfg",
+                VK_SHADER_STAGE_COMPUTE_BIT);
 
             _foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
 				shared_from_this(), 
 				GetQueue(_underlying.get(), _physDev._renderingQueueFamily),
-                *_pipelineLayout,
+                *_graphicsPipelineLayout,
+                *_computePipelineLayout,
                 Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily),
 				Metal_Vulkan::CommandPool::BufferType::Primary);
             _foregroundPrimaryContext->BeginCommandList();
@@ -536,7 +542,8 @@ namespace RenderCore
 		return std::make_unique<ThreadContextVulkan>(
             shared_from_this(), 
             nullptr, 
-            *_pipelineLayout,
+            *_graphicsPipelineLayout,
+            *_computePipelineLayout,
             Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily),
             Metal_Vulkan::CommandPool::BufferType::Secondary);
     }
@@ -588,9 +595,14 @@ namespace RenderCore
         return Device::GetGlobalPools();
     }
 
-    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::ShareGlobalPipelineLayout()
+    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::ShareGraphicsPipelineLayout()
     {
-        return _pipelineLayout;
+        return _graphicsPipelineLayout;
+    }
+
+    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::ShareComputePipelineLayout()
+    {
+        return _computePipelineLayout;
     }
 
 	DeviceVulkan::DeviceVulkan() { }
@@ -935,7 +947,8 @@ namespace RenderCore
     ThreadContext::ThreadContext(
 		std::shared_ptr<Device> device,
 		VkQueue queue,
-        Metal_Vulkan::PipelineLayout& globalPipelineLayout,
+        Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
+        Metal_Vulkan::PipelineLayout& computePipelineLayout,
         Metal_Vulkan::CommandPool&& cmdPool,
 		Metal_Vulkan::CommandPool::BufferType cmdBufferType)
     : _device(device)
@@ -943,7 +956,8 @@ namespace RenderCore
     , _renderingCommandPool(std::move(cmdPool))
 	, _metalContext(
 		std::make_shared<Metal_Vulkan::DeviceContext>(
-			device->GetObjectFactory(), device->GetGlobalPools(), globalPipelineLayout, 
+			device->GetObjectFactory(), device->GetGlobalPools(), 
+            graphicsPipelineLayout, computePipelineLayout,
             _renderingCommandPool, cmdBufferType))
 	, _factory(&device->GetObjectFactory())
 	, _globalPools(&device->GetGlobalPools())
@@ -981,10 +995,14 @@ namespace RenderCore
     ThreadContextVulkan::ThreadContextVulkan(
 		std::shared_ptr<Device> device,
 		VkQueue queue,
-        Metal_Vulkan::PipelineLayout& globalPipelineLayout,
+        Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
+        Metal_Vulkan::PipelineLayout& computePipelineLayout,
         Metal_Vulkan::CommandPool&& cmdPool,
 		Metal_Vulkan::CommandPool::BufferType cmdBufferType)
-    : ThreadContext(std::move(device), queue, globalPipelineLayout, std::move(cmdPool), cmdBufferType)
+    : ThreadContext(
+        std::move(device), queue, 
+        graphicsPipelineLayout, computePipelineLayout, 
+        std::move(cmdPool), cmdBufferType)
     {}
 
 	ThreadContextVulkan::~ThreadContextVulkan() {}

@@ -25,6 +25,8 @@ namespace RenderCore { namespace Metal_Vulkan
         ::Assets::rstring                   _rootSignatureFilename;
         Threading::Mutex                    _rootSignatureLock;
 
+        VkShaderStageFlags  _stageFlags;
+
         bool _pendingLayoutRebuild;
     };
 
@@ -52,7 +54,7 @@ namespace RenderCore { namespace Metal_Vulkan
         case DescriptorSetBindingSignature::Type::SamplerAndResource:   return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         case DescriptorSetBindingSignature::Type::ConstantBuffer:       return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         case DescriptorSetBindingSignature::Type::InputAttachment:      return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-        case DescriptorSetBindingSignature::Type::UnorderedAccess:
+        case DescriptorSetBindingSignature::Type::UnorderedAccess:      return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         default:
             return VK_DESCRIPTOR_TYPE_SAMPLER;
         }
@@ -60,7 +62,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
     static VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
         const ObjectFactory& factory, 
-        const DescriptorSetSignature& srcLayout)
+        const DescriptorSetSignature& srcLayout,
+        VkShaderStageFlags stageFlags)
     {
         // The "root signature" bindings correspond very closely with the
         // DescriptorSetLayout
@@ -71,7 +74,7 @@ namespace RenderCore { namespace Metal_Vulkan
             dstBinding.binding = bIndex;
             dstBinding.descriptorType = AsDescriptorType(srcLayout._bindings[bIndex]._type);
             dstBinding.descriptorCount = 1;
-            dstBinding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+            dstBinding.stageFlags = stageFlags;
             dstBinding.pImmutableSamplers = nullptr;
             bindings.push_back(dstBinding);
         }
@@ -194,7 +197,7 @@ namespace RenderCore { namespace Metal_Vulkan
         rawDescriptorSetLayouts.reserve(rootSig->_descriptorSets.size());
 
         for (const auto& s:rootSig->_descriptorSets) {
-            auto layout = CreateDescriptorSetLayout(factory, s);
+            auto layout = CreateDescriptorSetLayout(factory, s, _pimpl->_stageFlags);
             rawDescriptorSetLayouts.push_back(layout.get());
             _pimpl->_descriptorSetLayout.emplace_back(std::move(layout));
         }
@@ -216,11 +219,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
     PipelineLayout::PipelineLayout(
         const ObjectFactory& objectFactory,
-        const ::Assets::ResChar rootSignatureCfg[])
+        const ::Assets::ResChar rootSignatureCfg[],
+        VkShaderStageFlags stageFlags)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_pendingLayoutRebuild = true;
         _pimpl->_rootSignatureFilename = rootSignatureCfg;
+        _pimpl->_stageFlags = stageFlags;
         RebuildLayout(objectFactory);
     }
 

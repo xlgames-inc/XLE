@@ -162,6 +162,7 @@ namespace RenderCore { namespace Metal_Vulkan
         std::vector<uint32> _cbBindingIndices[s_streamCount];
         std::vector<uint32> _srvBindingIndices[s_streamCount];
         uint64  _shaderBindingMask[s_descriptorSetCount];
+        bool _isComputeShader;
 
         mutable VulkanUniquePtr<VkDescriptorSet> _descriptorSets[s_descriptorSetCount];
 

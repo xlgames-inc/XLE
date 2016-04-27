@@ -30,7 +30,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         PipelineLayout(
             const ObjectFactory& objectFactory,
-            const ::Assets::ResChar rootSignatureCfg[]);
+            const ::Assets::ResChar rootSignatureCfg[],
+            VkShaderStageFlags stageFlags);
         ~PipelineLayout();
     private:
         class Pimpl;

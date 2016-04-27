@@ -33,7 +33,8 @@ namespace RenderCore
 		    IMETHOD VkDevice	GetUnderlyingDevice() IPURE;
             IMETHOD VkQueue     GetRenderingQueue() IPURE;
             IMETHOD Metal_Vulkan::GlobalPools& GetGlobalPools() IPURE;
-            IMETHOD const std::shared_ptr<Metal_Vulkan::PipelineLayout>& ShareGlobalPipelineLayout() IPURE;
+            IMETHOD const std::shared_ptr<Metal_Vulkan::PipelineLayout>& ShareGraphicsPipelineLayout() IPURE;
+            IMETHOD const std::shared_ptr<Metal_Vulkan::PipelineLayout>& ShareComputePipelineLayout() IPURE;
             IDESTRUCTOR
         };
 

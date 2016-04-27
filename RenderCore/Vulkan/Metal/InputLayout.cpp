@@ -72,6 +72,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     BoundUniforms::BoundUniforms(const ShaderProgram& shader)
     {
+        _isComputeShader = false;
         _reflection[ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
         _reflection[ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
         auto* geoShader = shader.GetCompiledGeometryShader();
@@ -82,6 +83,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     BoundUniforms::BoundUniforms(const DeepShaderProgram& shader)
     {
+        _isComputeShader = false;
         _reflection[ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
         _reflection[ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
         auto* geoShader = shader.GetCompiledGeometryShader();
@@ -98,6 +100,7 @@ namespace RenderCore { namespace Metal_Vulkan
         if (stage < dimof(_reflection)) {
             _reflection[stage] = SPIRVReflection(shader.GetByteCode());
         }
+        _isComputeShader = stage == ShaderStage::Compute;
         BuildShaderBindingMask();
     }
 
@@ -118,6 +121,7 @@ namespace RenderCore { namespace Metal_Vulkan
             _shaderBindingMask[s] = copyFrom._shaderBindingMask[s];
             _descriptorSets[s] = nullptr;
         }
+        _isComputeShader = copyFrom._isComputeShader;
     }
 
     BoundUniforms& BoundUniforms::operator=(const BoundUniforms& copyFrom)
@@ -133,6 +137,7 @@ namespace RenderCore { namespace Metal_Vulkan
             _shaderBindingMask[s] = copyFrom._shaderBindingMask[s];
             _descriptorSets[s] = nullptr;
         }
+        _isComputeShader = copyFrom._isComputeShader;
         return *this;
     }
 
@@ -148,6 +153,7 @@ namespace RenderCore { namespace Metal_Vulkan
             _shaderBindingMask[s] = moveFrom._shaderBindingMask[s];
             _descriptorSets[s] = std::move(_descriptorSets[s]);
         }
+        _isComputeShader = moveFrom._isComputeShader;
     }
 
     BoundUniforms& BoundUniforms::operator=(BoundUniforms&& moveFrom)
@@ -162,6 +168,7 @@ namespace RenderCore { namespace Metal_Vulkan
             _shaderBindingMask[s] = moveFrom._shaderBindingMask[s];
             _descriptorSets[s] = std::move(_descriptorSets[s]);
         }
+        _isComputeShader = moveFrom._isComputeShader;
         return *this;
     }
 
@@ -251,7 +258,7 @@ namespace RenderCore { namespace Metal_Vulkan
         // assert(!_pipelineLayout);
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
-        assert(uniformsStream < s_descriptorSetCount);
+        assert(uniformsStream < s_streamCount);
 
 		if (_cbBindingIndices[uniformsStream].size() < cbs.size()) _cbBindingIndices[uniformsStream].resize(cbs.size(), ~0u);
         bool result = true;
@@ -265,7 +272,7 @@ namespace RenderCore { namespace Metal_Vulkan
         // assert(!_pipelineLayout);
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
-        assert(uniformsStream < s_descriptorSetCount);
+        assert(uniformsStream < s_streamCount);
 
 		if (_cbBindingIndices[uniformsStream].size() < cbs.size()) _cbBindingIndices[uniformsStream].resize(cbs.size(), ~0u);
 		bool result = true;
@@ -277,7 +284,7 @@ namespace RenderCore { namespace Metal_Vulkan
     bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res)
     {
         // assert(!_pipelineLayout);
-        assert(uniformsStream < s_descriptorSetCount);
+        assert(uniformsStream < s_streamCount);
 
 		if (_srvBindingIndices[uniformsStream].size() < res.size()) _srvBindingIndices[uniformsStream].resize(res.size(), ~0u);
 		bool result = true;
@@ -289,7 +296,7 @@ namespace RenderCore { namespace Metal_Vulkan
     bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res)
     {
         // assert(!_pipelineLayout);
-        assert(uniformsStream < s_descriptorSetCount);
+        assert(uniformsStream < s_streamCount);
 
 		if (_srvBindingIndices[uniformsStream].size() < res.size()) _srvBindingIndices[uniformsStream].resize(res.size(), ~0u);
 		bool result = true;
@@ -321,12 +328,15 @@ namespace RenderCore { namespace Metal_Vulkan
         //
         // We have to be careful because vkUpdateDescriptorSets happens immediately -- like mapping
         // a texture. That makes the memory management more complicated.
-        auto& pipelineLayout = context.GetGlobalPipelineLayout();
+        auto pipelineType = _isComputeShader 
+            ? DeviceContext::PipelineType::Compute 
+            : DeviceContext::PipelineType::Graphics;
+        auto* pipelineLayout = context.GetPipelineLayout(pipelineType);
 
         if (constant_expression<s_reallocateDescriptorSets>::result()) {
             VkDescriptorSetLayout rawLayouts[s_descriptorSetCount];
             for (unsigned c=0; c<s_descriptorSetCount; ++c)
-                rawLayouts[c] = pipelineLayout.GetDescriptorSetLayout(c);
+                rawLayouts[c] = pipelineLayout->GetDescriptorSetLayout(c);
             context.GetGlobalPools()._mainDescriptorPool.Allocate(
                 MakeIteratorRange(_descriptorSets),
                 MakeIteratorRange(rawLayouts));
@@ -470,7 +480,7 @@ namespace RenderCore { namespace Metal_Vulkan
             globalPools._dummyResources._blankSrv.GetUnderlying(),
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
-        auto rootSig = pipelineLayout.ShareRootSignature();
+        auto rootSig = pipelineLayout->ShareRootSignature();
         for (unsigned s=0; s<s_descriptorSetCount; ++s) {
             const auto& sig = rootSig->_descriptorSets[s];
             for (unsigned bIndex=0; bIndex<(unsigned)sig._bindings.size(); ++bIndex) {
@@ -518,7 +528,7 @@ namespace RenderCore { namespace Metal_Vulkan
             rawDescriptorSets[c] = _descriptorSets[c].get();
         
         static_assert(dimof(rawDescriptorSets) == 1, "Expecting just a single descriptor set");
-        context.BindDescriptorSet(0, rawDescriptorSets[0]);
+        context.BindDescriptorSet(pipelineType, 0, rawDescriptorSets[0]);
     }
 
     void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const

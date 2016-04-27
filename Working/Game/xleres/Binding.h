@@ -73,7 +73,18 @@
 #define CB_BOUND1_8 : register(b8)
 #define CB_BOUND1_9 : register(b9)
 
-#define CB_DYNAMIC_0 : register(b30)
-#define CB_DYNAMIC_1 : register(b31)
+#define CB_DYNAMIC_0 : register(b10)
+#define CB_DYNAMIC_1 : register(b11)
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define UAV_DYNAMIC_0 : register(u0)
+#define UAV_DYNAMIC_1 : register(u1)
+#define UAV_DYNAMIC_2 : register(u2)
+#define UAV_DYNAMIC_3 : register(u3)
+#define UAV_DYNAMIC_4 : register(u4)
+#define UAV_DYNAMIC_5 : register(u5)
+#define UAV_DYNAMIC_6 : register(u6)
+#define UAV_DYNAMIC_7 : register(u7)
 
 #endif

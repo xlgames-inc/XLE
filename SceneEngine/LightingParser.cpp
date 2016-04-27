@@ -817,6 +817,7 @@ namespace SceneEngine
         RenderCore::Metal::FrameBufferCache& GetFrameBufferCache();
         VectorPattern<unsigned, 2>      GetDimensions() const;
         const SRV&                      GetSRV(Name) const;
+        bool                            HasSRV(Name) const;
 
         MainTargets(
             Metal::DeviceContext& metalContext,
@@ -862,6 +863,11 @@ namespace SceneEngine
         auto result = _metalContext->GetNamedResources().GetSRV(name);
         assert(result);
         return *result;
+    }
+
+    bool MainTargets::HasSRV(Name name) const
+    {
+        return _metalContext->GetNamedResources().GetSRV(name) != nullptr;
     }
 
     MainTargets::MainTargets(
@@ -1020,12 +1026,14 @@ namespace SceneEngine
 
         }
 
-#if 0 // platformtemp
         {
             Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Resolve-MSAA-HDR");
 
             auto postLightingResolve = IMainTargets::LightResolve;
+            if (!mainTargets.HasSRV(postLightingResolve))
+                return;
 
+#if 0   // platformtemp
                 //
                 //      Post lighting resolve operations...
                 //          we must bind the depth buffer to whatever
@@ -1050,6 +1058,16 @@ namespace SceneEngine
 
             metalContext.Bind(MakeResourceList(postLightingResolveRTV), nullptr);       // we don't have a single-sample depths target at this time (only multisample)
             LightingParser_PostProcess(metalContext, parserContext);
+#endif
+
+            auto toneMapSettings = parserContext.GetSceneParser()->GetToneMapSettings();
+            LuminanceResult luminanceResult;
+            if (parserContext.GetSceneParser()->GetToneMapSettings()._flags & ToneMapSettings::Flags::EnableToneMap) {
+                    //  (must resolve luminance early, because we use it during the MSAA resolve)
+                luminanceResult = ToneMap_SampleLuminance(
+                    metalContext, parserContext, toneMapSettings, 
+                    mainTargets.GetSRV(postLightingResolve));
+            }
 
                 //  Write final colour to output texture
                 //  We have to be careful about whether "SRGB" is enabled
@@ -1059,47 +1077,45 @@ namespace SceneEngine
                 //  SRGB results, others give linear results)
 
             const bool hardwareSRGBDisabled = Tweakable("Tonemap_DisableHardwareSRGB", true);
-            if (hardwareSRGBDisabled) {
-				#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
-					auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
-					if (res) {
-						auto currentFormat = Metal::AsFormat(Metal::TextureDesc2D(res.get()).Format);
-						if (GetComponentType(currentFormat) == FormatComponentType::UNorm_SRGB) {
-								// create a render target view with SRGB disabled (but the same colour format)
-								// todo -- make sure we're using the correct format here -- 
-							Metal::RenderTargetView rtv(res.get(), Format::R8G8B8A8_UNORM);
-							auto* drtv = rtv.GetUnderlying();
-							metalContext.GetUnderlying()->OMSetRenderTargets(1, &drtv, savedTargets.GetDepthStencilView());
-						} else
-							savedTargets.ResetToOldTargets(metalContext);
-					}
-				#endif
-            } else {
-                savedTargets.ResetToOldTargets(metalContext);
-            }
-
-            auto toneMapSettings = parserContext.GetSceneParser()->GetToneMapSettings();
-            LuminanceResult luminanceResult;
-            if (parserContext.GetSceneParser()->GetToneMapSettings()._flags & ToneMapSettings::Flags::EnableToneMap) {
-                    //  (must resolve luminance early, because we use it during the MSAA resolve)
-                luminanceResult = ToneMap_SampleLuminance(
-                    metalContext, parserContext, toneMapSettings, 
-                    mainTargets->GetSRV(IMainTargets::LightResolve));
-            }
+            auto targetDesc = Metal::ExtractDesc(*metalContext.GetNamedResources().GetRTV(0u));
+            FrameBufferDesc applyToneMapping(
+                {
+                    // We want to reuse the presentation target texture, except with the format modified for SRGB/Linear
+                    {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                        hardwareSRGBDisabled ? AsLinearFormat(targetDesc._textureDesc._format) : targetDesc._textureDesc._format,
+                        AttachmentDesc::LoadStore::DontCare, AttachmentDesc::LoadStore::Retain,
+                        0u }
+                },
+                { SubpassDesc({IMainTargets::PresentationTarget}) },
+                TextureSamples::Create());
+            
+            // if (hardwareSRGBDisabled) {
+			// 	#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+			// 		auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
+			// 		if (res) {
+			// 			auto currentFormat = Metal::AsFormat(Metal::TextureDesc2D(res.get()).Format);
+			// 			if (GetComponentType(currentFormat) == FormatComponentType::UNorm_SRGB) {
+			// 					// create a render target view with SRGB disabled (but the same colour format)
+			// 					// todo -- make sure we're using the correct format here -- 
+			// 				Metal::RenderTargetView rtv(res.get(), Format::R8G8B8A8_UNORM);
+			// 				auto* drtv = rtv.GetUnderlying();
+			// 				metalContext.GetUnderlying()->OMSetRenderTargets(1, &drtv, savedTargets.GetDepthStencilView());
+			// 			} else
+			// 				savedTargets.ResetToOldTargets(metalContext);
+			// 		}
+			// 	#endif
+            // } else {
+            //     savedTargets.ResetToOldTargets(metalContext);
+            // }
+            
             ToneMap_Execute(
                 metalContext, parserContext, luminanceResult, toneMapSettings, 
-                mainTargets->GetSRV(postLightingResolve));
-
-                //  if we're not in MSAA mode, we can rebind the main depth buffer. But if we're in MSAA mode, we have to
-                //  resolve the depth buffer before we can do that...
-            if (qualitySettings._samplingCount >= 1) {
-                savedTargets.SetDepthStencilView(sceneDepthsDSV);
-            }
-            savedTargets.ResetToOldTargets(metalContext);
+                applyToneMapping,
+                mainTargets.GetSRV(postLightingResolve));
         }
-#endif
 
-        LightingParser_Overlays(&metalContext, parserContext);
+        // todo -- move this call into client code
+        // LightingParser_Overlays(&metalContext, parserContext);
     }
 
     static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");

@@ -338,6 +338,7 @@ namespace PlatformRig
                 (RenderCore::Techniques::ParsingContext&)parserContext,
                 toneMapSettings, preToneMap.SRV(), false);
 
+#if 0 // platformtemp
         {
             SceneEngine::ProtectState protectState(
                 *metalContext, 
@@ -350,6 +351,7 @@ namespace PlatformRig
                 luminanceRes, toneMapSettings,
                 preToneMap.SRV());
         }
+#endif
 
         auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
         return uploads.Resource_ReadBack(postToneMap.Locator());

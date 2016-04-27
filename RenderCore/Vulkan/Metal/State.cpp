@@ -39,19 +39,21 @@ namespace RenderCore { namespace Metal_Vulkan
         BlendOp::Enum blendingOperation, Blend::Enum srcBlend, Blend::Enum dstBlend)
     {
         XlZeroMemory(_attachments);
-        _attachments[0].colorWriteMask = 0xf;
-        _attachments[0].blendEnable = VK_FALSE;
-        _attachments[0].alphaBlendOp = VK_BLEND_OP_ADD;
-        _attachments[0].colorBlendOp = VK_BLEND_OP_ADD;
-        _attachments[0].srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-        _attachments[0].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-        _attachments[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-        _attachments[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        for (unsigned c=0; c<dimof(_attachments); ++c) {
+            _attachments[c].colorWriteMask = 0xf;
+            _attachments[c].blendEnable = VK_FALSE;
+            _attachments[c].alphaBlendOp = VK_BLEND_OP_ADD;
+            _attachments[c].colorBlendOp = VK_BLEND_OP_ADD;
+            _attachments[c].srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+            _attachments[c].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+            _attachments[c].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+            _attachments[c].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        }
 
         sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         pNext = nullptr;
         flags = 0;
-        attachmentCount = 1;
+        attachmentCount = dimof(_attachments);
         pAttachments = _attachments;
         logicOpEnable = VK_FALSE;
         logicOp = VK_LOGIC_OP_NO_OP;

@@ -62,7 +62,7 @@ namespace RenderCore { namespace Metal_Vulkan
         };
     }
 
-    class PipelineBuilder
+    class GraphicsPipelineBuilder
     {
     public:
         void        Bind(const RasterizerState& rasterizer);
@@ -75,15 +75,20 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(Topology::Enum topology);
         void        SetVertexStrides(unsigned first, std::initializer_list<unsigned> vertexStrides);
 
-        VulkanUniquePtr<VkPipeline> CreatePipeline(VkRenderPass renderPass, unsigned subpass, TextureSamples samples);
-        PipelineLayout& GetGlobalPipelineLayout();
+        VulkanUniquePtr<VkPipeline> CreatePipeline(
+            const ObjectFactory& factory,
+            VkPipelineCache pipelineCache,
+            VkPipelineLayout layout, 
+            VkRenderPass renderPass, unsigned subpass, 
+            TextureSamples samples);
+        bool IsPipelineStale() const { return _pipelineStale; }
 
-        PipelineBuilder(const ObjectFactory& factory, GlobalPools& globalPools, PipelineLayout& pipelineLayout);
-        ~PipelineBuilder();
+        GraphicsPipelineBuilder();
+        ~GraphicsPipelineBuilder();
 
-        PipelineBuilder(const PipelineBuilder&) = delete;
-        PipelineBuilder& operator=(const PipelineBuilder&) = delete;
-    protected:
+        GraphicsPipelineBuilder(const GraphicsPipelineBuilder&);
+        GraphicsPipelineBuilder& operator=(const GraphicsPipelineBuilder&);
+    private:
         RasterizerState         _rasterizerState;
         BlendState              _blendState;
         DepthStencilState       _depthStencilState;
@@ -92,12 +97,30 @@ namespace RenderCore { namespace Metal_Vulkan
         const BoundInputLayout* _inputLayout;       // note -- unprotected pointer
         const ShaderProgram*    _shaderProgram;
 
-        PipelineLayout *        _globalPipelineLayout;
-
-        const ObjectFactory*    _factory;
-        GlobalPools*            _globalPools;
         unsigned                _vertexStrides[s_maxBoundVBs];
 
+        bool                    _pipelineStale;
+    };
+
+    class ComputePipelineBuilder
+    {
+    public:
+        void        Bind(const ComputeShader& shader);
+
+        VulkanUniquePtr<VkPipeline> CreatePipeline(
+            const ObjectFactory& factory,
+            VkPipelineCache pipelineCache,
+            VkPipelineLayout layout);
+        bool IsPipelineStale() const { return _pipelineStale; }
+
+        ComputePipelineBuilder();
+        ~ComputePipelineBuilder();
+
+        ComputePipelineBuilder(const ComputePipelineBuilder&);
+        ComputePipelineBuilder& operator=(const ComputePipelineBuilder&);
+
+    private:
+        const ComputeShader*    _shader;
         bool                    _pipelineStale;
     };
 
@@ -105,7 +128,8 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         enum class Stage { Vertex, Pixel, Geometry, Compute, Hull, Domain, Max };
-        void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images);
+        void    BindSRV(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images);
+        void    BindUAV(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images);
         void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
         void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
 
@@ -118,7 +142,8 @@ namespace RenderCore { namespace Metal_Vulkan
             DummyResources& dummyResources,
             VkDescriptorSetLayout layout,
             const DescriptorSetSignature& signature, 
-            int cbBindingOffset, int srvBindingOffset, int samplerBindingOffset);
+            int cbBindingOffset, int srvBindingOffset, 
+            int samplerBindingOffset, int uavBindingOffset);
         ~DescriptorSetBuilder();
 
         DescriptorSetBuilder(const DescriptorSetBuilder&) = delete;
@@ -128,10 +153,30 @@ namespace RenderCore { namespace Metal_Vulkan
         std::unique_ptr<Pimpl> _pimpl;
     };
 
+    class DescriptorCollection
+    {
+    public:
+        DescriptorSetBuilder                _dynamicBindings;
+        unsigned                            _dynamicBindingsSlot;
+
+        DescriptorSetBuilder                _globalBindings;
+        unsigned                            _globalBindingsSlot;
+
+        std::vector<VkDescriptorSet>        _descriptorSets;
+        bool                                _hasSetsAwaitingFlush;
+
+        PipelineLayout*                     _pipelineLayout;
+
+        DescriptorCollection(
+            const ObjectFactory&    factory, 
+            GlobalPools&            globalPools,
+            PipelineLayout&         pipelineLayout);
+    };
+
     using CommandList = VkCommandBuffer;
     using CommandListPtr = VulkanSharedPtr<VkCommandBuffer>;
 
-	class DeviceContext : public PipelineBuilder
+	class DeviceContext : public GraphicsPipelineBuilder, ComputePipelineBuilder
     {
     public:
 		template<int Count> void    Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset=0);
@@ -178,7 +223,7 @@ namespace RenderCore { namespace Metal_Vulkan
         template<int Count> void    BindHS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
         template<int Count> void    BindDS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
 
-		template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess) {}
+		template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess);
 
 		template<int Count> void    BindSO(const ResourceList<VertexBuffer, Count>& buffers, unsigned offset=0) {}
 
@@ -189,13 +234,12 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset=0);
         void        Bind(const ViewportDesc& viewport);
 
-        void        Bind(const ComputeShader& computeShader) {}
-
         void        Bind(const DeepShaderProgram& deepShaderProgram) {}
         void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage) {}
         void        Bind(const DeepShaderProgram& deepShaderProgram, const BoundClassInterfaces& dynLinkage) {}
 
-        using PipelineBuilder::Bind;        // we need to expose the "Bind" functions in the base class, as well
+        using GraphicsPipelineBuilder::Bind;        // we need to expose the "Bind" functions in the base class, as well
+        using ComputePipelineBuilder::Bind;
 
         T1(Type) void   UnbindVS(unsigned startSlot, unsigned count) {}
         T1(Type) void   UnbindGS(unsigned startSlot, unsigned count) {}
@@ -226,12 +270,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		void		InvalidateCachedState() {}
 		static void PrepareForDestruction(IDevice*, IPresentationChain*);
 
+        enum class PipelineType { Graphics, Compute };
+        void        BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set);
+        PipelineLayout* GetPipelineLayout(PipelineType pipelineType);
+
         GlobalPools&    GetGlobalPools();
         VkDevice        GetUnderlyingDevice();
 		const ObjectFactory& GetFactory() const { return *_factory; }
-
-        bool        BindPipeline();
-        void        BindDescriptorSet(unsigned index, VkDescriptorSet set);
 
         void                        SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims);
         VectorPattern<unsigned,2>   GetPresentationTargetDims();
@@ -300,6 +345,7 @@ namespace RenderCore { namespace Metal_Vulkan
             const ObjectFactory& factory, 
             GlobalPools& globalPools,
             PipelineLayout& globalPipelineLayout,
+            PipelineLayout& computePipelineLayout,
 			CommandPool& cmdPool, 
             CommandPool::BufferType cmdBufferType);
 		DeviceContext(const DeviceContext&) = delete;
@@ -307,24 +353,27 @@ namespace RenderCore { namespace Metal_Vulkan
 
     private:
         VulkanSharedPtr<VkCommandBuffer>    _commandList;
+        GlobalPools*                        _globalPools;
+        const ObjectFactory*                _factory;
 
         VkRenderPass                        _renderPass;
         TextureSamples                      _renderPassSamples;
         unsigned                            _renderPassSubpass;
 
+        VulkanUniquePtr<VkPipeline>         _currentGraphicsPipeline;
+        VulkanUniquePtr<VkPipeline>         _currentComputePipeline;
+
+        DescriptorCollection                _graphicsDescriptors;
+        DescriptorCollection                _computeDescriptors;
+
         CommandPool*                        _cmdPool;
         CommandPool::BufferType             _cmdBufferType;
-
-        DescriptorSetBuilder                _dynamicBindings;
-        unsigned                            _dynamicBindingsSlot;
-
-        DescriptorSetBuilder                _globalBindings;
-        unsigned                            _globalBindingsSlot;
 
         NamedResources                      _namedResources;
         VectorPattern<unsigned,2>           _presentationTargetDims;
 
-        std::vector<VkDescriptorSet>        _descriptorSets;
+        bool BindGraphicsPipeline();
+        bool BindComputePipeline();
     };
 
     void SetImageLayout(
@@ -347,7 +396,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.BindSRV(
                 DescriptorSetBuilder::Stage::Vertex, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
@@ -356,7 +405,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.BindSRV(
                 DescriptorSetBuilder::Stage::Pixel, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
@@ -365,7 +414,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindCS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _dynamicBindings.Bind(
+            _computeDescriptors._dynamicBindings.BindSRV(
                 DescriptorSetBuilder::Stage::Compute, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
@@ -374,7 +423,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindGS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.BindSRV(
                 DescriptorSetBuilder::Stage::Geometry, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
@@ -383,7 +432,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindHS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.BindSRV(
                 DescriptorSetBuilder::Stage::Hull, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
@@ -392,23 +441,23 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindDS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.BindSRV(
                 DescriptorSetBuilder::Stage::Domain, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
         }
 
-    template<int Count> 
-        void    DeviceContext::BindVS(const ResourceList<SamplerState, Count>& samplerStates) 
+    template<int Count> void    DeviceContext::BindVS(const ResourceList<SamplerState, Count>& samplerStates) 
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.Bind(
                 DescriptorSetBuilder::Stage::Vertex, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplerStates._buffers));
         }
+
     template<int Count> void    DeviceContext::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.Bind(
                 DescriptorSetBuilder::Stage::Pixel, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplerStates._buffers));
@@ -416,7 +465,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     template<int Count> void    DeviceContext::BindGS(const ResourceList<SamplerState, Count>& samplerStates)
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.Bind(
                 DescriptorSetBuilder::Stage::Geometry, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplerStates._buffers));
@@ -424,7 +473,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     template<int Count> void    DeviceContext::BindCS(const ResourceList<SamplerState, Count>& samplerStates)
         {
-            _dynamicBindings.Bind(
+            _computeDescriptors._dynamicBindings.Bind(
                 DescriptorSetBuilder::Stage::Compute, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplerStates._buffers));
@@ -432,7 +481,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     template<int Count> void    DeviceContext::BindHS(const ResourceList<SamplerState, Count>& samplerStates)
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.Bind(
                 DescriptorSetBuilder::Stage::Hull, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplerStates._buffers));
@@ -440,7 +489,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     template<int Count> void    DeviceContext::BindDS(const ResourceList<SamplerState, Count>& samplerStates)
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.Bind(
                 DescriptorSetBuilder::Stage::Domain, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplerStates._buffers));
@@ -449,7 +498,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.Bind(
                 DescriptorSetBuilder::Stage::Vertex, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
@@ -458,7 +507,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindPS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.Bind(
                 DescriptorSetBuilder::Stage::Pixel, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
@@ -467,7 +516,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindCS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _dynamicBindings.Bind(
+            _computeDescriptors._dynamicBindings.Bind(
                 DescriptorSetBuilder::Stage::Compute, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
@@ -476,7 +525,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindGS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.Bind(
                 DescriptorSetBuilder::Stage::Geometry, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
@@ -485,7 +534,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.Bind(
                 DescriptorSetBuilder::Stage::Hull, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
@@ -494,7 +543,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _dynamicBindings.Bind(
+            _graphicsDescriptors._dynamicBindings.Bind(
                 DescriptorSetBuilder::Stage::Domain, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
@@ -506,7 +555,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindVS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.BindSRV(
                 DescriptorSetBuilder::Stage::Vertex, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
@@ -515,7 +564,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindPS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.BindSRV(
                 DescriptorSetBuilder::Stage::Pixel, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
@@ -524,7 +573,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindCS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _globalBindings.Bind(
+            _computeDescriptors._globalBindings.BindSRV(
                 DescriptorSetBuilder::Stage::Compute, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
@@ -533,7 +582,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindGS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.BindSRV(
                 DescriptorSetBuilder::Stage::Geometry, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
@@ -542,7 +591,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindHS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.BindSRV(
                 DescriptorSetBuilder::Stage::Hull, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
@@ -551,23 +600,23 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindDS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.BindSRV(
                 DescriptorSetBuilder::Stage::Domain, 
                 shaderResources._startingPoint,
                 MakeIteratorRange(shaderResources._buffers));
         }
 
-    template<int Count> 
-        void    DeviceContext::BindVS_G(const ResourceList<SamplerState, Count>& samplerStates) 
+    template<int Count> void    DeviceContext::BindVS_G(const ResourceList<SamplerState, Count>& samplerStates) 
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Vertex, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplerStates._buffers));
         }
+
     template<int Count> void    DeviceContext::BindPS_G(const ResourceList<SamplerState, Count>& samplerStates)
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Pixel, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplerStates._buffers));
@@ -575,7 +624,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     template<int Count> void    DeviceContext::BindGS_G(const ResourceList<SamplerState, Count>& samplerStates)
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Geometry, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplerStates._buffers));
@@ -583,7 +632,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     template<int Count> void    DeviceContext::BindCS_G(const ResourceList<SamplerState, Count>& samplerStates)
         {
-            _globalBindings.Bind(
+            _computeDescriptors._globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Compute, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplerStates._buffers));
@@ -591,7 +640,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     template<int Count> void    DeviceContext::BindHS_G(const ResourceList<SamplerState, Count>& samplerStates)
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Hull, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplerStates._buffers));
@@ -599,7 +648,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     template<int Count> void    DeviceContext::BindDS_G(const ResourceList<SamplerState, Count>& samplerStates)
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Domain, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplerStates._buffers));
@@ -608,7 +657,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindVS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Vertex, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
@@ -617,7 +666,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindPS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Pixel, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
@@ -626,7 +675,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindCS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _globalBindings.Bind(
+            _computeDescriptors._globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Compute, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
@@ -635,7 +684,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindGS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Geometry, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
@@ -644,7 +693,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindHS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Hull, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
@@ -653,10 +702,19 @@ namespace RenderCore { namespace Metal_Vulkan
     template<int Count> 
         void    DeviceContext::BindDS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
         {
-            _globalBindings.Bind(
+            _graphicsDescriptors._globalBindings.Bind(
                 DescriptorSetBuilder::Stage::Domain, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(constantBuffers._buffers));
+        }
+
+    template<int Count> 
+        void    DeviceContext::BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess)
+        {
+            _computeDescriptors._dynamicBindings.BindUAV(
+                DescriptorSetBuilder::Stage::Compute, 
+                unorderedAccess._startingPoint,
+                MakeIteratorRange(unorderedAccess._buffers));
         }
 
 }}

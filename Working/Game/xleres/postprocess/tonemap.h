@@ -7,7 +7,9 @@
 #if !defined(TONE_MAP_H)
 #define TONE_MAP_H
 
-cbuffer ToneMapSettings
+#include "../Binding.h"
+
+cbuffer ToneMapSettings CB_DYNAMIC_0
 {
 	float3  BloomScale;			        // = (2.f, 2.f, 2.f)
     float   BloomThreshold;             // = 11.f;
@@ -20,4 +22,3 @@ cbuffer ToneMapSettings
 }
 
 #endif
-

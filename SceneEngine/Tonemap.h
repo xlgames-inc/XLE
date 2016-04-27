@@ -12,6 +12,7 @@
 
 namespace Utility { class ParameterBox; }
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
+namespace RenderCore { class FrameBufferDesc; }
 
 namespace SceneEngine
 {
@@ -56,6 +57,7 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext, 
         const LuminanceResult& luminanceResult,
         const ToneMapSettings& settings,
+        const RenderCore::FrameBufferDesc& destination,
         const RenderCore::Metal::ShaderResourceView& inputResource);
 
     class AtmosphereBlurSettings

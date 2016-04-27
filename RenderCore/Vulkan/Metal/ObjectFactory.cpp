@@ -204,6 +204,21 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(pipeline);
     }
 
+    VulkanUniquePtr<VkPipeline> ObjectFactory::CreateComputePipeline(
+        VkPipelineCache pipelineCache,
+        const VkComputePipelineCreateInfo& createInfo) const
+    {
+        auto d = _destruction.get();
+        VkPipeline rawPipeline = nullptr;
+        auto res = vkCreateComputePipelines(_device.get(), pipelineCache, 1, &createInfo, g_allocationCallbacks, &rawPipeline);
+        auto pipeline = VulkanUniquePtr<VkPipeline>(
+            rawPipeline,
+            [d](VkPipeline pipeline) { d->Destroy(pipeline); });
+        if (res != VK_SUCCESS)
+            Throw(VulkanAPIFailure(res, "Failed while creating compute pipeline"));
+        return std::move(pipeline);
+    }
+
     VulkanUniquePtr<VkPipelineCache> ObjectFactory::CreatePipelineCache(
         const void* initialData, size_t initialDataSize,
         VkPipelineCacheCreateFlags flags) const

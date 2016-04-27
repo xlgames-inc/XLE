@@ -62,12 +62,14 @@ namespace RenderCore { namespace Metal_Vulkan
 
         HLSLToSPIRVCompiler(
             std::shared_ptr<ShaderService::ILowLevelCompiler> hlslCompiler, 
-            const std::shared_ptr<PipelineLayout>& pipelineLayout);
+            const std::shared_ptr<PipelineLayout>& graphicsPipelineLayout,
+            const std::shared_ptr<PipelineLayout>& computePipelineLayout);
         ~HLSLToSPIRVCompiler();
 
     private:
         std::shared_ptr<ShaderService::ILowLevelCompiler>   _hlslCompiler;
-        std::shared_ptr<PipelineLayout>                     _pipelineLayout;
+        std::shared_ptr<PipelineLayout>                     _graphicsPipelineLayout;
+        std::shared_ptr<PipelineLayout>                     _computePipelineLayout;
 
         static std::weak_ptr<HLSLToSPIRVCompiler> s_instance;
         friend std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
@@ -355,7 +357,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto group = ResourceTypeToResourceGroup(srcResBinding->eType);
         switch (group) {
         case RGROUP_CBUFFER:    return DescriptorSetBindingSignature::Type::ConstantBuffer;
-        case RGROUP_TEXTURE:    return DescriptorSetBindingSignature::Type::SamplerAndResource;
+        case RGROUP_TEXTURE:    return DescriptorSetBindingSignature::Type::Resource;
         case RGROUP_SAMPLER:    return DescriptorSetBindingSignature::Type::Sampler;
         case RGROUP_UAV:        return DescriptorSetBindingSignature::Type::UnorderedAccess;
         }
@@ -412,7 +414,12 @@ namespace RenderCore { namespace Metal_Vulkan
         if (!hlslGood) return false;
 
         // We need to load the root signature and add it as a dependency
-        auto rootSig = _pipelineLayout->ShareRootSignature();
+        std::shared_ptr<RootSignature> rootSig;
+        if (shaderPath._shaderModel[0] == 'c' || shaderPath._shaderModel[0] == 'C') {
+            rootSig = _computePipelineLayout->ShareRootSignature();
+        } else {
+            rootSig = _graphicsPipelineLayout->ShareRootSignature();
+        }
         dependencies.push_back(rootSig->GetDependentFileState());
 
         // Second, HLSL bytecode -> GLSL source
@@ -453,9 +460,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
     HLSLToSPIRVCompiler::HLSLToSPIRVCompiler(
         std::shared_ptr<ShaderService::ILowLevelCompiler> hlslCompiler, 
-        const std::shared_ptr<PipelineLayout>& pipelineLayout) 
+        const std::shared_ptr<PipelineLayout>& graphicsPipelineLayout,
+        const std::shared_ptr<PipelineLayout>& computePipelineLayout) 
     : _hlslCompiler(std::move(hlslCompiler))
-    , _pipelineLayout(pipelineLayout)
+    , _graphicsPipelineLayout(graphicsPipelineLayout)
+    , _computePipelineLayout(computePipelineLayout)
     {
         bool initResult = glslang::InitializeProcess();
         if (!initResult)
@@ -477,7 +486,10 @@ namespace RenderCore { namespace Metal_Vulkan
         
         auto hlslCompiler = Metal_DX11::CreateVulkanPrecompiler();
 
-        result = std::make_shared<HLSLToSPIRVCompiler>(hlslCompiler, vulkanDevice->ShareGlobalPipelineLayout());
+        result = std::make_shared<HLSLToSPIRVCompiler>(
+            hlslCompiler, 
+            vulkanDevice->ShareGraphicsPipelineLayout(),
+            vulkanDevice->ShareComputePipelineLayout());
         HLSLToSPIRVCompiler::s_instance = result;
         return std::move(result);
     }

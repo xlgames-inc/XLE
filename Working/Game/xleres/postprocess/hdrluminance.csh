@@ -8,9 +8,9 @@
 #include "tonemap.h"
 #include "../Colour.h"		// (for LightingScale)
 
-Texture2D_MaybeMS<float4>	InputTexture;
-RWTexture2D<float>			OutputLuminance : register(u0);
-RWTexture2D<float4>			OutputBrightPass : register(u1);
+Texture2D_MaybeMS<float4>	InputTexture TEXTURE_DYNAMIC_0;
+RWTexture2D<float>			OutputLuminance UAV_DYNAMIC_0;
+RWTexture2D<float4>			OutputBrightPass UAV_DYNAMIC_1;
 
 struct LuminanceBufferStruct
 {
@@ -18,7 +18,7 @@ struct LuminanceBufferStruct
 	float	_prevLuminance;
 };
 
-RWStructuredBuffer<LuminanceBufferStruct>	OutputLuminanceBuffer : register(u2);
+RWStructuredBuffer<LuminanceBufferStruct>	OutputLuminanceBuffer UAV_DYNAMIC_2;
 
 	//		The "geometric mean" is slightly more expensive,
 	//		but might give a slightly nicer result
@@ -30,7 +30,7 @@ RWStructuredBuffer<LuminanceBufferStruct>	OutputLuminanceBuffer : register(u2);
 	#define IMMEDIATE_ADAPT 0
 #endif
 
-cbuffer LuminanceConstants
+cbuffer LuminanceConstants CB_DYNAMIC_1
 {
 	int		FrameIndex;
 	int		TotalSamplesCount;

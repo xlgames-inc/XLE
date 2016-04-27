@@ -77,6 +77,10 @@ namespace RenderCore { namespace Metal_Vulkan
             VkPipelineCache pipelineCache,
             const VkGraphicsPipelineCreateInfo& createInfo) const;
 
+        VulkanUniquePtr<VkPipeline> CreateComputePipeline(
+            VkPipelineCache pipelineCache,
+            const VkComputePipelineCreateInfo& createInfo) const;
+
         VulkanUniquePtr<VkPipelineCache> CreatePipelineCache(
             const void* initialData = nullptr, size_t initialDataSize = 0,
             VkPipelineCacheCreateFlags flags = 0) const;

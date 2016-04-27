@@ -237,73 +237,26 @@ namespace SceneEngine
             result._skyTextureProjection = SkyTextureParts(globalDesc).BindPS(context, 11);
 
             if (globalDesc._diffuseIBL[0]) {
-                context.BindPS(MakeResourceList(19, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._diffuseIBL).GetShaderResource()));
+                context.BindPS_G(MakeResourceList(19, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._diffuseIBL).GetShaderResource()));
                 result._hasDiffuseIBL = true;
             }
 
             if (globalDesc._specularIBL[0]) {
-                context.BindPS(MakeResourceList(20, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._specularIBL).GetShaderResource()));
+                context.BindPS_G(MakeResourceList(20, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._specularIBL).GetShaderResource()));
                 result._hasSpecularIBL = true;
                 DEBUG_ONLY(CheckSpecularIBLMipMapCount(::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._specularIBL).GetShaderResource()));
             }
 
-            context.BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
-            context.BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
-            context.BindPS(MakeResourceList(21, 
+            context.BindPS_G(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
+            context.BindPS_G(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
+            context.BindPS_G(MakeResourceList(21, 
 				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/glosslut.dds:LT").GetShaderResource(),
 				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/glosstranslut.dds:LT").GetShaderResource()));
 
-            context.BindPS(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
+            context.BindPS_G(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
         CATCH_ASSETS_END(parserContext)
 
         return result;
-    }
-
-    class ResolveFBDescBox
-    {
-    public:
-        class Desc
-        {
-        public:
-            TextureSamples _samples;
-            bool _precisionTargets;
-            Desc(TextureSamples samples, bool precisionTargets) 
-            {
-                std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
-                _samples = samples;
-                _precisionTargets = precisionTargets;
-            }
-        };
-
-        FrameBufferDesc _resolveLighting;
-
-        ResolveFBDescBox(const Desc& d);
-    };
-
-    ResolveFBDescBox::ResolveFBDescBox(const Desc& desc)
-    {
-        using Attachment = RenderCore::AttachmentDesc;
-        using Subpass = RenderCore::SubpassDesc;
-
-        Attachment resolveAttaches[] = 
-        {
-            // light resolve target
-            {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
-                (!desc._precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
-                Attachment::LoadStore::DontCare, Attachment::LoadStore::DontCare,
-                IMainTargets::LightResolve, Attachment::Flags::Multisampled }
-        };
-
-        // note --  the gbuffer isn't considered an "input attachment" here...
-        //          If we combined the gbuffer generation and lighting resolve into a single render pass,
-        //          we could just use the gbuffer as an input attachment
-        _resolveLighting = FrameBufferDesc(
-            MakeIteratorRange(resolveAttaches),
-            {
-                // now resolve lighting
-                Subpass({IMainTargets::LightResolve}, Subpass::Unused)
-            },
-            desc._samples);
     }
 
     void LightingParser_ResolveGBuffer(
@@ -400,11 +353,25 @@ namespace SceneEngine
             // float clearColour[] = { 0.f, 0.f, 0.f, 1.f };
             // context.Clear(lightingResTargets._lightingResolveRTV, clearColour);
 
-            auto& fbDescBox = Techniques::FindCachedBox2<ResolveFBDescBox>(sampling, precisionTargets);
+            // note --  the gbuffer isn't considered an "input attachment" here...
+            //          If we combined the gbuffer generation and lighting resolve into a single render pass,
+            //          we could just use the gbuffer as an input attachment
+            FrameBufferDesc resolveLighting(
+                {
+                    // light resolve target
+                    {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                        (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
+                        AttachmentDesc::LoadStore::DontCare, AttachmentDesc::LoadStore::Retain,
+                        IMainTargets::LightResolve, AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource }
+                },
+                {
+                    SubpassDesc({IMainTargets::LightResolve}, SubpassDesc::Unused)
+                },
+                sampling);
 
             Metal::RenderPassInstance rpi(
                 metalContext,
-                fbDescBox._resolveLighting,
+                resolveLighting,
                 FrameBufferProperties{mainTargets.GetQualitySettings()._dimensions[0], mainTargets.GetQualitySettings()._dimensions[1]},
                 0u, mainTargets.GetFrameBufferCache(),
                 RenderPassBeginDesc{});

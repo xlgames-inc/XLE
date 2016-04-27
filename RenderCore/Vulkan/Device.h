@@ -128,7 +128,8 @@ namespace RenderCore
         ThreadContext(
             std::shared_ptr<Device> device, 
 			VkQueue queue,
-            Metal_Vulkan::PipelineLayout& globalPipelineLayout,
+            Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
+            Metal_Vulkan::PipelineLayout& computePipelineLayout,
             Metal_Vulkan::CommandPool&& cmdPool,
 			Metal_Vulkan::CommandPool::BufferType cmdBufferType);
         ~ThreadContext();
@@ -155,7 +156,8 @@ namespace RenderCore
 		ThreadContextVulkan(
 			std::shared_ptr<Device> device,
 			VkQueue queue,
-            Metal_Vulkan::PipelineLayout& globalPipelineLayout,
+            Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
+            Metal_Vulkan::PipelineLayout& computePipelineLayout,
             Metal_Vulkan::CommandPool&& cmdPool,
 			Metal_Vulkan::CommandPool::BufferType cmdBufferType);
         ~ThreadContextVulkan();
@@ -192,7 +194,8 @@ namespace RenderCore
 		Metal_Vulkan::ObjectFactory		    _objectFactory;
         Metal_Vulkan::GlobalPools           _pools;
 
-        std::shared_ptr<Metal_Vulkan::PipelineLayout> _pipelineLayout;
+        std::shared_ptr<Metal_Vulkan::PipelineLayout> _graphicsPipelineLayout;
+        std::shared_ptr<Metal_Vulkan::PipelineLayout> _computePipelineLayout;
 		std::shared_ptr<ThreadContextVulkan>	_foregroundPrimaryContext;
     };
 
@@ -204,7 +207,8 @@ namespace RenderCore
 		VkDevice	    GetUnderlyingDevice();
         VkQueue         GetRenderingQueue();
         Metal_Vulkan::GlobalPools& GetGlobalPools();
-        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& ShareGlobalPipelineLayout();
+        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& ShareGraphicsPipelineLayout();
+        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& ShareComputePipelineLayout();
         
         DeviceVulkan();
         ~DeviceVulkan();
