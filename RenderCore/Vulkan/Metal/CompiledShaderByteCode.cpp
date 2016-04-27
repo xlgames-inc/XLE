@@ -351,15 +351,31 @@ namespace RenderCore { namespace Metal_Vulkan
 
     static DescriptorSetBindingSignature::Type AsBindingType(ResourceBinding* srcResBinding, ::ConstantBuffer* srcCBBinding)
     {
-        if (srcCBBinding) return DescriptorSetBindingSignature::Type::ConstantBuffer;
-        if (!srcResBinding) return DescriptorSetBindingSignature::Type::Unknown;
+        if (!srcResBinding) {
+            if (srcCBBinding) 
+                return DescriptorSetBindingSignature::Type::ConstantBuffer;
+            return DescriptorSetBindingSignature::Type::Unknown;
+        }
 
         auto group = ResourceTypeToResourceGroup(srcResBinding->eType);
         switch (group) {
         case RGROUP_CBUFFER:    return DescriptorSetBindingSignature::Type::ConstantBuffer;
-        case RGROUP_TEXTURE:    return DescriptorSetBindingSignature::Type::Resource;
+        case RGROUP_TEXTURE:    
+            if (    srcResBinding->eType == RTYPE_STRUCTURED
+                ||  srcResBinding->eType == RTYPE_BYTEADDRESS)
+                return DescriptorSetBindingSignature::Type::TextureAsBuffer;
+            return DescriptorSetBindingSignature::Type::Texture;
         case RGROUP_SAMPLER:    return DescriptorSetBindingSignature::Type::Sampler;
-        case RGROUP_UAV:        return DescriptorSetBindingSignature::Type::UnorderedAccess;
+        case RGROUP_UAV:        
+            {
+                if (    srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED
+                    ||  srcResBinding->eType == RTYPE_UAV_RWBYTEADDRESS
+                    ||  srcResBinding->eType == RTYPE_UAV_APPEND_STRUCTURED
+                    ||  srcResBinding->eType == RTYPE_UAV_CONSUME_STRUCTURED
+                    ||  srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER)
+                    return DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer;
+                return DescriptorSetBindingSignature::Type::UnorderedAccess;
+            }
         }
         return DescriptorSetBindingSignature::Type::Unknown;
     }

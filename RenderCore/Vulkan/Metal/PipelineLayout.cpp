@@ -49,12 +49,13 @@ namespace RenderCore { namespace Metal_Vulkan
     static VkDescriptorType AsDescriptorType(DescriptorSetBindingSignature::Type type)
     {
         switch (type) {
-        case DescriptorSetBindingSignature::Type::Sampler:              return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case DescriptorSetBindingSignature::Type::Resource:             return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        case DescriptorSetBindingSignature::Type::SamplerAndResource:   return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        case DescriptorSetBindingSignature::Type::ConstantBuffer:       return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        case DescriptorSetBindingSignature::Type::InputAttachment:      return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-        case DescriptorSetBindingSignature::Type::UnorderedAccess:      return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        case DescriptorSetBindingSignature::Type::Sampler:                  return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case DescriptorSetBindingSignature::Type::Texture:                 return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case DescriptorSetBindingSignature::Type::ConstantBuffer:           return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case DescriptorSetBindingSignature::Type::UnorderedAccess:          return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+        case DescriptorSetBindingSignature::Type::TextureAsBuffer:         return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer:  return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         default:
             return VK_DESCRIPTOR_TYPE_SAMPLER;
         }
@@ -112,12 +113,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     ++result._samplerCount;
                     break;
 
-                case DescriptorSetBindingSignature::Type::Resource:
-                    ++result._sampledImageCount;
-                    break;
-
-                case DescriptorSetBindingSignature::Type::SamplerAndResource:
-                    ++result._samplerCount;
+                case DescriptorSetBindingSignature::Type::Texture:
                     ++result._sampledImageCount;
                     break;
 
@@ -125,8 +121,13 @@ namespace RenderCore { namespace Metal_Vulkan
                     ++result._uniformBufferCount;
                     break;
 
-                case DescriptorSetBindingSignature::Type::InputAttachment:
-                    ++result._inputAttachmentCount;
+                case DescriptorSetBindingSignature::Type::TextureAsBuffer:
+                case DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer:
+                    ++result._storageBufferCount;
+                    break;
+
+                case DescriptorSetBindingSignature::Type::UnorderedAccess:
+                    ++result._storageImageCount;
                     break;
                 }
             }
@@ -234,14 +235,37 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static DescriptorSetBindingSignature::Type AsBindingType(char type)
+    static enum class Qualifier { None, Image, Buffer };
+
+    static Qualifier AsQualifier(StringSection<char> str)
+    {
+        // look for "(image)" or "(buffer)" qualifiers
+        if (str.Empty() || str[0] != '(') return Qualifier::None;
+
+        if (XlEqStringI(StringSection<char>(str.begin()+1, str.end()), "buffer)"))
+            return Qualifier::Buffer;
+
+        if (XlEqStringI(StringSection<char>(str.begin()+1, str.end()), "image)"))
+            return Qualifier::Image;
+
+        return Qualifier::None;
+    }
+
+    static DescriptorSetBindingSignature::Type AsBindingType(char type, Qualifier qualifier)
     {
         // convert between HLSL style register binding indices to a type enum
         switch (type) {
         case 'b': return DescriptorSetBindingSignature::Type::ConstantBuffer;
         case 's': return DescriptorSetBindingSignature::Type::Sampler;
-        case 't': return DescriptorSetBindingSignature::Type::Resource;
-        case 'u': return DescriptorSetBindingSignature::Type::UnorderedAccess;
+        case 't': 
+            if (qualifier == Qualifier::Buffer)
+                return DescriptorSetBindingSignature::Type::TextureAsBuffer;
+            return DescriptorSetBindingSignature::Type::Texture;
+        case 'u': 
+            if (qualifier == Qualifier::Buffer)
+                return DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer;
+            return DescriptorSetBindingSignature::Type::UnorderedAccess;
+
         default:  return DescriptorSetBindingSignature::Type::Unknown;
         }
     }
@@ -262,13 +286,14 @@ namespace RenderCore { namespace Metal_Vulkan
         for (auto a=element.FirstAttribute(); a; a=a.Next()) {
             if (a.Name().Empty()) continue;
 
-            auto type = AsBindingType(a.Name()[0]);
-
             char* endPt = nullptr;
             auto start = std::strtoul(&a.Name()[1], &endPt, 10);
             auto end = start;
             if (endPt && endPt[0] == '.' && endPt[1] == '.')
                 end = std::strtoul(endPt+2, &endPt, 10);
+
+            auto qualifier = AsQualifier(StringSection<char>(endPt, a.Name().end()));
+            auto type = AsBindingType(a.Name()[0], qualifier);
 
             // Add bindings between the start and end (inclusive)
             for (auto i=start; i<=end; ++i)

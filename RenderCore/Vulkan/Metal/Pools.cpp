@@ -151,6 +151,7 @@ namespace RenderCore { namespace Metal_Vulkan
             {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 256},
             {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 256},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 256},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 256},
             {VK_DESCRIPTOR_TYPE_SAMPLER, 256}
         };
 
@@ -201,7 +202,7 @@ namespace RenderCore { namespace Metal_Vulkan
             });
     }
 
-    static ResourcePtr CreateDummyUAVTexture(const ObjectFactory& factory)
+    static ResourcePtr CreateDummyUAVImage(const ObjectFactory& factory)
     {
         auto desc = CreateDesc(
             BindFlag::UnorderedAccess, 
@@ -210,11 +211,22 @@ namespace RenderCore { namespace Metal_Vulkan
         return Resource::Allocate(factory, desc);
     }
 
+    static ResourcePtr CreateDummyUAVBuffer(const ObjectFactory& factory)
+    {
+        auto desc = CreateDesc(
+            BindFlag::StructuredBuffer, 
+            0, GPUAccess::Read|GPUAccess::Write, 
+            LinearBufferDesc::Create(256, 256), "DummyBuffer");
+        return Resource::Allocate(factory, desc);
+    }
+
     DummyResources::DummyResources(const ObjectFactory& factory)
     : _blankTexture(CreateDummyTexture(factory))
-    , _blankUAVTexture(CreateDummyUAVTexture(factory))
+    , _blankUAVImageRes(CreateDummyUAVImage(factory))
+    , _blankUAVBufferRes(CreateDummyUAVBuffer(factory))
     , _blankSrv(factory, _blankTexture)
-    , _blankUav(factory, _blankUAVTexture)
+    , _blankUavImage(factory, _blankUAVImageRes)
+    , _blankUavBuffer(factory, _blankUAVBufferRes)
     , _blankSampler(std::make_unique<SamplerState>())
     {
         uint8 blankData[4096];
@@ -230,8 +242,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
     DummyResources::DummyResources(DummyResources&& moveFrom) never_throws
     : _blankTexture(std::move(moveFrom._blankTexture))
-    , _blankUAVTexture(std::move(moveFrom._blankUAVTexture))
+    , _blankUAVImageRes(std::move(moveFrom._blankUAVImageRes))
+    , _blankUAVBufferRes(std::move(moveFrom._blankUAVBufferRes))
     , _blankSrv(std::move(moveFrom._blankSrv))
+    , _blankUavImage(std::move(moveFrom._blankUavImage))
+    , _blankUavBuffer(std::move(moveFrom._blankUavBuffer))
     , _blankBuffer(std::move(moveFrom._blankBuffer))
     , _blankSampler(std::move(moveFrom._blankSampler))
     {}
@@ -239,8 +254,11 @@ namespace RenderCore { namespace Metal_Vulkan
     DummyResources& DummyResources::operator=(DummyResources&& moveFrom) never_throws
     {
         _blankTexture = std::move(moveFrom._blankTexture);
-        _blankUAVTexture = std::move(moveFrom._blankUAVTexture);
+        _blankUAVImageRes = std::move(moveFrom._blankUAVImageRes);
+        _blankUAVBufferRes = std::move(moveFrom._blankUAVBufferRes);
         _blankSrv = std::move(moveFrom._blankSrv);
+        _blankUavImage = std::move(moveFrom._blankUavImage);
+        _blankUavBuffer = std::move(moveFrom._blankUavBuffer);
         _blankBuffer = std::move(moveFrom._blankBuffer);
         _blankSampler = std::move(moveFrom._blankSampler);
         return *this;

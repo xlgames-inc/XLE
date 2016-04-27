@@ -106,7 +106,7 @@ namespace Sample
             metalContext->Bind(commonRes._blendStraightAlpha);
             metalContext->Bind(commonRes._dssReadWrite);
             metalContext->Bind(commonRes._defaultRasterizer);
-            metalContext->BindPS(RenderCore::MakeResourceList(commonRes._defaultSampler));
+            metalContext->BindPS_G(RenderCore::MakeResourceList(commonRes._defaultSampler));
 
             ucs4 buffer[1024];
             utf8_2_ucs4((const utf8*)text, XlStringLen(text), buffer, dimof(buffer));

@@ -128,8 +128,8 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         enum class Stage { Vertex, Pixel, Geometry, Compute, Hull, Domain, Max };
-        void    BindSRV(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images);
-        void    BindUAV(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images);
+        void    BindSRV(Stage stage, unsigned startingPoint, IteratorRange<const ShaderResourceView::UnderlyingType*> resources);
+        void    BindUAV(Stage stage, unsigned startingPoint, IteratorRange<const UnorderedAccessView::UnderlyingType*> resources);
         void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
         void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
 

@@ -499,7 +499,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void        DeviceContext::Dispatch(unsigned countX, unsigned countY, unsigned countZ)
     {
-        return;
         assert(_commandList);
         assert(!_renderPass);   // dispatch should not happen in a render pass
 		if (BindComputePipeline()) {
@@ -881,7 +880,7 @@ namespace RenderCore { namespace Metal_Vulkan
     , _globalBindings(
         factory, globalPools._mainDescriptorPool, globalPools._dummyResources, 
         pipelineLayout.GetDescriptorSetLayout(2), pipelineLayout.ShareRootSignature()->_descriptorSets[2],
-        10, 30, 0, 0)
+        0, 0, 0, 0)
     , _globalBindingsSlot(2u)
     {
         _descriptorSets.resize(pipelineLayout.GetDescriptorSetCount(), nullptr);
@@ -916,10 +915,11 @@ namespace RenderCore { namespace Metal_Vulkan
         VkSampler           _dummySampler;
 
         unsigned    _srvMapping[s_maxBindings];
+        unsigned    _srvBufferMapping[s_maxBindings];
         unsigned    _uavMapping[s_maxBindings];
+        unsigned    _uavBufferMapping[s_maxBindings];
         unsigned    _cbMapping[s_maxBindings];
         unsigned    _samplerMapping[s_maxBindings];
-        VkDescriptorType _srvDescriptorType[s_maxBindings];
         int         _srvBindingOffset;
         int         _uavBindingOffset;
         int         _cbBindingOffset;
@@ -997,43 +997,77 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    void    DescriptorSetBuilder::BindSRV(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images)
+    void    DescriptorSetBuilder::BindSRV(Stage stage, unsigned startingPoint, IteratorRange<const ShaderResourceView::UnderlyingType*> resources)
     {
         const auto descriptorSet = 0u;
-        for (unsigned c=0; c<unsigned(images.size()); ++c) {
-            if (!images[c]) continue;
+        for (unsigned c=0; c<unsigned(resources.size()); ++c) {
+            if (!resources[c] || (!resources[c]->GetImageView() && !resources[c]->GetResource())) continue;
             unsigned binding = startingPoint + c + _pimpl->_srvBindingOffset;
             assert(binding < Pimpl::s_maxBindings);
 
-            if (_pimpl->_srvMapping[binding] == ~0u) continue;
+            if (resources[c]->GetImageView()) {
+                if (_pimpl->_srvMapping[binding] == ~0u) {
+                    LogWarning << "SRV image mapping is off root signature";
+                    continue;
+                }
 
-            _pimpl->WriteBinding(
-                _pimpl->_srvMapping[binding], descriptorSet, 
-                _pimpl->_srvDescriptorType[binding],        // (could be a COMBINED_IMAGE_SAMPLER or just a SAMPLED_IMAGE)
-                VkDescriptorImageInfo {
-                    _pimpl->_dummySampler,
-                    images[c], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+                _pimpl->WriteBinding(
+                    _pimpl->_srvMapping[binding], descriptorSet, 
+                    VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        // (could be a COMBINED_IMAGE_SAMPLER or just a SAMPLED_IMAGE)
+                    VkDescriptorImageInfo { nullptr, resources[c]->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+            } else {
+                if (_pimpl->_srvBufferMapping[binding] == ~0u) {
+                    LogWarning << "SRV buffer mapping is off root signature";
+                    continue;
+                }
+            
+                // This is a "structured buffer" in the DirectX terminology
+                auto buffer = UnderlyingResourcePtr(resources[c]->GetResource()).get()->GetBuffer();
+                assert(buffer);
+                _pimpl->WriteBinding(
+                    _pimpl->_srvBufferMapping[binding], descriptorSet, 
+                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                    VkDescriptorBufferInfo { buffer, 0, VK_WHOLE_SIZE });
+            }
         }
     }
 
-    void    DescriptorSetBuilder::BindUAV(Stage stage, unsigned startingPoint, IteratorRange<const VkImageView*> images)
+    void    DescriptorSetBuilder::BindUAV(Stage stage, unsigned startingPoint, IteratorRange<const UnorderedAccessView::UnderlyingType*> resources)
     {
         const auto descriptorSet = 0u;
-        for (unsigned c=0; c<unsigned(images.size()); ++c) {
-            if (!images[c]) continue;
+        for (unsigned c=0; c<unsigned(resources.size()); ++c) {
+            if (!resources[c] || (!resources[c]->GetImageView() && !resources[c]->GetResource())) continue;
             unsigned binding = startingPoint + c + _pimpl->_uavBindingOffset;
             assert(binding < Pimpl::s_maxBindings);
 
-            if (_pimpl->_uavMapping[binding] == ~0u) continue;
+            // We could be binding either a "gimageXX" type, or a "buffer" type. Check the texture 
+            // to see if there is an image view attached.
+            // The type must correspond to what the layout is expecting.
 
-            // note --  load and store operations can only be performed
-            //          in VK_IMAGE_LAYOUT_GENERAL
-            _pimpl->WriteBinding(
-                _pimpl->_uavMapping[binding], descriptorSet, 
-                VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                VkDescriptorImageInfo {
-                    _pimpl->_dummySampler,
-                    images[c], VK_IMAGE_LAYOUT_GENERAL });
+            if (resources[c]->GetImageView()) {
+                if (_pimpl->_uavMapping[binding] == ~0u) {
+                    LogWarning << "UAV image mapping is off root signature";
+                    continue;
+                }
+            
+                // note --  load and store operations can only be performed in VK_IMAGE_LAYOUT_GENERAL
+                _pimpl->WriteBinding(
+                    _pimpl->_uavMapping[binding], descriptorSet, 
+                    VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                    VkDescriptorImageInfo { nullptr, resources[c]->GetImageView(), VK_IMAGE_LAYOUT_GENERAL });
+            } else {
+                if (_pimpl->_uavBufferMapping[binding] == ~0u) {
+                    LogWarning << "UAV buffer mapping is off root signature";
+                    continue;
+                }
+            
+                auto buffer = UnderlyingResourcePtr(resources[c]->GetResource()).get()->GetBuffer();
+                assert(buffer);
+                _pimpl->WriteBinding(
+                    _pimpl->_uavBufferMapping[binding], descriptorSet, 
+                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                    VkDescriptorBufferInfo { buffer, 0, VK_WHOLE_SIZE });
+            }
         }
     }
 
@@ -1045,7 +1079,10 @@ namespace RenderCore { namespace Metal_Vulkan
             unsigned binding = startingPoint + c + _pimpl->_cbBindingOffset;
             assert(binding < Pimpl::s_maxBindings);
 
-            if (_pimpl->_cbMapping[binding] == ~0u) continue;
+            if (_pimpl->_cbMapping[binding] == ~0u) {
+                LogWarning << "Uniform buffer mapping is off root signature";
+                continue;
+            }
 
             _pimpl->WriteBinding(
                 _pimpl->_cbMapping[binding], descriptorSet, 
@@ -1062,7 +1099,10 @@ namespace RenderCore { namespace Metal_Vulkan
             unsigned binding = startingPoint + c + _pimpl->_samplerBindingOffset;
             assert(binding < Pimpl::s_maxBindings);
 
-            if (_pimpl->_samplerMapping[binding] == ~0u) continue;
+            if (_pimpl->_samplerMapping[binding] == ~0u) {
+                LogWarning << "Sampler mapping is off root signature";
+                continue;
+            }
 
             _pimpl->WriteBinding(
                 _pimpl->_samplerMapping[binding], descriptorSet, 
@@ -1185,28 +1225,33 @@ namespace RenderCore { namespace Metal_Vulkan
         // and the binding index in our descriptor set
 
         for (auto& m:_pimpl->_srvMapping) m = ~0u;
+        for (auto& m:_pimpl->_srvBufferMapping) m = ~0u;
         for (auto& m:_pimpl->_uavMapping) m = ~0u;
+        for (auto& m:_pimpl->_uavBufferMapping) m = ~0u;
         for (auto& m:_pimpl->_cbMapping) m = ~0u;
         for (auto& m:_pimpl->_samplerMapping) m = ~0u;
-        for (auto& t:_pimpl->_srvDescriptorType) t = VK_DESCRIPTOR_TYPE_MAX_ENUM;
 
         for (unsigned bIndex=0; bIndex<(unsigned)signature._bindings.size(); ++bIndex) {
             const auto& b = signature._bindings[bIndex];
             assert(b._hlslBindingIndex < Pimpl::s_maxBindings);
-            if (b._type == DescriptorSetBindingSignature::Type::Resource) {
+            if (b._type == DescriptorSetBindingSignature::Type::Texture) {
                 assert(_pimpl->_srvMapping[b._hlslBindingIndex] == ~0u);
                 _pimpl->_srvMapping[b._hlslBindingIndex] = bIndex;
-                _pimpl->_srvDescriptorType[b._hlslBindingIndex] = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-            } else if (b._type == DescriptorSetBindingSignature::Type::SamplerAndResource) {
-                assert(_pimpl->_srvMapping[b._hlslBindingIndex] == ~0u);
-                _pimpl->_srvMapping[b._hlslBindingIndex] = bIndex;
-                _pimpl->_srvDescriptorType[b._hlslBindingIndex] = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            } else if (b._type == DescriptorSetBindingSignature::Type::ConstantBuffer) {
+            } else if (b._type == DescriptorSetBindingSignature::Type::TextureAsBuffer) {
+                assert(_pimpl->_srvBufferMapping[b._hlslBindingIndex] == ~0u);
+                _pimpl->_srvBufferMapping[b._hlslBindingIndex] = bIndex;
+            }  else if (b._type == DescriptorSetBindingSignature::Type::ConstantBuffer) {
                 assert(_pimpl->_cbMapping[b._hlslBindingIndex] == ~0u);
                 _pimpl->_cbMapping[b._hlslBindingIndex] = bIndex;
             } else if (b._type == DescriptorSetBindingSignature::Type::Sampler) {
                 assert(_pimpl->_samplerMapping[b._hlslBindingIndex] == ~0u);
                 _pimpl->_samplerMapping[b._hlslBindingIndex] = bIndex;
+            } else if (b._type == DescriptorSetBindingSignature::Type::UnorderedAccess) {
+                assert(_pimpl->_uavMapping[b._hlslBindingIndex] == ~0u);
+                _pimpl->_uavMapping[b._hlslBindingIndex] = bIndex;
+            } else if (b._type == DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer) {
+                assert(_pimpl->_uavBufferMapping[b._hlslBindingIndex] == ~0u);
+                _pimpl->_uavBufferMapping[b._hlslBindingIndex] = bIndex;
             }
         }
 
@@ -1214,19 +1259,25 @@ namespace RenderCore { namespace Metal_Vulkan
 
         // Create the default resources binding sets...
         VkBuffer defaultBuffers[Pimpl::s_maxBindings];
-        VkImageView defaultSRVs[Pimpl::s_maxBindings];
-        VkImageView defaultUAVs[Pimpl::s_maxBindings];
+        const TextureView* defaultSRVImages[Pimpl::s_maxBindings];
+        const TextureView* defaultSRVBuffers[Pimpl::s_maxBindings];
+        const TextureView* defaultUAVImages[Pimpl::s_maxBindings];
+        const TextureView* defaultUAVBuffers[Pimpl::s_maxBindings];
         VkSampler defaultSamplers[Pimpl::s_maxBindings];
         for (unsigned c=0; c<Pimpl::s_maxBindings; ++c) {
             defaultBuffers[c] = (_pimpl->_cbMapping[c+_pimpl->_cbBindingOffset] != ~0u) ? defResources._blankBuffer.GetUnderlying() : nullptr;
-            defaultSRVs[c] = (_pimpl->_srvMapping[c+_pimpl->_srvBindingOffset] != ~0u) ? defResources._blankSrv.GetUnderlying() : nullptr;
-            defaultUAVs[c] = (_pimpl->_uavMapping[c+_pimpl->_uavBindingOffset] != ~0u) ? defResources._blankUav.GetUnderlying() : nullptr;
+            defaultSRVImages[c] = (_pimpl->_srvMapping[c+_pimpl->_srvBindingOffset] != ~0u) ? &defResources._blankSrv : nullptr;
+            defaultSRVBuffers[c] = (_pimpl->_srvBufferMapping[c+_pimpl->_srvBindingOffset] != ~0u) ? &defResources._blankUavBuffer : nullptr;
+            defaultUAVImages[c] = (_pimpl->_uavMapping[c+_pimpl->_uavBindingOffset] != ~0u) ? &defResources._blankUavImage : nullptr;
+            defaultUAVBuffers[c] = (_pimpl->_uavBufferMapping[c+_pimpl->_uavBindingOffset] != ~0u) ? &defResources._blankUavBuffer : nullptr;
             defaultSamplers[c] = (_pimpl->_samplerMapping[c+_pimpl->_samplerBindingOffset] != ~0u) ? defResources._blankSampler->GetUnderlying() : nullptr;
         }
         Bind(Stage::Vertex, 0, IteratorRange<const VkBuffer*>(defaultBuffers, &defaultBuffers[dimof(defaultBuffers) - _pimpl->_cbBindingOffset]));
         Bind(Stage::Vertex, 0, IteratorRange<const VkSampler*>(defaultSamplers, &defaultSamplers[dimof(defaultSamplers) - _pimpl->_samplerBindingOffset]));
-        BindSRV(Stage::Vertex, 0, IteratorRange<const VkImageView*>(defaultSRVs, &defaultSRVs[dimof(defaultSRVs) - _pimpl->_srvBindingOffset]));
-        BindUAV(Stage::Vertex, 0, IteratorRange<const VkImageView*>(defaultUAVs, &defaultUAVs[dimof(defaultUAVs) - _pimpl->_uavBindingOffset]));
+        BindSRV(Stage::Vertex, 0, IteratorRange<const TextureView**>(defaultSRVImages, &defaultSRVImages[dimof(defaultSRVImages) - _pimpl->_srvBindingOffset]));
+        BindSRV(Stage::Vertex, 0, IteratorRange<const TextureView**>(defaultSRVBuffers, &defaultSRVBuffers[dimof(defaultSRVBuffers) - _pimpl->_srvBindingOffset]));
+        BindUAV(Stage::Vertex, 0, IteratorRange<const TextureView**>(defaultUAVImages, &defaultUAVImages[dimof(defaultUAVImages) - _pimpl->_uavBindingOffset]));
+        BindUAV(Stage::Vertex, 0, IteratorRange<const TextureView**>(defaultUAVBuffers, &defaultUAVBuffers[dimof(defaultUAVBuffers) - _pimpl->_uavBindingOffset]));
 
         // Create the descriptor sets, and then move them into "_defaultDescSets"
         // Note that these sets must come from a non-resetable permanent pool

@@ -70,9 +70,11 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         ResourcePtr         _blankTexture;
-        ResourcePtr         _blankUAVTexture;
+        ResourcePtr         _blankUAVImageRes;
+        ResourcePtr         _blankUAVBufferRes;
         ShaderResourceView  _blankSrv;
-        UnorderedAccessView _blankUav;
+        UnorderedAccessView _blankUavImage;
+        UnorderedAccessView _blankUavBuffer;
         Buffer              _blankBuffer;
         std::unique_ptr<SamplerState> _blankSampler;
 

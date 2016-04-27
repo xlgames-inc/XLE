@@ -381,7 +381,7 @@ namespace RenderOverlays
         _metalContext->Bind(Techniques::CommonResources()._dssReadWrite);
         _metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
         _metalContext->Bind(Techniques::CommonResources()._defaultRasterizer);
-        _metalContext->BindPS(ResourceList<Metal::SamplerState, 1>(std::make_tuple(Techniques::CommonResources()._defaultSampler)));
+        _metalContext->BindPS_G(ResourceList<Metal::SamplerState, 1>(std::make_tuple(Techniques::CommonResources()._defaultSampler)));
 
         Metal::ViewportDesc viewportDesc(*_metalContext);
         ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };

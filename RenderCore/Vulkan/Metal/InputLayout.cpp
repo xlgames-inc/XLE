@@ -433,7 +433,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     if (dstBinding == ~0u) continue;
                     imageInfo[imageCount] = VkDescriptorImageInfo {
                         globalPools._dummyResources._blankSampler->GetUnderlying(),
-                        s._resources[r]->GetUnderlying(),
+                        s._resources[r]->GetImageView(),
 						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
                     assert(_shaderBindingMask[0] & (1ull << uint64(dstBinding&0xffff)));
 
@@ -477,7 +477,7 @@ namespace RenderCore { namespace Metal_Vulkan
             0, VK_WHOLE_SIZE };
         imageInfo[imageCount++] = VkDescriptorImageInfo {
             globalPools._dummyResources._blankSampler->GetUnderlying(),
-            globalPools._dummyResources._blankSrv.GetUnderlying(),
+            globalPools._dummyResources._blankSrv.GetImageView(),
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
         auto rootSig = pipelineLayout->ShareRootSignature();
@@ -501,14 +501,11 @@ namespace RenderCore { namespace Metal_Vulkan
                 if (b._type == DescriptorSetBindingSignature::Type::ConstantBuffer) {
                     writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                     writes[writeCount].pBufferInfo = &bufferInfo[blankBuffer];
-                } else if (b._type == DescriptorSetBindingSignature::Type::SamplerAndResource) {
-                    writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                    writes[writeCount].pImageInfo = &imageInfo[blankImage];
-                } else if (b._type == DescriptorSetBindingSignature::Type::Resource) {
+                } else if (b._type == DescriptorSetBindingSignature::Type::Texture) {
                     writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                     writes[writeCount].pImageInfo = &imageInfo[blankImage];
                 } else {
-                    assert(0);
+                    assert(0);      // (other types, such as UAVs and structured buffers not supported)
                 }
 
                 descSetWrites[s] |= 1ull << uint64(bIndex);

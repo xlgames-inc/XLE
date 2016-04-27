@@ -253,7 +253,7 @@ namespace SceneEngine
 				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/glosslut.dds:LT").GetShaderResource(),
 				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/glosstranslut.dds:LT").GetShaderResource()));
 
-            context.BindPS_G(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
+            // context.BindPS_G(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
         CATCH_ASSETS_END(parserContext)
 
         return result;
@@ -346,7 +346,7 @@ namespace SceneEngine
             SetupStateForDeferredLightingResolve(metalContext, mainTargets, resolveRes, doSampleFrequencyOptimisation);
             auto resourceBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext);
 
-            metalContext.BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
+            metalContext.BindPS_G(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
             metalContext.BindPS(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
 
                 // note -- if we do ambient first, we can avoid this clear (by rendering the ambient opaque)

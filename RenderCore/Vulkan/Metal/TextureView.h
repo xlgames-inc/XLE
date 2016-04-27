@@ -43,7 +43,7 @@ namespace RenderCore { namespace Metal_Vulkan
             ) : _format(format), _dimensionality(dimensionality), _mipRange(mipRange), _arrayLayerRange(arrayLayerRange), _flags(flags) {}
     };
 
-	/// <summary>Shared base class for texture view objects</summary>
+	/// <summary>Shared base class for various view objects</summary>
 	/// In Vulkan, views of shader resources can be either VkImageViews or VkBufferViews.
 	/// Both types represent an array of texels with a given format. VkBufferViews represent
 	/// single dimensional linear array. VkImageViews arrange the texels in much more complex
@@ -63,12 +63,13 @@ namespace RenderCore { namespace Metal_Vulkan
         TextureView();
         ~TextureView();
 
-        using UnderlyingType = VkImageView;
-		UnderlyingType			GetUnderlying() const { return _imageView.get(); }
+        using UnderlyingType = const TextureView*;
+		UnderlyingType			GetUnderlying() const { return this; }
 		bool					IsGood() const { return _imageView != nullptr; }
 
 		RenderCore::Resource*	GetResource() const { return _image.get(); }
 		const ResourcePtr&		ShareResource() const { return _image; }
+        VkImageView             GetImageView() const { return _imageView.get(); }
 
     private:
         VulkanSharedPtr<VkImageView>	_imageView;
@@ -76,8 +77,8 @@ namespace RenderCore { namespace Metal_Vulkan
     };
 
     // note -- in Vulkan, ShaderResourceView, RenderTargetView, DepthStencilView and UnorderedAccessView
-    // are the same. But we can use "using" statements, because we still use the types for matching with
-    // Bind() functions
+    // are the same. But we can't just use "using" statements, because we need separate types to distinquish
+    // between the variations of the Bind() functions
 
     class ShaderResourceView : public TextureView
     {

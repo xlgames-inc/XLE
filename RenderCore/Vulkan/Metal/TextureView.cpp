@@ -81,8 +81,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			auto createInfo = MakeCreateInfo(adjWindow, res->GetImage(), true);
 			_imageView = factory.CreateImageView(createInfo);
-			_image = image;
 		}
+
+        // keep a pointer to the "image" even if we couldn't construct a VkImageView
+        _image = image;
 	}
 
     TextureView::TextureView(VkImage image, const TextureViewWindow& window)

@@ -488,7 +488,7 @@ namespace RenderCore { namespace Metal_Vulkan
             if (existingView == nullptr)
                 existingView = namedResources.GetSRV(a._name);
             if (existingView != nullptr) {
-                rawViews.push_back(existingView->GetUnderlying());
+                rawViews.push_back(existingView->GetImageView());
                 _views.push_back(*existingView);
                 continue;
             }
@@ -555,7 +555,7 @@ namespace RenderCore { namespace Metal_Vulkan
             if (IsRetained(a._storeToNextPhase) || (usage & unsigned(Internal::AttachmentUsage::Input)))
                 namedResources.Bind(a._name, view);
 
-            rawViews.push_back(view.GetUnderlying());
+            rawViews.push_back(view.GetImageView());
             _views.emplace_back(std::move(view));
         }
 
