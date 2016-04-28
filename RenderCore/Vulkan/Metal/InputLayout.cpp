@@ -18,6 +18,7 @@
 #include "../../Types.h"
 #include "../../ShaderService.h"
 #include "../../../Utility/MemoryUtils.h"
+#include "../../../Utility/ArithmeticUtils.h"
 #include "../../../ConsoleRig/Log.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -466,33 +467,41 @@ namespace RenderCore { namespace Metal_Vulkan
         // the streams must now be filled in with the defaults.
         // Vulkan doesn't seem to have well defined behaviour for descriptor set entries that
         // are part of the layout, but never written.
-        // We can do this with "write" operations, or with "copy" operations. I'm assuming that there's
-        // no major performance difference, so I'll just use writes.
-        assert(bufferCount < dimof(bufferInfo));
-        assert(imageCount < dimof(imageInfo));
-        auto blankBuffer = bufferCount;
-        auto blankImage = imageCount;
-        bufferInfo[bufferCount++] = VkDescriptorBufferInfo { 
-            globalPools._dummyResources._blankBuffer.GetUnderlying(),
-            0, VK_WHOLE_SIZE };
-        imageInfo[imageCount++] = VkDescriptorImageInfo {
-            globalPools._dummyResources._blankSampler->GetUnderlying(),
-            globalPools._dummyResources._blankSrv.GetImageView(),
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-
+        // We can do this with "write" operations, or with "copy" operations. It seems like copy
+        // might be inefficient on many platforms, so we'll prefer "write"
+        //
+        // In the most common case, there should be no dummy descriptors to fill in here... So we'll 
+        // optimise for that case.
         auto rootSig = pipelineLayout->ShareRootSignature();
-        for (unsigned s=0; s<s_descriptorSetCount; ++s) {
-            const auto& sig = rootSig->_descriptorSets[s];
-            for (unsigned bIndex=0; bIndex<(unsigned)sig._bindings.size(); ++bIndex) {
-                if (descSetWrites[s] & (1ull<<uint64(bIndex))) continue;
-                if (!(_shaderBindingMask[s] & (1ull<<uint64(bIndex)))) continue;
+        static_assert(s_descriptorSetCount==1, "Expecting single descriptor set");
+        const auto& sig = rootSig->_descriptorSets[0];
+        uint64 dummyDescWriteMask = (~descSetWrites[0]) & _shaderBindingMask[0];
+        if (dummyDescWriteMask != 0) {
+
+            assert(bufferCount < dimof(bufferInfo));
+            assert(imageCount < dimof(imageInfo));
+            auto blankBuffer = bufferCount;
+            auto blankImage = imageCount;
+            bufferInfo[bufferCount++] = VkDescriptorBufferInfo { 
+                globalPools._dummyResources._blankBuffer.GetUnderlying(),
+                0, VK_WHOLE_SIZE };
+            imageInfo[imageCount++] = VkDescriptorImageInfo {
+                globalPools._dummyResources._blankSampler->GetUnderlying(),
+                globalPools._dummyResources._blankSrv.GetImageView(),
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+
+            unsigned minBit = xl_ctz8(dummyDescWriteMask);
+            unsigned maxBit = std::min(64u - xl_clz8(dummyDescWriteMask), (unsigned)sig._bindings.size()-1);
+
+            for (unsigned bIndex=minBit; bIndex<=maxBit; ++bIndex) {
+                if (!(dummyDescWriteMask & (1ull<<uint64(bIndex)))) continue;
 
                 LogWarning << "No data provided for bound uniform (" << bIndex << "). Using dummy resource.";
 
                 assert(writeCount < dimof(writes));
                 writes[writeCount] = {};
                 writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                writes[writeCount].dstSet = _descriptorSets[s].get();
+                writes[writeCount].dstSet = _descriptorSets[0].get();
                 writes[writeCount].dstBinding = bIndex;
                 writes[writeCount].descriptorCount = 1;
                 writes[writeCount].dstArrayElement = 0;
@@ -508,7 +517,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     assert(0);      // (other types, such as UAVs and structured buffers not supported)
                 }
 
-                descSetWrites[s] |= 1ull << uint64(bIndex);
+                // descSetWrites[0] |= 1ull << uint64(bIndex);
                 ++writeCount;
             }
         }
@@ -516,7 +525,6 @@ namespace RenderCore { namespace Metal_Vulkan
         // note --  vkUpdateDescriptorSets happens immediately, regardless of command list progress.
         //          Ideally we don't really want to have to update these constantly... Once they are 
         //          set, maybe we can just reuse them?
-        assert(writeCount);
         if (writeCount)
             vkUpdateDescriptorSets(context.GetUnderlyingDevice(), writeCount, writes, 0, nullptr);
         

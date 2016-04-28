@@ -30,7 +30,7 @@ RWStructuredBuffer<LuminanceBufferStruct>	OutputLuminanceBuffer UAV_DYNAMIC_2;
 	#define IMMEDIATE_ADAPT 0
 #endif
 
-cbuffer LuminanceConstants CB_DYNAMIC_1
+cbuffer LuminanceConstants CB_BOUND1_1
 {
 	int		FrameIndex;
 	int		TotalSamplesCount;
@@ -192,6 +192,9 @@ float3 BrightPassFilter(float3 colour)
 		//		Unfortunately these loops aren't fixed length -- maybe there's
 		//		a better way to do this?
 		//
+#if 1
+	OutputBrightPass[dispatchThreadId.xy] = float4(BrightPassFilter(inputColour), 1);
+#else
 	int2 inputMins = int2(float2(dispatchThreadId.xy) * sizeRatio);
 	int2 inputMaxs = int2(float2(dispatchThreadId.xy+uint2(1,1)) * sizeRatio);
 	float3 acculumatedColour = 0.0.xxx;
@@ -203,6 +206,7 @@ float3 BrightPassFilter(float3 colour)
 	int pixelSampleCount = (inputMaxs.x-inputMins.x)*(inputMaxs.y-inputMins.y);
 	float3 t = acculumatedColour/float(pixelSampleCount);
 	OutputBrightPass[dispatchThreadId.xy] = float4(t, 1);
+#endif
 }
 
 [numthreads(16, 16, 1)]

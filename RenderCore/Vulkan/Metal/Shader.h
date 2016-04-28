@@ -117,6 +117,7 @@ namespace RenderCore { namespace Metal_Vulkan
     public:
         explicit ComputeShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
         explicit ComputeShader(const CompiledShaderByteCode& byteCode);
+        ComputeShader();
         ~ComputeShader();
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }

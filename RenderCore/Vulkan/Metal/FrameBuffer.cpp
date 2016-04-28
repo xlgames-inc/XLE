@@ -315,8 +315,19 @@ namespace RenderCore { namespace Metal_Vulkan
                 desc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             }
 
-            desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            desc.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            // Assume that that attachments marked "ShaderResource" will begin and end in the 
+            // shader read layout. This should be fine for cases where a single render pass
+            // is used to write to a texture, and then it is read subsequentially. 
+            //
+            // However, if there are multiple writing render passes, followed by a shader
+            // read at some later point, then this may switch to shader read layout redundantly
+            if (a._flags & AttachmentDesc::Flags::ShaderResource) {
+                desc.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                desc.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            }
+
+            // desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            // desc.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
             if (a._name == 0u) {
                 // we assume that name "0" is always bound to a presentable buffer

@@ -44,9 +44,9 @@ namespace RenderCore { namespace Metal_Vulkan
             _attachments[c].blendEnable = VK_FALSE;
             _attachments[c].alphaBlendOp = VK_BLEND_OP_ADD;
             _attachments[c].colorBlendOp = VK_BLEND_OP_ADD;
-            _attachments[c].srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+            _attachments[c].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
             _attachments[c].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-            _attachments[c].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+            _attachments[c].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
             _attachments[c].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
         }
 
@@ -134,8 +134,8 @@ namespace RenderCore { namespace Metal_Vulkan
         samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         samplerCreateInfo.pNext = nullptr;
         samplerCreateInfo.flags = 0;
-        samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
-        samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+        samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
+        samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
         samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
         samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;

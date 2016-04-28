@@ -262,6 +262,7 @@ namespace RenderCore { namespace Metal_Vulkan
     void        ComputePipelineBuilder::Bind(const ComputeShader& shader)
     {
         _shader = &shader;
+        _pipelineStale = true;
     }
 
     VulkanUniquePtr<VkPipeline> ComputePipelineBuilder::CreatePipeline(
@@ -365,7 +366,7 @@ namespace RenderCore { namespace Metal_Vulkan
         if (index < (unsigned)collection._descriptorSets.size() && collection._descriptorSets[index] != set) {
             collection._descriptorSets[index] = set;
 
-            if (_renderPass) {
+            if (_renderPass || pipelineType == PipelineType::Compute) {
                 CmdBindDescriptorSets(
                     (pipelineType == PipelineType::Compute) ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
                     collection._pipelineLayout->GetUnderlying(), 
@@ -460,6 +461,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			    _commandList.get(),
                 VK_PIPELINE_BIND_POINT_COMPUTE,
                 _currentComputePipeline.get());
+
+            // note -- currently crashing the GPU if we don't rebind here...?
+            CmdBindDescriptorSets(
+                VK_PIPELINE_BIND_POINT_COMPUTE,
+                _computeDescriptors._pipelineLayout->GetUnderlying(), 
+                0, (uint32_t)_computeDescriptors._descriptorSets.size(), AsPointer(_computeDescriptors._descriptorSets.begin()), 
+                0, nullptr);
             return true;
         }
 
@@ -533,6 +541,8 @@ namespace RenderCore { namespace Metal_Vulkan
         // hack -- clear some state
         *(GraphicsPipelineBuilder*)this = GraphicsPipelineBuilder();
         *(ComputePipelineBuilder*)this = ComputePipelineBuilder();
+        _currentGraphicsPipeline.reset();
+        _currentComputePipeline.reset();
 
         for (auto& s:_graphicsDescriptors._descriptorSets) s = nullptr;
         _graphicsDescriptors._hasSetsAwaitingFlush = false;

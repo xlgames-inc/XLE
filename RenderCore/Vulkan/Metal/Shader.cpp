@@ -146,6 +146,8 @@ namespace RenderCore { namespace Metal_Vulkan
         Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
     }
 
+    ComputeShader::ComputeShader() {}
+
     ComputeShader::~ComputeShader() {}
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

@@ -937,6 +937,8 @@ namespace SceneEngine
         const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
         MainTargets mainTargets(metalContext, qualitySettings, enableParametersBuffer?1:2);
 
+        FrameBufferProperties frameBufferProps{qualitySettings._dimensions[0], qualitySettings._dimensions[1], 1u};
+
         if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Deferred) {
 
                 //
@@ -973,7 +975,7 @@ namespace SceneEngine
                 Metal::RenderPassInstance rpi(
                     metalContext,
                     fbDescBox._createGBuffer,
-                    FrameBufferProperties{qualitySettings._dimensions[0], qualitySettings._dimensions[1]},
+                    frameBufferProps,
                     0u, mainTargets.GetFrameBufferCache(),
                     RenderPassBeginDesc{{RenderCore::MakeClearValue(1.f, 0)}});
                 metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, (float)qualitySettings._dimensions[0], (float)qualitySettings._dimensions[1]));
@@ -1110,7 +1112,7 @@ namespace SceneEngine
             
             ToneMap_Execute(
                 metalContext, parserContext, luminanceResult, toneMapSettings, 
-                applyToneMapping,
+                applyToneMapping, frameBufferProps,
                 mainTargets.GetSRV(postLightingResolve));
         }
 

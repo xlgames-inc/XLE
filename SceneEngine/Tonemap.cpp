@@ -70,7 +70,7 @@ namespace SceneEngine
 	    float   _whitepoint;
         float   _dummy[2];
     };
-    ToneMapSettingsConstants AsConstants(const ToneMapSettings& settings);
+    RenderCore::SharedPkt AsConstants(const ToneMapSettings& settings);
 
     class BloomStepBuffer
     {
@@ -134,16 +134,19 @@ namespace SceneEngine
         using SRV = Metal::ShaderResourceView;
         using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
 
-        std::vector<GestaltTypes::UAVSRV> _luminanceBuffers;
-        GestaltTypes::UAVSRV            _propertiesBuffer;
-        std::vector<BloomStepBuffer>    _bloomBuffers;
-        BloomStepBuffer                 _bloomTempBuffer;
+        std::vector<GestaltTypes::UAVSRV>   _luminanceBuffers;
+        GestaltTypes::UAVSRV                _propertiesBuffer;
+        std::vector<BloomStepBuffer>        _bloomBuffers;
+        BloomStepBuffer                     _bloomTempBuffer;
 
-        const Metal::ComputeShader*		_sampleInitialLuminance;
+        const CompiledShaderByteCode*   _sampleInitialLuminanceByteCode;
+        Metal::ComputeShader            _sampleInitialLuminance;
         const Metal::ComputeShader*		_luminanceStepDown;
         const Metal::ComputeShader*		_updateOverallLuminance;
         const Metal::ComputeShader*		_updateOverallLuminanceNoAdapt;
         const Metal::ComputeShader*		_brightPassStepDown;
+
+        Metal::BoundUniforms        _boundUniforms;
 
         unsigned    _firstStepWidth;
         unsigned    _firstStepHeight;
@@ -210,15 +213,19 @@ namespace SceneEngine
         shaderDefines << "MSAA_SAMPLES=" << desc._sampleCount;
         if (desc._useMSAASamplers) shaderDefines << ";MSAA_SAMPLERS=1";
 
-        _sampleInitialLuminance    = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/postprocess/hdrluminance.csh:SampleInitialLuminance:cs_*", shaderDefines.get());
-        _luminanceStepDown         = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/postprocess/hdrluminance.csh:LuminanceStepDown:cs_*");
-        _updateOverallLuminance    = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/postprocess/hdrluminance.csh:UpdateOverallLuminance:cs_*");
-        _brightPassStepDown        = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/postprocess/hdrluminance.csh:BrightPassStepDown:cs_*");
+        _sampleInitialLuminanceByteCode    = &::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/postprocess/hdrluminance.csh:SampleInitialLuminance:cs_*", shaderDefines.get());
+        _sampleInitialLuminance     = Metal::ComputeShader(*_sampleInitialLuminanceByteCode);
+        _luminanceStepDown          = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/postprocess/hdrluminance.csh:LuminanceStepDown:cs_*");
+        _updateOverallLuminance     = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/postprocess/hdrluminance.csh:UpdateOverallLuminance:cs_*");
+        _brightPassStepDown         = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/postprocess/hdrluminance.csh:BrightPassStepDown:cs_*");
 
         _updateOverallLuminanceNoAdapt = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/postprocess/hdrluminance.csh:UpdateOverallLuminance:cs_*", "IMMEDIATE_ADAPT=1");
 
+        _boundUniforms = Metal::BoundUniforms(*_sampleInitialLuminanceByteCode);
+        _boundUniforms.BindConstantBuffers(1, {"ToneMapSettings", "LuminanceConstants"});
+
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_validationCallback, _sampleInitialLuminance->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, _sampleInitialLuminanceByteCode->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, _luminanceStepDown->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, _updateOverallLuminance->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, _brightPassStepDown->GetDependencyValidation());
@@ -277,10 +284,8 @@ namespace SceneEngine
                 Float2(float(sourceDims[0]) / float(resources._firstStepWidth), float(sourceDims[1]) / float(resources._firstStepHeight))
             };
 
-            auto toneMapConstants = AsConstants(settings);
-            context.BindCS(MakeResourceList(
-                Metal::ConstantBuffer(&toneMapConstants, sizeof(toneMapConstants)),
-                Metal::ConstantBuffer(&luminanceConstants, sizeof(luminanceConstants))));
+            Metal::ConstantBufferPacket cbs[] = { AsConstants(settings), MakeSharedPkt(luminanceConstants) };
+            resources._boundUniforms.Apply(context, Metal::UniformsStream(), Metal::UniformsStream(cbs));
 
             assert(!resources._luminanceBuffers.empty());
 
@@ -291,7 +296,16 @@ namespace SceneEngine
                 //      The first step is not MSAA-aware. Only the 0th
                 //      sample is considered. We could also
                 //
-            context.Bind(*resources._sampleInitialLuminance);
+            Metal::SetImageLayout(
+                context, 
+                resources._luminanceBuffers[0].Locator().GetUnderlying(),
+                Metal::ImageLayout::ShaderReadOnlyOptimal, Metal::ImageLayout::General);
+            Metal::SetImageLayout(
+                context, 
+                resources._bloomBuffers[0]._bloomBuffer.Locator().GetUnderlying(),
+                Metal::ImageLayout::ShaderReadOnlyOptimal, Metal::ImageLayout::General);
+
+            context.Bind(resources._sampleInitialLuminance);
             context.BindCS(MakeResourceList(sourceTexture));
             context.BindCS(MakeResourceList(resources._luminanceBuffers[0].UAV(), resources._bloomBuffers[0]._bloomBuffer.UAV(), resources._propertiesBuffer.UAV()));
             context.Dispatch(resources._firstStepWidth/16, resources._firstStepHeight/16);
@@ -299,19 +313,47 @@ namespace SceneEngine
 
             context.Bind(*resources._luminanceStepDown);
             for (size_t c=1; c<resources._luminanceBuffers.size(); ++c) {
+                Metal::SetImageLayout(
+                    context, 
+                    resources._luminanceBuffers[c-1].Locator().GetUnderlying(),
+                    Metal::ImageLayout::General, Metal::ImageLayout::ShaderReadOnlyOptimal);
+                Metal::SetImageLayout(
+                    context, 
+                    resources._luminanceBuffers[c].Locator().GetUnderlying(),
+                    Metal::ImageLayout::ShaderReadOnlyOptimal, Metal::ImageLayout::General);
+
                 context.BindCS(MakeResourceList(resources._luminanceBuffers[c-1].SRV()));
                 context.BindCS(MakeResourceList(resources._luminanceBuffers[c].UAV()));
                 context.Dispatch(std::max(1u, (resources._firstStepWidth>>c)/16), std::max(1u, (resources._firstStepHeight>>c)/16));
                 context.UnbindCS<Metal::UnorderedAccessView>(0, 1);
             }
 
+            Metal::SetImageLayout(
+                context, 
+                resources._luminanceBuffers[resources._luminanceBuffers.size()-1].Locator().GetUnderlying(),
+                Metal::ImageLayout::General, Metal::ImageLayout::ShaderReadOnlyOptimal);
+
             context.Bind(*resources._brightPassStepDown);
             for (size_t c=1; c<resources._bloomBuffers.size(); ++c) {
+                Metal::SetImageLayout(
+                    context, 
+                    resources._bloomBuffers[c-1]._bloomBuffer.Locator().GetUnderlying(),
+                    Metal::ImageLayout::General, Metal::ImageLayout::ShaderReadOnlyOptimal);
+                Metal::SetImageLayout(
+                    context, 
+                    resources._bloomBuffers[c]._bloomBuffer.Locator().GetUnderlying(),
+                    Metal::ImageLayout::ShaderReadOnlyOptimal, Metal::ImageLayout::General);
+
                 context.BindCS(MakeResourceList(resources._bloomBuffers[c-1]._bloomBuffer.SRV()));
                 context.BindCS(MakeResourceList(1, resources._bloomBuffers[c]._bloomBuffer.UAV()));
                 context.Dispatch(std::max(1u, (resources._firstStepWidth>>c)/16), std::max(1u, (resources._firstStepHeight>>c)/16));
                 context.UnbindCS<Metal::UnorderedAccessView>(1, 1);
             }
+
+            Metal::SetImageLayout(
+                context, 
+                resources._bloomBuffers[resources._bloomBuffers.size()-1]._bloomBuffer.Locator().GetUnderlying(),
+                Metal::ImageLayout::General, Metal::ImageLayout::ShaderReadOnlyOptimal);
 
                 //
                 //      After we've down all of the downsample steps, we should have
@@ -575,6 +617,7 @@ namespace SceneEngine
         const LuminanceResult& luminanceResult,
         const ToneMapSettings& settings,
         const RenderCore::FrameBufferDesc& destination,
+        const RenderCore::FrameBufferProperties& destinationProps,
         const Metal::ShaderResourceView& inputResource)
     {
         // ProtectState protectState(context, ProtectState::States::BlendState);
@@ -601,7 +644,7 @@ namespace SceneEngine
                             !!(colorGradingSettings._doSelectiveColor), !!(colorGradingSettings._doFilterColor));
 
                         SharedPkt cbs[] = { 
-                            MakeSharedPkt(AsConstants(settings)), 
+                            AsConstants(settings), 
                             MakeSharedPkt(colorGradingSettings) 
                         };
                         const Metal::ShaderResourceView* srvs[] = {
@@ -634,7 +677,7 @@ namespace SceneEngine
             RenderCore::Metal::FrameBufferCache fbCache;
             RenderCore::Metal::RenderPassInstance rpi(
                 context, destination,
-                FrameBufferProperties{}, 0u, fbCache);
+                destinationProps, 0u, fbCache);
 
             SetupVertexGeneratorShader(context);
             context.Bind(Techniques::CommonResources()._blendOpaque);
@@ -910,9 +953,10 @@ namespace SceneEngine
         return result;
     }
 
-    ToneMapSettingsConstants AsConstants(const ToneMapSettings& settings)
+    RenderCore::SharedPkt AsConstants(const ToneMapSettings& settings)
     {
-        ToneMapSettingsConstants result;
+        auto pkt = RenderCore::MakeSharedPktSize(sizeof(ToneMapSettingsConstants));
+        ToneMapSettingsConstants& result = *(ToneMapSettingsConstants*)pkt.begin();
         result._bloomScale = settings._bloomBrightness * settings._bloomColor;
         result._bloomThreshold = settings._bloomThreshold;
         result._bloomRampingFactor = settings._bloomRampingFactor;
@@ -923,7 +967,7 @@ namespace SceneEngine
 	    result._whitepoint = settings._whitepoint;
         result._dummy[0] = 0.f;
         result._dummy[1] = 0.f;
-        return result;
+        return pkt;
     }
 
     ToneMapSettings::ToneMapSettings()
