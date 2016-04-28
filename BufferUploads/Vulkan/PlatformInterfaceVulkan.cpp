@@ -79,8 +79,9 @@
 			//			the dst will be in layout "Undefined"
 			// During the transfer, the images must be in either TransferSrcOptimal, TransferDstOptimal or General.
 			// So, we must change the layout immediate before and after the transfer.
-			SetImageLayout(*metalContext, &staging, Metal_Vulkan::ImageLayout::General, Metal_Vulkan::ImageLayout::TransferSrcOptimal);
-			SetImageLayout(*metalContext, &finalResource, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal);
+            Metal::SetImageLayouts(*metalContext, {
+                {&staging, Metal_Vulkan::ImageLayout::General, Metal_Vulkan::ImageLayout::TransferSrcOptimal},
+                {&finalResource, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal}});
 
             if (allLods && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset) {
                 Metal::Copy(
@@ -100,7 +101,7 @@
 
             // Switch the layout to the final layout. Here, we're assuming all of the transfers are finished, and the
 			// image will soon be used by a shader.
-			SetImageLayout(*metalContext, &finalResource, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal);
+            Metal::SetImageLayouts(*metalContext, {{&finalResource, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal}});
 
             // Is it reasonable to go back to preinitialised? If we don't do this, the texture can be reused and the next time we attempt to
             // switch it to TransferSrcOptimal, we will get a warning.

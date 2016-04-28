@@ -207,7 +207,7 @@ float4 HorizontalBlur11(float4 position : SV_Position, float2 texCoord : TEXCOOR
 		#if USE_CLAMPING_WINDOW==1
 			p.x = uint(max(clampingMins.x, min(clampingMaxs.x, unclamped)) + 0.5f);
 		#else
-			p.x = uint(max(0, min(inputDims.x-1, coordScale.x * unclamped)) + 0.5f);
+			p.x = uint(max(0, min(inputDims.x-1, unclamped)) + 0.5f);
 		#endif
 		p.y = pixelCoord.y;
 		float4 texSample = LoadFloat4(InputTexture, p, 0);

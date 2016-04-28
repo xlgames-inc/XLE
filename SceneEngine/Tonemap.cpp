@@ -75,7 +75,7 @@ namespace SceneEngine
     class BloomStepBuffer
     {
     public:
-        GestaltTypes::RTVUAVSRV _bloomBuffer;
+        GestaltTypes::UAVSRV    _bloomBuffer;
         unsigned                _width, _height;
 
         BloomStepBuffer(unsigned width, unsigned height, Format format);
@@ -97,13 +97,105 @@ namespace SceneEngine
     BloomStepBuffer::BloomStepBuffer(unsigned width, unsigned height, Format format)
     : _width(width), _height(height)
     , _bloomBuffer(
-        GestaltTypes::RTVUAVSRV(
+        GestaltTypes::UAVSRV(
             BufferUploads::TextureDesc::Plain2D(width, height, format),
             "BloomLumin"))
     {}
 
     BloomStepBuffer::BloomStepBuffer()  {}
     BloomStepBuffer::~BloomStepBuffer() {}
+
+    /// <summary>Tracks the "layout" state of a set of resources</summary>
+    /// When using APIs that allow a single resource to be bound as both input and
+    /// output at the same time (such as Vulkan, DirectX12 and OpenGL), we must insert
+    /// barrier instructions to ensure that reading does not begin until writing has 
+    /// finished.
+    ///
+    /// This provides a thin layer that will track the state of certain resources. 
+    /// When a change to the "layout" of a resource is required, this will add 
+    /// barriers as appropriate.
+    ///
+    /// Note that we could get similar behaviour in DirectX11 by just managing
+    /// Binding and Unbinding in this object.
+    class ResourceBarriers
+    {
+    public:
+        class Resource
+        {
+        public:
+            RenderCore::Resource*   _res;
+            Metal::ImageLayout      _initialLayout;
+            Metal::ImageLayout      _finalLayout;
+        };
+
+        class LayoutChange
+        {
+        public:
+            unsigned            _resourceIndex;
+            Metal::ImageLayout  _newLayout;
+        };
+
+        void        SetBarrier(IteratorRange<const LayoutChange*> changes);
+        unsigned    AddResources(IteratorRange<const Resource*> resources);
+
+        ResourceBarriers(Metal::DeviceContext& context, IteratorRange<const Resource*> resources);
+        ~ResourceBarriers();
+    private:
+        std::vector<std::pair<Resource, Metal::ImageLayout>> _resources;
+        Metal::DeviceContext* _attachedContext;
+    };
+
+    void        ResourceBarriers::SetBarrier(IteratorRange<const LayoutChange*> changes)
+    {
+        Metal::LayoutTransition transitions[16];
+        unsigned transCount = 0;
+        assert(changes.size() <= dimof(transitions));
+
+        for (const auto&c:changes) {
+            assert(c._resourceIndex < _resources.size());
+            auto&r = _resources[c._resourceIndex];
+            if (r.second != c._newLayout) {
+                assert(transCount < dimof(transitions));
+                transitions[transCount++] = Metal::LayoutTransition { r.first._res, r.second, c._newLayout };
+                r.second = c._newLayout;
+            }
+        }
+
+        if (transCount != 0)
+            Metal::SetImageLayouts(
+                *_attachedContext, MakeIteratorRange(transitions, &transitions[transCount]));
+    }
+
+    unsigned    ResourceBarriers::AddResources(IteratorRange<const Resource*> resources)
+    {
+        unsigned result = (unsigned)_resources.size();
+        _resources.reserve(_resources.size() + resources.size());
+        for (const auto&r:resources)
+            _resources.push_back(std::make_pair(r, r._initialLayout));
+        return result;
+    }
+
+    ResourceBarriers::ResourceBarriers(Metal::DeviceContext& context, IteratorRange<const Resource*> resources)
+    : _attachedContext(&context)
+    {
+        _resources.reserve(resources.size());
+        for (const auto&r:resources)
+            _resources.push_back(std::make_pair(r, r._initialLayout));
+    }
+
+    ResourceBarriers::~ResourceBarriers()
+    {
+        // Set all resources to their final layout (as long as it's not UNDEFINED)
+        Metal::LayoutTransition transitions[16];
+        unsigned transCount = 0;
+        for (const auto&r:_resources) 
+            if (r.first._finalLayout != Metal::ImageLayout::Undefined && r.second != r.first._finalLayout) {
+                assert(transCount < dimof(transitions));
+                transitions[transCount++] = { r.first._res, r.second, r.first._finalLayout };
+            }
+        if (transCount != 0)
+            Metal::SetImageLayouts(*_attachedContext, MakeIteratorRange(transitions, &transitions[transCount]));
+    }
 
     class ToneMappingResources
     {
@@ -239,6 +331,7 @@ namespace SceneEngine
     {}
 
     static void DrawDebugging(Metal::DeviceContext& context, ToneMappingResources& resources);
+    
 
         //////////////////////////////////////////////////////////////////////////////
             //      T O N E   M A P P I N G   I N P U T S                       //
@@ -301,15 +394,22 @@ namespace SceneEngine
                 //          We would still need some kind of memory barrier, but it would simplify
                 //          the descriptor work!
                 //
-            Metal::SetImageLayout(
-                context, 
-                resources._luminanceBuffers[0].Locator().GetUnderlying(),
-                Metal::ImageLayout::ShaderReadOnlyOptimal, Metal::ImageLayout::General);
-            Metal::SetImageLayout(
-                context, 
-                resources._bloomBuffers[0]._bloomBuffer.Locator().GetUnderlying(),
-                Metal::ImageLayout::ShaderReadOnlyOptimal, Metal::ImageLayout::General);
+            const unsigned bloomTempBufferId = 1;
+            const unsigned lumianceBuffersId = 1;
+            const unsigned bloomBuffersId = 1 + (unsigned)resources._luminanceBuffers.size();
+            const auto UAVLayout = Metal::ImageLayout::General;
+            const auto SRVLayout = Metal::ImageLayout::ShaderReadOnlyOptimal;
 
+            // currently making no assumptions about starting or ending layouts
+            ResourceBarriers barriers(
+                context,
+                {{ resources._bloomTempBuffer._bloomBuffer.Resource(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }});
+            for (unsigned c=0; c<(unsigned)resources._luminanceBuffers.size(); ++c)
+                barriers.AddResources({{resources._luminanceBuffers[c].Resource(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }});
+            for (unsigned c=0; c<(unsigned)resources._bloomBuffers.size(); ++c)
+                barriers.AddResources({{resources._bloomBuffers[c]._bloomBuffer.Resource(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }});
+
+            barriers.SetBarrier({{lumianceBuffersId+0, UAVLayout}, {bloomBuffersId+0, UAVLayout}});
             context.Bind(resources._sampleInitialLuminance);
             context.BindCS(MakeResourceList(sourceTexture));
             context.BindCS(MakeResourceList(resources._luminanceBuffers[0].UAV(), resources._bloomBuffers[0]._bloomBuffer.UAV(), resources._propertiesBuffer.UAV()));
@@ -317,48 +417,23 @@ namespace SceneEngine
             context.UnbindCS<Metal::UnorderedAccessView>(0, 2);
 
             context.Bind(*resources._luminanceStepDown);
-            for (size_t c=1; c<resources._luminanceBuffers.size(); ++c) {
-                Metal::SetImageLayout(
-                    context, 
-                    resources._luminanceBuffers[c-1].Locator().GetUnderlying(),
-                    Metal::ImageLayout::General, Metal::ImageLayout::ShaderReadOnlyOptimal);
-                Metal::SetImageLayout(
-                    context, 
-                    resources._luminanceBuffers[c].Locator().GetUnderlying(),
-                    Metal::ImageLayout::ShaderReadOnlyOptimal, Metal::ImageLayout::General);
-
+            for (unsigned c=1; c<(unsigned)resources._luminanceBuffers.size(); ++c) {
+                barriers.SetBarrier({{lumianceBuffersId+c-1, SRVLayout}, {lumianceBuffersId+0, UAVLayout}});
                 context.BindCS(MakeResourceList(resources._luminanceBuffers[c-1].SRV()));
                 context.BindCS(MakeResourceList(resources._luminanceBuffers[c].UAV()));
                 context.Dispatch(std::max(1u, (resources._firstStepWidth>>c)/16), std::max(1u, (resources._firstStepHeight>>c)/16));
                 context.UnbindCS<Metal::UnorderedAccessView>(0, 1);
             }
 
-            Metal::SetImageLayout(
-                context, 
-                resources._luminanceBuffers[resources._luminanceBuffers.size()-1].Locator().GetUnderlying(),
-                Metal::ImageLayout::General, Metal::ImageLayout::ShaderReadOnlyOptimal);
-
             context.Bind(*resources._brightPassStepDown);
-            for (size_t c=1; c<resources._bloomBuffers.size(); ++c) {
-                Metal::SetImageLayout(
-                    context, 
-                    resources._bloomBuffers[c-1]._bloomBuffer.Locator().GetUnderlying(),
-                    Metal::ImageLayout::General, Metal::ImageLayout::ShaderReadOnlyOptimal);
-                Metal::SetImageLayout(
-                    context, 
-                    resources._bloomBuffers[c]._bloomBuffer.Locator().GetUnderlying(),
-                    Metal::ImageLayout::ShaderReadOnlyOptimal, Metal::ImageLayout::General);
+            for (unsigned c=1; c<(unsigned)resources._bloomBuffers.size(); ++c) {
+                barriers.SetBarrier({{bloomBuffersId+c-1, SRVLayout}, {bloomBuffersId+c, UAVLayout}});
 
                 context.BindCS(MakeResourceList(resources._bloomBuffers[c-1]._bloomBuffer.SRV()));
                 context.BindCS(MakeResourceList(1, resources._bloomBuffers[c]._bloomBuffer.UAV()));
                 context.Dispatch(std::max(1u, (resources._firstStepWidth>>c)/16), std::max(1u, (resources._firstStepHeight>>c)/16));
                 context.UnbindCS<Metal::UnorderedAccessView>(1, 1);
             }
-
-            Metal::SetImageLayout(
-                context, 
-                resources._bloomBuffers[resources._bloomBuffers.size()-1]._bloomBuffer.Locator().GetUnderlying(),
-                Metal::ImageLayout::General, Metal::ImageLayout::ShaderReadOnlyOptimal);
 
                 //
                 //      After we've down all of the downsample steps, we should have
@@ -367,6 +442,7 @@ namespace SceneEngine
                 //      frame's values to produce the new value for this frame...
                 //
 
+            barriers.SetBarrier({{lumianceBuffersId+(unsigned)resources._luminanceBuffers.size()-1, SRVLayout}});
             context.BindCS(MakeResourceList(resources._luminanceBuffers[resources._luminanceBuffers.size()-1].SRV()));
             if (doAdapt)    context.Bind(*resources._updateOverallLuminance);
             else            context.Bind(*resources._updateOverallLuminanceNoAdapt);
@@ -381,79 +457,75 @@ namespace SceneEngine
                 //
 
             if (settings._flags & ToneMapSettings::Flags::EnableBloom && Tweakable("DoBloom", true)) {
-                float filteringWeights[12];
-                XlSetMemory(filteringWeights, 0, sizeof(filteringWeights));
-                BuildGaussianFilteringWeights(filteringWeights, settings._bloomBlurStdDev, 11);
-                context.BindPS(MakeResourceList(Metal::ConstantBuffer(filteringWeights, sizeof(filteringWeights))));
+                auto filteringWeights = RenderCore::MakeSharedPktSize(sizeof(float) * 12);
+                XlSetMemory(filteringWeights.get(), 0, sizeof(filteringWeights));
+                BuildGaussianFilteringWeights((float*)filteringWeights.get(), settings._bloomBlurStdDev, 11);
 
-#if 0 // platformtemp
-                context.Bind(Techniques::CommonResources()._dssDisable);
-
-                auto& horizBlur = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "game/xleres/Effects/SeparableFilter.psh:HorizontalBlur11:ps_*",
+                auto& horizBlurCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(
+                    "game/xleres/Effects/SeparableFilter.csh:HorizontalBlur11NoScale:cs_*",
                     "USE_CLAMPING_WINDOW=1");
-                auto& vertBlur = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "game/xleres/Effects/SeparableFilter.psh:VerticalBlur11:ps_*",
+                auto& horizBlur = ::Assets::GetAssetDep<Metal::ComputeShader>(
+                    "game/xleres/Effects/SeparableFilter.csh:HorizontalBlur11NoScale:cs_*",
                     "USE_CLAMPING_WINDOW=1");
-                auto& copyShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "game/xleres/basic.psh:copy_bilinear:ps_*");
+                auto& vertBlur = ::Assets::GetAssetDep<Metal::ComputeShader>(
+                    "game/xleres/Effects/SeparableFilter.csh:VerticalBlur11NoScale:cs_*",
+                    "USE_CLAMPING_WINDOW=1");
+                auto& copyShader = ::Assets::GetAssetDep<Metal::ComputeShader>(
+                    "game/xleres/basic.csh:ResampleBilinear:cs_*");
 
-                // D3D11_VIEWPORT newViewport = { 0, 0, (float)resources._bloomBuffers[0]._width, (float)resources._bloomBuffers[0]._height, 0.f, 1.f };
-                // context->GetUnderlying()->RSSetViewports(1, &newViewport);
-                context.Bind(Metal::Topology::TriangleStrip);
-            
-                // note --  for Vulkan, it may be more convenient to do this with compute shaders, as well
-                //          That would avoid having to play around with viewports and blend modes
-                //          Nothing here fundamentally requires the graphics pipeline; though it should parallelize
-                //          in a way that is typical for pixel shaders...?
+                // We're doing this all with compute shaders to try to simplify it.
+                // This avoids having to play around with viewports and blend modes
+                // Nothing here fundamentally requires the graphics pipeline; though it should parallelize
+                // in a way that is typical for pixel shaders...?
+
+                Metal::BoundUniforms boundUniforms(horizBlurCode);
+                boundUniforms.BindConstantBuffers(1, { "Constants", "ClampingWindow" });
+
+                Metal::ConstantBuffer clampingWindowCB(nullptr, sizeof(Float4));
+                const Metal::ConstantBuffer* cbs[] = { nullptr, &clampingWindowCB };
+                RenderCore::SharedPkt pkts[] = { std::move(filteringWeights), RenderCore::SharedPkt() };
+                boundUniforms.Apply(
+                    context, 
+                    Metal::UniformsStream(),
+                    Metal::UniformsStream(pkts, cbs, dimof(pkts), nullptr, 0));
+
+                unsigned bloomBufferIndex = (unsigned)resources._bloomBuffers.size()-1;
                 for (auto i=resources._bloomBuffers.crbegin(); ;) {
 
                     assert(i->_width >= 32 && i->_height >= 32);
 
-                    Metal::ViewportDesc newViewport(0, 0, (float)i->_width, (float)i->_height, 0.f, 1.f);
-                    context.Bind(newViewport);
+                    float clampingWindow[] = { 0.f, 0.f, (float)i->_width - 1.f, (float)i->_height - 1.f };
+                    clampingWindowCB.Update(context, &clampingWindow, sizeof(clampingWindow));
 
-                    Float4 clampingWindow(0.f, 0.f, (float)i->_width - 1.f, (float)i->_height - 1.f);
-                    context.BindPS(MakeResourceList(1, Metal::ConstantBuffer(&clampingWindow, sizeof(clampingWindow))));
-
-                    context.Bind(Techniques::CommonResources()._blendOpaque);
-                    context.Bind(MakeResourceList(resources._bloomTempBuffer._bloomBuffer.RTV()), nullptr);
-                    context.BindPS(MakeResourceList(i->_bloomBuffer.SRV()));
+                    barriers.SetBarrier({{bloomBuffersId+bloomBufferIndex, SRVLayout}, {bloomTempBufferId, UAVLayout}});
+                    context.BindCS(MakeResourceList(resources._bloomTempBuffer._bloomBuffer.UAV()));
+                    context.BindCS(MakeResourceList(i->_bloomBuffer.SRV()));
                     context.Bind(horizBlur);
-                    context.Draw(4);
-            
-                    context.UnbindPS<Metal::ShaderResourceView>(0, 1);
-                    context.Bind(MakeResourceList(i->_bloomBuffer.RTV()), nullptr);
-                    context.BindPS(MakeResourceList(resources._bloomTempBuffer._bloomBuffer.SRV()));
+                    context.Dispatch(i->_width/16, i->_height/16);
+                    context.UnbindCS<Metal::ShaderResourceView>(0, 1);
+
+                    barriers.SetBarrier({{bloomBuffersId+bloomBufferIndex, UAVLayout}, {bloomTempBufferId, SRVLayout}});
+                    context.BindCS(MakeResourceList(i->_bloomBuffer.UAV()));
+                    context.BindCS(MakeResourceList(resources._bloomTempBuffer._bloomBuffer.SRV()));
                     context.Bind(vertBlur);
-                    context.Draw(4);
+                    context.Dispatch(i->_width/16, i->_height/16);
                     context.UnbindPS<Metal::ShaderResourceView>(0, 1);
 
                     auto oldi = i;
-                    ++i;
-                    if (i==resources._bloomBuffers.crend()) {
+                    ++i; --bloomBufferIndex;
+                    if (i==resources._bloomBuffers.crend())
                         break;
-                    }
 
-                        // offset viewport by half a pixel -- this will make the bilinear filter catch the right pixels
-                    Metal::ViewportDesc newViewport2(-.5f / float(i->_width), -.5f / float(i->_height), float(i->_width) -.5f / float(i->_width), float(i->_height) -.5f / float(i->_height), 0.f, 1.f);
-                    context.Bind(newViewport2);
-
-                        // simple copy step
-                    context.Bind(Metal::BlendState(Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::One));
-                    context.Bind(MakeResourceList(i->_bloomBuffer.RTV()), nullptr);
-                    context.BindPS(MakeResourceList(oldi->_bloomBuffer.SRV()));
+                    // blend into the next step
+                    barriers.SetBarrier({{bloomBuffersId+bloomBufferIndex, UAVLayout}, {bloomBuffersId+bloomBufferIndex+1, SRVLayout}});
+                    context.BindCS(MakeResourceList(i->_bloomBuffer.UAV()));
+                    context.BindCS(MakeResourceList(oldi->_bloomBuffer.SRV()));
                     context.Bind(copyShader);
-                    context.Draw(4);
-                    context.UnbindPS<Metal::ShaderResourceView>(0, 1);
-                    context.Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
+                    context.Dispatch(i->_width/8, i->_height/8);
 
                 }
-#endif
             }
+
             return true;
         }
         CATCH_ASSETS(parserContext)

@@ -42,22 +42,22 @@ cbuffer LuminanceConstants CB_BOUND1_1
 uint2 GetInputTextureDims()
 {
 	return InputTextureDims;
-	uint2 inputDims;
-	#if MSAA_SAMPLERS != 0
-		int ignore;
-		InputTexture.GetDimensions(inputDims.x, inputDims.y, ignore);
-	#else
-		InputTexture.GetDimensions(inputDims.x, inputDims.y);
-	#endif
-	return inputDims;
+//	uint2 inputDims;
+//	#if MSAA_SAMPLERS != 0
+//		int ignore;
+//		InputTexture.GetDimensions(inputDims.x, inputDims.y, ignore);
+//	#else
+//		InputTexture.GetDimensions(inputDims.x, inputDims.y);
+//	#endif
+//	return inputDims;
 }
 
 float2 GetInitialSampleSizeRatio()
 {
 	return InitialSampleSizeRatio;
-	uint2 outputDims;
-	OutputLuminance.GetDimensions(outputDims.x, outputDims.y);
-	return GetInputTextureDims() / float2(outputDims);
+//	uint2 outputDims;
+//	OutputLuminance.GetDimensions(outputDims.x, outputDims.y);
+//	return GetInputTextureDims() / float2(outputDims);
 }
 
 float3 LoadInputColor(int2 pos)
@@ -119,6 +119,13 @@ float3 BrightPassFilter(float3 colour)
 [numthreads(16, 16, 1)]
 	void SampleInitialLuminance(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
+//	{
+//		float3 inputColour = LoadInputColor(dispatchThreadId.xy);
+//		inputColour.r += ElapsedTime * 0.0001f + SceneKey * 0.00001f;
+//		OutputLuminance[dispatchThreadId.xy] = inputColour.r;
+//		OutputBrightPass[dispatchThreadId.xy] = float4(inputColour, 1);
+//		return;
+//	}
 		//
 		//		We're sampling from an arbitrarily sized input texture
 		//		and writing to a power of 2 texture. The output texture is at
@@ -152,9 +159,16 @@ float3 BrightPassFilter(float3 colour)
 	uint2 ditherAddress	= dispatchThreadId.xy + uint2(FrameIndex, FrameIndex);
 	uint randomValue	= ditherArray[(ditherAddress.x%4)+(ditherAddress.y%4)*4];
 
-	int2 readOffset		= int2(randomValue%4, randomValue/4);
+	float2 readOffset	= int2(randomValue%4, randomValue/4);
 	float2 sizeRatio    = GetInitialSampleSizeRatio();
+
+	// For some reason the "readOffset" here really breaks Vulkan. It might be an
+	// instruction poorly converted in the HLSL cross compiler?
+#if !VULKAN
 	float2 readPosition = (float2(dispatchThreadId.xy) + float2(readOffset)/4.f) * sizeRatio;
+#else
+	float2 readPosition = float2(dispatchThreadId.xy) * sizeRatio;
+#endif
 
 		// single tap, no bilinear filtering
 	int2 tapPos = min(int2(readPosition), GetInputTextureDims() - int2(1,1));
@@ -192,7 +206,8 @@ float3 BrightPassFilter(float3 colour)
 		//		Unfortunately these loops aren't fixed length -- maybe there's
 		//		a better way to do this?
 		//
-#if 1
+#define CHEAP_BRIGHT_PASS 1
+#if CHEAP_BRIGHT_PASS == 1
 	OutputBrightPass[dispatchThreadId.xy] = float4(BrightPassFilter(inputColour), 1);
 #else
 	int2 inputMins = int2(float2(dispatchThreadId.xy) * sizeRatio);

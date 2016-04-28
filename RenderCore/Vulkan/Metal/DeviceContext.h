@@ -290,13 +290,6 @@ namespace RenderCore { namespace Metal_Vulkan
             IteratorRange<const ClearValue*> clearValues);
         void EndRenderPass();
         bool IsInRenderPass() const;
-        void SetImageLayout(
-		    VkImage image,
-		    VkImageAspectFlags aspectMask,
-		    VkImageLayout oldImageLayout,
-		    VkImageLayout newImageLayout,
-            unsigned mipCount,
-            unsigned layerCount);
 
         ///////////// Command buffer layer /////////////
         //      (todo -- consider moving to a utility class)
@@ -375,15 +368,6 @@ namespace RenderCore { namespace Metal_Vulkan
         bool BindGraphicsPipeline();
         bool BindComputePipeline();
     };
-
-    void SetImageLayout(
-        VkCommandBuffer commandBuffer,
-		VkImage image,
-		VkImageAspectFlags aspectMask,
-		VkImageLayout oldImageLayout,
-		VkImageLayout newImageLayout,
-        unsigned mipCount,
-        unsigned layerCount);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

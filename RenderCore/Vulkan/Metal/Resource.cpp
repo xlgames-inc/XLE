@@ -97,24 +97,130 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void SetImageLayout(
-		DeviceContext& context, UnderlyingResourcePtr res,
-		ImageLayout oldLayout, ImageLayout newLayout)
-	{
-		auto& r = *res.get();
-		assert(r.GetDesc()._type == ResourceDesc::Type::Texture);
-        if (!r.GetImage()) return;   // (staging buffer case)
+    static VkAccessFlags GetAccessForOldLayout(VkImageLayout oldImageLayout)
+    {
+        VkAccessFlags flags = 0;
+        if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+			|| oldImageLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+			flags =
+				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		}
 
-		// unforunately, we can't just blanket aspectMask with all bits enabled.
-		// We must select a correct aspect mask. The nvidia drivers seem to be fine with all
-		// bits enabled, but the documentation says that this is not allowed
-        const auto& desc = r.GetDesc();
-		auto aspectMask = AsImageAspectMask(desc._textureDesc._format);
-		context.SetImageLayout(
-			r.GetImage(), 
-			aspectMask,
-			AsVkImageLayout(oldLayout), AsVkImageLayout(newLayout),
-            std::max(1u, (unsigned)desc._textureDesc._mipCount), std::max(1u, (unsigned)desc._textureDesc._arrayCount));
+        if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+			flags = VK_ACCESS_TRANSFER_WRITE_BIT;
+		}
+
+        if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+			flags = VK_ACCESS_TRANSFER_READ_BIT;
+		}
+
+		if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
+			flags = VK_ACCESS_HOST_WRITE_BIT;
+		}
+
+        if (oldImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+			flags = VK_ACCESS_SHADER_READ_BIT;
+            // (or VK_ACCESS_INPUT_ATTACHMENT_READ_BIT)
+		}
+
+        // note --  the "General" case is tricky here! General is used for storage buffers, which
+        //          can be read or written. It's also used for transfers that read and write from
+        //          the same buffer. And it can be used when mapping textures.
+        //          So we need to lay down some blanket flags...
+        if (oldImageLayout == VK_IMAGE_LAYOUT_GENERAL) {
+			flags = 
+                  VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT
+                | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT
+                | VK_ACCESS_HOST_READ_BIT | VK_ACCESS_HOST_WRITE_BIT;
+		}
+
+        if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
+            flags = VK_ACCESS_HOST_WRITE_BIT;
+        }
+
+        return flags;
+    }
+
+    static VkAccessFlags GetAccessForNewLayout(VkImageLayout newImageLayout)
+    {
+        VkAccessFlags flags = 0;
+        if (newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+			flags = VK_ACCESS_TRANSFER_WRITE_BIT;
+		}
+
+		if (newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+			flags = VK_ACCESS_TRANSFER_READ_BIT;
+		}
+
+		if (newImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+            // These flags are set in the samples, but we're handling when switching
+            // away from VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or VK_IMAGE_LAYOUT_PREINITIALIZED
+			// image_memory_barrier.srcAccessMask =
+			// 	VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+			flags = VK_ACCESS_SHADER_READ_BIT;
+		}
+
+		if (newImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+			|| newImageLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+			flags = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		}
+
+		if (newImageLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+			flags = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		}
+
+        if (newImageLayout == VK_IMAGE_LAYOUT_GENERAL) {
+			flags = 
+                  VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT
+                | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT
+                | VK_ACCESS_HOST_READ_BIT | VK_ACCESS_HOST_WRITE_BIT;
+		}
+        return flags;
+    }
+
+	void SetImageLayouts(
+		DeviceContext& context, 
+        IteratorRange<const LayoutTransition*> changes)
+	{
+        VkImageMemoryBarrier barriers[16];
+        assert(changes.size() > 0 && changes.size() < dimof(barriers));
+
+        unsigned barrierCount = 0;
+        for (unsigned c=0; c<(unsigned)changes.size(); ++c) {
+		    auto& r = *changes[c]._res.get();
+		    assert(r.GetDesc()._type == ResourceDesc::Type::Texture);
+            if (!r.GetImage()) continue;   // (staging buffer case)
+
+            auto& b = barriers[barrierCount++];
+
+		    // unforunately, we can't just blanket aspectMask with all bits enabled.
+		    // We must select a correct aspect mask. The nvidia drivers seem to be fine with all
+		    // bits enabled, but the documentation says that this is not allowed
+            const auto& desc = r.GetDesc();
+
+            b = {};
+		    b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		    b.pNext = nullptr;
+		    b.oldLayout = AsVkImageLayout(changes[c]._oldLayout);
+		    b.newLayout = AsVkImageLayout(changes[c]._newLayout);
+            b.srcAccessMask = GetAccessForOldLayout(b.oldLayout);
+		    b.dstAccessMask = GetAccessForNewLayout(b.newLayout);
+		    b.image = r.GetImage();
+		    b.subresourceRange.aspectMask = AsImageAspectMask(desc._textureDesc._format);
+		    b.subresourceRange.baseMipLevel = 0;
+		    b.subresourceRange.levelCount = std::max(1u, (unsigned)desc._textureDesc._mipCount);
+		    b.subresourceRange.layerCount = std::max(1u, (unsigned)desc._textureDesc._arrayCount);
+        }
+
+        if (barrierCount) {
+            const VkPipelineStageFlags src_stages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+            const VkPipelineStageFlags dest_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            context.CmdPipelineBarrier(
+                src_stages, dest_stages,
+                0, 
+                0, nullptr, 0, nullptr,
+                barrierCount, barriers);
+        }
 	}
 
     static VulkanSharedPtr<VkDeviceMemory> AllocateDeviceMemory(

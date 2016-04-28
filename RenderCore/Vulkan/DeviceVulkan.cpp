@@ -752,6 +752,7 @@ namespace RenderCore
         _activePresentSync = 0;
     }
 
+#if 0
     static void BeginOneTimeSubmit(VkCommandBuffer cmd)
     {
 		VkCommandBufferBeginInfo cmd_buf_info = {};
@@ -763,11 +764,13 @@ namespace RenderCore
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
 	}
+#endif
 
     void PresentationChain::SetInitialLayout(
         const Metal_Vulkan::ObjectFactory& factory, 
         Metal_Vulkan::CommandPool& cmdPool, VkQueue queue)
     {
+#if 0
         // We need to set the image layout for these images we created
         // this is a little frustrating. I wonder if the GPU is just rearranging the pixel contents?
         auto cmd = cmdPool.Allocate(Metal_Vulkan::CommandPool::BufferType::Primary);
@@ -809,6 +812,7 @@ namespace RenderCore
         res = vkWaitForFences(factory.GetDevice().get(), dimof(fences), fences, true, UINT64_MAX);
         if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while waiting for fence"));
+#endif
     }
 
     PresentationChain::~PresentationChain()

@@ -43,6 +43,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		Resource* get() { return _res; }
+        const Resource* get() const { return _res; }
 	
 		UnderlyingResourcePtr(Resource* res) { _res = res; }
 		UnderlyingResourcePtr(RenderCore::Resource* res) { _res = (Resource*)res; }
@@ -75,10 +76,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		Resource();
 		~Resource();
 
-		VkDeviceMemory GetMemory() { return _mem.get(); }
-		VkImage GetImage() { return _underlyingImage.get(); }
-		VkBuffer GetBuffer() { return _underlyingBuffer.get(); }
-		const Desc& GetDesc() const { return _desc; }
+		VkDeviceMemory GetMemory() const    { return _mem.get(); }
+		VkImage GetImage() const            { return _underlyingImage.get(); }
+		VkBuffer GetBuffer() const          { return _underlyingBuffer.get(); }
+		const Desc& GetDesc() const         { return _desc; }
 
 		const VulkanSharedPtr<VkImage>& ShareImage() const { return _underlyingImage; }
 
@@ -211,9 +212,19 @@ namespace RenderCore { namespace Metal_Vulkan
         //      U T I L S       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void SetImageLayout(
-		DeviceContext& context, UnderlyingResourcePtr res,
-		ImageLayout oldLayout, ImageLayout newLayout);
+    class LayoutTransition
+    {
+    public:
+        UnderlyingResourcePtr _res;
+		ImageLayout _oldLayout, _newLayout;
+
+        LayoutTransition(
+            UnderlyingResourcePtr res = (Resource*)nullptr, 
+            ImageLayout oldLayout = ImageLayout::Undefined,
+            ImageLayout newLayout = ImageLayout::Undefined) 
+            : _res(res), _oldLayout(oldLayout), _newLayout(newLayout) {}
+    };
+	void SetImageLayouts(DeviceContext& context, IteratorRange<const LayoutTransition*> changes);
 
     VkSampleCountFlagBits   AsSampleCountFlagBits(TextureSamples samples);
     VkImageAspectFlags      AsImageAspectMask(Format fmt);
