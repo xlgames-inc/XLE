@@ -103,7 +103,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		auto& r = *res.get();
 		assert(r.GetDesc()._type == ResourceDesc::Type::Texture);
-        if (r.GetImage()) return;   // (staging buffer case)
+        if (!r.GetImage()) return;   // (staging buffer case)
 
 		// unforunately, we can't just blanket aspectMask with all bits enabled.
 		// We must select a correct aspect mask. The nvidia drivers seem to be fine with all

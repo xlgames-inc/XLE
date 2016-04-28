@@ -432,36 +432,72 @@ namespace RenderCore { namespace Metal_Vulkan
 
                     auto dstBinding = _srvBindingIndices[stri][r];
                     if (dstBinding == ~0u) continue;
-                    imageInfo[imageCount] = VkDescriptorImageInfo {
-                        globalPools._dummyResources._blankSampler->GetUnderlying(),
-                        s._resources[r]->GetImageView(),
-						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-                    assert(_shaderBindingMask[0] & (1ull << uint64(dstBinding&0xffff)));
 
-                    #if defined(_DEBUG) // check for duplicate descriptor writes
-                        for (unsigned w=0; w<writeCount; ++w)
-                            assert( writes[w].dstBinding != (dstBinding&0xffff)
-                                ||  writes[w].dstSet != _descriptorSets[dstBinding>>16].get());
-                    #endif
+                    // Our "StructuredBuffer" objects are being mapped onto uniform buffers in SPIR-V
+                    // So sometimes a SRV will end up writing to a VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+                    // descriptor.
+                    if (s._resources[r]->GetImageView()) {
+                        imageInfo[imageCount] = VkDescriptorImageInfo {
+                            globalPools._dummyResources._blankSampler->GetUnderlying(),
+                            s._resources[r]->GetImageView(),
+						    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+                        assert(_shaderBindingMask[0] & (1ull << uint64(dstBinding&0xffff)));
 
-                    // todo --  it would be nice if we could tell if this was really a COMBINED_IMAGE_SAMPLER
-                    //          or just a SAMPLED_IMAGE. There should be a way to get that from the reflection,
-                    //          but it's not clear.
-                    writes[writeCount] = {};
-                    writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    writes[writeCount].dstSet = _descriptorSets[dstBinding>>16].get();
-                    writes[writeCount].dstBinding = dstBinding&0xffff;
-                    writes[writeCount].descriptorCount = 1;
-                    writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-                    writes[writeCount].pImageInfo = &imageInfo[imageCount];
-                    writes[writeCount].dstArrayElement = 0;
+                        #if defined(_DEBUG) // check for duplicate descriptor writes
+                            for (unsigned w=0; w<writeCount; ++w)
+                                assert( writes[w].dstBinding != (dstBinding&0xffff)
+                                    ||  writes[w].dstSet != _descriptorSets[dstBinding>>16].get());
+                        #endif
+
+                        writes[writeCount] = {};
+                        writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                        writes[writeCount].dstSet = _descriptorSets[dstBinding>>16].get();
+                        writes[writeCount].dstBinding = dstBinding&0xffff;
+                        writes[writeCount].descriptorCount = 1;
+                        writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                        writes[writeCount].pImageInfo = &imageInfo[imageCount];
+                        writes[writeCount].dstArrayElement = 0;
+                        ++imageCount;
+                    } else {
+                        auto buffer = UnderlyingResourcePtr(s._resources[r]->GetResource()).get()->GetBuffer();
+                        bufferInfo[bufferCount] = VkDescriptorBufferInfo{buffer, 0, VK_WHOLE_SIZE};
+                        assert(_shaderBindingMask[0] & (1ull << uint64(dstBinding&0xffff)));
+
+                        #if defined(_DEBUG) // check for duplicate descriptor writes
+                            for (unsigned w=0; w<writeCount; ++w)
+                                assert( writes[w].dstBinding != (dstBinding&0xffff)
+                                    ||  writes[w].dstSet != _descriptorSets[dstBinding>>16].get());
+                        #endif
+
+                        writes[writeCount] = {};
+                        writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                        writes[writeCount].dstSet = _descriptorSets[dstBinding>>16].get();
+                        writes[writeCount].dstBinding = dstBinding&0xffff;
+                        writes[writeCount].descriptorCount = 1;
+                        writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                        writes[writeCount].pBufferInfo = &bufferInfo[bufferCount];
+                        writes[writeCount].dstArrayElement = 0;
+                        ++bufferCount;
+                    }
 
                     descSetWrites[dstBinding>>16] |= 1ull << uint64(dstBinding&0xffff);
                     ++writeCount;
-                    ++imageCount;
                 }
             }
         }
+
+        static_assert(s_descriptorSetCount==1, "Expecting single descriptor set");
+        auto rootSig = pipelineLayout->ShareRootSignature();
+        const auto& sig = rootSig->_descriptorSets[0];
+
+        #if defined(_DEBUG)
+            // Check to make sure the descriptor type matches the write operation we're performing
+            for (unsigned w=0; w<writeCount; w++) {
+                auto& write = writes[w];
+                assert(write.dstBinding < sig._bindings.size());
+                assert(AsDescriptorType(sig._bindings[write.dstBinding]._type) == write.descriptorType);
+            }
+        #endif
 
         // Any locations referenced by the descriptor layout, by not written by the values in
         // the streams must now be filled in with the defaults.
@@ -472,9 +508,6 @@ namespace RenderCore { namespace Metal_Vulkan
         //
         // In the most common case, there should be no dummy descriptors to fill in here... So we'll 
         // optimise for that case.
-        auto rootSig = pipelineLayout->ShareRootSignature();
-        static_assert(s_descriptorSetCount==1, "Expecting single descriptor set");
-        const auto& sig = rootSig->_descriptorSets[0];
         uint64 dummyDescWriteMask = (~descSetWrites[0]) & _shaderBindingMask[0];
         if (dummyDescWriteMask != 0) {
 

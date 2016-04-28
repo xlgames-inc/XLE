@@ -76,5 +76,7 @@ namespace RenderCore { namespace Metal_Vulkan
         ::Assets::DependentFileState _dependentFileState;
         ::Assets::DepValPtr _depVal;
     };
+
+    VkDescriptorType AsDescriptorType(DescriptorSetBindingSignature::Type type);
 }}
 

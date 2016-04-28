@@ -294,7 +294,12 @@ namespace SceneEngine
                 //      then make a number of down-step operations.
                 // 
                 //      The first step is not MSAA-aware. Only the 0th
-                //      sample is considered. We could also
+                //      sample is considered.
+                //
+                //  Note -- in Vulkan we could just bind all of the textures at once
+                //          (because we can bind textures as input and output at the same time)
+                //          We would still need some kind of memory barrier, but it would simplify
+                //          the descriptor work!
                 //
             Metal::SetImageLayout(
                 context, 

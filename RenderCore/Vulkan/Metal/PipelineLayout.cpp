@@ -46,7 +46,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return _pimpl->_pipelineLayout.get();
     }
 
-    static VkDescriptorType AsDescriptorType(DescriptorSetBindingSignature::Type type)
+    VkDescriptorType AsDescriptorType(DescriptorSetBindingSignature::Type type)
     {
         switch (type) {
         case DescriptorSetBindingSignature::Type::Sampler:                  return VK_DESCRIPTOR_TYPE_SAMPLER;

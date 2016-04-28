@@ -369,7 +369,7 @@ FontTexture2D::FontTexture2D(unsigned width, unsigned height, RenderCore::Format
     using namespace BufferUploads;
     BufferDesc desc;
     desc._type = BufferDesc::Type::Texture;
-    desc._bindFlags = BindFlag::ShaderResource;
+    desc._bindFlags = BindFlag::ShaderResource | BindFlag::TransferDst;
     desc._cpuAccess = CPUAccess::Write;
     desc._gpuAccess = GPUAccess::Read;
     desc._allocationRules = 0;

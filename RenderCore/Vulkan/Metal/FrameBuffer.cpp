@@ -326,7 +326,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 desc.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             }
 
-            // desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             // desc.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
             if (a._name == 0u) {
