@@ -343,12 +343,6 @@ namespace SceneEngine
                 //
 
         CATCH_ASSETS_BEGIN
-            SetupStateForDeferredLightingResolve(metalContext, mainTargets, resolveRes, doSampleFrequencyOptimisation);
-            auto resourceBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext);
-
-            metalContext.BindPS_G(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
-            metalContext.BindPS(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
-
                 // note -- if we do ambient first, we can avoid this clear (by rendering the ambient opaque)
             // float clearColour[] = { 0.f, 0.f, 0.f, 1.f };
             // context.Clear(lightingResTargets._lightingResolveRTV, clearColour);
@@ -365,7 +359,7 @@ namespace SceneEngine
                         IMainTargets::LightResolve, AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource }
                 },
                 {
-                    SubpassDesc({IMainTargets::LightResolve}, SubpassDesc::Unused)
+                    SubpassDesc({IMainTargets::LightResolve}, IMainTargets::MultisampledDepth)
                 },
                 sampling);
 
@@ -375,15 +369,52 @@ namespace SceneEngine
                 FrameBufferProperties{mainTargets.GetQualitySettings()._dimensions[0], mainTargets.GetQualitySettings()._dimensions[1]},
                 0u, mainTargets.GetFrameBufferCache(),
                 RenderPassBeginDesc{});
-                       
+
             const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;
+
+                // -------- -------- -------- -------- -------- --------
+                //          E M I S S I V E
+
+            // Emissive is mostly the sky.
+            // We will stencil the sky here, so that we can avoid running the light & emissive shaders
+            // over these pixels.
+            // Note that we have to do MSAA stuff when rendering the sky (even though the color result 
+            // for each sample within a pixel is identical).
+            if (Tweakable("DoSky", true)) {
+                for (unsigned c=0; c<passCount; ++c) {
+                    Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Sky");
+
+                    Metal::DepthStencilState dds(
+                        true, false,
+                        0xff, 1<<7, Metal::StencilMode::AlwaysWrite);
+                    metalContext.Bind(dds, 1<<7);
+                    Sky_Render(metalContext, parserContext, false);
+                }
+            }
+
+            // Disable depth write and don't write where the sky is stenciled --
+            Metal::DepthStencilState dds(
+                true, false,
+                1<<7, 0x0, Metal::StencilMode(Metal::Comparison::NotEqual, Metal::StencilOp::DontWrite));
+            metalContext.Bind(dds, 1<<7);
+
+            // set light resolve state (note that we have to bind the depth buffer as a shader input here)
+            SetupStateForDeferredLightingResolve(metalContext, mainTargets, resolveRes, doSampleFrequencyOptimisation);
+            auto resourceBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext);
+            metalContext.BindPS_G(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
+            metalContext.BindPS(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
+                       
             for (unsigned c=0; c<passCount; ++c) {
 
                 lightingResolveContext.SetPass((LightingResolveContext::Pass::Enum)c);
 
                     // -------- -------- -------- -------- -------- --------
+                    //          L I G H T S
 
                 ResolveLights(metalContext, parserContext, lightingResolveContext);
+
+                    // -------- -------- -------- -------- -------- --------
+                    //          A M B I E N T
 
                 CATCH_ASSETS_BEGIN
                     Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Ambient");
@@ -436,26 +467,6 @@ namespace SceneEngine
                     metalContext.Bind(*ambientResolveShaders._ambientLight);
                     metalContext.Draw(4);
                 CATCH_ASSETS_END(parserContext)
-
-                    //-------- do sky --------
-                #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
-                if (Tweakable("DoSky", true)) {
-                    Metal::GPUProfiler::DebugAnnotation anno(context, L"Sky");
-
-                        //  Hack -- stop and render the sky at this point!
-                        //          we have to change all of the render states. We need
-                        //          a better way to manage render states during lighting resolve
-                        //          (pending refactoring)
-                    context.Bind(Techniques::CommonResources()._dssReadOnly);
-                    context.UnbindPS<Metal::ShaderResourceView>(4, 1);
-                    context.Bind(MakeResourceList(lightingResTargets._lightingResolveRTV), &mainTargets._msaaDepthBuffer);
-                    Sky_Render(context, parserContext, false);     // we do a first pass of the sky here, and then follow up with a second pass after lighting resolve
-
-                        // have to reset our state (because Sky_Render changed everything)
-                    SetupStateForDeferredLightingResolve(
-                        context, mainTargets, lightingResTargets, resolveRes, doSampleFrequencyOptimisation);
-                }
-                #endif
 
                 for (auto i=lightingResolveContext._queuedResolveFunctions.cbegin();
                     i!=lightingResolveContext._queuedResolveFunctions.cend(); ++i) {

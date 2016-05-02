@@ -10,11 +10,12 @@
 #include "../MainGeometry.h"
 #include "../Surface.h"
 #include "../Colour.h"
+#include "../Binding.h"
 
 #if SKY_PROJECTION==1
-	Texture2D ReflectionBox[3]	: register(t0);
+	Texture2D ReflectionBox[3]	TEXTURE_DYNAMIC_0;
 #elif SKY_PROJECTION==5
-	TextureCube ReflectionCube	: register(t0);
+	TextureCube ReflectionCube	TEXTURE_DYNAMIC_0;
 #endif
 
 float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
