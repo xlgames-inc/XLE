@@ -474,7 +474,7 @@ namespace RenderCore { namespace Metal_Vulkan
                         writes[writeCount].dstSet = _descriptorSets[dstBinding>>16].get();
                         writes[writeCount].dstBinding = dstBinding&0xffff;
                         writes[writeCount].descriptorCount = 1;
-                        writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                        writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                         writes[writeCount].pBufferInfo = &bufferInfo[bufferCount];
                         writes[writeCount].dstArrayElement = 0;
                         ++bufferCount;

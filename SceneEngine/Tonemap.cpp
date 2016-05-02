@@ -353,10 +353,6 @@ namespace SceneEngine
             //      We might use a log-average method for this, but we have to
             //      be careful about floating point accuracy.
             //
-        // SavedTargets savedTargets(context);
-        // auto resetTargets = savedTargets.MakeResetMarker(context);
-        // context.Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
-
         TRY {
             auto sourceDesc = Metal::ExtractDesc(sourceTexture);
             UInt2 sourceDims(sourceDesc._textureDesc._width, sourceDesc._textureDesc._height);
@@ -524,7 +520,11 @@ namespace SceneEngine
                     context.Dispatch(i->_width/8, i->_height/8);
 
                 }
+
             }
+
+            // We will read from bloom buffer 0 later down the pipeline...
+            barriers.SetBarrier({{bloomBuffersId+0, SRVLayout}});
 
             return true;
         }
@@ -670,23 +670,6 @@ namespace SceneEngine
 
         _validationCallback = _shaderProgram->GetDependencyValidation();
     }
-
-#if 0
-    static bool IsSRGBTargetBound(Metal::DeviceContext& context)
-    {
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
-            //  Query the destination render target to
-            //  see if SRGB conversion is enabled when writing out
-        SavedTargets destinationTargets(context);
-        D3D11_RENDER_TARGET_VIEW_DESC rtv;
-        if (destinationTargets.GetRenderTargets()[0]) {
-            destinationTargets.GetRenderTargets()[0]->GetDesc(&rtv);
-            return GetComponentType(Metal::AsFormat(rtv.Format)) == FormatComponentType::UNorm_SRGB;
-        }
-#endif
-        return true;
-    }
-#endif
 
     void ToneMap_Execute(
         Metal::DeviceContext& context, 
