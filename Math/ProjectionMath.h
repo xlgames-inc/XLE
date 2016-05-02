@@ -51,7 +51,7 @@ namespace XLEMath
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     namespace GeometricCoordinateSpace      { enum Enum { LeftHanded,       RightHanded };  }
-    namespace ClipSpaceType                 { enum Enum { StraddlingZero,   Positive };     }
+    namespace ClipSpaceType                 { enum Enum { StraddlingZero,   Positive,   PositiveRightHanded }; }
     Float4x4 PerspectiveProjection(
         float verticalFOV, float aspectRatio,
         float nearClipPlane, float farClipPlane,

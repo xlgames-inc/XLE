@@ -233,6 +233,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void        Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[]);
         void        Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset=0);
         void        Bind(const ViewportDesc& viewport);
+        const ViewportDesc& GetBoundViewport() const { return _boundViewport; }
 
         void        Bind(const DeepShaderProgram& deepShaderProgram) {}
         void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage) {}
@@ -352,6 +353,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkRenderPass                        _renderPass;
         TextureSamples                      _renderPassSamples;
         unsigned                            _renderPassSubpass;
+        ViewportDesc                        _boundViewport;
 
         VulkanUniquePtr<VkPipeline>         _currentGraphicsPipeline;
         VulkanUniquePtr<VkPipeline>         _currentComputePipeline;

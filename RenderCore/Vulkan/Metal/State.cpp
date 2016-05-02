@@ -6,10 +6,110 @@
 
 #include "State.h"
 #include "ObjectFactory.h"
+#include "DeviceContext.h"
 #include "../../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+    static VkCullModeFlags AsVkCullMode(CullMode::Enum cullmode)
+    {
+        switch (cullmode) {
+        default:
+        case CullMode::None: return VK_CULL_MODE_NONE;
+        case CullMode::Front: return VK_CULL_MODE_FRONT_BIT;
+        case CullMode::Back: return VK_CULL_MODE_BACK_BIT;
+        }
+
+        // (VK_CULL_MODE_FRONT_AND_BACK not accessable)
+    }
+
+    static VkPolygonMode AsVkPolygonMode(FillMode::Enum cullmode)
+    {
+        switch (cullmode) {
+        default:
+        case FillMode::Solid: return VK_POLYGON_MODE_FILL;
+        case FillMode::Wireframe: return VK_POLYGON_MODE_LINE;
+        }
+
+        // (VK_POLYGON_MODE_POINT not accessable)
+    }
+
+    static VkBlendOp AsVkBlendOp(BlendOp::Enum blendOp)
+    {
+        switch (blendOp) {
+        default:
+        case BlendOp::NoBlending:
+        case BlendOp::Add:          return VK_BLEND_OP_ADD;
+        case BlendOp::Subtract:     return VK_BLEND_OP_SUBTRACT;
+        case BlendOp::RevSubtract:  return VK_BLEND_OP_REVERSE_SUBTRACT;
+        case BlendOp::Min:          return VK_BLEND_OP_MIN;
+        case BlendOp::Max:          return VK_BLEND_OP_MAX;
+        }
+    }
+
+    static VkBlendFactor AsVkBlendFactor(Blend::Enum blendOp)
+    {
+        switch (blendOp)
+        {
+        case Blend::Zero: return VK_BLEND_FACTOR_ZERO;
+        default:
+        case Blend::One: return VK_BLEND_FACTOR_ONE;
+
+        case Blend::SrcColor: return VK_BLEND_FACTOR_SRC_COLOR;
+        case Blend::InvSrcColor: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+        case Blend::DestColor: return VK_BLEND_FACTOR_DST_COLOR;
+        case Blend::InvDestColor: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+
+        case Blend::SrcAlpha: return VK_BLEND_FACTOR_SRC_ALPHA;
+        case Blend::InvSrcAlpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        case Blend::DestAlpha: return VK_BLEND_FACTOR_DST_ALPHA;
+        case Blend::InvDestAlpha: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+        }
+
+        // not accessable:
+        // VK_BLEND_FACTOR_CONSTANT_COLOR
+        // VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR
+        // VK_BLEND_FACTOR_CONSTANT_ALPHA
+        // VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA
+        // VK_BLEND_FACTOR_SRC_ALPHA_SATURATE
+        // VK_BLEND_FACTOR_SRC1_COLOR
+        // VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR
+        // VK_BLEND_FACTOR_SRC1_ALPHA
+        // VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
+    }
+
+    static VkCompareOp AsVkCompareOp(Comparison::Enum comparison)
+    {
+        switch (comparison)
+        {
+        case Comparison::Never: return VK_COMPARE_OP_NEVER;
+        case Comparison::Less: return VK_COMPARE_OP_LESS;
+        case Comparison::Equal: return VK_COMPARE_OP_EQUAL;
+        case Comparison::LessEqual: return VK_COMPARE_OP_LESS_OR_EQUAL;
+        case Comparison::Greater: return VK_COMPARE_OP_GREATER;
+        case Comparison::NotEqual: return VK_COMPARE_OP_NOT_EQUAL;
+        case Comparison::GreaterEqual: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+        default:
+        case Comparison::Always: return VK_COMPARE_OP_ALWAYS;
+        }
+    }
+
+    static VkStencilOp AsVkStencilOp(StencilOp::Enum stencilOp)
+    {
+        switch (stencilOp)
+        {
+        default:
+        case StencilOp::DontWrite:      return VK_STENCIL_OP_KEEP;
+        case StencilOp::Zero:           return VK_STENCIL_OP_ZERO;
+        case StencilOp::Replace:        return VK_STENCIL_OP_REPLACE;
+        case StencilOp::IncreaseSat:    return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+        case StencilOp::DecreaseSat:    return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+        case StencilOp::Invert:         return VK_STENCIL_OP_INVERT;
+        case StencilOp::Increase:       return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+        case StencilOp::Decrease:       return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+        }
+    }
+
     RasterizerState::RasterizerState(
         CullMode::Enum cullmode, 
         bool frontCounterClockwise)
@@ -18,8 +118,8 @@ namespace RenderCore { namespace Metal_Vulkan
         pNext = nullptr;
         flags = 0;
         polygonMode = VK_POLYGON_MODE_FILL;
-        cullMode = VK_CULL_MODE_NONE;
-        frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        cullMode = AsVkCullMode(cullmode);
+        frontFace = frontCounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
         depthClampEnable = VK_TRUE;
         rasterizerDiscardEnable = VK_FALSE;
         depthBiasEnable = VK_FALSE;
@@ -32,22 +132,58 @@ namespace RenderCore { namespace Metal_Vulkan
     RasterizerState::RasterizerState(
         CullMode::Enum cullmode, bool frontCounterClockwise,
         FillMode::Enum fillmode,
-        int depthBias, float depthBiasClamp, float slopeScaledBias)
-    : RasterizerState() {}
+        int depthBias, float iDepthBiasClamp, float slopeScaledBias)
+    {
+        sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        pNext = nullptr;
+        flags = 0;
+        polygonMode = AsVkPolygonMode(fillmode);
+        cullMode = AsVkCullMode(cullmode);
+        frontFace = frontCounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
+        depthClampEnable = VK_TRUE;
+        rasterizerDiscardEnable = VK_FALSE;
+        depthBiasEnable = VK_TRUE;
+        depthBiasConstantFactor = *(float*)&depthBias;
+        depthBiasClamp = iDepthBiasClamp;
+        depthBiasSlopeFactor = slopeScaledBias;
+        lineWidth = 0;
+    }
 
     BlendState::BlendState( 
-        BlendOp::Enum blendingOperation, Blend::Enum srcBlend, Blend::Enum dstBlend)
+        BlendOp::Enum blendingOperation, 
+        Blend::Enum srcBlend,
+        Blend::Enum dstBlend,
+        BlendOp::Enum alphaBlendingOperation, 
+        Blend::Enum alphaSrcBlend,
+        Blend::Enum alphaDstBlend)
     {
         XlZeroMemory(_attachments);
         for (unsigned c=0; c<dimof(_attachments); ++c) {
             _attachments[c].colorWriteMask = 0xf;
-            _attachments[c].blendEnable = VK_FALSE;
-            _attachments[c].alphaBlendOp = VK_BLEND_OP_ADD;
-            _attachments[c].colorBlendOp = VK_BLEND_OP_ADD;
-            _attachments[c].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-            _attachments[c].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-            _attachments[c].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-            _attachments[c].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+
+            _attachments[c].blendEnable = 
+                   (blendingOperation != BlendOp::NoBlending)
+                || (alphaBlendingOperation != BlendOp::NoBlending);
+
+            if (blendingOperation == BlendOp::NoBlending) {
+                _attachments[c].colorBlendOp = VK_BLEND_OP_ADD;
+                _attachments[c].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+                _attachments[c].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+            } else {
+                _attachments[c].colorBlendOp = AsVkBlendOp(blendingOperation);
+                _attachments[c].srcColorBlendFactor = AsVkBlendFactor(srcBlend);
+                _attachments[c].dstColorBlendFactor = AsVkBlendFactor(dstBlend);
+            }
+
+            if (blendingOperation == BlendOp::NoBlending) {
+                _attachments[c].alphaBlendOp = VK_BLEND_OP_ADD;
+                _attachments[c].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+                _attachments[c].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+            } else {
+                _attachments[c].alphaBlendOp = AsVkBlendOp(alphaBlendingOperation);
+                _attachments[c].srcAlphaBlendFactor = AsVkBlendFactor(srcBlend);
+                _attachments[c].dstAlphaBlendFactor = AsVkBlendFactor(dstBlend);
+            }
         }
 
         sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -62,15 +198,6 @@ namespace RenderCore { namespace Metal_Vulkan
         blendConstants[2] = 1.0f;
         blendConstants[3] = 1.0f;
     }
-
-    BlendState::BlendState( 
-        BlendOp::Enum blendingOperation, 
-        Blend::Enum srcBlend,
-        Blend::Enum dstBlend,
-        BlendOp::Enum alphaBlendingOperation, 
-        Blend::Enum alphaSrcBlend,
-        Blend::Enum alphaDstBlend)
-    : BlendState() {}
 
     BlendState::BlendState(const BlendState& cloneFrom)
     {
@@ -97,9 +224,9 @@ namespace RenderCore { namespace Metal_Vulkan
         sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         pNext = nullptr;
         flags = 0;
-        depthTestEnable = VK_TRUE;
-        depthWriteEnable = VK_TRUE;
-        depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+        depthTestEnable = enabled;
+        depthWriteEnable = writeEnabled;
+        depthCompareOp = AsVkCompareOp(comparison);
         depthBoundsTestEnable = VK_FALSE;
         minDepthBounds = 0;
         maxDepthBounds = 0;
@@ -119,8 +246,34 @@ namespace RenderCore { namespace Metal_Vulkan
         unsigned stencilReadMask, unsigned stencilWriteMask,
         const StencilMode& frontFaceStencil,
         const StencilMode& backFaceStencil)
-    : DepthStencilState() {}
+    {
+        sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        pNext = nullptr;
+        flags = 0;
+        depthTestEnable = depthTestEnabled;
+        depthWriteEnable = writeEnabled;
+        depthCompareOp = depthTestEnabled?VK_COMPARE_OP_LESS_OR_EQUAL:VK_COMPARE_OP_ALWAYS;
+        depthBoundsTestEnable = VK_FALSE;
+        minDepthBounds = 0;
+        maxDepthBounds = 0;
+        stencilTestEnable = VK_TRUE;
 
+        front.failOp = AsVkStencilOp(frontFaceStencil._onStencilFail);
+        front.passOp = AsVkStencilOp(frontFaceStencil._onPass);
+        front.compareOp = AsVkCompareOp(frontFaceStencil._comparison);
+        front.compareMask = stencilReadMask;
+        front.reference = 0;
+        front.depthFailOp = AsVkStencilOp(frontFaceStencil._onDepthFail);
+        front.writeMask = stencilWriteMask;
+
+        back.failOp = AsVkStencilOp(backFaceStencil._onStencilFail);
+        back.passOp = AsVkStencilOp(backFaceStencil._onPass);
+        back.compareOp = AsVkCompareOp(backFaceStencil._comparison);
+        back.compareMask = stencilReadMask;
+        back.reference = 0;
+        back.depthFailOp = AsVkStencilOp(backFaceStencil._onDepthFail);
+        back.writeMask = stencilWriteMask;
+    }
 
 
     SamplerState::SamplerState(   
@@ -158,10 +311,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     ViewportDesc::ViewportDesc(const DeviceContext& context)
     {
-        TopLeftX = TopLeftY = 0.f;
-        Width = Height = 512.f;
-        MinDepth = 0.f;
-        MaxDepth = 1.f;
+        *this = context.GetBoundViewport();
     }
 
     ViewportDesc::ViewportDesc()

@@ -14,51 +14,73 @@ struct ViewFrustumInterpolator
 	float3 oViewFrustumVector : VIEWFRUSTUMVECTOR;
 };
 
-ViewFrustumInterpolator BuildInterpolator_ViewFrustumInterpolator(uint vertexId)
+struct FullscreenCorner
 {
+	float2 coord;
+	float4 position;
+	float2 texCoord;
 	ViewFrustumInterpolator vfi;
-	vfi.oViewFrustumVector = FrustumCorners[vertexId].xyz;
-	return vfi;
+};
+
+FullscreenCorner MakeFullscreenCorner(uint vertexId)
+{
+	FullscreenCorner result;
+	#if VULKAN
+		vertexId ^= 1;		// xor bit 1 to flip Y coord
+	#endif
+
+	result.coord = float2((float)(vertexId >> 1), (float)(vertexId & 1));
+	result.position = float4(2.f * result.coord.x - 1.f, -2.f * result.coord.y + 1.f, 0.f, 1.f);
+	result.texCoord = result.coord;
+	result.vfi.oViewFrustumVector = FrustumCorners[vertexId].xyz;
+
+	#if VULKAN
+		result.texCoord.y = 1.0f - result.texCoord.y;
+	#endif
+
+	return result;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 void fullscreen(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oTexCoord : TEXCOORD0)
 {
-	float2 coord = float2((float)(vertexId / 2), (float)(vertexId % 2));
-	oTexCoord = coord;
-	oPosition = float4(2.f * coord.x - 1.f, -2.f * coord.y + 1.f, 0.f, 1.f);
+	FullscreenCorner corner = MakeFullscreenCorner(vertexId);
+	oTexCoord = corner.texCoord;
+	oPosition = corner.position;
 }
 
 void fullscreen_viewfrustumvector(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oTexCoord : TEXCOORD0, out ViewFrustumInterpolator vfi)
 {
-	float2 coord = float2((float)(vertexId / 2), (float)(vertexId % 2));
-	oTexCoord = coord;
-	vfi.oViewFrustumVector = FrustumCorners[vertexId].xyz;
-	oPosition = float4(2.f * coord.x - 1.f, -2.f * coord.y + 1.f, 0.f, 1.f);
+	FullscreenCorner corner = MakeFullscreenCorner(vertexId);
+	oTexCoord = corner.texCoord;
+	vfi = corner.vfi;
+	oPosition = corner.position;
 }
 
 void fullscreen_viewfrustumvector_deep(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oTexCoord : TEXCOORD0, out ViewFrustumInterpolator vfi)
 {
-	float2 coord = float2((float)(vertexId / 2), (float)(vertexId % 2));
-	oTexCoord = coord;
-	vfi.oViewFrustumVector = FrustumCorners[vertexId].xyz;
-	oPosition = float4(2.f * coord.x - 1.f, -2.f * coord.y + 1.f, 1.f, 1.f);
+	FullscreenCorner corner = MakeFullscreenCorner(vertexId);
+	oTexCoord = corner.texCoord;
+	vfi = corner.vfi;
+	oPosition = float4(corner.position.xy, 1.f, 1.f);
 }
 
 void fullscreen_flip(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oTexCoord : TEXCOORD0)
 {
 	vertexId ^= 1;		// xor bit 1 to flip Y coord
-	float2 coord = float2((float)(vertexId / 2), (float)(vertexId % 2));
-	oTexCoord = coord;
-	oPosition = float4(2.f * coord.x - 1.f, -2.f * coord.y + 1.f, 0.f, 1.f);
+	FullscreenCorner corner = MakeFullscreenCorner(vertexId);
+	oTexCoord = corner.texCoord;
+	oPosition = corner.position;
 }
 
 void fullscreen_flip_viewfrustumvector(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oTexCoord : TEXCOORD0, out ViewFrustumInterpolator vfi)
 {
 	vertexId ^= 1;		// xor bit 1 to flip Y coord
-	float2 coord = float2((float)(vertexId / 2), (float)(vertexId % 2));
-	oTexCoord = coord;
-	vfi.oViewFrustumVector = FrustumCorners[vertexId].xyz;
-	oPosition = float4(2.f * coord.x - 1.f, -2.f * coord.y + 1.f, 0.f, 1.f);
+	FullscreenCorner corner = MakeFullscreenCorner(vertexId);
+	oTexCoord = corner.texCoord;
+	vfi = corner.vfi;
+	oPosition = corner.position;
 }
 
 cbuffer ScreenSpaceOutput
@@ -73,9 +95,9 @@ void screenspacerect(
 	out float4 oPosition : SV_Position,
 	out float2 oTexCoord0 : TEXCOORD0)
 {
-	float2 coord = float2((float)(vertexId / 2), (float)(vertexId % 2));
-	oTexCoord0 = lerp(InputMin, InputMax, coord);
-	coord = lerp(OutputMin, OutputMax, coord);
+	FullscreenCorner corner = MakeFullscreenCorner(vertexId);
+	oTexCoord0 = lerp(InputMin, InputMax, corner.texCoord);
+	float2 coord = lerp(OutputMin, OutputMax, corner.coord);
 	oPosition = float4(
 		 2.f * coord.x / OutputDimensions.x - 1.f,
 		-2.f * coord.y / OutputDimensions.y + 1.f,

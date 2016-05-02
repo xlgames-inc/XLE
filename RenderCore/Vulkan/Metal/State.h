@@ -288,13 +288,10 @@ namespace RenderCore { namespace Metal_Vulkan
     public:
         BlendState( BlendOp::Enum blendingOperation = BlendOp::Add, 
                     Blend::Enum srcBlend = Blend::SrcAlpha,
-                    Blend::Enum dstBlend = Blend::InvSrcAlpha);
-        BlendState( BlendOp::Enum blendingOperation, 
-                    Blend::Enum srcBlend,
-                    Blend::Enum dstBlend,
-                    BlendOp::Enum alphaBlendingOperation, 
-                    Blend::Enum alphaSrcBlend,
-                    Blend::Enum alphaDstBlend);
+                    Blend::Enum dstBlend = Blend::InvSrcAlpha,
+                    BlendOp::Enum alphaBlendingOperation = BlendOp::NoBlending,
+                    Blend::Enum alphaSrcBlend = Blend::One,
+                    Blend::Enum alphaDstBlend = Blend::Zero);
 
         BlendState(const BlendState&);
         BlendState& operator=(const BlendState&);

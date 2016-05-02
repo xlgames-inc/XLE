@@ -39,6 +39,8 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         _pipelineStale = true;
         _depthStencilState = depthStencilState;
+        _depthStencilState.front.reference = stencilRef;
+        _depthStencilState.back.reference = stencilRef;
     }
 
     void        GraphicsPipelineBuilder::Bind(const BoundInputLayout& inputLayout)
@@ -312,10 +314,8 @@ namespace RenderCore { namespace Metal_Vulkan
     void        DeviceContext::Bind(const ViewportDesc& viewport)
     {
 		assert(_commandList);
-        vkCmdSetViewport(
-            _commandList.get(),
-            0, 1,
-            (VkViewport*)&viewport);
+        _boundViewport = viewport;
+        vkCmdSetViewport(_commandList.get(), 0, 1, (VkViewport*)&viewport);
 
             // todo -- get this right for non-integer coords
         VkRect2D scissor = {
@@ -420,7 +420,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			    _commandList.get(),
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                 _currentGraphicsPipeline.get());
-            Bind(ViewportDesc(0.f, 0.f, 512.f, 512.f));
+            Bind(_boundViewport);
             return true;
         }
 
@@ -555,6 +555,8 @@ namespace RenderCore { namespace Metal_Vulkan
         _computeDescriptors._dynamicBindings.Reset();
         _computeDescriptors._globalBindings.Reset();
         _computeDescriptors._pipelineLayout->RebuildLayout(*_factory); // (rebuild if necessary)
+
+        _boundViewport = ViewportDesc();
 
         // Unless the context is already tied to a primary command list, we will always
 		// create a secondary command list here.

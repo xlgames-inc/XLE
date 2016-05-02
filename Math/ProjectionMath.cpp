@@ -483,7 +483,7 @@ namespace XLEMath
         result(1,1) =  (2.f * n) / (t-b);
         result(1,2) =  (t+b) / (t-b);
 
-        if (clipSpaceType == ClipSpaceType::Positive) {
+        if (clipSpaceType == ClipSpaceType::Positive || clipSpaceType == ClipSpaceType::PositiveRightHanded) {
                 //  This is the D3D view of clip space
                 //      0<z/w<1
             result(2,2) =    -(f) / (f-n);            // (note z direction flip here as well as below)
@@ -504,6 +504,12 @@ namespace XLEMath
             //          +Y is up (ie, coordinates are bottom-up)
             //          +Z is into the screen (increasing values are increasing depth, negative depth values are behind the camera)
             //
+            //      But Vulkan uses a right handed coordinate system. In this system, +Y points towards
+            //      the bottom of the screen.
+            //
+
+        if (clipSpaceType == ClipSpaceType::PositiveRightHanded)
+            result(1,1) = -result(1,1);
 
         return result;
     }
@@ -524,7 +530,7 @@ namespace XLEMath
         result(1,1) =  2.f / (t-b);
         result(1,3) =  -(t+b) / (t-b);
 
-        if (clipSpaceType == ClipSpaceType::Positive) {
+        if (clipSpaceType == ClipSpaceType::Positive || clipSpaceType == ClipSpaceType::PositiveRightHanded) {
                 //  This is the D3D view of clip space
                 //      0<z/w<1
             result(2,2) =  -1.f / (f-n);            // (note z direction flip here)
@@ -533,12 +539,8 @@ namespace XLEMath
             assert(0);
         }
 
-            //
-            //      Both OpenGL & DirectX expect a left-handed coordinate system post-projection
-            //          +X is right
-            //          +Y is up (ie, coordinates are bottom-up)
-            //          +Z is into the screen (increasing values are increasing depth, negative depth values are behind the camera)
-            //
+        if (clipSpaceType == ClipSpaceType::PositiveRightHanded)
+            result(1,1) = -result(1,1);
 
         return result;
     }
@@ -586,7 +588,7 @@ namespace XLEMath
 
         const float A = minimalProjection[2];
         const float B = minimalProjection[3];
-        if (clipSpaceType == ClipSpaceType::Positive) {
+        if (clipSpaceType == ClipSpaceType::Positive || clipSpaceType == ClipSpaceType::PositiveRightHanded) {
             return std::make_pair(B / A, B / (A + 1.f));
         } else {
             return std::make_pair(B / (A + 1.f), B / (A - 1.f));
@@ -622,7 +624,7 @@ namespace XLEMath
 
         const float A = minimalProjection[2];
         const float B = minimalProjection[3];
-        if (clipSpaceType == ClipSpaceType::Positive) {
+        if (clipSpaceType == ClipSpaceType::Positive || clipSpaceType == ClipSpaceType::PositiveRightHanded) {
             return std::make_pair(B / A, (B - 1.f) / A);
         } else {
             assert(0);

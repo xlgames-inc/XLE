@@ -96,6 +96,7 @@ cbuffer LightBuffer CB_BOUND1_1
 	LightDesc Light;
 }
 
+[earlydepthstencil]
 float4 ResolveLight(	float4 position : SV_Position,
 						float2 texCoord : TEXCOORD0,
 						float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
@@ -192,6 +193,7 @@ float3 RepresentativeVector_Sphere(float3 lightCenter, float lightRadius, float3
     return lerp(L, testPt, saturate(lightRadius * ReciprocalMagnitude(testPt - L)));
 }
 
+[earlydepthstencil]
 float4 ResolveAreaLight(	float4 position : SV_Position,
 							float2 texCoord : TEXCOORD0,
 							float3 viewFrustumVector : VIEWFRUSTUMVECTOR,

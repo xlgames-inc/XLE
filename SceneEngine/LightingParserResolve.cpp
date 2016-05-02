@@ -41,6 +41,9 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static const uint32 StencilSky = 1<<7;
+    static const uint32 StencilSampleCount = 1<<6;
+
     MaterialOverride GlobalMaterialOverride = { 0.f, 0.6f, 0.05f, 0.f, 1.f, 1.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f };
 
     class LightingResolveResources
@@ -53,8 +56,10 @@ namespace SceneEngine
             Desc(unsigned samplingCount) : _samplingCount(samplingCount) {}
         };
 
-        Metal::DepthStencilState       _alwaysWriteToStencil;
+        Metal::DepthStencilState       _dssPrepareSampleCount;
+        Metal::DepthStencilState       _dssPrepareSky;
         Metal::DepthStencilState       _writePixelFrequencyPixels;
+        Metal::DepthStencilState       _writeNonSky;
         const Metal::ShaderProgram*    _perSampleMask;
 
         Metal::SamplerState            _shadowComparisonSampler;
@@ -136,16 +141,15 @@ namespace SceneEngine
         const unsigned samplingCount = mainTargets.GetSampling()._sampleCount;
 
         SetupVertexGeneratorShader(context);
-        context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
 
         // context.Bind(
         //     MakeResourceList(lightingResTargets._lightingResolveRTV), 
         //     (doSampleFrequencyOptimisation && samplingCount>1)?&mainTargets._secondaryDepthBuffer:nullptr);
         if (doSampleFrequencyOptimisation && samplingCount > 1) {
             context.Bind(Techniques::CommonResources()._cullDisable);
-            context.Bind(resolveRes._writePixelFrequencyPixels, 0xff);
+            context.Bind(resolveRes._writePixelFrequencyPixels, StencilSampleCount);
         } else {
-            context.Bind(Techniques::CommonResources()._dssDisable);
+            context.Bind(resolveRes._writeNonSky, 0x0);
         }
 
         context.BindPS(MakeResourceList(
@@ -282,19 +286,19 @@ namespace SceneEngine
             //        -- we resolve the lighting and write out a "lighting resolve texture"
             //
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if 0 // platformtemp
         if (doSampleFrequencyOptimisation && samplingCount>1) {
-            context.Bind(resolveRes._alwaysWriteToStencil, 0xff);
+            metalContext.Bind(resolveRes._dssPrepareSampleCount, StencilSampleCount);
 
                 // todo --  instead of clearing the stencil every time, how 
                 //          about doing a progressive walk through all of the bits!
-            context.ClearStencil(mainTargets._secondaryDepthBuffer, 0);
-            context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &mainTargets._secondaryDepthBuffer);
-            context.BindPS(MakeResourceList(mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]));
-            SetupVertexGeneratorShader(context);
+            metalContext.ClearStencil(mainTargets._secondaryDepthBuffer, 0);
+            metalContext.Bind(ResourceList<Metal::RenderTargetView, 0>(), &mainTargets._secondaryDepthBuffer);
+            metalContext.BindPS(MakeResourceList(mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]));
+            SetupVertexGeneratorShader(metalContext);
             CATCH_ASSETS_BEGIN
-                context.Bind(*resolveRes._perSampleMask);
-                context.Draw(4);
+                metalContext.Bind(*resolveRes._perSampleMask);
+                metalContext.Draw(4);
             CATCH_ASSETS_END(parserContext)
         }
 #endif
@@ -343,10 +347,6 @@ namespace SceneEngine
                 //
 
         CATCH_ASSETS_BEGIN
-                // note -- if we do ambient first, we can avoid this clear (by rendering the ambient opaque)
-            // float clearColour[] = { 0.f, 0.f, 0.f, 1.f };
-            // context.Clear(lightingResTargets._lightingResolveRTV, clearColour);
-
             // note --  the gbuffer isn't considered an "input attachment" here...
             //          If we combined the gbuffer generation and lighting resolve into a single render pass,
             //          we could just use the gbuffer as an input attachment
@@ -381,43 +381,30 @@ namespace SceneEngine
             // Note that we have to do MSAA stuff when rendering the sky (even though the color result 
             // for each sample within a pixel is identical).
             if (Tweakable("DoSky", true)) {
+                Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Sky");
                 for (unsigned c=0; c<passCount; ++c) {
-                    Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Sky");
-
-                    Metal::DepthStencilState dds(
-                        true, false,
-                        0xff, 1<<7, Metal::StencilMode::AlwaysWrite);
-                    metalContext.Bind(dds, 1<<7);
+                    metalContext.Bind(resolveRes._dssPrepareSky, StencilSky);
                     Sky_Render(metalContext, parserContext, false);
                 }
             }
-
-            // Disable depth write and don't write where the sky is stenciled --
-            Metal::DepthStencilState dds(
-                true, false,
-                1<<7, 0x0, Metal::StencilMode(Metal::Comparison::NotEqual, Metal::StencilOp::DontWrite));
-            metalContext.Bind(dds, 1<<7);
 
             // set light resolve state (note that we have to bind the depth buffer as a shader input here)
             SetupStateForDeferredLightingResolve(metalContext, mainTargets, resolveRes, doSampleFrequencyOptimisation);
             auto resourceBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext);
             metalContext.BindPS_G(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
             metalContext.BindPS(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
-                       
+
+                // -------- -------- -------- -------- -------- --------
+                //          A M B I E N T
+            
+            // We do ambient first with opaque blending. This will overwrite all non-sky pixels and cover up
+            // the results from last frame.
+            metalContext.Bind(Techniques::CommonResources()._blendOpaque);
             for (unsigned c=0; c<passCount; ++c) {
-
-                lightingResolveContext.SetPass((LightingResolveContext::Pass::Enum)c);
-
-                    // -------- -------- -------- -------- -------- --------
-                    //          L I G H T S
-
-                ResolveLights(metalContext, parserContext, lightingResolveContext);
-
-                    // -------- -------- -------- -------- -------- --------
-                    //          A M B I E N T
-
                 CATCH_ASSETS_BEGIN
                     Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Ambient");
+
+                    lightingResolveContext.SetPass((LightingResolveContext::Pass::Enum)c);
 
                     auto globalLightDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
 
@@ -467,15 +454,24 @@ namespace SceneEngine
                     metalContext.Bind(*ambientResolveShaders._ambientLight);
                     metalContext.Draw(4);
                 CATCH_ASSETS_END(parserContext)
+            }
+
+                // -------- -------- -------- -------- -------- --------
+                //          L I G H T S
+
+            metalContext.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
+            for (unsigned c=0; c<passCount; ++c) {
+                lightingResolveContext.SetPass((LightingResolveContext::Pass::Enum)c);
+                ResolveLights(metalContext, parserContext, lightingResolveContext);
 
                 for (auto i=lightingResolveContext._queuedResolveFunctions.cbegin();
                     i!=lightingResolveContext._queuedResolveFunctions.cend(); ++i) {
                     (*i)(&metalContext, parserContext, lightingResolveContext, c);
                 }
-
-                    // -------- -------- -------- -------- -------- --------
-
             }
+
+                // -------- -------- -------- -------- -------- --------
+
         CATCH_ASSETS_END(parserContext)
 
         metalContext.UnbindPS<Metal::ShaderResourceView>(0, 9);
@@ -670,13 +666,23 @@ namespace SceneEngine
 
     LightingResolveResources::LightingResolveResources(const Desc& desc)
     {
-        Metal::DepthStencilState alwaysWriteToStencil(
-            false, false, 0x0, 0xff, Metal::StencilMode::AlwaysWrite, Metal::StencilMode::AlwaysWrite);
+        _dssPrepareSampleCount = Metal::DepthStencilState(
+            false, false, 0x0, StencilSampleCount, Metal::StencilMode::AlwaysWrite, Metal::StencilMode::AlwaysWrite);
 
-        Metal::DepthStencilState writePixelFrequencyPixels(
-            false, false, 0xff, 0xff, 
+        _dssPrepareSky = Metal::DepthStencilState(
+            true, false, 0xff, StencilSky, Metal::StencilMode::AlwaysWrite);
+
+        // when StencilSky is set, the stencil test should always fail
+        // So, we want "StencilSampleCount" to succeed on the front size,
+        // and "0" to succeed on the back size
+        _writePixelFrequencyPixels = Metal::DepthStencilState(
+            false, false, StencilSky|StencilSampleCount, 0xff, 
             Metal::StencilMode(Metal::Comparison::Equal, Metal::StencilOp::DontWrite),
-            Metal::StencilMode(Metal::Comparison::NotEqual, Metal::StencilOp::DontWrite));
+            Metal::StencilMode(Metal::Comparison::Less, Metal::StencilOp::DontWrite));
+
+        _writeNonSky = Metal::DepthStencilState(
+            false, false, StencilSky, 0xff, 
+            Metal::StencilMode(Metal::Comparison::Equal, Metal::StencilOp::DontWrite));
 
         Metal::SamplerState shadowComparisonSampler(
             Metal::FilterMode::ComparisonBilinear, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp,
@@ -693,11 +699,9 @@ namespace SceneEngine
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(validationCallback, perSampleMask->GetDependencyValidation());
 
-        _alwaysWriteToStencil = std::move(alwaysWriteToStencil);
         _perSampleMask = std::move(perSampleMask);
         _shadowComparisonSampler = std::move(shadowComparisonSampler);
         _shadowDepthSampler = std::move(shadowDepthSampler);
-        _writePixelFrequencyPixels = std::move(writePixelFrequencyPixels);
         _validationCallback = std::move(validationCallback);
     }
 

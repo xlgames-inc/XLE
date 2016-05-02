@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TechniqueUtils.h"
+#include "../../RenderCore/Metal/Forward.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
 
@@ -47,6 +48,8 @@ namespace RenderCore { namespace Techniques
             // (todo -- this condition could be a runtime test)
         #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)         
             return ClipSpaceType::Positive;
+        #elif (GFXAPI_ACTIVE == GFXAPI_VULKAN)
+            return ClipSpaceType::PositiveRightHanded;
         #else
             return ClipSpaceType::StraddlingZero;
         #endif

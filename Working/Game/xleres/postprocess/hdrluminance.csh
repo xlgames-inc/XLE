@@ -164,11 +164,7 @@ float3 BrightPassFilter(float3 colour)
 
 	// For some reason the "readOffset" here really breaks Vulkan. It might be an
 	// instruction poorly converted in the HLSL cross compiler?
-#if !VULKAN
 	float2 readPosition = (float2(dispatchThreadId.xy) + float2(readOffset)/4.f) * sizeRatio;
-#else
-	float2 readPosition = float2(dispatchThreadId.xy) * sizeRatio;
-#endif
 
 		// single tap, no bilinear filtering
 	int2 tapPos = min(int2(readPosition), GetInputTextureDims() - int2(1,1));

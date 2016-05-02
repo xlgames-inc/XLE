@@ -23,6 +23,7 @@ cbuffer AmbientLightBuffer CB_BOUND1_1
 	float2 ReciprocalViewportDims;
 }
 
+[earlydepthstencil]
 float4 ResolveAmbient(
 	float4 position : SV_Position,
 	float2 texCoord : TEXCOORD0,
