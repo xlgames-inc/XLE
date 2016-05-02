@@ -238,7 +238,7 @@ namespace SceneEngine
 
         CATCH_ASSETS_BEGIN
             const auto& globalDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
-            result._skyTextureProjection = SkyTextureParts(globalDesc).BindPS(context, 11);
+            result._skyTextureProjection = SkyTextureParts(globalDesc).BindPS_G(context, 11);
 
             if (globalDesc._diffuseIBL[0]) {
                 context.BindPS_G(MakeResourceList(19, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._diffuseIBL).GetShaderResource()));

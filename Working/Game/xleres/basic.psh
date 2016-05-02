@@ -9,6 +9,7 @@
 #include "Binding.h"
 
 Texture2D		InputTexture TEXTURE_DYNAMIC_0;
+Texture2D		BoundInputTexture TEXTURE_BOUND1_0;
 
 float4 copy(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
@@ -101,7 +102,7 @@ float4 fill_gradient(float4 position : SV_Position, float2 texCoord : TEXCOORD0)
 float4 PCT_Text( float4 input : SV_Position, float4 color : COLOR0, float2 texCoord : TEXCOORD0 ) : SV_Target0
 {
 	return float4(	color.rgb,
-					color.a * InputTexture.Sample(DefaultSampler, texCoord).r);
+					color.a * BoundInputTexture.Sample(DefaultSampler, texCoord).r);
 }
 
 float4 P( float4 input : SV_Position ) : SV_Target0

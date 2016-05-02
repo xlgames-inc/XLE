@@ -80,6 +80,7 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 
 cbuffer SkySettings { float SkyBrightness; }
 
+[earlydepthstencil]
 float4 CalculateColour0(float2 texCoord, float3 viewFrustumVector, float3 worldSpacePosition)
 {
 	float3 color = SkyBrightness * CalculateBaseSkyColor(texCoord, viewFrustumVector);
@@ -94,11 +95,13 @@ float4 CalculateColour0(float2 texCoord, float3 viewFrustumVector, float3 worldS
 
 	//////////////////////////////////
 
+[earlydepthstencil]
 float4 main(float4 position : SV_Position, float2 oTexCoord : TEXCOORD0, float3 viewFrustumVector : VIEWFRUSTUMVECTOR) : SV_Target0
 {
 	return CalculateColour0(oTexCoord, viewFrustumVector, WorldSpaceView + 10000.f * viewFrustumVector);
 }
 
+[earlydepthstencil]
 float4 ps_HalfCube(VSOutput geo) : SV_Target0
 {
 	return CalculateColour0(GetTexCoord(geo), normalize(GetWorldPosition(geo) - WorldSpaceView), GetWorldPosition(geo));

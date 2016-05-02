@@ -343,6 +343,23 @@ namespace SceneEngine
 
         return _projectionType;
     }
+
+    unsigned    SkyTextureParts::BindPS_G(  
+        RenderCore::Metal::DeviceContext& context, 
+        int bindSlot) const
+    {
+        if (!IsGood()) return ~0u;
+
+        if (_projectionType==1) {
+            context.BindPS_G(MakeResourceList(
+                bindSlot, _faces12->GetShaderResource(), _faces34->GetShaderResource(), _face5->GetShaderResource()));
+        } else
+            context.BindPS_G(MakeResourceList(
+                bindSlot,
+                _face5->GetShaderResource()));
+
+        return _projectionType;
+    }
 }
 
 

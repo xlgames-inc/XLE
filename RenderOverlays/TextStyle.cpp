@@ -213,6 +213,7 @@ TextStyleResources::TextStyleResources(const Desc& desc)
 
 	Metal::BoundUniforms boundUniforms(shaderProgram);
 	boundUniforms.BindConstantBuffer(Hash64("ReciprocalViewportDimensionsCB"), 0, 1, elements, dimof(elements));
+    boundUniforms.BindShaderResource(Hash64("BoundInputTexture"), 0, 1);
 
     auto validationCallback = std::make_shared<Assets::DependencyValidation>();
     Assets::RegisterAssetDependency(validationCallback, shaderProgram.GetDependencyValidation());

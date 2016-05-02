@@ -645,6 +645,75 @@ namespace RenderCore { namespace Metal_Vulkan
                 src._resource->GetBuffer(),
                 dst._resource->GetBuffer(),
                 1, &c);
+        } else if (dst._resource->GetImage() && src._resource->GetBuffer()) {
+            // This copy operation is typically used when initializing a texture via staging
+            // resource. The buffer probably has a "Texture" type Desc, even though the underlying
+            // resource is a buffer.
+            if (src._resource->GetDesc()._type != ResourceDesc::Type::Texture)
+                Throw(::Exceptions::BasicLabel("Buffer to image copy not implemented, except for staging resources"));
+
+            const auto& srcDesc = src._resource->GetDesc();
+		    const auto& dstDesc = dst._resource->GetDesc();
+		    assert(srcDesc._type == Resource::Desc::Type::Texture);
+		    assert(dstDesc._type == Resource::Desc::Type::Texture);
+
+            auto dstAspectMask = AsImageAspectMask(dstDesc._textureDesc._format);
+
+            VkBufferImageCopy copyOps[96];
+
+            auto arrayCount = std::max(1u, (unsigned)srcDesc._textureDesc._arrayCount);
+		    auto mips = std::max(1u, (unsigned)std::min(srcDesc._textureDesc._mipCount, dstDesc._textureDesc._mipCount));
+            unsigned width = srcDesc._textureDesc._width, height = srcDesc._textureDesc._height, depth = srcDesc._textureDesc._depth;
+            auto minDims = (GetCompressionType(srcDesc._textureDesc._format) == FormatCompressionType::BlockCompression) ? 4u : 1u;
+
+            assert(dstDesc._textureDesc._width == width);
+            assert(dstDesc._textureDesc._height == height);
+            assert(dstDesc._textureDesc._depth == depth);
+		    assert(mips*arrayCount <= dimof(copyOps));
+
+            // todo -- not adjusting the offsets/extents for mipmaps. This won't
+            // work correctly in the mipmapped case.
+            assert(mips <= 1);
+            for (unsigned m=0; m<mips; ++m) {
+                auto mipOffset = GetSubResourceOffset(srcDesc._textureDesc, m, 0);
+                for (unsigned a=0; a<arrayCount; ++a) {
+                    auto& c = copyOps[m+a*mips];
+                    c.bufferOffset = mipOffset._offset + mipOffset._pitches._arrayPitch * a;
+                    if (src._leftTopFront[0] != ~0u) {
+                        c.bufferOffset += 
+                              src._leftTopFront[2] * mipOffset._pitches._slicePitch
+                            + src._leftTopFront[1] * mipOffset._pitches._rowPitch
+                            + src._leftTopFront[0] * BitsPerPixel(srcDesc._textureDesc._format);
+                    }
+                    c.bufferRowLength = std::max(width, minDims);
+                    c.bufferImageHeight = std::max(height, minDims);
+
+                    c.imageSubresource = VkImageSubresourceLayers{ dstAspectMask, m, a, 1 };
+                    c.imageOffset = VkOffset3D{dst._leftTopFront[0], dst._leftTopFront[1], dst._leftTopFront[2]};
+
+                    if (src._leftTopFront[0] != ~0u && src._rightBottomBack[0] != ~0u) {
+                        c.imageExtent = VkExtent3D{
+                            src._rightBottomBack[0] - src._leftTopFront[0],
+                            src._rightBottomBack[1] - src._leftTopFront[1],
+                            src._rightBottomBack[2] - src._leftTopFront[2]};
+                    } else {
+                        c.imageExtent = VkExtent3D{
+                            srcDesc._textureDesc._width,
+                            srcDesc._textureDesc._height,
+                            srcDesc._textureDesc._depth};
+                    }
+                }
+
+                width >>= 1u;
+                height >>= 1u;
+                depth >>= 1u;
+            }
+
+            const auto copyOperations = mips*arrayCount;
+            context.CmdCopyBufferToImage(
+                src._resource->GetBuffer(),
+                dst._resource->GetImage(), AsVkImageLayout(dstLayout),
+                copyOperations, copyOps);
         } else {
             // copies from buffer to image, or image to buffer are supported by Vulkan, but
             // not implemented here.
@@ -749,8 +818,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         // special case for images, where we need to take into account the requested "subresource"
         auto* image = resource.get()->GetImage();
+        const auto& desc = resource.get()->GetDesc();
         if (image) {
-            const auto& desc = resource.get()->GetDesc();
             auto aspectMask = AsImageAspectMask(desc._textureDesc._format);
             VkImageSubresource sub = { aspectMask, subResource._mip, subResource._arrayLayer };
             VkSubresourceLayout layout = {};
@@ -760,17 +829,31 @@ namespace RenderCore { namespace Metal_Vulkan
             _pitches = Pitches { unsigned(layout.rowPitch), unsigned(layout.depthPitch) };
             _dataSize = finalSize;
         } else {
-            _dataSize = resource.get()->GetDesc()._linearBufferDesc._sizeInBytes;
+            if (desc._type == ResourceDesc::Type::Texture) {
+                // This is the staging texture case. We can use GetSubResourceOffset to
+                // calculate the arrangement of subresources
+                auto subResOffset = GetSubResourceOffset(desc._textureDesc, subResource._mip, subResource._arrayLayer);
+                finalOffset = subResOffset._offset;
+                finalSize = subResOffset._size;
+                _pitches = subResOffset._pitches;
+                _dataSize = finalSize;
+            } else {
+                _dataSize = desc._linearBufferDesc._sizeInBytes;
+            }
         }
 
         auto res = vkMapMemory(dev, resource.get()->GetMemory(), finalOffset, finalSize, 0, &_data);
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failed while mapping device memory"));
+
+        _dev = dev;
+        _mem = resource.get()->GetMemory();
     }
 
 	void ResourceMap::TryUnmap()
 	{
-		vkUnmapMemory(_dev, _mem);
+        if (_dev && _mem)
+		    vkUnmapMemory(_dev, _mem);
 	}
 
     ResourceMap::ResourceMap() : _dev(nullptr), _mem(nullptr), _data(nullptr), _pitches{} {}

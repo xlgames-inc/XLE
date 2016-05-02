@@ -33,6 +33,7 @@ namespace SceneEngine
 
         bool IsGood() const { return _projectionType > 0; }
         unsigned BindPS(RenderCore::Metal::DeviceContext& context, int bindSlot) const;
+        unsigned BindPS_G(RenderCore::Metal::DeviceContext& context, int bindSlot) const;
 
         SkyTextureParts(
             const ::Assets::ResChar assetName[], 

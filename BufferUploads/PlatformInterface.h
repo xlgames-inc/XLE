@@ -64,7 +64,9 @@ namespace BufferUploads { namespace PlatformInterface
 
         void UpdateFinalResourceFromStaging(
             UnderlyingResource& finalResource, UnderlyingResource& staging,
-            const BufferDesc& destinationDesc, unsigned lodLevelMin=~unsigned(0x0), unsigned lodLevelMax=~unsigned(0x0), unsigned stagingLODOffset=0);
+            const BufferDesc& destinationDesc, unsigned lodLevelMin=~unsigned(0x0), unsigned lodLevelMax=~unsigned(0x0), 
+            unsigned stagingLODOffset=0,
+            VectorPattern<unsigned, 2> stagingXYOffset = {0,0});
 
             ////////   R E S O U R C E   C O P Y   ////////
         void ResourceCopy_DefragSteps(UnderlyingResource& destination, UnderlyingResource& source, const std::vector<Utility::DefragStep>& steps);

@@ -1669,14 +1669,16 @@ namespace BufferUploads
                                 //      into the staging object, and then submit to the final result.
                                 //
 
-                            if (!(uploadStep._destinationBox == Box2D()))
-								LogAlwaysWarning << "Upload box is not empty with PushToStagingTexture. Result will be incorrect.";
+                            auto stagingBox = Box2D{
+                                0, 0, 
+                                uploadStep._destinationBox._right - uploadStep._destinationBox._left,
+                                uploadStep._destinationBox._bottom - uploadStep._destinationBox._top};
 
                             auto finalDesc = ApplyLODOffset(transaction->_desc, transaction->_actualisedStagingLODOffset);
                             auto mipOffset = transaction->_actualisedStagingLODOffset;
                             bytesUploaded += context.GetDeviceContext().PushToStagingTexture(
                                 *transaction->_stagingResource->GetUnderlying(), 
-                                finalDesc, Box2D(),
+                                finalDesc, stagingBox,
                                 [&uploadStep, mipOffset](unsigned mip, unsigned arrayLayer) -> RenderCore::SubResourceInitData
                                 {
                                     RenderCore::SubResourceInitData result = {};
@@ -1694,7 +1696,8 @@ namespace BufferUploads
                             assert(transaction->_finalResource->Offset()==0||transaction->_finalResource->Offset()==~unsigned(0x0));       // resource offsets not correctly implemented
                             context.GetDeviceContext().UpdateFinalResourceFromStaging(
                                 *transaction->_finalResource->GetUnderlying(), *transaction->_stagingResource->GetUnderlying(), transaction->_desc, 
-                                uploadStep._lodLevelMin, uploadStep._lodLevelMax, transaction->_actualisedStagingLODOffset);
+                                uploadStep._lodLevelMin, uploadStep._lodLevelMax, transaction->_actualisedStagingLODOffset,
+                                {(unsigned)uploadStep._destinationBox._left, (unsigned)uploadStep._destinationBox._top});
 
                         } else {                                    //~~//////////////////////~~//
 

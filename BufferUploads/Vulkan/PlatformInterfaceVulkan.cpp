@@ -65,7 +65,8 @@
         void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(
 			UnderlyingResource& finalResource, UnderlyingResource& staging, 
 			const BufferDesc& destinationDesc, 
-            unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
+            unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset,
+            VectorPattern<unsigned, 2> stagingXYOffset)
         {
             auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             auto allLods = 
@@ -83,17 +84,17 @@
                 {&staging, Metal_Vulkan::ImageLayout::General, Metal_Vulkan::ImageLayout::TransferSrcOptimal},
                 {&finalResource, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal}});
 
-            if (allLods && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset) {
+            if (allLods && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset && !stagingXYOffset[0] && !stagingXYOffset[1]) {
                 Metal::Copy(
                     *metalContext, 
                     &finalResource, &staging,
                     Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::TransferSrcOptimal);
             } else {
-                for (unsigned a=0; a<destinationDesc._textureDesc._arrayCount; ++a) {
+                for (unsigned a=0; a<std::max(1u, (unsigned)destinationDesc._textureDesc._arrayCount); ++a) {
                     for (unsigned c=lodLevelMin; c<=lodLevelMax; ++c) {
                         Metal::CopyPartial(
                             *metalContext,
-                            Metal::CopyPartial_Dest(&finalResource, Metal::Resource::SubResource{c, a}),
+                            Metal::CopyPartial_Dest(&finalResource, Metal::Resource::SubResource{c, a}, {stagingXYOffset[0], stagingXYOffset[1], 0}),
                             Metal::CopyPartial_Src(&staging, Metal::Resource::SubResource{c-stagingLODOffset, a}));
                     }
                 }
@@ -105,7 +106,7 @@
 
             // Is it reasonable to go back to preinitialised? If we don't do this, the texture can be reused and the next time we attempt to
             // switch it to TransferSrcOptimal, we will get a warning.
-            // SetImageLayout(*metalContext, &staging, Metal_Vulkan::ImageLayout::TransferSrcOptimal, Metal_Vulkan::ImageLayout::General);
+            // Metal::SetImageLayouts(*metalContext, {{&staging, Metal_Vulkan::ImageLayout::TransferSrcOptimal, Metal_Vulkan::ImageLayout::General}});
         }
 
         unsigned UnderlyingDeviceContext::PushToBuffer(
