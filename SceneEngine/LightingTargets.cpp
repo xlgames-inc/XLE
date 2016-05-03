@@ -295,6 +295,7 @@ namespace SceneEngine
 
         LightShader& dest = _shaders[type.AsIndex()];
         assert(!dest._shader);
+        dest._hasBeenResolved = false;
 
         if (desc._debugging) {
             dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
@@ -320,38 +321,47 @@ namespace SceneEngine
                 definesTable.get());
         }
 
-        if (dest._shader) {
-            dest._uniforms = Metal::BoundUniforms(*dest._shader);
-
-            Techniques::TechniqueContext::BindGlobalUniforms(dest._uniforms);
-            dest._uniforms.BindConstantBuffer(Hash64("ArbitraryShadowProjection"),  CB::ShadowProj_Arbit, 1);
-            dest._uniforms.BindConstantBuffer(Hash64("LightBuffer"),                CB::LightBuffer, 1);
-            dest._uniforms.BindConstantBuffer(Hash64("ShadowParameters"),           CB::ShadowParam, 1);
-            dest._uniforms.BindConstantBuffer(Hash64("ScreenToShadowProjection"),   CB::ScreenToShadow, 1);
-            dest._uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), CB::ShadowProj_Ortho, 1);
-            dest._uniforms.BindConstantBuffer(Hash64("ShadowResolveParameters"),    CB::ShadowResolveParam, 1);
-            dest._uniforms.BindConstantBuffer(Hash64("ScreenToRTShadowProjection"), CB::ScreenToRTShadow, 1);
-            dest._uniforms.BindConstantBuffer(Hash64("DebuggingGlobals"),           CB::Debugging, 1);
-            dest._uniforms.BindShaderResource(Hash64("RTSListsHead"),               SR::RTShadow_ListHead, 1);
-            dest._uniforms.BindShaderResource(Hash64("RTSLinkedLists"),             SR::RTShadow_LinkedLists, 1);
-            dest._uniforms.BindShaderResource(Hash64("RTSTriangles"),               SR::RTShadow_Triangles, 1);
-
-            if (desc._dynamicLinking==2) {
-                dest._boundClassInterfaces = Metal::BoundClassInterfaces(*dest._shader);
-                dest._boundClassInterfaces.Bind(Hash64("MainResolver"), 0, AsLightResolverInterface(type));
-                dest._boundClassInterfaces.Bind(Hash64("MainCascadeResolver"), 0, AsCascadeResolverInterface(type));
-                dest._boundClassInterfaces.Bind(Hash64("MainShadowResolver"), 0, AsShadowResolverInterface(type));
-                dest._dynamicLinking = true;
-            }
-
+        if (dest._shader)
             ::Assets::RegisterAssetDependency(_validationCallback, dest._shader->GetDependencyValidation());
-        }
     }
 
     auto LightingResolveShaders::GetShader(const LightShaderType& type) -> const LightShader*
     {
         auto index = type.AsIndex();
-        if (index < _shaders.size()) return &_shaders[index];
+        if (index < _shaders.size()) {
+            auto& dest = _shaders[index];
+
+            // attempt to resolve this shader...
+            if (dest._shader && !dest._hasBeenResolved) {
+                using namespace RenderCore;
+                dest._uniforms = Metal::BoundUniforms(*dest._shader);
+
+                Techniques::TechniqueContext::BindGlobalUniforms(dest._uniforms);
+                dest._uniforms.BindConstantBuffer(Hash64("ArbitraryShadowProjection"),  CB::ShadowProj_Arbit, 1);
+                dest._uniforms.BindConstantBuffer(Hash64("LightBuffer"),                CB::LightBuffer, 1);
+                dest._uniforms.BindConstantBuffer(Hash64("ShadowParameters"),           CB::ShadowParam, 1);
+                dest._uniforms.BindConstantBuffer(Hash64("ScreenToShadowProjection"),   CB::ScreenToShadow, 1);
+                dest._uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), CB::ShadowProj_Ortho, 1);
+                dest._uniforms.BindConstantBuffer(Hash64("ShadowResolveParameters"),    CB::ShadowResolveParam, 1);
+                dest._uniforms.BindConstantBuffer(Hash64("ScreenToRTShadowProjection"), CB::ScreenToRTShadow, 1);
+                dest._uniforms.BindConstantBuffer(Hash64("DebuggingGlobals"),           CB::Debugging, 1);
+                dest._uniforms.BindShaderResource(Hash64("ShadowTextures"),             SR::DMShadow, 1);
+                dest._uniforms.BindShaderResource(Hash64("RTSListsHead"),               SR::RTShadow_ListHead, 1);
+                dest._uniforms.BindShaderResource(Hash64("RTSLinkedLists"),             SR::RTShadow_LinkedLists, 1);
+                dest._uniforms.BindShaderResource(Hash64("RTSTriangles"),               SR::RTShadow_Triangles, 1);
+
+                if (_dynamicLinking==2) {
+                    dest._boundClassInterfaces = Metal::BoundClassInterfaces(*dest._shader);
+                    dest._boundClassInterfaces.Bind(Hash64("MainResolver"), 0, AsLightResolverInterface(type));
+                    dest._boundClassInterfaces.Bind(Hash64("MainCascadeResolver"), 0, AsCascadeResolverInterface(type));
+                    dest._boundClassInterfaces.Bind(Hash64("MainShadowResolver"), 0, AsShadowResolverInterface(type));
+                    dest._dynamicLinking = true;
+                }
+                dest._hasBeenResolved = true;
+            }
+
+            return &dest;
+        }
         return nullptr; 
     }
 
@@ -360,15 +370,16 @@ namespace SceneEngine
         using namespace RenderCore;
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         _shaders.resize(LightShaderType::ReservedIndexCount());
+        _dynamicLinking = desc._dynamicLinking;
 
             // find every sensible configuration, and build a new shader
             // and bound uniforms
         BuildShader(desc, LightShaderType(Directional, NoShadows, 0, 0, false));
         BuildShader(desc, LightShaderType(Directional, NoShadows, 1, 0, false));
-        BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 0, 0, false));
-        BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 1, 0, false));
-        BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 0, 1, false));
-        BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 1, 1, false));
+        // BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 0, 0, false));
+        // BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 1, 0, false));
+        // BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 0, 1, false));
+        // BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 1, 1, false));
         BuildShader(desc, LightShaderType(Directional, OrthShadows, 0, 0, false));
         BuildShader(desc, LightShaderType(Directional, OrthShadows, 1, 0, false));
         BuildShader(desc, LightShaderType(Directional, OrthShadows, 0, 1, false));
@@ -377,58 +388,58 @@ namespace SceneEngine
         BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 1, 0, false));
         BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 0, 1, false));
         BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 1, 1, false));
-        BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 0, false));
-        BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 1, 0, false));
-        BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 1, false));
-        BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 1, 1, false));
+        // BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 0, false));
+        // BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 1, 0, false));
+        // BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 1, false));
+        // BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 1, 1, false));
 
-        BuildShader(desc, LightShaderType(Directional, NoShadows, 0, 0, true));
-        BuildShader(desc, LightShaderType(Directional, NoShadows, 1, 0, true));
-        BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 0, 0, true));
-        BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 1, 0, true));
-        BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 0, 1, true));
-        BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 1, 1, true));
-        BuildShader(desc, LightShaderType(Directional, OrthShadows, 0, 0, true));
-        BuildShader(desc, LightShaderType(Directional, OrthShadows, 1, 0, true));
-        BuildShader(desc, LightShaderType(Directional, OrthShadows, 0, 1, true));
-        BuildShader(desc, LightShaderType(Directional, OrthShadows, 1, 1, true));
-        BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 0, 0, true));
-        BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 1, 0, true));
-        BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 0, 1, true));
-        BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 1, 1, true));
-        BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 0, true));
-        BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 1, 0, true));
-        BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 1, true));
-        BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 1, 1, true));
-
-        BuildShader(desc, LightShaderType(Sphere, NoShadows, 0, 0, false));
-        BuildShader(desc, LightShaderType(Sphere, NoShadows, 1, 0, false));
-        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 0, false));
-        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 0, false));
-        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 1, false));
-        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 1, false));
-
-        BuildShader(desc, LightShaderType(Sphere, NoShadows, 0, 0, true));
-        BuildShader(desc, LightShaderType(Sphere, NoShadows, 1, 0, true));
-        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 0, true));
-        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 0, true));
-        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 1, true));
-        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 1, true));
-
-        BuildShader(desc, LightShaderType(Tube, NoShadows, 0, 0, false));
-        BuildShader(desc, LightShaderType(Tube, NoShadows, 1, 0, false));
-        BuildShader(desc, LightShaderType(Tube, NoShadows, 0, 0, true));
-        BuildShader(desc, LightShaderType(Tube, NoShadows, 1, 0, true));
-
-        BuildShader(desc, LightShaderType(Rectangle, NoShadows, 0, 0, false));
-        BuildShader(desc, LightShaderType(Rectangle, NoShadows, 1, 0, false));
-        BuildShader(desc, LightShaderType(Rectangle, NoShadows, 0, 0, true));
-        BuildShader(desc, LightShaderType(Rectangle, NoShadows, 1, 0, true));
-
-        BuildShader(desc, LightShaderType(Disc, NoShadows, 0, 0, false));
-        BuildShader(desc, LightShaderType(Disc, NoShadows, 1, 0, false));
-        BuildShader(desc, LightShaderType(Disc, NoShadows, 0, 0, true));
-        BuildShader(desc, LightShaderType(Disc, NoShadows, 1, 0, true));
+        // BuildShader(desc, LightShaderType(Directional, NoShadows, 0, 0, true));
+        // BuildShader(desc, LightShaderType(Directional, NoShadows, 1, 0, true));
+        // BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 0, 0, true));
+        // BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 1, 0, true));
+        // BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 0, 1, true));
+        // BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 1, 1, true));
+        // BuildShader(desc, LightShaderType(Directional, OrthShadows, 0, 0, true));
+        // BuildShader(desc, LightShaderType(Directional, OrthShadows, 1, 0, true));
+        // BuildShader(desc, LightShaderType(Directional, OrthShadows, 0, 1, true));
+        // BuildShader(desc, LightShaderType(Directional, OrthShadows, 1, 1, true));
+        // BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 0, 0, true));
+        // BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 1, 0, true));
+        // BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 0, 1, true));
+        // BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 1, 1, true));
+        // BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 0, true));
+        // BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 1, 0, true));
+        // BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 1, true));
+        // BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 1, 1, true));
+        // 
+        // BuildShader(desc, LightShaderType(Sphere, NoShadows, 0, 0, false));
+        // BuildShader(desc, LightShaderType(Sphere, NoShadows, 1, 0, false));
+        // BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 0, false));
+        // BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 0, false));
+        // BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 1, false));
+        // BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 1, false));
+        // 
+        // BuildShader(desc, LightShaderType(Sphere, NoShadows, 0, 0, true));
+        // BuildShader(desc, LightShaderType(Sphere, NoShadows, 1, 0, true));
+        // BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 0, true));
+        // BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 0, true));
+        // BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 1, true));
+        // BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 1, true));
+        // 
+        // BuildShader(desc, LightShaderType(Tube, NoShadows, 0, 0, false));
+        // BuildShader(desc, LightShaderType(Tube, NoShadows, 1, 0, false));
+        // BuildShader(desc, LightShaderType(Tube, NoShadows, 0, 0, true));
+        // BuildShader(desc, LightShaderType(Tube, NoShadows, 1, 0, true));
+        // 
+        // BuildShader(desc, LightShaderType(Rectangle, NoShadows, 0, 0, false));
+        // BuildShader(desc, LightShaderType(Rectangle, NoShadows, 1, 0, false));
+        // BuildShader(desc, LightShaderType(Rectangle, NoShadows, 0, 0, true));
+        // BuildShader(desc, LightShaderType(Rectangle, NoShadows, 1, 0, true));
+        // 
+        // BuildShader(desc, LightShaderType(Disc, NoShadows, 0, 0, false));
+        // BuildShader(desc, LightShaderType(Disc, NoShadows, 1, 0, false));
+        // BuildShader(desc, LightShaderType(Disc, NoShadows, 0, 0, true));
+        // BuildShader(desc, LightShaderType(Disc, NoShadows, 1, 0, true));
     }
 
     LightingResolveShaders::~LightingResolveShaders() {}

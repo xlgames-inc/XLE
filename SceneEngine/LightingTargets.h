@@ -31,6 +31,8 @@ namespace SceneEngine
         static const Name GBufferParameters = 6u;
         static const Name PostMSAALightResolve = 7u;
 
+        static const Name ShadowDepthMap = 20u;
+
         using SRV = RenderCore::Metal::ShaderResourceView;
 
         virtual unsigned                        GetGBufferType() const = 0;
@@ -100,11 +102,13 @@ namespace SceneEngine
         {
         public:
             const ShaderProgram*    _shader;
+
             BoundUniforms           _uniforms;
             BoundClassInterfaces    _boundClassInterfaces;
+            bool                    _hasBeenResolved;
             bool                    _dynamicLinking;
 
-            LightShader() : _shader(nullptr), _dynamicLinking(false) {}
+            LightShader() : _shader(nullptr), _dynamicLinking(false), _hasBeenResolved(false) {}
         };
 
         struct CB
@@ -127,6 +131,7 @@ namespace SceneEngine
         {
             enum
             {
+                DMShadow,
                 RTShadow_ListHead,
                 RTShadow_LinkedLists,
                 RTShadow_Triangles,
@@ -143,6 +148,7 @@ namespace SceneEngine
     private:
         ::Assets::DepValPtr _validationCallback;
         std::vector<LightShader> _shaders;
+        unsigned _dynamicLinking;
 
         void BuildShader(const Desc& desc, const LightShaderType& type);
     };

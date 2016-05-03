@@ -581,7 +581,10 @@ namespace SceneEngine
             context->Bind(Techniques::CommonResources()._blendOpaque);
             SetupVertexGeneratorShader(*context);
             context->Bind(*fogShaders._buildExponentialShadowMap);
-            context->BindPS(MakeResourceList(2, shadowFrustum._shadowTextureSRV));
+
+            auto* shadowSRV = context->GetNamedResources().GetSRV(shadowFrustum._shadowTextureName);
+            assert(shadowSRV);
+            context->BindPS(MakeResourceList(2, *shadowSRV));
 
             ///////////////////////////////////////////////////////////////////////////////////////
 

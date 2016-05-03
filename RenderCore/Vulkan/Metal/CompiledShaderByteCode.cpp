@@ -448,11 +448,11 @@ namespace RenderCore { namespace Metal_Vulkan
         ext.GL_KHR_vulkan_glsl = 1;
         GLSLCrossDependencyData depData = {};
         GLSLShader glslShader;
+        unsigned hlslccFlags = HLSLCC_FLAG_UNIFORM_BUFFER_OBJECT | HLSLCC_FLAG_INOUT_SEMANTIC_NAMES;
         auto* bytecodeStart = (const char*)PtrAdd(AsPointer(hlslBytecode->begin()), sizeof(ShaderService::ShaderHeader));
         auto translateResult = TranslateHLSLFromMem(
             bytecodeStart,
-            HLSLCC_FLAG_UNIFORM_BUFFER_OBJECT | HLSLCC_FLAG_INOUT_SEMANTIC_NAMES 
-            /* | HLSLCC_FLAG_COMBINE_TEXTURE_SAMPLERS */,
+            hlslccFlags,
             LANG_440, &ext, &depData, 
             &EvaluateBinding, rootSig.get(),
             &glslShader);

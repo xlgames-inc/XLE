@@ -183,11 +183,13 @@ namespace SceneEngine
         // 11: ShadowResolveParameters
         // 12: ShadowParameters
 
-        metalContext.BindPS(MakeResourceList( 3, dominantLight._shadowTextureSRV));
+        auto* shadowSRV = metalContext.GetNamedResources().GetSRV(dominantLight._shadowTextureName);
+        assert(shadowSRV);
+        metalContext.BindPS(MakeResourceList(3, *shadowSRV));
 
         auto samplingCount = 1; // ...?
         auto& resolveRes = Techniques::FindCachedBoxDep2<LightingResolveResources>(samplingCount);
-        metalContext.BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
+        metalContext.BindPS_G(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
 
         metalContext.BindPS(MakeResourceList(11, 
             dominantLight._resolveParametersCB,
@@ -352,14 +354,14 @@ namespace SceneEngine
             //          we could just use the gbuffer as an input attachment
             FrameBufferDesc resolveLighting(
                 {
+                    SubpassDesc({IMainTargets::LightResolve}, IMainTargets::MultisampledDepth)
+                },
+                {
                     // light resolve target
-                    {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
                         (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
                         AttachmentDesc::LoadStore::DontCare, AttachmentDesc::LoadStore::Retain,
                         IMainTargets::LightResolve, AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource }
-                },
-                {
-                    SubpassDesc({IMainTargets::LightResolve}, IMainTargets::MultisampledDepth)
                 },
                 sampling);
 
@@ -548,7 +550,7 @@ namespace SceneEngine
         const Metal::ConstantBuffer* prebuiltConstantBuffers[] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
         static_assert(dimof(prebuiltConstantBuffers)==CB::Max, "Prebuilt constant buffer array incorrect size");
 
-        const Metal::ShaderResourceView* srvs[] = { nullptr, nullptr, nullptr };
+        const Metal::ShaderResourceView* srvs[] = { nullptr, nullptr, nullptr, nullptr };
         static_assert(dimof(srvs)==SR::Max, "Shader resource array incorrect size");
         
         prebuiltConstantBuffers[CB::ShadowParam] = &Techniques::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32;
@@ -595,7 +597,8 @@ namespace SceneEngine
                     assert(parserContext._preparedDMShadows[shadowFrustumIndex].second.IsReady());
 
                     const auto& preparedShadows = parserContext._preparedDMShadows[shadowFrustumIndex].second;
-                    context.BindPS(MakeResourceList(3, preparedShadows._shadowTextureSRV));
+                    srvs[SR::DMShadow] = context.GetNamedResources().GetSRV(preparedShadows._shadowTextureName);
+                    assert(srvs[SR::DMShadow]);
                     prebuiltConstantBuffers[CB::ShadowProj_Arbit] = &preparedShadows._arbitraryCB;
                     prebuiltConstantBuffers[CB::ShadowProj_Ortho] = &preparedShadows._orthoCB;
                     prebuiltConstantBuffers[CB::ShadowResolveParam] = &preparedShadows._resolveParametersCB;

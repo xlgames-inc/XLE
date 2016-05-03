@@ -243,10 +243,8 @@ namespace Sample
         }
 
         // begin a default render pass just rendering to the presentation buffer (which is always target "0")
-        RenderCore::FrameBufferDesc fbDesc(
-            {}, {RenderCore::SubpassDesc({0})});
         context.BeginRenderPass(
-            fbDesc,
+            {{RenderCore::SubpassDesc({0})}},
             RenderCore::FrameBufferProperties{viewContext->_width, viewContext->_height, 0u},
             RenderCore::RenderPassBeginDesc());
 

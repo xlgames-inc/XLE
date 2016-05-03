@@ -41,8 +41,8 @@ namespace RenderCore
     }
 
     FrameBufferDesc::FrameBufferDesc(
-        IteratorRange<const AttachmentDesc*> attachments,
         IteratorRange<const SubpassDesc*> subpasses,
+        IteratorRange<const AttachmentDesc*> attachments,
         const TextureSamples& samples)
     : _attachments(attachments.begin(), attachments.end())
     , _subpasses(subpasses.begin(), subpasses.end())

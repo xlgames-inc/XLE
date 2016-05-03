@@ -659,7 +659,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
             auto dstAspectMask = AsImageAspectMask(dstDesc._textureDesc._format);
 
-            VkBufferImageCopy copyOps[96];
+            VkBufferImageCopy copyOps[8];
 
             auto arrayCount = std::max(1u, (unsigned)srcDesc._textureDesc._arrayCount);
 		    auto mips = std::max(1u, (unsigned)std::min(srcDesc._textureDesc._mipCount, dstDesc._textureDesc._mipCount));

@@ -12,12 +12,13 @@
 #include "../Utility/Misc.h"
 #include "../Utility/MathConstants.h"
 #include "../Deferred/resolvertshadows.h"
+#include "../Binding.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     //   I N P U T S
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-Texture2DArray 	ShadowTextures 	: register(t3);
-Texture2D		NoiseTexture	: register(t10);
+Texture2DArray 	ShadowTextures;
+Texture2D		NoiseTexture	TEXTURE_GLOBAL_10;
 
 #if !defined(SHADOW_RESOLVE_MODEL)
     #define SHADOW_RESOLVE_MODEL 0

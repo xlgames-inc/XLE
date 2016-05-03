@@ -46,6 +46,7 @@
 #define TEXTURE_DYNAMIC_4 : register(t34)
 #define TEXTURE_DYNAMIC_5 : register(t35)
 
+#define TEXTURE_GLOBAL_10 : register(t10)
 #define TEXTURE_GLOBAL_14 : register(t14)
 #define TEXTURE_GLOBAL_15 : register(t15)
 

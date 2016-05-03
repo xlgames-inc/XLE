@@ -85,7 +85,7 @@ namespace SceneEngine
     class PreparedDMShadowFrustum : public PreparedShadowFrustum
     {
     public:
-        SRV                         _shadowTextureSRV;
+        uint32                      _shadowTextureName;
         CB_ShadowResolveParameters  _resolveParameters;
         CB                          _resolveParametersCB;
 

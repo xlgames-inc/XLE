@@ -100,12 +100,23 @@ namespace RenderCore { namespace Metal_Vulkan
             initializer = temp;
         }
 
-        Throw(Exceptions::BasicLabel("Unimplemented"));
+        if (soInitializers._outputBufferCount != 0)
+            Throw(Exceptions::BasicLabel("Unimplemented"));
+
+        const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
+        assert(compiledShader.GetStage() == ShaderStage::Geometry);
+        auto byteCode = compiledShader.GetByteCode();
+        _underlying = GetObjectFactory().CreateShaderModule(byteCode.first, byteCode.second);
     }
 
     GeometryShader::GeometryShader(const CompiledShaderByteCode& compiledShader, const StreamOutputInitializers& soInitializers)
     {
-        Throw(Exceptions::BasicLabel("Unimplemented"));
+        if (soInitializers._outputBufferCount != 0)
+            Throw(Exceptions::BasicLabel("Unimplemented"));
+
+        assert(compiledShader.GetStage() == ShaderStage::Geometry);
+        auto byteCode = compiledShader.GetByteCode();
+        _underlying = GetObjectFactory().CreateShaderModule(byteCode.first, byteCode.second);
     }
 
     GeometryShader::GeometryShader() {}
@@ -116,7 +127,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
     auto GeometryShader::GetDefaultStreamOutputInitializers() -> const StreamOutputInitializers&
     {
-        Throw(Exceptions::BasicLabel("Unimplemented"));
+        static StreamOutputInitializers s_defaults;
+        return s_defaults;
     }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

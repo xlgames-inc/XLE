@@ -88,15 +88,15 @@ namespace RenderCore
         uint64                                  GetHash() const         { return _hash; }
 
 		FrameBufferDesc(
-            IteratorRange<const AttachmentDesc*> attachments,
             IteratorRange<const SubpassDesc*> subpasses,
+            IteratorRange<const AttachmentDesc*> attachments = IteratorRange<const AttachmentDesc*>(),
             const TextureSamples& samples = TextureSamples::Create());
 		FrameBufferDesc();
 		~FrameBufferDesc();
 
 	private:
-        std::vector<AttachmentDesc>     _attachments;
         std::vector<SubpassDesc>        _subpasses;
+        std::vector<AttachmentDesc>     _attachments;
         TextureSamples                  _samples;
         uint64                          _hash;
 	};
