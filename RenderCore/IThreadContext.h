@@ -8,7 +8,7 @@
 
 #include "IThreadContext_Forward.h"
 #include "IDevice_Forward.h"
-#include "../Math/Vector.h"
+#include "../Utility/IteratorUtils.h"
 #include <memory>
 
 #if OUTPUT_DLL
@@ -25,7 +25,7 @@ namespace RenderCore
     class ThreadContextStateDesc
     {
     public:
-        Int2 _viewportDimensions;
+        VectorPattern<unsigned, 2> _viewportDimensions;
         unsigned _frameId;
     };
 

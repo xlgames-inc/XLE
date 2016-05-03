@@ -1669,10 +1669,16 @@ namespace BufferUploads
                                 //      into the staging object, and then submit to the final result.
                                 //
 
-                            auto stagingBox = Box2D{
-                                0, 0, 
-                                uploadStep._destinationBox._right - uploadStep._destinationBox._left,
-                                uploadStep._destinationBox._bottom - uploadStep._destinationBox._top};
+                            Box2D stagingBox;
+                            const bool stageInTopLeftCorner = false;
+                            if (constant_expression<stageInTopLeftCorner>::result()) {
+                                stagingBox = Box2D{
+                                    0, 0, 
+                                    uploadStep._destinationBox._right - uploadStep._destinationBox._left,
+                                    uploadStep._destinationBox._bottom - uploadStep._destinationBox._top};
+                            } else {
+                                stagingBox = uploadStep._destinationBox;
+                            }
 
                             auto finalDesc = ApplyLODOffset(transaction->_desc, transaction->_actualisedStagingLODOffset);
                             auto mipOffset = transaction->_actualisedStagingLODOffset;
@@ -1697,7 +1703,8 @@ namespace BufferUploads
                             context.GetDeviceContext().UpdateFinalResourceFromStaging(
                                 *transaction->_finalResource->GetUnderlying(), *transaction->_stagingResource->GetUnderlying(), transaction->_desc, 
                                 uploadStep._lodLevelMin, uploadStep._lodLevelMax, transaction->_actualisedStagingLODOffset,
-                                {(unsigned)uploadStep._destinationBox._left, (unsigned)uploadStep._destinationBox._top});
+                                {(unsigned)uploadStep._destinationBox._left, (unsigned)uploadStep._destinationBox._top},
+                                stagingBox);
 
                         } else {                                    //~~//////////////////////~~//
 

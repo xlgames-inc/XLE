@@ -41,7 +41,7 @@ namespace PlatformRig
     static void SaveImage(
         const char destinationFile[],
         const void* imageData,
-        UInt2 dimensions,
+        VectorPattern<unsigned,2> dimensions,
         unsigned rowPitch,
         Format format)
     {
@@ -91,7 +91,7 @@ namespace PlatformRig
         } else {
             tilesX = sampleCount[0];
             tilesY = sampleCount[1];
-            tileDims = qualitySettings._dimensions;
+            tileDims = UInt2(qualitySettings._dimensions[0], qualitySettings._dimensions[1]);
             activeDims = tileDims;
         }
         auto tileQualSettings = qualitySettings;
@@ -147,7 +147,7 @@ namespace PlatformRig
                     samplingPassIndex = x + y*tilesX;
                     samplingPassCount = tilesX*tilesY;
                 }
-                tileQualSettings._dimensions = UInt2(viewWidth+2*skirt, viewHeight+2*skirt);
+                tileQualSettings._dimensions = {viewWidth+2*skirt, viewHeight+2*skirt};
                 auto rtDesc = TextureDesc::Plain2D(viewWidth+2*skirt, viewHeight+2*skirt, format);
                 target = TargetType(rtDesc, "HighResScreenShot");
 
@@ -252,7 +252,7 @@ namespace PlatformRig
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static intrusive_ptr<BufferUploads::DataPacket> BoxFilterR16G16B16A16F(
-		BufferUploads::DataPacket& highRes, UInt2 srcDims, UInt2 downsample,
+		BufferUploads::DataPacket& highRes, VectorPattern<unsigned,2> srcDims, VectorPattern<unsigned,2> downsample,
         bool interleavedTiles)
     {
         const auto bpp = unsigned(sizeof(uint16)*4*8);
@@ -314,7 +314,7 @@ namespace PlatformRig
     static intrusive_ptr<BufferUploads::DataPacket> DoToneMap(
         IThreadContext& context,
         LightingParserContext& parserContext,
-		BufferUploads::DataPacket& inputImage, UInt2 dimensions,
+		BufferUploads::DataPacket& inputImage, VectorPattern<unsigned,2> dimensions,
 		Format preFilterFormat,
         Format postFilterFormat,
         const SceneEngine::ToneMapSettings& toneMapSettings)

@@ -471,7 +471,8 @@ namespace Overlays
             //      We need to create a LightingParserContext, and ISceneParser as well.
             //      Cameras and lights should be arranged to suit the bounding box given. Let's use 
             //      orthogonal projection to make sure the object is positioned within the output viewport well.
-        SceneEngine::RenderingQualitySettings qualitySettings(context.GetStateDesc()._viewportDimensions);
+        auto viewDims = context.GetStateDesc()._viewportDimensions;
+        SceneEngine::RenderingQualitySettings qualitySettings(UInt2(viewDims[0], viewDims[1]));
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
 
         auto sceneParser = ToolsRig::CreateModelScene(model);
@@ -508,7 +509,7 @@ namespace Overlays
         const unsigned offscreenDims = ModelBrowserItemDimensions;
         metalContext->Bind(RenderCore::MakeResourceList(_pimpl->_rtv), &_pimpl->_dsv);
         metalContext->Bind(RenderCore::Metal::ViewportDesc(0, 0, float(offscreenDims), float(offscreenDims), 0.f, 1.f));
-        metalContext->Clear(_pimpl->_rtv, Float4(0.f, 0.f, 0.f, 1.f));
+        metalContext->Clear(_pimpl->_rtv, {0.f, 0.f, 0.f, 1.f});
         metalContext->Clear(_pimpl->_dsv, 1.f, 0);
         metalContext->Bind(RenderCore::Metal::Topology::TriangleList);
         RenderModel(context, model);

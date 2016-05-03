@@ -683,7 +683,7 @@ namespace RenderCore { namespace Metal_Vulkan
                         c.bufferOffset += 
                               src._leftTopFront[2] * mipOffset._pitches._slicePitch
                             + src._leftTopFront[1] * mipOffset._pitches._rowPitch
-                            + src._leftTopFront[0] * BitsPerPixel(srcDesc._textureDesc._format);
+                            + src._leftTopFront[0] * BitsPerPixel(srcDesc._textureDesc._format) / 8;
                     }
                     c.bufferRowLength = std::max(width, minDims);
                     c.bufferImageHeight = std::max(height, minDims);

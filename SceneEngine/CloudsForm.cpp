@@ -1213,7 +1213,7 @@ namespace SceneEngine
         TRY {
 
             auto maxCoords = context->GetStateDesc()._viewportDimensions;
-            Rect rect(Coord2(0,0), maxCoords);
+            Rect rect(Coord2(0,0), Coord2(maxCoords[0], maxCoords[1]));
             Layout completeLayout(rect);
 
             auto& res = RenderCore::Techniques::FindCachedBox2<WidgetResources>();

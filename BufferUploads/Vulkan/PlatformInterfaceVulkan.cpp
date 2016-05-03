@@ -66,7 +66,8 @@
 			UnderlyingResource& finalResource, UnderlyingResource& staging, 
 			const BufferDesc& destinationDesc, 
             unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset,
-            VectorPattern<unsigned, 2> stagingXYOffset)
+            VectorPattern<unsigned, 2> stagingXYOffset,
+            const Box2D& srcBox)
         {
             auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             auto allLods = 
@@ -94,8 +95,15 @@
                     for (unsigned c=lodLevelMin; c<=lodLevelMax; ++c) {
                         Metal::CopyPartial(
                             *metalContext,
-                            Metal::CopyPartial_Dest(&finalResource, Metal::Resource::SubResource{c, a}, {stagingXYOffset[0], stagingXYOffset[1], 0}),
-                            Metal::CopyPartial_Src(&staging, Metal::Resource::SubResource{c-stagingLODOffset, a}));
+                            Metal::CopyPartial_Dest(
+                                &finalResource, 
+                                Metal::Resource::SubResource{c, a}, {stagingXYOffset[0], stagingXYOffset[1], 0}),
+                            Metal::CopyPartial_Src(
+                                &staging, 
+                                Metal::Resource::SubResource{c-stagingLODOffset, a},
+                                {(unsigned)srcBox._left, (unsigned)srcBox._top, 0u},
+                                {(unsigned)srcBox._right, (unsigned)srcBox._bottom, 1u}),
+                            Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::TransferSrcOptimal);
                     }
                 }
             }

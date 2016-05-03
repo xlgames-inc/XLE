@@ -66,7 +66,8 @@ namespace BufferUploads { namespace PlatformInterface
             UnderlyingResource& finalResource, UnderlyingResource& staging,
             const BufferDesc& destinationDesc, unsigned lodLevelMin=~unsigned(0x0), unsigned lodLevelMax=~unsigned(0x0), 
             unsigned stagingLODOffset=0,
-            VectorPattern<unsigned, 2> stagingXYOffset = {0,0});
+            VectorPattern<unsigned, 2> destXYOffset = {0,0},
+            const RenderCore::Box2D& srcBox = RenderCore::Box2D());
 
             ////////   R E S O U R C E   C O P Y   ////////
         void ResourceCopy_DefragSteps(UnderlyingResource& destination, UnderlyingResource& source, const std::vector<Utility::DefragStep>& steps);

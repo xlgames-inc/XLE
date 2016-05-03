@@ -938,7 +938,7 @@ namespace RenderCore
 
     auto ThreadContext::GetStateDesc() const -> ThreadContextStateDesc
     {
-		return {};
+		return ThreadContextStateDesc { _metalContext->GetPresentationTargetDims(), _frameId };
     }
 
 	void ThreadContext::InvalidateCachedState() const {}

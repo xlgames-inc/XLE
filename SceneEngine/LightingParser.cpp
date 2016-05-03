@@ -186,7 +186,7 @@ namespace SceneEngine
 
     RenderCore::Techniques::ProjectionDesc BuildProjectionDesc(
         const RenderCore::Techniques::CameraDesc& sceneCamera,
-        UInt2 viewportDims, const Float4x4* specialProjectionMatrix)
+        VectorPattern<unsigned, 2> viewportDims, const Float4x4* specialProjectionMatrix)
     {
         const float aspectRatio = viewportDims[0] / float(viewportDims[1]);
         auto cameraToProjection = Techniques::Projection(sceneCamera, aspectRatio);
@@ -1382,7 +1382,7 @@ namespace SceneEngine
     }
 
     RenderingQualitySettings::RenderingQualitySettings(
-        UInt2 dimensions, 
+        VectorPattern<unsigned, 2> dimensions, 
         LightingModel lightingModel, unsigned samplingCount, unsigned samplingQuality)
     : _dimensions(dimensions), _lightingModel(lightingModel), _samplingCount(samplingCount), _samplingQuality(samplingQuality)
     {}

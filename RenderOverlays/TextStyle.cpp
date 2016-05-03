@@ -32,8 +32,6 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 
-#include "../RenderCore/DX11/Metal/IncludeDX11.h"
-
 namespace RenderOverlays
 {
 

@@ -9,6 +9,15 @@
 
 #include "Transform.h"
 
+#define NDC_POSITIVE 1
+#define NDC_POSITIVE_RIGHT_HANDED 2
+
+#if VULKAN
+	#define NDC NDC_POSITIVE_RIGHT_HANDED
+#else
+	#define NDC NDC_POSITIVE
+#endif
+
 struct ViewFrustumInterpolator
 {
 	float3 oViewFrustumVector : VIEWFRUSTUMVECTOR;
@@ -25,7 +34,7 @@ struct FullscreenCorner
 FullscreenCorner MakeFullscreenCorner(uint vertexId)
 {
 	FullscreenCorner result;
-	#if VULKAN
+	#if NDC == NDC_POSITIVE_RIGHT_HANDED
 		vertexId ^= 1;		// xor bit 1 to flip Y coord
 	#endif
 
@@ -34,7 +43,7 @@ FullscreenCorner MakeFullscreenCorner(uint vertexId)
 	result.texCoord = result.coord;
 	result.vfi.oViewFrustumVector = FrustumCorners[vertexId].xyz;
 
-	#if VULKAN
+	#if NDC == NDC_POSITIVE_RIGHT_HANDED
 		result.texCoord.y = 1.0f - result.texCoord.y;
 	#endif
 
@@ -121,9 +130,17 @@ cbuffer ReciprocalViewportDimensionsCB
 
 float4 PixelCoordToSVPosition(float2 pixelCoord)
 {
-	return float4(	pixelCoord.x * ReciprocalViewportDimensions.x  *  2.f - 1.f,
+	// This is a kind of viewport transform -- unfortunately it needs to
+	// be customized for vulkan because of the different NDC space
+#if NDC == NDC_POSITIVE_RIGHT_HANDED
+	return float4(	pixelCoord.x * ReciprocalViewportDimensions.x *  2.f - 1.f,
+					pixelCoord.y * ReciprocalViewportDimensions.y *  2.f - 1.f,
+					0.f, 1.f);
+#else
+	return float4(	pixelCoord.x * ReciprocalViewportDimensions.x *  2.f - 1.f,
 					pixelCoord.y * ReciprocalViewportDimensions.y * -2.f + 1.f,
 					0.f, 1.f);
+#endif
 }
 
 float4 P2C(		float2 iPosition : POSITION0,

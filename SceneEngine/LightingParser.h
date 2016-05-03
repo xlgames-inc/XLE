@@ -11,6 +11,7 @@
 #include "../RenderCore/Metal/TextureView.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../Math/Matrix.h"
+#include "../Utility/IteratorUtils.h"
 #include <functional>
 
 namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; } }
@@ -24,7 +25,7 @@ namespace SceneEngine
     class RenderingQualitySettings
     {
     public:
-        UInt2       _dimensions;
+        VectorPattern<unsigned, 2>  _dimensions;
         unsigned    _samplingCount, _samplingQuality;
 
         enum class LightingModel
@@ -37,7 +38,7 @@ namespace SceneEngine
 
         RenderingQualitySettings();
         RenderingQualitySettings(
-            UInt2 dimensions,
+            VectorPattern<unsigned, 2> dimensions,
             LightingModel lightingModel = LightingModel::Deferred,
             unsigned samplingCount = 1,
             unsigned samplingQuality = 0);
@@ -135,7 +136,7 @@ namespace SceneEngine
     /// <summary>Build a projection desc with parameters from a standard camera</summary>
     RenderCore::Techniques::ProjectionDesc BuildProjectionDesc(
         const RenderCore::Techniques::CameraDesc& sceneCamera,
-        UInt2 viewportDims, 
+        VectorPattern<unsigned, 2> viewportDims, 
         const Float4x4* specialProjectionMatrix = nullptr);
 
     /// <summary>Build a projection desc for an orthogonal camera</summary>

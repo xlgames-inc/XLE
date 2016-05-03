@@ -1032,7 +1032,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         _currentInteractables = Interactables();
         
         auto maxCoords = context->GetStateDesc()._viewportDimensions;
-        Rect    rect(Coord2(0,0), maxCoords);
+        Rect    rect(Coord2(0,0), Coord2(maxCoords[0], maxCoords[1]));
         Layout  completeLayout(rect);
         
 			//	awkward method for allocating a ImmediateOverlayContext that is aligned
