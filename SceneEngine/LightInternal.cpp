@@ -8,6 +8,7 @@
 #include "LightDesc.h"
 #include "SceneEngineUtils.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Utility/MemoryUtils.h"
@@ -380,9 +381,15 @@ namespace SceneEngine
         #endif
 
         basis._xyScale[0] =  2.f / cameraToProjection(0,0);
-        basis._xyScale[1] = -2.f / cameraToProjection(1,1);
         basis._xyTrans[0] = -1.f / cameraToProjection(0,0) + cameraToProjection(0,2) / cameraToProjection(0,0);
-        basis._xyTrans[1] =  1.f / cameraToProjection(1,1) + cameraToProjection(1,2) / cameraToProjection(1,1);
+
+        if (RenderCore::Techniques::GetDefaultClipSpaceType() == ClipSpaceType::PositiveRightHanded) {
+            basis._xyScale[1] =  2.f / cameraToProjection(1,1);
+            basis._xyTrans[1] = -1.f / cameraToProjection(1,1) + cameraToProjection(1,2) / cameraToProjection(1,1);
+        } else {
+            basis._xyScale[1] = -2.f / cameraToProjection(1,1);
+            basis._xyTrans[1] =  1.f / cameraToProjection(1,1) + cameraToProjection(1,2) / cameraToProjection(1,1);
+        }
 
         for (unsigned c=0; c<unsigned(frustumCount); ++c) {
             auto& worldToShadowProj = arbitraryCB._worldToProj[c];

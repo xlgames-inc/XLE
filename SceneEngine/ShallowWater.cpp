@@ -1214,7 +1214,9 @@ namespace SceneEngine
         };
     
         Float3 absFrustumCorners[8];
-        CalculateAbsFrustumCorners(absFrustumCorners, parserContext.GetProjectionDesc()._worldToProjection);
+        CalculateAbsFrustumCorners(
+            absFrustumCorners, parserContext.GetProjectionDesc()._worldToProjection,
+            RenderCore::Techniques::GetDefaultClipSpaceType());
 
             // use the weights to find positions on the near and far plane...
         return std::make_pair(

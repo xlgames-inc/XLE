@@ -283,7 +283,7 @@ namespace SceneEngine
             //      and the water plane.
             //
         Float3 cameraAbsFrustumCorners[8];
-        CalculateAbsFrustumCorners(cameraAbsFrustumCorners, localToProjection);
+        CalculateAbsFrustumCorners(cameraAbsFrustumCorners, localToProjection, RenderCore::Techniques::GetDefaultClipSpaceType());
 
         const std::pair<unsigned, unsigned> edges[] = 
         {
@@ -441,7 +441,7 @@ namespace SceneEngine
             // our invert calculation is not accurate enough to calculate the near plane coordinates correctly
 
         Float3 gridProjAbsFrustumCorners[8];
-        CalculateAbsFrustumCorners(gridProjAbsFrustumCorners, gridProjection);
+        CalculateAbsFrustumCorners(gridProjAbsFrustumCorners, gridProjection, RenderCore::Techniques::GetDefaultClipSpaceType());
 
             // shader needs frustum corners relative to the projection view point
             //      (ie, it's the direction to the frustum corners from the projection
@@ -472,7 +472,7 @@ namespace SceneEngine
         if (CalculateGridProjection(gridConstants, mainCameraProjection, oceanBaseHeight, 1.f)) {
 
             Float3 cameraAbsFrustumCorners[8];
-            CalculateAbsFrustumCorners(cameraAbsFrustumCorners, mainCameraProjection._worldToProjection);
+            CalculateAbsFrustumCorners(cameraAbsFrustumCorners, mainCameraProjection._worldToProjection, RenderCore::Techniques::GetDefaultClipSpaceType());
 
             struct Vertex
             {

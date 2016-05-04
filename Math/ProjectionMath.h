@@ -11,10 +11,6 @@
 
 namespace XLEMath
 {
-    void CalculateAbsFrustumCorners(
-        Float3 frustumCorners[8],
-        const Float4x4& worldToProjection);
-
     namespace AABBIntersection {
         enum Enum { Culled, Within, Boundary };
     }
@@ -72,6 +68,11 @@ namespace XLEMath
     Float4x4 OrthogonalProjection(
         float l, float t, float r, float b,
         float nearClipPlane, float farClipPlane,
+        ClipSpaceType::Enum clipSpaceType);
+
+    void CalculateAbsFrustumCorners(
+        Float3 frustumCorners[8],
+        const Float4x4& worldToProjection,
         ClipSpaceType::Enum clipSpaceType);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

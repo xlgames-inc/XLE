@@ -68,7 +68,7 @@ namespace RenderCore { namespace Techniques
         auto projectionMatrix = Projection(sceneCamera, viewportAspect);
 
         auto worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
-        CalculateAbsFrustumCorners(frustumCorners, worldToProjection);
+        CalculateAbsFrustumCorners(frustumCorners, worldToProjection, RenderCore::Techniques::GetDefaultClipSpaceType());
 
         Float3 cameraPosition = ExtractTranslation(sceneCamera._cameraToWorld);
         return XLEMath::BuildRayUnderCursor(
@@ -112,7 +112,7 @@ namespace RenderCore { namespace Techniques
         if (constant_expression<cornersMode == FromWorldToClip>::result()) {
 
             Float3 absFrustumCorners[8];
-            CalculateAbsFrustumCorners(absFrustumCorners, globalTransform._worldToClip);
+            CalculateAbsFrustumCorners(absFrustumCorners, globalTransform._worldToClip, RenderCore::Techniques::GetDefaultClipSpaceType());
             for (unsigned c=0; c<4; ++c) {
                 globalTransform._frustumCorners[c] = 
                     Expand(Float3(absFrustumCorners[4+c] - globalTransform._worldSpaceView), 1.f);

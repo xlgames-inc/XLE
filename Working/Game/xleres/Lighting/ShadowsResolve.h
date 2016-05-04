@@ -340,7 +340,12 @@ float ResolveShadows_Cascade(
     float2 texCoords;
     float comparisonDistance;
     texCoords = cascadeNormCoords.xy / cascadeNormCoords.w;
-    texCoords = float2(0.5f + 0.5f * texCoords.x, 0.5f - 0.5f * texCoords.y);
+    #if VULKAN      // hack for NDC handiness in Vulkan
+        texCoords = 0.5.xx + 0.5f * texCoords.xy;
+    #else
+        texCoords = float2(0.5f + 0.5f * texCoords.x, 0.5f - 0.5f * texCoords.y);
+    #endif
+
     comparisonDistance = cascadeNormCoords.z / cascadeNormCoords.w;
 
             // 	When hybrid shadows are enabled, the first cascade might be

@@ -711,7 +711,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     HexahedronCorners HexahedronCorners::FromFrustumCorners(const Float4x4& worldToProjection)
     {
         HexahedronCorners result;
-        CalculateAbsFrustumCorners(result._worldSpacePts, worldToProjection);
+        CalculateAbsFrustumCorners(result._worldSpacePts, worldToProjection, RenderCore::Techniques::GetDefaultClipSpaceType());
             // note -- we can swap 0 & 1 or 2 & 3 (depending on if we want inside or outside faces)
         std::swap(result._worldSpacePts[0], result._worldSpacePts[1]);
         std::swap(result._worldSpacePts[4+0], result._worldSpacePts[4+1]);

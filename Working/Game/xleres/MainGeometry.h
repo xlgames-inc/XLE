@@ -228,7 +228,7 @@ struct VSOutput /////////////////////////////////////////////////////
 
 struct VSShadowOutput /////////////////////////////////////////////////////
 {
-    float3 position : POSITION0;
+    float4 position : SV_Position;
 
     #if OUTPUT_TEXCOORD==1
         float2 texCoord : TEXCOORD0;

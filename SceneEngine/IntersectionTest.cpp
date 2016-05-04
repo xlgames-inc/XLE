@@ -332,7 +332,7 @@ namespace SceneEngine
         auto worldToProjection = CalculateWorldToProjection(sceneCamera, viewportDims[0] / float(viewportDims[1]));
 
         Float3 frustumCorners[8];
-        CalculateAbsFrustumCorners(frustumCorners, worldToProjection);
+        CalculateAbsFrustumCorners(frustumCorners, worldToProjection, RenderCore::Techniques::GetDefaultClipSpaceType());
         Float3 cameraPosition = ExtractTranslation(sceneCamera._cameraToWorld);
 
         return BuildRayUnderCursor(

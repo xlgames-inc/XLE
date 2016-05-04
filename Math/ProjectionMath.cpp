@@ -23,7 +23,9 @@ namespace XLEMath
         }
     }
 
-    void CalculateAbsFrustumCorners(Float3 frustumCorners[8], const Float4x4& worldToProjection)
+    void CalculateAbsFrustumCorners(
+        Float3 frustumCorners[8], const Float4x4& worldToProjection,
+        ClipSpaceType::Enum clipSpaceType)
     {
             //  So long as we can invert the world to projection matrix accurately, we can 
             //  extract the frustum corners easily. We just need to pass the coordinates
@@ -39,15 +41,21 @@ namespace XLEMath
             //  matrix inversion operations.
         static bool useAccurateInverse = true;      // the normal cml invert is pretty accurate. But sometimes it seems we get a better result with this
         auto projectionToWorld = InvertWorldToProjection(worldToProjection, useAccurateInverse);
-        Float4 v0 = projectionToWorld * Float4(-1.f,  1.f, 0.f, 1.f);
-        Float4 v1 = projectionToWorld * Float4(-1.f, -1.f, 0.f, 1.f);
-        Float4 v2 = projectionToWorld * Float4( 1.f,  1.f, 0.f, 1.f);
-        Float4 v3 = projectionToWorld * Float4( 1.f, -1.f, 0.f, 1.f);
+        float yAtTop = 1.f;
+        float yAtBottom = -1.f;
+        if (clipSpaceType == ClipSpaceType::PositiveRightHanded) {
+            yAtTop = -1.f;
+            yAtBottom = 1.f;
+        }
+        Float4 v0 = projectionToWorld * Float4(-1.f, yAtTop,    0.f, 1.f);
+        Float4 v1 = projectionToWorld * Float4(-1.f, yAtBottom, 0.f, 1.f);
+        Float4 v2 = projectionToWorld * Float4( 1.f, yAtTop,    0.f, 1.f);
+        Float4 v3 = projectionToWorld * Float4( 1.f, yAtBottom, 0.f, 1.f);
 
-        Float4 v4 = projectionToWorld * Float4(-1.f,  1.f, 1.f, 1.f);
-        Float4 v5 = projectionToWorld * Float4(-1.f, -1.f, 1.f, 1.f);
-        Float4 v6 = projectionToWorld * Float4( 1.f,  1.f, 1.f, 1.f);
-        Float4 v7 = projectionToWorld * Float4( 1.f, -1.f, 1.f, 1.f);
+        Float4 v4 = projectionToWorld * Float4(-1.f, yAtTop,    1.f, 1.f);
+        Float4 v5 = projectionToWorld * Float4(-1.f, yAtBottom, 1.f, 1.f);
+        Float4 v6 = projectionToWorld * Float4( 1.f, yAtTop,    1.f, 1.f);
+        Float4 v7 = projectionToWorld * Float4( 1.f, yAtBottom, 1.f, 1.f);
 
         frustumCorners[0] = Truncate(v0) / v0[3];
         frustumCorners[1] = Truncate(v1) / v1[3];

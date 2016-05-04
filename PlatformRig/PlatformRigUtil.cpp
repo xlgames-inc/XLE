@@ -193,7 +193,8 @@ namespace PlatformRig
 
     static void CalculateCameraFrustumCornersDirection(
         Float3 result[4],
-        const RenderCore::Techniques::ProjectionDesc& projDesc)
+        const RenderCore::Techniques::ProjectionDesc& projDesc,
+        ClipSpaceType::Enum clipSpaceType)
     {
         // For the given camera, calculate 4 vectors that represent the
         // the direction from the camera position to the frustum corners
@@ -204,7 +205,7 @@ namespace PlatformRig
         SetTranslation(noTransCameraToWorld, Float3(0.f, 0.f, 0.f));
         auto trans = Combine(InvertOrthonormalTransform(noTransCameraToWorld), projection);
         Float3 corners[8];
-        CalculateAbsFrustumCorners(corners, trans);
+        CalculateAbsFrustumCorners(corners, trans, clipSpaceType);
         for (unsigned c=0; c<4; ++c) {
             result[c] = Normalize(corners[4+c]);    // use the more distance corners, on the far clip plane
         }
@@ -231,16 +232,17 @@ namespace PlatformRig
 
             // Now we just have to fit the finsl projection around the frustum corners
 
+        auto clipSpaceType = RenderCore::Techniques::GetDefaultClipSpaceType();
         auto miniProj = PerspectiveProjection(
             mainSceneProjectionDesc._verticalFov, mainSceneProjectionDesc._aspectRatio,
             mainSceneProjectionDesc._nearClip, depth,
-            GeometricCoordinateSpace::RightHanded, RenderCore::Techniques::GetDefaultClipSpaceType());
+            GeometricCoordinateSpace::RightHanded, clipSpaceType);
 
         auto worldToMiniProj = Combine(
             InvertOrthonormalTransform(mainSceneProjectionDesc._cameraToWorld), miniProj);
 
         Float3 frustumCorners[8];
-        CalculateAbsFrustumCorners(frustumCorners, worldToMiniProj);
+        CalculateAbsFrustumCorners(frustumCorners, worldToMiniProj, clipSpaceType);
 
         Float3 shadowViewSpace[8];
 		Float3 shadowViewMins( FLT_MAX,  FLT_MAX,  FLT_MAX);
@@ -268,7 +270,7 @@ namespace PlatformRig
         Float4x4 projMatrix = OrthogonalProjection(
             shadowViewMins[0], shadowViewMaxs[1], shadowViewMaxs[0], shadowViewMins[1], 
             shadowNearPlane, shadowFarPlane,
-            GeometricCoordinateSpace::RightHanded, RenderCore::Techniques::GetDefaultClipSpaceType());
+            GeometricCoordinateSpace::RightHanded, clipSpaceType);
 
         auto result = Combine(worldToLightProj, projMatrix);
         return std::make_pair(result, ExtractMinimalProjection(projMatrix));
@@ -296,6 +298,7 @@ namespace PlatformRig
 
         const float shadowNearPlane = -settings._maxDistanceFromCamera;
         const float shadowFarPlane = settings._maxDistanceFromCamera;
+        auto clipSpaceType = Techniques::GetDefaultClipSpaceType();
 
         float t = 0;
         for (unsigned c=0; c<result._normalProjCount; ++c) { t += std::pow(settings._frustumSizeFactor, float(c)); }
@@ -309,7 +312,7 @@ namespace PlatformRig
             //  Calculate 4 vectors for the directions of the frustum corners, 
             //  relative to the camera position.
         Float3 frustumCornerDir[4];
-        CalculateCameraFrustumCornersDirection(frustumCornerDir, mainSceneProjectionDesc);
+        CalculateCameraFrustumCornersDirection(frustumCornerDir, mainSceneProjectionDesc, clipSpaceType);
 
         Float3 allCascadesMins( FLT_MAX,  FLT_MAX,  FLT_MAX);
 		Float3 allCascadesMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
@@ -391,7 +394,7 @@ namespace PlatformRig
             const auto& maxs = result._orthoSub[f]._projMaxs;
             Float4x4 projMatrix = OrthogonalProjection(
                 mins[0], maxs[1], maxs[0], mins[1], mins[2], maxs[2],
-                GeometricCoordinateSpace::RightHanded, Techniques::GetDefaultClipSpaceType());
+                GeometricCoordinateSpace::RightHanded, clipSpaceType);
             result._fullProj[f]._projectionMatrix = projMatrix;
 
             result._minimalProjection[f] = ExtractMinimalProjection(projMatrix);
@@ -406,7 +409,7 @@ namespace PlatformRig
         Float4x4 clippingProjMatrix = OrthogonalProjection(
             allCascadesMins[0], allCascadesMaxs[1], allCascadesMaxs[0], allCascadesMins[1], 
             shadowNearPlane, shadowFarPlane,
-            GeometricCoordinateSpace::RightHanded, Techniques::GetDefaultClipSpaceType());
+            GeometricCoordinateSpace::RightHanded, clipSpaceType);
         Float4x4 worldToClip = Combine(result._definitionViewMatrix, clippingProjMatrix);
 
         std::tie(result._specialNearProjection, result._specialNearMinimalProjection) = 
@@ -436,9 +439,11 @@ namespace PlatformRig
         result._width   = settings._textureSize;
         result._height  = settings._textureSize;
         if (settings._flags & DefaultShadowFrustumSettings::Flags::HighPrecisionDepths) {
-            result._typelessFormat  = RenderCore::Format::R24G8_TYPELESS;
-            result._writeFormat     = RenderCore::Format::D24_UNORM_S8_UINT;
-            result._readFormat      = RenderCore::Format::R24_UNORM_X8_TYPELESS;
+            // note --  currently having problems in Vulkan with reading from the D24_UNORM_XX format
+            //          might be better to move to 32 bit format now, anyway
+            result._typelessFormat  = RenderCore::Format::R32_TYPELESS; //R24G8_TYPELESS;
+            result._writeFormat     = RenderCore::Format::D32_FLOAT; //D24_UNORM_S8_UINT;
+            result._readFormat      = RenderCore::Format::R32_FLOAT; //R24_UNORM_X8_TYPELESS;
         } else {
             result._typelessFormat  = RenderCore::Format::R16_TYPELESS;
             result._writeFormat     = RenderCore::Format::D16_UNORM;

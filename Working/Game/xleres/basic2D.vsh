@@ -41,8 +41,8 @@ FullscreenCorner MakeFullscreenCorner(uint vertexId)
 	#else
 		result.position = float4(2.f * result.coord.x - 1.f, -2.f * result.coord.y + 1.f, 0.f, 1.f);
 	#endif
-	result.texCoord = result.coord;
 	result.vfi.oViewFrustumVector = FrustumCorners[vertexId].xyz;
+	result.texCoord = result.coord;
 
 	return result;
 }

@@ -36,7 +36,6 @@ VSShadowOutput main(VSInput input)
 	VSShadowOutput result;
 
 	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIn_GetColour(input).rgb);
-	result.position = worldPosition.xyz;
 
 	#if OUTPUT_TEXCOORD==1
 		result.texCoord = input.texCoord;
@@ -48,6 +47,8 @@ VSShadowOutput main(VSInput input)
 
 	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+		result.position = float4(worldPosition.xyz, 1);
 
 		#if (OUTPUT_SHADOW_PROJECTION_COUNT>0)
 			for (uint c=0; c<count; ++c) {
@@ -67,7 +68,8 @@ VSShadowOutput main(VSInput input)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 		float3 basePosition = mul(OrthoShadowWorldToProj, float4(worldPosition, 1));
-		result.position = basePosition;
+
+		result.position = float4(basePosition, 1);
 		for (uint c=0; c<count; ++c) {
 			float3 cascade = AdjustForOrthoCascade(basePosition, c);
 			bool	left	= cascade.x < -1.f,
@@ -78,6 +80,8 @@ VSShadowOutput main(VSInput input)
 			result.shadowFrustumFlags |=
 				(left | (right<<1) | (top<<2) | (bottom<<3)) << (c*4);
 		}
+
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 	#endif
