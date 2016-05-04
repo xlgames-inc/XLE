@@ -110,6 +110,18 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
+    static VkSamplerAddressMode AsVkAddressMode(AddressMode::Enum addressMode)
+    {
+        switch (addressMode)
+        {
+        default:
+        case AddressMode::Wrap: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        case AddressMode::Mirror: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+        case AddressMode::Clamp: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        case AddressMode::Border: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        }
+    }
+
     RasterizerState::RasterizerState(
         CullMode::Enum cullmode, 
         bool frontCounterClockwise)
@@ -287,20 +299,52 @@ namespace RenderCore { namespace Metal_Vulkan
         samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         samplerCreateInfo.pNext = nullptr;
         samplerCreateInfo.flags = 0;
-        samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
-        samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
-        samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-        samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerCreateInfo.mipLodBias = 0.0;
-        samplerCreateInfo.anisotropyEnable = VK_FALSE,
-        samplerCreateInfo.maxAnisotropy = 0;
+
         samplerCreateInfo.compareEnable = VK_FALSE;
         samplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
-        samplerCreateInfo.minLod = 0.0;
-        samplerCreateInfo.maxLod = 13.0f;
-        samplerCreateInfo.compareEnable = VK_FALSE;
+        samplerCreateInfo.anisotropyEnable = VK_FALSE;
+        samplerCreateInfo.maxAnisotropy = 0;
+
+        switch (filter) {
+        default:
+        case FilterMode::Point:                 
+            samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
+            samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
+            samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+            break;
+        case FilterMode::Anisotropic:
+            samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+            samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+            samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            samplerCreateInfo.anisotropyEnable = VK_TRUE;
+            samplerCreateInfo.maxAnisotropy = 16;
+            break;
+        case FilterMode::ComparisonBilinear:    
+            samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+            samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+            samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+            samplerCreateInfo.compareEnable = VK_TRUE;
+            samplerCreateInfo.compareOp = AsVkCompareOp(comparison);
+            break;
+        case FilterMode::Bilinear:              
+            samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+            samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+            samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+            break;
+        case FilterMode::Trilinear:             
+            samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+            samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+            samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            break;
+        }
+        
+        samplerCreateInfo.addressModeU = AsVkAddressMode(addressU);
+        samplerCreateInfo.addressModeV = AsVkAddressMode(addressV);
+        samplerCreateInfo.addressModeW = AsVkAddressMode(addressW);
+
+        samplerCreateInfo.mipLodBias = 0.f;
+        samplerCreateInfo.minLod = 0.f;
+        samplerCreateInfo.maxLod = std::numeric_limits<float>::max();
         samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
         samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;       // (interesting)
         _sampler = GetObjectFactory().CreateSampler(samplerCreateInfo);

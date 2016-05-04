@@ -17,6 +17,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class ObjectFactory;
     class RenderTargetView;
     class ShaderResourceView;
+    class DepthStencilView;
     class TextureView;
     class DeviceContext;
     
@@ -24,10 +25,11 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         const ShaderResourceView*   GetSRV(AttachmentDesc::Name name) const;
-        const RenderTargetView*     GetRTV(AttachmentDesc::Name name) const;
+        const TextureView*          GetRTV(AttachmentDesc::Name name) const;
 
         void Bind(AttachmentDesc::Name name, const ShaderResourceView& srv);
         void Bind(AttachmentDesc::Name name, const RenderTargetView& rtv);
+        void Bind(AttachmentDesc::Name name, const DepthStencilView& dsv);
         void UnbindAll();
 
         NamedResources();

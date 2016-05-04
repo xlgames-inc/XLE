@@ -24,7 +24,7 @@ namespace RenderCore { namespace Metal_Vulkan
         static const SubResourceRange All;
 
 		struct Flags {
-			enum Bits { AttachedCounter = 1<<0, AppendBuffer = 1<<1, ForceArray = 1<<2 };
+			enum Bits { AttachedCounter = 1<<0, AppendBuffer = 1<<1, ForceArray = 1<<2, JustDepth = 1<<3, JustStencil = 1<<4 };
 			using BitField = unsigned;
 		};
 

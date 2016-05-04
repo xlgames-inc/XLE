@@ -27,6 +27,7 @@
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/Resource.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../BufferUploads/ResourceLocator.h"
 
 #include "../ConsoleRig/Console.h"
@@ -157,7 +158,7 @@ namespace SceneEngine
             mainTargets.GetSRV(IMainTargets::GBufferNormals),
             mainTargets.GetSRV(IMainTargets::GBufferParameters),
             Metal::ShaderResourceView(), 
-            mainTargets.GetSRV(IMainTargets::MultisampledDepth)));
+            mainTargets.GetSRV(IMainTargets::MultisampledDepth_JustDepth)));
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -352,16 +353,42 @@ namespace SceneEngine
             // note --  the gbuffer isn't considered an "input attachment" here...
             //          If we combined the gbuffer generation and lighting resolve into a single render pass,
             //          we could just use the gbuffer as an input attachment
+
+            // Now, this is awkward because we want to first write to the stencil buffer using the depth information,
+            // and then we want to enable a stencil pass while simulanteously reading from the depth buffer in a shader.
+            // This requires that we have the depth buffer bound as a DSV and a SRV at the same time... But we can explicitly
+            // separately the "aspects" so the DSV has stencil, and the SRV has depth.
+            // Perhaps we need an input attachment for the depth buffer in the second pass?
+            auto& factory = Metal::GetObjectFactory(metalContext);
+            auto depth = metalContext.GetNamedResources().GetRTV(IMainTargets::MultisampledDepth);
+            if (!depth) depth = metalContext.GetNamedResources().GetSRV(IMainTargets::MultisampledDepth);
+            if (depth) {
+                Metal::DepthStencilView dsvJustStencil(
+                    factory, depth->ShareResource(), 
+                    Metal::TextureViewWindow(
+                        Format::Unknown, TextureDesc::Dimensionality::Undefined, Metal::TextureViewWindow::All, Metal::TextureViewWindow::All,
+                        Metal::TextureViewWindow::Flags::JustStencil));
+                Metal::ShaderResourceView srvJustDepth(
+                    factory, depth->ShareResource(), 
+                    Metal::TextureViewWindow(
+                        Format::Unknown, TextureDesc::Dimensionality::Undefined, Metal::TextureViewWindow::All, Metal::TextureViewWindow::All,
+                        Metal::TextureViewWindow::Flags::JustDepth));
+
+                metalContext.GetNamedResources().Bind(IMainTargets::MultisampledDepth_JustStencil, dsvJustStencil);
+                metalContext.GetNamedResources().Bind(IMainTargets::MultisampledDepth_JustDepth, srvJustDepth);
+            }
+
             FrameBufferDesc resolveLighting(
                 {
-                    SubpassDesc({IMainTargets::LightResolve}, IMainTargets::MultisampledDepth)
+                    SubpassDesc({IMainTargets::LightResolve}, IMainTargets::MultisampledDepth),
+                    SubpassDesc({IMainTargets::LightResolve}, IMainTargets::MultisampledDepth_JustStencil)
                 },
                 {
                     // light resolve target
                     {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
                         (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
                         AttachmentDesc::LoadStore::DontCare, AttachmentDesc::LoadStore::Retain,
-                        IMainTargets::LightResolve, AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource }
+                        IMainTargets::LightResolve, AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource },
                 },
                 sampling);
 
@@ -370,7 +397,7 @@ namespace SceneEngine
                 resolveLighting,
                 FrameBufferProperties{mainTargets.GetQualitySettings()._dimensions[0], mainTargets.GetQualitySettings()._dimensions[1]},
                 0u, mainTargets.GetFrameBufferCache(),
-                RenderPassBeginDesc{});
+                RenderPassBeginDesc{{MakeClearValue(1.f, 0x0)}});
 
             const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;
 
@@ -389,6 +416,8 @@ namespace SceneEngine
                     Sky_Render(metalContext, parserContext, false);
                 }
             }
+
+            rpi.NextSubpass();      // (in the second subpass the depth buffer is only used for stencil)
 
             // set light resolve state (note that we have to bind the depth buffer as a shader input here)
             SetupStateForDeferredLightingResolve(metalContext, mainTargets, resolveRes, doSampleFrequencyOptimisation);

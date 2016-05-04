@@ -25,6 +25,8 @@ namespace RenderCore
         D24_UNORM_S8_UINT = DXGI_FORMAT_D24_UNORM_S8_UINT,
         R24_UNORM_X8_TYPELESS = DXGI_FORMAT_R24_UNORM_X8_TYPELESS,
         X24_TYPELESS_G8_UINT = DXGI_FORMAT_X24_TYPELESS_G8_UINT,
+        S8_UINT = 148,
+        D32_SFLOAT_S8_UINT = 149,
 
         Matrix4x4 = 150,
         Matrix3x4 = 151,
@@ -43,7 +45,7 @@ namespace RenderCore
         Alpha, 
         Luminance, LuminanceAlpha,
         RGB, RGBAlpha,
-        RG, Depth, DepthStencil, RGBE
+        RG, Depth, DepthStencil, Stencil, RGBE
     };
 
     enum class FormatComponentType

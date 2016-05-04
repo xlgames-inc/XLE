@@ -101,7 +101,11 @@ namespace RenderCore
         case Format::D24_UNORM_S8_UINT:
         case Format::R24_UNORM_X8_TYPELESS:
         case Format::X24_TYPELESS_G8_UINT:
+        case Format::D32_SFLOAT_S8_UINT:
             return FormatComponents::DepthStencil;
+
+        case Format::S8_UINT:
+            return FormatComponents::Stencil;
         }
 
         return FormatComponents::Unknown;
@@ -118,6 +122,7 @@ namespace RenderCore
             #define _EXP(X, Y, Z, U)    case Format::X##_##Y: input = Y; break;
                 #include "Metal/Detail/DXGICompatibleFormats.h"
             #undef _EXP
+            case Format::S8_UINT: input = UINT; break;
             case Format::Matrix4x4: input = FLOAT; break;
             case Format::Matrix3x4: input = FLOAT; break;
             default: input = TYPELESS; break;
@@ -143,6 +148,8 @@ namespace RenderCore
         #define _EXP(X, Y, Z, U)    case Format::X##_##Y: return U;
             #include "Metal/Detail/DXGICompatibleFormats.h"
         #undef _EXP
+        case Format::D32_SFLOAT_S8_UINT: return 32 + 8;
+        case Format::S8_UINT: return 8;
         case Format::Matrix4x4: return 16 * sizeof(float) * 8;
         case Format::Matrix3x4: return 12 * sizeof(float) * 8;
         default: return 0;
@@ -177,10 +184,12 @@ namespace RenderCore
         {
         case FormatComponents::Alpha:
         case FormatComponents::Luminance: 
-        case FormatComponents::Depth: return 1;
+        case FormatComponents::Depth: 
+        case FormatComponents::Stencil: return 1;
 
 		case FormatComponents::LuminanceAlpha:
-		case FormatComponents::RG: return 2;
+		case FormatComponents::RG: 
+        case FormatComponents::DepthStencil: return 2;
         
 		case FormatComponents::RGB: return 3;
 
@@ -295,6 +304,8 @@ namespace RenderCore
         case Format::R32_FLOAT:
         case Format::R32_UINT:
         case Format::R32_SINT: return Format::R32_TYPELESS;
+
+        case Format::S8_UINT: return Format::R8_TYPELESS;
         }
         return inputFormat; // no linear/srgb version of this format exists
     }
@@ -427,6 +438,8 @@ namespace RenderCore
             #define _EXP(X, Y, Z, U)    case Format::X##_##Y: return #X;
                 #include "Metal/Detail/DXGICompatibleFormats.h"
             #undef _EXP
+        case Format::D32_SFLOAT_S8_UINT: return "D32_FLOAT_S8_UINT";
+        case Format::S8_UINT: return "S8_UINT";
         case Format::Matrix4x4: return "Matrix4x4";
         case Format::Matrix3x4: return "Matrix3x4";
         default: return "Unknown";
@@ -441,6 +454,8 @@ namespace RenderCore
             #include "Metal/Detail/DXGICompatibleFormats.h"
         #undef _EXP
 
+        if (!XlEqStringI(name, "D32_FLOAT_S8_UINT")) return Format::D32_SFLOAT_S8_UINT;
+        if (!XlEqStringI(name, "S8_UINT")) return Format::S8_UINT;
         if (!XlEqStringI(name, "Matrix4x4")) return Format::Matrix4x4;
         if (!XlEqStringI(name, "Matrix3x4")) return Format::Matrix3x4;
         return Format::Unknown;

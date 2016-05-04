@@ -47,6 +47,11 @@ namespace RenderCore { namespace Metal_Vulkan
         view_info.subresourceRange.levelCount = std::max(1u, (unsigned)window._mipRange._count);
         view_info.subresourceRange.baseArrayLayer = window._arrayLayerRange._min;
         view_info.subresourceRange.layerCount = std::max(1u, (unsigned)window._arrayLayerRange._count);
+
+        // disable depth or stencil when requiring just a single subaspect
+        if (window._flags & TextureViewWindow::Flags::JustDepth) view_info.subresourceRange.aspectMask &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
+        if (window._flags & TextureViewWindow::Flags::JustStencil) view_info.subresourceRange.aspectMask &= ~VK_IMAGE_ASPECT_DEPTH_BIT;
+
         return view_info;
     }
 

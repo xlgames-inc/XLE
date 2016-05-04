@@ -99,7 +99,7 @@ namespace RenderCore { namespace Metal_Vulkan
     static bool IsDepthStencilFormat(Format fmt)
     {
         auto comp = GetComponents(fmt);
-        return comp == FormatComponents::Depth || comp == FormatComponents::DepthStencil;
+        return comp == FormatComponents::Depth || comp == FormatComponents::DepthStencil || comp == FormatComponents::Stencil;
     }
 
     // static VkImageLayout AsShaderReadLayout(VkImageLayout layout)
@@ -478,6 +478,11 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
+    static Format AsSRVFormat(Format input)
+    {
+        return input;
+    }
+
     FrameBuffer::FrameBuffer(
         const ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
@@ -560,7 +565,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
             // note -- it might be handy to have a cache of "device memory" that could be reused here?
             auto image = Resource::Allocate(factory, desc);
-            ShaderResourceView view(factory, image);
+            TextureViewWindow srvWindow;
+            srvWindow._format = AsSRVFormat(desc._textureDesc._format);
+            ShaderResourceView view(factory, image, srvWindow);
 
             // register in the named resources (if it's marked as a store resource, or used as input somewhere)
             if (IsRetained(a._storeToNextPhase) || (usage & unsigned(Internal::AttachmentUsage::Input)))
@@ -700,7 +707,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         ShaderResourceView  _srv[s_maxBoundTargets];
-        RenderTargetView    _rtv[s_maxBoundTargets];
+        TextureView         _rtv[s_maxBoundTargets];
     };
     
     const ShaderResourceView*   NamedResources::GetSRV(AttachmentDesc::Name name) const
@@ -710,7 +717,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return &_pimpl->_srv[name];
     }
 
-    const RenderTargetView*     NamedResources::GetRTV(AttachmentDesc::Name name) const
+    const TextureView*     NamedResources::GetRTV(AttachmentDesc::Name name) const
     {
         if (name >= s_maxBoundTargets) return nullptr;
         if (!_pimpl->_rtv[name].IsGood()) return nullptr;
@@ -729,11 +736,17 @@ namespace RenderCore { namespace Metal_Vulkan
         _pimpl->_rtv[name] = rtv;
     }
 
+    void NamedResources::Bind(AttachmentDesc::Name name, const DepthStencilView& dsv)
+    {
+        if (name >= s_maxBoundTargets) return;
+        _pimpl->_rtv[name] = dsv;
+    }
+
     void NamedResources::UnbindAll()
     {
         for (unsigned c=0; c<s_maxBoundTargets; ++c) {
             _pimpl->_srv[c] = ShaderResourceView();
-            _pimpl->_rtv[c] = RenderTargetView();
+            _pimpl->_rtv[c] = TextureView();
         }
     }
 

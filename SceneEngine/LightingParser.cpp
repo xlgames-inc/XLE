@@ -1070,7 +1070,7 @@ namespace SceneEngine
             { SubpassDesc({}, IMainTargets::ShadowDepthMap + shadowFrustumIndex) },
             {
                 {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
-                    Format::D24_UNORM_S8_UINT,  // todo -- D32 in Vulkan
+                    frustum._writeFormat,
                     AttachmentDesc::LoadStore::Clear, AttachmentDesc::LoadStore::Retain,
                     IMainTargets::ShadowDepthMap + shadowFrustumIndex, 
                     AttachmentDesc::Flags::ShaderResource }

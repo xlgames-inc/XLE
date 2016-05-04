@@ -22,8 +22,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
     Shader::Shader(const CompiledShaderByteCode& compiledShader)
     {
-        auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateShaderModule(byteCode.first, byteCode.second);
+        if (compiledShader.GetStage() != ShaderStage::Null) {
+            auto byteCode = compiledShader.GetByteCode();
+            _underlying = GetObjectFactory().CreateShaderModule(byteCode.first, byteCode.second);
+        }
     }
 
     Shader::Shader() {}

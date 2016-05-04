@@ -143,6 +143,7 @@ namespace SceneEngine
     , _arbitraryCB(std::move(moveFrom._arbitraryCB))
     , _orthoCB(std::move(moveFrom._orthoCB))
     , _frustumCount(moveFrom._frustumCount)
+    , _enableNearCascade(moveFrom._enableNearCascade)
     , _mode(moveFrom._mode)
     {}
 
@@ -153,6 +154,7 @@ namespace SceneEngine
         _arbitraryCB = std::move(moveFrom._arbitraryCB);
         _orthoCB = std::move(moveFrom._orthoCB);
         _frustumCount = moveFrom._frustumCount;
+        _enableNearCascade = moveFrom._enableNearCascade;
         _mode = moveFrom._mode;
         return *this;
     }

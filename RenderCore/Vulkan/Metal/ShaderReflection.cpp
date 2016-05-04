@@ -204,7 +204,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 // become a pointer to a struct (where the struct has the name we want),
                 // and the actual variable just has an empty name.
                 auto v = LowerBound(_variables, b.first);
-                if (v != _variables.end() || v->first == b.first) {
+                if (v != _variables.end() && v->first == b.first) {
                     auto type = v->second._type;
                     auto ptr = LowerBound(_pointerTypes, type);
                     if (ptr != _pointerTypes.end() && ptr->first == type)

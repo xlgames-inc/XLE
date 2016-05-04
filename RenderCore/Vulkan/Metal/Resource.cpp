@@ -69,6 +69,7 @@ namespace RenderCore { namespace Metal_Vulkan
         switch (components) {
         case FormatComponents::Depth:           return VK_IMAGE_ASPECT_DEPTH_BIT;
         case FormatComponents::DepthStencil:    return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        case FormatComponents::Stencil:         return VK_IMAGE_ASPECT_STENCIL_BIT;
         default:                                return VK_IMAGE_ASPECT_COLOR_BIT;
         }
 	}

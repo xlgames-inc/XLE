@@ -141,8 +141,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
         VkPipelineShaderStageCreateInfo shaderStages[3];
         uint32_t shaderStageCount = 0;
-        shaderStages[shaderStageCount++] = BuildShaderStage(_shaderProgram->GetVertexShader(), VK_SHADER_STAGE_VERTEX_BIT);
-        shaderStages[shaderStageCount++] = BuildShaderStage(_shaderProgram->GetPixelShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
+        if (_shaderProgram->GetVertexShader().IsGood())
+            shaderStages[shaderStageCount++] = BuildShaderStage(_shaderProgram->GetVertexShader(), VK_SHADER_STAGE_VERTEX_BIT);
+        if (_shaderProgram->GetPixelShader().IsGood())
+            shaderStages[shaderStageCount++] = BuildShaderStage(_shaderProgram->GetPixelShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
         if (_shaderProgram->GetGeometryShader().IsGood())
             shaderStages[shaderStageCount++] = BuildShaderStage(_shaderProgram->GetGeometryShader(), VK_SHADER_STAGE_GEOMETRY_BIT);
 

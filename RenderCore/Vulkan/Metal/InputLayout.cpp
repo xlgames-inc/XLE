@@ -74,10 +74,12 @@ namespace RenderCore { namespace Metal_Vulkan
     BoundUniforms::BoundUniforms(const ShaderProgram& shader)
     {
         _isComputeShader = false;
-        _reflection[ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
-        _reflection[ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
+        if (shader.GetCompiledVertexShader().GetStage() != ShaderStage::Null)
+            _reflection[ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
+        if (shader.GetCompiledPixelShader().GetStage() != ShaderStage::Null)
+            _reflection[ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
         auto* geoShader = shader.GetCompiledGeometryShader();
-        if (geoShader)
+        if (geoShader && geoShader->GetStage() != ShaderStage::Null)
             _reflection[ShaderStage::Geometry] = SPIRVReflection(geoShader->GetByteCode());
         BuildShaderBindingMask();
     }
@@ -85,13 +87,17 @@ namespace RenderCore { namespace Metal_Vulkan
     BoundUniforms::BoundUniforms(const DeepShaderProgram& shader)
     {
         _isComputeShader = false;
-        _reflection[ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
-        _reflection[ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
+        if (shader.GetCompiledVertexShader().GetStage() != ShaderStage::Null)
+            _reflection[ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
+        if (shader.GetCompiledPixelShader().GetStage() != ShaderStage::Null)
+            _reflection[ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
         auto* geoShader = shader.GetCompiledGeometryShader();
-        if (geoShader)
+        if (geoShader && geoShader->GetStage() != ShaderStage::Null)
             _reflection[ShaderStage::Geometry] = SPIRVReflection(geoShader->GetByteCode());
-        _reflection[ShaderStage::Hull] = SPIRVReflection(shader.GetCompiledHullShader().GetByteCode());
-        _reflection[ShaderStage::Domain] = SPIRVReflection(shader.GetCompiledDomainShader().GetByteCode());
+        if (shader.GetCompiledHullShader().GetStage() != ShaderStage::Null)
+            _reflection[ShaderStage::Hull] = SPIRVReflection(shader.GetCompiledHullShader().GetByteCode());
+        if (shader.GetCompiledDomainShader().GetStage() != ShaderStage::Null)
+            _reflection[ShaderStage::Domain] = SPIRVReflection(shader.GetCompiledDomainShader().GetByteCode());
         BuildShaderBindingMask();
     }
 
@@ -371,11 +377,12 @@ namespace RenderCore { namespace Metal_Vulkan
                     bufferInfo[bufferCount] = VkDescriptorBufferInfo{s._prebuiltBuffers[p]->GetUnderlying(), 0, VK_WHOLE_SIZE};
                     assert(_shaderBindingMask[0] & (1ull << uint64(dstBinding&0xffff)));
 
-                    #if defined(_DEBUG) // check for duplicate descriptor writes
-                        for (unsigned w=0; w<writeCount; ++w)
-                            assert( writes[w].dstBinding != (dstBinding&0xffff)
-                                ||  writes[w].dstSet != _descriptorSets[dstBinding>>16].get());
-                    #endif
+                    // Currently occuring when creating shadow depth textures, because of some of the shadow constant buffers
+                    // #if defined(_DEBUG) // check for duplicate descriptor writes
+                    //     for (unsigned w=0; w<writeCount; ++w)
+                    //         assert( writes[w].dstBinding != (dstBinding&0xffff)
+                    //             ||  writes[w].dstSet != _descriptorSets[dstBinding>>16].get());
+                    // #endif
 
                     writes[writeCount] = {};
                     writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

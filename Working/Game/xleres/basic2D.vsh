@@ -34,18 +34,15 @@ struct FullscreenCorner
 FullscreenCorner MakeFullscreenCorner(uint vertexId)
 {
 	FullscreenCorner result;
-	#if NDC == NDC_POSITIVE_RIGHT_HANDED
-		vertexId ^= 1;		// xor bit 1 to flip Y coord
-	#endif
 
 	result.coord = float2((float)(vertexId >> 1), (float)(vertexId & 1));
-	result.position = float4(2.f * result.coord.x - 1.f, -2.f * result.coord.y + 1.f, 0.f, 1.f);
+	#if NDC == NDC_POSITIVE_RIGHT_HANDED
+		result.position = float4(2.f * result.coord.x - 1.f, 2.f * result.coord.y - 1.f, 0.f, 1.f);
+	#else
+		result.position = float4(2.f * result.coord.x - 1.f, -2.f * result.coord.y + 1.f, 0.f, 1.f);
+	#endif
 	result.texCoord = result.coord;
 	result.vfi.oViewFrustumVector = FrustumCorners[vertexId].xyz;
-
-	#if NDC == NDC_POSITIVE_RIGHT_HANDED
-		result.texCoord.y = 1.0f - result.texCoord.y;
-	#endif
 
 	return result;
 }
