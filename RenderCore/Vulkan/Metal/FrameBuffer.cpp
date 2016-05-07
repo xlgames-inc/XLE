@@ -158,12 +158,12 @@ namespace RenderCore { namespace Metal_Vulkan
             auto& p = subpasses[i];
             // Is "attachment" listed amongst the output attachments?
             for (auto q:p._output) {
-                if (q == attachment) return SubpassDep { i, attachment, (VkAccessFlags)VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0 };
+                if (q == attachment) return SubpassDep { (unsigned)i, attachment, (VkAccessFlags)VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0 };
             }
             for (auto q:p._resolve) {
-                if (q == attachment) return { i, attachment, (VkAccessFlags)VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0 };
+                if (q == attachment) return { (unsigned)i, attachment, (VkAccessFlags)VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0 };
             }
-            if (p._depthStencil == attachment) return { i, attachment, (VkAccessFlags)VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 0 };
+            if (p._depthStencil == attachment) return { (unsigned)i, attachment, (VkAccessFlags)VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 0 };
         }
         return { VK_SUBPASS_EXTERNAL, attachment, 0 };
     }

@@ -235,7 +235,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static enum class Qualifier { None, Image, Buffer };
+    enum class Qualifier { None, Image, Buffer };
 
     static Qualifier AsQualifier(StringSection<char> str)
     {
