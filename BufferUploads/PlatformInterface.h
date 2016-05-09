@@ -50,7 +50,7 @@ namespace BufferUploads { namespace PlatformInterface
             UnderlyingResource& resource, const BufferDesc& desc, unsigned offset,
             const void* data, size_t dataSize);
         
-        using ResourceInitializer = std::function<RenderCore::SubResourceInitData(unsigned mipIndex, unsigned arrayIndex)>;
+        using ResourceInitializer = std::function<RenderCore::SubResourceInitData(RenderCore::SubResourceId)>;
         
         unsigned PushToTexture(
             UnderlyingResource& resource, const BufferDesc& desc,

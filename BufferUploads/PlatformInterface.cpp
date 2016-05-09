@@ -30,12 +30,12 @@ namespace BufferUploads { namespace PlatformInterface
 
     UnderlyingDeviceContext::ResourceInitializer AsResourceInitializer(DataPacket& pkt)
     {
-        return [&pkt](unsigned mipIndex, unsigned arrayIndex) -> RenderCore::SubResourceInitData
+        return [&pkt](SubResourceId sr) -> RenderCore::SubResourceInitData
             {
                 RenderCore::SubResourceInitData result;
-                result._data = pkt.GetData(DataPacket::TexSubRes(mipIndex, arrayIndex));
-                result._size = pkt.GetDataSize(DataPacket::TexSubRes(mipIndex, arrayIndex));
-                result._pitches = pkt.GetPitches(DataPacket::TexSubRes(mipIndex, arrayIndex));
+                result._data = pkt.GetData(sr);
+                result._size = pkt.GetDataSize(sr);
+                result._pitches = pkt.GetPitches(sr);
                 return result;
             };
     }

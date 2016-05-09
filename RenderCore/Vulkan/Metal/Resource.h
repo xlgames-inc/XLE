@@ -64,14 +64,13 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		using Desc = ResourceDesc;
-        struct SubResource { unsigned _mip; unsigned _arrayLayer; };
 
 		Resource(
 			const ObjectFactory& factory, const Desc& desc,
 			const SubResourceInitData& initData = SubResourceInitData{});
 		Resource(
 			const ObjectFactory& factory, const Desc& desc,
-			const std::function<SubResourceInitData(unsigned, unsigned)>&);
+			const std::function<SubResourceInitData(SubResourceId)>&);
 		Resource(UnderlyingResourcePtr copyFrom) : Resource(*copyFrom.get()) {}
 		Resource();
 		~Resource();
@@ -86,7 +85,7 @@ namespace RenderCore { namespace Metal_Vulkan
         static ResourcePtr Allocate(
             const Metal_Vulkan::ObjectFactory& factory,
 		    const ResourceDesc& desc,
-		    const std::function<SubResourceInitData(unsigned, unsigned)>& initData = std::function<SubResourceInitData(unsigned, unsigned)>());
+		    const std::function<SubResourceInitData(SubResourceId)>& initData = std::function<SubResourceInitData(SubResourceId)>());
 	protected:
 		VulkanSharedPtr<VkDeviceMemory> _mem;
 
@@ -122,7 +121,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
 		ResourceMap(
 			IDevice& dev, UnderlyingResourcePtr resource,
-            Resource::SubResource subResource,
+            SubResourceId subResource,
 			VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
 		ResourceMap();
 		~ResourceMap();
@@ -156,12 +155,12 @@ namespace RenderCore { namespace Metal_Vulkan
     class CopyPartial_Dest
     {
     public:
-        Resource*		        _resource;
-        Resource::SubResource   _subResource;
-        UInt3Pattern            _leftTopFront;
+        Resource*       _resource;
+        SubResourceId   _subResource;
+        UInt3Pattern    _leftTopFront;
 
         CopyPartial_Dest(
-            UnderlyingResourcePtr dst, Resource::SubResource subres = {},
+            UnderlyingResourcePtr dst, SubResourceId subres = {},
             const UInt3Pattern& leftTopFront = UInt3Pattern())
         : _resource(dst.get()), _subResource(subres), _leftTopFront(leftTopFront) {}
     };
@@ -169,13 +168,13 @@ namespace RenderCore { namespace Metal_Vulkan
     class CopyPartial_Src
     {
     public:
-		Resource*               _resource;
-        Resource::SubResource   _subResource;
-        UInt3Pattern            _leftTopFront;
-        UInt3Pattern            _rightBottomBack;
+		Resource*       _resource;
+        SubResourceId   _subResource;
+        UInt3Pattern    _leftTopFront;
+        UInt3Pattern    _rightBottomBack;
 
         CopyPartial_Src(
-            UnderlyingResourcePtr dst, Resource::SubResource subres = {},
+            UnderlyingResourcePtr dst, SubResourceId subres = {},
             const UInt3Pattern& leftTopFront = UInt3Pattern(~0u,0,0),
             const UInt3Pattern& rightBottomBack = UInt3Pattern(~0u,1,1))
         : _resource(dst.get()), _subResource(subres)
@@ -194,11 +193,11 @@ namespace RenderCore { namespace Metal_Vulkan
     unsigned CopyViaMemoryMap(
         VkDevice device, VkImage image, VkDeviceMemory mem,
         const TextureDesc& desc,
-        const std::function<SubResourceInitData(unsigned, unsigned)>& initData);
+        const std::function<SubResourceInitData(SubResourceId)>& initData);
 
     unsigned CopyViaMemoryMap(
         IDevice& dev, UnderlyingResourcePtr resource,
-        const std::function<SubResourceInitData(unsigned, unsigned)>& initData);
+        const std::function<SubResourceInitData(SubResourceId)>& initData);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //      G E T   D E S C       //

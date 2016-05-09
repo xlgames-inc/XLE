@@ -101,10 +101,10 @@ namespace SceneEngine
         UINT initialCounts[] = { 0, 0 };
 
         UINT clearValues[4] = { UINT(~0), UINT(~0), UINT(~0), UINT(~0) };
-        metalContext.Clear(transparencyTargets._fragmentIdsTextureUAV, clearValues);
+        metalContext.ClearUInt(transparencyTargets._fragmentIdsTextureUAV, clearValues);
 
         if (transparencyTargets._pendingInitialClear) {
-            metalContext.Clear(transparencyTargets._nodeListBufferUAV, clearValues);
+            metalContext.ClearUInt(transparencyTargets._nodeListBufferUAV, clearValues);
             transparencyTargets._pendingInitialClear = false;
         }
 

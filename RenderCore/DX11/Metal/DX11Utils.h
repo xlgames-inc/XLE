@@ -45,14 +45,14 @@ namespace RenderCore { namespace Metal_DX11
         typedef D3D11_BUFFER_DESC Desc;
     };
 
-    template <typename TextureType> class TextureDesc : public D3DTypeInfo<TextureType>::Desc
+    template <typename TextureType> class D3DTextureDesc : public D3DTypeInfo<TextureType>::Desc
     {
     public:
-        TextureDesc( ID3D::RenderTargetView * rtv );
-        TextureDesc( ID3D::ShaderResourceView * srv );
-        TextureDesc( ID3D::DepthStencilView * srv );
-        TextureDesc( ID3D::Resource * srv );
-        TextureDesc( TextureType * t2d );
+        D3DTextureDesc( ID3D::RenderTargetView * rtv );
+        D3DTextureDesc( ID3D::ShaderResourceView * srv );
+        D3DTextureDesc( ID3D::DepthStencilView * srv );
+        D3DTextureDesc( ID3D::Resource * srv );
+        D3DTextureDesc( TextureType * t2d );
     };
 
     template <typename ResourceType>
@@ -108,7 +108,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     template <typename TextureType>
-        TextureDesc<TextureType>::TextureDesc( ID3D::RenderTargetView * rtv )
+        D3DTextureDesc<TextureType>::D3DTextureDesc( ID3D::RenderTargetView * rtv )
     {
         assert(rtv);
         intrusive_ptr<TextureType> texture = ExtractResource<TextureType>( rtv );
@@ -117,7 +117,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     template <typename TextureType>
-        TextureDesc<TextureType>::TextureDesc( ID3D::ShaderResourceView * srv )
+        D3DTextureDesc<TextureType>::D3DTextureDesc( ID3D::ShaderResourceView * srv )
     {
         assert(srv);
         intrusive_ptr<TextureType> texture = ExtractResource<TextureType>( srv );
@@ -126,7 +126,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     template <typename TextureType>
-        TextureDesc<TextureType>::TextureDesc( ID3D::DepthStencilView * dsv )
+        D3DTextureDesc<TextureType>::D3DTextureDesc( ID3D::DepthStencilView * dsv )
     {
         assert(dsv);
         intrusive_ptr<TextureType> texture = ExtractResource<TextureType>( dsv );
@@ -135,7 +135,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     template <typename TextureType>
-        TextureDesc<TextureType>::TextureDesc( ID3D::Resource * resource )
+        D3DTextureDesc<TextureType>::D3DTextureDesc( ID3D::Resource * resource )
     {
         assert(resource);
         intrusive_ptr<TextureType> texture = QueryInterfaceCast<TextureType>( resource );
@@ -144,16 +144,16 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     template <typename TextureType>
-        TextureDesc<TextureType>::TextureDesc( TextureType * t2d )
+        D3DTextureDesc<TextureType>::D3DTextureDesc( TextureType * t2d )
     {
         assert(t2d);
         t2d->GetDesc( this );
     }
 
-    typedef TextureDesc<ID3D::Texture1D>    TextureDesc1D;
-    typedef TextureDesc<ID3D::Texture2D>    TextureDesc2D;
-    typedef TextureDesc<ID3D::Texture3D>    TextureDesc3D;
-    typedef TextureDesc<ID3D::Buffer>       D3DBufferDesc;
+    typedef D3DTextureDesc<ID3D::Texture1D>    TextureDesc1D;
+    typedef D3DTextureDesc<ID3D::Texture2D>    TextureDesc2D;
+    typedef D3DTextureDesc<ID3D::Texture3D>    TextureDesc3D;
+    typedef D3DTextureDesc<ID3D::Buffer>       D3DBufferDesc;
     
             ////////////////////////////////////////////////////////////////
                 //      Q U E R Y   I N T E R F A C E

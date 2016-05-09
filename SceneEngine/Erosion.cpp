@@ -24,10 +24,6 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 
-// #include "..\RenderCore\DX11\Metal\DX11.h"
-// #include "..\RenderCore\DX11\Metal\IncludeDX11.h"       // needed for CopySubresourceRegion
-#include "..\RenderCore\DX11\Metal\DX11Utils.h"
-
 namespace SceneEngine
 {
     using namespace RenderCore;

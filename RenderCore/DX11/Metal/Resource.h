@@ -10,6 +10,7 @@
 #include "../../IDevice.h"
 #include "../../ResourceDesc.h"
 #include "../../../Utility/IntrusivePtr.h"
+#include "../../../Utility/IteratorUtils.h"
 
 namespace RenderCore { class Resource; }
 namespace RenderCore { namespace Metal_DX11
@@ -53,47 +54,31 @@ namespace RenderCore { namespace Metal_DX11
 	};
 
     class DeviceContext;
+    class ShaderResourceView;
+    class DepthStencilView;
+    class RenderTargetView;
+    class UnorderedAccessView;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      C O P Y I N G       //
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void Copy(
 		DeviceContext&, UnderlyingResourcePtr dst, UnderlyingResourcePtr src, 
 		ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
-    namespace Internal { static std::true_type UnsignedTest(unsigned); static std::false_type UnsignedTest(...); }
-
-    class PixelCoord
-    {
-    public:
-        unsigned _x, _y, _z;
-        PixelCoord(unsigned x=0, unsigned y=0, unsigned z=0)    { _x = x; _y = y; _z = z; }
-
-            // We can initialize from anything that looks like a collection of unsigned values
-            // This is a simple way to get casting from XLEMath::UInt2 (etc) types without
-            // having to include XLEMath headers from here.
-            // Plus, it will also work with any other types that expose a stl collection type
-            // interface.
-		template<
-			typename Source,
-			typename InternalTestType = decltype(Internal::UnsignedTest(std::declval<typename Source::value_type>())),
-			std::enable_if<InternalTestType::value>* = nullptr>
-            PixelCoord(const Source& src)
-            {
-                auto size = std::size(src);
-                unsigned c=0;
-                for (; c<std::min(unsigned(size), 3u); ++c) ((unsigned*)this)[c] = src[c];
-                for (; c<3u; ++c) ((unsigned*)this)[c] = 0u;
-            }
-    };
+    using UInt3Pattern = VectorPattern<unsigned, 3>;
 
     class CopyPartial_Dest
     {
     public:
         ID3D::Resource* _resource;
-        unsigned        _subResource;
-        PixelCoord      _leftTopFront;
+        SubResourceId   _subResource;
+        UInt3Pattern    _leftTopFront;
 
         CopyPartial_Dest(
-            UnderlyingResourcePtr dst, unsigned subres = 0u,
-            const PixelCoord leftTopFront = PixelCoord())
+            UnderlyingResourcePtr dst, SubResourceId subres = {},
+            const UInt3Pattern& leftTopFront = UInt3Pattern())
         : _resource(dst.get()), _subResource(subres), _leftTopFront(leftTopFront) {}
     };
 
@@ -101,30 +86,60 @@ namespace RenderCore { namespace Metal_DX11
     {
     public:
         ID3D::Resource* _resource;
-        unsigned        _subResource;
-        PixelCoord      _leftTopFront;
-        PixelCoord      _rightBottomBack;
+        SubResourceId   _subResource;
+        UInt3Pattern    _leftTopFront;
+        UInt3Pattern    _rightBottomBack;
 
         CopyPartial_Src(
-            UnderlyingResourcePtr dst, unsigned subres = 0u,
-            const PixelCoord leftTopFront = PixelCoord(~0u,0,0),
-            const PixelCoord rightBottomBack = PixelCoord(~0u,1,1))
+            UnderlyingResourcePtr dst, SubResourceId subres = {},
+            const UInt3Pattern& leftTopFront = UInt3Pattern(~0u,0,0),
+            const UInt3Pattern& rightBottomBack = UInt3Pattern(~0u,1,1))
         : _resource(dst.get()), _subResource(subres)
         , _leftTopFront(leftTopFront)
         , _rightBottomBack(rightBottomBack) {}
     };
 
-    void CopyPartial(DeviceContext&, const CopyPartial_Dest& dst, const CopyPartial_Src& src);
+    void CopyPartial(
+        DeviceContext&, const CopyPartial_Dest& dst, const CopyPartial_Src& src,
+        ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
-    intrusive_ptr<ID3D::Resource> Duplicate(DeviceContext& context, ID3D::Resource* inputResource);
+    intrusive_ptr<ID3D::Resource> Duplicate(DeviceContext& context, UnderlyingResourcePtr inputResource);
 
-	void SetImageLayout(
-		DeviceContext& context, UnderlyingResourcePtr res,
-		ImageLayout oldLayout, ImageLayout newLayout);
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      G E T   D E S C       //
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
+	ResourceDesc ExtractDesc(const ShaderResourceView& res);
+	ResourceDesc ExtractDesc(const RenderTargetView& res);
+    ResourceDesc ExtractDesc(const DepthStencilView& res);
+    ResourceDesc ExtractDesc(const UnorderedAccessView& res);
+    RenderCore::ResourcePtr ExtractResource(const ShaderResourceView&);
+	RenderCore::ResourcePtr ExtractResource(const RenderTargetView&);
+	RenderCore::ResourcePtr ExtractResource(const DepthStencilView&);
+    RenderCore::ResourcePtr ExtractResource(const UnorderedAccessView&);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      U T I L S       //
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class LayoutTransition
+    {
+    public:
+        UnderlyingResourcePtr _res;
+		ImageLayout _oldLayout, _newLayout;
+
+        LayoutTransition(
+            UnderlyingResourcePtr res = (Resource*)nullptr, 
+            ImageLayout oldLayout = ImageLayout::Undefined,
+            ImageLayout newLayout = ImageLayout::Undefined) 
+            : _res(res), _oldLayout(oldLayout), _newLayout(newLayout) {}
+    };
+	void SetImageLayouts(DeviceContext& context, IteratorRange<const LayoutTransition*> changes);
 
 	/////////////// Resource creation and access ///////////////
 
-	using ResourceInitializer = std::function<SubResourceInitData(unsigned mipIndex, unsigned arrayIndex)>;
+	using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
 	RenderCore::ResourcePtr CreateResource(
 		const ObjectFactory& factory,
 		const ResourceDesc& desc, 

@@ -101,7 +101,7 @@ namespace RenderCore { namespace Metal_DX11
         HMODULE GetShaderCompileModule() const;
 
         static std::weak_ptr<D3DShaderCompiler> s_instance;
-        friend std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler();
+        friend std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
 
         std::vector<D3D10_SHADER_MACRO> _fixedDefines;
     };
@@ -1646,7 +1646,7 @@ namespace RenderCore { namespace Metal_DX11
         return moveptr(reflectionTemp);
     }
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler()
+    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
     {
         auto result = D3DShaderCompiler::s_instance.lock();
         if (result) return std::move(result);

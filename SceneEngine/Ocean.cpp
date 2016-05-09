@@ -564,7 +564,7 @@ namespace SceneEngine
             // texture it will wrap at that point! We have one circle for X, and 
             // another for Y -- and so the final texture wraps in all directions.
         auto pkt = BufferUploads::CreateEmptyPacket(tDesc);
-        auto data = (const uint8*)pkt->GetData(0);
+        auto data = (const uint8*)pkt->GetData({});
         for (unsigned y=0; y<height; ++y)
             for (unsigned x=0; x<width; ++x) {
                 auto* d = PtrAdd(data, (x + (y*width)) * 2);

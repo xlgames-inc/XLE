@@ -179,6 +179,13 @@ namespace RenderCore
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class SubResourceId 
+    { 
+    public:
+        unsigned _mip;
+        unsigned _arrayLayer;
+    };
+
     class PresentationChainDesc
     {
     public:

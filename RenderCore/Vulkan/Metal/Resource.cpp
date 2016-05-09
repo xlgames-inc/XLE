@@ -235,7 +235,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
-		const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
+		const std::function<SubResourceInitData(SubResourceId)>& initData)
 	: _desc(desc)
 	{
 		// Our resource can either be a linear buffer, or an image
@@ -367,7 +367,7 @@ namespace RenderCore { namespace Metal_Vulkan
             // copy in all of the sub resources.
 			if (hasInitData) {
                 if (desc._type == Desc::Type::LinearBuffer) {
-				    auto subResData = initData(0, 0);
+                    auto subResData = initData({0, 0});
 				    if (subResData._data && subResData._size) {
 					    ResourceMap map(factory.GetDevice().get(), _mem.get());
 					    std::memcpy(map.GetData(), subResData._data, std::min(subResData._size, (size_t)mem_reqs.size));
@@ -406,7 +406,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
 		const SubResourceInitData& initData)
-	: Resource(factory, desc, (initData._size && initData._data) ? ([&initData](unsigned m, unsigned a) { return (m==0&&a==0) ? initData : SubResourceInitData{}; }) : std::function<SubResourceInitData(unsigned, unsigned)>())
+	: Resource(factory, desc, (initData._size && initData._data) ? ([&initData](SubResourceId sr) { return (sr._mip==0&&sr._arrayLayer==0) ? initData : SubResourceInitData{}; }) : std::function<SubResourceInitData(SubResourceId)>())
 	{}
 	Resource::Resource() {}
 	Resource::~Resource() {}
@@ -448,7 +448,7 @@ namespace RenderCore { namespace Metal_Vulkan
     ResourcePtr Resource::Allocate(
         const ObjectFactory& factory,
 		const ResourceDesc& desc,
-		const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
+		const std::function<SubResourceInitData(SubResourceId)>& initData)
     {
         const bool useAllocateShared = true;
 		if (constant_expression<useAllocateShared>::result()) {
@@ -809,7 +809,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	ResourceMap::ResourceMap(
 		IDevice& idev, UnderlyingResourcePtr resource,
-        Resource::SubResource subResource,
+        SubResourceId subResource,
 		VkDeviceSize offset, VkDeviceSize size)
 	{
         auto dev = ExtractUnderlyingDevice(idev);

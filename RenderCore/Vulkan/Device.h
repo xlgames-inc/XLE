@@ -181,7 +181,7 @@ namespace RenderCore
 
 		ResourcePtr CreateResource(
 			const ResourceDesc& desc, 
-			const std::function<SubResourceInitData(unsigned, unsigned)>&);
+			const std::function<SubResourceInitData(SubResourceId)>&);
 
 		VkDevice	    GetUnderlyingDevice() { return _underlying.get(); }
 

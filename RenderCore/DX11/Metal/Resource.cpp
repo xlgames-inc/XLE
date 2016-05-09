@@ -9,35 +9,58 @@
 #include "DX11Utils.h"
 #include "Format.h"
 #include "ObjectFactory.h"
+#include "TextureView.h"
 
 namespace RenderCore { namespace Metal_DX11
 {
 	void Copy(
 		DeviceContext& context, 
 		UnderlyingResourcePtr dst, UnderlyingResourcePtr src,
-		ImageLayout dstLayout, ImageLayout srcLayout)
+		ImageLayout, ImageLayout)
 	{
 		context.GetUnderlying()->CopyResource(dst.get(), src.get());
 	}
 
+    static unsigned GetMipLayers(ID3D::Resource* resource)
+    {
+        // Lots of casting makes this inefficient!
+        D3DTextureDesc<ID3D::Texture2D> t2DDesc(resource);
+        if (t2DDesc.Width != 0) return t2DDesc.MipLevels;
+        D3DTextureDesc<ID3D::Texture3D> t3DDesc(resource);
+        if (t3DDesc.Width != 0) return t3DDesc.MipLevels;
+        D3DTextureDesc<ID3D::Texture1D> t1DDesc(resource);
+        if (t1DDesc.Width != 0) return t1DDesc.MipLevels;
+        return 0;
+    }
+
+    static unsigned GetSubResourceIndex(ID3D::Resource* resource, SubResourceId id)
+    {
+        // Unfortunately we need to extract the mip count from the resource to get the
+        // true number (if accessing an array layer other than the first)
+        if (id._arrayLayer == 0)
+            return id._mip;
+        return D3D11CalcSubresource(id._mip, id._arrayLayer, GetMipLayers(resource));
+    }
+
     void CopyPartial(
         DeviceContext& context, 
-        const CopyPartial_Dest& dst, const CopyPartial_Src& src)
+        const CopyPartial_Dest& dst, const CopyPartial_Src& src,
+        ImageLayout, ImageLayout)
     {
         bool useSrcBox = false;
         D3D11_BOX srcBox;
-        if (src._leftTopFront._x != ~0u || src._rightBottomBack._x != ~0u) {
-            srcBox = D3D11_BOX { 
-                src._leftTopFront._x, src._leftTopFront._y, src._leftTopFront._z,
-                src._rightBottomBack._x, src._rightBottomBack._y, src._rightBottomBack._z
+        if (src._leftTopFront[0] != ~0u || src._rightBottomBack[0] != ~0u) {
+            srcBox = D3D11_BOX {
+                src._leftTopFront[0], src._leftTopFront[1], src._leftTopFront[2],
+                src._rightBottomBack[0], src._rightBottomBack[1], src._rightBottomBack[2]
             };
             useSrcBox = true;
         }
 
         context.GetUnderlying()->CopySubresourceRegion(
-            dst._resource, dst._subResource,
-            dst._leftTopFront._x, dst._leftTopFront._y, dst._leftTopFront._z,
-            src._resource, src._subResource,
+            dst._resource, GetSubResourceIndex(dst._resource, dst._subResource),
+            dst._leftTopFront[0], dst._leftTopFront[1], dst._leftTopFront[2],
+            src._resource, GetSubResourceIndex(src._resource, src._subResource),
             useSrcBox ? &srcBox : nullptr);
     }
 
@@ -135,7 +158,7 @@ namespace RenderCore { namespace Metal_DX11
 					for (unsigned m = 0; m<std::max(1u, unsigned(desc._textureDesc._mipCount)); ++m) {
 						for (unsigned a = 0; a<std::max(1u, unsigned(desc._textureDesc._arrayCount)); ++a) {
 							uint32 subresourceIndex = D3D11CalcSubresource(m, a, desc._textureDesc._mipCount);
-							auto initData = init(m, a);
+                            auto initData = init({m, a});
 							subResources[subresourceIndex] = D3D11_SUBRESOURCE_DATA{initData._data, UINT(initData._pitches._rowPitch), UINT(initData._pitches._slicePitch)};
 						}
 					}
@@ -208,7 +231,7 @@ namespace RenderCore { namespace Metal_DX11
 		case ResourceDesc::Type::LinearBuffer:
 			{
 				if (hasInitData) {
-					auto top = init(0,0);
+                    auto top = init({0,0});
 					subResources[0] = D3D11_SUBRESOURCE_DATA{top._data, UINT(top._size), UINT(top._size)};
 					hasInitData = top._data && top._size;
 				}
@@ -315,16 +338,16 @@ namespace RenderCore { namespace Metal_DX11
 
 	ResourceDesc ExtractDesc(UnderlyingResourcePtr res)
     {
-        if (intrusive_ptr<ID3D::Buffer> buffer = QueryInterfaceCast<ID3D::Buffer>(res.get())) {
+        if (intrusive_ptr<ID3D::Texture2D> texture = QueryInterfaceCast<ID3D::Texture2D>(res.get())) {
+            D3D11_TEXTURE2D_DESC d3dDesc;
+            texture->GetDesc(&d3dDesc);
+            return AsGenericDesc(d3dDesc);
+        } else if (intrusive_ptr<ID3D::Buffer> buffer = QueryInterfaceCast<ID3D::Buffer>(res.get())) {
             D3D11_BUFFER_DESC d3dDesc;
             buffer->GetDesc(&d3dDesc);
             return AsGenericDesc(d3dDesc);
         } else if (intrusive_ptr<ID3D::Texture1D> texture = QueryInterfaceCast<ID3D::Texture1D>(res.get())) {
             D3D11_TEXTURE1D_DESC d3dDesc;
-            texture->GetDesc(&d3dDesc);
-            return AsGenericDesc(d3dDesc);
-        } else if (intrusive_ptr<ID3D::Texture2D> texture = QueryInterfaceCast<ID3D::Texture2D>(res.get())) {
-            D3D11_TEXTURE2D_DESC d3dDesc;
             texture->GetDesc(&d3dDesc);
             return AsGenericDesc(d3dDesc);
         } else if (intrusive_ptr<ID3D::Texture3D> texture = QueryInterfaceCast<ID3D::Texture3D>(res.get())) {
@@ -335,6 +358,46 @@ namespace RenderCore { namespace Metal_DX11
 		ResourceDesc desc = {};
         desc._type = ResourceDesc::Type::Unknown;
         return desc;
+    }
+
+    ResourceDesc ExtractDesc(const ShaderResourceView& res)
+    {
+        return ExtractDesc(res.GetResource().get());
+    }
+
+	ResourceDesc ExtractDesc(const RenderTargetView& res)
+    {
+        return ExtractDesc(res.GetResource().get());
+    }
+
+    ResourceDesc ExtractDesc(const DepthStencilView& res)
+    {
+        return ExtractDesc(res.GetResource().get());
+    }
+
+    ResourceDesc ExtractDesc(const UnorderedAccessView& res)
+    {
+        return ExtractDesc(res.GetResource().get());
+    }
+
+    RenderCore::ResourcePtr ExtractResource(const ShaderResourceView& view)
+    {
+        return AsResourcePtr(view.GetResource());
+    }
+
+	RenderCore::ResourcePtr ExtractResource(const RenderTargetView& view)
+    {
+        return AsResourcePtr(view.GetResource());
+    }
+
+	RenderCore::ResourcePtr ExtractResource(const DepthStencilView& view)
+    {
+        return AsResourcePtr(view.GetResource());
+    }
+
+    RenderCore::ResourcePtr ExtractResource(const UnorderedAccessView& view)
+    {
+        return AsResourcePtr(view.GetResource());
     }
 
 	ID3D::Resource* AsID3DResource(UnderlyingResourcePtr res)

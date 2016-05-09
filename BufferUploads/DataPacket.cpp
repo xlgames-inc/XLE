@@ -46,19 +46,19 @@ namespace BufferUploads
 
     void* BasicRawDataPacket::GetData(SubResourceId subRes)
     {
-        assert(subRes == 0);
+        assert(subRes._mip == 0 && subRes._arrayLayer == 0);
         return _data.get(); 
     }
     
     size_t BasicRawDataPacket::GetDataSize(SubResourceId subRes) const
     {
-        assert(subRes == 0);
+        assert(subRes._mip == 0 && subRes._arrayLayer == 0);
         return _dataSize; 
     }
 
     TexturePitches BasicRawDataPacket::GetPitches(SubResourceId subRes) const
     {
-        assert(subRes == 0);
+        assert(subRes._mip == 0 && subRes._arrayLayer == 0);
         return _pitches; 
     }
 
@@ -252,24 +252,21 @@ namespace BufferUploads
 
     void* StreamingTexture::GetData(SubResourceId subRes)
     {
-        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
-        auto* image = _image.GetImage(mip, arrayIndex, 0);
+        auto* image = _image.GetImage(subRes._mip, subRes._arrayLayer, 0);
         if (image) return image->pixels;
         return nullptr;
     }
 
     size_t StreamingTexture::GetDataSize(SubResourceId subRes) const
     {
-        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
-        auto* image = _image.GetImage(mip, arrayIndex, 0);
+        auto* image = _image.GetImage(subRes._mip, subRes._arrayLayer, 0);
         if (image) return image->slicePitch;
         return 0;
     }
 
     TexturePitches StreamingTexture::GetPitches(SubResourceId subRes) const
     {
-        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
-        auto* image = _image.GetImage(mip, arrayIndex, 0);
+        auto* image = _image.GetImage(subRes._mip, subRes._arrayLayer, 0);
         if (image) return TexturePitches{unsigned(image->rowPitch), unsigned(image->slicePitch)};
         return TexturePitches{};
     }

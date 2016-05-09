@@ -34,7 +34,7 @@ namespace RenderCore
 
         void                AttachToContext(ID3D::DeviceContext* context, ID3D::Device* device);
 
-        std::shared_ptr<ViewportContext> GetViewportContext() const;
+        const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
 
         PresentationChain(intrusive_ptr<IDXGI::SwapChain> underlying, const void* attachedWindow);
         ~PresentationChain();
@@ -42,7 +42,7 @@ namespace RenderCore
         intrusive_ptr<IDXGI::SwapChain>     _underlying;
         const void*                         _attachedWindow;
         intrusive_ptr<ID3D::Texture2D>      _defaultDepthTarget;
-        std::shared_ptr<ViewportContext>    _viewportContext;
+        std::shared_ptr<PresentationChainDesc>    _viewportContext;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,6 +52,10 @@ namespace RenderCore
     public:
         void    BeginFrame(IPresentationChain& presentationChain);
         void    Present(IPresentationChain& presentationChain) /*override*/;
+
+        void    BeginRenderPass(const FrameBufferDesc& fbDesc, const FrameBufferProperties& props, const RenderPassBeginDesc& beginInfo);
+        void    NextSubpass();
+        void    EndRenderPass();
 
         bool                        IsImmediate() const;
         ThreadContextStateDesc      GetStateDesc() const;
@@ -92,7 +96,7 @@ namespace RenderCore
 
 		ResourcePtr CreateResource(
 			const ResourceDesc& desc,
-			const std::function<SubResourceInitData(unsigned, unsigned)>&);
+			const std::function<SubResourceInitData(SubResourceId)>&);
 
         ID3D::Device*           GetUnderlyingDevice() { return _underlying.get(); }
 

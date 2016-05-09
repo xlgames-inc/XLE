@@ -13,8 +13,7 @@
 #include "../../../Utility/Mixins.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include "../../../Utility/IntrusivePtr.h"
-#include "../../../Math/Vector.h"
-#include "RenderTargetView.h"
+#include "TextureView.h"
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -93,6 +92,7 @@ namespace RenderCore { namespace Metal_DX11
     public:
         template<int Count> void    Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset=0);
 
+        ///////////////////////////////////////////////////////////////////////////////////////////
         template<int Count> void    BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void    BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void    BindCS(const ResourceList<ShaderResourceView, Count>& shaderResources);
@@ -113,6 +113,28 @@ namespace RenderCore { namespace Metal_DX11
         template<int Count> void    BindGS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
         template<int Count> void    BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
         template<int Count> void    BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        template<int Count> void    BindVS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindPS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindCS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindGS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindHS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
+        template<int Count> void    BindDS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
+
+        template<int Count> void    BindVS_G(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindPS_G(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindGS_G(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindCS_G(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindHS_G(const ResourceList<SamplerState, Count>& samplerStates);
+        template<int Count> void    BindDS_G(const ResourceList<SamplerState, Count>& samplerStates);
+
+        template<int Count> void    BindVS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindPS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindCS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindGS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindHS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindDS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        ///////////////////////////////////////////////////////////////////////////////////////////
 
         template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
         template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess);
@@ -154,10 +176,10 @@ namespace RenderCore { namespace Metal_DX11
         void        DrawAuto();
         void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
 
-        void        Clear(const RenderTargetView& renderTargets, const Float4& clearColour);
+        void        Clear(const RenderTargetView& renderTargets, const VectorPattern<float,4>& values);
         void        Clear(const DepthStencilView& depthStencil, float depth, unsigned stencil);
-        void        Clear(const UnorderedAccessView& unorderedAccess, unsigned values[4]);
-        void        Clear(const UnorderedAccessView& unorderedAccess, float values[4]);
+        void        ClearUInt(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& values);
+        void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& values);
         void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil);
 
         void        BeginCommandList();

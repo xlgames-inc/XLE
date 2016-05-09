@@ -173,6 +173,15 @@ namespace Utility
             if (constant_expression<(Count > 3u)>::result()) _values[3] = w;
         }
 
+        template<int InitCount>
+            VectorPattern(Type (&values)[InitCount])
+        {
+            for (unsigned c=0; c<Count; ++c) {
+                if (c < InitCount) _values[c] = values[c];
+                else _values[c] = (Type)0;
+            }
+        }
+
 		Type operator[](unsigned index) const { return _values[index]; }
         Type& operator[](unsigned index) { return _values[index]; }
 

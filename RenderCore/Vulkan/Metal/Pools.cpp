@@ -196,7 +196,7 @@ namespace RenderCore { namespace Metal_Vulkan
         std::memset(dummyData, 0, sizeof(dummyData));
         return Resource::Allocate(
             factory, desc, 
-            [&dummyData](unsigned, unsigned)
+            [&dummyData](SubResourceId)
             {
                 return SubResourceInitData{dummyData, 32*32*4, TexturePitches{32*4, 32*32*4}};
             });

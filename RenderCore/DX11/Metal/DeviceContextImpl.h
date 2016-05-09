@@ -17,6 +17,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->IASetVertexBuffers(VBs._startingPoint, Count, VBs._buffers, strides, offsets);
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////
     template<int Count> void DeviceContext::BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources)
     {
         for (unsigned c=0; c<Count; ++c)
@@ -130,6 +131,121 @@ namespace RenderCore { namespace Metal_DX11
             _currentCBs[4][constantBuffers._startingPoint+c] = constantBuffers._buffers[c];
         _underlying->DSSetConstantBuffers(constantBuffers._startingPoint, Count, constantBuffers._buffers);
     }
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    template<int Count> void DeviceContext::BindVS_G(const ResourceList<ShaderResourceView, Count>& shaderResources)
+    {
+        for (unsigned c=0; c<Count; ++c)
+            _currentSRVs[0][shaderResources._startingPoint+c] = shaderResources._buffers[c];
+        _underlying->VSSetShaderResources(shaderResources._startingPoint, Count, shaderResources._buffers);
+    }
+    
+    template<int Count> void DeviceContext::BindPS_G(const ResourceList<ShaderResourceView, Count>& shaderResources)
+    {
+        for (unsigned c=0; c<Count; ++c)
+            _currentSRVs[1][shaderResources._startingPoint+c] = shaderResources._buffers[c];
+        _underlying->PSSetShaderResources(shaderResources._startingPoint, Count, shaderResources._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindCS_G(const ResourceList<ShaderResourceView, Count>& shaderResources)
+    {
+        for (unsigned c=0; c<Count; ++c)
+            _currentSRVs[5][shaderResources._startingPoint+c] = shaderResources._buffers[c];
+        _underlying->CSSetShaderResources(shaderResources._startingPoint, Count, shaderResources._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindGS_G(const ResourceList<ShaderResourceView, Count>& shaderResources)
+    {
+        for (unsigned c=0; c<Count; ++c)
+            _currentSRVs[2][shaderResources._startingPoint+c] = shaderResources._buffers[c];
+        _underlying->GSSetShaderResources(shaderResources._startingPoint, Count, shaderResources._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindHS_G(const ResourceList<ShaderResourceView, Count>& shaderResources)
+    {
+        for (unsigned c=0; c<Count; ++c)
+            _currentSRVs[3][shaderResources._startingPoint+c] = shaderResources._buffers[c];
+        _underlying->HSSetShaderResources(shaderResources._startingPoint, Count, shaderResources._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindDS_G(const ResourceList<ShaderResourceView, Count>& shaderResources)
+    {
+        for (unsigned c=0; c<Count; ++c)
+            _currentSRVs[4][shaderResources._startingPoint+c] = shaderResources._buffers[c];
+        _underlying->DSSetShaderResources(shaderResources._startingPoint, Count, shaderResources._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindVS_G(const ResourceList<SamplerState, Count>& samplerStates)
+    {
+        _underlying->VSSetSamplers(samplerStates._startingPoint, Count, samplerStates._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindPS_G(const ResourceList<SamplerState, Count>& samplerStates)
+    {
+        _underlying->PSSetSamplers(samplerStates._startingPoint, Count, samplerStates._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindGS_G(const ResourceList<SamplerState, Count>& samplerStates)
+    {
+        _underlying->GSSetSamplers(samplerStates._startingPoint, Count, samplerStates._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindCS_G(const ResourceList<SamplerState, Count>& samplerStates)
+    {
+        _underlying->CSSetSamplers(samplerStates._startingPoint, Count, samplerStates._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindHS_G(const ResourceList<SamplerState, Count>& samplerStates)
+    {
+        _underlying->HSSetSamplers(samplerStates._startingPoint, Count, samplerStates._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindDS_G(const ResourceList<SamplerState, Count>& samplerStates)
+    {
+        _underlying->DSSetSamplers(samplerStates._startingPoint, Count, samplerStates._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindVS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    {
+        for (unsigned c=0; c<Count; ++c)
+            _currentCBs[0][constantBuffers._startingPoint+c] = constantBuffers._buffers[c];
+        _underlying->VSSetConstantBuffers(constantBuffers._startingPoint, Count, constantBuffers._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindPS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    {
+        for (unsigned c=0; c<Count; ++c)
+            _currentCBs[1][constantBuffers._startingPoint+c] = constantBuffers._buffers[c];
+        _underlying->PSSetConstantBuffers(constantBuffers._startingPoint, Count, constantBuffers._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindCS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    {
+        for (unsigned c=0; c<Count; ++c)
+            _currentCBs[5][constantBuffers._startingPoint+c] = constantBuffers._buffers[c];
+        _underlying->CSSetConstantBuffers(constantBuffers._startingPoint, Count, constantBuffers._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindGS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    {
+        for (unsigned c=0; c<Count; ++c)
+            _currentCBs[2][constantBuffers._startingPoint+c] = constantBuffers._buffers[c];
+        _underlying->GSSetConstantBuffers(constantBuffers._startingPoint, Count, constantBuffers._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindHS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    {
+        for (unsigned c=0; c<Count; ++c)
+            _currentCBs[3][constantBuffers._startingPoint+c] = constantBuffers._buffers[c];
+        _underlying->HSSetConstantBuffers(constantBuffers._startingPoint, Count, constantBuffers._buffers);
+    }
+
+    template<int Count> void DeviceContext::BindDS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    {
+        for (unsigned c=0; c<Count; ++c)
+            _currentCBs[4][constantBuffers._startingPoint+c] = constantBuffers._buffers[c];
+        _underlying->DSSetConstantBuffers(constantBuffers._startingPoint, Count, constantBuffers._buffers);
+    }
+    ///////////////////////////////////////////////////////////////////////////////////////////
 
     template<int Count> void DeviceContext::Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil)
     {

@@ -8,6 +8,7 @@
 
 #include "DX11.h"
 #include "../../ShaderService.h"
+#include "../../RenderCore/IDevice_Forward.h"
 #include "../../../Assets/AssetsCore.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Core/Types.h"
@@ -294,7 +295,7 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler();
+    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
 
     intrusive_ptr<ID3D::ShaderReflection>  CreateReflection(const CompiledShaderByteCode& shaderCode);
 

@@ -39,7 +39,7 @@
                     auto srd = data(mip, arrayLayer);
                     if (!srd._data || !srd._size) continue;
 
-                    Metal::ResourceMap map(*dev, &resource, Metal::Resource::SubResource{mip, arrayLayer});
+                    Metal::ResourceMap map(*dev, &resource, SubResourceId{mip, arrayLayer});
                     copiedBytes += CopyMipLevel(
                         map.GetData(), map.GetDataSize(), map.GetPitches(), 
                         desc._textureDesc,
@@ -97,10 +97,10 @@
                             *metalContext,
                             Metal::CopyPartial_Dest(
                                 &finalResource, 
-                                Metal::Resource::SubResource{c, a}, {stagingXYOffset[0], stagingXYOffset[1], 0}),
+                                SubResourceId{c, a}, {stagingXYOffset[0], stagingXYOffset[1], 0}),
                             Metal::CopyPartial_Src(
                                 &staging, 
-                                Metal::Resource::SubResource{c-stagingLODOffset, a},
+                                SubResourceId{c-stagingLODOffset, a},
                                 {(unsigned)srcBox._left, (unsigned)srcBox._top, 0u},
                                 {(unsigned)srcBox._right, (unsigned)srcBox._bottom, 1u}),
                             Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::TransferSrcOptimal);
@@ -123,7 +123,7 @@
         {
             // note -- this is a direct, immediate map... There must be no contention while we map.
             assert(desc._type == BufferDesc::Type::LinearBuffer);
-            Metal::ResourceMap map(*_renderCoreContext->GetDevice(), &resource, Metal::Resource::SubResource{0,0}, offset);
+            Metal::ResourceMap map(*_renderCoreContext->GetDevice(), &resource, SubResourceId{0,0}, offset);
             auto copyAmount = std::min(map.GetDataSize(), dataSize);
             if (copyAmount > 0)
                 XlCopyMemory(map.GetData(), data, copyAmount);

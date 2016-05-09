@@ -550,7 +550,7 @@ namespace RenderCore
 
 	ResourcePtr Device::CreateResource(
 		const ResourceDesc& desc,
-		const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
+		const std::function<SubResourceInitData(SubResourceId)>& initData)
 	{
 		return Metal_Vulkan::Resource::Allocate(_objectFactory, desc, initData);
 	}

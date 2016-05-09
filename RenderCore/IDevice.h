@@ -31,6 +31,7 @@ namespace RenderCore
 	class ResourceDesc;
 	class SubResourceInitData;
     class PresentationChainDesc;
+    class SubResourceId;
 
 #define FLEX_INTERFACE PresentationChain
 /*-----------------*/ #include "FlexBegin.h" /*-----------------*/
@@ -161,7 +162,7 @@ namespace RenderCore
             IMETHOD std::shared_ptr<IThreadContext>     GetImmediateContext() IPURE;
             IMETHOD std::unique_ptr<IThreadContext>     CreateDeferredContext() IPURE;
 
-			using ResourceInitializer = std::function<SubResourceInitData(unsigned mipIndex, unsigned arrayIndex)>;
+			using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
 			IMETHOD ResourcePtr			CreateResource(const ResourceDesc& desc, const ResourceInitializer& init = nullptr) IPURE;
 
             /// <summary>Returns version information for this device</summary>

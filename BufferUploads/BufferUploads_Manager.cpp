@@ -420,7 +420,7 @@ namespace BufferUploads
 
     static DataPacket::SubResourceId SubR(unsigned mipIndex, unsigned arrayIndex)
     {
-        return DataPacket::TexSubRes(mipIndex, arrayIndex);
+        return DataPacket::SubResourceId{mipIndex, arrayIndex};
     }
 
     static PartialResource DefaultPartialResource(const BufferDesc& desc, DataPacket& initialisationData)
@@ -758,16 +758,16 @@ namespace BufferUploads
             deviceContext.PushToStagingTexture(
                 *stagingConstruction._identifier->GetUnderlying(), 
                 ApplyLODOffset(desc, actualisedStagingLODOffset), Box2D(),
-                [&part, initialisationData, actualisedStagingLODOffset](unsigned mip, unsigned arrayLayer) -> RenderCore::SubResourceInitData
+                [&part, initialisationData, actualisedStagingLODOffset](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
                 {
                     RenderCore::SubResourceInitData result = {};
-                    if (mip<part._lodLevelMin || mip>part._lodLevelMax) return result;
-                    if (arrayLayer<part._arrayIndexMin || arrayLayer>part._arrayIndexMax) return result;
+                    if (sr._mip<part._lodLevelMin || sr._mip>part._lodLevelMax) return result;
+                    if (sr._arrayLayer<part._arrayIndexMin || sr._arrayLayer>part._arrayIndexMax) return result;
 
-                    auto dataMip = mip + actualisedStagingLODOffset;
-                    result._size = initialisationData->GetDataSize(SubR(dataMip, arrayLayer));
-                    result._data = initialisationData->GetData(SubR(dataMip, arrayLayer));
-                    result._pitches = initialisationData->GetPitches(SubR(dataMip, arrayLayer));
+                    auto dataMip = sr._mip + actualisedStagingLODOffset;
+                    result._size = initialisationData->GetDataSize(SubR(dataMip, sr._arrayLayer));
+                    result._data = initialisationData->GetData(SubR(dataMip, sr._arrayLayer));
+                    result._pitches = initialisationData->GetPitches(SubR(dataMip, sr._arrayLayer));
                     return result;
                 });
     
@@ -1685,16 +1685,16 @@ namespace BufferUploads
                             bytesUploaded += context.GetDeviceContext().PushToStagingTexture(
                                 *transaction->_stagingResource->GetUnderlying(), 
                                 finalDesc, stagingBox,
-                                [&uploadStep, mipOffset](unsigned mip, unsigned arrayLayer) -> RenderCore::SubResourceInitData
+                                [&uploadStep, mipOffset](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
                                 {
                                     RenderCore::SubResourceInitData result = {};
-                                    if (arrayLayer != uploadStep._arrayIndex) return result;
-                                    if (mip < uploadStep._lodLevelMin || mip > uploadStep._lodLevelMax) return result;
+                                    if (sr._arrayLayer != uploadStep._arrayIndex) return result;
+                                    if (sr._mip < uploadStep._lodLevelMin || sr._mip > uploadStep._lodLevelMax) return result;
 
-                                    auto dataMip = mip + mipOffset;
-                                    result._size = uploadStep._rawData->GetDataSize(SubR(dataMip, arrayLayer));
-                                    result._data = uploadStep._rawData->GetData(SubR(dataMip, arrayLayer));
-                                    result._pitches = uploadStep._rawData->GetPitches(SubR(dataMip, arrayLayer));
+                                    auto dataMip = sr._mip + mipOffset;
+                                    result._size = uploadStep._rawData->GetDataSize(SubR(dataMip, sr._arrayLayer));
+                                    result._data = uploadStep._rawData->GetData(SubR(dataMip, sr._arrayLayer));
+                                    result._pitches = uploadStep._rawData->GetPitches(SubR(dataMip, sr._arrayLayer));
                                     return result;
                                 });
                             ++uploadCount;
@@ -1725,16 +1725,16 @@ namespace BufferUploads
                                 bytesUploaded += context.GetDeviceContext().PushToTexture(
                                     *transaction->_finalResource->GetUnderlying(), stagingDesc, 
                                     uploadStep._destinationBox,
-                                    [&uploadStep](unsigned mip, unsigned arrayLayer) -> RenderCore::SubResourceInitData
+                                    [&uploadStep](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
                                     {
                                         RenderCore::SubResourceInitData result = {};
-                                        if (arrayLayer != uploadStep._arrayIndex) return result;
-                                        if (mip < uploadStep._lodLevelMin || mip > uploadStep._lodLevelMax) return result;
+                                        if (sr._arrayLayer != uploadStep._arrayIndex) return result;
+                                        if (sr._mip < uploadStep._lodLevelMin || sr._mip > uploadStep._lodLevelMax) return result;
 
-                                        auto dataMip = mip;
-                                        result._size = uploadStep._rawData->GetDataSize(SubR(dataMip, arrayLayer));
-                                        result._data = uploadStep._rawData->GetData(SubR(dataMip, arrayLayer));
-                                        result._pitches = uploadStep._rawData->GetPitches(SubR(dataMip, arrayLayer));
+                                        auto dataMip = sr._mip;
+                                        result._size = uploadStep._rawData->GetDataSize(SubR(dataMip, sr._arrayLayer));
+                                        result._data = uploadStep._rawData->GetData(SubR(dataMip, sr._arrayLayer));
+                                        result._pitches = uploadStep._rawData->GetPitches(SubR(dataMip, sr._arrayLayer));
                                         return result;
                                     });
                             }

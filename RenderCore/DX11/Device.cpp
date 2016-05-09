@@ -283,7 +283,7 @@ namespace RenderCore
 
 	ResourcePtr Device::CreateResource(
 		const ResourceDesc& desc,
-		const std::function<SubResourceInitData(unsigned, unsigned)>& init)
+		const std::function<SubResourceInitData(SubResourceId)>& init)
 	{
 		return Metal_DX11::CreateResource(*_mainFactory, desc, init);
 	}
@@ -352,8 +352,10 @@ namespace RenderCore
     : _underlying(std::move(underlying))
     , _attachedWindow(attachedWindow)
     {
-        _viewportContext = std::make_shared<ViewportContext>();
-        _viewportContext->_dimensions = GetBufferSize(*_underlying);
+        _viewportContext = std::make_shared<PresentationChainDesc>();
+        auto dims = GetBufferSize(*_underlying);
+        _viewportContext->_width = dims[0];
+        _viewportContext->_height = dims[1];
     }
 
     PresentationChain::~PresentationChain()
@@ -378,11 +380,13 @@ namespace RenderCore
             backBufferCount, newWidth, newHeight, 
             DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
 
-        _viewportContext->_dimensions = GetBufferSize(*_underlying);
+        auto dims = GetBufferSize(*_underlying);
+        _viewportContext->_width = dims[0];
+        _viewportContext->_height = dims[1];
         _defaultDepthTarget.reset(0);
     }
 
-    std::shared_ptr<ViewportContext> PresentationChain::GetViewportContext() const
+    const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const
     {
         return _viewportContext;
     }
@@ -504,6 +508,18 @@ namespace RenderCore
         swapChain->GetUnderlying()->Present(0, 0);
     }
 
+    void    ThreadContext::BeginRenderPass(const FrameBufferDesc& fbDesc, const FrameBufferProperties& props, const RenderPassBeginDesc& beginInfo)
+    {
+    }
+
+    void    ThreadContext::NextSubpass()
+    {
+    }
+
+    void    ThreadContext::EndRenderPass()
+    {
+    }
+
     bool    ThreadContext::IsImmediate() const
     {
         return _underlying->IsImmediate();
@@ -514,7 +530,7 @@ namespace RenderCore
         Metal_DX11::ViewportDesc viewport(*_underlying.get());
 
         ThreadContextStateDesc result;
-        result._viewportDimensions = Int2(int(viewport.Width), int(viewport.Height));
+        result._viewportDimensions = {unsigned(viewport.Width), unsigned(viewport.Height)};
         result._frameId = _frameId;
         return result;
     }

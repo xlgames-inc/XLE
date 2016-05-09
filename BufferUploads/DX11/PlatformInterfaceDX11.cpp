@@ -54,7 +54,7 @@
             unsigned copiedBytes = 0;
             for (unsigned mip=0; mip<std::max(1u, unsigned(desc._textureDesc._mipCount)); ++mip) {
                 for (unsigned arrayLayer=0; arrayLayer<std::max(1u, unsigned(desc._textureDesc._arrayCount)); ++arrayLayer) {
-                    auto srd = data(mip, arrayLayer);
+                    auto srd = data({mip, arrayLayer});
                     if (!srd._data || !srd._size) continue;
 
                     uint32 subResource = D3D11CalcSubresource(mip, arrayLayer, desc._textureDesc._mipCount);
@@ -198,7 +198,7 @@
             auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             for (unsigned m=0; m<desc._textureDesc._mipCount; ++m)
                 for (unsigned a=0; a<desc._textureDesc._arrayCount; ++a) {
-                    auto subResData = data(m, a);
+                    auto subResData = data({m, a});
                     if (!subResData._data || !subResData._size) continue;
 
                     uint32 subResource = D3D11CalcSubresource(m, a, desc._textureDesc._mipCount);
@@ -220,19 +220,38 @@
             return copiedBytes;
         }
 
-        void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(UnderlyingResource& finalResource, UnderlyingResource& staging, const BufferDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
+        void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(
+            UnderlyingResource& finalResource, UnderlyingResource& staging, 
+            const BufferDesc& destinationDesc, 
+            unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset,
+            VectorPattern<unsigned, 2> stagingXYOffset,
+            const RenderCore::Box2D& srcBox)
         {
-			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
-            using namespace RenderCore;
-            if ((lodLevelMin == ~unsigned(0x0) || lodLevelMax == ~unsigned(0x0)) && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset) {
-                Metal::Copy(*metalContext, ResPtr(finalResource), ResPtr(staging));
+            auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
+            auto allLods = 
+                (lodLevelMin == ~unsigned(0x0) || lodLevelMin == 0u)
+                && (lodLevelMax == ~unsigned(0x0) || lodLevelMax == (std::max(1u, (unsigned)destinationDesc._textureDesc._mipCount)-1));
+
+            if (allLods && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset && !stagingXYOffset[0] && !stagingXYOffset[1]) {
+                Metal::Copy(
+                    *metalContext, 
+                    &finalResource, &staging,
+                    Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::TransferSrcOptimal);
             } else {
-                for (unsigned a=0; a<destinationDesc._textureDesc._arrayCount; ++a) {
+                for (unsigned a=0; a<std::max(1u, (unsigned)destinationDesc._textureDesc._arrayCount); ++a) {
                     for (unsigned c=lodLevelMin; c<=lodLevelMax; ++c) {
                         Metal::CopyPartial(
                             *metalContext,
-                            Metal::CopyPartial_Dest(ResPtr(finalResource), D3D11CalcSubresource(c, a, destinationDesc._textureDesc._mipCount)),
-                            Metal::CopyPartial_Src(ResPtr(staging), D3D11CalcSubresource(c-stagingLODOffset, a, destinationDesc._textureDesc._mipCount)));
+                            Metal::CopyPartial_Dest(
+                                &finalResource, 
+                                {c, a}, 
+                                {stagingXYOffset[0], stagingXYOffset[1], 0}),
+                            Metal::CopyPartial_Src(
+                                &staging, 
+                                {c-stagingLODOffset, a},
+                                {(unsigned)srcBox._left, (unsigned)srcBox._top, 0u},
+                                {(unsigned)srcBox._right, (unsigned)srcBox._bottom, 1u}),
+                                Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined);
                     }
                 }
             }
@@ -366,8 +385,8 @@
                     using namespace RenderCore;
                     Metal::CopyPartial(
                         *metalContext,
-                        Metal::CopyPartial_Dest(ResPtr(destination), 0, i->_destination),
-                        Metal::CopyPartial_Src(ResPtr(source), 0, i->_sourceStart, Metal::PixelCoord(i->_sourceEnd, 1, 1)));
+                        Metal::CopyPartial_Dest(ResPtr(destination), {0, i->_destination}),
+                        Metal::CopyPartial_Src(ResPtr(source), {0, i->_sourceStart}, {i->_sourceEnd, 1, 1}));
                 }
             } else {
                 MappedBuffer sourceBuffer       = Map(*metalContext, source, MapType::ReadOnly);
@@ -453,7 +472,7 @@
 
     void*     RawDataPacket_ReadBack::GetData(SubResourceId subRes)
     {
-        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        auto arrayIndex = subRes._arrayLayer, mip = subRes._mip;
         unsigned subResIndex = mip + arrayIndex * _mipCount;
         assert(subResIndex < _mappedBuffer.size());
         return PtrAdd(_mappedBuffer[subResIndex].GetData(), _dataOffset);
@@ -461,7 +480,7 @@
 
     size_t          RawDataPacket_ReadBack::GetDataSize(SubResourceId subRes) const
     {
-        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        auto arrayIndex = subRes._arrayLayer, mip = subRes._mip;
         unsigned subResIndex = mip + arrayIndex * _mipCount;
         assert(subResIndex < _mappedBuffer.size());
         return _mappedBuffer[subResIndex].GetPitches()._slicePitch - _dataOffset;
@@ -469,7 +488,7 @@
 
     TexturePitches RawDataPacket_ReadBack::GetPitches(SubResourceId subRes) const
     {
-        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        auto arrayIndex = subRes._arrayLayer, mip = subRes._mip;
         unsigned subResIndex = mip + arrayIndex * _mipCount;
         assert(subResIndex < _mappedBuffer.size());
         return _mappedBuffer[subResIndex].GetPitches();
@@ -571,10 +590,9 @@
         {
 			if (initialisationData) {
 				return device.CreateResource(desc,
-					[initialisationData](unsigned mipIndex, unsigned arrayIndex) -> RenderCore::SubResourceInitData
+					[initialisationData](SubResourceId sr) -> RenderCore::SubResourceInitData
 					{
 						RenderCore::SubResourceInitData result;
-						auto sr = DataPacket::TexSubRes(mipIndex, arrayIndex);
 						result._data = initialisationData->GetData(sr);
 						result._size = initialisationData->GetDataSize(sr);
 						result._pitches = initialisationData->GetPitches(sr);
