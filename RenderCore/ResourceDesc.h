@@ -179,6 +179,55 @@ namespace RenderCore
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class TextureViewWindow
+    {
+    public:
+        struct SubResourceRange { unsigned _min; unsigned _count; };
+        static const unsigned Unlimited = ~0x0u;
+        static const SubResourceRange All;
+
+		struct Flags
+        {
+			enum Bits 
+            { 
+                AttachedCounter = 1<<0, AppendBuffer = 1<<1, 
+                ForceArray = 1<<2, ForceSingleSample = 1<<3, 
+                JustDepth = 1<<4, JustStencil = 1<<5 
+            };
+			using BitField = unsigned;
+		};
+
+        struct FormatFilter
+        {
+            enum Aspect { UndefinedAspect, Color, Depth, Stencil, DepthStencil };
+            enum ColorSpace { UndefinedColorSpace, Linear, SRGB };
+
+            ColorSpace  _colorSpace;
+            Aspect      _aspect;
+            Format      _explicitFormat;
+
+            FormatFilter(ColorSpace colorSpace = UndefinedColorSpace, Aspect aspect = UndefinedAspect)
+                : _colorSpace(colorSpace), _aspect(aspect), _explicitFormat(Format(0)) {}
+            FormatFilter(Format explicitFormat) : _colorSpace(UndefinedColorSpace), _aspect(UndefinedAspect), _explicitFormat(explicitFormat) {}
+        };
+
+        FormatFilter                _format;
+        SubResourceRange            _mipRange;
+        SubResourceRange            _arrayLayerRange;
+        TextureDesc::Dimensionality _dimensionality;
+		Flags::BitField				_flags;
+
+        TextureViewWindow(
+            FormatFilter format = FormatFilter(),
+            TextureDesc::Dimensionality dimensionality = TextureDesc::Dimensionality::Undefined,
+            SubResourceRange mipRange = All,
+            SubResourceRange arrayLayerRange = All,
+			Flags::BitField flags = 0
+            ) : _format(format), _dimensionality(dimensionality), _mipRange(mipRange), _arrayLayerRange(arrayLayerRange), _flags(flags) {}
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class SubResourceId 
     { 
     public:

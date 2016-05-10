@@ -16,6 +16,8 @@
 
 namespace RenderCore
 {
+    const TextureViewWindow::SubResourceRange TextureViewWindow::All = SubResourceRange{0, Unlimited};
+
     namespace Exceptions
     {
         GenericFailure::GenericFailure(const char what[]) : ::Exceptions::BasicLabel(what) {}

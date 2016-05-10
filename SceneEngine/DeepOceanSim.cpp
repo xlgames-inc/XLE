@@ -536,9 +536,9 @@ namespace SceneEngine
         normalsTextureUVA.reserve(normalsMipCount);
         normalsSingleMipSRV.reserve(normalsMipCount);
         for (unsigned c=0; c<normalsMipCount; ++c) {
-			auto window = Metal::TextureViewWindow(
+			auto window = TextureViewWindow(
 				uintNormalFormat, TextureDesc::Dimensionality::Undefined,
-				Metal::TextureViewWindow::SubResourceRange{ c,1 });
+				TextureViewWindow::SubResourceRange{ c,1 });
             normalsTextureUVA.push_back(Metal::UnorderedAccessView(normalsTexture->ShareUnderlying(), window));
             normalsSingleMipSRV.push_back(Metal::ShaderResourceView(normalsTexture->ShareUnderlying(), window));
         }

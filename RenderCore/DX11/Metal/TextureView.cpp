@@ -14,8 +14,6 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
-    const TextureViewWindow::SubResourceRange TextureViewWindow::All = SubResourceRange{0, Unlimited};
-
     static bool IsDefault(const TextureViewWindow& window)
     {
         return window._format._colorSpace == TextureViewWindow::FormatFilter::UndefinedColorSpace

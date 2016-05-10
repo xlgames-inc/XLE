@@ -669,7 +669,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void                        DeviceContext::SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims)
     {
-        _namedResources.Bind(0u, *presentationTarget);
+        // _namedResources.Bind(0u, *presentationTarget);
         _presentationTargetDims = dims;
     }
 

@@ -50,10 +50,10 @@ namespace RenderCore
     class ThreadContext : public Base_ThreadContext
     {
     public:
-        void    BeginFrame(IPresentationChain& presentationChain);
+        ResourcePtr BeginFrame(IPresentationChain& presentationChain);
         void    Present(IPresentationChain& presentationChain) /*override*/;
 
-        void    BeginRenderPass(const FrameBufferDesc& fbDesc, const FrameBufferProperties& props, const RenderPassBeginDesc& beginInfo);
+        void    BeginRenderPass(const FrameBufferDesc& fbDesc, NamedResources& namedRes, const RenderPassBeginDesc& beginInfo);
         void    NextSubpass();
         void    EndRenderPass();
 

@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #define _CRT_SECURE_NO_WARNINGS
-#define SELECT_VULKAN
+// #define SELECT_VULKAN
 
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/MainInputHandler.h"
@@ -160,16 +160,16 @@ namespace VulkanTest
 
 	namespace Internal
 	{
-		static RenderCore::SubResourceInitData SingleSubResHelper(const RenderCore::SubResourceInitData& data, unsigned m, unsigned a)
+		static RenderCore::SubResourceInitData SingleSubResHelper(const RenderCore::SubResourceInitData& data, RenderCore::SubResourceId sr)
 		{
-			return (m == 0 && a == 0) ? data : RenderCore::SubResourceInitData{};
+			return (sr._mip == 0 && sr._arrayLayer == 0) ? data : RenderCore::SubResourceInitData{};
 		}
 	}
 
 	static RenderCore::IDevice::ResourceInitializer SingleSubRes(
 		const RenderCore::SubResourceInitData& initData)
 	{
-		return std::bind(&Internal::SingleSubResHelper, std::ref(initData), std::placeholders::_1, std::placeholders::_2);
+		return std::bind(&Internal::SingleSubResHelper, std::ref(initData), std::placeholders::_1);
 	}
 
 	void init_image2(
@@ -220,12 +220,13 @@ namespace VulkanTest
 		} else {
 			auto vkContext = RenderCore::Metal_Vulkan::DeviceContext::Get(threadContext);
 			// is it a good idea to change the layout of the staging resource before we use it?
-			Metal_Vulkan::SetImageLayout(*vkContext, stagingResource, Metal_Vulkan::ImageLayout::Preinitialized, Metal_Vulkan::ImageLayout::TransferSrcOptimal);
-			Metal_Vulkan::SetImageLayout(*vkContext, gpuResource, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal);
+			Metal_Vulkan::SetImageLayouts(*vkContext, {
+                {stagingResource, Metal_Vulkan::ImageLayout::Preinitialized, Metal_Vulkan::ImageLayout::TransferSrcOptimal},
+                {gpuResource, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal}});
 			Metal_Vulkan::Copy(
 				*vkContext, gpuResource, stagingResource,
 				Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::TransferSrcOptimal);
-			Metal_Vulkan::SetImageLayout(*vkContext, gpuResource, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal);
+            Metal_Vulkan::SetImageLayouts(*vkContext, {{gpuResource, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal}});
 			texObj._imageLayout = Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal;
 		}
 	}
@@ -305,7 +306,6 @@ namespace Sample
 				dxContext->Bind(Metal_DX11::ViewportDesc(0, 0, 512, 512));
 
 				// ------ draw! -----------
-				dxContext->BindPipeline();
 				dxContext->Draw((unsigned)cubeGeo.size());
 			} else {
 				auto vkContext = Metal_Vulkan::DeviceContext::Get(genericThreadContext);
@@ -364,7 +364,6 @@ namespace Sample
 				vkContext->Bind(Metal_Vulkan::ViewportDesc(0, 0, 512, 512));
 
 				// ------ draw! -----------
-				// vkContext->BindPipeline();
 				vkContext->Draw((unsigned)cubeGeo.size());
 			}
         }
@@ -464,8 +463,8 @@ namespace Sample
         RenderCore::Techniques::ParsingContext& parserContext)
     {
         using namespace RenderCore;
-        auto vkContext = Metal_Vulkan::DeviceContext::Get(genericThreadContext);
-		if (!vkContext) return;
+        auto metalContext = Metal::DeviceContext::Get(genericThreadContext);
+		if (!metalContext) return;
 
         static float time = 0.f;
         time += 1.0f/60.f;
@@ -475,7 +474,7 @@ namespace Sample
         parserContext.GetProjectionDesc() = projDesc;
         auto globalTransform = RenderCore::Techniques::BuildGlobalTransformConstants(projDesc);
         parserContext.SetGlobalCB(
-            *vkContext, Techniques::TechniqueContext::CB_GlobalTransform,
+            *metalContext, Techniques::TechniqueContext::CB_GlobalTransform,
             &globalTransform, sizeof(globalTransform));
 
         struct GlobalCBuffer
@@ -484,12 +483,12 @@ namespace Sample
             unsigned _samplingPassCount; unsigned _dummy;
         } globalStateCB { time, 0, 1, 0 };
         parserContext.SetGlobalCB(
-            *vkContext, Techniques::TechniqueContext::CB_GlobalState,
+            *metalContext, Techniques::TechniqueContext::CB_GlobalState,
             &globalStateCB, sizeof(globalStateCB));
 
         auto env = MakeBasicLightingEnvironment();
         parserContext.SetGlobalCB(
-            *vkContext, Techniques::TechniqueContext::CB_BasicLightingEnvironment,
+            *metalContext, Techniques::TechniqueContext::CB_BasicLightingEnvironment,
             &env, sizeof(env));
     }
 
@@ -502,8 +501,8 @@ namespace Sample
 			genericThreadContext.InvalidateCachedState();
 			using namespace RenderCore;
 
-			auto vkContext = Metal_Vulkan::DeviceContext::Get(genericThreadContext);
-			if (vkContext) {
+			auto metalContext = Metal::DeviceContext::Get(genericThreadContext);
+			if (metalContext) {
 
                 auto& horizBlur = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 
@@ -516,17 +515,17 @@ namespace Sample
                 auto& box = RenderCore::Techniques::FindCachedBoxDep2<ModelTestBox>();
 
                 auto captureMarker = box._sharedStateSet->CaptureState(
-                    *vkContext, 
+                    *metalContext, 
                     parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
-                vkContext->Bind(Metal_Vulkan::DepthStencilState(true, true));
-				vkContext->Bind(Metal_Vulkan::RasterizerState());
-                vkContext->Bind(Metal_Vulkan::BlendState());
-				vkContext->BindPS(MakeResourceList(Metal_Vulkan::SamplerState(), Metal_Vulkan::SamplerState()));
+                metalContext->Bind(Metal::DepthStencilState(true, true));
+				metalContext->Bind(Metal::RasterizerState());
+                metalContext->Bind(Metal::BlendState());
+				metalContext->BindPS(MakeResourceList(Metal::SamplerState(), Metal::SamplerState()));
 
                     //  Finally, we can render the object!
                 box._modelRenderer->Render(
-                    RenderCore::Assets::ModelRendererContext(*vkContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward),
+                    RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward),
                     *box._sharedStateSet, Identity<Float4x4>());
 
             }
@@ -538,14 +537,14 @@ namespace Sample
     static void RunRenderPassTest(
         RenderCore::IThreadContext& genericThreadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
-        const RenderCore::Format& presentationFormat,
+        RenderCore::NamedResources& namedResources,
         const RenderCore::TextureSamples& samples)
     {
         TRY
         {
             using namespace RenderCore;
-            auto vkContext = Metal_Vulkan::DeviceContext::Get(genericThreadContext);
-			if (!vkContext) return;
+            auto metalContext = Metal::DeviceContext::Get(genericThreadContext);
+			if (!metalContext) return;
 
             const unsigned PresentationTarget = 0;
             const unsigned MainDepthStencil = 2;
@@ -555,41 +554,68 @@ namespace Sample
             const unsigned LightingResolve = 6;
             AttachmentDesc attachments[] = 
             {
-                // Presentation chain target
-                {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
-                    presentationFormat,
-                    AttachmentDesc::LoadStore::DontCare, AttachmentDesc::LoadStore::Retain,
-                    PresentationTarget },
-
                 // Main depth stencil
-                {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
-                    RenderCore::Format::D24_UNORM_S8_UINT,
-                    AttachmentDesc::LoadStore::Clear, AttachmentDesc::LoadStore::DontCare,
-                    MainDepthStencil, AttachmentDesc::Flags::Multisampled },
+                {   MainDepthStencil, 
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    RenderCore::Format::R24G8_TYPELESS,
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::DepthStencil | AttachmentDesc::Flags::ShaderResource },
 
                 // gbuffer diffuse
-                {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                {   GBufferDiffuse, 
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::R8G8B8A8_UNORM_SRGB,
-                    AttachmentDesc::LoadStore::DontCare, AttachmentDesc::LoadStore::DontCare,
-                    GBufferDiffuse, AttachmentDesc::Flags::Multisampled },
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
 
                 // gbuffer normals
-                {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                {   GBufferNormals, 
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::R8G8B8A8_SNORM,
-                    AttachmentDesc::LoadStore::DontCare, AttachmentDesc::LoadStore::DontCare,
-                    GBufferNormals, AttachmentDesc::Flags::Multisampled },
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
 
                 // gbuffer params
-                {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                {   GBufferParams, 
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::R8G8B8A8_UNORM,
-                    AttachmentDesc::LoadStore::DontCare, AttachmentDesc::LoadStore::DontCare,
-                    GBufferParams, AttachmentDesc::Flags::Multisampled },
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
 
                 // lighting resolve
-                {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                {   LightingResolve, 
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::R16G16B16A16_FLOAT,
-                    AttachmentDesc::LoadStore::DontCare, AttachmentDesc::LoadStore::DontCare,
-                    LightingResolve, AttachmentDesc::Flags::Multisampled }
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource }
+            };
+
+            AttachmentViewDesc attachmentViews[] = 
+            {
+                // presentation target
+                {   PresentationTarget, PresentationTarget, 
+                    {{TextureViewWindow::FormatFilter::ColorSpace::SRGB}},
+                    AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain },
+
+                // Main depth stencil
+                {   MainDepthStencil, MainDepthStencil,
+                    {{TextureViewWindow::FormatFilter::ColorSpace::Linear, TextureViewWindow::FormatFilter::Aspect::DepthStencil}},
+                    AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::DontCare },
+
+                // gbuffer diffuse
+                {   GBufferDiffuse, GBufferDiffuse,
+                    TextureViewWindow(),
+                    AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::DontCare },
+
+                // gbuffer normals
+                {   GBufferNormals, GBufferNormals,
+                    TextureViewWindow(),
+                    AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::DontCare },
+
+                // gbuffer params
+                {   GBufferParams, GBufferParams, 
+                    TextureViewWindow(),
+                    AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::DontCare },
+
+                // lighting resolve
+                {   LightingResolve, LightingResolve, 
+                    TextureViewWindow(),
+                    AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::DontCare }
             };
 
             SubpassDesc subpasses[] = 
@@ -602,45 +628,47 @@ namespace Sample
             };
 
             FrameBufferDesc fbLayout(
-                MakeIteratorRange(attachments),
                 MakeIteratorRange(subpasses),
-                samples);
+                MakeIteratorRange(attachmentViews));
 
-            Metal_Vulkan::FrameBufferCache fbCache;
+            auto presDims = metalContext->GetPresentationTargetDims();
+            Metal::FrameBufferCache fbCache;
+            namedResources.Bind(samples);
+            namedResources.Bind(FrameBufferProperties{presDims[0], presDims[1], 0u});
+            namedResources.DefineAttachments(MakeIteratorRange(attachments));
+
+            metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, (float)presDims[0], (float)presDims[1]));
+
             auto beginInfo = RenderPassBeginDesc({ClearValue(), MakeClearValue(1.f, 0)});
             {
-                auto presDims = vkContext->GetPresentationTargetDims();
-                Metal_Vulkan::RenderPassInstance rpi(
-                    *vkContext, fbLayout,
-                    FrameBufferProperties{presDims[0], presDims[1], 1u},
-                    0u, fbCache,
-                    beginInfo);
-                auto& namedResources = vkContext->GetNamedResources();
+                Metal::RenderPassInstance rpi(
+                    *metalContext, fbLayout,
+                    0u, namedResources, fbCache, beginInfo);
 
                 // First, render gbuffer subpass
                 {
                     auto& box = RenderCore::Techniques::FindCachedBoxDep2<ModelTestBox>();
                     auto captureMarker = box._sharedStateSet->CaptureState(
-                        *vkContext, 
+                        *metalContext, 
                         parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
                     box._modelRenderer->Render(
-                        RenderCore::Assets::ModelRendererContext(*vkContext, parserContext, RenderCore::Techniques::TechniqueIndex::Deferred),
+                        RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, RenderCore::Techniques::TechniqueIndex::Deferred),
                         *box._sharedStateSet, Identity<Float4x4>());
                 }
                 rpi.NextSubpass();
 
                 // This is the lighting resolve. 
                 {
-                    vkContext->BindPS(MakeResourceList(*namedResources.GetSRV(GBufferDiffuse), *namedResources.GetSRV(GBufferNormals)));
+                    metalContext->BindPS(MakeResourceList(*namedResources.GetSRV(GBufferDiffuse), *namedResources.GetSRV(GBufferNormals)));
 
                     auto& resolveShdr = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                         "game/xleres/basic.psh:copy:ps_*",
                         "");
-                    vkContext->Unbind<Metal_Vulkan::BoundInputLayout>();
-                    vkContext->Bind(Metal_Vulkan::Topology::TriangleStrip);
-                    vkContext->Bind(resolveShdr);
-                    vkContext->Draw(4);
+                    metalContext->Unbind<Metal::BoundInputLayout>();
+                    metalContext->Bind(Metal::Topology::TriangleStrip);
+                    metalContext->Bind(resolveShdr);
+                    metalContext->Draw(4);
                 }
             }
 
@@ -648,9 +676,6 @@ namespace Sample
         CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); }
         CATCH_END
     }
-
-    static VkClearValue ClearDepthStencil(float depth, uint32_t stencil) { VkClearValue result; result.depthStencil = VkClearDepthStencilValue { depth, stencil }; return result; }
-	static VkClearValue ClearColor(float r, float g, float b, float a) { VkClearValue result; result.color.float32[0] = r; result.color.float32[1] = g; result.color.float32[2] = b; result.color.float32[3] = a; return result; }
 
     void ExecuteSample()
     {
@@ -768,16 +793,28 @@ namespace Sample
             Attachment attachments[] = 
             {
                 // Presentation chain target
-                {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
-                    presentationChain->GetDesc()->_format,
-                    Attachment::LoadStore::Clear, Attachment::LoadStore::Retain,
-                    PresentationTarget },
+                // {   PresentationTarget, 
+                //     Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                //     presentationChain->GetDesc()->_format },
 
                 // Main depth stencil
-                {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                {   MainDepthStencil, 
+                    Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::D24_UNORM_S8_UINT,
-                    Attachment::LoadStore::Clear, Attachment::LoadStore::DontCare,
-                    MainDepthStencil, Attachment::Flags::Multisampled }
+                    Attachment::Flags::Multisampled | Attachment::Flags::DepthStencil }
+            };
+
+            RenderCore::AttachmentViewDesc attachmentViews[] = 
+            {
+                // Presentation chain target
+                {   PresentationTarget, PresentationTarget,
+                    RenderCore::TextureViewWindow(),
+                    RenderCore::AttachmentViewDesc::LoadStore::Clear, RenderCore::AttachmentViewDesc::LoadStore::Retain },
+
+                // Main depth stencil
+                {   MainDepthStencil, MainDepthStencil,
+                    RenderCore::TextureViewWindow(),
+                    RenderCore::AttachmentViewDesc::LoadStore::Clear, RenderCore::AttachmentViewDesc::LoadStore::DontCare }
             };
 
             Subpass subpasses[] = 
@@ -786,9 +823,12 @@ namespace Sample
             };
 
             RenderCore::FrameBufferDesc fbLayout(
-                MakeIteratorRange(attachments),
                 MakeIteratorRange(subpasses),
-                presentationChain->GetDesc()->_samples);
+                MakeIteratorRange(attachmentViews));
+
+            RenderCore::NamedResources namedResources;
+            namedResources.Bind(presentationChain->GetDesc()->_samples);
+            namedResources.DefineAttachments(MakeIteratorRange(attachments));
 
                 //  Finally, we execute the frame loop
             for (;;) {
@@ -796,10 +836,13 @@ namespace Sample
                     break;
                 }
 
-				context->BeginFrame(*presentationChain);
+				auto res = context->BeginFrame(*presentationChain);
+                auto presDims = context->GetStateDesc()._viewportDimensions;
+                namedResources.Bind(RenderCore::FrameBufferProperties{presDims[0], presDims[1], 0u});
+                namedResources.Bind(0, res);
                 // context->BeginRenderPass(
                 //     fbLayout, 
-                //     RenderCore::FrameBufferProperties{},
+                //     namedResources,
                 //     {RenderCore::MakeClearValue(.5f, .3f, .1f, 1.f), RenderCore::MakeClearValue(1.f, 0)});
 
                 // RunShaderTest(*context);
@@ -809,11 +852,11 @@ namespace Sample
                 // context->EndRenderPass();
                 RunRenderPassTest(
                     *context, parserContext, 
-                    presentationChain->GetDesc()->_format,
+                    namedResources,
                     RenderCore::TextureSamples::Create()); // 2));
                 context->Present(*presentationChain);
-
-                    // ------- Update ----------------------------------------
+                // 
+                //     // ------- Update ----------------------------------------
                 RenderCore::Assets::Services::GetBufferUploads().Update(*context, false);
                 g_cpuProfiler.EndFrame();
                 ++FrameRenderCount;

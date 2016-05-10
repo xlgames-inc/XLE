@@ -416,7 +416,7 @@ namespace RenderCore
                 //      ... however, there are some cases were we want to
                 //      write to this buffer in non-SRGB mode (ie, we will
                 //      manually apply SRGB convertion)
-            Metal_DX11::TextureViewWindow viewWindow;
+            TextureViewWindow viewWindow;
             Metal_DX11::RenderTargetView rtv(factory, backBuffer0.get(), viewWindow);
             context.SetPresentationTarget(&rtv, {_desc->_width, _desc->_height});
         }
@@ -441,12 +441,20 @@ namespace RenderCore
 		}
 	#endif
 
-    void    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
+    ResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
     {
         PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
         auto d = _device.lock();
         swapChain->AttachToContext(*_underlying, Metal_DX11::GetObjectFactory(*d->GetUnderlyingDevice()));
         IncrFrameId();
+
+        ID3D::Texture2D* backBuffer0Temp = nullptr;
+        HRESULT hresult = swapChain->GetUnderlying()->GetBuffer(0, __uuidof(ID3D::Texture2D), (void**)&backBuffer0Temp);
+        intrusive_ptr<ID3D::Texture2D> backBuffer0 = moveptr(backBuffer0Temp);
+        if (SUCCEEDED(hresult))
+            return Metal_DX11::AsResourcePtr((ID3D::Resource*)backBuffer0.get());
+        
+        return nullptr;
     }
 
     void            ThreadContext::Present(IPresentationChain& presentationChain)
@@ -454,31 +462,31 @@ namespace RenderCore
         // end the current render pass, if one has been begun -- 
         // and release the reference on the presentation target in the device context
         _activeRPI.reset();
-        _underlying->GetNamedResources().UnbindAll();
+        // _underlying->GetNamedResources().UnbindAll();
 
         PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
         swapChain->GetUnderlying()->Present(0, 0);
     }
 
-    void    ThreadContext::BeginRenderPass(const FrameBufferDesc& fbDesc, const FrameBufferProperties& props, const RenderPassBeginDesc& beginInfo)
+    void    ThreadContext::BeginRenderPass(const FrameBufferDesc& fbDesc, NamedResources& namedRes, const RenderPassBeginDesc& beginInfo)
     {
         if (_activeRPI)
             Throw(::Exceptions::BasicLabel("Cannot begin render pass, because another render pass has already been begun"));
 
-        auto adjProps = props;
-        if (adjProps._outputWidth == 0u && adjProps._outputHeight == 0u) {
-            adjProps._outputWidth = _underlying->GetPresentationTargetDims()[0];
-            adjProps._outputHeight = _underlying->GetPresentationTargetDims()[1];
-        }
+        // auto adjProps = props;
+        // if (adjProps._outputWidth == 0u && adjProps._outputHeight == 0u) {
+        //     adjProps._outputWidth = _underlying->GetPresentationTargetDims()[0];
+        //     adjProps._outputHeight = _underlying->GetPresentationTargetDims()[1];
+        // }
 
         Metal_DX11::FrameBufferCache cache;
         _activeRPI = std::make_unique<Metal_DX11::RenderPassInstance>(
-            *_underlying, fbDesc, adjProps, 
-            0, cache, beginInfo);
+            *_underlying, fbDesc, 
+            0, namedRes, cache, beginInfo);
 
         Metal_DX11::ViewportDesc viewport(
             0.f, 0.f,
-            (float)adjProps._outputWidth, (float)adjProps._outputHeight);
+            (float)namedRes.GetFrameBufferProperties()._outputWidth, (float)namedRes.GetFrameBufferProperties()._outputHeight);
         _underlying->Bind(viewport);
     }
 

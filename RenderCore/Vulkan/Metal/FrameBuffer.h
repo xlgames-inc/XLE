@@ -21,6 +21,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class TextureView;
     class DeviceContext;
     
+#if 0
     class NamedResources
     {
     public:
@@ -38,6 +39,7 @@ namespace RenderCore { namespace Metal_Vulkan
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+#endif
 
     class FrameBuffer
 	{

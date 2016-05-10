@@ -14,34 +14,6 @@ namespace RenderCore { class Resource; enum class Format; }
 namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;
-    class SamplerState;
-
-    class TextureViewWindow
-    {
-    public:
-        struct SubResourceRange { unsigned _min; unsigned _count; };
-        static const unsigned Unlimited = ~0x0u;
-        static const SubResourceRange All;
-
-		struct Flags {
-			enum Bits { AttachedCounter = 1<<0, AppendBuffer = 1<<1, ForceArray = 1<<2, JustDepth = 1<<3, JustStencil = 1<<4 };
-			using BitField = unsigned;
-		};
-
-        Format                      _format;
-        SubResourceRange            _mipRange;
-        SubResourceRange            _arrayLayerRange;
-        TextureDesc::Dimensionality _dimensionality;
-		Flags::BitField				_flags;
-
-        TextureViewWindow(
-            Format format = Format(0),
-            TextureDesc::Dimensionality dimensionality = TextureDesc::Dimensionality::Undefined,
-            SubResourceRange mipRange = All,
-            SubResourceRange arrayLayerRange = All,
-			Flags::BitField flags = 0
-            ) : _format(format), _dimensionality(dimensionality), _mipRange(mipRange), _arrayLayerRange(arrayLayerRange), _flags(flags) {}
-    };
 
 	/// <summary>Shared base class for various view objects</summary>
 	/// In Vulkan, views of shader resources can be either VkImageViews or VkBufferViews.

@@ -11,8 +11,6 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-    const TextureViewWindow::SubResourceRange TextureViewWindow::All = SubResourceRange{0, Unlimited};
-
     static VkImageViewType AsImageViewType(TextureDesc::Dimensionality dims, bool isArray)
     {
         switch (dims) {
@@ -37,12 +35,12 @@ namespace RenderCore { namespace Metal_Vulkan
         view_info.pNext = nullptr;
         view_info.image = image;
         view_info.viewType = AsImageViewType(window._dimensionality, isArray);
-        view_info.format = AsVkFormat(window._format);
+        view_info.format = AsVkFormat(window._format._explicitFormat);
         view_info.components.r = VK_COMPONENT_SWIZZLE_R;
         view_info.components.g = VK_COMPONENT_SWIZZLE_G;
         view_info.components.b = VK_COMPONENT_SWIZZLE_B;
         view_info.components.a = VK_COMPONENT_SWIZZLE_A;
-        view_info.subresourceRange.aspectMask = AsImageAspectMask(window._format);
+        view_info.subresourceRange.aspectMask = AsImageAspectMask(window._format._explicitFormat);
         view_info.subresourceRange.baseMipLevel = window._mipRange._min;
         view_info.subresourceRange.levelCount = std::max(1u, (unsigned)window._mipRange._count);
         view_info.subresourceRange.baseArrayLayer = window._arrayLayerRange._min;
@@ -76,7 +74,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			// Some parts of the "TextureViewWindow" can be set to "undefined". In these cases,
 			// we should fill them in with the detail from the resource.
-			if (adjWindow._format == Format(0)) adjWindow._format = tDesc._format;
+			if (adjWindow._format._explicitFormat == Format(0)) adjWindow._format = tDesc._format;
 			if (adjWindow._dimensionality == TextureDesc::Dimensionality::Undefined)
 				adjWindow._dimensionality = tDesc._dimensionality;
 			if (adjWindow._mipRange._count == TextureViewWindow::Unlimited)

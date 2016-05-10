@@ -15,6 +15,7 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+#if 0
     static VkAttachmentLoadOp AsLoadOp(AttachmentDesc::LoadStore loadStore)
     {
         switch (loadStore)
@@ -702,6 +703,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
     static const unsigned s_maxBoundTargets = 64;
 
     class NamedResources::Pimpl
@@ -758,6 +760,17 @@ namespace RenderCore { namespace Metal_Vulkan
 
     NamedResources::~NamedResources()
     {}
+#endif
 
+#else
+
+    class FrameBufferCache::Pimpl {};
+    FrameBufferCache::FrameBufferCache()
+    {}
+
+    FrameBufferCache::~FrameBufferCache()
+    {}
+
+#endif
 }}
 

@@ -8,17 +8,47 @@
 
 #include "ResourceDesc.h"
 #include "../Utility/IteratorUtils.h"
+#include <memory>
+
+namespace RenderCore { namespace Metal_DX11
+{
+    class ShaderResourceView; class RenderTargetView; class DepthStencilView;
+}}
 
 namespace RenderCore
 {
     enum class Format;
+    class Resource;
+    using ResourcePtr = std::shared_ptr<Resource>;
+
+    using AttachmentName = uint32;
 
     /// <summary>Attachments are part of a frame buffer, and typically represent a rendering surface</summary>
     /// This description object can define an attachment. Typically the attachment is defined in terms of
     /// some global frame buffer properties (such as output dimensions and sample count).
+    class AttachmentViewDesc
+    {
+    public:
+        AttachmentName _resourceName;
+        AttachmentName _viewName;
+
+        TextureViewWindow _window;
+
+        enum class LoadStore
+        {
+            DontCare,                   Retain,                 Clear,
+            DontCare_RetainStencil,     Retain_RetainStencil,   Clear_RetainStencil,
+            DontCare_ClearStencil,      Retain_ClearStencil,    Clear_ClearStencil
+        };
+        LoadStore _loadFromPreviousPhase;       ///< equivalent to "load op" in a Vulkan attachment
+        LoadStore _storeToNextPhase;            ///< equivalent to "store op" in a Vulkan attachment
+    };
+
     class AttachmentDesc
     {
     public:
+        AttachmentName _name;
+
         enum class DimensionsMode 
         {
             Absolute,                   ///< _width and _height define absolute pixel values
@@ -29,26 +59,15 @@ namespace RenderCore
 
         Format _format;
 
-        enum class LoadStore
-        {
-            DontCare,                   Retain,                 Clear,
-            DontCare_RetainStencil,     Retain_RetainStencil,   Clear_RetainStencil,
-            DontCare_ClearStencil,      Retain_ClearStencil,    Clear_ClearStencil
-        };
-        LoadStore _loadFromPreviousPhase;       ///< equivalent to "load op" in a Vulkan attachment
-        LoadStore _storeToNextPhase;            ///< equivalent to "store op" in a Vulkan attachment
-
-        using Name = uint32;
-        static const Name Unnamed = ~0u;
-        Name _name;
-
         struct Flags
         {
             enum Enum
             {
-                Multisampled = 1<<0,            ///< use the current multisample settings (otherwise just set to single sampled mode)
-                ShaderResource = 1<<1,          ///< allow binding as a shader resource after the render pass has finished
-                TransferSource = 1<<2           ///< allow binding as a transfer source after the render pass has finished
+                Multisampled    = 1<<0,     ///< use the current multisample settings (otherwise just set to single sampled mode)
+                ShaderResource  = 1<<1,     ///< allow binding as a shader resource after the render pass has finished
+                TransferSource  = 1<<2,     ///< allow binding as a transfer source after the render pass has finished
+                RenderTarget    = 1<<3,
+                DepthStencil    = 1<<4
             };
             using BitField = unsigned;
         };
@@ -63,41 +82,38 @@ namespace RenderCore
     class SubpassDesc
     {
     public:
-        static const AttachmentDesc::Name Unused = ~0u;
-        std::vector<AttachmentDesc::Name> _output;
-        AttachmentDesc::Name _depthStencil;
-        std::vector<AttachmentDesc::Name> _input;
-        std::vector<AttachmentDesc::Name> _preserve;
-        std::vector<AttachmentDesc::Name> _resolve;
+        static const AttachmentName Unused = ~0u;
+        std::vector<AttachmentName> _output;
+        AttachmentName _depthStencil;
+        std::vector<AttachmentName> _input;
+        std::vector<AttachmentName> _preserve;
+        std::vector<AttachmentName> _resolve;
 
         SubpassDesc();
         SubpassDesc(
-            IteratorRange<const AttachmentDesc::Name*> output,
-            unsigned depthStencil = Unused,
-            IteratorRange<const AttachmentDesc::Name*> input = {}, 
-            IteratorRange<const AttachmentDesc::Name*> preserve = {},
-            IteratorRange<const AttachmentDesc::Name*> resolve = {});
+            IteratorRange<const AttachmentName*> output,
+            AttachmentName depthStencil = Unused,
+            IteratorRange<const AttachmentName*> input = {}, 
+            IteratorRange<const AttachmentName*> preserve = {},
+            IteratorRange<const AttachmentName*> resolve = {});
     };
 
     class FrameBufferDesc
 	{
 	public:
-        IteratorRange<const AttachmentDesc*>    GetAttachments() const  { return MakeIteratorRange(_attachments); }
-        IteratorRange<const SubpassDesc*>       GetSubpasses() const    { return MakeIteratorRange(_subpasses); }
-        TextureSamples                          GetSamples() const      { return _samples; }
-        uint64                                  GetHash() const         { return _hash; }
+        IteratorRange<const AttachmentViewDesc*>    GetAttachments() const  { return MakeIteratorRange(_attachments); }
+        IteratorRange<const SubpassDesc*>           GetSubpasses() const    { return MakeIteratorRange(_subpasses); }
+        uint64                                      GetHash() const         { return _hash; }
 
 		FrameBufferDesc(
             IteratorRange<const SubpassDesc*> subpasses,
-            IteratorRange<const AttachmentDesc*> attachments = IteratorRange<const AttachmentDesc*>(),
-            const TextureSamples& samples = TextureSamples::Create());
+            IteratorRange<const AttachmentViewDesc*> attachments = IteratorRange<const AttachmentViewDesc*>());
 		FrameBufferDesc();
 		~FrameBufferDesc();
 
 	private:
         std::vector<SubpassDesc>        _subpasses;
-        std::vector<AttachmentDesc>     _attachments;
-        TextureSamples                  _samples;
+        std::vector<AttachmentViewDesc> _attachments;
         uint64                          _hash;
 	};
 
@@ -105,6 +121,28 @@ namespace RenderCore
     {
     public:
         unsigned _outputWidth, _outputHeight, _outputLayers;
+    };
+
+    class NamedResources
+    {
+    public:
+        void DefineAttachments(IteratorRange<const AttachmentDesc*> attachments);
+
+        auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal_DX11::ShaderResourceView*;
+        auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal_DX11::RenderTargetView*;
+        auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal_DX11::DepthStencilView*;
+
+        void Bind(TextureSamples samples);
+        void Bind(FrameBufferProperties props);
+        void Bind(AttachmentName, const ResourcePtr& resource);
+
+        const FrameBufferProperties& GetFrameBufferProperties() const;
+
+        NamedResources();
+        ~NamedResources();
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
     };
 
     union ClearValue

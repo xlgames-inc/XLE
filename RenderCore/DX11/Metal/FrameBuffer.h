@@ -18,16 +18,17 @@ namespace RenderCore { namespace Metal_DX11
     class DepthStencilView;
     class DeviceContext;
     
+#if 0
     class NamedResources
     {
     public:
-        const ShaderResourceView*   GetSRV(AttachmentDesc::Name name) const;
-        const RenderTargetView*     GetRTV(AttachmentDesc::Name name) const;
-        const DepthStencilView*     GetDSV(AttachmentDesc::Name name) const;
+        const ShaderResourceView*   GetSRV(AttachmentName name) const;
+        const RenderTargetView*     GetRTV(AttachmentName name) const;
+        const DepthStencilView*     GetDSV(AttachmentName name) const;
 
-        void Bind(AttachmentDesc::Name name, const ShaderResourceView& srv);
-        void Bind(AttachmentDesc::Name name, const RenderTargetView& rtv);
-        void Bind(AttachmentDesc::Name name, const DepthStencilView& dsv);
+        void Bind(AttachmentName name, const ShaderResourceView& srv);
+        void Bind(AttachmentName name, const RenderTargetView& rtv);
+        void Bind(AttachmentName name, const DepthStencilView& dsv);
         void UnbindAll();
 
         NamedResources();
@@ -36,6 +37,7 @@ namespace RenderCore { namespace Metal_DX11
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+#endif
 
     class FrameBuffer
 	{
@@ -48,14 +50,12 @@ namespace RenderCore { namespace Metal_DX11
 		FrameBuffer(
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
-			const FrameBufferProperties& props,
             NamedResources& namedResources);
 		FrameBuffer();
 		~FrameBuffer();
 	private:
         std::vector<RenderTargetView>   _rtvs;
         std::vector<DepthStencilView>   _dsvs;
-        std::vector<ShaderResourceView> _srvs;
 
         static const unsigned s_maxRTVS = 4u;
         class Subpass
@@ -81,7 +81,6 @@ namespace RenderCore { namespace Metal_DX11
         std::shared_ptr<FrameBuffer> BuildFrameBuffer(
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
-			const FrameBufferProperties& props,
             NamedResources& namedResources,
             uint64 hashName);
 
@@ -113,8 +112,8 @@ namespace RenderCore { namespace Metal_DX11
         RenderPassInstance(
             DeviceContext& context,
             const FrameBufferDesc& layout,
-			const FrameBufferProperties& props,
             uint64 hashName,
+            NamedResources& namedResources,
             FrameBufferCache& cache,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
         ~RenderPassInstance();

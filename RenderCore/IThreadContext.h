@@ -30,8 +30,11 @@ namespace RenderCore
     };
 
     class FrameBufferDesc;
-    class FrameBufferProperties;
+    class NamedResources;
     class RenderPassBeginDesc;
+
+    class Resource;
+	using ResourcePtr = std::shared_ptr<Resource>;
 
 #define FLEX_INTERFACE ThreadContext
 /*-----------------*/ #include "FlexBegin.h" /*-----------------*/
@@ -70,7 +73,7 @@ namespace RenderCore
 		/// You must pass a presentationChain. This defines how the frame will be presented to the user.
 		/// Note that rendering to offscreen surfaces can happen outside of the BeginFrame/Present boundaries.
 		/// <seealso cref="RenderCore::IThreadContext::Present"/>
-		IMETHOD void            BeginFrame(IPresentationChain& presentationChain) IPURE;
+		IMETHOD ResourcePtr     BeginFrame(IPresentationChain& presentationChain) IPURE;
 
 		/// <summary>Finishes a frame, and presents it to the user</summary>
 		/// Present() is used to finish a frame, and present it to the user. 
@@ -99,7 +102,7 @@ namespace RenderCore
 		/// </example>
 		IMETHOD void			Present(IPresentationChain& presentationChain) IPURE;
 
-        IMETHOD void            BeginRenderPass(const FrameBufferDesc& fbDesc, const FrameBufferProperties& props, const RenderPassBeginDesc& beginInfo) IPURE;
+        IMETHOD void            BeginRenderPass(const FrameBufferDesc& fbDesc, NamedResources& namedRes, const RenderPassBeginDesc& beginInfo) IPURE;
         IMETHOD void            NextSubpass() IPURE;
         IMETHOD void            EndRenderPass() IPURE;
 
