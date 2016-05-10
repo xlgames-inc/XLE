@@ -39,12 +39,21 @@
 #define TEXTURE_BOUND1_6 : register(t6)
 #define TEXTURE_BOUND1_7 : register(t7)
 
-#define TEXTURE_DYNAMIC_0 : register(t30)
-#define TEXTURE_DYNAMIC_1 : register(t31)
-#define TEXTURE_DYNAMIC_2 : register(t32)
-#define TEXTURE_DYNAMIC_3 : register(t33)
-#define TEXTURE_DYNAMIC_4 : register(t34)
-#define TEXTURE_DYNAMIC_5 : register(t35)
+#if defined(VULKAN)
+    #define TEXTURE_DYNAMIC_0 : register(t30)
+    #define TEXTURE_DYNAMIC_1 : register(t31)
+    #define TEXTURE_DYNAMIC_2 : register(t32)
+    #define TEXTURE_DYNAMIC_3 : register(t33)
+    #define TEXTURE_DYNAMIC_4 : register(t34)
+    #define TEXTURE_DYNAMIC_5 : register(t35)
+#else
+    #define TEXTURE_DYNAMIC_0 : register(t0)
+    #define TEXTURE_DYNAMIC_1 : register(t1)
+    #define TEXTURE_DYNAMIC_2 : register(t2)
+    #define TEXTURE_DYNAMIC_3 : register(t3)
+    #define TEXTURE_DYNAMIC_4 : register(t4)
+    #define TEXTURE_DYNAMIC_5 : register(t5)
+#endif
 
 #define TEXTURE_GLOBAL_10 : register(t10)
 #define TEXTURE_GLOBAL_14 : register(t14)
@@ -74,8 +83,13 @@
 #define CB_BOUND1_8 : register(b8)
 #define CB_BOUND1_9 : register(b9)
 
-#define CB_DYNAMIC_0 : register(b10)
-#define CB_DYNAMIC_1 : register(b11)
+#if defined(VULKAN)
+    #define CB_DYNAMIC_0 : register(b10)
+    #define CB_DYNAMIC_1 : register(b11)
+#else
+    #define CB_DYNAMIC_0 : register(b0)
+    #define CB_DYNAMIC_1 : register(b1)
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

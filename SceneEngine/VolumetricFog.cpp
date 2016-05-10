@@ -482,7 +482,7 @@ namespace SceneEngine
                 maxValue = std::max(maxValue, values[x][y]);
             }
 
-        unsigned short* data = (unsigned short*)pkt->GetData(0);
+        unsigned short* data = (unsigned short*)pkt->GetData({});
         for (unsigned y=0; y<height; ++y)
             for (unsigned x=0; x<width; ++x)
                 data[y*256+x] = (unsigned short)(values[x][y] * float(0xffff) / maxValue);

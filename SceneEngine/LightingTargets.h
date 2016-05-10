@@ -11,7 +11,7 @@
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Vulkan/Metal/FrameBuffer.h"
+#include "../RenderCore/Metal/FrameBuffer.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 
@@ -213,7 +213,7 @@ namespace SceneEngine
     #endif
 
     class LightingParserContext;
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, IMainTargets& mainTargets, unsigned debuggingType);
+    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, bool useMsaaSamplers, unsigned debuggingType);
 
 }
 

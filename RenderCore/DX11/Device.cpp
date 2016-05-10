@@ -9,6 +9,10 @@
 #include "Metal/State.h"
 #include "Metal/ObjectFactory.h"
 #include "Metal/Resource.h"
+#include "Metal/Format.h"
+#include "Metal/TextureView.h"
+#include "Metal/ObjectFactory.h"
+#include "../Format.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
@@ -352,10 +356,12 @@ namespace RenderCore
     : _underlying(std::move(underlying))
     , _attachedWindow(attachedWindow)
     {
-        _viewportContext = std::make_shared<PresentationChainDesc>();
+        _desc = std::make_shared<PresentationChainDesc>();
         auto dims = GetBufferSize(*_underlying);
-        _viewportContext->_width = dims[0];
-        _viewportContext->_height = dims[1];
+        _desc->_width = dims[0];
+        _desc->_height = dims[1];
+        _desc->_format = Format::R8G8B8A8_UNORM_SRGB;
+        _desc->_samples = TextureSamples::Create();
     }
 
     PresentationChain::~PresentationChain()
@@ -378,20 +384,20 @@ namespace RenderCore
         const auto backBufferCount = 2u;
         _underlying->ResizeBuffers(
             backBufferCount, newWidth, newHeight, 
-            DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+            Metal_DX11::AsDXGIFormat(_desc->_format), DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
 
         auto dims = GetBufferSize(*_underlying);
-        _viewportContext->_width = dims[0];
-        _viewportContext->_height = dims[1];
+        _desc->_width = dims[0];
+        _desc->_height = dims[1];
         _defaultDepthTarget.reset(0);
     }
 
     const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const
     {
-        return _viewportContext;
+        return _desc;
     }
 
-    void PresentationChain::AttachToContext(ID3D::DeviceContext* context, ID3D::Device* device)
+    void PresentationChain::AttachToContext(Metal_DX11::DeviceContext& context, Metal_DX11::ObjectFactory& factory)
     {
             //
             //      DavidJ -- temporary implementation -- replace with better management of 
@@ -403,48 +409,6 @@ namespace RenderCore
         HRESULT hresult = swapChain->GetBuffer(0, __uuidof(ID3D::Texture2D), (void**)&backBuffer0Temp);
         intrusive_ptr<ID3D::Texture2D> backBuffer0 = moveptr(backBuffer0Temp);
         if (SUCCEEDED(hresult)) {
-            Metal_DX11::TextureDesc2D textureDesc(backBuffer0.get());
-            D3D11_VIEWPORT viewport;
-            viewport.TopLeftX = 0.f;
-            viewport.TopLeftY = 0.f;
-            viewport.Width = float(textureDesc.Width);
-            viewport.Height = float(textureDesc.Height);
-            viewport.MinDepth = 0.f;
-            viewport.MaxDepth = 1.f;
-            context->RSSetViewports(1, &viewport);
-
-            if (!_defaultDepthTarget) {
-                D3D11_TEXTURE2D_DESC depthDesc = textureDesc;
-                depthDesc.Format             = DXGI_FORMAT_R24G8_TYPELESS;
-                depthDesc.Usage              = D3D11_USAGE_DEFAULT;
-                depthDesc.BindFlags          = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
-                depthDesc.CPUAccessFlags     = 0;
-
-                ID3D::Texture2D* tempDepthTarget;
-                hresult = device->CreateTexture2D(&depthDesc, nullptr, &tempDepthTarget);
-                if (tempDepthTarget) {
-                    if (SUCCEEDED(hresult)) {
-                        _defaultDepthTarget = moveptr(tempDepthTarget);
-                    } else tempDepthTarget->Release();
-                }
-            }
-
-            intrusive_ptr<ID3D::DepthStencilView> depthStencilView;
-            if (_defaultDepthTarget) {
-                ID3D::DepthStencilView* tempDepthView = nullptr;
-                D3D11_DEPTH_STENCIL_VIEW_DESC viewDesc;
-                viewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-                viewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-                viewDesc.Flags = 0;
-                viewDesc.Texture2D.MipSlice = 0;
-                hresult = device->CreateDepthStencilView(_defaultDepthTarget.get(), &viewDesc, &tempDepthView);
-                if (tempDepthView) {
-                    if (SUCCEEDED(hresult)) {
-                        depthStencilView = moveptr(tempDepthView);
-                    } else tempDepthView->Release();
-                }
-            }
-
                 //  By default, when writing to this texture, we should
                 //  write in "SRGB" mode. This will automatically convert
                 //  from linear colour outputs into SRGB space (and do the
@@ -452,26 +416,9 @@ namespace RenderCore
                 //      ... however, there are some cases were we want to
                 //      write to this buffer in non-SRGB mode (ie, we will
                 //      manually apply SRGB convertion)
-            D3D11_RENDER_TARGET_VIEW_DESC rtvDesc;
-            rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-            rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-            rtvDesc.Texture2D.MipSlice = 0;
-
-            ID3D::RenderTargetView* rtvTemp = nullptr;
-            hresult = device->CreateRenderTargetView(backBuffer0.get(), &rtvDesc, &rtvTemp);
-            intrusive_ptr<ID3D::RenderTargetView> rtv = moveptr(rtvTemp);
-            if (SUCCEEDED(hresult)) {
-                ID3D::RenderTargetView* t = rtv.get();
-
-                // FLOAT clearColor[] = {1.f, 0.25f, 0.25f, 0.25f};
-                // context->ClearRenderTargetView(t, clearColor);
-
-                if (depthStencilView.get()) {
-                    context->ClearDepthStencilView(depthStencilView.get(), D3D11_CLEAR_DEPTH|D3D11_CLEAR_STENCIL, 1.f, 0);
-                }
-
-                context->OMSetRenderTargets(1, &t, depthStencilView.get());
-            }
+            Metal_DX11::TextureViewWindow viewWindow;
+            Metal_DX11::RenderTargetView rtv(factory, backBuffer0.get(), viewWindow);
+            context.SetPresentationTarget(&rtv, {_desc->_width, _desc->_height});
         }
     }
 
@@ -498,26 +445,53 @@ namespace RenderCore
     {
         PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
         auto d = _device.lock();
-        swapChain->AttachToContext(_underlying->GetUnderlying(), d->GetUnderlyingDevice());
+        swapChain->AttachToContext(*_underlying, Metal_DX11::GetObjectFactory(*d->GetUnderlyingDevice()));
         IncrFrameId();
     }
 
     void            ThreadContext::Present(IPresentationChain& presentationChain)
     {
+        // end the current render pass, if one has been begun -- 
+        // and release the reference on the presentation target in the device context
+        _activeRPI.reset();
+        _underlying->GetNamedResources().UnbindAll();
+
         PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
         swapChain->GetUnderlying()->Present(0, 0);
     }
 
     void    ThreadContext::BeginRenderPass(const FrameBufferDesc& fbDesc, const FrameBufferProperties& props, const RenderPassBeginDesc& beginInfo)
     {
+        if (_activeRPI)
+            Throw(::Exceptions::BasicLabel("Cannot begin render pass, because another render pass has already been begun"));
+
+        auto adjProps = props;
+        if (adjProps._outputWidth == 0u && adjProps._outputHeight == 0u) {
+            adjProps._outputWidth = _underlying->GetPresentationTargetDims()[0];
+            adjProps._outputHeight = _underlying->GetPresentationTargetDims()[1];
+        }
+
+        Metal_DX11::FrameBufferCache cache;
+        _activeRPI = std::make_unique<Metal_DX11::RenderPassInstance>(
+            *_underlying, fbDesc, adjProps, 
+            0, cache, beginInfo);
+
+        Metal_DX11::ViewportDesc viewport(
+            0.f, 0.f,
+            (float)adjProps._outputWidth, (float)adjProps._outputHeight);
+        _underlying->Bind(viewport);
     }
 
     void    ThreadContext::NextSubpass()
     {
+        assert(_activeRPI);
+        _activeRPI->NextSubpass();
     }
 
     void    ThreadContext::EndRenderPass()
     {
+        assert(_activeRPI);
+        _activeRPI.reset();
     }
 
     bool    ThreadContext::IsImmediate() const
@@ -547,7 +521,9 @@ namespace RenderCore
         _frameId = 0;
     }
 
-    ThreadContext::~ThreadContext() {}
+    ThreadContext::~ThreadContext() 
+    {
+    }
 
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
     {

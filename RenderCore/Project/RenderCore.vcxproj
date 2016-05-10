@@ -92,6 +92,7 @@
     <ClInclude Include="..\Metal\DeviceContext.h" />
     <ClInclude Include="..\Metal\DeviceContextImpl.h" />
     <ClInclude Include="..\Metal\Forward.h" />
+    <ClInclude Include="..\Metal\FrameBuffer.h" />
     <ClInclude Include="..\Metal\GPUProfiler.h" />
     <ClInclude Include="..\Metal\InputLayout.h" />
     <ClInclude Include="..\Metal\Metal.h" />

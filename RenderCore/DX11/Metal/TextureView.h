@@ -23,7 +23,8 @@ namespace RenderCore { namespace Metal_DX11
         static const unsigned Unlimited = ~0x0u;
         static const SubResourceRange All;
 
-		struct Flags {
+		struct Flags
+        {
 			enum Bits 
             { 
                 AttachedCounter = 1<<0, AppendBuffer = 1<<1, 
@@ -33,14 +34,28 @@ namespace RenderCore { namespace Metal_DX11
 			using BitField = unsigned;
 		};
 
-        Format                      _format;
+        struct FormatFilter
+        {
+            enum Aspect { UndefinedAspect, Color, Depth, Stencil, DepthStencil };
+            enum ColorSpace { UndefinedColorSpace, Linear, SRGB };
+
+            ColorSpace  _colorSpace;
+            Aspect      _aspect;
+            Format      _explicitFormat;
+
+            FormatFilter(ColorSpace colorSpace = UndefinedColorSpace, Aspect aspect = UndefinedAspect)
+                : _colorSpace(colorSpace), _aspect(aspect), _explicitFormat(Format(0)) {}
+            FormatFilter(Format explicitFormat) : _colorSpace(UndefinedColorSpace), _aspect(UndefinedAspect), _explicitFormat(explicitFormat) {}
+        };
+
+        FormatFilter                _format;
         SubResourceRange            _mipRange;
         SubResourceRange            _arrayLayerRange;
         TextureDesc::Dimensionality _dimensionality;
 		Flags::BitField				_flags;
 
         TextureViewWindow(
-            Format format = Format(0),
+            FormatFilter format = FormatFilter(),
             TextureDesc::Dimensionality dimensionality = TextureDesc::Dimensionality::Undefined,
             SubResourceRange mipRange = All,
             SubResourceRange arrayLayerRange = All,
@@ -65,7 +80,8 @@ namespace RenderCore { namespace Metal_DX11
         RenderTargetView& operator=(const RenderTargetView& cloneFrom);
         RenderTargetView& operator=(RenderTargetView&& moveFrom) never_throws;
         
-        intrusive_ptr<ID3D::Resource>			GetResource() const;
+        intrusive_ptr<ID3D::Resource>	GetResource() const;
+        ResourcePtr		                ShareResource() const;
 
         typedef ID3D::RenderTargetView*         UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
@@ -91,7 +107,8 @@ namespace RenderCore { namespace Metal_DX11
         DepthStencilView& operator=(const DepthStencilView& cloneFrom);
         DepthStencilView& operator=(DepthStencilView&& moveFrom) never_throws;
         
-        intrusive_ptr<ID3D::Resource>			GetResource() const;
+        intrusive_ptr<ID3D::Resource>	GetResource() const;
+        ResourcePtr		                ShareResource() const;
 
         typedef ID3D::DepthStencilView*         UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
@@ -114,7 +131,8 @@ namespace RenderCore { namespace Metal_DX11
         UnorderedAccessView& operator=(const UnorderedAccessView& cloneFrom);
         UnorderedAccessView& operator=(UnorderedAccessView&& moveFrom) never_throws;
         
-        intrusive_ptr<ID3D::Resource>			GetResource() const;
+        intrusive_ptr<ID3D::Resource>   GetResource() const;
+        ResourcePtr		                ShareResource() const;
 
         typedef ID3D::UnorderedAccessView*      UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
@@ -141,7 +159,8 @@ namespace RenderCore { namespace Metal_DX11
 
         static ShaderResourceView RawBuffer(UnderlyingResourcePtr res, unsigned sizeBytes, unsigned offsetBytes = 0);
 
-		intrusive_ptr<ID3D::Resource>			GetResource() const;
+		intrusive_ptr<ID3D::Resource>	GetResource() const;
+        ResourcePtr		                ShareResource() const;
         
         typedef ID3D::ShaderResourceView*       UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }

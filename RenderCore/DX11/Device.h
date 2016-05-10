@@ -22,7 +22,7 @@ namespace RenderCore
 {
 ////////////////////////////////////////////////////////////////////////////////
 
-    namespace Metal_DX11 { class DeviceContext; class ObjectFactory; }
+    namespace Metal_DX11 { class DeviceContext; class ObjectFactory; class RenderPassInstance; }
 
     class Device;
 
@@ -32,17 +32,17 @@ namespace RenderCore
         void                Resize(unsigned newWidth, unsigned newHeight) /*override*/;
         IDXGI::SwapChain*   GetUnderlying() const { return _underlying.get(); }
 
-        void                AttachToContext(ID3D::DeviceContext* context, ID3D::Device* device);
+        void                AttachToContext(Metal_DX11::DeviceContext& context, Metal_DX11::ObjectFactory& factory);
 
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
 
         PresentationChain(intrusive_ptr<IDXGI::SwapChain> underlying, const void* attachedWindow);
         ~PresentationChain();
     private:
-        intrusive_ptr<IDXGI::SwapChain>     _underlying;
-        const void*                         _attachedWindow;
-        intrusive_ptr<ID3D::Texture2D>      _defaultDepthTarget;
-        std::shared_ptr<PresentationChainDesc>    _viewportContext;
+        intrusive_ptr<IDXGI::SwapChain>         _underlying;
+        const void*                             _attachedWindow;
+        intrusive_ptr<ID3D::Texture2D>          _defaultDepthTarget;
+        std::shared_ptr<PresentationChainDesc>  _desc;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,6 +70,7 @@ namespace RenderCore
         std::shared_ptr<Metal_DX11::DeviceContext> _underlying;
         std::weak_ptr<Device>   _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
         unsigned                _frameId;
+        std::unique_ptr<Metal_DX11::RenderPassInstance> _activeRPI;
     };
 
     class ThreadContextDX11 : public ThreadContext, public Base_ThreadContextDX11

@@ -133,6 +133,10 @@ namespace SceneEngine
         LightingParserContext& parserContext, 
         const RenderCore::Techniques::ProjectionDesc& projDesc);
 
+    void LightingParser_Overlays(   
+        RenderCore::IThreadContext& context,
+        LightingParserContext& parserContext);
+
     /// <summary>Build a projection desc with parameters from a standard camera</summary>
     RenderCore::Techniques::ProjectionDesc BuildProjectionDesc(
         const RenderCore::Techniques::CameraDesc& sceneCamera,

@@ -760,7 +760,7 @@ namespace SceneEngine
         StringMeldAppend(parserContext._stringHelpers->_errorString)
             << "Building dynamic imposter: (" << ob._scaffold->Filename() << ") angle (" << ob._XYangle << ")\n";
 
-        context.Clear(_atlas._tempDSV.DSV(), 1.f, 0u);
+        context.Clear(_atlas._tempDSV.DSV(), Metal::DeviceContext::ClearFilter::Depth|Metal::DeviceContext::ClearFilter::Stencil, 1.f, 0u);
 
         Metal::RenderTargetView rtvs[3];
         auto layerCount = std::min(dimof(rtvs), _atlas._layers.size());

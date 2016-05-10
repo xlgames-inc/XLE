@@ -98,6 +98,9 @@
     <ClInclude Include="..\FrameBufferDesc.h">
       <Filter>Util</Filter>
     </ClInclude>
+    <ClInclude Include="..\Metal\FrameBuffer.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">

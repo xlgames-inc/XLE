@@ -96,6 +96,7 @@
     <ClInclude Include="..\DX11\Metal\DX11Utils.h" />
     <ClInclude Include="..\DX11\Metal\Format.h" />
     <ClInclude Include="..\DX11\Metal\Forward.h" />
+    <ClInclude Include="..\DX11\Metal\FrameBuffer.h" />
     <ClInclude Include="..\DX11\Metal\GPUProfiler.h" />
     <ClInclude Include="..\DX11\Metal\IncludeDX11.h" />
     <ClInclude Include="..\DX11\Metal\InputLayout.h" />
@@ -112,6 +113,7 @@
     <ClCompile Include="..\DX11\Metal\DeviceContext.cpp" />
     <ClCompile Include="..\DX11\Metal\DX11Utils.cpp" />
     <ClCompile Include="..\DX11\Metal\Format.cpp" />
+    <ClCompile Include="..\DX11\Metal\FrameBuffer.cpp" />
     <ClCompile Include="..\DX11\Metal\GPUProfilerDX11.cpp" />
     <ClCompile Include="..\DX11\Metal\InputLayout.cpp" />
     <ClCompile Include="..\DX11\Metal\ObjectFactory.cpp" />

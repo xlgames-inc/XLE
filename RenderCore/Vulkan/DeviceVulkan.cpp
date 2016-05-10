@@ -866,6 +866,11 @@ namespace RenderCore
             ~0ull,
             _globalPools->_mainFrameBufferCache,
             beginInfo);
+
+        Metal_Vulkan::ViewportDesc viewport(
+            0.f, 0.f,
+            (float)adjProps._outputWidth, (float)adjProps._outputHeight);
+        _metalContext->Bind(viewport);
     }
 
     void    ThreadContext::NextSubpass()
@@ -938,7 +943,8 @@ namespace RenderCore
 
     auto ThreadContext::GetStateDesc() const -> ThreadContextStateDesc
     {
-		return ThreadContextStateDesc { _metalContext->GetPresentationTargetDims(), _frameId };
+        const auto& view = _metalContext->GetBoundViewport();
+        return ThreadContextStateDesc { {(unsigned)view.Width, (unsigned)view.Height}, _frameId };
     }
 
 	void ThreadContext::InvalidateCachedState() const {}

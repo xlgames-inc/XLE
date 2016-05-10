@@ -135,7 +135,7 @@ namespace RenderCore { namespace Metal_DX11
             ImageLayout newLayout = ImageLayout::Undefined) 
             : _res(res), _oldLayout(oldLayout), _newLayout(newLayout) {}
     };
-	void SetImageLayouts(DeviceContext& context, IteratorRange<const LayoutTransition*> changes);
+    inline void SetImageLayouts(DeviceContext& context, IteratorRange<const LayoutTransition*> changes) {}
 
 	/////////////// Resource creation and access ///////////////
 

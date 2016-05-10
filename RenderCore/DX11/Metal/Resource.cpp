@@ -64,15 +64,10 @@ namespace RenderCore { namespace Metal_DX11
             useSrcBox ? &srcBox : nullptr);
     }
 
-    intrusive_ptr<ID3D::Resource> Duplicate(DeviceContext& context, ID3D::Resource* inputResource)
+    intrusive_ptr<ID3D::Resource> Duplicate(DeviceContext& context, UnderlyingResourcePtr inputResource)
     {
-        return DuplicateResource(context.GetUnderlying(), inputResource);
+        return DuplicateResource(context.GetUnderlying(), inputResource.get());
     }
-
-	void SetImageLayout(
-		DeviceContext& context, UnderlyingResourcePtr res,
-		ImageLayout oldLayout, ImageLayout newLayout)
-	{}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -18,11 +18,55 @@ namespace RenderCore { namespace Metal_DX11
 
     static bool IsDefault(const TextureViewWindow& window)
     {
-        return window._format == Format(0) 
+        return window._format._colorSpace == TextureViewWindow::FormatFilter::UndefinedColorSpace
+            && window._format._aspect == TextureViewWindow::FormatFilter::UndefinedAspect
+            && window._format._explicitFormat == Format(0)
             && window._mipRange._min == TextureViewWindow::All._min && window._mipRange._count == TextureViewWindow::All._count
             && window._arrayLayerRange._min == TextureViewWindow::All._min && window._arrayLayerRange._count == TextureViewWindow::All._count
             && window._dimensionality == TextureDesc::Dimensionality::Undefined
             && window._flags == 0;
+    }
+
+    static DXGI_FORMAT SpecializeFormat(DXGI_FORMAT baseFormat, TextureViewWindow::FormatFilter filter, bool isDSV = false)
+    {
+        if (filter._explicitFormat != Format(0))
+            return AsDXGIFormat(filter._explicitFormat);
+
+        // common case is everything set to defaults --
+        if (    filter._colorSpace == TextureViewWindow::FormatFilter::UndefinedColorSpace
+            &&  filter._aspect == TextureViewWindow::FormatFilter::UndefinedAspect)
+            return baseFormat;      // (or just use DXGI_FORMAT_UNKNOWN)
+
+        // We need to filter the format by aspect and color space.
+        // First, check if there are linear & SRGB versions of the format. If there are, we can ignore the "aspect" filter,
+        // because these formats only have color aspects
+        Format fmt = AsFormat(baseFormat);
+        if (HasLinearAndSRGBFormats(fmt)) {
+            switch (filter._colorSpace) {
+            default:
+            case TextureViewWindow::FormatFilter::UndefinedColorSpace:
+                return baseFormat;
+            case TextureViewWindow::FormatFilter::Linear:
+                return AsDXGIFormat(AsLinearFormat(fmt));
+            case TextureViewWindow::FormatFilter::SRGB:
+                return AsDXGIFormat(AsSRGBFormat(fmt));
+            }
+        }
+
+        switch (filter._aspect) {
+        default:
+        case TextureViewWindow::FormatFilter::UndefinedAspect:
+            return baseFormat;
+        case TextureViewWindow::FormatFilter::Color:
+            return AsDXGIFormat(AsDepthAspectSRVFormat(fmt));
+        case TextureViewWindow::FormatFilter::DepthStencil:
+        case TextureViewWindow::FormatFilter::Depth:
+            if (isDSV) return AsDXGIFormat(AsDepthStencilFormat(fmt));
+            return AsDXGIFormat(AsDepthAspectSRVFormat(fmt));
+        case TextureViewWindow::FormatFilter::Stencil:
+            if (isDSV) return AsDXGIFormat(AsDepthStencilFormat(fmt));
+            return AsDXGIFormat(AsStencilAspectSRVFormat(fmt));
+        }
     }
 
     RenderTargetView::RenderTargetView(
@@ -40,7 +84,6 @@ namespace RenderCore { namespace Metal_DX11
             // Build an D3D11_RENDER_TARGET_VIEW_DESC based on the properties of
             // the resource and the view window.
             D3D11_RENDER_TARGET_VIEW_DESC viewDesc;
-            viewDesc.Format = AsDXGIFormat(window._format);     // ok to use DXGI_FORMAT_UNKNOWN here
 
             // Note --  here we're exploiting the fact that the Texture1DArray/Texture2DArray/Texture2DMSArray members are overlapping 
             //          supersets of their associated non array forms.
@@ -56,6 +99,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture1DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
                     viewDesc.Texture1DArray.ArraySize = arraySize;
+                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
                     break;
                 }
 
@@ -74,6 +118,7 @@ namespace RenderCore { namespace Metal_DX11
                         viewDesc.Texture2DArray.FirstArraySlice = window._arrayLayerRange._min;
                         viewDesc.Texture2DArray.ArraySize = arraySize;
                     }
+                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
                 }
                 break;
 
@@ -84,6 +129,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture3D.MipSlice = window._mipRange._min;
                     viewDesc.Texture3D.FirstWSlice = 0;
                     viewDesc.Texture3D.WSize = ~0u;
+                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
                 }
                 break;
 
@@ -91,7 +137,8 @@ namespace RenderCore { namespace Metal_DX11
                 // oddly, we can render to a buffer?
                 viewDesc.ViewDimension = D3D11_RTV_DIMENSION_BUFFER;
                 viewDesc.Buffer.ElementOffset = 0;
-                viewDesc.Buffer.ElementWidth = BitsPerPixel(window._format) / 8;
+                viewDesc.Buffer.ElementWidth = BitsPerPixel(window._format._explicitFormat) / 8;
+                viewDesc.Format = AsDXGIFormat(window._format._explicitFormat);
                 break;
 
             default:
@@ -109,6 +156,11 @@ namespace RenderCore { namespace Metal_DX11
     auto RenderTargetView::GetResource() const -> intrusive_ptr<ID3D::Resource>
     {
         return ExtractResource<ID3D::Resource>(_underlying.get());
+    }
+
+    ResourcePtr RenderTargetView::ShareResource() const
+    {
+        return AsResourcePtr(GetResource());
     }
 
     RenderTargetView::RenderTargetView(ID3D::RenderTargetView* resource)
@@ -152,10 +204,9 @@ namespace RenderCore { namespace Metal_DX11
             _underlying = factory.CreateDepthStencilView(resource.get());
         } else {
             D3D11_DEPTH_STENCIL_VIEW_DESC viewDesc;
-            viewDesc.Format = AsDXGIFormat(window._format);
             viewDesc.Flags = 0;
-            if (window._flags & TextureViewWindow::Flags::JustDepth) viewDesc.Flags |= D3D11_DSV_READ_ONLY_DEPTH;
-            if (window._flags & TextureViewWindow::Flags::JustStencil) viewDesc.Flags |= D3D11_DSV_READ_ONLY_STENCIL;
+            if (window._flags & TextureViewWindow::Flags::JustDepth) viewDesc.Flags |= D3D11_DSV_READ_ONLY_STENCIL;
+            if (window._flags & TextureViewWindow::Flags::JustStencil) viewDesc.Flags |= D3D11_DSV_READ_ONLY_DEPTH;
 
             D3D11_RESOURCE_DIMENSION resType;
             resource.get()->GetType(&resType);
@@ -169,6 +220,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture1DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
                     viewDesc.Texture1DArray.ArraySize = arraySize;
+                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format, true);
                 }
                 break;
 
@@ -187,6 +239,7 @@ namespace RenderCore { namespace Metal_DX11
                         viewDesc.Texture2DArray.FirstArraySlice = window._arrayLayerRange._min;
                         viewDesc.Texture2DArray.ArraySize = arraySize;
                     }
+                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format, true);
                 }
                 break;
 
@@ -205,6 +258,11 @@ namespace RenderCore { namespace Metal_DX11
     auto DepthStencilView::GetResource() const -> intrusive_ptr<ID3D::Resource>
     {
         return ExtractResource<ID3D::Resource>(_underlying.get());
+    }
+
+    ResourcePtr DepthStencilView::ShareResource() const
+    {
+        return AsResourcePtr(GetResource());
     }
 
     DepthStencilView::DepthStencilView(DeviceContext& context)
@@ -247,7 +305,6 @@ namespace RenderCore { namespace Metal_DX11
             _underlying = factory.CreateUnorderedAccessView(resource.get());
         } else {
             D3D11_UNORDERED_ACCESS_VIEW_DESC viewDesc;
-            viewDesc.Format = AsDXGIFormat(window._format);     // ok to use DXGI_FORMAT_UNKNOWN here
 
             D3D11_RESOURCE_DIMENSION resType;
             resource.get()->GetType(&resType);
@@ -261,6 +318,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture1DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
                     viewDesc.Texture1DArray.ArraySize = arraySize;
+                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
                     break;
                 }
 
@@ -273,6 +331,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture2DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture2DArray.FirstArraySlice = window._arrayLayerRange._min;
                     viewDesc.Texture2DArray.ArraySize = arraySize;
+                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
                 }
                 break;
 
@@ -283,6 +342,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture3D.MipSlice = window._mipRange._min;
                     viewDesc.Texture3D.FirstWSlice = 0;
                     viewDesc.Texture3D.WSize = ~0u;
+                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
                 }
                 break;
 
@@ -295,6 +355,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Buffer.Flags = 0;
                     if (window._flags & TextureViewWindow::Flags::AppendBuffer) viewDesc.Buffer.Flags |= D3D11_BUFFER_UAV_FLAG_APPEND;
                     if (window._flags & TextureViewWindow::Flags::AttachedCounter) viewDesc.Buffer.Flags |= D3D11_BUFFER_UAV_FLAG_COUNTER;
+                    viewDesc.Format = AsDXGIFormat(window._format._explicitFormat);
                 }
                 break;
 
@@ -312,6 +373,11 @@ namespace RenderCore { namespace Metal_DX11
     auto UnorderedAccessView::GetResource() const -> intrusive_ptr<ID3D::Resource>
     {
         return ExtractResource<ID3D::Resource>(_underlying.get());
+    }
+
+    ResourcePtr UnorderedAccessView::ShareResource() const
+    {
+        return AsResourcePtr(GetResource());
     }
 
     UnorderedAccessView::UnorderedAccessView() {}
@@ -335,7 +401,6 @@ namespace RenderCore { namespace Metal_DX11
             _underlying = factory.CreateShaderResourceView(resource.get());
         } else {
             D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
-            viewDesc.Format = AsDXGIFormat(window._format);
 
             D3D11_RESOURCE_DIMENSION resType;
             resource.get()->GetType(&resType);
@@ -350,6 +415,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture1DArray.MipLevels = window._mipRange._count;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
                     viewDesc.Texture1DArray.ArraySize = arraySize;
+                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
                     break;
                 }
 
@@ -377,6 +443,7 @@ namespace RenderCore { namespace Metal_DX11
                             viewDesc.Texture2DArray.ArraySize = arraySize;
                         }
                     }
+                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
                 }
                 break;
 
@@ -386,6 +453,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
                     viewDesc.Texture3D.MostDetailedMip = window._mipRange._min;
                     viewDesc.Texture3D.MipLevels = window._mipRange._count;
+                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
                 }
                 break;
 
@@ -396,6 +464,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.BufferEx.FirstElement = 0;
                     viewDesc.BufferEx.NumElements = bufferDesc.StructureByteStride ? (bufferDesc.ByteWidth / bufferDesc.StructureByteStride) : (bufferDesc.ByteWidth/4);
                     viewDesc.BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;      // (always raw currently?)
+                    viewDesc.Format = AsDXGIFormat(window._format._explicitFormat);
                 }
                 break;
 
@@ -427,6 +496,11 @@ namespace RenderCore { namespace Metal_DX11
     auto ShaderResourceView::GetResource() const -> intrusive_ptr<ID3D::Resource>
     {
         return ExtractResource<ID3D::Resource>(_underlying.get());
+    }
+
+    ResourcePtr ShaderResourceView::ShareResource() const
+    {
+        return AsResourcePtr(GetResource());
     }
 
     ShaderResourceView::ShaderResourceView(intrusive_ptr<ID3D::ShaderResourceView>&& resource)

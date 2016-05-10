@@ -521,6 +521,7 @@ namespace SceneEngine
 
                 }
 
+                context.UnbindCS<Metal::UnorderedAccessView>(0, 1);
             }
 
             // We will read from bloom buffer 0 later down the pipeline...
@@ -916,7 +917,7 @@ namespace SceneEngine
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             auto depths = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView());
-            Metal::ShaderResourceView depthsSRV(depths.get(), Format::R24_UNORM_X8_TYPELESS);
+            Metal::ShaderResourceView depthsSRV(depths.get(), {{Metal::TextureViewWindow::FormatFilter::ColorSpace::Linear, Metal::TextureViewWindow::FormatFilter::Aspect::Depth}});
             auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
             Metal::ShaderResourceView inputSRV(res.get());
 #else

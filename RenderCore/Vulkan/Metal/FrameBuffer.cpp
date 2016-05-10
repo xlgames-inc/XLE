@@ -641,13 +641,14 @@ namespace RenderCore { namespace Metal_Vulkan
             renderPass,
             props, context.GetNamedResources(), hashName);
         assert(_frameBuffer);
-        auto ext = beginInfo._extent;
+        auto ext = VectorPattern<unsigned, 2>{0,0}; // beginInfo._extent;
+        auto offset = VectorPattern<int, 2>{0,0}; // beginInfo._offset;
         if (ext[0] == 0 && ext[1] == 0) {
-            ext[0] = props._outputWidth - beginInfo._offset[0];
-            ext[1] = props._outputHeight - beginInfo._offset[1];
+            ext[0] = props._outputWidth - offset[0];
+            ext[1] = props._outputHeight - offset[1];
         }
         context.BeginRenderPass(
-            renderPass, *_frameBuffer, layout.GetSamples(), beginInfo._offset, ext, 
+            renderPass, *_frameBuffer, layout.GetSamples(), offset, ext, 
             beginInfo._clearValues);
         _attachedContext = &context;
     }

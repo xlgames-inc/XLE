@@ -510,7 +510,7 @@ namespace Overlays
         metalContext->Bind(RenderCore::MakeResourceList(_pimpl->_rtv), &_pimpl->_dsv);
         metalContext->Bind(RenderCore::Metal::ViewportDesc(0, 0, float(offscreenDims), float(offscreenDims), 0.f, 1.f));
         metalContext->Clear(_pimpl->_rtv, {0.f, 0.f, 0.f, 1.f});
-        metalContext->Clear(_pimpl->_dsv, 1.f, 0);
+        metalContext->Clear(_pimpl->_dsv, RenderCore::Metal::DeviceContext::ClearFilter::Depth|RenderCore::Metal::DeviceContext::ClearFilter::Stencil, 1.f, 0);
         metalContext->Bind(RenderCore::Metal::Topology::TriangleList);
         RenderModel(context, model);
 

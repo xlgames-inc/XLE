@@ -185,19 +185,19 @@ namespace SceneEngine
 
         void* UberSurfacePacket::GetData(SubResourceId subRes)
         {
-            assert(subRes==0);
+            assert(subRes._mip==0 && subRes._arrayLayer==0);
             return _sourceData;
         }
 
         size_t UberSurfacePacket::GetDataSize(SubResourceId subRes) const
         {
-            assert(subRes==0);
+            assert(subRes._mip==0 && subRes._arrayLayer==0);
             return _stride*_dims[1];
         }
 
         BufferUploads::TexturePitches UberSurfacePacket::GetPitches(SubResourceId subRes) const
         {
-            assert(subRes==0);
+            assert(subRes._mip==0 && subRes._arrayLayer==0);
             return BufferUploads::TexturePitches{_stride, _stride*_dims[1]};
         }
 

@@ -725,7 +725,7 @@ namespace RenderCore { namespace Metal_Vulkan
     unsigned CopyViaMemoryMap(
         VkDevice device, VkImage image, VkDeviceMemory mem,
         const TextureDesc& desc,
-        const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
+        const std::function<SubResourceInitData(SubResourceId)>& initData)
     {
         // Copy all of the subresources to device member, using a MemoryMap path.
         // If "image" is not null, we will get the arrangement of subresources from
@@ -739,7 +739,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		for (unsigned m = 0; m < mipCount; ++m) {
             auto mipDesc = CalculateMipMapDesc(desc, m);
 			for (unsigned a = 0; a < arrayCount; ++a) {
-				auto subResData = initData(m, a);
+                auto subResData = initData({m, a});
 				if (!subResData._data || !subResData._size) continue;
 
 				VkSubresourceLayout layout = {};
@@ -768,7 +768,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     unsigned CopyViaMemoryMap(
         IDevice& dev, UnderlyingResourcePtr resource,
-        const std::function<SubResourceInitData(unsigned, unsigned)>& initData)
+        const std::function<SubResourceInitData(SubResourceId)>& initData)
     {
         assert(resource.get()->GetDesc()._type == ResourceDesc::Type::Texture);
         return CopyViaMemoryMap(

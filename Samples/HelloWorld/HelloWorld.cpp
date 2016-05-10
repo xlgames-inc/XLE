@@ -252,6 +252,7 @@ namespace Sample
             //  We just need to to use the device context to perform any rendering
             //  operations here.
         RenderPostScene(&context);
+        LightingParser_Overlays(context, lightingParserContext);
 
         if (overlaySys) {
             overlaySys->RenderToScene(&context, lightingParserContext);

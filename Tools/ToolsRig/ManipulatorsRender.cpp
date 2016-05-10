@@ -108,7 +108,7 @@ namespace ToolsRig
         if (savedTargets.GetDepthStencilView())
             depthSrv = Metal::ShaderResourceView(Metal::ExtractResource<ID3D::Resource>(
                 savedTargets.GetDepthStencilView()).get(), 
-                Format::R24_UNORM_X8_TYPELESS);     // note -- assuming D24S8 depth buffer! We need a better way to get the depth srv
+                Metal::TextureViewWindow{{Metal::TextureViewWindow::FormatFilter::ColorSpace::Linear, Metal::TextureViewWindow::FormatFilter::Aspect::Depth}});
 
         TRY
         {
@@ -178,7 +178,7 @@ namespace ToolsRig
         if (savedTargets.GetDepthStencilView())
             depthSrv = Metal::ShaderResourceView(Metal::ExtractResource<ID3D::Resource>(
                 savedTargets.GetDepthStencilView()).get(), 
-				Format::R24_UNORM_X8_TYPELESS);     // note -- assuming D24S8 depth buffer! We need a better way to get the depth srv
+				Metal::TextureViewWindow{{Metal::TextureViewWindow::FormatFilter::ColorSpace::Linear, Metal::TextureViewWindow::FormatFilter::Aspect::Depth}});
 
         TRY
         {

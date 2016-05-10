@@ -132,8 +132,8 @@ namespace SceneEngine
         XlSetMemory(clearedBufferData->GetData(), 0, clearedBufferData->GetDataSize());
         auto clearedTypesResource = uploads.Transaction_Immediate(bufferDesc, clearedBufferData.get());
 
-        Metal::ShaderResourceView so0srv(so0r->ShareUnderlying(), Format::R32_TYPELESS); // NativeFormat::R32G32B32A32_FLOAT);
-        Metal::ShaderResourceView so1srv(so1r->ShareUnderlying(), Format::R32_TYPELESS); // NativeFormat::R32_UINT);
+        Metal::ShaderResourceView so0srv(so0r->ShareUnderlying(), {Format::R32_TYPELESS}); // NativeFormat::R32G32B32A32_FLOAT);
+        Metal::ShaderResourceView so1srv(so1r->ShareUnderlying(), {Format::R32_TYPELESS}); // NativeFormat::R32_UINT);
 
             // create the true instancing buffers
             //      Note that it might be ideal if these were vertex buffers! But we can't make a buffer that is both a vertex buffer and structured buffer

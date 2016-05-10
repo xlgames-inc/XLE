@@ -386,7 +386,7 @@ namespace ToolsRig
                 if (savedTargets.GetDepthStencilView())
                     depthSrv = Metal::ShaderResourceView(
                         Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView()).get(), 
-						Format::X24_TYPELESS_G8_UINT);
+						Metal::TextureViewWindow{{Metal::TextureViewWindow::FormatFilter::ColorSpace::Linear, Metal::TextureViewWindow::FormatFilter::Aspect::Stencil}});
 
                 metalContext->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
                 ExecuteHighlightByStencil(*metalContext, depthSrv, settings, _pimpl->_settings->_colourByMaterial==2);

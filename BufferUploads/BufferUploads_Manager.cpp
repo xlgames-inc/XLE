@@ -2260,13 +2260,20 @@ namespace BufferUploads
             }
         #endif
 
-        if (mustQueueCreation) {
-            PushStep(queueSet, transaction, ResourceCreateStep(id, transaction._desc));
-        }
+        const bool initializeOnCreation = mustQueueCreation && !mustQueueStaging && part._arrayIndexMax== 0 && part._arrayIndexMin==0;
+        if (initializeOnCreation) {
+            PushStep(queueSet, transaction, ResourceCreateStep(id, transaction._desc, rawData));
+        } else {
+            if (mustQueueCreation)
+                PushStep(queueSet, transaction, ResourceCreateStep(id, transaction._desc));
+            if (mustQueueStaging) {
+                transaction._requestedStagingLODOffset = requestedStagingLODOffset;
+                PushStep_StagingBuffer(queueSet, transaction, ResourceCreateStep(id, transaction._desc));
+            }
 
-        if (mustQueueStaging) {
-            transaction._requestedStagingLODOffset = requestedStagingLODOffset;
-            PushStep_StagingBuffer(queueSet, transaction, ResourceCreateStep(id, transaction._desc));
+                // there is a separate "step" for each array element
+            for (unsigned e = part._arrayIndexMin; e <= part._arrayIndexMax; ++e)
+                PushStep(queueSet, transaction, DataUploadStep(id, rawData, part._box, part._lodLevelMin, part._lodLevelMax, e));
         }
 
         Interlocked::Value size = 0;
@@ -2279,10 +2286,6 @@ namespace BufferUploads
             assert(RenderCore::ByteCount(transaction._desc)==unsigned(size));
         }
         Interlocked::Add(&_currentQueuedBytes[AsUploadDataType(transaction._desc)], size);
-
-            // there is a separate "step" for each array element
-        for (unsigned e = part._arrayIndexMin; e <= part._arrayIndexMax; ++e)
-            PushStep(queueSet, transaction, DataUploadStep(id, rawData, part._box, part._lodLevelMin, part._lodLevelMax, e));
     }
 
     intrusive_ptr<ResourceLocator>     AssemblyLine::GetResource(TransactionID id)

@@ -441,9 +441,9 @@ namespace PlatformRig
         if (settings._flags & DefaultShadowFrustumSettings::Flags::HighPrecisionDepths) {
             // note --  currently having problems in Vulkan with reading from the D24_UNORM_XX format
             //          might be better to move to 32 bit format now, anyway
-            result._typelessFormat  = RenderCore::Format::R32_TYPELESS; //R24G8_TYPELESS;
-            result._writeFormat     = RenderCore::Format::D32_FLOAT; //D24_UNORM_S8_UINT;
-            result._readFormat      = RenderCore::Format::R32_FLOAT; //R24_UNORM_X8_TYPELESS;
+            result._typelessFormat  = RenderCore::Format::R32_TYPELESS;
+            result._writeFormat     = RenderCore::Format::D32_FLOAT;
+            result._readFormat      = RenderCore::Format::R32_FLOAT;
         } else {
             result._typelessFormat  = RenderCore::Format::R16_TYPELESS;
             result._writeFormat     = RenderCore::Format::D16_UNORM;

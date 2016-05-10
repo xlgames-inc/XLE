@@ -43,7 +43,9 @@
 #include "../Math/ProjectionMath.h"
 #include "../Utility/FunctionUtils.h"
 
-// #include "../RenderCore/DX11/Metal/DX11Utils.h"
+#if GFXAPI_ACTIVE == GFXAPI_DX11
+    #include "../RenderCore/DX11/Metal/IncludeDX11.h"
+#endif
 
 // temporary warning disable
 #pragma warning(disable:4189)   // 'hasOITrans' : local variable is initialized but not referenced
@@ -236,8 +238,8 @@ namespace SceneEngine
 				// See AMD post on this topic:
 				//      http://gpuopen.com/optimized-reversible-tonemapper-for-resolve/
 			context.GetUnderlying()->ResolveSubresource(
-				destinationTexture, D3D11CalcSubresource(0,0,0),
-				sourceTexture, D3D11CalcSubresource(0,0,0),
+				Metal::UnderlyingResourcePtr(&destinationTexture).get(), D3D11CalcSubresource(0,0,0),
+				Metal::UnderlyingResourcePtr(&sourceTexture).get(), D3D11CalcSubresource(0,0,0),
 				Metal::AsDXGIFormat(resolveFormat));
 		#endif
     }
@@ -300,24 +302,25 @@ namespace SceneEngine
         }
     }
 
-    void LightingParser_Overlays(   Metal::DeviceContext* context,
+    void LightingParser_Overlays(   IThreadContext& context,
                                     LightingParserContext& parserContext)
     {
-        Metal::GPUProfiler::DebugAnnotation anno(*context, L"Overlays");
+        auto metalContext = Metal::DeviceContext::Get(context);
+        Metal::GPUProfiler::DebugAnnotation anno(*metalContext, L"Overlays");
 
-        Metal::ViewportDesc mainViewportDesc(*context);
+        Metal::ViewportDesc mainViewportDesc(*metalContext);
         auto& refractionBox = Techniques::FindCachedBox2<RefractionsBuffer>(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2));
-        refractionBox.Build(*context, parserContext, 4.f);
-        context->BindPS(MakeResourceList(12, refractionBox.GetSRV()));
+        refractionBox.Build(*metalContext, parserContext, 4.f);
+        metalContext->BindPS(MakeResourceList(12, refractionBox.GetSRV()));
 
         for (auto i=parserContext._pendingOverlays.cbegin(); i!=parserContext._pendingOverlays.cend(); ++i) {
             CATCH_ASSETS_BEGIN
-                (*i)(*context, parserContext);
+                (*i)(*metalContext, parserContext);
             CATCH_ASSETS_END(parserContext)
         }
                     
         if (Tweakable("FFTDebugging", false)) {
-            FFT_DoDebugging(context);
+            FFT_DoDebugging(metalContext.get());
         }
 
         if (Tweakable("MetricsRender", false) && parserContext.GetMetricsBox()) {
@@ -330,21 +333,21 @@ namespace SceneEngine
                         "game/xleres/utility/metricsrender.gsh:main:gs_*",
                         "game/xleres/utility/metricsrender.psh:main:ps_*",
                         "");
-                context->Bind(metricsShader);
-                context->BindPS(MakeResourceList(
+                metalContext->Bind(metricsShader);
+                metalContext->BindPS(MakeResourceList(
                     3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
-                context->Bind(BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
-                context->Bind(DepthStencilState(false));
-                context->BindVS(MakeResourceList(parserContext.GetMetricsBox()->_metricsBufferSRV));
+                metalContext->Bind(BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
+                metalContext->Bind(DepthStencilState(false));
+                metalContext->BindVS(MakeResourceList(parserContext.GetMetricsBox()->_metricsBufferSRV));
                 unsigned dimensions[4] = { unsigned(mainViewportDesc.Width), unsigned(mainViewportDesc.Height), 0, 0 };
-                context->BindVS(MakeResourceList(ConstantBuffer(dimensions, sizeof(dimensions))));
-                context->BindGS(MakeResourceList(ConstantBuffer(dimensions, sizeof(dimensions))));
-                SetupVertexGeneratorShader(*context);
-                context->Bind(Topology::PointList);
-                context->Draw(9);
+                metalContext->BindVS(MakeResourceList(ConstantBuffer(dimensions, sizeof(dimensions))));
+                metalContext->BindGS(MakeResourceList(ConstantBuffer(dimensions, sizeof(dimensions))));
+                SetupVertexGeneratorShader(*metalContext);
+                metalContext->Bind(Topology::PointList);
+                metalContext->Draw(9);
 
-                context->UnbindPS<ShaderResourceView>(3, 1);
-                context->UnbindVS<ShaderResourceView>(0, 1);
+                metalContext->UnbindPS<ShaderResourceView>(3, 1);
+                metalContext->UnbindVS<ShaderResourceView>(0, 1);
 
             CATCH_ASSETS_END(parserContext)
         }
@@ -834,7 +837,7 @@ namespace SceneEngine
             ////////////////////////////////////////////////////////////////////
 
         const bool precisionTargets = Tweakable("PrecisionTargets", false);
-        FrameBufferProperties frameBufferProps{qualitySettings._dimensions[0], qualitySettings._dimensions[1], 1u};
+        FrameBufferProperties frameBufferProps{qualitySettings._dimensions[0], qualitySettings._dimensions[1], 0u};
 
         if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Deferred) {
 
@@ -981,11 +984,6 @@ namespace SceneEngine
                 applyToneMapping, frameBufferProps,
                 mainTargets.GetSRV(postLightingResolve));
         }
-
-        // todo -- move this call into client code
-#if 0 // platformtemp
-        LightingParser_Overlays(&metalContext, parserContext);
-#endif
     }
 
     static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");

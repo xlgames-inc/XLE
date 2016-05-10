@@ -156,6 +156,7 @@ namespace RenderCore { namespace Metal_DX11
     public:
         explicit ComputeShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
         explicit ComputeShader(const CompiledShaderByteCode& byteCode);
+        ComputeShader();
         ~ComputeShader();
 
         typedef ID3D::ComputeShader*    UnderlyingType;

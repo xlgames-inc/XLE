@@ -76,6 +76,10 @@ namespace RenderCore
     Format		AsTypelessFormat(Format inputFormat);
     bool        HasLinearAndSRGBFormats(Format inputFormat);
 
+    Format      AsDepthStencilFormat(Format inputFormat);
+    Format      AsDepthAspectSRVFormat(Format inputFormat);
+    Format      AsStencilAspectSRVFormat(Format inputFormat);
+
     enum class ShaderNormalizationMode
     {
         Integer, Normalized, Float

@@ -200,7 +200,7 @@ namespace SceneEngine
                 *_context, box._stochasticDepths.DSV(), mainDSV, 
                 ~(States::RenderTargets | States::Viewports));
         } else {
-            _context->Clear(box._stochasticDepths.DSV(), 1.f, 0u);    // (if we don't copy any opaque depths, just clear)
+            _context->Clear(box._stochasticDepths.DSV(), Metal::DeviceContext::ClearFilter::Depth|Metal::DeviceContext::ClearFilter::Stencil, 1.f, 0u);    // (if we don't copy any opaque depths, just clear)
         }
 
         _context->BindPS(MakeResourceList(18, box._masksTable.SRV()));

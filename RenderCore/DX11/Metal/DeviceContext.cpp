@@ -169,9 +169,12 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->ClearRenderTargetView(renderTargets.GetUnderlying(), values._values);
     }
 
-    void DeviceContext::Clear(const DepthStencilView& depthStencil, float depth, unsigned stencil)
+    void DeviceContext::Clear(const DepthStencilView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil)
     {
-        _underlying->ClearDepthStencilView(depthStencil.GetUnderlying(), D3D11_CLEAR_DEPTH|D3D11_CLEAR_STENCIL, depth, (UINT8)stencil);
+        unsigned underlyingFilter = 0u;
+        if (clearFilter & ClearFilter::Depth) underlyingFilter |= D3D11_CLEAR_DEPTH;
+        if (clearFilter & ClearFilter::Stencil) underlyingFilter |= D3D11_CLEAR_STENCIL;
+        _underlying->ClearDepthStencilView(depthStencil.GetUnderlying(), underlyingFilter, depth, (UINT8)stencil);
     }
 
     void DeviceContext::ClearUInt(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& values)
@@ -182,11 +185,6 @@ namespace RenderCore { namespace Metal_DX11
     void DeviceContext::ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& values)
     {
         _underlying->ClearUnorderedAccessViewFloat(unorderedAccess.GetUnderlying(), values._values);
-    }
-
-    void DeviceContext::ClearStencil(const DepthStencilView& depthStencil, unsigned stencil)
-    {
-        _underlying->ClearDepthStencilView(depthStencil.GetUnderlying(), D3D11_CLEAR_STENCIL, 1.f, (UINT8)stencil);
     }
 
     template<>
@@ -306,6 +304,17 @@ namespace RenderCore { namespace Metal_DX11
     {
         XlZeroMemory(_currentCBs);
         XlZeroMemory(_currentSRVs);
+    }
+
+    void DeviceContext::SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims)
+    {
+        _namedResources.Bind(0u, *presentationTarget);
+        _presentationTargetDims = dims;
+    }
+
+    VectorPattern<unsigned,2> DeviceContext::GetPresentationTargetDims()
+    {
+        return _presentationTargetDims;
     }
 
     DeviceContext::DeviceContext(ID3D::DeviceContext* context)
@@ -429,6 +438,12 @@ namespace RenderCore { namespace Metal_DX11
         EXPAND(BINDABLE, BindHS)            \
         EXPAND(BINDABLE, BindDS)            \
         EXPAND(BINDABLE, BindCS)            \
+        EXPAND(BINDABLE, BindVS_G)          \
+        EXPAND(BINDABLE, BindPS_G)          \
+        EXPAND(BINDABLE, BindGS_G)          \
+        EXPAND(BINDABLE, BindHS_G)          \
+        EXPAND(BINDABLE, BindDS_G)          \
+        EXPAND(BINDABLE, BindCS_G)          \
         /**/
 
     EXPANDSTAGES(SamplerState)

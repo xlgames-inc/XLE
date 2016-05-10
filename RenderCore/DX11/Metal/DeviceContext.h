@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "TextureView.h"
+#include "FrameBuffer.h"        // for NamedResources
 #include "DX11.h"
 #include "../../IDevice_Forward.h"
 #include "../../IThreadContext_Forward.h"
@@ -13,7 +15,6 @@
 #include "../../../Utility/Mixins.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include "../../../Utility/IntrusivePtr.h"
-#include "TextureView.h"
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -177,10 +178,10 @@ namespace RenderCore { namespace Metal_DX11
         void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
 
         void        Clear(const RenderTargetView& renderTargets, const VectorPattern<float,4>& values);
-        void        Clear(const DepthStencilView& depthStencil, float depth, unsigned stencil);
+        struct ClearFilter { enum Enum { Depth = 1<<0, Stencil = 1<<1 }; using BitField = unsigned; };
+        void        Clear(const DepthStencilView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil);
         void        ClearUInt(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& values);
         void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& values);
-        void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil);
 
         void        BeginCommandList();
         auto        ResolveCommandList() -> CommandListPtr;
@@ -193,14 +194,17 @@ namespace RenderCore { namespace Metal_DX11
         ID3D::UserDefinedAnnotation*    GetAnnotationInterface() const  { return _annotations.get(); }
         bool                            IsImmediate() const;
 
+        void                        SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims);
+        VectorPattern<unsigned,2>   GetPresentationTargetDims();
+
+        NamedResources& GetNamedResources() { return _namedResources; }
+
         void        InvalidateCachedState();
 
         ID3D::Buffer*               _currentCBs[6][14];
         ID3D::ShaderResourceView*   _currentSRVs[6][32];
 
 		ObjectFactory&	GetFactory() { return *_factory; }
-
-		void BindPipeline() {}
 
         DeviceContext(ID3D::DeviceContext* context);
         DeviceContext(intrusive_ptr<ID3D::DeviceContext>&& context);
@@ -209,6 +213,9 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<ID3D::DeviceContext> _underlying;
         intrusive_ptr<ID3D::UserDefinedAnnotation> _annotations;
 		ObjectFactory* _factory;
+
+        NamedResources _namedResources;
+        VectorPattern<unsigned,2> _presentationTargetDims;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

@@ -78,13 +78,13 @@ namespace SceneEngine
                 BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R16_TYPELESS, 1),
                 "TileLighting"));
 
-        Metal::ShaderResourceView srv0(resLocator0->ShareUnderlying(), Format::R32_FLOAT);
-        Metal::ShaderResourceView srv1(resLocator1->ShareUnderlying(), Format::R32_FLOAT);
-        Metal::ShaderResourceView srv2(resLocator2->ShareUnderlying(), Format::R16_UINT);
+        Metal::ShaderResourceView srv0(resLocator0->ShareUnderlying(), {Format::R32_FLOAT});
+        Metal::ShaderResourceView srv1(resLocator1->ShareUnderlying(), {Format::R32_FLOAT});
+        Metal::ShaderResourceView srv2(resLocator2->ShareUnderlying(), {Format::R16_UINT});
 
-        Metal::UnorderedAccessView uav0(resLocator0->ShareUnderlying(), Format::R32_UINT);
-        Metal::UnorderedAccessView uav1(resLocator1->ShareUnderlying(), Format::R32_UINT);
-        Metal::UnorderedAccessView uav2(resLocator2->ShareUnderlying(), Format::R16_UINT);
+        Metal::UnorderedAccessView uav0(resLocator0->ShareUnderlying(), {Format::R32_UINT});
+        Metal::UnorderedAccessView uav1(resLocator1->ShareUnderlying(), {Format::R32_UINT});
+        Metal::UnorderedAccessView uav2(resLocator2->ShareUnderlying(), {Format::R16_UINT});
 
         // UINT clearValues[4] = { 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff };
         // auto device  = MainBridge::GetInstance()->GetDevice();

@@ -67,7 +67,7 @@ namespace SceneEngine
         template<typename Tuple, int Index, typename Top, typename... V>
             static void InitViews(Tuple& tuple, BufferUploads::ResourceLocator& loc, Format fmt)
             {
-                std::get<Index>(tuple) = Top(loc.ShareUnderlying(), SpecializeFormat<Top>(fmt));
+                std::get<Index>(tuple) = Top(loc.ShareUnderlying(), {SpecializeFormat<Top>(fmt)});
                 InitViews<Tuple, Index+1, V...>(tuple, loc, fmt);
             }
 
@@ -105,7 +105,7 @@ namespace SceneEngine
         _locator = uploads.Transaction_Immediate(desc, initialData);
 
         if (needTypelessFmt) {
-            Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator, tdesc._format);
+            Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator, {tdesc._format});
         } else {
             Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator);
         }

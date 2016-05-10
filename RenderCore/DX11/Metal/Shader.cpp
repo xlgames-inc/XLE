@@ -257,6 +257,8 @@ namespace RenderCore { namespace Metal_DX11
         Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
     }
 
+    ComputeShader::ComputeShader() {}
+
     ComputeShader::~ComputeShader() {}
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

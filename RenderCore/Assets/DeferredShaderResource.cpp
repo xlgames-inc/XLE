@@ -303,7 +303,7 @@ namespace RenderCore { namespace Assets
         if (colSpace == SourceColorSpace::SRGB) format = AsSRGBFormat(format);
         else if (colSpace == SourceColorSpace::Linear) format = AsLinearFormat(format);
 
-        _pimpl->_srv = Metal::ShaderResourceView(_pimpl->_locator->ShareUnderlying(), format);
+        _pimpl->_srv = Metal::ShaderResourceView(_pimpl->_locator->ShareUnderlying(), {format});
         return ::Assets::AssetState::Ready;
     }
 
@@ -393,7 +393,7 @@ namespace RenderCore { namespace Assets
         assert(desc._type == BufferDesc::Type::Texture);
         return Metal::ShaderResourceView(
             result->ShareUnderlying(),
-            ResolveFormatImmediate(desc._textureDesc._format, init));
+            {ResolveFormatImmediate(desc._textureDesc._format, init)});
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -310,6 +310,55 @@ namespace RenderCore
         return inputFormat; // no linear/srgb version of this format exists
     }
 
+    Format AsDepthStencilFormat(Format inputFormat)
+    {
+        switch (inputFormat) {
+        case Format::R24_UNORM_X8_TYPELESS:
+        case Format::X24_TYPELESS_G8_UINT: 
+        case Format::R24G8_TYPELESS:
+            return Format::D24_UNORM_S8_UINT;
+
+        case Format::R32_TYPELESS:
+        case Format::R32_FLOAT:
+            return Format::D32_FLOAT;
+
+        case Format::R8_TYPELESS:
+        case Format::R8_UINT:
+            return Format::S8_UINT;
+        }
+        return inputFormat;
+    }
+
+    Format      AsDepthAspectSRVFormat(Format inputFormat)
+    {
+        switch (inputFormat) {
+        case Format::D24_UNORM_S8_UINT:
+        case Format::X24_TYPELESS_G8_UINT: 
+        case Format::R24G8_TYPELESS:
+            return Format::R24_UNORM_X8_TYPELESS;
+
+        case Format::R32_TYPELESS:
+        case Format::D32_FLOAT:
+            return Format::R32_FLOAT;
+        }
+        return inputFormat;
+    }
+
+    Format      AsStencilAspectSRVFormat(Format inputFormat)
+    {
+        switch (inputFormat) {
+        case Format::R24_UNORM_X8_TYPELESS:
+        case Format::D24_UNORM_S8_UINT: 
+        case Format::R24G8_TYPELESS:
+            return Format::X24_TYPELESS_G8_UINT;
+
+        case Format::R8_TYPELESS:
+        case Format::S8_UINT:
+            return Format::R8_UINT;
+        }
+        return inputFormat;
+    }
+
     bool HasLinearAndSRGBFormats(Format inputFormat)
     {
         switch (inputFormat) {

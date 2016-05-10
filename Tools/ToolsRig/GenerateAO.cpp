@@ -159,7 +159,7 @@ namespace ToolsRig
         auto& metalContext = *metalContextPtr;
         SceneEngine::SavedTargets savedTargets(metalContext);
 
-        metalContext.Clear(_pimpl->_cubeDSV, 1.f, 0u);
+        metalContext.Clear(_pimpl->_cubeDSV, Metal::DeviceContext::ClearFilter::Depth|Metal::DeviceContext::ClearFilter::Stencil, 1.f, 0u);
         metalContext.Bind(ResourceList<Metal::RenderTargetView, 0>(), &_pimpl->_cubeDSV);
 
             // configure rendering for the shadow shader
@@ -263,8 +263,8 @@ namespace ToolsRig
         const float solidAngleTotal = 5.f * solidAngleFace;
         float occlusionTotal = 0.f;
         for (unsigned f=0; f<5; ++f) {
-            auto pitches = readback->GetPitches(f);
-            auto* d = (float*)readback->GetData(f);
+            auto pitches = readback->GetPitches({f});
+            auto* d = (float*)readback->GetData({f});
             for (unsigned y=0; y<4; ++y)
                 for (unsigned x=0; x<4; ++x)
                     occlusionTotal += PtrAdd(d, y*pitches._rowPitch)[x];
@@ -307,8 +307,8 @@ namespace ToolsRig
                     settings._renderResolution, settings._renderResolution, 
                     typelessFormat, 1, cubeFaces),
                 "AoGen"));
-        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->ShareUnderlying(), dsvFormat);
-        _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->ShareUnderlying(), srvFormat);
+        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->ShareUnderlying(), {dsvFormat});
+        _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->ShareUnderlying(), {srvFormat});
 
         _pimpl->_miniLocator = bufferUploads.Transaction_Immediate(
             CreateDesc( 

@@ -170,7 +170,7 @@ namespace SceneEngine
 
         auto texture = uploads.Transaction_Immediate(targetDesc);
 
-        Metal::ShaderResourceView srv(texture->ShareUnderlying(), AsResolvableFormat(desc._format));
+        Metal::ShaderResourceView srv(texture->ShareUnderlying(), {AsResolvableFormat(desc._format)});
 
         _srv = std::move(srv);
         _resource = std::move(texture);
@@ -199,7 +199,7 @@ namespace SceneEngine
             auto& box = Techniques::FindCachedBox<DuplicateDepthBuffer>(d);
 			#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
 				context->GetUnderlying()->ResolveSubresource(
-					Metal::UnderlyingResourcePtr(box._resource->GetUnderlying()).get(), 0, sourceDepthBuffer, 0,
+					Metal::UnderlyingResourcePtr(box._resource->GetUnderlying()).get(), 0, Metal::UnderlyingResourcePtr(&sourceDepthBuffer).get(), 0,
 					Metal::AsDXGIFormat(AsResolvableFormat(d._format)));
 			#endif
             return box._srv;

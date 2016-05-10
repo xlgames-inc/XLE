@@ -13,6 +13,7 @@
     <ClCompile Include="..\DX11\Metal\GPUProfilerDX11.cpp" />
     <ClCompile Include="..\DX11\Metal\ObjectFactory.cpp" />
     <ClCompile Include="..\DX11\Metal\TextureView.cpp" />
+    <ClCompile Include="..\DX11\Metal\FrameBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\DX11\Metal\DX11.h" />
@@ -32,5 +33,6 @@
     <ClInclude Include="..\DX11\Metal\GPUProfiler.h" />
     <ClInclude Include="..\DX11\Metal\ObjectFactory.h" />
     <ClInclude Include="..\DX11\Metal\TextureView.h" />
+    <ClInclude Include="..\DX11\Metal\FrameBuffer.h" />
   </ItemGroup>
 </Project>

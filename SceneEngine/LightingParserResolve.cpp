@@ -21,6 +21,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
@@ -360,18 +361,21 @@ namespace SceneEngine
             // separately the "aspects" so the DSV has stencil, and the SRV has depth.
             // Perhaps we need an input attachment for the depth buffer in the second pass?
             auto& factory = Metal::GetObjectFactory(metalContext);
-            auto depth = metalContext.GetNamedResources().GetRTV(IMainTargets::MultisampledDepth);
-            if (!depth) depth = metalContext.GetNamedResources().GetSRV(IMainTargets::MultisampledDepth);
+            auto depth = metalContext.GetNamedResources().GetSRV(IMainTargets::MultisampledDepth);
             if (depth) {
+                // In DirectX, the base resource will have a "typeless" format -- here, we need to convert it
+                // to the correct formats for DSVs and SRVs.
                 Metal::DepthStencilView dsvJustStencil(
                     factory, depth->ShareResource(), 
                     Metal::TextureViewWindow(
-                        Format::Unknown, TextureDesc::Dimensionality::Undefined, Metal::TextureViewWindow::All, Metal::TextureViewWindow::All,
+                        {Metal::TextureViewWindow::FormatFilter::ColorSpace::Linear, Metal::TextureViewWindow::FormatFilter::Aspect::Stencil},
+                        TextureDesc::Dimensionality::Undefined, Metal::TextureViewWindow::All, Metal::TextureViewWindow::All,
                         Metal::TextureViewWindow::Flags::JustStencil));
                 Metal::ShaderResourceView srvJustDepth(
                     factory, depth->ShareResource(), 
                     Metal::TextureViewWindow(
-                        Format::Unknown, TextureDesc::Dimensionality::Undefined, Metal::TextureViewWindow::All, Metal::TextureViewWindow::All,
+                        {Metal::TextureViewWindow::FormatFilter::ColorSpace::Linear, Metal::TextureViewWindow::FormatFilter::Aspect::Depth},
+                        TextureDesc::Dimensionality::Undefined, Metal::TextureViewWindow::All, Metal::TextureViewWindow::All,
                         Metal::TextureViewWindow::Flags::JustDepth));
 
                 metalContext.GetNamedResources().Bind(IMainTargets::MultisampledDepth_JustStencil, dsvJustStencil);
@@ -467,16 +471,16 @@ namespace SceneEngine
                         metalContext, parserContext.GetGlobalUniformsStream(),
                         Metal::UniformsStream(&ambientLightPacket, nullptr, 1));
 
-                    #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+                    #if 0 // GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
                             //  When screen space reflections are enabled, we need to take a copy of the lighting
                             //  resolve target. This is because we want to reflect the post-lighting resolve pixels.
                         if (lightingResolveContext._screenSpaceReflectionsResult.IsGood())
                             Metal::Copy(
-                                context,
+                                metalContext,
                                 lightingResTargets._lightingResolveCopy->GetUnderlying(), 
                                 lightingResTargets._lightingResolveTexture->GetUnderlying());
 
-                        context.BindPS(MakeResourceList(6, 
+                        metalContext.BindPS(MakeResourceList(6, 
                             lightingResolveContext._tiledLightingResult, 
                             lightingResolveContext._screenSpaceReflectionsResult,
                             lightingResTargets._lightingResolveCopySRV));
@@ -516,7 +520,7 @@ namespace SceneEngine
         auto debugging = Tweakable("DeferredDebugging", 0);
         if (debugging > 0) {
             parserContext._pendingOverlays.push_back(
-                std::bind(&Deferred_DrawDebugging, std::placeholders::_1, std::placeholders::_2, std::ref(mainTargets), debugging));
+                std::bind(&Deferred_DrawDebugging, std::placeholders::_1, std::placeholders::_2, mainTargets.GetSampling()._sampleCount > 1, debugging));
         }
 
         if (Tweakable("RTShadowMetrics", false)) {

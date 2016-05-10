@@ -18,8 +18,6 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
 
-#include "../RenderCore/DX11/Metal/IncludeDX11.h"
-
 namespace SceneEngine
 {
 #if 0
@@ -529,7 +527,7 @@ namespace SceneEngine
     #endif
 
 
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, IMainTargets& mainTargets, unsigned debuggingType)
+    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, bool useMsaaSamplers, unsigned debuggingType)
     {
         using namespace RenderCore;
 
@@ -537,7 +535,6 @@ namespace SceneEngine
         if (debuggingType == 2)
             ps = "game/xleres/deferred/debugging.psh:GenericDebugging:!ps_*";
 
-        const bool useMsaaSamplers = mainTargets.GetSampling()._sampleCount > 1;
         StringMeld<256> meld;
         meld << useMsaaSamplers?"MSAA_SAMPLERS=1":"";
         bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
@@ -558,7 +555,8 @@ namespace SceneEngine
             context.Bind(debuggingShader);
         }
 
-        context.BindPS(MakeResourceList(5, mainTargets.GetSRV(IMainTargets::GBufferDiffuse), mainTargets.GetSRV(IMainTargets::GBufferNormals), mainTargets.GetSRV(IMainTargets::GBufferParameters), mainTargets.GetSRV(IMainTargets::MultisampledDepth)));
+        auto& namedRes = context.GetNamedResources();
+        context.BindPS(MakeResourceList(5, *namedRes.GetSRV(IMainTargets::GBufferDiffuse), *namedRes.GetSRV(IMainTargets::GBufferNormals), *namedRes.GetSRV(IMainTargets::GBufferParameters), *namedRes.GetSRV(IMainTargets::MultisampledDepth)));
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         SetupVertexGeneratorShader(context);
         context.Draw(4);

@@ -124,15 +124,16 @@ namespace RenderCore
     {
     public:
         IteratorRange<const ClearValue*>    _clearValues;
-        VectorPattern<int, 2>               _offset;
-        VectorPattern<unsigned, 2>          _extent;
+        //      (Vulkan supports offset and extent here. But there there is
+        //      no clean equivalent in D3D. Let's avoid exposing it until
+        //      it's really needed)
+        // VectorPattern<int, 2>               _offset;
+        // VectorPattern<unsigned, 2>          _extent;
 
         RenderPassBeginDesc(
-            std::initializer_list<ClearValue> clearValues = {},
-            VectorPattern<int, 2> offset = {0,0},
-            VectorPattern<unsigned, 2> extent = {0,0})
+            std::initializer_list<ClearValue> clearValues = {})
         : _clearValues(clearValues.begin(), clearValues.end())
-        , _offset(offset), _extent(extent) {}
+        {}
     };
 
     inline ClearValue MakeClearValue(const VectorPattern<float, 4>& v)
