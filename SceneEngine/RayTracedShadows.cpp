@@ -119,11 +119,11 @@ namespace SceneEngine
         _gridBufferSRV = SRV(_gridBuffer->ShareUnderlying());
         _listsBufferUAV = UAV(
 			_listsBuffer->ShareUnderlying(),
-			Metal::TextureViewWindow(
+			TextureViewWindow(
 				Format::Unknown, TextureDesc::Dimensionality::Undefined,
-				Metal::TextureViewWindow::All,
-				Metal::TextureViewWindow::All,
-				Metal::TextureViewWindow::Flags::AttachedCounter));
+				TextureViewWindow::All,
+				TextureViewWindow::All,
+				TextureViewWindow::Flags::AttachedCounter));
         _listsBufferSRV = SRV(_listsBuffer->ShareUnderlying());
 
         _dummyTarget = uploads.Transaction_Immediate(

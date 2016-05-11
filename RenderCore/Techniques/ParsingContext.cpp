@@ -66,11 +66,12 @@ namespace RenderCore { namespace Techniques
         return _techniqueContext->_stateSetEnvironment;
     }
 
-    ParsingContext::ParsingContext(const TechniqueContext& techniqueContext)
+    ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, NamedResources& namedResources)
     {
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
         _stateSetResolver = _techniqueContext->_defaultStateSetResolver;
         _stringHelpers = std::make_unique<StringHelpers>();
+        _namedResources = &namedResources;
 
         _projectionDesc.reset((ProjectionDesc*)XlMemAlign(sizeof(ProjectionDesc), 16));
         #pragma push_macro("new")

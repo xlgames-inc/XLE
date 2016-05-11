@@ -192,7 +192,7 @@ namespace PlatformRig
         if (_pimpl->_updateAsyncMan)
             Assets::Services::GetAsyncMan().Update();
 
-		context.BeginFrame(*presChain);
+		auto presentationTarget = context.BeginFrame(*presChain);
 
             //  We must invalidate the cached state at least once per frame.
             //  It appears that the driver might forget bound constant buffers
@@ -201,7 +201,7 @@ namespace PlatformRig
 
         ////////////////////////////////
 
-        auto renderRes = renderFunction(context);
+        auto renderRes = renderFunction(context, presentationTarget);
 
         ////////////////////////////////
 

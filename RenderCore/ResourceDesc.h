@@ -197,18 +197,16 @@ namespace RenderCore
 			using BitField = unsigned;
 		};
 
+        enum Aspect { UndefinedAspect, ColorLinear, ColorSRGB, DepthStencil, Depth, Stencil };
+        
         struct FormatFilter
         {
-            enum Aspect { UndefinedAspect, Color, Depth, Stencil, DepthStencil };
-            enum ColorSpace { UndefinedColorSpace, Linear, SRGB };
-
-            ColorSpace  _colorSpace;
             Aspect      _aspect;
             Format      _explicitFormat;
 
-            FormatFilter(ColorSpace colorSpace = UndefinedColorSpace, Aspect aspect = UndefinedAspect)
-                : _colorSpace(colorSpace), _aspect(aspect), _explicitFormat(Format(0)) {}
-            FormatFilter(Format explicitFormat) : _colorSpace(UndefinedColorSpace), _aspect(UndefinedAspect), _explicitFormat(explicitFormat) {}
+            FormatFilter(Aspect aspect = UndefinedAspect)
+                : _aspect(aspect), _explicitFormat(Format(0)) {}
+            FormatFilter(Format explicitFormat) : _aspect(UndefinedAspect), _explicitFormat(explicitFormat) {}
         };
 
         FormatFilter                _format;

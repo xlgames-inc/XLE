@@ -678,13 +678,12 @@ namespace SceneEngine
         const LuminanceResult& luminanceResult,
         const ToneMapSettings& settings,
         const RenderCore::FrameBufferDesc& destination,
-        const RenderCore::FrameBufferProperties& destinationProps,
         const Metal::ShaderResourceView& inputResource)
     {
         // ProtectState protectState(context, ProtectState::States::BlendState);
         // bool hardwareSRGBEnabled = IsSRGBTargetBound(context);
 
-        bool hardwareSRGBEnabled = RenderCore::GetComponentType(destination.GetAttachments()[0]._format) == RenderCore::FormatComponentType::UNorm_SRGB;
+        bool hardwareSRGBEnabled = destination.GetAttachments()[0]._window._format._aspect == TextureViewWindow::ColorSRGB;
 
         CATCH_ASSETS_BEGIN
             bool bindCopyShader = true;
@@ -738,7 +737,7 @@ namespace SceneEngine
             RenderCore::Metal::FrameBufferCache fbCache;
             RenderCore::Metal::RenderPassInstance rpi(
                 context, destination,
-                destinationProps, 0u, fbCache);
+                0u, parserContext.GetNamedResources(), fbCache);
 
             SetupVertexGeneratorShader(context);
             context.Bind(Techniques::CommonResources()._blendOpaque);
@@ -917,7 +916,7 @@ namespace SceneEngine
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             auto depths = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView());
-            Metal::ShaderResourceView depthsSRV(depths.get(), {{Metal::TextureViewWindow::FormatFilter::ColorSpace::Linear, Metal::TextureViewWindow::FormatFilter::Aspect::Depth}});
+            Metal::ShaderResourceView depthsSRV(depths.get(), {{TextureViewWindow::Aspect::Depth}});
             auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
             Metal::ShaderResourceView inputSRV(res.get());
 #else

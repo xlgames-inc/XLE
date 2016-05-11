@@ -31,10 +31,11 @@ namespace SceneEngine
         ModelIntersectionResources* _res;
         Metal::GeometryShader::StreamOutputInitializers _oldSO;
 
+        NamedResources _namedRes;
         LightingParserContext _parserContext;
 
         Pimpl(const Techniques::TechniqueContext& techniqueContext)
-            : _parserContext(techniqueContext) {}
+            : _parserContext(techniqueContext, _namedRes) {}
     };
 
     class ModelIntersectionResources

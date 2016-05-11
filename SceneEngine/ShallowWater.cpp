@@ -115,11 +115,11 @@ namespace SceneEngine
 
         unsigned heightsTextureCount = pipeModel?1:3;
 
-		auto windowForUAVs = Metal::TextureViewWindow(
+		auto windowForUAVs = TextureViewWindow(
 			Format::R32_FLOAT, TextureDesc::Dimensionality::Undefined,
-			Metal::TextureViewWindow::SubResourceRange{0,1},
-			Metal::TextureViewWindow::All,
-			Metal::TextureViewWindow::Flags::ForceArray);
+			TextureViewWindow::SubResourceRange{0,1},
+			TextureViewWindow::All,
+			TextureViewWindow::Flags::ForceArray);
 
         for (unsigned c=0; c<heightsTextureCount; ++c) {
             waterHeightsTextures[c] = uploads.Transaction_Immediate(targetDesc);
@@ -163,11 +163,11 @@ namespace SceneEngine
         normalsTextureUVA.reserve(normalsMipCount);
         normalsSingleMipSRV.reserve(normalsMipCount);
         for (unsigned c=0; c<normalsMipCount; ++c) {
-			auto window = Metal::TextureViewWindow(
+			auto window = TextureViewWindow(
 				uintNormalFormat, TextureDesc::Dimensionality::Undefined,
-				Metal::TextureViewWindow::SubResourceRange{c,1},
-				Metal::TextureViewWindow::All,
-				Metal::TextureViewWindow::Flags::ForceArray);
+				TextureViewWindow::SubResourceRange{c,1},
+				TextureViewWindow::All,
+				TextureViewWindow::Flags::ForceArray);
             normalsTextureUVA.push_back(UAV(normalsTexture->ShareUnderlying(), window));
             normalsSingleMipSRV.push_back(SRV(normalsTexture->ShareUnderlying(), window));
         }

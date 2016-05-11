@@ -589,12 +589,12 @@ namespace Sample
             {
                 // presentation target
                 {   PresentationTarget, PresentationTarget, 
-                    {{TextureViewWindow::FormatFilter::ColorSpace::SRGB}},
+                    {{TextureViewWindow::ColorSRGB}},
                     AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain },
 
                 // Main depth stencil
                 {   MainDepthStencil, MainDepthStencil,
-                    {{TextureViewWindow::FormatFilter::ColorSpace::Linear, TextureViewWindow::FormatFilter::Aspect::DepthStencil}},
+                    {{TextureViewWindow::ColorLinear, TextureViewWindow::Aspect::DepthStencil}},
                     AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::DontCare },
 
                 // gbuffer diffuse

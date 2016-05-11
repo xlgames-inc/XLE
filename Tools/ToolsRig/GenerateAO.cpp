@@ -175,7 +175,8 @@ namespace ToolsRig
         techniqueContext._runtimeState.SetParameter((const utf8*)"SHADOW_CASCADE_MODE", 1u);            // arbitrary projection mode
         techniqueContext._runtimeState.SetParameter((const utf8*)"FRUSTUM_FILTER", 31u);                // enable writing to 5 frustums
         techniqueContext._runtimeState.SetParameter((const utf8*)"OUTPUT_SHADOW_PROJECTION_COUNT", 5u);
-        Techniques::ParsingContext parserContext(techniqueContext);
+        RenderCore::NamedResources namedRes;
+        Techniques::ParsingContext parserContext(techniqueContext, namedRes);
 
         SceneEngine::SetFrameGlobalStates(metalContext);
 

@@ -218,7 +218,10 @@ namespace RenderCore
         if (!_pimpl->_resources[resName])
             _pimpl->BuildAttachment(resName);
 
-        _pimpl->_srv[viewName] = Metal_DX11::ShaderResourceView(*_pimpl->_factory, _pimpl->_resources[resName], window);
+        auto adjWindow = window;
+        if (adjWindow._format._aspect == TextureViewWindow::UndefinedAspect)
+            adjWindow._format._aspect = attachDesc._defaultAspect;
+        _pimpl->_srv[viewName] = Metal_DX11::ShaderResourceView(*_pimpl->_factory, _pimpl->_resources[resName], adjWindow);
         _pimpl->_resNames[viewName] = resName;
         return _pimpl->_srv[viewName].IsGood() ? &_pimpl->_srv[viewName] : nullptr;
     }
@@ -239,7 +242,10 @@ namespace RenderCore
         if (!_pimpl->_resources[resName])
             _pimpl->BuildAttachment(resName);
         
-        _pimpl->_rtv[viewName] = Metal_DX11::RenderTargetView(*_pimpl->_factory, _pimpl->_resources[resName], window);
+        auto adjWindow = window;
+        if (adjWindow._format._aspect == TextureViewWindow::UndefinedAspect)
+            adjWindow._format._aspect = attachDesc._defaultAspect;
+        _pimpl->_rtv[viewName] = Metal_DX11::RenderTargetView(*_pimpl->_factory, _pimpl->_resources[resName], adjWindow);
         _pimpl->_resNames[viewName] = resName;
         return _pimpl->_rtv[viewName].IsGood() ? &_pimpl->_rtv[viewName] : nullptr;
     }
@@ -260,7 +266,10 @@ namespace RenderCore
         if (!_pimpl->_resources[resName])
             _pimpl->BuildAttachment(resName);
 
-        _pimpl->_dsv[viewName] = Metal_DX11::DepthStencilView(*_pimpl->_factory, _pimpl->_resources[resName], window);
+        auto adjWindow = window;
+        if (adjWindow._format._aspect == TextureViewWindow::UndefinedAspect)
+            adjWindow._format._aspect = attachDesc._defaultAspect;
+        _pimpl->_dsv[viewName] = Metal_DX11::DepthStencilView(*_pimpl->_factory, _pimpl->_resources[resName], adjWindow);
         _pimpl->_resNames[viewName] = resName;
         return _pimpl->_dsv[viewName].IsGood() ? &_pimpl->_dsv[viewName] : nullptr;
     }
@@ -284,8 +293,28 @@ namespace RenderCore
         if (_pimpl->_resources[resName] == resource) return;
 
         _pimpl->InvalidateAttachment(resName);
-        _pimpl->_attachments[resName] = {};
+
+        auto desc = Metal_DX11::ExtractDesc(resource);
+        _pimpl->_attachments[resName] = 
+            {
+                0u, 
+                RenderCore::AttachmentDesc::DimensionsMode::Absolute, 
+                (float)desc._textureDesc._width, (float)desc._textureDesc._height,
+                desc._textureDesc._format, 
+                TextureViewWindow::UndefinedAspect,
+                  ((desc._bindFlags & BindFlag::RenderTarget) ? AttachmentDesc::Flags::RenderTarget : 0u)
+                | ((desc._bindFlags & BindFlag::ShaderResource) ? AttachmentDesc::Flags::ShaderResource : 0u)
+                | ((desc._bindFlags & BindFlag::DepthStencil) ? AttachmentDesc::Flags::DepthStencil : 0u)
+                | ((desc._bindFlags & BindFlag::TransferSrc) ? AttachmentDesc::Flags::TransferSource : 0u)
+            };
+
         _pimpl->_resources[resName] = resource;
+    }
+
+    void NamedResources::Unbind(AttachmentName resName)
+    {
+        assert(resName < s_maxBoundTargets);
+        _pimpl->InvalidateAttachment(resName);
     }
 
     void NamedResources::Bind(TextureSamples samples)
@@ -353,6 +382,8 @@ namespace RenderCore
         _pimpl->_factory = &Metal_DX11::GetObjectFactory();
         for (unsigned c=0; c<s_maxBoundTargets; ++c)
             _pimpl->_resNames[c] = ~0u;
+        _pimpl->_samples = TextureSamples::Create();
+        _pimpl->_props = {0u, 0u, 0u};
     }
 
     NamedResources::~NamedResources()

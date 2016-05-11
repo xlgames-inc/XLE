@@ -16,8 +16,7 @@ namespace RenderCore { namespace Metal_DX11
 {
     static bool IsDefault(const TextureViewWindow& window)
     {
-        return window._format._colorSpace == TextureViewWindow::FormatFilter::UndefinedColorSpace
-            && window._format._aspect == TextureViewWindow::FormatFilter::UndefinedAspect
+        return window._format._aspect == TextureViewWindow::UndefinedAspect
             && window._format._explicitFormat == Format(0)
             && window._mipRange._min == TextureViewWindow::All._min && window._mipRange._count == TextureViewWindow::All._count
             && window._arrayLayerRange._min == TextureViewWindow::All._min && window._arrayLayerRange._count == TextureViewWindow::All._count
@@ -31,39 +30,31 @@ namespace RenderCore { namespace Metal_DX11
             return AsDXGIFormat(filter._explicitFormat);
 
         // common case is everything set to defaults --
-        if (    filter._colorSpace == TextureViewWindow::FormatFilter::UndefinedColorSpace
-            &&  filter._aspect == TextureViewWindow::FormatFilter::UndefinedAspect)
+        if (filter._aspect == TextureViewWindow::UndefinedAspect)
             return baseFormat;      // (or just use DXGI_FORMAT_UNKNOWN)
 
         // We need to filter the format by aspect and color space.
         // First, check if there are linear & SRGB versions of the format. If there are, we can ignore the "aspect" filter,
         // because these formats only have color aspects
         Format fmt = AsFormat(baseFormat);
-        if (HasLinearAndSRGBFormats(fmt)) {
-            switch (filter._colorSpace) {
-            default:
-            case TextureViewWindow::FormatFilter::UndefinedColorSpace:
-                return baseFormat;
-            case TextureViewWindow::FormatFilter::Linear:
-                return AsDXGIFormat(AsLinearFormat(fmt));
-            case TextureViewWindow::FormatFilter::SRGB:
-                return AsDXGIFormat(AsSRGBFormat(fmt));
-            }
-        }
-
         switch (filter._aspect) {
         default:
-        case TextureViewWindow::FormatFilter::UndefinedAspect:
             return baseFormat;
-        case TextureViewWindow::FormatFilter::Color:
-            return AsDXGIFormat(AsDepthAspectSRVFormat(fmt));
-        case TextureViewWindow::FormatFilter::DepthStencil:
-        case TextureViewWindow::FormatFilter::Depth:
+
+        case TextureViewWindow::DepthStencil:
+        case TextureViewWindow::Depth:
             if (isDSV) return AsDXGIFormat(AsDepthStencilFormat(fmt));
             return AsDXGIFormat(AsDepthAspectSRVFormat(fmt));
-        case TextureViewWindow::FormatFilter::Stencil:
+
+        case TextureViewWindow::Stencil:
             if (isDSV) return AsDXGIFormat(AsDepthStencilFormat(fmt));
             return AsDXGIFormat(AsStencilAspectSRVFormat(fmt));
+
+        case TextureViewWindow::ColorLinear:
+            return AsDXGIFormat(AsLinearFormat(fmt));
+
+        case TextureViewWindow::ColorSRGB:
+            return AsDXGIFormat(AsSRGBFormat(fmt));
         }
     }
 

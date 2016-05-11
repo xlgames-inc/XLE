@@ -349,9 +349,9 @@ namespace SceneEngine
         auto shadowMapShaderResource = Metal::ShaderResourceView(shadowMapTexture->ShareUnderlying());
         std::vector<Metal::RenderTargetView> shadowMapRenderTargets;
         for (unsigned c=0; c<unsigned(desc._frustumCount); ++c) {
-			auto window = Metal::TextureViewWindow(
+			auto window = TextureViewWindow(
 				shadowMapFormat, TextureDesc::Dimensionality::Undefined,
-				Metal::TextureViewWindow::SubResourceRange{c,1});
+				TextureViewWindow::SubResourceRange{c,1});
             shadowMapRenderTargets.emplace_back(Metal::RenderTargetView(shadowMapTexture->ShareUnderlying(), window));
         }
 
@@ -359,9 +359,9 @@ namespace SceneEngine
         auto shadowMapShaderResourceTemp = Metal::ShaderResourceView(shadowMapTextureTemp->ShareUnderlying());
         std::vector<Metal::RenderTargetView> shadowMapRenderTargetsTemp;
         for (unsigned c=0; c<unsigned(desc._frustumCount); ++c) {
-			auto window = Metal::TextureViewWindow(
+			auto window = TextureViewWindow(
 				shadowMapFormat, TextureDesc::Dimensionality::Undefined,
-				Metal::TextureViewWindow::SubResourceRange{ c,1 });
+				TextureViewWindow::SubResourceRange{ c,1 });
             shadowMapRenderTargetsTemp.emplace_back(Metal::RenderTargetView(shadowMapTextureTemp->ShareUnderlying(), window));
         }
 
@@ -582,7 +582,7 @@ namespace SceneEngine
             SetupVertexGeneratorShader(*context);
             context->Bind(*fogShaders._buildExponentialShadowMap);
 
-            auto* shadowSRV = context->GetNamedResources().GetSRV(shadowFrustum._shadowTextureName);
+            auto* shadowSRV = lightingParserContext.GetNamedResources().GetSRV(shadowFrustum._shadowTextureName);
             assert(shadowSRV);
             context->BindPS(MakeResourceList(2, *shadowSRV));
 

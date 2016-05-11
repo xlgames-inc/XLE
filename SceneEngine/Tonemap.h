@@ -58,7 +58,6 @@ namespace SceneEngine
         const LuminanceResult& luminanceResult,
         const ToneMapSettings& settings,
         const RenderCore::FrameBufferDesc& destination,
-        const RenderCore::FrameBufferProperties& destinationProps,
         const RenderCore::Metal::ShaderResourceView& inputResource);
 
     class AtmosphereBlurSettings

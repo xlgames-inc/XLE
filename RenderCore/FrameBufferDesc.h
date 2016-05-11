@@ -58,6 +58,7 @@ namespace RenderCore
         float _width, _height;
 
         Format _format;
+        TextureViewWindow::Aspect _defaultAspect;
 
         struct Flags
         {
@@ -135,6 +136,7 @@ namespace RenderCore
         void Bind(TextureSamples samples);
         void Bind(FrameBufferProperties props);
         void Bind(AttachmentName, const ResourcePtr& resource);
+        void Unbind(AttachmentName);
 
         const FrameBufferProperties& GetFrameBufferProperties() const;
 

@@ -148,10 +148,10 @@ namespace SceneEngine
         std::vector<Metal::ShaderResourceView> instanceBufferSRVs; instanceBufferSRVs.reserve(desc._bufferCount);
         for (unsigned c=0; c<desc._bufferCount; ++c) {
             auto res = uploads.Transaction_Immediate(bufferDesc);
-			auto window = Metal::TextureViewWindow(
+			auto window = TextureViewWindow(
 				Format::Unknown, TextureDesc::Dimensionality::Undefined,
-				Metal::TextureViewWindow::SubResourceRange{0,1}, Metal::TextureViewWindow::All,
-				Metal::TextureViewWindow::Flags::AppendBuffer);
+				TextureViewWindow::SubResourceRange{0,1}, TextureViewWindow::All,
+				TextureViewWindow::Flags::AppendBuffer);
             instanceBufferUAVs.push_back(Metal::UnorderedAccessView(res->ShareUnderlying(), window));
             instanceBufferSRVs.push_back(Metal::ShaderResourceView(res->ShareUnderlying()));
         }

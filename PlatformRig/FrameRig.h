@@ -35,7 +35,7 @@ namespace PlatformRig
             RenderResult _renderResult;
         };
 
-        typedef std::function<RenderResult(RenderCore::IThreadContext&)>
+        typedef std::function<RenderResult(RenderCore::IThreadContext&, const RenderCore::ResourcePtr&)>
             FrameRenderFunction;
 
         FrameResult ExecuteFrame(

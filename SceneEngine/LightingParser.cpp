@@ -645,6 +645,7 @@ namespace SceneEngine
         };
 
         FrameBufferDesc _createGBuffer;
+        std::vector<AttachmentDesc> _attachments;
 
         FrameBufferDescBox(const Desc& d);
     };
@@ -667,19 +668,15 @@ namespace SceneEngine
         // We can elect to retain or discard the gbuffer contents after the lighting resolve. Frequently
         // the gbuffer contents are useful for various effects.
 
-        using Attachment = RenderCore::AttachmentDesc;
-        using Subpass = RenderCore::SubpassDesc;
-
         // note --  All of these attachments must be marked with "ShaderResource"
         //          flags, because they will be used in the lighting pipeline later. However,
         //          this may have a consequence on the efficiency when writing to them.
-        Attachment gbufferAttaches[] = 
-        {
+        _attachments = std::vector<AttachmentDesc>{
             // Main multisampled depth stencil
-            {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f,
-                RenderCore::Format::D24_UNORM_S8_UINT,
-                Attachment::LoadStore::Clear, Attachment::LoadStore::Retain,
-                IMainTargets::MultisampledDepth, Attachment::Flags::Multisampled | Attachment::Flags::ShaderResource },
+            {   IMainTargets::MultisampledDepth, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
+                RenderCore::Format::R24G8_TYPELESS,
+                TextureViewWindow::Aspect::DepthStencil,
+                AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil },
 
                 // Generally the deferred pixel shader will just copy information from the albedo
                 // texture into the first deferred buffer. So the first deferred buffer should
@@ -689,20 +686,48 @@ namespace SceneEngine
                 // that should be enough precision.
                 //      .. however, it possible some clients might prefer 10 or 16 bit albedo textures
                 //      In these cases, the first buffer should be a matching format.
-            {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f,
+            {   IMainTargets::GBufferDiffuse, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
                 (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM_SRGB : Format::R32G32B32A32_FLOAT,
-                Attachment::LoadStore::DontCare, Attachment::LoadStore::Retain,
-                IMainTargets::GBufferDiffuse, Attachment::Flags::Multisampled | Attachment::Flags::ShaderResource },
+                (!desc._precisionTargets) ? TextureViewWindow::Aspect::ColorSRGB : TextureViewWindow::Aspect::ColorLinear,
+                AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget },
 
-            {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f,
+            {   IMainTargets::GBufferNormals, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
                 (!desc._precisionTargets) ? Format::R8G8B8A8_SNORM : Format::R32G32B32A32_FLOAT,
-                Attachment::LoadStore::DontCare, Attachment::LoadStore::Retain,
-                IMainTargets::GBufferNormals, Attachment::Flags::Multisampled | Attachment::Flags::ShaderResource },
+                TextureViewWindow::Aspect::ColorLinear,
+                AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget },
 
-            {   Attachment::DimensionsMode::OutputRelative, 1.f, 1.f,
+            {   IMainTargets::GBufferParameters, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
                 (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM : Format::R32G32B32A32_FLOAT,
-                Attachment::LoadStore::DontCare, Attachment::LoadStore::Retain,
-                IMainTargets::GBufferParameters, Attachment::Flags::Multisampled | Attachment::Flags::ShaderResource }
+                TextureViewWindow::Aspect::ColorLinear,
+                AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget }
+        };
+
+        AttachmentViewDesc gbufferAttaches[] = 
+        {
+            // Main multisampled depth stencil
+            {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth, 
+                TextureViewWindow(),
+                AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::Retain },
+
+                // Generally the deferred pixel shader will just copy information from the albedo
+                // texture into the first deferred buffer. So the first deferred buffer should
+                // have the same pixel format as much input textures.
+                // Usually this is an 8 bit SRGB format, so the first deferred buffer should also
+                // be 8 bit SRGB. So long as we don't do a lot of processing in the deferred pixel shader
+                // that should be enough precision.
+                //      .. however, it possible some clients might prefer 10 or 16 bit albedo textures
+                //      In these cases, the first buffer should be a matching format.
+            {   IMainTargets::GBufferDiffuse, IMainTargets::GBufferDiffuse, 
+                TextureViewWindow(),
+                AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain },
+
+            {   IMainTargets::GBufferNormals, IMainTargets::GBufferNormals, 
+                TextureViewWindow(),
+                AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain },
+
+            {   IMainTargets::GBufferParameters, IMainTargets::GBufferParameters, 
+                TextureViewWindow(),
+                AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain }
         };
 
         if (desc._gbufferMode == 1) {
@@ -711,12 +736,11 @@ namespace SceneEngine
             _createGBuffer = FrameBufferDesc(
                 {
                     // render first to the gbuffer
-                    Subpass(
+                    SubpassDesc(
                         {IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals, IMainTargets::GBufferParameters}, 
                         IMainTargets::MultisampledDepth)
                 },
-                MakeIteratorRange(gbufferAttaches),
-                desc._samples);
+                MakeIteratorRange(gbufferAttaches));
             
         } else {
 
@@ -724,10 +748,9 @@ namespace SceneEngine
             _createGBuffer = FrameBufferDesc(
                 {
                     // render first to the gbuffer
-                    Subpass({IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals}, IMainTargets::MultisampledDepth)
+                    SubpassDesc({IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals}, IMainTargets::MultisampledDepth)
                 },
-                MakeIteratorRange(gbufferAttaches, &gbufferAttaches[3]),
-                desc._samples);
+                MakeIteratorRange(gbufferAttaches, &gbufferAttaches[3]));
         }
     }
 
@@ -740,16 +763,17 @@ namespace SceneEngine
         RenderCore::Metal::FrameBufferCache& GetFrameBufferCache();
         VectorPattern<unsigned, 2>      GetDimensions() const;
         const SRV&                      GetSRV(Name) const;
+        const SRV&                      GetSRV(Name, Name, const TextureViewWindow&) const;
         bool                            HasSRV(Name) const;
 
         MainTargets(
-            Metal::DeviceContext& metalContext,
+            Techniques::ParsingContext& parsingContext,
             const RenderingQualitySettings& qualSettings,
             unsigned gbufferType);
         ~MainTargets();
 
     private:
-        Metal::DeviceContext*       _metalContext;
+        Techniques::ParsingContext* _parsingContext;
         RenderingQualitySettings    _qualSettings;
         unsigned                    _gbufferType;
         Metal::FrameBufferCache     _fbCache;
@@ -783,21 +807,28 @@ namespace SceneEngine
 
     auto  MainTargets::GetSRV(Name name) const -> const SRV&
     {
-        auto result = _metalContext->GetNamedResources().GetSRV(name);
+        auto result = _parsingContext->GetNamedResources().GetSRV(name);
         assert(result);
         return *result;
     }
 
     bool MainTargets::HasSRV(Name name) const
     {
-        return _metalContext->GetNamedResources().GetSRV(name) != nullptr;
+        return _parsingContext->GetNamedResources().GetSRV(name) != nullptr;
+    }
+
+    auto MainTargets::GetSRV(Name viewName, Name resName, const TextureViewWindow& viewWindow) const -> const SRV&
+    {
+        auto result = _parsingContext->GetNamedResources().GetSRV(viewName, resName, viewWindow);
+        assert(result);
+        return *result;
     }
 
     MainTargets::MainTargets(
-        Metal::DeviceContext& metalContext,
+        Techniques::ParsingContext& parsingContext,
         const RenderingQualitySettings& qualSettings,
         unsigned gbufferType)
-    : _metalContext(&metalContext)
+    : _parsingContext(&parsingContext)
     , _qualSettings(qualSettings)
     , _gbufferType(gbufferType)
     {}
@@ -837,7 +868,6 @@ namespace SceneEngine
             ////////////////////////////////////////////////////////////////////
 
         const bool precisionTargets = Tweakable("PrecisionTargets", false);
-        FrameBufferProperties frameBufferProps{qualitySettings._dimensions[0], qualitySettings._dimensions[1], 0u};
 
         if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Deferred) {
 
@@ -857,6 +887,8 @@ namespace SceneEngine
             auto& fbDescBox = Techniques::FindCachedBox2<FrameBufferDescBox>(
                 mainTargets.GetSampling(), precisionTargets, mainTargets.GetGBufferType());
 
+            parserContext.GetNamedResources().DefineAttachments(MakeIteratorRange(fbDescBox._attachments));
+
             ReturnToSteadyState(metalContext);
             StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._deferred);
 
@@ -864,8 +896,7 @@ namespace SceneEngine
                 Metal::RenderPassInstance rpi(
                     metalContext,
                     fbDescBox._createGBuffer,
-                    frameBufferProps,
-                    0u, mainTargets.GetFrameBufferCache(),
+                    0u, parserContext.GetNamedResources(), mainTargets.GetFrameBufferCache(),
                     RenderPassBeginDesc{{RenderCore::MakeClearValue(1.f, 0)}});
                 metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, (float)qualitySettings._dimensions[0], (float)qualitySettings._dimensions[1]));
 
@@ -968,20 +999,18 @@ namespace SceneEngine
                 //  SRGB results, others give linear results)
 
             const bool hardwareSRGBDisabled = Tweakable("Tonemap_DisableHardwareSRGB", true);
-            auto targetDesc = Metal::ExtractDesc(*metalContext.GetNamedResources().GetRTV(0u));
             FrameBufferDesc applyToneMapping(
-                { SubpassDesc({IMainTargets::PresentationTarget}) },
+                { SubpassDesc({IMainTargets::PresentationTarget_ToneMapWrite}) },
                 {
                     // We want to reuse the presentation target texture, except with the format modified for SRGB/Linear
-                    {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
-                        hardwareSRGBDisabled ? AsLinearFormat(targetDesc._textureDesc._format) : targetDesc._textureDesc._format,
-                        AttachmentDesc::LoadStore::DontCare, AttachmentDesc::LoadStore::Retain,
-                        0u }
+                    {   IMainTargets::PresentationTarget, IMainTargets::PresentationTarget_ToneMapWrite,
+                        {{ hardwareSRGBDisabled ? TextureViewWindow::ColorLinear : TextureViewWindow::ColorSRGB }},
+                        AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain }
                 });
             
             ToneMap_Execute(
                 metalContext, parserContext, luminanceResult, toneMapSettings, 
-                applyToneMapping, frameBufferProps,
+                applyToneMapping,
                 mainTargets.GetSRV(postLightingResolve));
         }
     }
@@ -1064,21 +1093,28 @@ namespace SceneEngine
         }
 #endif
 
+        parserContext.GetNamedResources().DefineAttachments(
+            {
+                {   IMainTargets::ShadowDepthMap + shadowFrustumIndex, 
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
+                    frustum._typelessFormat,
+                    TextureViewWindow::DepthStencil,
+                    AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil }
+            });
+
         FrameBufferDesc resolveLighting(
             { SubpassDesc({}, IMainTargets::ShadowDepthMap + shadowFrustumIndex) },
             {
-                {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
-                    frustum._writeFormat,
-                    AttachmentDesc::LoadStore::Clear, AttachmentDesc::LoadStore::Retain,
-                    IMainTargets::ShadowDepthMap + shadowFrustumIndex, 
-                    AttachmentDesc::Flags::ShaderResource }
+                {   IMainTargets::ShadowDepthMap + shadowFrustumIndex, IMainTargets::ShadowDepthMap + shadowFrustumIndex, 
+                    TextureViewWindow(),
+                    AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::Retain }
             });
 
         Metal::RenderPassInstance rpi(
             metalContext,
             resolveLighting,
-            FrameBufferProperties{frustum._width, frustum._height, projectionCount},
-            0u, mainTargets.GetFrameBufferCache(),
+            0u, parserContext.GetNamedResources(),
+            mainTargets.GetFrameBufferCache(),
             RenderPassBeginDesc{{MakeClearValue(1.f, 0x0)}});
 
         preparedResult._shadowTextureName = IMainTargets::ShadowDepthMap + shadowFrustumIndex;
@@ -1221,7 +1257,7 @@ namespace SceneEngine
         CATCH_ASSETS_END(parserContext)
 
         const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
-        MainTargets mainTargets(*metalContext, qualitySettings, enableParametersBuffer?1:2);
+        MainTargets mainTargets(parserContext, qualitySettings, enableParametersBuffer?1:2);
 
         {
             Metal::GPUProfiler::DebugAnnotation anno(*metalContext, L"Prepare");
@@ -1252,8 +1288,8 @@ namespace SceneEngine
         _preparedRTShadows.clear();
     }
 
-    LightingParserContext::LightingParserContext(const Techniques::TechniqueContext& techniqueContext)
-    : ParsingContext(techniqueContext)
+    LightingParserContext::LightingParserContext(const Techniques::TechniqueContext& techniqueContext, RenderCore::NamedResources& namedResources)
+    : ParsingContext(techniqueContext, namedResources)
     , _sceneParser(nullptr)
     {
         _metricsBox = nullptr;

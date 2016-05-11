@@ -154,12 +154,17 @@ namespace SceneEngine
             context.Bind(resolveRes._writeNonSky, 0x0);
         }
 
+        TextureViewWindow justDepthWindow(
+            {TextureViewWindow::Aspect::Depth},
+            TextureDesc::Dimensionality::Undefined, TextureViewWindow::All, TextureViewWindow::All,
+            TextureViewWindow::Flags::JustDepth);
+
         context.BindPS(MakeResourceList(
             mainTargets.GetSRV(IMainTargets::GBufferDiffuse),
             mainTargets.GetSRV(IMainTargets::GBufferNormals),
             mainTargets.GetSRV(IMainTargets::GBufferParameters),
             Metal::ShaderResourceView(), 
-            mainTargets.GetSRV(IMainTargets::MultisampledDepth_JustDepth)));
+            mainTargets.GetSRV(IMainTargets::MultisampledDepth_JustDepth, IMainTargets::MultisampledDepth, justDepthWindow)));
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +190,7 @@ namespace SceneEngine
         // 11: ShadowResolveParameters
         // 12: ShadowParameters
 
-        auto* shadowSRV = metalContext.GetNamedResources().GetSRV(dominantLight._shadowTextureName);
+        auto* shadowSRV = parsingContext.GetNamedResources().GetSRV(dominantLight._shadowTextureName);
         assert(shadowSRV);
         metalContext.BindPS(MakeResourceList(3, *shadowSRV));
 
@@ -279,9 +284,9 @@ namespace SceneEngine
         const bool useMsaaSamplers = lightingResolveContext.UseMsaaSamplers();
 
         bool precisionTargets = Tweakable("PrecisionTargets", false);
-        auto sampling = TextureSamples::Create(
-            uint8(std::max(mainTargets.GetQualitySettings()._samplingCount, 1u)), 
-            uint8(mainTargets.GetQualitySettings()._samplingQuality));
+        // auto sampling = TextureSamples::Create(
+        //     uint8(std::max(mainTargets.GetQualitySettings()._samplingCount, 1u)), 
+        //     uint8(mainTargets.GetQualitySettings()._samplingQuality));
 
         auto& resolveRes = Techniques::FindCachedBoxDep2<LightingResolveResources>(samplingCount);
 
@@ -360,27 +365,12 @@ namespace SceneEngine
             // This requires that we have the depth buffer bound as a DSV and a SRV at the same time... But we can explicitly
             // separately the "aspects" so the DSV has stencil, and the SRV has depth.
             // Perhaps we need an input attachment for the depth buffer in the second pass?
-            auto& factory = Metal::GetObjectFactory(metalContext);
-            auto depth = metalContext.GetNamedResources().GetSRV(IMainTargets::MultisampledDepth);
-            if (depth) {
-                // In DirectX, the base resource will have a "typeless" format -- here, we need to convert it
-                // to the correct formats for DSVs and SRVs.
-                Metal::DepthStencilView dsvJustStencil(
-                    factory, depth->ShareResource(), 
-                    Metal::TextureViewWindow(
-                        {Metal::TextureViewWindow::FormatFilter::ColorSpace::Linear, Metal::TextureViewWindow::FormatFilter::Aspect::Stencil},
-                        TextureDesc::Dimensionality::Undefined, Metal::TextureViewWindow::All, Metal::TextureViewWindow::All,
-                        Metal::TextureViewWindow::Flags::JustStencil));
-                Metal::ShaderResourceView srvJustDepth(
-                    factory, depth->ShareResource(), 
-                    Metal::TextureViewWindow(
-                        {Metal::TextureViewWindow::FormatFilter::ColorSpace::Linear, Metal::TextureViewWindow::FormatFilter::Aspect::Depth},
-                        TextureDesc::Dimensionality::Undefined, Metal::TextureViewWindow::All, Metal::TextureViewWindow::All,
-                        Metal::TextureViewWindow::Flags::JustDepth));
-
-                metalContext.GetNamedResources().Bind(IMainTargets::MultisampledDepth_JustStencil, dsvJustStencil);
-                metalContext.GetNamedResources().Bind(IMainTargets::MultisampledDepth_JustDepth, srvJustDepth);
-            }
+            parserContext.GetNamedResources().DefineAttachments(
+                {{  IMainTargets::LightResolve, 
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
+                    (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
+                    TextureViewWindow::Aspect::ColorLinear,
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget }});
 
             FrameBufferDesc resolveLighting(
                 {
@@ -388,19 +378,18 @@ namespace SceneEngine
                     SubpassDesc({IMainTargets::LightResolve}, IMainTargets::MultisampledDepth_JustStencil)
                 },
                 {
-                    // light resolve target
-                    {   AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
-                        (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
-                        AttachmentDesc::LoadStore::DontCare, AttachmentDesc::LoadStore::Retain,
-                        IMainTargets::LightResolve, AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource },
-                },
-                sampling);
+                    {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth_JustStencil,
+                        TextureViewWindow(
+                            {TextureViewWindow::Aspect::Stencil},
+                            TextureDesc::Dimensionality::Undefined, TextureViewWindow::All, TextureViewWindow::All,
+                            TextureViewWindow::Flags::JustStencil),
+                        AttachmentViewDesc::LoadStore::DontCare_ClearStencil, AttachmentViewDesc::LoadStore::DontCare },
+                });
 
             Metal::RenderPassInstance rpi(
                 metalContext,
                 resolveLighting,
-                FrameBufferProperties{mainTargets.GetQualitySettings()._dimensions[0], mainTargets.GetQualitySettings()._dimensions[1]},
-                0u, mainTargets.GetFrameBufferCache(),
+                0u, parserContext.GetNamedResources(), mainTargets.GetFrameBufferCache(),
                 RenderPassBeginDesc{{MakeClearValue(1.f, 0x0)}});
 
             const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;
@@ -630,7 +619,7 @@ namespace SceneEngine
                     assert(parserContext._preparedDMShadows[shadowFrustumIndex].second.IsReady());
 
                     const auto& preparedShadows = parserContext._preparedDMShadows[shadowFrustumIndex].second;
-                    srvs[SR::DMShadow] = context.GetNamedResources().GetSRV(preparedShadows._shadowTextureName);
+                    srvs[SR::DMShadow] = parserContext.GetNamedResources().GetSRV(preparedShadows._shadowTextureName);
                     assert(srvs[SR::DMShadow]);
                     prebuiltConstantBuffers[CB::ShadowProj_Arbit] = &preparedShadows._arbitraryCB;
                     prebuiltConstantBuffers[CB::ShadowProj_Ortho] = &preparedShadows._orthoCB;

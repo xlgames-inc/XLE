@@ -555,7 +555,7 @@ namespace SceneEngine
             context.Bind(debuggingShader);
         }
 
-        auto& namedRes = context.GetNamedResources();
+        auto& namedRes = parserContext.GetNamedResources();
         context.BindPS(MakeResourceList(5, *namedRes.GetSRV(IMainTargets::GBufferDiffuse), *namedRes.GetSRV(IMainTargets::GBufferNormals), *namedRes.GetSRV(IMainTargets::GBufferParameters), *namedRes.GetSRV(IMainTargets::MultisampledDepth)));
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         SetupVertexGeneratorShader(context);

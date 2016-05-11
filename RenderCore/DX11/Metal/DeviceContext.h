@@ -197,8 +197,6 @@ namespace RenderCore { namespace Metal_DX11
         void                        SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims);
         VectorPattern<unsigned,2>   GetPresentationTargetDims();
 
-        NamedResources& GetNamedResources() { return _namedResources; }
-
         void        InvalidateCachedState();
 
         ID3D::Buffer*               _currentCBs[6][14];
@@ -214,7 +212,7 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<ID3D::UserDefinedAnnotation> _annotations;
 		ObjectFactory* _factory;
 
-        NamedResources _namedResources;
+        // NamedResources _namedResources;
         VectorPattern<unsigned,2> _presentationTargetDims;
     };
 

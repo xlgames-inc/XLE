@@ -386,7 +386,7 @@ namespace ToolsRig
                 if (savedTargets.GetDepthStencilView())
                     depthSrv = Metal::ShaderResourceView(
                         Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView()).get(), 
-						TextureViewWindow{{TextureViewWindow::FormatFilter::ColorSpace::Linear, TextureViewWindow::FormatFilter::Aspect::Stencil}});
+						TextureViewWindow{{TextureViewWindow::Aspect::Stencil}});
 
                 metalContext->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
                 ExecuteHighlightByStencil(*metalContext, depthSrv, settings, _pimpl->_settings->_colourByMaterial==2);
@@ -499,7 +499,8 @@ namespace ToolsRig
             ModelIntersectionStateContext::RayTest,
             context.GetThreadContext(), context.GetTechniqueContext(), 
             &cam);
-        LightingParserContext parserContext(context.GetTechniqueContext());
+        RenderCore::NamedResources namedRes;
+        LightingParserContext parserContext(context.GetTechniqueContext(), namedRes);
         stateContext.SetRay(worldSpaceRay);
 
         {

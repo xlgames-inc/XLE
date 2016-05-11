@@ -53,7 +53,7 @@ namespace SceneEngine
 
         void Reset();
 
-        LightingParserContext(const RenderCore::Techniques::TechniqueContext& techniqueContext);
+        LightingParserContext(const RenderCore::Techniques::TechniqueContext& techniqueContext, RenderCore::NamedResources& namedResources);
         ~LightingParserContext();
 
     private:

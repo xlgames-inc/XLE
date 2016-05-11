@@ -95,7 +95,7 @@ namespace Overlays
 			if (savedTargets.GetDepthStencilView())
 				depthSrv = ShaderResourceView(
 					ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView()).get(), 
-                    TextureViewWindow{{TextureViewWindow::FormatFilter::ColorSpace::Linear, TextureViewWindow::FormatFilter::Aspect::Depth}});
+                    TextureViewWindow{{TextureViewWindow::Aspect::Depth}});
 		#endif
 
         auto& res = Techniques::FindCachedBoxDep2<SFDResources>(

@@ -15,6 +15,8 @@
 
 #include "../BufferUploads/IBufferUploads.h"
 
+namespace RenderCore { class TextureViewWindow; }
+
 namespace SceneEngine
 {
     class RenderingQualitySettings;
@@ -32,6 +34,7 @@ namespace SceneEngine
         static const Name GBufferNormals = 7u;
         static const Name GBufferParameters = 8u;
         static const Name PostMSAALightResolve = 9u;
+        static const Name PresentationTarget_ToneMapWrite = 10u;
 
         static const Name ShadowDepthMap = 20u;
 
@@ -44,6 +47,7 @@ namespace SceneEngine
         virtual VectorPattern<unsigned, 2>      GetDimensions() const = 0;
 
         virtual const SRV&      GetSRV(Name) const = 0;
+        virtual const SRV&      GetSRV(Name, Name, const RenderCore::TextureViewWindow&) const = 0;
     };
 
     class LightingResolveShaders
