@@ -21,22 +21,44 @@ namespace RenderCore { namespace Metal_Vulkan
     class TextureView;
     class DeviceContext;
     
+    class FrameBufferViews
+    {
+    public:
+        const RenderTargetView& GetRTV(unsigned index) const;
+        const DepthStencilView& GetDSV(unsigned index) const;
+
+        FrameBufferViews(
+            std::vector<RenderTargetView>&& rtvs,
+            std::vector<DepthStencilView>&& dsvs);
+        FrameBufferViews();
+        ~FrameBufferViews();
+    private:
+        std::vector<RenderTargetView>   _rtvs;
+        std::vector<DepthStencilView>   _dsvs;
+        std::vector<VkImageView>        _rawViews;
+
+        friend class FrameBuffer;
+    };
+
     class FrameBuffer
 	{
 	public:
 		VkFramebuffer GetUnderlying() const { return _underlying.get(); }
-        const TextureView& GetAttachment(unsigned index) const;
+        const FrameBufferViews& GetViews() const { return _views; }
+        VkRenderPass GetLayout() const { return _layout; }
 
 		FrameBuffer(
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
-			VkRenderPass layout,
-			const FrameBufferProperties& props);
+			const FrameBufferViews& views,
+            VkRenderPass layout,
+            const FrameBufferProperties& props);
 		FrameBuffer();
 		~FrameBuffer();
 	private:
 		VulkanSharedPtr<VkFramebuffer> _underlying;
-        std::vector<TextureView> _views;
+        FrameBufferViews _views;
+        VkRenderPass _layout;
 	};
 
     /// <summary>Stores a set of retained frame buffers, which can be reused frame-to-frame</summary>
@@ -52,13 +74,17 @@ namespace RenderCore { namespace Metal_Vulkan
         std::shared_ptr<FrameBuffer> BuildFrameBuffer(
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
-			VkRenderPass layout,
-			const FrameBufferProperties& props,
+            const FrameBufferViews& views,
+            const FrameBufferProperties& props,
+            IteratorRange<const AttachmentDesc*> attachmentResources,
+            const TextureSamples& samples,
             uint64 hashName);
 
         VkRenderPass BuildFrameBufferLayout(
             const ObjectFactory& factory,
-            const FrameBufferDesc& desc);
+            const FrameBufferDesc& desc,
+            IteratorRange<const AttachmentDesc*> attachmentResources,
+            const TextureSamples& samples);
 
         FrameBufferCache();
         ~FrameBufferCache();
@@ -67,37 +93,13 @@ namespace RenderCore { namespace Metal_Vulkan
         std::unique_ptr<Pimpl> _pimpl;
     };
 
-#if 0
-    /// <summary>Begins and ends a render pass on the given context</summary>
-    /// Creates and begins a render pass using the given frame buffer layout. This will also automatically
-    /// allocate the buffers required
-    ///
-    /// The "hashName" parameter to the constructor can be used to reuse buffers from previous instances
-    /// of a similar render pass. For example, a render pass instance might be for rendering and resolving
-    /// the lighting for a deferred lighting scheme. This will be rendered every frame, usually using the same
-    /// parameters. Use the same hashName to ensure that the same cached frame buffer will be reused (when possible).
-    ///
-    /// If an output attachment is required after the render pass instance is finished, call GetAttachment().
-    /// This can be used to retrieve the rendered results.
-    class RenderPassInstance
-    {
-    public:
-        void                NextSubpass();
-        void                End();
-        const TextureView&  GetAttachment(unsigned index);
+    void BeginRenderPass(
+        DeviceContext& context,
+        FrameBuffer& frameBuffer,
+        const FrameBufferDesc& layout,
+        const FrameBufferProperties& props,
+        IteratorRange<const ClearValue*> clearValues);
 
-        RenderPassInstance(
-            DeviceContext& context,
-            const FrameBufferDesc& layout,
-			const FrameBufferProperties& props,
-            uint64 hashName,
-            FrameBufferCache& cache,
-            const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
-        ~RenderPassInstance();
-
-    private:
-        std::shared_ptr<FrameBuffer> _frameBuffer;
-        DeviceContext* _attachedContext;
-    };
-#endif
+    void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
+    void EndRenderPass(DeviceContext& context);
 }}

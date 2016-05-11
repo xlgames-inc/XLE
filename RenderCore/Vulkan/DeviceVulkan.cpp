@@ -12,7 +12,6 @@
 #include "Metal/Resource.h"
 #include "Metal/PipelineLayout.h"
 #include "../Format.h"
-#include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/MemoryUtils.h"
@@ -519,7 +518,7 @@ namespace RenderCore
 
 		auto finalChain = std::make_unique<PresentationChain>(
 			std::move(surface), std::move(result), _objectFactory,
-            BufferUploads::TextureDesc::Plain2D(swapChainExtent.width, swapChainExtent.height, Metal_Vulkan::AsFormat(chainFmt)),
+            TextureDesc::Plain2D(swapChainExtent.width, swapChainExtent.height, Metal_Vulkan::AsFormat(chainFmt)),
             platformValue);
 
         // (synchronously) set the initial layouts for the presentation chain images
@@ -552,7 +551,7 @@ namespace RenderCore
 		const ResourceDesc& desc,
 		const std::function<SubResourceInitData(SubResourceId)>& initData)
 	{
-		return Metal_Vulkan::Resource::Allocate(_objectFactory, desc, initData);
+		return Metal_Vulkan::CreateResource(_objectFactory, desc, initData);
 	}
 
     extern char VersionString[];
@@ -717,7 +716,7 @@ namespace RenderCore
 		VulkanSharedPtr<VkSurfaceKHR> surface,
         VulkanSharedPtr<VkSwapchainKHR> swapChain,
         const Metal_Vulkan::ObjectFactory& factory,
-        const BufferUploads::TextureDesc& bufferDesc,
+        const TextureDesc& bufferDesc,
         const void* platformValue)
     : _surface(std::move(surface))
 	, _swapChain(std::move(swapChain))
@@ -734,12 +733,16 @@ namespace RenderCore
         auto images = GetImages(_device.get(), _swapChain.get());
         _images.reserve(images.size());
         for (auto& i:images) {
-            Metal_Vulkan::TextureViewWindow window(
+            TextureViewWindow window(
                 bufferDesc._format, bufferDesc._dimensionality, 
-                Metal_Vulkan::TextureViewWindow::SubResourceRange{0, bufferDesc._mipCount},
-                Metal_Vulkan::TextureViewWindow::SubResourceRange{0, bufferDesc._arrayCount});
+                TextureViewWindow::SubResourceRange{0, bufferDesc._mipCount},
+                TextureViewWindow::SubResourceRange{0, bufferDesc._arrayCount});
+            auto resDesc = CreateDesc(0u, 0u, 0u, bufferDesc, "presentationimage");
+            auto resPtr = ResourcePtr(
+				(RenderCore::Resource*)new Metal_Vulkan::Resource(i, resDesc),
+				[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
             _images.emplace_back(
-                Image { i, Metal_Vulkan::RenderTargetView(factory, i, window) });
+                Image { i, Metal_Vulkan::RenderTargetView(factory, resPtr, window) });
         }
 
         // Create the synchronisation primitives
@@ -841,13 +844,15 @@ namespace RenderCore
 		}
 	#endif
 
-	void    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
+	ResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
 	{
 		PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
 		auto nextImage = swapChain->AcquireNextImage();
         _metalContext->SetPresentationTarget(nextImage, {swapChain->GetBufferDesc()._width, swapChain->GetBufferDesc()._height});
+        return nextImage->ShareResource();
 	}
 
+#if 0
     void    ThreadContext::BeginRenderPass(
         const FrameBufferDesc& fbDesc, const FrameBufferProperties& props, 
         const RenderPassBeginDesc& beginInfo)
@@ -886,14 +891,12 @@ namespace RenderCore
             Throw(::Exceptions::BasicLabel("Cannot end render pass, because no render pass has been begun"));
         _renderPass.reset();
     }
+#endif
 
 	void            ThreadContext::Present(IPresentationChain& chain)
 	{
 		auto* swapChain = checked_cast<PresentationChain*>(&chain);
 		auto& syncs = swapChain->GetSyncs();
-
-        // end the current render pass, if one has been begun -- 
-        _renderPass.reset();
 
 		//////////////////////////////////////////////////////////////////
 

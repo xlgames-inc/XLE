@@ -14,12 +14,12 @@ namespace RenderCore { namespace Techniques
 {
     void            RenderPassInstance::NextSubpass()
     {
-        BeginNextSubpass(*_attachedContext, *_frameBuffer);
+        Metal::BeginNextSubpass(*_attachedContext, *_frameBuffer);
     }
 
     void            RenderPassInstance::End()
     {
-        EndRenderPass(*_attachedContext);
+        Metal::EndRenderPass(*_attachedContext);
     }
 
     const Metal::RenderTargetView&  RenderPassInstance::GetAttachment(unsigned index)
@@ -56,7 +56,11 @@ namespace RenderCore { namespace Techniques
 
         _frameBuffer = cache.BuildFrameBuffer(
             context.GetFactory(), layout, 
-            Metal::FrameBufferViews(std::move(rtvs), std::move(dsvs)), hashName);
+            Metal::FrameBufferViews(std::move(rtvs), std::move(dsvs)), 
+            namedResources.GetFrameBufferProperties(),
+            namedResources.GetDescriptions(),
+            namedResources.GetSamples(),
+            hashName);
         assert(_frameBuffer);
 
         Metal::BeginRenderPass(context, *_frameBuffer, layout, namedResources.GetFrameBufferProperties(), beginInfo._clearValues);
@@ -297,6 +301,7 @@ namespace RenderCore { namespace Techniques
             };
 
         _pimpl->_resources[resName] = resource;
+        _pimpl->_resNames[resName] = resName;
     }
 
     void NamedResources::Unbind(AttachmentName resName)
@@ -342,6 +347,16 @@ namespace RenderCore { namespace Techniques
     const FrameBufferProperties& NamedResources::GetFrameBufferProperties() const
     {
         return _pimpl->_props;
+    }
+
+    TextureSamples NamedResources::GetSamples() const
+    {
+        return _pimpl->_samples;
+    }
+
+    IteratorRange<const AttachmentDesc*> NamedResources::GetDescriptions() const
+    {
+        return MakeIteratorRange(_pimpl->_attachments);
     }
 
     NamedResources::NamedResources()

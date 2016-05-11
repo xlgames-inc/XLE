@@ -36,7 +36,7 @@
             auto copiedBytes = 0u;
             for (unsigned mip=0; mip<std::max(1u, unsigned(desc._textureDesc._mipCount)); ++mip)
                 for (unsigned arrayLayer=0; arrayLayer<std::max(1u, unsigned(desc._textureDesc._arrayCount)); ++arrayLayer) {
-                    auto srd = data(mip, arrayLayer);
+                    auto srd = data({mip, arrayLayer});
                     if (!srd._data || !srd._size) continue;
 
                     Metal::ResourceMap map(*dev, &resource, SubResourceId{mip, arrayLayer});
@@ -192,10 +192,9 @@
         {
 			if (initialisationData) {
 				return device.CreateResource(desc,
-					[initialisationData](unsigned mipIndex, unsigned arrayIndex) -> SubResourceInitData
+					[initialisationData](SubResourceId sr) -> SubResourceInitData
 					{
 						SubResourceInitData result;
-						auto sr = DataPacket::TexSubRes(mipIndex, arrayIndex);
 						result._data = initialisationData->GetData(sr);
 						result._size = initialisationData->GetDataSize(sr);
 						auto pitches = initialisationData->GetPitches(sr);

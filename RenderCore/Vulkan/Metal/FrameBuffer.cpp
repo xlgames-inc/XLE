@@ -15,93 +15,119 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-#if 0
-    static VkAttachmentLoadOp AsLoadOp(AttachmentDesc::LoadStore loadStore)
+    FrameBufferViews::FrameBufferViews(
+        std::vector<RenderTargetView>&& rtvs,
+        std::vector<DepthStencilView>&& dsvs)
+    : _rtvs(std::move(rtvs)), _dsvs(std::move(dsvs))
+    {
+        _rawViews.resize(std::max(_rtvs.size(), _dsvs.size()));
+        for (size_t c=0; c<std::max(_rtvs.size(), _dsvs.size()); ++c)
+            _rawViews[c] = (c<_rtvs.size() && _rtvs[c].IsGood()) ? _rtvs[c].GetImageView() : _dsvs[c].GetImageView();
+    }
+
+    FrameBufferViews::FrameBufferViews() {}
+    FrameBufferViews::~FrameBufferViews() {}
+
+    const RenderTargetView& FrameBufferViews::GetRTV(unsigned index) const
+    {
+        if (index >= _rtvs.size())
+            Throw(::Exceptions::BasicLabel("Invalid attachment index passed to FrameBuffer::GetRTV()"));
+        return _rtvs[index];
+    }
+
+    const DepthStencilView& FrameBufferViews::GetDSV(unsigned index) const
+    {
+        if (index >= _dsvs.size())
+            Throw(::Exceptions::BasicLabel("Invalid attachment index passed to FrameBuffer::GetDSV()"));
+        return _dsvs[index];
+    }
+
+    static VkAttachmentLoadOp AsLoadOp(AttachmentViewDesc::LoadStore loadStore)
     {
         switch (loadStore)
         {
         default:
-        case AttachmentDesc::LoadStore::DontCare: 
-        case AttachmentDesc::LoadStore::DontCare_RetainStencil: 
-        case AttachmentDesc::LoadStore::DontCare_ClearStencil: 
+        case AttachmentViewDesc::LoadStore::DontCare: 
+        case AttachmentViewDesc::LoadStore::DontCare_RetainStencil: 
+        case AttachmentViewDesc::LoadStore::DontCare_ClearStencil: 
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        case AttachmentDesc::LoadStore::Retain: 
-        case AttachmentDesc::LoadStore::Retain_RetainStencil: 
-        case AttachmentDesc::LoadStore::Retain_ClearStencil: 
+        case AttachmentViewDesc::LoadStore::Retain: 
+        case AttachmentViewDesc::LoadStore::Retain_RetainStencil: 
+        case AttachmentViewDesc::LoadStore::Retain_ClearStencil: 
             return VK_ATTACHMENT_LOAD_OP_LOAD;
-        case AttachmentDesc::LoadStore::Clear: 
-        case AttachmentDesc::LoadStore::Clear_RetainStencil: 
-        case AttachmentDesc::LoadStore::Clear_ClearStencil: 
+        case AttachmentViewDesc::LoadStore::Clear: 
+        case AttachmentViewDesc::LoadStore::Clear_RetainStencil: 
+        case AttachmentViewDesc::LoadStore::Clear_ClearStencil: 
             return VK_ATTACHMENT_LOAD_OP_CLEAR;
         }
     }
 
-    static VkAttachmentStoreOp AsStoreOp(AttachmentDesc::LoadStore loadStore)
+    static VkAttachmentStoreOp AsStoreOp(AttachmentViewDesc::LoadStore loadStore)
     {
         switch (loadStore)
         {
         default:
-        case AttachmentDesc::LoadStore::Clear: 
-        case AttachmentDesc::LoadStore::Clear_RetainStencil: 
-        case AttachmentDesc::LoadStore::Clear_ClearStencil: 
-        case AttachmentDesc::LoadStore::DontCare: 
-        case AttachmentDesc::LoadStore::DontCare_RetainStencil: 
-        case AttachmentDesc::LoadStore::DontCare_ClearStencil: 
+        case AttachmentViewDesc::LoadStore::Clear: 
+        case AttachmentViewDesc::LoadStore::Clear_RetainStencil: 
+        case AttachmentViewDesc::LoadStore::Clear_ClearStencil: 
+        case AttachmentViewDesc::LoadStore::DontCare: 
+        case AttachmentViewDesc::LoadStore::DontCare_RetainStencil: 
+        case AttachmentViewDesc::LoadStore::DontCare_ClearStencil: 
             return VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        case AttachmentDesc::LoadStore::Retain: 
-        case AttachmentDesc::LoadStore::Retain_RetainStencil: 
-        case AttachmentDesc::LoadStore::Retain_ClearStencil: 
+        case AttachmentViewDesc::LoadStore::Retain: 
+        case AttachmentViewDesc::LoadStore::Retain_RetainStencil: 
+        case AttachmentViewDesc::LoadStore::Retain_ClearStencil: 
             return VK_ATTACHMENT_STORE_OP_STORE;
         }
     }
 
-    static VkAttachmentLoadOp AsLoadOpStencil(AttachmentDesc::LoadStore loadStore)
+    static VkAttachmentLoadOp AsLoadOpStencil(AttachmentViewDesc::LoadStore loadStore)
     {
         switch (loadStore)
         {
         default:
-        case AttachmentDesc::LoadStore::Clear: 
-        case AttachmentDesc::LoadStore::DontCare: 
-        case AttachmentDesc::LoadStore::Retain: 
+        case AttachmentViewDesc::LoadStore::Clear: 
+        case AttachmentViewDesc::LoadStore::DontCare: 
+        case AttachmentViewDesc::LoadStore::Retain: 
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
-        case AttachmentDesc::LoadStore::Clear_ClearStencil: 
-        case AttachmentDesc::LoadStore::DontCare_ClearStencil: 
-        case AttachmentDesc::LoadStore::Retain_ClearStencil: 
+        case AttachmentViewDesc::LoadStore::Clear_ClearStencil: 
+        case AttachmentViewDesc::LoadStore::DontCare_ClearStencil: 
+        case AttachmentViewDesc::LoadStore::Retain_ClearStencil: 
             return VK_ATTACHMENT_LOAD_OP_CLEAR;
 
-        case AttachmentDesc::LoadStore::Clear_RetainStencil: 
-        case AttachmentDesc::LoadStore::DontCare_RetainStencil: 
-        case AttachmentDesc::LoadStore::Retain_RetainStencil: 
+        case AttachmentViewDesc::LoadStore::Clear_RetainStencil: 
+        case AttachmentViewDesc::LoadStore::DontCare_RetainStencil: 
+        case AttachmentViewDesc::LoadStore::Retain_RetainStencil: 
             return VK_ATTACHMENT_LOAD_OP_LOAD;
         }
     }
 
-    static VkAttachmentStoreOp AsStoreOpStencil(AttachmentDesc::LoadStore loadStore)
+    static VkAttachmentStoreOp AsStoreOpStencil(AttachmentViewDesc::LoadStore loadStore)
     {
         switch (loadStore)
         {
         default:
-        case AttachmentDesc::LoadStore::Clear: 
-        case AttachmentDesc::LoadStore::DontCare: 
-        case AttachmentDesc::LoadStore::Retain: 
-        case AttachmentDesc::LoadStore::Clear_ClearStencil: 
-        case AttachmentDesc::LoadStore::DontCare_ClearStencil: 
-        case AttachmentDesc::LoadStore::Retain_ClearStencil: 
+        case AttachmentViewDesc::LoadStore::Clear: 
+        case AttachmentViewDesc::LoadStore::DontCare: 
+        case AttachmentViewDesc::LoadStore::Retain: 
+        case AttachmentViewDesc::LoadStore::Clear_ClearStencil: 
+        case AttachmentViewDesc::LoadStore::DontCare_ClearStencil: 
+        case AttachmentViewDesc::LoadStore::Retain_ClearStencil: 
             return VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-        case AttachmentDesc::LoadStore::Clear_RetainStencil: 
-        case AttachmentDesc::LoadStore::DontCare_RetainStencil: 
-        case AttachmentDesc::LoadStore::Retain_RetainStencil: 
+        case AttachmentViewDesc::LoadStore::Clear_RetainStencil: 
+        case AttachmentViewDesc::LoadStore::DontCare_RetainStencil: 
+        case AttachmentViewDesc::LoadStore::Retain_RetainStencil: 
             return VK_ATTACHMENT_STORE_OP_STORE;
         }
     }
 
-    static bool IsDepthStencilFormat(Format fmt)
-    {
-        auto comp = GetComponents(fmt);
-        return comp == FormatComponents::Depth || comp == FormatComponents::DepthStencil || comp == FormatComponents::Stencil;
-    }
+    // static bool IsDepthStencilFormat(Format fmt)
+    // {
+    //     auto comp = GetComponents(fmt);
+    //     return comp == FormatComponents::Depth || comp == FormatComponents::DepthStencil || comp == FormatComponents::Stencil;
+    // }
 
     // static VkImageLayout AsShaderReadLayout(VkImageLayout layout)
     // {
@@ -116,29 +142,44 @@ namespace RenderCore { namespace Metal_Vulkan
     //     }
     // }
 
-    static VkImageLayout AsShaderReadLayout(Format format)
+    // static VkImageLayout AsShaderReadLayout(Format format)
+    // {
+    //     if (IsDepthStencilFormat(format))
+    //         return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    //     return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    // }
+    
+    static VkImageLayout AsShaderReadLayout(const AttachmentDesc& desc)
     {
-        if (IsDepthStencilFormat(format))
+        if (desc._flags & AttachmentDesc::Flags::ShaderResource)
             return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
         return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
-    static unsigned FindAttachmentIndex(IteratorRange<const AttachmentDesc*> attachments, AttachmentDesc::Name name)
+    static unsigned FindIndex(IteratorRange<const AttachmentViewDesc*> attachments, AttachmentName name)
     {
         auto i = std::find_if(
             attachments.begin(), attachments.end(), 
-            [name](const AttachmentDesc& desc) { return desc._name == name; });
+            [name](const AttachmentViewDesc& desc) { return desc._viewName == name; });
         if (i != attachments.end())
             return (unsigned)std::distance(attachments.begin(), i);
         return ~0u;
     }
 
+    static const AttachmentDesc* Find(IteratorRange<const AttachmentDesc*> attachmentResources, AttachmentName name)
+    {
+        for (const auto&a:attachmentResources)
+            if (a._name == name)
+                return &a;
+        return nullptr;
+    }
+
     struct SubpassDep
     {
-        unsigned                _srcSubpassIndex;
-        AttachmentDesc::Name    _attachment;
-        VkAccessFlags           _srcAccessFlags;
-        VkAccessFlags           _dstAccessFlags;
+        unsigned        _srcSubpassIndex;
+        AttachmentName  _attachment;
+        VkAccessFlags   _srcAccessFlags;
+        VkAccessFlags   _dstAccessFlags;
 
         static bool Compare(const SubpassDep& lhs, const SubpassDep& rhs)
         {
@@ -150,7 +191,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     };
 
-    static SubpassDep FindWriter(IteratorRange<const SubpassDesc*> subpasses, AttachmentDesc::Name attachment)
+    static SubpassDep FindWriter(IteratorRange<const SubpassDesc*> subpasses, AttachmentName attachment)
     {
         // Here, we return VK_SUBPASS_EXTERNAL when we cannot find the attachment (meaning that it might be written
         // by something outside of the render pass)
@@ -169,34 +210,38 @@ namespace RenderCore { namespace Metal_Vulkan
         return { VK_SUBPASS_EXTERNAL, attachment, 0 };
     }
 
-    static bool IsRetained(AttachmentDesc::LoadStore loadStore)
+    static bool IsRetained(AttachmentViewDesc::LoadStore loadStore)
     {
-        return  loadStore == AttachmentDesc::LoadStore::Retain
-            ||  loadStore == AttachmentDesc::LoadStore::Retain_RetainStencil
-            ||  loadStore == AttachmentDesc::LoadStore::Retain_ClearStencil
-            ||  loadStore == AttachmentDesc::LoadStore::DontCare_RetainStencil
-            ||  loadStore == AttachmentDesc::LoadStore::Clear_RetainStencil;
+        return  loadStore == AttachmentViewDesc::LoadStore::Retain
+            ||  loadStore == AttachmentViewDesc::LoadStore::Retain_RetainStencil
+            ||  loadStore == AttachmentViewDesc::LoadStore::Retain_ClearStencil
+            ||  loadStore == AttachmentViewDesc::LoadStore::DontCare_RetainStencil
+            ||  loadStore == AttachmentViewDesc::LoadStore::Clear_RetainStencil;
     }
 
     static void BuildOutputDeps(
         std::vector<SubpassDep>& result,
-        IteratorRange<const AttachmentDesc::Name*> attachmentsToTest,
-        IteratorRange<const AttachmentDesc*> attachments,
+        IteratorRange<const AttachmentName*> attachmentsToTest,
+        IteratorRange<const AttachmentViewDesc*> attachmentViews,
+        IteratorRange<const AttachmentDesc*> attachmentResources,
         VkAccessFlags srcAccessFlags)
     {
         for (auto ai:attachmentsToTest) {
             auto a = std::find_if(
-                attachments.begin(), attachments.end(),
-                [ai](const AttachmentDesc& adesc) { return adesc._name == ai; });
-            if (a == attachments.end()) { assert(0); continue; }   // couldn't find it?
+                attachmentViews.begin(), attachmentViews.end(),
+                [ai](const AttachmentViewDesc& adesc) { return adesc._resourceName == ai; });
+            if (a == attachmentViews.end()) { assert(0); continue; }   // couldn't find it?
 
             bool isRetainStore = IsRetained(a->_storeToNextPhase);
             if (!isRetainStore) continue;
 
+            auto res = Find(attachmentResources, a->_resourceName);
+            assert(res);
+
             VkAccessFlags dstAccessFlags = 0;
-            if (a->_flags & AttachmentDesc::Flags::ShaderResource)
+            if (res->_flags & AttachmentDesc::Flags::ShaderResource)
                 dstAccessFlags |= VK_ACCESS_SHADER_READ_BIT;
-            if (a->_flags & AttachmentDesc::Flags::TransferSource)
+            if (res->_flags & AttachmentDesc::Flags::TransferSource)
                 dstAccessFlags |= VK_ACCESS_TRANSFER_READ_BIT;
             if (!dstAccessFlags) continue;
 
@@ -204,7 +249,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    static std::vector<VkSubpassDependency> CalculateDependencies(const FrameBufferDesc& layout)
+    static std::vector<VkSubpassDependency> CalculateDependencies(const FrameBufferDesc& layout, IteratorRange<const AttachmentDesc*> attachmentResources)
     {
         const auto& subpasses = layout.GetSubpasses();
         const auto& attachments = layout.GetAttachments();
@@ -239,9 +284,11 @@ namespace RenderCore { namespace Metal_Vulkan
                     // find the particular attachment and look for flags
                     auto a = std::find_if(
                         attachments.begin(), attachments.end(),
-                        [d](const AttachmentDesc& adesc) { return adesc._name == d->_attachment; });
+                        [d](const AttachmentViewDesc& adesc) { return adesc._viewName == d->_attachment; });
                     if (a != attachments.end()) {
-                        srcAccessFlags = IsDepthStencilFormat(a->_format)
+                        auto res = Find(attachmentResources, a->_resourceName);
+                        assert(res);
+                        srcAccessFlags = res->_flags & AttachmentDesc::Flags::DepthStencil
                             ?VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
                     } else 
                         srcAccessFlags = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;  // (just assume color attachment write)
@@ -261,14 +308,15 @@ namespace RenderCore { namespace Metal_Vulkan
         {
             std::vector<SubpassDep> outputDeps;
             const auto& finalSubpass = subpasses[subpasses.size()-1];
-            BuildOutputDeps(outputDeps, MakeIteratorRange(finalSubpass._output), attachments, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-            BuildOutputDeps(outputDeps, MakeIteratorRange(finalSubpass._preserve), attachments, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-            BuildOutputDeps(outputDeps, MakeIteratorRange(finalSubpass._resolve), attachments, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+            BuildOutputDeps(outputDeps, MakeIteratorRange(finalSubpass._output), attachments, attachmentResources, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+            BuildOutputDeps(outputDeps, MakeIteratorRange(finalSubpass._preserve), attachments, attachmentResources, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+            BuildOutputDeps(outputDeps, MakeIteratorRange(finalSubpass._resolve), attachments, attachmentResources, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
             if (finalSubpass._depthStencil != SubpassDesc::Unused)
                 BuildOutputDeps(
                     outputDeps, 
                     MakeIteratorRange(&finalSubpass._depthStencil, &finalSubpass._depthStencil + 1),
                     attachments, 
+                    attachmentResources, 
                     VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
         
             std::sort(outputDeps.begin(), outputDeps.end(), SubpassDep::Compare);
@@ -290,7 +338,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
     VulkanUniquePtr<VkRenderPass> CreateRenderPass(
         const Metal_Vulkan::ObjectFactory& factory,
-        const FrameBufferDesc& layout)
+        const FrameBufferDesc& layout,
+        IteratorRange<const AttachmentDesc*> attachmentResources,
+        TextureSamples samples)
     {
         auto attachments = layout.GetAttachments();
         auto subpasses = layout.GetSubpasses();
@@ -298,9 +348,17 @@ namespace RenderCore { namespace Metal_Vulkan
         std::vector<VkAttachmentDescription> attachmentDesc;
         attachmentDesc.reserve(attachments.size());
         for (auto&a:attachments) {
+            const auto* resourceDesc = Find(attachmentResources, a._resourceName);
+            assert(resourceDesc);
+
+            auto formatFilter = a._window._format;
+            if (formatFilter._aspect == TextureViewWindow::UndefinedAspect)
+                formatFilter._aspect = resourceDesc->_defaultAspect;
+            auto resolvedFormat = ResolveFormat(resourceDesc->_format, formatFilter, FormatUsage::RTV);
+
             VkAttachmentDescription desc;
             desc.flags = 0;
-            desc.format = AsVkFormat(a._format);
+            desc.format = AsVkFormat(resolvedFormat);
             desc.samples = VK_SAMPLE_COUNT_1_BIT;
             desc.loadOp = AsLoadOp(a._loadFromPreviousPhase);
             desc.storeOp = AsStoreOp(a._storeToNextPhase);
@@ -310,7 +368,7 @@ namespace RenderCore { namespace Metal_Vulkan
             desc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             desc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-            bool isDepthStencil = IsDepthStencilFormat(a._format);
+            bool isDepthStencil = !!(resourceDesc->_flags & AttachmentDesc::Flags::DepthStencil);
             if (isDepthStencil) {
                 desc.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                 desc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -322,7 +380,7 @@ namespace RenderCore { namespace Metal_Vulkan
             //
             // However, if there are multiple writing render passes, followed by a shader
             // read at some later point, then this may switch to shader read layout redundantly
-            if (a._flags & AttachmentDesc::Flags::ShaderResource) {
+            if (resourceDesc->_flags & AttachmentDesc::Flags::ShaderResource) {
                 desc.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 desc.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             }
@@ -330,15 +388,15 @@ namespace RenderCore { namespace Metal_Vulkan
             desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             // desc.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-            if (a._name == 0u) {
+            if (a._resourceName == 0u) {
                 // we assume that name "0" is always bound to a presentable buffer
                 assert(!isDepthStencil);
                 desc.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                 desc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
             } 
             
-            if (a._flags & AttachmentDesc::Flags::Multisampled)
-                desc.samples = AsSampleCountFlagBits(layout.GetSamples());
+            if (resourceDesc->_flags & AttachmentDesc::Flags::Multisampled)
+                desc.samples = AsSampleCountFlagBits(samples);
 
             // note --  do we need to set VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL or 
             //          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL as appropriate for input attachments
@@ -365,10 +423,9 @@ namespace RenderCore { namespace Metal_Vulkan
             for (auto& a:p._input) {
                 // presumably we want to shader the shader read only layout modes in these cases.
                 if (a != SubpassDesc::Unused) {
-                    auto attachmentIndex = FindAttachmentIndex(attachments, a);
+                    auto attachmentIndex = FindIndex(attachments, a);
                     assert(attachmentIndex < attachmentDesc.size());
-                    // auto layout = AsShaderReadLayout(attachmentDesc[attachmentIndex].finalLayout);
-                    auto layout = AsShaderReadLayout(attachments[attachmentIndex]._format);
+                    auto layout = AsShaderReadLayout(*Find(attachmentResources, attachments[attachmentIndex]._resourceName));
                     attachReferences.push_back(VkAttachmentReference{attachmentIndex, layout});
                 } else {
                     attachReferences.push_back(VkAttachmentReference{VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_UNDEFINED});
@@ -380,7 +437,7 @@ namespace RenderCore { namespace Metal_Vulkan
             auto beforeOutputs = attachReferences.size();
             for (auto& a:p._output) {
                 if (a != SubpassDesc::Unused) {
-                    auto attachmentIndex = FindAttachmentIndex(attachments, a);
+                    auto attachmentIndex = FindIndex(attachments, a);
                     assert(attachmentIndex < attachmentDesc.size());
                     auto layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;        // basically should be VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL, I guess?
                     attachReferences.push_back(VkAttachmentReference{attachmentIndex, layout});
@@ -393,7 +450,7 @@ namespace RenderCore { namespace Metal_Vulkan
             desc.pResolveAttachments = nullptr; // not supported
 
             if (p._depthStencil != SubpassDesc::Unused) {
-                auto attachmentIndex = FindAttachmentIndex(attachments, p._depthStencil);
+                auto attachmentIndex = FindIndex(attachments, p._depthStencil);
                 desc.pDepthStencilAttachment = (const VkAttachmentReference*)(attachReferences.size()+1);
                 attachReferences.push_back(VkAttachmentReference{attachmentIndex, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL});
             } else {
@@ -402,7 +459,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
             auto beforePreserve = preserveAttachments.size();
             for (auto&a:p._preserve) {
-                auto attachmentIndex = FindAttachmentIndex(attachments, a);
+                auto attachmentIndex = FindIndex(attachments, a);
                 assert(attachmentIndex < attachmentDesc.size());
                 preserveAttachments.push_back(attachmentIndex);
             }
@@ -413,7 +470,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 assert(p._resolve.size() == p._output.size());
                 auto beforeResolve = attachReferences.size();
                 for (auto&a:p._resolve) {
-                    auto attachmentIndex = FindAttachmentIndex(attachments, a);
+                    auto attachmentIndex = FindIndex(attachments, a);
                     assert(attachmentIndex < attachmentDesc.size());
                     attachReferences.push_back(VkAttachmentReference{attachmentIndex, attachmentDesc[attachmentIndex].finalLayout});
                 }
@@ -439,7 +496,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 p.pPreserveAttachments = AsPointer(preserveAttachments.begin()) + size_t(p.pPreserveAttachments)-1;
         }
 
-        auto dependencies = CalculateDependencies(layout);
+        auto dependencies = CalculateDependencies(layout, attachmentResources);
 
         VkRenderPassCreateInfo rp_info = {};
         rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -454,6 +511,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return factory.CreateRenderPass(rp_info);
     }
 
+#if 0
     namespace Internal
     {
         enum class AttachmentUsage : unsigned
@@ -461,7 +519,7 @@ namespace RenderCore { namespace Metal_Vulkan
             Input = 1<<0, Output = 1<<1, DepthStencil = 1<<2
         };
     }
-    static unsigned GetAttachmentUsage(const FrameBufferDesc& layout, AttachmentDesc::Name attachment)
+    static unsigned GetAttachmentUsage(const FrameBufferDesc& layout, AttachmentName attachment)
     {
         unsigned result = 0u;
         for (auto& s:layout.GetSubpasses()) {
@@ -478,112 +536,33 @@ namespace RenderCore { namespace Metal_Vulkan
         }
         return result;
     }
+#endif
 
-    static Format AsSRVFormat(Format input)
-    {
-        return input;
-    }
+    // static Format AsSRVFormat(Format input)
+    // {
+    //     return input;
+    // }
 
     FrameBuffer::FrameBuffer(
         const ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
-		VkRenderPass layout,
-		const FrameBufferProperties& props,
-        NamedResources& namedResources)
+        const FrameBufferViews& views,
+        VkRenderPass layout,
+        const FrameBufferProperties& props)
+    : _views(views)
+    , _layout(layout)
     {
         // We must create the frame buffer, including all resources and views required.
         // Here, some resources can come from the presentation chain. But other resources will
         // be created an attached to this object.
         auto attachments = fbDesc.GetAttachments();
-        _views.reserve(attachments.size());
-        std::vector<VkImageView> rawViews;
-        rawViews.reserve(attachments.size());
-        for (const auto&a:attachments) {
-
-            // First, look for an existing resource that is bound with this name.
-            const TextureView* existingView = namedResources.GetRTV(a._name);
-            if (existingView == nullptr)
-                existingView = namedResources.GetSRV(a._name);
-            if (existingView != nullptr) {
-                rawViews.push_back(existingView->GetImageView());
-                _views.push_back(*existingView);
-                continue;
-            }
-
-            // We need to calculate the dimensions, format, samples and bind flags for this
-            // attachment. All of the information we need should be defined as part of the frame
-            // buffer layout description.
-
-            // note -- how do the frame buffer dimensions relate to the actual image dimensions?
-            //          the documentation suggest that the frame buffer dims should always be equal
-            //          or smaller to the image views...?
-            unsigned attachmentWidth, attachmentHeight;
-            if (a._dimsMode == AttachmentDesc::DimensionsMode::Absolute) {
-                attachmentWidth = unsigned(a._width);
-                attachmentHeight = unsigned(a._height);
-            } else {
-                attachmentWidth = unsigned(std::floor(props._outputWidth * a._width + 0.5f));
-                attachmentHeight = unsigned(std::floor(props._outputHeight * a._height + 0.5f));
-            }
-
-            auto desc = CreateDesc(
-                0, 0, 0, 
-                TextureDesc::Plain2D(attachmentWidth, attachmentHeight, a._format, 1, uint16(props._outputLayers)),
-                "attachment");
-
-            if (a._flags & AttachmentDesc::Flags::Multisampled)
-                desc._textureDesc._samples = fbDesc.GetSamples();
-
-            // Look at how the attachment is used by the subpasses to figure out what the
-            // bind flags should be.
-
-            // todo --  Do we also need to consider what happens to the image after 
-            //          the render pass has finished? Resources that are in "output", 
-            //          "depthStencil", or "preserve" in the final subpass could be used
-            //          in some other way afterwards. For example, one render pass could
-            //          generate shadow textures for uses in future render passes?
-            auto usage = GetAttachmentUsage(fbDesc, a._name);
-            if (usage & unsigned(Internal::AttachmentUsage::Input)
-                || a._flags & AttachmentDesc::Flags::ShaderResource) {
-                desc._bindFlags |= BindFlag::ShaderResource;
-                desc._gpuAccess |= GPUAccess::Read;
-            }
-
-            if (usage & unsigned(Internal::AttachmentUsage::Output)) {
-                desc._bindFlags |= BindFlag::RenderTarget;
-                desc._gpuAccess |= GPUAccess::Write;
-            }
-
-            if (usage & unsigned(Internal::AttachmentUsage::DepthStencil)) {
-                desc._bindFlags |= BindFlag::DepthStencil;
-                desc._gpuAccess |= GPUAccess::Write;
-            }
-
-            if (a._flags & AttachmentDesc::Flags::TransferSource) {
-                desc._bindFlags |= BindFlag::TransferSrc;
-                desc._gpuAccess |= GPUAccess::Read;
-            }
-
-            // note -- it might be handy to have a cache of "device memory" that could be reused here?
-            auto image = Resource::Allocate(factory, desc);
-            TextureViewWindow srvWindow;
-            srvWindow._format = AsSRVFormat(desc._textureDesc._format);
-            ShaderResourceView view(factory, image, srvWindow);
-
-            // register in the named resources (if it's marked as a store resource, or used as input somewhere)
-            if (IsRetained(a._storeToNextPhase) || (usage & unsigned(Internal::AttachmentUsage::Input)))
-                namedResources.Bind(a._name, view);
-
-            rawViews.push_back(view.GetImageView());
-            _views.emplace_back(std::move(view));
-        }
 
         VkFramebufferCreateInfo fb_info = {};
         fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fb_info.pNext = nullptr;
         fb_info.renderPass = layout;
-        fb_info.attachmentCount = (uint32_t)rawViews.size();
-        fb_info.pAttachments = AsPointer(rawViews.begin());
+        fb_info.attachmentCount = (uint32_t)_views._rawViews.size();
+        fb_info.pAttachments = AsPointer(_views._rawViews.begin());
         fb_info.width = props._outputWidth;
         fb_info.height = props._outputHeight;
         fb_info.layers = std::max(1u, props._outputLayers);
@@ -593,19 +572,37 @@ namespace RenderCore { namespace Metal_Vulkan
         //          for all of the images we created?
     }
 
-    const TextureView& FrameBuffer::GetAttachment(unsigned index) const
-    {
-        if (index >= _views.size())
-            Throw(::Exceptions::BasicLabel("Invalid attachment index passed to FrameBuffer::GetAttachment()"));
-        return _views[index];
-    }
-
 	FrameBuffer::FrameBuffer() {}
-
     FrameBuffer::~FrameBuffer() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    void BeginRenderPass(
+        DeviceContext& context,
+        FrameBuffer& frameBuffer,
+        const FrameBufferDesc& layout,
+        const FrameBufferProperties& props,
+        IteratorRange<const ClearValue*> clearValues)
+    {
+        context.BeginRenderPass(
+            frameBuffer, TextureSamples::Create(),
+            {0u, 0u}, {props._outputWidth, props._outputHeight},
+            clearValues);
+    }
+
+    void BeginNextSubpass(DeviceContext& context, FrameBuffer&)
+    {
+        context.CmdNextSubpass(VK_SUBPASS_CONTENTS_INLINE);
+    }
+
+    void EndRenderPass(DeviceContext& context)
+    {
+        context.EndRenderPass();
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if 0
     void            RenderPassInstance::NextSubpass()
     {
         if (_attachedContext)
@@ -658,6 +655,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         End();
     }
+#endif
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -669,25 +667,31 @@ namespace RenderCore { namespace Metal_Vulkan
 
     std::shared_ptr<FrameBuffer> FrameBufferCache::BuildFrameBuffer(
 		const ObjectFactory& factory,
-		const FrameBufferDesc& desc,
-		VkRenderPass layout,
-		const FrameBufferProperties& props,
-        NamedResources& namedResources,
+        const FrameBufferDesc& desc,
+        const FrameBufferViews& views,
+        const FrameBufferProperties& props,
+        IteratorRange<const AttachmentDesc*> attachmentResources,
+        const TextureSamples& samples,
         uint64 hashName)
     {
-        return std::make_shared<FrameBuffer>(factory, desc, layout, props, namedResources);
+        return std::make_shared<FrameBuffer>(
+            factory, desc, views, 
+            BuildFrameBufferLayout(factory, desc, attachmentResources, samples), 
+            props);
     }
 
     VkRenderPass FrameBufferCache::BuildFrameBufferLayout(
         const ObjectFactory& factory,
-        const FrameBufferDesc& desc)
+        const FrameBufferDesc& desc,
+        IteratorRange<const AttachmentDesc*> attachmentResources,
+        const TextureSamples& samples)
     {
         auto hash = desc.GetHash();
         auto i = LowerBound(_pimpl->_layouts, hash);
         if (i != _pimpl->_layouts.end() && i->first == hash)
             return i->second.get();
 
-        auto rp = CreateRenderPass(factory, desc);
+        auto rp = CreateRenderPass(factory, desc, attachmentResources, samples);
         auto result = rp.get();
         _pimpl->_layouts.insert(i, std::make_pair(hash, std::move(rp)));
         return result;
@@ -701,76 +705,5 @@ namespace RenderCore { namespace Metal_Vulkan
     FrameBufferCache::~FrameBufferCache()
     {}
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-    static const unsigned s_maxBoundTargets = 64;
-
-    class NamedResources::Pimpl
-    {
-    public:
-        ShaderResourceView  _srv[s_maxBoundTargets];
-        TextureView         _rtv[s_maxBoundTargets];
-    };
-    
-    const ShaderResourceView*   NamedResources::GetSRV(AttachmentDesc::Name name) const
-    {
-        if (name >= s_maxBoundTargets) return nullptr;
-        if (!_pimpl->_srv[name].IsGood()) return nullptr;
-        return &_pimpl->_srv[name];
-    }
-
-    const TextureView*     NamedResources::GetRTV(AttachmentDesc::Name name) const
-    {
-        if (name >= s_maxBoundTargets) return nullptr;
-        if (!_pimpl->_rtv[name].IsGood()) return nullptr;
-        return &_pimpl->_rtv[name];
-    }
-
-    void NamedResources::Bind(AttachmentDesc::Name name, const ShaderResourceView& srv)
-    {
-        if (name >= s_maxBoundTargets) return;
-        _pimpl->_srv[name] = srv;
-    }
-
-    void NamedResources::Bind(AttachmentDesc::Name name, const RenderTargetView& rtv)
-    {
-        if (name >= s_maxBoundTargets) return;
-        _pimpl->_rtv[name] = rtv;
-    }
-
-    void NamedResources::Bind(AttachmentDesc::Name name, const DepthStencilView& dsv)
-    {
-        if (name >= s_maxBoundTargets) return;
-        _pimpl->_rtv[name] = dsv;
-    }
-
-    void NamedResources::UnbindAll()
-    {
-        for (unsigned c=0; c<s_maxBoundTargets; ++c) {
-            _pimpl->_srv[c] = ShaderResourceView();
-            _pimpl->_rtv[c] = TextureView();
-        }
-    }
-
-    NamedResources::NamedResources()
-    {
-        _pimpl = std::make_unique<Pimpl>();
-    }
-
-    NamedResources::~NamedResources()
-    {}
-#endif
-
-#else
-
-    class FrameBufferCache::Pimpl {};
-    FrameBufferCache::FrameBufferCache()
-    {}
-
-    FrameBufferCache::~FrameBufferCache()
-    {}
-
-#endif
 }}
 

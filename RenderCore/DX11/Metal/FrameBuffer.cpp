@@ -35,6 +35,21 @@ namespace RenderCore { namespace Metal_DX11
     FrameBufferViews::FrameBufferViews() {}
     FrameBufferViews::~FrameBufferViews() {}
 
+    const RenderTargetView& FrameBufferViews::GetRTV(unsigned index) const
+    {
+        if (index >= _rtvs.size())
+            Throw(::Exceptions::BasicLabel("Invalid attachment index passed to FrameBuffer::GetRTV()"));
+        return _rtvs[index];
+    }
+
+    const DepthStencilView& FrameBufferViews::GetDSV(unsigned index) const
+    {
+        if (index >= _dsvs.size())
+            Throw(::Exceptions::BasicLabel("Invalid attachment index passed to FrameBuffer::GetDSV()"));
+        return _dsvs[index];
+    }
+
+
     FrameBuffer::FrameBuffer(
         const ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
@@ -82,21 +97,7 @@ namespace RenderCore { namespace Metal_DX11
 
         context.GetUnderlying()->OMSetRenderTargets(s._rtvCount, bindRTVs, bindDSV);
     }
-
-    const RenderTargetView& FrameBufferViews::GetRTV(unsigned index) const
-    {
-        if (index >= _rtvs.size())
-            Throw(::Exceptions::BasicLabel("Invalid attachment index passed to FrameBuffer::GetRTV()"));
-        return _rtvs[index];
-    }
-
-    const DepthStencilView& FrameBufferViews::GetDSV(unsigned index) const
-    {
-        if (index >= _dsvs.size())
-            Throw(::Exceptions::BasicLabel("Invalid attachment index passed to FrameBuffer::GetDSV()"));
-        return _dsvs[index];
-    }
-
+    
 	FrameBuffer::FrameBuffer() {}
     FrameBuffer::~FrameBuffer() {}
 

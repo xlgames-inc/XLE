@@ -33,9 +33,9 @@ namespace RenderCore { namespace Techniques
     public:
         void DefineAttachments(IteratorRange<const AttachmentDesc*> attachments);
 
-        auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal_DX11::ShaderResourceView*;
-        auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal_DX11::RenderTargetView*;
-        auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal_DX11::DepthStencilView*;
+        auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal::ShaderResourceView*;
+        auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal::RenderTargetView*;
+        auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal::DepthStencilView*;
 
         void Bind(TextureSamples samples);
         void Bind(FrameBufferProperties props);
@@ -43,6 +43,8 @@ namespace RenderCore { namespace Techniques
         void Unbind(AttachmentName);
 
         const FrameBufferProperties& GetFrameBufferProperties() const;
+        TextureSamples GetSamples() const;
+        IteratorRange<const AttachmentDesc*> GetDescriptions() const;
 
         NamedResources();
         ~NamedResources();
@@ -81,8 +83,8 @@ namespace RenderCore { namespace Techniques
     class RenderPassInstance
     {
     public:
-        void                    NextSubpass();
-        void                    End();
+        void NextSubpass();
+        void End();
         const Metal::RenderTargetView& GetAttachment(unsigned index);
 
         RenderPassInstance(

@@ -24,7 +24,7 @@ namespace RenderCore { namespace Metal_DX11
             && window._flags == 0;
     }
 
-    static DXGI_FORMAT SpecializeFormat(DXGI_FORMAT baseFormat, TextureViewWindow::FormatFilter filter, bool isDSV = false)
+    static DXGI_FORMAT ResolveFormat(DXGI_FORMAT baseFormat, TextureViewWindow::FormatFilter filter, FormatUsage usage)
     {
         if (filter._explicitFormat != Format(0))
             return AsDXGIFormat(filter._explicitFormat);
@@ -33,29 +33,7 @@ namespace RenderCore { namespace Metal_DX11
         if (filter._aspect == TextureViewWindow::UndefinedAspect)
             return baseFormat;      // (or just use DXGI_FORMAT_UNKNOWN)
 
-        // We need to filter the format by aspect and color space.
-        // First, check if there are linear & SRGB versions of the format. If there are, we can ignore the "aspect" filter,
-        // because these formats only have color aspects
-        Format fmt = AsFormat(baseFormat);
-        switch (filter._aspect) {
-        default:
-            return baseFormat;
-
-        case TextureViewWindow::DepthStencil:
-        case TextureViewWindow::Depth:
-            if (isDSV) return AsDXGIFormat(AsDepthStencilFormat(fmt));
-            return AsDXGIFormat(AsDepthAspectSRVFormat(fmt));
-
-        case TextureViewWindow::Stencil:
-            if (isDSV) return AsDXGIFormat(AsDepthStencilFormat(fmt));
-            return AsDXGIFormat(AsStencilAspectSRVFormat(fmt));
-
-        case TextureViewWindow::ColorLinear:
-            return AsDXGIFormat(AsLinearFormat(fmt));
-
-        case TextureViewWindow::ColorSRGB:
-            return AsDXGIFormat(AsSRGBFormat(fmt));
-        }
+        return AsDXGIFormat(ResolveFormat(AsFormat(baseFormat), filter, usage));
     }
 
     RenderTargetView::RenderTargetView(
@@ -88,7 +66,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture1DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
                     viewDesc.Texture1DArray.ArraySize = arraySize;
-                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
+                    viewDesc.Format = ResolveFormat(textureDesc.Format, window._format, FormatUsage::RTV);
                     break;
                 }
 
@@ -107,7 +85,7 @@ namespace RenderCore { namespace Metal_DX11
                         viewDesc.Texture2DArray.FirstArraySlice = window._arrayLayerRange._min;
                         viewDesc.Texture2DArray.ArraySize = arraySize;
                     }
-                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
+                    viewDesc.Format = ResolveFormat(textureDesc.Format, window._format, FormatUsage::RTV);
                 }
                 break;
 
@@ -118,7 +96,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture3D.MipSlice = window._mipRange._min;
                     viewDesc.Texture3D.FirstWSlice = 0;
                     viewDesc.Texture3D.WSize = ~0u;
-                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
+                    viewDesc.Format = ResolveFormat(textureDesc.Format, window._format, FormatUsage::RTV);
                 }
                 break;
 
@@ -209,7 +187,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture1DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
                     viewDesc.Texture1DArray.ArraySize = arraySize;
-                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format, true);
+                    viewDesc.Format = ResolveFormat(textureDesc.Format, window._format, FormatUsage::DSV);
                 }
                 break;
 
@@ -228,7 +206,7 @@ namespace RenderCore { namespace Metal_DX11
                         viewDesc.Texture2DArray.FirstArraySlice = window._arrayLayerRange._min;
                         viewDesc.Texture2DArray.ArraySize = arraySize;
                     }
-                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format, true);
+                    viewDesc.Format = ResolveFormat(textureDesc.Format, window._format, FormatUsage::DSV);
                 }
                 break;
 
@@ -307,7 +285,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture1DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
                     viewDesc.Texture1DArray.ArraySize = arraySize;
-                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
+                    viewDesc.Format = ResolveFormat(textureDesc.Format, window._format, FormatUsage::UAV);
                     break;
                 }
 
@@ -320,7 +298,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture2DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture2DArray.FirstArraySlice = window._arrayLayerRange._min;
                     viewDesc.Texture2DArray.ArraySize = arraySize;
-                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
+                    viewDesc.Format = ResolveFormat(textureDesc.Format, window._format, FormatUsage::UAV);
                 }
                 break;
 
@@ -331,7 +309,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture3D.MipSlice = window._mipRange._min;
                     viewDesc.Texture3D.FirstWSlice = 0;
                     viewDesc.Texture3D.WSize = ~0u;
-                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
+                    viewDesc.Format = ResolveFormat(textureDesc.Format, window._format, FormatUsage::UAV);
                 }
                 break;
 
@@ -404,7 +382,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Texture1DArray.MipLevels = window._mipRange._count;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
                     viewDesc.Texture1DArray.ArraySize = arraySize;
-                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
+                    viewDesc.Format = ResolveFormat(textureDesc.Format, window._format, FormatUsage::SRV);
                     break;
                 }
 
@@ -432,7 +410,7 @@ namespace RenderCore { namespace Metal_DX11
                             viewDesc.Texture2DArray.ArraySize = arraySize;
                         }
                     }
-                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
+                    viewDesc.Format = ResolveFormat(textureDesc.Format, window._format, FormatUsage::SRV);
                 }
                 break;
 
@@ -442,7 +420,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
                     viewDesc.Texture3D.MostDetailedMip = window._mipRange._min;
                     viewDesc.Texture3D.MipLevels = window._mipRange._count;
-                    viewDesc.Format = SpecializeFormat(textureDesc.Format, window._format);
+                    viewDesc.Format = ResolveFormat(textureDesc.Format, window._format, FormatUsage::SRV);
                 }
                 break;
 

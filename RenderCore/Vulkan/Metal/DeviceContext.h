@@ -256,7 +256,8 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
 
         void        Clear(const RenderTargetView& renderTargets, const VectorPattern<float,4>& clearColour) {}
-        void        Clear(const DepthStencilView& depthStencil, float depth, unsigned stencil) {}
+        struct ClearFilter { enum Enum { Depth = 1<<0, Stencil = 1<<1 }; using BitField = unsigned; };
+        void        Clear(const DepthStencilView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil) {}
         void        ClearUInt(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& clearColour) {}
         void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& clearColour) {}
         void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil) {}
@@ -283,7 +284,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VectorPattern<unsigned,2>   GetPresentationTargetDims();
 
         void BeginRenderPass(
-            VkRenderPass fbLayout, const FrameBuffer& fb,
+            const FrameBuffer& fb,
             TextureSamples samples,
             VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
             IteratorRange<const ClearValue*> clearValues);

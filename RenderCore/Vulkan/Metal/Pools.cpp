@@ -194,7 +194,7 @@ namespace RenderCore { namespace Metal_Vulkan
             TextureDesc::Plain2D(32, 32, Format::R8G8B8A8_UNORM), "DummyTexture");
         uint32 dummyData[32*32];
         std::memset(dummyData, 0, sizeof(dummyData));
-        return Resource::Allocate(
+        return CreateResource(
             factory, desc, 
             [&dummyData](SubResourceId)
             {
@@ -208,7 +208,7 @@ namespace RenderCore { namespace Metal_Vulkan
             BindFlag::UnorderedAccess, 
             0, GPUAccess::Read|GPUAccess::Write, 
             TextureDesc::Plain2D(32, 32, Format::R8G8B8A8_UNORM), "DummyTexture");
-        return Resource::Allocate(factory, desc);
+        return CreateResource(factory, desc);
     }
 
     static ResourcePtr CreateDummyUAVBuffer(const ObjectFactory& factory)
@@ -217,7 +217,7 @@ namespace RenderCore { namespace Metal_Vulkan
             BindFlag::StructuredBuffer, 
             0, GPUAccess::Read|GPUAccess::Write, 
             LinearBufferDesc::Create(256, 256), "DummyBuffer");
-        return Resource::Allocate(factory, desc);
+        return CreateResource(factory, desc);
     }
 
     DummyResources::DummyResources(const ObjectFactory& factory)

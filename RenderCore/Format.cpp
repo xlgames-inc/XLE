@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Format.h"
+#include "ResourceDesc.h"
 #include "../../../Utility/ParameterBox.h"
 #include "../../../Utility/StringUtils.h"
 
@@ -509,5 +510,33 @@ namespace RenderCore
         if (!XlEqStringI(name, "Matrix3x4")) return Format::Matrix3x4;
         return Format::Unknown;
     }
+
+    Format ResolveFormat(Format baseFormat, TextureViewWindow::FormatFilter filter, FormatUsage usage)
+    {
+        // We need to filter the format by aspect and color space.
+        // First, check if there are linear & SRGB versions of the format. If there are, we can ignore the "aspect" filter,
+        // because these formats only have color aspects
+        
+        switch (filter._aspect) {
+        default:
+            return baseFormat;
+
+        case TextureViewWindow::DepthStencil:
+        case TextureViewWindow::Depth:
+            if (usage == FormatUsage::DSV) return AsDepthStencilFormat(baseFormat);
+            return AsDepthAspectSRVFormat(baseFormat);
+
+        case TextureViewWindow::Stencil:
+            if (usage == FormatUsage::DSV) return AsDepthStencilFormat(baseFormat);
+            return AsStencilAspectSRVFormat(baseFormat);
+
+        case TextureViewWindow::ColorLinear:
+            return AsLinearFormat(baseFormat);
+
+        case TextureViewWindow::ColorSRGB:
+            return AsSRGBFormat(baseFormat);
+        }
+    }
+
 
 }

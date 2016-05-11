@@ -616,7 +616,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
     void        DeviceContext::BeginRenderPass(
-        VkRenderPass fbLayout, const FrameBuffer& fb,
+        const FrameBuffer& fb,
         TextureSamples samples,
         VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
         IteratorRange<const ClearValue*> clearValues)
@@ -626,7 +626,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkRenderPassBeginInfo rp_begin;
 		rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		rp_begin.pNext = nullptr;
-		rp_begin.renderPass = fbLayout;
+		rp_begin.renderPass = fb.GetLayout();
 		rp_begin.framebuffer = fb.GetUnderlying();
 		rp_begin.renderArea.offset.x = offset[0];
 		rp_begin.renderArea.offset.y = offset[1];
@@ -637,7 +637,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		rp_begin.clearValueCount = (uint32_t)clearValues.size();
 
         vkCmdBeginRenderPass(_commandList.get(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
-        _renderPass = fbLayout;
+        _renderPass = fb.GetLayout();
         _renderPassSamples = samples;
         _renderPassSubpass = 0u;
         _currentGraphicsPipeline.reset();

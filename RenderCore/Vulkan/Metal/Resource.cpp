@@ -408,6 +408,16 @@ namespace RenderCore { namespace Metal_Vulkan
 		const SubResourceInitData& initData)
 	: Resource(factory, desc, (initData._size && initData._data) ? ([&initData](SubResourceId sr) { return (sr._mip==0&&sr._arrayLayer==0) ? initData : SubResourceInitData{}; }) : std::function<SubResourceInitData(SubResourceId)>())
 	{}
+
+    Resource::Resource(VkImage image, const Desc& desc)
+    : _desc(desc)
+    {
+        // do not destroy the image, even on the last release --
+        //      this is used with the presentation chain images, which are only
+        //      released by the vulkan presentation chain itself
+        _underlyingImage = VulkanSharedPtr<VkImage>(image, [](const VkImage) {});
+    }
+
 	Resource::Resource() {}
 	Resource::~Resource() {}
 
@@ -445,10 +455,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		};
 	}
 
-    ResourcePtr Resource::Allocate(
+    ResourcePtr CreateResource(
         const ObjectFactory& factory,
 		const ResourceDesc& desc,
-		const std::function<SubResourceInitData(SubResourceId)>& initData)
+		const ResourceInitializer& initData)
     {
         const bool useAllocateShared = true;
 		if (constant_expression<useAllocateShared>::result()) {

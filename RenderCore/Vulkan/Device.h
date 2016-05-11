@@ -22,7 +22,6 @@
 #include "Metal/IncludeVulkan.h"
 #include "Metal/FrameBuffer.h"
 #include "Metal/TextureView.h"
-#include "../../BufferUploads/IBufferUploads.h"
 #include "../../Utility/IntrusivePtr.h"
 #include "../../Utility/IteratorUtils.h"
 #include <memory>
@@ -57,7 +56,7 @@ namespace RenderCore
 
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
         Metal_Vulkan::RenderTargetView* AcquireNextImage();
-        const BufferUploads::TextureDesc& GetBufferDesc() { return _bufferDesc; }
+        const TextureDesc& GetBufferDesc() { return _bufferDesc; }
 
 		void PresentToQueue(VkQueue queue);
         void SetInitialLayout(
@@ -77,7 +76,7 @@ namespace RenderCore
 			VulkanSharedPtr<VkSurfaceKHR> surface, 
 			VulkanSharedPtr<VkSwapchainKHR> swapChain,			
             const Metal_Vulkan::ObjectFactory& factory,
-            const BufferUploads::TextureDesc& bufferDesc,
+            const TextureDesc& bufferDesc,
             const void* platformValue);
         ~PresentationChain();
     private:
@@ -95,7 +94,7 @@ namespace RenderCore
         };
         std::vector<Image> _images;
 
-		BufferUploads::TextureDesc              _bufferDesc;
+		TextureDesc              _bufferDesc;
 		std::shared_ptr<PresentationChainDesc>	_desc;
 
         PresentSync     _presentSyncs[3];
@@ -107,12 +106,8 @@ namespace RenderCore
     class ThreadContext : public Base_ThreadContext
     {
     public:
-		void	Present(IPresentationChain&);
-		void    BeginFrame(IPresentationChain& presentationChain);
-
-        void    BeginRenderPass(const FrameBufferDesc& fbDesc, const FrameBufferProperties& props, const RenderPassBeginDesc& beginInfo);
-        void    NextSubpass();
-        void    EndRenderPass();
+		void	        Present(IPresentationChain&);
+		ResourcePtr     BeginFrame(IPresentationChain& presentationChain);
 
         bool                        IsImmediate() const;
         ThreadContextStateDesc      GetStateDesc() const;
@@ -143,8 +138,6 @@ namespace RenderCore
 		VkQueue								_queue;
 		const Metal_Vulkan::ObjectFactory*	_factory;
 		Metal_Vulkan::GlobalPools*			_globalPools;
-
-        std::unique_ptr<Metal_Vulkan::RenderPassInstance> _renderPass;
     };
 
     class ThreadContextVulkan : public ThreadContext, public Base_ThreadContextVulkan

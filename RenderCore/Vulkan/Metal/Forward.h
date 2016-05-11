@@ -49,6 +49,9 @@ namespace RenderCore { namespace Metal_Vulkan
 	class HullShader;
 	class DeepShaderProgram;
 	class BoundClassInterfaces;
+    
+    class FrameBuffer;
+    class FrameBufferCache;
 
     namespace Topology { enum Enum; }
     namespace Blend { enum Enum; };

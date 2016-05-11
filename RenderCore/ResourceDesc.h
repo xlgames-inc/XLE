@@ -224,6 +224,9 @@ namespace RenderCore
             ) : _format(format), _dimensionality(dimensionality), _mipRange(mipRange), _arrayLayerRange(arrayLayerRange), _flags(flags) {}
     };
 
+    enum class FormatUsage { SRV, RTV, DSV, UAV };
+    Format ResolveFormat(Format baseFormat, TextureViewWindow::FormatFilter filter, FormatUsage usage);
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class SubResourceId 
