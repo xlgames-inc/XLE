@@ -20,6 +20,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
@@ -386,11 +387,11 @@ namespace SceneEngine
                         AttachmentViewDesc::LoadStore::DontCare_ClearStencil, AttachmentViewDesc::LoadStore::DontCare },
                 });
 
-            Metal::RenderPassInstance rpi(
+            Techniques::RenderPassInstance rpi(
                 metalContext,
                 resolveLighting,
                 0u, parserContext.GetNamedResources(), mainTargets.GetFrameBufferCache(),
-                RenderPassBeginDesc{{MakeClearValue(1.f, 0x0)}});
+                Techniques::RenderPassBeginDesc{{MakeClearValue(1.f, 0x0)}});
 
             const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;
 

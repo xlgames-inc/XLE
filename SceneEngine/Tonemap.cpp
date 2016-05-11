@@ -13,6 +13,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/TextureView.h"
@@ -734,10 +735,11 @@ namespace SceneEngine
                 context.BindPS(MakeResourceList(inputResource));
             }
             
-            RenderCore::Metal::FrameBufferCache fbCache;
-            RenderCore::Metal::RenderPassInstance rpi(
+            Metal::FrameBufferCache fbCache;
+            Techniques::RenderPassInstance rpi(
                 context, destination,
-                0u, parserContext.GetNamedResources(), fbCache);
+                0u, parserContext.GetNamedResources(), fbCache,
+                Techniques::RenderPassBeginDesc());
 
             SetupVertexGeneratorShader(context);
             context.Bind(Techniques::CommonResources()._blendOpaque);

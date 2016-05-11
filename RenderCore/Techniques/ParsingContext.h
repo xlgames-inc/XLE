@@ -15,12 +15,12 @@
 
 namespace Assets { namespace Exceptions { class AssetException; }}
 namespace Utility { class ParameterBox; }
-namespace RenderCore { class NamedResources; }
 
 namespace RenderCore { namespace Techniques 
 {
     class TechniqueContext;
     class IStateSetResolver;
+    class NamedResources;
     
     /// <summary>Manages critical shader state</summary>
     /// Certain system variables are bound to the shaders, and managed by higher
@@ -52,7 +52,7 @@ namespace RenderCore { namespace Techniques
             std::shared_ptr<IStateSetResolver> stateSetResolver);
         const std::shared_ptr<IStateSetResolver>& GetStateSetResolver()            { return _stateSetResolver; }
         const std::shared_ptr<Utility::ParameterBox>& GetStateSetEnvironment();
-        NamedResources& GetNamedResources() { return *_namedResources; }
+        NamedResources& GetNamedResources() { assert(_namedResources); return *_namedResources; }
 
             //  ----------------- Exception reporting -----------------
         class StringHelpers
@@ -71,7 +71,7 @@ namespace RenderCore { namespace Techniques
         bool HasInvalidAssets() const { return _stringHelpers->_invalidAssets[0] != '\0'; }
         bool HasErrorString() const { return _stringHelpers->_errorString[0] != '\0'; }
 
-        ParsingContext(const TechniqueContext& techniqueContext, NamedResources& namedResources);
+        ParsingContext(const TechniqueContext& techniqueContext, NamedResources* namedResources = nullptr);
         ~ParsingContext();
 
         ParsingContext& operator=(const ParsingContext&) = delete;

@@ -282,8 +282,6 @@ namespace RenderCore { namespace Metal_Vulkan
         void                        SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims);
         VectorPattern<unsigned,2>   GetPresentationTargetDims();
 
-        NamedResources& GetNamedResources() { return _namedResources; }
-
         void BeginRenderPass(
             VkRenderPass fbLayout, const FrameBuffer& fb,
             TextureSamples samples,
@@ -364,7 +362,6 @@ namespace RenderCore { namespace Metal_Vulkan
         CommandPool*                        _cmdPool;
         CommandPool::BufferType             _cmdBufferType;
 
-        NamedResources                      _namedResources;
         VectorPattern<unsigned,2>           _presentationTargetDims;
 
         bool BindGraphicsPipeline();

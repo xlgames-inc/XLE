@@ -61,6 +61,7 @@
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../Tools/ToolsRig/VisualisationGeo.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../Math/Transformations.h"
 
 #include "../../RenderCore/Assets/ModelRunTime.h"
@@ -537,7 +538,7 @@ namespace Sample
     static void RunRenderPassTest(
         RenderCore::IThreadContext& genericThreadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
-        RenderCore::NamedResources& namedResources,
+        RenderCore::Techniques::NamedResources& namedResources,
         const RenderCore::TextureSamples& samples)
     {
         TRY
@@ -558,30 +559,35 @@ namespace Sample
                 {   MainDepthStencil, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::R24G8_TYPELESS,
+                    TextureViewWindow::Depth,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::DepthStencil | AttachmentDesc::Flags::ShaderResource },
 
                 // gbuffer diffuse
                 {   GBufferDiffuse, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::R8G8B8A8_UNORM_SRGB,
+                    TextureViewWindow::ColorSRGB,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
 
                 // gbuffer normals
                 {   GBufferNormals, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::R8G8B8A8_SNORM,
+                    TextureViewWindow::ColorLinear,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
 
                 // gbuffer params
                 {   GBufferParams, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::R8G8B8A8_UNORM,
+                    TextureViewWindow::ColorLinear,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
 
                 // lighting resolve
                 {   LightingResolve, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::R16G16B16A16_FLOAT,
+                    TextureViewWindow::ColorLinear,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource }
             };
 
@@ -589,12 +595,12 @@ namespace Sample
             {
                 // presentation target
                 {   PresentationTarget, PresentationTarget, 
-                    {{TextureViewWindow::ColorSRGB}},
+                    TextureViewWindow(),
                     AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain },
 
                 // Main depth stencil
                 {   MainDepthStencil, MainDepthStencil,
-                    {{TextureViewWindow::ColorLinear, TextureViewWindow::Aspect::DepthStencil}},
+                    TextureViewWindow(),
                     AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::DontCare },
 
                 // gbuffer diffuse
@@ -641,7 +647,7 @@ namespace Sample
 
             auto beginInfo = RenderPassBeginDesc({ClearValue(), MakeClearValue(1.f, 0)});
             {
-                Metal::RenderPassInstance rpi(
+                Techniques::RenderPassInstance rpi(
                     *metalContext, fbLayout,
                     0u, namedResources, fbCache, beginInfo);
 
@@ -801,6 +807,7 @@ namespace Sample
                 {   MainDepthStencil, 
                     Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::D24_UNORM_S8_UINT,
+                    RenderCore::TextureViewWindow::DepthStencil,
                     Attachment::Flags::Multisampled | Attachment::Flags::DepthStencil }
             };
 
@@ -826,7 +833,7 @@ namespace Sample
                 MakeIteratorRange(subpasses),
                 MakeIteratorRange(attachmentViews));
 
-            RenderCore::NamedResources namedResources;
+            RenderCore::Techniques::NamedResources namedResources;
             namedResources.Bind(presentationChain->GetDesc()->_samples);
             namedResources.DefineAttachments(MakeIteratorRange(attachments));
 
@@ -846,7 +853,7 @@ namespace Sample
                 //     {RenderCore::MakeClearValue(.5f, .3f, .1f, 1.f), RenderCore::MakeClearValue(1.f, 0)});
 
                 // RunShaderTest(*context);
-                RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext);
+                RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext, namedResources);
                 SetupLightingParser(*context, parserContext);
                 // RunModelTest(*context, parserContext);
                 // context->EndRenderPass();

@@ -62,8 +62,7 @@ namespace SceneEngine
             0.f, 0.f, float(viewportDims[0]), float(viewportDims[1]), 0.f, 1.f);
         devContext->Bind(newViewport);
 
-        RenderCore::NamedResources namedRes;
-        LightingParserContext parserContext(context.GetTechniqueContext(), namedRes);
+        LightingParserContext parserContext(context.GetTechniqueContext());
         auto marker = LightingParser_SetupScene(*devContext, parserContext);
         LightingParser_SetGlobalTransform(
             *devContext, parserContext,

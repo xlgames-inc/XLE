@@ -33,6 +33,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
+#include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -893,11 +894,11 @@ namespace SceneEngine
             StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._deferred);
 
             CATCH_ASSETS_BEGIN {
-                Metal::RenderPassInstance rpi(
+                Techniques::RenderPassInstance rpi(
                     metalContext,
                     fbDescBox._createGBuffer,
                     0u, parserContext.GetNamedResources(), mainTargets.GetFrameBufferCache(),
-                    RenderPassBeginDesc{{RenderCore::MakeClearValue(1.f, 0)}});
+                    Techniques::RenderPassBeginDesc{{RenderCore::MakeClearValue(1.f, 0)}});
                 metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, (float)qualitySettings._dimensions[0], (float)qualitySettings._dimensions[1]));
 
                 ExecuteScene(
@@ -1110,12 +1111,12 @@ namespace SceneEngine
                     AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::Retain }
             });
 
-        Metal::RenderPassInstance rpi(
+        Techniques::RenderPassInstance rpi(
             metalContext,
             resolveLighting,
             0u, parserContext.GetNamedResources(),
             mainTargets.GetFrameBufferCache(),
-            RenderPassBeginDesc{{MakeClearValue(1.f, 0x0)}});
+            Techniques::RenderPassBeginDesc{{MakeClearValue(1.f, 0x0)}});
 
         preparedResult._shadowTextureName = IMainTargets::ShadowDepthMap + shadowFrustumIndex;
 
@@ -1288,7 +1289,9 @@ namespace SceneEngine
         _preparedRTShadows.clear();
     }
 
-    LightingParserContext::LightingParserContext(const Techniques::TechniqueContext& techniqueContext, RenderCore::NamedResources& namedResources)
+    LightingParserContext::LightingParserContext(
+        const Techniques::TechniqueContext& techniqueContext, 
+        Techniques::NamedResources* namedResources)
     : ParsingContext(techniqueContext, namedResources)
     , _sceneParser(nullptr)
     {

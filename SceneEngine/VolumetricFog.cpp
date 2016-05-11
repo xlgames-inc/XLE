@@ -14,6 +14,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/State.h"

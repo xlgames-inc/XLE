@@ -21,6 +21,7 @@
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
@@ -169,7 +170,7 @@ namespace Sample
             LogInfo << "Setup frame rig and rendering context";
             auto context = renderDevice->GetImmediateContext();
 
-            RenderCore::NamedResources namedResources;
+            RenderCore::Techniques::NamedResources namedResources;
 
                 //  Finally, we execute the frame loop
             for (;;) {
@@ -178,7 +179,7 @@ namespace Sample
                 }
 
                     // ------- Render ----------------------------------------
-                SceneEngine::LightingParserContext lightingParserContext(*globalTechniqueContext, namedResources);
+                SceneEngine::LightingParserContext lightingParserContext(*globalTechniqueContext, &namedResources);
                 lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto frameResult = frameRig.ExecuteFrame(
@@ -254,34 +255,37 @@ namespace Sample
 
             // Begin a default render pass just rendering to the 
             // presentation buffer (which is always target "0")
-        context.BeginRenderPass(
-            {{RenderCore::SubpassDesc({0})}},
-            namedRes,
-            RenderCore::RenderPassBeginDesc());
+        bool hasPendingResources = false;
+        {
+            RenderCore::Metal::FrameBufferCache cache;
+            RenderCore::Techniques::RenderPassInstance rpi(
+                context,
+                {{RenderCore::SubpassDesc({0})}},
+                0u,
+                namedRes, cache);
 
-            //  If we need to, we can render outside of the lighting parser.
-            //  We just need to to use the device context to perform any rendering
-            //  operations here.
-        RenderPostScene(&context);
-        LightingParser_Overlays(context, lightingParserContext);
+                //  If we need to, we can render outside of the lighting parser.
+                //  We just need to to use the device context to perform any rendering
+                //  operations here.
+            RenderPostScene(&context);
+            LightingParser_Overlays(context, lightingParserContext);
 
-        if (overlaySys) {
-            overlaySys->RenderToScene(&context, lightingParserContext);
+            if (overlaySys) {
+                overlaySys->RenderToScene(&context, lightingParserContext);
+            }
+
+                //  The lighting parser will tell us if there where any pending resources
+                //  during the render. Here, we can render them as a short list...
+            hasPendingResources = lightingParserContext.HasPendingAssets();
+            auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
+            DrawPendingResources(metalContext.get(), lightingParserContext, defaultFont0.get());
+
+            if (overlaySys) {
+                overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());
+            }
         }
 
-            //  The lighting parser will tell us if there where any pending resources
-            //  during the render. Here, we can render them as a short list...
-        bool hasPendingResources = lightingParserContext.HasPendingAssets();
-        auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-        DrawPendingResources(metalContext.get(), lightingParserContext, defaultFont0.get());
-
-        if (overlaySys) {
-            overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());
-        }
-
-        context.EndRenderPass();
         namedRes.Unbind(0u);
-
         return PlatformRig::FrameRig::RenderResult(hasPendingResources);
     }
 

@@ -38,6 +38,9 @@ namespace RenderCore { namespace Metal_DX11
     class ObjectFactory;
     class ViewportDesc;
 
+    class FrameBuffer;
+    class FrameBufferCache;
+
     typedef SharedPkt ConstantBufferPacket;
 
     namespace Topology { enum Enum; }

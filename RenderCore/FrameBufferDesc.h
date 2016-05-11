@@ -124,29 +124,6 @@ namespace RenderCore
         unsigned _outputWidth, _outputHeight, _outputLayers;
     };
 
-    class NamedResources
-    {
-    public:
-        void DefineAttachments(IteratorRange<const AttachmentDesc*> attachments);
-
-        auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal_DX11::ShaderResourceView*;
-        auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal_DX11::RenderTargetView*;
-        auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal_DX11::DepthStencilView*;
-
-        void Bind(TextureSamples samples);
-        void Bind(FrameBufferProperties props);
-        void Bind(AttachmentName, const ResourcePtr& resource);
-        void Unbind(AttachmentName);
-
-        const FrameBufferProperties& GetFrameBufferProperties() const;
-
-        NamedResources();
-        ~NamedResources();
-    private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
-
     union ClearValue
     {
         float       _float[4];
@@ -158,22 +135,6 @@ namespace RenderCore
             unsigned _stencil;
         };
         DepthStencilValue _depthStencil;
-    };
-
-    class RenderPassBeginDesc
-    {
-    public:
-        IteratorRange<const ClearValue*>    _clearValues;
-        //      (Vulkan supports offset and extent here. But there there is
-        //      no clean equivalent in D3D. Let's avoid exposing it until
-        //      it's really needed)
-        // VectorPattern<int, 2>               _offset;
-        // VectorPattern<unsigned, 2>          _extent;
-
-        RenderPassBeginDesc(
-            std::initializer_list<ClearValue> clearValues = {})
-        : _clearValues(clearValues.begin(), clearValues.end())
-        {}
     };
 
     inline ClearValue MakeClearValue(const VectorPattern<float, 4>& v)

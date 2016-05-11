@@ -22,7 +22,7 @@ namespace RenderCore
 {
 ////////////////////////////////////////////////////////////////////////////////
 
-    namespace Metal_DX11 { class DeviceContext; class ObjectFactory; class RenderPassInstance; }
+    namespace Metal_DX11 { class DeviceContext; class ObjectFactory; }
 
     class Device;
 
@@ -53,10 +53,6 @@ namespace RenderCore
         ResourcePtr BeginFrame(IPresentationChain& presentationChain);
         void    Present(IPresentationChain& presentationChain) /*override*/;
 
-        void    BeginRenderPass(const FrameBufferDesc& fbDesc, NamedResources& namedRes, const RenderPassBeginDesc& beginInfo);
-        void    NextSubpass();
-        void    EndRenderPass();
-
         bool                        IsImmediate() const;
         ThreadContextStateDesc      GetStateDesc() const;
         std::shared_ptr<IDevice>    GetDevice() const;
@@ -70,7 +66,6 @@ namespace RenderCore
         std::shared_ptr<Metal_DX11::DeviceContext> _underlying;
         std::weak_ptr<Device>   _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
         unsigned                _frameId;
-        std::unique_ptr<Metal_DX11::RenderPassInstance> _activeRPI;
     };
 
     class ThreadContextDX11 : public ThreadContext, public Base_ThreadContextDX11

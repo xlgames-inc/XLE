@@ -477,8 +477,7 @@ namespace Overlays
 
         auto sceneParser = ToolsRig::CreateModelScene(model);
         Techniques::TechniqueContext techniqueContext;
-        RenderCore::NamedResources namedRes;
-        SceneEngine::LightingParserContext lightingParserContext(techniqueContext, namedRes);
+        SceneEngine::LightingParserContext lightingParserContext(techniqueContext);
         SceneEngine::LightingParser_ExecuteScene(
             context, lightingParserContext, *sceneParser.get(), 
             sceneParser->GetCameraDesc(), qualitySettings);

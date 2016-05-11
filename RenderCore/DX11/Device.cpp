@@ -461,45 +461,11 @@ namespace RenderCore
     {
         // end the current render pass, if one has been begun -- 
         // and release the reference on the presentation target in the device context
-        _activeRPI.reset();
+        // _activeRPI.reset();
         // _underlying->GetNamedResources().UnbindAll();
 
         PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
         swapChain->GetUnderlying()->Present(0, 0);
-    }
-
-    void    ThreadContext::BeginRenderPass(const FrameBufferDesc& fbDesc, NamedResources& namedRes, const RenderPassBeginDesc& beginInfo)
-    {
-        if (_activeRPI)
-            Throw(::Exceptions::BasicLabel("Cannot begin render pass, because another render pass has already been begun"));
-
-        // auto adjProps = props;
-        // if (adjProps._outputWidth == 0u && adjProps._outputHeight == 0u) {
-        //     adjProps._outputWidth = _underlying->GetPresentationTargetDims()[0];
-        //     adjProps._outputHeight = _underlying->GetPresentationTargetDims()[1];
-        // }
-
-        Metal_DX11::FrameBufferCache cache;
-        _activeRPI = std::make_unique<Metal_DX11::RenderPassInstance>(
-            *_underlying, fbDesc, 
-            0, namedRes, cache, beginInfo);
-
-        Metal_DX11::ViewportDesc viewport(
-            0.f, 0.f,
-            (float)namedRes.GetFrameBufferProperties()._outputWidth, (float)namedRes.GetFrameBufferProperties()._outputHeight);
-        _underlying->Bind(viewport);
-    }
-
-    void    ThreadContext::NextSubpass()
-    {
-        assert(_activeRPI);
-        _activeRPI->NextSubpass();
-    }
-
-    void    ThreadContext::EndRenderPass()
-    {
-        assert(_activeRPI);
-        _activeRPI.reset();
     }
 
     bool    ThreadContext::IsImmediate() const

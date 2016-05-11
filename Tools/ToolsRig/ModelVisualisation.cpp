@@ -499,8 +499,7 @@ namespace ToolsRig
             ModelIntersectionStateContext::RayTest,
             context.GetThreadContext(), context.GetTechniqueContext(), 
             &cam);
-        RenderCore::NamedResources namedRes;
-        LightingParserContext parserContext(context.GetTechniqueContext(), namedRes);
+        LightingParserContext parserContext(context.GetTechniqueContext());
         stateContext.SetRay(worldSpaceRay);
 
         {

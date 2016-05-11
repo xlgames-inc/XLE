@@ -29,10 +29,6 @@ namespace RenderCore
         unsigned _frameId;
     };
 
-    class FrameBufferDesc;
-    class NamedResources;
-    class RenderPassBeginDesc;
-
     class Resource;
 	using ResourcePtr = std::shared_ptr<Resource>;
 
@@ -101,10 +97,6 @@ namespace RenderCore
 		///   But in theory we can call Present at any time.
 		/// </example>
 		IMETHOD void			Present(IPresentationChain& presentationChain) IPURE;
-
-        IMETHOD void            BeginRenderPass(const FrameBufferDesc& fbDesc, NamedResources& namedRes, const RenderPassBeginDesc& beginInfo) IPURE;
-        IMETHOD void            NextSubpass() IPURE;
-        IMETHOD void            EndRenderPass() IPURE;
 
         IMETHOD virtual void*   QueryInterface(const GUID& guid) IPURE;
         IMETHOD bool            IsImmediate() const IPURE;

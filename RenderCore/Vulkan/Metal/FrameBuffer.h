@@ -21,26 +21,6 @@ namespace RenderCore { namespace Metal_Vulkan
     class TextureView;
     class DeviceContext;
     
-#if 0
-    class NamedResources
-    {
-    public:
-        const ShaderResourceView*   GetSRV(AttachmentDesc::Name name) const;
-        const TextureView*          GetRTV(AttachmentDesc::Name name) const;
-
-        void Bind(AttachmentDesc::Name name, const ShaderResourceView& srv);
-        void Bind(AttachmentDesc::Name name, const RenderTargetView& rtv);
-        void Bind(AttachmentDesc::Name name, const DepthStencilView& dsv);
-        void UnbindAll();
-
-        NamedResources();
-        ~NamedResources();
-    private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
-#endif
-
     class FrameBuffer
 	{
 	public:
@@ -51,8 +31,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
 			VkRenderPass layout,
-			const FrameBufferProperties& props,
-            NamedResources& namedResources);
+			const FrameBufferProperties& props);
 		FrameBuffer();
 		~FrameBuffer();
 	private:
@@ -75,7 +54,6 @@ namespace RenderCore { namespace Metal_Vulkan
             const FrameBufferDesc& desc,
 			VkRenderPass layout,
 			const FrameBufferProperties& props,
-            NamedResources& namedResources,
             uint64 hashName);
 
         VkRenderPass BuildFrameBufferLayout(
@@ -89,6 +67,7 @@ namespace RenderCore { namespace Metal_Vulkan
         std::unique_ptr<Pimpl> _pimpl;
     };
 
+#if 0
     /// <summary>Begins and ends a render pass on the given context</summary>
     /// Creates and begins a render pass using the given frame buffer layout. This will also automatically
     /// allocate the buffers required
@@ -120,4 +99,5 @@ namespace RenderCore { namespace Metal_Vulkan
         std::shared_ptr<FrameBuffer> _frameBuffer;
         DeviceContext* _attachedContext;
     };
+#endif
 }}

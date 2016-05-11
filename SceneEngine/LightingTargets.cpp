@@ -11,6 +11,7 @@
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../Assets/AssetUtils.h"
