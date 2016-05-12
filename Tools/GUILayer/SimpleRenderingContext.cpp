@@ -27,6 +27,8 @@
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/Metal/ObjectFactory.h"
+#include "../../RenderCore/Format.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Utility/IteratorUtils.h"
@@ -42,7 +44,7 @@ namespace GUILayer
     class VertexFormatRecord
     {
     public:
-        RenderCore::Metal::InputLayout _inputLayout;
+        RenderCore::InputLayout _inputLayout;
         ParameterBox _geoParams;
         unsigned _vertexStride;
     };
@@ -54,7 +56,7 @@ namespace GUILayer
         std::vector<std::pair<uint64, unsigned>> _vbFormat;
         std::vector<std::pair<uint64, RenderCore::Metal::IndexBuffer>> _indexBuffers;
         uint64 _nextBufferID;
-        RenderCore::Metal::ObjectFactory _objectFactory;
+        RenderCore::Metal::ObjectFactory* _objectFactory;
 
         VertexFormatRecord _vfRecord[8];
         SavedRenderResourcesPimpl(RenderCore::IDevice& device);
@@ -62,10 +64,10 @@ namespace GUILayer
 
     SavedRenderResourcesPimpl::SavedRenderResourcesPimpl(RenderCore::IDevice& device)
     : _nextBufferID(1)
-    , _objectFactory(&device) 
+    , _objectFactory(&RenderCore::Metal::GetObjectFactory(device)) 
     {
             //  These are the vertex formats defined by the Sony editor
-        using namespace RenderCore::Metal;
+        using namespace RenderCore;
         _vfRecord[0]._inputLayout = GlobalInputLayouts::P;
         _vfRecord[1]._inputLayout = GlobalInputLayouts::PC;
         _vfRecord[2]._inputLayout = GlobalInputLayouts::PN;
@@ -191,7 +193,7 @@ namespace GUILayer
             auto& devContext = *_devContext.get();
             _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
             devContext.Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
-            devContext.Bind(*ibuffer, RenderCore::Metal::NativeFormat::R32_UINT);   // Sony editor always uses 32 bit indices
+            devContext.Bind(*ibuffer, RenderCore::Format::R32_UINT);   // Sony editor always uses 32 bit indices
             devContext.DrawIndexed(indexCount, startIndex, startVertex);
         }
     }
@@ -210,7 +212,7 @@ namespace GUILayer
 
     uint64  RetainedRenderResources::CreateVertexBuffer(void* data, size_t size, unsigned format)
     {
-        RenderCore::Metal::VertexBuffer newBuffer(_pimpl->_objectFactory, data, size);
+        RenderCore::Metal::VertexBuffer newBuffer(*_pimpl->_objectFactory, data, size);
         _pimpl->_vertexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
         _pimpl->_vbFormat.push_back(std::make_pair(_pimpl->_nextBufferID, format));
         return _pimpl->_nextBufferID++;
@@ -218,7 +220,7 @@ namespace GUILayer
 
     uint64  RetainedRenderResources::CreateIndexBuffer(void* data, size_t size)
     {
-        RenderCore::Metal::IndexBuffer newBuffer(_pimpl->_objectFactory, data, size);
+        RenderCore::Metal::IndexBuffer newBuffer(*_pimpl->_objectFactory, data, size);
         _pimpl->_indexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
         return _pimpl->_nextBufferID++;
     }
@@ -307,12 +309,12 @@ namespace GUILayer
             PlacementsRendererWrapper^ renderer,
             ObjectSet^ highlight, uint64 materialGuid)
         {
-            auto& metalContext = context->GetDevContext();
+            auto& threadContext = context->GetThreadContext();
             if (highlight == nullptr) {
                 CATCH_ASSETS_BEGIN
-                    ToolsRig::BinaryHighlight highlight(metalContext);
+                    ToolsRig::BinaryHighlight highlight(threadContext);
                     ToolsRig::Placements_RenderFiltered(
-                        metalContext, context->GetParsingContext(), 
+                        threadContext, context->GetParsingContext(), 
                         RenderCore::Techniques::TechniqueIndex::Forward,
                         renderer->GetNative(), placements->GetNative().GetCellSet(), 
                         nullptr, nullptr, materialGuid);
@@ -320,14 +322,14 @@ namespace GUILayer
                     const Float3 highlightCol(.75f, .8f, 0.4f);
                     const unsigned overlayCol = 2;
 
-                    highlight.FinishWithOutlineAndOverlay(metalContext, highlightCol, overlayCol);
+                    highlight.FinishWithOutlineAndOverlay(threadContext, highlightCol, overlayCol);
                 CATCH_ASSETS_END(context->GetParsingContext())
 
             } else {
                 if (highlight->IsEmpty()) return;
 
                 ToolsRig::Placements_RenderHighlight(
-                    metalContext, context->GetParsingContext(), 
+                    threadContext, context->GetParsingContext(), 
                     renderer->GetNative(), placements->GetNative().GetCellSet(),
                     (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cbegin()),
                     (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cend()),

@@ -44,7 +44,7 @@ namespace Sample
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void BasicSceneParser::PrepareFrame(RenderCore::Metal::DeviceContext* context) 
+    void BasicSceneParser::PrepareFrame(RenderCore::IThreadContext& context) 
     {
         //  Some effects need a "prepare" step before the main render begins... It's often handy to 
         //  add a PrepareFrame() method to the scene parser.

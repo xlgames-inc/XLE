@@ -231,14 +231,12 @@ namespace Sample
         auto& namedRes = lightingParserContext.GetNamedResources();
         auto viewContext = presentationChain->GetDesc();
         auto samples = RenderCore::TextureSamples::Create((uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0));
-        namedRes.Bind(RenderCore::FrameBufferProperties{viewContext->_width, viewContext->_height, 0u});
-        namedRes.Bind(samples);
+        namedRes.Bind(RenderCore::FrameBufferProperties{viewContext->_width, viewContext->_height, 0u, samples});
         namedRes.Bind(0u, presentationResource);
 
             //  Some scene might need a "prepare" step to 
             //  build some resources before the main render occurs.
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-        scene->PrepareFrame(metalContext.get());
+        scene->PrepareFrame(context);
 
         using namespace SceneEngine;
 
@@ -257,12 +255,9 @@ namespace Sample
             // presentation buffer (which is always target "0")
         bool hasPendingResources = false;
         {
-            RenderCore::Metal::FrameBufferCache cache;
             RenderCore::Techniques::RenderPassInstance rpi(
-                context,
-                {{RenderCore::SubpassDesc({0})}},
-                0u,
-                namedRes, cache);
+                context, {{RenderCore::SubpassDesc({0})}},
+                0u, namedRes);
 
                 //  If we need to, we can render outside of the lighting parser.
                 //  We just need to to use the device context to perform any rendering
@@ -278,7 +273,7 @@ namespace Sample
                 //  during the render. Here, we can render them as a short list...
             hasPendingResources = lightingParserContext.HasPendingAssets();
             auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-            DrawPendingResources(metalContext.get(), lightingParserContext, defaultFont0.get());
+            DrawPendingResources(context, lightingParserContext, defaultFont0.get());
 
             if (overlaySys) {
                 overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());

@@ -761,7 +761,6 @@ namespace SceneEngine
         unsigned                        GetGBufferType() const;
         RenderCore::TextureSamples      GetSampling() const;
         const RenderingQualitySettings& GetQualitySettings() const;
-        RenderCore::Metal::FrameBufferCache& GetFrameBufferCache();
         VectorPattern<unsigned, 2>      GetDimensions() const;
         const SRV&                      GetSRV(Name) const;
         const SRV&                      GetSRV(Name, Name, const TextureViewWindow&) const;
@@ -777,7 +776,6 @@ namespace SceneEngine
         Techniques::ParsingContext* _parsingContext;
         RenderingQualitySettings    _qualSettings;
         unsigned                    _gbufferType;
-        Metal::FrameBufferCache     _fbCache;
     };
 
     unsigned                        MainTargets::GetGBufferType() const
@@ -794,11 +792,6 @@ namespace SceneEngine
     const RenderingQualitySettings& MainTargets::GetQualitySettings() const
     {
         return _qualSettings;
-    }
-
-    RenderCore::Metal::FrameBufferCache& MainTargets::GetFrameBufferCache()
-    {
-        return _fbCache;
     }
 
     VectorPattern<unsigned, 2>      MainTargets::GetDimensions() const
@@ -897,7 +890,7 @@ namespace SceneEngine
                 Techniques::RenderPassInstance rpi(
                     metalContext,
                     fbDescBox._createGBuffer,
-                    0u, parserContext.GetNamedResources(), mainTargets.GetFrameBufferCache(),
+                    0u, parserContext.GetNamedResources(),
                     Techniques::RenderPassBeginDesc{{RenderCore::MakeClearValue(1.f, 0)}});
                 metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, (float)qualitySettings._dimensions[0], (float)qualitySettings._dimensions[1]));
 
@@ -1115,7 +1108,6 @@ namespace SceneEngine
             metalContext,
             resolveLighting,
             0u, parserContext.GetNamedResources(),
-            mainTargets.GetFrameBufferCache(),
             Techniques::RenderPassBeginDesc{{MakeClearValue(1.f, 0x0)}});
 
         preparedResult._shadowTextureName = IMainTargets::ShadowDepthMap + shadowFrustumIndex;

@@ -369,11 +369,10 @@ namespace Sample
             StringMeldAppend(parserContext._stringHelpers->_errorString) << "No player CharacterSpawn detected. Press Tab to switch camera types.";
 
         auto& usefulFonts = RenderCore::Techniques::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-        DrawPendingResources(metalContext.get(), parserContext, usefulFonts._defaultFont0.get());
+        DrawPendingResources(context, parserContext, usefulFonts._defaultFont0.get());
 
         if (Tweakable("QuickMetrics", false))
-            DrawQuickMetrics(metalContext.get(), parserContext, usefulFonts._defaultFont1.get());
+            DrawQuickMetrics(context, parserContext, usefulFonts._defaultFont1.get());
 
         if (overlaySys) {
             overlaySys->RenderWidgets(&context, parserContext.GetProjectionDesc());

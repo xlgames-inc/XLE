@@ -141,11 +141,11 @@ namespace SceneEngine
 
     class LightingParserContext;
     void DrawPendingResources(
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::IThreadContext& context, 
         LightingParserContext& parserContext, 
         RenderOverlays::Font* font);
     void DrawQuickMetrics(   
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::IThreadContext& context, 
         SceneEngine::LightingParserContext& parserContext, 
         RenderOverlays::Font* font);
 

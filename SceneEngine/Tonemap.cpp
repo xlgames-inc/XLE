@@ -33,7 +33,10 @@
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 
 // #include "../RenderCore/Metal/DeviceContextImpl.h"
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
+
+#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+    #include "../RenderCore/DX11/Metal/DX11Utils.h"
+#endif
 
 // #pragma warning(disable:4127)       // conditional expression is constant
 
@@ -735,10 +738,9 @@ namespace SceneEngine
                 context.BindPS(MakeResourceList(inputResource));
             }
             
-            Metal::FrameBufferCache fbCache;
             Techniques::RenderPassInstance rpi(
                 context, destination,
-                0u, parserContext.GetNamedResources(), fbCache,
+                0u, parserContext.GetNamedResources(),
                 Techniques::RenderPassBeginDesc());
 
             SetupVertexGeneratorShader(context);

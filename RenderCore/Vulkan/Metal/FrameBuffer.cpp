@@ -15,33 +15,6 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-    FrameBufferViews::FrameBufferViews(
-        std::vector<RenderTargetView>&& rtvs,
-        std::vector<DepthStencilView>&& dsvs)
-    : _rtvs(std::move(rtvs)), _dsvs(std::move(dsvs))
-    {
-        _rawViews.resize(std::max(_rtvs.size(), _dsvs.size()));
-        for (size_t c=0; c<std::max(_rtvs.size(), _dsvs.size()); ++c)
-            _rawViews[c] = (c<_rtvs.size() && _rtvs[c].IsGood()) ? _rtvs[c].GetImageView() : _dsvs[c].GetImageView();
-    }
-
-    FrameBufferViews::FrameBufferViews() {}
-    FrameBufferViews::~FrameBufferViews() {}
-
-    const RenderTargetView& FrameBufferViews::GetRTV(unsigned index) const
-    {
-        if (index >= _rtvs.size())
-            Throw(::Exceptions::BasicLabel("Invalid attachment index passed to FrameBuffer::GetRTV()"));
-        return _rtvs[index];
-    }
-
-    const DepthStencilView& FrameBufferViews::GetDSV(unsigned index) const
-    {
-        if (index >= _dsvs.size())
-            Throw(::Exceptions::BasicLabel("Invalid attachment index passed to FrameBuffer::GetDSV()"));
-        return _dsvs[index];
-    }
-
     static VkAttachmentLoadOp AsLoadOp(AttachmentViewDesc::LoadStore loadStore)
     {
         switch (loadStore)
@@ -123,35 +96,9 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    // static bool IsDepthStencilFormat(Format fmt)
-    // {
-    //     auto comp = GetComponents(fmt);
-    //     return comp == FormatComponents::Depth || comp == FormatComponents::DepthStencil || comp == FormatComponents::Stencil;
-    // }
-
-    // static VkImageLayout AsShaderReadLayout(VkImageLayout layout)
-    // {
-    //     switch (layout)
-    //     {
-    //     case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-    //         return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-    //     case VK_IMAGE_LAYOUT_GENERAL:
-    //         return VK_IMAGE_LAYOUT_GENERAL;
-    //     default:
-    //         return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    //     }
-    // }
-
-    // static VkImageLayout AsShaderReadLayout(Format format)
-    // {
-    //     if (IsDepthStencilFormat(format))
-    //         return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-    //     return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    // }
-    
     static VkImageLayout AsShaderReadLayout(const AttachmentDesc& desc)
     {
-        if (desc._flags & AttachmentDesc::Flags::ShaderResource)
+        if (desc._flags & AttachmentDesc::Flags::DepthStencil)
             return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
         return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
@@ -538,31 +485,38 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 #endif
 
-    // static Format AsSRVFormat(Format input)
-    // {
-    //     return input;
-    // }
-
     FrameBuffer::FrameBuffer(
         const ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
-        const FrameBufferViews& views,
+        const FrameBufferProperties& props,
         VkRenderPass layout,
-        const FrameBufferProperties& props)
-    : _views(views)
-    , _layout(layout)
+        const INamedResources& namedResources)
+    : _layout(layout)
     {
         // We must create the frame buffer, including all resources and views required.
         // Here, some resources can come from the presentation chain. But other resources will
         // be created an attached to this object.
         auto attachments = fbDesc.GetAttachments();
 
+        VkImageView rawViews[16];
+        assert(attachments.size() < dimof(rawViews));
+        for (unsigned c=0; c<(unsigned)attachments.size(); ++c) {
+            const auto* rtv = namedResources.GetRTV(attachments[c]._viewName, attachments[c]._resourceName, attachments[c]._window);
+            if (rtv && rtv->IsGood()) {
+                rawViews[c] = rtv->GetImageView();
+            } else {
+                const auto* dsv = namedResources.GetDSV(attachments[c]._viewName, attachments[c]._resourceName, attachments[c]._window);
+                assert(dsv);
+                rawViews[c] = dsv->GetImageView();
+            }
+        }
+
         VkFramebufferCreateInfo fb_info = {};
         fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fb_info.pNext = nullptr;
         fb_info.renderPass = layout;
-        fb_info.attachmentCount = (uint32_t)_views._rawViews.size();
-        fb_info.pAttachments = AsPointer(_views._rawViews.begin());
+        fb_info.attachmentCount = (uint32_t)attachments.size();
+        fb_info.pAttachments = rawViews;
         fb_info.width = props._outputWidth;
         fb_info.height = props._outputHeight;
         fb_info.layers = std::max(1u, props._outputLayers);
@@ -599,63 +553,6 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         context.EndRenderPass();
     }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-    void            RenderPassInstance::NextSubpass()
-    {
-        if (_attachedContext)
-            _attachedContext->CmdNextSubpass(VK_SUBPASS_CONTENTS_INLINE);
-    }
-
-    void            RenderPassInstance::End()
-    {
-        if (_attachedContext)
-            _attachedContext->EndRenderPass();
-    }
-
-    const TextureView&  RenderPassInstance::GetAttachment(unsigned index)
-    {
-        // We can call this function during the render pass... However normally if we 
-        // want to use a render target, we should do it after the render pass has been
-        // ended (with RenderPassInstance::End())
-        return _frameBuffer->GetAttachment(index);
-    }
-
-    RenderPassInstance::RenderPassInstance(
-        DeviceContext& context,
-        const FrameBufferDesc& layout,
-		const FrameBufferProperties& props,
-        uint64 hashName,
-        FrameBufferCache& cache,
-        const RenderPassBeginDesc& beginInfo)
-    {
-        // We need to allocate the particular frame buffer we're going to use
-        // And then we'll call BeginRenderPass to begin the render pass
-        auto renderPass = cache.BuildFrameBufferLayout(context.GetFactory(), layout);
-        _frameBuffer = cache.BuildFrameBuffer(
-            context.GetFactory(), layout, 
-            renderPass,
-            props, context.GetNamedResources(), hashName);
-        assert(_frameBuffer);
-        auto ext = VectorPattern<unsigned, 2>{0,0}; // beginInfo._extent;
-        auto offset = VectorPattern<int, 2>{0,0}; // beginInfo._offset;
-        if (ext[0] == 0 && ext[1] == 0) {
-            ext[0] = props._outputWidth - offset[0];
-            ext[1] = props._outputHeight - offset[1];
-        }
-        context.BeginRenderPass(
-            renderPass, *_frameBuffer, layout.GetSamples(), offset, ext, 
-            beginInfo._clearValues);
-        _attachedContext = &context;
-    }
-    
-    RenderPassInstance::~RenderPassInstance() 
-    {
-        End();
-    }
-#endif
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -668,16 +565,13 @@ namespace RenderCore { namespace Metal_Vulkan
     std::shared_ptr<FrameBuffer> FrameBufferCache::BuildFrameBuffer(
 		const ObjectFactory& factory,
         const FrameBufferDesc& desc,
-        const FrameBufferViews& views,
         const FrameBufferProperties& props,
         IteratorRange<const AttachmentDesc*> attachmentResources,
-        const TextureSamples& samples,
+        const INamedResources& namedResources,
         uint64 hashName)
     {
-        return std::make_shared<FrameBuffer>(
-            factory, desc, views, 
-            BuildFrameBufferLayout(factory, desc, attachmentResources, samples), 
-            props);
+        auto layout = BuildFrameBufferLayout(factory, desc, attachmentResources, props._samples);
+        return std::make_shared<FrameBuffer>(factory, desc, props, layout, namedResources);
     }
 
     VkRenderPass FrameBufferCache::BuildFrameBufferLayout(
@@ -704,6 +598,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
     FrameBufferCache::~FrameBufferCache()
     {}
+
+    INamedResources::~INamedResources() {}
 
 }}
 

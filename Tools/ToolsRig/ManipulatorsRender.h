@@ -23,7 +23,7 @@ namespace SceneEngine
 namespace ToolsRig
 {
     void Placements_RenderHighlight(
-        RenderCore::Metal::DeviceContext& threadContext,
+        RenderCore::IThreadContext& threadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
@@ -32,7 +32,7 @@ namespace ToolsRig
         uint64 materialGuid = ~0ull);
 
     void Placements_RenderFiltered(
-        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::IThreadContext& threadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
         SceneEngine::PlacementsRenderer& renderer,
@@ -42,7 +42,7 @@ namespace ToolsRig
         uint64 materialGuid = ~0ull);
 
     void Placements_RenderShadow(
-        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::IThreadContext& threadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,

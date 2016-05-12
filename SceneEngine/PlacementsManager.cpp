@@ -412,7 +412,7 @@ namespace SceneEngine
         void EndPrepare();
         void ClearPrepared();
         void CommitPrepared(
-            RenderCore::Metal::DeviceContext* context,
+            RenderCore::Metal::DeviceContext& context,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep);
         void FilterDrawCalls(const std::function<bool(const DelayedDrawCall&)>& predicate);
@@ -431,7 +431,7 @@ namespace SceneEngine
             const Float3x4& cellToWorld);
 
         void Render(
-            RenderCore::Metal::DeviceContext* context,
+            RenderCore::Metal::DeviceContext& context,
             RenderCore::Techniques::ParsingContext& parserContext,
             const Placements& placements,
             IteratorRange<unsigned*> objects,
@@ -529,22 +529,22 @@ namespace SceneEngine
     }
 
     void PlacementsRenderer::Pimpl::CommitPrepared(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::Metal::DeviceContext& context,
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
     {
             // Draw the opaque & translucent parts of models that were previously prepared
         {
             auto capture = _cache->GetSharedStateSet().CaptureState(
-                *context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+                context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
             ModelRenderer::RenderPrepared(
-                RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
+                RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
                 _cache->GetSharedStateSet(), _preparedRenders, delayStep);
         }
 
         if (delayStep == RenderCore::Assets::DelayStep::OpaqueRender) {
             if (_imposters)
-                _imposters->Render(*context, parserContext, techniqueIndex);
+                _imposters->Render(context, parserContext, techniqueIndex);
         }
     }
 
@@ -812,7 +812,7 @@ namespace SceneEngine
     }
 
     void PlacementsRenderer::Pimpl::Render(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::Metal::DeviceContext& context,
         RenderCore::Techniques::ParsingContext& parserContext,
         const Placements& placements,
         IteratorRange<unsigned*> objects,
@@ -944,7 +944,7 @@ namespace SceneEngine
     };
 
     void PlacementsRenderer::Render(
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::Metal::DeviceContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
         const PlacementCellSet& cellSet)
@@ -998,7 +998,7 @@ namespace SceneEngine
     }
 
     void PlacementsRenderer::Render(
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::Metal::DeviceContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext,
         PreparedScene& preparedScene,
         unsigned techniqueIndex,
@@ -1024,7 +1024,7 @@ namespace SceneEngine
     }
 
     void PlacementsRenderer::CommitTransparent(
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::Metal::DeviceContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
     {
@@ -1100,7 +1100,7 @@ namespace SceneEngine
     }
 
     void PlacementsRenderer::RenderFiltered(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::Metal::DeviceContext& context,
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
         const PlacementCellSet& cellSet,

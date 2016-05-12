@@ -183,7 +183,7 @@ namespace SceneEngine
         };
 
     void DrawPendingResources(   
-        Metal::DeviceContext* context, 
+        RenderCore::IThreadContext& context, 
         SceneEngine::LightingParserContext& parserContext, 
         RenderOverlays::Font* font)
     {
@@ -192,7 +192,8 @@ namespace SceneEngine
             &&  !parserContext._stringHelpers->_errorString[0])
             return;
 
-        context->Bind(Techniques::CommonResources()._blendStraightAlpha);
+        auto metalContext = Metal::DeviceContext::Get(context);
+        metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
 
         using namespace RenderOverlays;
         TextStyle   style(*font); 
@@ -205,7 +206,7 @@ namespace SceneEngine
             UCS4Buffer<64> text("Pending assets:");
             Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
             style.Draw(
-                context, alignedPosition[0], alignedPosition[1], text, -1,
+                metalContext.get(), alignedPosition[0], alignedPosition[1], text, -1,
                 0.f, 1.f, 0.f, 0.f, 0xffff7f7f, UI_TEXT_STATE_NORMAL, true, nullptr);
             textPosition[1] += lineHeight;
 
@@ -219,7 +220,7 @@ namespace SceneEngine
                 UCS4Buffer<256> text2(start, i);
                 Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text2);
                 style.Draw(
-                    context, alignedPosition[0], alignedPosition[1], text2, -1,
+                    metalContext.get(), alignedPosition[0], alignedPosition[1], text2, -1,
                     0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
                 textPosition[1] += lineHeight;
             }
@@ -229,7 +230,7 @@ namespace SceneEngine
             UCS4Buffer<64> text("Invalid assets:");
             Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
             style.Draw(
-                context, alignedPosition[0], alignedPosition[1], text, -1,
+                metalContext.get(), alignedPosition[0], alignedPosition[1], text, -1,
                 0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
             textPosition[1] += lineHeight;
 
@@ -243,7 +244,7 @@ namespace SceneEngine
                 UCS4Buffer<256> text2(start, i);
                 Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text2);
                 style.Draw(
-                    context, alignedPosition[0], alignedPosition[1], text2, -1,
+                    metalContext.get(), alignedPosition[0], alignedPosition[1], text2, -1,
                     0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
                 textPosition[1] += lineHeight;
             }
@@ -260,7 +261,7 @@ namespace SceneEngine
                 UCS4Buffer<512> text2(start, i);
                 Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text2);
                 style.Draw(
-                    context, alignedPosition[0], alignedPosition[1], text2, -1,
+                    metalContext.get(), alignedPosition[0], alignedPosition[1], text2, -1,
                     0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
                 textPosition[1] += lineHeight;
             }
@@ -268,12 +269,13 @@ namespace SceneEngine
     }
 
     void DrawQuickMetrics(   
-        Metal::DeviceContext* context, 
+        RenderCore::IThreadContext& context, 
         SceneEngine::LightingParserContext& parserContext, 
         RenderOverlays::Font* font)
     {
         if (parserContext._stringHelpers->_quickMetrics[0]) {
-            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
+            auto metalContext = Metal::DeviceContext::Get(context);
+            metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
 
             using namespace RenderOverlays;
             TextStyle style(*font);
@@ -292,7 +294,7 @@ namespace SceneEngine
                 UCS4Buffer<512> text2(start, i);
                 Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text2);
                 style.Draw(
-                    context, alignedPosition[0], alignedPosition[1], text2, -1,
+                    metalContext.get(), alignedPosition[0], alignedPosition[1], text2, -1,
                     0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
                 textPosition[1] += lineHeight;
             }

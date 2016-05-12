@@ -19,7 +19,7 @@ namespace Sample
     class BasicSceneParser : public SceneEngine::ISceneParser
     {
     public:
-        void PrepareFrame(RenderCore::Metal::DeviceContext* context);
+        void PrepareFrame(RenderCore::IThreadContext& context);
         void Update(float deltaTime);
 
         typedef SceneEngine::ShadowProjectionDesc   ShadowProjectionDesc;

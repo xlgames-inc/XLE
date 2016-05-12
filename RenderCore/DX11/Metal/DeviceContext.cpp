@@ -327,8 +327,9 @@ namespace RenderCore { namespace Metal_DX11
         XlZeroMemory(_currentSRVs);
         _annotations = QueryInterfaceCast<ID3D::UserDefinedAnnotation>(_underlying);
 
-		ID3D::Device* dev = nullptr;
-		_underlying->GetDevice(&dev);
+		ID3D::Device* devRaw = nullptr;
+		_underlying->GetDevice(&devRaw);
+        intrusive_ptr<ID3D::Device> dev = moveptr(devRaw);
 		if (dev) _factory = &GetObjectFactory(*dev);
     }
 
@@ -385,6 +386,21 @@ namespace RenderCore { namespace Metal_DX11
                 metalContext->GetUnderlying()->Flush();
             }
         }
+    }
+
+    DeviceContext DeviceContext::Fork()
+    {
+        ID3D::Device* devRaw = nullptr;
+		_underlying->GetDevice(&devRaw);
+        intrusive_ptr<ID3D::Device> dev = moveptr(devRaw);
+
+        ID3D::DeviceContext* rawContext = nullptr;
+        auto hresult = dev->CreateDeferredContext(0, &rawContext);
+        intrusive_ptr<ID3D::DeviceContext> context = moveptr(rawContext);
+        if (!SUCCEEDED(hresult) || !context) 
+            Throw(::Exceptions::BasicLabel("Failure while forking device context"));
+
+        return std::move(context);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

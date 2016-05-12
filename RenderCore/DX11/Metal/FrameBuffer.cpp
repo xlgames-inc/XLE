@@ -27,76 +27,58 @@ namespace RenderCore { namespace Metal_DX11
         return ~0u;
     }
 
-    FrameBufferViews::FrameBufferViews(
-        std::vector<RenderTargetView>&& rtvs,
-        std::vector<DepthStencilView>&& dsvs)
-    : _rtvs(std::move(rtvs)), _dsvs(std::move(dsvs))
-    {}
-    FrameBufferViews::FrameBufferViews() {}
-    FrameBufferViews::~FrameBufferViews() {}
-
-    const RenderTargetView& FrameBufferViews::GetRTV(unsigned index) const
-    {
-        if (index >= _rtvs.size())
-            Throw(::Exceptions::BasicLabel("Invalid attachment index passed to FrameBuffer::GetRTV()"));
-        return _rtvs[index];
-    }
-
-    const DepthStencilView& FrameBufferViews::GetDSV(unsigned index) const
-    {
-        if (index >= _dsvs.size())
-            Throw(::Exceptions::BasicLabel("Invalid attachment index passed to FrameBuffer::GetDSV()"));
-        return _dsvs[index];
-    }
-
-
     FrameBuffer::FrameBuffer(
         const ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
-        const FrameBufferViews& views)
-    : _views(views)
+        const INamedResources& namedResources)
     {
         // We must create the frame buffer, including all resources and views required.
         // Here, some resources can come from the presentation chain. But other resources will
         // be created an attached to this object.
         auto attachments = fbDesc.GetAttachments();
-        // _rtvs.reserve(attachments.size());
-        // _dsvs.reserve(attachments.size());
-        // 
-        // for (const auto&a:attachments) {
-        //     const auto* existingRTV = namedResources.GetRTV(a._viewName, a._resourceName, a._window);
-        //     const auto* existingDSV = namedResources.GetDSV(a._viewName, a._resourceName, a._window);
-        //     _rtvs.push_back(existingRTV ? *existingRTV : RenderTargetView());
-        //     _dsvs.push_back(existingDSV ? *existingDSV : DepthStencilView());
-        // }
+        auto subpasses = fbDesc.GetSubpasses();
+        
+        assert(attachments.size() < s_maxAttachments);
+        for (unsigned c=0; c<(unsigned)attachments.size(); ++c) {
+            const auto& a = attachments[c];
+            const auto* existingRTV = namedResources.GetRTV(a._viewName, a._resourceName, a._window);
+            const auto* existingDSV = namedResources.GetDSV(a._viewName, a._resourceName, a._window);
+            _rtvs[c] = existingRTV ? *existingRTV : RenderTargetView();
+            _dsvs[c] = existingDSV ? *existingDSV : DepthStencilView();
+        }
+        _attachmentCount = (unsigned)attachments.size();
 
-        _subpasses.reserve(fbDesc.GetSubpasses().size());
-        for (const auto&s:fbDesc.GetSubpasses()) {
-            Subpass sp;
-            sp._rtvCount = std::min((unsigned)s._output.size(), s_maxRTVS);
+        assert(subpasses.size() < s_maxSubpasses);
+        for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
+            const auto& s = subpasses[c];
+            auto& sp = _subpasses[c];;
+            sp._rtvCount = std::min((unsigned)s._output.size(), s_maxMRTs);
             for (unsigned r=0; r<sp._rtvCount; ++r)
                 sp._rtvs[r] = FindAttachmentIndex(attachments, s._output[r]);
-            for (unsigned r=sp._rtvCount; r<s_maxRTVS; ++r) sp._rtvs[r] = ~0u;
+            for (unsigned r=sp._rtvCount; r<s_maxMRTs; ++r) sp._rtvs[r] = ~0u;
             sp._dsv = (s._depthStencil != SubpassDesc::Unused) ? FindAttachmentIndex(attachments, s._depthStencil) : ~0u;
-            _subpasses.push_back(sp);
         }
+        _subpassCount = (unsigned)subpasses.size();
     }
 
     void FrameBuffer::BindSubpass(DeviceContext& context, unsigned subpassIndex) const
     {
-        if (subpassIndex >= _subpasses.size())
+        if (subpassIndex >= _subpassCount)
             Throw(::Exceptions::BasicLabel("Attempting to set invalid subpass"));
 
         const auto& s = _subpasses[subpassIndex];
-        ID3D::RenderTargetView* bindRTVs[s_maxRTVS];
+        ID3D::RenderTargetView* bindRTVs[s_maxMRTs];
         ID3D::DepthStencilView* bindDSV = nullptr;
         for (unsigned c=0; c<s._rtvCount; ++c)
-            bindRTVs[c] = _views.GetRTV(s._rtvs[c]).GetUnderlying();
+            bindRTVs[c] = _rtvs[s._rtvs[c]].GetUnderlying();
         if (s._dsv != ~0u)
-            bindDSV = _views.GetDSV(s._dsv).GetUnderlying();
+            bindDSV = _dsvs[s._dsv].GetUnderlying();
 
         context.GetUnderlying()->OMSetRenderTargets(s._rtvCount, bindRTVs, bindDSV);
     }
+
+    RenderTargetView& FrameBuffer::GetRTV(unsigned index) { assert(index < _attachmentCount); return _rtvs[index]; }
+    DepthStencilView& FrameBuffer::GetDSV(unsigned index) { assert(index < _attachmentCount); return _dsvs[index]; }
     
 	FrameBuffer::FrameBuffer() {}
     FrameBuffer::~FrameBuffer() {}
@@ -121,12 +103,12 @@ namespace RenderCore { namespace Metal_DX11
                 ||  a._loadFromPreviousPhase == AttachmentViewDesc::LoadStore::Clear_RetainStencil
                 ||  a._loadFromPreviousPhase == AttachmentViewDesc::LoadStore::Clear_ClearStencil) {
 
-                auto& rtv = frameBuffer.GetViews().GetRTV(attachmentIndex);
+                auto& rtv = frameBuffer.GetRTV(attachmentIndex);
                 if (rtv.IsGood()) {
                     const auto& values = clearValues[attachmentIndex]._float;
                     context.Clear(rtv, {values[0], values[1], values[2], values[3]});
                 } else {
-                    auto& dsv = frameBuffer.GetViews().GetDSV(attachmentIndex);
+                    auto& dsv = frameBuffer.GetDSV(attachmentIndex);
                     if (dsv.IsGood()) {
                         bool clearStencil = a._loadFromPreviousPhase == AttachmentViewDesc::LoadStore::Clear_ClearStencil;
                         const auto& values = clearValues[attachmentIndex]._depthStencil;
@@ -137,7 +119,7 @@ namespace RenderCore { namespace Metal_DX11
                 }
             } else if ( a._loadFromPreviousPhase == AttachmentViewDesc::LoadStore::DontCare_ClearStencil
                     ||  a._loadFromPreviousPhase == AttachmentViewDesc::LoadStore::Retain_ClearStencil) {
-                auto& dsv = frameBuffer.GetViews().GetDSV(attachmentIndex);
+                auto& dsv = frameBuffer.GetDSV(attachmentIndex);
                 if (dsv.IsGood()) {
                     const auto& values = clearValues[attachmentIndex]._depthStencil;
                     context.Clear(dsv, DeviceContext::ClearFilter::Stencil, values._depth, values._stencil);
@@ -153,7 +135,7 @@ namespace RenderCore { namespace Metal_DX11
         DeviceContext& context,
         FrameBuffer& frameBuffer)
     {
-        // queue up the next render targets
+        // Queue up the next render targets
         frameBuffer.BindSubpass(context, ++s_activeSubpass);
     }
 
@@ -165,7 +147,6 @@ namespace RenderCore { namespace Metal_DX11
         context.Unbind<RenderTargetView>();
     }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class FrameBufferCache::Pimpl 
@@ -176,13 +157,12 @@ namespace RenderCore { namespace Metal_DX11
     std::shared_ptr<FrameBuffer> FrameBufferCache::BuildFrameBuffer(
 		const ObjectFactory& factory,
 		const FrameBufferDesc& desc,
-        const FrameBufferViews& views,
         const FrameBufferProperties& props,
         IteratorRange<const AttachmentDesc*> attachmentResources,
-        const TextureSamples& samples,
+        const INamedResources& namedResources,
         uint64 hashName)
     {
-        return std::make_shared<FrameBuffer>(factory, desc, views);
+        return std::make_shared<FrameBuffer>(factory, desc, namedResources);
     }
 
     FrameBufferCache::FrameBufferCache()

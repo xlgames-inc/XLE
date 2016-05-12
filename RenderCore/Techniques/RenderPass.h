@@ -33,17 +33,15 @@ namespace RenderCore { namespace Techniques
     public:
         void DefineAttachments(IteratorRange<const AttachmentDesc*> attachments);
 
-        auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal::ShaderResourceView*;
-        auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal::RenderTargetView*;
-        auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const Metal::DepthStencilView*;
+        auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::ShaderResourceView*;
+        auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::RenderTargetView*;
+        auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::DepthStencilView*;
 
-        void Bind(TextureSamples samples);
         void Bind(FrameBufferProperties props);
         void Bind(AttachmentName, const ResourcePtr& resource);
         void Unbind(AttachmentName);
 
         const FrameBufferProperties& GetFrameBufferProperties() const;
-        TextureSamples GetSamples() const;
         IteratorRange<const AttachmentDesc*> GetDescriptions() const;
 
         NamedResources();
@@ -85,14 +83,12 @@ namespace RenderCore { namespace Techniques
     public:
         void NextSubpass();
         void End();
-        const Metal::RenderTargetView& GetAttachment(unsigned index);
 
         RenderPassInstance(
             Metal::DeviceContext& context,
             const FrameBufferDesc& layout,
             uint64 hashName,
             NamedResources& namedResources,
-            Metal::FrameBufferCache& cache,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
 
         RenderPassInstance(
@@ -100,7 +96,6 @@ namespace RenderCore { namespace Techniques
             const FrameBufferDesc& layout,
             uint64 hashName,
             NamedResources& namedResources,
-            Metal::FrameBufferCache& cache,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
         ~RenderPassInstance();
 

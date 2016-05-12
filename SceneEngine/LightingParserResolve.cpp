@@ -390,7 +390,7 @@ namespace SceneEngine
             Techniques::RenderPassInstance rpi(
                 metalContext,
                 resolveLighting,
-                0u, parserContext.GetNamedResources(), mainTargets.GetFrameBufferCache(),
+                0u, parserContext.GetNamedResources(),
                 Techniques::RenderPassBeginDesc{{MakeClearValue(1.f, 0x0)}});
 
             const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;

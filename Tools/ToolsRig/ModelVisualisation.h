@@ -24,6 +24,7 @@ namespace RenderCore { namespace Techniques
 {
     class TechniqueContext;
     class CameraDesc;
+    class ParsingContext;
 }}
 
 namespace SceneEngine { class ISceneParser; class IntersectionTestScene; }
@@ -121,11 +122,11 @@ namespace ToolsRig
         virtual std::shared_ptr<IInputListener> GetInputListener();
 
         virtual void RenderToScene(
-            RenderCore::IThreadContext* context, 
+            RenderCore::IThreadContext& context, 
             SceneEngine::LightingParserContext& parserContext); 
         virtual void RenderWidgets(
-            RenderCore::IThreadContext* context, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc);
+            RenderCore::IThreadContext& context, 
+            RenderCore::Techniques::ParsingContext& parserContext);
         virtual void SetActivationState(bool newState);
 
         VisualisationOverlay(

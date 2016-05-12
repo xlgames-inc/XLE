@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../RenderCore/Metal/Forward.h"
+#include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../Math/Vector.h"
 
 namespace ToolsRig
@@ -24,7 +25,7 @@ namespace ToolsRig
     };
 
     void ExecuteHighlightByStencil(
-        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::IThreadContext& threadContext,
         RenderCore::Metal::ShaderResourceView& inputStencil,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted);
@@ -44,17 +45,11 @@ namespace ToolsRig
     class BinaryHighlight
     {
     public:
-        void FinishWithOutline(
-            RenderCore::Metal::DeviceContext& metalContext,
-            Float3 outlineColor);
-        void FinishWithOutlineAndOverlay(
-            RenderCore::Metal::DeviceContext& metalContext, 
-            Float3 outlineColor, unsigned overlayColor);
-        void FinishWithShadow(
-            RenderCore::Metal::DeviceContext& metalContext, 
-            Float4 shadowColor);
+        void FinishWithOutline(RenderCore::IThreadContext& threadContext, Float3 outlineColor);
+        void FinishWithOutlineAndOverlay(RenderCore::IThreadContext& threadContext, Float3 outlineColor, unsigned overlayColor);
+        void FinishWithShadow(RenderCore::IThreadContext& threadContext, Float4 shadowColor);
         
-        BinaryHighlight(RenderCore::Metal::DeviceContext& metalContext);
+        BinaryHighlight(RenderCore::IThreadContext& threadContext);
         ~BinaryHighlight();
     protected:
         class Pimpl;

@@ -90,7 +90,7 @@ namespace SceneEngine
             //  We need to invoke the render for the given object
             //  now. Afterwards we can query the buffers for the result
         placementsRenderer.RenderFiltered(
-            &metalContext, stateContext.GetParserContext(), RenderCore::Techniques::TechniqueIndex::RayTest,
+            metalContext, stateContext.GetParserContext(), RenderCore::Techniques::TechniqueIndex::RayTest,
             cellSet, &object, &object+1);
         return stateContext.GetResults();
     }

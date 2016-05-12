@@ -43,7 +43,6 @@ namespace SceneEngine
         virtual unsigned                        GetGBufferType() const = 0;
         virtual RenderCore::TextureSamples      GetSampling() const = 0;
         virtual const RenderingQualitySettings& GetQualitySettings() const = 0;
-        virtual RenderCore::Metal::FrameBufferCache& GetFrameBufferCache() = 0;
         virtual VectorPattern<unsigned, 2>      GetDimensions() const = 0;
 
         virtual const SRV&      GetSRV(Name) const = 0;

@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #define _CRT_SECURE_NO_WARNINGS
-// #define SELECT_VULKAN
+#define SELECT_VULKAN
 
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/MainInputHandler.h"
@@ -645,7 +645,7 @@ namespace Sample
 
             metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, (float)presDims[0], (float)presDims[1]));
 
-            auto beginInfo = RenderPassBeginDesc({ClearValue(), MakeClearValue(1.f, 0)});
+            auto beginInfo = Techniques::RenderPassBeginDesc({ClearValue(), MakeClearValue(1.f, 0)});
             {
                 Techniques::RenderPassInstance rpi(
                     *metalContext, fbLayout,
@@ -853,7 +853,7 @@ namespace Sample
                 //     {RenderCore::MakeClearValue(.5f, .3f, .1f, 1.f), RenderCore::MakeClearValue(1.f, 0)});
 
                 // RunShaderTest(*context);
-                RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext, namedResources);
+                RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext, &namedResources);
                 SetupLightingParser(*context, parserContext);
                 // RunModelTest(*context, parserContext);
                 // context->EndRenderPass();

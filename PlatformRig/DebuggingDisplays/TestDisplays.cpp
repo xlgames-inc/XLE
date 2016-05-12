@@ -726,11 +726,10 @@ namespace PlatformRig { namespace Overlays
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../BufferUploads/IBufferUploads.h"
-#include "../../BufferUploads/ResourceLocator.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../Assets/Assets.h"
 
@@ -747,7 +746,6 @@ namespace PlatformRig { namespace Overlays
         using SRV = Metal::ShaderResourceView;
         using RTV = Metal::RenderTargetView;
 
-        ResLocator _buffer;
         RTV _bufferRTV;
         SRV _bufferSRV;
         Metal::ViewportDesc _viewport;
@@ -761,12 +759,14 @@ namespace PlatformRig { namespace Overlays
 
     CRTBox::CRTBox(const Desc&)
     {
-        auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
-        _buffer = bufferUploads.Transaction_Immediate(
-            CreateDesc(BindFlag::RenderTarget|BindFlag::ShaderResource, 0, GPUAccess::Read|GPUAccess::Write,
+        auto& factory = Metal::GetObjectFactory();
+        auto buffer = Metal::CreateResource(
+            factory, 
+            CreateDesc(
+                BindFlag::RenderTarget|BindFlag::ShaderResource, 0, GPUAccess::Read|GPUAccess::Write,
                 TextureDesc::Plain2D(64, 64, Format::R8_UNORM), "ConsRasterTest"));
-        _bufferRTV = RTV(_buffer->ShareUnderlying());
-        _bufferSRV = SRV(_buffer->ShareUnderlying());
+        _bufferRTV = RTV(factory, buffer);
+        _bufferSRV = SRV(factory, buffer);
         _viewport = Metal::ViewportDesc(0.f, 0.f, float(width), float(height), 0.f, 1.f);
     }
 
@@ -778,25 +778,20 @@ namespace PlatformRig { namespace Overlays
     {
         auto& box = Techniques::FindCachedBox2<CRTBox>();
         auto metalContext = Metal::DeviceContext::Get(*context->GetDeviceContext());
-        SceneEngine::SavedTargets savedTargets(*metalContext);
 
         //
-        //  we're going to test the conversative rasterization geometry shader
+        //  We're going to test the conversative rasterization geometry shader
         //  to do this, we need to render to a low-res offscreen texture. Then
         //  we blow that up to fill the screen.
         //
+        //  Let's do this in a forked command list, so we don't have to save 
+        //  and restore state.
+        //
 
         auto& commonResources = Techniques::CommonResources();
-        metalContext->Bind(commonResources._blendOpaque);
-        metalContext->Bind(commonResources._dssDisable);
-        metalContext->Bind(commonResources._defaultRasterizer);
-        // metalContext->Bind(commonResources._cullDisable);
-        metalContext->Bind(Metal::Topology::TriangleList);
-
         Metal::ViewportDesc mainViewport(*metalContext);
         const float scale = XlFloor((mainViewport.Height - 150.f) / box._viewport.Height);
         const Float2 base(5.f, 100.f);
-
         Float2 triPoints[] = 
         {
             Float2(3.f, 3.f),
@@ -818,50 +813,68 @@ namespace PlatformRig { namespace Overlays
             triPoints[1][1] = XlFloor(triPoints[1][1]*10.f) / 10.f;
         }
 
-        TRY
         {
-            metalContext->Clear(box._bufferRTV, {0.f, 0.f, 0.f, 0.f});
-            metalContext->Bind(MakeResourceList(box._bufferRTV), nullptr);
-            metalContext->Bind(box._viewport);
+            auto forkedContext = metalContext->Fork();
 
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2d.vsh:P2C:vs_*",
-                "game/xleres/shadowgen/consraster.sh:gs_conservativeRasterization:gs_*",
-                "game/xleres/basic.psh:P:ps_*",
-                "");
+            forkedContext.BeginCommandList();
+            forkedContext.Bind(commonResources._blendOpaque);
+            forkedContext.Bind(commonResources._dssDisable);
+            forkedContext.Bind(commonResources._defaultRasterizer);
+            forkedContext.Bind(Metal::Topology::TriangleList);
+
+            forkedContext.Bind(mainViewport);
             
-            class Vertex
+            TRY
             {
-            public:
-                Float2 p; unsigned col;
-            } 
-            vertices[3] = 
-            {
-                { triPoints[0], 0xffff0000 },
-                { triPoints[1], 0xff0000ff },
-                { triPoints[2], 0xff00ff00 }
-            };
-            Metal::VertexBuffer vb(vertices, sizeof(vertices));
-            metalContext->Bind(MakeResourceList(vb), sizeof(Vertex), 0);
-            Metal::BoundInputLayout inputLayout(GlobalInputLayouts::P2C, shader);
-            metalContext->Bind(inputLayout);
+                forkedContext.Clear(box._bufferRTV, {0.f, 0.f, 0.f, 0.f});
+                forkedContext.Bind(MakeResourceList(box._bufferRTV), nullptr);
+                forkedContext.Bind(box._viewport);
 
-            Float4 recipViewport(1.f / box._viewport.Width, 1.f / box._viewport.Height, 0.f, 0.f);
-            SharedPkt constants[] = { MakeSharedPkt(recipViewport) };
-
-            Metal::BoundUniforms uniforms(shader);
-            uniforms.BindConstantBuffers(1, {"ReciprocalViewportDimensionsCB"});
-            uniforms.Apply(
-                *metalContext, context->GetGlobalUniformsStream(),
-                Metal::UniformsStream(constants));
+                auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    "game/xleres/basic2d.vsh:P2C:vs_*",
+                    "game/xleres/shadowgen/consraster.sh:gs_conservativeRasterization:gs_*",
+                    "game/xleres/basic.psh:P:ps_*",
+                    "");
             
-            metalContext->Bind(shader);
-            metalContext->Draw(3);
+                class Vertex
+                {
+                public:
+                    Float2 p; unsigned col;
+                } 
+                vertices[3] = 
+                {
+                    { triPoints[0], 0xffff0000 },
+                    { triPoints[1], 0xff0000ff },
+                    { triPoints[2], 0xff00ff00 }
+                };
+                Metal::VertexBuffer vb(vertices, sizeof(vertices));
+                forkedContext.Bind(MakeResourceList(vb), sizeof(Vertex), 0);
+                Metal::BoundInputLayout inputLayout(GlobalInputLayouts::P2C, shader);
+                forkedContext.Bind(inputLayout);
 
-        } CATCH (...) {
-        } CATCH_END
+                Float4 recipViewport(1.f / box._viewport.Width, 1.f / box._viewport.Height, 0.f, 0.f);
+                SharedPkt constants[] = { MakeSharedPkt(recipViewport) };
 
-        savedTargets.ResetToOldTargets(*metalContext);
+                Metal::BoundUniforms uniforms(shader);
+                uniforms.BindConstantBuffers(1, {"ReciprocalViewportDimensionsCB"});
+                uniforms.Apply(
+                    forkedContext, context->GetGlobalUniformsStream(),
+                    Metal::UniformsStream(constants));
+            
+                forkedContext.Bind(shader);
+                forkedContext.Draw(3);
+
+            } CATCH (...) {
+            } CATCH_END
+
+            // note --  We actually want to execute the forked command list and some point
+            //          earlier than main context is executable -- and insert some synchronization
+            //          tests to ensure that it is ready by the time we get to this point.
+            //      we can keep a list of "tributary" command lists in the main device context...?
+            metalContext->CommitCommandList(
+                *forkedContext.ResolveCommandList(),
+                true);
+        }
 
         // now render this texture onto the main render target
         TRY
@@ -931,8 +944,7 @@ namespace PlatformRig { namespace Overlays
         metalContext->Bind(commonResources._blendStraightAlpha);
     }
 
-    bool    ConservativeRasterTest::ProcessInput(
-        InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    ConservativeRasterTest::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
     {
         return false;
     }

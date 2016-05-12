@@ -204,9 +204,18 @@ namespace RenderCore { namespace Metal_DX11
 
 		ObjectFactory&	GetFactory() { return *_factory; }
 
+        DeviceContext Fork();
+
         DeviceContext(ID3D::DeviceContext* context);
         DeviceContext(intrusive_ptr<ID3D::DeviceContext>&& context);
         ~DeviceContext();
+
+        #if COMPILER_DEFAULT_IMPLICIT_OPERATORS == 1
+            DeviceContext(const DeviceContext&) = delete;
+            DeviceContext& operator=(const DeviceContext&) = delete;
+            DeviceContext(DeviceContext&&) = default;
+            DeviceContext& operator=(DeviceContext&&) = default;
+        #endif
     private:
         intrusive_ptr<ID3D::DeviceContext> _underlying;
         intrusive_ptr<ID3D::UserDefinedAnnotation> _annotations;

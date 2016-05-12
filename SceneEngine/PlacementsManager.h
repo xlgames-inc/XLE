@@ -88,18 +88,18 @@ namespace SceneEngine
     public:
             // -------------- Rendering --------------
         void Render(
-            RenderCore::Metal::DeviceContext* context,
+            RenderCore::Metal::DeviceContext& context,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
             const PlacementCellSet& cellSet);
         void Render(
-            RenderCore::Metal::DeviceContext* context,
+            RenderCore::Metal::DeviceContext& context,
             RenderCore::Techniques::ParsingContext& parserContext,
             PreparedScene& preparedScene,
             unsigned techniqueIndex,
             const PlacementCellSet& cellSet);
         void CommitTransparent(
-            RenderCore::Metal::DeviceContext* context,
+            RenderCore::Metal::DeviceContext& context,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep);
         bool HasPrepared(RenderCore::Assets::DelayStep delayStep);
@@ -113,7 +113,7 @@ namespace SceneEngine
             // -------------- Render filtered --------------
         using DrawCallPredicate = std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>;
         void RenderFiltered(
-            RenderCore::Metal::DeviceContext* context,
+            RenderCore::Metal::DeviceContext& context,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
             const PlacementCellSet& cellSet,

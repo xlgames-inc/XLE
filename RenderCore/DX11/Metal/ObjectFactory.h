@@ -85,6 +85,9 @@ namespace RenderCore { namespace Metal_DX11
 
 		ObjectFactory(ID3D::Device& dev);
         ~ObjectFactory();
+
+        ObjectFactory& operator=(const ObjectFactory&) = delete;
+        ObjectFactory(const ObjectFactory&) = delete;
     private:
         ID3D::Device* _device;
 		mutable Threading::Mutex _creationLock;

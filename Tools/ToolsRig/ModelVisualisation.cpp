@@ -22,7 +22,8 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Metal/ObjectFactory.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
+// #include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/ModelUtils.h"
 #include "../../RenderCore/Format.h"
@@ -36,10 +37,10 @@
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
 
-#include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Metal/Shader.h"
+// #include "../../RenderCore/Metal/DeviceContext.h"
+// #include "../../RenderCore/Metal/Shader.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
-#include "../../RenderCore/DX11/Metal/DX11Utils.h"
+// #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
 #include <map>
 
@@ -144,7 +145,7 @@ namespace ToolsRig
                             if (fillInStencilInfo) {
                                 // hack -- we just adjust the depth stencil state to enable the stencil buffer
                                 //          no way to do this currently without dropping back to low level API
-                                #if GFXAPI_ACTIVE == GFXAPI_DX11
+                                #if 0 // platformtemp // GFXAPI_ACTIVE == GFXAPI_DX11
                                     Metal::DepthStencilState dss(*metalContext);
                                     D3D11_DEPTH_STENCIL_DESC desc;
                                     dss.GetUnderlying()->GetDesc(&desc);
@@ -344,10 +345,57 @@ namespace ToolsRig
     };
     
     void VisualisationOverlay::RenderToScene(
-        RenderCore::IThreadContext* context, 
+        RenderCore::IThreadContext& context, 
         SceneEngine::LightingParserContext& parserContext)
     {
-            //  Draw an overlay over the scene, 
+        if (_pimpl->_settings->_drawWireframe) {
+
+            CATCH_ASSETS_BEGIN
+                using namespace RenderCore;
+                auto metalContext = Metal::DeviceContext::Get(context);
+
+                auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
+                assert(model._renderer && model._sharedStateSet);
+
+                RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
+                if (model._sharedStateSet)
+                    captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+
+                const auto techniqueIndex = RenderCore::Techniques::TechniqueIndex::VisWireframe;
+
+                RenderWithEmbeddedSkeleton(
+                    RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
+                    *model._renderer, *model._sharedStateSet, model._model);
+            CATCH_ASSETS_END(parserContext)
+        }
+
+        if (_pimpl->_settings->_drawNormals) {
+
+            CATCH_ASSETS_BEGIN
+                using namespace RenderCore;
+                auto metalContext = Metal::DeviceContext::Get(context);
+
+                auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
+                assert(model._renderer && model._sharedStateSet);
+
+                RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
+                if (model._sharedStateSet)
+                    captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+
+                const auto techniqueIndex = RenderCore::Techniques::TechniqueIndex::VisNormals;
+
+                RenderWithEmbeddedSkeleton(
+                    RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
+                    *model._renderer, *model._sharedStateSet, model._model);
+            CATCH_ASSETS_END(parserContext)
+        }
+    }
+
+    void VisualisationOverlay::RenderWidgets(
+        RenderCore::IThreadContext& threadContext, 
+        RenderCore::Techniques::ParsingContext& parserContext)
+    {
+        //  Draw an overlay over the scene, 
             //  containing debugging / profiling information
         if (_pimpl->_settings->_colourByMaterial) {
 
@@ -357,7 +405,7 @@ namespace ToolsRig
 
             CATCH_ASSETS_BEGIN
                 using namespace RenderCore;
-                auto metalContext = Metal::DeviceContext::Get(*context);
+                // auto metalContext = Metal::DeviceContext::Get(*context);
 
                 HighlightByStencilSettings settings;
 
@@ -379,68 +427,21 @@ namespace ToolsRig
                     settings._highlightedMarker = UInt4(unsigned(guid), unsigned(guid), unsigned(guid), unsigned(guid));
                 }
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11		// platformtemp
-                SceneEngine::SavedTargets savedTargets(*metalContext);
-
-                Metal::ShaderResourceView depthSrv;
-                if (savedTargets.GetDepthStencilView())
-                    depthSrv = Metal::ShaderResourceView(
-                        Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView()).get(), 
-						TextureViewWindow{{TextureViewWindow::Aspect::Stencil}});
-
-                metalContext->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
-                ExecuteHighlightByStencil(*metalContext, depthSrv, settings, _pimpl->_settings->_colourByMaterial==2);
-                savedTargets.ResetToOldTargets(*metalContext);
-#endif
-            CATCH_ASSETS_END(parserContext)
-        }
-
-        if (_pimpl->_settings->_drawWireframe) {
-
-            CATCH_ASSETS_BEGIN
-                using namespace RenderCore;
-                auto metalContext = Metal::DeviceContext::Get(*context);
-
-                auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
-                assert(model._renderer && model._sharedStateSet);
-
-                RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
-                if (model._sharedStateSet)
-                    captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
-
-                const auto techniqueIndex = RenderCore::Techniques::TechniqueIndex::VisWireframe;
-
-                RenderWithEmbeddedSkeleton(
-                    RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
-                    *model._renderer, *model._sharedStateSet, model._model);
-            CATCH_ASSETS_END(parserContext)
-        }
-
-        if (_pimpl->_settings->_drawNormals) {
-
-            CATCH_ASSETS_BEGIN
-                using namespace RenderCore;
-                auto metalContext = Metal::DeviceContext::Get(*context);
-
-                auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
-                assert(model._renderer && model._sharedStateSet);
-
-                RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
-                if (model._sharedStateSet)
-                    captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
-
-                const auto techniqueIndex = RenderCore::Techniques::TechniqueIndex::VisNormals;
-
-                RenderWithEmbeddedSkeleton(
-                    RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
-                    *model._renderer, *model._sharedStateSet, model._model);
+                auto depthSrv = parserContext.GetNamedResources().GetSRV(
+                    5u, 1u,
+                    TextureViewWindow(
+                        {TextureViewWindow::Aspect::Stencil},
+                        TextureDesc::Dimensionality::Undefined, TextureViewWindow::All, TextureViewWindow::All,
+                        TextureViewWindow::Flags::JustStencil));
+                if (depthSrv) {
+                    Techniques::RenderPassInstance rpi(
+                        threadContext, FrameBufferDesc({SubpassDesc({0u})}),
+                        0u, parserContext.GetNamedResources());
+                    ExecuteHighlightByStencil(threadContext, *depthSrv, settings, _pimpl->_settings->_colourByMaterial==2);
+                }
             CATCH_ASSETS_END(parserContext)
         }
     }
-
-    void VisualisationOverlay::RenderWidgets(
-        RenderCore::IThreadContext*, const RenderCore::Techniques::ProjectionDesc&)
-    {}
 
     auto VisualisationOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
     { return nullptr; }

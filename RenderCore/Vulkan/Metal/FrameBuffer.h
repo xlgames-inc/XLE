@@ -21,43 +21,31 @@ namespace RenderCore { namespace Metal_Vulkan
     class TextureView;
     class DeviceContext;
     
-    class FrameBufferViews
+    class INamedResources
     {
     public:
-        const RenderTargetView& GetRTV(unsigned index) const;
-        const DepthStencilView& GetDSV(unsigned index) const;
-
-        FrameBufferViews(
-            std::vector<RenderTargetView>&& rtvs,
-            std::vector<DepthStencilView>&& dsvs);
-        FrameBufferViews();
-        ~FrameBufferViews();
-    private:
-        std::vector<RenderTargetView>   _rtvs;
-        std::vector<DepthStencilView>   _dsvs;
-        std::vector<VkImageView>        _rawViews;
-
-        friend class FrameBuffer;
+        virtual auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> ShaderResourceView* = 0;
+        virtual auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> RenderTargetView* = 0;
+        virtual auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> DepthStencilView* = 0;
+        ~INamedResources();
     };
 
     class FrameBuffer
 	{
 	public:
 		VkFramebuffer GetUnderlying() const { return _underlying.get(); }
-        const FrameBufferViews& GetViews() const { return _views; }
         VkRenderPass GetLayout() const { return _layout; }
 
 		FrameBuffer(
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
-			const FrameBufferViews& views,
+            const FrameBufferProperties& props,
             VkRenderPass layout,
-            const FrameBufferProperties& props);
+            const INamedResources& namedResources);
 		FrameBuffer();
 		~FrameBuffer();
 	private:
 		VulkanSharedPtr<VkFramebuffer> _underlying;
-        FrameBufferViews _views;
         VkRenderPass _layout;
 	};
 
@@ -74,10 +62,9 @@ namespace RenderCore { namespace Metal_Vulkan
         std::shared_ptr<FrameBuffer> BuildFrameBuffer(
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
-            const FrameBufferViews& views,
             const FrameBufferProperties& props,
             IteratorRange<const AttachmentDesc*> attachmentResources,
-            const TextureSamples& samples,
+            const INamedResources& namedResources,
             uint64 hashName);
 
         VkRenderPass BuildFrameBufferLayout(

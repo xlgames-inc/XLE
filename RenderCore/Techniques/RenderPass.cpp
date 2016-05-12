@@ -22,20 +22,43 @@ namespace RenderCore { namespace Techniques
         Metal::EndRenderPass(*_attachedContext);
     }
 
-    const Metal::RenderTargetView&  RenderPassInstance::GetAttachment(unsigned index)
+    class NamedResourcesWrapper : public Metal::INamedResources
     {
-        // We can call this function during the render pass... However normally if we 
-        // want to use a render target, we should do it after the render pass has been
-        // ended (with RenderPassInstance::End())
-        return _frameBuffer->GetViews().GetRTV(index);
+    public:
+        virtual auto GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::ShaderResourceView*;
+        virtual auto GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::RenderTargetView*;
+        virtual auto GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::DepthStencilView*;
+
+        NamedResourcesWrapper(NamedResources& namedRes);
+        ~NamedResourcesWrapper();
+    private:
+        NamedResources* _namedRes;
+    };
+
+    auto NamedResourcesWrapper::GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::ShaderResourceView*
+    {
+        return _namedRes->GetSRV(viewName, resName, window);
     }
+
+    auto NamedResourcesWrapper::GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::RenderTargetView*
+    {
+        return _namedRes->GetRTV(viewName, resName, window);
+    }
+
+    auto NamedResourcesWrapper::GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::DepthStencilView*
+    {
+        return _namedRes->GetDSV(viewName, resName, window);
+    }
+
+    NamedResourcesWrapper::NamedResourcesWrapper(NamedResources& namedRes)
+    : _namedRes(&namedRes) {}
+    NamedResourcesWrapper::~NamedResourcesWrapper() {}
 
     RenderPassInstance::RenderPassInstance(
         Metal::DeviceContext& context,
         const FrameBufferDesc& layout,
         uint64 hashName,
         NamedResources& namedResources,
-        Metal::FrameBufferCache& cache,
         const RenderPassBeginDesc& beginInfo)
     {
         // We need to allocate the particular frame buffer we're going to use
@@ -45,7 +68,7 @@ namespace RenderCore { namespace Techniques
         std::vector<Metal::DepthStencilView> dsvs;
         auto attachments = layout.GetAttachments();
         rtvs.reserve(attachments.size());
-        rtvs.reserve(attachments.size());
+        dsvs.reserve(attachments.size());
         
         for (const auto&a:attachments) {
             const auto* existingRTV = namedResources.GetRTV(a._viewName, a._resourceName, a._window);
@@ -54,12 +77,12 @@ namespace RenderCore { namespace Techniques
             dsvs.push_back(existingDSV ? *existingDSV : Metal::DepthStencilView());
         }
 
+        Metal::FrameBufferCache cache;
         _frameBuffer = cache.BuildFrameBuffer(
             context.GetFactory(), layout, 
-            Metal::FrameBufferViews(std::move(rtvs), std::move(dsvs)), 
             namedResources.GetFrameBufferProperties(),
             namedResources.GetDescriptions(),
-            namedResources.GetSamples(),
+            NamedResourcesWrapper(namedResources),
             hashName);
         assert(_frameBuffer);
 
@@ -72,14 +95,11 @@ namespace RenderCore { namespace Techniques
         const FrameBufferDesc& layout,
         uint64 hashName,
         NamedResources& namedResources,
-        Metal::FrameBufferCache& cache,
         const RenderPassBeginDesc& beginInfo)
     : RenderPassInstance(
         *Metal::DeviceContext::Get(context),
-        layout, hashName, namedResources,
-        cache, beginInfo)
-    {
-    }
+        layout, hashName, namedResources, beginInfo)
+    {}
     
     RenderPassInstance::~RenderPassInstance() 
     {
@@ -93,15 +113,14 @@ namespace RenderCore { namespace Techniques
     class NamedResources::Pimpl
     {
     public:
-        Metal::ShaderResourceView  _srv[s_maxBoundTargets];
-        Metal::RenderTargetView    _rtv[s_maxBoundTargets];
-        Metal::DepthStencilView    _dsv[s_maxBoundTargets];
-        RenderCore::ResourcePtr         _resources[s_maxBoundTargets];
-        AttachmentDesc                  _attachments[s_maxBoundTargets];
-        AttachmentName                  _resNames[s_maxBoundTargets];
+        Metal::ShaderResourceView   _srv[s_maxBoundTargets];
+        Metal::RenderTargetView     _rtv[s_maxBoundTargets];
+        Metal::DepthStencilView     _dsv[s_maxBoundTargets];
+        RenderCore::ResourcePtr     _resources[s_maxBoundTargets];
+        AttachmentDesc              _attachments[s_maxBoundTargets];
+        AttachmentName              _resNames[s_maxBoundTargets];
 
-        FrameBufferProperties           _props;
-        TextureSamples                  _samples;
+        FrameBufferProperties       _props;
 
         Metal::ObjectFactory*      _factory;
 
@@ -148,7 +167,7 @@ namespace RenderCore { namespace Techniques
             "attachment");
 
         if (a._flags & AttachmentDesc::Flags::Multisampled)
-            desc._textureDesc._samples = _samples;
+            desc._textureDesc._samples = _props._samples;
 
         // Look at how the attachment is used by the subpasses to figure out what the
         // bind flags should be.
@@ -194,7 +213,7 @@ namespace RenderCore { namespace Techniques
             }
     }
     
-    const Metal::ShaderResourceView*   NamedResources::GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
+    Metal::ShaderResourceView*   NamedResources::GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
     {
         if (resName == ~0u) resName = viewName;
         if (viewName >= s_maxBoundTargets || resName >= s_maxBoundTargets) return nullptr;
@@ -218,7 +237,7 @@ namespace RenderCore { namespace Techniques
         return _pimpl->_srv[viewName].IsGood() ? &_pimpl->_srv[viewName] : nullptr;
     }
 
-    const Metal::RenderTargetView*     NamedResources::GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
+    Metal::RenderTargetView*     NamedResources::GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
     {
         if (resName == ~0u) resName = viewName;
         if (viewName >= s_maxBoundTargets || resName >= s_maxBoundTargets) return nullptr;
@@ -242,7 +261,7 @@ namespace RenderCore { namespace Techniques
         return _pimpl->_rtv[viewName].IsGood() ? &_pimpl->_rtv[viewName] : nullptr;
     }
 
-    const Metal::DepthStencilView*     NamedResources::GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
+    Metal::DepthStencilView*     NamedResources::GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
     {
         if (resName == ~0u) resName = viewName;
         if (viewName >= s_maxBoundTargets || resName >= s_maxBoundTargets) return nullptr;
@@ -310,19 +329,6 @@ namespace RenderCore { namespace Techniques
         _pimpl->InvalidateAttachment(resName);
     }
 
-    void NamedResources::Bind(TextureSamples samples)
-    {
-        if (    _pimpl->_samples._sampleCount == samples._sampleCount
-            &&  _pimpl->_samples._samplingQuality == samples._samplingQuality)
-            return;
-
-        // Invalidate all resources and views that depend on the multisample state
-        for (unsigned c=0; c<s_maxBoundTargets; ++c)
-            if (_pimpl->_attachments[c]._flags & AttachmentDesc::Flags::Multisampled)
-                _pimpl->InvalidateAttachment(c);
-        _pimpl->_samples = samples;
-    }
-
     void NamedResources::Bind(FrameBufferProperties props)
     {
         bool xyChanged = 
@@ -330,28 +336,31 @@ namespace RenderCore { namespace Techniques
             || props._outputHeight != _pimpl->_props._outputHeight;
         bool layersChanged = 
             props._outputLayers != _pimpl->_props._outputLayers;
-        if (!xyChanged && !layersChanged) return;
+        bool samplesChanged = 
+                props._samples._sampleCount != _pimpl->_props._samples._sampleCount
+            ||  props._samples._samplingQuality != _pimpl->_props._samples._samplingQuality;
+        if (!xyChanged && !layersChanged && !samplesChanged) return;
 
-        if (xyChanged) {
+        if (xyChanged)
             for (unsigned c=0; c<s_maxBoundTargets; ++c)
                 if (_pimpl->_attachments[c]._dimsMode == AttachmentDesc::DimensionsMode::OutputRelative)
                     _pimpl->InvalidateAttachment(c);
-        }
 
         if (layersChanged) // currently all resources depend on the output layers value
             for (unsigned c=0; c<s_maxBoundTargets; ++c)
                 _pimpl->InvalidateAttachment(c);
+
+        if (samplesChanged) // Invalidate all resources and views that depend on the multisample state
+            for (unsigned c=0; c<s_maxBoundTargets; ++c)
+                if (_pimpl->_attachments[c]._flags & AttachmentDesc::Flags::Multisampled)
+                    _pimpl->InvalidateAttachment(c);
+
         _pimpl->_props = props;
     }
 
     const FrameBufferProperties& NamedResources::GetFrameBufferProperties() const
     {
         return _pimpl->_props;
-    }
-
-    TextureSamples NamedResources::GetSamples() const
-    {
-        return _pimpl->_samples;
     }
 
     IteratorRange<const AttachmentDesc*> NamedResources::GetDescriptions() const
@@ -365,8 +374,7 @@ namespace RenderCore { namespace Techniques
         _pimpl->_factory = &Metal::GetObjectFactory();
         for (unsigned c=0; c<s_maxBoundTargets; ++c)
             _pimpl->_resNames[c] = ~0u;
-        _pimpl->_samples = TextureSamples::Create();
-        _pimpl->_props = {0u, 0u, 0u};
+        _pimpl->_props = {0u, 0u, 0u, TextureSamples::Create()};
     }
 
     NamedResources::~NamedResources()

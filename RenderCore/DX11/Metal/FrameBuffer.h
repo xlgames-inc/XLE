@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "TextureView.h"
 #include "../../FrameBufferDesc.h"
 #include <memory>
 
@@ -18,46 +19,46 @@ namespace RenderCore { namespace Metal_DX11
     class DepthStencilView;
     class DeviceContext;
 
-    class FrameBufferViews
+    class INamedResources
     {
     public:
-        const RenderTargetView& GetRTV(unsigned index) const;
-        const DepthStencilView& GetDSV(unsigned index) const;
-
-        FrameBufferViews(
-            std::vector<RenderTargetView>&& rtvs,
-            std::vector<DepthStencilView>&& dsvs);
-        FrameBufferViews();
-        ~FrameBufferViews();
-    private:
-        std::vector<RenderTargetView>   _rtvs;
-        std::vector<DepthStencilView>   _dsvs;
+        virtual auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const ShaderResourceView* = 0;
+        virtual auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const RenderTargetView* = 0;
+        virtual auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const DepthStencilView* = 0;
     };
-    
+
     class FrameBuffer
 	{
 	public:
         void BindSubpass(DeviceContext& context, unsigned subpassIndex) const;
-        const FrameBufferViews& GetViews() const { return _views; }
+
+        RenderTargetView& GetRTV(unsigned index);
+        DepthStencilView& GetDSV(unsigned index);
 
 		FrameBuffer(
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
-            const FrameBufferViews& views);
+            const INamedResources& namedResources);
 		FrameBuffer();
 		~FrameBuffer();
 	private:
-        FrameBufferViews _views;
-
-        static const unsigned s_maxRTVS = 4u;
+        static const unsigned s_maxMRTs = 4u;
+        static const unsigned s_maxSubpasses = 4u;
+        static const unsigned s_maxAttachments = 16u;
+        
+        RenderTargetView    _rtvs[s_maxAttachments];
+        DepthStencilView    _dsvs[s_maxAttachments];
+        unsigned            _attachmentCount;
+        
         class Subpass
         {
         public:
-            unsigned _rtvs[s_maxRTVS];
+            unsigned _rtvs[s_maxMRTs];
             unsigned _dsv;
             unsigned _rtvCount;
         };
-        std::vector<Subpass> _subpasses;
+        Subpass     _subpasses[s_maxSubpasses];
+        unsigned    _subpassCount;
 	};
 
     /// <summary>Stores a set of retained frame buffers, which can be reused frame-to-frame</summary>
@@ -73,10 +74,9 @@ namespace RenderCore { namespace Metal_DX11
         std::shared_ptr<FrameBuffer> BuildFrameBuffer(
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
-            const FrameBufferViews& views,
             const FrameBufferProperties& props,
             IteratorRange<const AttachmentDesc*> attachmentResources,
-            const TextureSamples& samples,
+            const INamedResources& namedResources,
             uint64 hashName);
 
         FrameBufferCache();

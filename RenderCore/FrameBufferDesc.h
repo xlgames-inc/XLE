@@ -122,6 +122,7 @@ namespace RenderCore
     {
     public:
         unsigned _outputWidth, _outputHeight, _outputLayers;
+        TextureSamples _samples;
     };
 
     union ClearValue
