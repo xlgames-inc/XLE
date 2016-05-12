@@ -737,7 +737,9 @@ namespace RenderCore
                 bufferDesc._format, bufferDesc._dimensionality, 
                 TextureViewWindow::SubResourceRange{0, bufferDesc._mipCount},
                 TextureViewWindow::SubResourceRange{0, bufferDesc._arrayCount});
-            auto resDesc = CreateDesc(0u, 0u, 0u, bufferDesc, "presentationimage");
+            auto resDesc = CreateDesc(
+                BindFlag::RenderTarget|BindFlag::ShaderResource, 0u, GPUAccess::Read|GPUAccess::Write, 
+                bufferDesc, "presentationimage");
             auto resPtr = ResourcePtr(
 				(RenderCore::Resource*)new Metal_Vulkan::Resource(i, resDesc),
 				[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });

@@ -177,6 +177,9 @@ namespace RenderCore { namespace Metal_DX11
 		const ObjectFactory& factory,
 		const FrameBufferDesc& desc,
         const FrameBufferViews& views,
+        const FrameBufferProperties& props,
+        IteratorRange<const AttachmentDesc*> attachmentResources,
+        const TextureSamples& samples,
         uint64 hashName)
     {
         return std::make_shared<FrameBuffer>(factory, desc, views);

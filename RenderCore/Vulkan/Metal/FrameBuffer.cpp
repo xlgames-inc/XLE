@@ -229,7 +229,7 @@ namespace RenderCore { namespace Metal_Vulkan
         for (auto ai:attachmentsToTest) {
             auto a = std::find_if(
                 attachmentViews.begin(), attachmentViews.end(),
-                [ai](const AttachmentViewDesc& adesc) { return adesc._resourceName == ai; });
+                [ai](const AttachmentViewDesc& adesc) { return adesc._viewName == ai; });
             if (a == attachmentViews.end()) { assert(0); continue; }   // couldn't find it?
 
             bool isRetainStore = IsRetained(a->_storeToNextPhase);
