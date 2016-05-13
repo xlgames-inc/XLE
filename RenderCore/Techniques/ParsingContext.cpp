@@ -7,6 +7,7 @@
 #include "ParsingContext.h"
 #include "Techniques.h"
 #include "../Metal/InputLayout.h"   // (for UniformsStream)
+#include "../Metal/Buffer.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/StringFormat.h"
 #include <memory>
@@ -22,10 +23,10 @@ namespace RenderCore { namespace Techniques
             return;
         }
 
-        if (!_globalCBs[index].IsGood()) {
-            _globalCBs[index] = Metal::ConstantBuffer(newData, dataSize, false);
+        if (!_globalCBs[index]->IsGood()) {
+            *_globalCBs[index] = Metal::ConstantBuffer(newData, dataSize, false);
         } else {
-            _globalCBs[index].Update(context, newData, dataSize);
+            _globalCBs[index]->Update(context, newData, dataSize);
         }
     }
 
@@ -73,6 +74,9 @@ namespace RenderCore { namespace Techniques
         _stringHelpers = std::make_unique<StringHelpers>();
         _namedResources = namedResources;
 
+        for (unsigned c=0; c<dimof(_globalCBs); ++c)
+            _globalCBs[c] = std::make_unique<Metal::ConstantBuffer>();
+
         _projectionDesc.reset((ProjectionDesc*)XlMemAlign(sizeof(ProjectionDesc), 16));
         #pragma push_macro("new")
         #undef new
@@ -81,7 +85,7 @@ namespace RenderCore { namespace Techniques
 
         static_assert(dimof(_globalCBs) == dimof(_globalUniformsConstantBuffers), "Expecting equivalent array lengths");
         for (unsigned c=0; c<dimof(_globalCBs); ++c)
-            _globalUniformsConstantBuffers[c] = &_globalCBs[c];
+            _globalUniformsConstantBuffers[c] = _globalCBs[c].get();
         _globalUniformsStream = std::make_unique<RenderCore::Metal::UniformsStream>(
             nullptr, _globalUniformsConstantBuffers, dimof(_globalUniformsConstantBuffers));
     }

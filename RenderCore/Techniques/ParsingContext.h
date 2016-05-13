@@ -8,7 +8,6 @@
 
 #include "TechniqueUtils.h"
 #include "../Metal/Forward.h"
-#include "../Metal/Buffer.h"
 #include "../../Utility/MemoryUtils.h"
 #include <vector>
 #include <memory>
@@ -43,8 +42,8 @@ namespace RenderCore { namespace Techniques
             //  ----------------- Working technique context -----------------
         TechniqueContext&               GetTechniqueContext()               { return *_techniqueContext.get(); }
         const Metal::UniformsStream&    GetGlobalUniformsStream() const     { return *_globalUniformsStream.get(); }
-        Metal::ConstantBuffer&          GetGlobalTransformCB()              { return _globalCBs[0]; }
-        Metal::ConstantBuffer&          GetGlobalStateCB()                  { return _globalCBs[1]; }
+        Metal::ConstantBuffer&          GetGlobalTransformCB()              { return *_globalCBs[0]; }
+        Metal::ConstantBuffer&          GetGlobalStateCB()                  { return *_globalCBs[1]; }
         void    SetGlobalCB(
             Metal::DeviceContext& context, unsigned index, 
             const void* newData, size_t dataSize);
@@ -78,11 +77,11 @@ namespace RenderCore { namespace Techniques
         ParsingContext(const ParsingContext&) = delete;
 
     protected:
-        Metal::ConstantBuffer   _globalCBs[5];
+        std::unique_ptr<Metal::ConstantBuffer>      _globalCBs[5];
 
-        std::unique_ptr<TechniqueContext>   _techniqueContext;
-        AlignedUniquePtr<ProjectionDesc>    _projectionDesc;
-        std::shared_ptr<IStateSetResolver>  _stateSetResolver;
+        std::unique_ptr<TechniqueContext>           _techniqueContext;
+        AlignedUniquePtr<ProjectionDesc>            _projectionDesc;
+        std::shared_ptr<IStateSetResolver>          _stateSetResolver;
 
         std::unique_ptr<Metal::UniformsStream>      _globalUniformsStream;
         const Metal::ConstantBuffer*                _globalUniformsConstantBuffers[5];

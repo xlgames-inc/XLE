@@ -101,9 +101,9 @@ namespace Sample
                 //      Render text directly to the scene using RenderOverlays stuff.
                 //      This requires some more low-level code, so it's less convenient
 
-            auto& commonRes = RenderCore::Techniques::CommonResources();
-            {
-                auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+            auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+            if (metalContext) {
+                auto& commonRes = RenderCore::Techniques::CommonResources();
                 metalContext->Bind(commonRes._blendStraightAlpha);
                 metalContext->Bind(commonRes._dssReadWrite);
                 metalContext->Bind(commonRes._defaultRasterizer);

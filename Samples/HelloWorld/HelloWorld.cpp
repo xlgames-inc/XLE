@@ -157,7 +157,7 @@ namespace Sample
                 //  the lighting parser code directly. But sometimes you might want optional
                 //  settings (maybe for quality settings or different rendering modes). In
                 //  these cases, plugins can provide a way to customize the pipeline at run-time.
-            auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
+            // auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
 
                 //  We can log the active assets at any time using this method.
                 //  At this point during startup, we should only have a few assets loaded.
@@ -180,7 +180,7 @@ namespace Sample
 
                     // ------- Render ----------------------------------------
                 SceneEngine::LightingParserContext lightingParserContext(*globalTechniqueContext, &namedResources);
-                lightingParserContext._plugins.push_back(stdPlugin);
+                //lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto frameResult = frameRig.ExecuteFrame(
                     *context.get(), presentationChain.get(), 

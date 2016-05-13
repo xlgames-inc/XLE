@@ -5,6 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Screenshot.h"
+
+#if 0
+
 #include "../SceneEngine/LightingParserContext.h"
 #include "../SceneEngine/LightingParser.h"
 #include "../SceneEngine/GestaltResource.h"
@@ -420,4 +423,19 @@ namespace PlatformRig
             postToneMapImage->GetPitches()._rowPitch, postFilterFormat);
     }
 }
+
+#else
+
+namespace PlatformRig
+{
+    void TiledScreenshot(
+        RenderCore::IThreadContext& context,
+        SceneEngine::LightingParserContext& parserContext,
+        SceneEngine::ISceneParser& sceneParser,
+        const RenderCore::Techniques::CameraDesc& camera,
+        const SceneEngine::RenderingQualitySettings& qualitySettings,
+        UInt2 sampleCount) {}
+}
+
+#endif
 
