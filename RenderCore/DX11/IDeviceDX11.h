@@ -54,6 +54,7 @@ namespace RenderCore
         {
         public:
             IMETHOD std::shared_ptr<Metal_DX11::DeviceContext>&  GetUnderlying() IPURE;
+            IMETHOD ID3D::Device*  GetUnderlyingDevice() IPURE;
             IDESTRUCTOR
         };
 

@@ -28,10 +28,10 @@ namespace Sample
     {
     public:
         void Render(
-            RenderCore::Metal::DeviceContext* context,
+            RenderCore::IThreadContext& context,
             SceneEngine::LightingParserContext& parserContext,
             int techniqueIndex) const;
-        void Prepare(RenderCore::Metal::DeviceContext* context);
+        void Prepare(RenderCore::IThreadContext& context);
         void Cull(const Float4x4& worldToProjection);
         void Update(float deltaTime);
 

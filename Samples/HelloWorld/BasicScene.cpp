@@ -31,7 +31,7 @@ namespace Sample
     {
     public:
         void RenderOpaque(
-            RenderCore::Metal::DeviceContext* context, 
+            RenderCore::IThreadContext& context, 
             LightingParserContext& parserContext, 
             unsigned techniqueIndex);
 
@@ -92,8 +92,7 @@ namespace Sample
                 //  The scene parser is responsible for getting the ordering right. But
                 //  the best ordering depends on the type of scene you want to render.
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-                auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-                _model->RenderOpaque(metalContext.get(), parserContext, techniqueIndex);
+                _model->RenderOpaque(context, parserContext, techniqueIndex);
             }
 
         }
@@ -258,7 +257,7 @@ namespace Sample
     {}
 
     void BasicSceneParser::Model::RenderOpaque(
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::IThreadContext& context, 
         LightingParserContext& parserContext, 
         unsigned techniqueIndex)
     {
@@ -351,11 +350,11 @@ namespace Sample
             //  Before using SharedStateSet for the first time, we need to capture the device 
             //  context state. If we were rendering multiple models with the same shared state, we would 
             //  capture once and render multiple times with the same capture.
-        auto captureMarker = _sharedStateSet->CaptureState(*context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+        auto captureMarker = _sharedStateSet->CaptureState(context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
             //  Finally, we can render the object!
         _modelRenderer->Render(
-            RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
+            RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
             *_sharedStateSet, Identity<Float4x4>());
     }
 

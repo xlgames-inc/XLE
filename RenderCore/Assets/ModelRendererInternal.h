@@ -10,6 +10,7 @@
 #include "ModelScaffoldInternal.h"
 #include "SharedStateSet.h" // for SharedShaderName, SharedParameterBox, etc
 #include "../Metal/Forward.h"
+#include "../Metal/Buffer.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/IteratorUtils.h"
@@ -196,7 +197,7 @@ namespace RenderCore { namespace Assets
     ///////////////////////////////////////////////////////////////////////////////
 
         void BuildSkinnedBuffer(
-            Metal::DeviceContext*   context,
+            Metal::DeviceContext&   context,
             const SkinnedMesh&      mesh,
             const SkinnedMeshAnimBinding& preparedAnimBinding, 
             const Float4x4          transformationMachineResult[],

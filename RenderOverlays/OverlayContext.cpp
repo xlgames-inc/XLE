@@ -319,7 +319,7 @@ namespace RenderOverlays
         q.max = Float2(std::get<1>(quad)[0], std::get<1>(quad)[1]);
         Float2 alignedPosition = textStyle->AlignText(q, AsUiAlign(alignment), unicharBuffer);
         return textStyle->Draw(
-            _metalContext.get(), 
+            *_deviceContext, 
             alignedPosition[0], alignedPosition[1],
             unicharBuffer, dimof(unicharBuffer),
             0.f, 1.f, 0.f, 

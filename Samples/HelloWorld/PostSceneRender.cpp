@@ -102,11 +102,13 @@ namespace Sample
                 //      This requires some more low-level code, so it's less convenient
 
             auto& commonRes = RenderCore::Techniques::CommonResources();
-            auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
-            metalContext->Bind(commonRes._blendStraightAlpha);
-            metalContext->Bind(commonRes._dssReadWrite);
-            metalContext->Bind(commonRes._defaultRasterizer);
-            metalContext->BindPS_G(RenderCore::MakeResourceList(commonRes._defaultSampler));
+            {
+                auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+                metalContext->Bind(commonRes._blendStraightAlpha);
+                metalContext->Bind(commonRes._dssReadWrite);
+                metalContext->Bind(commonRes._defaultRasterizer);
+                metalContext->BindPS_G(RenderCore::MakeResourceList(commonRes._defaultSampler));
+            }
 
             ucs4 buffer[1024];
             utf8_2_ucs4((const utf8*)text, XlStringLen(text), buffer, dimof(buffer));
@@ -114,7 +116,7 @@ namespace Sample
 
             auto alignment = style.AlignText(quad, UIALIGN_CENTER, buffer, -1);
             style.Draw(
-                metalContext.get(), alignment[0], alignment[1],
+                *context, alignment[0], alignment[1],
                 buffer, -1, 
                 0.f, 1.f, 0.f, 0.f,
                 col.AsUInt32(), UI_TEXT_STATE_NORMAL, 0.f, &quad);

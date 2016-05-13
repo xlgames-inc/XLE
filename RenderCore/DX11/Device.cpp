@@ -551,6 +551,12 @@ namespace RenderCore
         return _underlying;
     }
 
+    ID3D::Device* ThreadContextDX11::GetUnderlyingDevice()
+    {
+        auto dev = _device.lock();
+        return dev ? dev->GetUnderlyingDevice() : nullptr;
+    }
+
     ThreadContextDX11::ThreadContextDX11(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device)
     : ThreadContext(devContext, std::move(device))
     {}

@@ -7,7 +7,7 @@
 #pragma once
 
 #include "DelayedDrawCall.h"
-#include "../Metal/Buffer.h"
+#include "../IThreadContext_Forward.h"
 
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/ChunkFileAsset.h"
@@ -99,6 +99,8 @@ namespace RenderCore { namespace Assets
         const ModelImmutableData*   TryImmutableData() const;
     };
     
+    class PreparedAnimation;
+
     class MeshToModel
     {
     public:
@@ -112,8 +114,10 @@ namespace RenderCore { namespace Assets
         MeshToModel();
         MeshToModel(const Float4x4 skeletonOutput[], unsigned skeletonOutputCount,
                     const SkeletonBinding* binding = nullptr);
+        MeshToModel(const PreparedAnimation& preparedAnim, const SkeletonBinding* binding = nullptr);
         MeshToModel(const ModelScaffold&);
     };
+    
 
     /// <summary>Creates platform resources and renders a model</summary>
     /// ModelRenderer is used to render a model. Though the two classes work together, it is 
@@ -131,7 +135,6 @@ namespace RenderCore { namespace Assets
     {
     public:
             ////////////////////////////////////////////////////////////
-        class PreparedAnimation;
         void Render(
             const ModelRendererContext& context,
             const SharedStateSet&   sharedStateSet,
@@ -165,29 +168,14 @@ namespace RenderCore { namespace Assets
         static void Sort(DelayedDrawCallSet& drawCalls);
 
             ////////////////////////////////////////////////////////////
-        class PreparedAnimation
-        {
-        public:
-            std::unique_ptr<Float4x4[]> _finalMatrices;
-            Metal::VertexBuffer         _skinningBuffer;
-            AnimationState              _animState;
-            std::vector<unsigned>       _vbOffsets;
-
-            PreparedAnimation();
-            PreparedAnimation(PreparedAnimation&&);
-            PreparedAnimation& operator=(PreparedAnimation&&);
-            PreparedAnimation(const PreparedAnimation&) = delete;
-            PreparedAnimation& operator=(const PreparedAnimation&) = delete;
-        };
-
-        PreparedAnimation CreatePreparedAnimation() const;
+        std::unique_ptr<PreparedAnimation, void(*)(PreparedAnimation*)> CreatePreparedAnimation() const;
 
         void PrepareAnimation(
-            Metal::DeviceContext* context, 
+            IThreadContext& context, 
             PreparedAnimation& state, 
             const SkeletonBinding& skeletonBinding) const;
 
-        static bool     CanDoPrepareAnimation(Metal::DeviceContext* context);
+        static bool     CanDoPrepareAnimation(IThreadContext& context);
 
         auto            DrawCallToMaterialBinding() const -> std::vector<MaterialGuid>;
         MaterialGuid    GetMaterialBindingForDrawCall(unsigned drawCallIndex) const;
@@ -386,15 +374,17 @@ namespace RenderCore { namespace Assets
     class SkinPrepareMachine
     {
     public:
-        void PrepareAnimation(  Metal::DeviceContext* context, 
-                                ModelRenderer::PreparedAnimation& state) const;
+        void PrepareAnimation(  
+            IThreadContext& context, 
+            PreparedAnimation& state,
+            const AnimationState& animState) const;
         const SkeletonBinding& GetSkeletonBinding() const;
         unsigned GetSkeletonOutputCount() const;
 
         void RenderSkeleton(
-                Metal::DeviceContext* context, 
-                Techniques::ParsingContext& parserContext, 
-                const AnimationState& animState, const Float4x4& localToWorld);
+            IThreadContext& context, 
+            Techniques::ParsingContext& parserContext, 
+            const AnimationState& animState, const Float4x4& localToWorld);
         
         SkinPrepareMachine(const ModelScaffold&, const AnimationSetScaffold&, const SkeletonScaffold&);
         SkinPrepareMachine(const ModelScaffold& skinScaffold, const TransformationMachine& skeletonScaffold);

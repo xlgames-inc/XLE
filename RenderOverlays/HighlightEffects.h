@@ -28,7 +28,7 @@ namespace RenderOverlays
 
     void ExecuteHighlightByStencil(
         RenderCore::IThreadContext& threadContext,
-        RenderCore::Metal::ShaderResourceView& inputStencil,
+        RenderCore::Techniques::NamedResources& namedRes,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted);
 

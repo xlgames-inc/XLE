@@ -355,7 +355,7 @@ namespace RenderCore { namespace Assets
     }
 
     void ModelRenderer::PimplWithSkinning::BuildSkinnedBuffer(  
-                Metal::DeviceContext*       context,
+                Metal::DeviceContext&       context,
                 const SkinnedMesh&          mesh,
                 const SkinnedMeshAnimBinding& preparedAnimBinding, 
                 const Float4x4              transformationMachineResult[],
@@ -438,12 +438,12 @@ namespace RenderCore { namespace Assets
                     //      index and vertex buffers.
                     //
                 D3D11_MAPPED_SUBRESOURCE mapping;
-                HRESULT hresult = context->GetUnderlying()->Map((ID3D::Resource*)globalCircularBuffer._resource.get(), 0, mapType, 0, &mapping);
+                HRESULT hresult = context.GetUnderlying()->Map((ID3D::Resource*)globalCircularBuffer._resource.get(), 0, mapType, 0, &mapping);
                 if (SUCCEEDED(hresult) && mapping.pData) {
                     WriteJointTransforms(
                         (Float3x4*)PtrAdd(mapping.pData, currentWritingPosition), packetCount, 
                         scaffold, transformationMachineResult, skeletonBinding);
-                    context->GetUnderlying()->Unmap((ID3D::Resource*)globalCircularBuffer._resource.get(), 0);
+                    context.GetUnderlying()->Unmap((ID3D::Resource*)globalCircularBuffer._resource.get(), 0);
                 }
 
                 tbufferTexture = globalCircularBuffer;
@@ -462,12 +462,12 @@ namespace RenderCore { namespace Assets
                         //      vertex buffers, however... which means binding a vertex buffer to a tbuffer
                         //      shader input.
                         //
-                    HRESULT hresult = context->GetUnderlying()->Map((ID3D::Resource*)tbufferTexture._stagingResource.get(), 0, D3D11_MAP_WRITE, 0, &mapping);
+                    HRESULT hresult = context.GetUnderlying()->Map((ID3D::Resource*)tbufferTexture._stagingResource.get(), 0, D3D11_MAP_WRITE, 0, &mapping);
                     if (SUCCEEDED(hresult) && mapping.pData) {
                         WriteJointTransforms((Float3x4*)mapping.pData, packetCount, scaffold, transformationMachineResult, skeletonBinding);
-                        context->GetUnderlying()->Unmap((ID3D::Resource*)tbufferTexture._stagingResource.get(), 0);
+                        context.GetUnderlying()->Unmap((ID3D::Resource*)tbufferTexture._stagingResource.get(), 0);
                     }
-                    PushTBufferTemporaryTexture(context, tbufferTexture);
+                    PushTBufferTemporaryTexture(&context, tbufferTexture);
 
                 } else {
 
@@ -483,15 +483,15 @@ namespace RenderCore { namespace Assets
             ///////////////////////////////////////////////
 
         ID3D::Buffer* soOutputBuffer = outputResult.GetUnderlying();
-        context->GetUnderlying()->SOSetTargets(1, &soOutputBuffer, &outputOffset);
+        context.GetUnderlying()->SOSetTargets(1, &soOutputBuffer, &outputOffset);
         {
             const Metal::ShaderResourceView* temp[] = { tbufferTexture._view.GetUnderlying() ? &tbufferTexture._view : nullptr };
             bindingBox._boundUniforms.Apply(
-                *context, 
+                context, 
                 Metal::UniformsStream(),
                 Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets), temp, 1));
         }
-        StartBuildingSkinning(*context, bindingBox);
+        StartBuildingSkinning(context, bindingBox);
 
             // bind the mesh streams -- we need animated geometry and skeleton binding
         auto animGeo = SkinnedMesh::VertexStreams::AnimatedGeo;
@@ -500,7 +500,7 @@ namespace RenderCore { namespace Assets
         const VertexBuffer* vbs [2] = { &_vertexBuffer, &_vertexBuffer };
         const unsigned strides  [2] = { mesh._extraVbStride[animGeo], mesh._extraVbStride[skelBind] };
         unsigned offsets        [2] = { mesh._extraVbOffset[animGeo], mesh._extraVbOffset[skelBind] };
-        context->Bind(0, 2, vbs, strides, offsets);
+        context.Bind(0, 2, vbs, strides, offsets);
 
 
             //
@@ -510,15 +510,32 @@ namespace RenderCore { namespace Assets
 
         for (unsigned di=0; di<scaffold._preskinningDrawCallCount; ++di) {
             auto& d = scaffold._preskinningDrawCalls[di];
-            SetSkinningShader(*context, bindingBox, d._subMaterialIndex);
-            context->Draw(d._indexCount, d._firstVertex);
+            SetSkinningShader(context, bindingBox, d._subMaterialIndex);
+            context.Draw(d._indexCount, d._firstVertex);
         }
 #endif
     }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    auto ModelRenderer::CreatePreparedAnimation() const -> PreparedAnimation
+    class PreparedAnimation
+    {
+    public:
+        std::unique_ptr<Float4x4[]> _finalMatrices;
+        unsigned                    _finalMatrixCount;
+        Metal::VertexBuffer         _skinningBuffer;
+        std::vector<unsigned>       _vbOffsets;
+
+        PreparedAnimation();
+        PreparedAnimation(PreparedAnimation&&) never_throws;
+        PreparedAnimation& operator=(PreparedAnimation&&) never_throws;
+        PreparedAnimation(const PreparedAnimation&) = delete;
+        PreparedAnimation& operator=(const PreparedAnimation&) = delete;
+    };
+
+    void DeletePreparedAnimation(PreparedAnimation* ptr) { delete ptr; }
+
+    auto ModelRenderer::CreatePreparedAnimation() const -> std::unique_ptr<PreparedAnimation, void(*)(PreparedAnimation*)>
     {
             //  We need to allocate a vertex buffer that can contain the animated vertex data
             //  for this whole mesh. 
@@ -536,26 +553,28 @@ namespace RenderCore { namespace Assets
             vbSize += size;
         }
 
-        PreparedAnimation result;
-        result._skinningBuffer = Metal::VertexBuffer(nullptr, vbSize);
-        result._vbOffsets = std::move(offsets);
+        auto result = std::unique_ptr<PreparedAnimation, void(*)(PreparedAnimation*)>(
+            new PreparedAnimation, &DeletePreparedAnimation);
+        result->_skinningBuffer = Metal::VertexBuffer(nullptr, vbSize);
+        result->_vbOffsets = std::move(offsets);
         return result;
     }
 
     void ModelRenderer::PrepareAnimation(
-        Metal::DeviceContext* context, PreparedAnimation& result, 
+        IThreadContext& context, PreparedAnimation& result, 
         const SkeletonBinding& skeletonBinding) const
     {
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         for (size_t i=0; i<_pimpl->_skinnedMeshes.size(); ++i) {
             _pimpl->BuildSkinnedBuffer(
-                context, 
+                *metalContext, 
                 _pimpl->_skinnedMeshes[i], 
                 _pimpl->_skinnedBindings[i],
                 result._finalMatrices.get(), skeletonBinding, 
                 result._skinningBuffer, result._vbOffsets[i]);
         }
 
-        _pimpl->EndBuildingSkinning(*context);
+        _pimpl->EndBuildingSkinning(*metalContext);
     }
 
 	#if GFXAPI_ACTIVE == GFXAPI_DX11
@@ -567,33 +586,44 @@ namespace RenderCore { namespace Assets
 		}
 	#endif
 
-    bool ModelRenderer::CanDoPrepareAnimation(Metal::DeviceContext* context)
+    bool ModelRenderer::CanDoPrepareAnimation(IThreadContext& context)
     {
 		#if GFXAPI_ACTIVE == GFXAPI_DX11
-			auto featureLevel = ExtractDevice(context)->GetFeatureLevel();
-			return (featureLevel >= D3D_FEATURE_LEVEL_10_0);
-		#else
-			return false;
+            auto* contextD3D = context.QueryInterface(__uuidof(ThreadContextDX11));
+            if (contextD3D) {
+			    auto featureLevel = contextD3D->GetUnderlyingDevice()->GetFeatureLevel();
+			    return (featureLevel >= D3D_FEATURE_LEVEL_10_0);
+            }
 		#endif
+        return false;
     }
 
-    ModelRenderer::PreparedAnimation::PreparedAnimation() 
+    PreparedAnimation::PreparedAnimation() 
+    : _finalMatrixCount(0)
     {
     }
 
-    ModelRenderer::PreparedAnimation::PreparedAnimation(PreparedAnimation&& moveFrom)
+    PreparedAnimation::PreparedAnimation(PreparedAnimation&& moveFrom) never_throws
     : _finalMatrices(std::move(moveFrom._finalMatrices))
+    , _finalMatrixCount(moveFrom._finalMatrixCount)
     , _skinningBuffer(std::move(moveFrom._skinningBuffer))
     , _vbOffsets(std::move(moveFrom._vbOffsets))
-    , _animState(moveFrom._animState) {}
+    {}
 
-    ModelRenderer::PreparedAnimation& ModelRenderer::PreparedAnimation::operator=(PreparedAnimation&& moveFrom)
+    PreparedAnimation& PreparedAnimation::operator=(PreparedAnimation&& moveFrom) never_throws
     {
         _finalMatrices = std::move(moveFrom._finalMatrices);
+        _finalMatrixCount = moveFrom._finalMatrixCount;
         _skinningBuffer = std::move(moveFrom._skinningBuffer);
         _vbOffsets = std::move(moveFrom._vbOffsets);
-        _animState = moveFrom._animState;
         return *this;
+    }
+
+    MeshToModel::MeshToModel(
+        const PreparedAnimation& preparedAnim,
+        const SkeletonBinding* binding)
+    : MeshToModel(preparedAnim._finalMatrices.get(), preparedAnim._finalMatrixCount, binding)
+    {
     }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -607,24 +637,25 @@ namespace RenderCore { namespace Assets
         const TransformationMachine* _transMachine;
     };
 
-    void SkinPrepareMachine::PrepareAnimation(   
-            Metal::DeviceContext* context, 
-            ModelRenderer::PreparedAnimation& state) const
+    void SkinPrepareMachine::PrepareAnimation(
+        IThreadContext& context, 
+        PreparedAnimation& state,
+        const AnimationState& animState) const
     {
         auto& skeleton = *_pimpl->_transMachine;
             
-        auto finalMatCount = skeleton.GetOutputMatrixCount();
-        state._finalMatrices = std::make_unique<Float4x4[]>(finalMatCount);
+        state._finalMatrixCount = skeleton.GetOutputMatrixCount();
+        state._finalMatrices = std::make_unique<Float4x4[]>(state._finalMatrixCount);
         if (_pimpl->_animationSetScaffold && !Tweakable("AnimBasePose", false)) {
             auto& animSet = _pimpl->_animationSetScaffold->ImmutableData();
             auto params = animSet._animationSet.BuildTransformationParameterSet(
-                state._animState, 
+                animState, 
                 skeleton, *_pimpl->_animationSetBinding, 
                 animSet._curves, animSet._curvesCount);
             
-            skeleton.GenerateOutputTransforms(state._finalMatrices.get(), finalMatCount, &params);
+            skeleton.GenerateOutputTransforms(state._finalMatrices.get(), state._finalMatrixCount, &params);
         } else {
-            skeleton.GenerateOutputTransforms(state._finalMatrices.get(), finalMatCount, &skeleton.GetDefaultParameters());
+            skeleton.GenerateOutputTransforms(state._finalMatrices.get(), state._finalMatrixCount, &skeleton.GetDefaultParameters());
         }
     }
 
@@ -685,9 +716,9 @@ namespace RenderCore { namespace Assets
     }
 
     void    SkinPrepareMachine::RenderSkeleton( 
-                Metal::DeviceContext* context, 
-                Techniques::ParsingContext& parserContext, 
-                const AnimationState& animState, const Float4x4& localToWorld)
+        IThreadContext& context, 
+        Techniques::ParsingContext& parserContext, 
+        const AnimationState& animState, const Float4x4& localToWorld)
     {
         using namespace RenderCore::Metal;
 
@@ -703,18 +734,20 @@ namespace RenderCore { namespace Assets
             localToWorld, 
             ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
 
+        auto metalContext = Metal::DeviceContext::Get(context);
+
         const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(  
             "game/xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
             "game/xleres/forward/illum.psh:main", "GEO_HAS_COLOUR=1");
         BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
-        context->Bind(boundVertexInputLayout);
-        context->Bind(shaderProgram);
+        metalContext->Bind(boundVertexInputLayout);
+        metalContext->Bind(shaderProgram);
 
         BoundUniforms boundLayout(shaderProgram);
         static const auto HashLocalTransform = Hash64("LocalTransform");
         boundLayout.BindConstantBuffer(HashLocalTransform, 0, 1);
         Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
-        boundLayout.Apply(*context, 
+        boundLayout.Apply(*metalContext, 
             parserContext.GetGlobalUniformsStream(),
             UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
 
@@ -741,11 +774,11 @@ namespace RenderCore { namespace Assets
         }
 
         VertexBuffer vertexBuffer(AsPointer(workingVertices.begin()), workingVertices.size()*sizeof(Vertex_PC));
-        context->Bind(MakeResourceList(vertexBuffer), sizeof(Vertex_PC), 0);
-        context->Bind(Techniques::CommonResources()._dssDisable);
-        context->Bind(Techniques::CommonResources()._blendOpaque);
-        context->Bind(Topology::LineList);
-        context->Draw((unsigned)workingVertices.size());
+        metalContext->Bind(MakeResourceList(vertexBuffer), sizeof(Vertex_PC), 0);
+        metalContext->Bind(Techniques::CommonResources()._dssDisable);
+        metalContext->Bind(Techniques::CommonResources()._blendOpaque);
+        metalContext->Bind(Topology::LineList);
+        metalContext->Draw((unsigned)workingVertices.size());
     }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -103,7 +103,7 @@ namespace ToolsRig
 
             RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
             if (_sharedStateSet)
-                captureMarker = _sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+                captureMarker = _sharedStateSet->CaptureState(context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
             using namespace RenderCore;
             Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
@@ -114,23 +114,22 @@ namespace ToolsRig
                     auto preparedAnimation = _model->CreatePreparedAnimation();
                     RenderCore::Assets::SkinPrepareMachine prepareMachine(
                         *_modelScaffold, _modelScaffold->EmbeddedSkeleton());
-                    prepareMachine.PrepareAnimation(metalContext.get(), preparedAnimation);
-                    _model->PrepareAnimation(metalContext.get(), preparedAnimation, prepareMachine.GetSkeletonBinding());
+                    RenderCore::Assets::AnimationState animState = {0.f, 0u};
+                    prepareMachine.PrepareAnimation(context, *preparedAnimation, animState);
+                    _model->PrepareAnimation(context, *preparedAnimation, prepareMachine.GetSkeletonBinding());
 
                     RenderCore::Assets::MeshToModel meshToModel(
-                        preparedAnimation._finalMatrices.get(),
-                        prepareMachine.GetSkeletonOutputCount(),
-                        &prepareMachine.GetSkeletonBinding());
+                        *preparedAnimation, &prepareMachine.GetSkeletonBinding());
 
                     _model->Render(
                         RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
                         *_sharedStateSet, Identity<Float4x4>(), 
-                        meshToModel, &preparedAnimation);
+                        meshToModel, preparedAnimation.get());
 
                     if (Tweakable("RenderSkeleton", false)) {
                         prepareMachine.RenderSkeleton(
-                            metalContext.get(), parserContext, 
-                            preparedAnimation._animState, Identity<Float4x4>());
+                            context, parserContext, 
+                            animState, Identity<Float4x4>());
                     }
                 }
             } else {
@@ -351,20 +350,17 @@ namespace ToolsRig
         if (_pimpl->_settings->_drawWireframe) {
 
             CATCH_ASSETS_BEGIN
-                using namespace RenderCore;
-                auto metalContext = Metal::DeviceContext::Get(context);
-
                 auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
                 assert(model._renderer && model._sharedStateSet);
 
                 RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
                 if (model._sharedStateSet)
-                    captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+                    captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
                 const auto techniqueIndex = RenderCore::Techniques::TechniqueIndex::VisWireframe;
 
                 RenderWithEmbeddedSkeleton(
-                    RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
+                    RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
                     *model._renderer, *model._sharedStateSet, model._model);
             CATCH_ASSETS_END(parserContext)
         }
@@ -372,20 +368,17 @@ namespace ToolsRig
         if (_pimpl->_settings->_drawNormals) {
 
             CATCH_ASSETS_BEGIN
-                using namespace RenderCore;
-                auto metalContext = Metal::DeviceContext::Get(context);
-
                 auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
                 assert(model._renderer && model._sharedStateSet);
 
                 RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
                 if (model._sharedStateSet)
-                    captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+                    captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
                 const auto techniqueIndex = RenderCore::Techniques::TechniqueIndex::VisNormals;
 
                 RenderWithEmbeddedSkeleton(
-                    RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
+                    RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
                     *model._renderer, *model._sharedStateSet, model._model);
             CATCH_ASSETS_END(parserContext)
         }
@@ -427,17 +420,13 @@ namespace ToolsRig
                     settings._highlightedMarker = UInt4(unsigned(guid), unsigned(guid), unsigned(guid), unsigned(guid));
                 }
 
-                auto depthSrv = parserContext.GetNamedResources().GetSRV(
-                    5u, 1u,
-                    TextureViewWindow(
-                        {TextureViewWindow::Aspect::Stencil},
-                        TextureDesc::Dimensionality::Undefined, TextureViewWindow::All, TextureViewWindow::All,
-                        TextureViewWindow::Flags::JustStencil));
-                if (depthSrv) {
+                {
                     Techniques::RenderPassInstance rpi(
                         threadContext, FrameBufferDesc({SubpassDesc({0u})}),
                         0u, parserContext.GetNamedResources());
-                    ExecuteHighlightByStencil(threadContext, *depthSrv, settings, _pimpl->_settings->_colourByMaterial==2);
+                    ExecuteHighlightByStencil(
+                        threadContext, parserContext.GetNamedResources(), 
+                        settings, _pimpl->_settings->_colourByMaterial==2);
                 }
             CATCH_ASSETS_END(parserContext)
         }
@@ -493,8 +482,6 @@ namespace ToolsRig
         auto model = GetModel(*_cache, *_settings);
         assert(model._renderer && model._sharedStateSet);
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
-
         auto cam = context.GetCameraDesc();
         ModelIntersectionStateContext stateContext(
             ModelIntersectionStateContext::RayTest,
@@ -504,9 +491,9 @@ namespace ToolsRig
         stateContext.SetRay(worldSpaceRay);
 
         {
-            auto captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+            auto captureMarker = model._sharedStateSet->CaptureState(*context.GetThreadContext(), parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
             RenderWithEmbeddedSkeleton(
-                RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, 6),
+                RenderCore::Assets::ModelRendererContext(*context.GetThreadContext(), parserContext, 6),
                 *model._renderer, *model._sharedStateSet, model._model);
         }
 

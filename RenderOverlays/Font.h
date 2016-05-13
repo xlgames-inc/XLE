@@ -8,7 +8,7 @@
 
 #include "FontPrimitives.h"
 #include "../RenderCore/IDevice_Forward.h"
-#include "../RenderCore/Metal/Forward.h"      // \todo remove metal dependency
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../Utility/Threading/ThreadingUtils.h"      // (for ReferenceCountedObject)
 #include "../Utility/IntrusivePtr.h"
@@ -149,7 +149,7 @@ namespace RenderOverlays
         TextStyle(Font& font, const DrawTextOptions& options = DrawTextOptions());
         ~TextStyle();
 
-        float       Draw(   RenderCore::Metal::DeviceContext* renderer, 
+        float       Draw(   RenderCore::IThreadContext& threadContext, 
                             float x, float y, const ucs4 text[], int maxLen,
                             float spaceExtra, float scale, float mx, float depth,
                             unsigned colorARGB, UI_TEXT_STATE textState, bool applyDescender, Quad* q) const;

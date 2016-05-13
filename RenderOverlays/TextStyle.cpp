@@ -226,7 +226,7 @@ TextStyleResources::~TextStyleResources()
 {}
 
 float   TextStyle::Draw(    
-    RenderCore::Metal::DeviceContext* renderer, 
+    RenderCore::IThreadContext& threadContext, 
     float x, float y, const ucs4 text[], int maxLen,
     float spaceExtra, float scale, float mx, float depth,
     unsigned colorARGB, UI_TEXT_STATE textState, bool applyDescender, Quad* q) const
@@ -237,6 +237,8 @@ float   TextStyle::Draw(
     }
 
     TRY {
+
+        auto renderer = Metal::DeviceContext::Get(threadContext);
 
         int prevGlyph = 0;
         float xScale = scale;

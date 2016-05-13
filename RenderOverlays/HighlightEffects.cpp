@@ -33,26 +33,26 @@ namespace RenderOverlays
             _stencilToMarkerMap[c] = NoHighlight;
     }
 
-    void ExecuteHighlightByStencil(
-        RenderCore::IThreadContext& threadContext,
-        Metal::ShaderResourceView& inputStencil,
+    static void ExecuteHighlightByStencil(
+        Metal::DeviceContext& metalContext,
+        Metal::ShaderResourceView& stencilSrv,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted)
     {
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);
-        metalContext->BindPS(MakeResourceList(Metal::ConstantBuffer(&settings, sizeof(settings))));
-        metalContext->BindPS(MakeResourceList(inputStencil));
-        metalContext->Bind(Techniques::CommonResources()._dssDisable);
-        metalContext->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-        metalContext->Bind(Metal::Topology::TriangleStrip);
-        metalContext->Unbind<Metal::BoundInputLayout>();
+        metalContext.BindPS(MakeResourceList(Metal::ConstantBuffer(&settings, sizeof(settings))));
+        metalContext.BindPS(MakeResourceList(stencilSrv));
+        metalContext.Bind(Techniques::CommonResources()._dssDisable);
+        metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+        metalContext.Bind(Metal::Topology::TriangleStrip);
+        metalContext.Unbind<Metal::BoundInputLayout>();
 
-        auto desc = Metal::ExtractDesc(inputStencil.GetResource());
+        auto desc = Metal::ExtractDesc(stencilSrv.GetResource());
         if (desc._type != ResourceDesc::Type::Texture) return;
-
+        
+        auto components = GetComponents(desc._textureDesc._format);
         bool stencilInput = 
-            AsTypelessFormat(desc._textureDesc._format) 
-            == Format::R24G8_TYPELESS;
+                components == FormatComponents::DepthStencil
+            ||  components == FormatComponents::Stencil;
                 
         StringMeld<64, ::Assets::ResChar> params;
         params << "ONLY_HIGHLIGHTED=" << unsigned(onlyHighlighted);
@@ -64,8 +64,8 @@ namespace RenderOverlays
                 "game/xleres/Vis/HighlightVis.psh:HighlightByStencil:ps_*",
                 (const ::Assets::ResChar*)params);
                 
-            metalContext->Bind(shader);
-            metalContext->Draw(4);
+            metalContext.Bind(shader);
+            metalContext.Draw(4);
         }
 
         {
@@ -74,13 +74,30 @@ namespace RenderOverlays
                 "game/xleres/Vis/HighlightVis.psh:OutlineByStencil:ps_*",
                 (const ::Assets::ResChar*)params);
                 
-            metalContext->Bind(shader);
-            metalContext->Draw(4);
+            metalContext.Bind(shader);
+            metalContext.Draw(4);
         }
 
-        metalContext->UnbindPS<Metal::ShaderResourceView>(0, 1);
+        metalContext.UnbindPS<Metal::ShaderResourceView>(0, 1);
     }
 
+    void ExecuteHighlightByStencil(
+        RenderCore::IThreadContext& threadContext,
+        Techniques::NamedResources& namedRes,
+        const HighlightByStencilSettings& settings,
+        bool onlyHighlighted)
+    {
+        auto stencilSrv = namedRes.GetSRV(
+            5u, 1u,
+            TextureViewWindow(
+                {TextureViewWindow::Aspect::Stencil},
+                TextureDesc::Dimensionality::Undefined, TextureViewWindow::All, TextureViewWindow::All,
+                TextureViewWindow::Flags::JustStencil));
+        if (!stencilSrv) return;
+
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);
+        ExecuteHighlightByStencil(*metalContext, *stencilSrv, settings, onlyHighlighted);
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -215,11 +232,15 @@ namespace RenderOverlays
         outlineColor = highlightColO;
         overlayColor = overlayColO;
 
+        auto metalContext = Metal::DeviceContext::Get(threadContext);
+
         HighlightByStencilSettings settings;
         settings._outlineColor = outlineColor;
         for (unsigned c=1; c<dimof(settings._stencilToMarkerMap); ++c)
             settings._stencilToMarkerMap[c] = UInt4(overlayColor, overlayColor, overlayColor, overlayColor);
-        ExecuteHighlightByStencil(threadContext, *srv, settings, false);
+        ExecuteHighlightByStencil(
+            *metalContext, *srv, 
+            settings, false);
 
         _pimpl->_rpi.End();
     }

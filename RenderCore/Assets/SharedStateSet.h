@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../Metal/Forward.h"
+#include "../IThreadContext_Forward.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Core/Types.h"
 #include <string>
@@ -39,6 +40,11 @@ namespace RenderCore { namespace Assets
             Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex)
         : _context(&context), _parserContext(&parserContext), _techniqueIndex(techniqueIndex) {}
+
+        ModelRendererContext(
+            IThreadContext& context, 
+            Techniques::ParsingContext& parserContext,
+            unsigned techniqueIndex);
     };
 
     namespace Internal
@@ -108,10 +114,13 @@ namespace RenderCore { namespace Assets
         };
         
         CaptureMarker CaptureState(
+            IThreadContext& context,
+            std::shared_ptr<Techniques::IStateSetResolver> stateResolver,
+            std::shared_ptr<Utility::ParameterBox> environment);
+        CaptureMarker CaptureState(
             Metal::DeviceContext& context,
             std::shared_ptr<Techniques::IStateSetResolver> stateResolver,
             std::shared_ptr<Utility::ParameterBox> environment);
-        void ReleaseState(Metal::DeviceContext& context);
 
         SharedStateSet(const ::Assets::DirectorySearchRules& shaderSearchDir);
         ~SharedStateSet();
@@ -125,39 +134,11 @@ namespace RenderCore { namespace Assets
         mutable SharedParameterBox _currentGeoParamBox;
         mutable SharedRenderStateSet _currentRenderState;
         mutable Metal::BoundUniforms* _currentBoundUniforms;
+
+        void ReleaseState(Metal::DeviceContext& context);
+        friend class CaptureMarker;
     };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    inline SharedStateSet::CaptureMarker::CaptureMarker(Metal::DeviceContext& metalContext, SharedStateSet& state)
-    : _state(&state), _metalContext(&metalContext)
-    {
-    }
-
-    inline SharedStateSet::CaptureMarker::CaptureMarker()
-    : _state(nullptr), _metalContext(nullptr) {}
-
-    inline SharedStateSet::CaptureMarker::~CaptureMarker()
-    {
-        if (_state && _metalContext)
-            _state->ReleaseState(*_metalContext);
-    }
-
-    inline SharedStateSet::CaptureMarker::CaptureMarker(CaptureMarker&& moveFrom) never_throws
-    {
-        _state = moveFrom._state; moveFrom._state = nullptr;
-        _metalContext = moveFrom._metalContext; moveFrom._metalContext = nullptr;
-    }
-            
-    inline auto SharedStateSet::CaptureMarker::operator=(CaptureMarker&& moveFrom) never_throws -> CaptureMarker&
-    {
-        if (_state && _metalContext)
-            _state->ReleaseState(*_metalContext);
-
-        _state = moveFrom._state; moveFrom._state = nullptr;
-        _metalContext = moveFrom._metalContext; moveFrom._metalContext = nullptr;
-        return *this;
-    }
+  
     
 }}
 

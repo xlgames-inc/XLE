@@ -67,7 +67,9 @@ namespace Sample
     class CharactersScene::Pimpl
     {
     public:
-        typedef RenderCore::Assets::ModelRenderer::PreparedAnimation PreparedAnimation;
+        typedef std::unique_ptr<
+            RenderCore::Assets::PreparedAnimation,
+            void(*)(RenderCore::Assets::PreparedAnimation*)> PreparedAnimation;
 
         using AnimPtr = std::shared_ptr<AnimationDecisionTree>;
         using ModelPtr = std::shared_ptr<CharacterModel>;
@@ -93,14 +95,14 @@ namespace Sample
     static const std::basic_string<utf8> StringAutoCotangent((const utf8*)"AUTO_COTANGENT");
 
     void CharactersScene::Render(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& parserContext,
         int techniqueIndex) const
     {
         using RenderCore::Metal::ConstantBuffer;
         using namespace SceneEngine;
 
-        RenderCore::Metal::GPUProfiler::DebugAnnotation anno(*context, L"Characters");
+//        RenderCore::Metal::GPUProfiler::DebugAnnotation anno(context, L"Characters");
         CPUProfileEvent pEvnt("CharactersSceneRender", g_cpuProfiler);
 
             //  Turn on auto cotangents for character rendering
@@ -109,10 +111,10 @@ namespace Sample
         auto& techEnv = parserContext.GetTechniqueContext()._globalEnvironmentState;
         techEnv.SetParameter(StringAutoCotangent.c_str(), 1);
 
-        auto captureMarker = _pimpl->_charactersSharedStateSet.CaptureState(*context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+        auto captureMarker = _pimpl->_charactersSharedStateSet.CaptureState(context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
         RenderCore::Assets::ModelRendererContext modelContext(
-            *context, parserContext, techniqueIndex);
+            context, parserContext, techniqueIndex);
 
         if (!_pimpl->_preallocatedState.empty()) {
 
@@ -124,16 +126,16 @@ namespace Sample
                     CATCH_ASSETS_BEGIN
                         const auto& model = *i->_model;
 
-                        si->_animState = RenderCore::Assets::AnimationState(i->_time, i->_animation);
-                        model.GetPrepareMachine().PrepareAnimation(context, *si);
-                        model.GetRenderer().PrepareAnimation(context, *si, model.GetPrepareMachine().GetSkeletonBinding());
+                        model.GetPrepareMachine().PrepareAnimation(
+                            context, **si, 
+                            RenderCore::Assets::AnimationState(i->_time, i->_animation));
+                        model.GetRenderer().PrepareAnimation(
+                            context, **si, model.GetPrepareMachine().GetSkeletonBinding());
 
                         for (auto i2=i->_instances.cbegin(); i2!=i->_instances.cend(); ++i2) {
                             RenderCore::Assets::MeshToModel meshToModel(
-                                si->_finalMatrices.get(),
-                                model.GetPrepareMachine().GetSkeletonOutputCount(),
-                                &model.GetPrepareMachine().GetSkeletonBinding());
-                            model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, meshToModel, AsPointer(si));
+                                **si, &model.GetPrepareMachine().GetSkeletonBinding());
+                            model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, meshToModel, si->get());
                         }
                     CATCH_ASSETS_END(parserContext)
                 }
@@ -147,12 +149,13 @@ namespace Sample
                     //  other passes).
                     //
 
-                namespace GPUProfiler = RenderCore::Metal::GPUProfiler;
+                namespace GPUProfiler = RenderCore::GPUProfiler;
 
-                context->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
-                context->Bind(RenderCore::Techniques::CommonResources()._blendOpaque);
+                auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+                metalContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
+                metalContext->Bind(RenderCore::Techniques::CommonResources()._blendOpaque);
 
-                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "RenderCharacters", GPUProfiler::Begin);
+                GPUProfiler::TriggerEvent(context, g_gpuProfiler.get(), "RenderCharacters", GPUProfiler::Begin);
 
                 auto si = _pimpl->_preallocatedState.begin();
                 for (auto i=_pimpl->_stateCache.begin(); i!=_pimpl->_stateCache.end(); ++i, ++si) {
@@ -160,13 +163,14 @@ namespace Sample
                         const auto& model = *i->_model;
                         for (auto i2=i->_instances.cbegin(); i2!=i->_instances.cend(); ++i2) {
                             CPUProfileEvent pEvnt("CharacterModelRender", g_cpuProfiler);
-                            model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, 
-                                RenderCore::Assets::MeshToModel(model.GetModelScaffold()), AsPointer(si));
+                            model.GetRenderer().Render(
+                                modelContext, _pimpl->_charactersSharedStateSet, *i2, 
+                                RenderCore::Assets::MeshToModel(model.GetModelScaffold()), si->get());
                         }
                     CATCH_ASSETS_END(parserContext)
                 }
 
-                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "RenderCharacters", GPUProfiler::End);
+                GPUProfiler::TriggerEvent(context, g_gpuProfiler.get(), "RenderCharacters", GPUProfiler::End);
 
             }
 
@@ -194,8 +198,7 @@ namespace Sample
         techEnv.SetParameter(StringAutoCotangent.c_str(), 0);
     }
 
-    void CharactersScene::Prepare(
-        RenderCore::Metal::DeviceContext* context)
+    void CharactersScene::Prepare(RenderCore::IThreadContext& context)
     {
         CPUProfileEvent pEvnt("CharactersScenePrepare", g_cpuProfiler);
 
@@ -205,7 +208,8 @@ namespace Sample
 
         if (RenderCore::Assets::ModelRenderer::CanDoPrepareAnimation(context)) {
             while (_pimpl->_preallocatedState.size() < _pimpl->_stateCache.size()) {
-                _pimpl->_preallocatedState.push_back(_pimpl->_stateCache[0]._model->GetRenderer().CreatePreparedAnimation());
+                _pimpl->_preallocatedState.emplace_back(
+                    _pimpl->_stateCache[0]._model->GetRenderer().CreatePreparedAnimation());
             }
         }
 
@@ -213,10 +217,10 @@ namespace Sample
         if (interleavedRender) 
             return;
 
-        namespace GPUProfiler = RenderCore::Metal::GPUProfiler;
+        namespace GPUProfiler = RenderCore::GPUProfiler;
 
-        GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "PrepareAnimation", GPUProfiler::Begin);
-        RenderCore::Metal::GPUProfiler::DebugAnnotation anno(*context, L"PrepareCharacters");
+        GPUProfiler::TriggerEvent(context, g_gpuProfiler.get(), "PrepareAnimation", GPUProfiler::Begin);
+//        RenderCore::Metal::GPUProfiler::DebugAnnotation anno(context, L"PrepareCharacters");
 
             //
             //      Separate state preparation from rendering, so we can profile
@@ -229,14 +233,15 @@ namespace Sample
                     // 2 prepare steps
                     //      * first, we need to generate the transform matrices
                     //      * second, we generate the animated vertex positions
-                si->_animState = RenderCore::Assets::AnimationState(i->_time, i->_animation);
-                model.GetPrepareMachine().PrepareAnimation(context, *si);
-                model.GetRenderer().PrepareAnimation(context, *si, model.GetPrepareMachine().GetSkeletonBinding());
+                model.GetPrepareMachine().PrepareAnimation(
+                    context, **si,
+                    RenderCore::Assets::AnimationState(i->_time, i->_animation));
+                model.GetRenderer().PrepareAnimation(context, **si, model.GetPrepareMachine().GetSkeletonBinding());
             } CATCH(const ::Assets::Exceptions::AssetException&) {
             } CATCH_END
         }
 
-        GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "PrepareAnimation", GPUProfiler::End);
+        GPUProfiler::TriggerEvent(context, g_gpuProfiler.get(), "PrepareAnimation", GPUProfiler::End);
     }
 
     void CharactersScene::Cull(const Float4x4& worldToProjection)
