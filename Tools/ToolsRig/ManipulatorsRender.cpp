@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ManipulatorsRender.h"
-#include "HighlightEffects.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -23,6 +22,7 @@
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/Format.h"
+#include "../../RenderOverlays/HighlightEffects.h"
 #include "../../Math/Transformations.h"
 
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
@@ -66,7 +66,7 @@ namespace ToolsRig
         uint64 materialGuid)
     {
         CATCH_ASSETS_BEGIN
-            BinaryHighlight highlight(threadContext);
+            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetNamedResources());
             Placements_RenderFiltered(
                 threadContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward,
                 renderer, cellSet, filterBegin, filterEnd, materialGuid);
@@ -84,7 +84,7 @@ namespace ToolsRig
         uint64 materialGuid)
     {
         CATCH_ASSETS_BEGIN
-            BinaryHighlight highlight(threadContext);
+            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetNamedResources());
             Placements_RenderFiltered(
                 threadContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward,
                 renderer, cellSet, filterBegin, filterEnd, materialGuid);

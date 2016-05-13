@@ -816,19 +816,19 @@ namespace PlatformRig { namespace Overlays
         {
             auto forkedContext = metalContext->Fork();
 
-            forkedContext.BeginCommandList();
-            forkedContext.Bind(commonResources._blendOpaque);
-            forkedContext.Bind(commonResources._dssDisable);
-            forkedContext.Bind(commonResources._defaultRasterizer);
-            forkedContext.Bind(Metal::Topology::TriangleList);
+            forkedContext->BeginCommandList();
+            forkedContext->Bind(commonResources._blendOpaque);
+            forkedContext->Bind(commonResources._dssDisable);
+            forkedContext->Bind(commonResources._defaultRasterizer);
+            forkedContext->Bind(Metal::Topology::TriangleList);
 
-            forkedContext.Bind(mainViewport);
+            forkedContext->Bind(mainViewport);
             
             TRY
             {
-                forkedContext.Clear(box._bufferRTV, {0.f, 0.f, 0.f, 0.f});
-                forkedContext.Bind(MakeResourceList(box._bufferRTV), nullptr);
-                forkedContext.Bind(box._viewport);
+                forkedContext->Clear(box._bufferRTV, {0.f, 0.f, 0.f, 0.f});
+                forkedContext->Bind(MakeResourceList(box._bufferRTV), nullptr);
+                forkedContext->Bind(box._viewport);
 
                 auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2d.vsh:P2C:vs_*",
@@ -848,9 +848,9 @@ namespace PlatformRig { namespace Overlays
                     { triPoints[2], 0xff00ff00 }
                 };
                 Metal::VertexBuffer vb(vertices, sizeof(vertices));
-                forkedContext.Bind(MakeResourceList(vb), sizeof(Vertex), 0);
+                forkedContext->Bind(MakeResourceList(vb), sizeof(Vertex), 0);
                 Metal::BoundInputLayout inputLayout(GlobalInputLayouts::P2C, shader);
-                forkedContext.Bind(inputLayout);
+                forkedContext->Bind(inputLayout);
 
                 Float4 recipViewport(1.f / box._viewport.Width, 1.f / box._viewport.Height, 0.f, 0.f);
                 SharedPkt constants[] = { MakeSharedPkt(recipViewport) };
@@ -858,11 +858,11 @@ namespace PlatformRig { namespace Overlays
                 Metal::BoundUniforms uniforms(shader);
                 uniforms.BindConstantBuffers(1, {"ReciprocalViewportDimensionsCB"});
                 uniforms.Apply(
-                    forkedContext, context->GetGlobalUniformsStream(),
+                    *forkedContext, context->GetGlobalUniformsStream(),
                     Metal::UniformsStream(constants));
             
-                forkedContext.Bind(shader);
-                forkedContext.Draw(3);
+                forkedContext->Bind(shader);
+                forkedContext->Draw(3);
 
             } CATCH (...) {
             } CATCH_END
@@ -872,7 +872,7 @@ namespace PlatformRig { namespace Overlays
             //          tests to ensure that it is ready by the time we get to this point.
             //      we can keep a list of "tributary" command lists in the main device context...?
             metalContext->CommitCommandList(
-                *forkedContext.ResolveCommandList(),
+                *forkedContext->ResolveCommandList(),
                 true);
         }
 

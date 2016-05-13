@@ -99,6 +99,10 @@ namespace RenderCore { namespace Techniques
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
         ~RenderPassInstance();
 
+        RenderPassInstance();
+        RenderPassInstance(RenderPassInstance&& moveFrom);
+        RenderPassInstance& operator=(RenderPassInstance&& moveFrom);
+
     private:
         std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
         Metal::DeviceContext* _attachedContext;
@@ -106,4 +110,5 @@ namespace RenderCore { namespace Techniques
     };
 
 }}
+
 

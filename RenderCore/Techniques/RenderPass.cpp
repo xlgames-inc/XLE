@@ -106,6 +106,26 @@ namespace RenderCore { namespace Techniques
         End();
     }
 
+    RenderPassInstance::RenderPassInstance(RenderPassInstance&& moveFrom)
+    : _frameBuffer(std::move(moveFrom._frameBuffer))
+    , _attachedContext(moveFrom._attachedContext)
+    , _activeSubpass(moveFrom._activeSubpass)
+    {}
+
+    RenderPassInstance& RenderPassInstance::operator=(RenderPassInstance&& moveFrom)
+    {
+        _frameBuffer = std::move(moveFrom._frameBuffer);
+        _attachedContext = moveFrom._attachedContext;
+        _activeSubpass = moveFrom._activeSubpass;
+        return *this;
+    }
+
+    RenderPassInstance::RenderPassInstance()
+    {
+        _attachedContext = nullptr;
+        _activeSubpass = 0u;
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static const unsigned s_maxBoundTargets = 64;

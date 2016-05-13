@@ -5,19 +5,20 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "HighlightEffects.h"
-#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/Resource.h"
 #include "../../RenderCore/Metal/ObjectFactory.h"
+#include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Format.h"
 #include "../../Assets/Assets.h"
 #include "../../Utility/StringFormat.h"
 
-namespace ToolsRig
+namespace RenderOverlays
 {
     using namespace RenderCore;
 
@@ -83,6 +84,7 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
     class CommonOffscreenTarget
     {
     public:
@@ -123,6 +125,9 @@ namespace ToolsRig
     }
 
     CommonOffscreenTarget::~CommonOffscreenTarget() {}
+#endif
+
+    static const RenderCore::AttachmentName s_commonOffscreen = 15u;
 
     class HighlightShaders
     {
@@ -166,106 +171,117 @@ namespace ToolsRig
     class BinaryHighlight::Pimpl
     {
     public:
-        std::shared_ptr<Metal::DeviceContext> _metalContext;
-        SceneEngine::SavedTargets _savedTargets;
-        Metal::ShaderResourceView _srv;
+        IThreadContext*                 _threadContext;
+        Techniques::NamedResources*     _namedRes;
+        Techniques::RenderPassInstance  _rpi;
 
-        Pimpl(std::shared_ptr<Metal::DeviceContext> metalContext)
-        : _metalContext(std::move(metalContext))
-        , _savedTargets(*metalContext)
-        {}
+        Pimpl(IThreadContext& threadContext, Techniques::NamedResources& namedRes)
+        : _threadContext(&threadContext), _namedRes(&namedRes) {}
         ~Pimpl() {}
     };
 
-    BinaryHighlight::BinaryHighlight(RenderCore::IThreadContext& threadContext)
+    BinaryHighlight::BinaryHighlight(
+        IThreadContext& threadContext, 
+        Techniques::NamedResources& namedRes)
     {
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);
-        _pimpl = std::make_unique<Pimpl>(metalContext);
+        using namespace RenderCore;
+        _pimpl = std::make_unique<Pimpl>(threadContext, namedRes);
 
-        const auto& viewport = _pimpl->_savedTargets.GetViewports()[0];
-
-        auto& offscreen = Techniques::FindCachedBox<CommonOffscreenTarget>(
-            CommonOffscreenTarget::Desc(unsigned(viewport.Width), unsigned(viewport.Height), 
-            Format::R8G8B8A8_UNORM));
+        namedRes.DefineAttachments({{
+            s_commonOffscreen, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
+            Format::R8G8B8A8_UNORM, TextureViewWindow::ColorLinear,
+            AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource}});
 
         const bool doDepthTest = true;
-        if (constant_expression<doDepthTest>::result()) {
-            metalContext->Bind(Techniques::CommonResources()._dssReadOnly);
-            Metal::DepthStencilView dsv(_pimpl->_savedTargets.GetDepthStencilView());
-            metalContext->Bind(MakeResourceList(offscreen._rtv), &dsv);
-        } else {
-            metalContext->Bind(MakeResourceList(offscreen._rtv), nullptr);
-        }
-
-        metalContext->Clear(offscreen._rtv, {0.f, 0.f, 0.f, 0.f});
-
-        _pimpl->_srv = offscreen._srv;
+        FrameBufferDesc fbLayout = {
+            {{{s_commonOffscreen}, doDepthTest?1u:~0u}, {{0u}, ~0u, {s_commonOffscreen}}}, 
+            {{s_commonOffscreen, s_commonOffscreen, TextureViewWindow(), AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::Retain}}};
+        _pimpl->_rpi = Techniques::RenderPassInstance(
+            threadContext, fbLayout, 0u, namedRes,
+            {{MakeClearValue(0.f, 0.f, 0.f, 0.f)}});
     }
 
     void BinaryHighlight::FinishWithOutlineAndOverlay(RenderCore::IThreadContext& threadContext, Float3 outlineColor, unsigned overlayColor)
     {
+        auto* srv = _pimpl->_namedRes->GetSRV(s_commonOffscreen);
+        assert(srv);
+        if (!srv) return;
+
+        _pimpl->_rpi.NextSubpass();
+
         static Float3 highlightColO(1.5f, 1.35f, .7f);
         static unsigned overlayColO = 1;
 
         outlineColor = highlightColO;
         overlayColor = overlayColO;
 
-        _pimpl->_savedTargets.ResetToOldTargets(*_pimpl->_metalContext);
-
         HighlightByStencilSettings settings;
         settings._outlineColor = outlineColor;
         for (unsigned c=1; c<dimof(settings._stencilToMarkerMap); ++c)
             settings._stencilToMarkerMap[c] = UInt4(overlayColor, overlayColor, overlayColor, overlayColor);
+        ExecuteHighlightByStencil(threadContext, *srv, settings, false);
 
-        ExecuteHighlightByStencil(threadContext, _pimpl->_srv, settings, false);
+        _pimpl->_rpi.End();
     }
 
     void BinaryHighlight::FinishWithOutline(RenderCore::IThreadContext& threadContext, Float3 outlineColor)
     {
-        _pimpl->_savedTargets.ResetToOldTargets(*_pimpl->_metalContext);
-
             //  now we can render these objects over the main image, 
             //  using some filtering
 
-        _pimpl->_metalContext->BindPS(MakeResourceList(_pimpl->_srv));
+        auto* srv = _pimpl->_namedRes->GetSRV(s_commonOffscreen);
+        assert(srv);
+        if (!srv) return;
+
+        _pimpl->_rpi.NextSubpass();
+        auto metalContext = Metal::DeviceContext::Get(threadContext);
+        metalContext->BindPS(MakeResourceList(*srv));
 
         struct Constants { Float3 _color; unsigned _dummy; } constants = { outlineColor, 0 };
         SharedPkt pkts[] = { MakeSharedPkt(constants) };
 
         auto& shaders = Techniques::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
         shaders._drawHighlightUniforms.Apply(
-            *_pimpl->_metalContext, 
+            *metalContext, 
             Metal::UniformsStream(), 
             Metal::UniformsStream(pkts, nullptr, dimof(pkts)));
-        _pimpl->_metalContext->Bind(*shaders._drawHighlight);
-        _pimpl->_metalContext->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-        _pimpl->_metalContext->Bind(Techniques::CommonResources()._dssDisable);
-        _pimpl->_metalContext->Bind(Metal::Topology::TriangleStrip);
-        _pimpl->_metalContext->Draw(4);
+        metalContext->Bind(*shaders._drawHighlight);
+        metalContext->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+        metalContext->Bind(Techniques::CommonResources()._dssDisable);
+        metalContext->Bind(Metal::Topology::TriangleStrip);
+        metalContext->Draw(4);
+
+        _pimpl->_rpi.End();
     }
 
     void BinaryHighlight::FinishWithShadow(RenderCore::IThreadContext& threadContext, Float4 shadowColor)
     {
-        _pimpl->_savedTargets.ResetToOldTargets(*_pimpl->_metalContext);
+        auto* srv = _pimpl->_namedRes->GetSRV(s_commonOffscreen);
+        assert(srv);
+        if (!srv) return;
 
             //  now we can render these objects over the main image, 
             //  using some filtering
 
-        _pimpl->_metalContext->BindPS(MakeResourceList(_pimpl->_srv));
+        _pimpl->_rpi.NextSubpass();
+        auto metalContext = Metal::DeviceContext::Get(threadContext);
+        metalContext->BindPS(MakeResourceList(*srv));
 
         struct Constants { Float4 _shadowColor; } constants = { shadowColor };
         SharedPkt pkts[] = { MakeSharedPkt(constants) };
 
         auto& shaders = Techniques::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
         shaders._drawShadowUniforms.Apply(
-            *_pimpl->_metalContext, 
+            *metalContext, 
             Metal::UniformsStream(), 
             Metal::UniformsStream(pkts, nullptr, dimof(pkts)));
-        _pimpl->_metalContext->Bind(*shaders._drawShadow);
-        _pimpl->_metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
-        _pimpl->_metalContext->Bind(Techniques::CommonResources()._dssDisable);
-        _pimpl->_metalContext->Bind(Metal::Topology::TriangleStrip);
-        _pimpl->_metalContext->Draw(4);
+        metalContext->Bind(*shaders._drawShadow);
+        metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
+        metalContext->Bind(Techniques::CommonResources()._dssDisable);
+        metalContext->Bind(Metal::Topology::TriangleStrip);
+        metalContext->Draw(4);
+
+        _pimpl->_rpi.End();
     }
 
     BinaryHighlight::~BinaryHighlight() {}

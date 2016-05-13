@@ -6,7 +6,6 @@
 
 #include "ModelVisualisation.h"
 #include "VisualisationUtils.h"
-#include "HighlightEffects.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/Screenshot.h"
 #include "../../SceneEngine/SceneParser.h"
@@ -18,6 +17,7 @@
 #include "../../SceneEngine/PreparedScene.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
+#include "../../RenderOverlays/HighlightEffects.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
@@ -407,7 +407,7 @@ namespace ToolsRig
                 using namespace RenderCore;
                 // auto metalContext = Metal::DeviceContext::Get(*context);
 
-                HighlightByStencilSettings settings;
+                RenderOverlays::HighlightByStencilSettings settings;
 
                     //  We need to query the model to build a lookup table between draw call index
                     //  and material binding index. The shader reads a draw call index from the 

@@ -388,7 +388,7 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-    DeviceContext DeviceContext::Fork()
+    std::shared_ptr<DeviceContext> DeviceContext::Fork()
     {
         ID3D::Device* devRaw = nullptr;
 		_underlying->GetDevice(&devRaw);
@@ -400,7 +400,7 @@ namespace RenderCore { namespace Metal_DX11
         if (!SUCCEEDED(hresult) || !context) 
             Throw(::Exceptions::BasicLabel("Failure while forking device context"));
 
-        return std::move(context);
+        return std::make_shared<DeviceContext>(std::move(context));
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

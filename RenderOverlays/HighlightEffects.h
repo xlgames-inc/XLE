@@ -10,7 +10,9 @@
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../Math/Vector.h"
 
-namespace ToolsRig
+namespace RenderCore { namespace Techniques { class NamedResources; } }
+
+namespace RenderOverlays
 {
     class HighlightByStencilSettings
     {
@@ -49,7 +51,7 @@ namespace ToolsRig
         void FinishWithOutlineAndOverlay(RenderCore::IThreadContext& threadContext, Float3 outlineColor, unsigned overlayColor);
         void FinishWithShadow(RenderCore::IThreadContext& threadContext, Float4 shadowColor);
         
-        BinaryHighlight(RenderCore::IThreadContext& threadContext);
+        BinaryHighlight(RenderCore::IThreadContext& threadContext, RenderCore::Techniques::NamedResources& namedRes);
         ~BinaryHighlight();
     protected:
         class Pimpl;

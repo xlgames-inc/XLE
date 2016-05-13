@@ -204,7 +204,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		ObjectFactory&	GetFactory() { return *_factory; }
 
-        DeviceContext Fork();
+        std::shared_ptr<DeviceContext> Fork();
 
         DeviceContext(ID3D::DeviceContext* context);
         DeviceContext(intrusive_ptr<ID3D::DeviceContext>&& context);
