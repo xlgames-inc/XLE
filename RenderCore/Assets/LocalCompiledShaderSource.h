@@ -13,6 +13,8 @@
 #include <memory>
 #include <mutex>
 
+namespace RenderCore { class DeviceDesc; }
+
 namespace RenderCore { namespace Assets 
 {
     class ShaderCacheSet;
@@ -41,7 +43,7 @@ namespace RenderCore { namespace Assets
 
         ShaderCacheSet& GetCacheSet() { return *_shaderCacheSet; }
 
-        LocalCompiledShaderSource(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler);
+        LocalCompiledShaderSource(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler, const DeviceDesc& devDesc);
         ~LocalCompiledShaderSource();
     protected:
         std::unique_ptr<ShaderCacheSet> _shaderCacheSet;

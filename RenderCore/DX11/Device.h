@@ -73,6 +73,7 @@ namespace RenderCore
     public:
         virtual void*       QueryInterface(const GUID& guid);
         std::shared_ptr<Metal_DX11::DeviceContext>&  GetUnderlying();
+        ID3D::Device* ThreadContextDX11::GetUnderlyingDevice();
 
         ThreadContextDX11(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device);
         ~ThreadContextDX11();
@@ -85,7 +86,7 @@ namespace RenderCore
     public:
         std::unique_ptr<IPresentationChain>     CreatePresentationChain(const void* platformValue, unsigned width, unsigned height) /*override*/;
 
-        std::pair<const char*, const char*>     GetVersionInformation();
+        DeviceDesc     GetDesc();
 
         std::shared_ptr<IThreadContext>         GetImmediateContext();
         std::unique_ptr<IThreadContext>         CreateDeferredContext();

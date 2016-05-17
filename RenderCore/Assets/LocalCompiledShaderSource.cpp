@@ -7,6 +7,7 @@
 #include "LocalCompiledShaderSource.h"
 #include "../Metal/Shader.h"
 
+#include "../IDevice.h"
 #include "../../Assets/ChunkFile.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -25,12 +26,6 @@
 #include <functional>
 #include <deque>
 #include <regex>
-
-namespace RenderCore 
-{ 
-    extern char VersionString[];
-    extern char BuildDateString[];
-}
 
 namespace RenderCore { namespace Assets 
 {
@@ -255,12 +250,15 @@ namespace RenderCore { namespace Assets
 
         void LogStats(const ::Assets::IntermediateAssets::Store& intermediateStore);
 
-        ShaderCacheSet();
+        ShaderCacheSet(const DeviceDesc& devDesc);
         ~ShaderCacheSet();
     protected:
         typedef std::pair<uint64, std::shared_ptr<::Assets::ArchiveCache>> Archive;
-        std::vector<Archive> _archives;
-        Threading::Mutex _archivesLock;
+        std::vector<Archive>    _archives;
+        Threading::Mutex        _archivesLock;
+        std::string             _baseFolderName;
+        std::string             _versionString;
+        std::string             _buildDateString;
     };
 
     std::shared_ptr<::Assets::ArchiveCache> ShaderCacheSet::GetArchive(
@@ -276,8 +274,10 @@ namespace RenderCore { namespace Assets
         }
 
         char intName[MaxPath];
-        intermediateStore.MakeIntermediateName(intName, dimof(intName), shaderBaseFilename);
-        auto newArchive = std::make_shared<::Assets::ArchiveCache>(intName, VersionString, BuildDateString);
+        XlCopyString(intName, _baseFolderName.c_str());
+        XlCatString(intName, shaderBaseFilename);
+        intermediateStore.MakeIntermediateName(intName, dimof(intName), intName);
+        auto newArchive = std::make_shared<::Assets::ArchiveCache>(intName, _versionString.c_str(), _buildDateString.c_str());
         _archives.insert(existing, std::make_pair(hashedName, newArchive));
         return std::move(newArchive);
     }
@@ -289,7 +289,7 @@ namespace RenderCore { namespace Assets
         uint64 totalAllocationSpace = 0;
 
         char baseDir[MaxPath];
-        intermediateStore.MakeIntermediateName(baseDir, dimof(baseDir), "");
+        intermediateStore.MakeIntermediateName(baseDir, dimof(baseDir), _baseFolderName.c_str());
         auto baseDirLen = XlStringLen(baseDir);
         assert(&baseDir[baseDirLen] == XlStringEnd(baseDir));
         std::deque<std::string> dirs;
@@ -398,7 +398,13 @@ namespace RenderCore { namespace Assets
         LogInfo << "------------------------------------------------------------------------------------------";
     }
 
-    ShaderCacheSet::ShaderCacheSet() {}
+    ShaderCacheSet::ShaderCacheSet(const DeviceDesc& devDesc)
+    {
+        _baseFolderName = std::string(devDesc._underlyingAPI) + "/";
+        _versionString = devDesc._buildVersion;
+        _buildDateString = devDesc._buildDate;
+    }
+
     ShaderCacheSet::~ShaderCacheSet() {}
 
         ////////////////////////////////////////////////////////////
@@ -649,11 +655,13 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    LocalCompiledShaderSource::LocalCompiledShaderSource(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler)
+    LocalCompiledShaderSource::LocalCompiledShaderSource(
+        std::shared_ptr<ShaderService::ILowLevelCompiler> compiler,
+        const DeviceDesc& devDesc)
     : _compiler(std::move(compiler))
     {
         CancelAllShaderCompiles = false;
-        _shaderCacheSet = std::make_unique<ShaderCacheSet>();
+        _shaderCacheSet = std::make_unique<ShaderCacheSet>(devDesc);
         Interlocked::Exchange(&_activeCompileCount, 0);
     }
 

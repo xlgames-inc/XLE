@@ -294,10 +294,11 @@ namespace RenderCore
 
     extern char VersionString[];
     extern char BuildDateString[];
+    static const char* s_underlyingApi = "DX11";
         
-    std::pair<const char*, const char*> Device::GetVersionInformation()
+    DeviceDesc Device::GetDesc()
     {
-        return std::make_pair(VersionString, BuildDateString);
+        return DeviceDesc{s_underlyingApi, VersionString, BuildDateString};
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////

@@ -96,9 +96,9 @@ namespace Sample
             //  Here, I show 2 different ways to do dynamic string formatting.
             //      (note that XlDynFormatString will always allocate at least once!)
         window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(presentationChain));
-        auto v = renderDevice->GetVersionInformation();
-        window.SetTitle(XlDynFormatString("XLE sample [RenderCore: %s : %s]", v.first, v.second).c_str());
-        window.SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v.first << ", " << v.second << "]");
+        auto v = renderDevice->GetDesc();
+        window.SetTitle(XlDynFormatString("XLE sample [RenderCore: %s : %s]", v._buildVersion, v._buildDate).c_str());
+        window.SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v._buildVersion << ", " << v._buildDate << "]");
 
             // Some secondary initalisation:
             //  * attach compilers

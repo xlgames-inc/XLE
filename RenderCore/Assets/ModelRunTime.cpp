@@ -804,7 +804,7 @@ namespace RenderCore { namespace Assets
         auto& devContext = *context._context;
         devContext.Bind(_indexBuffer, cm->_indexFormat, cm->_ibOffset);
 
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_ACTIVE == GFXAPI_DX11    // platformtemp
 			auto animGeo = SkinnedMesh::VertexStreams::AnimatedGeo;
 			UINT strides[] = { cm->_extraVbStride[animGeo], cm->_vertexStrides[0], cm->_vertexStrides[1], cm->_vertexStrides[2] };
 			UINT offsets[] = { cm->_extraVbOffset[animGeo], cm->_vbOffsets[0], cm->_vbOffsets[1], cm->_vbOffsets[2] };

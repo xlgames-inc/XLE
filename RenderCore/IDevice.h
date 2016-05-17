@@ -33,6 +33,26 @@ namespace RenderCore
     class PresentationChainDesc;
     class SubResourceId;
 
+    /// <summary>Device description</summary>
+    /// The build number is in a format such as:
+    /// <code>\code
+    ///     vX.Y.Z-[commits]-[commit marker]-[configuration]
+    /// \endcode</code>
+    /// Here, X, Y, Z are major, minor and patch version.
+    /// <list>
+    ///     <item> [commits] is the number of extra commits past the version tag in git.</item>
+    ///     <item> [commit marker] is the short name of the latest commit to git.</item>
+    ///     <item> [configuration] is the build configuration</item>
+    /// </list>
+    /// The build date format is determined by the OS and locale at compilation time.
+    class DeviceDesc
+    {
+    public:
+        const char* _underlyingAPI;
+        const char* _buildVersion;
+        const char* _buildDate;
+    };
+
 #define FLEX_INTERFACE PresentationChain
 /*-----------------*/ #include "FlexBegin.h" /*-----------------*/
     
@@ -165,21 +185,9 @@ namespace RenderCore
 			using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
 			IMETHOD ResourcePtr			CreateResource(const ResourceDesc& desc, const ResourceInitializer& init = nullptr) IPURE;
 
-            /// <summary>Returns version information for this device</summary>
+            /// <summary>Returns description & version information for this device</summary>
             /// Queries build number and build date information.
-            /// The build number is in a format such as:
-            /// <code>\code
-            ///     vX.Y.Z-[commits]-[commit marker]-[configuration]
-            /// \endcode</code>
-            /// Here, X, Y, Z are major, minor and patch version.
-            /// <list>
-            ///     <item> [commits] is the number of extra commits past the version tag in git.
-            ///     <item> [commit marker] is the short name of the latest commit to git.
-            ///     <item> [configuration] is the build configuration
-            /// </list>
-            /// The build date format is determined by the OS and locale at compilation time.
-            /// <returns>The first returned string is the build number, the second is the build date</returns>
-            IMETHOD std::pair<const char*, const char*> GetVersionInformation() IPURE;
+            IMETHOD DeviceDesc          GetDesc() IPURE;
             IDESTRUCTOR
         };
 

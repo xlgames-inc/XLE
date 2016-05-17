@@ -14,6 +14,7 @@
 #include "../Types.h"
 
 #include "../IDevice.h"
+#include "../IThreadContext.h"
 #include "../Metal/Shader.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
@@ -30,6 +31,7 @@
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11
 	#include "../DX11/Metal/IncludeDX11.h"
+    #include "../DX11/IDeviceDX11.h"
 #endif
 
 #pragma warning(disable:4127)       // conditional expression is constant
@@ -518,22 +520,7 @@ namespace RenderCore { namespace Assets
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class PreparedAnimation
-    {
-    public:
-        std::unique_ptr<Float4x4[]> _finalMatrices;
-        unsigned                    _finalMatrixCount;
-        Metal::VertexBuffer         _skinningBuffer;
-        std::vector<unsigned>       _vbOffsets;
-
-        PreparedAnimation();
-        PreparedAnimation(PreparedAnimation&&) never_throws;
-        PreparedAnimation& operator=(PreparedAnimation&&) never_throws;
-        PreparedAnimation(const PreparedAnimation&) = delete;
-        PreparedAnimation& operator=(const PreparedAnimation&) = delete;
-    };
-
-    void DeletePreparedAnimation(PreparedAnimation* ptr) { delete ptr; }
+    static void DeletePreparedAnimation(PreparedAnimation* ptr) { delete ptr; }
 
     auto ModelRenderer::CreatePreparedAnimation() const -> std::unique_ptr<PreparedAnimation, void(*)(PreparedAnimation*)>
     {
@@ -589,7 +576,7 @@ namespace RenderCore { namespace Assets
     bool ModelRenderer::CanDoPrepareAnimation(IThreadContext& context)
     {
 		#if GFXAPI_ACTIVE == GFXAPI_DX11
-            auto* contextD3D = context.QueryInterface(__uuidof(ThreadContextDX11));
+            auto* contextD3D = (IThreadContextDX11*)context.QueryInterface(__uuidof(IThreadContextDX11));
             if (contextD3D) {
 			    auto featureLevel = contextD3D->GetUnderlyingDevice()->GetFeatureLevel();
 			    return (featureLevel >= D3D_FEATURE_LEVEL_10_0);

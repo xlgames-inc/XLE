@@ -252,5 +252,20 @@ namespace RenderCore { namespace Assets
             AsPointer(source.cbegin()), (unsigned)source.size(), lowLevelSlot);
     }
 
+    class PreparedAnimation
+    {
+    public:
+        std::unique_ptr<Float4x4[]> _finalMatrices;
+        unsigned                    _finalMatrixCount;
+        Metal::VertexBuffer         _skinningBuffer;
+        std::vector<unsigned>       _vbOffsets;
+
+        PreparedAnimation();
+        PreparedAnimation(PreparedAnimation&&) never_throws;
+        PreparedAnimation& operator=(PreparedAnimation&&) never_throws;
+        PreparedAnimation(const PreparedAnimation&) = delete;
+        PreparedAnimation& operator=(const PreparedAnimation&) = delete;
+    };
+
 }}
 

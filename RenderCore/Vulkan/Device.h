@@ -164,7 +164,7 @@ namespace RenderCore
         std::unique_ptr<IPresentationChain>     CreatePresentationChain(
 			const void* platformValue, unsigned width, unsigned height) /*override*/;
 
-        std::pair<const char*, const char*>     GetVersionInformation();
+        DeviceDesc                              GetDesc();
 
         std::shared_ptr<IThreadContext>         GetImmediateContext();
         std::unique_ptr<IThreadContext>         CreateDeferredContext();

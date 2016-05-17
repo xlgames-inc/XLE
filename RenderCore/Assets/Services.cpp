@@ -10,6 +10,7 @@
 #include "Material.h"   // just for MaterialScaffold::CompileProcessType
 #include "ColladaCompilerInterface.h"
 #include "../Metal/Shader.h"            // (for Metal::CreateLowLevelShaderCompiler)
+#include "../IDevice.h"
 #include "../ShaderService.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
@@ -26,7 +27,8 @@ namespace RenderCore { namespace Assets
         _shaderService = std::make_unique<ShaderService>();
 
         auto shaderSource = std::make_shared<LocalCompiledShaderSource>(
-            Metal::CreateLowLevelShaderCompiler(*device));
+            Metal::CreateLowLevelShaderCompiler(*device),
+            device->GetDesc());
         _shaderService->AddShaderSource(shaderSource);
 
         auto& asyncMan = ::Assets::Services::GetAsyncMan();
