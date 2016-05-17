@@ -182,7 +182,7 @@ namespace RenderCore { namespace Metal_Vulkan
         ~BoundClassInterfaces() {}
 
         BoundClassInterfaces(BoundClassInterfaces&& moveFrom) {}
-        BoundClassInterfaces& operator=(BoundClassInterfaces&& moveFrom) {}
+        BoundClassInterfaces& operator=(BoundClassInterfaces&& moveFrom) { return *this; }
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

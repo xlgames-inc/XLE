@@ -194,10 +194,6 @@ namespace RenderCore
         #if !defined(FLEX_CONTEXT_Device)
             #define FLEX_CONTEXT_Device                FLEX_CONTEXT_INTERFACE
         #endif
-
-        #if FLEX_CONTEXT_Device != FLEX_CONTEXT_CONCRETE
-            std::shared_ptr<IDevice>    CreateDevice();
-        #endif
             
         #if defined(DOXYGEN)
             typedef IDevice Base_Device;

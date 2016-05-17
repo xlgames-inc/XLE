@@ -43,14 +43,60 @@
     <Import Project="..\..\Solutions\Main.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-Vulkan|Win32'">
+    <Import Project="..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+    <Import Project="..\..\Foreign\vulkan\VulkanSDK.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-Vulkan|x64'">
+    <Import Project="..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+    <Import Project="..\..\Foreign\vulkan\VulkanSDK.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|Win32'">
+    <Import Project="..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+    <Import Project="..\..\Foreign\vulkan\VulkanSDK.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|x64'">
+    <Import Project="..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+    <Import Project="..\..\Foreign\vulkan\VulkanSDK.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">
+    <Import Project="..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+    <Import Project="..\..\Foreign\vulkan\VulkanSDK.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|Win32'">
+    <Import Project="..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+    <Import Project="..\..\Foreign\vulkan\VulkanSDK.props" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>D:\VulkanSDK\1.0.5.0\;E:\work\HLSLCrossCompiler\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Vulkan|Win32'">
     <Lib>
-      <AdditionalDependencies>E:\work\HLSLCrossCompiler\lib\Debug\libHLSLcc.lib;D:\VulkanSDK\1.0.5.0\glslang\build\glslang\Debug\glslang.lib;D:\VulkanSDK\1.0.5.0\glslang\build\SPIRV\Debug\SPIRV.lib;D:\VulkanSDK\1.0.5.0\glslang\build\glslang\OSDependent\Windows\Debug\OSDependent.lib;D:\VulkanSDK\1.0.5.0\glslang\build\OGLCompilersDLL\Debug\OGLCompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|Win32'">
+    <Lib>
+      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|Win32'">
+    <Lib>
+      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Vulkan|x64'">
+    <Lib>
+      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|x64'">
+    <Lib>
+      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">
+    <Lib>
+      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>

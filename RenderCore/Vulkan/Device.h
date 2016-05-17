@@ -28,7 +28,7 @@
 #include <vector>
 #include <type_traits>
 
-namespace RenderCore
+namespace RenderCore { namespace ImplVulkan
 {
     class SelectedPhysicalDevice
 	{
@@ -208,4 +208,4 @@ namespace RenderCore
     };
 
 ////////////////////////////////////////////////////////////////////////////////
-}
+}}

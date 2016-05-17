@@ -21,7 +21,7 @@
 #endif
 
 namespace RenderOverlays { class Font; }
-namespace RenderCore { class ResourceDesc; class TextureDesc; namespace BindFlag { typedef unsigned BitField; }; enum class Format; }
+namespace RenderCore { class ResourceDesc; class TextureDesc; namespace BindFlag { typedef unsigned BitField; }; enum class Format; enum class UnderlyingAPI; }
 namespace BufferUploads { class ResourceLocator; }
 
 namespace Utility

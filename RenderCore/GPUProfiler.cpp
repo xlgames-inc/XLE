@@ -5,18 +5,31 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "GPUProfiler.h"
-#include "Metal/DeviceContext.h"
-#include "Metal/GPUProfiler.h"
 #include "../Utility/Threading/Mutex.h"
 #include <vector>
 #include <deque>
 
-#if GFXAPI_TARGET == GFXAPI_DX11
-	#include "DX11/Metal/IncludeDX11.h"
-#endif
+// #include "DX11/Metal/IncludeDX11.h"
 
 namespace RenderCore { namespace GPUProfiler
 {
+    void ProfilerDestroyer::operator()(const void* ptr) {}
+    Ptr			CreateProfiler() { return nullptr; }
+
+    void        Frame_Begin(IThreadContext& context, Profiler*profiler, unsigned frameID) {}
+	void        Frame_End(IThreadContext& context, Profiler*profiler) {}
+
+	void        TriggerEvent(IThreadContext& context, Profiler*profiler, const char name[], EventType type) {}
+
+	std::pair<uint64, uint64> CalculateSynchronisation(IThreadContext& context, Profiler*profiler)
+    {
+        return std::make_pair(0x0ull, 0x0ull);
+    }
+
+    void        AddEventListener(EventListener*) {}
+	void        RemoveEventListener(EventListener*) {}
+
+#if 0       // platformtemp
 	using namespace RenderCore::Metal::GPUProfiler;
 
 	class Profiler
@@ -398,6 +411,7 @@ namespace RenderCore { namespace GPUProfiler
 			g_globalEventListener.erase(i);
 		}
 	}
+#endif
 
 }}
 

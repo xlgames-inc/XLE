@@ -18,11 +18,11 @@
 #include "Metal/DX11.h"
 #include "../../Utility/IntrusivePtr.h"
 
-namespace RenderCore
+namespace RenderCore { namespace Metal_DX11 { class DeviceContext; class ObjectFactory; } }
+
+namespace RenderCore { namespace ImplDX11
 {
 ////////////////////////////////////////////////////////////////////////////////
-
-    namespace Metal_DX11 { class DeviceContext; class ObjectFactory; }
 
     class Device;
 
@@ -123,4 +123,4 @@ namespace RenderCore
     };
 
 ////////////////////////////////////////////////////////////////////////////////
-}
+}}

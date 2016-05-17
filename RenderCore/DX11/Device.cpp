@@ -18,14 +18,22 @@
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/WinAPI/WinAPIWrapper.h"
+#include "../../Utility/MemoryUtils.h"
 #include "../../Core/Exceptions.h"
 #include <type_traits>
 #include <assert.h>
 
-#include "Metal/DX11Utils.h"
-#include "dxgidebug.h"
+#include "Metal/IncludeDX11.h"
+#include "Metal/DX11Utils.h"        // for QueryInterfaceCast
+#include <dxgi.h>
+#include <dxgidebug.h>
 
-namespace RenderCore
+namespace RenderCore { 
+    extern char VersionString[];
+    extern char BuildDateString[];
+}
+
+namespace RenderCore { namespace ImplDX11
 {
     static void DumpAllDXGIObjects();
 
@@ -292,8 +300,6 @@ namespace RenderCore
 		return Metal_DX11::CreateResource(*_mainFactory, desc, init);
 	}
 
-    extern char VersionString[];
-    extern char BuildDateString[];
     static const char* s_underlyingApi = "DX11";
         
     DeviceDesc Device::GetDesc()
@@ -432,16 +438,6 @@ namespace RenderCore
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-	#if !FLEX_USE_VTABLE_ThreadContext && !DOXYGEN
-		namespace Detail
-		{
-			void* Ignore_ThreadContext::QueryInterface(const GUID& guid)
-			{
-				return nullptr;
-			}
-		}
-	#endif
-
     ResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
     {
         PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
@@ -541,6 +537,16 @@ namespace RenderCore
         ++_frameId;
     }
 
+    #if !FLEX_USE_VTABLE_ThreadContext && !DOXYGEN
+		namespace Detail
+		{
+			void* Ignore_ThreadContext::QueryInterface(const GUID& guid)
+			{
+				return nullptr;
+			}
+		}
+	#endif
+
     void*   ThreadContextDX11::QueryInterface(const GUID& guid)
     {
         if (guid == __uuidof(Base_ThreadContextDX11)) { return (IThreadContextDX11*)this; }
@@ -564,5 +570,5 @@ namespace RenderCore
 
     ThreadContextDX11::~ThreadContextDX11() {}
 
-}
+}}
 

@@ -12,7 +12,7 @@
 #include "../../Assets/AssetUtils.h"
 #include <memory>
 
-namespace RenderCore { class ShaderService; }
+namespace RenderCore { class ShaderService; enum class UnderlyingAPI; }
 
 namespace RenderCore { namespace Assets
 {
@@ -23,6 +23,7 @@ namespace RenderCore { namespace Assets
         static bool HasInstance() { return s_instance != nullptr; }
         static const ::Assets::DirectorySearchRules& GetTechniqueConfigDirs() { return s_instance->_techConfDirs; }
 
+        static UnderlyingAPI GetTargetAPI();
         void InitColladaCompilers();
 
         Services(RenderCore::IDevice* device);

@@ -9,14 +9,8 @@
 #include "../Core/Prefix.h"
 
         // // // //      Flexible interfaces configuration      // // // //
-    #if defined(_DEBUG)
-                #define FLEX_USE_VTABLE_PresentationChain    1
-                #define FLEX_USE_VTABLE_Device               1
-    #else
-                #define FLEX_USE_VTABLE_PresentationChain    0
-                #define FLEX_USE_VTABLE_Device               0
-    #endif
-
+#define FLEX_USE_VTABLE_PresentationChain    1
+#define FLEX_USE_VTABLE_Device               1
 
 namespace RenderCore
 {

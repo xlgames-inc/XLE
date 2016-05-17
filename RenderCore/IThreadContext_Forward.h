@@ -9,12 +9,7 @@
 #include "../Core/Prefix.h"
 
         // // // //      Flexible interfaces configuration      // // // //
-    #if defined(_DEBUG)
-                #define FLEX_USE_VTABLE_ThreadContext   1
-    #else
-                #define FLEX_USE_VTABLE_ThreadContext    0
-    #endif
-
+#define FLEX_USE_VTABLE_ThreadContext   1
 
 namespace RenderCore
 {

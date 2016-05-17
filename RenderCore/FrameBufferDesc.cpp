@@ -9,8 +9,6 @@
 #include "FrameBufferDesc.h"
 #include "Format.h"
 #include "../Utility/MemoryUtils.h"
-#include "DX11/Metal/TextureView.h"
-#include "DX11/Metal/ObjectFactory.h"
 
 namespace RenderCore
 {

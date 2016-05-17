@@ -9,8 +9,10 @@
 #include "MaterialCompiler.h"
 #include "Material.h"   // just for MaterialScaffold::CompileProcessType
 #include "ColladaCompilerInterface.h"
+#include "../Metal/Metal.h"
 #include "../Metal/Shader.h"            // (for Metal::CreateLowLevelShaderCompiler)
 #include "../IDevice.h"
+#include "../Init.h"
 #include "../ShaderService.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
@@ -98,6 +100,15 @@ namespace RenderCore { namespace Assets
         assert(s_instance==this);
         ShaderService::SetInstance(nullptr);
         s_instance = nullptr;
+    }
+
+    UnderlyingAPI Services::GetTargetAPI()
+    {
+        #if GFXAPI_ACTIVE == GFXAPI_VULKAN
+            return RenderCore::UnderlyingAPI::Vulkan;
+        #else
+            return RenderCore::UnderlyingAPI::DX11;
+        #endif
     }
 
 }}

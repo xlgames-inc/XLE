@@ -15,7 +15,7 @@
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../PlatformRig/OverlaySystem.h"
 
-#include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/Init.h"
 #include "../../RenderCore/GPUProfiler.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -79,7 +79,7 @@ namespace Sample
             // Note that the render device should be created first, so that the window
             // object is destroyed before the device is destroyed.
         LogInfo << "Building primary managers";
-        auto renderDevice = RenderCore::CreateDevice();
+        auto renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
 
         PlatformRig::OverlappedWindow window;
         auto clientRect = window.GetRect();

@@ -19,8 +19,19 @@
 #include "../../Core/SelectConfiguration.h"
 #include <memory>
 
-namespace RenderCore
+#if defined(_DEBUG)
+    #define ENABLE_DEBUG_EXTENSIONS
+#endif
+
+namespace RenderCore { 
+    extern char VersionString[];
+    extern char BuildDateString[];
+}
+
+namespace RenderCore { namespace ImplVulkan
 {
+    using VulkanAPIFailure = Metal_Vulkan::VulkanAPIFailure;
+
 	static std::string GetApplicationName()
 	{
 		return ConsoleRig::GlobalServices::GetCrossModule()._services.CallDefault<std::string>(
@@ -33,7 +44,9 @@ namespace RenderCore
 		#if PLATFORMOS_TARGET  == PLATFORMOS_WINDOWS
 			, VK_KHR_WIN32_SURFACE_EXTENSION_NAME
 		#endif
-        , VK_EXT_DEBUG_REPORT_EXTENSION_NAME
+        #if defined(ENABLE_DEBUG_EXTENSIONS)
+            , VK_EXT_DEBUG_REPORT_EXTENSION_NAME
+        #endif
 	};
 
 	static const char* s_deviceExtensions[] =
@@ -41,82 +54,85 @@ namespace RenderCore
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME
 	};
 
-	static const char* s_instanceLayers[] =
-	{
-		"VK_LAYER_GOOGLE_threading",
-		"VK_LAYER_LUNARG_device_limits",
-		"VK_LAYER_LUNARG_draw_state",
-		"VK_LAYER_LUNARG_image",
-		"VK_LAYER_LUNARG_mem_tracker",
-		"VK_LAYER_LUNARG_object_tracker",
-		"VK_LAYER_LUNARG_param_checker",
-		"VK_LAYER_LUNARG_swapchain",
-		"VK_LAYER_GOOGLE_unique_objects"/*,
-        "VK_LAYER_RENDERDOC_Capture"*/
-	};
+    #if defined(ENABLE_DEBUG_EXTENSIONS)
+	    static const char* s_instanceLayers[] =
+	    {
+		    "VK_LAYER_GOOGLE_threading",
+		    "VK_LAYER_LUNARG_device_limits",
+		    "VK_LAYER_LUNARG_draw_state",
+		    "VK_LAYER_LUNARG_image",
+		    "VK_LAYER_LUNARG_mem_tracker",
+		    "VK_LAYER_LUNARG_object_tracker",
+		    "VK_LAYER_LUNARG_param_checker",
+		    "VK_LAYER_LUNARG_swapchain",
+		    "VK_LAYER_GOOGLE_unique_objects"/*,
+            "VK_LAYER_RENDERDOC_Capture"*/
+	    };
 
-	static const char* s_deviceLayers[] =
-	{
-		"VK_LAYER_GOOGLE_threading",
-		"VK_LAYER_LUNARG_device_limits",
-		"VK_LAYER_LUNARG_draw_state",
-		"VK_LAYER_LUNARG_image",
-		"VK_LAYER_LUNARG_mem_tracker",
-		"VK_LAYER_LUNARG_object_tracker",
-		"VK_LAYER_LUNARG_param_checker",
-		"VK_LAYER_LUNARG_swapchain",
-		"VK_LAYER_GOOGLE_unique_objects"/*,
-        "VK_LAYER_RENDERDOC_Capture"*/
-	};
+	    static const char* s_deviceLayers[] =
+	    {
+		    "VK_LAYER_GOOGLE_threading",
+		    "VK_LAYER_LUNARG_device_limits",
+		    "VK_LAYER_LUNARG_draw_state",
+		    "VK_LAYER_LUNARG_image",
+		    "VK_LAYER_LUNARG_mem_tracker",
+		    "VK_LAYER_LUNARG_object_tracker",
+		    "VK_LAYER_LUNARG_param_checker",
+		    "VK_LAYER_LUNARG_swapchain",
+		    "VK_LAYER_GOOGLE_unique_objects"/*,
+            "VK_LAYER_RENDERDOC_Capture"*/
+	    };
 
-    using VulkanAPIFailure = Metal_Vulkan::VulkanAPIFailure;
+        static std::vector<VkLayerProperties> EnumerateLayers()
+	    {
+		    for (;;) {
+			    uint32_t layerCount = 0;
+			    auto res = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+			    if (res != VK_SUCCESS)
+				    Throw(VulkanAPIFailure(res, "Failure in during enumeration of Vulkan layer capabilities. You must have an up-to-date Vulkan driver installed."));
 
-	static std::vector<VkLayerProperties> EnumerateLayers()
-	{
-		for (;;) {
-			uint32_t layerCount = 0;
-			auto res = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-			if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure in during enumeration of Vulkan layer capabilities. You must have an up-to-date Vulkan driver installed."));
+			    if (layerCount == 0)
+				    return std::vector<VkLayerProperties>();
 
-			if (layerCount == 0)
-				return std::vector<VkLayerProperties>();
+			    std::vector<VkLayerProperties> layerProps;
+			    layerProps.resize(layerCount);
+			    res = vkEnumerateInstanceLayerProperties(&layerCount, AsPointer(layerProps.begin()));
+			    if (res == VK_INCOMPLETE) continue;	// doc's arent clear as to whether layerCount is updated in this case
+                if (res != VK_SUCCESS)
+				    Throw(VulkanAPIFailure(res, "Failure in during enumeration of Vulkan layer capabilities. You must have an up-to-date Vulkan driver installed."));
 
-			std::vector<VkLayerProperties> layerProps;
-			layerProps.resize(layerCount);
-			res = vkEnumerateInstanceLayerProperties(&layerCount, AsPointer(layerProps.begin()));
-			if (res == VK_INCOMPLETE) continue;	// doc's arent clear as to whether layerCount is updated in this case
-            if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure in during enumeration of Vulkan layer capabilities. You must have an up-to-date Vulkan driver installed."));
+			    return layerProps;
+		    }
+	    }
 
-			return layerProps;
-		}
-	}
-
-    static VkDebugReportCallbackEXT msg_callback;
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback( VkFlags msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject, size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg, void *pUserData )
-    {
-	    (void)msgFlags; (void)objType; (void)srcObject; (void)location; (void)pUserData; (void)msgCode;
-        LogInfo << pLayerPrefix << ": " << pMsg;
-	    return false;
-    }
+        static VkDebugReportCallbackEXT msg_callback;
+        static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback( VkFlags msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject, size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg, void *pUserData )
+        {
+	        (void)msgFlags; (void)objType; (void)srcObject; (void)location; (void)pUserData; (void)msgCode;
+            LogInfo << pLayerPrefix << ": " << pMsg;
+	        return false;
+        }
     
-    static void debug_init(VkInstance instance)
-    {
-        VkDebugReportCallbackCreateInfoEXT debug_callback_info = {};
-        debug_callback_info.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-        debug_callback_info.pfnCallback = debug_callback;
-        // debug_callback_info.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_INFORMATION_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
-        debug_callback_info.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
+        static void debug_init(VkInstance instance)
+        {
+            VkDebugReportCallbackCreateInfoEXT debug_callback_info = {};
+            debug_callback_info.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
+            debug_callback_info.pfnCallback = debug_callback;
+            // debug_callback_info.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_INFORMATION_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
+            debug_callback_info.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
 	
-	    auto proc = ((PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr( instance, "vkCreateDebugReportCallbackEXT" ));
-        proc( instance, &debug_callback_info, Metal_Vulkan::g_allocationCallbacks, &msg_callback );
-    }
+	        auto proc = ((PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr( instance, "vkCreateDebugReportCallbackEXT" ));
+            proc( instance, &debug_callback_info, Metal_Vulkan::g_allocationCallbacks, &msg_callback );
+        }
     
-    static void debug_destroy(VkInstance instance)
-    {
-	    ((PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr( instance, "vkDestroyDebugReportCallbackEXT" ))( instance, msg_callback, 0 );
-    }
+        static void debug_destroy(VkInstance instance)
+        {
+	        ((PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr( instance, "vkDestroyDebugReportCallbackEXT" ))( instance, msg_callback, 0 );
+        }
+    #else
+        static void debug_init(VkInstance instance) {}
+        static void debug_destroy(VkInstance instance) {}
+    #endif
 
 	static VulkanSharedPtr<VkInstance> CreateVulkanInstance()
 	{
@@ -131,26 +147,32 @@ namespace RenderCore
 		app_info.engineVersion = 1;
 		app_info.apiVersion = VK_MAKE_VERSION(1, 0, 0);
 
-		auto availableLayers = EnumerateLayers();
-
-        std::vector<const char*> filteredLayers;
-        for (unsigned c=0; c<dimof(s_instanceLayers); ++c) {
-            auto i = std::find_if(
-                availableLayers.begin(), availableLayers.end(),
-                [c](VkLayerProperties layer) { return XlEqString(layer.layerName, s_instanceLayers[c]); });
-            if (i != availableLayers.end())
-                filteredLayers.push_back(s_instanceLayers[c]);
-        }
-
 		VkInstanceCreateInfo inst_info = {};
 		inst_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		inst_info.pNext = NULL;
 		inst_info.flags = 0;
 		inst_info.pApplicationInfo = &app_info;
-		inst_info.enabledLayerCount = (uint32_t)filteredLayers.size();
-		inst_info.ppEnabledLayerNames = AsPointer(filteredLayers.begin());
 		inst_info.enabledExtensionCount = (uint32_t)dimof(s_instanceExtensions);
 		inst_info.ppEnabledExtensionNames = s_instanceExtensions;
+
+        #if defined(ENABLE_DEBUG_EXTENSIONS)
+            auto availableLayers = EnumerateLayers();
+
+            std::vector<const char*> filteredLayers;
+            for (unsigned c=0; c<dimof(s_instanceLayers); ++c) {
+                auto i = std::find_if(
+                    availableLayers.begin(), availableLayers.end(),
+                    [c](VkLayerProperties layer) { return XlEqString(layer.layerName, s_instanceLayers[c]); });
+                if (i != availableLayers.end())
+                    filteredLayers.push_back(s_instanceLayers[c]);
+            }
+
+            inst_info.enabledLayerCount = (uint32_t)filteredLayers.size();
+		    inst_info.ppEnabledLayerNames = AsPointer(filteredLayers.begin());
+        #else
+            inst_info.enabledLayerCount = 0;
+            inst_info.ppEnabledLayerNames = nullptr;
+        #endif
 
 		VkInstance rawResult = nullptr;
 		VkResult res = vkCreateInstance(&inst_info, Metal_Vulkan::g_allocationCallbacks, &rawResult);
@@ -288,26 +310,32 @@ namespace RenderCore
 		queue_info.pQueuePriorities = queue_priorities;
 		queue_info.queueFamilyIndex = physDev._renderingQueueFamily;
 
-        auto availableLayers = EnumerateLayers();
-        std::vector<const char*> filteredLayers;
-        for (unsigned c=0; c<dimof(s_deviceLayers); ++c) {
-            auto i = std::find_if(
-                availableLayers.begin(), availableLayers.end(),
-                [c](VkLayerProperties layer) { return XlEqString(layer.layerName, s_deviceLayers[c]); });
-            if (i != availableLayers.end())
-                filteredLayers.push_back(s_deviceLayers[c]);
-        }
-
 		VkDeviceCreateInfo device_info = {};
 		device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		device_info.pNext = nullptr;
 		device_info.queueCreateInfoCount = 1;
 		device_info.pQueueCreateInfos = &queue_info;
-		device_info.enabledLayerCount = (uint32)filteredLayers.size();
-		device_info.ppEnabledLayerNames = AsPointer(filteredLayers.begin());
 		device_info.enabledExtensionCount = (uint32_t)dimof(s_deviceExtensions);
 		device_info.ppEnabledExtensionNames = s_deviceExtensions;
 		device_info.pEnabledFeatures = nullptr;
+
+        #if defined(ENABLE_DEBUG_EXTENSIONS)
+            auto availableLayers = EnumerateLayers();
+            std::vector<const char*> filteredLayers;
+            for (unsigned c=0; c<dimof(s_deviceLayers); ++c) {
+                auto i = std::find_if(
+                    availableLayers.begin(), availableLayers.end(),
+                    [c](VkLayerProperties layer) { return XlEqString(layer.layerName, s_deviceLayers[c]); });
+                if (i != availableLayers.end())
+                    filteredLayers.push_back(s_deviceLayers[c]);
+            }
+
+		    device_info.enabledLayerCount = (uint32)filteredLayers.size();
+		    device_info.ppEnabledLayerNames = AsPointer(filteredLayers.begin());
+        #else
+            device_info.enabledLayerCount = 0;
+		    device_info.ppEnabledLayerNames = nullptr;
+        #endif
 
 		VkDevice rawResult = nullptr;
 		auto res = vkCreateDevice(physDev._dev, &device_info, Metal_Vulkan::g_allocationCallbacks, &rawResult);
@@ -554,8 +582,6 @@ namespace RenderCore
 		return Metal_Vulkan::CreateResource(_objectFactory, desc, initData);
 	}
 
-    extern char VersionString[];
-    extern char BuildDateString[];
     static const char* s_underlyingApi = "Vulkan";
         
     DeviceDesc Device::GetDesc()
@@ -1023,5 +1049,5 @@ namespace RenderCore
 
 	ThreadContextVulkan::~ThreadContextVulkan() {}
 
-}
+}}
 

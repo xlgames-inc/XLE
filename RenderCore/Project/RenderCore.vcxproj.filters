@@ -101,6 +101,7 @@
     <ClInclude Include="..\Metal\FrameBuffer.h">
       <Filter>Metal</Filter>
     </ClInclude>
+    <ClInclude Include="..\Init.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">
@@ -147,5 +148,6 @@
     <ClCompile Include="..\FrameBufferDesc.cpp">
       <Filter>Util</Filter>
     </ClCompile>
+    <ClCompile Include="..\Init.cpp" />
   </ItemGroup>
 </Project>

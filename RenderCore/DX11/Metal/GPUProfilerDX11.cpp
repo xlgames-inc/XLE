@@ -109,3 +109,4 @@ namespace RenderCore { namespace Metal_DX11 { namespace GPUProfiler     /// Low 
     #endif
 }}}
 
+template Utility::intrusive_ptr<ID3D::Query>;
