@@ -39,9 +39,9 @@ namespace ToolsRig
     class PlacementsWidgets : public IWidget, public IPlacementManipulatorSettings
     {
     public:
-        void    Render(         RenderOverlays::IOverlayContext* context, Layout& layout, 
+        void    Render(         RenderOverlays::IOverlayContext& context, Layout& layout, 
                                 Interactables& interactables, InterfaceState& interfaceState);
-        void    RenderToScene(  RenderCore::IThreadContext* context, 
+        void    RenderToScene(  RenderCore::IThreadContext& context, 
                                 SceneEngine::LightingParserContext& parserContext);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
@@ -1306,7 +1306,7 @@ namespace ToolsRig
     static const auto Id_PlacementsSave = InteractableId_Make("PlacementsSave");
 
     void PlacementsWidgets::Render(
-        IOverlayContext* context, Layout& layout, 
+        IOverlayContext& context, Layout& layout, 
         Interactables& interactables, InterfaceState& interfaceState)
     {
         auto controlsRect = DrawManipulatorControls(
@@ -1362,7 +1362,7 @@ namespace ToolsRig
                 Coord2(margin, maxSize._bottomRight[1] - margin - iconSize[1] - 2 * buttonsRectVertPad),
                 Coord2(margin + toolAreaWidth, maxSize._bottomRight[1] - margin));
 
-            context->DrawQuad(
+            context.DrawQuad(
                 ProjectionMode::P2D, 
                 AsPixelCoords(Coord2(buttonsArea._topLeft[0], LinearInterpolate(buttonsArea._topLeft[1], buttonsArea._bottomRight[1], 0.5f))),
                 AsPixelCoords(buttonsArea._bottomRight), ColorB(0, 0, 0));
@@ -1371,7 +1371,7 @@ namespace ToolsRig
                 Coord2 iconTopLeft(buttonsArea._topLeft + Coord2(buttonsRectPadding + c * (iconSize[0] + iconPadding), buttonsRectVertPad));
                 Rect iconRect(iconTopLeft, iconTopLeft + iconSize);
 
-                context->DrawTexturedQuad(
+                context.DrawTexturedQuad(
                     ProjectionMode::P2D, 
                     AsPixelCoords(iconRect._topLeft),
                     AsPixelCoords(iconRect._bottomRight),
@@ -1389,7 +1389,7 @@ namespace ToolsRig
                 const Rect previewRect(temp, temp + Coord2(previewSize, previewSize));
 
                 if (_browser) {
-                    auto* devContext = context->GetDeviceContext();
+                    auto* devContext = context.GetDeviceContext();
                     const RenderCore::Metal::ShaderResourceView* srv = nullptr;
                 
                     const char* errorMsg = nullptr;
@@ -1412,7 +1412,7 @@ namespace ToolsRig
                             Float2(float(previewRect._bottomRight[0]), float(previewRect._bottomRight[1])));
                     } else if (errorMsg) {
                         DrawButtonBasic(
-                            context, previewRect, errorMsg,
+                            &context, previewRect, errorMsg,
                             FormatButton(interfaceState, Id_SelectedModel));
                     }
                 }
@@ -1492,9 +1492,9 @@ namespace ToolsRig
     }
 
     void PlacementsWidgets::RenderToScene(
-        RenderCore::IThreadContext* context, SceneEngine::LightingParserContext& parserContext)
+        RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
     {
-        _manipulators[_activeManipulatorIndex]->Render(*context, parserContext);
+        _manipulators[_activeManipulatorIndex]->Render(context, parserContext);
     }
 
     std::string PlacementsWidgets::GetSelectedModel() const { return _selectedModel; }
@@ -1572,13 +1572,13 @@ namespace ToolsRig
     };
 
     void PlacementsManipulatorsManager::RenderWidgets(
-        RenderCore::IThreadContext* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+        RenderCore::IThreadContext& device, RenderCore::Techniques::ParsingContext& parsingContext)
     {
-        _pimpl->_screens->Render(device, projectionDesc);
+        _pimpl->_screens->Render(device, parsingContext.GetProjectionDesc());
     }
 
     void PlacementsManipulatorsManager::RenderToScene(
-        RenderCore::IThreadContext* device, SceneEngine::LightingParserContext& parserContext)
+        RenderCore::IThreadContext& device, SceneEngine::LightingParserContext& parserContext)
     {
         _pimpl->_placementsDispl->RenderToScene(device, parserContext);
     }

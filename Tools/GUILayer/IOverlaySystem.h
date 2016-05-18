@@ -23,11 +23,11 @@ namespace GUILayer
         // virtual std::shared_ptr<IInputListener> GetInputListener() = 0;
 
         virtual void RenderToScene(
-            RenderCore::IThreadContext* device, 
+            RenderCore::IThreadContext& device, 
             SceneEngine::LightingParserContext& parserContext) = 0; 
         virtual void RenderWidgets(
-            RenderCore::IThreadContext* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc) = 0;
+            RenderCore::IThreadContext& device, 
+            RenderCore::Techniques::ParsingContext& parserContext) = 0;
         virtual void SetActivationState(bool newState) = 0;
 
         virtual ~IOverlaySystem() {}

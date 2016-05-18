@@ -41,7 +41,7 @@ namespace PlatformRig { namespace Overlays
         }
     };
 
-    void    GridIteratorDisplay::Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
+    void    GridIteratorDisplay::Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
     {
         auto maxSize = layout.GetMaximumSize();
         Rect gridArea(maxSize._topLeft + Coord2(50, 50), maxSize._bottomRight - Coord2(50, 50));
@@ -66,8 +66,8 @@ namespace PlatformRig { namespace Overlays
             colours[c*2+1] = ColorB(0xffafafaf);
         }
 
-        DrawLines(context, segsX.get(), colours.get(), segmentsX);
-        DrawLines(context, segsY.get(), colours.get(), segmentsY);
+        DrawLines(&context, segsX.get(), colours.get(), segmentsX);
+        DrawLines(&context, segsY.get(), colours.get(), segmentsY);
 
         Float2 start = Float2(float(gridArea._bottomRight[0] - gridArea._topLeft[0]), float(gridArea._bottomRight[1] - gridArea._topLeft[1])) / float(elementDim) / 2.f;
         Float2 end = Float2(float(_currentMousePosition[0] - gridArea._topLeft[0]), float(_currentMousePosition[1] - gridArea._topLeft[1])) / float(elementDim);
@@ -83,7 +83,7 @@ namespace PlatformRig { namespace Overlays
             Coord2(int(end[0]*elementDim), int(end[1]*elementDim)) + gridArea._topLeft,
         };
         ColorB testLineCol[] = { ColorB(0xffffffff), ColorB(0xffffffff) };
-        DrawLines(context, testLine, testLineCol, 1);
+        DrawLines(&context, testLine, testLineCol, 1);
 
         CollectIntersectionPts intersections;
         // GridEdgeIterator(Int2(start), Int2(end), intersections);
@@ -92,7 +92,7 @@ namespace PlatformRig { namespace Overlays
         for (auto i=intersections._intr.cbegin(); i!=intersections._intr.cend(); ++i) {
             Coord2 centre(int((*i)[0] * elementDim) + gridArea._topLeft[0], int((*i)[1] * elementDim) + gridArea._topLeft[1]);
             Rect rect(centre - Coord2(2,2), centre + Coord2(2,2));
-            DrawElipse(context, rect, ColorB(0xffff0000));
+            DrawElipse(&context, rect, ColorB(0xffff0000));
         }
     }
 
@@ -432,7 +432,7 @@ namespace PlatformRig { namespace Overlays
         return Float2(zero[0]*one[0], zero[1]*one[1]);
     }
 
-    void    DualContouringTest::Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
+    void    DualContouringTest::Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
     {
         int gridSize = 64;
         std::vector<std::pair<Float2, Float2>> lines;
@@ -521,8 +521,8 @@ namespace PlatformRig { namespace Overlays
             }
             assert(c==segmentsY);
 
-            DrawLines(context, segsX.get(), colours.get(), segmentsX);
-            DrawLines(context, segsY.get(), colours.get(), segmentsY);
+            DrawLines(&context, segsX.get(), colours.get(), segmentsX);
+            DrawLines(&context, segsY.get(), colours.get(), segmentsY);
         }
 
             //////////////////////////////////////////////////////////////
@@ -539,7 +539,7 @@ namespace PlatformRig { namespace Overlays
                 lineColours.push_back(ColorB(0xffffffff));
             }
 
-            DrawLines(context,
+            DrawLines(&context,
                 AsPointer(transformedLines.cbegin()),
                 AsPointer(lineColours.cbegin()),
                 unsigned(transformedLines.size()/2));
@@ -654,7 +654,7 @@ namespace PlatformRig { namespace Overlays
     }
 
     void RectanglePackerTest::Render(
-        IOverlayContext* context, Layout& layout, 
+        IOverlayContext& context, Layout& layout, 
         Interactables&interactables, InterfaceState& interfaceState)
     {
         static ButtonFormatting buttonNormalState(ColorB(127, 192, 127, 64), ColorB(164, 192, 164, 255));
@@ -665,7 +665,7 @@ namespace PlatformRig { namespace Overlays
         {
             auto buttonRect = toolbar.Allocate(UInt2(256, 32));
             DrawButtonBasic(
-                context, buttonRect,
+                &context, buttonRect,
                 "Randomize", 
                 FormatButton(interfaceState, Hash64("Randomize"), buttonNormalState, buttonMouseOverState, buttonPressedState));
             interactables.Register(Interactables::Widget(buttonRect, Hash64("Randomize")));
@@ -673,7 +673,7 @@ namespace PlatformRig { namespace Overlays
         {
             auto buttonRect = toolbar.Allocate(UInt2(256, 32));
             DrawButtonBasic(
-                context, buttonRect,
+                &context, buttonRect,
                 "FillEfficiently", 
                 FormatButton(interfaceState, Hash64("FillEfficiently"), buttonNormalState, buttonMouseOverState, buttonPressedState));
             interactables.Register(Interactables::Widget(buttonRect, Hash64("FillEfficiently")));
@@ -696,7 +696,7 @@ namespace PlatformRig { namespace Overlays
             UInt2 maxs = remainingSpace._topLeft + UInt2(
                  unsigned(r.second[0] * float(remainingSpace.Width()) / float(RectPackerSize[0])),
                  unsigned(r.second[1] * float(remainingSpace.Height()) / float(RectPackerSize[1])));
-            DrawRectangle(context, Rect(mins, maxs), ColorB(colors[(++c)%dimof(colors)]));
+            DrawRectangle(&context, Rect(mins, maxs), ColorB(colors[(++c)%dimof(colors)]));
         }
     }
 
@@ -773,11 +773,11 @@ namespace PlatformRig { namespace Overlays
     CRTBox::~CRTBox() {}
 
     void    ConservativeRasterTest::Render(
-        IOverlayContext* context, Layout& layout, 
+        IOverlayContext& context, Layout& layout, 
         Interactables&interactables, InterfaceState& interfaceState)
     {
         auto& box = Techniques::FindCachedBox2<CRTBox>();
-        auto metalContext = Metal::DeviceContext::Get(*context->GetDeviceContext());
+        auto metalContext = Metal::DeviceContext::Get(*context.GetDeviceContext());
 
         //
         //  We're going to test the conversative rasterization geometry shader
@@ -858,7 +858,7 @@ namespace PlatformRig { namespace Overlays
                 Metal::BoundUniforms uniforms(shader);
                 uniforms.BindConstantBuffers(1, {"ReciprocalViewportDimensionsCB"});
                 uniforms.Apply(
-                    *forkedContext, context->GetGlobalUniformsStream(),
+                    *forkedContext, context.GetGlobalUniformsStream(),
                     Metal::UniformsStream(constants));
             
                 forkedContext->Bind(shader);
@@ -911,7 +911,7 @@ namespace PlatformRig { namespace Overlays
             uniforms.BindShaderResources(1, {"DiffuseTexture"});
             uniforms.BindConstantBuffers(1, {"ReciprocalViewportDimensionsCB"});
             uniforms.Apply(
-                *metalContext, context->GetGlobalUniformsStream(),
+                *metalContext, context.GetGlobalUniformsStream(),
                 Metal::UniformsStream(constants, srvs));
             
             metalContext->BindPS(MakeResourceList(commonResources._pointClampSampler));
@@ -922,19 +922,19 @@ namespace PlatformRig { namespace Overlays
         } CATCH_END
 
                 // draw the triangle in wireframe
-        context->DrawLine(
+        context.DrawLine(
             ProjectionMode::P2D, 
             Expand(Float2(base + scale * triPoints[0]), 0.f), ColorB(0xffffffff),
             Expand(Float2(base + scale * triPoints[1]), 0.f), ColorB(0xffffffff),
             1.f);
 
-        context->DrawLine(
+        context.DrawLine(
             ProjectionMode::P2D, 
             Expand(Float2(base + scale * triPoints[1]), 0.f), ColorB(0xffffffff),
             Expand(Float2(base + scale * triPoints[2]), 0.f), ColorB(0xffffffff),
             1.f);
 
-        context->DrawLine(
+        context.DrawLine(
             ProjectionMode::P2D, 
             Expand(Float2(base + scale * triPoints[2]), 0.f), ColorB(0xffffffff),
             Expand(Float2(base + scale * triPoints[0]), 0.f), ColorB(0xffffffff),

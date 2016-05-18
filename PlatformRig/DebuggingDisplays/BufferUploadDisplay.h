@@ -22,7 +22,7 @@ namespace PlatformRig { namespace Overlays
     public:
         BufferUploadDisplay(BufferUploads::IManager* manager);
         ~BufferUploadDisplay();
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
     protected:
@@ -85,7 +85,7 @@ namespace PlatformRig { namespace Overlays
     public:
         ResourcePoolDisplay(BufferUploads::IManager* manager);
         ~ResourcePoolDisplay();
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
     protected:
@@ -101,7 +101,7 @@ namespace PlatformRig { namespace Overlays
     public:
         BatchingDisplay(BufferUploads::IManager* manager);
         ~BatchingDisplay();
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
     protected:

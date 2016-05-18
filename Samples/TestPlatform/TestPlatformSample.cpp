@@ -237,7 +237,7 @@ namespace Sample
         DrawPendingResources(metalContext.get(), lightingParserContext, usefulFonts._defaultFont0.get());
 
         if (overlaySys) {
-            overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());
+            overlaySys->RenderWidgets(context, lightingParserContext);
         }
 
         return PlatformRig::FrameRig::RenderResult(lightingParserContext.HasPendingAssets());

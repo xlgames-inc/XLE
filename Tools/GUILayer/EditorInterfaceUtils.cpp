@@ -108,7 +108,7 @@ namespace GUILayer
             std::make_shared<SceneEngine::IntersectionTestContext>(
                 engineDevice->GetNative().GetRenderDevice()->GetImmediateContext(),
                 *camera->_native,
-                std::make_shared<RenderCore::ViewportContext>(UInt2(viewportWidth, viewportHeight)),
+                std::make_shared<RenderCore::PresentationChainDesc>(UInt2(viewportWidth, viewportHeight)),
                 nativeTC));
     }
 

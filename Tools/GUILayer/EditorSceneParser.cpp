@@ -63,7 +63,7 @@ namespace GUILayer
         void PrepareEnvironmentalSettings(const char envSettings[]);
         void AddLightingPlugins(LightingParserContext& parserContext);
 
-        void RenderShadowForHiddenPlacements(DeviceContext& context, LightingParserContext& parserContext) const;
+        void RenderShadowForHiddenPlacements(RenderCore::IThreadContext& context, LightingParserContext& parserContext) const;
 
         EditorSceneParser(
             std::shared_ptr<EditorScene> editorScene,
@@ -111,15 +111,15 @@ namespace GUILayer
                 for (auto i:delaySteps)
                     if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
                         scene._placementsManager->GetRenderer()->CommitTransparent(
-                            metalContext.get(), parserContext, techniqueIndex, i);
+                            *metalContext, parserContext, techniqueIndex, i);
                     } else {
                         if (batchFilter == SceneParseSettings::BatchFilter::General) {
                             scene._placementsManager->GetRenderer()->Render(
-                                metalContext.get(), parserContext, preparedPackets,
+                                *metalContext, parserContext, preparedPackets,
                                 techniqueIndex, *scene._placementsCells);
                         } else {
                             scene._placementsManager->GetRenderer()->Render(
-                                metalContext.get(), parserContext,
+                                *metalContext, parserContext,
                                 techniqueIndex, *scene._placementsCells);
                         }
                     }
@@ -153,11 +153,11 @@ namespace GUILayer
     }
 
     void EditorSceneParser::RenderShadowForHiddenPlacements(
-        DeviceContext& metalContext, 
+        RenderCore::IThreadContext& context, 
         LightingParserContext& parserContext) const
     {
         ToolsRig::Placements_RenderHighlight(
-            metalContext, parserContext, 
+            context, parserContext, 
             *_editorScene->_placementsManager->GetRenderer(), 
             *_editorScene->_placementsCellsHidden,
             nullptr, nullptr);
@@ -238,11 +238,11 @@ namespace GUILayer
     {
     public:
         void RenderToScene(
-            RenderCore::IThreadContext* threadContext, 
+            RenderCore::IThreadContext& threadContext, 
             SceneEngine::LightingParserContext& parserContext) override;
         void RenderWidgets(
-            RenderCore::IThreadContext* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc) override;
+            RenderCore::IThreadContext& device, 
+            RenderCore::Techniques::ParsingContext& parsingContext) override;
         void SetActivationState(bool newState) override;
 
         EditorSceneOverlay(
@@ -261,14 +261,14 @@ namespace GUILayer
     };
     
     void EditorSceneOverlay::RenderToScene(
-        RenderCore::IThreadContext* threadContext, 
+        RenderCore::IThreadContext& threadContext, 
         SceneEngine::LightingParserContext& parserContext)
     {
         if (_sceneParser.get()) {
             _sceneParser->PrepareEnvironmentalSettings(
                 clix::marshalString<clix::E_UTF8>(_renderSettings->_activeEnvironmentSettings).c_str());
 
-            auto qualSettings = SceneEngine::RenderingQualitySettings(threadContext->GetStateDesc()._viewportDimensions);
+            auto qualSettings = SceneEngine::RenderingQualitySettings(threadContext.GetStateDesc()._viewportDimensions);
             qualSettings._lightingModel = 
                 (::ConsoleRig::Detail::FindTweakable("LightingModel", 0) == 0)
                 ? RenderingQualitySettings::LightingModel::Deferred 
@@ -279,24 +279,23 @@ namespace GUILayer
             auto& screenshot = ::ConsoleRig::Detail::FindTweakable("Screenshot", 0);
             if (screenshot) {
                 PlatformRig::TiledScreenshot(
-                    *threadContext, parserContext,
+                    threadContext, parserContext,
                     *_sceneParser.get(), _sceneParser->GetCameraDesc(),
                     qualSettings, UInt2(screenshot, screenshot));
                 screenshot = 0;
             }
             
             SceneEngine::LightingParser_ExecuteScene(
-                *threadContext, parserContext, *_sceneParser.get(), 
+                threadContext, parserContext, *_sceneParser.get(), 
                 _sceneParser->GetCameraDesc(), qualSettings);
         }
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
         if (_renderSettings->_selection && _renderSettings->_selection->_nativePlacements->size() > 0) {
             // Draw a selection highlight for these items
             // at the moment, only placements can be selected... So we need to assume that 
             // they are all placements.
             ToolsRig::Placements_RenderHighlight(
-                *metalContext, parserContext, 
+                threadContext, parserContext, 
                 *_placementsRenderer.get(), *_placementCells.get(),
                 (const SceneEngine::PlacementGUID*)AsPointer(_renderSettings->_selection->_nativePlacements->cbegin()),
                 (const SceneEngine::PlacementGUID*)AsPointer(_renderSettings->_selection->_nativePlacements->cend()));
@@ -305,14 +304,14 @@ namespace GUILayer
         // render shadow for hidden placements
         if (::ConsoleRig::Detail::FindTweakable("ShadowHiddenPlacements", true)) {
             ToolsRig::Placements_RenderShadow(
-                *metalContext, parserContext, 
+                threadContext, parserContext, 
                 *_placementsRenderer.get(), *_placementCellsHidden.get());
         }
     }
 
     void EditorSceneOverlay::RenderWidgets(
-        RenderCore::IThreadContext*, 
-        const RenderCore::Techniques::ProjectionDesc&)
+        RenderCore::IThreadContext&, 
+        RenderCore::Techniques::ParsingContext&)
     {}
 
     void EditorSceneOverlay::SetActivationState(bool) {}

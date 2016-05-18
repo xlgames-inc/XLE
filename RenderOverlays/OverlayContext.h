@@ -67,7 +67,7 @@ namespace RenderOverlays
         const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const;
 
         ImmediateOverlayContext(
-            RenderCore::IThreadContext* threadContext, 
+            RenderCore::IThreadContext& threadContext, 
             const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
         ~ImmediateOverlayContext();
 

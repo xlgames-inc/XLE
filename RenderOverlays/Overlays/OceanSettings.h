@@ -20,7 +20,7 @@ namespace Overlays
     public:
         OceanSettingsDisplay(SceneEngine::DeepOceanSimSettings& oceanSettings);
         ~OceanSettingsDisplay();
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
     private:
@@ -33,7 +33,7 @@ namespace Overlays
     public:
         OceanLightingSettingsDisplay(SceneEngine::OceanLightingSettings& oceanSettings);
         ~OceanLightingSettingsDisplay();
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
     private:

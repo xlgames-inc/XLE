@@ -62,11 +62,11 @@ namespace ToolsRig
         virtual std::shared_ptr<IInputListener> GetInputListener();
 
         virtual void RenderToScene(
-            RenderCore::IThreadContext* context, 
+            RenderCore::IThreadContext& context, 
             SceneEngine::LightingParserContext& parserContext); 
         virtual void RenderWidgets(
-            RenderCore::IThreadContext* context, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc);
+            RenderCore::IThreadContext& context, 
+            RenderCore::Techniques::ParsingContext& parsingContext);
         virtual void SetActivationState(bool newState);
 
         MaterialVisLayer(

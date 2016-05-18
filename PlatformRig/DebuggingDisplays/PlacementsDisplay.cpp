@@ -11,7 +11,7 @@
 namespace PlatformRig { namespace Overlays
 {
 
-    void    PlacementsDisplay::Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
+    void    PlacementsDisplay::Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
     {
 #if 0
         Float3x4 placementsToWorld = Truncate(Float4x4(

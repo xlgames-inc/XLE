@@ -156,7 +156,7 @@ namespace ToolsRig
     }
 
     Rect DrawManipulatorControls(
-        IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState,
+        IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState,
         IManipulator& manipulator, const char title[])
     {
         auto mainLayoutSize = layout.GetMaximumSize();
@@ -188,13 +188,13 @@ namespace ToolsRig
 
         Layout internalLayout(controlsRect);
         
-        DrawRectangle(context, controlsRect, backgroundRectangleColour);
-        DrawRectangleOutline(context, Rect(controlsRect._topLeft + Coord2(2,2), controlsRect._bottomRight - Coord2(2,2)), 0.f, backgroundOutlineColour);
+        DrawRectangle(&context, controlsRect, backgroundRectangleColour);
+        DrawRectangleOutline(&context, Rect(controlsRect._topLeft + Coord2(2,2), controlsRect._bottomRight - Coord2(2,2)), 0.f, backgroundOutlineColour);
         interactables.Register(Interactables::Widget(controlsRect, Id_TotalRect));
 
         TextStyle font(*res._headingFont);
         const auto headingRect = internalLayout.AllocateFullWidth(25);
-        context->DrawText(
+        context.DrawText(
             std::make_tuple(Float3(float(headingRect._topLeft[0]), float(headingRect._topLeft[1]), 0.f), Float3(float(headingRect._bottomRight[0]), float(headingRect._bottomRight[1]), 0.f)),
             &font, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
             title, nullptr);
@@ -218,7 +218,7 @@ namespace ToolsRig
             } else {
                 alpha = Clamp((std::log(*p) - std::log(parameter._min)) / (std::log(parameter._max) - std::log(parameter._min)), 0.f, 1.f);
             }
-            context->DrawQuad(
+            context.DrawQuad(
                 ProjectionMode::P2D, 
                 AsPixelCoords(Coord2(rect._topLeft[0], rect._topLeft[1])),
                 AsPixelCoords(Coord2(rect._bottomRight[0], rect._bottomRight[1])),
@@ -229,11 +229,11 @@ namespace ToolsRig
                 // text label (name and value)
             char buffer[256];
             _snprintf_s(buffer, _TRUNCATE, "%s = %5.1f", parameter._name, *p);
-            context->DrawText(
+            context.DrawText(
                 std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
                 nullptr, formatting._foreground, TextAlignment::Center, buffer, nullptr);
             
-            DrawAndRegisterLeftRight(context, interactables, interfaceState, rect, Id_CurFloatParametersLeft+c, Id_CurFloatParametersRight+c);
+            DrawAndRegisterLeftRight(&context, interactables, interfaceState, rect, Id_CurFloatParametersLeft+c, Id_CurFloatParametersRight+c);
         }
 
             //
@@ -255,7 +255,7 @@ namespace ToolsRig
             } else 
                 _snprintf_s(buffer, _TRUNCATE, "%s", parameter._name);
 
-            context->DrawText(
+            context.DrawText(
                 std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
                 nullptr, formatting._foreground, TextAlignment::Center, buffer, nullptr);
         }
@@ -266,7 +266,7 @@ namespace ToolsRig
 
         if (!statusText.empty()) {
             const auto rect = internalLayout.AllocateFullWidth(lineHeight);
-            context->DrawText(
+            context.DrawText(
                 std::make_tuple(AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight)),
                 nullptr, headerColourNormal, TextAlignment::Center, statusText.c_str(), nullptr);
         }
@@ -279,12 +279,12 @@ namespace ToolsRig
         Rect selectedManipulatorRect = internalLayout.AllocateFullWidth(lineHeight);
         interactables.Register(Interactables::Widget(selectedManipulatorRect, Id_SelectedManipulator));
         DrawButtonBasic(
-            context, selectedManipulatorRect, manipulator.GetName(),
+            &context, selectedManipulatorRect, manipulator.GetName(),
             FormatButton(interfaceState, Id_SelectedManipulator));
 
             //  this button is a left/right selector. Create interactable rectangles for the left and right sides
         DrawAndRegisterLeftRight(
-            context, interactables, interfaceState, selectedManipulatorRect, 
+            &context, interactables, interfaceState, selectedManipulatorRect, 
             Id_SelectedManipulatorLeft, Id_SelectedManipulatorRight);
 
         return controlsRect;
@@ -344,7 +344,7 @@ namespace ToolsRig
         return false;
     }
 
-    void    ManipulatorsDisplay::Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
+    void    ManipulatorsDisplay::Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
     {
         auto* activeManipulator = _manipulatorsInterface->GetActiveManipulator();
         DrawManipulatorControls(context, layout, interactables, interfaceState, *activeManipulator, "Terrain tools");

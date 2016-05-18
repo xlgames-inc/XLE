@@ -15,14 +15,14 @@ namespace PlatformRig { namespace Overlays
 
             //////   C O N S O L E   D I S P L A Y   //////
 
-    void    ConsoleDisplay::Render( IOverlayContext* context,       Layout& layout, 
+    void    ConsoleDisplay::Render( IOverlayContext& context,       Layout& layout, 
                                     Interactables&interactables,    InterfaceState& interfaceState)
     {
         Rect consoleMaxSize                 = layout.GetMaximumSize();
         const unsigned height               = std::min(consoleMaxSize.Height() / 2, 512);
         consoleMaxSize._bottomRight[1]       = consoleMaxSize._topLeft[1] + height;
 
-        const float         textHeight      = context->TextHeight();
+        const float         textHeight      = context.TextHeight();
         const Coord         entryBoxHeight  = Coord(textHeight) + 2 * layout._paddingBetweenAllocations;
 
         const Rect          historyArea     = layout.AllocateFullWidth(consoleMaxSize.Height() - 2 * layout._paddingInternalBorder - layout._paddingBetweenAllocations - entryBoxHeight);
@@ -38,12 +38,12 @@ namespace PlatformRig { namespace Overlays
         static ColorB       selectionColor  = ColorB(0x7f, 0x7f, 0x7f, 0x7f);
         static ColorB       borderColor     = ColorB(0xff, 0xff, 0xff, 0x7f);
         static ColorB       entryBoxColor   = ColorB(0x00, 0x00, 0x00, 0x4f);
-        DrawRectangle(context, consoleMaxSize, backColor);
-        DrawRectangle(context, 
+        DrawRectangle(&context, consoleMaxSize, backColor);
+        DrawRectangle(&context, 
             Rect(   Coord2(consoleMaxSize._topLeft[0],      consoleMaxSize._bottomRight[1]-3),
                     Coord2(consoleMaxSize._bottomRight[0],  consoleMaxSize._bottomRight[1]  )),
             borderColor);
-        DrawRectangle(context, 
+        DrawRectangle(&context, 
             Rect(   Coord2(consoleMaxSize._topLeft[0],      entryBoxArea._topLeft[1]-3),
                     Coord2(consoleMaxSize._bottomRight[0],  consoleMaxSize._bottomRight[1]-3)),
             entryBoxColor);
@@ -54,7 +54,7 @@ namespace PlatformRig { namespace Overlays
         for (auto i=lines.cbegin(); i!=lines.cend(); ++i) {
             char buffer[1024];
             ucs2_2_utf8(AsPointer(i->begin()), i->size(), (utf8*)buffer, dimof(buffer));
-            DrawText(context, historyAreaLayout.AllocateFullWidth(Coord(textHeight)), 0.f, nullptr,
+            DrawText(&context, historyAreaLayout.AllocateFullWidth(Coord(textHeight)), 0.f, nullptr,
                 textColor, TextAlignment::Left, buffer);
         }
 
@@ -67,39 +67,39 @@ namespace PlatformRig { namespace Overlays
             if (firstPart) {
                 ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, firstPart);
                 buffer[firstPart] = '\0';
-                caretOffset = (Coord)context->StringWidth(1.f, nullptr, buffer, nullptr);
+                caretOffset = (Coord)context.StringWidth(1.f, nullptr, buffer, nullptr);
             }
 
             firstPart = std::min(_selectionStart, dimof(buffer)-1);
             if (firstPart) {
                 ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, firstPart);
                 buffer[firstPart] = '\0';
-                selStart = (Coord)context->StringWidth(1.f, nullptr, buffer, nullptr);
+                selStart = (Coord)context.StringWidth(1.f, nullptr, buffer, nullptr);
             }
 
             firstPart = std::min(_selectionEnd, dimof(buffer)-1);
             if (firstPart) {
                 ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, firstPart);
                 buffer[firstPart] = '\0';
-                selEnd = (Coord)context->StringWidth(1.f, nullptr, buffer, nullptr);
+                selEnd = (Coord)context.StringWidth(1.f, nullptr, buffer, nullptr);
             }
 
             if (selStart != selEnd) {
                 Rect rect(  Coord2(entryBoxArea._topLeft[0] + std::min(selStart, selEnd), entryBoxArea._topLeft[1]),
                             Coord2(entryBoxArea._topLeft[0] + std::max(selStart, selEnd), entryBoxArea._bottomRight[1]));
-                DrawRectangle(context, rect, selectionColor);
+                DrawRectangle(&context, rect, selectionColor);
             }
 
             ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, dimof(buffer));
             buffer[dimof(buffer)-1] = '\0';
-            DrawText(context, entryBoxArea, 0.f, nullptr, textColor, TextAlignment::Left, buffer);
+            DrawText(&context, entryBoxArea, 0.f, nullptr, textColor, TextAlignment::Left, buffer);
 
         }
 
         if ((_renderCounter / 20) & 0x1) {
             Rect rect(  Coord2(entryBoxArea._topLeft[0] + caretOffset - 1, entryBoxArea._topLeft[1]),
                         Coord2(entryBoxArea._topLeft[0] + caretOffset + 2, entryBoxArea._bottomRight[1]));
-            DrawRectangle(context, rect, caretColor);
+            DrawRectangle(&context, rect, caretColor);
         }
 
         ++_renderCounter;

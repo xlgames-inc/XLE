@@ -144,7 +144,7 @@ namespace RenderCore { namespace Techniques
 
         Metal::ObjectFactory*      _factory;
 
-        void BuildAttachment(AttachmentName attach);
+        bool BuildAttachment(AttachmentName attach);
         void InvalidateAttachment(AttachmentName name);
     };
 
@@ -159,7 +159,7 @@ namespace RenderCore { namespace Techniques
             ;
     }
 
-    void NamedResources::Pimpl::BuildAttachment(AttachmentName attach)
+    bool NamedResources::Pimpl::BuildAttachment(AttachmentName attach)
     {
         assert(attach<s_maxBoundTargets);
         _resources[attach].reset();
@@ -180,6 +180,8 @@ namespace RenderCore { namespace Techniques
             attachmentWidth = unsigned(std::floor(_props._outputWidth * a._width + 0.5f));
             attachmentHeight = unsigned(std::floor(_props._outputHeight * a._height + 0.5f));
         }
+
+        if (!attachmentWidth || !attachmentHeight) return false;
 
         auto desc = CreateDesc(
             0, 0, 0, 
@@ -219,6 +221,7 @@ namespace RenderCore { namespace Techniques
 
         // note -- it might be handy to have a cache of "device memory" that could be reused here?
         _resources[attach] = Metal::CreateResource(*_factory, desc);
+        return true;
     }
 
     void NamedResources::Pimpl::InvalidateAttachment(AttachmentName name)
@@ -247,7 +250,8 @@ namespace RenderCore { namespace Techniques
         if (!(attachDesc._flags & AttachmentDesc::Flags::ShaderResource)) return nullptr;
         
         if (!_pimpl->_resources[resName])
-            _pimpl->BuildAttachment(resName);
+            if (!_pimpl->BuildAttachment(resName))
+                return nullptr;
 
         auto adjWindow = window;
         if (adjWindow._format._aspect == TextureViewWindow::UndefinedAspect)
@@ -271,7 +275,8 @@ namespace RenderCore { namespace Techniques
         if (!(attachDesc._flags & AttachmentDesc::Flags::RenderTarget)) return nullptr;
 
         if (!_pimpl->_resources[resName])
-            _pimpl->BuildAttachment(resName);
+            if (!_pimpl->BuildAttachment(resName))
+                return nullptr;
         
         auto adjWindow = window;
         if (adjWindow._format._aspect == TextureViewWindow::UndefinedAspect)
@@ -295,7 +300,8 @@ namespace RenderCore { namespace Techniques
         if (!(attachDesc._flags & AttachmentDesc::Flags::DepthStencil)) return nullptr;
         
         if (!_pimpl->_resources[resName])
-            _pimpl->BuildAttachment(resName);
+            if (!_pimpl->BuildAttachment(resName))
+                return nullptr;
 
         auto adjWindow = window;
         if (adjWindow._format._aspect == TextureViewWindow::UndefinedAspect)
@@ -392,8 +398,10 @@ namespace RenderCore { namespace Techniques
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_factory = &Metal::GetObjectFactory();
-        for (unsigned c=0; c<s_maxBoundTargets; ++c)
+        for (unsigned c=0; c<s_maxBoundTargets; ++c) {
             _pimpl->_resNames[c] = ~0u;
+            _pimpl->_attachments[c] = {};
+        }
         _pimpl->_props = {0u, 0u, 0u, TextureSamples::Create()};
     }
 

@@ -67,7 +67,7 @@ namespace GUILayer
 		std::vector<RenderCore::Assets::DrawCallDesc> _drawCalls;
 		TechniqueMaterial _material;
 		unsigned _vbStride;
-		Metal::NativeFormat::Enum _ibFormat;
+		Format _ibFormat;
 		::Assets::DepValPtr _depVal;
 
 		void Build(const RenderCore::Assets::RawGeometry& geo, const ::Assets::ResChar filename[], unsigned largeBlocksOffset);
@@ -132,12 +132,12 @@ namespace GUILayer
 		_ib = ReadFromFile<Metal::IndexBuffer>(file, geo._ib._size, geo._ib._offset + largeBlocksOffset);
 		_drawCalls.insert(_drawCalls.begin(), geo._drawCalls.cbegin(), geo._drawCalls.cend());
 		_vbStride = geo._vb._ia._vertexStride;
-		_ibFormat = Metal::NativeFormat::Enum(geo._ib._format);
+		_ibFormat = geo._ib._format;
 
 		// also construct a technique material for the geometry format
-		std::vector<Metal::InputElementDesc> eles;
+		std::vector<InputElementDesc> eles;
 		for (const auto&i:geo._vb._ia._elements)
-			eles.push_back(Metal::InputElementDesc(i._semanticName, i._semanticIndex, Metal::NativeFormat::Enum(i._nativeFormat), 0, i._alignedByteOffset));
+			eles.push_back(InputElementDesc(i._semanticName, i._semanticIndex, i._nativeFormat, 0, i._alignedByteOffset));
 		_material = TechniqueMaterial(
 			std::make_pair(AsPointer(eles.cbegin()), eles.size()),
 			{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants }, ParameterBox());
@@ -180,19 +180,19 @@ namespace GUILayer
         { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
         ParameterBox())
     , _materialP(
-        Metal::GlobalInputLayouts::P,
+        GlobalInputLayouts::P,
         { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
         ParameterBox())
 	, _materialGenSphere(
-		Metal::InputLayout((const Metal::InputElementDesc*)nullptr, 0),
+		InputLayout((const InputElementDesc*)nullptr, 0),
 		{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
 		ParameterBox({ std::make_pair(u("SHAPE"), "1") }))
 	, _materialGenTube(
-		Metal::InputLayout((const Metal::InputElementDesc*)nullptr, 0),
+		InputLayout((const InputElementDesc*)nullptr, 0),
 		{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
 		ParameterBox({ std::make_pair(u("SHAPE"), "2") }))
 	, _materialGenRectangle(
-		Metal::InputLayout((const Metal::InputElementDesc*)nullptr, 0),
+		InputLayout((const InputElementDesc*)nullptr, 0),
 		{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
 		ParameterBox({ std::make_pair(u("SHAPE"), "3") }))
     {
@@ -355,7 +355,7 @@ namespace GUILayer
         Metal::IndexBuffer ib(ibData.get(), sizeof(unsigned)*indexListType._arrayCount);
 
         devContext.Bind(MakeResourceList(vb), sizeof(Float3), 0);
-        devContext.Bind(ib, Metal::NativeFormat::R32_UINT);
+        devContext.Bind(ib, Format::R32_UINT);
         devContext.Bind(Metal::Topology::TriangleList);
         devContext.DrawIndexed(indexListType._arrayCount);
     }

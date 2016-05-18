@@ -9,7 +9,7 @@
 #include "EngineControl.h"
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class  TechniqueContext; }}
+namespace RenderCore { namespace Techniques { class  TechniqueContext; class NamedResources; }}
 namespace SceneEngine { class LightingParserStandardPlugin; }
 
 namespace GUILayer 
@@ -51,6 +51,7 @@ namespace GUILayer
     public:
         std::shared_ptr<SceneEngine::LightingParserStandardPlugin> _stdPlugin;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
+        std::shared_ptr<RenderCore::Techniques::NamedResources> _namedResources;
         bool _activePaint;
     };
 

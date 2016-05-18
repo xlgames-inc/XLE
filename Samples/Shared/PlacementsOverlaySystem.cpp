@@ -29,17 +29,17 @@ namespace Sample
         }
 
         void RenderToScene(
-            RenderCore::IThreadContext* devContext, 
+            RenderCore::IThreadContext& devContext, 
             SceneEngine::LightingParserContext& parserContext)
         {
             _placementsManipulators->RenderToScene(devContext, parserContext);
         }
 
         void RenderWidgets(
-            RenderCore::IThreadContext* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+            RenderCore::IThreadContext& device, 
+            RenderCore::Techniques::ParsingContext& parserContext)
         {
-            _placementsManipulators->RenderWidgets(device, projectionDesc);
+            _placementsManipulators->RenderWidgets(device, parserContext);
         }
 
         void SetActivationState(bool) {}

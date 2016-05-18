@@ -234,4 +234,10 @@ namespace RenderCore { namespace Metal_DX11
     extern template void DeviceContext::Unbind<PixelShader>();
     extern template void DeviceContext::Unbind<GeometryShader>();
 
+    ObjectFactory& GetObjectFactory(IDevice& device);
+	ObjectFactory& GetObjectFactory(DeviceContext&);
+	ObjectFactory& GetObjectFactory();
+    ObjectFactory& GetObjectFactory(ID3D::Device& device);
+	ObjectFactory& GetObjectFactory(ID3D::Resource& resource);
+
 }}

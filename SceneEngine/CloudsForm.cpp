@@ -1194,8 +1194,8 @@ namespace SceneEngine
     }
 
     void CloudsForm2D::RenderWidgets(
-        RenderCore::IThreadContext* context, 
-        const RenderCore::Techniques::ProjectionDesc& projDesc)
+        RenderCore::IThreadContext& context, 
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
         using namespace RenderOverlays;
         using namespace RenderOverlays::DebuggingDisplay;
@@ -1204,7 +1204,7 @@ namespace SceneEngine
 			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
 		#pragma push_macro("new")
 		#undef new
-			new(overlayContext.get()) ImmediateOverlayContext(context, projDesc);
+			new(overlayContext.get()) ImmediateOverlayContext(context, parserContext.GetProjectionDesc());
 		#pragma pop_macro("new")
 
         overlayContext->CaptureState();
@@ -1212,7 +1212,7 @@ namespace SceneEngine
 
         TRY {
 
-            auto maxCoords = context->GetStateDesc()._viewportDimensions;
+            auto maxCoords = context.GetStateDesc()._viewportDimensions;
             Rect rect(Coord2(0,0), Coord2(maxCoords[0], maxCoords[1]));
             Layout completeLayout(rect);
 

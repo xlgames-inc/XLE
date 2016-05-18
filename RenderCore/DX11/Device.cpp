@@ -426,6 +426,7 @@ namespace RenderCore { namespace ImplDX11
             TextureViewWindow viewWindow;
             Metal_DX11::RenderTargetView rtv(factory, backBuffer0.get(), viewWindow);
             context.SetPresentationTarget(&rtv, {_desc->_width, _desc->_height});
+            context.Bind(Metal_DX11::ViewportDesc(0.f, 0.f, (float)_desc->_width, (float)_desc->_height));
         }
     }
 

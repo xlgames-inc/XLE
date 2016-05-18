@@ -430,16 +430,15 @@ namespace ToolsRig
         { return nullptr; }
 
     void MaterialVisLayer::RenderToScene(
-        IThreadContext* context, 
+        IThreadContext& context, 
         SceneEngine::LightingParserContext& parserContext)
     {
-        assert(context);
-        Draw(*context, parserContext, *_pimpl->_settings, *_pimpl->_envSettings, *_pimpl->_object);
+        Draw(context, parserContext, *_pimpl->_settings, *_pimpl->_envSettings, *_pimpl->_object);
     }
 
     void MaterialVisLayer::RenderWidgets(
-        IThreadContext* context, 
-        const Techniques::ProjectionDesc& projectionDesc)
+        IThreadContext& context, 
+        Techniques::ParsingContext& parsingContext)
     {}
 
     void MaterialVisLayer::SetActivationState(bool) {}

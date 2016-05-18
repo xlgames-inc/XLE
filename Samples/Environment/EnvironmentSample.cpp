@@ -375,7 +375,7 @@ namespace Sample
             DrawQuickMetrics(context, parserContext, usefulFonts._defaultFont1.get());
 
         if (overlaySys) {
-            overlaySys->RenderWidgets(&context, parserContext.GetProjectionDesc());
+            overlaySys->RenderWidgets(context, parserContext.GetProjectionDesc());
         }
 
         return PlatformRig::FrameRig::RenderResult(parserContext.HasPendingAssets());

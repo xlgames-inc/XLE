@@ -13,6 +13,7 @@
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/Init.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Assets/Services.h"
@@ -87,7 +88,7 @@ namespace GUILayer
         cfg._applicationName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
         _services = std::make_unique<ConsoleRig::GlobalServices>(cfg);
 
-        _renderDevice = RenderCore::CreateDevice();
+        _renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
         _immediateContext = _renderDevice->GetImmediateContext();
 
         _assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);

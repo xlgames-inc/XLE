@@ -88,7 +88,7 @@ namespace RenderOverlays
         bool onlyHighlighted)
     {
         auto stencilSrv = namedRes.GetSRV(
-            5u, 1u,
+            5u, 2u,
             TextureViewWindow(
                 {TextureViewWindow::Aspect::Stencil},
                 TextureDesc::Dimensionality::Undefined, TextureViewWindow::All, TextureViewWindow::All,
@@ -211,7 +211,7 @@ namespace RenderOverlays
 
         const bool doDepthTest = true;
         FrameBufferDesc fbLayout = {
-            {{{s_commonOffscreen}, doDepthTest?1u:~0u}, {{0u}, ~0u, {s_commonOffscreen}}}, 
+            {{{s_commonOffscreen}, doDepthTest?2u:~0u}, {{0u}, ~0u, {s_commonOffscreen}}}, 
             {{s_commonOffscreen, s_commonOffscreen, TextureViewWindow(), AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::Retain}}};
         _pimpl->_rpi = Techniques::RenderPassInstance(
             threadContext, fbLayout, 0u, namedRes,

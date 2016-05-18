@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TerrainOverlaySystem.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../Tools/ToolsRig/TerrainManipulatorsInterface.h"
 #include "../../Tools/ToolsRig/TerrainManipulators.h"
 #include "../../PlatformRig/OverlaySystem.h"
@@ -46,17 +47,17 @@ namespace Sample
         }
 
         void RenderToScene(
-            RenderCore::IThreadContext* devContext, 
+            RenderCore::IThreadContext& devContext, 
             SceneEngine::LightingParserContext& parserContext)
         {
             _manipulatorsInterface->Render(*devContext, parserContext);
         }
 
         void RenderWidgets(
-            RenderCore::IThreadContext* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+            RenderCore::IThreadContext& device, 
+            RenderCore::Techniques::ParsingContext& parserContext)
         {
-            _screens->Render(device, projectionDesc);
+            _screens->Render(device, parserContext.GetProjectionDesc());
         }
 
         void SetActivationState(bool) {}

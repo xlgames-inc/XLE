@@ -371,6 +371,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    ObjectFactory& GetObjectFactory(IDevice& device);
+	ObjectFactory& GetObjectFactory(DeviceContext&);
+	ObjectFactory& GetObjectFactory(UnderlyingResourcePtr);
+	ObjectFactory& GetObjectFactory();
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     template<int Count> 
         void DeviceContext::Bind(
             const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil) 
@@ -700,6 +707,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 unorderedAccess._startingPoint,
                 MakeIteratorRange(unorderedAccess._buffers));
         }
+
 
 }}
 

@@ -114,7 +114,7 @@ namespace Utility
 
             decltype(*std::declval<Iterator>()) operator[](size_t index) const { return first[index]; }
 
-            IteratorRange() : std::pair<Iterator, Iterator>(nullptr, nullptr) {}
+            IteratorRange() : std::pair<Iterator, Iterator>((Iterator)nullptr, (Iterator)nullptr) {}
             IteratorRange(Iterator f, Iterator s) : std::pair<Iterator, Iterator>(f, s) {}
 
             template<typename OtherIterator>

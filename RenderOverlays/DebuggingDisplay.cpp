@@ -1027,11 +1027,11 @@ namespace RenderOverlays { namespace DebuggingDisplay
         return false;
     }
 
-    void DebugScreensSystem::Render(RenderCore::IThreadContext* context, const RenderCore::Techniques::ProjectionDesc& projDesc)
+    void DebugScreensSystem::Render(RenderCore::IThreadContext& context, const RenderCore::Techniques::ProjectionDesc& projDesc)
     {
         _currentInteractables = Interactables();
         
-        auto maxCoords = context->GetStateDesc()._viewportDimensions;
+        auto maxCoords = context.GetStateDesc()._viewportDimensions;
         Rect    rect(Coord2(0,0), Coord2(maxCoords[0], maxCoords[1]));
         Layout  completeLayout(rect);
         
@@ -1072,7 +1072,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
                     }
                     if (IsGood(widgetRect)) {
                         Layout widgetLayout(widgetRect);
-                        _widgets[i->_widgetIndex]._widget->Render(overlayContext.get(), widgetLayout, _currentInteractables, _currentInterfaceState);
+                        _widgets[i->_widgetIndex]._widget->Render(*overlayContext, widgetLayout, _currentInteractables, _currentInterfaceState);
 
                             //  if we don't have any system widgets registered, we 
                             //  get some basic default gui elements...
@@ -1090,7 +1090,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 // render the system widgets last (they will render over the top of anything else that is visible)
             for (auto i=_systemWidgets.cbegin(); i!=_systemWidgets.cend(); ++i) {
                 Layout systemLayout(rect);
-                i->_widget->Render(overlayContext.get(), systemLayout, _currentInteractables, _currentInterfaceState);
+                i->_widget->Render(*overlayContext, systemLayout, _currentInteractables, _currentInterfaceState);
             }
 
         } CATCH(const std::exception&) {

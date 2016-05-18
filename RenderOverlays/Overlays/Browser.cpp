@@ -204,7 +204,7 @@ namespace Overlays
     static const auto Id_MainSurface = InteractableId_Make("BrowserMainSurface");
     static const auto Id_MainScroller = InteractableId_Make("BrowserScroller");
 
-    void    SharedBrowser::Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
+    void    SharedBrowser::Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
     {
         if (!_pimpl->_subDirectories) {
             _pimpl->_subDirectories = std::make_unique<DirectoryQuery>((_pimpl->_currentDirectory + "\\*.*").c_str());
@@ -228,28 +228,28 @@ namespace Overlays
 
             // Header at the top
         {
-            DrawRectangle(context, toolBoxLayout.GetMaximumSize(), backgroundRectangleColour);
-            DrawRectangleOutline(context, Rect(toolBoxLayout.GetMaximumSize()._topLeft + Coord2(2,2), toolBoxLayout.GetMaximumSize()._bottomRight - Coord2(2,2)), 0.f, backgroundOutlineColour);
+            DrawRectangle(&context, toolBoxLayout.GetMaximumSize(), backgroundRectangleColour);
+            DrawRectangleOutline(&context, Rect(toolBoxLayout.GetMaximumSize()._topLeft + Coord2(2,2), toolBoxLayout.GetMaximumSize()._bottomRight - Coord2(2,2)), 0.f, backgroundOutlineColour);
             interactables.Register(Interactables::Widget(toolBoxLayout.GetMaximumSize(), Id_TotalRect));
 
             const auto headingRect = toolBoxLayout.AllocateFullWidth(25);
             TextStyle font(*_pimpl->_headingFont);
-            context->DrawText(
+            context.DrawText(
                 std::make_tuple(Float3(float(headingRect._topLeft[0]), float(headingRect._topLeft[1]), 0.f), Float3(float(headingRect._bottomRight[0]), float(headingRect._bottomRight[1]), 0.f)),
                 &font, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
                     _pimpl->_headerName.c_str(), nullptr);
         }
 
             //  Write the current directory name
-        unsigned textHeight = 8 + (unsigned)context->TextHeight();
+        unsigned textHeight = 8 + (unsigned)context.TextHeight();
         auto curDirRect = toolBoxLayout.AllocateFullWidth(textHeight);
-        context->DrawText(
+        context.DrawText(
             std::make_tuple(Float3(float(curDirRect._topLeft[0]), float(curDirRect._topLeft[1]), 0.f), Float3(float(curDirRect._bottomRight[0]), float(curDirRect._bottomRight[1]), 0.f)),
             nullptr, headerColourNormal, TextAlignment::Center, _pimpl->_currentDirectory.c_str(), nullptr);
 
         {
             auto border = toolBoxLayout.AllocateFullWidth(2); // small border to reset current line
-            context->DrawLine(
+            context.DrawLine(
                 ProjectionMode::P2D, 
                 Float3(float(border._topLeft[0] + 2), float(border._topLeft[1]), 0.f), ColorB(0xffffffff),
                 Float3(float(border._bottomRight[0] - 2), float(border._topLeft[1]), 0.f), ColorB(0xffffffff));
@@ -262,26 +262,26 @@ namespace Overlays
                 char utf8Filename[MaxPath], baseName[MaxPath];
                 ucs2_2_utf8(AsPointer(i->_filename.cbegin()), i->_filename.size(), (utf8*)utf8Filename, dimof(utf8Filename));
                 XlBasename(baseName, dimof(baseName), utf8Filename);
-                unsigned textWidth = 20 + (unsigned)context->StringWidth(1.f, nullptr, baseName, nullptr);
+                unsigned textWidth = 20 + (unsigned)context.StringWidth(1.f, nullptr, baseName, nullptr);
                 auto directoryRect = toolBoxLayout.Allocate(Coord2(textWidth, textHeight));
                 DrawButtonBasic(
-                    context, directoryRect, baseName, 
+                    &context, directoryRect, baseName, 
                     FormatButton(interfaceState, Id_Directories+directoryIndex, buttonNormalState, buttonMouseOverState, buttonPressedState));
                 interactables.Register(Interactables::Widget(directoryRect, Id_Directories+directoryIndex));
             }
 
             const char back[] = "<up>";
-            unsigned textWidth = 20 + (unsigned)context->StringWidth(1.f, nullptr, back, nullptr);
+            unsigned textWidth = 20 + (unsigned)context.StringWidth(1.f, nullptr, back, nullptr);
             auto directoryRect = toolBoxLayout.Allocate(Coord2(textWidth, textHeight));
             DrawButtonBasic(
-                context, directoryRect, back, 
+                &context, directoryRect, back, 
                 FormatButton(interfaceState, Id_BackDirectory, buttonNormalState, buttonMouseOverState, buttonPressedState));
             interactables.Register(Interactables::Widget(directoryRect, Id_BackDirectory));
         }
 
         {
             auto border = toolBoxLayout.AllocateFullWidth(2); // small border to reset current line
-            context->DrawLine(
+            context.DrawLine(
                 ProjectionMode::P2D, 
                 Float3(float(border._topLeft[0] + 2), float(border._topLeft[1]), 0.f), ColorB(0xffffffff),
                 Float3(float(border._bottomRight[0] - 2), float(border._topLeft[1]), 0.f), ColorB(0xffffffff));
@@ -289,9 +289,9 @@ namespace Overlays
 
             // Finally draw the models in this directory
 
-        context->ReleaseState();        // (drawing directly to the device context -- so we must get the overlay context to release the state)
+        context.ReleaseState();        // (drawing directly to the device context -- so we must get the overlay context to release the state)
 
-        auto devContext = RenderCore::Metal::DeviceContext::Get(*context->GetDeviceContext());
+        auto devContext = RenderCore::Metal::DeviceContext::Get(*context.GetDeviceContext());
         SceneEngine::SavedTargets oldTargets(*devContext.get());
 
         std::vector<std::pair<std::string, Rect>> labels;
@@ -331,7 +331,7 @@ namespace Overlays
 
                 utf8 utf8Filename[MaxPath];
                 ucs2_2_utf8(AsPointer(i->_filename.cbegin()), i->_filename.size(), utf8Filename, dimof(utf8Filename));
-                auto srv = GetSRV(*context->GetDeviceContext(), i->_filename);
+                auto srv = GetSRV(*context.GetDeviceContext(), i->_filename);
 
                     // return to the main render target viewport & viewport -- and copy the offscreen image we've just rendered
                 oldTargets.ResetToOldTargets(*devContext.get());
@@ -356,14 +356,14 @@ namespace Overlays
 
         }
 
-        context->CaptureState();
+        context.CaptureState();
 
         for (auto i=labels.cbegin(); i!=labels.cend(); ++i) {
             auto outputRect = i->second;
-            DrawRectangleOutline(context, Rect(outputRect._topLeft + Coord2(2,2), outputRect._bottomRight - Coord2(1,1)), 0.f, backgroundOutlineColour);
+            DrawRectangleOutline(&context, Rect(outputRect._topLeft + Coord2(2,2), outputRect._bottomRight - Coord2(1,1)), 0.f, backgroundOutlineColour);
             Rect labelRect(Coord2(outputRect._topLeft[0], outputRect._bottomRight[1]-20), outputRect._bottomRight);
 
-            context->DrawText(
+            context.DrawText(
                 std::make_tuple(Float3(float(labelRect._topLeft[0]), float(labelRect._topLeft[1]), 0.f), Float3(float(labelRect._bottomRight[0]), float(labelRect._bottomRight[1]), 0.f)),
                 nullptr, ColorB(0xffffffff), TextAlignment::Center, i->first.c_str(), nullptr);
         }
@@ -371,7 +371,7 @@ namespace Overlays
             // draw the scroll bar over the top on the right size
         if (!scrollCoordinates.Collapse()) {
             auto thumbRect = scrollCoordinates.Thumb(float(itemScrollOffset));
-            DrawRectangleOutline(context, thumbRect, 0.f, backgroundOutlineColour);
+            DrawRectangleOutline(&context, thumbRect, 0.f, backgroundOutlineColour);
         }
     }
 

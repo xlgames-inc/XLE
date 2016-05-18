@@ -43,10 +43,10 @@ namespace XLEBridgeUtils
     {
     public:
         virtual void RenderToScene(
-            RenderCore::IThreadContext* device, 
+            RenderCore::IThreadContext& device, 
             SceneEngine::LightingParserContext& parserContext) override
         {
-            auto context = gcnew GUILayer::SimpleRenderingContext(device, RetainedResources, &parserContext);
+            auto context = gcnew GUILayer::SimpleRenderingContext(&device, RetainedResources, &parserContext);
             try
             {
                 OnRender(context);
@@ -58,8 +58,8 @@ namespace XLEBridgeUtils
         }
 
         virtual void RenderWidgets(
-            RenderCore::IThreadContext* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc) override {}
+            RenderCore::IThreadContext& device, 
+            RenderCore::Techniques::ParsingContext& parserContext) override {}
         virtual void SetActivationState(bool) override {}
 
         event RenderCallback^ OnRender;

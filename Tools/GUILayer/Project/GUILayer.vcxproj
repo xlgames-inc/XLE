@@ -172,6 +172,9 @@
     <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_Techniques.vcxproj">
       <Project>{8188bb13-0b12-c110-2a31-515435fd3bb5}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_Vulkan.vcxproj">
+      <Project>{b7525b97-9195-416a-8019-ed7f239cf3e8}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\RenderOverlays\Project\RenderOverlays.vcxproj">
       <Project>{726e12f1-b69b-188d-390b-3a1e1889126d}</Project>
     </ProjectReference>

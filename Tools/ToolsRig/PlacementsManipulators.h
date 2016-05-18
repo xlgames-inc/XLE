@@ -39,10 +39,10 @@ namespace ToolsRig
     {
     public:
         void RenderWidgets(
-            RenderCore::IThreadContext* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc);
+            RenderCore::IThreadContext& device, 
+            RenderCore::Techniques::ParsingContext& projectionDesc);
         void RenderToScene(
-            RenderCore::IThreadContext* context, 
+            RenderCore::IThreadContext& context, 
             SceneEngine::LightingParserContext& parserContext);
 
         std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> GetInputLister();

@@ -19,7 +19,7 @@ namespace PlatformRig { namespace Overlays
     class ConsoleDisplay : public IWidget ///////////////////////////////////////////////////////////
     {
     public:
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
         ConsoleDisplay(ConsoleRig::Console& console);

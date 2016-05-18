@@ -15,9 +15,9 @@
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/ManipulatorsUtil.h"
 #include "../ToolsRig/ManipulatorsRender.h"
-#include "../ToolsRig/HighlightEffects.h"
 #include "../../PlatformRig/BasicSceneParser.h"     // (PlatformRig::EnvironmentSettings destructor)
 #include "../../SceneEngine/PlacementsManager.h"
+#include "../../RenderOverlays/HighlightEffects.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
@@ -27,7 +27,6 @@
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
-#include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Format.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
@@ -312,7 +311,7 @@ namespace GUILayer
             auto& threadContext = context->GetThreadContext();
             if (highlight == nullptr) {
                 CATCH_ASSETS_BEGIN
-                    ToolsRig::BinaryHighlight highlight(threadContext);
+                    ToolsRig::BinaryHighlight highlight(threadContext, context->GetParsingContext().GetNamedResources());
                     ToolsRig::Placements_RenderFiltered(
                         threadContext, context->GetParsingContext(), 
                         RenderCore::Techniques::TechniqueIndex::Forward,
@@ -341,7 +340,8 @@ namespace GUILayer
         {
             auto& metalContext = context->GetDevContext();
             RenderCore::Metal::DepthStencilView dsv(metalContext);
-            metalContext.Clear(dsv, 1.f, 0u);
+            using ClearFilter = RenderCore::Metal::DeviceContext::ClearFilter;
+            metalContext.Clear(dsv, ClearFilter::Depth|ClearFilter::Stencil, 1.f, 0u);
         }
     };
 

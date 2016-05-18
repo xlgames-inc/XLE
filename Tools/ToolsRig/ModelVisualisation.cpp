@@ -262,7 +262,7 @@ namespace ToolsRig
     }
 
     void ModelVisLayer::RenderToScene(
-        RenderCore::IThreadContext* context, 
+        RenderCore::IThreadContext& context, 
         SceneEngine::LightingParserContext& parserContext)
     {
         using namespace SceneEngine;
@@ -292,25 +292,25 @@ namespace ToolsRig
             model._model);
         sceneParser.Prepare();
 
-        auto qualSettings = SceneEngine::RenderingQualitySettings(context->GetStateDesc()._viewportDimensions);
+        auto qualSettings = SceneEngine::RenderingQualitySettings(context.GetStateDesc()._viewportDimensions);
 
         auto& screenshot = Tweakable("Screenshot", 0);
         if (screenshot) {
             PlatformRig::TiledScreenshot(
-                *context, parserContext,
+                context, parserContext,
                 sceneParser, sceneParser.GetCameraDesc(),
                 qualSettings, UInt2(screenshot, screenshot));
             screenshot = 0;
         }
 
         LightingParser_ExecuteScene(
-            *context, parserContext, sceneParser, sceneParser.GetCameraDesc(),
+            context, parserContext, sceneParser, sceneParser.GetCameraDesc(),
             qualSettings);
     }
 
     void ModelVisLayer::RenderWidgets(
-        RenderCore::IThreadContext* device, 
-        const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+        RenderCore::IThreadContext& device, 
+        RenderCore::Techniques::ParsingContext& parsingContext)
     {
     }
 
@@ -347,48 +347,51 @@ namespace ToolsRig
         RenderCore::IThreadContext& context, 
         SceneEngine::LightingParserContext& parserContext)
     {
-        if (_pimpl->_settings->_drawWireframe) {
+        using namespace RenderCore;
+        if (_pimpl->_settings->_drawWireframe || _pimpl->_settings->_drawNormals) {
 
-            CATCH_ASSETS_BEGIN
-                auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
-                assert(model._renderer && model._sharedStateSet);
+            Techniques::RenderPassInstance rpi(
+                context, FrameBufferDesc({RenderCore::SubpassDesc({0u}, 2u)}),
+                0u, parserContext.GetNamedResources());
 
-                RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
-                if (model._sharedStateSet)
-                    captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+            if (_pimpl->_settings->_drawWireframe) {
 
-                const auto techniqueIndex = RenderCore::Techniques::TechniqueIndex::VisWireframe;
+                CATCH_ASSETS_BEGIN
+                    auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
+                    assert(model._renderer && model._sharedStateSet);
 
-                RenderWithEmbeddedSkeleton(
-                    RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                    *model._renderer, *model._sharedStateSet, model._model);
-            CATCH_ASSETS_END(parserContext)
+                    RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
+                    if (model._sharedStateSet)
+                        captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+
+                    const auto techniqueIndex = Techniques::TechniqueIndex::VisWireframe;
+
+                    RenderWithEmbeddedSkeleton(
+                        RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                        *model._renderer, *model._sharedStateSet, model._model);
+                CATCH_ASSETS_END(parserContext)
+            }
+
+            if (_pimpl->_settings->_drawNormals) {
+
+                CATCH_ASSETS_BEGIN
+                    auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
+                    assert(model._renderer && model._sharedStateSet);
+
+                    RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
+                    if (model._sharedStateSet)
+                        captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+
+                    const auto techniqueIndex = Techniques::TechniqueIndex::VisNormals;
+
+                    RenderWithEmbeddedSkeleton(
+                        RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                        *model._renderer, *model._sharedStateSet, model._model);
+                CATCH_ASSETS_END(parserContext)
+            }
         }
 
-        if (_pimpl->_settings->_drawNormals) {
-
-            CATCH_ASSETS_BEGIN
-                auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
-                assert(model._renderer && model._sharedStateSet);
-
-                RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
-                if (model._sharedStateSet)
-                    captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
-
-                const auto techniqueIndex = RenderCore::Techniques::TechniqueIndex::VisNormals;
-
-                RenderWithEmbeddedSkeleton(
-                    RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                    *model._renderer, *model._sharedStateSet, model._model);
-            CATCH_ASSETS_END(parserContext)
-        }
-    }
-
-    void VisualisationOverlay::RenderWidgets(
-        RenderCore::IThreadContext& threadContext, 
-        RenderCore::Techniques::ParsingContext& parserContext)
-    {
-        //  Draw an overlay over the scene, 
+            //  Draw an overlay over the scene, 
             //  containing debugging / profiling information
         if (_pimpl->_settings->_colourByMaterial) {
 
@@ -397,7 +400,6 @@ namespace ToolsRig
             }
 
             CATCH_ASSETS_BEGIN
-                using namespace RenderCore;
                 // auto metalContext = Metal::DeviceContext::Get(*context);
 
                 RenderOverlays::HighlightByStencilSettings settings;
@@ -422,14 +424,21 @@ namespace ToolsRig
 
                 {
                     Techniques::RenderPassInstance rpi(
-                        threadContext, FrameBufferDesc({SubpassDesc({0u})}),
+                        context, FrameBufferDesc({SubpassDesc({0u})}),
                         0u, parserContext.GetNamedResources());
                     ExecuteHighlightByStencil(
-                        threadContext, parserContext.GetNamedResources(), 
+                        context, parserContext.GetNamedResources(), 
                         settings, _pimpl->_settings->_colourByMaterial==2);
                 }
             CATCH_ASSETS_END(parserContext)
         }
+    }
+
+    void VisualisationOverlay::RenderWidgets(
+        RenderCore::IThreadContext& threadContext, 
+        RenderCore::Techniques::ParsingContext& parserContext)
+    {
+            
     }
 
     auto VisualisationOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
@@ -613,17 +622,17 @@ namespace ToolsRig
     }
 
     void MouseOverTrackingOverlay::RenderToScene(
-        RenderCore::IThreadContext*, 
+        RenderCore::IThreadContext&, 
         SceneEngine::LightingParserContext&) {}
     
     void MouseOverTrackingOverlay::RenderWidgets(
-        RenderCore::IThreadContext* threadContext, 
-        const RenderCore::Techniques::ProjectionDesc& projDesc) 
+        RenderCore::IThreadContext& threadContext, 
+        RenderCore::Techniques::ParsingContext& parsingContext) 
     {
         if (!_mouseOver->_hasMouseOver || !_overlayFn) return;
 
         using namespace RenderOverlays::DebuggingDisplay;
-        RenderOverlays::ImmediateOverlayContext overlays(threadContext, projDesc);
+        RenderOverlays::ImmediateOverlayContext overlays(threadContext, parsingContext.GetProjectionDesc());
         _overlayFn(overlays, *_mouseOver);
     }
 

@@ -16,6 +16,7 @@
 
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/AssetServices.h"
@@ -56,7 +57,7 @@ namespace PlatformRig
     class FrameRigDisplay : public RenderOverlays::DebuggingDisplay::IWidget
     {
     public:
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
         FrameRigDisplay(
@@ -135,14 +136,14 @@ namespace PlatformRig
         std::shared_ptr<IInputListener> GetInputListener()  { return _inputListener; }
 
         void RenderToScene(
-            RenderCore::IThreadContext* devContext, 
+            RenderCore::IThreadContext& devContext, 
             SceneEngine::LightingParserContext& parserContext) {}
 
         void RenderWidgets(
-            RenderCore::IThreadContext* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+            RenderCore::IThreadContext& device, 
+            RenderCore::Techniques::ParsingContext& parserContext)
         {
-            _debugScreensSystem->Render(device, projectionDesc);
+            _debugScreensSystem->Render(device, parserContext.GetProjectionDesc());
         }
 
         void SetActivationState(bool) {}
@@ -383,7 +384,7 @@ namespace PlatformRig
     static const std::string String_IconBegin("game/xleres/defaultresources/icon_");
     static const std::string String_IconEnd(".png");
 
-    void    FrameRigDisplay::Render(IOverlayContext* context, Layout& layout, 
+    void    FrameRigDisplay::Render(IOverlayContext& context, Layout& layout, 
                                     Interactables&interactables, InterfaceState& interfaceState)
     {
         auto& res = RenderCore::Techniques::FindCachedBox<FrameRigResources>(FrameRigResources::Desc());
@@ -409,7 +410,7 @@ namespace PlatformRig
         static ColorB normalColor = ColorB(70, 31, 0, 0x9f);
         static ColorB mouseOverColor = ColorB(70, 31, 0, 0xff);
         static ColorB pressed = ColorB(128, 50, 0, 0xff);
-        DrawRoundedRectangle(context, displayRect, 
+        DrawRoundedRectangle(&context, displayRect, 
             FormatButton(interfaceState, Id_FrameRigDisplayMain, normalColor, mouseOverColor, pressed), 
             ColorB::White,
             (interfaceState.HasMouseOver(Id_FrameRigDisplayMain))?4.f:2.f, 1.f / 4.f);
@@ -422,19 +423,19 @@ namespace PlatformRig
 
         TextStyle bigStyle(*res._frameRateFont);
         DrawFormatText(
-            context, innerLayout.Allocate(Coord2(80, bigLineHeight)),
+            &context, innerLayout.Allocate(Coord2(80, bigLineHeight)),
             &bigStyle, ColorB(0xffffffff), "%.1f", 1000.f / std::get<0>(f));
 
         TextStyle smallStyle(*res._smallFrameRateFont);
         DrawFormatText(
-            context, innerLayout.Allocate(Coord2(rectWidth - 80 - innerLayout._paddingInternalBorder*2 - innerLayout._paddingBetweenAllocations, smallLineHeight * 2)),
+            &context, innerLayout.Allocate(Coord2(rectWidth - 80 - innerLayout._paddingInternalBorder*2 - innerLayout._paddingBetweenAllocations, smallLineHeight * 2)),
             &smallStyle, ColorB(0xffffffff), "%.1f-%.1f", 1000.f / std::get<2>(f), 1000.f / std::get<1>(f));
 
         auto heapMetrics = AccumulatedAllocations::GetCurrentHeapMetrics();
         auto frameAllocations = _prevFrameAllocationCount->_allocationCount;
 
         DrawFormatText(
-            context, innerLayout.AllocateFullWidth(smallLineHeight), 0.f,
+            &context, innerLayout.AllocateFullWidth(smallLineHeight), 0.f,
             &smallStyle, ColorB(0xffffffff), TextAlignment::Center,
             "%.2fM (%i)", heapMetrics._usage / (1024.f*1024.f), frameAllocations);
 
@@ -462,7 +463,7 @@ namespace PlatformRig
                     if ((_subMenuOpen-1) == unsigned(c) || highlight) {
 
                             //  Draw the text name for this icon under the icon
-                        Coord nameWidth = (Coord)context->StringWidth(1.f, &tabHeader, categories[c], nullptr);
+                        Coord nameWidth = (Coord)context.StringWidth(1.f, &tabHeader, categories[c], nullptr);
                         rect = Rect(
                             pt - Coord2(std::max(iconSize[0], nameWidth), 0),
                             pt + Coord2(0, Coord(iconSize[1] + tabHeader._font->LineHeight())));
@@ -471,22 +472,22 @@ namespace PlatformRig
                         Coord2 iconTopLeft(iconLeft, rect._topLeft[1]);
                         Rect iconRect(iconTopLeft, iconTopLeft + iconSize);
 
-                        DrawRectangle(context, rect, menuBkgrnd);
+                        DrawRectangle(&context, rect, menuBkgrnd);
 
-                        context->DrawTexturedQuad(
+                        context.DrawTexturedQuad(
                             ProjectionMode::P2D, 
                             AsPixelCoords(iconRect._topLeft),
                             AsPixelCoords(iconRect._bottomRight),
                             String_IconBegin + categories[c] + String_IconEnd);
                         DrawText(
-                            context, rect, 0.f,
+                            &context, rect, 0.f,
                             &tabHeader, tabHeaderColor, TextAlignment::Bottom,
                             categories[c]);
 
                     } else {
 
                         rect = Rect(pt - Coord2(iconSize[0], 0), pt + Coord2(0, iconSize[1]));
-                        context->DrawTexturedQuad(
+                        context.DrawTexturedQuad(
                             ProjectionMode::P2D, 
                             AsPixelCoords(rect._topLeft),
                             AsPixelCoords(rect._bottomRight),
@@ -509,21 +510,21 @@ namespace PlatformRig
                 const auto screens = ds->GetWidgets();
                 for (auto i=screens.cbegin(); i!=screens.cend(); ++i) {
                     if (i->_name.find(categories[_subMenuOpen-1]) != std::string::npos) {
-                        unsigned width = (unsigned)context->StringWidth(1.f, &tabHeader, i->_name.c_str(), nullptr);
+                        unsigned width = (unsigned)context.StringWidth(1.f, &tabHeader, i->_name.c_str(), nullptr);
                         auto rect = screenListLayout.AllocateFullWidth(lineHeight);
                         rect._topLeft[0] = rect._bottomRight[0] - width;
 
-                        DrawRectangle(context, 
+                        DrawRectangle(&context, 
                             Rect(rect._topLeft - Coord2(2 + margin + smallIconSize[0],2), rect._bottomRight + Coord2(2,2)), 
                             interfaceState.HasMouseOver(i->_hashCode) ? menuBkgrndHigh : menuBkgrnd);
 
-                        context->DrawTexturedQuad(
+                        context.DrawTexturedQuad(
                             ProjectionMode::P2D, 
                             AsPixelCoords(Coord2(rect._topLeft - Coord2(smallIconSize[0] + margin, 0))),
                             AsPixelCoords(Coord2(rect._topLeft[0]-margin, rect._bottomRight[1])),
                             String_IconBegin + categories[_subMenuOpen-1] + String_IconEnd);
                         DrawText(
-                            context, rect, 0.f,
+                            &context, rect, 0.f,
                             &tabHeader, tabHeaderColor, TextAlignment::Left,
                             i->_name.c_str());
 

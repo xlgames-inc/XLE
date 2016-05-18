@@ -80,7 +80,7 @@ namespace ShaderPatcherLayer
             const RenderCore::Assets::ResolvedMaterial& mat,
             const SystemConstants& sysConstants,
             const ::Assets::DirectorySearchRules& searchRules,
-            const RenderCore::Metal::InputLayout& geoInputLayout);
+            const RenderCore::InputLayout& geoInputLayout);
         
         MaterialBinder(
             RenderCore::ShaderService::IShaderSource& shaderSource, 
@@ -130,7 +130,7 @@ namespace ShaderPatcherLayer
         const RenderCore::Assets::ResolvedMaterial& mat,
         const SystemConstants& sysConstants,
         const ::Assets::DirectorySearchRules& searchRules,
-        const RenderCore::Metal::InputLayout& geoInputLayout)
+        const RenderCore::InputLayout& geoInputLayout)
     {
         // We need to build a shader program based on the input shader texture
         // and the material parameters given. We will need to stall waiting for
@@ -373,17 +373,17 @@ namespace ShaderPatcherLayer
         intrusive_ptr<BufferUploads::ResourceLocator> targets[maxTargets];
         for (unsigned c=0; c<(targetToVisualize+1); ++c)
             targets[c] = uploads.Transaction_Immediate(
-                BufferUploads::CreateDesc(
-                    BufferUploads::BindFlag::RenderTarget,
-                    0, BufferUploads::GPUAccess::Write,
-                    BufferUploads::TextureDesc::Plain2D(width, height, Metal::NativeFormat::R8G8B8A8_UNORM_SRGB),
+                CreateDesc(
+                    BindFlag::RenderTarget,
+                    0, GPUAccess::Write,
+                    TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM_SRGB),
                     "PreviewBuilderTarget"));
 
         auto depthBuffer = uploads.Transaction_Immediate(
-            BufferUploads::CreateDesc(
-                BufferUploads::BindFlag::DepthStencil,
-                0, BufferUploads::GPUAccess::Write,
-                BufferUploads::TextureDesc::Plain2D(width, height, Metal::NativeFormat::D24_UNORM_S8_UINT),
+            CreateDesc(
+                BindFlag::DepthStencil,
+                0, GPUAccess::Write,
+                TextureDesc::Plain2D(width, height, Format::D24_UNORM_S8_UINT),
                 "PreviewBuilderDepthBuffer"));
 
         auto context = _pimpl->_device->GetImmediateContext();
@@ -397,7 +397,7 @@ namespace ShaderPatcherLayer
         }
 
         Metal::DepthStencilView dsv(depthBuffer->GetUnderlying());
-        metalContext->Clear(dsv, 1.f, 0x0);
+        metalContext->Clear(dsv, Metal::DeviceContext::ClearFilter::Depth|Metal::DeviceContext::ClearFilter::Stencil, 1.f, 0x0);
         RenderCore::ResourceList<Metal::RenderTargetView, maxTargets> rtvList(
             std::initializer_list<const Metal::RenderTargetView>(rtvs, ArrayEnd(rtvs)));
         metalContext->Bind(rtvList, &dsv);
@@ -484,7 +484,7 @@ namespace ShaderPatcherLayer
         
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
         _pimpl->_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
-            RenderCore::Metal::CreateLowLevelShaderCompiler());
+            RenderCore::Metal::CreateLowLevelShaderCompiler(*_pimpl->_device));
     }
 
     Manager::~Manager()

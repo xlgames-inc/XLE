@@ -183,7 +183,7 @@ namespace RenderCore
             IMETHOD std::unique_ptr<IThreadContext>     CreateDeferredContext() IPURE;
 
 			using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
-			IMETHOD ResourcePtr			CreateResource(const ResourceDesc& desc, const ResourceInitializer& init = nullptr) IPURE;
+			IMETHOD ResourcePtr			CreateResource(const ResourceDesc& desc, const ResourceInitializer& init = ResourceInitializer()) IPURE;
 
             /// <summary>Returns description & version information for this device</summary>
             /// Queries build number and build date information.

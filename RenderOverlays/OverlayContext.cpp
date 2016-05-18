@@ -628,12 +628,12 @@ namespace RenderOverlays
     };
 
     ImmediateOverlayContext::ImmediateOverlayContext(
-        IThreadContext* threadContext, 
+        IThreadContext& threadContext, 
         const Techniques::ProjectionDesc& projDesc)
     : _font(Techniques::FindCachedBox2<DefaultFontBox>()._font)
     , _defaultTextStyle(*_font.get())
     , _projDesc(projDesc)
-    , _deviceContext(threadContext)
+    , _deviceContext(&threadContext)
     {
 		_workingBufferSize = 16 * 1024;
 		_workingBuffer = std::make_unique<uint8[]>(_workingBufferSize);

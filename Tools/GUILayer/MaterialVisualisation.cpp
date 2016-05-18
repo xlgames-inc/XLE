@@ -20,20 +20,20 @@
 namespace GUILayer
 {
     void MaterialVisLayer::RenderToScene(
-        RenderCore::IThreadContext* context, 
+        RenderCore::IThreadContext& context, 
         SceneEngine::LightingParserContext& parserContext)
     {
         if (!_visObject) { Resolve(); }
         if (!_visObject) { return; }
 
         ToolsRig::MaterialVisLayer::Draw(
-            *context, parserContext, _settings->GetUnderlying(), 
+            context, parserContext, _settings->GetUnderlying(), 
             *_envSettings.get(), *_visObject.get());
     }
 
     void MaterialVisLayer::RenderWidgets(
-        RenderCore::IThreadContext* device, 
-        const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+        RenderCore::IThreadContext& device, 
+        RenderCore::Techniques::ParsingContext&)
     {}
 
     void MaterialVisLayer::SetActivationState(bool newState) {}

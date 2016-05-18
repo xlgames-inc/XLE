@@ -36,6 +36,8 @@ cbuffer SystemConstants : register(b0)
 	uint CurrentDrawCallIndex;
 }
 
+Texture2D		DiffuseTexture          TEXTURE_BOUND1_0;
+
 float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 v2)
 {
 		//		basic alegrabic intersection method from--

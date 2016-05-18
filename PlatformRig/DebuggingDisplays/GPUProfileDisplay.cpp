@@ -159,7 +159,7 @@ namespace PlatformRig { namespace Overlays
         return lhs.first>rhs.first;
     }
 
-    void    GPUProfileDisplay::Render(IOverlayContext* context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState)
+    void    GPUProfileDisplay::Render(IOverlayContext& context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState)
     {
         std::pair<float, unsigned> smoothedSectionCosts[dimof(_sections)];
         float sectionVariances[dimof(_sections)];
@@ -194,7 +194,7 @@ namespace PlatformRig { namespace Overlays
                     break;
                 }
 
-                DrawRoundedRectangle(context, sectionRect, ColorB(180,200,255,128), ColorB(255,255,255,128));
+                DrawRoundedRectangle(&context, sectionRect, ColorB(180,200,255,128), ColorB(255,255,255,128));
 
                 Layout sectionLayout(sectionRect);
                 Rect labelRect = sectionLayout.AllocateFullHeightFraction( .25f );
@@ -204,7 +204,7 @@ namespace PlatformRig { namespace Overlays
                 Rect sectionNameRect( 
                     Coord2(labelRect._topLeft[0], labelRect._topLeft[1]),
                     Coord2(labelRect._bottomRight[0], LinearInterpolate(labelRect._topLeft[1], labelRect._bottomRight[1], 0.333f)) );
-                DrawText(context, sectionNameRect, 2.f, nullptr, ColorB(0xffffffffu), section._id);
+                DrawText(&context, sectionNameRect, 2.f, nullptr, ColorB(0xffffffffu), section._id);
 
 				if (section._durationHistoryLength) {
                     Rect durationRect( 
@@ -213,16 +213,16 @@ namespace PlatformRig { namespace Overlays
 
                     float recentCost = section._durationHistory[section._durationHistoryLength-1];
                     float smoothedCost = smoothedSectionCosts[c].first;
-                    DrawFormatText(context, durationRect, nullptr, ColorB(0xffffffffu), "%.2fms (%.2fms)", smoothedCost, recentCost);
+                    DrawFormatText(&context, durationRect, nullptr, ColorB(0xffffffffu), "%.2fms (%.2fms)", smoothedCost, recentCost);
 
                     Rect varianceRect( 
                         Coord2(labelRect._topLeft[0], durationRect._bottomRight[1]),
                         Coord2(labelRect._bottomRight[0], labelRect._bottomRight[1]) );
-                    DrawFormatText(context, varianceRect, nullptr, ColorB(0xffffffffu), "%.2fms variance", sectionVariances[c]);
+                    DrawFormatText(&context, varianceRect, nullptr, ColorB(0xffffffffu), "%.2fms variance", sectionVariances[c]);
                 }
 
                 //  Then draw the graph in the main part of the widget
-                DrawHistoryGraph(context, historyRect, section._durationHistory, section._durationHistoryLength, DurationHistoryLength, section._graphMin, section._graphMax);
+                DrawHistoryGraph(&context, historyRect, section._durationHistory, section._durationHistoryLength, DurationHistoryLength, section._graphMin, section._graphMax);
 
                 //  Interactables
                 {
@@ -252,11 +252,11 @@ namespace PlatformRig { namespace Overlays
 
                             InteractableId id = baseButtonIds[c]+sectionIndex;
                             if (interfaceState.HasMouseOver(id)) {
-                                DrawElipse(context, buttonRect, ColorB(0xff000000u));
-                                DrawText(context, buttonRect, nullptr, ColorB(0xff000000u), buttonNames[c]);
+                                DrawElipse(&context, buttonRect, ColorB(0xff000000u));
+                                DrawText(&context, buttonRect, nullptr, ColorB(0xff000000u), buttonNames[c]);
                             } else {
-                                DrawElipse(context, buttonRect, ColorB(0xffffffffu));
-                                DrawText(context, buttonRect, nullptr, ColorB(0xffffffffu), buttonNames[c]);
+                                DrawElipse(&context, buttonRect, ColorB(0xffffffffu));
+                                DrawText(&context, buttonRect, nullptr, ColorB(0xffffffffu), buttonNames[c]);
                             }
                             interactables.Register(Interactables::Widget(buttonRect, id));
                         }

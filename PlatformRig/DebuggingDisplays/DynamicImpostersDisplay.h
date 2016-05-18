@@ -19,7 +19,7 @@ namespace PlatformRig { namespace Overlays
     class DynamicImpostersDisplay : public IWidget ///////////////////////////////////////////////////////////
     {
     public:
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
         DynamicImpostersDisplay(std::weak_ptr<SceneEngine::DynamicImposters> manager);

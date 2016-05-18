@@ -48,7 +48,7 @@ namespace ToolsRig
     class ManipulatorsDisplay : public RenderOverlays::DebuggingDisplay::IWidget
     {
     public:
-        void    Render( RenderOverlays::IOverlayContext* context, RenderOverlays::DebuggingDisplay::Layout& layout, 
+        void    Render( RenderOverlays::IOverlayContext& context, RenderOverlays::DebuggingDisplay::Layout& layout, 
                         RenderOverlays::DebuggingDisplay::Interactables&interactables, 
                         RenderOverlays::DebuggingDisplay::InterfaceState& interfaceState);
         bool    ProcessInput(RenderOverlays::DebuggingDisplay::InterfaceState& interfaceState, const RenderOverlays::DebuggingDisplay::InputSnapshot& input);

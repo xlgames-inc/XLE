@@ -21,7 +21,7 @@ namespace PlatformRig { namespace Overlays
     public:
         GPUProfileDisplay(RenderCore::GPUProfiler::Profiler* profiler);
         ~GPUProfileDisplay();
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
     private:

@@ -143,7 +143,7 @@ namespace RenderCore { namespace Metal_DX11
 	RenderCore::ResourcePtr CreateResource(
 		const ObjectFactory& factory,
 		const ResourceDesc& desc, 
-		const ResourceInitializer& init = nullptr);
+		const ResourceInitializer& init = ResourceInitializer());
 
 	ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
 

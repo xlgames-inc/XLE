@@ -20,7 +20,7 @@ namespace Overlays
     public:
         VolumetricFogSettings(SceneEngine::VolumetricFogMaterial& materialSettings);
         ~VolumetricFogSettings();
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
     private:

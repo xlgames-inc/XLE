@@ -20,7 +20,7 @@ namespace Overlays
     public:
         ToneMapSettingsDisplay(SceneEngine::ToneMapSettings& settings);
         ~ToneMapSettingsDisplay();
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
     private:
@@ -33,7 +33,7 @@ namespace Overlays
     public:
         ColorGradingSettingsDisplay(SceneEngine::ColorGradingSettings& settings);
         ~ColorGradingSettingsDisplay();
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
     private:

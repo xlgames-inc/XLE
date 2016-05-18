@@ -588,7 +588,7 @@ namespace PlatformRig { namespace Overlays
         }
     }
 
-    void    BufferUploadDisplay::Render(IOverlayContext* context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState)
+    void    BufferUploadDisplay::Render(IOverlayContext& context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState)
     {
         using namespace BufferUploads;
         CommandListMetrics mostRecentResults;
@@ -632,13 +632,13 @@ namespace PlatformRig { namespace Overlays
         Layout displayArea = layout.AllocateFullWidthFraction(1.f);
 
         if (_graphsMode == GraphTabs::Statistics) {
-            DrawStatistics(context, displayArea, interactables, interfaceState, mostRecentResults);
+            DrawStatistics(&context, displayArea, interactables, interfaceState, mostRecentResults);
         } else if (_graphsMode == GraphTabs::RecentRetirements) {
-            DrawRecentRetirements(context, displayArea, interactables, interfaceState);
+            DrawRecentRetirements(&context, displayArea, interactables, interfaceState);
         } else {
-            DrawDisplay(context, displayArea, interactables, interfaceState);
+            DrawDisplay(&context, displayArea, interactables, interfaceState);
         }
-        DrawMenuBar(context, menuBar, interactables, interfaceState);
+        DrawMenuBar(&context, menuBar, interactables, interfaceState);
     }
 
     bool    BufferUploadDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
@@ -842,7 +842,7 @@ namespace PlatformRig { namespace Overlays
 
     static const InteractableId ResourcePoolDisplayGraph = InteractableId_Make("ResourcePoolDisplayGraph");
 
-    void    ResourcePoolDisplay::Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
+    void    ResourcePoolDisplay::Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
     {
         using namespace BufferUploads;
         IManager* manager = _manager;
@@ -863,7 +863,7 @@ namespace PlatformRig { namespace Overlays
             layout.AllocateFullWidth(128);  // leave some space at the top
             Layout buttonsLayout(layout.AllocateFullWidth(32));
             for (unsigned c=0; c<dimof(ResourcePoolDisplayTabs::Names); ++c) {
-                DrawButton(context, ResourcePoolDisplayTabs::Names[c], buttonsLayout.AllocateFullHeightFraction(1.f/float(dimof(ResourcePoolDisplayTabs::Names))), interactables, interfaceState);
+                DrawButton(&context, ResourcePoolDisplayTabs::Names[c], buttonsLayout.AllocateFullHeightFraction(1.f/float(dimof(ResourcePoolDisplayTabs::Names))), interactables, interfaceState);
             }
 
             if (count) {
@@ -886,8 +886,8 @@ namespace PlatformRig { namespace Overlays
                         float B = i->_peakSize / float(maxSize);
                         Rect fullRect = barsLayout.AllocateFullHeight(barWidth);
                         Rect colouredRect(Coord2(fullRect._topLeft[0], LinearInterpolate(fullRect._topLeft[1], fullRect._bottomRight[1], 1.f-A)), fullRect._bottomRight);
-                        DrawRectangle(context, colouredRect, rectColor);
-                        DrawRectangle(context, Rect(    Coord2(fullRect._topLeft[0], LinearInterpolate(fullRect._topLeft[1], fullRect._bottomRight[1], 1.f-B)),
+                        DrawRectangle(&context, colouredRect, rectColor);
+                        DrawRectangle(&context, Rect(    Coord2(fullRect._topLeft[0], LinearInterpolate(fullRect._topLeft[1], fullRect._bottomRight[1], 1.f-B)),
                                                         Coord2(fullRect._bottomRight[0], LinearInterpolate(fullRect._topLeft[1], fullRect._bottomRight[1], 1.f-B)+2)), peakMarkerColor);
 
                         Rect textRect(colouredRect._topLeft, Coord2(colouredRect._bottomRight[0], colouredRect._topLeft[1]+10));
@@ -895,18 +895,18 @@ namespace PlatformRig { namespace Overlays
                             const BufferDesc& desc = i->_desc;
                             if (desc._type == BufferDesc::Type::LinearBuffer) {
                                 if (desc._bindFlags & BindFlag::IndexBuffer) {
-                                    DrawFormatText(context, textRect, nullptr, textColour, "IB %6.2fk", desc._linearBufferDesc._sizeInBytes / 1024.f);
+                                    DrawFormatText(&context, textRect, nullptr, textColour, "IB %6.2fk", desc._linearBufferDesc._sizeInBytes / 1024.f);
                                 } else if (desc._bindFlags & BindFlag::VertexBuffer) {
-                                    DrawFormatText(context, textRect, nullptr, textColour, "VB %6.2fk", desc._linearBufferDesc._sizeInBytes / 1024.f);
+                                    DrawFormatText(&context, textRect, nullptr, textColour, "VB %6.2fk", desc._linearBufferDesc._sizeInBytes / 1024.f);
                                 } else {
-                                    DrawFormatText(context, textRect, nullptr, textColour, "B %6.2fk", desc._linearBufferDesc._sizeInBytes / 1024.f);
+                                    DrawFormatText(&context, textRect, nullptr, textColour, "B %6.2fk", desc._linearBufferDesc._sizeInBytes / 1024.f);
                                 }
                             } else if (desc._type == BufferDesc::Type::Texture) {
-                                DrawFormatText(context, textRect, nullptr, textColour, "Tex %ix%i", desc._textureDesc._width, desc._textureDesc._height);
+                                DrawFormatText(&context, textRect, nullptr, textColour, "Tex %ix%i", desc._textureDesc._width, desc._textureDesc._height);
                             }
                             textRect._topLeft[1] += 16; textRect._bottomRight[1] += 16;
                             if (i->_currentSize) {
-                                DrawFormatText(context, textRect, nullptr, textColour, "%i (%6.3fMB)", 
+                                DrawFormatText(&context, textRect, nullptr, textColour, "%i (%6.3fMB)", 
                                     i->_currentSize, (i->_currentSize * manager->ByteCount(i->_desc)) / (1024.f*1024.f));
                             }
                         }
@@ -923,7 +923,7 @@ namespace PlatformRig { namespace Overlays
                 if (detailsMetrics) {
                     _detailsHistory.push_back(*detailsMetrics);
                     Rect textRect = layout.AllocateFullWidth(32);
-                    DrawFormatText(context, textRect, nullptr, textColour, "Real size: %6.2fMB, Created size: %6.2fMB, Padding overhead: %6.2fMB, Count: %i",
+                    DrawFormatText(&context, textRect, nullptr, textColour, "Real size: %6.2fMB, Created size: %6.2fMB, Padding overhead: %6.2fMB, Count: %i",
                         detailsMetrics->_totalRealSize/(1024.f*1024.f), detailsMetrics->_totalCreateSize/(1024.f*1024.f), (detailsMetrics->_totalCreateSize-detailsMetrics->_totalRealSize)/(1024.f*1024.f),
                         detailsMetrics->_totalCreateCount);
 
@@ -933,7 +933,7 @@ namespace PlatformRig { namespace Overlays
                     for (std::vector<PoolMetrics>::const_reverse_iterator i=_detailsHistory.rbegin(); i!=_detailsHistory.rend() && historyCount < dimof(historyValues); ++i, ++historyCount) {
                         historyValues[historyCount] = float(i->_recentReleaseCount);
                     }
-                    DrawHistoryGraph(context, historyRect, historyValues, historyCount, dimof(historyValues), _graphMin, _graphMax);
+                    DrawHistoryGraph(&context, historyRect, historyValues, historyCount, dimof(historyValues), _graphMin, _graphMax);
                 }
             }
         }
@@ -969,7 +969,7 @@ namespace PlatformRig { namespace Overlays
 
     static const unsigned FramesOfWarmth = 60;
 
-    void    BatchingDisplay::Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
+    void    BatchingDisplay::Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
     {
         using namespace BufferUploads;
         IManager* manager = _manager;
@@ -994,11 +994,11 @@ namespace PlatformRig { namespace Overlays
             }
 
             {
-                DrawFormatText(context, layout.AllocateFullWidth(16), nullptr, textColour, "Heap count: %i / Total allocated: %7.3fMb / Total unallocated: %7.3fMb",
+                DrawFormatText(&context, layout.AllocateFullWidth(16), nullptr, textColour, "Heap count: %i / Total allocated: %7.3fMb / Total unallocated: %7.3fMb",
                     metrics._heaps.size(), allocatedSpace/(1024.f*1024.f), unallocatedSpace/(1024.f*1024.f));
-                DrawFormatText(context, layout.AllocateFullWidth(16), nullptr, textColour, "Largest free block: %7.3fKb / Average unallocated: %7.3fKb",
+                DrawFormatText(&context, layout.AllocateFullWidth(16), nullptr, textColour, "Largest free block: %7.3fKb / Average unallocated: %7.3fKb",
                     largestFreeBlock/1024.f, unallocatedSpace/(float(metrics._heaps.size())*1024.f));
-                DrawFormatText(context, layout.AllocateFullWidth(16), nullptr, textColour, "Block count: %i / Ave block size: %7.3fKb",
+                DrawFormatText(&context, layout.AllocateFullWidth(16), nullptr, textColour, "Block count: %i / Ave block size: %7.3fKb",
                     totalBlockCount, allocatedSpace/float(totalBlockCount*1024.f));
             }
 
@@ -1009,7 +1009,7 @@ namespace PlatformRig { namespace Overlays
                 Rect outsideRect = layout.AllocateFullWidth(DebuggingDisplay::Coord(metrics._heaps.size()*lineHeight + layout._paddingInternalBorder*2));
                 Rect heapAllocationDisplay = Layout(outsideRect).AllocateFullWidthFraction(100.f);
 
-                DrawRectangleOutline(context, outsideRect);
+                DrawRectangleOutline(&context, outsideRect);
 
                 std::vector<Float3> lines;
                 std::vector<ColorB> lineColors;
@@ -1051,7 +1051,7 @@ namespace PlatformRig { namespace Overlays
                 }
 
                 if (!lines.empty()) {
-                    context->DrawLines(ProjectionMode::P2D, AsPointer(lines.begin()), (uint32)lines.size(), AsPointer(lineColors.begin()));
+                    context.DrawLines(ProjectionMode::P2D, AsPointer(lines.begin()), (uint32)lines.size(), AsPointer(lineColors.begin()));
                 }
             }
 

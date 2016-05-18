@@ -251,6 +251,10 @@ namespace Sample
                     samples._sampleCount, samples._samplingQuality));
         }
 
+        if (overlaySys) {
+            overlaySys->RenderToScene(context, lightingParserContext);
+        }
+
             // Begin a default render pass just rendering to the 
             // presentation buffer (which is always target "0")
         bool hasPendingResources = false;
@@ -265,10 +269,6 @@ namespace Sample
             RenderPostScene(&context);
             LightingParser_Overlays(context, lightingParserContext);
 
-            if (overlaySys) {
-                overlaySys->RenderToScene(&context, lightingParserContext);
-            }
-
                 //  The lighting parser will tell us if there where any pending resources
                 //  during the render. Here, we can render them as a short list...
             hasPendingResources = lightingParserContext.HasPendingAssets();
@@ -276,7 +276,7 @@ namespace Sample
             DrawPendingResources(context, lightingParserContext, defaultFont0.get());
 
             if (overlaySys) {
-                overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());
+                overlaySys->RenderWidgets(context, lightingParserContext);
             }
         }
 

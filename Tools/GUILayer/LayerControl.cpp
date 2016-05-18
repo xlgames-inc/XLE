@@ -31,6 +31,7 @@
 #include "../../SceneEngine/VegetationSpawn.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -44,33 +45,43 @@ namespace GUILayer
     
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
+        const RenderCore::ResourcePtr& presentationResource,
         LayerControlPimpl& pimpl,
         PlatformRig::IOverlaySystem* overlaySys)
     {
         using namespace SceneEngine;
 
-        context.ClearAllBoundTargets();
-
-        LightingParserContext lightingParserContext(*pimpl._globalTechniqueContext);
+        LightingParserContext lightingParserContext(*pimpl._globalTechniqueContext, pimpl._namedResources.get());
         lightingParserContext._plugins.push_back(pimpl._stdPlugin);
 
-        if (overlaySys) {
-            overlaySys->RenderToScene(&context, lightingParserContext);
-        }
-
-        ///////////////////////////////////////////////////////////////////////
-        bool hasPendingMessage = lightingParserContext.HasPendingAssets() || lightingParserContext.HasInvalidAssets() || lightingParserContext.HasErrorString();
-        if (hasPendingMessage) {
-            auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-            auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-            DrawPendingResources(metalContext.get(), lightingParserContext, defaultFont0.get());
-        }
-        ///////////////////////////////////////////////////////////////////////
+        auto stateDesc = context.GetStateDesc();
+        pimpl._namedResources->Bind(RenderCore::FrameBufferProperties{
+            stateDesc._viewportDimensions[0], stateDesc._viewportDimensions[1], 0u, RenderCore::TextureSamples::Create()});
+        pimpl._namedResources->Bind(0u, presentationResource);
 
         if (overlaySys) {
-            overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());
+            overlaySys->RenderToScene(context, lightingParserContext);
         }
 
+        {
+            RenderCore::Techniques::RenderPassInstance rpi(
+                context, {{RenderCore::SubpassDesc({0})}},
+                0u, *pimpl._namedResources);
+
+            ///////////////////////////////////////////////////////////////////////
+            bool hasPendingMessage = lightingParserContext.HasPendingAssets() || lightingParserContext.HasInvalidAssets() || lightingParserContext.HasErrorString();
+            if (hasPendingMessage) {
+                auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
+                DrawPendingResources(context, lightingParserContext, defaultFont0.get());
+            }
+            ///////////////////////////////////////////////////////////////////////
+
+            if (overlaySys) {
+                overlaySys->RenderWidgets(context, lightingParserContext);
+            }
+        }
+
+        pimpl._namedResources->Unbind(0u);
         return PlatformRig::FrameRig::RenderResult(lightingParserContext.HasPendingAssets());
     }
 
@@ -100,7 +111,7 @@ namespace GUILayer
                 threadContext, windowRig.GetPresentationChain().get(), 
                 nullptr, nullptr,
                 std::bind(
-                    RenderFrame, std::placeholders::_1,
+                    RenderFrame, std::placeholders::_1, std::placeholders::_2,
                     std::ref(*_pimpl), frameRig.GetMainOverlaySystem().get()));
 
             // return false if when we have pending resources (encourage another redraw)
@@ -121,11 +132,11 @@ namespace GUILayer
         std::shared_ptr<IInputListener> GetInputListener();
 
         void RenderToScene(
-            RenderCore::IThreadContext* context, 
+            RenderCore::IThreadContext& context, 
             SceneEngine::LightingParserContext& parserContext); 
         void RenderWidgets(
-            RenderCore::IThreadContext* context, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc);
+            RenderCore::IThreadContext& context, 
+            RenderCore::Techniques::ParsingContext& parsingContext);
         void SetActivationState(bool newState);
 
         InputLayer(std::shared_ptr<IInputListener> listener);
@@ -140,11 +151,11 @@ namespace GUILayer
     }
 
     void InputLayer::RenderToScene(
-        RenderCore::IThreadContext*, 
+        RenderCore::IThreadContext&, 
         SceneEngine::LightingParserContext&) {}
     void InputLayer::RenderWidgets(
-        RenderCore::IThreadContext*, 
-        const RenderCore::Techniques::ProjectionDesc&) {}
+        RenderCore::IThreadContext&, 
+        RenderCore::Techniques::ParsingContext&) {}
     void InputLayer::SetActivationState(bool) {}
 
     InputLayer::InputLayer(std::shared_ptr<IInputListener> listener) : _listener(listener) {}
@@ -214,7 +225,7 @@ namespace GUILayer
         auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
             immContext,
             RenderCore::Techniques::CameraDesc(), 
-            GetWindowRig().GetPresentationChain()->GetViewportContext(),
+            GetWindowRig().GetPresentationChain()->GetDesc(),
             _pimpl->_globalTechniqueContext);
 
         // AddDefaultCameraHandler(settings->Camera);
@@ -266,17 +277,17 @@ namespace GUILayer
             }
 
             void RenderToScene(
-                RenderCore::IThreadContext* device, 
+                RenderCore::IThreadContext& device, 
                 SceneEngine::LightingParserContext& parserContext)
             {
                 _managedOverlay->RenderToScene(device, parserContext);
             }
             
             void RenderWidgets(
-                RenderCore::IThreadContext* device, 
-                const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+                RenderCore::IThreadContext& device, 
+                RenderCore::Techniques::ParsingContext& parsingContext)
             {
-                _managedOverlay->RenderWidgets(device, projectionDesc);
+                _managedOverlay->RenderWidgets(device, parsingContext);
             }
 
             void SetActivationState(bool newState)
@@ -321,6 +332,7 @@ namespace GUILayer
         _pimpl.reset(new LayerControlPimpl());
         _pimpl->_stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
+        _pimpl->_namedResources = std::make_shared<RenderCore::Techniques::NamedResources>();
         _techContextWrapper = gcnew TechniqueContextWrapper(_pimpl->_globalTechniqueContext);
         _pimpl->_activePaint = false;
     }

@@ -18,6 +18,7 @@
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/IThreadContext.h"
 
 namespace GUILayer 
@@ -42,8 +43,21 @@ namespace GUILayer
         _font = RenderOverlays::GetX2Font("DosisExtraBold", desc._fontSize);
     }
 
-    static PlatformRig::FrameRig::RenderResult DummyRenderFrame(RenderCore::IThreadContext& context)
+#pragma unmanaged
+    static PlatformRig::FrameRig::RenderResult DummyRenderFrame(
+        RenderCore::IThreadContext& context, 
+        const RenderCore::ResourcePtr& presentationResource)
     {
+        RenderCore::Techniques::NamedResources namedRes;
+        auto contextStateDesc = context.GetStateDesc();
+        namedRes.Bind(RenderCore::FrameBufferProperties{
+            contextStateDesc._viewportDimensions[0], 
+            contextStateDesc._viewportDimensions[1], 0u, RenderCore::TextureSamples::Create()});
+        namedRes.Bind(0u, presentationResource);
+        RenderCore::Techniques::RenderPassInstance rpi(
+            context, {{RenderCore::SubpassDesc({0})}},
+            0u, namedRes);
+
         const char text[] = "Hello World!... It's me, XLE!";
         
         using namespace RenderOverlays;
@@ -51,18 +65,17 @@ namespace GUILayer
         TextStyle style(*res._font);
         ColorB col(0xffffffff);
         
-        auto contextStateDesc = context.GetStateDesc();
-        
             //      Render text using a IOverlayContext
-		auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>(
-			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
-		#pragma push_macro("new")
-		#undef new
-            new(overlayContext.get()) ImmediateOverlayContext(&context);
-		#pragma pop_macro("new")
+		// auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>(
+		// 	(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
+		// #pragma push_macro("new")
+		// #undef new
+        //     new(overlayContext.get()) ImmediateOverlayContext(&context);
+		// #pragma pop_macro("new")
+        ImmediateOverlayContext overlayContext(context);
 		
-        overlayContext->CaptureState();
-        overlayContext->DrawText(
+        overlayContext.CaptureState();
+        overlayContext.DrawText(
             std::make_tuple(
                 Float3(0.f, 0.f, 0.f), 
                 Float3(float(contextStateDesc._viewportDimensions[0]), float(contextStateDesc._viewportDimensions[1]), 0.f)),
@@ -70,6 +83,7 @@ namespace GUILayer
 
         return PlatformRig::FrameRig::RenderResult(false);
     }
+#pragma managed
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -9,6 +9,7 @@
 #include "Fluid.h"  // only for FluidDebuggingMode
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/IThreadContext_Forward.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../Math/Vector.h"
 
 namespace RenderCore { namespace Techniques { class ProjectionDesc; }}
@@ -75,8 +76,8 @@ namespace SceneEngine
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 
         void RenderWidgets(
-            RenderCore::IThreadContext* context, 
-            const RenderCore::Techniques::ProjectionDesc& projDesc);
+            RenderCore::IThreadContext& context, 
+            RenderCore::Techniques::ParsingContext& parserContext);
 
         CloudsForm2D(UInt2 dimensions);
         ~CloudsForm2D();

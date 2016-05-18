@@ -17,7 +17,7 @@ namespace PlatformRig { namespace Overlays
     class GridIteratorDisplay : public IWidget ///////////////////////////////////////////////////////////
     {
     public:
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
         GridIteratorDisplay();
@@ -30,7 +30,7 @@ namespace PlatformRig { namespace Overlays
     class DualContouringTest : public IWidget ///////////////////////////////////////////////////////////
     {
     public:
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
         DualContouringTest();
@@ -40,7 +40,7 @@ namespace PlatformRig { namespace Overlays
     class ConservativeRasterTest : public IWidget ///////////////////////////////////////////////////////////
     {
     public:
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
         ConservativeRasterTest();
@@ -50,7 +50,7 @@ namespace PlatformRig { namespace Overlays
     class RectanglePackerTest : public IWidget ///////////////////////////////////////////////////////////
     {
     public:
-        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
         RectanglePackerTest();

@@ -38,11 +38,11 @@ namespace GUILayer
     {
     public:
         virtual void RenderToScene(
-            RenderCore::IThreadContext* device, 
+            RenderCore::IThreadContext& device, 
             SceneEngine::LightingParserContext& parserContext) override;
         virtual void RenderWidgets(
-            RenderCore::IThreadContext* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc) override;
+            RenderCore::IThreadContext& device, 
+            RenderCore::Techniques::ParsingContext& parsingContext) override;
         virtual void SetActivationState(bool newState) override {}
 
         ErosionOverlay(
@@ -85,18 +85,18 @@ namespace GUILayer
     }
 
     void ErosionOverlay::RenderToScene(
-        RenderCore::IThreadContext* device,
+        RenderCore::IThreadContext& device,
         SceneEngine::LightingParserContext& parserContext)
     {
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*device);
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(device);
         Float2 worldDims = _sim->GetDimensions() * _sim->GetWorldSpaceSpacing();
         SetGlobalTransform(*metalContext, parserContext, worldDims);
         _sim->RenderDebugging(*metalContext, parserContext, AsDebugMode(_previewSettings->ActivePreview));
     }
 
     void ErosionOverlay::RenderWidgets(
-        RenderCore::IThreadContext* device,
-        const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+        RenderCore::IThreadContext& device,
+        RenderCore::Techniques::ParsingContext& parsingContext)
     {}
 
     ErosionOverlay::ErosionOverlay(
@@ -284,11 +284,11 @@ namespace GUILayer
     {
     public:
         virtual void RenderToScene(
-            RenderCore::IThreadContext* device, 
+            RenderCore::IThreadContext& device, 
             SceneEngine::LightingParserContext& parserContext) override;
         virtual void RenderWidgets(
-            RenderCore::IThreadContext* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc) override;
+            RenderCore::IThreadContext& device, 
+            RenderCore::Techniques::ParsingContext& parsingContext) override;
         virtual void SetActivationState(bool newState) override {}
 
         using RenderFn = std::function<void(
@@ -296,8 +296,8 @@ namespace GUILayer
             SceneEngine::LightingParserContext&,
             void*)>;
         using RenderWidgetsFn = std::function<void(
-            RenderCore::IThreadContext*,
-            const RenderCore::Techniques::ProjectionDesc&,
+            RenderCore::IThreadContext&,
+            RenderCore::Techniques::ParsingContext&,
             void*)>;
 
         CFDOverlay(
@@ -328,12 +328,12 @@ namespace GUILayer
     }
 
     void CFDOverlay::RenderToScene(
-        RenderCore::IThreadContext* device,
+        RenderCore::IThreadContext& device,
         SceneEngine::LightingParserContext& parserContext)
     {
         if (!(*_renderFn)) return;
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*device);
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(device);
         Float2 worldDims = Float2(_worldDims[0], _worldDims[1]);
         SetGlobalTransform(*metalContext, parserContext, worldDims);
 
@@ -344,11 +344,11 @@ namespace GUILayer
     }
 
     void CFDOverlay::RenderWidgets(
-        RenderCore::IThreadContext* device,
-        const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+        RenderCore::IThreadContext& device,
+        RenderCore::Techniques::ParsingContext& parsingContext)
     {
         if (!(*_renderWidgetsFn)) return;
-        (*_renderWidgetsFn)(device, projectionDesc, _sim.get());
+        (*_renderWidgetsFn)(device, parsingContext, _sim.get());
     }
 
     CFDOverlay::CFDOverlay(
@@ -389,12 +389,11 @@ namespace GUILayer
         static CFDOverlay::RenderWidgetsFn MakeRenderWidgetsFn()
     {
         return [](
-                RenderCore::IThreadContext* device,
-                const RenderCore::Techniques::ProjectionDesc& projDesc,
+                RenderCore::IThreadContext& device,
+                RenderCore::Techniques::ParsingContext& parsingContext,
                 void* sim)
             {
-                ((SimObject*)sim)->RenderWidgets(
-                    device, projDesc);
+                ((SimObject*)sim)->RenderWidgets(device, parsingContext);
             };
     }
 
