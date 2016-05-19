@@ -393,6 +393,25 @@ namespace RenderCore { namespace Metal_Vulkan
         auto type = AsBindingType(srcResBinding, srcCBBinding);
         if (type == DescriptorSetBindingSignature::Type::Unknown) return 0;
 
+        char* name = nullptr;
+        if (srcResBinding) name = srcResBinding->Name;
+        else if (srcCBBinding) name = srcCBBinding->Name;
+
+        // First, check to see if it has been assigned as push constants
+        if (type == DescriptorSetBindingSignature::Type::ConstantBuffer && name) {
+            for (unsigned rangeIndex=0; rangeIndex<(unsigned)rootSig._pushConstantRanges.size(); ++rangeIndex) {
+                if (XlEqString(rootSig._pushConstantRanges[rangeIndex]._name, name)) {
+                    assert(srcCBBinding);
+                    assert(srcCBBinding->ui32TotalSizeInBytes == rootSig._pushConstantRanges[rangeIndex]._rangeSize);
+                    dstBinding->_locationIndex = ~0u;
+                    dstBinding->_bindingIndex = ~0u;
+                    dstBinding->_setIndex = ~0u;
+                    dstBinding->_flags = GLSL_BINDING_TYPE_PUSHCONSTANTS;
+                    return 1;
+                }
+            }
+        }
+
         for (unsigned setIndex=0; setIndex<(unsigned)rootSig._descriptorSets.size(); ++setIndex) {
             auto& set = rootSig._descriptorSets[setIndex];
             for (unsigned finalBind=0; finalBind<(unsigned)set._bindings.size(); ++finalBind)

@@ -203,7 +203,14 @@ namespace RenderCore { namespace Metal_Vulkan
             _pimpl->_descriptorSetLayout.emplace_back(std::move(layout));
         }
 
-        _pimpl->_pipelineLayout = factory.CreatePipelineLayout(MakeIteratorRange(rawDescriptorSetLayouts));
+        std::vector<VkPushConstantRange> rawPushConstantRanges;
+        rawPushConstantRanges.reserve(rootSig->_pushConstantRanges.size());
+        for (const auto& r:rootSig->_pushConstantRanges)
+            rawPushConstantRanges.push_back(VkPushConstantRange{r._stages, r._rangeStart, r._rangeSize});
+
+        _pimpl->_pipelineLayout = factory.CreatePipelineLayout(
+            MakeIteratorRange(rawDescriptorSetLayouts),
+            MakeIteratorRange(rawPushConstantRanges));
         _pimpl->_pendingLayoutRebuild = false;
     }
 
@@ -251,6 +258,27 @@ namespace RenderCore { namespace Metal_Vulkan
         return Qualifier::None;
     }
 
+    static unsigned AsShaderStageMask(StringSection<char> str)
+    {
+        if (str.Empty() || str[0] != '(')
+            return VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        unsigned result = 0u;
+        auto* i = &str[1];
+        while (i != str.end() && *i != ')') {
+            switch (*i) {
+            case 'v': result |= VK_SHADER_STAGE_VERTEX_BIT;
+            case 'f': result |= VK_SHADER_STAGE_FRAGMENT_BIT;
+            case 'g': result |= VK_SHADER_STAGE_GEOMETRY_BIT;
+            case 'c': result |= VK_SHADER_STAGE_COMPUTE_BIT;
+            case 'd': result |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+            case 'h': result |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+            }
+            ++i;
+        }
+        return result;
+    }
+
     static DescriptorSetBindingSignature::Type AsBindingType(char type, Qualifier qualifier)
     {
         // convert between HLSL style register binding indices to a type enum
@@ -282,9 +310,13 @@ namespace RenderCore { namespace Metal_Vulkan
         // either a single number or an (inclusive) range.
         // SM5.1 adds a "space" parameter to allow for overlaps. But we don't support this currently.
         DescriptorSetSignature result;
-        result._name = element.Name().AsString();
         for (auto a=element.FirstAttribute(); a; a=a.Next()) {
             if (a.Name().Empty()) continue;
+
+            if (XlEqStringI(a.Name(), "Name")) {
+                result._name = a.Value().AsString();
+                continue;
+            }
 
             char* endPt = nullptr;
             auto start = std::strtoul(&a.Name()[1], &endPt, 10);
@@ -295,11 +327,35 @@ namespace RenderCore { namespace Metal_Vulkan
             auto qualifier = AsQualifier(StringSection<char>(endPt, a.Name().end()));
             auto type = AsBindingType(a.Name()[0], qualifier);
 
-            // Add bindings between the start and end (inclusive)
-            for (auto i=start; i<=end; ++i)
+            // Add bindings between the start and end (exclusive of end)
+            for (auto i=start; i<end; ++i)
                 result._bindings.push_back(DescriptorSetBindingSignature{type, i});
         }
         return std::move(result);
+    }
+
+    static PushConstantsRangeSigniture ReadPushConstRange(DocElementHelper<InputStreamFormatter<char>>& element)
+    {
+        PushConstantsRangeSigniture result = {std::string(), 0u, 0u, 0u};
+        for (auto a=element.FirstAttribute(); a; a=a.Next()) {
+            if (a.Name().Empty()) continue;
+
+            if (XlEqStringI(a.Name(), "Name")) {
+                result._name = a.Value().AsString();
+                continue;
+            }
+
+            char* endPt = nullptr;
+            auto start = std::strtoul(a.Name().begin(), &endPt, 10);
+            auto end = start;
+            if (endPt && endPt[0] == '.' && endPt[1] == '.')
+                end = std::strtoul(endPt+2, &endPt, 10);
+
+            result._stages |= AsShaderStageMask(StringSection<char>(endPt, a.Name().end()));
+            result._rangeStart = start;
+            result._rangeSize = end-start;
+        }
+        return result;
     }
 
     RootSignature::RootSignature(const ::Assets::ResChar filename[])
@@ -318,35 +374,14 @@ namespace RenderCore { namespace Metal_Vulkan
             MemoryMappedInputStream(block.get(), PtrAdd(block.get(), fileSize)));
         Document<InputStreamFormatter<char>> doc(formatter);
 
-        std::vector<DescriptorSetSignature> descSets;
-        std::vector<StringSection<>> descSetNames;
-
         std::vector<StringSection<>> rootSig;
-
         for (auto a=doc.FirstChild(); a; a=a.NextSibling()) {
-            // each element can either be a root signature or a descriptor set.
             auto name = a.Name();
-            if (XlEqString(name, "RootSignature")) {
-                for (auto e=a.FirstAttribute();e;e=e.Next()) {
-                    if (XlEqString(e.Name(), "Set") && !e.Value().Empty())
-                        rootSig.push_back(e.Value());
-                }
-            } else {
-                descSets.emplace_back(ReadDescSet(a));
-                descSetNames.push_back(name);
+            if (XlEqString(name, "Set")) {
+                _descriptorSets.emplace_back(ReadDescSet(a));
+            } else if (XlEqString(name, "PushConstants")) {
+                _pushConstantRanges.emplace_back(ReadPushConstRange(a));
             }
-        }
-        
-        // We've loaded the descriptor sets and the root signature. We need to re-arrange
-        // our descriptor set layouts into the order that they are referenced.
-
-        for (const auto& s:rootSig) {
-            auto i = std::find_if(descSetNames.begin(), descSetNames.end(), 
-                [s](const StringSection<>& compare) { return XlEqString(s, compare); });
-            if (i == descSetNames.end())
-                Throw(::Exceptions::BasicLabel("Could not find descriptor set referenced by root signature (%s)", s.AsString().c_str()));
-            auto& src = descSets[std::distance(descSetNames.begin(), i)];
-            _descriptorSets.emplace_back(std::move(src));
         }
     }
 

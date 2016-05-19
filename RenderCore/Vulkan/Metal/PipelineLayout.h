@@ -61,11 +61,21 @@ namespace RenderCore { namespace Metal_Vulkan
         std::string             _name;
         std::vector<DescriptorSetBindingSignature>    _bindings;
     };
+
+    class PushConstantsRangeSigniture
+    {
+    public:
+        std::string     _name;
+        unsigned        _rangeStart;
+        unsigned        _rangeSize;
+        unsigned        _stages;
+    };
         
     class RootSignature
     {
     public:
         std::vector<DescriptorSetSignature> _descriptorSets;
+        std::vector<PushConstantsRangeSigniture> _pushConstantRanges;
 
         const ::Assets::DependentFileState& GetDependentFileState() const { return _dependentFileState; };
         const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }

@@ -23,7 +23,6 @@
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
-// #include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/ModelUtils.h"
 #include "../../RenderCore/Format.h"
@@ -41,6 +40,11 @@
 // #include "../../RenderCore/Metal/Shader.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 // #include "../../RenderCore/DX11/Metal/DX11Utils.h"
+
+#if GFXAPI_ACTIVE == GFXAPI_DX11
+    #include "../../RenderCore/Metal/ObjectFactory.h"
+    #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
+#endif
 
 #include <map>
 
@@ -144,7 +148,7 @@ namespace ToolsRig
                             if (fillInStencilInfo) {
                                 // hack -- we just adjust the depth stencil state to enable the stencil buffer
                                 //          no way to do this currently without dropping back to low level API
-                                #if 0 // platformtemp // GFXAPI_ACTIVE == GFXAPI_DX11
+                                #if GFXAPI_ACTIVE == GFXAPI_DX11
                                     Metal::DepthStencilState dss(*metalContext);
                                     D3D11_DEPTH_STENCIL_DESC desc;
                                     dss.GetUnderlying()->GetDesc(&desc);
