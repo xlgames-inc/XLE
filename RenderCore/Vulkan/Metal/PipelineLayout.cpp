@@ -320,7 +320,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
             char* endPt = nullptr;
             auto start = std::strtoul(&a.Name()[1], &endPt, 10);
-            auto end = start;
+            auto end = start+1;
             if (endPt && endPt[0] == '.' && endPt[1] == '.')
                 end = std::strtoul(endPt+2, &endPt, 10);
 

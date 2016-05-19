@@ -213,11 +213,15 @@ namespace RenderCore { namespace Metal_Vulkan
                 continue;
             }
 
+            // Sometimes the binding isn't set. This occurs if constant buffer is actually push constants
+            // In this case, we can't bind like this -- we need to use the push constants interface.
+            if (i->second._bindingPoint == ~0x0u)
+                continue;
+
             assert(descSet < s_descriptorSetCount);
 
             if (_cbBindingIndices[stream].size() <= slot) _cbBindingIndices[stream].resize(slot+1, ~0u);
 
-            assert(i->second._bindingPoint != ~0x0u);
             auto descSetBindingPoint = (i->second._bindingPoint & 0xffff) | (descSet << 16);
             assert(_cbBindingIndices[stream][slot] == ~0u || _cbBindingIndices[stream][slot] == descSetBindingPoint);
             _cbBindingIndices[stream][slot] = descSetBindingPoint;

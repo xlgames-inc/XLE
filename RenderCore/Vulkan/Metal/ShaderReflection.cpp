@@ -198,29 +198,33 @@ namespace RenderCore { namespace Metal_Vulkan
                 nameEnd = n->second.end();
             }
 
-            if (nameStart == nameEnd) {
-                // If we have no name attached, we can try to get the name from the type
-                // This occurs in our HLSL path for constant buffers. Constant buffers
-                // become a pointer to a struct (where the struct has the name we want),
-                // and the actual variable just has an empty name.
-                auto v = LowerBound(_variables, b.first);
-                if (v != _variables.end() && v->first == b.first) {
-                    auto type = v->second._type;
-                    auto ptr = LowerBound(_pointerTypes, type);
-                    if (ptr != _pointerTypes.end() && ptr->first == type)
-                        type = ptr->second._targetType;
+            // We can bind to the name of the variable, or the name of the type. This is
+            // important for our HLSL path for constant buffers.
+            // In that case, we get a dummy name for the variable, and the important name
+            // is actually the name of the type.
+            // Constant buffers become a pointer to a struct (where the struct has the name we want),
+            // and the actual variable just has an empty name.
+
+            if (nameStart < nameEnd)
+                _uniformQuickLookup.push_back(std::make_pair(Hash64(nameStart, nameEnd), b.second));
+
+            auto v = LowerBound(_variables, b.first);
+            if (v != _variables.end() && v->first == b.first) {
+                auto type = v->second._type;
+                auto ptr = LowerBound(_pointerTypes, type);
+                if (ptr != _pointerTypes.end() && ptr->first == type)
+                    type = ptr->second._targetType;
                 
-                    n = LowerBound(_names, type);
-                    if (n != _names.end() && n->first == type) {
-                        nameStart = n->second.begin();
-                        nameEnd = n->second.end();
-                    } 
-                }
+                n = LowerBound(_names, type);
+                if (n != _names.end() && n->first == type) {
+                    nameStart = n->second.begin();
+                    nameEnd = n->second.end();
+                } 
             }
 
-            if (nameStart == nameEnd) continue;
-
-            _uniformQuickLookup.push_back(std::make_pair(Hash64(nameStart, nameEnd), b.second));
+            // now insert the type name into the quick lookup table ---
+            if (nameStart < nameEnd)
+                _uniformQuickLookup.push_back(std::make_pair(Hash64(nameStart, nameEnd), b.second));
         }
 
         std::sort(

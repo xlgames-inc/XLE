@@ -772,6 +772,19 @@ namespace RenderCore { namespace Metal_Vulkan
             imageMemoryBarrierCount, pImageMemoryBarriers);
     }
 
+    void DeviceContext::CmdPushConstants(
+        VkPipelineLayout layout,
+        VkShaderStageFlags stageFlags,
+        uint32_t offset,
+        uint32_t size,
+        const void* pValues)
+    {
+        vkCmdPushConstants(
+            _commandList.get(),
+            layout, stageFlags,
+            offset, size, pValues);
+    }
+
     DeviceContext::DeviceContext(
         const ObjectFactory&    factory, 
         GlobalPools&            globalPools,

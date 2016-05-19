@@ -333,6 +333,12 @@ namespace RenderCore { namespace Metal_Vulkan
             const VkBufferMemoryBarrier*    pBufferMemoryBarriers,
             uint32_t                        imageMemoryBarrierCount,
             const VkImageMemoryBarrier*     pImageMemoryBarriers);
+        void CmdPushConstants(
+            VkPipelineLayout layout,
+            VkShaderStageFlags stageFlags,
+            uint32_t offset,
+            uint32_t size,
+            const void* pValues);
 
         DeviceContext(
             const ObjectFactory& factory, 
