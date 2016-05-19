@@ -68,7 +68,7 @@ namespace Sample
     /// <summary>Renders some text to a device</summary>
     /// This is intended as a simple first-steps rendering example.
     /// We show 2 ways to render text onto the screen.
-    void RenderPostScene(RenderCore::IThreadContext* context)
+    void RenderPostScene(RenderCore::IThreadContext& context)
     {
             //
             //  Let's render some text in the middle of the screen.
@@ -84,7 +84,7 @@ namespace Sample
         TextStyle style(*res._font);
         ColorB col(0xffffffff);
 
-        auto contextStateDesc = context->GetStateDesc();
+        auto contextStateDesc = context.GetStateDesc();
         if (constant_expression<textRenderingMethod==0>::result()) {
 
                 //      Render text using a IOverlayContext
@@ -101,7 +101,7 @@ namespace Sample
                 //      Render text directly to the scene using RenderOverlays stuff.
                 //      This requires some more low-level code, so it's less convenient
 
-            auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+            auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
             if (metalContext) {
                 auto& commonRes = RenderCore::Techniques::CommonResources();
                 metalContext->Bind(commonRes._blendStraightAlpha);
@@ -116,7 +116,7 @@ namespace Sample
 
             auto alignment = style.AlignText(quad, UIALIGN_CENTER, buffer, -1);
             style.Draw(
-                *context, alignment[0], alignment[1],
+                context, alignment[0], alignment[1],
                 buffer, -1, 
                 0.f, 1.f, 0.f, 0.f,
                 col.AsUInt32(), UI_TEXT_STATE_NORMAL, 0.f, &quad);

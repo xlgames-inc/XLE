@@ -230,13 +230,13 @@ namespace PlatformRig { namespace Overlays
     }
 
     void CPUProfileDisplay::Render(
-        IOverlayContext* context, Layout& layout, 
+        IOverlayContext& context, Layout& layout, 
         Interactables&interactables, InterfaceState& interfaceState)
     {
         auto resolvedEvents = _profiler->CalculateResolvedEvents();
         Layout tableView(layout.GetMaximumSize());
         static ProfilerTableSettings settings;
-        DrawProfilerTable(resolvedEvents, _toggledItems, settings, context, layout, interactables, interfaceState);
+        DrawProfilerTable(resolvedEvents, _toggledItems, settings, &context, layout, interactables, interfaceState);
     }
 
     bool CPUProfileDisplay::ProcessInput(

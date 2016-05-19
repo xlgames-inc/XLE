@@ -63,7 +63,7 @@ namespace Sample
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* debugSystem);
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys);
-    void RenderPostScene(RenderCore::IThreadContext* context);
+    void RenderPostScene(RenderCore::IThreadContext& context);
 
     void ExecuteSample()
     {
@@ -266,7 +266,7 @@ namespace Sample
                 //  If we need to, we can render outside of the lighting parser.
                 //  We just need to to use the device context to perform any rendering
                 //  operations here.
-            RenderPostScene(&context);
+            RenderPostScene(context);
             LightingParser_Overlays(context, lightingParserContext);
 
                 //  The lighting parser will tell us if there where any pending resources

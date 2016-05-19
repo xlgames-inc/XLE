@@ -13,7 +13,10 @@
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
 #include "../../../Utility/IteratorUtils.h"
-#include "../../../Utility/Threading/Mutex.h"
+
+#if defined(CHECK_COMMAND_POOL)
+    #include "../../../Utility/Threading/Mutex.h"       // (cannot be included into CLR code)
+#endif
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -38,7 +41,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		VulkanSharedPtr<VkDevice> _device;
 
 		std::vector<VkCommandBuffer> _pendingDestroy;
-        Threading::Mutex _lock;
+        #if defined(CHECK_COMMAND_POOL)
+            Threading::Mutex _lock;
+        #endif
 	};
 
     class DescriptorPool

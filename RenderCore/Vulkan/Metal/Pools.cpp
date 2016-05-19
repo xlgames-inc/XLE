@@ -21,9 +21,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
     VulkanSharedPtr<VkCommandBuffer> CommandPool::Allocate(BufferType type)
 	{
-        std::unique_lock<std::mutex> guard(_lock, std::try_to_lock);
-        if (!guard.owns_lock())
-            Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
+        #if defined(CHECK_COMMAND_POOL)
+            std::unique_lock<std::mutex> guard(_lock, std::try_to_lock);
+            if (!guard.owns_lock())
+                Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
+        #endif
 
 		VkCommandBufferAllocateInfo cmd = {};
 		cmd.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -44,9 +46,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void CommandPool::FlushDestroys()
 	{
-        std::unique_lock<std::mutex> guard(_lock, std::try_to_lock);
-        if (!guard.owns_lock())
-            Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::FlushDestroys. Multiple threads attempting to use the same object."));
+        #if defined(CHECK_COMMAND_POOL)
+            std::unique_lock<std::mutex> guard(_lock, std::try_to_lock);
+            if (!guard.owns_lock())
+                Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::FlushDestroys. Multiple threads attempting to use the same object."));
+        #endif
 
 		if (!_pendingDestroy.empty())
 			vkFreeCommandBuffers(
@@ -57,9 +61,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
     CommandPool::CommandPool(CommandPool&& moveFrom)
     {
-        std::unique_lock<std::mutex> guard(moveFrom._lock, std::try_to_lock);
-        if (!guard.owns_lock())
-            Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
+        #if defined(CHECK_COMMAND_POOL)
+            std::unique_lock<std::mutex> guard(moveFrom._lock, std::try_to_lock);
+            if (!guard.owns_lock())
+                Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
+        #endif
 
         _pool = std::move(moveFrom._pool);
         _device = std::move(moveFrom._device);
@@ -68,15 +74,17 @@ namespace RenderCore { namespace Metal_Vulkan
     
     CommandPool& CommandPool::operator=(CommandPool&& moveFrom)
     {
-        // note -- locking both mutexes here.
-        //  because we're using try_lock(), it should prevent deadlocks
-        std::unique_lock<std::mutex> guard(moveFrom._lock, std::try_to_lock);
-        if (!guard.owns_lock())
-            Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
+        #if defined(CHECK_COMMAND_POOL)
+            // note -- locking both mutexes here.
+            //  because we're using try_lock(), it should prevent deadlocks
+            std::unique_lock<std::mutex> guard(moveFrom._lock, std::try_to_lock);
+            if (!guard.owns_lock())
+                Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
 
-        std::unique_lock<std::mutex> guard2(_lock, std::try_to_lock);
-        if (!guard2.owns_lock())
-            Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
+            std::unique_lock<std::mutex> guard2(_lock, std::try_to_lock);
+            if (!guard2.owns_lock())
+                Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
+        #endif
 
         _pool = std::move(moveFrom._pool);
         _device = std::move(moveFrom._device);

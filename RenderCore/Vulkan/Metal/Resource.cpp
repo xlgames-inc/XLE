@@ -536,8 +536,8 @@ namespace RenderCore { namespace Metal_Vulkan
             // buffer to buffer copy
             const auto& srcDesc = src.get()->GetDesc();
 		    const auto& dstDesc = dst.get()->GetDesc();
-            assert(srcDesc._type == Resource::Desc::Type::Texture);
-		    assert(dstDesc._type == Resource::Desc::Type::Texture);
+            assert(srcDesc._type == Resource::Desc::Type::LinearBuffer);
+		    assert(dstDesc._type == Resource::Desc::Type::LinearBuffer);
             VkBufferCopy copyOps[] = 
             {
                 VkBufferCopy{0, 0, std::min(srcDesc._linearBufferDesc._sizeInBytes, dstDesc._linearBufferDesc._sizeInBytes)}

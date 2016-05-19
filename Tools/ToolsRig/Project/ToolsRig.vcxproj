@@ -1,43 +1,36 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup Label="NsightTegraProject">
-    <NsightTegraProjectRevisionNumber>4</NsightTegraProjectRevisionNumber>
-  </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|Tegra-Android">
-      <Configuration>Debug</Configuration>
-      <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
+    <ProjectConfiguration Include="Debug-DX11|Win32">
+      <Configuration>Debug-DX11</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug|x64">
-      <Configuration>Debug</Configuration>
+    <ProjectConfiguration Include="Debug-DX11|x64">
+      <Configuration>Debug-DX11</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Profile|Tegra-Android">
-      <Configuration>Profile</Configuration>
-      <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Profile|Win32">
-      <Configuration>Profile</Configuration>
+    <ProjectConfiguration Include="Release-DX11|Win32">
+      <Configuration>Release-DX11</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Profile|x64">
-      <Configuration>Profile</Configuration>
+    <ProjectConfiguration Include="Release-DX11|x64">
+      <Configuration>Release-DX11</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Tegra-Android">
-      <Configuration>Release</Configuration>
-      <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
+    <ProjectConfiguration Include="Debug-Vulkan|Win32">
+      <Configuration>Debug-Vulkan</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|x64">
-      <Configuration>Release</Configuration>
+    <ProjectConfiguration Include="Debug-Vulkan|x64">
+      <Configuration>Debug-Vulkan</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-Vulkan|Win32">
+      <Configuration>Release-Vulkan</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-Vulkan|x64">
+      <Configuration>Release-Vulkan</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
@@ -46,27 +39,6 @@
     <RootNamespace>ToolsRig</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
-    <AndroidAPILevel>android-18</AndroidAPILevel>
-    <PlatformToolset>x86-4.8</PlatformToolset>
-    <AndroidMinAPI>android-17</AndroidMinAPI>
-    <AndroidTargetAPI>android-17</AndroidTargetAPI>
-    <AndroidMaxAPI />
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
-    <AndroidAPILevel>android-18</AndroidAPILevel>
-    <PlatformToolset>x86-4.8</PlatformToolset>
-    <AndroidMinAPI>android-17</AndroidMinAPI>
-    <AndroidTargetAPI>android-17</AndroidTargetAPI>
-    <AndroidMaxAPI />
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
-    <AndroidAPILevel>android-18</AndroidAPILevel>
-    <PlatformToolset>x86-4.8</PlatformToolset>
-    <AndroidMinAPI>android-17</AndroidMinAPI>
-    <AndroidTargetAPI>android-17</AndroidTargetAPI>
-    <AndroidMaxAPI />
-  </PropertyGroup>
   <PropertyGroup Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>

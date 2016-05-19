@@ -94,7 +94,7 @@ namespace RenderCore { namespace Metal_Vulkan
     RenderCore::ResourcePtr CreateResource(
 		const ObjectFactory& factory,
 		const ResourceDesc& desc, 
-		const ResourceInitializer& init = nullptr);
+		const ResourceInitializer& init = ResourceInitializer());
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //      M E M O R Y   M A P       //

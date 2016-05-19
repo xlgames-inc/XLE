@@ -64,7 +64,7 @@ namespace SceneEngine
         lbDesc._sizeInBytes = desc._elementSize * desc._elementCount;
 
         auto bufferDesc = CreateDesc(
-            BindFlag::StreamOutput, 0, GPUAccess::Read | GPUAccess::Write,
+            BindFlag::StreamOutput | BindFlag::TransferDst, 0, GPUAccess::Read | GPUAccess::Write,
             lbDesc, "ModelIntersectionBuffer");
         
         _streamOutputBuffer = uploads.Transaction_Immediate(bufferDesc);
@@ -76,7 +76,7 @@ namespace SceneEngine
         XlSetMemory(pkt->GetData(), 0, pkt->GetDataSize());
         _clearedBuffer = uploads.Transaction_Immediate(
             CreateDesc(
-                BindFlag::StreamOutput, 0, GPUAccess::Read | GPUAccess::Write,
+                BindFlag::StreamOutput | BindFlag::TransferSrc, 0, GPUAccess::Read | GPUAccess::Write,
                 lbDesc, "ModelIntersectionClearingBuffer"), 
             pkt.get());
     }
@@ -100,7 +100,7 @@ namespace SceneEngine
         using namespace BufferUploads;
         auto& uploads = SceneEngine::GetBufferUploads();
         auto readback = uploads.Resource_ReadBack(*_pimpl->_res->_cpuAccessBuffer);
-        if (readback->GetData()) {
+        if (readback && readback->GetData()) {
             const auto* mappedData = (const ResultEntry*)readback->GetData();
             unsigned resultCount = 0;
             for (unsigned c=0; c<s_maxResultCount; ++c) {

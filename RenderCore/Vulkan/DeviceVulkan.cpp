@@ -439,12 +439,10 @@ namespace RenderCore { namespace ImplVulkan
         return queue;
     }
 
-    std::unique_ptr<IPresentationChain> Device::CreatePresentationChain(
-		const void* platformValue, unsigned width, unsigned height)
+    void Device::DoSecondStageInit(VkSurfaceKHR surface)
     {
-		auto surface = CreateSurface(_instance.get(), platformValue);
-		if (!_underlying) {
-			_physDev = SelectPhysicalDeviceForRendering(_instance.get(), surface.get());
+        if (!_underlying) {
+			_physDev = SelectPhysicalDeviceForRendering(_instance.get(), surface);
 			_underlying = CreateUnderlyingDevice(_physDev);
 			_objectFactory = Metal_Vulkan::ObjectFactory(_physDev._dev, _underlying);
             Metal_Vulkan::SetDefaultObjectFactory(&_objectFactory);
@@ -470,63 +468,83 @@ namespace RenderCore { namespace ImplVulkan
 				Metal_Vulkan::CommandPool::BufferType::Primary);
             _foregroundPrimaryContext->BeginCommandList();
 		}
+    }
+
+    struct SwapChainProperties
+    {
+        VkFormat                        _fmt;
+        VkExtent2D                      _extent;
+        uint32_t                        _desiredNumberOfImages;
+        VkSurfaceTransformFlagBitsKHR   _preTransform;
+        VkPresentModeKHR                _presentMode;
+    };
+
+    static SwapChainProperties DecideSwapChainProperties(
+        VkPhysicalDevice phyDev, VkSurfaceKHR surface,
+        unsigned requestedWidth, unsigned requestedHeight)
+    {
+        SwapChainProperties result;
 
         // The following is based on the "initswapchain" sample from the vulkan SDK
-        auto fmts = GetSurfaceFormats(_physDev._dev, surface.get());
+        auto fmts = GetSurfaceFormats(phyDev, surface);
         assert(!fmts.empty());  // expecting at least one
 
         // If the format list includes just one entry of VK_FORMAT_UNDEFINED,
         // the surface has no preferred format.  Otherwise, at least one
         // supported format will be returned.
-        auto chainFmt = 
+        result._fmt = 
             (fmts.empty() || (fmts.size() == 1 && fmts[0].format == VK_FORMAT_UNDEFINED)) 
             ? VK_FORMAT_B8G8R8A8_UNORM : fmts[0].format;
 
         VkSurfaceCapabilitiesKHR surfCapabilities;
-        auto res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-            _physDev._dev, surface.get(), &surfCapabilities);
+        auto res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phyDev, surface, &surfCapabilities);
         assert(res == VK_SUCCESS);
 
-        VkExtent2D swapChainExtent;
+        auto presentModes = GetPresentModes(phyDev, surface);
+        result._presentMode = SelectPresentMode(MakeIteratorRange(presentModes));
+
         // width and height are either both -1, or both not -1.
         if (surfCapabilities.currentExtent.width == (uint32_t)-1) {
             // If the surface size is undefined, the size is set to
             // the size of the images requested.
-            swapChainExtent.width = width;
-            swapChainExtent.height = height;
+            result._extent.width = requestedWidth;
+            result._extent.height = requestedHeight;
         } else {
             // If the surface size is defined, the swap chain size must match
-            swapChainExtent = surfCapabilities.currentExtent;
+            result._extent = surfCapabilities.currentExtent;
         }
-
-        auto presentModes = GetPresentModes(_physDev._dev, surface.get());
-        auto swapchainPresentMode = SelectPresentMode(MakeIteratorRange(presentModes));
         
         // Determine the number of VkImage's to use in the swap chain (we desire to
         // own only 1 image at a time, besides the images being displayed and
         // queued for display):
-        auto desiredNumberOfSwapChainImages = surfCapabilities.minImageCount + 1;
+        result._desiredNumberOfImages = surfCapabilities.minImageCount + 1;
         if (surfCapabilities.maxImageCount > 0)
-            desiredNumberOfSwapChainImages = std::min(desiredNumberOfSwapChainImages, surfCapabilities.maxImageCount);
+            result._desiredNumberOfImages = std::min(result._desiredNumberOfImages, surfCapabilities.maxImageCount);
 
         // setting "preTransform" to current transform... but clearing out other bits if the identity bit is set
-        auto preTransform = 
+        result._preTransform = 
             (surfCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
             ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR : surfCapabilities.currentTransform;
+        return result;
+    }
 
+    static VulkanSharedPtr<VkSwapchainKHR> CreateUnderlyingSwapChain(
+        VkDevice dev, VkSurfaceKHR  surface, 
+        const SwapChainProperties& props)
+    {
         // finally, fill in our SwapchainCreate structure
         VkSwapchainCreateInfoKHR swapChainInfo = {};
         swapChainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         swapChainInfo.pNext = nullptr;
-        swapChainInfo.surface = surface.get();
-        swapChainInfo.minImageCount = desiredNumberOfSwapChainImages;
-        swapChainInfo.imageFormat = chainFmt;
-        swapChainInfo.imageExtent.width = swapChainExtent.width;
-        swapChainInfo.imageExtent.height = swapChainExtent.height;
-        swapChainInfo.preTransform = preTransform;
+        swapChainInfo.surface = surface;
+        swapChainInfo.minImageCount = props._desiredNumberOfImages;
+        swapChainInfo.imageFormat = props._fmt;
+        swapChainInfo.imageExtent.width = props._extent.width;
+        swapChainInfo.imageExtent.height = props._extent.height;
+        swapChainInfo.preTransform = props._preTransform;
         swapChainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         swapChainInfo.imageArrayLayers = 1;
-        swapChainInfo.presentMode = swapchainPresentMode;
+        swapChainInfo.presentMode = props._presentMode;
         swapChainInfo.oldSwapchain = nullptr;
         swapChainInfo.clipped = true;
         swapChainInfo.imageColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
@@ -535,19 +553,31 @@ namespace RenderCore { namespace ImplVulkan
         swapChainInfo.queueFamilyIndexCount = 0;
         swapChainInfo.pQueueFamilyIndices = nullptr;
 
-        auto underlyingDev = _underlying.get();
         VkSwapchainKHR swapChainRaw = nullptr;
-        res = vkCreateSwapchainKHR(underlyingDev, &swapChainInfo, Metal_Vulkan::g_allocationCallbacks, &swapChainRaw);
+        auto res = vkCreateSwapchainKHR(dev, &swapChainInfo, Metal_Vulkan::g_allocationCallbacks, &swapChainRaw);
         VulkanSharedPtr<VkSwapchainKHR> result(
             swapChainRaw,
-            [underlyingDev](VkSwapchainKHR chain) { vkDestroySwapchainKHR(underlyingDev, chain, Metal_Vulkan::g_allocationCallbacks); } );
+            [dev](VkSwapchainKHR chain) { vkDestroySwapchainKHR(dev, chain, Metal_Vulkan::g_allocationCallbacks); } );
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failure while creating swap chain"));
+        return result;
+    }
 
-		auto finalChain = std::make_unique<PresentationChain>(
-			std::move(surface), std::move(result), _objectFactory,
-            TextureDesc::Plain2D(swapChainExtent.width, swapChainExtent.height, Metal_Vulkan::AsFormat(chainFmt)),
-            platformValue);
+    std::unique_ptr<IPresentationChain> Device::CreatePresentationChain(
+		const void* platformValue, unsigned width, unsigned height)
+    {
+		auto surface = CreateSurface(_instance.get(), platformValue);
+		DoSecondStageInit(surface.get());
+
+        // double check to make sure our physical device is compatible with this surface
+        VkBool32 supportsPresent = false;
+		auto res = vkGetPhysicalDeviceSurfaceSupportKHR(
+			_physDev._dev, _physDev._renderingQueueFamily, surface.get(), &supportsPresent);
+		if (res != VK_SUCCESS || !supportsPresent) 
+            Throw(::Exceptions::BasicLabel("Presentation surface is not compatible with selected physical device. This may occur if the wrong physical device is selected, and it cannot render to the output window."));
+        
+        auto finalChain = std::make_unique<PresentationChain>(
+            _objectFactory, std::move(surface), VectorPattern<unsigned, 2>{width, height}, platformValue);
 
         // (synchronously) set the initial layouts for the presentation chain images
         // It's a bit odd, but the Vulkan samples do this
@@ -561,11 +591,19 @@ namespace RenderCore { namespace ImplVulkan
 
     std::shared_ptr<IThreadContext> Device::GetImmediateContext()
     {
+        // Note that when we do the second stage init through this path,
+        // we will not verify the selected physical device against a
+        // presentation surface.
+        DoSecondStageInit();
 		return _foregroundPrimaryContext;
     }
 
     std::unique_ptr<IThreadContext> Device::CreateDeferredContext()
     {
+        // Note that when we do the second stage init through this path,
+        // we will not verify the selected physical device against a
+        // presentation surface.
+        DoSecondStageInit();
 		return std::make_unique<ThreadContextVulkan>(
             shared_from_this(), 
             nullptr, 
@@ -638,7 +676,25 @@ namespace RenderCore { namespace ImplVulkan
 
     void            PresentationChain::Resize(unsigned newWidth, unsigned newHeight)
     {
-        // todo -- we'll need to destroy and recreate the swapchain here
+        // We need to destroy and recreate the presentation chain here.
+        auto props = DecideSwapChainProperties(_factory->GetPhysicalDevice(), _surface.get(), newWidth, newHeight);
+        if (newWidth == _bufferDesc._width && newHeight == _bufferDesc._height)
+            return;
+
+        // We can't delete the old swap chain while the device is using it. The easiest
+        // way to get around this is to just synchronize with the GPU here.
+        // Since a resize is uncommon, this should not be a issue. It might be better to wait for
+        // a queue idle -- but we don't have access to the VkQueue from here.
+        vkDeviceWaitIdle(_device.get());
+        _swapChain.reset();
+        _images.clear();
+
+        _swapChain = CreateUnderlyingSwapChain(_device.get(), _surface.get(), props);
+        _bufferDesc = TextureDesc::Plain2D(props._extent.width, props._extent.height, Metal_Vulkan::AsFormat(props._fmt));    
+
+        *_desc = { VectorPattern<unsigned, 2>(_bufferDesc._width, _bufferDesc._height), _bufferDesc._format, _bufferDesc._samples };
+
+        BuildImages();
     }
 
     const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const
@@ -739,40 +795,47 @@ namespace RenderCore { namespace ImplVulkan
 		_activeImageIndex = ~0x0u;
 	}
 
-    PresentationChain::PresentationChain(
-		VulkanSharedPtr<VkSurfaceKHR> surface,
-        VulkanSharedPtr<VkSwapchainKHR> swapChain,
-        const Metal_Vulkan::ObjectFactory& factory,
-        const TextureDesc& bufferDesc,
-        const void* platformValue)
-    : _surface(std::move(surface))
-	, _swapChain(std::move(swapChain))
-    , _device(factory.GetDevice())
-    , _platformValue(platformValue)
-	, _bufferDesc(bufferDesc)
+    void PresentationChain::BuildImages()
     {
-        _activeImageIndex = ~0x0u;
-		_desc = std::make_shared<PresentationChainDesc>(
-            VectorPattern<unsigned, 2>(bufferDesc._width, bufferDesc._height),
-            bufferDesc._format, _bufferDesc._samples);
-
-        // We need to get pointers to each image and build the synchronization semaphores
         auto images = GetImages(_device.get(), _swapChain.get());
         _images.reserve(images.size());
         for (auto& i:images) {
             TextureViewWindow window(
-                bufferDesc._format, bufferDesc._dimensionality, 
-                TextureViewWindow::SubResourceRange{0, bufferDesc._mipCount},
-                TextureViewWindow::SubResourceRange{0, bufferDesc._arrayCount});
+                _bufferDesc._format, _bufferDesc._dimensionality, 
+                TextureViewWindow::SubResourceRange{0, _bufferDesc._mipCount},
+                TextureViewWindow::SubResourceRange{0, _bufferDesc._arrayCount});
             auto resDesc = CreateDesc(
                 BindFlag::RenderTarget|BindFlag::ShaderResource, 0u, GPUAccess::Read|GPUAccess::Write, 
-                bufferDesc, "presentationimage");
+                _bufferDesc, "presentationimage");
             auto resPtr = ResourcePtr(
 				(RenderCore::Resource*)new Metal_Vulkan::Resource(i, resDesc),
 				[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
             _images.emplace_back(
-                Image { i, Metal_Vulkan::RenderTargetView(factory, resPtr, window) });
+                Image { i, Metal_Vulkan::RenderTargetView(*_factory, resPtr, window) });
         }
+    }
+
+    PresentationChain::PresentationChain(
+		const Metal_Vulkan::ObjectFactory& factory,
+        VulkanSharedPtr<VkSurfaceKHR> surface, 
+		VectorPattern<unsigned, 2> extent,
+        const void* platformValue)
+    : _surface(std::move(surface))
+    , _device(factory.GetDevice())
+    , _factory(&factory)
+    , _platformValue(platformValue)
+    {
+        _activeImageIndex = ~0x0u;
+        auto props = DecideSwapChainProperties(factory.GetPhysicalDevice(), _surface.get(), extent[0], extent[1]);
+        _swapChain = CreateUnderlyingSwapChain(_device.get(), _surface.get(), props);
+
+        _bufferDesc = TextureDesc::Plain2D(props._extent.width, props._extent.height, Metal_Vulkan::AsFormat(props._fmt));
+		_desc = std::make_shared<PresentationChainDesc>(
+            VectorPattern<unsigned, 2>(_bufferDesc._width, _bufferDesc._height),
+            _bufferDesc._format, _bufferDesc._samples);
+
+        // We need to get pointers to each image and build the synchronization semaphores
+        BuildImages();
 
         // Create the synchronisation primitives
         // This pattern is similar to the "Hologram" sample in the Vulkan SDK
@@ -878,6 +941,7 @@ namespace RenderCore { namespace ImplVulkan
 		PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
 		auto nextImage = swapChain->AcquireNextImage();
         _metalContext->SetPresentationTarget(nextImage, {swapChain->GetBufferDesc()._width, swapChain->GetBufferDesc()._height});
+        _metalContext->Bind(Metal_Vulkan::ViewportDesc(0.f, 0.f, (float)swapChain->GetBufferDesc()._width, (float)swapChain->GetBufferDesc()._height));
         return nextImage->ShareResource();
 	}
 

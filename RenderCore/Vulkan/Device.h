@@ -73,32 +73,34 @@ namespace RenderCore { namespace ImplVulkan
 		PresentSync& GetSyncs() { return _presentSyncs[_activePresentSync]; }
 
         PresentationChain(
-			VulkanSharedPtr<VkSurfaceKHR> surface, 
-			VulkanSharedPtr<VkSwapchainKHR> swapChain,			
-            const Metal_Vulkan::ObjectFactory& factory,
-            const TextureDesc& bufferDesc,
+			const Metal_Vulkan::ObjectFactory& factory,
+            VulkanSharedPtr<VkSurfaceKHR> surface, 
+			VectorPattern<unsigned, 2> extent,
             const void* platformValue);
         ~PresentationChain();
     private:
 		VulkanSharedPtr<VkSurfaceKHR>   _surface;
         VulkanSharedPtr<VkSwapchainKHR> _swapChain;
         VulkanSharedPtr<VkDevice>       _device;
+        const Metal_Vulkan::ObjectFactory*    _factory;
         const void*		_platformValue;
         unsigned		_activeImageIndex;
 
         class Image
         {
         public:
-            VkImage                             _image;
+            VkImage     _image;
 			Metal_Vulkan::RenderTargetView      _rtv;
         };
         std::vector<Image> _images;
 
-		TextureDesc              _bufferDesc;
+		TextureDesc     _bufferDesc;
 		std::shared_ptr<PresentationChainDesc>	_desc;
 
         PresentSync     _presentSyncs[3];
         unsigned        _activePresentSync;
+
+        void BuildImages();
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,6 +192,8 @@ namespace RenderCore { namespace ImplVulkan
         std::shared_ptr<Metal_Vulkan::PipelineLayout> _graphicsPipelineLayout;
         std::shared_ptr<Metal_Vulkan::PipelineLayout> _computePipelineLayout;
 		std::shared_ptr<ThreadContextVulkan>	_foregroundPrimaryContext;
+
+        void DoSecondStageInit(VkSurfaceKHR surface = nullptr);
     };
 
     class DeviceVulkan : public Device, public Base_DeviceVulkan
