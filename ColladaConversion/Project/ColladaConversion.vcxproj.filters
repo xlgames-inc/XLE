@@ -70,6 +70,27 @@
     <ClCompile Include="..\NascentModel.cpp">
       <Filter>OpenCollada</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\NascentTransformationMachine.cpp">
+      <Filter>GenericAssets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\RawAnimationCurve.cpp">
+      <Filter>GenericAssets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\MeshDatabase.cpp">
+      <Filter>GenericAssets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\TransformationCommands.cpp">
+      <Filter>GenericAssets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\SkinningScaffold.cpp">
+      <Filter>GenericAssets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\ModelScaffold.cpp">
+      <Filter>GenericAssets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\Material.cpp">
+      <Filter>GenericAssets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\OpenCollada\OCInterface.h">
@@ -135,6 +156,21 @@
     <ClInclude Include="..\NascentModel.h">
       <Filter>OpenCollada</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\RenderCore\Assets\NascentTransformationMachine.h">
+      <Filter>GenericAssets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\Assets\RawAnimationCurve.h">
+      <Filter>GenericAssets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\Assets\MeshDatabase.h">
+      <Filter>GenericAssets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\Assets\TransformationCommands.h">
+      <Filter>GenericAssets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\Assets\Material.h">
+      <Filter>GenericAssets</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="OpenCollada">
@@ -154,6 +190,9 @@
     </Filter>
     <Filter Include="NewPath">
       <UniqueIdentifier>{d1b61ed1-da25-4266-895b-47256f02c4bf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GenericAssets">
+      <UniqueIdentifier>{901c9cd7-ba36-438b-8018-9567ed2f259c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

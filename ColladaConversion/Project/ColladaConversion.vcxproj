@@ -84,6 +84,13 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\RenderCore\Assets\Material.cpp" />
+    <ClCompile Include="..\..\RenderCore\Assets\MeshDatabase.cpp" />
+    <ClCompile Include="..\..\RenderCore\Assets\ModelScaffold.cpp" />
+    <ClCompile Include="..\..\RenderCore\Assets\NascentTransformationMachine.cpp" />
+    <ClCompile Include="..\..\RenderCore\Assets\RawAnimationCurve.cpp" />
+    <ClCompile Include="..\..\RenderCore\Assets\SkinningScaffold.cpp" />
+    <ClCompile Include="..\..\RenderCore\Assets\TransformationCommands.cpp" />
     <ClCompile Include="..\ColladaDocument.cpp" />
     <ClCompile Include="..\ConversionUtil.cpp" />
     <ClCompile Include="..\GeometryAlgorithm.cpp" />
@@ -165,6 +172,11 @@
     <ClCompile Include="..\Version.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\RenderCore\Assets\Material.h" />
+    <ClInclude Include="..\..\RenderCore\Assets\MeshDatabase.h" />
+    <ClInclude Include="..\..\RenderCore\Assets\NascentTransformationMachine.h" />
+    <ClInclude Include="..\..\RenderCore\Assets\RawAnimationCurve.h" />
+    <ClInclude Include="..\..\RenderCore\Assets\TransformationCommands.h" />
     <ClInclude Include="..\ConversionCore.h" />
     <ClInclude Include="..\NascentAnimController.h" />
     <ClInclude Include="..\ConversionUtil.h" />
@@ -230,9 +242,6 @@
     </ProjectReference>
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore.vcxproj">
       <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_Assets.vcxproj">
-      <Project>{ebf600b7-b82e-483c-b0ce-c74bbc60dc9a}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
