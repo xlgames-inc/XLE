@@ -708,7 +708,7 @@ namespace SceneEngine
             // Main multisampled depth stencil
             {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth, 
                 TextureViewWindow(),
-                AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::Retain },
+                AttachmentViewDesc::LoadStore::Clear_ClearStencil, AttachmentViewDesc::LoadStore::Retain },
 
                 // Generally the deferred pixel shader will just copy information from the albedo
                 // texture into the first deferred buffer. So the first deferred buffer should
