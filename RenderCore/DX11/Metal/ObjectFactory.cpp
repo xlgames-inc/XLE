@@ -317,7 +317,7 @@ namespace RenderCore { namespace Metal_DX11
 			unsigned size = sizeof(tempPtr);
 			auto hresult = device->GetPrivateData(AttachedData::Guid, &size, (void*)&tempPtr);
 			if (SUCCEEDED(hresult) && tempPtr && size == sizeof(tempPtr)) {
-				result = tempPtr;    // we take our own reference here
+				result = moveptr(tempPtr);    // we must inherit the reference given when we call GetPrivateData
 			}
 
 			if (!result) {
@@ -356,8 +356,9 @@ namespace RenderCore { namespace Metal_DX11
 
 	ObjectFactory& GetObjectFactory(ID3D::Resource& resource)
 	{
-		ID3D::Device* dev = nullptr;
-		resource.GetDevice(&dev);
+		ID3D::Device* devRaw = nullptr;
+		resource.GetDevice(&devRaw);
+        intrusive_ptr<ID3D::Device> dev = moveptr(devRaw);
 		if (!dev) Throw(::Exceptions::BasicLabel("Could not get object factory associated with device"));
 		return GetObjectFactory(*dev);
 	}
