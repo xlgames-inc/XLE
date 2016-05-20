@@ -7,12 +7,10 @@
 #pragma once
 
 #include "VulkanCore.h"
-#include "IncludeVulkan.h"
 #include "../../IDevice_Forward.h"
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Core/Types.h"
-
-#undef CreateSemaphore
+#include <memory>
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -114,8 +112,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		ObjectFactory();
 		~ObjectFactory();
 
+        ObjectFactory(const ObjectFactory&) = delete;
+		ObjectFactory& operator=(const ObjectFactory&) = delete;
+
+        ObjectFactory(ObjectFactory&&) never_throws;
+		ObjectFactory& operator=(ObjectFactory&&) never_throws;
+
 	private:
-		VkPhysicalDeviceMemoryProperties _memProps;
+		std::unique_ptr<VkPhysicalDeviceMemoryProperties> _memProps;
         VkPhysicalDevice            _physDev;
 		VulkanSharedPtr<VkDevice>   _device;
 

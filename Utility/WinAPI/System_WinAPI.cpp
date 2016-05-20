@@ -182,7 +182,7 @@ bool XlReleaseMutex(XlHandle h)
 
 XlHandle XlCreateSemaphore(int maxCount)
 {
-    HANDLE h = CreateSemaphore(NULL, 0, maxCount, NULL);
+    HANDLE h = CreateSemaphoreA(NULL, 0, maxCount, NULL);
     if (h == INVALID_HANDLE_VALUE) {
         return NULL;
     }

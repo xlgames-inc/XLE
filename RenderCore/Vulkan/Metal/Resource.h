@@ -7,11 +7,12 @@
 #pragma once
 
 #include "VulkanCore.h"
-#include "IncludeVulkan.h"
 #include "../../IDevice.h"
 #include "../../ResourceDesc.h"
 #include "../../Types.h"
 #include "../../../Utility/IteratorUtils.h"
+
+typedef enum VkSampleCountFlagBits VkSampleCountFlagBits;
 
 namespace RenderCore { class Resource; }
 
@@ -24,16 +25,16 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	enum class ImageLayout
 	{
-		Undefined						= VK_IMAGE_LAYOUT_UNDEFINED,
-		General							= VK_IMAGE_LAYOUT_GENERAL,
-		ColorAttachmentOptimal			= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		DepthStencilAttachmentOptimal	= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-		DepthStencilReadOnlyOptimal		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-		ShaderReadOnlyOptimal			= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		TransferSrcOptimal				= VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-		TransferDstOptimal				= VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		Preinitialized					= VK_IMAGE_LAYOUT_PREINITIALIZED,
-		PresentSrc						= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+		Undefined						= 0, // VK_IMAGE_LAYOUT_UNDEFINED,
+		General							= 1, // VK_IMAGE_LAYOUT_GENERAL,
+		ColorAttachmentOptimal			= 2, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		DepthStencilAttachmentOptimal	= 3, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		DepthStencilReadOnlyOptimal		= 4, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+		ShaderReadOnlyOptimal			= 5, // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		TransferSrcOptimal				= 6, // VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		TransferDstOptimal				= 7, // VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		Preinitialized					= 8, // VK_IMAGE_LAYOUT_PREINITIALIZED,
+		PresentSrc						= 1000001002, // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	};
 
 	/// <summary>Helper object to catch multiple similar pointers</summary>
@@ -117,11 +118,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		ResourceMap(
 			VkDevice dev, VkDeviceMemory memory,
-			VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
+			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
 		ResourceMap(
 			IDevice& dev, UnderlyingResourcePtr resource,
             SubResourceId subResource,
-			VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
+			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
 		ResourceMap();
 		~ResourceMap();
 

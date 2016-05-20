@@ -7,7 +7,6 @@
 #pragma once
 
 #include "VulkanCore.h"
-#include "IncludeVulkan.h"
 #include "../../Types_Forward.h"
 #include "../../FrameBufferDesc.h"
 #include <memory>

@@ -6,6 +6,7 @@
 
 #include "PipelineLayout.h"
 #include "ObjectFactory.h"
+#include "IncludeVulkan.h"
 #include "../../../Assets/IntermediateAssets.h"
 #include "../../../Utility/Streams/StreamDOM.h"
 #include "../../../Utility/Streams/StreamFormatter.h"

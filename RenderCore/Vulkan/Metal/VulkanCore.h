@@ -6,13 +6,12 @@
 
 #pragma once
 
+#include "VulkanForward.h"
 #include "../../../Core/Exceptions.h"
 #include <type_traits>
 #include <utility>
 #include <memory>
 #include <functional>
-
-extern "C" { typedef enum VkResult VkResult; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {

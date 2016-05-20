@@ -6,6 +6,7 @@
 
 #include "ObjectFactory.h"
 #include "Resource.h"
+#include "IncludeVulkan.h"
 #include "../../../Core/Prefix.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -313,10 +314,10 @@ namespace RenderCore { namespace Metal_Vulkan
     unsigned ObjectFactory::FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask) const
     {
         // Search memtypes to find first index with those properties
-        for (uint32_t i=0; i<dimof(_memProps.memoryTypes); i++) {
+        for (uint32_t i=0; i<dimof(_memProps->memoryTypes); i++) {
             if ((memoryTypeBits & 1) == 1) {
                 // Type is available, does it match user properties?
-                if ((_memProps.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask)
+                if ((_memProps->memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask)
                     return i;
             }
             memoryTypeBits >>= 1;
@@ -336,11 +337,27 @@ namespace RenderCore { namespace Metal_Vulkan
         _destruction->Flush();
     }
 
+    ObjectFactory::ObjectFactory(ObjectFactory&& moveFrom) never_throws
+    : _memProps(std::move(moveFrom._memProps))
+    , _physDev(std::move(moveFrom._physDev))
+	, _device(std::move(moveFrom._device))
+    , _destruction(std::move(moveFrom._destruction))
+    {}
+
+	ObjectFactory& ObjectFactory::operator=(ObjectFactory&& moveFrom) never_throws
+    {
+        _memProps = std::move(moveFrom._memProps);
+        _physDev = std::move(moveFrom._physDev);
+		_device = std::move(moveFrom._device);
+        _destruction = std::move(moveFrom._destruction);
+        return *this;
+    }
+
     ObjectFactory::ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device)
     : _physDev(physDev), _device(device)
     {
-        _memProps = {};
-        vkGetPhysicalDeviceMemoryProperties(physDev, &_memProps);
+        _memProps = std::make_unique<VkPhysicalDeviceMemoryProperties>(VkPhysicalDeviceMemoryProperties{});
+        vkGetPhysicalDeviceMemoryProperties(physDev, _memProps.get());
         _destruction = CreateDestructionQueue(_device);
     }
 

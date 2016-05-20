@@ -11,7 +11,6 @@
 #include "Pools.h"
 #include "FrameBuffer.h"        // for NamedResources
 #include "VulkanCore.h"
-#include "IncludeVulkan.h"
 #include "../../ResourceList.h"
 #include "../../IDevice_Forward.h"
 #include "../../Types_Forward.h"

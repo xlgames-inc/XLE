@@ -36,5 +36,6 @@
     <ClInclude Include="..\Vulkan\Metal\TextureView.h" />
     <ClInclude Include="..\Vulkan\Metal\FrameBuffer.h" />
     <ClInclude Include="..\Vulkan\Metal\PipelineLayout.h" />
+    <ClInclude Include="..\Vulkan\Metal\VulkanForward.h" />
   </ItemGroup>
 </Project>

@@ -8,7 +8,6 @@
 
 #include "VulkanCore.h"
 #include "ShaderReflection.h"
-#include "IncludeVulkan.h"
 #include "../../Types_Forward.h"
 #include "../../ShaderService.h"
 #include "../../RenderUtils.h"

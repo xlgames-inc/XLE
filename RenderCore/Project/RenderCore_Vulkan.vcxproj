@@ -135,6 +135,7 @@
     <ClInclude Include="..\Vulkan\Metal\State.h" />
     <ClInclude Include="..\Vulkan\Metal\Types.h" />
     <ClInclude Include="..\Vulkan\Metal\VulkanCore.h" />
+    <ClInclude Include="..\Vulkan\Metal\VulkanForward.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

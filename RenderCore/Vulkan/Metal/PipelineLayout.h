@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "IncludeVulkan.h"
+#include "VulkanForward.h"
 #include "../../../Assets/AssetsCore.h"
 #include "../../../Assets/AssetUtils.h"
 #include <memory>

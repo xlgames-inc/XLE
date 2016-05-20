@@ -10,7 +10,6 @@
 #include "../../ShaderService.h"
 #include "../../IDevice_Forward.h"
 #include "VulkanCore.h"
-#include "IncludeVulkan.h"
 
 namespace RenderCore { class InputElementDesc; }
 

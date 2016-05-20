@@ -11,7 +11,6 @@
 #include "State.h"
 #include "FrameBuffer.h"
 #include "VulkanCore.h"
-#include "IncludeVulkan.h"
 #include "../../../Utility/IteratorUtils.h"
 
 #if defined(CHECK_COMMAND_POOL)

@@ -8,7 +8,7 @@
 
 #include "../IDevice.h"
 #include "../IThreadContext.h"
-#include "Metal/IncludeVulkan.h"
+#include "Metal/VulkanForward.h"
 #include <memory>
 
 #define FLEX_USE_VTABLE_DeviceVulkan FLEX_USE_VTABLE_Device

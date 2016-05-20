@@ -7,7 +7,7 @@
 #pragma once
 
 #include "VulkanCore.h"
-#include "IncludeVulkan.h"
+#include "IncludeVulkan.h"      // required because we're deriving from Vulkan types
 #include <utility>
 
 namespace RenderCore { namespace Metal_Vulkan

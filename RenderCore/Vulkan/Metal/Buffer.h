@@ -8,7 +8,6 @@
 
 #include "Resource.h"
 #include "VulkanCore.h"
-#include "IncludeVulkan.h"
 #include "../../../BufferUploads/IBufferUploads.h"
 #include "../../../Core/Prefix.h"
 
