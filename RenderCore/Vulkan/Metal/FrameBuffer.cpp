@@ -211,11 +211,15 @@ namespace RenderCore { namespace Metal_Vulkan
         std::vector<VkSubpassDependency> result;
         for (unsigned c=0;c<unsigned(subpasses.size()); ++c) {
             // Check each input dependency, and look for previous subpasses that wrote to it
+            // We also need to do this for color and depthstencil attachments
             std::vector<SubpassDep> dependencies;
             const auto& subpass = subpasses[c];
-            for (unsigned i=0;i<(unsigned)subpass._input.size(); ++i)
-                dependencies.push_back(
-                    FindWriter(MakeIteratorRange(subpasses.begin(), subpasses.begin()+c), subpass._input[i]));
+            for (const auto& a:subpass._input)
+                dependencies.push_back(FindWriter(MakeIteratorRange(subpasses.begin(), subpasses.begin()+c), a));
+            for (const auto& a:subpass._output)
+                dependencies.push_back(FindWriter(MakeIteratorRange(subpasses.begin(), subpasses.begin()+c), a));
+            if (subpass._depthStencil != SubpassDesc::Unused)
+                dependencies.push_back(FindWriter(MakeIteratorRange(subpasses.begin(), subpasses.begin()+c), subpass._depthStencil));
 
             std::sort(dependencies.begin(), dependencies.end(), SubpassDep::Compare);
             auto newEnd = std::unique(dependencies.begin(), dependencies.end(), SubpassDep::Compare);
@@ -235,8 +239,9 @@ namespace RenderCore { namespace Metal_Vulkan
                     if (a != attachments.end()) {
                         auto res = Find(attachmentResources, a->_resourceName);
                         assert(res);
-                        srcAccessFlags = res->_flags & AttachmentDesc::Flags::DepthStencil
-                            ?VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                        srcAccessFlags = 
+                            (res->_flags & AttachmentDesc::Flags::DepthStencil)
+                            ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
                     } else 
                         srcAccessFlags = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;  // (just assume color attachment write)
                 }
@@ -283,6 +288,32 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
+    namespace Internal
+    {
+        enum class AttachmentUsage : unsigned
+        {
+            Input = 1<<0, Output = 1<<1, DepthStencil = 1<<2
+        };
+    
+        static unsigned GetAttachmentUsage(const FrameBufferDesc& layout, AttachmentName attachment)
+        {
+            unsigned result = 0u;
+            for (auto& s:layout.GetSubpasses()) {
+                auto i = std::find(s._input.begin(), s._input.end(), attachment);
+                if (i != s._input.end()) 
+                    result |= unsigned(Internal::AttachmentUsage::Input);
+    
+                auto o = std::find(s._output.begin(), s._output.end(), attachment);
+                if (o != s._output.end()) 
+                    result |= unsigned(Internal::AttachmentUsage::Output);
+    
+                if (s._depthStencil == attachment)
+                    result |= unsigned(Internal::AttachmentUsage::DepthStencil);
+            }
+            return result;
+        }
+    }
+
     VulkanUniquePtr<VkRenderPass> CreateRenderPass(
         const Metal_Vulkan::ObjectFactory& factory,
         const FrameBufferDesc& layout,
@@ -301,7 +332,11 @@ namespace RenderCore { namespace Metal_Vulkan
             auto formatFilter = a._window._format;
             if (formatFilter._aspect == TextureViewWindow::UndefinedAspect)
                 formatFilter._aspect = resourceDesc->_defaultAspect;
-            auto resolvedFormat = ResolveFormat(resourceDesc->_format, formatFilter, FormatUsage::RTV);
+            FormatUsage formatUsage = FormatUsage::SRV;
+            auto attachUsage = Internal::GetAttachmentUsage(layout, a._viewName);
+            if (attachUsage & unsigned(Internal::AttachmentUsage::Output)) formatUsage = FormatUsage::RTV;
+            if (attachUsage & unsigned(Internal::AttachmentUsage::DepthStencil)) formatUsage = FormatUsage::DSV;
+            auto resolvedFormat = ResolveFormat(resourceDesc->_format, formatFilter, formatUsage);
 
             VkAttachmentDescription desc;
             desc.flags = 0;
@@ -457,33 +492,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
         return factory.CreateRenderPass(rp_info);
     }
-
-#if 0
-    namespace Internal
-    {
-        enum class AttachmentUsage : unsigned
-        {
-            Input = 1<<0, Output = 1<<1, DepthStencil = 1<<2
-        };
-    }
-    static unsigned GetAttachmentUsage(const FrameBufferDesc& layout, AttachmentName attachment)
-    {
-        unsigned result = 0u;
-        for (auto& s:layout.GetSubpasses()) {
-            auto i = std::find(s._input.begin(), s._input.end(), attachment);
-            if (i != s._input.end()) 
-                result |= unsigned(Internal::AttachmentUsage::Input);
-
-            auto o = std::find(s._output.begin(), s._output.end(), attachment);
-            if (o != s._output.end()) 
-                result |= unsigned(Internal::AttachmentUsage::Output);
-
-            if (s._depthStencil == attachment)
-                result |= unsigned(Internal::AttachmentUsage::DepthStencil);
-        }
-        return result;
-    }
-#endif
 
     FrameBuffer::FrameBuffer(
         const ObjectFactory& factory,

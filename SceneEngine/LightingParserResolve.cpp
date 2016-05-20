@@ -361,6 +361,8 @@ namespace SceneEngine
             //          If we combined the gbuffer generation and lighting resolve into a single render pass,
             //          we could just use the gbuffer as an input attachment
 
+            const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;
+
             // Now, this is awkward because we want to first write to the stencil buffer using the depth information,
             // and then we want to enable a stencil pass while simulanteously reading from the depth buffer in a shader.
             // This requires that we have the depth buffer bound as a DSV and a SRV at the same time... But we can explicitly
@@ -379,21 +381,24 @@ namespace SceneEngine
                     SubpassDesc({IMainTargets::LightResolve}, IMainTargets::MultisampledDepth_JustStencil)
                 },
                 {
+                    {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth, TextureViewWindow(),
+                        AttachmentViewDesc::LoadStore::Retain_ClearStencil, AttachmentViewDesc::LoadStore::Retain_RetainStencil },
+                        
                     {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth_JustStencil,
                         TextureViewWindow(
                             {TextureViewWindow::Aspect::Stencil},
                             TextureDesc::Dimensionality::Undefined, TextureViewWindow::All, TextureViewWindow::All,
                             TextureViewWindow::Flags::JustStencil),
-                        AttachmentViewDesc::LoadStore::DontCare_ClearStencil, AttachmentViewDesc::LoadStore::DontCare },
+                        AttachmentViewDesc::LoadStore::DontCare_RetainStencil, AttachmentViewDesc::LoadStore::DontCare },
+
+                    {   IMainTargets::LightResolve, IMainTargets::LightResolve, TextureViewWindow(),
+                        AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain }
                 });
 
             Techniques::RenderPassInstance rpi(
-                metalContext,
-                resolveLighting,
+                metalContext, resolveLighting,
                 0u, parserContext.GetNamedResources(),
                 Techniques::RenderPassBeginDesc{{MakeClearValue(1.f, 0x0)}});
-
-            const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;
 
                 // -------- -------- -------- -------- -------- --------
                 //          E M I S S I V E

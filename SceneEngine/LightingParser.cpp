@@ -312,7 +312,7 @@ namespace SceneEngine
         Metal::ViewportDesc mainViewportDesc(*metalContext);
         auto& refractionBox = Techniques::FindCachedBox2<RefractionsBuffer>(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2));
         refractionBox.Build(*metalContext, parserContext, 4.f);
-        metalContext->BindPS(MakeResourceList(12, refractionBox.GetSRV()));
+        metalContext->BindPS_G(MakeResourceList(12, refractionBox.GetSRV()));
 
         for (auto i=parserContext._pendingOverlays.cbegin(); i!=parserContext._pendingOverlays.cend(); ++i) {
             CATCH_ASSETS_BEGIN

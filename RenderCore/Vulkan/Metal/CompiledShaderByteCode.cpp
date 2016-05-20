@@ -26,6 +26,7 @@
 #pragma push_macro("new")
 #undef new
 #include <glslang/glslang/Public/ShaderLang.h>
+#include <glslang/glslang/Include/InitializeGlobals.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 
 // #include <glslang/SPIRV/disassemble.h>
@@ -508,6 +509,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
     HLSLToSPIRVCompiler::~HLSLToSPIRVCompiler()
     {
+        // it feels like these are intended to be called during DLL detach -- 
+        glslang::FreeGlobalPools();
+        glslang::FreePoolIndex();
         glslang::FinalizeProcess();
     }
 
