@@ -6,12 +6,12 @@
 
 #pragma once
 
+#include "../RenderCore/Types_Forward.h"
 #include "../Assets/Assets.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"
 #include "../Core/Types.h"
 
-namespace RenderCore { enum class Format; }
 namespace Utility { class ParameterBox; }
 namespace SceneEngine
 {

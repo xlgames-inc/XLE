@@ -102,6 +102,9 @@
       <Filter>Metal</Filter>
     </ClInclude>
     <ClInclude Include="..\Init.h" />
+    <ClInclude Include="..\Types_Forward.h">
+      <Filter>Util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">

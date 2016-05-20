@@ -8,8 +8,6 @@
 #include "OverlayContext.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/IThreadContext.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Techniques/ResourceBox.h"       // for FindCachedBox
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"

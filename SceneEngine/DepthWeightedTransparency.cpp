@@ -14,6 +14,7 @@
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
+#include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"

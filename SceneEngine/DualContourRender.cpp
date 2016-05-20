@@ -11,6 +11,7 @@
 #include "SceneEngineUtils.h"
 #include "RefractionsBuffer.h"  // for BuildDuplicatedDepthBuffer
 
+#include "../RenderCore/Format.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"

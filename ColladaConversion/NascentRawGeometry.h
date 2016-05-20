@@ -7,12 +7,11 @@
 #pragma once
 
 #include "../RenderCore/Assets/ModelScaffoldInternal.h"
-#include "../RenderCore/Types.h"
+#include "../RenderCore/Types_Forward.h"
 #include "../Utility/PtrUtils.h"            // for DynamicArray
 #include <vector>
 
 namespace Serialization { class NascentBlockSerializer; }
-namespace RenderCore { enum class Format; }
 
 namespace RenderCore { namespace ColladaConversion
 {

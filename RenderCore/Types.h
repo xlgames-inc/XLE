@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "Types_Forward.h"
 #include <string>
 
 namespace RenderCore
@@ -16,8 +17,6 @@ namespace RenderCore
 	#define CS_DefShaderModel   "cs_*"
 	#define HS_DefShaderModel   "hs_*"
 	#define DS_DefShaderModel   "ds_*"
-
-	enum class Format;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -14,12 +14,11 @@
 #include "IncludeVulkan.h"
 #include "../../ResourceList.h"
 #include "../../IDevice_Forward.h"
+#include "../../Types_Forward.h"
 #include "../../IThreadContext_Forward.h"
 #include "../../Utility/IteratorUtils.h"
 #include <memory>
 #include <sstream>
-
-namespace RenderCore { enum class Format; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {

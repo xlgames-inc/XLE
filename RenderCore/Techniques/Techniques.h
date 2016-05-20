@@ -8,6 +8,7 @@
 
 #include "CommonBindings.h"     // for TechniqueIndex::Max
 #include "../Metal/Forward.h"
+#include "../Types_Forward.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/ParameterBox.h"
@@ -19,11 +20,6 @@
 namespace Utility { template<typename CharType> class InputStreamFormatter; }
 using namespace Utility;
 namespace Assets { class DependencyValidation; class DirectorySearchRules; }
-namespace RenderCore
-{
-	class InputElementDesc;
-	using InputLayout = std::pair<const InputElementDesc*, size_t>;
-}
 
 namespace RenderCore { namespace Techniques
 {

@@ -241,8 +241,8 @@ namespace BufferUploads
         return result;
     }
 
-    tdesc ResourcesPool<Desc>::ResourcesPool(RenderCore::IDevice* device, unsigned retainFrames) 
-	: _hashTableIndex(0), _retainFrames(retainFrames), _underlyingDevice(device)
+    tdesc ResourcesPool<Desc>::ResourcesPool(RenderCore::IDevice& device, unsigned retainFrames) 
+	: _hashTableIndex(0), _retainFrames(retainFrames), _underlyingDevice(&device)
     {
         _readerCount[0] = _readerCount[1] = 0;
     }
@@ -1142,8 +1142,8 @@ namespace BufferUploads
         _stagingBufferPool->OnLostDevice();
     }
 
-    ResourceSource::ResourceSource(RenderCore::IDevice* device)
-    :   _underlyingDevice(device)
+    ResourceSource::ResourceSource(RenderCore::IDevice& device)
+    :   _underlyingDevice(&device)
     {
         _flushThread = 0;
         _frameID = 0;

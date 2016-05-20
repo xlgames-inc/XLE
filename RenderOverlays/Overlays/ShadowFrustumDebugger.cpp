@@ -87,16 +87,16 @@ namespace Overlays
         devContext.Bind(Techniques::CommonResources()._dssDisable);
         devContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
-        SceneEngine::SavedTargets savedTargets(devContext);
+#if GFXAPI_ACTIVE == GFXAPI_DX11		// todo -- implement more generically!
+            SceneEngine::SavedTargets savedTargets(devContext);
 
-		ShaderResourceView depthSrv; 
-		#if GFXAPI_ACTIVE == GFXAPI_DX11		// todo -- implement more generically!
+		    ShaderResourceView depthSrv; 
+		
 			devContext.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 			if (savedTargets.GetDepthStencilView())
 				depthSrv = ShaderResourceView(
 					ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView()).get(), 
                     TextureViewWindow{{TextureViewWindow::Aspect::Depth}});
-		#endif
 
         auto& res = Techniques::FindCachedBoxDep2<SFDResources>(
             (projectionDesc._projections._mode == SceneEngine::ShadowProjectionDesc::Projections::Mode::Ortho)?2:1,
@@ -128,6 +128,7 @@ namespace Overlays
 
         devContext.UnbindPS<ShaderResourceView>(4, 1);
         savedTargets.ResetToOldTargets(devContext);
+#endif
     }
 
     void ShadowFrustumDebugger::Render( 

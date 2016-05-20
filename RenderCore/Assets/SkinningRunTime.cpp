@@ -12,6 +12,7 @@
 #include "DeferredShaderResource.h"
 #include "../RenderUtils.h"
 #include "../Types.h"
+#include "../Format.h"
 
 #include "../IDevice.h"
 #include "../IThreadContext.h"

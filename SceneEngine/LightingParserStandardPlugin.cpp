@@ -16,6 +16,7 @@
 
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/GPUProfiler.h"
+#include "../RenderCore/Metal/State.h"
 #include "../ConsoleRig/Console.h"
 #include "../Core/Exceptions.h"
 

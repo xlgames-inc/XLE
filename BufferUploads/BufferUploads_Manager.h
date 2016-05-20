@@ -57,7 +57,7 @@ namespace BufferUploads
         void                    OnLostDevice();
         void                    OnResetDevice();
 
-        Manager(RenderCore::IDevice* renderDevice);
+        Manager(RenderCore::IDevice& renderDevice);
         ~Manager();
 
     private:

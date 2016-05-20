@@ -8,9 +8,9 @@
 
 #include "TextureView.h"
 #include "../../FrameBufferDesc.h"
+#include "../../Types_Forward.h"
 #include <memory>
 
-namespace RenderCore { enum class Format; }
 namespace RenderCore { namespace Metal_DX11
 {
     class ObjectFactory;

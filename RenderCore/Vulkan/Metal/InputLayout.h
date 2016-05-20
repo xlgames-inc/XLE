@@ -9,17 +9,11 @@
 #include "VulkanCore.h"
 #include "ShaderReflection.h"
 #include "IncludeVulkan.h"
+#include "../../Types_Forward.h"
 #include "../../ShaderService.h"
 #include "../../RenderUtils.h"
 #include <memory>
 #include <vector>
-
-namespace RenderCore 
-{
-	class InputElementDesc;
-	using InputLayout = std::pair<const InputElementDesc*, size_t>;
-	enum class Format; 
-}
 
 namespace RenderCore { namespace Metal_Vulkan
 {

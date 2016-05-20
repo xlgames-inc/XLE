@@ -89,7 +89,7 @@ namespace Sample
                 clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
 
         auto assetServices = std::make_unique<::Assets::Services>(0);
-        auto renderAssetServices = std::make_unique<RenderCore::Assets::Services>(renderDevice.get());
+        auto renderAssetServices = std::make_unique<RenderCore::Assets::Services>(renderDevice);
 
             //  Tie in the window handler so we get presentation chain resizes, and give our
             //  window a title

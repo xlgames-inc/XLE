@@ -26,6 +26,7 @@
 #include "../Metal/DeviceContext.h"
 #include "../RenderUtils.h"
 #include "../Types.h"
+#include "../Format.h"
 
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/Streams/FileUtils.h"

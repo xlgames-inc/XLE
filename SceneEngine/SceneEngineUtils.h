@@ -8,20 +8,21 @@
 
 #include "SceneParser.h"    // for SceneParseSettings
 #include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/Metal/State.h"
-#include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Types_Forward.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"   // for DelayStep -- a forward declaration here confuses c++/cli
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11
 	#include "../RenderCore/DX11/Metal/DX11.h"
+    #include "../RenderCore/Metal/State.h"      // (for ViewportDesc)
+    #include "../RenderCore/Metal/InputLayout.h"
 #else
-	#include "../RenderCore/Metal/TextureView.h"
+	// #include "../RenderCore/Metal/TextureView.h"
 #endif
 
 namespace RenderOverlays { class Font; }
-namespace RenderCore { class ResourceDesc; class TextureDesc; namespace BindFlag { typedef unsigned BitField; }; enum class Format; enum class UnderlyingAPI; }
+namespace RenderCore { class ResourceDesc; class TextureDesc; namespace BindFlag { typedef unsigned BitField; }; enum class UnderlyingAPI; }
 namespace BufferUploads { class ResourceLocator; }
 
 namespace Utility
@@ -85,14 +86,14 @@ namespace SceneEngine
 		SavedTargets(SavedTargets&& moveFrom) never_throws;
 		SavedTargets& operator=(SavedTargets&& moveFrom) never_throws;
 		~SavedTargets();
-
+    
 		void        ResetToOldTargets(RenderCore::Metal::DeviceContext& context);
-		const RenderCore::Metal::DepthStencilView&		GetDepthStencilView() { return _oldDepthTarget; }
-		RenderCore::Metal::RenderTargetView*			GetRenderTargets() { return _oldTargets; }
-		const RenderCore::Metal::ViewportDesc*       GetViewports() { return _oldViewports; }
-
+		const RenderCore::Metal::DepthStencilView&		GetDepthStencilView() { return *(RenderCore::Metal::DepthStencilView*)nullptr; }
+		RenderCore::Metal::RenderTargetView*			GetRenderTargets() { return nullptr; }
+		const RenderCore::Metal::ViewportDesc*       GetViewports() { return nullptr; }
+    
 		void SetDepthStencilView(const RenderCore::Metal::DepthStencilView& dsv);
-
+    
 		class ResetMarker
 		{
 		public:
@@ -100,7 +101,7 @@ namespace SceneEngine
 			~ResetMarker();
 			ResetMarker(ResetMarker&&);
 			ResetMarker& operator=(ResetMarker&&);
-
+    
 		private:
 			ResetMarker(SavedTargets& targets, RenderCore::Metal::DeviceContext& context);
 			ResetMarker(const ResetMarker&) = delete;
@@ -109,16 +110,11 @@ namespace SceneEngine
 			RenderCore::Metal::DeviceContext* _context;
 			friend class SavedTargets;
 		};
-
+    
 		ResetMarker MakeResetMarker(RenderCore::Metal::DeviceContext& context) { return ResetMarker(*this, context); }
-
+    
 		static const unsigned MaxSimultaneousRenderTargetCount = 8; // D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT
 		static const unsigned MaxViewportAndScissorRectCount = 16;  // D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE
-	private:
-		RenderCore::Metal::RenderTargetView _oldTargets[MaxSimultaneousRenderTargetCount];
-		RenderCore::Metal::DepthStencilView _oldDepthTarget;
-		RenderCore::Metal::ViewportDesc _oldViewports[MaxViewportAndScissorRectCount];
-		unsigned _oldViewportCount;
 	};
 #endif
 
@@ -172,8 +168,7 @@ namespace SceneEngine
     static const auto TechniqueIndex_StochasticTransparency = RenderCore::Techniques::TechniqueIndex::StochasticTransparency;
     static const auto TechniqueIndex_DepthWeightedTransparency = RenderCore::Techniques::TechniqueIndex::DepthWeightedTransparency;
 
-    typedef intrusive_ptr<BufferUploads::ResourceLocator>      ResourcePtr;
-    ResourcePtr         CreateResourceImmediate(const RenderCore::ResourceDesc& desc);
+    RenderCore::ResourcePtr CreateResourceImmediate(const RenderCore::ResourceDesc& desc);
 
         //  Currently there is no flexible way to set material parameters
         //  there's just a single global set of material values...
@@ -258,10 +253,11 @@ namespace SceneEngine
 
     private:
         RenderCore::Metal::DeviceContext* _context;
-        SavedTargets        _targets;
         States::BitField    _states;
         
 		#if GFXAPI_ACTIVE == GFXAPI_DX11
+            SavedTargets        _targets;
+
 			RenderCore::Metal::DepthStencilState    _depthStencilState;
 			RenderCore::Metal::BoundInputLayout     _inputLayout;
 

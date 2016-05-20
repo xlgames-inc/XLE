@@ -8,8 +8,9 @@
 
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/Format.h"
+#include "../RenderCore/Types_Forward.h"
 #include "../RenderCore/ResourceDesc.h"
+#include "../Utility/IntrusivePtr.h"
 
 namespace BufferUploads { class ResourceLocator; }
 namespace SceneEngine

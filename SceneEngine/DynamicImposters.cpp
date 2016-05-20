@@ -12,6 +12,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
+#include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/CommonBindings.h"

@@ -825,7 +825,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto dev = ExtractUnderlyingDevice(idev);
 
         VkDeviceSize finalOffset = offset, finalSize = size;
-        _pitches = Pitches { unsigned(size), unsigned(size) };
+        _pitches = TexturePitches { unsigned(size), unsigned(size) };
 
         // special case for images, where we need to take into account the requested "subresource"
         auto* image = resource.get()->GetImage();
@@ -837,7 +837,7 @@ namespace RenderCore { namespace Metal_Vulkan
             vkGetImageSubresourceLayout(dev, image, &sub, &layout);
             finalOffset += layout.offset;
             finalSize = std::min(layout.size, finalSize);
-            _pitches = Pitches { unsigned(layout.rowPitch), unsigned(layout.depthPitch) };
+            _pitches = TexturePitches { unsigned(layout.rowPitch), unsigned(layout.depthPitch) };
             _dataSize = finalSize;
         } else {
             if (desc._type == ResourceDesc::Type::Texture) {

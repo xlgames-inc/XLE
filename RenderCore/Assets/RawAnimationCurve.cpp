@@ -7,6 +7,7 @@
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "RawAnimationCurve.h"
+#include "../Format.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Interpolation.h"
 #include "../../Core/Exceptions.h"

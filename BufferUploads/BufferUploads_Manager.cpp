@@ -126,7 +126,7 @@ namespace BufferUploads
 
         IManager::EventListID TickResourceSource(unsigned stepMask, ThreadContext& context, bool isLoading);
 
-        AssemblyLine(RenderCore::IDevice* device);
+        AssemblyLine(RenderCore::IDevice& device);
         ~AssemblyLine();
 
     protected:
@@ -920,9 +920,9 @@ namespace BufferUploads
         return *this;
     }
 
-    AssemblyLine::AssemblyLine(RenderCore::IDevice* device)
+    AssemblyLine::AssemblyLine(RenderCore::IDevice& device)
     :   _resourceSource(device)
-    ,   _device(device)
+    ,   _device(&device)
     #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
         ,   _transactionsHeap((2*1024)<<4)
         ,   _transactionsHeap_LongTerm(512<<4)
@@ -2557,7 +2557,7 @@ namespace BufferUploads
         return 0;
     }
 
-    Manager::Manager(RenderCore::IDevice* renderDevice) : _assemblyLine(new AssemblyLine(renderDevice))
+    Manager::Manager(RenderCore::IDevice& renderDevice) : _assemblyLine(new AssemblyLine(renderDevice))
     {
         _shutdownBackgroundThread = false;
         _assemblyLineWakeUpEvent = XlCreateEvent(false);
@@ -2571,11 +2571,11 @@ namespace BufferUploads
         if (nsightMode)
             multithreadingOk = false;
 
-        auto immediateDeviceContext = renderDevice->GetImmediateContext();
+        auto immediateDeviceContext = renderDevice.GetImmediateContext();
         decltype(immediateDeviceContext) backgroundDeviceContext;
 
         if (multithreadingOk) {
-            backgroundDeviceContext = renderDevice->CreateDeferredContext();
+            backgroundDeviceContext = renderDevice.CreateDeferredContext();
 
                 //
                 //      When using an older feature level, we can fail while
@@ -2637,7 +2637,7 @@ namespace BufferUploads
         XlCloseSyncObject(_waitingForDeviceResetEvent);
     }
 
-    std::unique_ptr<IManager> CreateManager(RenderCore::IDevice* renderDevice)
+    std::unique_ptr<IManager> CreateManager(RenderCore::IDevice& renderDevice)
     {
         return std::make_unique<Manager>(renderDevice);
     }

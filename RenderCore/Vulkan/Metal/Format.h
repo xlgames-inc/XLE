@@ -6,9 +6,9 @@
 
 #pragma once
 
-extern "C" { typedef enum VkFormat VkFormat; }
+#include "../../Types_Forward.h"
 
-namespace RenderCore { enum class Format; }
+extern "C" { typedef enum VkFormat VkFormat; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {

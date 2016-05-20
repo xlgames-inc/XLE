@@ -110,12 +110,10 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ResourceMap
 	{
 	public:
-        using Pitches = TexturePitches;
-
 		void*           GetData()               { return _data; }
         const void*     GetData() const         { return _data; }
         size_t          GetDataSize() const     { return _dataSize; }
-        Pitches         GetPitches() const      { return _pitches; }
+        TexturePitches  GetPitches() const      { return _pitches; }
 
 		ResourceMap(
 			VkDevice dev, VkDeviceMemory memory,
@@ -133,11 +131,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		ResourceMap& operator=(ResourceMap&&) never_throws;
 
 	private:
-		VkDevice        _dev;
-		VkDeviceMemory  _mem;
-        void*           _data;
-        size_t          _dataSize;
-        Pitches         _pitches;
+		VkDevice            _dev;
+		VkDeviceMemory      _mem;
+        void*               _data;
+        size_t              _dataSize;
+        TexturePitches      _pitches;
 
 		void TryUnmap();
 	};

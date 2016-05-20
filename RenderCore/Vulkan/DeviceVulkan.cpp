@@ -59,7 +59,7 @@ namespace RenderCore { namespace ImplVulkan
 	    {
 		    "VK_LAYER_GOOGLE_threading",
 		    "VK_LAYER_LUNARG_device_limits",
-		    "VK_LAYER_LUNARG_draw_state",
+		    // "VK_LAYER_LUNARG_draw_state",
 		    "VK_LAYER_LUNARG_image",
 		    "VK_LAYER_LUNARG_mem_tracker",
 		    "VK_LAYER_LUNARG_object_tracker",
@@ -73,7 +73,7 @@ namespace RenderCore { namespace ImplVulkan
 	    {
 		    "VK_LAYER_GOOGLE_threading",
 		    "VK_LAYER_LUNARG_device_limits",
-		    "VK_LAYER_LUNARG_draw_state",
+		    // "VK_LAYER_LUNARG_draw_state",
 		    "VK_LAYER_LUNARG_image",
 		    "VK_LAYER_LUNARG_mem_tracker",
 		    "VK_LAYER_LUNARG_object_tracker",

@@ -6,7 +6,7 @@
 
 #include "DynamicImpostersDisplay.h"
 #include "../../SceneEngine/DynamicImposters.h"
-#include "../../SceneEngine/SceneEngineUtils.h"
+#include "../../SceneEngine/SceneEngineUtils.h"     // (for ShaderBasedCopy)
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"

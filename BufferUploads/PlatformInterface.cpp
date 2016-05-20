@@ -137,7 +137,7 @@ namespace BufferUploads { namespace PlatformInterface
         }
     }
 
-    GPUEventStack::GPUEventStack(RenderCore::IDevice* device) : _objFactory(&Metal::GetObjectFactory(*device))
+    GPUEventStack::GPUEventStack(RenderCore::IDevice& device) : _objFactory(&Metal::GetObjectFactory(device))
     {
             //
             //      What we really want is an "event" query that holds an integer value (like the events on the 

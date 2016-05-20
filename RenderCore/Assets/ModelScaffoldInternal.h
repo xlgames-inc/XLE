@@ -6,13 +6,12 @@
 
 #pragma once
 
+#include "../Types_Forward.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Core/Types.h"
-
-namespace RenderCore { enum class Format; }
 
 namespace RenderCore { namespace Assets 
 {

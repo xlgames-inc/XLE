@@ -92,7 +92,7 @@ namespace GUILayer
         _immediateContext = _renderDevice->GetImmediateContext();
 
         _assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
-        _renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_renderDevice.get());
+        _renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_renderDevice);
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
     }
 

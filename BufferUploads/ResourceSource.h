@@ -44,7 +44,7 @@ namespace BufferUploads
         void                        OnLostDevice();
         void                        Update(unsigned newFrameID);
 
-        ResourcesPool(RenderCore::IDevice* device, unsigned retainFrames = ~unsigned(0x0));
+        ResourcesPool(RenderCore::IDevice& device, unsigned retainFrames = ~unsigned(0x0));
         ~ResourcesPool();
     protected:
         class PoolOfLikeResources
@@ -253,7 +253,7 @@ namespace BufferUploads
 
         void                    OnLostDevice();
 
-        ResourceSource(RenderCore::IDevice* device);
+        ResourceSource(RenderCore::IDevice& device);
         ~ResourceSource();
 
     protected:

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "Types_Forward.h"
 #include "../Core/Types.h"
 #include "../Core/Prefix.h"
 #include "../Utility/StringUtils.h"
@@ -14,8 +15,6 @@
 
 namespace RenderCore
 {
-	enum class Format;
-
     /// Container for CPUAccess::Enum
     namespace CPUAccess
     {

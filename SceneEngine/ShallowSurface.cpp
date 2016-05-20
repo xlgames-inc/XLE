@@ -19,6 +19,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Format.h"
 #include "../ConsoleRig/Console.h"
 #include "../Assets/Assets.h"
 #include "../Math/Matrix.h"

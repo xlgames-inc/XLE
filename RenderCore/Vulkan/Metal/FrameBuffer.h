@@ -8,10 +8,10 @@
 
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"
+#include "../../Types_Forward.h"
 #include "../../FrameBufferDesc.h"
 #include <memory>
 
-namespace RenderCore { enum class Format; }
 namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;

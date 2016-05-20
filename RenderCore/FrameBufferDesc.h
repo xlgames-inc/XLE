@@ -6,18 +6,13 @@
 
 #pragma once
 
+#include "Types_Forward.h"
 #include "ResourceDesc.h"
 #include "../Utility/IteratorUtils.h"
 #include <memory>
 
-namespace RenderCore { namespace Metal_DX11
-{
-    class ShaderResourceView; class RenderTargetView; class DepthStencilView;
-}}
-
 namespace RenderCore
 {
-    enum class Format;
     class Resource;
     using ResourcePtr = std::shared_ptr<Resource>;
 
@@ -102,8 +97,8 @@ namespace RenderCore
     class FrameBufferDesc
 	{
 	public:
-        IteratorRange<const AttachmentViewDesc*>    GetAttachments() const  { return MakeIteratorRange(_attachments); }
         IteratorRange<const SubpassDesc*>           GetSubpasses() const    { return MakeIteratorRange(_subpasses); }
+        IteratorRange<const AttachmentViewDesc*>    GetAttachments() const  { return MakeIteratorRange(_attachments); }
         uint64                                      GetHash() const         { return _hash; }
 
 		FrameBufferDesc(

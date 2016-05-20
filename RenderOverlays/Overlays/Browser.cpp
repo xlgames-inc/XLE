@@ -18,12 +18,13 @@
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/IModelFormat.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
+#include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Types.h"
 #include "../../RenderCore/Format.h"
 
-#include "../../SceneEngine/SceneEngineUtils.h"
+// #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserContext.h"
@@ -45,6 +46,8 @@
 #include "../../Utility/Streams/PathUtils.h"
 
 #include "../../Core/WinAPI/IncludeWindows.h"
+
+#pragma warning(disable:4505) //  'Overlays::Copy2DTexture' : unreferenced local function has been removed
 
 namespace Overlays
 {
@@ -291,9 +294,6 @@ namespace Overlays
 
         context.ReleaseState();        // (drawing directly to the device context -- so we must get the overlay context to release the state)
 
-        auto devContext = RenderCore::Metal::DeviceContext::Get(*context.GetDeviceContext());
-        SceneEngine::SavedTargets oldTargets(*devContext.get());
-
         std::vector<std::pair<std::string, Rect>> labels;
 
         Layout browserLayout(toolBoxLayout.AllocateFullHeightFraction(1.f));
@@ -308,6 +308,12 @@ namespace Overlays
         scrollBarRect._topLeft[0] = std::max(scrollBarRect._topLeft[0], scrollBarRect._bottomRight[0] - Coord(thumbWidth));
         ScrollBar::Coordinates scrollCoordinates(scrollBarRect, 0.f, float(surfaceMaxSize), float(browserLayout.GetMaximumSize().Height()));
         unsigned itemScrollOffset = unsigned(_mainScrollBar.CalculateCurrentOffset(scrollCoordinates));
+
+#if 0   // platformtemp
+        auto devContext = RenderCore::Metal::DeviceContext::Get(*context.GetDeviceContext());
+        SceneEngine::SavedTargets oldTargets(*devContext.get());
+
+        
 
             // let's render each model file to an off-screen buffer, and then copy the results to the main output
         for (auto i=_pimpl->_modelFiles->_files.cbegin(); i!=_pimpl->_modelFiles->_files.cend(); ++i) {
@@ -355,6 +361,7 @@ namespace Overlays
             } CATCH_END
 
         }
+#endif
 
         context.CaptureState();
 
@@ -503,6 +510,7 @@ namespace Overlays
 
         auto model = _pimpl->_cache->GetModel((const ::Assets::ResChar*)utf8Filename, (const ::Assets::ResChar*)utf8Filename);
 
+#if 0 //platformtemp
         SceneEngine::SavedTargets savedTargets(*metalContext.get());
 
             // draw this object to our off screen buffer
@@ -515,6 +523,7 @@ namespace Overlays
         RenderModel(context, model);
 
         savedTargets.ResetToOldTargets(*metalContext.get());
+#endif
 
         return std::make_pair(&_pimpl->_srv, hashedName);   // note, here, the hashedName only considered the model name, not the material name
     }
@@ -552,7 +561,7 @@ namespace Overlays
         auto pimpl = std::make_unique<Pimpl>();
 
         const unsigned offscreenDims = ModelBrowserItemDimensions;
-        auto& uploads = SceneEngine::GetBufferUploads();
+        auto& device = RenderCore::Assets::Services::GetDevice();
         using namespace RenderCore;
         ResourceDesc offscreenDesc;
         offscreenDesc._type = ResourceDesc::Type::Texture;
@@ -561,10 +570,10 @@ namespace Overlays
         offscreenDesc._gpuAccess = GPUAccess::Read | GPUAccess::Write;
         offscreenDesc._allocationRules = 0;
         offscreenDesc._textureDesc = TextureDesc::Plain2D(offscreenDims, offscreenDims, RenderCore::Format::R8G8B8A8_UNORM);
-        auto offscreenResource = uploads.Transaction_Immediate(offscreenDesc)->AdoptUnderlying();
+        auto offscreenResource = device.CreateResource(offscreenDesc);
         offscreenDesc._bindFlags = BindFlag::DepthStencil;
         offscreenDesc._textureDesc = TextureDesc::Plain2D(offscreenDims, offscreenDims, RenderCore::Format::D24_UNORM_S8_UINT);
-        auto depthResource = uploads.Transaction_Immediate(offscreenDesc)->AdoptUnderlying();
+        auto depthResource = device.CreateResource(offscreenDesc);
         pimpl->_rtv = RenderCore::Metal::RenderTargetView(offscreenResource);
         pimpl->_dsv = RenderCore::Metal::DepthStencilView(depthResource);
         pimpl->_srv = RenderCore::Metal::ShaderResourceView(offscreenResource);

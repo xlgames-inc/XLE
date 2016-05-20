@@ -27,7 +27,7 @@
     {
 		using namespace RenderCore;
 
-        static bool IsDXTCompressed(NativeFormat format) { return GetCompressionType(format) == FormatCompressionType::BlockCompression; }
+        static bool IsDXTCompressed(Format format) { return GetCompressionType(format) == FormatCompressionType::BlockCompression; }
         static ID3D::Resource*        ResPtr(UnderlyingResource& resource) { return Metal::UnderlyingResourcePtr(&resource).get(); }
 
         unsigned UnderlyingDeviceContext::PushToTexture(

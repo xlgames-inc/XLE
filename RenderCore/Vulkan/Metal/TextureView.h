@@ -8,8 +8,7 @@
 
 #include "Resource.h"
 #include "VulkanCore.h"
-
-namespace RenderCore { class Resource; enum class Format; }
+#include "../../Types_Forward.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {

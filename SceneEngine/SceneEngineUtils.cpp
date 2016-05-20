@@ -13,6 +13,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/TextureView.h"
+#include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Assets/Services.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderOverlays/Font.h"
@@ -157,7 +158,7 @@ namespace SceneEngine
 
     ResourcePtr CreateResourceImmediate(const BufferUploads::BufferDesc& desc)
     {
-        return GetBufferUploads().Transaction_Immediate(desc);
+        return RenderCore::Assets::Services::GetDevice().CreateResource(desc);
     }
 
 
@@ -425,8 +426,8 @@ namespace SceneEngine
     }
 
     ProtectState::ProtectState(ProtectState&& moveFrom)
-    : _targets(std::move(moveFrom._targets))
 	#if GFXAPI_ACTIVE == GFXAPI_DX11
+        : _targets(std::move(moveFrom._targets))
 		, _depthStencilState(std::move(moveFrom._depthStencilState))
 		, _inputLayout(std::move(moveFrom._inputLayout))
 		, _indexBuffer(std::move(moveFrom._indexBuffer))
@@ -459,10 +460,10 @@ namespace SceneEngine
     ProtectState& ProtectState::operator=(ProtectState&& moveFrom)
     {
         _context = moveFrom._context; moveFrom._context = nullptr;
-        _targets = std::move(moveFrom._targets);
         _states = moveFrom._states; moveFrom._states = 0;
 
 		#if GFXAPI_ACTIVE == GFXAPI_DX11
+            _targets = std::move(moveFrom._targets);
 			_depthStencilState = std::move(moveFrom._depthStencilState);
 			_inputLayout = std::move(moveFrom._inputLayout);
 

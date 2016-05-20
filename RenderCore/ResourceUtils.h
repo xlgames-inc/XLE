@@ -7,10 +7,10 @@
 #pragma once
 
 #include "ResourceDesc.h"       // actually only needed for TexturePitches
+#include "Types_Forward.h"
 
 namespace RenderCore
 {
-    enum class Format;
     class ResourceDesc;
     class TextureDesc;
     class TexturePitches;

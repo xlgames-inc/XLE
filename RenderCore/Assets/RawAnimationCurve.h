@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../Format.h"
+#include "../Types_Forward.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Core/Types.h"

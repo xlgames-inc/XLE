@@ -6,11 +6,13 @@
 
 #pragma once
 
-#include "../RenderCore/Format.h"
-#include "../RenderCore/Types.h"
-#include "../RenderCore/Assets/ModelScaffoldInternal.h"
+#include "../RenderCore/Types_Forward.h"
+#include "../Math/Matrix.h"
+#include "../Core/Types.h"
 
 namespace RenderCore { namespace Assets { namespace GeoProc { class MeshDatabase; }}}
+namespace RenderCore { namespace Assets { class VertexElement; }}
+namespace RenderCore { class InputElementDesc; }
 
 namespace RenderCore { namespace ColladaConversion
 {

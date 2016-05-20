@@ -9,8 +9,7 @@
 #include "DX11.h"
 #include "Resource.h"
 #include "../../../Utility/IntrusivePtr.h"
-
-namespace RenderCore { enum class Format; }
+#include "../../Types_Forward.h"
 
 namespace RenderCore { namespace Metal_DX11
 {

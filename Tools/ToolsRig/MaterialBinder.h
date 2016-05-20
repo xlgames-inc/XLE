@@ -7,13 +7,13 @@
 #pragma once
 
 #include "../../RenderCore/Metal/Forward.h"
+#include "../../RenderCore/Types_Forward.h"
 #include "../../Assets/Assets.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 
 namespace RenderCore { namespace Assets { class ResolvedMaterial; } }
 namespace RenderCore { namespace Techniques { class ParsingContext; class PredefinedCBLayout; } }
-namespace RenderCore { class InputElementDesc; using InputLayout = std::pair<const InputElementDesc*, size_t>; }
 namespace Assets { class DirectorySearchRules; }
 
 namespace ToolsRig

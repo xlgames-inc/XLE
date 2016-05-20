@@ -6,8 +6,9 @@
 
 #pragma once
 
+#include "../../Types_Forward.h"
+
 typedef enum DXGI_FORMAT DXGI_FORMAT;
-namespace RenderCore { enum class Format; }
 
 namespace RenderCore { namespace Metal_DX11
 {

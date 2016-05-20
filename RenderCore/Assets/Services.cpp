@@ -24,7 +24,8 @@ namespace RenderCore { namespace Assets
 {
     Services* Services::s_instance = nullptr;
 
-    Services::Services(RenderCore::IDevice* device)
+    Services::Services(const std::shared_ptr<RenderCore::IDevice>& device)
+    : _device(device)
     {
         _shaderService = std::make_unique<ShaderService>();
 
@@ -39,7 +40,7 @@ namespace RenderCore { namespace Assets
 
         if (device) {
             BufferUploads::AttachLibrary(ConsoleRig::GlobalServices::GetInstance());
-            _bufferUploads = BufferUploads::CreateManager(device);
+            _bufferUploads = BufferUploads::CreateManager(*device);
         }
 
         // The technique config search directories are used to search for

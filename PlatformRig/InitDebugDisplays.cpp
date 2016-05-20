@@ -21,7 +21,7 @@
 #include "../SceneEngine/DeepOceanSim.h"
 #include "../SceneEngine/Tonemap.h"
 #include "../SceneEngine/VolumetricFog.h"
-#include "../SceneEngine/SceneEngineUtils.h"
+// #include "../SceneEngine/SceneEngineUtils.h"
 
 #include "../ConsoleRig/Console.h"
 
@@ -41,7 +41,7 @@ namespace PlatformRig
         auto oceanLightingSettingsDisplay   = std::make_shared<::Overlays::OceanLightingSettingsDisplay>(std::ref(SceneEngine::GlobalOceanLightingSettings));
         // auto tonemapSettingsDisplay         = std::make_shared<::Overlays::ToneMapSettingsDisplay>(std::ref(SceneEngine::GlobalToneMapSettings));
         // auto colorGradingSettingsDisplay    = std::make_shared<::Overlays::ColorGradingSettingsDisplay>(std::ref(SceneEngine::GlobalColorGradingSettings));
-        auto testMaterialSettings           = std::make_shared<::Overlays::TestMaterialSettings>(std::ref(SceneEngine::GlobalMaterialOverride));
+        // auto testMaterialSettings           = std::make_shared<::Overlays::TestMaterialSettings>(std::ref(SceneEngine::GlobalMaterialOverride));
         auto modelBrowser                   = std::make_shared<::Overlays::ModelBrowser>("game\\model");
         auto textureBrowser                 = std::make_shared<::Overlays::TextureBrowser>("game\\textures\\aa_terrain");
         auto gridIteratorDisplay            = std::make_shared<PlatformRig::Overlays::GridIteratorDisplay>();
@@ -56,7 +56,7 @@ namespace PlatformRig
         debugSystem.Register(oceanLightingSettingsDisplay, "[Settings] Ocean Lighting Settings");
         // debugSystem.Register(tonemapSettingsDisplay, "[Settings] Tone map settings");
         // debugSystem.Register(colorGradingSettingsDisplay, "[Settings] Color grading settings");
-        debugSystem.Register(testMaterialSettings, "[Settings] Material override settings");
+        // debugSystem.Register(testMaterialSettings, "[Settings] Material override settings");
         debugSystem.Register(volFogDisplay, "[Settings] Volumetric Fog Settings");
 
         debugSystem.Register(gridIteratorDisplay, "[Test] Grid iterator test");

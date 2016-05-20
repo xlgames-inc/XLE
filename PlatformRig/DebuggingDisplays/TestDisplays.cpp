@@ -730,7 +730,6 @@ namespace PlatformRig { namespace Overlays
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../Assets/Assets.h"
 
 namespace PlatformRig { namespace Overlays
@@ -742,7 +741,6 @@ namespace PlatformRig { namespace Overlays
     public:
         class Desc {};
 
-        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
         using SRV = Metal::ShaderResourceView;
         using RTV = Metal::RenderTargetView;
 

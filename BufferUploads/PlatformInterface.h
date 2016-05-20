@@ -8,13 +8,12 @@
 
 #include "IBufferUploads.h"
 #include "DataPacket.h"     // (actually just for TexturePitches)
-#include "../RenderCore/IDevice.h"
+#include "../RenderCore/IDevice_Forward.h"
 #include "../Utility/IntrusivePtr.h"
 #include "../RenderCore/Metal/Types.h"              // (for RenderCore::Metal::UnderlyingQuery)
 #include "../RenderCore/Metal/DeviceContext.h"      // (for RenderCore::Metal::CommandListPtr)
 
 namespace Utility { class DefragStep; }
-namespace RenderCore { enum class Format; }
 
 namespace BufferUploads { namespace PlatformInterface
 {
@@ -23,7 +22,6 @@ namespace BufferUploads { namespace PlatformInterface
 	using UnderlyingQuery = RenderCore::Metal::UnderlyingQuery;
 	using UnderlyingResource = RenderCore::Resource;
 	using UnderlyingResourcePtr = RenderCore::ResourcePtr;
-	using NativeFormat = RenderCore::Format;
 
 	UnderlyingResourcePtr CreateResource(RenderCore::IDevice& device, const BufferDesc& desc, DataPacket* initialisationData = nullptr);
     BufferDesc      ExtractDesc(RenderCore::Resource& resource);
@@ -115,7 +113,7 @@ namespace BufferUploads { namespace PlatformInterface
         void        OnLostDevice();
         void        OnDeviceReset();
 
-        GPUEventStack(RenderCore::IDevice* device);
+        GPUEventStack(RenderCore::IDevice& device);
         ~GPUEventStack();
     private:
         typedef Interlocked::Value    QueryID;

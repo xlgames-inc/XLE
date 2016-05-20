@@ -6,10 +6,9 @@
 
 #pragma once
 
+#include "../Types_Forward.h"
 #include "../Metal/Forward.h"
 #include "../../Assets/Assets.h"
-
-namespace RenderCore { enum class Format; }
 
 namespace RenderCore { namespace Assets 
 {

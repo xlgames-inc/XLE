@@ -9,6 +9,7 @@
 #include "LightingParserContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"

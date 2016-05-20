@@ -6,8 +6,6 @@
 
 #pragma once
 
-#include "SceneEngineUtils.h"
-
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/InputLayout.h"

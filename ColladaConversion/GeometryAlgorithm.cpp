@@ -6,11 +6,15 @@
 
 #include "GeometryAlgorithm.h"
 #include "../RenderCore/Assets/MeshDatabase.h"
+#include "../RenderCore/Assets/ModelScaffoldInternal.h"
+#include "../RenderCore/Format.h"
+#include "../RenderCore/Types.h"
 #include "../Math/Geometry.h"
 #include "../Math/Transformations.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/ArithmeticUtils.h"
+#include "../Core/Exceptions.h"
 
 namespace RenderCore { namespace ColladaConversion
 {

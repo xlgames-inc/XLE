@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Types_Forward.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Core/Types.h"
 #include <utility>
@@ -13,11 +14,7 @@
 #include <vector>
 #include <string>
 
-namespace RenderCore
-{
-	enum class Format;
-	class InputElementDesc;
-}
+namespace RenderCore { class InputElementDesc; }
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
