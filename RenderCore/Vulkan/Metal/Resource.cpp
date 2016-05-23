@@ -290,7 +290,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (tDesc._dimensionality == TextureDesc::Dimensionality::CubeMap)
 				image_create_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
-            if (HasLinearAndSRGBFormats(tDesc._format))
+            // We don't need to use mutable formats in many cases in Vulkan. 
+            // D32_ (etc) formats don't need to be cast to R32_ (etc). We should
+            // only really need to do this when moving between SRGB and Linear formats
+            // (though we can also to bitwise casts between unsigned and signed and float
+            // and int formats like this)
+            if (HasLinearAndSRGBFormats(tDesc._format) && GetComponentType(tDesc._format) == FormatComponentType::Typeless)
                 image_create_info.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 
 			// The tiling, initialLayout and usage flags depend on the bind flags and cpu/gpu usage

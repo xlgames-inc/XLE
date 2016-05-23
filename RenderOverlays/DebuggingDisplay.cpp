@@ -1025,7 +1025,10 @@ namespace RenderOverlays { namespace DebuggingDisplay
         return false;
     }
 
-    void DebugScreensSystem::Render(RenderCore::IThreadContext& context, const RenderCore::Techniques::ProjectionDesc& projDesc)
+    void DebugScreensSystem::Render(
+        RenderCore::IThreadContext& context, 
+        RenderCore::Techniques::NamedResources* namedRes,
+        const RenderCore::Techniques::ProjectionDesc& projDesc)
     {
         _currentInteractables = Interactables();
         
@@ -1041,7 +1044,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
 			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
 		#pragma push_macro("new")
 		#undef new
-			new(overlayContext.get()) ImmediateOverlayContext(context, projDesc);
+			new(overlayContext.get()) ImmediateOverlayContext(context, namedRes, projDesc);
 		#pragma pop_macro("new")
 
         overlayContext->CaptureState();

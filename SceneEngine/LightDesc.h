@@ -108,9 +108,7 @@ namespace SceneEngine
             /// Shadow texture definition
         uint32      _width, _height;
         using Format = RenderCore::Format;
-        Format      _typelessFormat;
-        Format      _writeFormat;
-        Format      _readFormat;
+        Format      _format;
             /// @}
 
         typedef MultiProjection<MaxShadowTexturesPerLight> Projections;
@@ -215,7 +213,7 @@ namespace SceneEngine
 	inline ShadowProjectionDesc::ShadowProjectionDesc()
 	{
 		_width = _height = 0;
-		_typelessFormat = _writeFormat = _readFormat = RenderCore::Format(0); // RenderCore::Format::Unknown;
+		_format = RenderCore::Format(0); // RenderCore::Format::Unknown;
 		_worldToClip = Identity<Float4x4>();
 		_slopeScaledBias = 0.f;
 		_depthBiasClamp = 0.f;

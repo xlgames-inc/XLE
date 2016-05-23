@@ -8,6 +8,7 @@
 #include "ObjectFactory.h"
 #include "State.h"
 #include "Format.h"
+#include "../../Format.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -19,6 +20,31 @@ namespace RenderCore { namespace Metal_Vulkan
         case TextureDesc::Dimensionality::T3D:      return VK_IMAGE_VIEW_TYPE_3D;
         case TextureDesc::Dimensionality::CubeMap:  return isArray?VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:VK_IMAGE_VIEW_TYPE_CUBE;
         default:                                    return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+        }
+    }
+
+    static Format ResolveVkFormat(Format baseFormat, TextureViewWindow::FormatFilter filter, FormatUsage usage)
+    {
+        if (filter._explicitFormat != Format(0))
+            return filter._explicitFormat;
+        
+        // Format conversion is different between Vulkan and DX11
+        // Depth/stencil formats just stay as is. We just need to switch
+        // between linear and SRGB formats when required --
+        switch (filter._aspect) {
+        case TextureViewWindow::Depth:
+        case TextureViewWindow::DepthStencil:
+        case TextureViewWindow::Stencil:
+            return AsDepthStencilFormat(baseFormat);
+
+        case TextureViewWindow::ColorLinear:
+            return AsLinearFormat(baseFormat);
+
+        case TextureViewWindow::ColorSRGB:
+            return AsSRGBFormat(baseFormat);
+
+        default:
+            return baseFormat;
         }
     }
 
@@ -40,11 +66,23 @@ namespace RenderCore { namespace Metal_Vulkan
         view_info.components.g = VK_COMPONENT_SWIZZLE_G;
         view_info.components.b = VK_COMPONENT_SWIZZLE_B;
         view_info.components.a = VK_COMPONENT_SWIZZLE_A;
-        view_info.subresourceRange.aspectMask = AsImageAspectMask(window._format._explicitFormat);
         view_info.subresourceRange.baseMipLevel = window._mipRange._min;
         view_info.subresourceRange.levelCount = std::max(1u, (unsigned)window._mipRange._count);
         view_info.subresourceRange.baseArrayLayer = window._arrayLayerRange._min;
         view_info.subresourceRange.layerCount = std::max(1u, (unsigned)window._arrayLayerRange._count);
+
+        view_info.subresourceRange.aspectMask = AsImageAspectMask(window._format._explicitFormat);
+        switch (window._format._aspect) {
+        case TextureViewWindow::Depth:
+            view_info.subresourceRange.aspectMask &= VK_IMAGE_ASPECT_DEPTH_BIT;
+            break;
+        case TextureViewWindow::DepthStencil:
+            view_info.subresourceRange.aspectMask &= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            break;
+        case TextureViewWindow::Stencil:
+            view_info.subresourceRange.aspectMask &= VK_IMAGE_ASPECT_STENCIL_BIT;
+            break;
+        }
 
         // disable depth or stencil when requiring just a single subaspect
         if (window._flags & TextureViewWindow::Flags::JustDepth) view_info.subresourceRange.aspectMask &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
@@ -61,7 +99,9 @@ namespace RenderCore { namespace Metal_Vulkan
         _imageView = factory.CreateImageView(createInfo);
     }
 
-	TextureView::TextureView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewWindow& window)
+	TextureView::TextureView(
+        const ObjectFactory& factory, const ResourcePtr& image, 
+        const TextureViewWindow& window, FormatUsage formatUsage)
 	{
 		auto res = UnderlyingResourcePtr(image).get();
 		// note --	some "buffer" objects can be used as ShaderResources... In those cases, we will arrive here,
@@ -74,7 +114,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			// Some parts of the "TextureViewWindow" can be set to "undefined". In these cases,
 			// we should fill them in with the detail from the resource.
-			if (adjWindow._format._explicitFormat == Format(0)) adjWindow._format = tDesc._format;
+            adjWindow._format._explicitFormat = ResolveVkFormat(tDesc._format, adjWindow._format, formatUsage);
 			if (adjWindow._dimensionality == TextureDesc::Dimensionality::Undefined)
 				adjWindow._dimensionality = tDesc._dimensionality;
 			if (adjWindow._mipRange._count == TextureViewWindow::Unlimited)
@@ -94,8 +134,8 @@ namespace RenderCore { namespace Metal_Vulkan
     : TextureView(GetObjectFactory(), image, window)
     {}
 
-    TextureView::TextureView(const ResourcePtr& image, const TextureViewWindow& window)
-    : TextureView(GetObjectFactory(), image, window)
+    TextureView::TextureView(const ResourcePtr& image, const TextureViewWindow& window, FormatUsage formatUsage)
+    : TextureView(GetObjectFactory(), image, window, formatUsage)
     { 
     }
 

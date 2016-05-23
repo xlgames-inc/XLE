@@ -20,7 +20,7 @@ namespace Overlays
         typedef RenderOverlays::DebuggingDisplay::InterfaceState InterfaceState;
         typedef RenderOverlays::DebuggingDisplay::InputSnapshot InputSnapshot;
 
-        void    Render( RenderOverlays::IOverlayContext* context, Layout& layout, 
+        void    Render( RenderOverlays::IOverlayContext& context, Layout& layout, 
                         Interactables& interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 

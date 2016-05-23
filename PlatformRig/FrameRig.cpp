@@ -143,7 +143,7 @@ namespace PlatformRig
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parserContext)
         {
-            _debugScreensSystem->Render(device, parserContext.GetProjectionDesc());
+            _debugScreensSystem->Render(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
         }
 
         void SetActivationState(bool) {}

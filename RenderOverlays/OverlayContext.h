@@ -64,10 +64,12 @@ namespace RenderOverlays
 
         RenderCore::IThreadContext*                 GetDeviceContext();
         RenderCore::Techniques::ProjectionDesc      GetProjectionDesc() const;
+        RenderCore::Techniques::NamedResources*     GetNamedResources() const;
         const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const;
 
         ImmediateOverlayContext(
             RenderCore::IThreadContext& threadContext, 
+            RenderCore::Techniques::NamedResources* namedRes = nullptr,
             const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
         ~ImmediateOverlayContext();
 
@@ -88,6 +90,7 @@ namespace RenderOverlays
         RenderCore::Metal::UniformsStream _globalUniformsStream;
 
         RenderCore::Techniques::ProjectionDesc _projDesc;
+        RenderCore::Techniques::NamedResources* _namedResources;
 
         enum VertexFormat { PC, PCT, PCR, PCCTT };
         class DrawCall

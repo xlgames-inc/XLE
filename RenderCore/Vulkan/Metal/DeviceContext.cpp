@@ -482,6 +482,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(_commandList);
         assert(_renderPass);
 		if (BindGraphicsPipeline()) {
+            assert(vertexCount);
             vkCmdDraw(
 			    _commandList.get(),
                 vertexCount, 1,

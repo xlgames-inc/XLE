@@ -13,7 +13,7 @@
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 
-namespace RenderCore { namespace Techniques { class ProjectionDesc; } }
+namespace RenderCore { namespace Techniques { class ProjectionDesc; class NamedResources; } }
 
 namespace RenderOverlays
 {
@@ -142,6 +142,7 @@ namespace RenderOverlays
         virtual RenderCore::Techniques::ProjectionDesc      GetProjectionDesc() const = 0;
         virtual const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const = 0;
         virtual RenderCore::IThreadContext*                 GetDeviceContext() = 0;
+        virtual RenderCore::Techniques::NamedResources*     GetNamedResources() const = 0;
 
         ~IOverlayContext();
     };

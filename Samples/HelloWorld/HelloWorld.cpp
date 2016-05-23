@@ -24,6 +24,7 @@
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
+#include "../../RenderOverlays/Overlays/ShadowFrustumDebugger.h"
 #include "../../BufferUploads/IBufferUploads.h"
 
 #include "../../SceneEngine/SceneEngineUtils.h"
@@ -141,6 +142,10 @@ namespace Sample
             auto overlaySwitch = std::make_shared<PlatformRig::OverlaySystemSwitch>();
             overlaySwitch->AddSystem(RenderOverlays::DebuggingDisplay::KeyId_Make("~"), PlatformRig::CreateConsoleOverlaySystem());
             frameRig.GetMainOverlaySystem()->AddSystem(overlaySwitch);
+
+            frameRig.GetDebugSystem()->Register(
+                std::make_shared<::Overlays::ShadowFrustumDebugger>(mainScene), 
+                "[Test] Shadow frustum debugger");
 
                 //  Setup input:
                 //      * We create a main input handler, and tie that to the window to receive inputs

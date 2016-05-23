@@ -440,6 +440,8 @@ namespace RenderOverlays
 
     void            ImmediateOverlayContext::PushDrawCall(const DrawCall& drawCall)
     {
+        if (!drawCall._vertexCount) return; // (skip draw calls with zero vertices)
+
             //  Append this draw call to the previous one (if the formats match)
         if (!_drawCalls.empty()) {
             DrawCall& prevCall = _drawCalls[_drawCalls.size()-1];
@@ -614,6 +616,11 @@ namespace RenderOverlays
         return _projDesc;
     }
 
+    RenderCore::Techniques::NamedResources*     ImmediateOverlayContext::GetNamedResources() const
+    {
+        return _namedResources;
+    }
+
     const Metal::UniformsStream&    ImmediateOverlayContext::GetGlobalUniformsStream() const
     {
         return _globalUniformsStream;
@@ -629,11 +636,13 @@ namespace RenderOverlays
 
     ImmediateOverlayContext::ImmediateOverlayContext(
         IThreadContext& threadContext, 
+        RenderCore::Techniques::NamedResources* namedRes,
         const Techniques::ProjectionDesc& projDesc)
     : _font(Techniques::FindCachedBox2<DefaultFontBox>()._font)
     , _defaultTextStyle(*_font.get())
     , _projDesc(projDesc)
     , _deviceContext(&threadContext)
+    , _namedResources(namedRes)
     {
 		_workingBufferSize = 16 * 1024;
 		_workingBuffer = std::make_unique<uint8[]>(_workingBufferSize);

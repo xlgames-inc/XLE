@@ -208,7 +208,7 @@ namespace PlatformRig
         RenderCore::IThreadContext& device, 
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-        _screens->Render(device, parserContext.GetProjectionDesc());
+        _screens->Render(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
     }
 
     void ConsoleOverlaySystem::RenderToScene(

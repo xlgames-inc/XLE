@@ -186,17 +186,19 @@ namespace RenderCore { namespace Metal_Vulkan
             }
         }
 
+        // Our tables should be in near-sorted order, but are not guaranteed to be sorted.
+        // So we have to sort here. Since they are near-sorted, quick sort is not ideal, but
+        // 
+        std::sort(_basicTypes.begin(), _basicTypes.end(), CompareFirst<uint64, BasicType>());
+        std::sort(_vectorTypes.begin(), _vectorTypes.end(), CompareFirst<uint64, VectorType>());
+        std::sort(_pointerTypes.begin(), _pointerTypes.end(), CompareFirst<uint64, PointerType>());
+        std::sort(_variables.begin(), _variables.end(), CompareFirst<uint64, Variable>());
+
         // build the quick lookup table, which matches hash names to binding values
         for (auto& b:_bindings) {
-            if (b.second._descriptorSet==~0x0u && b.second._bindingPoint==~0x0) continue;
-
-            const char* nameStart = nullptr, *nameEnd = nullptr;
-
-            auto n = LowerBound(_names, b.first);
-            if (n != _names.end() && n->first == b.first) {
-                nameStart = n->second.begin();
-                nameEnd = n->second.end();
-            }
+            const auto& binding = b.second;
+            auto bindingName = b.first;
+            if (binding._descriptorSet==~0x0u && binding._bindingPoint==~0x0u) continue;
 
             // We can bind to the name of the variable, or the name of the type. This is
             // important for our HLSL path for constant buffers.
@@ -204,12 +206,17 @@ namespace RenderCore { namespace Metal_Vulkan
             // is actually the name of the type.
             // Constant buffers become a pointer to a struct (where the struct has the name we want),
             // and the actual variable just has an empty name.
+            auto n = LowerBound(_names, bindingName);
+            if (n != _names.end() && n->first == bindingName) {
+                auto nameStart = n->second.begin();
+                auto nameEnd = n->second.end();
+                if (nameStart < nameEnd)
+                    _uniformQuickLookup.push_back(std::make_pair(Hash64(nameStart, nameEnd), binding));
+            }
 
-            if (nameStart < nameEnd)
-                _uniformQuickLookup.push_back(std::make_pair(Hash64(nameStart, nameEnd), b.second));
-
-            auto v = LowerBound(_variables, b.first);
-            if (v != _variables.end() && v->first == b.first) {
+            // now insert the type name into the quick lookup table ---
+            auto v = LowerBound(_variables, bindingName);
+            if (v != _variables.end() && v->first == bindingName) {
                 auto type = v->second._type;
                 auto ptr = LowerBound(_pointerTypes, type);
                 if (ptr != _pointerTypes.end() && ptr->first == type)
@@ -217,14 +224,12 @@ namespace RenderCore { namespace Metal_Vulkan
                 
                 n = LowerBound(_names, type);
                 if (n != _names.end() && n->first == type) {
-                    nameStart = n->second.begin();
-                    nameEnd = n->second.end();
+                    auto nameStart = n->second.begin();
+                    auto nameEnd = n->second.end();
+                    if (nameStart < nameEnd)
+                        _uniformQuickLookup.push_back(std::make_pair(Hash64(nameStart, nameEnd), binding));
                 } 
             }
-
-            // now insert the type name into the quick lookup table ---
-            if (nameStart < nameEnd)
-                _uniformQuickLookup.push_back(std::make_pair(Hash64(nameStart, nameEnd), b.second));
         }
 
         std::sort(

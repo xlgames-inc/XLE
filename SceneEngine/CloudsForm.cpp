@@ -1204,7 +1204,7 @@ namespace SceneEngine
 			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
 		#pragma push_macro("new")
 		#undef new
-			new(overlayContext.get()) ImmediateOverlayContext(context, parserContext.GetProjectionDesc());
+			new(overlayContext.get()) ImmediateOverlayContext(context, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
 		#pragma pop_macro("new")
 
         overlayContext->CaptureState();

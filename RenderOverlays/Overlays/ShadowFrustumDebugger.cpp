@@ -12,6 +12,8 @@
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -21,17 +23,10 @@
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringFormat.h"
 
-#include "../../SceneEngine/SceneEngineUtils.h"
-
-#if GFXAPI_ACTIVE == GFXAPI_DX11
-	#include "../../RenderCore/DX11/Metal/DX11Utils.h"
-#endif
-
 namespace Overlays
 {
     using namespace RenderOverlays;
     using namespace RenderCore;
-    using namespace RenderCore::Metal;
 
     class SFDResources
     {
@@ -46,8 +41,8 @@ namespace Overlays
             : _cascadeMode(cascadeMode), _enableNearCascade(enableNearCascade) {}
         };
 
-        const ShaderProgram*    _shader;
-        BoundUniforms           _uniforms;
+        const Metal::ShaderProgram*    _shader;
+        Metal::BoundUniforms           _uniforms;
         
         const ::Assets::DepValPtr& GetDependencyValidation() const   { return _depVal; }
         SFDResources(const Desc&);
@@ -58,14 +53,14 @@ namespace Overlays
 
     SFDResources::SFDResources(const Desc& desc)
     {
-        _shader = &::Assets::GetAssetDep<ShaderProgram>(
+        _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
             "game/xleres/deferred/debugging/cascadevis.psh:main:ps_*",
             (const ::Assets::ResChar*)(StringMeld<128, ::Assets::ResChar>() 
                 << "SHADOW_CASCADE_MODE=" << desc._cascadeMode 
                 << ";SHADOW_ENABLE_NEAR_CASCADE=" << (desc._enableNearCascade?1:0)));
 
-        _uniforms = BoundUniforms(*_shader);
+        _uniforms = Metal::BoundUniforms(*_shader);
         Techniques::TechniqueContext::BindGlobalUniforms(_uniforms);
         _uniforms.BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
         _uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), 1, 1);
@@ -79,24 +74,18 @@ namespace Overlays
     SFDResources::~SFDResources() {}
 
     static void OverlayShadowFrustums(
-        DeviceContext& devContext, 
-        const UniformsStream& globalUniforms,
-        const RenderCore::Techniques::ProjectionDesc& mainCameraProjectionDesc,
-        const SceneEngine::ShadowProjectionDesc& projectionDesc)
+        Metal::DeviceContext& devContext, 
+        const RenderCore::Techniques::ProjectionDesc& mainCameraProjDesc,
+        const SceneEngine::ShadowProjectionDesc& projectionDesc,
+        RenderCore::Techniques::NamedResources* namedResources,
+        const Metal::UniformsStream& globalUniforms)
     {
         devContext.Bind(Techniques::CommonResources()._dssDisable);
         devContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11		// todo -- implement more generically!
-            SceneEngine::SavedTargets savedTargets(devContext);
-
-		    ShaderResourceView depthSrv; 
-		
-			devContext.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
-			if (savedTargets.GetDepthStencilView())
-				depthSrv = ShaderResourceView(
-					ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView()).get(), 
-                    TextureViewWindow{{TextureViewWindow::Aspect::Depth}});
+        Metal::ShaderResourceView* depthSrv = nullptr;
+        if (namedResources)
+            depthSrv = namedResources->GetSRV(2u);
 
         auto& res = Techniques::FindCachedBoxDep2<SFDResources>(
             (projectionDesc._projections._mode == SceneEngine::ShadowProjectionDesc::Projections::Mode::Ortho)?2:1,
@@ -107,32 +96,30 @@ namespace Overlays
         SceneEngine::CB_OrthoShadowProjection orthoCB;
         BuildShadowConstantBuffers(arbitraryCB, orthoCB, projectionDesc._projections);
 
-        ConstantBufferPacket constantBufferPackets[3];
+        Metal::ConstantBufferPacket constantBufferPackets[3];
         constantBufferPackets[0] = RenderCore::MakeSharedPkt(arbitraryCB);
         constantBufferPackets[1] = RenderCore::MakeSharedPkt(orthoCB);
         constantBufferPackets[2] = BuildScreenToShadowConstants(
             projectionDesc._projections._normalProjCount,
             arbitraryCB, orthoCB, 
-            mainCameraProjectionDesc._cameraToWorld,
-            mainCameraProjectionDesc._cameraToProjection);
-        const ShaderResourceView* srv[] = { &depthSrv };
+            mainCameraProjDesc._cameraToWorld,
+            mainCameraProjDesc._cameraToProjection);
+        const Metal::ShaderResourceView* srv[] = { depthSrv };
 
         res._uniforms.Apply(
             devContext, globalUniforms,
-            UniformsStream(
+            Metal::UniformsStream(
                 constantBufferPackets, nullptr, dimof(constantBufferPackets),
                 srv, dimof(srv)));
 
-        devContext.Bind(Topology::TriangleStrip);
+        devContext.Bind(Metal::Topology::TriangleStrip);
         devContext.Draw(4);
 
-        devContext.UnbindPS<ShaderResourceView>(4, 1);
-        savedTargets.ResetToOldTargets(devContext);
-#endif
+        devContext.UnbindPS<Metal::ShaderResourceView>(4, 1);
     }
 
     void ShadowFrustumDebugger::Render( 
-        IOverlayContext* context, Layout& layout, 
+        IOverlayContext& context, Layout& layout, 
         Interactables& interactables, InterfaceState& interfaceState)
     {
         assert(_scene.get());
@@ -143,15 +130,15 @@ namespace Overlays
 
         static SceneEngine::ShadowProjectionDesc projectionDesc;
         if (!Tweakable("ShadowDebugLock", false)) {
-            projectionDesc = _scene->GetShadowProjectionDesc(0, context->GetProjectionDesc());
+            projectionDesc = _scene->GetShadowProjectionDesc(0, context.GetProjectionDesc());
         }
 
-        auto devContext = DeviceContext::Get(*context->GetDeviceContext());
-        context->ReleaseState();
+        auto devContext = Metal::DeviceContext::Get(*context.GetDeviceContext());
+        context.ReleaseState();
         OverlayShadowFrustums(
-            *devContext, context->GetGlobalUniformsStream(),
-            context->GetProjectionDesc(), projectionDesc);
-        context->CaptureState();
+            *devContext, context.GetProjectionDesc(), projectionDesc,
+            context.GetNamedResources(), context.GetGlobalUniformsStream());
+        context.CaptureState();
         
             //  Get the first shadow projection from the scene, and draw an
             //  outline of all sub-projections with in.
@@ -171,25 +158,25 @@ namespace Overlays
         const auto& projections = projectionDesc._projections;
         for (unsigned c=0; c<projections._normalProjCount; ++c) {
             DebuggingDisplay::DrawFrustum(
-                context, Combine(projections._fullProj[c]._viewMatrix, projections._fullProj[c]._projectionMatrix),
+                &context, Combine(projections._fullProj[c]._viewMatrix, projections._fullProj[c]._projectionMatrix),
                 cols[std::min((unsigned)dimof(cols), c)], 0x1);
         }
 
         if (projections._useNearProj) {
             DebuggingDisplay::DrawFrustum(
-                context, projections._specialNearProjection,
+                &context, projections._specialNearProjection,
                 cols[std::min((unsigned)dimof(cols), projections._normalProjCount)], 0x1);
         }
 
         for (unsigned c=0; c<projections._normalProjCount; ++c) {
             DebuggingDisplay::DrawFrustum(
-                context, Combine(projections._fullProj[c]._viewMatrix, projections._fullProj[c]._projectionMatrix),
+                &context, Combine(projections._fullProj[c]._viewMatrix, projections._fullProj[c]._projectionMatrix),
                 cols[std::min((unsigned)dimof(cols), c)], 0x2);
         }
 
         if (projections._useNearProj) {
             DebuggingDisplay::DrawFrustum(
-                context, projections._specialNearProjection,
+                &context, projections._specialNearProjection,
                 cols[std::min((unsigned)dimof(cols), projections._normalProjCount)], 0x2);
         }
     }

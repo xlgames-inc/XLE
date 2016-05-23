@@ -327,7 +327,10 @@ namespace RenderOverlays { namespace DebuggingDisplay
     {
     public:
         bool        OnInputEvent(const InputSnapshot& evnt);
-        void        Render(RenderCore::IThreadContext& device, const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
+        void        Render(
+            RenderCore::IThreadContext& device, 
+            RenderCore::Techniques::NamedResources* namedRes = nullptr,
+            const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
 
         enum Type { InPanel, SystemDisplay };
         void        Register(std::shared_ptr<IWidget> widget, const char name[], Type type = InPanel);

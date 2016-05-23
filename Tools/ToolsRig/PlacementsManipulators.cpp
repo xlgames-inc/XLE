@@ -1574,7 +1574,7 @@ namespace ToolsRig
     void PlacementsManipulatorsManager::RenderWidgets(
         RenderCore::IThreadContext& device, RenderCore::Techniques::ParsingContext& parsingContext)
     {
-        _pimpl->_screens->Render(device, parsingContext.GetProjectionDesc());
+        _pimpl->_screens->Render(device, &parsingContext.GetNamedResources(), parsingContext.GetProjectionDesc());
     }
 
     void PlacementsManipulatorsManager::RenderToScene(

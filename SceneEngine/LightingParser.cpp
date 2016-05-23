@@ -1091,7 +1091,7 @@ namespace SceneEngine
             {
                 {   IMainTargets::ShadowDepthMap + shadowFrustumIndex, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
-                    frustum._typelessFormat,
+                    AsTypelessFormat(frustum._format),
                     TextureViewWindow::DepthStencil,
                     AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil }
             });

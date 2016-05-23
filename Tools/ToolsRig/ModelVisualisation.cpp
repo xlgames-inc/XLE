@@ -636,7 +636,9 @@ namespace ToolsRig
         if (!_mouseOver->_hasMouseOver || !_overlayFn) return;
 
         using namespace RenderOverlays::DebuggingDisplay;
-        RenderOverlays::ImmediateOverlayContext overlays(threadContext, parsingContext.GetProjectionDesc());
+        RenderOverlays::ImmediateOverlayContext overlays(
+            threadContext, &parsingContext.GetNamedResources(),
+            parsingContext.GetProjectionDesc());
         _overlayFn(overlays, *_mouseOver);
     }
 

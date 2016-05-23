@@ -202,12 +202,6 @@
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore.vcxproj">
       <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_Assets.vcxproj">
-      <Project>{e767b944-6637-78fc-a32d-a7a82dc83385}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\RenderOverlays\Project\RenderOverlays.vcxproj">
-      <Project>{726e12f1-b69b-188d-390b-3a1e1889126d}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
     </ProjectReference>
