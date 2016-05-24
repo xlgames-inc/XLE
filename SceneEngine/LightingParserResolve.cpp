@@ -370,7 +370,7 @@ namespace SceneEngine
             // Perhaps we need an input attachment for the depth buffer in the second pass?
             parserContext.GetNamedResources().DefineAttachments(
                 {{  IMainTargets::LightResolve, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
                     TextureViewWindow::Aspect::ColorLinear,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget }});

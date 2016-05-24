@@ -28,6 +28,7 @@ namespace RenderCore { namespace Techniques
         virtual auto GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::ShaderResourceView*;
         virtual auto GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::RenderTargetView*;
         virtual auto GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::DepthStencilView*;
+        virtual auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
 
         NamedResourcesWrapper(NamedResources& namedRes);
         ~NamedResourcesWrapper();
@@ -48,6 +49,11 @@ namespace RenderCore { namespace Techniques
     auto NamedResourcesWrapper::GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::DepthStencilView*
     {
         return _namedRes->GetDSV(viewName, resName, window);
+    }
+
+    auto NamedResourcesWrapper::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
+    {
+        return _namedRes->GetDesc(resName);
     }
 
     NamedResourcesWrapper::NamedResourcesWrapper(NamedResources& namedRes)
@@ -185,7 +191,7 @@ namespace RenderCore { namespace Techniques
 
         auto desc = CreateDesc(
             0, 0, 0, 
-            TextureDesc::Plain2D(attachmentWidth, attachmentHeight, a._format, 1, uint16(_props._outputLayers)),
+            TextureDesc::Plain2D(attachmentWidth, attachmentHeight, a._format, 1, uint16(a._arrayLayerCount)),
             "attachment");
 
         if (a._flags & AttachmentDesc::Flags::Multisampled)
@@ -234,6 +240,12 @@ namespace RenderCore { namespace Techniques
                 _resources[v].reset();
                 _resNames[v] = ~0u;
             }
+    }
+
+    auto NamedResources::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
+    {
+        if (resName >= s_maxBoundTargets) return nullptr;
+        return &_pimpl->_attachments[resName];
     }
     
     Metal::ShaderResourceView*   NamedResources::GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
@@ -337,7 +349,7 @@ namespace RenderCore { namespace Techniques
                 0u, 
                 RenderCore::AttachmentDesc::DimensionsMode::Absolute, 
                 (float)desc._textureDesc._width, (float)desc._textureDesc._height,
-                desc._textureDesc._format, 
+                0u, desc._textureDesc._format, 
                 TextureViewWindow::UndefinedAspect,
                   ((desc._bindFlags & BindFlag::RenderTarget) ? AttachmentDesc::Flags::RenderTarget : 0u)
                 | ((desc._bindFlags & BindFlag::ShaderResource) ? AttachmentDesc::Flags::ShaderResource : 0u)
@@ -360,21 +372,15 @@ namespace RenderCore { namespace Techniques
         bool xyChanged = 
                props._outputWidth != _pimpl->_props._outputWidth
             || props._outputHeight != _pimpl->_props._outputHeight;
-        bool layersChanged = 
-            props._outputLayers != _pimpl->_props._outputLayers;
         bool samplesChanged = 
                 props._samples._sampleCount != _pimpl->_props._samples._sampleCount
             ||  props._samples._samplingQuality != _pimpl->_props._samples._samplingQuality;
-        if (!xyChanged && !layersChanged && !samplesChanged) return;
+        if (!xyChanged && !samplesChanged) return;
 
         if (xyChanged)
             for (unsigned c=0; c<s_maxBoundTargets; ++c)
                 if (_pimpl->_attachments[c]._dimsMode == AttachmentDesc::DimensionsMode::OutputRelative)
                     _pimpl->InvalidateAttachment(c);
-
-        if (layersChanged) // currently all resources depend on the output layers value
-            for (unsigned c=0; c<s_maxBoundTargets; ++c)
-                _pimpl->InvalidateAttachment(c);
 
         if (samplesChanged) // Invalidate all resources and views that depend on the multisample state
             for (unsigned c=0; c<s_maxBoundTargets; ++c)
@@ -402,7 +408,7 @@ namespace RenderCore { namespace Techniques
             _pimpl->_resNames[c] = ~0u;
             _pimpl->_attachments[c] = {};
         }
-        _pimpl->_props = {0u, 0u, 0u, TextureSamples::Create()};
+        _pimpl->_props = {0u, 0u, TextureSamples::Create()};
     }
 
     NamedResources::~NamedResources()

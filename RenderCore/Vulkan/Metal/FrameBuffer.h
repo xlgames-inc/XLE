@@ -26,6 +26,7 @@ namespace RenderCore { namespace Metal_Vulkan
         virtual auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> ShaderResourceView* = 0;
         virtual auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> RenderTargetView* = 0;
         virtual auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> DepthStencilView* = 0;
+        virtual auto GetDesc(AttachmentName resName) const -> const AttachmentDesc* = 0;
         ~INamedResources();
     };
 

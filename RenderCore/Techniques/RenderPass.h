@@ -36,6 +36,7 @@ namespace RenderCore { namespace Techniques
         auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::ShaderResourceView*;
         auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::RenderTargetView*;
         auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::DepthStencilView*;
+        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
 
         void Bind(FrameBufferProperties props);
         void Bind(AttachmentName, const ResourcePtr& resource);

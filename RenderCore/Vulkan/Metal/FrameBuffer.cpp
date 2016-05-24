@@ -506,6 +506,10 @@ namespace RenderCore { namespace Metal_Vulkan
         // be created an attached to this object.
         auto attachments = fbDesc.GetAttachments();
 
+        unsigned maxLayers = 0u;
+        unsigned maxWidth = 0u;
+        unsigned maxHeight = 0u;
+
         VkImageView rawViews[16];
         assert(attachments.size() < dimof(rawViews));
         for (unsigned c=0; c<(unsigned)attachments.size(); ++c) {
@@ -517,6 +521,30 @@ namespace RenderCore { namespace Metal_Vulkan
                 assert(dsv);
                 rawViews[c] = dsv->GetImageView();
             }
+
+            // This is annoying -- we need to look for any resources with
+            // array layers. Ideally all our resources should have the same
+            // array layer count (if they don't, we just end up selecting the
+            // largest value)
+            auto* desc = namedResources.GetDesc(
+                (attachments[c]._resourceName != ~0u) 
+                ? attachments[c]._resourceName 
+                : attachments[c]._viewName);
+            if (desc) {
+                maxLayers = std::max(maxLayers, desc->_arrayLayerCount);
+                unsigned resWidth = 0u, resHeight = 0u;
+                
+                if (desc->_dimsMode == AttachmentDesc::DimensionsMode::Absolute) {
+                    resWidth = unsigned(desc->_width);
+                    resHeight = unsigned(desc->_height);
+                } else {
+                    resWidth = unsigned(std::floor(props._outputWidth * desc->_width + 0.5f));
+                    resHeight = unsigned(std::floor(props._outputHeight * desc->_height + 0.5f));
+                }
+
+                maxWidth = std::max(maxWidth, resWidth);
+                maxHeight = std::max(maxHeight, resHeight);
+            }
         }
 
         VkFramebufferCreateInfo fb_info = {};
@@ -525,9 +553,9 @@ namespace RenderCore { namespace Metal_Vulkan
         fb_info.renderPass = layout;
         fb_info.attachmentCount = (uint32_t)attachments.size();
         fb_info.pAttachments = rawViews;
-        fb_info.width = props._outputWidth;
-        fb_info.height = props._outputHeight;
-        fb_info.layers = std::max(1u, props._outputLayers);
+        fb_info.width = maxWidth;
+        fb_info.height = maxHeight;
+        fb_info.layers = std::max(1u, maxLayers);
         _underlying = factory.CreateFramebuffer(fb_info);
 
         // todo --  do we need to create a "patch up" command buffer to assign the starting image layouts

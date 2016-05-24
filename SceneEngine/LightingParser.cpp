@@ -674,7 +674,7 @@ namespace SceneEngine
         //          this may have a consequence on the efficiency when writing to them.
         _attachments = std::vector<AttachmentDesc>{
             // Main multisampled depth stencil
-            {   IMainTargets::MultisampledDepth, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
+            {   IMainTargets::MultisampledDepth, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                 RenderCore::Format::R24G8_TYPELESS,
                 TextureViewWindow::Aspect::DepthStencil,
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil },
@@ -687,17 +687,17 @@ namespace SceneEngine
                 // that should be enough precision.
                 //      .. however, it possible some clients might prefer 10 or 16 bit albedo textures
                 //      In these cases, the first buffer should be a matching format.
-            {   IMainTargets::GBufferDiffuse, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
+            {   IMainTargets::GBufferDiffuse, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                 (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM_SRGB : Format::R32G32B32A32_FLOAT,
                 (!desc._precisionTargets) ? TextureViewWindow::Aspect::ColorSRGB : TextureViewWindow::Aspect::ColorLinear,
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget },
 
-            {   IMainTargets::GBufferNormals, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
+            {   IMainTargets::GBufferNormals, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                 (!desc._precisionTargets) ? Format::R8G8B8A8_SNORM : Format::R32G32B32A32_FLOAT,
                 TextureViewWindow::Aspect::ColorLinear,
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget },
 
-            {   IMainTargets::GBufferParameters, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
+            {   IMainTargets::GBufferParameters, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                 (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM : Format::R32G32B32A32_FLOAT,
                 TextureViewWindow::Aspect::ColorLinear,
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget }
@@ -1069,28 +1069,11 @@ namespace SceneEngine
 
         metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, float(frustum._width), float(frustum._height)));
 
-#if 0
-        auto& targetsBox = Techniques::FindCachedBox2<ShadowTargetsBox>(
-            frustum._width, frustum._height, MaxShadowTexturesPerLight, 
-            FormatStack(frustum._typelessFormat, frustum._readFormat, frustum._writeFormat));
-        preparedResult._shadowTextureSRV = targetsBox._shaderResource;
-
-        SavedTargets savedTargets(metalContext);
-        auto resetMarker = savedTargets.MakeResetMarker(metalContext);
-        metalContext.Bind(RenderCore::ResourceList<Metal::RenderTargetView,0>(), &targetsBox._depthStencilView);
-
-        for (unsigned c=0; c<projectionCount; ++c) {
-                // note --  do we need to clear each slice individually? Or can we clear a single DSV 
-                //          representing the whole thing? What if we don't need every slice for this 
-                //          frame? Is there a benefit to skipping unnecessary slices?
-            metalContext.Clear(targetsBox._dsvBySlice[c], 1.f, 0);  
-        }
-#endif
-
         parserContext.GetNamedResources().DefineAttachments(
             {
                 {   IMainTargets::ShadowDepthMap + shadowFrustumIndex, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f,
+                    AttachmentDesc::DimensionsMode::Absolute, float(frustum._width), float(frustum._height),
+                    frustum._projections.Count(),
                     AsTypelessFormat(frustum._format),
                     TextureViewWindow::DepthStencil,
                     AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil }

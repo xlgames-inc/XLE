@@ -547,8 +547,10 @@ namespace XLEMath
             assert(0);
         }
 
-        if (clipSpaceType == ClipSpaceType::PositiveRightHanded)
+        if (clipSpaceType == ClipSpaceType::PositiveRightHanded) {
             result(1,1) = -result(1,1);
+            result(1,3) = -result(1,3);
+        }
 
         return result;
     }

@@ -236,7 +236,7 @@ namespace Sample
         auto& namedRes = lightingParserContext.GetNamedResources();
         auto viewContext = presentationChain->GetDesc();
         auto samples = RenderCore::TextureSamples::Create((uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0));
-        namedRes.Bind(RenderCore::FrameBufferProperties{viewContext->_width, viewContext->_height, 0u, samples});
+        namedRes.Bind(RenderCore::FrameBufferProperties{viewContext->_width, viewContext->_height, samples});
         namedRes.Bind(0u, presentationResource);
 
             //  Some scene might need a "prepare" step to 

@@ -51,6 +51,7 @@ namespace RenderCore
         };
         DimensionsMode _dimsMode;
         float _width, _height;
+        unsigned _arrayLayerCount;
 
         Format _format;
         TextureViewWindow::Aspect _defaultAspect;
@@ -116,7 +117,7 @@ namespace RenderCore
     class FrameBufferProperties
     {
     public:
-        unsigned _outputWidth, _outputHeight, _outputLayers;
+        unsigned _outputWidth, _outputHeight;
         TextureSamples _samples;
     };
 
