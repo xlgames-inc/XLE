@@ -27,12 +27,12 @@ namespace Samples
     MinimalAssetServices::MinimalAssetServices(RenderCore::IDevice* device)
     {
         _shaderService = std::make_unique<ShaderService>();
-        auto shaderSource = std::make_shared<MinimalShaderSource>(Metal::CreateLowLevelShaderCompiler());
+        auto shaderSource = std::make_shared<MinimalShaderSource>(Metal::CreateLowLevelShaderCompiler(*device));
         _shaderService->AddShaderSource(shaderSource);
 
         if (device) {
             BufferUploads::AttachLibrary(ConsoleRig::GlobalServices::GetInstance());
-            _bufferUploads = BufferUploads::CreateManager(device);
+            _bufferUploads = BufferUploads::CreateManager(*device);
         }
 
         ConsoleRig::GlobalServices::GetCrossModule().Publish(*this);

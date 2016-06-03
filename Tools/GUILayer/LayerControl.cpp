@@ -56,7 +56,7 @@ namespace GUILayer
 
         auto stateDesc = context.GetStateDesc();
         pimpl._namedResources->Bind(RenderCore::FrameBufferProperties{
-            stateDesc._viewportDimensions[0], stateDesc._viewportDimensions[1], 0u, RenderCore::TextureSamples::Create()});
+            stateDesc._viewportDimensions[0], stateDesc._viewportDimensions[1], RenderCore::TextureSamples::Create()});
         pimpl._namedResources->Bind(0u, presentationResource);
 
         if (overlaySys) {

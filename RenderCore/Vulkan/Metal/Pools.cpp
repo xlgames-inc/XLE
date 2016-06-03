@@ -143,6 +143,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void DescriptorPool::FlushDestroys()
     {
+		if (!_device || !_pool) return;
         if (!_pendingDestroy.empty())
             vkFreeDescriptorSets(
                 _device.get(), _pool.get(), 
@@ -188,6 +189,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     DescriptorPool& DescriptorPool::operator=(DescriptorPool&& moveFrom) never_throws
     {
+		FlushDestroys();
         _pool = std::move(moveFrom._pool);
         _device = std::move(moveFrom._device);
         _pendingDestroy = std::move(moveFrom._pendingDestroy);

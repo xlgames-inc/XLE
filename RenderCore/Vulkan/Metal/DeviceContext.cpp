@@ -539,6 +539,15 @@ namespace RenderCore { namespace Metal_Vulkan
         return _factory->GetDevice().get();
     }
 
+	std::shared_ptr<DeviceContext> DeviceContext::Fork()
+	{
+		return std::make_shared<DeviceContext>(
+			*_factory, *_globalPools,
+			*_graphicsDescriptors._pipelineLayout,
+			*_computeDescriptors._pipelineLayout,
+			*_cmdPool, _cmdBufferType);
+	}
+
 	void		DeviceContext::BeginCommandList()
 	{
         // hack -- clear some state

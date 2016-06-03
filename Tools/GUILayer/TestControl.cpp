@@ -52,7 +52,7 @@ namespace GUILayer
         auto contextStateDesc = context.GetStateDesc();
         namedRes.Bind(RenderCore::FrameBufferProperties{
             contextStateDesc._viewportDimensions[0], 
-            contextStateDesc._viewportDimensions[1], 0u, RenderCore::TextureSamples::Create()});
+            contextStateDesc._viewportDimensions[1], RenderCore::TextureSamples::Create()});
         namedRes.Bind(0u, presentationResource);
         RenderCore::Techniques::RenderPassInstance rpi(
             context, {{RenderCore::SubpassDesc({0})}},

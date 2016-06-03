@@ -261,6 +261,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil) {}
 
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
+		std::shared_ptr<DeviceContext> Fork();
 
 		void		BeginCommandList();
 		void		CommitCommandList(VkCommandBuffer_T&, bool);
