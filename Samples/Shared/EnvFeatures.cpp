@@ -73,20 +73,18 @@ namespace Sample
             if (!delaySteps.empty()) {
                 auto* name = VegetationSpawnName(parseSettings._batchFilter);
                 CPUProfileEvent pEvnt(name, g_cpuProfiler);
-                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), name, GPUProfiler::Begin);
+                RenderCore::GPUProfilerBlock profileBlock(*g_gpuProfiler.get(), *context, name);
                 CATCH_ASSETS_BEGIN
                     for (auto i:delaySteps)
                         _vegetationSpawnManager->Render(*context, parserContext, techniqueIndex, i);
                 CATCH_ASSETS_END(parserContext)
-                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), name, GPUProfiler::End);
             }
 
             if (parseSettings._batchFilter == BF::Transparent) {
                 CPUProfileEvent pEvnt("ShallowSurface", g_cpuProfiler);
-                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "ShallowSurface", GPUProfiler::Begin);
+				RenderCore::GPUProfilerBlock profileBlock(*g_gpuProfiler.get(), *context, "ShallowSurface");
                 if (_shallowSurfaces && _surfaceHeights)
                     _shallowSurfaces->RenderDebugging(*context, parserContext, techniqueIndex, _surfaceHeights.get());
-                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "ShallowSurface", GPUProfiler::End);
             }
         }
     }

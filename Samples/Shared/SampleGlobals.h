@@ -24,7 +24,7 @@ namespace Sample
         // Source character files are original built 100 times larger than other assets (for artists' convenience)
     static const float CharactersScale = 100.f;
 
-    extern RenderCore::GPUProfiler::Ptr g_gpuProfiler;
+    extern std::unique_ptr<RenderCore::IAnnotator> g_gpuProfiler;
     extern Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
     #if defined(ENABLE_TERRAIN)

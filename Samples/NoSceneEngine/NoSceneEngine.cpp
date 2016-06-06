@@ -239,7 +239,7 @@ namespace Sample
 
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
-    RenderCore::GPUProfiler::Ptr g_gpuProfiler;
+    std::unique_ptr<RenderCore::IAnnotator> g_gpuProfiler;
     Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -557,35 +557,35 @@ namespace Sample
             {
                 // Main depth stencil
                 {   MainDepthStencil, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     RenderCore::Format::R24G8_TYPELESS,
                     TextureViewWindow::Depth,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::DepthStencil | AttachmentDesc::Flags::ShaderResource },
 
                 // gbuffer diffuse
                 {   GBufferDiffuse, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     RenderCore::Format::R8G8B8A8_UNORM_SRGB,
                     TextureViewWindow::ColorSRGB,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
 
                 // gbuffer normals
                 {   GBufferNormals, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     RenderCore::Format::R8G8B8A8_SNORM,
                     TextureViewWindow::ColorLinear,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
 
                 // gbuffer params
                 {   GBufferParams, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     RenderCore::Format::R8G8B8A8_UNORM,
                     TextureViewWindow::ColorLinear,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
 
                 // lighting resolve
                 {   LightingResolve, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 
+                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     RenderCore::Format::R16G16B16A16_FLOAT,
                     TextureViewWindow::ColorLinear,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource }
@@ -638,7 +638,6 @@ namespace Sample
                 MakeIteratorRange(attachmentViews));
 
             auto presDims = metalContext->GetPresentationTargetDims();
-            Metal::FrameBufferCache fbCache;
             namedResources.Bind(samples);
             namedResources.Bind(FrameBufferProperties{presDims[0], presDims[1], 0u});
             namedResources.DefineAttachments(MakeIteratorRange(attachments));
@@ -649,7 +648,7 @@ namespace Sample
             {
                 Techniques::RenderPassInstance rpi(
                     *metalContext, fbLayout,
-                    0u, namedResources, fbCache, beginInfo);
+                    0u, namedResources, beginInfo);
 
                 // First, render gbuffer subpass
                 {
@@ -714,9 +713,9 @@ namespace Sample
             //  Here, I show 2 different ways to do dynamic string formatting.
             //      (note that XlDynFormatString will always allocate at least once!)
         window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(presentationChain));
-        auto v = renderDevice->GetVersionInformation();
-        window.SetTitle(XlDynFormatString("XLE sample [RenderCore: %s : %s]", v.first, v.second).c_str());
-        window.SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v.first << ", " << v.second << "]");
+        auto v = renderDevice->GetDesc();
+        window.SetTitle(XlDynFormatString("XLE sample [RenderCore: %s : %s]", v._buildVersion, v._buildDate).c_str());
+        window.SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v._buildVersion << ", " << v._buildDate << "]");
 
             // Some secondary initalisation:
             //  * attach compilers
@@ -725,7 +724,7 @@ namespace Sample
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
         renderAssetServices->InitColladaCompilers();
-        g_gpuProfiler = RenderCore::GPUProfiler::CreateProfiler();
+        g_gpuProfiler = RenderCore::CreateAnnotator(*renderDevice);
         RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices->GetBufferUploads());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
         

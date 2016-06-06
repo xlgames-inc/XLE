@@ -19,15 +19,14 @@ namespace PlatformRig { namespace Overlays
     class GPUProfileDisplay : public IWidget ///////////////////////////////////////////////////////////
     {
     public:
-        GPUProfileDisplay(RenderCore::GPUProfiler::Profiler* profiler);
+        GPUProfileDisplay(RenderCore::IAnnotator& profiler);
         ~GPUProfileDisplay();
         void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
-    private:
-        static GPUProfileDisplay* s_listenerDisplay;
-        static void GPUEventListener(const void* eventsBufferStart, const void* eventsBufferEnd);
+		void    ProcessGPUEvents(const void* eventsBufferStart, const void* eventsBufferEnd);
 
+    private:
         typedef float GPUDuration;
         typedef uint64 GPUTime;
         typedef unsigned FrameId;
@@ -50,12 +49,12 @@ namespace PlatformRig { namespace Overlays
         Section _sections[20];
 
         class GPUFrameConstruction;
-        std::auto_ptr<GPUFrameConstruction> _currentFrame;
+        std::unique_ptr<GPUFrameConstruction> _currentFrame;
         GPUTime _endOfLastFrame;
 
-        RenderCore::GPUProfiler::Profiler* _profiler;
+        RenderCore::IAnnotator* _profiler;
+		unsigned _listenerId;
 
-        void    ProcessGPUEvents(const void* eventsBufferStart, const void* eventsBufferEnd);
         void    PushSectionInfo(const char id[], GPUTime selfTime);
         static float   ToGPUDuration(GPUTime time, GPUTime frequency);
     };

@@ -164,7 +164,7 @@ namespace PlatformRig
     auto FrameRig::ExecuteFrame(
         RenderCore::IThreadContext& context,
         RenderCore::IPresentationChain* presChain,
-        RenderCore::GPUProfiler::Profiler* gpuProfiler,
+        RenderCore::IAnnotator* gpuProfiler,
         HierarchicalCPUProfiler* cpuProfiler,
         const FrameRenderFunction& renderFunction) -> FrameResult
     {
@@ -188,7 +188,7 @@ namespace PlatformRig
         _pimpl->_prevFrameStartTime = startTime;
 
         if (gpuProfiler)
-            RenderCore::GPUProfiler::Frame_Begin(context, gpuProfiler, _pimpl->_frameRenderCount);
+			gpuProfiler->Frame_Begin(context, _pimpl->_frameRenderCount);
 
         if (_pimpl->_updateAsyncMan)
             Assets::Services::GetAsyncMan().Update();
@@ -236,7 +236,7 @@ namespace PlatformRig
         }
 
         if (gpuProfiler)
-            RenderCore::GPUProfiler::Frame_End(context, gpuProfiler);
+			gpuProfiler->Frame_End(context);
 
         uint64 duration = GetPerformanceCounter() - startTime;
         _pimpl->_frameRate.PushFrameDuration(duration);

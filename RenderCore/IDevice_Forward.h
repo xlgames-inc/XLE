@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../Core/Prefix.h"
+#include <memory>
 
         // // // //      Flexible interfaces configuration      // // // //
 #define FLEX_USE_VTABLE_PresentationChain    1
@@ -20,4 +21,11 @@ namespace RenderCore
     #define FLEX_INTERFACE Device
 #include "FlexForward.h"
     #undef FLEX_INTERFACE
+
+	class Resource;
+	using ResourcePtr = std::shared_ptr<Resource>;
+	class ResourceDesc;
+	class SubResourceInitData;
+	class PresentationChainDesc;
+	class SubResourceId;
 }

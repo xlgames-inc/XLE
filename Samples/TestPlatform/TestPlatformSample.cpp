@@ -46,7 +46,7 @@ namespace Sample
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    RenderCore::Metal::GPUProfiler::Ptr g_gpuProfiler;
+    std::unique_ptr<RenderCore::IAnnotator> g_gpuProfiler;
     Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -111,7 +111,7 @@ namespace Sample
 
             // Some secondary initalisation:
         primMan._renderAssetServices->InitColladaCompilers();
-        g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
+        g_gpuProfiler = RenderCore::CreateAnnotator(*primMan._rDevice);
         RenderOverlays::InitFontSystem(
             primMan._rDevice.get(), 
             &RenderCore::Assets::Services::GetBufferUploads());
@@ -229,12 +229,11 @@ namespace Sample
         }
 
         if (overlaySys) {
-            overlaySys->RenderToScene(&context, lightingParserContext);
+            overlaySys->RenderToScene(context, lightingParserContext);
         }
 
         auto& usefulFonts = RenderCore::Techniques::FindCachedBox2<UsefulFonts>();
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-        DrawPendingResources(metalContext.get(), lightingParserContext, usefulFonts._defaultFont0.get());
+        DrawPendingResources(context, lightingParserContext, usefulFonts._defaultFont0.get());
 
         if (overlaySys) {
             overlaySys->RenderWidgets(context, lightingParserContext);
@@ -265,7 +264,7 @@ namespace Sample
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys)
     {
         if (g_gpuProfiler) {
-            auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
+            auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(*g_gpuProfiler.get());
             debugSys.Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
         }
         debugSys.Register(

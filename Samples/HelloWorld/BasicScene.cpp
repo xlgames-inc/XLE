@@ -27,7 +27,7 @@
 namespace Sample
 {
     const float SunDirectionAngle = .33f;
-	extern RenderCore::GPUProfiler::Ptr g_gpuProfiler;
+	extern std::unique_ptr<RenderCore::IAnnotator> g_gpuProfiler;
 
     class BasicSceneParser::Model
     {
@@ -349,7 +349,7 @@ namespace Sample
                     *_sharedStateSet, &searchRules, levelOfDetail));
         }
 
-		RenderCore::GPUProfiler::TriggerEvent(context, g_gpuProfiler.get(), "RenderModel", RenderCore::GPUProfiler::Begin);
+		RenderCore::GPUProfilerBlock profileBlock(*g_gpuProfiler, context, "RenderModel");
 
             //  Before using SharedStateSet for the first time, we need to capture the device 
             //  context state. If we were rendering multiple models with the same shared state, we would 
@@ -360,8 +360,6 @@ namespace Sample
         _modelRenderer->Render(
             RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
             *_sharedStateSet, Identity<Float4x4>());
-
-		RenderCore::GPUProfiler::TriggerEvent(context, g_gpuProfiler.get(), "RenderModel", RenderCore::GPUProfiler::End);
     }
 
 }

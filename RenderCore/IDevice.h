@@ -26,13 +26,6 @@ namespace RenderCore
 {
 ////////////////////////////////////////////////////////////////////////////////
 
-	class Resource;
-	using ResourcePtr = std::shared_ptr<Resource>;
-	class ResourceDesc;
-	class SubResourceInitData;
-    class PresentationChainDesc;
-    class SubResourceId;
-
     /// <summary>Device description</summary>
     /// The build number is in a format such as:
     /// <code>\code

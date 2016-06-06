@@ -52,7 +52,7 @@ namespace Sample
 
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
-    RenderCore::GPUProfiler::Ptr g_gpuProfiler;
+    std::unique_ptr<RenderCore::IAnnotator> g_gpuProfiler;
     Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +108,7 @@ namespace Sample
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
         renderAssetServices->InitColladaCompilers();
-        g_gpuProfiler = RenderCore::GPUProfiler::CreateProfiler();
+		g_gpuProfiler = RenderCore::CreateAnnotator(*renderDevice);
         RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices->GetBufferUploads());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
 
@@ -293,7 +293,7 @@ namespace Sample
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys)
     {
         if (g_gpuProfiler) {
-            auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
+            auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(*g_gpuProfiler.get());
             debugSys.Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
         }
         debugSys.Register(

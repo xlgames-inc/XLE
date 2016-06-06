@@ -125,9 +125,8 @@ namespace Sample
             // Culling, etc
 
         const auto& worldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         _pimpl->_characters->Cull(worldToProjection);
-        _pimpl->_characters->Prepare(metalContext.get());
+        _pimpl->_characters->Prepare(context);
 
         for (const auto&p:_pimpl->_scenePlugins)
             p->PrepareFrame(context, parserContext);
@@ -170,26 +169,23 @@ namespace Sample
     {
         CPUProfileEvent pEvnt("ExecuteScene", g_cpuProfiler);
         
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-
         using Toggles = SceneParseSettings::Toggles;
         using BF = SceneParseSettings::BatchFilter;
         #if defined(ENABLE_TERRAIN)
             if (    parseSettings._toggles & Toggles::Terrain
                 &&  parseSettings._batchFilter == BF::General) {
                 CPUProfileEvent pEvnt("TerrainRender", g_cpuProfiler);
-                GPUProfiler::TriggerEvent(*metalContext, g_gpuProfiler.get(), "TerrainRender", GPUProfiler::Begin);
+                RenderCore::GPUProfilerBlock profilerBlock(*g_gpuProfiler.get(), context, "TerrainRender");
                 CATCH_ASSETS_BEGIN
-                    _pimpl->_terrainManager->Render(metalContext.get(), parserContext, preparedPackets, techniqueIndex);
+                    _pimpl->_terrainManager->Render(context, parserContext, preparedPackets, techniqueIndex);
                 CATCH_ASSETS_END(parserContext)
-                GPUProfiler::TriggerEvent(*metalContext, g_gpuProfiler.get(), "TerrainRender", GPUProfiler::End);
             }
         #endif
 
         if (parseSettings._toggles & Toggles::NonTerrain) {
             if (_pimpl->_characters && (parseSettings._batchFilter == BF::General || parseSettings._batchFilter == BF::PreDepth || parseSettings._batchFilter == BF::DMShadows)) {
                 CATCH_ASSETS_BEGIN
-                    _pimpl->_characters->Render(metalContext.get(), parserContext, techniqueIndex);
+                    _pimpl->_characters->Render(context, parserContext, techniqueIndex);
                 CATCH_ASSETS_END(parserContext)
             }
 
@@ -197,19 +193,19 @@ namespace Sample
                 auto delaySteps = SceneEngine::AsDelaySteps(parseSettings._batchFilter);
                 auto* name = PlacementsRenderName(parseSettings._batchFilter);
                 CPUProfileEvent pEvnt(name, g_cpuProfiler);
-                GPUProfiler::TriggerEvent(*metalContext, g_gpuProfiler.get(), name, GPUProfiler::Begin);
+				RenderCore::GPUProfilerBlock profilerBlock(*g_gpuProfiler.get(), context, name);
                 CATCH_ASSETS_BEGIN
                     for (auto i:delaySteps)
                         if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
-                            _pimpl->_placementsRenderer->CommitTransparent(metalContext.get(), parserContext, techniqueIndex, i);
+                            _pimpl->_placementsRenderer->CommitTransparent(context, parserContext, techniqueIndex, i);
                         } else {
-                            _pimpl->_placementsRenderer->Render(metalContext.get(), parserContext, techniqueIndex, *_pimpl->_placementsCells);
+                            _pimpl->_placementsRenderer->Render(context, parserContext, techniqueIndex, *_pimpl->_placementsCells);
                         }
                 CATCH_ASSETS_END(parserContext)
-                GPUProfiler::TriggerEvent(*metalContext, g_gpuProfiler.get(), name, GPUProfiler::End);
             }
         }
 
+		auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         for (const auto&p:_pimpl->_scenePlugins)
             p->ExecuteScene(metalContext.get(), parserContext, parseSettings, techniqueIndex);
     }

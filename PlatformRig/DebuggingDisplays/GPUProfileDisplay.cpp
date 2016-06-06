@@ -10,6 +10,7 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/StringUtils.h"
 #include <assert.h>
+#include <functional>
 
 namespace PlatformRig { namespace Overlays
 {
@@ -152,8 +153,6 @@ namespace PlatformRig { namespace Overlays
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////
-    GPUProfileDisplay* GPUProfileDisplay::s_listenerDisplay = NULL;
-    
     static bool SortByFirst(const std::pair<float, unsigned>&lhs, const std::pair<float, unsigned>&rhs)
     {
         return lhs.first>rhs.first;
@@ -348,28 +347,22 @@ namespace PlatformRig { namespace Overlays
         }
     }
 
-    void GPUProfileDisplay::GPUEventListener(const void* eventsBufferStart, const void* eventsBufferEnd)
+    static void GPUEventListener(GPUProfileDisplay& display, const void* eventsBufferStart, const void* eventsBufferEnd)
     {
-        if (s_listenerDisplay) {
-            s_listenerDisplay->ProcessGPUEvents(eventsBufferStart, eventsBufferEnd);
-        }
+        display.ProcessGPUEvents(eventsBufferStart, eventsBufferEnd);
     }
 
-    GPUProfileDisplay::GPUProfileDisplay(RenderCore::GPUProfiler::Profiler* profiler)
-    :   _currentFrame( new GPUFrameConstruction )
-    ,   _profiler(profiler)
+    GPUProfileDisplay::GPUProfileDisplay(RenderCore::IAnnotator& profiler)
+    :   _currentFrame(std::make_unique<GPUFrameConstruction>())
+    ,   _profiler(&profiler)
     {
         XlZeroMemory(_sections);
         _endOfLastFrame = 0;
-        assert(s_listenerDisplay==0);
-        s_listenerDisplay = this;
-        RenderCore::GPUProfiler::AddEventListener(&GPUEventListener);
+		_listenerId = profiler.AddEventListener(std::bind(&GPUEventListener, std::ref(*this), std::placeholders::_1, std::placeholders::_2));
     }
 
     GPUProfileDisplay::~GPUProfileDisplay()
     {
-        assert(s_listenerDisplay==this);
-        RenderCore::GPUProfiler::RemoveEventListener(&GPUEventListener);
-        s_listenerDisplay = NULL;
+        _profiler->RemoveEventListener(_listenerId);
     }
 }}

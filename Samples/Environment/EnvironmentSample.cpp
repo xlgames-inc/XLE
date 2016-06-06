@@ -64,7 +64,7 @@ namespace Sample
 
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
-    RenderCore::Metal::GPUProfiler::Ptr g_gpuProfiler;
+    std::unique_ptr<RenderCore::IAnnotator> g_gpuProfiler;
     Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -178,7 +178,7 @@ namespace Sample
 
             // Some secondary initalisation:
         SetupCompilers(primMan);
-        g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
+        g_gpuProfiler = RenderCore::CreateAnnotator(*primMan._rDevice);
         RenderOverlays::InitFontSystem(
             primMan._rDevice.get(), 
             &RenderCore::Assets::Services::GetBufferUploads());
@@ -196,7 +196,7 @@ namespace Sample
             InitDebugDisplays(*frameRig.GetDebugSystem());
 
             if (g_gpuProfiler) {
-                auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
+                auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(*g_gpuProfiler.get());
                 frameRig.GetDebugSystem()->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
             }
             frameRig.GetDebugSystem()->Register(
