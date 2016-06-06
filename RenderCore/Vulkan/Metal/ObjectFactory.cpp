@@ -311,6 +311,29 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::move(sampler);
     }
 
+	VulkanUniquePtr<VkQueryPool> ObjectFactory::CreateQueryPool(
+		VkQueryType type, unsigned count,
+		VkQueryPipelineStatisticFlags pipelineStats) const
+	{
+		VkQueryPoolCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+		createInfo.pNext = nullptr;
+		createInfo.flags = 0;
+		createInfo.queryType = type;
+		createInfo.queryCount = count;
+		createInfo.pipelineStatistics = pipelineStats;
+
+		auto d = _destruction.get();
+		VkQueryPool rawQueryPool = nullptr;
+		auto res = vkCreateQueryPool(_device.get(), &createInfo, g_allocationCallbacks, &rawQueryPool);
+		auto queryPool = VulkanUniquePtr<VkQueryPool>(
+			rawQueryPool,
+			[d](VkQueryPool qp) { d->Destroy(qp); });
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failed while creating query pool"));
+		return std::move(queryPool);
+	}
+
     unsigned ObjectFactory::FindMemoryType(VkFlags memoryTypeBits, VkMemoryPropertyFlags requirementsMask) const
     {
         // Search memtypes to find first index with those properties
@@ -419,6 +442,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void    Destroy(VkBuffer);
         void    Destroy(VkFence);
         void    Destroy(VkSampler);
+		void	Destroy(VkQueryPool);
 
         void    Flush();
 
@@ -451,6 +475,7 @@ namespace RenderCore { namespace Metal_Vulkan
             , Queue<VkBuffer>                   // 13
             , Queue<VkDeviceMemory>             // 14
             , Queue<VkSampler>                  // 15
+			, Queue<VkQueryPool>				// 16
         > _queues;
 
         template<int Index, typename Type>
@@ -486,6 +511,7 @@ namespace RenderCore { namespace Metal_Vulkan
     template<> inline void DestroyObjectImmediate(VkDevice device, VkBuffer obj)                { vkDestroyBuffer(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkDeviceMemory obj)          { vkFreeMemory(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkSampler obj)               { vkDestroySampler(device, obj, g_allocationCallbacks ); }
+	template<> inline void DestroyObjectImmediate(VkDevice device, VkQueryPool obj)				{ vkDestroyQueryPool(device, obj, g_allocationCallbacks); }
 
     template<int Index>
         inline void DeferredDestruction::FlushQueue()
@@ -512,6 +538,7 @@ namespace RenderCore { namespace Metal_Vulkan
     void    DeferredDestruction::Destroy(VkBuffer obj) { DoDestroy<13>(obj); }
     void    DeferredDestruction::Destroy(VkDeviceMemory obj) { DoDestroy<14>(obj); }
     void    DeferredDestruction::Destroy(VkSampler obj) { DoDestroy<15>(obj); }
+	void    DeferredDestruction::Destroy(VkQueryPool obj) { DoDestroy<16>(obj); }
 
     void    DeferredDestruction::Flush()
     {
@@ -531,6 +558,7 @@ namespace RenderCore { namespace Metal_Vulkan
         FlushQueue<13>();
         FlushQueue<14>();
         FlushQueue<15>();
+		FlushQueue<16>();
     }
 
     DeferredDestruction::DeferredDestruction(VulkanSharedPtr<VkDevice> device)

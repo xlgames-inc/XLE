@@ -795,6 +795,19 @@ namespace RenderCore { namespace Metal_Vulkan
             offset, size, pValues);
     }
 
+	void DeviceContext::CmdWriteTimestamp(
+		VkPipelineStageFlagBits pipelineStage,
+		VkQueryPool queryPool, uint32_t query)
+	{
+		vkCmdWriteTimestamp(_commandList.get(), pipelineStage, queryPool, query);
+	}
+
+	void DeviceContext::CmdResetQueryPool(
+		VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount)
+	{
+		vkCmdResetQueryPool(_commandList.get(), queryPool, firstQuery, queryCount);
+	}
+
     DeviceContext::DeviceContext(
         const ObjectFactory&    factory, 
         GlobalPools&            globalPools,

@@ -63,6 +63,7 @@ extern "C"
     typedef VkFlags VkImageAspectFlags;
     typedef VkFlags VkMemoryPropertyFlags;
     typedef VkFlags VkShaderStageFlags;
+	typedef VkFlags VkQueryPipelineStatisticFlags;
 
     typedef struct VkRenderPassCreateInfo VkRenderPassCreateInfo;
     typedef struct VkImageCreateInfo VkImageCreateInfo;
@@ -84,5 +85,6 @@ extern "C"
 
     typedef enum VkFormat VkFormat;
     typedef enum VkDescriptorType VkDescriptorType;
+	typedef enum VkQueryType VkQueryType;
 }
 

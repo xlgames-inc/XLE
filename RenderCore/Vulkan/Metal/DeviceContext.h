@@ -338,6 +338,11 @@ namespace RenderCore { namespace Metal_Vulkan
             uint32_t offset,
             uint32_t size,
             const void* pValues);
+		void CmdWriteTimestamp(
+			VkPipelineStageFlagBits pipelineStage, 
+			VkQueryPool queryPool, uint32_t query);
+		void CmdResetQueryPool(
+			VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount);
 
         DeviceContext(
             const ObjectFactory& factory, 

@@ -12,6 +12,7 @@
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/GPUProfiler.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Tonemap.h"
@@ -26,6 +27,7 @@
 namespace Sample
 {
     const float SunDirectionAngle = .33f;
+	extern RenderCore::GPUProfiler::Ptr g_gpuProfiler;
 
     class BasicSceneParser::Model
     {
@@ -347,6 +349,8 @@ namespace Sample
                     *_sharedStateSet, &searchRules, levelOfDetail));
         }
 
+		RenderCore::GPUProfiler::TriggerEvent(context, g_gpuProfiler.get(), "RenderModel", RenderCore::GPUProfiler::Begin);
+
             //  Before using SharedStateSet for the first time, we need to capture the device 
             //  context state. If we were rendering multiple models with the same shared state, we would 
             //  capture once and render multiple times with the same capture.
@@ -356,6 +360,8 @@ namespace Sample
         _modelRenderer->Render(
             RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
             *_sharedStateSet, Identity<Float4x4>());
+
+		RenderCore::GPUProfiler::TriggerEvent(context, g_gpuProfiler.get(), "RenderModel", RenderCore::GPUProfiler::End);
     }
 
 }

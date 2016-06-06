@@ -18,26 +18,10 @@
 namespace RenderCore { namespace Metal_DX11
 {
     class DeviceContext;
+	class ObjectFactory;
 
     namespace GPUProfiler
     {
-		class Query
-		{
-		public:
-			intrusive_ptr<ID3D::Query> _query;
-			bool _isAllocated;
-
-			Query() : _isAllocated(false) {}
-			Query(Query&& moveFrom) never_throws : _isAllocated(moveFrom._isAllocated), _query(std::move(moveFrom._query)) {}
-			Query& operator=(Query&& moveFrom) never_throws
-			{
-				_isAllocated = moveFrom._isAllocated;
-				_query = std::move(moveFrom._query);
-				moveFrom._isAllocated = false;
-				return *this;
-			}
-		};
-
 		class QueryConstructionFailure : public ::Exceptions::BasicLabel
 		{
 		public:
@@ -46,22 +30,22 @@ namespace RenderCore { namespace Metal_DX11
 
 		typedef D3D11_QUERY_DATA_TIMESTAMP_DISJOINT DisjointQueryData;
 
-		bool GetDataNoFlush(DeviceContext& context, Query& query, void * destination, unsigned destinationSize);
-		bool GetDisjointData(DeviceContext& context, Query& query, DisjointQueryData& destination);
-		Query CreateQuery(bool disjoint);
-		void BeginQuery(DeviceContext& context, Query& query);
-		void EndQuery(DeviceContext& context, Query& query);
-		std::pair<uint64, uint64> CalculateSynchronisation(DeviceContext& context, Query& query, Query& disjoint);
+		bool GetDataNoFlush(DeviceContext& context, ID3D::Query& query, void * destination, unsigned destinationSize);
+		bool GetDisjointData(DeviceContext& context, ID3D::Query& query, DisjointQueryData& destination);
+		intrusive_ptr<ID3D::Query> CreateQuery(ObjectFactory& factory, bool disjoint);
+		void BeginQuery(DeviceContext& context, ID3D::Query& query);
+		void EndQuery(DeviceContext& context, ID3D::Query& query);
+		std::pair<uint64, uint64> CalculateSynchronisation(DeviceContext& context, ID3D::Query& query, ID3D::Query& disjoint);
 
         #if defined(GPUANNOTATIONS_ENABLE)
 
-                /// <summary>Add a debugging animation</summary>
-                /// These annotations are used for debugging. They will create a marker in debugging
-                /// tools (like nsight / RenderDoc). The "annotationName" can be any arbitrary name.
-                /// Note that we're taking a wchar_t for the name. This is for DirectX, which needs
-                /// a wide character string. But other tools (eg, OpenGL/Android) aren't guaranteed
-                /// to work this way. We could do compile time conversion with a system of macros...
-                /// Otherwise, we might need fall back to run time conversion.
+            /// <summary>Add a debugging annotation into the GPU command buffer</summary>
+            /// These annotations are used for debugging. They will create a marker in debugging
+            /// tools (like nsight / RenderDoc). The "annotationName" can be any arbitrary name.
+            /// Note that we're taking a wchar_t for the name. This is for DirectX, which needs
+            /// a wide character string. But other tools (eg, OpenGL/Android) aren't guaranteed
+            /// to work this way. We could do compile time conversion with a system of macros...
+            /// Otherwise, we might need fall back to run time conversion.
             class DebugAnnotation
             {
             public:

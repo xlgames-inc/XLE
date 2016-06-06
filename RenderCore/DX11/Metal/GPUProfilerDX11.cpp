@@ -17,45 +17,38 @@
 
 namespace RenderCore { namespace Metal_DX11 { namespace GPUProfiler     /// Low level GPU profiler implementation (for DirectX11)
 {
-    bool GetDataNoFlush(DeviceContext& context, Query& query, void * destination, unsigned destinationSize)
+    bool GetDataNoFlush(DeviceContext& context, ID3D::Query& query, void * destination, unsigned destinationSize)
     {
         auto hresult = context.GetUnderlying()->GetData(
-            query._query.get(), destination, destinationSize, D3D11_ASYNC_GETDATA_DONOTFLUSH );
+            &query, destination, destinationSize, D3D11_ASYNC_GETDATA_DONOTFLUSH );
 		return SUCCEEDED(hresult);
     }
 
-    bool GetDisjointData(DeviceContext& context, Query& query, DisjointQueryData& destination)
+    bool GetDisjointData(DeviceContext& context, ID3D::Query& query, DisjointQueryData& destination)
     {
         auto hresult = GetDataNoFlush(context, query, &destination, sizeof(destination));
 		return SUCCEEDED(hresult);
     }
 
-    Query CreateQuery(bool disjoint)
+    intrusive_ptr<ID3D::Query> CreateQuery(ObjectFactory& factory, bool disjoint)
     {
         D3D11_QUERY_DESC queryDesc;
         queryDesc.Query      = disjoint?D3D11_QUERY_TIMESTAMP_DISJOINT:D3D11_QUERY_TIMESTAMP;
         queryDesc.MiscFlags  = 0;
-        auto query = GetObjectFactory().CreateQuery(&queryDesc);
-
-        Query newQuery; 
-        newQuery._isAllocated = false; 
-        newQuery._query = std::move(query);
-        return newQuery;
+        return factory.CreateQuery(&queryDesc);
     }
 
-    void BeginQuery(DeviceContext& context, Query& query)
+    void BeginQuery(DeviceContext& context, ID3D::Query& query)
     {
-        if (query._query)
-            context.GetUnderlying()->Begin(query._query.get());
+        context.GetUnderlying()->Begin(&query);
     }
 
-    void EndQuery(DeviceContext& context, Query& query)
+    void EndQuery(DeviceContext& context, ID3D::Query& query)
     {
-        if (query._query)
-            context.GetUnderlying()->End(query._query.get());
+        context.GetUnderlying()->End(&query);
     }
 
-	std::pair<uint64, uint64> CalculateSynchronisation(DeviceContext& context, Query& query, Query& disjoint)
+	std::pair<uint64, uint64> CalculateSynchronisation(DeviceContext& context, ID3D::Query& query, ID3D::Query& disjoint)
 	{
 		// 
 		//      Do the query 3 times... We should be fully synchronised by that
@@ -72,8 +65,7 @@ namespace RenderCore { namespace Metal_DX11 { namespace GPUProfiler     /// Low 
 			D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
 			HRESULT hresult = 0;
 			do {
-				hresult = context.GetUnderlying()->GetData(
-					disjoint._query.get(), &disjointData, sizeof(disjointData), 0);
+				hresult = context.GetUnderlying()->GetData(&disjoint, &disjointData, sizeof(disjointData), 0);
 			} while (hresult != S_OK);
 
 			context.GetUnderlying()->Flush();
@@ -81,8 +73,7 @@ namespace RenderCore { namespace Metal_DX11 { namespace GPUProfiler     /// Low 
 
 			if (!disjointData.Disjoint) {       // (it's possible that every result is disjoint... eg, if the device is unplugged, etc). In this case, we'll just get back bad data
 				do {
-					hresult = context.GetUnderlying()->GetData(
-						query._query.get(), &result.second, sizeof(result.second), 0);
+					hresult = context.GetUnderlying()->GetData(&query, &result.second, sizeof(result.second), 0);
 				} while (hresult != S_OK);
 			}
 
