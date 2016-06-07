@@ -15,6 +15,7 @@
     <ClCompile Include="..\Vulkan\Metal\TextureView.cpp" />
     <ClCompile Include="..\Vulkan\Metal\FrameBuffer.cpp" />
     <ClCompile Include="..\Vulkan\Metal\PipelineLayout.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\QueryPool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />
@@ -29,7 +30,6 @@
     <ClInclude Include="..\Vulkan\Metal\DeviceContextImpl.h" />
     <ClInclude Include="..\Vulkan\Metal\Format.h" />
     <ClInclude Include="..\Vulkan\Metal\Forward.h" />
-    <ClInclude Include="..\Vulkan\Metal\GPUProfiler.h" />
     <ClInclude Include="..\Vulkan\Metal\IncludeVulkan.h" />
     <ClInclude Include="..\Vulkan\Metal\InputLayout.h" />
     <ClInclude Include="..\Vulkan\Metal\ObjectFactory.h" />
@@ -37,5 +37,6 @@
     <ClInclude Include="..\Vulkan\Metal\FrameBuffer.h" />
     <ClInclude Include="..\Vulkan\Metal\PipelineLayout.h" />
     <ClInclude Include="..\Vulkan\Metal\VulkanForward.h" />
+    <ClInclude Include="..\Vulkan\Metal\QueryPool.h" />
   </ItemGroup>
 </Project>

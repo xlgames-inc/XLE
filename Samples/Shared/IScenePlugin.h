@@ -28,7 +28,7 @@ namespace Sample
             RenderCore::IThreadContext& threadContext,
             SceneEngine::LightingParserContext& parserContext) = 0;
         virtual void ExecuteScene(
-            RenderCore::Metal::DeviceContext* context, 
+			RenderCore::IThreadContext& context,
             SceneEngine::LightingParserContext& parserContext, 
             const SceneEngine::SceneParseSettings& parseSettings,
             unsigned techniqueIndex) const = 0;

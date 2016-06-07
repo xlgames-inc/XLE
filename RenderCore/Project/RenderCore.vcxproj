@@ -53,7 +53,8 @@
     <ClInclude Include="..\FlexForward.h" />
     <ClInclude Include="..\Format.h" />
     <ClInclude Include="..\FrameBufferDesc.h" />
-    <ClInclude Include="..\GPUProfiler.h" />
+    <ClInclude Include="..\IAnnotator.h" />
+    <ClInclude Include="..\IAnnotator_Forward.h" />
     <ClInclude Include="..\IDevice.h" />
     <ClInclude Include="..\FlexBegin.h" />
     <ClInclude Include="..\FlexEnd.h" />
@@ -68,10 +69,10 @@
     <ClInclude Include="..\Metal\DeviceContextImpl.h" />
     <ClInclude Include="..\Metal\Forward.h" />
     <ClInclude Include="..\Metal\FrameBuffer.h" />
-    <ClInclude Include="..\Metal\GPUProfiler.h" />
     <ClInclude Include="..\Metal\InputLayout.h" />
     <ClInclude Include="..\Metal\Metal.h" />
     <ClInclude Include="..\Metal\ObjectFactory.h" />
+    <ClInclude Include="..\Metal\QueryPool.h" />
     <ClInclude Include="..\Metal\Resource.h" />
     <ClInclude Include="..\Metal\Shader.h" />
     <ClInclude Include="..\Metal\State.h" />
@@ -94,10 +95,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Annotator.cpp" />
     <ClCompile Include="..\DX11\Device.cpp" />
     <ClCompile Include="..\Format.cpp" />
     <ClCompile Include="..\FrameBufferDesc.cpp" />
-    <ClCompile Include="..\GPUProfiler.cpp" />
     <ClCompile Include="..\Init.cpp" />
     <ClCompile Include="..\MinimalShaderSource.cpp" />
     <ClCompile Include="..\RenderUtils.cpp" />

@@ -5,13 +5,14 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Device.h"
+#include "../IAnnotator.h"
+#include "../Format.h"
 #include "Metal/VulkanCore.h"
 #include "Metal/ObjectFactory.h"
 #include "Metal/Format.h"
 #include "Metal/Pools.h"
 #include "Metal/Resource.h"
 #include "Metal/PipelineLayout.h"
-#include "../Format.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/MemoryUtils.h"
@@ -1049,6 +1050,16 @@ namespace RenderCore { namespace ImplVulkan
     {
         _metalContext->BeginCommandList();
     }
+
+	IAnnotator& ThreadContext::GetAnnotator()
+	{
+		if (!_annotator) {
+			auto d = _device.lock();
+			assert(d);
+			_annotator = CreateAnnotator(*d);
+		}
+		return *_annotator;
+	}
 
     ThreadContext::ThreadContext(
 		std::shared_ptr<Device> device,

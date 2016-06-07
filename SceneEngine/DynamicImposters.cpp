@@ -11,8 +11,8 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/TextureView.h"
-#include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Metal/QueryPool.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
@@ -23,6 +23,7 @@
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/IAnnotator.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
@@ -529,7 +530,7 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         const QueuedObject& ob) -> PreparedSprite
     {
-        Metal::GPUProfiler::DebugAnnotation annon(context, L"Imposter-Prepare");
+        Metal::GPUAnnotation annon(context, "Imposter-Prepare");
 
             // First we need to calculate the correct size for the sprite required
             // for this object. Because we're using a generic rectangle packing

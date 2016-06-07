@@ -22,9 +22,10 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/GPUProfiler.h"
+#include "../RenderCore/Metal/QueryPool.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/IAnnotator.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -889,7 +890,7 @@ namespace SceneEngine
         const VolumetricFogConfig::Renderer& rendererCfg,
         const VolumetricFogConfig::FogVolume& volume)
     {
-        Metal::GPUProfiler::DebugAnnotation anno(*metalContext, L"VolFog");
+        Metal::GPUAnnotation anno(*metalContext, "VolFog");
 
         const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
         const auto samplingCount = resolveContext.GetSamplingCount();
@@ -905,7 +906,7 @@ namespace SceneEngine
         const VolumetricFogConfig::Renderer& rendererCfg,
         const VolumetricFogConfig::FogVolume& volume)
     {
-        Metal::GPUProfiler::DebugAnnotation anno(*metalContext, L"VolFog");
+        Metal::GPUAnnotation anno(*metalContext, "VolFog");
 
         const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
         const auto samplingCount = resolveContext.GetSamplingCount();

@@ -26,10 +26,11 @@
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
-#include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/Resource.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
+#include "../RenderCore/Metal/QueryPool.h"
+#include "../RenderCore/IAnnotator.h"
 #include "../BufferUploads/ResourceLocator.h"
 
 #include "../ConsoleRig/Console.h"
@@ -276,7 +277,7 @@ namespace SceneEngine
     void LightingParser_ResolveGBuffer(
         Metal::DeviceContext& metalContext, LightingParserContext& parserContext, IMainTargets& mainTargets)
     {
-        Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"ResolveGBuffer");
+        Metal::GPUAnnotation anno(metalContext, "ResolveGBuffer");
 
         const bool doSampleFrequencyOptimisation = Tweakable("SampleFrequencyOptimisation", true);
 
@@ -314,7 +315,7 @@ namespace SceneEngine
 #endif
 
         {
-            Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Prepare");
+            Metal::GPUAnnotation anno(metalContext, "Prepare");
             for (auto i=parserContext._plugins.cbegin(); i!=parserContext._plugins.cend(); ++i) {
                 CATCH_ASSETS_BEGIN
                     (*i)->OnLightingResolvePrepare(metalContext, parserContext, lightingResolveContext);
@@ -409,7 +410,7 @@ namespace SceneEngine
             // Note that we have to do MSAA stuff when rendering the sky (even though the color result 
             // for each sample within a pixel is identical).
             if (Tweakable("DoSky", true)) {
-                Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Sky");
+                Metal::GPUAnnotation anno(metalContext, "Sky");
                 for (unsigned c=0; c<passCount; ++c) {
                     metalContext.Bind(resolveRes._dssPrepareSky, StencilSky);
                     Sky_Render(metalContext, parserContext, false);
@@ -432,7 +433,7 @@ namespace SceneEngine
             metalContext.Bind(Techniques::CommonResources()._blendOpaque);
             for (unsigned c=0; c<passCount; ++c) {
                 CATCH_ASSETS_BEGIN
-                    Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Ambient");
+                    Metal::GPUAnnotation anno(metalContext, "Ambient");
 
                     lightingResolveContext.SetPass((LightingResolveContext::Pass::Enum)c);
 
@@ -570,7 +571,7 @@ namespace SceneEngine
         auto lightCount = parserContext.GetSceneParser()->GetLightCount();
         if (!lightCount) return;
 
-        Metal::GPUProfiler::DebugAnnotation anno(context, L"Lights");
+        Metal::GPUAnnotation anno(context, "Lights");
 
         using CB = LightingResolveShaders::CB;
         using SR = LightingResolveShaders::SR;

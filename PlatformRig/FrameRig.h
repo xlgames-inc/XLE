@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../RenderCore/IDevice_Forward.h"
-#include "../RenderCore/GPUProfiler.h"
+#include "../RenderCore/IThreadContext_Forward.h"
 #include <functional>
 #include <memory>
 
@@ -41,7 +41,6 @@ namespace PlatformRig
         FrameResult ExecuteFrame(
             RenderCore::IThreadContext& context,
             RenderCore::IPresentationChain* presChain,
-            RenderCore::IAnnotator* gpuProfiler,
             Utility::HierarchicalCPUProfiler* profiler,
             const FrameRenderFunction& renderFunction);
 

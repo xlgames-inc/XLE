@@ -12,7 +12,7 @@
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/GPUProfiler.h"
+#include "../../RenderCore/IAnnotator.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
@@ -102,7 +102,7 @@ namespace Sample
         using RenderCore::Metal::ConstantBuffer;
         using namespace SceneEngine;
 
-//        RenderCore::Metal::GPUProfiler::DebugAnnotation anno(context, L"Characters");
+		RenderCore::GPUAnnotation anno(context, "Characters");
         CPUProfileEvent pEvnt("CharactersSceneRender", g_cpuProfiler);
 
             //  Turn on auto cotangents for character rendering
@@ -153,7 +153,7 @@ namespace Sample
                 metalContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
                 metalContext->Bind(RenderCore::Techniques::CommonResources()._blendOpaque);
 
-				RenderCore::GPUProfilerBlock profileBlock(*g_gpuProfiler.get(), context, "RenderCharacters");
+				RenderCore::GPUProfilerBlock profileBlock(context, "RenderCharacters");
 
                 auto si = _pimpl->_preallocatedState.begin();
                 for (auto i=_pimpl->_stateCache.begin(); i!=_pimpl->_stateCache.end(); ++i, ++si) {
@@ -213,8 +213,8 @@ namespace Sample
         if (interleavedRender) 
             return;
 
-		RenderCore::GPUProfilerBlock profileBlock(*g_gpuProfiler.get(), context, "PrepareAnimation");
-//        RenderCore::Metal::GPUProfiler::DebugAnnotation anno(context, L"PrepareCharacters");
+		RenderCore::GPUProfilerBlock profileBlock(context, "PrepareAnimation");
+		RenderCore::GPUAnnotation anno(context, "PrepareCharacters");
 
             //
             //      Separate state preparation from rendering, so we can profile

@@ -15,7 +15,7 @@
 #include "LightDesc.h"
 
 #include "../RenderCore/Techniques/ResourceBox.h"
-#include "../RenderCore/GPUProfiler.h"
+#include "../RenderCore/IAnnotator.h"
 #include "../RenderCore/Metal/State.h"
 #include "../ConsoleRig/Console.h"
 #include "../Core/Exceptions.h"

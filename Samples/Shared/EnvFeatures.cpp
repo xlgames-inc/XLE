@@ -12,7 +12,7 @@
 #include "../../SceneEngine/ShallowSurface.h"
 #include "../../SceneEngine/VegetationSpawn.h"
 #include "../../SceneEngine/SceneEngineUtils.h" // for AsDelaySteps
-#include "../../RenderCore/GPUProfiler.h"
+#include "../../RenderCore/IAnnotator.h"
 #include "../../Tools/EntityInterface/EnvironmentSettings.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
 #include "../../Assets/ConfigFileContainer.h"
@@ -21,7 +21,6 @@
 namespace Sample
 {
     static const ::Assets::ResChar VegetationSpawnCfg[] = "vegetationspawn.cfg";
-    namespace GPUProfiler = RenderCore::Metal::GPUProfiler;
 
     void ScenePlugin_EnvironmentFeatures::LoadingPhase()
     {
@@ -58,8 +57,8 @@ namespace Sample
         }
     }
 
-    void ScenePlugin_EnvironmentFeatures::ExecuteScene(   
-        RenderCore::Metal::DeviceContext* context, 
+    void ScenePlugin_EnvironmentFeatures::ExecuteScene(
+		RenderCore::IThreadContext& context, 
         SceneEngine::LightingParserContext& parserContext, 
         const SceneEngine::SceneParseSettings& parseSettings,
         unsigned techniqueIndex) const
@@ -73,18 +72,18 @@ namespace Sample
             if (!delaySteps.empty()) {
                 auto* name = VegetationSpawnName(parseSettings._batchFilter);
                 CPUProfileEvent pEvnt(name, g_cpuProfiler);
-                RenderCore::GPUProfilerBlock profileBlock(*g_gpuProfiler.get(), *context, name);
+                RenderCore::GPUProfilerBlock profileBlock(context, name);
                 CATCH_ASSETS_BEGIN
                     for (auto i:delaySteps)
-                        _vegetationSpawnManager->Render(*context, parserContext, techniqueIndex, i);
+                        _vegetationSpawnManager->Render(context, parserContext, techniqueIndex, i);
                 CATCH_ASSETS_END(parserContext)
             }
 
             if (parseSettings._batchFilter == BF::Transparent) {
                 CPUProfileEvent pEvnt("ShallowSurface", g_cpuProfiler);
-				RenderCore::GPUProfilerBlock profileBlock(*g_gpuProfiler.get(), *context, "ShallowSurface");
+				RenderCore::GPUProfilerBlock profileBlock(context, "ShallowSurface");
                 if (_shallowSurfaces && _surfaceHeights)
-                    _shallowSurfaces->RenderDebugging(*context, parserContext, techniqueIndex, _surfaceHeights.get());
+                    _shallowSurfaces->RenderDebugging(context, parserContext, techniqueIndex, _surfaceHeights.get());
             }
         }
     }

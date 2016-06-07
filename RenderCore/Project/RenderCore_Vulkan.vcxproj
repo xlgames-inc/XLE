@@ -109,6 +109,7 @@
     <ClCompile Include="..\Vulkan\Metal\ObjectFactory.cpp" />
     <ClCompile Include="..\Vulkan\Metal\PipelineLayout.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Pools.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\QueryPool.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Resource.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Shader.cpp" />
     <ClCompile Include="..\Vulkan\Metal\ShaderReflection.cpp" />
@@ -122,7 +123,7 @@
     <ClInclude Include="..\Vulkan\Metal\Format.h" />
     <ClInclude Include="..\Vulkan\Metal\Forward.h" />
     <ClInclude Include="..\Vulkan\Metal\FrameBuffer.h" />
-    <ClInclude Include="..\Vulkan\Metal\GPUProfiler.h" />
+    <ClInclude Include="..\Vulkan\Metal\QueryPool.h" />
     <ClInclude Include="..\Vulkan\Metal\IncludeVulkan.h" />
     <ClInclude Include="..\Vulkan\Metal\InputLayout.h" />
     <ClInclude Include="..\Vulkan\Metal\ObjectFactory.h" />

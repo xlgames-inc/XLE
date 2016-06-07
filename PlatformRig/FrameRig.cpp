@@ -10,7 +10,7 @@
 #include "MainInputHandler.h"
 
 #include "../RenderCore/IThreadContext.h"
-#include "../RenderCore/GPUProfiler.h"
+#include "../RenderCore/IAnnotator.h"
 #include "../RenderOverlays/Font.h"
 #include "../RenderOverlays/DebuggingDisplay.h"
 
@@ -164,7 +164,6 @@ namespace PlatformRig
     auto FrameRig::ExecuteFrame(
         RenderCore::IThreadContext& context,
         RenderCore::IPresentationChain* presChain,
-        RenderCore::IAnnotator* gpuProfiler,
         HierarchicalCPUProfiler* cpuProfiler,
         const FrameRenderFunction& renderFunction) -> FrameResult
     {
@@ -187,8 +186,7 @@ namespace PlatformRig
         }
         _pimpl->_prevFrameStartTime = startTime;
 
-        if (gpuProfiler)
-			gpuProfiler->Frame_Begin(context, _pimpl->_frameRenderCount);
+		context.GetAnnotator().Frame_Begin(context, _pimpl->_frameRenderCount);
 
         if (_pimpl->_updateAsyncMan)
             Assets::Services::GetAsyncMan().Update();
@@ -235,8 +233,7 @@ namespace PlatformRig
             }
         }
 
-        if (gpuProfiler)
-			gpuProfiler->Frame_End(context);
+		context.GetAnnotator().Frame_End(context);
 
         uint64 duration = GetPerformanceCounter() - startTime;
         _pimpl->_frameRate.PushFrameDuration(duration);

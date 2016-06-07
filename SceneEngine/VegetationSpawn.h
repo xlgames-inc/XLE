@@ -79,7 +79,7 @@ namespace SceneEngine
 
     void VegetationSpawn_Prepare(
         RenderCore::IThreadContext& context,
-        RenderCore::Metal::DeviceContext& metalContext, LightingParserContext& parserContext,
+        LightingParserContext& parserContext,
         PreparedScene& preparedScene,
         const VegetationSpawnConfig& cfg,
         VegetationSpawnResources& resources);

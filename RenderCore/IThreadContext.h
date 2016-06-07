@@ -8,6 +8,7 @@
 
 #include "IThreadContext_Forward.h"
 #include "IDevice_Forward.h"
+#include "IAnnotator_Forward.h"
 #include "../Utility/IteratorUtils.h"
 #include <memory>
 
@@ -103,6 +104,8 @@ namespace RenderCore
         IMETHOD auto			GetDevice() const -> std::shared_ptr<IDevice> IPURE;
         IMETHOD void            ClearAllBoundTargets() const IPURE;
 		IMETHOD void			InvalidateCachedState() const IPURE;
+
+		IMETHOD IAnnotator&		GetAnnotator() IPURE;
 
         IMETHOD ThreadContextStateDesc  GetStateDesc() const IPURE;
         IDESTRUCTOR

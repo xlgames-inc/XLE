@@ -1,12 +1,11 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
 
-#include "IThreadContext_Forward.h"
+#include "IAnnotator_Forward.h"
+#include "IThreadContext.h"
 #include "IDevice_Forward.h"
 #include "../Core/Types.h"
 #include <utility>
@@ -61,21 +60,41 @@ namespace RenderCore
 		class GPUProfilerBlock
 		{
 		public:
-			GPUProfilerBlock(IAnnotator& annotator, IThreadContext& context, const char name[])
-			: _annotator(&annotator), _name(name), _context(&context)
+			GPUProfilerBlock(IThreadContext& context, const char name[])
+			: _name(name), _context(&context)
 			{
-				_annotator->Event(*_context, _name, IAnnotator::EventTypes::ProfileBegin);
+				_context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::ProfileBegin);
 			}
 
 			~GPUProfilerBlock()
 			{
-				_annotator->Event(*_context, _name, IAnnotator::EventTypes::ProfileEnd);
+				_context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::ProfileEnd);
 			}
 
 			GPUProfilerBlock(const GPUProfilerBlock&) = delete;
 			GPUProfilerBlock& operator=(const GPUProfilerBlock&) = delete;
 		private:
-			IAnnotator*			_annotator; 
+			IThreadContext*		_context;
+			const char*			_name;
+		};
+
+		class GPUAnnotation
+		{
+		public:
+			GPUAnnotation(IThreadContext& context, const char name[])
+			: _name(name), _context(&context)
+			{
+				_context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::MarkerBegin);
+			}
+
+			~GPUAnnotation()
+			{
+				_context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::MarkerEnd);
+			}
+
+			GPUAnnotation(const GPUAnnotation&) = delete;
+			GPUAnnotation& operator=(const GPUAnnotation&) = delete;
+		private:
 			IThreadContext*		_context;
 			const char*			_name;
 		};

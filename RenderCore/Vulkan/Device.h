@@ -122,6 +122,8 @@ namespace RenderCore { namespace ImplVulkan
         Metal_Vulkan::CommandPool&  GetRenderingCommandPool()   { return _renderingCommandPool; }
         VkQueue                     GetQueue()                  { return _queue; }
 
+		IAnnotator&					GetAnnotator();
+
         ThreadContext(
             std::shared_ptr<Device> device, 
 			VkQueue queue,
@@ -135,6 +137,7 @@ namespace RenderCore { namespace ImplVulkan
 		unsigned                        _frameId;
         Metal_Vulkan::CommandPool		_renderingCommandPool;
 		std::shared_ptr<Metal_Vulkan::DeviceContext>     _metalContext;
+		std::unique_ptr<IAnnotator>		_annotator;
 
 		VkDevice							_underlyingDevice;
 		VkQueue								_queue;

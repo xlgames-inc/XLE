@@ -16,7 +16,7 @@
 #include "../../PlatformRig/OverlaySystem.h"
 
 #include "../../RenderCore/Init.h"
-#include "../../RenderCore/GPUProfiler.h"
+#include "../../RenderCore/IAnnotator.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Assets/Services.h"
@@ -52,7 +52,6 @@ namespace Sample
 
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
-    std::unique_ptr<RenderCore::IAnnotator> g_gpuProfiler;
     Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +62,7 @@ namespace Sample
         SceneEngine::LightingParserContext& lightingParserContext, BasicSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* debugSystem);
-    static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys);
+    static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys, RenderCore::IAnnotator* annotator);
     void RenderPostScene(RenderCore::IThreadContext& context);
 
     void ExecuteSample()
@@ -108,7 +107,6 @@ namespace Sample
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
         renderAssetServices->InitColladaCompilers();
-		g_gpuProfiler = RenderCore::CreateAnnotator(*renderDevice);
         RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices->GetBufferUploads());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
 
@@ -136,8 +134,10 @@ namespace Sample
                 //  It just provides a convenient architecture for visualizing important information.
             LogInfo << "Setup tools and debugging";
             FrameRig frameRig;
+			auto context = renderDevice->GetImmediateContext();
+
             InitDebugDisplays(*frameRig.GetDebugSystem());
-            InitProfilerDisplays(*frameRig.GetDebugSystem());
+            InitProfilerDisplays(*frameRig.GetDebugSystem(), &context->GetAnnotator());
 
             auto overlaySwitch = std::make_shared<PlatformRig::OverlaySystemSwitch>();
             overlaySwitch->AddSystem(RenderOverlays::DebuggingDisplay::KeyId_Make("~"), PlatformRig::CreateConsoleOverlaySystem());
@@ -173,7 +173,7 @@ namespace Sample
                 //          of timing and some thread management taskes
                 //      * the DeviceContext provides the methods we need for rendering.
             LogInfo << "Setup frame rig and rendering context";
-            auto context = renderDevice->GetImmediateContext();
+            
 
             RenderCore::Techniques::NamedResources namedResources;
 
@@ -189,7 +189,7 @@ namespace Sample
 
                 auto frameResult = frameRig.ExecuteFrame(
                     *context.get(), presentationChain.get(), 
-                    g_gpuProfiler.get(), &g_cpuProfiler,
+                    &g_cpuProfiler,
                     std::bind(
                         RenderFrame, std::placeholders::_1, std::placeholders::_2,
                         std::ref(lightingParserContext), mainScene.get(), 
@@ -213,7 +213,6 @@ namespace Sample
         RenderCore::Metal::DeviceContext::PrepareForDestruction(renderDevice.get(), presentationChain.get());
 
         mainScene.reset();
-        g_gpuProfiler.reset();
 
         assetServices->GetAssetSets().Clear();
         RenderCore::Techniques::ResourceBoxes_Shutdown();
@@ -290,10 +289,10 @@ namespace Sample
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys)
+    static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys, RenderCore::IAnnotator* annotator)
     {
-        if (g_gpuProfiler) {
-            auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(*g_gpuProfiler.get());
+        if (annotator) {
+            auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(*annotator);
             debugSys.Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
         }
         debugSys.Register(

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "GPUProfileDisplay.h"
+#include "../../RenderCore/IAnnotator.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"

@@ -5,6 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Device.h"
+#include "../IAnnotator.h"
+#include "../Format.h"
 #include "Metal/DeviceContext.h"
 #include "Metal/State.h"
 #include "Metal/ObjectFactory.h"
@@ -12,7 +14,6 @@
 #include "Metal/Format.h"
 #include "Metal/TextureView.h"
 #include "Metal/ObjectFactory.h"
-#include "../Format.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
@@ -484,6 +485,16 @@ namespace RenderCore { namespace ImplDX11
 	void ThreadContext::InvalidateCachedState() const
 	{
 		_underlying->InvalidateCachedState();
+	}
+
+	IAnnotator& ThreadContext::GetAnnotator()
+	{
+		if (!_annotator) {
+			auto d = _device.lock();
+			assert(d);
+			_annotator = CreateAnnotator(*d);
+		}
+		return *_annotator;
 	}
 
     ThreadContext::ThreadContext(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device)

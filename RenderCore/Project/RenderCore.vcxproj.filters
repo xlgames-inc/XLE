@@ -45,9 +45,6 @@
       <Filter>DX11</Filter>
     </ClInclude>
     <ClInclude Include="..\IDevice_Forward.h" />
-    <ClInclude Include="..\Metal\GPUProfiler.h">
-      <Filter>Metal</Filter>
-    </ClInclude>
     <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\FlexForward.h">
       <Filter>Util</Filter>
@@ -76,7 +73,6 @@
     <ClInclude Include="..\Vulkan\IDeviceVulkan.h">
       <Filter>Vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="..\GPUProfiler.h" />
     <ClInclude Include="..\Metal\ObjectFactory.h">
       <Filter>Metal</Filter>
     </ClInclude>
@@ -105,6 +101,11 @@
     <ClInclude Include="..\Types_Forward.h">
       <Filter>Util</Filter>
     </ClInclude>
+    <ClInclude Include="..\Metal\QueryPool.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IAnnotator.h" />
+    <ClInclude Include="..\IAnnotator_Forward.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">
@@ -141,7 +142,6 @@
     <ClCompile Include="..\Vulkan\DeviceVulkan.cpp">
       <Filter>Vulkan</Filter>
     </ClCompile>
-    <ClCompile Include="..\GPUProfiler.cpp" />
     <ClCompile Include="..\Format.cpp">
       <Filter>Util</Filter>
     </ClCompile>
@@ -152,5 +152,6 @@
       <Filter>Util</Filter>
     </ClCompile>
     <ClCompile Include="..\Init.cpp" />
+    <ClCompile Include="..\Annotator.cpp" />
   </ItemGroup>
 </Project>

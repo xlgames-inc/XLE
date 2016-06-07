@@ -35,9 +35,10 @@
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
-#include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/QueryPool.h"
+#include "../RenderCore/IAnnotator.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
@@ -257,7 +258,7 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         const Metal::ShaderResourceView& depthsSRV)
     {
-        Metal::GPUProfiler::DebugAnnotation anno(context, L"PreTranslucency");
+        Metal::GPUAnnotation anno(context, "PreTranslucency");
 
             // note --  these things can be executed by the scene parser? Are they better
             //          off handled by the scene parser, or the lighting parser?
@@ -287,7 +288,7 @@ namespace SceneEngine
         const Metal::ShaderResourceView& depthsSRV,
         const Metal::ShaderResourceView& normalsSRV)
     {
-        Metal::GPUProfiler::DebugAnnotation anno(context, L"PostGBuffer");
+        Metal::GPUAnnotation anno(context, "PostGBuffer");
         
         if (Tweakable("DoRain", false)) {
             Rain_Render(&context, parserContext);
@@ -306,9 +307,9 @@ namespace SceneEngine
     void LightingParser_Overlays(   IThreadContext& context,
                                     LightingParserContext& parserContext)
     {
-        auto metalContext = Metal::DeviceContext::Get(context);
-        Metal::GPUProfiler::DebugAnnotation anno(*metalContext, L"Overlays");
+        GPUAnnotation anno(context, "Overlays");
 
+		auto metalContext = Metal::DeviceContext::Get(context);
         Metal::ViewportDesc mainViewportDesc(*metalContext);
         auto& refractionBox = Techniques::FindCachedBox2<RefractionsBuffer>(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2));
         refractionBox.Build(*metalContext, parserContext, 4.f);
@@ -365,12 +366,10 @@ namespace SceneEngine
         const SPS& parseSettings,
         PreparedScene& preparedScene,
         unsigned techniqueIndex,
-        const wchar_t* name)
+		const char name[])
     {
         CATCH_ASSETS_BEGIN
-            #if defined(GPUANNOTATIONS_ENABLE)
-                Metal::GPUProfiler::DebugAnnotation anno(*RenderCore::Metal::DeviceContext::Get(context), name);
-            #endif
+            GPUAnnotation anno(context, name);
             parserContext.GetSceneParser()->ExecuteScene(
                 context, parserContext, parseSettings, preparedScene, techniqueIndex);
         CATCH_ASSETS_END(parserContext)
@@ -409,7 +408,7 @@ namespace SceneEngine
             ExecuteScene(
                 context, parserContext, SPS(SPS::BatchFilter::PreDepth, normalRenderToggles),
                 preparedScene,
-                TechniqueIndex_DepthOnly, L"MainScene-DepthOnly");
+                TechniqueIndex_DepthOnly, "MainScene-DepthOnly");
         }
 
             /////
@@ -430,7 +429,7 @@ namespace SceneEngine
         ExecuteScene(
             context, parserContext, SPS(SPS::BatchFilter::General, normalRenderToggles),
             preparedScene,
-            TechniqueIndex_General, L"MainScene-General");
+            TechniqueIndex_General, "MainScene-General");
 
             /////
 
@@ -455,7 +454,7 @@ namespace SceneEngine
             ReturnToSteadyState(metalContext);
             ExecuteScene(
                 context, parserContext, SPS::BatchFilter::OITransparent, preparedScene,
-                TechniqueIndex_OrderIndependentTransparency, L"MainScene-OITrans");
+                TechniqueIndex_OrderIndependentTransparency, "MainScene-OITrans");
         }
 
             /////
@@ -539,7 +538,7 @@ namespace SceneEngine
             ExecuteScene(
                 context, parserContext, SPS::BatchFilter::TransparentPreDepth,
                 preparedScene,
-                TechniqueIndex_DepthOnly, L"MainScene-TransPreDepth");
+                TechniqueIndex_DepthOnly, "MainScene-TransPreDepth");
         }
 
         if (BatchHasContent(parserContext, SPS::BatchFilter::Transparent)) {
@@ -547,7 +546,7 @@ namespace SceneEngine
             ExecuteScene(
                 context, parserContext, SPS::BatchFilter::Transparent,
                 preparedScene,
-                TechniqueIndex_General, L"MainScene-PostGBuffer");
+                TechniqueIndex_General, "MainScene-PostGBuffer");
         }
         
 #if 0 // platformtemp
@@ -560,7 +559,7 @@ namespace SceneEngine
                 ExecuteScene(
                     context, parserContext, SPS::BatchFilter::OITransparent,
                     preparedScene,
-                    TechniqueIndex_OrderIndependentTransparency, L"MainScene-PostGBuffer-OI");
+                    TechniqueIndex_OrderIndependentTransparency, "MainScene-PostGBuffer-OI");
 
                     // note; we use the main depth buffer for this call (not the duplicated buffer)
                 OrderIndependentTransparency_Resolve(metalContext, parserContext, *transTargets, mainTargets.GetSRV(IMainTargets::MultisampledDepth));
@@ -581,13 +580,13 @@ namespace SceneEngine
                 ExecuteScene(
                     context, parserContext, SPS::BatchFilter::OITransparent,
                     preparedScene,
-                    TechniqueIndex_DepthOnly, L"MainScene-PostGBuffer-OI");
+                    TechniqueIndex_DepthOnly, "MainScene-PostGBuffer-OI");
 
                 stochTransOp.PrepareSecondPass(mainTargets._msaaDepthBuffer);
                 ExecuteScene(
                     context, parserContext, SPS::BatchFilter::OITransparent,
                     preparedScene,
-                    TechniqueIndex_StochasticTransparency, L"MainScene-PostGBuffer-OI-Res");
+                    TechniqueIndex_StochasticTransparency, "MainScene-PostGBuffer-OI-Res");
 
                 resetMarker = SavedTargets::ResetMarker();  // back to normal targets now
                 stochTransOp.Resolve();
@@ -603,7 +602,7 @@ namespace SceneEngine
                 ExecuteScene(
                     context, parserContext, SPS::BatchFilter::OITransparent,
                     preparedScene,
-                    TechniqueIndex_DepthWeightedTransparency, L"MainScene-PostGBuffer-OI");
+                    TechniqueIndex_DepthWeightedTransparency, "MainScene-PostGBuffer-OI");
 
                 resetMarker = SavedTargets::ResetMarker();  // back to normal targets now
                 transOp.Resolve();
@@ -612,7 +611,7 @@ namespace SceneEngine
                 ExecuteScene(
                     context, parserContext, SPS::BatchFilter::OITransparent,
                     preparedScene,
-                    TechniqueIndex_General, L"MainScene-PostGBuffer-OI");
+                    TechniqueIndex_General, "MainScene-PostGBuffer-OI");
             }
         }
 #endif
@@ -897,7 +896,7 @@ namespace SceneEngine
                 ExecuteScene(
                     context, parserContext, SPS::BatchFilter::General,
                     preparedScene,
-                    TechniqueIndex_Deferred, L"MainScene-OpaqueGBuffer");
+                    TechniqueIndex_Deferred, "MainScene-OpaqueGBuffer");
             } CATCH_ASSETS_END(parserContext)
 
             for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
@@ -943,7 +942,7 @@ namespace SceneEngine
         }
 
         {
-            Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Resolve-MSAA-HDR");
+            GPUAnnotation anno(context, "Resolve-MSAA-HDR");
 
             auto postLightingResolve = IMainTargets::LightResolve;
             if (!mainTargets.HasSRV(postLightingResolve))
@@ -1111,7 +1110,7 @@ namespace SceneEngine
         ExecuteScene(
             context, parserContext, sceneParseSettings,
             preparedScene,
-            TechniqueIndex_ShadowGen, L"ShadowGen-Prepare");
+            TechniqueIndex_ShadowGen, "ShadowGen-Prepare");
 
         for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
             (*p)->OnPostSceneRender(metalContext, parserContext, sceneParseSettings, TechniqueIndex_ShadowGen);
@@ -1140,7 +1139,7 @@ namespace SceneEngine
             return;
         }
 
-        Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Prepare-Shadows");
+        GPUAnnotation anno(context, "Prepare-Shadows");
 
             // todo --  we should be using a temporary frame heap for this vector
         auto shadowFrustumCount = scene->GetShadowProjectionCount();
@@ -1236,7 +1235,7 @@ namespace SceneEngine
         MainTargets mainTargets(parserContext, qualitySettings, enableParametersBuffer?1:2);
 
         {
-            Metal::GPUProfiler::DebugAnnotation anno(*metalContext, L"Prepare");
+            GPUAnnotation anno(context, "Prepare");
             for (auto i=parserContext._plugins.cbegin(); i!=parserContext._plugins.cend(); ++i) {
                 CATCH_ASSETS_BEGIN
                     (*i)->OnPreScenePrepare(context, parserContext, preparedScene);

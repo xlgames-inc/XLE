@@ -60,12 +60,15 @@ namespace RenderCore { namespace ImplDX11
         void                        IncrFrameId();
 		void						InvalidateCachedState() const;
 
+		IAnnotator&					GetAnnotator();
+
         ThreadContext(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device);
         ~ThreadContext();
     protected:
         std::shared_ptr<Metal_DX11::DeviceContext> _underlying;
         std::weak_ptr<Device>   _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
         unsigned                _frameId;
+		std::unique_ptr<IAnnotator> _annotator;
     };
 
     class ThreadContextDX11 : public ThreadContext, public Base_ThreadContextDX11
