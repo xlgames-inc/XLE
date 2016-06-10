@@ -808,6 +808,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		vkCmdResetQueryPool(_commandList.get(), queryPool, firstQuery, queryCount);
 	}
 
+	void DeviceContext::CmdSetEvent(VkEvent evnt, VkPipelineStageFlags stageMask)
+	{
+		vkCmdSetEvent(_commandList.get(), evnt, stageMask);
+	}
+
     DeviceContext::DeviceContext(
         const ObjectFactory&    factory, 
         GlobalPools&            globalPools,

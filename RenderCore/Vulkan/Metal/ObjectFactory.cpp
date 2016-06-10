@@ -8,12 +8,14 @@
 #include "Resource.h"
 #include "IncludeVulkan.h"
 #include "../../../Core/Prefix.h"
+#include <queue>
+#include <deque>
 
 namespace RenderCore { namespace Metal_Vulkan
 {
     const VkAllocationCallbacks* g_allocationCallbacks = nullptr;
 
-    static std::shared_ptr<IDestructionQueue> CreateDestructionQueue(VulkanSharedPtr<VkDevice> device);
+	static std::shared_ptr<IDestructionQueue> CreateImmediateDestroyer(VulkanSharedPtr<VkDevice> device);
 
     VulkanUniquePtr<VkCommandPool> ObjectFactory::CreateCommandPool(
         unsigned queueFamilyIndex, VkCommandPoolCreateFlags flags) const
@@ -55,6 +57,26 @@ namespace RenderCore { namespace Metal_Vulkan
             Throw(VulkanAPIFailure(res, "Failure while creating Vulkan semaphore"));
         return std::move(result);
     }
+
+	VulkanUniquePtr<VkEvent> ObjectFactory::CreateEvent() const
+	{
+		VkEventCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO;
+		createInfo.pNext = nullptr;
+		createInfo.flags = 0;
+
+		auto d = _destruction.get();
+		VkEvent rawPtr = nullptr;
+		auto res = vkCreateEvent(
+			_device.get(), &createInfo,
+			g_allocationCallbacks, &rawPtr);
+		VulkanUniquePtr<VkEvent> result(
+			rawPtr,
+			[d](VkEvent sem) { d->Destroy(sem); });
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while creating Vulkan event"));
+		return std::move(result);
+	}
 
     VulkanUniquePtr<VkDeviceMemory> ObjectFactory::AllocateMemory(
         VkDeviceSize allocationSize, unsigned memoryTypeIndex) const
@@ -355,16 +377,17 @@ namespace RenderCore { namespace Metal_Vulkan
 		return formatProps;
 	}
 
-    void ObjectFactory::FlushDestructionQueue() const
-    {
-        _destruction->Flush();
-    }
+	void ObjectFactory::SetDefaultDestroyer(const std::shared_ptr<IDestructionQueue>& destruction)
+	{
+		_destruction = destruction;
+	}
 
     ObjectFactory::ObjectFactory(ObjectFactory&& moveFrom) never_throws
     : _memProps(std::move(moveFrom._memProps))
     , _physDev(std::move(moveFrom._physDev))
 	, _device(std::move(moveFrom._device))
     , _destruction(std::move(moveFrom._destruction))
+	, _immediateDestruction(std::move(moveFrom._immediateDestruction))
     {}
 
 	ObjectFactory& ObjectFactory::operator=(ObjectFactory&& moveFrom) never_throws
@@ -373,6 +396,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _physDev = std::move(moveFrom._physDev);
 		_device = std::move(moveFrom._device);
         _destruction = std::move(moveFrom._destruction);
+		_immediateDestruction = std::move(moveFrom._immediateDestruction);
         return *this;
     }
 
@@ -381,16 +405,13 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         _memProps = std::make_unique<VkPhysicalDeviceMemoryProperties>(VkPhysicalDeviceMemoryProperties{});
         vkGetPhysicalDeviceMemoryProperties(physDev, _memProps.get());
-        _destruction = CreateDestructionQueue(_device);
+		_immediateDestruction = CreateImmediateDestroyer(_device);
+		_destruction = _immediateDestruction;
     }
 
 	ObjectFactory::ObjectFactory() {}
 	ObjectFactory::~ObjectFactory() 
-    {
-        if (_destruction)
-            _destruction->Flush();
-    }
-
+    {}
 
     static ObjectFactory* s_defaultObjectFactory = nullptr;
 
@@ -428,6 +449,7 @@ namespace RenderCore { namespace Metal_Vulkan
     public:
         void    Destroy(VkCommandPool);
         void    Destroy(VkSemaphore);
+		void    Destroy(VkEvent);
         void    Destroy(VkDeviceMemory);
         void    Destroy(VkRenderPass);
         void    Destroy(VkImage);
@@ -444,15 +466,22 @@ namespace RenderCore { namespace Metal_Vulkan
         void    Destroy(VkSampler);
 		void	Destroy(VkQueryPool);
 
-        void    Flush();
+        void    Flush(FlushFlags::BitField);
 
-        DeferredDestruction(VulkanSharedPtr<VkDevice> device);
+        DeferredDestruction(VulkanSharedPtr<VkDevice> device, const std::shared_ptr<IAsyncTracker>& tracker);
         ~DeferredDestruction();
     private:
         VulkanSharedPtr<VkDevice> _device;
+		std::shared_ptr<IAsyncTracker> _gpuTracker;
 
+		using Marker = IAsyncTracker::Marker;
         template<typename Type>
-            using Queue = std::vector<Type>;
+            class Queue 
+			{
+			public:
+				std::queue<std::pair<Marker, unsigned>> _markerCounts;
+				std::deque<Type> _objects;
+			};
 
             // note --  the order here represents the order in  which objects
             //          of each type will be deleted. It can be significant,
@@ -461,7 +490,7 @@ namespace RenderCore { namespace Metal_Vulkan
         std::tuple<
               Queue<VkCommandPool>              // 0
             , Queue<VkSemaphore>                // 1
-            , Queue<VkFence>                    // 2
+			, Queue<VkFence>                    // 2
             , Queue<VkRenderPass>               // 3
             , Queue<VkImage>                    // 4
             , Queue<VkImageView>                // 5
@@ -476,13 +505,14 @@ namespace RenderCore { namespace Metal_Vulkan
             , Queue<VkDeviceMemory>             // 14
             , Queue<VkSampler>                  // 15
 			, Queue<VkQueryPool>				// 16
+			, Queue<VkEvent>					// 17
         > _queues;
 
         template<int Index, typename Type>
             void DoDestroy(Type obj);
 
         template<int Index>
-            void FlushQueue();
+            void FlushQueue(Marker marker);
     };
 
     template<int Index, typename Type>
@@ -490,14 +520,25 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         //  Note -- we need std::get<Type> access.. But that requires C++14, and
         //          isn't supported on VS2013
+		auto marker = _gpuTracker->GetProducerMarker();
         auto& q = std::get<Index>(_queues);
-        q.push_back(obj);
+		if (q._markerCounts.empty()) {
+			assert(q._objects.empty());
+			q._markerCounts.push(std::make_pair(marker, 1u));
+		} else if (q._markerCounts.front().first < marker) {
+			q._markerCounts.push(std::make_pair(marker, 1u));
+		} else {
+			assert(q._markerCounts.front().first == marker);
+			++q._markerCounts.front().second;
+		}
+		q._objects.push_back(obj);
     }
 
     template<typename Type> void DestroyObjectImmediate(VkDevice device, Type obj);
     template<> inline void DestroyObjectImmediate(VkDevice device, VkCommandPool obj)           { vkDestroyCommandPool(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkSemaphore obj)             { vkDestroySemaphore(device, obj, g_allocationCallbacks ); }
-    template<> inline void DestroyObjectImmediate(VkDevice device, VkFence obj)                 { vkDestroyFence(device, obj, g_allocationCallbacks ); }
+	template<> inline void DestroyObjectImmediate(VkDevice device, VkEvent obj)					{ vkDestroyEvent(device, obj, g_allocationCallbacks); }
+	template<> inline void DestroyObjectImmediate(VkDevice device, VkFence obj)                 { vkDestroyFence(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkRenderPass obj)            { vkDestroyRenderPass(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkImage obj)                 { vkDestroyImage(device, obj, g_allocationCallbacks ); }
     template<> inline void DestroyObjectImmediate(VkDevice device, VkImageView obj)             { vkDestroyImageView(device, obj, g_allocationCallbacks ); }
@@ -514,12 +555,21 @@ namespace RenderCore { namespace Metal_Vulkan
 	template<> inline void DestroyObjectImmediate(VkDevice device, VkQueryPool obj)				{ vkDestroyQueryPool(device, obj, g_allocationCallbacks); }
 
     template<int Index>
-        inline void DeferredDestruction::FlushQueue()
+        inline void DeferredDestruction::FlushQueue(Marker marker)
     {
+		// destroy up to and including the given marker
         auto& q = std::get<Index>(_queues);
-        for (auto i:q)
-            DestroyObjectImmediate(_device.get(), i);
-        q.clear();
+		while (!q._markerCounts.empty() && q._markerCounts.front().first <= marker) {
+			auto countToDelete = (size_t)q._markerCounts.front().second;
+
+			assert(countToDelete <= q._objects.size());
+			auto endi = q._objects.begin() + std::min(q._objects.size(), countToDelete);
+			for (auto i=q._objects.begin(); i!=endi; ++i)
+				DestroyObjectImmediate(_device.get(), *i);
+			
+			q._markerCounts.pop(); 
+			q._objects.erase(q._objects.begin(), endi);
+		}
     }
 
     void    DeferredDestruction::Destroy(VkCommandPool obj) { DoDestroy<0>(obj); }
@@ -539,42 +589,105 @@ namespace RenderCore { namespace Metal_Vulkan
     void    DeferredDestruction::Destroy(VkDeviceMemory obj) { DoDestroy<14>(obj); }
     void    DeferredDestruction::Destroy(VkSampler obj) { DoDestroy<15>(obj); }
 	void    DeferredDestruction::Destroy(VkQueryPool obj) { DoDestroy<16>(obj); }
+	void    DeferredDestruction::Destroy(VkEvent obj) { DoDestroy<17>(obj); }
 
-    void    DeferredDestruction::Flush()
+    void    DeferredDestruction::Flush(FlushFlags::BitField flags)
     {
-        FlushQueue<0>();
-        FlushQueue<1>();
-        FlushQueue<2>();
-        FlushQueue<3>();
-        FlushQueue<4>();
-        FlushQueue<5>();
-        FlushQueue<6>();
-        FlushQueue<7>();
-        FlushQueue<8>();
-        FlushQueue<9>();
-        FlushQueue<10>();
-        FlushQueue<11>();
-        FlushQueue<12>();
-        FlushQueue<13>();
-        FlushQueue<14>();
-        FlushQueue<15>();
-		FlushQueue<16>();
+		auto marker = (flags & FlushFlags::DestroyAll) ? ~0u : _gpuTracker->GetConsumerMarker();
+        FlushQueue<0>(marker);
+        FlushQueue<1>(marker);
+        FlushQueue<2>(marker);
+        FlushQueue<3>(marker);
+        FlushQueue<4>(marker);
+        FlushQueue<5>(marker);
+        FlushQueue<6>(marker);
+        FlushQueue<7>(marker);
+        FlushQueue<8>(marker);
+        FlushQueue<9>(marker);
+        FlushQueue<10>(marker);
+        FlushQueue<11>(marker);
+        FlushQueue<12>(marker);
+        FlushQueue<13>(marker);
+        FlushQueue<14>(marker);
+        FlushQueue<15>(marker);
+		FlushQueue<16>(marker);
+		FlushQueue<17>(marker);
     }
 
-    DeferredDestruction::DeferredDestruction(VulkanSharedPtr<VkDevice> device)
-    : _device(device)
+    DeferredDestruction::DeferredDestruction(VulkanSharedPtr<VkDevice> device, const std::shared_ptr<IAsyncTracker>& tracker)
+    : _device(device), _gpuTracker(tracker)
     {
     }
 
     DeferredDestruction::~DeferredDestruction() 
     {
-        Flush();
+        Flush(IDestructionQueue::FlushFlags::DestroyAll);
     }
 
-    static std::shared_ptr<IDestructionQueue> CreateDestructionQueue(VulkanSharedPtr<VkDevice> device)
-    {
-        return std::make_shared<DeferredDestruction>(std::move(device));
-    }
+	std::shared_ptr<IDestructionQueue> ObjectFactory::CreateMarkerTrackingDestroyer(const std::shared_ptr<IAsyncTracker>& tracker)
+	{
+		return std::make_shared<DeferredDestruction>(_device, tracker);
+	}
+
+	class ImmediateDestruction : public IDestructionQueue
+	{
+	public:
+		void    Destroy(VkCommandPool);
+		void    Destroy(VkSemaphore);
+		void    Destroy(VkEvent);
+		void    Destroy(VkDeviceMemory);
+		void    Destroy(VkRenderPass);
+		void    Destroy(VkImage);
+		void    Destroy(VkImageView);
+		void    Destroy(VkFramebuffer);
+		void    Destroy(VkShaderModule);
+		void    Destroy(VkDescriptorSetLayout);
+		void    Destroy(VkDescriptorPool);
+		void    Destroy(VkPipeline);
+		void    Destroy(VkPipelineCache);
+		void    Destroy(VkPipelineLayout);
+		void    Destroy(VkBuffer);
+		void    Destroy(VkFence);
+		void    Destroy(VkSampler);
+		void	Destroy(VkQueryPool);
+
+		void    Flush(FlushFlags::BitField);
+
+		ImmediateDestruction(VulkanSharedPtr<VkDevice> device);
+		~ImmediateDestruction();
+	private:
+		VulkanSharedPtr<VkDevice> _device;
+	};
+
+	void    ImmediateDestruction::Destroy(VkCommandPool obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkSemaphore obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkEvent obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkDeviceMemory obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkRenderPass obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkImage obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkImageView obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkFramebuffer obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkShaderModule obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkDescriptorSetLayout obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkDescriptorPool obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkPipeline obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkPipelineCache obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkPipelineLayout obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkBuffer obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkFence obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void    ImmediateDestruction::Destroy(VkSampler obj) { DestroyObjectImmediate(_device.get(), obj); }
+	void	ImmediateDestruction::Destroy(VkQueryPool obj) { DestroyObjectImmediate(_device.get(), obj); }
+
+	void    ImmediateDestruction::Flush(FlushFlags::BitField) {}
+
+	ImmediateDestruction::ImmediateDestruction(VulkanSharedPtr<VkDevice> device)
+	: _device(device) {}
+	ImmediateDestruction::~ImmediateDestruction() {}
+
+	static std::shared_ptr<IDestructionQueue> CreateImmediateDestroyer(VulkanSharedPtr<VkDevice> device)
+	{
+		return std::make_shared<ImmediateDestruction>(std::move(device));
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

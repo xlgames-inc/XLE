@@ -201,7 +201,7 @@ bool XlReleaseSemaphore(XlHandle h, int releaseCount, int* previousCount)
 
 XlHandle XlCreateEvent(bool manualReset)
 {
-    HANDLE h = CreateEvent(NULL, manualReset, FALSE, NULL);
+    HANDLE h = CreateEventA(NULL, manualReset, FALSE, NULL);
     if (h == INVALID_HANDLE_VALUE) {
         return NULL;
     }

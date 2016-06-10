@@ -56,7 +56,6 @@ namespace RenderCore { namespace ImplDX11
         bool                        IsImmediate() const;
         ThreadContextStateDesc      GetStateDesc() const;
         std::shared_ptr<IDevice>    GetDevice() const;
-        void                        ClearAllBoundTargets() const;
         void                        IncrFrameId();
 		void						InvalidateCachedState() const;
 

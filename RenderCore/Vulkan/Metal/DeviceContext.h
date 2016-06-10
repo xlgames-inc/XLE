@@ -343,6 +343,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkQueryPool queryPool, uint32_t query);
 		void CmdResetQueryPool(
 			VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount);
+		void CmdSetEvent(VkEvent evnt, VkPipelineStageFlags stageMask);
+		void CmdResetEvent(VkEvent evnt, VkPipelineStageFlags stageMask);
 
         DeviceContext(
             const ObjectFactory& factory, 

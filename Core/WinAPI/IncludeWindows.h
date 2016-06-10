@@ -22,6 +22,7 @@
 #undef DrawText
 #undef GetObject
 #undef CreateSemaphore
+#undef CreateEvent
 #undef ERROR
 #pragma pop_macro("ERROR")
 #pragma pop_macro("LOG")

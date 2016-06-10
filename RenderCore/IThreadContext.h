@@ -102,7 +102,6 @@ namespace RenderCore
         IMETHOD virtual void*   QueryInterface(const GUID& guid) IPURE;
         IMETHOD bool            IsImmediate() const IPURE;
         IMETHOD auto			GetDevice() const -> std::shared_ptr<IDevice> IPURE;
-        IMETHOD void            ClearAllBoundTargets() const IPURE;
 		IMETHOD void			InvalidateCachedState() const IPURE;
 
 		IMETHOD IAnnotator&		GetAnnotator() IPURE;

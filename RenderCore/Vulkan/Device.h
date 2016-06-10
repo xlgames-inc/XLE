@@ -105,6 +105,8 @@ namespace RenderCore { namespace ImplVulkan
 
 ////////////////////////////////////////////////////////////////////////////////
 
+	class EventBasedTracker;
+
     class ThreadContext : public Base_ThreadContext
     {
     public:
@@ -114,7 +116,6 @@ namespace RenderCore { namespace ImplVulkan
         bool                        IsImmediate() const;
         ThreadContextStateDesc      GetStateDesc() const;
         std::shared_ptr<IDevice>    GetDevice() const;
-        void                        ClearAllBoundTargets() const;
         void                        IncrFrameId();
 		void						InvalidateCachedState() const;
         void                        BeginCommandList();
@@ -123,6 +124,9 @@ namespace RenderCore { namespace ImplVulkan
         VkQueue                     GetQueue()                  { return _queue; }
 
 		IAnnotator&					GetAnnotator();
+
+		void SetGPUTracker(const std::shared_ptr<EventBasedTracker>&);
+		void AttachDestroyer(const std::shared_ptr<Metal_Vulkan::IDestructionQueue>&);
 
         ThreadContext(
             std::shared_ptr<Device> device, 
@@ -143,6 +147,9 @@ namespace RenderCore { namespace ImplVulkan
 		VkQueue								_queue;
 		const Metal_Vulkan::ObjectFactory*	_factory;
 		Metal_Vulkan::GlobalPools*			_globalPools;
+
+		std::shared_ptr<EventBasedTracker>	_gpuTracker;
+		std::shared_ptr<Metal_Vulkan::IDestructionQueue> _destrQueue;
     };
 
     class ThreadContextVulkan : public ThreadContext, public Base_ThreadContextVulkan

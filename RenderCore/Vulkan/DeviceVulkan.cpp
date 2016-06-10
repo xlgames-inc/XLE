@@ -440,12 +440,104 @@ namespace RenderCore { namespace ImplVulkan
         return queue;
     }
 
+	class EventBasedTracker : public Metal_Vulkan::IAsyncTracker
+	{
+	public:
+		virtual Marker GetConsumerMarker() const;
+		virtual Marker GetProducerMarker() const;
+
+		void IncrementProducerFrame(Metal_Vulkan::DeviceContext&);
+		void UpdateConsumer();
+
+		EventBasedTracker(Metal_Vulkan::ObjectFactory& factory, unsigned queueDepth);
+		~EventBasedTracker();
+	private:
+		struct Tracker
+		{
+			VulkanUniquePtr<VkEvent> _event;
+			Marker _frameMarker;
+		};
+		std::unique_ptr<Tracker[]> _trackers;
+		unsigned _bufferCount;
+		unsigned _producerBufferIndex;
+		unsigned _consumerBufferIndex;
+		Marker _currentProducerFrame;
+		Marker _lastConsumerFrame;
+		VkDevice _device;
+	};
+
+	auto EventBasedTracker::GetConsumerMarker() const -> Marker
+	{
+		return _lastConsumerFrame;
+	}
+
+	auto EventBasedTracker::GetProducerMarker() const -> Marker
+	{
+		return _currentProducerFrame;
+	}
+
+	void EventBasedTracker::IncrementProducerFrame(Metal_Vulkan::DeviceContext& context)
+	{
+		// set the marker on the frame that has just finished --
+		if (_trackers[_producerBufferIndex]._frameMarker != Marker_Invalid)
+			context.CmdSetEvent(_trackers[_producerBufferIndex]._event.get(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+
+		++_currentProducerFrame;
+		_producerBufferIndex = (_producerBufferIndex + 1) % _bufferCount; 
+		assert(_trackers[_producerBufferIndex]._frameMarker == Marker_Invalid); 
+		_trackers[_producerBufferIndex]._frameMarker = _currentProducerFrame;
+	}
+
+	void EventBasedTracker::UpdateConsumer()
+	{
+		for (;;) {
+			if (_trackers[_consumerBufferIndex]._frameMarker == Marker_Invalid)
+				break;
+			auto status = vkGetEventStatus(_device, _trackers[_consumerBufferIndex]._event.get());
+			if (status == VK_EVENT_RESET)
+				break;
+			assert(status == VK_EVENT_SET);
+
+			auto res = vkResetEvent(_device, _trackers[_consumerBufferIndex]._event.get());
+			assert(res == VK_SUCCESS);
+
+			assert(_trackers[_consumerBufferIndex]._frameMarker > _lastConsumerFrame);
+			_lastConsumerFrame = _trackers[_consumerBufferIndex]._frameMarker;
+			_trackers[_consumerBufferIndex]._frameMarker = Marker_Invalid;
+			_consumerBufferIndex = (_consumerBufferIndex + 1) % _bufferCount;
+		}
+	}
+
+	EventBasedTracker::EventBasedTracker(Metal_Vulkan::ObjectFactory& factory, unsigned queueDepth)
+	{
+		assert(queueDepth > 0);
+		_trackers = std::make_unique<Tracker[]>(queueDepth);
+		for (unsigned q = 0; q < queueDepth; ++q) {
+			_trackers[q]._event = factory.CreateEvent();
+			_trackers[q]._frameMarker = Marker_Invalid;
+		}
+		_currentProducerFrame = 0;
+		_bufferCount = queueDepth;
+		_consumerBufferIndex = 1;
+		_producerBufferIndex = 0;
+		_lastConsumerFrame = 0;
+		_device = factory.GetDevice().get();
+	}
+
+	EventBasedTracker::~EventBasedTracker() {}
+
     void Device::DoSecondStageInit(VkSurfaceKHR surface)
     {
         if (!_underlying) {
 			_physDev = SelectPhysicalDeviceForRendering(_instance.get(), surface);
 			_underlying = CreateUnderlyingDevice(_physDev);
 			_objectFactory = Metal_Vulkan::ObjectFactory(_physDev._dev, _underlying);
+
+			// Set up the object factory with a default destroyer that tracks the current
+			// GPU frame progress
+			auto frameTracker = std::make_shared<EventBasedTracker>(_objectFactory, 5);
+			auto destroyer = _objectFactory.CreateMarkerTrackingDestroyer(frameTracker);
+			_objectFactory.SetDefaultDestroyer(destroyer);
             Metal_Vulkan::SetDefaultObjectFactory(&_objectFactory);
 
             _pools._mainDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory);
@@ -467,6 +559,8 @@ namespace RenderCore { namespace ImplVulkan
                 *_computePipelineLayout,
                 Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily),
 				Metal_Vulkan::CommandPool::BufferType::Primary);
+			_foregroundPrimaryContext->AttachDestroyer(destroyer);
+			_foregroundPrimaryContext->SetGPUTracker(frameTracker);
             _foregroundPrimaryContext->BeginCommandList();
 		}
     }
@@ -946,47 +1040,6 @@ namespace RenderCore { namespace ImplVulkan
         return nextImage->ShareResource();
 	}
 
-#if 0
-    void    ThreadContext::BeginRenderPass(
-        const FrameBufferDesc& fbDesc, const FrameBufferProperties& props, 
-        const RenderPassBeginDesc& beginInfo)
-    {
-        if (_renderPass)
-            Throw(::Exceptions::BasicLabel("Cannot begin render pass, because another render pass has already been begun"));
-
-        auto adjProps = props;
-        if (adjProps._outputWidth == 0u && adjProps._outputHeight == 0u) {
-            adjProps._outputWidth = _metalContext->GetPresentationTargetDims()[0];
-            adjProps._outputHeight = _metalContext->GetPresentationTargetDims()[1];
-        }
-        _renderPass = std::make_unique<Metal_Vulkan::RenderPassInstance>(
-            *_metalContext,
-            fbDesc, adjProps,
-            ~0ull,
-            _globalPools->_mainFrameBufferCache,
-            beginInfo);
-
-        Metal_Vulkan::ViewportDesc viewport(
-            0.f, 0.f,
-            (float)adjProps._outputWidth, (float)adjProps._outputHeight);
-        _metalContext->Bind(viewport);
-    }
-
-    void    ThreadContext::NextSubpass()
-    {
-        if (!_renderPass)
-            Throw(::Exceptions::BasicLabel("Cannot proceed to next subpass, because no render pass has been begun"));
-        _renderPass->NextSubpass();
-    }
-
-    void    ThreadContext::EndRenderPass()
-    {
-        if (!_renderPass)
-            Throw(::Exceptions::BasicLabel("Cannot end render pass, because no render pass has been begun"));
-        _renderPass.reset();
-    }
-#endif
-
 	void            ThreadContext::Present(IPresentationChain& chain)
 	{
 		auto* swapChain = checked_cast<PresentationChain*>(&chain);
@@ -1020,7 +1073,10 @@ namespace RenderCore { namespace ImplVulkan
 		res = vkDeviceWaitIdle(_underlyingDevice);
         if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while waiting for device idle"));
-		_factory->FlushDestructionQueue();
+		if (_gpuTracker)
+			_gpuTracker->UpdateConsumer();
+		if (_destrQueue)
+			_destrQueue->Flush();
 		_globalPools->_mainDescriptorPool.FlushDestroys();
 		_renderingCommandPool.FlushDestroys();
 
@@ -1028,12 +1084,10 @@ namespace RenderCore { namespace ImplVulkan
 		swapChain->PresentToQueue(_queue);
 
 		// reset and begin the primary foreground command buffer immediately
-		_metalContext->BeginCommandList();
+		BeginCommandList();
 	}
 
-	
-
-    bool    ThreadContext::IsImmediate() const
+    bool ThreadContext::IsImmediate() const
     {
         return _queue != nullptr;
     }
@@ -1049,6 +1103,8 @@ namespace RenderCore { namespace ImplVulkan
     void ThreadContext::BeginCommandList()
     {
         _metalContext->BeginCommandList();
+		if (_gpuTracker)
+			_gpuTracker->IncrementProducerFrame(*_metalContext);
     }
 
 	IAnnotator& ThreadContext::GetAnnotator()
@@ -1060,6 +1116,9 @@ namespace RenderCore { namespace ImplVulkan
 		}
 		return *_annotator;
 	}
+
+	void ThreadContext::SetGPUTracker(const std::shared_ptr<EventBasedTracker>& tracker) { _gpuTracker = tracker; }
+	void ThreadContext::AttachDestroyer(const std::shared_ptr<Metal_Vulkan::IDestructionQueue>& queue) { _destrQueue = queue; }
 
     ThreadContext::ThreadContext(
 		std::shared_ptr<Device> device,
@@ -1087,10 +1146,6 @@ namespace RenderCore { namespace ImplVulkan
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
     {
         return _device.lock();
-    }
-
-    void ThreadContext::ClearAllBoundTargets() const
-    {
     }
 
     void ThreadContext::IncrFrameId()

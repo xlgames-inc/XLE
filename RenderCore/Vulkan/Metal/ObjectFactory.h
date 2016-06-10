@@ -17,11 +17,22 @@ namespace RenderCore { namespace Metal_Vulkan
 	class UnderlyingResourcePtr;
 	class DeviceContext;
 
+	class IAsyncTracker
+	{
+	public:
+		using Marker = unsigned;
+		static const Marker Marker_Invalid = ~0u;
+
+		virtual Marker GetConsumerMarker() const = 0;
+		virtual Marker GetProducerMarker() const = 0;
+	};
+
     class IDestructionQueue
     {
     public:
         virtual void    Destroy(VkCommandPool) = 0;
         virtual void    Destroy(VkSemaphore) = 0;
+		virtual void    Destroy(VkEvent) = 0;
         virtual void    Destroy(VkDeviceMemory) = 0;
         virtual void    Destroy(VkRenderPass) = 0;
         virtual void    Destroy(VkImage) = 0;
@@ -37,7 +48,13 @@ namespace RenderCore { namespace Metal_Vulkan
         virtual void    Destroy(VkFence) = 0;
         virtual void    Destroy(VkSampler) = 0;
 		virtual void	Destroy(VkQueryPool) = 0;
-        virtual void    Flush() = 0;
+
+		struct FlushFlags
+		{
+			enum { DestroyAll = 1<<1 };
+			using BitField = unsigned;
+		};
+        virtual void    Flush(FlushFlags::BitField = 0) = 0;
         virtual ~IDestructionQueue();
     };
 
@@ -52,6 +69,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         VulkanUniquePtr<VkSemaphore> CreateSemaphore(
             VkSemaphoreCreateFlags flags = 0) const;
+		VulkanUniquePtr<VkEvent> CreateEvent() const;
 
         VulkanUniquePtr<VkDeviceMemory> AllocateMemory(
             VkDeviceSize allocationSize, unsigned memoryTypeIndex) const;
@@ -111,7 +129,9 @@ namespace RenderCore { namespace Metal_Vulkan
             VkMemoryPropertyFlags requirementsMask = 0) const;
 		VkFormatProperties GetFormatProperties(VkFormat fmt) const;
 
-        void FlushDestructionQueue() const;
+		std::shared_ptr<IDestructionQueue> CreateMarkerTrackingDestroyer(const std::shared_ptr<IAsyncTracker>&);
+
+		void SetDefaultDestroyer(const std::shared_ptr<IDestructionQueue>&);
 
 		ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device);
 		ObjectFactory();
@@ -128,7 +148,8 @@ namespace RenderCore { namespace Metal_Vulkan
         VkPhysicalDevice            _physDev;
 		VulkanSharedPtr<VkDevice>   _device;
 
-        std::shared_ptr<IDestructionQueue> _destruction;
+		std::shared_ptr<IDestructionQueue> _immediateDestruction; 
+		std::shared_ptr<IDestructionQueue> _destruction;
 	};
 
 	ObjectFactory& GetObjectFactory(IDevice& device);
