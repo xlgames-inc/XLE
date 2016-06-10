@@ -528,11 +528,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		if (q._markerCounts.empty()) {
 			assert(q._objects.empty());
 			success = q._markerCounts.try_emplace_back(std::make_pair(marker, 1u));
-		} else if (q._markerCounts.front().first < marker) {
-			success = q._markerCounts.try_emplace_back(std::make_pair(marker, 1u));
+		} else if (q._markerCounts.back().first == marker) {
+			++q._markerCounts.back().second;
 		} else {
-			assert(q._markerCounts.front().first == marker);
-			++q._markerCounts.front().second;
+			assert(q._markerCounts.front().first < marker);
+			success = q._markerCounts.try_emplace_back(std::make_pair(marker, 1u));
 		}
 
 		// if we can't fit in the marker, it is a fatal error. We can't safely through an exception from here

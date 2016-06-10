@@ -239,7 +239,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkDescriptorPoolCreateInfo descriptor_pool = {};
         descriptor_pool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         descriptor_pool.pNext = nullptr;
-        descriptor_pool.maxSets = 128;
+        descriptor_pool.maxSets = 1024;
         descriptor_pool.poolSizeCount = dimof(type_count);
         descriptor_pool.pPoolSizes = type_count;
         descriptor_pool.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;

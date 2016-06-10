@@ -503,7 +503,7 @@ namespace RenderCore { namespace ImplVulkan
 			assert(status == VK_EVENT_SET);
 
 			auto res = vkResetEvent(_device, _trackers[_consumerBufferIndex]._event.get());
-			assert(res == VK_SUCCESS);
+			assert(res == VK_SUCCESS); (void)res;
 
 			assert(_trackers[_consumerBufferIndex]._frameMarker > _lastConsumerFrame);
 			_lastConsumerFrame = _trackers[_consumerBufferIndex]._frameMarker;
@@ -597,7 +597,7 @@ namespace RenderCore { namespace ImplVulkan
 
         VkSurfaceCapabilitiesKHR surfCapabilities;
         auto res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phyDev, surface, &surfCapabilities);
-        assert(res == VK_SUCCESS);
+        assert(res == VK_SUCCESS); (void)res;
 
         auto presentModes = GetPresentModes(phyDev, surface);
         result._presentMode = SelectPresentMode(MakeIteratorRange(presentModes));
@@ -1075,10 +1075,6 @@ namespace RenderCore { namespace ImplVulkan
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
 
-		// hack -- need to implement CPU/GPU synchronisation
-		res = vkDeviceWaitIdle(_underlyingDevice);
-        if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while waiting for device idle"));
 		if (_gpuTracker) _gpuTracker->UpdateConsumer();
 		if (_destrQueue) _destrQueue->Flush();
 		_globalPools->_mainDescriptorPool.FlushDestroys();
