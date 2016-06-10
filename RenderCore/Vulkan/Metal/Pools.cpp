@@ -38,10 +38,24 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto res = vkAllocateCommandBuffers(_device.get(), &cmd, &rawBuffer);
 		VulkanSharedPtr<VkCommandBuffer> result(
 			rawBuffer,
-			[this](VkCommandBuffer buffer) { this->_pendingDestroy.push_back(buffer); });
+			[this](VkCommandBuffer buffer) { this->QueueDestroy(buffer); });
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while creating command buffer"));
 		return result;
+	}
+
+	void CommandPool::QueueDestroy(VkCommandBuffer buffer)
+	{
+		auto currentMarker = _gpuTracker ? _gpuTracker->GetProducerMarker() : ~0u;
+		if (_markedDestroys.empty() || _markedDestroys.back()._marker != currentMarker) {
+			bool success = _markedDestroys.try_emplace_back(MarkedDestroys{currentMarker, 1u});
+			assert(success);	// failure means eating our tail
+			if (!success)
+				Throw(::Exceptions::BasicLabel("Ran out of buffers in command pool"));
+		} else {
+			++_markedDestroys.back()._pendingCount;
+		}
+		_pendingDestroys.push_back(buffer);
 	}
 
 	void CommandPool::FlushDestroys()
@@ -52,14 +66,25 @@ namespace RenderCore { namespace Metal_Vulkan
                 Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::FlushDestroys. Multiple threads attempting to use the same object."));
         #endif
 
-		if (!_pendingDestroy.empty())
+		auto trackerMarker = _gpuTracker ? _gpuTracker->GetConsumerMarker() : ~0u;
+		size_t countToDestroy = 0;
+		while (!_markedDestroys.empty() && _markedDestroys.front()._marker <= trackerMarker) {
+			countToDestroy += _markedDestroys.front()._pendingCount;
+			_markedDestroys.pop_front();
+		}
+
+		assert(countToDestroy <= _pendingDestroys.size());
+		countToDestroy = std::min(countToDestroy, _pendingDestroys.size());
+
+		if (countToDestroy) {
 			vkFreeCommandBuffers(
 				_device.get(), _pool.get(),
-				(uint32_t)_pendingDestroy.size(), AsPointer(_pendingDestroy.begin()));
-		_pendingDestroy.clear();
+				(uint32_t)countToDestroy, AsPointer(_pendingDestroys.begin()));
+			_pendingDestroys.erase(_pendingDestroys.begin(), _pendingDestroys.begin() + countToDestroy);
+		}
 	}
 
-    CommandPool::CommandPool(CommandPool&& moveFrom)
+    CommandPool::CommandPool(CommandPool&& moveFrom) never_throws
     {
         #if defined(CHECK_COMMAND_POOL)
             std::unique_lock<std::mutex> guard(moveFrom._lock, std::try_to_lock);
@@ -69,10 +94,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
         _pool = std::move(moveFrom._pool);
         _device = std::move(moveFrom._device);
-        _pendingDestroy = std::move(moveFrom._pendingDestroy);
+        _pendingDestroys = std::move(moveFrom._pendingDestroys);
+		_markedDestroys = std::move(_markedDestroys);
+		_gpuTracker = std::move(moveFrom._gpuTracker);
     }
     
-    CommandPool& CommandPool::operator=(CommandPool&& moveFrom)
+    CommandPool& CommandPool::operator=(CommandPool&& moveFrom) never_throws
     {
         #if defined(CHECK_COMMAND_POOL)
             // note -- locking both mutexes here.
@@ -86,14 +113,24 @@ namespace RenderCore { namespace Metal_Vulkan
                 Throw(::Exceptions::BasicLabel("Bad lock attempt in CommandPool::Allocate. Multiple threads attempting to use the same object."));
         #endif
 
+		if (!_pendingDestroys.empty()) {
+			vkFreeCommandBuffers(
+				_device.get(), _pool.get(),
+				(uint32_t)_pendingDestroys.size(), AsPointer(_pendingDestroys.begin()));
+			_pendingDestroys.clear();
+		}
+
         _pool = std::move(moveFrom._pool);
         _device = std::move(moveFrom._device);
-        _pendingDestroy = std::move(moveFrom._pendingDestroy);
+        _pendingDestroys = std::move(moveFrom._pendingDestroys);
+		_markedDestroys = std::move(_markedDestroys); 
+		_gpuTracker = std::move(moveFrom._gpuTracker);
         return *this;
     }
 
-	CommandPool::CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex)
+	CommandPool::CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex, const std::shared_ptr<IAsyncTracker>& tracker)
 	: _device(factory.GetDevice())
+	, _gpuTracker(tracker)
 	{
 		_pool = factory.CreateCommandPool(
             queueFamilyIndex, 
@@ -101,7 +138,15 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	CommandPool::CommandPool() {}
-	CommandPool::~CommandPool() {}
+	CommandPool::~CommandPool() 
+	{
+		if (!_pendingDestroys.empty()) {
+			vkFreeCommandBuffers(
+				_device.get(), _pool.get(),
+				(uint32_t)_pendingDestroys.size(), AsPointer(_pendingDestroys.begin()));
+			_pendingDestroys.clear();
+		}
+	}
 
 
     void DescriptorPool::Allocate(
@@ -126,7 +171,7 @@ namespace RenderCore { namespace Metal_Vulkan
             for (unsigned c=0; c<desc_alloc_info.descriptorSetCount; ++c)
                 dst[c] = VulkanUniquePtr<VkDescriptorSet>(
                     rawDescriptorSets[c],
-                    [this](VkDescriptorSet set) { this->_pendingDestroy.push_back(set); });
+                    [this](VkDescriptorSet set) { this->QueueDestroy(set); });
         } else {
             std::vector<VkDescriptorSet> rawDescriptorsOverflow;
             rawDescriptorsOverflow.resize(desc_alloc_info.descriptorSetCount, nullptr);
@@ -134,7 +179,7 @@ namespace RenderCore { namespace Metal_Vulkan
             for (unsigned c=0; c<desc_alloc_info.descriptorSetCount; ++c)
                 dst[c] = VulkanUniquePtr<VkDescriptorSet>(
                     rawDescriptorsOverflow[c],
-                    [this](VkDescriptorSet set) { this->_pendingDestroy.push_back(set); });
+                    [this](VkDescriptorSet set) { this->QueueDestroy(set); });
         }
 
         if (res != VK_SUCCESS)
@@ -144,15 +189,42 @@ namespace RenderCore { namespace Metal_Vulkan
     void DescriptorPool::FlushDestroys()
     {
 		if (!_device || !_pool) return;
-        if (!_pendingDestroy.empty())
-            vkFreeDescriptorSets(
-                _device.get(), _pool.get(), 
-                (uint32_t)_pendingDestroy.size(), AsPointer(_pendingDestroy.begin()));
-        _pendingDestroy.clear();
+        
+		auto trackerMarker = _gpuTracker ? _gpuTracker->GetConsumerMarker() : ~0u;
+		size_t countToDestroy = 0;
+		while (!_markedDestroys.empty() && _markedDestroys.front()._marker <= trackerMarker) {
+			countToDestroy += _markedDestroys.front()._pendingCount;
+			_markedDestroys.pop_front();
+		}
+
+		assert(countToDestroy <= _pendingDestroys.size());
+		countToDestroy = std::min(countToDestroy, _pendingDestroys.size());
+
+		if (countToDestroy) {
+			vkFreeDescriptorSets(
+				_device.get(), _pool.get(),
+				(uint32_t)countToDestroy, AsPointer(_pendingDestroys.begin()));
+			_pendingDestroys.erase(_pendingDestroys.begin(), _pendingDestroys.begin() + countToDestroy);
+		}
     }
 
-    DescriptorPool::DescriptorPool(const Metal_Vulkan::ObjectFactory& factory)
+	void DescriptorPool::QueueDestroy(VkDescriptorSet set)
+	{
+		auto currentMarker = _gpuTracker ? _gpuTracker->GetProducerMarker() : ~0u;
+		if (_markedDestroys.empty() || _markedDestroys.back()._marker != currentMarker) {
+			bool success = _markedDestroys.try_emplace_back(MarkedDestroys{ currentMarker, 1u });
+			assert(success);	// failure means eating our tail
+			if (!success)
+				Throw(::Exceptions::BasicLabel("Ran out of buffers in command pool"));
+		} else {
+			++_markedDestroys.back()._pendingCount;
+		}
+		_pendingDestroys.push_back(set);
+	}
+
+    DescriptorPool::DescriptorPool(const Metal_Vulkan::ObjectFactory& factory, const std::shared_ptr<IAsyncTracker>& tracker)
     : _device(factory.GetDevice())
+	, _gpuTracker(tracker)
     {
         VkDescriptorPoolSize type_count[] = 
         {
@@ -177,22 +249,36 @@ namespace RenderCore { namespace Metal_Vulkan
     DescriptorPool::DescriptorPool() {}
     DescriptorPool::~DescriptorPool() 
     {
-        FlushDestroys();
+		if (!_pendingDestroys.empty()) {
+			vkFreeDescriptorSets(
+				_device.get(), _pool.get(),
+				(uint32_t)_pendingDestroys.size(), AsPointer(_pendingDestroys.begin()));
+			_pendingDestroys.clear();
+		}
     }
 
     DescriptorPool::DescriptorPool(DescriptorPool&& moveFrom) never_throws
-    : _pool(moveFrom._pool)
-    , _device(moveFrom._device)
-    , _pendingDestroy(moveFrom._pendingDestroy)
+    : _pool(std::move(moveFrom._pool))
+    , _device(std::move(moveFrom._device))
+	, _gpuTracker(std::move(moveFrom._gpuTracker))
+	, _markedDestroys(std::move(moveFrom._markedDestroys))
+    , _pendingDestroys(moveFrom._pendingDestroys)
     {
     }
 
     DescriptorPool& DescriptorPool::operator=(DescriptorPool&& moveFrom) never_throws
     {
-		FlushDestroys();
+		if (!_pendingDestroys.empty()) {
+			vkFreeDescriptorSets(
+				_device.get(), _pool.get(),
+				(uint32_t)_pendingDestroys.size(), AsPointer(_pendingDestroys.begin()));
+			_pendingDestroys.clear();
+		}
         _pool = std::move(moveFrom._pool);
         _device = std::move(moveFrom._device);
-        _pendingDestroy = std::move(moveFrom._pendingDestroy);
+		_gpuTracker = std::move(moveFrom._gpuTracker);
+		_markedDestroys = std::move(moveFrom._markedDestroys);
+		_pendingDestroys = std::move(moveFrom._pendingDestroys);
         return *this;
     }
 

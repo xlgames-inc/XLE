@@ -10,8 +10,11 @@
 #include "Buffer.h"
 #include "State.h"
 #include "FrameBuffer.h"
+#include "ObjectFactory.h"
 #include "VulkanCore.h"
 #include "../../../Utility/IteratorUtils.h"
+#include "../../../Utility/HeapUtils.h"
+#include <vector>
 
 #if defined(CHECK_COMMAND_POOL)
     #include "../../../Utility/Threading/Mutex.h"       // (cannot be included into CLR code)
@@ -21,6 +24,8 @@ namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class CommandPool
 	{
 	public:
@@ -29,20 +34,25 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void FlushDestroys();
 
-		CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex);
+		CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex, const std::shared_ptr<IAsyncTracker>& tracker);
 		CommandPool();
 		~CommandPool();
 
-        CommandPool(CommandPool&& moveFrom);
-        CommandPool& operator=(CommandPool&& moveFrom);
+        CommandPool(CommandPool&& moveFrom) never_throws;
+        CommandPool& operator=(CommandPool&& moveFrom) never_throws;
 	private:
 		VulkanSharedPtr<VkCommandPool> _pool;
 		VulkanSharedPtr<VkDevice> _device;
+		std::shared_ptr<IAsyncTracker> _gpuTracker;
 
-		std::vector<VkCommandBuffer> _pendingDestroy;
+		struct MarkedDestroys { IAsyncTracker::Marker _marker; unsigned _pendingCount; };
+		CircularBuffer<MarkedDestroys, 8>	_markedDestroys;
+		std::vector<VkCommandBuffer>		_pendingDestroys;
         #if defined(CHECK_COMMAND_POOL)
             Threading::Mutex _lock;
         #endif
+
+		void QueueDestroy(VkCommandBuffer buffer);
 	};
 
     class DescriptorPool
@@ -55,7 +65,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void FlushDestroys();
         VkDevice GetDevice() { return _device.get(); }
 
-        DescriptorPool(const Metal_Vulkan::ObjectFactory& factory);
+        DescriptorPool(const Metal_Vulkan::ObjectFactory& factory, const std::shared_ptr<IAsyncTracker>& tracker);
         DescriptorPool();
         ~DescriptorPool();
 
@@ -66,8 +76,13 @@ namespace RenderCore { namespace Metal_Vulkan
     private:
         VulkanSharedPtr<VkDescriptorPool> _pool;
 		VulkanSharedPtr<VkDevice> _device;
+		std::shared_ptr<IAsyncTracker> _gpuTracker;
 
-        std::vector<VkDescriptorSet> _pendingDestroy;
+		struct MarkedDestroys { IAsyncTracker::Marker _marker; unsigned _pendingCount; };
+		CircularBuffer<MarkedDestroys, 8> _markedDestroys;
+        std::vector<VkDescriptorSet> _pendingDestroys;
+
+		void QueueDestroy(VkDescriptorSet buffer);
     };
 
     class DummyResources

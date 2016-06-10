@@ -214,6 +214,154 @@ namespace Utility
         assert((size>>4) <= std::numeric_limits<Marker>::max());
         return (size&(~((1<<4)-1)))+((size&((1<<4)-1))?(1<<4):0); 
     }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	namespace Internal
+	{
+		template<unsigned X, typename std::enable_if<(X & (X - 1)) == 0>::type* = nullptr>
+			unsigned Modulo(unsigned value) { return value & (X-1); }
+		template<unsigned X, typename std::enable_if<(X & (X - 1)) != 0>::type* = nullptr>
+			unsigned Modulo(unsigned value) { return value % X; }
+	}
+
+	/// <summary>Fixed sized circular buffer of objects</summary>
+	/// Constructors and destructors called correctly. But not thread safe.
+	/// Also will not function correctly for types with alignment restrictions.
+	template<typename Type, unsigned Count>
+		class CircularBuffer
+	{
+	public:
+		Type& front();
+		Type& back();
+		void pop_front();
+		template<typename... Params>
+			bool try_emplace_back(Params... p);
+		bool empty() const;
+
+		CircularBuffer();
+		~CircularBuffer();
+		CircularBuffer(CircularBuffer&& moveFrom) never_throws;
+		CircularBuffer& operator=(CircularBuffer&& moveFrom) never_throws;
+	private:
+		uint8_t		_objects[sizeof(Type)*Count];
+		unsigned	_start, _end;
+	};
+
+	template<typename Type, unsigned Count>
+		Type& CircularBuffer<Type, Count>::front()
+	{
+		assert(!empty()); 
+		return ((Type*)_objects)[_start];
+	}
+
+	template<typename Type, unsigned Count>
+		Type& CircularBuffer<Type, Count>::back()
+	{
+		assert(!empty());
+		auto b = Internal::Modulo<Count>(_end+Count-1);
+		return ((Type*)_objects)[b];
+	}
+
+	template<typename Type, unsigned Count>
+		void CircularBuffer<Type, Count>::pop_front()
+	{
+		assert(!empty());
+		((Type*)_objects)[_start].~Type();
+		_start = Internal::Modulo<Count>(_start+1);
+		if (_start == _end) {
+			_start = 0;
+			_end = Count;
+		}
+	}
+
+	template<typename Type, unsigned Count>
+		template<typename... Params>
+			bool CircularBuffer<Type, Count>::try_emplace_back(Params... p)
+	{
+		// When _start and _end are equal, the buffer is always full
+		// note that when we're empty, _start=0 && _end == Count (to distinguish it
+		// from the full case)
+		if (_start == _end) return false;
+		
+		#pragma push_macro("new")
+		#undef new
+			new(_objects + sizeof(Type)*Internal::Modulo<Count>(_end)) Type(std::forward<Params>(p)...);
+		#pragma pop_macro("new")
+		_end = Internal::Modulo<Count>(_end+1);
+		return true;
+	}
+
+	template<typename Type, unsigned Count>
+		bool CircularBuffer<Type, Count>::empty() const
+	{
+		return _start==0 && _end == Count;
+	}
+
+	template<typename Type, unsigned Count>
+		CircularBuffer<Type, Count>::CircularBuffer()
+	{
+		// special case for empty buffers; _start=0 && _end=Count
+		_start=0;
+		_end=Count;
+	}
+
+	template<typename Type, unsigned Count>
+		CircularBuffer<Type,Count>::~CircularBuffer() 
+	{
+		if (_start != 0 || _end != Count)
+			for (unsigned c = _start; c != _end; c = Internal::Modulo<Count>(c + 1)) {
+				auto& src = ((Type*)_objects)[c];
+				(void)src;
+				src.~Type();
+			}
+	}
+
+	template<typename Type, unsigned Count>
+		CircularBuffer<Type, Count>::CircularBuffer(CircularBuffer&& moveFrom) never_throws
+	{
+		_start = moveFrom._start;
+		_end = moveFrom._end;
+		moveFrom._start = 0;
+		moveFrom._end = Count;
+
+		#pragma push_macro("new")
+		#undef new
+		if (_start != 0 || _end != Count)
+			for (unsigned c=_start; c!=_end; c=Internal::Modulo<Count>(c+1)) {
+				auto& src = ((Type*)moveFrom._objects)[c];
+				new(_objects + sizeof(Type)*c) Type(std::move(src));
+				src.~Type();
+			}
+		#pragma pop_macro("new")
+	}
+
+	template<typename Type, unsigned Count>
+		auto CircularBuffer<Type, Count>::operator=(CircularBuffer&& moveFrom) never_throws -> CircularBuffer&
+	{
+		if (_start != 0 || _end != Count)
+			for (unsigned c = _start; c != _end; c = Internal::Modulo<Count>(c + 1)) {
+				auto& src = ((Type*)_objects)[c];
+				(void)src;
+				src.~Type();
+			}
+
+		_start = moveFrom._start;
+		_end = moveFrom._end;
+		moveFrom._start = 0;
+		moveFrom._end = Count;
+
+		#pragma push_macro("new")
+		#undef new
+		if (_start != 0 || _end != Count)
+			for (unsigned c = _start; c != _end; c = Internal::Modulo<Count>(c + 1)) {
+				auto& src = ((Type*)moveFrom._objects)[c];
+				new(_objects + sizeof(Type)*c) Type(std::move(src));
+				src.~Type();
+			}
+		#pragma pop_macro("new")
+		return *this;
+	}
 }
 
 using namespace Utility;

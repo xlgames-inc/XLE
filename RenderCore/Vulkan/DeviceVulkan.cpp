@@ -484,6 +484,10 @@ namespace RenderCore { namespace ImplVulkan
 
 		++_currentProducerFrame;
 		_producerBufferIndex = (_producerBufferIndex + 1) % _bufferCount; 
+		// If we start "eating our tail" (ie, we don't have enough buffers to support the queued GPU frames, we will get an assert
+		// here... This needs to be replaced with something more robust
+		// Probably higher level code should prevent the CPU from getting too far ahead of the GPU, so as to guarantee we never
+		// end up eating our tail here...
 		assert(_trackers[_producerBufferIndex]._frameMarker == Marker_Invalid); 
 		_trackers[_producerBufferIndex]._frameMarker = _currentProducerFrame;
 	}
@@ -540,7 +544,7 @@ namespace RenderCore { namespace ImplVulkan
 			_objectFactory.SetDefaultDestroyer(destroyer);
             Metal_Vulkan::SetDefaultObjectFactory(&_objectFactory);
 
-            _pools._mainDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory);
+            _pools._mainDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory, frameTracker);
             _pools._mainPipelineCache = _objectFactory.CreatePipelineCache();
             _pools._dummyResources = Metal_Vulkan::DummyResources(_objectFactory);
 
@@ -557,7 +561,7 @@ namespace RenderCore { namespace ImplVulkan
 				GetQueue(_underlying.get(), _physDev._renderingQueueFamily),
                 *_graphicsPipelineLayout,
                 *_computePipelineLayout,
-                Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily),
+                Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, frameTracker),
 				Metal_Vulkan::CommandPool::BufferType::Primary);
 			_foregroundPrimaryContext->AttachDestroyer(destroyer);
 			_foregroundPrimaryContext->SetGPUTracker(frameTracker);
@@ -704,7 +708,7 @@ namespace RenderCore { namespace ImplVulkan
             nullptr, 
             *_graphicsPipelineLayout,
             *_computePipelineLayout,
-            Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily),
+            Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, nullptr),
             Metal_Vulkan::CommandPool::BufferType::Secondary);
     }
 
@@ -1047,6 +1051,8 @@ namespace RenderCore { namespace ImplVulkan
 
 		//////////////////////////////////////////////////////////////////
 
+		if (_gpuTracker)
+			_gpuTracker->IncrementProducerFrame(*_metalContext);
         auto cmdBuffer = _metalContext->ResolveCommandList();
 
 		VkSubmitInfo submitInfo;
@@ -1073,10 +1079,8 @@ namespace RenderCore { namespace ImplVulkan
 		res = vkDeviceWaitIdle(_underlyingDevice);
         if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while waiting for device idle"));
-		if (_gpuTracker)
-			_gpuTracker->UpdateConsumer();
-		if (_destrQueue)
-			_destrQueue->Flush();
+		if (_gpuTracker) _gpuTracker->UpdateConsumer();
+		if (_destrQueue) _destrQueue->Flush();
 		_globalPools->_mainDescriptorPool.FlushDestroys();
 		_renderingCommandPool.FlushDestroys();
 
@@ -1103,8 +1107,6 @@ namespace RenderCore { namespace ImplVulkan
     void ThreadContext::BeginCommandList()
     {
         _metalContext->BeginCommandList();
-		if (_gpuTracker)
-			_gpuTracker->IncrementProducerFrame(*_metalContext);
     }
 
 	IAnnotator& ThreadContext::GetAnnotator()

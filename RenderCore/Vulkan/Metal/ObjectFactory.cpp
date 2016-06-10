@@ -7,7 +7,9 @@
 #include "ObjectFactory.h"
 #include "Resource.h"
 #include "IncludeVulkan.h"
+#include "../../../ConsoleRig/Log.h"
 #include "../../../Core/Prefix.h"
+#include "../../../Utility/HeapUtils.h"
 #include <queue>
 #include <deque>
 
@@ -479,7 +481,7 @@ namespace RenderCore { namespace Metal_Vulkan
             class Queue 
 			{
 			public:
-				std::queue<std::pair<Marker, unsigned>> _markerCounts;
+				CircularBuffer<std::pair<Marker, unsigned>, 8> _markerCounts;
 				std::deque<Type> _objects;
 			};
 
@@ -522,15 +524,23 @@ namespace RenderCore { namespace Metal_Vulkan
         //          isn't supported on VS2013
 		auto marker = _gpuTracker->GetProducerMarker();
         auto& q = std::get<Index>(_queues);
+		bool success = true;
 		if (q._markerCounts.empty()) {
 			assert(q._objects.empty());
-			q._markerCounts.push(std::make_pair(marker, 1u));
+			success = q._markerCounts.try_emplace_back(std::make_pair(marker, 1u));
 		} else if (q._markerCounts.front().first < marker) {
-			q._markerCounts.push(std::make_pair(marker, 1u));
+			success = q._markerCounts.try_emplace_back(std::make_pair(marker, 1u));
 		} else {
 			assert(q._markerCounts.front().first == marker);
 			++q._markerCounts.front().second;
 		}
+
+		// if we can't fit in the marker, it is a fatal error. We can't safely through an exception from here
+		// because this function is frequently called from a smart pointer destructor -- which could be triggered
+		// during stack unwinding, or some other case that is not safe for exceptions
+		if (!success)
+			LogAlwaysFatal << "Circular buffer wrapped around in destruction queue. Not enough buffers to support desynchronisation";
+
 		q._objects.push_back(obj);
     }
 
@@ -567,7 +577,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (auto i=q._objects.begin(); i!=endi; ++i)
 				DestroyObjectImmediate(_device.get(), *i);
 			
-			q._markerCounts.pop(); 
+			q._markerCounts.pop_front(); 
 			q._objects.erase(q._objects.begin(), endi);
 		}
     }
