@@ -26,7 +26,7 @@ namespace DirectX
 // WIC related helper functions
 //-------------------------------------------------------------------------------------
 
-extern HRESULT _ResizeSeparateColorAndAlpha( _In_ IWICImagingFactory* pWIC, _In_ IWICBitmap* original,
+extern HRESULT _ResizeSeparateColorAndAlpha( _In_ IWICImagingFactory* pWIC, _In_ bool iswic2, _In_ IWICBitmap* original,
                                              _In_ size_t newWidth, _In_ size_t newHeight, _In_ DWORD filter, _Inout_ const Image* img );
 
 //--- Do image resize using WIC ---
@@ -38,7 +38,8 @@ static HRESULT _PerformResizeUsingWIC( _In_ const Image& srcImage, _In_ DWORD fi
 
     assert( srcImage.format == destImage.format );
 
-    IWICImagingFactory* pWIC = _GetWIC();
+    bool iswic2 = false;
+    IWICImagingFactory* pWIC = GetWICFactory(iswic2);
     if ( !pWIC )
         return E_NOINTERFACE;
 
@@ -66,7 +67,7 @@ static HRESULT _PerformResizeUsingWIC( _In_ const Image& srcImage, _In_ DWORD fi
 
     if ( (filter & TEX_FILTER_SEPARATE_ALPHA) && supportsTransparency )
     {
-        hr = _ResizeSeparateColorAndAlpha( pWIC, source.Get(), destImage.width, destImage.height, filter, &destImage );
+        hr = _ResizeSeparateColorAndAlpha( pWIC, iswic2, source.Get(), destImage.width, destImage.height, filter, &destImage );
         if ( FAILED(hr) )
             return hr;
     }
@@ -649,7 +650,7 @@ static HRESULT _ResizeTriangleFilter( _In_ const Image& srcImage, _In_ DWORD fil
         {
             size_t v = yFrom->to[ j ].u;
             assert( v < destImage.height );
-            ++rowActive.get()[ v ].remaining;
+            ++rowActive[ v ].remaining;
         }
 
         yFrom = reinterpret_cast<FilterFrom*>( reinterpret_cast<uint8_t*>( yFrom ) + yFrom->sizeInBytes );
@@ -669,7 +670,7 @@ static HRESULT _ResizeTriangleFilter( _In_ const Image& srcImage, _In_ DWORD fil
         {
             size_t v = yFrom->to[ j ].u;
             assert( v < destImage.height );
-            TriangleRow* rowAcc = &rowActive.get()[ v ];
+            TriangleRow* rowAcc = &rowActive[ v ];
 
             if ( !rowAcc->scanline )
             {
@@ -734,7 +735,7 @@ static HRESULT _ResizeTriangleFilter( _In_ const Image& srcImage, _In_ DWORD fil
         {
             size_t v = yFrom->to[ j ].u;
             assert( v < destImage.height );
-            TriangleRow* rowAcc = &rowActive.get()[ v ];
+            TriangleRow* rowAcc = &rowActive[ v ];
 
             assert( rowAcc->remaining > 0 );
             --rowAcc->remaining;

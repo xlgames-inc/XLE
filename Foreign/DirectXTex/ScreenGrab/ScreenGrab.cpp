@@ -25,21 +25,21 @@
 
 // For 2D array textures and cubemaps, it captures only the first image in the array
 
+#include <dxgiformat.h>
 #include <assert.h>
 
-#if !defined(WINAPI_FAMILY) || (WINAPI_FAMILY != WINAPI_FAMILY_PHONE_APP) || (_WIN32_WINNT > _WIN32_WINNT_WIN8)
-
-// VS 2010's stdint.h conflicts with intsafe.h
-#pragma warning(push)
-#pragma warning(disable : 4005)
 #include <wincodec.h>
-#include <wrl.h>
-#pragma warning(pop)
-#endif
 
+#include <wrl\client.h>
+
+#include <algorithm>
 #include <memory>
 
 #include "ScreenGrab.h"
+
+#ifndef IID_GRAPHICS_PPV_ARGS
+#define IID_GRAPHICS_PPV_ARGS(x) IID_PPV_ARGS(x)
+#endif
 
 using Microsoft::WRL::ComPtr;
 
@@ -79,6 +79,7 @@ struct DDS_PIXELFORMAT
 #define DDS_LUMINANCE   0x00020000  // DDPF_LUMINANCE
 #define DDS_LUMINANCEA  0x00020001  // DDPF_LUMINANCE | DDPF_ALPHAPIXELS
 #define DDS_ALPHA       0x00000002  // DDPF_ALPHA
+#define DDS_BUMPDUDV    0x00080000  // DDPF_BUMPDUDV
 
 #define DDS_HEADER_FLAGS_TEXTURE        0x00001007  // DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT 
 #define DDS_HEADER_FLAGS_MIPMAP         0x00020000  // DDSD_MIPMAPCOUNT
@@ -182,6 +183,15 @@ static const DDS_PIXELFORMAT DDSPF_A8L8 =
 static const DDS_PIXELFORMAT DDSPF_A8 =
     { sizeof(DDS_PIXELFORMAT), DDS_ALPHA, 0, 8, 0x00, 0x00, 0x00, 0xff };
 
+static const DDS_PIXELFORMAT DDSPF_V8U8 = 
+    { sizeof(DDS_PIXELFORMAT), DDS_BUMPDUDV, 0, 16, 0x00ff, 0xff00, 0x0000, 0x0000 };
+
+static const DDS_PIXELFORMAT DDSPF_Q8W8V8U8 = 
+    { sizeof(DDS_PIXELFORMAT), DDS_BUMPDUDV, 0, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000 };
+
+static const DDS_PIXELFORMAT DDSPF_V16U16 = 
+    { sizeof(DDS_PIXELFORMAT), DDS_BUMPDUDV, 0, 32, 0x0000ffff, 0xffff0000, 0x00000000, 0x00000000 };
+
 // DXGI_FORMAT_R10G10B10A2_UNORM should be written using DX10 extension to avoid D3DX 10:10:10:2 reversal issue
 
 // This indicates the DDS_HEADER_DXT10 extension is present (the format is in dxgiFormat)
@@ -189,12 +199,60 @@ static const DDS_PIXELFORMAT DDSPF_DX10 =
     { sizeof(DDS_PIXELFORMAT), DDS_FOURCC, MAKEFOURCC('D','X','1','0'), 0, 0, 0, 0, 0 };
 
 //---------------------------------------------------------------------------------
-struct handle_closer { void operator()(HANDLE h) { if (h) CloseHandle(h); } };
+namespace
+{
+    struct handle_closer { void operator()(HANDLE h) { if (h) CloseHandle(h); } };
 
-typedef public std::unique_ptr<void, handle_closer> ScopedHandle;
+    typedef public std::unique_ptr<void, handle_closer> ScopedHandle;
 
-inline HANDLE safe_handle( HANDLE h ) { return (h == INVALID_HANDLE_VALUE) ? 0 : h; }
+    inline HANDLE safe_handle( HANDLE h ) { return (h == INVALID_HANDLE_VALUE) ? 0 : h; }
 
+    class auto_delete_file
+    {
+    public:
+        auto_delete_file(HANDLE hFile) : m_handle(hFile) {}
+        ~auto_delete_file()
+        {
+            if (m_handle)
+            {
+                FILE_DISPOSITION_INFO info = {0};
+                info.DeleteFile = TRUE;
+                (void)SetFileInformationByHandle(m_handle, FileDispositionInfo, &info, sizeof(info));
+            }
+        }
+
+        void clear() { m_handle = 0; }
+
+    private:
+        HANDLE m_handle;
+
+        auto_delete_file(const auto_delete_file&) = delete;
+        auto_delete_file& operator=(const auto_delete_file&) = delete;
+    };
+
+    class auto_delete_file_wic
+    {
+    public:
+        auto_delete_file_wic(ComPtr<IWICStream>& hFile, LPCWSTR szFile) : m_handle(hFile), m_filename(szFile) {}
+        ~auto_delete_file_wic()
+        {
+            if (m_filename)
+            {
+                m_handle.Reset();
+                DeleteFileW(m_filename);
+            }
+        }
+
+        void clear() { m_filename = 0; }
+
+    private:
+        LPCWSTR m_filename;
+        ComPtr<IWICStream>& m_handle;
+
+        auto_delete_file_wic(const auto_delete_file_wic&) = delete;
+        auto_delete_file_wic& operator=(const auto_delete_file_wic&) = delete;
+    };
+}
 
 //--------------------------------------------------------------------------------------
 // Return the BPP for a particular format
@@ -455,17 +513,6 @@ static void GetSurfaceInfo( _In_ size_t width,
         planar = true;
         bpe = 4;
         break;
-
-#if defined(_XBOX_ONE) && defined(_TITLE)
-
-    case DXGI_FORMAT_D16_UNORM_S8_UINT:
-    case DXGI_FORMAT_R16_UNORM_X8_TYPELESS:
-    case DXGI_FORMAT_X16_TYPELESS_G8_UINT:
-        planar = true;
-        bpe = 4;
-        break;
-
-#endif
     }
 
     if (bc)
@@ -571,7 +618,7 @@ static HRESULT CaptureTexture( _In_ ID3D11DeviceContext* pContext,
         return HRESULT_FROM_WIN32( ERROR_NOT_SUPPORTED );
 
     ComPtr<ID3D11Texture2D> pTexture;
-    HRESULT hr = pSource->QueryInterface( __uuidof(ID3D11Texture2D), reinterpret_cast<void**>( pTexture.GetAddressOf() ) );
+    HRESULT hr = pSource->QueryInterface( IID_GRAPHICS_PPV_ARGS( pTexture.GetAddressOf() ) );
     if ( FAILED(hr) )
         return hr;
 
@@ -654,8 +701,6 @@ static HRESULT CaptureTexture( _In_ ID3D11DeviceContext* pContext,
 
 
 //--------------------------------------------------------------------------------------
-#if !defined(WINAPI_FAMILY) || (WINAPI_FAMILY != WINAPI_FAMILY_PHONE_APP) || (_WIN32_WINNT > _WIN32_WINNT_WIN8)
-
 static bool g_WIC2 = false;
 
 static IWICImagingFactory* _GetWIC()
@@ -665,7 +710,7 @@ static IWICImagingFactory* _GetWIC()
     if ( s_Factory )
         return s_Factory;
 
-#if(_WIN32_WINNT >= _WIN32_WINNT_WIN8) || defined(_WIN7_PLATFORM_UPDATE)
+#if (_WIN32_WINNT >= _WIN32_WINNT_WIN8) || defined(_WIN7_PLATFORM_UPDATE)
     HRESULT hr = CoCreateInstance(
         CLSID_WICImagingFactory2,
         nullptr,
@@ -685,8 +730,7 @@ static IWICImagingFactory* _GetWIC()
             CLSID_WICImagingFactory1,
             nullptr,
             CLSCTX_INPROC_SERVER,
-            __uuidof(IWICImagingFactory),
-            (LPVOID*)&s_Factory
+            IID_PPV_ARGS(&s_Factory)
             );
 
         if ( FAILED(hr) )
@@ -700,8 +744,7 @@ static IWICImagingFactory* _GetWIC()
         CLSID_WICImagingFactory,
         nullptr,
         CLSCTX_INPROC_SERVER,
-        __uuidof(IWICImagingFactory),
-        (LPVOID*)&s_Factory
+        IID_PPV_ARGS(&s_Factory)
         );
 
     if ( FAILED(hr) )
@@ -713,7 +756,6 @@ static IWICImagingFactory* _GetWIC()
 
     return s_Factory;
 }
-#endif
 
 
 //--------------------------------------------------------------------------------------
@@ -732,12 +774,14 @@ HRESULT DirectX::SaveDDSTextureToFile( _In_ ID3D11DeviceContext* pContext,
 
     // Create file
 #if (_WIN32_WINNT >= _WIN32_WINNT_WIN8)
-    ScopedHandle hFile( safe_handle( CreateFile2( fileName, GENERIC_WRITE, 0, CREATE_ALWAYS, 0 ) ) );
+    ScopedHandle hFile( safe_handle( CreateFile2( fileName, GENERIC_WRITE | DELETE, 0, CREATE_ALWAYS, 0 ) ) );
 #else
-    ScopedHandle hFile( safe_handle( CreateFileW( fileName, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0 ) ) );
+    ScopedHandle hFile( safe_handle( CreateFileW( fileName, GENERIC_WRITE | DELETE, 0, 0, CREATE_ALWAYS, 0, 0 ) ) );
 #endif
     if ( !hFile )
         return HRESULT_FROM_WIN32( GetLastError() );
+
+    auto_delete_file delonfail(hFile.get());
 
     // Setup header
     const size_t MAX_HEADER_SIZE = sizeof(uint32_t) + sizeof(DDS_HEADER) + sizeof(DDS_HEADER_DXT10);
@@ -776,6 +820,9 @@ HRESULT DirectX::SaveDDSTextureToFile( _In_ ID3D11DeviceContext* pContext,
     case DXGI_FORMAT_BC5_SNORM:             memcpy_s( &header->ddspf, sizeof(header->ddspf), &DDSPF_BC5_SNORM, sizeof(DDS_PIXELFORMAT) );   break;
     case DXGI_FORMAT_B5G6R5_UNORM:          memcpy_s( &header->ddspf, sizeof(header->ddspf), &DDSPF_R5G6B5, sizeof(DDS_PIXELFORMAT) );      break;
     case DXGI_FORMAT_B5G5R5A1_UNORM:        memcpy_s( &header->ddspf, sizeof(header->ddspf), &DDSPF_A1R5G5B5, sizeof(DDS_PIXELFORMAT) );    break;
+    case DXGI_FORMAT_R8G8_SNORM:            memcpy_s( &header->ddspf, sizeof(header->ddspf), &DDSPF_V8U8, sizeof(DDS_PIXELFORMAT) );        break;
+    case DXGI_FORMAT_R8G8B8A8_SNORM:        memcpy_s( &header->ddspf, sizeof(header->ddspf), &DDSPF_Q8W8V8U8, sizeof(DDS_PIXELFORMAT) );    break;
+    case DXGI_FORMAT_R16G16_SNORM:          memcpy_s( &header->ddspf, sizeof(header->ddspf), &DDSPF_V16U16, sizeof(DDS_PIXELFORMAT) );      break;
     case DXGI_FORMAT_B8G8R8A8_UNORM:        memcpy_s( &header->ddspf, sizeof(header->ddspf), &DDSPF_A8R8G8B8, sizeof(DDS_PIXELFORMAT) );    break; // DXGI 1.1
     case DXGI_FORMAT_B8G8R8X8_UNORM:        memcpy_s( &header->ddspf, sizeof(header->ddspf), &DDSPF_X8R8G8B8, sizeof(DDS_PIXELFORMAT) );    break; // DXGI 1.1
     case DXGI_FORMAT_YUY2:                  memcpy_s( &header->ddspf, sizeof(header->ddspf), &DDSPF_YUY2, sizeof(DDS_PIXELFORMAT) );        break; // DXGI 1.2
@@ -866,12 +913,12 @@ HRESULT DirectX::SaveDDSTextureToFile( _In_ ID3D11DeviceContext* pContext,
     if ( bytesWritten != slicePitch )
         return E_FAIL;
 
+    delonfail.clear();
+
     return S_OK;
 }
 
 //--------------------------------------------------------------------------------------
-#if !defined(WINAPI_FAMILY) || (WINAPI_FAMILY != WINAPI_FAMILY_PHONE_APP) || (_WIN32_WINNT > _WIN32_WINNT_WIN8)
-
 HRESULT DirectX::SaveWICTextureToFile( _In_ ID3D11DeviceContext* pContext,
                                        _In_ ID3D11Resource* pSource,
                                        _In_ REFGUID guidContainerFormat, 
@@ -949,6 +996,8 @@ HRESULT DirectX::SaveWICTextureToFile( _In_ ID3D11DeviceContext* pContext,
     hr = stream->InitializeFromFilename( fileName, GENERIC_WRITE );
     if ( FAILED(hr) )
         return hr;
+
+    auto_delete_file_wic delonfail(stream, fileName);
 
     ComPtr<IWICBitmapEncoder> encoder;
     hr = pWIC->CreateEncoder( guidContainerFormat, 0, encoder.GetAddressOf() );
@@ -1077,7 +1126,7 @@ HRESULT DirectX::SaveWICTextureToFile( _In_ ID3D11DeviceContext* pContext,
 
             if ( sRGB )
             {
-                // Set JPEG EXIF Colorspace of sRGB
+                // Set EXIF Colorspace of sRGB
                 value.vt = VT_UI2;
                 value.uiVal = 1;
                 (void)metawriter->SetMetadataByName( L"System.Image.ColorSpace", &value );
@@ -1125,7 +1174,7 @@ HRESULT DirectX::SaveWICTextureToFile( _In_ ID3D11DeviceContext* pContext,
             return hr;
         }
 
-		WICRect rect = { 0, 0, static_cast<INT>(desc.Width), static_cast<INT>(desc.Height) };
+        WICRect rect = { 0, 0, static_cast<INT>( desc.Width ), static_cast<INT>( desc.Height ) };
         hr = frame->WriteSource( FC.Get(), &rect );
         if ( FAILED(hr) )
         {
@@ -1151,7 +1200,7 @@ HRESULT DirectX::SaveWICTextureToFile( _In_ ID3D11DeviceContext* pContext,
     if ( FAILED(hr) )
         return hr;
 
+    delonfail.clear();
+
     return S_OK;
 }
-
-#endif // !WINAPI_FAMILY || (WINAPI_FAMILY != WINAPI_FAMILY_PHONE_APP) || (_WIN32_WINNT > _WIN32_WINNT_WIN8)

@@ -19,11 +19,7 @@
 #error WIC is not supported on Windows Phone 8.0
 #endif
 
-// VS 2010's stdint.h conflicts with intsafe.h
-#pragma warning(push)
-#pragma warning(disable : 4005)
 #include <stdint.h>
-#pragma warning(pop)
 
 #include <algorithm>
 #include <functional>
@@ -37,16 +33,11 @@
 
 #include <ocidl.h>
 
-// VS 2010 doesn't support explicit calling convention for std::function
-#ifndef DIRECTX_STD_CALLCONV
-#if defined(_MSC_VER) && (_MSC_VER < 1700)
-#define DIRECTX_STD_CALLCONV
-#else
-#define DIRECTX_STD_CALLCONV __cdecl
-#endif
-#endif
+#define DIRECTX_TEX_VERSION 134
 
-#define DIRECTX_TEX_VERSION 131
+struct IWICImagingFactory;
+struct IWICMetadataQueryReader;
+
 
 namespace DirectX
 {
@@ -224,9 +215,12 @@ namespace DirectX
                                             _Out_ TexMetadata& metadata );
 
     HRESULT __cdecl GetMetadataFromWICMemory( _In_reads_bytes_(size) LPCVOID pSource, _In_ size_t size, _In_ DWORD flags,
-                                              _Out_ TexMetadata& metadata );
+                                              _Out_ TexMetadata& metadata,
+                                              _In_opt_ std::function<void __cdecl(IWICMetadataQueryReader*)> getMQR = nullptr);
+
     HRESULT __cdecl GetMetadataFromWICFile( _In_z_ LPCWSTR szFile, _In_ DWORD flags,
-                                            _Out_ TexMetadata& metadata );
+                                            _Out_ TexMetadata& metadata,
+                                            _In_opt_ std::function<void __cdecl(IWICMetadataQueryReader*)> getMQR = nullptr);
 
     //---------------------------------------------------------------------------------
     // Bitmap image container
@@ -345,36 +339,25 @@ namespace DirectX
 
     // WIC operations
     HRESULT __cdecl LoadFromWICMemory( _In_reads_bytes_(size) LPCVOID pSource, _In_ size_t size, _In_ DWORD flags,
-                                       _Out_opt_ TexMetadata* metadata, _Out_ ScratchImage& image );
+                                       _Out_opt_ TexMetadata* metadata, _Out_ ScratchImage& image,
+                                       _In_opt_ std::function<void __cdecl(IWICMetadataQueryReader*)> getMQR = nullptr);
     HRESULT __cdecl LoadFromWICFile( _In_z_ LPCWSTR szFile, _In_ DWORD flags,
-                                    _Out_opt_ TexMetadata* metadata, _Out_ ScratchImage& image );
+                                    _Out_opt_ TexMetadata* metadata, _Out_ ScratchImage& image,
+                                    _In_opt_ std::function<void __cdecl(IWICMetadataQueryReader*)> getMQR = nullptr);
 
     HRESULT __cdecl SaveToWICMemory( _In_ const Image& image, _In_ DWORD flags, _In_ REFGUID guidContainerFormat,
                                      _Out_ Blob& blob, _In_opt_ const GUID* targetFormat = nullptr,
-                                     _In_opt_ std::function<void DIRECTX_STD_CALLCONV(IPropertyBag2*)> setCustomProps = nullptr );
+                                     _In_opt_ std::function<void __cdecl(IPropertyBag2*)> setCustomProps = nullptr );
     HRESULT __cdecl SaveToWICMemory( _In_count_(nimages) const Image* images, _In_ size_t nimages, _In_ DWORD flags, _In_ REFGUID guidContainerFormat,
                                      _Out_ Blob& blob, _In_opt_ const GUID* targetFormat = nullptr,
-                                     _In_opt_ std::function<void DIRECTX_STD_CALLCONV(IPropertyBag2*)> setCustomProps = nullptr );
+                                     _In_opt_ std::function<void __cdecl(IPropertyBag2*)> setCustomProps = nullptr );
 
     HRESULT __cdecl SaveToWICFile( _In_ const Image& image, _In_ DWORD flags, _In_ REFGUID guidContainerFormat,
                                    _In_z_ LPCWSTR szFile, _In_opt_ const GUID* targetFormat = nullptr,
-                                   _In_opt_ std::function<void DIRECTX_STD_CALLCONV(IPropertyBag2*)> setCustomProps = nullptr );
+                                   _In_opt_ std::function<void __cdecl(IPropertyBag2*)> setCustomProps = nullptr );
     HRESULT __cdecl SaveToWICFile( _In_count_(nimages) const Image* images, _In_ size_t nimages, _In_ DWORD flags, _In_ REFGUID guidContainerFormat,
                                    _In_z_ LPCWSTR szFile, _In_opt_ const GUID* targetFormat = nullptr,
-                                   _In_opt_ std::function<void DIRECTX_STD_CALLCONV(IPropertyBag2*)> setCustomProps = nullptr );
-
-    enum WICCodecs
-    {
-        WIC_CODEC_BMP       =1,     // Windows Bitmap (.bmp)
-        WIC_CODEC_JPEG,             // Joint Photographic Experts Group (.jpg, .jpeg)
-        WIC_CODEC_PNG,              // Portable Network Graphics (.png)
-        WIC_CODEC_TIFF,             // Tagged Image File Format  (.tif, .tiff)
-        WIC_CODEC_GIF,              // Graphics Interchange Format  (.gif)
-        WIC_CODEC_WMP,              // Windows Media Photo / HD Photo / JPEG XR (.hdp, .jxr, .wdp)
-        WIC_CODEC_ICO,              // Windows Icon (.ico)
-    };
-
-    REFGUID __cdecl GetWICCodec( _In_ WICCodecs codec );
+                                   _In_opt_ std::function<void __cdecl(IPropertyBag2*)> setCustomProps = nullptr );
 
     //---------------------------------------------------------------------------------
     // Texture conversion, resizing, mipmap generation, and block compression
@@ -510,6 +493,9 @@ namespace DirectX
         TEX_COMPRESS_UNIFORM        = 0x40000,
             // Uniform color weighting for BC1-3 compression; by default uses perceptual weighting
 
+        TEX_COMPRESS_BC7_USE_3SUBSETS = 0x80000,
+            // Enables exhaustive search for BC7 compress for mode 0 and 2; by default skips trying these modes
+
         TEX_COMPRESS_SRGB_IN        = 0x1000000,
         TEX_COMPRESS_SRGB_OUT       = 0x2000000,
         TEX_COMPRESS_SRGB           = ( TEX_COMPRESS_SRGB_IN | TEX_COMPRESS_SRGB_OUT ),
@@ -570,6 +556,7 @@ namespace DirectX
 
     //---------------------------------------------------------------------------------
     // Misc image operations
+
     struct Rect
     {
         size_t x;
@@ -577,7 +564,7 @@ namespace DirectX
         size_t w;
         size_t h;
 
-        Rect() {}
+        Rect() = default;
         Rect( size_t _x, size_t _y, size_t _w, size_t _h ) : x(_x), y(_y), w(_w), h(_h) {}
     };
 
@@ -604,6 +591,25 @@ namespace DirectX
     };
 
     HRESULT __cdecl ComputeMSE( _In_ const Image& image1, _In_ const Image& image2, _Out_ float& mse, _Out_writes_opt_(4) float* mseV, _In_ DWORD flags = 0 );
+
+    //---------------------------------------------------------------------------------
+    // WIC utility code
+
+    enum WICCodecs
+    {
+        WIC_CODEC_BMP = 1,     // Windows Bitmap (.bmp)
+        WIC_CODEC_JPEG,             // Joint Photographic Experts Group (.jpg, .jpeg)
+        WIC_CODEC_PNG,              // Portable Network Graphics (.png)
+        WIC_CODEC_TIFF,             // Tagged Image File Format  (.tif, .tiff)
+        WIC_CODEC_GIF,              // Graphics Interchange Format  (.gif)
+        WIC_CODEC_WMP,              // Windows Media Photo / HD Photo / JPEG XR (.hdp, .jxr, .wdp)
+        WIC_CODEC_ICO,              // Windows Icon (.ico)
+    };
+
+    REFGUID __cdecl GetWICCodec(_In_ WICCodecs codec);
+
+    IWICImagingFactory* __cdecl GetWICFactory( bool& iswic2 );
+    void __cdecl SetWICFactory( _In_opt_ IWICImagingFactory* pWIC);
 
     //---------------------------------------------------------------------------------
     // Direct3D 11 functions

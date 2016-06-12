@@ -1,24 +1,31 @@
 //--------------------------------------------------------------------------------------
 // File: TexConv.cpp
 //
-// DirectX 11 Texture Converer
+// DirectX 11 Texture Converter
 //
 // Copyright (c) Microsoft Corporation. All rights reserved.
 //--------------------------------------------------------------------------------------
+
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 
 #include <memory>
+#include <list>
+
+#include <wrl\client.h>
 
 #include <dxgiformat.h>
 
 #include "directxtex.h"
 
 using namespace DirectX;
+using Microsoft::WRL::ComPtr;
 
-enum OPTIONS    // Note: dwOptions below assumes 32 or less options.
+enum OPTIONS    // Note: dwOptions below assumes 64 or less options.
 {
     OPT_WIDTH = 1,
     OPT_HEIGHT,
@@ -37,6 +44,7 @@ enum OPTIONS    // Note: dwOptions below assumes 32 or less options.
     OPT_DDS_DWORD_ALIGN,
     OPT_USE_DX10,
     OPT_NOLOGO,
+    OPT_TIMING,
     OPT_SEPALPHA,
     OPT_TYPELESS_UNORM,
     OPT_TYPELESS_FLOAT,
@@ -49,17 +57,20 @@ enum OPTIONS    // Note: dwOptions below assumes 32 or less options.
     OPT_FEATURE_LEVEL,
     OPT_FIT_POWEROF2,
     OPT_ALPHA_WEIGHT,
+    OPT_NORMAL_MAP,
+    OPT_NORMAL_MAP_AMPLITUDE,
+    OPT_COMPRESS_UNIFORM,
+    OPT_COMPRESS_MAX,
+    OPT_COMPRESS_DITHER,
     OPT_MAX
 };
 
-static_assert( OPT_MAX <= 32, "dwOptions is a DWORD bitfield" );
+static_assert( OPT_MAX <= 64, "dwOptions is a DWORD64 bitfield" );
 
 struct SConversion
 {
-    WCHAR szSrc [MAX_PATH];
-    WCHAR szDest[MAX_PATH];
-
-    SConversion *pNext;
+    wchar_t szSrc [MAX_PATH];
+    wchar_t szDest[MAX_PATH];
 };
 
 struct SValue
@@ -91,6 +102,7 @@ SValue g_pOptions[] =
     { L"dword",         OPT_DDS_DWORD_ALIGN },
     { L"dx10",          OPT_USE_DX10  },
     { L"nologo",        OPT_NOLOGO    },
+    { L"timing",        OPT_TIMING    },
     { L"sepalpha",      OPT_SEPALPHA  },
     { L"tu",            OPT_TYPELESS_UNORM },
     { L"tf",            OPT_TYPELESS_FLOAT },
@@ -103,6 +115,11 @@ SValue g_pOptions[] =
     { L"fl",            OPT_FEATURE_LEVEL },
     { L"pow2",          OPT_FIT_POWEROF2 },
     { L"aw",            OPT_ALPHA_WEIGHT },
+    { L"nmap",          OPT_NORMAL_MAP },
+    { L"nmapamp",       OPT_NORMAL_MAP_AMPLITUDE },
+    { L"bcuniform",     OPT_COMPRESS_UNIFORM },
+    { L"bcmax",         OPT_COMPRESS_MAX },
+    { L"bcdither",      OPT_COMPRESS_DITHER },
     { nullptr,          0             }
 };
 
@@ -289,6 +306,8 @@ SValue g_pFeatureLevels[] =     // valid feature levels for -fl for maximimum si
     { L"10.1",          8192 },
     { L"11.0",          16384 },
     { L"11.1",          16384 },
+    { L"12.0",          16384 },
+    { L"12.1",          16384 },
     { nullptr,          0 },
 };
 
@@ -305,7 +324,7 @@ inline static bool ispow2(size_t x)
 
 #pragma prefast(disable : 26018, "Only used with static internal arrays")
 
-DWORD LookupByName(const WCHAR *pName, const SValue *pArray)
+DWORD LookupByName(const wchar_t *pName, const SValue *pArray)
 {
     while(pArray->pName)
     {
@@ -318,7 +337,7 @@ DWORD LookupByName(const WCHAR *pName, const SValue *pArray)
     return 0;
 }
 
-const WCHAR* LookupByValue(DWORD pValue, const SValue *pArray)
+const wchar_t* LookupByValue(DWORD pValue, const SValue *pArray)
 {
     while(pArray->pName)
     {
@@ -364,6 +383,9 @@ void PrintInfo( const TexMetadata& info )
     if ( info.mipLevels > 1 )
         wprintf( L",%Iu", info.mipLevels);
 
+    if ( info.arraySize > 1 )
+        wprintf( L",%Iu", info.arraySize);
+
     wprintf( L" ");
     PrintFormat( info.format );
 
@@ -405,7 +427,7 @@ void PrintList(size_t cch, SValue *pValue)
             cch = 6;
         }
 
-        wprintf( L"%s ", pValue->pName );
+        wprintf( L"%ls ", pValue->pName );
         cch += cchName + 2;
         pValue++;
     }
@@ -418,6 +440,9 @@ void PrintLogo()
 {
     wprintf( L"Microsoft (R) DirectX 11 Texture Converter (DirectXTex version)\n");
     wprintf( L"Copyright (C) Microsoft Corp. All rights reserved.\n");
+#ifdef _DEBUG
+    wprintf( L"*** Debug build ***\n");
+#endif
     wprintf( L"\n");
 }
 
@@ -445,8 +470,10 @@ void PrintUsage()
     wprintf( L"   -wrap, -mirror      texture addressing mode (wrap, mirror, or clamp)\n");
     wprintf( L"   -pmalpha            convert final texture to use premultiplied alpha\n");
     wprintf( L"   -pow2               resize to fit a power-of-2, respecting aspect ratio\n" );
-    wprintf( L"   -aw                 BC7 GPU compressor weighting for alpha error metric\n"
-             L"                       (defaults to 1.0)\n" );
+    wprintf (L"   -nmap <options>     converts height-map to normal-map\n"
+             L"                       options must be one or more of\n"
+             L"                          r, g, b, a, l, m, u, v, i, o\n" );
+    wprintf (L"   -nmapamp <weight>   normal map amplitude (defaults to 1.0)\n" );
     wprintf( L"   -fl <feature-level> Set maximum feature level target (defaults to 11.0)\n");
     wprintf( L"\n                       (DDS input only)\n");
     wprintf( L"   -t{u|f}             TYPELESS format is treated as UNORM or FLOAT\n");
@@ -455,10 +482,16 @@ void PrintUsage()
     wprintf( L"\n                       (DDS output only)\n");
     wprintf( L"   -dx10               Force use of 'DX10' extended header\n");
     wprintf( L"\n   -nologo             suppress copyright message\n");
+    wprintf( L"   -timing             Display elapsed processing time\n\n");
 #ifdef _OPENMP
     wprintf( L"   -singleproc         Do not use multi-threaded compression\n");
 #endif
     wprintf( L"   -nogpu              Do not use DirectCompute-based codecs\n");
+    wprintf( L"   -bcuniform          Use uniform rather than perceptual weighting for BC1-3\n");
+    wprintf( L"   -bcdither           Use dithering for BC1-3\n");
+    wprintf( L"   -bcmax              Use exchaustive compression (BC7 only)\n");
+    wprintf( L"   -aw <weight>        BC7 GPU compressor weighting for alpha error metric\n"
+             L"                       (defaults to 1.0)\n" );
 
     wprintf( L"\n");
     wprintf( L"   <format>: ");
@@ -494,7 +527,7 @@ bool CreateDevice( _Outptr_ ID3D11Device** pDevice )
         if ( !hModD3D11 )
             return false;
 
-        s_DynamicD3D11CreateDevice = reinterpret_cast<PFN_D3D11_CREATE_DEVICE>( GetProcAddress( hModD3D11, "D3D11CreateDevice" ) ); 
+        s_DynamicD3D11CreateDevice = reinterpret_cast<PFN_D3D11_CREATE_DEVICE>( reinterpret_cast<void*>( GetProcAddress( hModD3D11, "D3D11CreateDevice" ) ) ); 
         if ( !s_DynamicD3D11CreateDevice )
             return false;
     }
@@ -537,24 +570,21 @@ bool CreateDevice( _Outptr_ ID3D11Device** pDevice )
 
     if ( SUCCEEDED(hr) )
     {
-        IDXGIDevice* dxgiDevice = nullptr;
-        hr = (*pDevice)->QueryInterface( __uuidof( IDXGIDevice ), reinterpret_cast< void** >( &dxgiDevice ) );
+        ComPtr<IDXGIDevice> dxgiDevice;
+        hr = (*pDevice)->QueryInterface( IID_PPV_ARGS( dxgiDevice.GetAddressOf() ) );
         if ( SUCCEEDED(hr) )
         {
-            IDXGIAdapter* pAdapter = nullptr;
-            hr = dxgiDevice->GetAdapter( &pAdapter );
+            ComPtr<IDXGIAdapter> pAdapter;
+            hr = dxgiDevice->GetAdapter( pAdapter.GetAddressOf() );
             if ( SUCCEEDED(hr) )
             {
                 DXGI_ADAPTER_DESC desc;
                 hr = pAdapter->GetDesc( &desc );
                 if ( SUCCEEDED(hr) )
                 {
-                    wprintf( L"\n[Using DirectCompute on \"%s\"]\n", desc.Description );
+                    wprintf( L"\n[Using DirectCompute on \"%ls\"]\n", desc.Description );
                 }
-                pAdapter->Release();
             }
-
-            dxgiDevice->Release();
         }
 
         return true;
@@ -612,39 +642,39 @@ void FitPowerOf2( size_t origx, size_t origy, size_t& targetx, size_t& targety, 
 int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
 {
     // Parameters and defaults
-    HRESULT hr;
-    INT nReturn;
-
     size_t width = 0;
     size_t height = 0; 
     size_t mipLevels = 0;
     DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
     DWORD dwFilter = TEX_FILTER_DEFAULT;
     DWORD dwSRGB = 0;
+    DWORD dwCompress = TEX_COMPRESS_DEFAULT;
     DWORD dwFilterOpts = 0;
     DWORD FileType = CODEC_DDS;
     DWORD maxSize = 16384;
     float alphaWeight = 1.f;
+    DWORD dwNormalMap = 0;
+    float nmapAmplitude = 1.f;
 
-    WCHAR szPrefix   [MAX_PATH];
-    WCHAR szSuffix   [MAX_PATH];
-    WCHAR szOutputDir[MAX_PATH];
+    wchar_t szPrefix   [MAX_PATH];
+    wchar_t szSuffix   [MAX_PATH];
+    wchar_t szOutputDir[MAX_PATH];
 
     szPrefix[0]    = 0;
     szSuffix[0]    = 0;
     szOutputDir[0] = 0;
 
     // Initialize COM (needed for WIC)
-    if( FAILED( hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED) ) )
+    HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    if( FAILED(hr) )
     {
         wprintf( L"Failed to initialize COM (%08X)\n", hr);
         return 1;
     }
 
     // Process command line
-    DWORD dwOptions = 0;
-    SConversion *pConversion = nullptr;
-    SConversion **ppConversion = &pConversion;
+    DWORD64 dwOptions = 0;
+    std::list<SConversion> conversion;
 
     for(int iArg = 1; iArg < argc; iArg++)
     {
@@ -662,20 +692,21 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
 
             DWORD dwOption = LookupByName(pArg, g_pOptions);
 
-            if(!dwOption || (dwOptions & (1 << dwOption)))
+            if(!dwOption || (dwOptions & (DWORD64(1) << dwOption)))
             {
                 PrintUsage();
                 return 1;
             }
 
-            dwOptions |= 1 << dwOption;
+            dwOptions |= (DWORD64(1) << dwOption);
 
-            if( (OPT_NOLOGO != dwOption) && (OPT_TYPELESS_UNORM != dwOption) && (OPT_TYPELESS_FLOAT != dwOption)
+            if( (OPT_NOLOGO != dwOption) && (OPT_TIMING != dwOption) && (OPT_TYPELESS_UNORM != dwOption) && (OPT_TYPELESS_FLOAT != dwOption)
                 && (OPT_SEPALPHA != dwOption) && (OPT_PREMUL_ALPHA != dwOption) && (OPT_EXPAND_LUMINANCE != dwOption)
                 && (OPT_TA_WRAP != dwOption) && (OPT_TA_MIRROR != dwOption)
                 && (OPT_FORCE_SINGLEPROC != dwOption) && (OPT_NOGPU != dwOption) && (OPT_FIT_POWEROF2 != dwOption)
                 && (OPT_SRGB != dwOption) && (OPT_SRGBI != dwOption) && (OPT_SRGBO != dwOption)
                 && (OPT_HFLIP != dwOption) && (OPT_VFLIP != dwOption)
+                && (OPT_COMPRESS_UNIFORM != dwOption) && (OPT_COMPRESS_MAX != dwOption) && (OPT_COMPRESS_DITHER != dwOption)
                 && (OPT_DDS_DWORD_ALIGN != dwOption) && (OPT_USE_DX10 != dwOption) )
             {
                 if(!*pValue)
@@ -696,7 +727,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             case OPT_WIDTH:
                 if (swscanf_s(pValue, L"%Iu", &width) != 1)
                 {
-                    wprintf( L"Invalid value specified with -w (%s)\n", pValue);
+                    wprintf( L"Invalid value specified with -w (%ls)\n", pValue);
                     wprintf( L"\n");
                     PrintUsage();
                     return 1;
@@ -706,7 +737,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             case OPT_HEIGHT:
                 if (swscanf_s(pValue, L"%Iu", &height) != 1)
                 {
-                    wprintf( L"Invalid value specified with -h (%s)\n", pValue);
+                    wprintf( L"Invalid value specified with -h (%ls)\n", pValue);
                     printf("\n");
                     PrintUsage();
                     return 1;
@@ -716,7 +747,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             case OPT_MIPLEVELS:
                 if (swscanf_s(pValue, L"%Iu", &mipLevels) != 1)
                 {
-                    wprintf( L"Invalid value specified with -m (%s)\n", pValue);
+                    wprintf( L"Invalid value specified with -m (%ls)\n", pValue);
                     wprintf( L"\n");
                     PrintUsage();
                     return 1;
@@ -727,7 +758,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
                 format = (DXGI_FORMAT) LookupByName(pValue, g_pFormats);
                 if ( !format )
                 {
-                    wprintf( L"Invalid value specified with -f (%s)\n", pValue);
+                    wprintf( L"Invalid value specified with -f (%ls)\n", pValue);
                     wprintf( L"\n");
                     PrintUsage();
                     return 1;
@@ -738,7 +769,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
                 dwFilter = LookupByName(pValue, g_pFilters);
                 if ( !dwFilter )
                 {
-                    wprintf( L"Invalid value specified with -if (%s)\n", pValue);
+                    wprintf( L"Invalid value specified with -if (%ls)\n", pValue);
                     wprintf( L"\n");
                     PrintUsage();
                     return 1;
@@ -777,7 +808,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
                 FileType = LookupByName(pValue, g_pSaveFileTypes);
                 if ( !FileType )
                 {
-                    wprintf( L"Invalid value specified with -ft (%s)\n", pValue);
+                    wprintf( L"Invalid value specified with -ft (%ls)\n", pValue);
                     wprintf( L"\n");
                     PrintUsage();
                     return 1;
@@ -804,11 +835,91 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
                 dwFilterOpts |= TEX_FILTER_MIRROR;
                 break;
 
+            case OPT_NORMAL_MAP:
+                {
+                    dwNormalMap = 0;
+
+                    if ( wcschr( pValue, L'l' ) )
+                    {
+                        dwNormalMap |= CNMAP_CHANNEL_LUMINANCE;
+                    }
+                    else if ( wcschr( pValue, L'r' ) )
+                    {
+                        dwNormalMap |= CNMAP_CHANNEL_RED;
+                    }
+                    else if ( wcschr( pValue, L'g' ) )
+                    {
+                        dwNormalMap |= CNMAP_CHANNEL_GREEN;
+                    }
+                    else if ( wcschr( pValue, L'b' ) )
+                    {
+                        dwNormalMap |= CNMAP_CHANNEL_BLUE;
+                    }
+                    else if ( wcschr( pValue, L'a' ) )
+                    {
+                        dwNormalMap |= CNMAP_CHANNEL_ALPHA;
+                    }
+                    else
+                    {
+                        wprintf( L"Invalid value specified for -nmap (%ls), missing l, r, g, b, or a\n\n", pValue );
+                        PrintUsage();
+                        return 1;                        
+                    }
+
+                    if ( wcschr( pValue, L'm' ) )
+                    {
+                        dwNormalMap |= CNMAP_MIRROR;
+                    }
+                    else
+                    {
+                        if ( wcschr( pValue, L'u' ) )
+                        {
+                            dwNormalMap |= CNMAP_MIRROR_U;
+                        }
+                        if ( wcschr( pValue, L'v' ) )
+                        {
+                            dwNormalMap |= CNMAP_MIRROR_V;
+                        }
+                    }
+
+                    if ( wcschr( pValue, L'i' ) )
+                    {
+                        dwNormalMap |= CNMAP_INVERT_SIGN;
+                    }
+
+                    if ( wcschr( pValue, L'o' ) )
+                    {
+                        dwNormalMap |= CNMAP_COMPUTE_OCCLUSION;
+                    }   
+                }
+                break;
+
+            case OPT_NORMAL_MAP_AMPLITUDE:
+                if ( !dwNormalMap )
+                {
+                    wprintf( L"-nmapamp requires -nmap\n\n" );
+                    PrintUsage();
+                    return 1;
+                }
+                else if (swscanf_s(pValue, L"%f", &nmapAmplitude) != 1)
+                {
+                    wprintf( L"Invalid value specified with -nmapamp (%ls)\n\n", pValue);
+                    PrintUsage();
+                    return 1;
+                }
+                else if ( nmapAmplitude < 0.f )
+                {
+                    wprintf( L"Normal map amplitude must be positive (%ls)\n\n", pValue);
+                    PrintUsage();
+                    return 1;
+                }
+                break;
+
             case OPT_FEATURE_LEVEL:
                 maxSize = LookupByName( pValue, g_pFeatureLevels );
                 if ( !maxSize )
                 {
-                    wprintf( L"Invalid value specified with -fl (%s)\n", pValue);
+                    wprintf( L"Invalid value specified with -fl (%ls)\n", pValue);
                     wprintf( L"\n");
                     PrintUsage();
                     return 1;
@@ -818,43 +929,50 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             case OPT_ALPHA_WEIGHT:
                 if (swscanf_s(pValue, L"%f", &alphaWeight) != 1)
                 {
-                    wprintf( L"Invalid value specified with -aw (%s)\n", pValue);
+                    wprintf( L"Invalid value specified with -aw (%ls)\n", pValue);
                     wprintf( L"\n");
                     PrintUsage();
                     return 1;
                 }
                 else if ( alphaWeight < 0.f )
                 {
-                    wprintf( L"-aw (%s) parameter must be positive\n", pValue);
+                    wprintf( L"-aw (%ls) parameter must be positive\n", pValue);
                     wprintf( L"\n");
                     return 1;
                 }
                 break;
+
+            case OPT_COMPRESS_UNIFORM:
+                dwCompress |= TEX_COMPRESS_UNIFORM;
+                break;
+
+            case OPT_COMPRESS_MAX:
+                dwCompress |= TEX_COMPRESS_BC7_USE_3SUBSETS;
+                break;
+
+            case OPT_COMPRESS_DITHER:
+                dwCompress |= TEX_COMPRESS_DITHER;
+                break;
             }
         }
         else
-        {         
-            SConversion *pConv = new SConversion;
-            if ( !pConv )
-                return 1;
+        {
+            SConversion conv;
+            wcscpy_s(conv.szSrc, MAX_PATH, pArg);
 
-            wcscpy_s(pConv->szSrc, MAX_PATH, pArg);
+            conv.szDest[0] = 0;
 
-            pConv->szDest[0] = 0;
-            pConv->pNext = nullptr;
-
-            *ppConversion = pConv;
-            ppConversion = &pConv->pNext;
+            conversion.push_back(conv);
         }
     }
 
-    if(!pConversion)
+    if(conversion.empty())
     {
         PrintUsage();
         return 0;
     }
 
-    if(~dwOptions & (1 << OPT_NOLOGO))
+    if(~dwOptions & (DWORD64(1) << OPT_NOLOGO))
         PrintLogo();
 
     // Work out out filename prefix and suffix
@@ -866,7 +984,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
 
     wcscpy_s(szPrefix, MAX_PATH, szOutputDir);
 
-    const WCHAR* fileTypeName = LookupByValue(FileType, g_pSaveFileTypes);
+    const wchar_t* fileTypeName = LookupByValue(FileType, g_pSaveFileTypes);
 
     if (fileTypeName)
     {
@@ -883,23 +1001,35 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
         mipLevels = 1;
     }
 
+    LARGE_INTEGER qpcFreq;
+    if ( !QueryPerformanceFrequency( &qpcFreq ) )
+    {
+        qpcFreq.QuadPart = 0;
+    }
+
+
+    LARGE_INTEGER qpcStart;
+    if ( !QueryPerformanceCounter( &qpcStart ) )
+    {
+        qpcStart.QuadPart = 0;
+    }
+
     // Convert images
     bool nonpow2warn = false;
     bool non4bc = false;
-    SConversion *pConv;
-    ID3D11Device* pDevice = nullptr;
+    ComPtr<ID3D11Device> pDevice;
 
-    for(pConv = pConversion; pConv; pConv = pConv->pNext)
+    for( auto pConv = conversion.begin(); pConv != conversion.end(); ++pConv )
     {
-        // Load source image
-        if(pConv != pConversion)
+        if ( pConv != conversion.begin() )
             wprintf( L"\n");
 
-        wprintf( L"reading %s", pConv->szSrc );
+        // Load source image
+        wprintf( L"reading %ls", pConv->szSrc );
         fflush(stdout);
 
-        WCHAR ext[_MAX_EXT];
-        WCHAR fname[_MAX_FNAME];
+        wchar_t ext[_MAX_EXT];
+        wchar_t fname[_MAX_FNAME];
         _wsplitpath_s( pConv->szSrc, nullptr, 0, nullptr, 0, fname, _MAX_FNAME, ext, _MAX_EXT );
 
         TexMetadata info;
@@ -908,15 +1038,15 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
         if ( !image )
         {
             wprintf( L" ERROR: Memory allocation failed\n" );
-            goto LError;
+            return 1;
         }
 
         if ( _wcsicmp( ext, L".dds" ) == 0 )
         {
             DWORD ddsFlags = DDS_FLAGS_NONE;
-            if ( dwOptions & (1 << OPT_DDS_DWORD_ALIGN) )
+            if ( dwOptions & (DWORD64(1) << OPT_DDS_DWORD_ALIGN) )
                 ddsFlags |= DDS_FLAGS_LEGACY_DWORD;
-            if ( dwOptions & (1 << OPT_EXPAND_LUMINANCE) )
+            if ( dwOptions & (DWORD64(1) << OPT_EXPAND_LUMINANCE) )
                 ddsFlags |= DDS_FLAGS_EXPAND_LUMINANCE;
 
             hr = LoadFromDDSFile( pConv->szSrc, ddsFlags, &info, *image );
@@ -928,11 +1058,11 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
 
             if ( IsTypeless( info.format ) )
             {
-                if ( dwOptions & (1 << OPT_TYPELESS_UNORM) )
+                if ( dwOptions & (DWORD64(1) << OPT_TYPELESS_UNORM) )
                 {
                     info.format = MakeTypelessUNORM( info.format );
                 }
-                else if ( dwOptions & (1 << OPT_TYPELESS_FLOAT) )
+                else if ( dwOptions & (DWORD64(1) << OPT_TYPELESS_FLOAT) )
                 {
                     info.format = MakeTypelessFLOAT( info.format );
                 }
@@ -965,7 +1095,11 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             static_assert( WIC_FLAGS_FILTER_CUBIC == TEX_FILTER_CUBIC, "WIC_FLAGS_* & TEX_FILTER_* should match"  );
             static_assert( WIC_FLAGS_FILTER_FANT == TEX_FILTER_FANT, "WIC_FLAGS_* & TEX_FILTER_* should match"  );
 
-            hr = LoadFromWICFile( pConv->szSrc, dwFilter, &info, *image );
+            DWORD wicFlags = dwFilter;
+            if (FileType == CODEC_DDS)
+                wicFlags |= WIC_FLAGS_ALL_FRAMES;
+
+            hr = LoadFromWICFile( pConv->szSrc, wicFlags, &info, *image );
             if ( FAILED(hr) )
             {
                 wprintf( L" FAILED (%x)\n", hr);
@@ -1002,7 +1136,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             wprintf( L"\nWARNING: Target size exceeds maximum size for feature level (%u)\n", maxSize );
         }
 
-        if (dwOptions & (1 << OPT_FIT_POWEROF2))
+        if (dwOptions & (DWORD64(1) << OPT_FIT_POWEROF2))
         {
             FitPowerOf2( info.width, info.height, twidth, theight, maxSize );
         }
@@ -1022,7 +1156,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             if ( !timage )
             {
                 wprintf( L" ERROR: Memory allocation failed\n" );
-                goto LError;
+                return 1;
             }
 
             hr = ConvertToSinglePlane( img, nimg, info, *timage );
@@ -1062,7 +1196,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             if ( !timage )
             {
                 wprintf( L" ERROR: Memory allocation failed\n" );
-                goto LError;
+                return 1;
             }
 
             hr = Decompress( img, nimg, info, DXGI_FORMAT_UNKNOWN /* picks good default */, *timage );
@@ -1098,21 +1232,21 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
         }
 
         // --- Flip/Rotate -------------------------------------------------------------
-        if ( dwOptions & ( (1 << OPT_HFLIP) | (1 << OPT_VFLIP) ) )
+        if ( dwOptions & ( (DWORD64(1) << OPT_HFLIP) | (DWORD64(1) << OPT_VFLIP) ) )
         {
             std::unique_ptr<ScratchImage> timage( new (std::nothrow) ScratchImage );
             if ( !timage )
             {
                 wprintf( L" ERROR: Memory allocation failed\n" );
-                goto LError;
+                return 1;
             }
 
             DWORD dwFlags = 0;
 
-            if ( dwOptions & (1 << OPT_HFLIP) )
+            if ( dwOptions & (DWORD64(1) << OPT_HFLIP) )
                 dwFlags |= TEX_FR_FLIP_HORIZONTAL;
 
-            if ( dwOptions & (1 << OPT_VFLIP) )
+            if ( dwOptions & (DWORD64(1) << OPT_VFLIP) )
                 dwFlags |= TEX_FR_FLIP_VERTICAL;
 
             assert( dwFlags != 0 );
@@ -1121,7 +1255,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             if ( FAILED(hr) )
             {
                 wprintf( L" FAILED [fliprotate] (%x)\n", hr);
-                goto LError;
+                return 1;
             }
 
             auto& tinfo = timage->GetMetadata();
@@ -1150,14 +1284,14 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             if ( !timage )
             {
                 wprintf( L" ERROR: Memory allocation failed\n" );
-                goto LError;
+                return 1;
             }
 
             hr = Resize( image->GetImages(), image->GetImageCount(), image->GetMetadata(), twidth, theight, dwFilter | dwFilterOpts, *timage );
             if ( FAILED(hr) )
             {
                 wprintf( L" FAILED [resize] (%x)\n", hr);
-                goto LError;
+                return 1;
             }
 
             auto& tinfo = timage->GetMetadata();
@@ -1179,20 +1313,59 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
         }
 
         // --- Convert -----------------------------------------------------------------
-        if ( info.format != tformat && !IsCompressed( tformat ) )
+        if ( dwOptions & (DWORD64(1) << OPT_NORMAL_MAP) )
         {
             std::unique_ptr<ScratchImage> timage( new (std::nothrow) ScratchImage );
             if ( !timage )
             {
                 wprintf( L" ERROR: Memory allocation failed\n" );
-                goto LError;
+                return 1;
+            }
+
+            DXGI_FORMAT nmfmt = tformat;
+            if ( IsCompressed( tformat ) )
+            {
+                nmfmt = (dwNormalMap & CNMAP_COMPUTE_OCCLUSION) ? DXGI_FORMAT_R32G32B32A32_FLOAT : DXGI_FORMAT_R32G32B32_FLOAT;
+            }
+
+            hr = ComputeNormalMap( image->GetImages(), image->GetImageCount(), image->GetMetadata(), dwNormalMap, nmapAmplitude, nmfmt, *timage );
+            if ( FAILED(hr) )
+            {
+                wprintf( L" FAILED [normalmap] (%x)\n", hr);
+                return 1;
+            }            
+
+            auto& tinfo = timage->GetMetadata();
+
+            assert( tinfo.format == nmfmt );
+            info.format = tinfo.format;
+
+            assert( info.width == tinfo.width );
+            assert( info.height == tinfo.height );
+            assert( info.depth == tinfo.depth );
+            assert( info.arraySize == tinfo.arraySize );
+            assert( info.mipLevels == tinfo.mipLevels );
+            assert( info.miscFlags == tinfo.miscFlags );
+            assert( info.miscFlags2 == tinfo.miscFlags2 );
+            assert( info.dimension == tinfo.dimension );
+
+            image.swap( timage );
+            cimage.reset();
+        }
+        else if ( info.format != tformat && !IsCompressed( tformat ) )
+        {
+            std::unique_ptr<ScratchImage> timage( new (std::nothrow) ScratchImage );
+            if ( !timage )
+            {
+                wprintf( L" ERROR: Memory allocation failed\n" );
+                return 1;
             }
 
             hr = Convert( image->GetImages(), image->GetImageCount(), image->GetMetadata(), tformat, dwFilter | dwFilterOpts | dwSRGB, 0.5f, *timage );
             if ( FAILED(hr) )
             {
                 wprintf( L" FAILED [convert] (%x)\n", hr);
-                goto LError;
+                return 1;
             }
 
             auto& tinfo = timage->GetMetadata();
@@ -1225,7 +1398,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
                 else
                 {
                     wprintf( L" ERROR: Cannot generate mips for non-power-of-2 volume textures\n" );
-                    goto LError;
+                    return 1;
                 }
             }
             else if ( !tMips || info.mipLevels != 1 )
@@ -1241,7 +1414,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             if ( !timage )
             {
                 wprintf( L" ERROR: Memory allocation failed\n" );
-                goto LError;
+                return 1;
             }
 
             TexMetadata mdata = info;
@@ -1250,7 +1423,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             if ( FAILED(hr) )
             {
                 wprintf( L" FAILED [copy to single level] (%x)\n", hr);
-                goto LError;
+                return 1;
             }
 
             if ( info.dimension == TEX_DIMENSION_TEXTURE3D )
@@ -1262,7 +1435,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
                     if ( FAILED(hr) )
                     {
                         wprintf( L" FAILED [copy to single level] (%x)\n", hr);
-                        goto LError;
+                        return 1;
                     }
                 }
             }
@@ -1275,7 +1448,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
                     if ( FAILED(hr) )
                     {
                         wprintf( L" FAILED [copy to single level] (%x)\n", hr);
-                        goto LError;
+                        return 1;
                     }
                 }
             }
@@ -1292,7 +1465,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
                 if ( FAILED(hr) )
                 {
                     wprintf( L" FAILED [copy compressed to single level] (%x)\n", hr);
-                    goto LError;
+                    return 1;
                 }
 
                 if ( mdata.dimension == TEX_DIMENSION_TEXTURE3D )
@@ -1330,7 +1503,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             if ( !timage )
             {
                 wprintf( L" ERROR: Memory allocation failed\n" );
-                goto LError;
+                return 1;
             }
 
             if ( info.dimension == TEX_DIMENSION_TEXTURE3D )
@@ -1344,7 +1517,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             if ( FAILED(hr) )
             {
                 wprintf( L" FAILED [mipmaps] (%x)\n", hr);
-                goto LError;
+                return 1;
             }
 
             auto& tinfo = timage->GetMetadata();
@@ -1359,13 +1532,12 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             assert( info.miscFlags2 == tinfo.miscFlags2 );
             assert( info.dimension == tinfo.dimension );
 
-
             image.swap( timage );
             cimage.reset();
         }
 
         // --- Premultiplied alpha (if requested) --------------------------------------
-        if ( ( dwOptions & (1 << OPT_PREMUL_ALPHA) )
+        if ( ( dwOptions & (DWORD64(1) << OPT_PREMUL_ALPHA) )
              && HasAlpha( info.format )
              && info.format != DXGI_FORMAT_A8_UNORM )
         {
@@ -1383,7 +1555,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
                 if ( !timage )
                 {
                     wprintf( L" ERROR: Memory allocation failed\n" );
-                    goto LError;
+                    return 1;
                 }
 
                 hr = PremultiplyAlpha( img, nimg, info, dwSRGB, *timage );
@@ -1447,7 +1619,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
                 if ( !timage )
                 {
                     wprintf( L" ERROR: Memory allocation failed\n" );
-                    goto LError;
+                    return 1;
                 }
 
                 bool bc6hbc7=false;
@@ -1468,9 +1640,9 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
                         {
                             s_tryonce = true;
 
-                            if ( !(dwOptions & (1 << OPT_NOGPU) ) )
+                            if ( !(dwOptions & (DWORD64(1) << OPT_NOGPU) ) )
                             {
-                                if ( !CreateDevice( &pDevice ) )
+                                if ( !CreateDevice( pDevice.GetAddressOf() ) )
                                     wprintf( L"\nWARNING: DirectCompute is not available, using BC6H / BC7 CPU codec\n" );
                             }
                             else
@@ -1482,9 +1654,9 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
                     break;
                 }
 
-                DWORD cflags = TEX_COMPRESS_DEFAULT;
+                DWORD cflags = dwCompress;
 #ifdef _OPENMP
-                if ( bc6hbc7 && !(dwOptions & (1 << OPT_FORCE_SINGLEPROC) ) )
+                if ( !(dwOptions & (DWORD64(1) << OPT_FORCE_SINGLEPROC) ) )
                 {
                     cflags |= TEX_COMPRESS_PARALLEL;
                 }
@@ -1497,7 +1669,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
 
                 if ( bc6hbc7 && pDevice )
                 {
-                    hr = Compress( pDevice, img, nimg, info, tformat, dwSRGB, alphaWeight, *timage );
+                    hr = Compress( pDevice.Get(), img, nimg, info, tformat, dwCompress | dwSRGB, alphaWeight, *timage );
                 }
                 else
                 {
@@ -1541,7 +1713,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             {
                 // Aleady set TEX_ALPHA_MODE_PREMULTIPLIED
             }
-            else if ( dwOptions & (1 << OPT_SEPALPHA) )
+            else if ( dwOptions & (DWORD64(1) << OPT_SEPALPHA) )
             {
                 info.SetAlphaMode(TEX_ALPHA_MODE_CUSTOM);
             }
@@ -1565,7 +1737,7 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             wprintf( L"\n");
 
             // Figure out dest filename
-            WCHAR *pchSlash, *pchDot;
+            wchar_t *pchSlash, *pchDot;
 
             wcscpy_s(pConv->szDest, MAX_PATH, szPrefix);
 
@@ -1584,14 +1756,14 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
             wcscat_s(pConv->szDest, MAX_PATH, szSuffix);
 
             // Write texture
-            wprintf( L"writing %s", pConv->szDest);
+            wprintf( L"writing %ls", pConv->szDest);
             fflush(stdout);
 
             switch( FileType )
             {
             case CODEC_DDS:
                 hr = SaveToDDSFile( img, nimg, info,
-                                    (dwOptions & (1 << OPT_USE_DX10) ) ? (DDS_FLAGS_FORCE_DX10_EXT|DDS_FLAGS_FORCE_DX10_EXT_MISC2) : DDS_FLAGS_NONE, 
+                                    (dwOptions & (DWORD64(1) << OPT_USE_DX10) ) ? (DDS_FLAGS_FORCE_DX10_EXT|DDS_FLAGS_FORCE_DX10_EXT_MISC2) : DDS_FLAGS_NONE, 
                                     pConv->szDest );
                 break;
 
@@ -1619,26 +1791,15 @@ int __cdecl wmain(_In_ int argc, _In_z_count_(argc) wchar_t* argv[])
     if ( non4bc )
         wprintf( L"\n WARNING: Direct3D requires BC image to be multiple of 4 in width & height\n" );
 
-    nReturn = 0;
-
-    goto LDone;
-
-LError:
-    nReturn = 1;
-
-LDone:
-
-    while(pConversion)
+    if(dwOptions & (DWORD64(1) << OPT_TIMING))
     {
-        pConv = pConversion;
-        pConversion = pConversion->pNext;
-        delete pConv;
+        LARGE_INTEGER qpcEnd;
+        if ( QueryPerformanceCounter( &qpcEnd ) )
+        {
+            LONGLONG delta = qpcEnd.QuadPart - qpcStart.QuadPart;
+            wprintf( L"\n Processing time: %f seconds\n", double(delta) / double(qpcFreq.QuadPart) );
+        }
     }
 
-    if ( pDevice )
-    {
-        pDevice->Release();
-    }
-
-    return nReturn;
+    return 0;
 }

@@ -3,7 +3,7 @@ DIRECTX TEXTURE LIBRARY (DirectXTex)
 
 Copyright (c) Microsoft Corporation. All rights reserved.
 
-September 22, 2014
+April 26, 2016
 
 This package contains DirectXTex, a shared source library for reading and writing DDS
 files, and performing various texture content processing operations including
@@ -13,14 +13,8 @@ use of the Windows Image Component (WIC) APIs. It also includes a simple .TGA re
 writer since this image file format is commonly used for texture content processing pipelines,
 but is not currently supported by a built-in WIC codec.
 
-The source is written for Visual Studio 2010, 2012, or 2013. It is recommended that you
-make use of the Windows 8.1 SDK and Windows 7 Service Pack 1 or later.
-
-Details on using the Windows 8.1 SDK with VS 2010 are described on the Visual C++ Team Blog:
-<http://blogs.msdn.com/b/vcblog/archive/2012/11/23/using-the-windows-8-sdk-with-visual-studio-2010-configuring-multiple-projects.aspx>
-
-NOTE: DirectXTex is not supported on Windows phone 8.0 because WIC is not available on
-that platform. It is available on Windows phone starting in version 8.1.
+The source is written for Visual Studio 2013 or 2015. It is recommended that you
+make use of VS 2013 Update 5, VS 2015 Update 2, and Windows 7 Service Pack 1 or later.
 
 DDSTextureLoader\
     This contains a streamlined version of the DirectX SDK sample DDSWithoutD3DX11 texture
@@ -74,8 +68,12 @@ DDSView\
     or volume maps, the "<" and ">" keyboard keys will show different images contained in the DDS.
     The "1" through "0" keys can also be used to jump to a specific image index.
 
-All content and source code for this package are bound to the Microsoft Public License (Ms-PL)
-<http://www.microsoft.com/en-us/openness/licenses.aspx#MPL>.
+All content and source code for this package are subject to the terms of the MIT License.
+<http://opensource.org/licenses/MIT>.
+
+Documentation is available at <https://github.com/Microsoft/DirectXTex/wiki>.
+
+For the latest version of DirectXTex, bug reports, etc. please visit the project site.
 
 http://go.microsoft.com/fwlink/?LinkId=248926
 
@@ -104,6 +102,52 @@ RELEASE NOTES
 
 ------------------------------------
 RELEASE HISTORY
+
+April 26, 2016
+    Optional callback from WIC reader functions to query additional metadata
+    Retired obsolete adapter code
+    Minor code cleanup
+
+February 23, 2016
+    Fix to clean up partial or zero-length image files on failed write
+    Retired VS 2012 projects
+
+November 30, 2015
+    texconv command-line tool -fl switch now supports 12.0 and 12.1 feature levels
+    Updated for VS 2015 Update 1 and Windows 10 SDK (10586)
+
+October 30, 2015
+    DDS support for legacy bumpmap formats (V8U8, Q8W8V8U8, V16U16)
+    Fix for buffer overread in BC CPU compressor
+    Minor code cleanup
+
+August 18, 2015
+    Added GetWICFactory and SetWICFactory
+    Updates for new DXGI 1.3 types
+    Xbox One platform updates
+
+July 29, 2015
+    Fixed rounding problem with 32-bit RGBA/BGRA format conversions
+    texconv: use CPU parallel compression for BC1-BC5 (-singleproc disables)
+    Updated for VS 2015 and Windows 10 SDK RTM
+    Retired VS 2010 and Windows 8.0 Store projects
+
+June 18, 2015
+    New BC_FLAGS_USE_3SUBSETS option for BC7 compressors; now defaults to skipping 3 subset blocks
+    Fixed bug with MakeTypeless and A8_UNORM
+    Fixed file length validation problem in LoadDDSFromFile
+
+March 27, 2015
+    Added projects for Windows apps Technical Preview
+    Fixed bug with WIC-based mipmap generation for non-WIC supported formats
+    Fixed bug with WIC multiframe loader when resizing required
+    texconv: Added -nmap/-nmapamp for generating normal maps from height maps
+    texconv/texassemble: Updated to load multiframe WIC files (tiff, gif)
+    Minor code cleanup
+
+November 24, 2014
+    Updates for Visual Studio 2015 Technical Preview
+    Minor code cleanup
 
 September 22, 2014
     Format conversion improvements and bug fixes (depth/stencil, alpha-only, float16, RGB -> 1 channel)
