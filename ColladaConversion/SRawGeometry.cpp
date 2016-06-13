@@ -1172,8 +1172,10 @@ namespace ColladaConversion
         VertexWeightAttachment<WeightCount> attachment;
         std::fill(attachment._weights, &attachment._weights[dimof(attachment._weights)], 0);
         std::fill(attachment._jointIndex, &attachment._jointIndex[dimof(attachment._jointIndex)], 0);
-        std::copy(weights, &weights[std::min(WeightCount,jointCount)], attachment._weights);
-        std::copy(joints, &joints[std::min(WeightCount,jointCount)], attachment._jointIndex);
+		for (unsigned c=0; c<std::min(WeightCount, jointCount); ++c) {
+			attachment._weights[c] = weights[c];
+			attachment._jointIndex[c] = (uint8)joints[c];
+		}
         return attachment;
     }
 
