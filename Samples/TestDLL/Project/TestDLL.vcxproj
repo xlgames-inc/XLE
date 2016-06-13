@@ -33,11 +33,11 @@
     <ProjectGuid>{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}</ProjectGuid>
     <RootNamespace>TestDLL</RootNamespace>
   </PropertyGroup>
-  <Import Project="..\..\..\Solutions\Main.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
+  <Import Project="..\..\..\Solutions\Main.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
