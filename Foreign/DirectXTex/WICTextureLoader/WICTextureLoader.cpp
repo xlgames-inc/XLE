@@ -28,14 +28,12 @@
 // We could load multi-frame images (TIFF/GIF) into a texture array.
 // For now, we just load the first frame (note: DirectXTex supports multi-frame images)
 
+#include <dxgiformat.h>
 #include <assert.h>
 
-// VS 2010's stdint.h conflicts with intsafe.h
-#pragma warning(push)
-#pragma warning(disable : 4005)
 #include <wincodec.h>
-#include <wrl.h>
-#pragma warning(pop)
+
+#include <wrl\client.h>
 
 #include <memory>
 
@@ -194,8 +192,7 @@ static IWICImagingFactory* _GetWIC()
             CLSID_WICImagingFactory1,
             nullptr,
             CLSCTX_INPROC_SERVER,
-            __uuidof(IWICImagingFactory),
-            (LPVOID*)&s_Factory
+            IID_PPV_ARGS(&s_Factory)
             );
 
         if ( FAILED(hr) )
@@ -209,8 +206,7 @@ static IWICImagingFactory* _GetWIC()
         CLSID_WICImagingFactory,
         nullptr,
         CLSCTX_INPROC_SERVER,
-        __uuidof(IWICImagingFactory),
-        (LPVOID*)&s_Factory
+        IID_PPV_ARGS(&s_Factory)
         );
 
     if ( FAILED(hr) )
@@ -644,8 +640,7 @@ static HRESULT CreateTextureFromWIC( _In_ ID3D11Device* d3dDevice,
     {
         if (textureView != 0)
         {
-            D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc;
-            memset( &SRVDesc, 0, sizeof( SRVDesc ) );
+            D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
             SRVDesc.Format = desc.Format;
 
             SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;

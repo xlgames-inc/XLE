@@ -166,7 +166,7 @@ static HRESULT _EnsureWicBitmapPixelFormat( _In_ IWICImagingFactory* pWIC, _In_ 
 
 
 //--- Resizing color and alpha channels separately using WIC ---
-HRESULT _ResizeSeparateColorAndAlpha( _In_ IWICImagingFactory* pWIC, _In_ IWICBitmap* original,
+HRESULT _ResizeSeparateColorAndAlpha( _In_ IWICImagingFactory* pWIC, _In_ bool iswic2, _In_ IWICBitmap* original,
                                       _In_ size_t newWidth, _In_ size_t newHeight, _In_ DWORD filter, _Inout_ const Image* img )
 {
     if ( !pWIC || !original || !img )
@@ -213,12 +213,14 @@ HRESULT _ResizeSeparateColorAndAlpha( _In_ IWICImagingFactory* pWIC, _In_ IWICBi
             else
             {
 #if(_WIN32_WINNT >= _WIN32_WINNT_WIN8) || defined(_WIN7_PLATFORM_UPDATE)
-                if ( _IsWIC2() )
+                if ( iswic2 )
                 {
                     colorBytesInPixel = colorBytesPerPixel = 12;
                     colorPixelFormat = GUID_WICPixelFormat96bppRGBFloat;
                 }
                 else
+#else
+                UNREFERENCED_PARAMETER(iswic2);
 #endif
                 {
                     colorBytesInPixel = 12;
@@ -451,7 +453,8 @@ static HRESULT _GenerateMipMapsUsingWIC( _In_ const Image& baseImage, _In_ DWORD
     if ( !baseImage.pixels || !mipChain.GetPixels() )
         return E_POINTER;
 
-    IWICImagingFactory* pWIC = _GetWIC();
+    bool iswic2 = false;
+    IWICImagingFactory* pWIC = GetWICFactory(iswic2);
     if ( !pWIC )
         return E_NOINTERFACE;
 
@@ -515,7 +518,7 @@ static HRESULT _GenerateMipMapsUsingWIC( _In_ const Image& baseImage, _In_ DWORD
 
         if ( (filter & TEX_FILTER_SEPARATE_ALPHA) && supportsTransparency )
         {
-            hr = _ResizeSeparateColorAndAlpha( pWIC, source.Get(), width, height, filter, img );
+            hr = _ResizeSeparateColorAndAlpha( pWIC, iswic2, source.Get(), width, height, filter, img );
             if ( FAILED(hr) )
                 return hr;
         }
@@ -1173,7 +1176,7 @@ static HRESULT _Generate2DMipsTriangleFilter( _In_ size_t levels, _In_ DWORD fil
             {
                 size_t v = yFrom->to[ j ].u;
                 assert( v < nheight );
-                TriangleRow* rowAcc = &rowActive.get()[ v ];
+                TriangleRow* rowAcc = &rowActive[ v ];
 
                 ++rowAcc->remaining;
 
@@ -1194,7 +1197,7 @@ static HRESULT _Generate2DMipsTriangleFilter( _In_ size_t levels, _In_ DWORD fil
             {
                 size_t v = yFrom->to[ j ].u;
                 assert( v < nheight );
-                TriangleRow* rowAcc = &rowActive.get()[ v ];
+                TriangleRow* rowAcc = &rowActive[ v ];
 
                 if ( !rowAcc->scanline )
                 {
@@ -1260,7 +1263,7 @@ static HRESULT _Generate2DMipsTriangleFilter( _In_ size_t levels, _In_ DWORD fil
             {
                 size_t v = yFrom->to[ j ].u;
                 assert( v < nheight );
-                TriangleRow* rowAcc = &rowActive.get()[ v ];
+                TriangleRow* rowAcc = &rowActive[ v ];
 
                 assert( rowAcc->remaining > 0 );
                 --rowAcc->remaining;
@@ -2320,7 +2323,7 @@ static HRESULT _Generate3DMipsTriangleFilter( _In_ size_t depth, _In_ size_t lev
             {
                 size_t w = zFrom->to[ j ].u;
                 assert( w < ndepth );
-                TriangleRow* sliceAcc = &sliceActive.get()[ w ];
+                TriangleRow* sliceAcc = &sliceActive[ w ];
 
                 ++sliceAcc->remaining;
 
@@ -2342,7 +2345,7 @@ static HRESULT _Generate3DMipsTriangleFilter( _In_ size_t depth, _In_ size_t lev
             {
                 size_t w = zFrom->to[ j ].u;
                 assert( w < ndepth );
-                TriangleRow* sliceAcc = &sliceActive.get()[ w ];
+                TriangleRow* sliceAcc = &sliceActive[ w ];
 
                 if ( !sliceAcc->scanline )
                 {
@@ -2432,7 +2435,7 @@ static HRESULT _Generate3DMipsTriangleFilter( _In_ size_t depth, _In_ size_t lev
             {
                 size_t w = zFrom->to[ j ].u;
                 assert( w < ndepth );
-                TriangleRow* sliceAcc = &sliceActive.get()[ w ];
+                TriangleRow* sliceAcc = &sliceActive[ w ];
 
                 assert( sliceAcc->remaining > 0 );
                 --sliceAcc->remaining;
@@ -2567,6 +2570,12 @@ HRESULT GenerateMipMaps( const Image& baseImage, DWORD filter, size_t levels, Sc
                             return E_POINTER;
 
                         ScratchImage tMipChain;
+                        hr = (baseImage.height > 1 || !allow1D)
+                             ? tMipChain.Initialize2D( DXGI_FORMAT_R32G32B32A32_FLOAT, baseImage.width, baseImage.height, 1, levels )
+                             : tMipChain.Initialize1D( DXGI_FORMAT_R32G32B32A32_FLOAT, baseImage.width, 1, levels ); 
+                        if ( FAILED(hr) )
+                            return hr;
+
                         hr = _GenerateMipMapsUsingWIC( *timg, filter, levels, GUID_WICPixelFormat128bppRGBAFloat, tMipChain, 0 );
                         if ( FAILED(hr) )
                             return hr;
@@ -2585,8 +2594,7 @@ HRESULT GenerateMipMaps( const Image& baseImage, DWORD filter, size_t levels, Sc
     else
     {
         //--- Use custom filters to generate mipmaps ----------------------------------
-        TexMetadata mdata;
-        memset( &mdata, 0, sizeof(mdata) );
+        TexMetadata mdata = {};
         mdata.width = baseImage.width;
         if ( baseImage.height > 1 || !allow1D )
         {

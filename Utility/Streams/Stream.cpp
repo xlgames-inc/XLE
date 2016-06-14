@@ -234,7 +234,7 @@ template<typename OutChar, typename InChar, typename std::enable_if<CompatibleCh
         stream.sputn((const OutChar*)input.begin(), input.Length());
     }
 
-template<typename OutChar, typename InChar, typename typename std::enable_if<!CompatibleCharTypes<OutChar, InChar>::compatible>::type* = nullptr>
+template<typename OutChar, typename InChar, typename std::enable_if<!CompatibleCharTypes<OutChar, InChar>::compatible>::type* = nullptr>
     void PushString(
         std::basic_streambuf<OutChar>& stream,
         StringSection<InChar> input)

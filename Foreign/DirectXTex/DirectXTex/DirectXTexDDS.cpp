@@ -17,6 +17,33 @@
 
 #include "dds.h"
 
+namespace
+{
+    class auto_delete_file
+    {
+    public:
+        auto_delete_file(HANDLE hFile) : m_handle(hFile) {}
+
+        auto_delete_file(const auto_delete_file&) = delete;
+        auto_delete_file& operator=(const auto_delete_file&) = delete;
+
+        ~auto_delete_file()
+        {
+            if (m_handle)
+            {
+                FILE_DISPOSITION_INFO info = {0};
+                info.DeleteFile = TRUE;
+                (void)SetFileInformationByHandle(m_handle, FileDispositionInfo, &info, sizeof(info));
+            }
+        }
+
+        void clear() { m_handle = 0; }
+
+    private:
+        HANDLE m_handle;
+    };
+}
+
 namespace DirectX
 {
 
@@ -126,6 +153,10 @@ const LegacyDDS g_LegacyDDSMap[] =
 
     { DXGI_FORMAT_YUY2,               CONV_FLAGS_NONE,        DDSPF_YUY2 }, // D3DFMT_YUY2 (uses DXGI 1.2 format)
     { DXGI_FORMAT_YUY2,               CONV_FLAGS_SWIZZLE,     { sizeof(DDS_PIXELFORMAT), DDS_FOURCC,    MAKEFOURCC('U','Y','V','Y'), 0, 0, 0, 0, 0            } }, // D3DFMT_UYVY (uses DXGI 1.2 format)
+
+    { DXGI_FORMAT_R8G8_SNORM,         CONV_FLAGS_NONE,        DDSPF_V8U8 },     // D3DFMT_V8U8
+    { DXGI_FORMAT_R8G8B8A8_SNORM,     CONV_FLAGS_NONE,        DDSPF_Q8W8V8U8 }, // D3DFMT_Q8W8V8U8
+    { DXGI_FORMAT_R16G16_SNORM,       CONV_FLAGS_NONE,        DDSPF_V16U16 },   // D3DFMT_V16U16
 };
 
 // Note that many common DDS reader/writers (including D3DX) swap the
@@ -135,7 +166,7 @@ const LegacyDDS g_LegacyDDSMap[] =
 // header extension and specify the DXGI_FORMAT_R10G10B10A2_UNORM format directly
 
 // We do not support the following legacy Direct3D 9 formats:
-//      BumpDuDv D3DFMT_V8U8, D3DFMT_Q8W8V8U8, D3DFMT_V16U16, D3DFMT_A2W10V10U10
+//      BumpDuDv D3DFMT_A2W10V10U10
 //      BumpLuminance D3DFMT_L6V5U5, D3DFMT_X8L8V8U8
 //      FourCC 117 D3DFMT_CxV8U8
 //      ZBuffer D3DFMT_D16_LOCKABLE
@@ -483,6 +514,9 @@ HRESULT _EncodeDDSHeader( const TexMetadata& metadata, DWORD flags,
         case DXGI_FORMAT_BC5_SNORM:             memcpy_s( &ddpf, sizeof(ddpf), &DDSPF_BC5_SNORM, sizeof(DDS_PIXELFORMAT) ); break;
         case DXGI_FORMAT_B5G6R5_UNORM:          memcpy_s( &ddpf, sizeof(ddpf), &DDSPF_R5G6B5, sizeof(DDS_PIXELFORMAT) ); break;
         case DXGI_FORMAT_B5G5R5A1_UNORM:        memcpy_s( &ddpf, sizeof(ddpf), &DDSPF_A1R5G5B5, sizeof(DDS_PIXELFORMAT) ); break;
+        case DXGI_FORMAT_R8G8_SNORM:            memcpy_s( &ddpf, sizeof(ddpf), &DDSPF_V8U8, sizeof(DDS_PIXELFORMAT) ); break;
+        case DXGI_FORMAT_R8G8B8A8_SNORM:        memcpy_s( &ddpf, sizeof(ddpf), &DDSPF_Q8W8V8U8, sizeof(DDS_PIXELFORMAT) ); break;
+        case DXGI_FORMAT_R16G16_SNORM:          memcpy_s( &ddpf, sizeof(ddpf), &DDSPF_V16U16, sizeof(DDS_PIXELFORMAT) ); break;
         case DXGI_FORMAT_B8G8R8A8_UNORM:        memcpy_s( &ddpf, sizeof(ddpf), &DDSPF_A8R8G8B8, sizeof(DDS_PIXELFORMAT) ); break; // DXGI 1.1
         case DXGI_FORMAT_B8G8R8X8_UNORM:        memcpy_s( &ddpf, sizeof(ddpf), &DDSPF_X8R8G8B8, sizeof(DDS_PIXELFORMAT) ); break; // DXGI 1.1
         case DXGI_FORMAT_B4G4R4A4_UNORM:        memcpy_s( &ddpf, sizeof(ddpf), &DDSPF_A4R4G4B4, sizeof(DDS_PIXELFORMAT) ); break; // DXGI 1.2
@@ -1573,15 +1607,11 @@ HRESULT LoadFromDDSFile( LPCWSTR szFile, DWORD flags, TexMetadata* metadata, Scr
     }
     else
     {
-        //  DavidJ --   This fails for DDS files that have extra data after the main texture data.
-        //              Some exporters put extra data into this space. It's safer to fail to load
-        //              these textures, because it prevents people from hiding unwanted extra data 
-        //              in that spot... but it causes problems with some legacy files.
-        // if ( remaining > image.GetPixelsSize() )
-        // {
-        //     image.Release();
-        //     return E_FAIL;
-        // }
+        if ( remaining < image.GetPixelsSize() )
+        {
+            image.Release();
+            return E_FAIL;
+        }
 
         if ( !ReadFile( hFile.get(), image.GetPixels(), static_cast<DWORD>( image.GetPixelsSize() ), &bytesRead, 0 ) )
         {
@@ -1838,14 +1868,16 @@ HRESULT SaveToDDSFile( const Image* images, size_t nimages, const TexMetadata& m
 
     // Create file and write header
 #if (_WIN32_WINNT >= _WIN32_WINNT_WIN8)
-    ScopedHandle hFile( safe_handle( CreateFile2( szFile, GENERIC_WRITE, 0, CREATE_ALWAYS, 0 ) ) );
+    ScopedHandle hFile( safe_handle( CreateFile2( szFile, GENERIC_WRITE | DELETE, 0, CREATE_ALWAYS, 0 ) ) );
 #else
-    ScopedHandle hFile( safe_handle( CreateFileW( szFile, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0 ) ) );
+    ScopedHandle hFile( safe_handle( CreateFileW( szFile, GENERIC_WRITE | DELETE, 0, 0, CREATE_ALWAYS, 0, 0 ) ) );
 #endif
     if ( !hFile )
     {
         return HRESULT_FROM_WIN32( GetLastError() );
     }
+
+    auto_delete_file delonfail(hFile.get());
 
     DWORD bytesWritten;
     if ( !WriteFile( hFile.get(), header, static_cast<DWORD>( required ), &bytesWritten, 0 ) )
@@ -1999,6 +2031,8 @@ HRESULT SaveToDDSFile( const Image* images, size_t nimages, const TexMetadata& m
     default:
         return E_FAIL;
     }
+
+    delonfail.clear();
 
     return S_OK;
 }

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="NsightTegraProject">
     <NsightTegraProjectRevisionNumber>4</NsightTegraProjectRevisionNumber>
   </PropertyGroup>
@@ -64,13 +64,10 @@
     <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'">android-17</AndroidTargetAPI>
     <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'" />
   </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Platform)'=='Win32' or '$(Platform)'=='x64'">
-    <PlatformToolset>v120</PlatformToolset>
-  </PropertyGroup>
+  <Import Project="..\..\Solutions\Main.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\..\Solutions\Main.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Win32'">

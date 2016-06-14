@@ -6,11 +6,16 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 //--------------------------------------------------------------------------------------
 
-#include <assert.h>
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <windows.h>
+
+#include <assert.h>
 #include <stdio.h>
 #include <dxgiformat.h>
 #include <d3d11.h>
+
+#include <algorithm>
 
 #include <directxmath.h>
 
@@ -60,25 +65,25 @@ struct CBArrayControl
 #include "shaders\psCube.h"
 
 //--------------------------------------------------------------------------------------
-HINSTANCE                   g_hInst = NULL;
-HWND                        g_hWnd = NULL;
+HINSTANCE                   g_hInst = nullptr;
+HWND                        g_hWnd = nullptr;
 D3D_DRIVER_TYPE             g_driverType = D3D_DRIVER_TYPE_NULL;
 D3D_FEATURE_LEVEL           g_featureLevel = D3D_FEATURE_LEVEL_11_0;
-ID3D11Device*               g_pd3dDevice = NULL;
-ID3D11DeviceContext*        g_pImmediateContext = NULL;
-IDXGISwapChain*             g_pSwapChain = NULL;
-ID3D11RenderTargetView*     g_pRenderTargetView = NULL;
-ID3D11Texture2D*            g_pDepthStencil = NULL;
-ID3D11DepthStencilView*     g_pDepthStencilView = NULL;
-ID3D11VertexShader*         g_pVertexShader = NULL;
-ID3D11PixelShader*          g_pPixelShader = NULL;
-ID3D11InputLayout*          g_pVertexLayout = NULL;
-ID3D11Buffer*               g_pVertexBuffer = NULL;
-ID3D11Buffer*               g_pIndexBuffer = NULL;
-ID3D11Buffer*               g_pCBArrayControl = NULL;
-ID3D11ShaderResourceView*   g_pSRV = NULL;
-ID3D11BlendState*           g_AlphaBlendState = NULL;
-ID3D11SamplerState*         g_pSamplerLinear = NULL;
+ID3D11Device*               g_pd3dDevice = nullptr;
+ID3D11DeviceContext*        g_pImmediateContext = nullptr;
+IDXGISwapChain*             g_pSwapChain = nullptr;
+ID3D11RenderTargetView*     g_pRenderTargetView = nullptr;
+ID3D11Texture2D*            g_pDepthStencil = nullptr;
+ID3D11DepthStencilView*     g_pDepthStencilView = nullptr;
+ID3D11VertexShader*         g_pVertexShader = nullptr;
+ID3D11PixelShader*          g_pPixelShader = nullptr;
+ID3D11InputLayout*          g_pVertexLayout = nullptr;
+ID3D11Buffer*               g_pVertexBuffer = nullptr;
+ID3D11Buffer*               g_pIndexBuffer = nullptr;
+ID3D11Buffer*               g_pCBArrayControl = nullptr;
+ID3D11ShaderResourceView*   g_pSRV = nullptr;
+ID3D11BlendState*           g_AlphaBlendState = nullptr;
+ID3D11SamplerState*         g_pSamplerLinear = nullptr;
 
 UINT                        g_iCurrentIndex = 0;
 UINT                        g_iMaxIndex = 1;
@@ -102,7 +107,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
     if ( !*lpCmdLine )
     {
-        MessageBox( NULL, L"Usage: ddsview <filename>", L"DDSView", MB_OK | MB_ICONEXCLAMATION );
+        MessageBox( nullptr, L"Usage: ddsview <filename>", L"DDSView", MB_OK | MB_ICONEXCLAMATION );
         return 0;
     }
 
@@ -110,9 +115,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     HRESULT hr = GetMetadataFromDDSFile( lpCmdLine, DDS_FLAGS_NONE, mdata );
     if ( FAILED(hr) )
     {
-        WCHAR buff[2048];
-        swprintf_s( buff, L"Failed to open texture file\n\nFilename = %s\nHRESULT %08X", lpCmdLine, hr );
-        MessageBox( NULL, buff, L"DDSView", MB_OK | MB_ICONEXCLAMATION );
+        wchar_t buff[2048] = { 0 };
+        swprintf_s( buff, L"Failed to open texture file\n\nFilename = %ls\nHRESULT %08X", lpCmdLine, hr );
+        MessageBox( nullptr, buff, L"DDSView", MB_OK | MB_ICONEXCLAMATION );
         return 0;
     }
 
@@ -131,9 +136,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     {
         if ( mdata.arraySize > 1 )
         {
-            WCHAR buff[2048];
-            swprintf_s( buff, L"Arrays of volume textures are not supported\n\nFilename = %s\nArray size %Iu", lpCmdLine, mdata.arraySize );
-            MessageBox( NULL, buff, L"DDSView", MB_OK | MB_ICONEXCLAMATION );
+            wchar_t buff[2048] = { 0 };
+            swprintf_s( buff, L"Arrays of volume textures are not supported\n\nFilename = %ls\nArray size %Iu", lpCmdLine, mdata.arraySize );
+            MessageBox( nullptr, buff, L"DDSView", MB_OK | MB_ICONEXCLAMATION );
             return 0;
         }
 
@@ -154,9 +159,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     case DXGI_FORMAT_BC7_UNORM_SRGB:
         if ( g_featureLevel < D3D_FEATURE_LEVEL_11_0 )
         {
-            WCHAR buff[2048];
-            swprintf_s( buff, L"BC6H/BC7 requires DirectX 11 hardware\n\nFilename = %s\nDXGI Format %d\nFeature Level %d", lpCmdLine, mdata.format, g_featureLevel );
-            MessageBox( NULL, buff, L"DDSView", MB_OK | MB_ICONEXCLAMATION );
+            wchar_t buff[2048] = { 0 };
+            swprintf_s( buff, L"BC6H/BC7 requires DirectX 11 hardware\n\nFilename = %ls\nDXGI Format %d\nFeature Level %d", lpCmdLine, mdata.format, g_featureLevel );
+            MessageBox( nullptr, buff, L"DDSView", MB_OK | MB_ICONEXCLAMATION );
             return 0;
         }
         break;
@@ -167,9 +172,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
             hr = g_pd3dDevice->CheckFormatSupport ( mdata.format, &flags );
             if ( FAILED(hr) || !(flags & (D3D11_FORMAT_SUPPORT_TEXTURE1D|D3D11_FORMAT_SUPPORT_TEXTURE2D|D3D11_FORMAT_SUPPORT_TEXTURE3D)) )
             {
-                WCHAR buff[2048];
-                swprintf_s( buff, L"Format not supported by DirectX hardware\n\nFilename = %s\nDXGI Format %d\nFeature Level %d\nHRESULT = %08X", lpCmdLine, mdata.format, g_featureLevel, hr );
-                MessageBox( NULL, buff, L"DDSView", MB_OK | MB_ICONEXCLAMATION );
+                wchar_t buff[2048] = { 0 };
+                swprintf_s( buff, L"Format not supported by DirectX hardware\n\nFilename = %ls\nDXGI Format %d\nFeature Level %d\nHRESULT = %08X", lpCmdLine, mdata.format, g_featureLevel, hr );
+                MessageBox( nullptr, buff, L"DDSView", MB_OK | MB_ICONEXCLAMATION );
                 return 0;
             }
         }
@@ -180,9 +185,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     hr = LoadFromDDSFile( lpCmdLine, DDS_FLAGS_NONE, &mdata, image );
     if ( FAILED(hr) )
     {
-        WCHAR buff[2048];
-        swprintf_s( buff, L"Failed to load texture file\n\nFilename = %s\nHRESULT %08X", lpCmdLine, hr );
-        MessageBox( NULL, buff, L"DDSView", MB_OK | MB_ICONEXCLAMATION );
+        wchar_t buff[2048] = { 0 };
+        swprintf_s( buff, L"Failed to load texture file\n\nFilename = %ls\nHRESULT %08X", lpCmdLine, hr );
+        MessageBox( nullptr, buff, L"DDSView", MB_OK | MB_ICONEXCLAMATION );
         return 0;
     }
 
@@ -192,9 +197,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     hr = CreateShaderResourceView( g_pd3dDevice, image.GetImages(), image.GetImageCount(), mdata, &g_pSRV );
     if ( FAILED(hr) )
     {
-        WCHAR buff[2048];
-        swprintf_s( buff, L"Failed creating texture from file\n\nFilename = %s\nHRESULT = %08X", lpCmdLine, hr );
-        MessageBox( NULL, buff, L"DDSView", MB_OK | MB_ICONEXCLAMATION );
+        wchar_t buff[2048] = { 0 };
+        swprintf_s( buff, L"Failed creating texture from file\n\nFilename = %ls\nHRESULT = %08X", lpCmdLine, hr );
+        MessageBox( nullptr, buff, L"DDSView", MB_OK | MB_ICONEXCLAMATION );
         return 0;
     }
 
@@ -202,7 +207,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     MSG msg = {0};
     while( WM_QUIT != msg.message )
     {
-        if( PeekMessage( &msg, NULL, 0, 0, PM_REMOVE ) )
+        if( PeekMessage( &msg, nullptr, 0, 0, PM_REMOVE ) )
         {
             TranslateMessage( &msg );
             DispatchMessage( &msg );
@@ -230,9 +235,9 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow, const TexMetadata& mdata 
     wcex.cbWndExtra = 0;
     wcex.hInstance = hInstance;
     wcex.hIcon = LoadIcon( hInstance, ( LPCTSTR )IDI_MAIN_ICON );
-    wcex.hCursor = LoadCursor( NULL, IDC_ARROW );
+    wcex.hCursor = LoadCursor( nullptr, IDC_ARROW );
     wcex.hbrBackground = ( HBRUSH )( COLOR_WINDOW + 1 );
-    wcex.lpszMenuName = NULL;
+    wcex.lpszMenuName = nullptr;
     wcex.lpszClassName = L"DDSViewWindowClass";
     wcex.hIconSm = LoadIcon( wcex.hInstance, ( LPCTSTR )IDI_MAIN_ICON );
     if( !RegisterClassEx( &wcex ) )
@@ -244,15 +249,15 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow, const TexMetadata& mdata 
 
     int cxborder = GetSystemMetrics( SM_CXBORDER );
     int cxedge = GetSystemMetrics( SM_CXEDGE );
-    int screenX = GetSystemMetrics( SM_CXSCREEN ) - max( cxborder, cxedge );
+    int screenX = GetSystemMetrics( SM_CXSCREEN ) - std::max( cxborder, cxedge );
     if( rc.right < (LONG)mdata.width )
-        rc.right = (LONG)mdata.height;
+        rc.right = (LONG)mdata.width;
     if ( rc.right > screenX )
         rc.right = screenX;
 
     int cyborder = GetSystemMetrics( SM_CYBORDER );
     int cyedge = GetSystemMetrics( SM_CYEDGE );
-    int screenY = GetSystemMetrics( SM_CYSCREEN ) - max( cyborder, cyedge );
+    int screenY = GetSystemMetrics( SM_CYSCREEN ) - std::max( cyborder, cyedge );
     if ( rc.bottom < (LONG)mdata.height )
         rc.bottom = (LONG)mdata.height;
     if ( rc.bottom > screenY )
@@ -260,8 +265,8 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow, const TexMetadata& mdata 
 
     AdjustWindowRect( &rc, WS_OVERLAPPEDWINDOW, FALSE );
     g_hWnd = CreateWindow( L"DDSViewWindowClass", L"DDS View", WS_OVERLAPPEDWINDOW,
-                           CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, hInstance,
-                           NULL );
+                           CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance,
+                           nullptr );
     if( !g_hWnd )
         return E_FAIL;
 
@@ -307,7 +312,7 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
                 if ( index < g_iMaxIndex )
                     g_iCurrentIndex = index;
             }
-            InvalidateRect( hWnd, NULL, FALSE );
+            InvalidateRect( hWnd, nullptr, FALSE );
             break;
 
         default:
@@ -366,7 +371,7 @@ HRESULT InitDevice( const TexMetadata& mdata )
     for( UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++ )
     {
         g_driverType = driverTypes[driverTypeIndex];
-        hr = D3D11CreateDeviceAndSwapChain( NULL, g_driverType, NULL, createDeviceFlags, featureLevels, numFeatureLevels,
+        hr = D3D11CreateDeviceAndSwapChain( nullptr, g_driverType, nullptr, createDeviceFlags, featureLevels, numFeatureLevels,
                                             D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext );
         if( SUCCEEDED( hr ) )
             break;
@@ -375,12 +380,12 @@ HRESULT InitDevice( const TexMetadata& mdata )
         return hr;
 
     // Create a render target view
-    ID3D11Texture2D* pBackBuffer = NULL;
-    hr = g_pSwapChain->GetBuffer( 0, __uuidof( ID3D11Texture2D ), ( LPVOID* )&pBackBuffer );
+    ID3D11Texture2D* pBackBuffer = nullptr;
+    hr = g_pSwapChain->GetBuffer( 0, IID_PPV_ARGS(&pBackBuffer) );
     if( FAILED( hr ) )
         return hr;
 
-    hr = g_pd3dDevice->CreateRenderTargetView( pBackBuffer, NULL, &g_pRenderTargetView );
+    hr = g_pd3dDevice->CreateRenderTargetView( pBackBuffer, nullptr, &g_pRenderTargetView );
     pBackBuffer->Release();
     if( FAILED( hr ) )
         return hr;
@@ -399,7 +404,7 @@ HRESULT InitDevice( const TexMetadata& mdata )
     descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
     descDepth.CPUAccessFlags = 0;
     descDepth.MiscFlags = 0;
-    hr = g_pd3dDevice->CreateTexture2D( &descDepth, NULL, &g_pDepthStencil );
+    hr = g_pd3dDevice->CreateTexture2D( &descDepth, nullptr, &g_pDepthStencil );
     if( FAILED( hr ) )
         return hr;
 
@@ -426,7 +431,7 @@ HRESULT InitDevice( const TexMetadata& mdata )
     g_pImmediateContext->RSSetViewports( 1, &vp );
 
     // Create the vertex shader
-    hr = g_pd3dDevice->CreateVertexShader( g_VS, sizeof(g_VS), NULL, &g_pVertexShader );
+    hr = g_pd3dDevice->CreateVertexShader( g_VS, sizeof(g_VS), nullptr, &g_pVertexShader );
     if( FAILED( hr ) )
         return hr;
 
@@ -449,7 +454,7 @@ HRESULT InitDevice( const TexMetadata& mdata )
     // Select the pixel shader
     bool isCubeMap = false;
     bool is1D = false;
-    const BYTE* pshader = NULL;
+    const BYTE* pshader = nullptr;
     size_t pshader_size = 0;
 
     switch ( mdata.dimension )
@@ -499,7 +504,7 @@ HRESULT InitDevice( const TexMetadata& mdata )
     assert( pshader && pshader_size > 0 );
 
     // Create the pixel shader
-    hr = g_pd3dDevice->CreatePixelShader( pshader, pshader_size, NULL, &g_pPixelShader );
+    hr = g_pd3dDevice->CreatePixelShader( pshader, pshader_size, nullptr, &g_pPixelShader );
     if( FAILED( hr ) )
         return hr;
 
@@ -649,7 +654,7 @@ HRESULT InitDevice( const TexMetadata& mdata )
     bd.ByteWidth = sizeof(CBArrayControl);
     bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     bd.CPUAccessFlags = 0;
-    hr = g_pd3dDevice->CreateBuffer( &bd, NULL, &g_pCBArrayControl );
+    hr = g_pd3dDevice->CreateBuffer( &bd, nullptr, &g_pCBArrayControl );
     if( FAILED( hr ) )
         return hr;
 
@@ -702,10 +707,10 @@ void Render()
 
     CBArrayControl cb;
     cb.Index = (float)g_iCurrentIndex;
-    g_pImmediateContext->UpdateSubresource( g_pCBArrayControl, 0, NULL, &cb, 0, 0 );
+    g_pImmediateContext->UpdateSubresource( g_pCBArrayControl, 0, nullptr, &cb, 0, 0 );
 
-    g_pImmediateContext->VSSetShader( g_pVertexShader, NULL, 0 );
-    g_pImmediateContext->PSSetShader( g_pPixelShader, NULL, 0 );
+    g_pImmediateContext->VSSetShader( g_pVertexShader, nullptr, 0 );
+    g_pImmediateContext->PSSetShader( g_pPixelShader, nullptr, 0 );
     g_pImmediateContext->PSSetConstantBuffers( 0, 1, &g_pCBArrayControl );
     g_pImmediateContext->PSSetShaderResources( 0, 1, &g_pSRV );
     g_pImmediateContext->PSSetSamplers( 0, 1, &g_pSamplerLinear );
