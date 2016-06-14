@@ -1347,7 +1347,7 @@ namespace ShaderPatcher
                 std::smatch match;
                 if (std::regex_match(i->_returnSemantic.begin(), i->_returnSemantic.end(), match, FlagsParse))
                     for (unsigned c=1; c<match.size(); ++c)
-                        if (XlEqString(MakeStringSection<char>(match[c].first, match[c].second), "WritesVSOutput"))
+                        if (XlEqString(MakeStringSection(AsPointer(match[c].first), AsPointer(match[c].second)), "WritesVSOutput"))
                             flags |= VaryingParamsFlags::WritesVSOutput;
             }
 

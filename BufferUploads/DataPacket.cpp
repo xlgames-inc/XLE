@@ -19,6 +19,11 @@
 
 #include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
 
+// Important character set note!
+// We're using some "ucs2" conversions in this file. This is because we're using some Windows API functions that take WCHAR strings
+// (indirectly via the DirectXTex library).
+// However, Windows should technically expect UTF16 (not UCS2) encoding for WCHAR. Maybe in our usage patterns it's not a big
+// deal... But we should be careful!
 
 namespace BufferUploads
 {

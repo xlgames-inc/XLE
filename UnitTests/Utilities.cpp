@@ -106,7 +106,7 @@ namespace UnitTests
         TEST_METHOD(MemoryStreamTest)
         {
             auto memStreamA = std::make_unique<MemoryOutputStream<char>>();
-            auto memStreamB = std::make_unique<MemoryOutputStream<wchar_t>>();
+            auto memStreamB = std::make_unique<MemoryOutputStream<utf16>>();
             auto memStreamC = std::make_unique<MemoryOutputStream<utf8>>();
             auto memStreamD = std::make_unique<MemoryOutputStream<ucs2>>();
             auto memStreamE = std::make_unique<MemoryOutputStream<ucs4>>();
@@ -123,8 +123,8 @@ namespace UnitTests
             auto stringE = memStreamE->AsString();
 
             Assert::AreEqual(stringA.c_str(), "BD<<StringB>><<StringD>>");
-            Assert::AreEqual((wchar_t*)stringB.c_str(), L"BD<<StringB>><<StringD>>");
-            Assert::AreEqual((char*)stringC.c_str(), "BD<<StringB>><<StringD>>");
+            Assert::AreEqual((const wchar_t*)stringB.c_str(), (const wchar_t*)u"BD<<StringB>><<StringD>>");
+            Assert::AreEqual((const char*)stringC.c_str(), (const char*)u8"BD<<StringB>><<StringD>>");
             Assert::AreEqual((wchar_t*)stringD.c_str(), L"BD<<StringB>><<StringD>>");
         }
             

@@ -101,6 +101,13 @@ namespace Utility
             return searchEnd;
         }
 
+	namespace Internal
+	{
+		template<typename Iterator> inline size_t IteratorDifference(Iterator first, Iterator second)		{ return std::distance(first, second); } 
+		template<> inline size_t IteratorDifference(void* first, void* second)								{ return (size_t)PtrDiff(second, first); }
+		template<> inline size_t IteratorDifference(const void* first, const void* second)					{ return (size_t)PtrDiff(second, first); }
+	}
+
     template<typename Iterator>
         class IteratorRange : public std::pair<Iterator, Iterator>
         {
@@ -109,10 +116,11 @@ namespace Utility
             Iterator end() const        { return second; }
             Iterator cbegin() const     { return first; }
             Iterator cend() const       { return second; }
-            size_t size() const         { return std::distance(first, second); }
             bool empty() const          { return first == second; }
+			size_t size() const			{ return Internal::IteratorDifference(first, second); }
 
-            decltype(*std::declval<Iterator>()) operator[](size_t index) const { return first[index]; }
+			template<typename I=Iterator, typename std::enable_if<!std::is_same<typename std::remove_const<I>::type, void*>::value>::type* = nullptr>
+				decltype(*std::declval<Iterator>()) operator[](size_t index) const { return first[index]; }
 
             IteratorRange() : std::pair<Iterator, Iterator>((Iterator)nullptr, (Iterator)nullptr) {}
             IteratorRange(Iterator f, Iterator s) : std::pair<Iterator, Iterator>(f, s) {}

@@ -130,11 +130,11 @@ namespace Assets
             // try to prevent unoptimisated path names from getting here!
         // assert(!XlFindString(filename, "../") && !XlFindString(filename, "./"));
 
-        ResChar directoryName[MaxPath];
-        FileNameSplitter<ResChar> splitter(filename);
-        SplitPath<ResChar>(splitter.DriveAndPath()).Simplify().Rebuild(directoryName);
+        utf8 directoryName[MaxPath];
+        FileNameSplitter<utf8> splitter(StringSection<utf8>((const utf8*)filename.begin(), (const utf8*)filename.end()));
+        SplitPath<utf8>(splitter.DriveAndPath()).Simplify().Rebuild(directoryName);
         Utility::AttachFileSystemMonitor(
-            StringSection<ResChar>(directoryName), splitter.FileAndExtension(), validationIndex);
+            MakeStringSection(directoryName), splitter.FileAndExtension(), validationIndex);
     }
 
     void RegisterAssetDependency(

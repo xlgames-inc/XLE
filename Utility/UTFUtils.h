@@ -13,52 +13,25 @@
 
 namespace Utility
 {
+	// Core character types can be "UTF" or "UCS" types
+	// Note that "UTF" types have variable character sizes.
+	// That is, in utf8, a single character might be 8, 16 or 32 bits long
+	//
+	// In UCS types, characters are fixed length. This is a little easier to work
+	// with, but doesn't provide access to every possible unicode character.
+	// However, we can't use wchar_t because the standard doesn't clearly define the encoding. The Visual Studio documentation
+	// is even unclear about exactly what conversion are performed on L"" literals (maybe it depends on the encoding of the source file?)
+	//
+    using utf8 = uint8;
+	using utf32 = char32_t;		// like char16_t, this is for UTF-32 type strings
 
-    // preferred types := utf8, ucs2, ucs4
-    typedef uint8  utf8_t, utf8;
-    typedef uint16 ucs2_t, ucs2, utf16;
-    typedef uint32 ucs4_t, ucs4, utf32;
-
-    // nchar_t := os preferred path encoding type
-    #define __L(x)      L ## x
-
-    #if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
-
-        typedef ucs2 nchar;
-        #define a2n(x) (const ucs2*)__L(x)
-        #define n2w(x) (const wchar_t*)x
-
-    #elif (PLATFORMOS_ACTIVE == PLATFORMOS_OSX) || (PLATFORMOS_ACTIVE == PLATFORMOS_ANDROID)
-
-        typedef utf8 nchar;
-        #define a2n(x) x
-        #define n2w(x) x
-        // #error 'not implemented'
-
-    #else
-
-        typedef ucs4 nchar;
-        #error 'not implemented'
-
-    #endif
-
-    #define a2w(x) __L(x)
-
-    typedef nchar nchar_t;
-
-
-    #define UTF_REPLACEMENT_CHAR    (ucs4)0x0000FFFD
-    #define UTF_MAX_BMP             (ucs4)0x0000FFFF
-    #define UTF_MAX_UTF16           (ucs4)0x0010FFFF
-    #define UTF_MAX_UTF32           (ucs4)0x7FFFFFFF
-    #define UTF_MAX_LEGAL_UTF32     (ucs4)0x0010FFFF
-
-    enum ucs_conv_error {
-        UCE_OK = 0,
-        UCE_SRC_EXHAUSTED = -1,
-        UCE_DST_EXHAUSTED = -2,
-        UCE_ILLEGAL = -2
-    };
+	// We're going to do a hack and define ucs2 and UTF-16 as the same thing. This because most string
+	// functions should work identically for both. Also, Windows functions tend to mush wchar_t, char16_t
+	// USC2 and UTF-16 together confusingly.
+	// For Chinese projects, this may be an issue (?), but maybe it won't effect other projects.
+	using utf16 = char16_t;		// char16_t is intended by the standard's body to hold UTF-16 type strings	
+    using ucs2 = char16_t;
+    using ucs4 = uint32;
 
     // convert UTF-8 data to ucs4
     // return value := >= 0 if valid or 
@@ -68,26 +41,6 @@ namespace Utility
     XL_UTILITY_API int ucs2_2_utf8(const ucs2* src, size_t sl, utf8* dst, size_t dl);
     XL_UTILITY_API int ucs4_2_ucs2(const ucs4* src, size_t sl, ucs2* dst, size_t dl);
     XL_UTILITY_API int ucs2_2_ucs4(const ucs2* src, size_t sl, ucs4* dst, size_t dl);
-
-    // aliases
-    #define utf8_2_utf32    utf8_2_ucs4
-    #define utf32_2_utf8    ucs4_2_utf8
-    #define utf8_2_utf16    utf8_2_ucs2
-    #define utf16_2_utf8    ucs2_2_utf8
-    #define utf32_2_utf16   ucs4_2_ucs2
-    #define utf16_2_utf32   ucs2_2_ucs4
-
-    #if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
-        #define nchar_2_utf8    ucs2_2_utf8
-        #define nchar_2_ucs2(x) x
-        #define nchar_2_ucs4    ucs2_2_utf8
-    #elif (PLATFORMOS_ACTIVE == PLATFORMOS_OSX) || (PLATFORMOS_ACTIVE == PLATFORMOS_ANDROID)
-        #define nchar_2_utf8(x) x
-        #define nchar_2_ucs2    utf8_2_ucs2
-        #define nchar_2_ucs4    utf8_2_ucs4
-    #else
-        #error 'not implemented!'
-    #endif
 
     // refer ConvertUTF.h in libtransmission
     // remark_todo("need some safe conversion") 
@@ -105,6 +58,7 @@ namespace Utility
     // return next character, updating an index variable
     // i := byte offset
     XL_UTILITY_API ucs4 utf8_nextchar(const utf8* s, int* i);
+	XL_UTILITY_API ucs4 utf8_nextchar(utf8 const*& iterator, utf8 const* end);
 
     // count the number of characters in a UTF-8 string
     XL_UTILITY_API size_t utf8_strlen(const utf8* s);
@@ -137,7 +91,8 @@ namespace Utility
     XL_UTILITY_API size_t utf8_vprintf(const char* fmt, va_list ap);
     XL_UTILITY_API size_t utf8_printf(const char* fmt, ...);
 
-    inline const utf8* u(const char input[]) { return (const utf8*)input; }
+    // inline const utf8* u(const char input[]) { return (const utf8*)input; }
+	#define u(x) (const utf8*)u8 ## x
 }
 
 using namespace Utility;

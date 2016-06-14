@@ -38,7 +38,7 @@ namespace PlatformRig
 
     CurrentModule::CurrentModule()
     {
-        nchar buffer[MaxPath];
+        wchar_t buffer[MaxPath];
         auto filenameLength = ::GetModuleFileNameW(Handle(), (LPWSTR)buffer, dimof(buffer));
         _moduleHash = Utility::Hash64(buffer, &buffer[filenameLength]);
     }

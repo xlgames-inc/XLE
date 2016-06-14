@@ -33,15 +33,10 @@ static void SetWorkingDirectory()
         //      For convenience, set the working directory to be ../Working 
         //              (relative to the application path)
         //
-    nchar_t appPath     [MaxPath];
-    nchar_t appDir      [MaxPath];
-    nchar_t workingDir  [MaxPath];
-
+    utf8 appPath[MaxPath];
     XlGetProcessPath    (appPath, dimof(appPath));
-    XlDirname           (appDir, dimof(appDir), appPath);
-    const auto* fn = a2n("..\\Working");
-    XlConcatPath        (workingDir, dimof(workingDir), appDir, fn, XlStringEnd(fn));
-    XlChDir             (workingDir);
+	auto splitter = MakeFileNameSplitter(appPath);
+	XlChDir((splitter.DriveAndPath().AsString() + u("/../Working")).c_str());
 }
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)

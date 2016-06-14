@@ -43,6 +43,15 @@ namespace Utility
     XL_UTILITY_API void XlBasename(char* dst, int count, const char* path);
     XL_UTILITY_API const char* XlBasename(const char* path);
 
+	//////////////////////////////////////////////////////////////////////////////
+	/// <summary>Defines some rules for working with filenames</summary>
+	/// These rules define how a filesystem or some other system handles filenames.
+	/// Most importantly, it defines if the filesystem is case sensitive or not.
+	///
+	/// Note that GetSeparator() returns the default separator to use when building
+	/// a filename string (such as in SplitPath::Rebuild). However, when parsing filenames,
+	/// we support either "/" or "\" as separators (eg, Windows style), regardless of
+	/// the result of GetSeparator().
     class FilenameRules
     {
     public:
@@ -109,7 +118,7 @@ namespace Utility
 	};
 
     template<typename CharType> FileNameSplitter<CharType> MakeFileNameSplitter(const CharType rawString[])                     { return FileNameSplitter<CharType>(rawString); }
-    template<typename CharType> FileNameSplitter<CharType> MakeFileNameSplitter(const std::basic_string<CharType>& rawString)   { return FileNameSplitter<CharType>(rawString); }
+    template<typename CharType, typename T, typename A> FileNameSplitter<CharType> MakeFileNameSplitter(const std::basic_string<CharType, T, A>& rawString)   { return FileNameSplitter<CharType>(MakeStringSection(rawString)); }
     template<typename CharType> FileNameSplitter<CharType> MakeFileNameSplitter(StringSection<CharType> rawString)              { return FileNameSplitter<CharType>(rawString); }
 
 	//////////////////////////////////////////////////////////////////////////////
@@ -171,6 +180,10 @@ namespace Utility
             Section drive);
 	};
 
+	template<typename CharType> SplitPath<CharType> MakeSplitPath(const CharType rawString[]) { return SplitPath<CharType>(rawString); }
+	template<typename CharType, typename T, typename A> SplitPath<CharType> MakeSplitPath(const std::basic_string<CharType, T, A>& rawString) { return SplitPath<CharType>(MakeStringSection(rawString)); }
+	template<typename CharType> SplitPath<CharType> MakeSplitPath(StringSection<CharType> rawString) { return SplitPath<CharType>(rawString); }
+
     template<typename CharType>
     	std::basic_string<CharType>	MakeRelativePath(
             const SplitPath<CharType>& basePath, 
@@ -180,5 +193,11 @@ namespace Utility
     char ConvertPathChar(char input, const FilenameRules& rules = s_defaultFilenameRules);
     utf8 ConvertPathChar(utf8 input, const FilenameRules& rules = s_defaultFilenameRules);
     ucs2 ConvertPathChar(ucs2 input, const FilenameRules& rules = s_defaultFilenameRules);
+
+	template<typename CharType>
+		uint64 HashFilename(StringSection<CharType> filename, const FilenameRules& rules = s_defaultFilenameRules);
+
+	template<typename CharType>
+		uint64 HashFilenameAndPath(StringSection<CharType> filename, const FilenameRules& rules = s_defaultFilenameRules);
 
 }

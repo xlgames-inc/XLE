@@ -192,6 +192,12 @@ namespace Utility
     template <typename Type>
         Type * PtrAdd( Type * input, ptrdiff_t offset )  { return (Type*)( size_t(input) + offset ); }
 
+    template <typename TypeA>
+        ptrdiff_t PtrDiff(TypeA * lhs, TypeA * rhs) { return ptrdiff_t(lhs) - ptrdiff_t(rhs); }
+
+    template <typename TypeA>
+        ptrdiff_t PtrDiff(TypeA * lhs, size_t rhs) { return ptrdiff_t(lhs) - ptrdiff_t(rhs); }
+
     template <typename Type> 
         Type * AsPointer( Type * i )                     { return i; }
 

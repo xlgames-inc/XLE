@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "../PathUtils.h"
 #include "../../../Core/Prefix.h"
 #include "../FileSystemMonitor.h"
 #include "../../../Core/Types.h"
@@ -14,8 +15,15 @@
 #include "../../MemoryUtils.h"
 #include "../../UTFUtils.h"
 #include "../../IteratorUtils.h"
+#include "../../Conversion.h"
 #include <vector>
 #include <memory>
+#include <cctype>
+
+// Character set note -- we're using utf16 characters in this file. We're going to
+// assume that Windows is working with utf16 as well (as opposed to ucs2). This windows documentation
+// suggest that it is expecting utf16 behaviour... But maybe there seems to be a lack of clarity as
+// to how complete that support is.
 
 namespace Utility
 {
@@ -23,10 +31,12 @@ namespace Utility
     class MonitoredDirectory
     {
     public:
-        MonitoredDirectory(const std::string& directoryName);
+        MonitoredDirectory(const std::basic_string<utf16>& directoryName);
         ~MonitoredDirectory();
 
-        static uint64   HashFilename(StringSection<char> filename);
+        static uint64   HashFilename(StringSection<utf16> filename);
+		static uint64   HashFilename(StringSection<utf8> filename);
+
         void            AttachCallback(uint64 filenameHash, std::shared_ptr<OnChangeCallback> callback);
         void            OnTriggered();
 
@@ -35,16 +45,16 @@ namespace Utility
         const OVERLAPPED*   GetOverlappedPtr() const { return &_overlapped; }
         unsigned            GetCreationOrderId() const { return _monitoringUpdateId; }
 
-        void OnChange(StringSection<char> filename);
+        void OnChange(StringSection<utf16> filename);
     private:
         std::vector<std::pair<uint64, std::weak_ptr<OnChangeCallback>>>  _callbacks;
-        Threading::Mutex  _callbacksLock;
-        XlHandle        _directoryHandle;
-        uint8           _resultBuffer[1024];
-        DWORD           _bytesReturned;
-        OVERLAPPED      _overlapped;
-        std::string     _directoryName;
-        unsigned        _monitoringUpdateId;
+        Threading::Mutex	_callbacksLock;
+        XlHandle			_directoryHandle;
+        uint8				_resultBuffer[1024];
+        DWORD				_bytesReturned;
+        OVERLAPPED			_overlapped;
+		std::basic_string<utf16>	_directoryName;
+        unsigned			_monitoringUpdateId;
 
         static void CALLBACK CompletionRoutine(
             DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered,
@@ -61,9 +71,9 @@ namespace Utility
     static Utility::Threading::Mutex                    MonitoringThreadLock;
     static bool                                         MonitoringQuit = false;
 
-    MonitoredDirectory::MonitoredDirectory(const std::string& directoryName)
-        : _directoryName(directoryName)
-    {
+    MonitoredDirectory::MonitoredDirectory(const std::basic_string<utf16>& directoryName)
+    : _directoryName(directoryName)
+	{
         _overlapped.Internal = _overlapped.InternalHigh = 0;
         _overlapped.Offset = _overlapped.OffsetHigh = 0;
         _overlapped.hEvent = INVALID_HANDLE_VALUE; // XlCreateEvent(false);
@@ -81,18 +91,16 @@ namespace Utility
         }
         CloseHandle(_overlapped.hEvent);
     }
-
-    uint64 MonitoredDirectory::HashFilename(StringSection<char> filename)
+	
+	uint64 MonitoredDirectory::HashFilename(StringSection<utf16> filename)
     {
-        char buffer[MaxPath];
-        const char *i = filename._start;
-        const char *iend = filename._end;
-        char* b = buffer;
-        while (i!=iend && b!=ArrayEnd(buffer)) {
-            *b = XlToLower(*i); ++i; ++b;
-        }
-        return Hash64(buffer, b);
+		return Utility::HashFilename(filename);
     }
+
+	uint64 MonitoredDirectory::HashFilename(StringSection<utf8> filename)
+	{
+		return Utility::HashFilename(filename);
+	}
 
     void MonitoredDirectory::AttachCallback(
         uint64 filenameHash, 
@@ -119,15 +127,7 @@ namespace Utility
                 ||  notifyInformation->Action == FILE_ACTION_REMOVED
                 ||  notifyInformation->Action == FILE_ACTION_RENAMED_OLD_NAME
                 ||  notifyInformation->Action == FILE_ACTION_RENAMED_NEW_NAME) {
-
-                char buffer[MaxPath];
-                buffer[0] = '\0';
-                auto destSize = ucs2_2_utf8(
-                    (const ucs2*)notifyInformation->FileName, notifyInformation->FileNameLength / sizeof(ucs2),
-                    (utf8*)buffer, dimof(buffer));
-                buffer[std::min(size_t(destSize), dimof(buffer)-1)] = '\0';
-
-                OnChange(StringSection<char>(buffer, &buffer[destSize]));
+                OnChange(StringSection<utf16>((const utf16*)notifyInformation->FileName, (const utf16*)PtrAdd(notifyInformation->FileName, notifyInformation->FileNameLength)));
             }
 
             if (!notifyInformation->NextEntryOffset) {
@@ -142,7 +142,7 @@ namespace Utility
         BeginMonitoring();
     }
 
-    void MonitoredDirectory::OnChange(StringSection<char> filename)
+    void MonitoredDirectory::OnChange(StringSection<utf16> filename)
     {
         auto hash = MonitoredDirectory::HashFilename(filename);
         ScopedLock(_callbacksLock);
@@ -196,8 +196,8 @@ namespace Utility
     void MonitoredDirectory::BeginMonitoring()
     {
         if (_directoryHandle == INVALID_HANDLE_VALUE) {
-            _directoryHandle = CreateFile(
-                _directoryName.c_str(), FILE_LIST_DIRECTORY,
+            _directoryHandle = CreateFileW(
+                (LPCWSTR)_directoryName.c_str(), FILE_LIST_DIRECTORY,
                 FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
                 nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED, nullptr);
         }
@@ -260,14 +260,29 @@ namespace Utility
         }
     }
 
+	static void CheckExists(const utf16* dirName)
+	{
+		#if defined(_DEBUG)
+            {
+                    // verify that it exists
+                auto handle = CreateFileW(
+                    (LPCWSTR)dirName, FILE_LIST_DIRECTORY,
+                    FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+                    nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED, nullptr);
+                assert(handle != INVALID_HANDLE_VALUE);
+                CloseHandle(handle);
+            }
+        #endif
+	}
+
     void AttachFileSystemMonitor(
-        StringSection<char> directoryName,
-        StringSection<char> filename, 
+        StringSection<utf16> directoryName,
+        StringSection<utf16> filename,
         std::shared_ptr<OnChangeCallback> callback)
     {
         ScopedLock(MonitoredDirectoriesLock);
         if (directoryName.Empty())
-            directoryName = StringSection<char>("./");
+            directoryName = StringSection<utf16>(u"./");
 
         auto hash = MonitoredDirectory::HashFilename(directoryName);
         auto i = std::lower_bound(
@@ -279,19 +294,8 @@ namespace Utility
         }
 
             // we must have a null terminated string -- so use a temp buffer
-        std::basic_string<char> dirNameCopy(directoryName._start, directoryName._end);
-
-        #if defined(_DEBUG)
-            {
-                    // verify that it exists
-                auto handle = CreateFile(
-                    dirNameCopy.c_str(), FILE_LIST_DIRECTORY,
-                    FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
-                    nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED, nullptr);
-                assert(handle != INVALID_HANDLE_VALUE);
-                CloseHandle(handle);
-            }
-        #endif
+        auto dirNameCopy = directoryName.AsString();
+		CheckExists(dirNameCopy.c_str());
 
         ++CreationOrderId_Foreground;
         auto i2 = MonitoredDirectories.insert(
@@ -303,7 +307,39 @@ namespace Utility
         RestartMonitoring();
     }
 
-    void    FakeFileChange(StringSection<char> directoryName, StringSection<char> filename)
+	void AttachFileSystemMonitor(
+		StringSection<utf8> directoryName,
+		StringSection<utf8> filename,
+		std::shared_ptr<OnChangeCallback> callback)
+	{
+		ScopedLock(MonitoredDirectoriesLock);
+		if (directoryName.Empty())
+			directoryName = StringSection<utf8>(u("./"));
+
+		auto hash = MonitoredDirectory::HashFilename(directoryName);
+		auto i = std::lower_bound(
+			MonitoredDirectories.cbegin(), MonitoredDirectories.cend(),
+			hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
+		if (i != MonitoredDirectories.cend() && i->first == hash) {
+			i->second->AttachCallback(MonitoredDirectory::HashFilename(filename), std::move(callback));
+			return;
+		}
+
+		// we must have a null terminated string -- so use a temp buffer
+		auto dirNameCopy = Conversion::Convert<std::basic_string<utf16>>(directoryName.AsString());
+		CheckExists(dirNameCopy.c_str());
+
+		++CreationOrderId_Foreground;
+		auto i2 = MonitoredDirectories.insert(
+			i, std::make_pair(hash, std::make_unique<MonitoredDirectory>(dirNameCopy)));
+		i2->second->AttachCallback(MonitoredDirectory::HashFilename(filename), std::move(callback));
+
+		//  we need to trigger the background thread so that it begins the the ReadDirectoryChangesW operation
+		//  (that operation must begin and be handled in the same thread when using completion routines)
+		RestartMonitoring();
+	}
+
+    void    FakeFileChange(StringSection<utf16> directoryName, StringSection<utf16> filename)
     {
         ScopedLock(MonitoredDirectoriesLock);
         auto hash = MonitoredDirectory::HashFilename(directoryName);
@@ -314,6 +350,19 @@ namespace Utility
             i->second->OnChange(filename);
         }
     }
+
+	void    FakeFileChange(StringSection<utf8> directoryName, StringSection<utf8> filename)
+	{
+		ScopedLock(MonitoredDirectoriesLock);
+		auto hash = MonitoredDirectory::HashFilename(directoryName);
+		auto i = std::lower_bound(
+			MonitoredDirectories.cbegin(), MonitoredDirectories.cend(),
+			hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
+		if (i != MonitoredDirectories.cend() && i->first == hash) {
+			auto u16name = Conversion::Convert<std::basic_string<utf16>>(filename);
+			i->second->OnChange(MakeStringSection(u16name));
+		}
+	}
 
 
     OnChangeCallback::~OnChangeCallback() {}
