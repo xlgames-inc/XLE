@@ -24,17 +24,17 @@ namespace RenderCore { namespace Techniques
 
     Metal::RasterizerState BuildDefaultRastizerState(const RenderStateSet& states)
     {
-        Metal::CullMode::Enum cullMode = Metal::CullMode::Back;
-        Metal::FillMode::Enum fillMode = Metal::FillMode::Solid;
+        auto cullMode = CullMode::Back;
+        auto fillMode = FillMode::Solid;
         unsigned depthBias = 0;
         if (states._flag & RenderStateSet::Flag::DoubleSided) {
-            cullMode = states._doubleSided ? Metal::CullMode::None : Metal::CullMode::Back;
+            cullMode = states._doubleSided ? CullMode::None : CullMode::Back;
         }
         if (states._flag & RenderStateSet::Flag::DepthBias) {
             depthBias = states._depthBias;
         }
         if (states._flag & RenderStateSet::Flag::Wireframe) {
-            fillMode = states._wireframe ? Metal::FillMode::Wireframe : Metal::FillMode::Solid;
+            fillMode = states._wireframe ? FillMode::Wireframe : FillMode::Solid;
         }
 
         return Metal::RasterizerState(cullMode, true, fillMode, depthBias, 0.f, 0.f);
@@ -127,7 +127,7 @@ namespace RenderCore { namespace Techniques
         StateSetResolver_DepthOnly(
             const RSDepthBias& singleSidedBias,
             const RSDepthBias& doubleSidedBias,
-            Metal::CullMode::Enum cullMode)
+            CullMode cullMode)
         {
             using namespace Metal;
             _rs[0x0] = RasterizerState(cullMode,        true, FillMode::Solid,      singleSidedBias._depthBias, singleSidedBias._depthBiasClamp, singleSidedBias._slopeScaledBias);
@@ -138,7 +138,7 @@ namespace RenderCore { namespace Techniques
             auto h1 = HashCombine(HashCombine(doubleSidedBias._depthBias, *(unsigned*)&doubleSidedBias._depthBiasClamp), *(unsigned*)&doubleSidedBias._slopeScaledBias);
             _hashCode = HashCombine(
                 typeid(StateSetResolver_DepthOnly).hash_code(),
-                HashCombine(HashCombine(h0, h1), cullMode));
+                HashCombine(HashCombine(h0, h1), (uint64)cullMode));
         }
 
     protected:
@@ -150,7 +150,7 @@ namespace RenderCore { namespace Techniques
     std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Forward()     { return std::make_shared<StateSetResolver_Forward>(); }
     std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Deferred()    { return std::make_shared<StateSetResolver_Deferred>(); }
     std::shared_ptr<IStateSetResolver> CreateStateSetResolver_DepthOnly(
-        const RSDepthBias& singleSidedBias, const RSDepthBias& doubleSidedBias, Metal::CullMode::Enum cullMode)
+        const RSDepthBias& singleSidedBias, const RSDepthBias& doubleSidedBias, CullMode cullMode)
     { 
         return std::make_shared<StateSetResolver_DepthOnly>(
             singleSidedBias, doubleSidedBias, cullMode); 

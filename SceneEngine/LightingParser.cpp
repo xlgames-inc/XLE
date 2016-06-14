@@ -136,10 +136,10 @@ namespace SceneEngine
     {
         Metal::SamplerState 
             samplerDefault, 
-            samplerClamp(Metal::FilterMode::Trilinear, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp), 
-            samplerAnisotrophic(Metal::FilterMode::Anisotropic),
-            samplerPoint(Metal::FilterMode::Point, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp),
-            samplerWrapU(Metal::FilterMode::Trilinear, Metal::AddressMode::Wrap, Metal::AddressMode::Clamp);
+            samplerClamp(FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp), 
+            samplerAnisotrophic(FilterMode::Anisotropic),
+            samplerPoint(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp),
+            samplerWrapU(FilterMode::Trilinear, AddressMode::Wrap, AddressMode::Clamp);
         context.BindPS_G(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
         context.BindVS_G(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
         context.BindPS_G(RenderCore::MakeResourceList(6, samplerWrapU));
@@ -170,7 +170,7 @@ namespace SceneEngine
         context.Bind(Techniques::CommonResources()._dssReadWrite);
         context.Bind(Techniques::CommonResources()._blendOpaque);
         context.Bind(Techniques::CommonResources()._defaultRasterizer);
-        context.Bind(Metal::Topology::TriangleList);
+        context.Bind(Topology::TriangleList);
         context.BindVS(RenderCore::MakeResourceList(Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer()));
         context.BindPS(RenderCore::MakeResourceList(Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer()));
         context.Unbind<Metal::GeometryShader>();

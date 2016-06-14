@@ -225,7 +225,7 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-            context->Bind(Metal::Topology::TriangleStrip);
+            context->Bind(Topology::TriangleStrip);
             context->Bind(Techniques::CommonResources()._dssDisable);
             context->Unbind<Metal::VertexBuffer>();
             context->Unbind<Metal::BoundInputLayout>();
@@ -289,7 +289,7 @@ namespace SceneEngine
                         Metal::UniformsStream(constants, srvs));
 
                     context->Bind(*res._commitShader);
-                    context->Bind(Metal::Topology::TriangleList);
+                    context->Bind(Topology::TriangleList);
                     context->Draw(64*3);
                     context->UnbindPS<Metal::ShaderResourceView>(3, 1);
                 }
@@ -311,7 +311,7 @@ namespace SceneEngine
                         Metal::UniformsStream(constants, srvs));
 
                     context->Bind(*res._directBlurShader);
-                    context->Bind(Metal::Topology::TriangleList);
+                    context->Bind(Topology::TriangleList);
                     context->Draw(64*3);
                     context->UnbindPS<Metal::ShaderResourceView>(3, 1);
                 }
@@ -320,7 +320,7 @@ namespace SceneEngine
 
         CATCH_ASSETS_END(parserContext)
 
-        context->Bind(Metal::Topology::TriangleList);
+        context->Bind(Topology::TriangleList);
         context->Bind(Techniques::CommonResources()._dssReadWrite);
         savedTargets.ResetToOldTargets(*context);
         context->Bind(savedViewport);

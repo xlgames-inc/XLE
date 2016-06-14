@@ -18,9 +18,9 @@ namespace RenderCore { namespace Metal_DX11
     
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    SamplerState::SamplerState( FilterMode::Enum filter,
-                                AddressMode::Enum addressU, AddressMode::Enum addressV, AddressMode::Enum addressW,
-                                Comparison::Enum comparison)
+    SamplerState::SamplerState( FilterMode filter,
+                                AddressMode addressU, AddressMode addressV, AddressMode addressW,
+                                Comparison comparison)
     {
         D3D11_SAMPLER_DESC samplerDesc;
         switch (filter) {
@@ -91,7 +91,7 @@ namespace RenderCore { namespace Metal_DX11
         return *this;
     }
 
-    RasterizerState::RasterizerState(CullMode::Enum cullmode, bool frontCounterClockwise)
+    RasterizerState::RasterizerState(CullMode cullmode, bool frontCounterClockwise)
     {
         D3D11_RASTERIZER_DESC rasterizerDesc;
         rasterizerDesc.FillMode = D3D11_FILL_SOLID;
@@ -109,8 +109,8 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     RasterizerState::RasterizerState(
-        CullMode::Enum cullmode, bool frontCounterClockwise,
-        FillMode::Enum fillmode,
+        CullMode cullmode, bool frontCounterClockwise,
+        FillMode fillmode,
         int depthBias, float depthBiasClamp, float slopeScaledBias)
     {
         D3D11_RASTERIZER_DESC rasterizerDesc;
@@ -171,7 +171,7 @@ namespace RenderCore { namespace Metal_DX11
         return *this;
     }
 
-    BlendState::BlendState(BlendOp::Enum blendingOperation, Blend::Enum srcBlend, Blend::Enum dstBlend)
+    BlendState::BlendState(BlendOp blendingOperation, Blend srcBlend, Blend dstBlend)
     {
         D3D11_BLEND_DESC blendStateDesc;
         blendStateDesc.AlphaToCoverageEnable = false;
@@ -198,12 +198,12 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     BlendState::BlendState( 
-        BlendOp::Enum blendingOperation, 
-        Blend::Enum srcBlend,
-        Blend::Enum dstBlend,
-        BlendOp::Enum alphaBlendingOperation, 
-        Blend::Enum alphaSrcBlend,
-        Blend::Enum alphaDstBlend)
+        BlendOp blendingOperation, 
+        Blend srcBlend,
+        Blend dstBlend,
+        BlendOp alphaBlendingOperation, 
+        Blend alphaSrcBlend,
+        Blend alphaDstBlend)
     {
         D3D11_BLEND_DESC blendStateDesc;
         blendStateDesc.AlphaToCoverageEnable = false;
@@ -267,7 +267,7 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    DepthStencilState::DepthStencilState(bool enabled, bool writeEnabled, Comparison::Enum comparison)
+    DepthStencilState::DepthStencilState(bool enabled, bool writeEnabled, Comparison comparison)
     {
         D3D11_DEPTH_STENCIL_DESC depthStencilStateDesc;
         depthStencilStateDesc.DepthEnable = enabled;

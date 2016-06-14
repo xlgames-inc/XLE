@@ -458,7 +458,7 @@ namespace SceneEngine
             matParam);
 
             // set up basic render state
-        metalContext.Bind(Metal::Topology::TriangleList);
+        metalContext.Bind(Topology::TriangleList);
         metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
         metalContext.Unbind<Metal::VertexBuffer>();
         metalContext.Unbind<Metal::BoundInputLayout>();

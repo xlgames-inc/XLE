@@ -81,7 +81,7 @@ namespace RenderOverlays
             Flush();
         }
 
-        PushDrawCall(DrawCall(unsigned(Metal::Topology::PointList), _writePointer, 1, AsVertexFormat<Vertex>(), proj));
+        PushDrawCall(DrawCall(Topology::PointList, _writePointer, 1, AsVertexFormat<Vertex>(), proj));
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v, HardwareColor(col), float(size));
         _writePointer += sizeof(Vertex);
     }
@@ -93,7 +93,7 @@ namespace RenderOverlays
             Flush();
         }
 
-        PushDrawCall(DrawCall(unsigned(Metal::Topology::PointList), _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
+        PushDrawCall(DrawCall(Topology::PointList, _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
         for (unsigned c=0; c<numPoints; ++c) {
             *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v[c], HardwareColor(col), float(size));
             _writePointer += sizeof(Vertex);
@@ -107,7 +107,7 @@ namespace RenderOverlays
             Flush();
         }
 
-        PushDrawCall(DrawCall(unsigned(Metal::Topology::PointList), _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
+        PushDrawCall(DrawCall(Topology::PointList, _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
         for (unsigned c=0; c<numPoints; ++c) {
             *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v[c], HardwareColor(col[c]), float(size));
             _writePointer += sizeof(Vertex);
@@ -121,7 +121,7 @@ namespace RenderOverlays
             Flush();
         }
 
-        PushDrawCall(DrawCall(unsigned(Metal::Topology::LineList), _writePointer, 2, AsVertexFormat<Vertex>(), proj));
+        PushDrawCall(DrawCall(Topology::LineList, _writePointer, 2, AsVertexFormat<Vertex>(), proj));
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v0, HardwareColor(colV0)); _writePointer += sizeof(Vertex);
 		*(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v1, HardwareColor(colV1)); _writePointer += sizeof(Vertex);
     }
@@ -133,7 +133,7 @@ namespace RenderOverlays
             Flush();
         }
 
-        PushDrawCall(DrawCall(unsigned(Metal::Topology::LineList), _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
+        PushDrawCall(DrawCall(Topology::LineList, _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
         for (unsigned c=0; c<numPoints; ++c) {
 			*(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v[c], HardwareColor(col));
             _writePointer += sizeof(Vertex);
@@ -151,7 +151,7 @@ namespace RenderOverlays
                 Flush();
             }
 
-            PushDrawCall(DrawCall(unsigned(Metal::Topology::LineList), _writePointer, pointsThisBatch, AsVertexFormat<Vertex>(), proj));
+            PushDrawCall(DrawCall(Topology::LineList, _writePointer, pointsThisBatch, AsVertexFormat<Vertex>(), proj));
             for (unsigned c=0; c<pointsThisBatch; ++c) {
 				*(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v[c], HardwareColor(col[c]));
                 _writePointer += sizeof(Vertex);
@@ -170,7 +170,7 @@ namespace RenderOverlays
             Flush();
         }
 
-        PushDrawCall(DrawCall(unsigned(Metal::Topology::TriangleList), _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
+        PushDrawCall(DrawCall(Topology::TriangleList, _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
         for (unsigned c=0; c<numPoints; ++c) {
 			*(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v[c], HardwareColor(col));
             _writePointer += sizeof(Vertex);
@@ -184,7 +184,7 @@ namespace RenderOverlays
             Flush();
         }
 
-        PushDrawCall(DrawCall(unsigned(Metal::Topology::TriangleList), _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
+        PushDrawCall(DrawCall(Topology::TriangleList, _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
         for (unsigned c=0; c<numPoints; ++c) {
 			*(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v[c], HardwareColor(col[c]));
             _writePointer += sizeof(Vertex);
@@ -200,7 +200,7 @@ namespace RenderOverlays
             Flush();
         }
 
-        PushDrawCall(DrawCall(unsigned(Metal::Topology::TriangleList), _writePointer, 3, AsVertexFormat<Vertex>(), proj));
+        PushDrawCall(DrawCall(Topology::TriangleList, _writePointer, 3, AsVertexFormat<Vertex>(), proj));
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v0, HardwareColor(colV0)); _writePointer += sizeof(Vertex);
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v1, HardwareColor(colV1)); _writePointer += sizeof(Vertex);
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v2, HardwareColor(colV2)); _writePointer += sizeof(Vertex);
@@ -219,7 +219,7 @@ namespace RenderOverlays
             Flush();
         }
 
-        PushDrawCall(DrawCall(unsigned(Metal::Topology::TriangleList), _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader));
+        PushDrawCall(DrawCall(Topology::TriangleList, _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader));
         auto col0 = HardwareColor(color0);
         auto col1 = HardwareColor(color1);
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col0, col1, Float2(minTex0[0], minTex0[1]), Float2(minTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
@@ -241,7 +241,7 @@ namespace RenderOverlays
             Flush();
         }
 
-        PushDrawCall(DrawCall(unsigned(Metal::Topology::TriangleList), _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader));
+        PushDrawCall(DrawCall(Topology::TriangleList, _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader));
         auto col = HardwareColor(color);
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col); _writePointer += sizeof(Vertex);
@@ -262,7 +262,7 @@ namespace RenderOverlays
             Flush();
         }
 
-        PushDrawCall(DrawCall(unsigned(Metal::Topology::TriangleList), _writePointer, 6, AsVertexFormat<Vertex>(), proj, std::string(), texture));
+        PushDrawCall(DrawCall(Topology::TriangleList, _writePointer, 6, AsVertexFormat<Vertex>(), proj, std::string(), texture));
         auto col = HardwareColor(color);
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col, col, Float2(minTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, col, Float2(minTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
@@ -395,7 +395,7 @@ namespace RenderOverlays
         if (_writePointer != 0) {
 			Metal::VertexBuffer temporaryBuffer(_workingBuffer.get(), _writePointer);
             for (auto i=_drawCalls.cbegin(); i!=_drawCalls.cend(); ++i) {
-                _metalContext->Bind((Metal::Topology::Enum)i->_topology);
+                _metalContext->Bind(i->_topology);
 
                     //
                     //      Rebind the vertex buffer for each draw call
@@ -463,12 +463,12 @@ namespace RenderOverlays
         class Desc
         {
         public:
-            unsigned _topology;
+            Topology _topology;
             VertexFormat _format;
             ProjectionMode::Enum _projMode;
             std::string _pixelShaderName;
 
-            Desc(unsigned topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName)
+            Desc(Topology topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName)
                 : _topology(topology), _format(format), _projMode(projMode), _pixelShaderName(pixelShaderName) {}
         };
 
@@ -496,7 +496,7 @@ namespace RenderOverlays
         const char* geometryShaderSource = nullptr;
         const char* pixelShaderDefault = nullptr;
 
-        if (desc._topology == Metal::Topology::PointList) {
+        if (desc._topology == Topology::PointList) {
 
             if (desc._format == PCR) {
                 vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CR:vs_*":"game/xleres/basic3D.vsh:PCR:vs_*";
@@ -583,7 +583,7 @@ namespace RenderOverlays
         _validationCallback = std::move(validationCallback);
     }
 
-    void            ImmediateOverlayContext::SetShader(unsigned topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName)
+    void            ImmediateOverlayContext::SetShader(Topology topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName)
     {
                 // \todo --     we should cache the input layout result
                 //              (since it's just the same every time)

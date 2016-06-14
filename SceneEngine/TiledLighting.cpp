@@ -379,7 +379,7 @@ namespace SceneEngine
                 context->BindVS(MakeResourceList(tileLightingResources._debuggingTextureSRV[0], tileLightingResources._debuggingTextureSRV[1]));
                 context->Bind(Techniques::CommonResources()._dssReadWrite);
                 SetupVertexGeneratorShader(*context);
-                context->Bind(Metal::Topology::PointList);
+                context->Bind(Topology::PointList);
 
                 if (!isShadowsPass && Tweakable("TiledBeamsTransparent", false)) {
                     context->Bind(Techniques::CommonResources()._blendStraightAlpha);

@@ -42,10 +42,5 @@ namespace RenderCore { namespace Metal_DX11
     class FrameBufferCache;
 
     typedef SharedPkt ConstantBufferPacket;
-
-    namespace Topology { enum Enum; }
-    namespace Blend { enum Enum; };
-    namespace BlendOp { enum Enum; };
-    namespace CullMode { enum Enum; }
 }}
 

@@ -10,9 +10,9 @@
 #include "NascentRawGeometry.h"
 #include "GeometryAlgorithm.h"
 #include "ConversionUtil.h"
-#include "../RenderCore/Metal/DeviceContext.h"  // for Topology!
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/Types.h"
 #include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/Log.h"
 #include "../Assets/Assets.h"
@@ -203,17 +203,17 @@ namespace RenderCore { namespace ColladaConversion
         if (bucketEnd[0] > bucketStart[0]) {
             preskinningDrawCalls.push_back(DrawCallDesc(
                 ~unsigned(0x0), bucketEnd[0] - bucketStart[0], bucketStart[0],
-                4, Metal::Topology::PointList));
+                4, Topology::PointList));
         }
         if (bucketEnd[1] > bucketStart[1]) {
             preskinningDrawCalls.push_back(DrawCallDesc(
                 ~unsigned(0x0), bucketEnd[1] - bucketStart[1], bucketStart[1],
-                2, Metal::Topology::PointList));
+                2, Topology::PointList));
         }
         if (bucketEnd[2] > bucketStart[2]) {
             preskinningDrawCalls.push_back(DrawCallDesc(
                 ~unsigned(0x0), bucketEnd[2] - bucketStart[2], bucketStart[2],
-                1, Metal::Topology::PointList));
+                1, Topology::PointList));
         }
 
         assert(bucketEnd[2] <= unifiedVertexCount);

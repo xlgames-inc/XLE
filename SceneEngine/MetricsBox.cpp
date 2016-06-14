@@ -90,7 +90,7 @@ namespace SceneEngine
 
         context.Unbind<Metal::VertexBuffer>();
         context.Unbind<Metal::BoundInputLayout>();
-        context.Bind(Metal::Topology::PointList);
+        context.Bind(Topology::PointList);
         context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
         context.Bind(Techniques::CommonResources()._dssDisable);
         context.Draw((unsigned)valueSources.size());

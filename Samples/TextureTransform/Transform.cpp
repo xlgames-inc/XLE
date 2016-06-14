@@ -229,7 +229,7 @@ namespace TextureTransform
             metalContext->Bind(commonRes._dssDisable);
             metalContext->BindPS(MakeResourceList(commonRes._defaultSampler));
             metalContext->Bind(shaderProg);
-            metalContext->Bind(Metal::Topology::TriangleStrip);
+            metalContext->Bind(Topology::TriangleStrip);
             metalContext->Unbind<Metal::VertexBuffer>();
             metalContext->Unbind<Metal::BoundInputLayout>();
 

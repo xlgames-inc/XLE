@@ -336,7 +336,7 @@ namespace SceneEngine
             auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(
                 SimplePatchBox::Desc(elementSize[0], elementSize[1], true));
             context->Bind(simplePatchBox._simplePatchIndexBuffer, Format::R32_UINT);
-            context->Bind(RenderCore::Metal::Topology::TriangleList);
+            context->Bind(Topology::TriangleList);
             _indexDrawCount = simplePatchBox._simplePatchIndexCount;
         }
 

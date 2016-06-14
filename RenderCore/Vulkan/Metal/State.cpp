@@ -11,7 +11,7 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-    static VkCullModeFlags AsVkCullMode(CullMode::Enum cullmode)
+    static VkCullModeFlags AsVkCullMode(CullMode cullmode)
     {
         switch (cullmode) {
         default:
@@ -23,7 +23,7 @@ namespace RenderCore { namespace Metal_Vulkan
         // (VK_CULL_MODE_FRONT_AND_BACK not accessable)
     }
 
-    static VkPolygonMode AsVkPolygonMode(FillMode::Enum cullmode)
+    static VkPolygonMode AsVkPolygonMode(FillMode cullmode)
     {
         switch (cullmode) {
         default:
@@ -34,7 +34,7 @@ namespace RenderCore { namespace Metal_Vulkan
         // (VK_POLYGON_MODE_POINT not accessable)
     }
 
-    static VkBlendOp AsVkBlendOp(BlendOp::Enum blendOp)
+    static VkBlendOp AsVkBlendOp(BlendOp blendOp)
     {
         switch (blendOp) {
         default:
@@ -47,7 +47,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    static VkBlendFactor AsVkBlendFactor(Blend::Enum blendOp)
+    static VkBlendFactor AsVkBlendFactor(Blend blendOp)
     {
         switch (blendOp)
         {
@@ -78,7 +78,7 @@ namespace RenderCore { namespace Metal_Vulkan
         // VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
     }
 
-    static VkCompareOp AsVkCompareOp(Comparison::Enum comparison)
+    static VkCompareOp AsVkCompareOp(Comparison comparison)
     {
         switch (comparison)
         {
@@ -94,7 +94,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    static VkStencilOp AsVkStencilOp(StencilOp::Enum stencilOp)
+    static VkStencilOp AsVkStencilOp(StencilOp stencilOp)
     {
         switch (stencilOp)
         {
@@ -110,7 +110,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    static VkSamplerAddressMode AsVkAddressMode(AddressMode::Enum addressMode)
+    static VkSamplerAddressMode AsVkAddressMode(AddressMode addressMode)
     {
         switch (addressMode)
         {
@@ -123,7 +123,7 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     RasterizerState::RasterizerState(
-        CullMode::Enum cullmode, 
+        CullMode cullmode, 
         bool frontCounterClockwise)
     {
         sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -142,8 +142,8 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     RasterizerState::RasterizerState(
-        CullMode::Enum cullmode, bool frontCounterClockwise,
-        FillMode::Enum fillmode,
+        CullMode cullmode, bool frontCounterClockwise,
+        FillMode fillmode,
         int depthBias, float iDepthBiasClamp, float slopeScaledBias)
     {
         sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -162,12 +162,12 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     BlendState::BlendState( 
-        BlendOp::Enum blendingOperation, 
-        Blend::Enum srcBlend,
-        Blend::Enum dstBlend,
-        BlendOp::Enum alphaBlendingOperation, 
-        Blend::Enum alphaSrcBlend,
-        Blend::Enum alphaDstBlend)
+        BlendOp blendingOperation, 
+        Blend srcBlend,
+        Blend dstBlend,
+        BlendOp alphaBlendingOperation, 
+        Blend alphaSrcBlend,
+        Blend alphaDstBlend)
     {
         XlZeroMemory(_attachments);
         for (unsigned c=0; c<dimof(_attachments); ++c) {
@@ -231,7 +231,7 @@ namespace RenderCore { namespace Metal_Vulkan
     StencilMode StencilMode::NoEffect(Comparison::Always, StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite);
     StencilMode StencilMode::AlwaysWrite(Comparison::Always, StencilOp::Replace, StencilOp::DontWrite, StencilOp::DontWrite);
 
-    DepthStencilState::DepthStencilState(bool enabled, bool writeEnabled, Comparison::Enum comparison)
+    DepthStencilState::DepthStencilState(bool enabled, bool writeEnabled, Comparison comparison)
     {
         sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         pNext = nullptr;
@@ -289,11 +289,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 
     SamplerState::SamplerState(   
-        FilterMode::Enum filter,
-        AddressMode::Enum addressU, 
-        AddressMode::Enum addressV, 
-        AddressMode::Enum addressW,
-		Comparison::Enum comparison)
+        FilterMode filter,
+        AddressMode addressU, 
+        AddressMode addressV, 
+        AddressMode addressW,
+		Comparison comparison)
     {
         VkSamplerCreateInfo samplerCreateInfo = {};
         samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

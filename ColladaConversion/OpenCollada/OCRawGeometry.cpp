@@ -696,7 +696,7 @@ namespace RenderCore { namespace ColladaConversion
         {
         public:
             std::vector<unsigned>   _indexBuffer;
-            Metal::Topology::Enum   _topology;
+            Topology				_topology;
             COLLADAFW::MaterialId   _materialId;
         };
         std::vector<DrawOperation>      drawOperations;
@@ -770,7 +770,7 @@ namespace RenderCore { namespace ColladaConversion
             const MeshPrimitive::PrimitiveType primitiveType = meshPrimitives[c]->getPrimitiveType();
             if (primitiveType == MeshPrimitive::POLYGONS || primitiveType == MeshPrimitive::POLYLIST) {
                     
-                convertDrawCall._topology = Metal::Topology::TriangleList;     // (will become a triangle list.. perhaps some hardware can support convex polygons...?)
+                convertDrawCall._topology = Topology::TriangleList;     // (will become a triangle list.. perhaps some hardware can support convex polygons...?)
 
                     // A list of polygons. 
                 const MeshPrimitiveWithFaceVertexCount<int>* polygons = 
@@ -817,7 +817,7 @@ namespace RenderCore { namespace ColladaConversion
             } else if (primitiveType == MeshPrimitive::TRIANGLES) {
 
                     //  Triangle list -> triangle list (simpliest conversion)
-                convertDrawCall._topology = Metal::Topology::TriangleList;     // (will become a triangle list.. perhaps some hardware can support convex polygons...?)
+                convertDrawCall._topology = Topology::TriangleList;     // (will become a triangle list.. perhaps some hardware can support convex polygons...?)
                 for (auto index=0u; index<meshPrimitives[c]->getFaceCount()*3; ++index) {
                     convertDrawCall._indexBuffer.push_back( 
                         (unsigned)BuildUnifiedVertex(
@@ -876,7 +876,7 @@ namespace RenderCore { namespace ColladaConversion
 
         size_t finalIndexCount = 0;
         for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
-            assert(i->_topology == Metal::Topology::TriangleList);  // tangent generation assumes triangle list currently... We need to modify GenerateNormalsAndTangents() to support other types
+            assert(i->_topology == Topology::TriangleList);  // tangent generation assumes triangle list currently... We need to modify GenerateNormalsAndTangents() to support other types
             finalDrawOperations.push_back(
                 NascentDrawCallDesc(
                     (unsigned)finalIndexCount, (unsigned)i->_indexBuffer.size(), 0, 

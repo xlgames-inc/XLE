@@ -516,7 +516,7 @@ namespace SceneEngine
         
         Metal::VertexBuffer tempvb(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));
         context.Bind(MakeResourceList(tempvb), sizeof(Vertex), 0);
-        context.Bind(Metal::Topology::PointList);
+        context.Bind(Topology::PointList);
         context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
         context.Bind(Techniques::CommonResources()._dssReadWrite);
         context.Bind(Techniques::CommonResources()._defaultRasterizer);
@@ -744,8 +744,8 @@ namespace SceneEngine
         CustomStateResolver()
         {
             _blendState = Metal::BlendState(
-                Metal::BlendOp::Add, Metal::Blend::SrcAlpha, Metal::Blend::InvSrcAlpha,
-                Metal::BlendOp::Add, Metal::Blend::Zero, Metal::Blend::InvSrcAlpha);
+                BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha,
+                BlendOp::Add, Blend::Zero, Blend::InvSrcAlpha);
         }
     private:
         Metal::BlendState _blendState;

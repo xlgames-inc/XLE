@@ -118,7 +118,7 @@ namespace ToolsRig
 
                 Metal::VertexBuffer vertexBuffer(vertices, sizeof(vertices));
                 metalContext.Bind(MakeResourceList(vertexBuffer), sizeof(Internal::Vertex3D), 0);
-                metalContext.Bind(Metal::Topology::TriangleStrip);
+                metalContext.Bind(Topology::TriangleStrip);
                 metalContext.Draw(dimof(vertices));
 
             } else if (geoType == MaterialVisSettings::GeometryType::Model) {
@@ -143,7 +143,7 @@ namespace ToolsRig
                     count = cachedGeo._cubeVCount;
                 } else return;
                 
-                metalContext.Bind(Metal::Topology::TriangleList);
+                metalContext.Bind(Topology::TriangleList);
                 metalContext.Draw(count);
 
             }
@@ -302,7 +302,7 @@ namespace ToolsRig
                     rawGeo._vb, rawGeo._vb._ia._vertexStride);
                 BindIndexBuffer(metalContext, model, rawGeo._ib);
 
-                metalContext.Bind((Metal::Topology::Enum)drawCall._topology);
+                metalContext.Bind(drawCall._topology);
                 metalContext.DrawIndexed(drawCall._indexCount, drawCall._firstIndex, drawCall._firstVertex);
             }
         }
@@ -348,7 +348,7 @@ namespace ToolsRig
                     rawGeo._animatedVertexElements, rawGeo._animatedVertexElements._ia._vertexStride);
                 BindIndexBuffer(metalContext, model, rawGeo._ib);
 
-                metalContext.Bind((Metal::Topology::Enum)drawCall._topology);
+                metalContext.Bind(drawCall._topology);
                 metalContext.DrawIndexed(drawCall._indexCount, drawCall._firstIndex, drawCall._firstVertex);
             }
         }

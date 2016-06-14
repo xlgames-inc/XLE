@@ -43,7 +43,7 @@ namespace RenderOverlays
         metalContext.BindPS(MakeResourceList(stencilSrv));
         metalContext.Bind(Techniques::CommonResources()._dssDisable);
         metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-        metalContext.Bind(Metal::Topology::TriangleStrip);
+        metalContext.Bind(Topology::TriangleStrip);
         metalContext.Unbind<Metal::BoundInputLayout>();
 
         auto desc = Metal::ExtractDesc(stencilSrv.GetResource());
@@ -269,7 +269,7 @@ namespace RenderOverlays
         metalContext->Bind(*shaders._drawHighlight);
         metalContext->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
         metalContext->Bind(Techniques::CommonResources()._dssDisable);
-        metalContext->Bind(Metal::Topology::TriangleStrip);
+        metalContext->Bind(Topology::TriangleStrip);
         metalContext->Draw(4);
 
         _pimpl->_rpi.End();
@@ -299,7 +299,7 @@ namespace RenderOverlays
         metalContext->Bind(*shaders._drawShadow);
         metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
         metalContext->Bind(Techniques::CommonResources()._dssDisable);
-        metalContext->Bind(Metal::Topology::TriangleStrip);
+        metalContext->Bind(Topology::TriangleStrip);
         metalContext->Draw(4);
 
         _pimpl->_rpi.End();

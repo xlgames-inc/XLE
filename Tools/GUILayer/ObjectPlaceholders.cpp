@@ -292,7 +292,7 @@ namespace GUILayer
 		if (generatorShader._shader._shaderProgram) {
 			generatorShader._shader.Apply(devContext, parserContext, { params._localTransform, generatorShader._cbLayout->BuildCBDataAsPkt(params._matParams) });
 			devContext.Unbind<Metal::VertexBuffer>();
-			devContext.Bind(Metal::Topology::TriangleList);
+			devContext.Bind(Topology::TriangleList);
 			devContext.Draw(vertexCount);
 			return;
 		}
@@ -356,7 +356,7 @@ namespace GUILayer
 
         devContext.Bind(MakeResourceList(vb), sizeof(Float3), 0);
         devContext.Bind(ib, Format::R32_UINT);
-        devContext.Bind(Metal::Topology::TriangleList);
+        devContext.Bind(Topology::TriangleList);
         devContext.DrawIndexed(indexListType._arrayCount);
     }
 

@@ -112,7 +112,7 @@ namespace Overlays
                 constantBufferPackets, nullptr, dimof(constantBufferPackets),
                 srv, dimof(srv)));
 
-        devContext.Bind(Metal::Topology::TriangleStrip);
+        devContext.Bind(Topology::TriangleStrip);
         devContext.Draw(4);
 
         devContext.UnbindPS<Metal::ShaderResourceView>(4, 1);

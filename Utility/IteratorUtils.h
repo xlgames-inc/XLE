@@ -147,7 +147,7 @@ namespace Utility
             bool empty() const				{ return first == second; }
 			size_t size() const				{ return Internal::IteratorDifference(first, second); }
 
-            IteratorRange() : std::pair<const void*, const void*>(nullptr, nullptr) {}
+            IteratorRange() : std::pair<const void*, const void*>(0, 0) {}
             IteratorRange(const void* f, const void* s) : std::pair<const void*, const void*>(f, s) {}
 
             template<typename OtherIterator>

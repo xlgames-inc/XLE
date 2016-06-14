@@ -133,7 +133,7 @@ namespace SceneEngine
                 context->Bind(MakeResourceList(pimpl->_vertexBuffer), sizeof(DualContourMesh::Vertex), 0);
                 context->Bind(pimpl->_indexBuffer, pimpl->_indexFormat);
 
-                context->Bind(Metal::Topology::TriangleList);
+                context->Bind(Topology::TriangleList);
                 context->DrawIndexed(pimpl->_indexCount);
             }
         }
@@ -350,7 +350,7 @@ namespace SceneEngine
                 context->Bind(MakeResourceList(vb), sizeof(DualContourMesh::Vertex), 0);
                 context->Bind(ib, (indexSize==4)?Format::R32_UINT:Format::R16_UINT);
 
-                context->Bind(Metal::Topology::TriangleList);
+                context->Bind(Topology::TriangleList);
                 context->Bind(Techniques::CommonResources()._dssReadWrite);
 
                 context->DrawIndexed(unsigned(ibDataCount));

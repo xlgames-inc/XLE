@@ -614,8 +614,8 @@ namespace GUILayer
     auto RenderStateSet::DeferredBlend::get() -> DeferredBlendState     { return DeferredBlendState::Unset; }
     void RenderStateSet::DeferredBlend::set(DeferredBlendState)         { NotifyPropertyChanged("DeferredBlend"); }
 
-    namespace BlendOp = RenderCore::Metal::BlendOp;
-    using namespace RenderCore::Metal::Blend;
+    using BlendOp = RenderCore::BlendOp;
+	using Blend = RenderCore::Blend;
     using BlendType = RenderCore::Techniques::RenderStateSet::BlendType;
 
     class StandardBlendDef
@@ -623,29 +623,29 @@ namespace GUILayer
     public:
         StandardBlendModes _standardMode;
         BlendType _blendType;
-        RenderCore::Metal::BlendOp::Enum _op;
-        RenderCore::Metal::Blend::Enum _src;
-        RenderCore::Metal::Blend::Enum _dst;
+        RenderCore::BlendOp _op;
+        RenderCore::Blend _src;
+        RenderCore::Blend _dst;
     };
 
     static const StandardBlendDef s_standardBlendDefs[] = 
     {
-        { StandardBlendModes::NoBlending, BlendType::Basic, BlendOp::NoBlending, One, RenderCore::Metal::Blend::Zero },
+        { StandardBlendModes::NoBlending, BlendType::Basic, BlendOp::NoBlending, Blend::One, Blend::Zero },
         
-        { StandardBlendModes::Transparent, BlendType::Basic, BlendOp::Add, SrcAlpha, InvSrcAlpha },
-        { StandardBlendModes::TransparentPremultiplied, BlendType::Basic, BlendOp::Add, One, InvSrcAlpha },
+        { StandardBlendModes::Transparent, BlendType::Basic, BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha },
+        { StandardBlendModes::TransparentPremultiplied, BlendType::Basic, BlendOp::Add, Blend::One, Blend::InvSrcAlpha },
 
-        { StandardBlendModes::Add, BlendType::Basic, BlendOp::Add, One, One },
-        { StandardBlendModes::AddAlpha, BlendType::Basic, BlendOp::Add, SrcAlpha, One },
-        { StandardBlendModes::Subtract, BlendType::Basic, BlendOp::Subtract, One, One },
-        { StandardBlendModes::SubtractAlpha, BlendType::Basic, BlendOp::Subtract, SrcAlpha, One },
+        { StandardBlendModes::Add, BlendType::Basic, BlendOp::Add, Blend::One, Blend::One },
+        { StandardBlendModes::AddAlpha, BlendType::Basic, BlendOp::Add, Blend::SrcAlpha, Blend::One },
+        { StandardBlendModes::Subtract, BlendType::Basic, BlendOp::Subtract, Blend::One, Blend::One },
+        { StandardBlendModes::SubtractAlpha, BlendType::Basic, BlendOp::Subtract, Blend::SrcAlpha, Blend::One },
 
-        { StandardBlendModes::Min, BlendType::Basic, BlendOp::Min, One, One },
-        { StandardBlendModes::Max, BlendType::Basic, BlendOp::Max, One, One },
+        { StandardBlendModes::Min, BlendType::Basic, BlendOp::Min, Blend::One, Blend::One },
+        { StandardBlendModes::Max, BlendType::Basic, BlendOp::Max, Blend::One, Blend::One },
 
-        { StandardBlendModes::OrderedTransparent, BlendType::Ordered, BlendOp::Add, SrcAlpha, InvSrcAlpha },
-        { StandardBlendModes::OrderedTransparentPremultiplied, BlendType::Ordered, BlendOp::Add, One, InvSrcAlpha },
-        { StandardBlendModes::Decal, BlendType::DeferredDecal, BlendOp::NoBlending, One, RenderCore::Metal::Blend::Zero }
+        { StandardBlendModes::OrderedTransparent, BlendType::Ordered, BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha },
+        { StandardBlendModes::OrderedTransparentPremultiplied, BlendType::Ordered, BlendOp::Add, Blend::One, Blend::InvSrcAlpha },
+        { StandardBlendModes::Decal, BlendType::DeferredDecal, BlendOp::NoBlending, Blend::One, Blend::Zero }
     };
 
     StandardBlendModes AsStandardBlendMode(
@@ -698,8 +698,8 @@ namespace GUILayer
             auto transaction = _underlying->Transaction_Begin("RenderState");
             auto& stateSet = transaction->GetAsset()._asset._stateSet;
             stateSet._forwardBlendOp = BlendOp::NoBlending;
-            stateSet._forwardBlendSrc = One;
-            stateSet._forwardBlendDst = RenderCore::Metal::Blend::Zero;
+            stateSet._forwardBlendSrc = Blend::One;
+            stateSet._forwardBlendDst = Blend::Zero;
             stateSet._blendType = RenderCore::Techniques::RenderStateSet::BlendType::Basic;
             stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::ForwardBlend;
             stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::BlendType;

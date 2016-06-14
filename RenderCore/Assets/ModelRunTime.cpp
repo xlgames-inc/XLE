@@ -315,7 +315,7 @@ namespace RenderCore { namespace Assets
                 i->second._matParams = sharedStateSet.InsertParameterBox(materialParamBox);
                 i->second._renderStateSet = sharedStateSet.InsertRenderStateSet(stateSet);
 
-                if (stateSet._forwardBlendOp == Metal::BlendOp::NoBlending) {
+                if (stateSet._forwardBlendOp == BlendOp::NoBlending) {
                     i->second._delayStep = DelayStep::OpaqueRender;
                 } else {
                     if (stateSet._flag & Techniques::RenderStateSet::Flag::BlendType) {
@@ -1074,7 +1074,7 @@ namespace RenderCore { namespace Assets
                 }
             
                 const auto& d = md->second;
-                devContext.Bind(Metal::Topology::Enum(d._topology));
+                devContext.Bind(d._topology);
 
                     // -- this draw call index stuff is only required in some cases --
                     //      we need some way to customise the model rendering method for different purposes
@@ -1117,7 +1117,7 @@ namespace RenderCore { namespace Assets
                 }
             
                 const auto& d = md->second;
-                devContext.Bind(Metal::Topology::Enum(d._topology));  // do we really need to set the topology every time?
+                devContext.Bind(d._topology);  // do we really need to set the topology every time?
 
                     // -- this draw call index stuff is only required in some cases --
                     //      we need some way to customise the model rendering method for different purposes
@@ -1198,7 +1198,7 @@ namespace RenderCore { namespace Assets
             entry._indexCount = d._indexCount;
             entry._firstIndex = d._firstIndex;
             entry._firstVertex = d._firstVertex;
-            entry._topology = Metal::Topology::Enum(d._topology);
+            entry._topology = d._topology;
             entry._subMesh = AsPointer(mesh);
             dest._entries[step].push_back(entry);
         }
@@ -1239,7 +1239,7 @@ namespace RenderCore { namespace Assets
             entry._indexCount = d._indexCount;
             entry._firstIndex = d._firstIndex;
             entry._firstVertex = d._firstVertex;
-            entry._topology = Metal::Topology::Enum(d._topology) | 0x100;
+            entry._topology = Topology(unsigned(d._topology) | 0x100u);
             entry._subMesh = AsPointer(mesh);
             dest._entries[step].push_back(entry);
         }
@@ -1319,7 +1319,7 @@ namespace RenderCore { namespace Assets
                 const Metal::VertexBuffer* vbs[] = { &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer };
                 static_assert(dimof(vbs) == (Pimpl::MaxVertexStreams+1), "Vertex buffer array size doesn't match vertex streams");
 
-                if (d->_topology > 0xff) {
+                if ((unsigned)d->_topology > 0xffu) {
                     auto& sknmesh = *(const PimplWithSkinning::SkinnedMesh*)d->_subMesh;
                     unsigned strides[] = { sknmesh._extraVbStride[0], sknmesh._vertexStrides[0], sknmesh._vertexStrides[1], sknmesh._vertexStrides[2] };
                     unsigned offsets[] = { sknmesh._extraVbOffset[0], sknmesh._vbOffsets[0], sknmesh._vbOffsets[1], sknmesh._vbOffsets[2] };
@@ -1387,9 +1387,9 @@ namespace RenderCore { namespace Assets
                 currentConstantBufferIndex = constantBufferIndex;
             }
 
-            if ((d->_topology & 0xff) != currentTopology) {
-                currentTopology = d->_topology & 0xff;
-                context._context->Bind(Metal::Topology::Enum(currentTopology));
+            if (((unsigned)d->_topology & 0xff) != currentTopology) {
+                currentTopology = (unsigned)d->_topology & 0xff;
+                context._context->Bind((Topology)currentTopology);
             }
             if (constant_expression<HasCallback>::result()) {
                 (*callback)(DrawCallEvent { d->_indexCount, d->_firstIndex, d->_firstVertex, d->_drawCallIndex });

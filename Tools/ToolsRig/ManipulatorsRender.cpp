@@ -142,7 +142,7 @@ namespace ToolsRig
 
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
-            metalContext.Bind(Metal::Topology::TriangleStrip);
+            metalContext.Bind(Topology::TriangleStrip);
             metalContext.GetUnderlying()->IASetInputLayout(nullptr);
 
                 // note --  this will render a full screen quad. we could render cylinder geometry instead,
@@ -217,7 +217,7 @@ namespace ToolsRig
 
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
-            metalContext.Bind(Metal::Topology::TriangleStrip);
+            metalContext.Bind(Topology::TriangleStrip);
             metalContext.GetUnderlying()->IASetInputLayout(nullptr);
 
                 // note --  this will render a full screen quad. we could render cylinder geometry instead,
@@ -297,7 +297,7 @@ namespace ToolsRig
                 metalContext.Bind(commonRes._blendStraightAlpha);
                 metalContext.Bind(commonRes._dssReadOnly);
                 metalContext.Unbind<Metal::VertexBuffer>();
-                metalContext.Bind(Metal::Topology::TriangleList);
+                metalContext.Bind(Topology::TriangleList);
                 
                 const unsigned vertexCount = 32 * 6;	// (must agree with the shader!)
                 metalContext.Draw(vertexCount);
@@ -349,8 +349,8 @@ namespace ToolsRig
         boundLayout.BindShaderResource(Hash64("DiffuseTexture"), 0, 1);
         boundLayout.Apply(metalContext, Metal::UniformsStream(), Metal::UniformsStream(nullptr, cnsts, dimof(cnsts), resources, dimof(resources)));
 
-        metalContext.Bind(Metal::BlendState(Metal::BlendOp::Add, Metal::Blend::SrcAlpha, Metal::Blend::InvSrcAlpha));
-        metalContext.Bind(Metal::Topology::TriangleStrip);
+        metalContext.Bind(Metal::BlendState(BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha));
+        metalContext.Bind(Topology::TriangleStrip);
         metalContext.Draw(dimof(vertices));
 
         metalContext.UnbindPS<Metal::ShaderResourceView>(0, 1);

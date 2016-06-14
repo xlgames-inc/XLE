@@ -752,7 +752,7 @@ namespace SceneEngine
     static void DrawDebugging(Metal::DeviceContext& context, ToneMappingResources& resources)
     {
         SetupVertexGeneratorShader(context);
-        context.Bind(Metal::BlendState(Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::InvSrcAlpha));
+        context.Bind(Metal::BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
         context.BindPS(MakeResourceList(resources._propertiesBuffer.SRV()));
         for (unsigned c=0; c<std::min(size_t(3),resources._luminanceBuffers.size()); ++c) {
             context.BindPS(MakeResourceList(1+c, resources._luminanceBuffers[c].SRV()));
@@ -773,7 +773,7 @@ namespace SceneEngine
         context.BindGS(MakeResourceList(Metal::ConstantBuffer(dimensions, sizeof(dimensions))));
         context.BindVS(MakeResourceList(resources._propertiesBuffer.SRV()));
         context.BindPS(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
-        context.Bind(Metal::Topology::PointList);
+        context.Bind(Topology::PointList);
         context.Draw(1);
     }
 
@@ -863,7 +863,7 @@ namespace SceneEngine
         integrateDistantBlurBinding->BindShaderResource(Hash64("BlurredBufferInput"), 1, 1);
 
         Metal::BlendState integrateBlend;
-        Metal::BlendState noBlending = Metal::BlendOp::NoBlending;
+        Metal::BlendState noBlending = BlendOp::NoBlending;
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(validationCallback, horizontalFilter->GetDependencyValidation());

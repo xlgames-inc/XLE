@@ -16,7 +16,6 @@
 namespace RenderCore { namespace Assets 
 {
     typedef uint64 MaterialGuid;
-    typedef unsigned TopologyPlaceholder;
 
     #pragma pack(push)
     #pragma pack(1)
@@ -81,11 +80,11 @@ namespace RenderCore { namespace Assets
         unsigned    _firstIndex, _indexCount;
         unsigned    _firstVertex;
         unsigned    _subMaterialIndex;
-        TopologyPlaceholder    _topology;
+        Topology	_topology;
 
         DrawCallDesc(
             unsigned firstIndex, unsigned indexCount, unsigned firstVertex, unsigned subMaterialIndex, 
-            TopologyPlaceholder topology) 
+			Topology topology)
         : _firstIndex(firstIndex), _indexCount(indexCount), _firstVertex(firstVertex)
         , _subMaterialIndex(subMaterialIndex), _topology(topology) {}
     };
@@ -230,6 +229,6 @@ inline void Serialize(
 	outputSerializer.SerializeValue(drawCall._indexCount);
 	outputSerializer.SerializeValue(drawCall._firstVertex);
 	outputSerializer.SerializeValue(drawCall._subMaterialIndex);
-	outputSerializer.SerializeValue(drawCall._topology);
+	outputSerializer.SerializeValue((unsigned&)drawCall._topology);
 }
 

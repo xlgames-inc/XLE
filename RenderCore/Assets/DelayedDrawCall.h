@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../../RenderCore/Types_Forward.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Core/Types.h"
@@ -31,7 +32,7 @@ namespace RenderCore { namespace Assets
 
             // 
         unsigned        _indexCount, _firstIndex, _firstVertex;
-        unsigned        _topology;  // (Metal::Topology::Enum)
+        Topology        _topology;
     };
 
     enum class DelayStep : unsigned

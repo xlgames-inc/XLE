@@ -8,6 +8,7 @@
 
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"      // required because we're deriving from Vulkan types
+#include "../../Types.h"
 #include <utility>
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -16,60 +17,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     static const unsigned s_mrtLimit = 4;
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /// Container for AddressMode::Enum
-    namespace AddressMode
-    {
-        /// <summary>Texture address modes</summary>
-        ///
-        ///     These are used to determine how the texture sampler
-        ///     reads texture data outside of the [0, 1] range.
-        ///     Normally Wrap and Clamp are used.
-        ///     <seealso cref="SamplerState"/>
-        enum Enum
-        {
-            Wrap = 1,   // D3D11_TEXTURE_ADDRESS_WRAP
-            Mirror = 2, // D3D11_TEXTURE_ADDRESS_MIRROR
-            Clamp = 3,  // D3D11_TEXTURE_ADDRESS_CLAMP
-            Border = 4  // D3D11_TEXTURE_ADDRESS_BORDER
-        };
-    }
-
-    /// Container for FilterMode::Enum
-    namespace FilterMode
-    {
-        /// <summary>Texture filtering modes</summary>
-        ///
-        ///     These are used when sampling a texture at a floating
-        ///     point address. In other words, when sampling at a
-        ///     midway point between texels, how do we filter the 
-        ///     surrounding texels?
-        ///     <seealso cref="SamplerState"/>
-        enum Enum
-        {
-            Point = 0,                  // D3D11_FILTER_MIN_MAG_MIP_POINT
-            Trilinear = 0x15,           // D3D11_FILTER_MIN_MAG_MIP_LINEAR
-            Anisotropic = 0x55,         // D3D11_FILTER_ANISOTROPIC
-            Bilinear = 0x14,            // D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT
-            ComparisonBilinear = 0x94   // D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT
-        };
-    }
-
-    namespace Comparison
-    {
-        enum Enum 
-        {
-            Never = 1,          // D3D11_COMPARISON_NEVER
-            Less = 2,           // D3D11_COMPARISON_LESS
-            Equal = 3,          // D3D11_COMPARISON_EQUAL
-            LessEqual = 4,      // D3D11_COMPARISON_LESS_EQUAL
-            Greater = 5,        // D3D11_COMPARISON_GREATER
-            NotEqual = 6,       // D3D11_COMPARISON_NOT_EQUAL
-            GreaterEqual = 7,   // D3D11_COMPARISON_GREATER_EQUAL
-            Always = 8          // D3D11_COMPARISON_ALWAYS
-        };
-    }
+////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// <summary>States for sampling from textures</summary>
     /// 
@@ -103,11 +51,11 @@ namespace RenderCore { namespace Metal_Vulkan
     class SamplerState
     {
     public:
-        SamplerState(   FilterMode::Enum filter = FilterMode::Trilinear,
-                        AddressMode::Enum addressU = AddressMode::Wrap, 
-                        AddressMode::Enum addressV = AddressMode::Wrap, 
-                        AddressMode::Enum addressW = AddressMode::Wrap,
-						Comparison::Enum comparison = Comparison::Never);
+        SamplerState(   FilterMode filter = FilterMode::Trilinear,
+                        AddressMode addressU = AddressMode::Wrap, 
+                        AddressMode addressV = AddressMode::Wrap, 
+                        AddressMode addressW = AddressMode::Wrap,
+						Comparison comparison = Comparison::Never);
 		~SamplerState();
 
         using UnderlyingType = VkSampler;
@@ -118,37 +66,6 @@ namespace RenderCore { namespace Metal_Vulkan
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /// Container for CullMode::Enum
-    namespace CullMode
-    {
-        /// <summary>Back face culling mode</summary>
-        ///
-        ///     Used to determine which side of a triangle to cull.
-        ///
-        ///     Note that there is another flag the in rasteriser state
-        ///     that determines which side of a triangle is the "back"
-        ///     (ie, clockwise or counterclockwise order). 
-        ///     Only use the "Front" option if you really want to cull
-        ///     the front facing triangles (useful for some effects)
-        ///     <seealso cref="RasterizerState"/>
-        enum Enum
-        {
-            None = 1,   // D3D11_CULL_NONE,
-            Front = 2,  // D3D11_CULL_FRONT,
-            Back = 3    // D3D11_CULL_BACK
-        };
-    };
-
-    /// Container for FillMode::Enum
-    namespace FillMode
-    {
-        enum Enum
-        {
-            Solid = 3,      // D3D11_FILL_SOLID
-            Wireframe = 2   // D3D11_FILL_WIREFRAME
-        };
-    };
 
     /// <summary>States used while rasterising triangles</summary>
     ///
@@ -180,10 +97,10 @@ namespace RenderCore { namespace Metal_Vulkan
     class RasterizerState : public VkPipelineRasterizationStateCreateInfo
     {
     public:
-        RasterizerState(CullMode::Enum cullmode = CullMode::Back, bool frontCounterClockwise = true);
+        RasterizerState(CullMode cullmode = CullMode::Back, bool frontCounterClockwise = true);
         RasterizerState(
-            CullMode::Enum cullmode, bool frontCounterClockwise,
-            FillMode::Enum fillmode,
+            CullMode cullmode, bool frontCounterClockwise,
+            FillMode fillmode,
             int depthBias, float depthBiasClamp, float slopeScaledBias);
 
 		static RasterizerState Null() { return RasterizerState(); }
@@ -193,60 +110,6 @@ namespace RenderCore { namespace Metal_Vulkan
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /// Container for Blend::Enum
-    namespace Blend
-    {
-        /// <summary>Settings used for describing a blend state</summary>
-        ///
-        ///     The blend operation takes the form:
-        ///         out colour = Operation(Param1 * (Source colour), Param2 * (Destination colour))
-        ///         out alpha = Operation(Param1 * (Source alpha), Param2 * (Destination alpha))
-        ///
-        ///     Where "Operation" is typically addition.
-        ///
-        ///     This enum is used for "Param1" and "Param2"
-        ///     <seealso cref="BlendOp::Enum"/>
-        ///     <seealso cref="BlendState"/>
-        enum Enum
-        {
-            Zero = 1, // D3D11_BLEND_ZERO,
-            One = 2, // D3D11_BLEND_ONE,
-
-            SrcColor = 3, // D3D11_BLEND_SRC_COLOR,
-            InvSrcColor = 4, // D3D11_BLEND_INV_SRC_COLOR,
-            DestColor = 9, // D3D11_BLEND_DEST_COLOR,
-            InvDestColor = 10, // D3D11_BLEND_INV_DEST_COLOR,
-
-            SrcAlpha = 5, // D3D11_BLEND_SRC_ALPHA,
-            InvSrcAlpha = 6, // D3D11_BLEND_INV_SRC_ALPHA,
-            DestAlpha = 7, // D3D11_BLEND_DEST_ALPHA,
-            InvDestAlpha = 8 // D3D11_BLEND_INV_DEST_ALPHA
-        };
-    };
-
-    /// Container for BlendOp::Enum
-    namespace BlendOp
-    {
-        /// <summary>Settings used for describing a blend state</summary>
-        ///
-        ///     The blend operation takes the form:
-        ///         out colour = Operation(Param1 * (Source colour), Param2 * (Destination colour))
-        ///         out alpha = Operation(Param1 * (Source alpha), Param2 * (Destination alpha))
-        ///
-        ///     This enum is used for "Operation"
-        ///     <seealso cref="BlendOp::Enum"/>
-        ///     <seealso cref="BlendState"/>
-        enum Enum
-        {
-            NoBlending,
-            Add = 1, // D3D11_BLEND_OP_ADD,
-            Subtract = 2, // D3D11_BLEND_OP_SUBTRACT,
-            RevSubtract = 3, // D3D11_BLEND_OP_REV_SUBTRACT,
-            Min = 4, // D3D11_BLEND_OP_MIN,
-            Max = 5 // D3D11_BLEND_OP_MAX
-        };
-    }
 
     /// <summary>States used while drawing pixels to the render targets</summary>
     ///
@@ -286,12 +149,12 @@ namespace RenderCore { namespace Metal_Vulkan
     class BlendState : public VkPipelineColorBlendStateCreateInfo
     {
     public:
-        BlendState( BlendOp::Enum blendingOperation = BlendOp::Add, 
-                    Blend::Enum srcBlend = Blend::SrcAlpha,
-                    Blend::Enum dstBlend = Blend::InvSrcAlpha,
-                    BlendOp::Enum alphaBlendingOperation = BlendOp::NoBlending,
-                    Blend::Enum alphaSrcBlend = Blend::One,
-                    Blend::Enum alphaDstBlend = Blend::Zero);
+        BlendState( BlendOp blendingOperation = BlendOp::Add, 
+                    Blend srcBlend = Blend::SrcAlpha,
+                    Blend dstBlend = Blend::InvSrcAlpha,
+                    BlendOp alphaBlendingOperation = BlendOp::NoBlending,
+                    Blend alphaSrcBlend = Blend::One,
+                    Blend alphaDstBlend = Blend::Zero);
 
         BlendState(const BlendState&);
         BlendState& operator=(const BlendState&);
@@ -307,33 +170,18 @@ namespace RenderCore { namespace Metal_Vulkan
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    namespace StencilOp
-    {
-        enum Enum
-        {
-            DontWrite = 1,      // D3D11_STENCIL_OP_KEEP
-            Zero = 2,           // D3D11_STENCIL_OP_ZERO
-            Replace = 3,        // D3D11_STENCIL_OP_REPLACE
-            IncreaseSat = 4,    // D3D11_STENCIL_OP_INCR_SAT
-            DecreaseSat = 5,    // D3D11_STENCIL_OP_DECR_SAT
-            Invert = 6,         // D3D11_STENCIL_OP_INVERT
-            Increase = 7,       // D3D11_STENCIL_OP_INCR
-            Decrease = 8        // D3D11_STENCIL_OP_DECR
-        };
-    }
-
     class StencilMode
     {
     public:
-        Comparison::Enum _comparison;
-        StencilOp::Enum _onPass;
-        StencilOp::Enum _onDepthFail;
-        StencilOp::Enum _onStencilFail;
+        Comparison _comparison;
+        StencilOp _onPass;
+        StencilOp _onDepthFail;
+        StencilOp _onStencilFail;
         StencilMode(
-            Comparison::Enum comparison     = Comparison::Always,
-            StencilOp::Enum onPass          = StencilOp::Replace,
-            StencilOp::Enum onStencilFail   = StencilOp::DontWrite,
-            StencilOp::Enum onDepthFail     = StencilOp::DontWrite)
+            Comparison comparison     = Comparison::Always,
+            StencilOp onPass          = StencilOp::Replace,
+            StencilOp onStencilFail   = StencilOp::DontWrite,
+            StencilOp onDepthFail     = StencilOp::DontWrite)
             : _comparison(comparison)
             , _onPass(onPass)
             , _onStencilFail(onStencilFail)
@@ -379,7 +227,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class DepthStencilState : public VkPipelineDepthStencilStateCreateInfo
     {
     public:
-        explicit DepthStencilState(bool enabled=true, bool writeEnabled=true, Comparison::Enum comparison = Comparison::LessEqual);
+        explicit DepthStencilState(bool enabled=true, bool writeEnabled=true, Comparison comparison = Comparison::LessEqual);
         DepthStencilState(
             bool depthTestEnabled, bool writeEnabled, 
             unsigned stencilReadMask, unsigned stencilWriteMask,

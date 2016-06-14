@@ -59,7 +59,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    static VkPrimitiveTopology AsNative(Topology::Enum topo)
+    static VkPrimitiveTopology AsNative(Topology topo)
     {
         switch (topo)
         {
@@ -97,7 +97,7 @@ namespace RenderCore { namespace Metal_Vulkan
         // VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY
     }
     
-    void        GraphicsPipelineBuilder::Bind(Topology::Enum topology)
+    void        GraphicsPipelineBuilder::Bind(Topology topology)
     {
         auto native = AsNative(topology);
         if (native != _topology) {

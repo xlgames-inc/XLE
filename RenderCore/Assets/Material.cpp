@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Material.h"
-#include "../Metal/State.h"                 // (just for Blend/BlendOp enum members... maybe we need a higher level version of these enums?)
+#include "../Types.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/BlockSerializer.h"
@@ -56,36 +56,36 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static const std::pair<Metal::Blend::Enum, const utf8*> s_blendNames[] =
+    static const std::pair<Blend, const utf8*> s_blendNames[] =
     {
-        std::make_pair(Metal::Blend::Zero, u("zero")),
-        std::make_pair(Metal::Blend::One, u("one")),
+        std::make_pair(Blend::Zero, u("zero")),
+        std::make_pair(Blend::One, u("one")),
             
-        std::make_pair(Metal::Blend::SrcColor, u("srccolor")),
-        std::make_pair(Metal::Blend::InvSrcColor, u("invsrccolor")),
-        std::make_pair(Metal::Blend::DestColor, u("destcolor")),
-        std::make_pair(Metal::Blend::InvDestColor, u("invdestcolor")),
+        std::make_pair(Blend::SrcColor, u("srccolor")),
+        std::make_pair(Blend::InvSrcColor, u("invsrccolor")),
+        std::make_pair(Blend::DestColor, u("destcolor")),
+        std::make_pair(Blend::InvDestColor, u("invdestcolor")),
 
-        std::make_pair(Metal::Blend::SrcAlpha, u("srcalpha")),
-        std::make_pair(Metal::Blend::InvSrcAlpha, u("invsrcalpha")),
-        std::make_pair(Metal::Blend::DestAlpha, u("destalpha")),
-        std::make_pair(Metal::Blend::InvDestAlpha, u("invdestalpha")),
+        std::make_pair(Blend::SrcAlpha, u("srcalpha")),
+        std::make_pair(Blend::InvSrcAlpha, u("invsrcalpha")),
+        std::make_pair(Blend::DestAlpha, u("destalpha")),
+        std::make_pair(Blend::InvDestAlpha, u("invdestalpha")),
     };
 
-    static const std::pair<Metal::BlendOp::Enum, const utf8*> s_blendOpNames[] =
+    static const std::pair<BlendOp, const utf8*> s_blendOpNames[] =
     {
-        std::make_pair(Metal::BlendOp::NoBlending, u("noblending")),
-        std::make_pair(Metal::BlendOp::NoBlending, u("none")),
-        std::make_pair(Metal::BlendOp::NoBlending, u("false")),
+        std::make_pair(BlendOp::NoBlending, u("noblending")),
+        std::make_pair(BlendOp::NoBlending, u("none")),
+        std::make_pair(BlendOp::NoBlending, u("false")),
 
-        std::make_pair(Metal::BlendOp::Add, u("add")),
-        std::make_pair(Metal::BlendOp::Subtract, u("subtract")),
-        std::make_pair(Metal::BlendOp::RevSubtract, u("revSubtract")),
-        std::make_pair(Metal::BlendOp::Min, u("min")),
-        std::make_pair(Metal::BlendOp::Max, u("max"))
+        std::make_pair(BlendOp::Add, u("add")),
+        std::make_pair(BlendOp::Subtract, u("subtract")),
+        std::make_pair(BlendOp::RevSubtract, u("revSubtract")),
+        std::make_pair(BlendOp::Min, u("min")),
+        std::make_pair(BlendOp::Max, u("max"))
     };
     
-    static Metal::Blend::Enum DeserializeBlend(
+    static Blend DeserializeBlend(
         DocElementHelper<InputStreamFormatter<utf8>> ele, const utf8 name[])
     {
         if (ele) {
@@ -95,14 +95,14 @@ namespace RenderCore { namespace Assets
                 for (unsigned c=0; c<dimof(s_blendNames); ++c)
                     if (XlEqStringI(value, s_blendNames[c].second))
                         return s_blendNames[c].first;
-                return (Metal::Blend::Enum)XlAtoI32((const char*)child.Value().AsString().c_str());
+                return (Blend)XlAtoI32((const char*)child.Value().AsString().c_str());
             }
         }
 
-        return Metal::Blend::Zero;
+        return Blend::Zero;
     }
 
-    static Metal::BlendOp::Enum DeserializeBlendOp(
+    static BlendOp DeserializeBlendOp(
         DocElementHelper<InputStreamFormatter<utf8>> ele, const utf8 name[])
     {
         if (ele) {
@@ -112,11 +112,11 @@ namespace RenderCore { namespace Assets
                 for (unsigned c=0; c<dimof(s_blendOpNames); ++c)
                     if (XlEqStringI(value, s_blendOpNames[c].second))
                         return s_blendOpNames[c].first;
-                return (Metal::BlendOp::Enum)XlAtoI32((const char*)child.Value().AsString().c_str());
+                return (BlendOp)XlAtoI32((const char*)child.Value().AsString().c_str());
             }
         }
 
-        return Metal::BlendOp::NoBlending;
+        return BlendOp::NoBlending;
     }
 
     static Techniques::RenderStateSet DeserializeStateSet(InputStreamFormatter<utf8>& formatter)
@@ -189,7 +189,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    static const utf8* AsString(Metal::Blend::Enum input)
+    static const utf8* AsString(Blend input)
     {
         for (unsigned c=0; c<dimof(s_blendNames); ++c) {
             if (s_blendNames[c].first == input) {
@@ -199,7 +199,7 @@ namespace RenderCore { namespace Assets
         return u("one");
     }
 
-    static const utf8* AsString(Metal::BlendOp::Enum input)
+    static const utf8* AsString(BlendOp input)
     {
         for (unsigned c=0; c<dimof(s_blendOpNames); ++c) {
             if (s_blendOpNames[c].first == input) {

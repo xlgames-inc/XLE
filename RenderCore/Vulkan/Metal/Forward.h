@@ -52,11 +52,5 @@ namespace RenderCore { namespace Metal_Vulkan
     
     class FrameBuffer;
     class FrameBufferCache;
-
-    namespace Topology { enum Enum; }
-    namespace Blend { enum Enum; };
-    namespace BlendOp { enum Enum; };
-    namespace CullMode { enum Enum; }
-    namespace GPUProfiler { class Profiler; }
 }}
 

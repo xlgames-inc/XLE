@@ -709,18 +709,18 @@ namespace SceneEngine
         // and "0" to succeed on the back size
         _writePixelFrequencyPixels = Metal::DepthStencilState(
             false, false, StencilSky|StencilSampleCount, 0xff, 
-            Metal::StencilMode(Metal::Comparison::Equal, Metal::StencilOp::DontWrite),
-            Metal::StencilMode(Metal::Comparison::Less, Metal::StencilOp::DontWrite));
+            Metal::StencilMode(Comparison::Equal, StencilOp::DontWrite),
+            Metal::StencilMode(Comparison::Less, StencilOp::DontWrite));
 
         _writeNonSky = Metal::DepthStencilState(
             false, false, StencilSky, 0xff, 
-            Metal::StencilMode(Metal::Comparison::Equal, Metal::StencilOp::DontWrite));
+            Metal::StencilMode(Comparison::Equal, StencilOp::DontWrite));
 
         Metal::SamplerState shadowComparisonSampler(
-            Metal::FilterMode::ComparisonBilinear, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp,
-            Metal::Comparison::LessEqual);
+            FilterMode::ComparisonBilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp,
+            Comparison::LessEqual);
         Metal::SamplerState shadowDepthSampler(
-            Metal::FilterMode::Bilinear, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp);
+            FilterMode::Bilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp);
 
         char definesTable[256];
         Utility::XlFormatString(definesTable, dimof(definesTable), "MSAA_SAMPLES=%i", desc._samplingCount);

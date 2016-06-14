@@ -209,18 +209,18 @@ namespace SceneEngine
             textureParts.BindPS(context, 0);
 
             if (CurrentSkyGeometryType == Plane) {
-                context.Bind(RenderCore::Metal::Topology::TriangleStrip);
+                context.Bind(RenderCore::Topology::TriangleStrip);
                 context.Unbind<RenderCore::Metal::VertexBuffer>();
                 context.Unbind<RenderCore::Metal::BoundInputLayout>();
 
                 context.Draw(4);
             } else {
-                context.Bind(Metal::Topology::TriangleList);
+                context.Bind(Topology::TriangleList);
                 RenderHalfCubeGeometry(context, textureParts, *res._shader);
             }
         CATCH_ASSETS_END(parserContext)
 
-        context.Bind(RenderCore::Metal::Topology::TriangleList);
+        context.Bind(RenderCore::Topology::TriangleList);
     }
 
     void    Sky_RenderPostFog(  RenderCore::Metal::DeviceContext& context, 
@@ -258,18 +258,18 @@ namespace SceneEngine
             context.Bind(*res._postFogShader);
 
             if (CurrentSkyGeometryType == Plane) {
-                context.Bind(Metal::Topology::TriangleStrip);
+                context.Bind(Topology::TriangleStrip);
                 context.Unbind<RenderCore::Metal::VertexBuffer>();
                 context.Unbind<RenderCore::Metal::BoundInputLayout>();
 
                 context.Draw(4);
             } else {
-                context.Bind(Metal::Topology::TriangleList);
+                context.Bind(Topology::TriangleList);
                 RenderHalfCubeGeometry(context, textureParts, *res._postFogShader);
             }
         CATCH_ASSETS_END(parserContext)
 
-        context.Bind(RenderCore::Metal::Topology::TriangleList);
+        context.Bind(RenderCore::Topology::TriangleList);
     }
 
     

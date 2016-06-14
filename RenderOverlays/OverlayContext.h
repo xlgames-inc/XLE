@@ -10,6 +10,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"        // for ConstantBufferPacket
 #include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../RenderCore/Types_Forward.h"
 #include "../Math/Matrix.h"
 #include "Font.h"
 #include <vector>
@@ -96,15 +97,15 @@ namespace RenderOverlays
         class DrawCall
         {
         public:
-            unsigned        _topology;
-            unsigned        _vertexOffset;
-            unsigned        _vertexCount;
-            VertexFormat    _vertexFormat;
-            std::string     _pixelShaderName;
-            std::string     _textureName;
-            ProjectionMode::Enum  _projMode;
+            RenderCore::Topology	_topology;
+            unsigned				_vertexOffset;
+            unsigned				_vertexCount;
+            VertexFormat			_vertexFormat;
+            std::string				_pixelShaderName;
+            std::string				_textureName;
+            ProjectionMode::Enum	_projMode;
 
-            DrawCall(   unsigned topology, unsigned vertexOffset, 
+            DrawCall(   RenderCore::Topology topology, unsigned vertexOffset, 
                         unsigned vertexCount, VertexFormat format, ProjectionMode::Enum projMode, 
                         const std::string& pixelShaderName = std::string(),
                         const std::string& textureName = std::string()) 
@@ -115,7 +116,7 @@ namespace RenderOverlays
 
         std::vector<DrawCall>   _drawCalls;
         void                    Flush();
-        void                    SetShader(unsigned topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName);
+        void                    SetShader(RenderCore::Topology topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName);
 
         template<typename Type> VertexFormat AsVertexFormat() const;
         unsigned                VertexSize(VertexFormat format);

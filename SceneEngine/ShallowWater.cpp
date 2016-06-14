@@ -1063,7 +1063,7 @@ namespace SceneEngine
 
         SetupVertexGeneratorShader(metalContext);
         metalContext.BindVS(MakeResourceList(3, _simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
-        metalContext.Bind(Metal::Topology::TriangleList);
+        metalContext.Bind(Topology::TriangleList);
         metalContext.Bind(Techniques::CommonResources()._dssReadWrite);
 
         auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(_gridDimension, _gridDimension, true));
@@ -1127,7 +1127,7 @@ namespace SceneEngine
             _simulationGrid->_waterVelocitiesSRV[5],
             _simulationGrid->_waterVelocitiesSRV[6],
             _simulationGrid->_waterVelocitiesSRV[7]));
-        metalContext.Bind(Metal::Topology::TriangleList);
+        metalContext.Bind(Topology::TriangleList);
         metalContext.Bind(Techniques::CommonResources()._dssReadWrite);
 
         auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(

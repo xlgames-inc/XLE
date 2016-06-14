@@ -22,11 +22,11 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
-    static_assert(      Topology::PointList      == D3D11_PRIMITIVE_TOPOLOGY_POINTLIST
-                &&  Topology::LineList       == D3D11_PRIMITIVE_TOPOLOGY_LINELIST
-                &&  Topology::LineStrip      == D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP
-                &&  Topology::TriangleList   == D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST
-                &&  Topology::TriangleStrip  == D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP,
+    static_assert(  (unsigned)Topology::PointList      == D3D11_PRIMITIVE_TOPOLOGY_POINTLIST
+                &&  (unsigned)Topology::LineList       == D3D11_PRIMITIVE_TOPOLOGY_LINELIST
+                &&  (unsigned)Topology::LineStrip      == D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP
+                &&  (unsigned)Topology::TriangleList   == D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST
+                &&  (unsigned)Topology::TriangleStrip  == D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP,
                 "Toplogy flags are out-of-sync");
 
     void DeviceContext::Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[])
@@ -41,7 +41,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->IASetInputLayout(inputLayout.GetUnderlying());
     }
 
-    void DeviceContext::Bind(Topology::Enum topology)
+    void DeviceContext::Bind(Topology topology)
     {
         _underlying->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY(topology));
     }

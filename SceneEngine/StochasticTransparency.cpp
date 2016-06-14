@@ -138,8 +138,8 @@ namespace SceneEngine
             "StochasticBlendingTexture");
 
         _secondPassBlend = Metal::BlendState(
-            Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::One,
-            Metal::BlendOp::Add, Metal::Blend::Zero, Metal::Blend::InvSrcAlpha);
+            BlendOp::Add, Blend::One, Blend::One,
+            BlendOp::Add, Blend::Zero, Blend::InvSrcAlpha);
 
         if (desc._recordPrimIds)
             _primIdsTexture = RTVSRV(

@@ -818,7 +818,7 @@ namespace PlatformRig { namespace Overlays
             forkedContext->Bind(commonResources._blendOpaque);
             forkedContext->Bind(commonResources._dssDisable);
             forkedContext->Bind(commonResources._defaultRasterizer);
-            forkedContext->Bind(Metal::Topology::TriangleList);
+            forkedContext->Bind(Topology::TriangleList);
 
             forkedContext->Bind(mainViewport);
             

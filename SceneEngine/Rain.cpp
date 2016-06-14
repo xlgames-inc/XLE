@@ -104,12 +104,12 @@ namespace SceneEngine
                 *context, parserContext.GetGlobalUniformsStream(), 
                 Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)));
             context->Bind(shader);
-            context->Bind(Metal::BlendState(Metal::BlendOp::Add, Metal::Blend::SrcAlpha, Metal::Blend::InvSrcAlpha));
-            context->Bind(Metal::CullMode::None);   // some particles will get a flipped winding order (because the projection is relatively simple... So disable back face culling)
+            context->Bind(Metal::BlendState(BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha));
+            context->Bind(CullMode::None);   // some particles will get a flipped winding order (because the projection is relatively simple... So disable back face culling)
             context->Bind(Metal::DepthStencilState(true, false));
 
             SetupVertexGeneratorShader(*context);
-            context->Bind(Metal::Topology::PointList);
+            context->Bind(Topology::PointList);
 
             for (unsigned b=0; b<culledBoxCount; ++b) {
                     // fewer particles in distant boxes?
@@ -125,8 +125,8 @@ namespace SceneEngine
             }
         CATCH_ASSETS_END(parserContext)
 
-        context->Bind(RenderCore::Metal::Topology::TriangleList);
-        context->Bind(RenderCore::Metal::CullMode::Back);
+        context->Bind(RenderCore::Topology::TriangleList);
+        context->Bind(RenderCore::CullMode::Back);
     }
 
     class SimRainResources
@@ -299,17 +299,17 @@ namespace SceneEngine
             context->Bind(shader);
 
             SetupVertexGeneratorShader(*context);
-            context->Bind(Metal::BlendState(Metal::BlendOp::Add, Metal::Blend::SrcAlpha, Metal::Blend::InvSrcAlpha));
-            context->Bind(Metal::CullMode::None);
-            context->Bind(Metal::Topology::PointList);
+            context->Bind(Metal::BlendState(BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha));
+            context->Bind(CullMode::None);
+            context->Bind(Topology::PointList);
             context->Bind(Metal::DepthStencilState(true, false));
 
             context->Draw(particleCountWidth*particleCountWidth);
             context->UnbindVS<Metal::ShaderResourceView>(3, 1);
         CATCH_ASSETS_END(parserContext)
 
-        context->Bind(RenderCore::Metal::Topology::TriangleList);
-        context->Bind(RenderCore::Metal::CullMode::Back);
+        context->Bind(RenderCore::Topology::TriangleList);
+        context->Bind(RenderCore::CullMode::Back);
     }
 
 
@@ -452,9 +452,9 @@ namespace SceneEngine
             context->Bind(shader);
 
             SetupVertexGeneratorShader(*context);
-            context->Bind(Metal::BlendState(Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::One));
-            context->Bind(Metal::CullMode::None);
-            context->Bind(Metal::Topology::PointList);
+            context->Bind(Metal::BlendState(BlendOp::Add, Blend::One, Blend::One));
+            context->Bind(CullMode::None);
+            context->Bind(Topology::PointList);
             context->Bind(Metal::DepthStencilState(true, false));
 
             context->Draw(particleCountWidth*particleCountWidth);
@@ -462,8 +462,8 @@ namespace SceneEngine
             context->UnbindVS<Metal::ShaderResourceView>(3, 1);
         CATCH_ASSETS_END(parserContext)
 
-        context->Bind(RenderCore::Metal::Topology::TriangleList);
-        context->Bind(RenderCore::Metal::CullMode::Back);
+        context->Bind(RenderCore::Topology::TriangleList);
+        context->Bind(RenderCore::CullMode::Back);
     }
 
 

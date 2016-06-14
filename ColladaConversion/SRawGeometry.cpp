@@ -15,7 +15,7 @@
 #include "ConversionUtil.h"
 #include "../RenderCore/Assets/MeshDatabase.h"
 #include "../RenderCore/Assets/AssetUtils.h"
-#include "../RenderCore/Metal/DeviceContext.h"      // for Topology...!
+#include "../RenderCore/Types.h"      // for Topology...!
 #include "../RenderCore/Format.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/MemoryUtils.h"
@@ -330,10 +330,10 @@ namespace ColladaConversion
     {
     public:
         std::vector<unsigned>   _indexBuffer;
-        Metal::Topology::Enum   _topology;
+        Topology				_topology;
         uint64                  _materialBinding;
 
-        WorkingDrawOperation() : _topology((Metal::Topology::Enum)0), _materialBinding(0) {}
+        WorkingDrawOperation() : _topology((Topology)0), _materialBinding(0) {}
         WorkingDrawOperation(WorkingDrawOperation&& moveFrom) never_throws
         : _indexBuffer(std::move(moveFrom._indexBuffer))
         , _topology(moveFrom._topology)
@@ -398,7 +398,7 @@ namespace ColladaConversion
         WorkingDrawOperation drawCall;
         drawCall._indexBuffer = std::move(finalIndices);
         drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
-        drawCall._topology = RenderCore::Metal::Topology::TriangleList;
+        drawCall._topology = Topology::TriangleList;
         return std::move(drawCall);
     }
 
@@ -470,7 +470,7 @@ namespace ColladaConversion
         WorkingDrawOperation drawCall;
         drawCall._indexBuffer = std::move(finalIndices);
         drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
-        drawCall._topology = RenderCore::Metal::Topology::TriangleList;
+        drawCall._topology = Topology::TriangleList;
         return std::move(drawCall);
     }
 
@@ -539,7 +539,7 @@ namespace ColladaConversion
         WorkingDrawOperation drawCall;
         drawCall._indexBuffer = std::move(finalIndices);
         drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
-        drawCall._topology = RenderCore::Metal::Topology::TriangleList;
+        drawCall._topology = Topology::TriangleList;
         return std::move(drawCall);
     }
 
@@ -760,7 +760,7 @@ namespace ColladaConversion
 
         size_t finalIndexCount = 0;
         for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
-            assert(i->_topology == Metal::Topology::TriangleList);  // tangent generation assumes triangle list currently... We need to modify GenerateNormalsAndTangents() to support other types
+            assert(i->_topology == Topology::TriangleList);  // tangent generation assumes triangle list currently... We need to modify GenerateNormalsAndTangents() to support other types
             finalDrawOperations.push_back(
                 DrawCallDesc(
                     (unsigned)finalIndexCount, (unsigned)i->_indexBuffer.size(), 0, 

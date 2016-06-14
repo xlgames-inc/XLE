@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../Metal/Forward.h"       // for Metal::Blend
+#include "../Types_Forward.h"
 #include "../../Core/Types.h"
 #include <memory>
 
@@ -99,9 +99,9 @@ namespace RenderCore { namespace Techniques
             //  These "blend" values may not be completely portable across all platforms
             //  (either because blend modes aren't supported, or because we need to
             //  change the meaning of the values)
-        Metal::Blend::Enum      _forwardBlendSrc : 5;
-        Metal::Blend::Enum      _forwardBlendDst : 5;
-        Metal::BlendOp::Enum    _forwardBlendOp  : 5;
+        Blend		_forwardBlendSrc : 5;
+        Blend		_forwardBlendDst : 5;
+        BlendOp		_forwardBlendOp  : 5;
 
         struct Flag
         {
@@ -157,7 +157,7 @@ namespace RenderCore { namespace Techniques
     std::shared_ptr<IStateSetResolver> CreateStateSetResolver_DepthOnly(
         const RSDepthBias& singleSidedBias = RSDepthBias(),
         const RSDepthBias& doubleSidedBias = RSDepthBias(),
-        Metal::CullMode::Enum cullMode = Metal::CullMode::Enum(3));
+        CullMode cullMode = CullMode(3));
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -170,9 +170,9 @@ namespace RenderCore { namespace Techniques
         _depthBias = 0;
         _flag = 0;
         
-        _forwardBlendSrc = Metal::Blend::Enum(0); // Metal::Blend::One;
-        _forwardBlendDst = Metal::Blend::Enum(0); // Metal::Blend::Zero;
-        _forwardBlendOp = Metal::BlendOp::Enum(0); // Metal::BlendOp::NoBlending;
+        _forwardBlendSrc = Blend(0); // Metal::Blend::One;
+        _forwardBlendDst = Blend(0); // Metal::Blend::Zero;
+        _forwardBlendOp = BlendOp(0); // Metal::BlendOp::NoBlending;
     }
 
 }}

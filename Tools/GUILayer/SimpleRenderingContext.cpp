@@ -167,7 +167,7 @@ namespace GUILayer
         if (!vfFormat) return;
 
         if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
-            _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
+            _devContext->Bind((RenderCore::Topology)primitiveType);
             _devContext->Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
             _devContext->Draw(vertexCount, startVertex);
         }
@@ -190,7 +190,7 @@ namespace GUILayer
             
         if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
             auto& devContext = *_devContext.get();
-            _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
+            _devContext->Bind((RenderCore::Topology)primitiveType);
             devContext.Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
             devContext.Bind(*ibuffer, RenderCore::Format::R32_UINT);   // Sony editor always uses 32 bit indices
             devContext.DrawIndexed(indexCount, startIndex, startVertex);

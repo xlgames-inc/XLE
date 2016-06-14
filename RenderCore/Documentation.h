@@ -130,7 +130,7 @@
                                                 tileLightingResources._debuggingTextureSRV[1]));
             context->Bind(Metal::DepthStencilState());
             SetupVertexGeneratorShader(context);
-            context->Bind(Metal::Topology::PointList);
+            context->Bind(Topology::PointList);
             context->Bind(debuggingShader);
             context->Draw(shaderGlobals[0]*shaderGlobals[1]);
         \endcode

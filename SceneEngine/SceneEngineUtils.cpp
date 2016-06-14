@@ -127,7 +127,7 @@ namespace SceneEngine
 
     void SetupVertexGeneratorShader(Metal::DeviceContext& context)
     {
-        context.Bind(Metal::Topology::TriangleStrip);
+        context.Bind(Topology::TriangleStrip);
         context.Unbind<Metal::VertexBuffer>();
         context.Unbind<Metal::BoundInputLayout>();
     }

@@ -290,7 +290,7 @@ float   TextStyle::Draw(
         auto& res = RenderCore::Techniques::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
         renderer->Bind(res._boundInputLayout);     // have to bind a standard P2CT input layout
         renderer->Bind(*res._shaderProgram);
-        renderer->Bind(Metal::Topology::TriangleList);
+        renderer->Bind(Topology::TriangleList);
 
         renderer->Bind(Techniques::CommonResources()._dssDisable);
         renderer->Bind(Techniques::CommonResources()._cullDisable);

@@ -273,7 +273,7 @@ namespace SceneEngine
             metalContext.Bind(Techniques::CommonResources()._blendOpaque);
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
             metalContext.Bind(Techniques::CommonResources()._cullDisable);
-            metalContext.Bind(Metal::Topology::PointList);
+            metalContext.Bind(Topology::PointList);
             metalContext.Bind(MakeResourceList(box._triangleBufferVB), strides[0], offsets[0]);
 
             metalContext.Bind(
@@ -282,7 +282,7 @@ namespace SceneEngine
             metalContext.DrawAuto();
         CATCH_ASSETS_END(parserContext)
 
-        metalContext.Bind(Metal::Topology::TriangleList);
+        metalContext.Bind(Topology::TriangleList);
         savedTargets.ResetToOldTargets(metalContext);
 
         preparedResult._listHeadSRV = box._gridBufferSRV;

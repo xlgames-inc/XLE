@@ -392,7 +392,7 @@ namespace SceneEngine
                 metalContext.Bind(MakeResourceList(
                     Metal::VertexBuffer(vertices, sizeof(vertices))), sizeof(Vertex), 0);
                 metalContext.Bind(Techniques::CommonResources()._cullDisable);
-                metalContext.Bind(Metal::Topology::TriangleStrip);
+                metalContext.Bind(Topology::TriangleStrip);
                 metalContext.Draw(4);
             }
         CATCH_ASSETS_END(parserContext)

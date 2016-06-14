@@ -671,7 +671,7 @@ namespace Sample
                         "game/xleres/basic.psh:copy:ps_*",
                         "");
                     metalContext->Unbind<Metal::BoundInputLayout>();
-                    metalContext->Bind(Metal::Topology::TriangleStrip);
+                    metalContext->Bind(Topology::TriangleStrip);
                     metalContext->Bind(resolveShdr);
                     metalContext->Draw(4);
                 }

@@ -165,7 +165,7 @@ namespace RenderCore { namespace Assets
         #endif
 
         context.Unbind<Metal::PixelShader>();
-        context.Bind(Metal::Topology::PointList);
+        context.Bind(Topology::PointList);
     }
 
     void ModelRenderer::PimplWithSkinning::EndBuildingSkinning(Metal::DeviceContext& context) const

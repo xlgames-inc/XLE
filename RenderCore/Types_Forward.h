@@ -24,4 +24,14 @@ namespace RenderCore
 
     class InputElementDesc;
 	using InputLayout = std::pair<const InputElementDesc*, size_t>;
+
+	enum class Topology;
+	enum class AddressMode;
+	enum class FilterMode;
+	enum class Comparison;
+	enum class CullMode;
+	enum class FillMode;
+	enum class Blend;
+	enum class BlendOp;
+	enum class StencilOp;
 }
