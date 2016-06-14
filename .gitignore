@@ -26,6 +26,8 @@ BuildLog.htm
 *.ipch
 *.opensdf
 *.nvuser
+*.VC.db
+*.VC.opendb
 
 /Foreign/freetype-2.5.0.1/objs/
 /ForeignNonDist/
