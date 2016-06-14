@@ -127,7 +127,7 @@ namespace Assets { namespace IntermediateAssets
             // propagate change messages...
             // (duplicating processing from RegisterFileDependency)
         utf8 directoryName[MaxPath];
-        FileNameSplitter<utf8> splitter((const utf8*)filename);
+        FileNameSplitter<utf8> splitter(MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()));
         SplitPath<utf8>(splitter.DriveAndPath()).Simplify().Rebuild(directoryName);
         
         FakeFileChange(MakeStringSection(directoryName), splitter.FileAndExtension());

@@ -370,12 +370,6 @@ namespace Utility
             XlCopyNString(destination, Count, source, length);
         }
 
-	template <typename CharType>
-		void XlCopyString(CharType destination[], size_t size, const StringSection<CharType>& source)
-		{
-			XlCopyNString(destination, size, source._start, source.Length());
-		}
-		
 	template <int Count, typename CharType>
         void XlCopyString(CharType (&destination)[Count], const StringSection<CharType>& source)
         {
