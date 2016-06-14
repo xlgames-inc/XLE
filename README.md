@@ -9,6 +9,8 @@ Starting points: <BR>
 * Technical documentation: https://github.com/xlgames-inc/XLE/wiki
 * Download and getting started docs: http://xlgames-inc.github.io/posts/release0040/
 
+See *"experimental"* branch for **Vulkan** support.
+
 ### Build Status
 [Appveyor CI page](https://ci.appveyor.com/project/djewsbury/xle)
 ![BuildStatusBadge](https://ci.appveyor.com/api/projects/status/github/xlgames-inc/xle?svg=true)
