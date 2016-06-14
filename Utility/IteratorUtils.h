@@ -136,6 +136,25 @@ namespace Utility
                 operator IteratorRange<OtherIterator>() const { return IteratorRange<OtherIterator>(cbegin(), cend()); }
         };
 
+	template<>
+        class IteratorRange<const void*> : public std::pair<const void*, const void*>
+        {
+        public:
+            const void* begin() const      { return first; }
+            const void* end() const        { return second; }
+            const void* cbegin() const     { return first; }
+            const void* cend() const       { return second; }
+            bool empty() const				{ return first == second; }
+			size_t size() const				{ return Internal::IteratorDifference(first, second); }
+
+            IteratorRange() : std::pair<const void*, const void*>(nullptr, nullptr) {}
+            IteratorRange(const void* f, const void* s) : std::pair<const void*, const void*>(f, s) {}
+
+            template<typename OtherIterator>
+                IteratorRange(const std::pair<OtherIterator, OtherIterator>& copyFrom)
+                    : std::pair<const void*, const void*>(copyFrom) {}
+        };
+
     template<typename Container>
         IteratorRange<const typename Container::value_type*> MakeIteratorRange(const Container& c)
         {
