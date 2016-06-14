@@ -10,16 +10,16 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-	static VkCommandBufferLevel AsBufferLevel(CommandPool::BufferType type)
+	static VkCommandBufferLevel AsBufferLevel(CommandBufferType type)
 	{
 		switch (type) {
 		default:
-		case CommandPool::BufferType::Primary: return VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		case CommandPool::BufferType::Secondary: return VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+		case CommandBufferType::Primary: return VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		case CommandBufferType::Secondary: return VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 		}
 	}
 
-    VulkanSharedPtr<VkCommandBuffer> CommandPool::Allocate(BufferType type)
+    VulkanSharedPtr<VkCommandBuffer> CommandPool::Allocate(CommandBufferType type)
 	{
         #if defined(CHECK_COMMAND_POOL)
             std::unique_lock<std::mutex> guard(_lock, std::try_to_lock);

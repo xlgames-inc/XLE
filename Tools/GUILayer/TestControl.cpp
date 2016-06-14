@@ -94,7 +94,7 @@ namespace GUILayer
         auto& frameRig = windowRig.GetFrameRig();
         frameRig.ExecuteFrame(
             threadContext, windowRig.GetPresentationChain().get(),
-            nullptr, nullptr, DummyRenderFrame);
+            nullptr, DummyRenderFrame);
         return true;
     }
 

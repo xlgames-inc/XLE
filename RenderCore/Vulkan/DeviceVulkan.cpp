@@ -562,7 +562,7 @@ namespace RenderCore { namespace ImplVulkan
                 *_graphicsPipelineLayout,
                 *_computePipelineLayout,
                 Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, frameTracker),
-				Metal_Vulkan::CommandPool::BufferType::Primary);
+				Metal_Vulkan::CommandBufferType::Primary);
 			_foregroundPrimaryContext->AttachDestroyer(destroyer);
 			_foregroundPrimaryContext->SetGPUTracker(frameTracker);
             _foregroundPrimaryContext->BeginCommandList();
@@ -709,7 +709,7 @@ namespace RenderCore { namespace ImplVulkan
             *_graphicsPipelineLayout,
             *_computePipelineLayout,
             Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, nullptr),
-            Metal_Vulkan::CommandPool::BufferType::Secondary);
+            Metal_Vulkan::CommandBufferType::Secondary);
     }
 
 	ResourcePtr Device::CreateResource(
@@ -1124,7 +1124,7 @@ namespace RenderCore { namespace ImplVulkan
         Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
         Metal_Vulkan::PipelineLayout& computePipelineLayout,
         Metal_Vulkan::CommandPool&& cmdPool,
-		Metal_Vulkan::CommandPool::BufferType cmdBufferType)
+		Metal_Vulkan::CommandBufferType cmdBufferType)
     : _device(device)
 	, _frameId(0)
     , _renderingCommandPool(std::move(cmdPool))
@@ -1168,7 +1168,7 @@ namespace RenderCore { namespace ImplVulkan
         Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
         Metal_Vulkan::PipelineLayout& computePipelineLayout,
         Metal_Vulkan::CommandPool&& cmdPool,
-		Metal_Vulkan::CommandPool::BufferType cmdBufferType)
+		Metal_Vulkan::CommandBufferType cmdBufferType)
     : ThreadContext(
         std::move(device), queue, 
         graphicsPipelineLayout, computePipelineLayout, 

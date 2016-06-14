@@ -8,6 +8,7 @@
 #include "SkeletonRegistry.h"
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"
+#include "../RenderCore/Format.h"
 #include "../Assets/Assets.h"
 #include "../Utility/IteratorUtils.h"
 #include "../ConsoleRig/Log.h"

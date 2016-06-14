@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include "State.h"
 #include "Forward.h"
-#include "Pools.h"
+#include "State.h"
+// #include "Pools.h"
 #include "FrameBuffer.h"        // for NamedResources
 #include "VulkanCore.h"
 #include "../../ResourceList.h"
@@ -27,6 +27,11 @@ namespace RenderCore { namespace Metal_Vulkan
     class FrameBuffer;
     class PipelineLayout;
     class DescriptorSetSignature;
+	class CommandPool;
+	class DescriptorPool;
+	class DummyResources;
+	class UnderlyingResourcePtr;
+	enum class CommandBufferType;
 
     /// Container for Topology::Enum
     namespace Topology
@@ -126,8 +131,8 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         enum class Stage { Vertex, Pixel, Geometry, Compute, Hull, Domain, Max };
-        void    BindSRV(Stage stage, unsigned startingPoint, IteratorRange<const ShaderResourceView::UnderlyingType*> resources);
-        void    BindUAV(Stage stage, unsigned startingPoint, IteratorRange<const UnorderedAccessView::UnderlyingType*> resources);
+        void    BindSRV(Stage stage, unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
+        void    BindUAV(Stage stage, unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
         void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
         void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
 
@@ -352,7 +357,7 @@ namespace RenderCore { namespace Metal_Vulkan
             PipelineLayout& globalPipelineLayout,
             PipelineLayout& computePipelineLayout,
 			CommandPool& cmdPool, 
-            CommandPool::BufferType cmdBufferType);
+			CommandBufferType cmdBufferType);
 		DeviceContext(const DeviceContext&) = delete;
 		DeviceContext& operator=(const DeviceContext&) = delete;
 
@@ -373,7 +378,7 @@ namespace RenderCore { namespace Metal_Vulkan
         DescriptorCollection                _computeDescriptors;
 
         CommandPool*                        _cmdPool;
-        CommandPool::BufferType             _cmdBufferType;
+		CommandBufferType					_cmdBufferType;
 
         VectorPattern<unsigned,2>           _presentationTargetDims;
 

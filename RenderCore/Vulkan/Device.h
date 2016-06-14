@@ -134,7 +134,7 @@ namespace RenderCore { namespace ImplVulkan
             Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
             Metal_Vulkan::PipelineLayout& computePipelineLayout,
             Metal_Vulkan::CommandPool&& cmdPool,
-			Metal_Vulkan::CommandPool::BufferType cmdBufferType);
+			Metal_Vulkan::CommandBufferType cmdBufferType);
         ~ThreadContext();
     protected:
         std::weak_ptr<Device>           _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
@@ -164,7 +164,7 @@ namespace RenderCore { namespace ImplVulkan
             Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
             Metal_Vulkan::PipelineLayout& computePipelineLayout,
             Metal_Vulkan::CommandPool&& cmdPool,
-			Metal_Vulkan::CommandPool::BufferType cmdBufferType);
+			Metal_Vulkan::CommandBufferType cmdBufferType);
         ~ThreadContextVulkan();
     };
 

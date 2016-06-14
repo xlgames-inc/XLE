@@ -819,7 +819,7 @@ namespace RenderCore { namespace Metal_Vulkan
         PipelineLayout&         globalPipelineLayout,
         PipelineLayout&         computePipelineLayout,
 		CommandPool&            cmdPool, 
-        CommandPool::BufferType cmdBufferType)
+		CommandBufferType		cmdBufferType)
     : _cmdPool(&cmdPool), _cmdBufferType(cmdBufferType)
     , _factory(&factory)
     , _globalPools(&globalPools)
@@ -965,7 +965,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    void    DescriptorSetBuilder::BindSRV(Stage stage, unsigned startingPoint, IteratorRange<const ShaderResourceView::UnderlyingType*> resources)
+    void    DescriptorSetBuilder::BindSRV(Stage stage, unsigned startingPoint, IteratorRange<const TextureView*const*> resources)
     {
         const auto descriptorSet = 0u;
         for (unsigned c=0; c<unsigned(resources.size()); ++c) {
@@ -1000,7 +1000,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    void    DescriptorSetBuilder::BindUAV(Stage stage, unsigned startingPoint, IteratorRange<const UnorderedAccessView::UnderlyingType*> resources)
+    void    DescriptorSetBuilder::BindUAV(Stage stage, unsigned startingPoint, IteratorRange<const TextureView*const*> resources)
     {
         const auto descriptorSet = 0u;
         for (unsigned c=0; c<unsigned(resources.size()); ++c) {

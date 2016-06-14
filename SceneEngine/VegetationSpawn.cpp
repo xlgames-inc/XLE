@@ -17,6 +17,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
+#include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/IAnnotator.h"

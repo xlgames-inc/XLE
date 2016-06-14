@@ -18,6 +18,7 @@
 #include "ScaffoldParsingUtil.h"    // for AsString
 #include "ConversionUtil.h"
 #include "../RenderCore/Assets/Material.h"  // for MakeMaterialGuid
+#include "../RenderCore/Format.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringFormat.h"
 #include "ConversionCore.h"

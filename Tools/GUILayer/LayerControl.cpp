@@ -109,7 +109,7 @@ namespace GUILayer
             auto& frameRig = windowRig.GetFrameRig();
             auto frResult = frameRig.ExecuteFrame(
                 threadContext, windowRig.GetPresentationChain().get(), 
-                nullptr, nullptr,
+                nullptr,
                 std::bind(
                     RenderFrame, std::placeholders::_1, std::placeholders::_2,
                     std::ref(*_pimpl), frameRig.GetMainOverlaySystem().get()));

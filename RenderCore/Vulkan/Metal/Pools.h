@@ -26,11 +26,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	enum class CommandBufferType { Primary, Secondary };
+
     class CommandPool
 	{
 	public:
-		enum class BufferType { Primary, Secondary };
-		VulkanSharedPtr<VkCommandBuffer> Allocate(BufferType type);
+		VulkanSharedPtr<VkCommandBuffer> Allocate(CommandBufferType type);
 
 		void FlushDestroys();
 

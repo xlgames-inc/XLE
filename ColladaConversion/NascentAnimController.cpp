@@ -12,6 +12,7 @@
 #include "ConversionUtil.h"
 #include "../RenderCore/Metal/DeviceContext.h"  // for Topology!
 #include "../RenderCore/Assets/AssetUtils.h"
+#include "../RenderCore/Format.h"
 #include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/Log.h"
 #include "../Assets/Assets.h"

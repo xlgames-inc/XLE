@@ -11,6 +11,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
 #include "../Assets/Assets.h"

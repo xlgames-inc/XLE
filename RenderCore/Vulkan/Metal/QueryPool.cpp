@@ -60,7 +60,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto& b = _buffers[_activeBuffer];
 		b._pendingReadback = true;
 		b._queryEnd = _nextAllocation;
-		assert(b._queryEnd != b._queryStart);	// problems if we allocate all queries in a single frame currently
+		assert(b._queryEnd != b._queryStart || _allocatedCount == 0);	// problems if we allocate all queries in a single frame currently
 		// roll forward to the next buffer
 		_activeBuffer = (_activeBuffer + 1) % s_bufferCount;
 	}

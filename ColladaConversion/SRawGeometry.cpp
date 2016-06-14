@@ -16,6 +16,7 @@
 #include "../RenderCore/Assets/MeshDatabase.h"
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Metal/DeviceContext.h"      // for Topology...!
+#include "../RenderCore/Format.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/IteratorUtils.h"
