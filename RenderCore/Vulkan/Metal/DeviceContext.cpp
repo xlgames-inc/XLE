@@ -545,7 +545,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			*_factory, *_globalPools,
 			*_graphicsDescriptors._pipelineLayout,
 			*_computeDescriptors._pipelineLayout,
-			*_cmdPool, _cmdBufferType);
+			*_cmdPool, _cmdBufferType, *_tempBufferSpace);
 	}
 
 	void		DeviceContext::BeginCommandList()
@@ -819,7 +819,8 @@ namespace RenderCore { namespace Metal_Vulkan
         PipelineLayout&         globalPipelineLayout,
         PipelineLayout&         computePipelineLayout,
 		CommandPool&            cmdPool, 
-		CommandBufferType		cmdBufferType)
+		CommandBufferType		cmdBufferType,
+		TemporaryBufferSpace&	tempBufferSpace)
     : _cmdPool(&cmdPool), _cmdBufferType(cmdBufferType)
     , _factory(&factory)
     , _globalPools(&globalPools)
@@ -828,6 +829,7 @@ namespace RenderCore { namespace Metal_Vulkan
     , _renderPassSamples(TextureSamples::Create())
     , _graphicsDescriptors(factory, globalPools, globalPipelineLayout)
     , _computeDescriptors(factory, globalPools, computePipelineLayout)
+	, _tempBufferSpace(&tempBufferSpace)
     {
     }
 

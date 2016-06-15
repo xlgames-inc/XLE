@@ -256,7 +256,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			buf_info.flags = 0;     // flags for sparse buffers
 
                     // set this flag to enable usage with "vkCmdUpdateBuffer"
-			if ((desc._cpuAccess & CPUAccess::Write) || (desc._cpuAccess & CPUAccess::WriteDynamic))
+			if (desc._cpuAccess & CPUAccess::WriteDynamic)
 				buf_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
 			_underlyingBuffer = factory.CreateBuffer(buf_info);

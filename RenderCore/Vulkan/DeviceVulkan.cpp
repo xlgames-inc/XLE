@@ -548,6 +548,8 @@ namespace RenderCore { namespace ImplVulkan
             _pools._mainPipelineCache = _objectFactory.CreatePipelineCache();
             _pools._dummyResources = Metal_Vulkan::DummyResources(_objectFactory);
 
+			auto tempBufferSpace = std::make_unique<Metal_Vulkan::TemporaryBufferSpace>(_objectFactory, frameTracker);
+
             _graphicsPipelineLayout = std::make_shared<Metal_Vulkan::PipelineLayout>(
                 _objectFactory, "game/xleres/System/RootSignature.cfg",
                 VK_SHADER_STAGE_ALL_GRAPHICS);
@@ -562,7 +564,8 @@ namespace RenderCore { namespace ImplVulkan
                 *_graphicsPipelineLayout,
                 *_computePipelineLayout,
                 Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, frameTracker),
-				Metal_Vulkan::CommandBufferType::Primary);
+				Metal_Vulkan::CommandBufferType::Primary,
+				std::move(tempBufferSpace));
 			_foregroundPrimaryContext->AttachDestroyer(destroyer);
 			_foregroundPrimaryContext->SetGPUTracker(frameTracker);
             _foregroundPrimaryContext->BeginCommandList();
@@ -709,7 +712,7 @@ namespace RenderCore { namespace ImplVulkan
             *_graphicsPipelineLayout,
             *_computePipelineLayout,
             Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, nullptr),
-            Metal_Vulkan::CommandBufferType::Secondary);
+            Metal_Vulkan::CommandBufferType::Secondary, nullptr);
     }
 
 	ResourcePtr Device::CreateResource(
@@ -1124,15 +1127,17 @@ namespace RenderCore { namespace ImplVulkan
         Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
         Metal_Vulkan::PipelineLayout& computePipelineLayout,
         Metal_Vulkan::CommandPool&& cmdPool,
-		Metal_Vulkan::CommandBufferType cmdBufferType)
+		Metal_Vulkan::CommandBufferType cmdBufferType,
+		std::unique_ptr<Metal_Vulkan::TemporaryBufferSpace>&& tempBufferSpace)
     : _device(device)
 	, _frameId(0)
     , _renderingCommandPool(std::move(cmdPool))
+	, _tempBufferSpace(std::move(tempBufferSpace))
 	, _metalContext(
 		std::make_shared<Metal_Vulkan::DeviceContext>(
 			device->GetObjectFactory(), device->GetGlobalPools(), 
             graphicsPipelineLayout, computePipelineLayout,
-            _renderingCommandPool, cmdBufferType))
+            _renderingCommandPool, cmdBufferType, *_tempBufferSpace))
 	, _factory(&device->GetObjectFactory())
 	, _globalPools(&device->GetGlobalPools())
 	, _queue(queue)
@@ -1168,11 +1173,13 @@ namespace RenderCore { namespace ImplVulkan
         Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
         Metal_Vulkan::PipelineLayout& computePipelineLayout,
         Metal_Vulkan::CommandPool&& cmdPool,
-		Metal_Vulkan::CommandBufferType cmdBufferType)
+		Metal_Vulkan::CommandBufferType cmdBufferType,
+		std::unique_ptr<Metal_Vulkan::TemporaryBufferSpace>&& tempBufferSpace)
     : ThreadContext(
         std::move(device), queue, 
         graphicsPipelineLayout, computePipelineLayout, 
-        std::move(cmdPool), cmdBufferType)
+        std::move(cmdPool), cmdBufferType,
+		std::move(tempBufferSpace))
     {}
 
 	ThreadContextVulkan::~ThreadContextVulkan() {}

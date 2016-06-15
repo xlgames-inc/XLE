@@ -32,6 +32,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class DummyResources;
 	class UnderlyingResourcePtr;
 	enum class CommandBufferType;
+	class TemporaryBufferSpace;
 
     class GraphicsPipelineBuilder
     {
@@ -250,7 +251,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         GlobalPools&    GetGlobalPools();
         VkDevice        GetUnderlyingDevice();
-		const ObjectFactory& GetFactory() const { return *_factory; }
+		const ObjectFactory& GetFactory() const				{ return *_factory; }
+		TemporaryBufferSpace& GetTemporaryBufferSpace()		{ return *_tempBufferSpace; }
 
         void                        SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims);
         VectorPattern<unsigned,2>   GetPresentationTargetDims();
@@ -325,7 +327,8 @@ namespace RenderCore { namespace Metal_Vulkan
             PipelineLayout& globalPipelineLayout,
             PipelineLayout& computePipelineLayout,
 			CommandPool& cmdPool, 
-			CommandBufferType cmdBufferType);
+			CommandBufferType cmdBufferType,
+			TemporaryBufferSpace& tempBufferSpace);
 		DeviceContext(const DeviceContext&) = delete;
 		DeviceContext& operator=(const DeviceContext&) = delete;
 
@@ -347,6 +350,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         CommandPool*                        _cmdPool;
 		CommandBufferType					_cmdBufferType;
+
+		TemporaryBufferSpace*				_tempBufferSpace;
 
         VectorPattern<unsigned,2>           _presentationTargetDims;
 

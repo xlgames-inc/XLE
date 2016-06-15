@@ -7,6 +7,7 @@
 #include "Pools.h"
 #include "ObjectFactory.h"
 #include "../../Format.h"
+#include "../../ConsoleRig/Log.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -148,6 +149,173 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class CircularHeap
+	{
+	public:
+		unsigned	AllocateBack(unsigned size);
+		void		ResetFront(unsigned newFront);
+
+		CircularHeap(unsigned heapSize);
+		~CircularHeap();
+	private:
+		unsigned	_start;
+		unsigned	_end;
+		unsigned	_heapSize;
+	};
+
+	unsigned	CircularHeap::AllocateBack(unsigned size)
+	{
+		if (_start == _end) return ~0u;
+		if (_start > _end) {
+			if ((_start - _end) >= size) {
+				auto result = _end;
+				_end += size;
+				return result;
+			}
+		} else if ((_end + size) <= _heapSize) {
+			auto result = _end;
+			_end = _end + size;
+			return result;
+		} else if (_start >= size) { // this is the wrap around case
+			_end = size;
+			return 0u;
+		}
+
+		return ~0u;
+	}
+
+	void		CircularHeap::ResetFront(unsigned newFront)
+	{
+		_start = newFront;
+		if (_start == _end) {
+			_start = _heapSize;
+			_end = 0;
+		}
+	}
+
+	CircularHeap::CircularHeap(unsigned heapSize)
+	{
+		_start = heapSize;
+		_end = 0;
+		_heapSize = heapSize;
+	}
+
+	CircularHeap::~CircularHeap() {}
+
+	class TemporaryBufferSpace::Pimpl
+	{
+	public:
+		const Metal_Vulkan::ObjectFactory*	_factory;
+		std::shared_ptr<IAsyncTracker>	_gpuTracker;
+
+		struct MarkedDestroys
+		{
+			IAsyncTracker::Marker _marker;
+			unsigned _front;
+		};
+
+		class ReservedSpace
+		{
+		public:
+			Buffer			_buffer;
+			CircularHeap	_heap;
+			CircularBuffer<MarkedDestroys, 8>	_markedDestroys;
+
+			ReservedSpace(const ObjectFactory& factory, size_t size);
+			~ReservedSpace();
+		};
+		
+		ReservedSpace _cb;
+
+		Pimpl(const Metal_Vulkan::ObjectFactory& factory, std::shared_ptr<IAsyncTracker> gpuTracker);
+	};
+
+	static ResourceDesc BuildBufferDesc(
+		BindFlag::BitField bindingFlags, size_t byteCount)
+	{
+		return CreateDesc(
+			bindingFlags,
+			CPUAccess::Write, GPUAccess::Read,
+			LinearBufferDesc::Create(unsigned(byteCount)),
+			"RollingTempBuf");
+	}
+
+	TemporaryBufferSpace::Pimpl::ReservedSpace::ReservedSpace(const ObjectFactory& factory, size_t byteCount)
+	: _buffer(factory, BuildBufferDesc(BufferUploads::BindFlag::ConstantBuffer, byteCount))
+	, _heap((unsigned)byteCount)
+	{}
+	TemporaryBufferSpace::Pimpl::ReservedSpace::~ReservedSpace() {}
+
+	TemporaryBufferSpace::Pimpl::Pimpl(const Metal_Vulkan::ObjectFactory& factory, std::shared_ptr<IAsyncTracker> gpuTracker)
+	: _factory(&factory), _gpuTracker(gpuTracker)
+	, _cb(factory, 32*1024)
+	{
+	}
+
+	static void PushData(VkDevice device, Buffer buffer, size_t startPt, const void* data, size_t byteCount)
+	{
+		// Write to the buffer using a map and CPU assisted copy
+		ResourceMap map(
+			device, buffer.GetMemory(),
+			startPt, byteCount);
+		std::memcpy(map.GetData(), data, byteCount);
+	}
+
+	VkDescriptorBufferInfo	TemporaryBufferSpace::AllocateBuffer(
+		const void* data, size_t byteCount)
+	{
+		auto& b = _pimpl->_cb;
+
+		bool fitsInHeap = true;
+		auto currentMarker = _pimpl->_gpuTracker->GetProducerMarker();
+		if (b._markedDestroys.empty()
+			|| b._markedDestroys.back()._marker != currentMarker) {
+
+			fitsInHeap = b._markedDestroys.try_emplace_back(
+				Pimpl::MarkedDestroys {currentMarker, ~0u});
+		}
+
+		if (fitsInHeap) {
+			auto space = b._heap.AllocateBack((unsigned)byteCount);
+			if (space != ~0u) {
+				PushData(_pimpl->_factory->GetDevice().get(), b._buffer, space, data, byteCount);
+				b._markedDestroys.back()._front = space + (unsigned)byteCount;
+				return VkDescriptorBufferInfo { b._buffer.GetUnderlying(), space, byteCount };
+			}
+		}
+
+		LogWarning << "Failed to allocate temporary buffer space. Falling back to new buffer.";
+		ConstantBuffer cb(*_pimpl->_factory, data, byteCount);
+		return VkDescriptorBufferInfo{ cb.GetUnderlying(), 0, VK_WHOLE_SIZE };
+	}
+
+	void TemporaryBufferSpace::FlushDestroys()
+	{
+		auto& b = _pimpl->_cb;
+
+		auto trackerMarker = _pimpl->_gpuTracker ? _pimpl->_gpuTracker->GetConsumerMarker() : ~0u;
+		unsigned newFront = ~0u;
+		while (!b._markedDestroys.empty() && b._markedDestroys.front()._marker <= trackerMarker) {
+			newFront = b._markedDestroys.front()._front;
+			b._markedDestroys.pop_front();
+		}
+
+		if (newFront == ~0u) return;
+		b._heap.ResetFront(newFront);
+	}
+
+	TemporaryBufferSpace::TemporaryBufferSpace(
+		const Metal_Vulkan::ObjectFactory& factory,
+		const std::shared_ptr<IAsyncTracker>& asyncTracker) 
+	{
+		_pimpl = std::make_unique<Pimpl>(factory, asyncTracker);
+	}
+	
+	TemporaryBufferSpace::~TemporaryBufferSpace() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void DescriptorPool::Allocate(
         IteratorRange<VulkanUniquePtr<VkDescriptorSet>*> dst,

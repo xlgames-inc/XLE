@@ -402,14 +402,16 @@ namespace RenderCore { namespace Metal_Vulkan
                     ++bufferCount;
                 } else if (s._packets && s._packets[p]) {
                     // todo -- append these onto a large buffer, or use push constant updates
-                    ConstantBuffer cb(context.GetFactory(), s._packets[p].begin(), s._packets[p].size());
+                    // ConstantBuffer cb(context.GetFactory(), s._packets[p].begin(), s._packets[p].size());
 
                     assert(bufferCount < dimof(bufferInfo));
                     assert(writeCount < dimof(writes));
 
                     auto dstBinding = _cbBindingIndices[stri][p];
                     if (dstBinding == ~0u) continue;
-                    bufferInfo[bufferCount] = VkDescriptorBufferInfo{cb.GetUnderlying(), 0, VK_WHOLE_SIZE};
+                    // bufferInfo[bufferCount] = VkDescriptorBufferInfo{cb.GetUnderlying(), 0, VK_WHOLE_SIZE};
+					bufferInfo[bufferCount] = context.GetTemporaryBufferSpace().AllocateBuffer(
+						s._packets[p].begin(), s._packets[p].size());
                     assert(_shaderBindingMask[0] & (1ull << uint64(dstBinding&0xffff)));
 
                     #if defined(_DEBUG) // check for duplicate descriptor writes

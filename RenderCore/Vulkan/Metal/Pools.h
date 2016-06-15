@@ -56,6 +56,21 @@ namespace RenderCore { namespace Metal_Vulkan
 		void QueueDestroy(VkCommandBuffer buffer);
 	};
 
+	class TemporaryBufferSpace
+	{
+	public:
+		VkDescriptorBufferInfo	AllocateBuffer(const void* data, size_t byteCount);
+		void FlushDestroys();
+
+		TemporaryBufferSpace(
+			const Metal_Vulkan::ObjectFactory& factory,
+			const std::shared_ptr<IAsyncTracker>& asyncTracker);
+		~TemporaryBufferSpace();
+	private:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
+	};
+
     class DescriptorPool
     {
     public:

@@ -102,7 +102,7 @@ namespace RenderCore { namespace Metal_Vulkan
 					return FrameResults{ false };
 				if (res != VK_SUCCESS)
 					Throw(VulkanAPIFailure(res, "Failed while retrieving query pool results"));
-			} else {
+			} else if (b._queryEnd != b._queryStart) {
 				auto res = vkGetQueryPoolResults(
 					_device, _timeStamps.get(),
 					b._queryStart, b._queryEnd - b._queryStart, 
