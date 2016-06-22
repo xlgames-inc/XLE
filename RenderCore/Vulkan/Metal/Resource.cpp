@@ -256,7 +256,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			buf_info.flags = 0;     // flags for sparse buffers
 
                     // set this flag to enable usage with "vkCmdUpdateBuffer"
-			if (desc._cpuAccess & CPUAccess::WriteDynamic)
+			if ((desc._cpuAccess & CPUAccess::WriteDynamic) == CPUAccess::WriteDynamic)
 				buf_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
 			_underlyingBuffer = factory.CreateBuffer(buf_info);
@@ -812,7 +812,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		// * we must ensure that the memory was allocated with VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 		// * we must ensure that the memory was allocated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 		//          (because we're not performing manual memory flushes)
-		// * we must ensure that it is not being used by the GPU during the map
+		// * we must ensure that this memory range is not used by the GPU during the map
+		//		(though, presumably, other memory ranges within the same memory object could be in use)
 		auto res = vkMapMemory(dev, memory, offset, size, 0, &_data);
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failed while mapping device memory"));

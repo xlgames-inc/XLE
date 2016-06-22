@@ -268,6 +268,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	static void PushData(VkDevice device, Buffer buffer, size_t startPt, const void* data, size_t byteCount)
 	{
 		// Write to the buffer using a map and CPU assisted copy
+		// Note -- we could also consider using "non-coherent" memory access here, and manually doing
+		// flushes and invalidates.
 		ResourceMap map(
 			device, buffer.GetMemory(),
 			startPt, byteCount);
@@ -321,18 +323,56 @@ namespace RenderCore { namespace Metal_Vulkan
 		b._heap.ResetFront(newFront);
 	}
 
+	static VkBufferMemoryBarrier CreateBufferMemoryBarrier(
+		VkBuffer buffer, VkDeviceSize offset, VkDeviceSize size)
+	{
+		return VkBufferMemoryBarrier {
+			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			nullptr,
+			VK_ACCESS_HOST_WRITE_BIT,
+			VK_ACCESS_INDIRECT_COMMAND_READ_BIT
+			| VK_ACCESS_INDEX_READ_BIT
+			| VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
+			| VK_ACCESS_UNIFORM_READ_BIT
+			| VK_ACCESS_INPUT_ATTACHMENT_READ_BIT
+			| VK_ACCESS_SHADER_READ_BIT,
+			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+			buffer, offset, size };
+	}
+
 	void TemporaryBufferSpace::WriteBarrier(DeviceContext& context)
 	{
 		// We want to create a barrier that covers all data written to the buffer
 		// since the last barrier on this context.
 		// We could assume that we're always using the same context -- in which case
 		// the tracking becomes easier.
-		VkBufferMemoryBarrier bufferBarrier[2];
-		unsigned barrierCount = 1;
 
-		for (unsigned c=0; c<2; ++c)
-			bufferBarrier[c] = {
-				VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+		VkDeviceSize startRegion, endRegion;
+		auto& b = _pimpl->_cb;
+		if (b._lastBarrierContext != &context) {
+			if (b._lastBarrierContext != nullptr)
+				LogWarning << "Temporary buffer used with multiple device contexts. This is an inefficient case, we need improved interface to handle this case better";
+
+			// full barrier
+			startRegion = 0;
+			endRegion = VK_WHOLE_SIZE;
+			b._lastBarrierContext = &context;
+			b._lastBarrier = b._heap.Back();
+		} else {
+			startRegion = b._lastBarrier;
+			endRegion = b._heap.Back();
+			b._lastBarrier = (unsigned)endRegion;
+		}
+		if (endRegion == startRegion) return;		// this case should mean no changes
+
+		if (context.IsInRenderPass()) {
+			// Inside a render pass, we can't have a buffer barrier. Our only
+			// option is a global memory barrier (but this tied into a
+			// a subpass dependency in the render pass). This will probably create
+			// unnecessary synchronization in some cases.
+			VkMemoryBarrier globalBarrier =
+			{
+				VK_STRUCTURE_TYPE_MEMORY_BARRIER,
 				nullptr,
 				VK_ACCESS_HOST_WRITE_BIT,
 				VK_ACCESS_INDIRECT_COMMAND_READ_BIT
@@ -340,45 +380,41 @@ namespace RenderCore { namespace Metal_Vulkan
 				| VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
 				| VK_ACCESS_UNIFORM_READ_BIT
 				| VK_ACCESS_INPUT_ATTACHMENT_READ_BIT
-				| VK_ACCESS_SHADER_READ_BIT,
-				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-				_pimpl->_cb._buffer.GetUnderlying(),
-				0, 0 };
-
-		auto& b = _pimpl->_cb;
-		if (b._lastBarrierContext != &context) {
-			if (b._lastBarrierContext != nullptr)
-				LogWarning << "Temporary buffer used with multiple device contexts. This is an inefficient case, we need improved interface to handle this case better";
-
-			// full barrier
-			bufferBarrier[0].offset = 0;
-			bufferBarrier[0].size = VK_WHOLE_SIZE;
-			b._lastBarrierContext = &context;
-			b._lastBarrier = b._heap.Back();
+				| VK_ACCESS_SHADER_READ_BIT
+			};
+			context.CmdPipelineBarrier(
+				VK_PIPELINE_STAGE_HOST_BIT,
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, // could be more precise about this?
+				0,
+				1, &globalBarrier,
+				0, nullptr,
+				0, nullptr);
 		} else {
-			unsigned startRegion = b._lastBarrier;
-			unsigned endRegion = b._heap.Back();
-			if (endRegion == startRegion) return;		// this case should mean no changes
+			VkBufferMemoryBarrier bufferBarrier[2];
+			unsigned barrierCount;
 			if (endRegion > startRegion) {
-				bufferBarrier[0].offset = startRegion;
-				bufferBarrier[0].size = endRegion - startRegion;
+				bufferBarrier[0] = CreateBufferMemoryBarrier(
+					_pimpl->_cb._buffer.GetUnderlying(), 
+					startRegion, endRegion - startRegion);
+				barrierCount = 1;
 			} else {
-				bufferBarrier[0].offset = startRegion;
-				bufferBarrier[0].size = b._heap.HeapSize() - startRegion;
-				bufferBarrier[1].offset = 0;
-				bufferBarrier[1].size = endRegion;
+				bufferBarrier[0] = CreateBufferMemoryBarrier(
+					_pimpl->_cb._buffer.GetUnderlying(),
+					startRegion, b._heap.HeapSize() - startRegion);
+				bufferBarrier[1] = CreateBufferMemoryBarrier(
+					_pimpl->_cb._buffer.GetUnderlying(),
+					0, endRegion);
 				barrierCount = 2;
 			}
-			b._lastBarrier = endRegion;
-		}
 
-		context.CmdPipelineBarrier(
-			VK_PIPELINE_STAGE_HOST_BIT,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, // could be more precise about this?
-			0, // by-region flag?
-			0, nullptr,
-			barrierCount, bufferBarrier,
-			0, nullptr);
+			context.CmdPipelineBarrier(
+				VK_PIPELINE_STAGE_HOST_BIT,
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, // could be more precise about this?
+				0, // by-region flag?
+				0, nullptr,
+				barrierCount, bufferBarrier,
+				0, nullptr);
+		}
 	}
 
 	TemporaryBufferSpace::TemporaryBufferSpace(

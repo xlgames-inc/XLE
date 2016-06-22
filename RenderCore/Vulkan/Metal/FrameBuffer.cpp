@@ -225,7 +225,6 @@ namespace RenderCore { namespace Metal_Vulkan
             auto newEnd = std::unique(dependencies.begin(), dependencies.end(), SubpassDep::Compare);
             
             // for each of these dependencies, create a VkSubpassDependency
-            
             for (auto d=dependencies.begin(); d!=newEnd; ++d) {
                 // note --  we actually need to know the last write to the resource in
                 //          order to calculate "srcStageMask". We might need to add some flags
@@ -284,6 +283,24 @@ namespace RenderCore { namespace Metal_Vulkan
                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                         0});
         }
+
+		// Also create subpass dependencies for every subpass. This is required currently, because we can sometimes
+		// use vkCmdPipelineBarrier with a global memory barrier to push through dynamic constants data. However, this
+		// might defeat some of the key goals of the render pass system!
+		for (unsigned c = 0; c<unsigned(subpasses.size()); ++c) {
+			result.push_back(VkSubpassDependency{
+				c, c, 
+				VK_PIPELINE_STAGE_HOST_BIT,
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+				VK_ACCESS_HOST_WRITE_BIT,
+				VK_ACCESS_INDIRECT_COMMAND_READ_BIT
+				| VK_ACCESS_INDEX_READ_BIT
+				| VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
+				| VK_ACCESS_UNIFORM_READ_BIT
+				| VK_ACCESS_INPUT_ATTACHMENT_READ_BIT
+				| VK_ACCESS_SHADER_READ_BIT,
+				0});
+		}
 
         return result;
     }
