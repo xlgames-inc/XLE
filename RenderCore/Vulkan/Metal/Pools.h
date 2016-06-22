@@ -61,9 +61,10 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		VkDescriptorBufferInfo	AllocateBuffer(const void* data, size_t byteCount);
 		void FlushDestroys();
+		void WriteBarrier(DeviceContext& context);
 
 		TemporaryBufferSpace(
-			const Metal_Vulkan::ObjectFactory& factory,
+			const ObjectFactory& factory,
 			const std::shared_ptr<IAsyncTracker>& asyncTracker);
 		~TemporaryBufferSpace();
 	private:

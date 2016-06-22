@@ -6,6 +6,7 @@
 
 #include "Pools.h"
 #include "ObjectFactory.h"
+#include "DeviceContext.h"
 #include "../../Format.h"
 #include "../../ConsoleRig/Log.h"
 
@@ -129,7 +130,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return *this;
     }
 
-	CommandPool::CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex, const std::shared_ptr<IAsyncTracker>& tracker)
+	CommandPool::CommandPool(const ObjectFactory& factory, unsigned queueFamilyIndex, const std::shared_ptr<IAsyncTracker>& tracker)
 	: _device(factory.GetDevice())
 	, _gpuTracker(tracker)
 	{
@@ -156,6 +157,9 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		unsigned	AllocateBack(unsigned size);
 		void		ResetFront(unsigned newFront);
+		unsigned	Back() const { return _end; }
+		unsigned	Front() const { return _start; }
+		unsigned	HeapSize() const { return _heapSize; }
 
 		CircularHeap(unsigned heapSize);
 		~CircularHeap();
@@ -207,13 +211,13 @@ namespace RenderCore { namespace Metal_Vulkan
 	class TemporaryBufferSpace::Pimpl
 	{
 	public:
-		const Metal_Vulkan::ObjectFactory*	_factory;
+		const ObjectFactory*			_factory;
 		std::shared_ptr<IAsyncTracker>	_gpuTracker;
 
 		struct MarkedDestroys
 		{
-			IAsyncTracker::Marker _marker;
-			unsigned _front;
+			IAsyncTracker::Marker	_marker;
+			unsigned				_front;
 		};
 
 		class ReservedSpace
@@ -223,13 +227,16 @@ namespace RenderCore { namespace Metal_Vulkan
 			CircularHeap	_heap;
 			CircularBuffer<MarkedDestroys, 8>	_markedDestroys;
 
+			unsigned		_lastBarrier;
+			DeviceContext*	_lastBarrierContext;
+
 			ReservedSpace(const ObjectFactory& factory, size_t size);
 			~ReservedSpace();
 		};
 		
 		ReservedSpace _cb;
 
-		Pimpl(const Metal_Vulkan::ObjectFactory& factory, std::shared_ptr<IAsyncTracker> gpuTracker);
+		Pimpl(const ObjectFactory& factory, std::shared_ptr<IAsyncTracker> gpuTracker);
 	};
 
 	static ResourceDesc BuildBufferDesc(
@@ -245,10 +252,14 @@ namespace RenderCore { namespace Metal_Vulkan
 	TemporaryBufferSpace::Pimpl::ReservedSpace::ReservedSpace(const ObjectFactory& factory, size_t byteCount)
 	: _buffer(factory, BuildBufferDesc(BufferUploads::BindFlag::ConstantBuffer, byteCount))
 	, _heap((unsigned)byteCount)
-	{}
+	{
+		_lastBarrier = 0u;
+		_lastBarrierContext = nullptr;
+	}
+
 	TemporaryBufferSpace::Pimpl::ReservedSpace::~ReservedSpace() {}
 
-	TemporaryBufferSpace::Pimpl::Pimpl(const Metal_Vulkan::ObjectFactory& factory, std::shared_ptr<IAsyncTracker> gpuTracker)
+	TemporaryBufferSpace::Pimpl::Pimpl(const ObjectFactory& factory, std::shared_ptr<IAsyncTracker> gpuTracker)
 	: _factory(&factory), _gpuTracker(gpuTracker)
 	, _cb(factory, 32*1024)
 	{
@@ -282,13 +293,17 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (space != ~0u) {
 				PushData(_pimpl->_factory->GetDevice().get(), b._buffer, space, data, byteCount);
 				b._markedDestroys.back()._front = space + (unsigned)byteCount;
+
+				// Check if we've crossed over the "last barrier" point (no special
+				// handling for wrap around case required)
+				if (space <= b._lastBarrier && space > b._lastBarrier)
+					b._lastBarrierContext = nullptr;	// reset tracking
+
 				return VkDescriptorBufferInfo { b._buffer.GetUnderlying(), space, byteCount };
 			}
 		}
 
-		LogWarning << "Failed to allocate temporary buffer space. Falling back to new buffer.";
-		ConstantBuffer cb(*_pimpl->_factory, data, byteCount);
-		return VkDescriptorBufferInfo{ cb.GetUnderlying(), 0, VK_WHOLE_SIZE };
+		return VkDescriptorBufferInfo{ nullptr, 0, 0 };
 	}
 
 	void TemporaryBufferSpace::FlushDestroys()
@@ -306,8 +321,68 @@ namespace RenderCore { namespace Metal_Vulkan
 		b._heap.ResetFront(newFront);
 	}
 
+	void TemporaryBufferSpace::WriteBarrier(DeviceContext& context)
+	{
+		// We want to create a barrier that covers all data written to the buffer
+		// since the last barrier on this context.
+		// We could assume that we're always using the same context -- in which case
+		// the tracking becomes easier.
+		VkBufferMemoryBarrier bufferBarrier[2];
+		unsigned barrierCount = 1;
+
+		for (unsigned c=0; c<2; ++c)
+			bufferBarrier[c] = {
+				VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+				nullptr,
+				VK_ACCESS_HOST_WRITE_BIT,
+				VK_ACCESS_INDIRECT_COMMAND_READ_BIT
+				| VK_ACCESS_INDEX_READ_BIT
+				| VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
+				| VK_ACCESS_UNIFORM_READ_BIT
+				| VK_ACCESS_INPUT_ATTACHMENT_READ_BIT
+				| VK_ACCESS_SHADER_READ_BIT,
+				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+				_pimpl->_cb._buffer.GetUnderlying(),
+				0, 0 };
+
+		auto& b = _pimpl->_cb;
+		if (b._lastBarrierContext != &context) {
+			if (b._lastBarrierContext != nullptr)
+				LogWarning << "Temporary buffer used with multiple device contexts. This is an inefficient case, we need improved interface to handle this case better";
+
+			// full barrier
+			bufferBarrier[0].offset = 0;
+			bufferBarrier[0].size = VK_WHOLE_SIZE;
+			b._lastBarrierContext = &context;
+			b._lastBarrier = b._heap.Back();
+		} else {
+			unsigned startRegion = b._lastBarrier;
+			unsigned endRegion = b._heap.Back();
+			if (endRegion == startRegion) return;		// this case should mean no changes
+			if (endRegion > startRegion) {
+				bufferBarrier[0].offset = startRegion;
+				bufferBarrier[0].size = endRegion - startRegion;
+			} else {
+				bufferBarrier[0].offset = startRegion;
+				bufferBarrier[0].size = b._heap.HeapSize() - startRegion;
+				bufferBarrier[1].offset = 0;
+				bufferBarrier[1].size = endRegion;
+				barrierCount = 2;
+			}
+			b._lastBarrier = endRegion;
+		}
+
+		context.CmdPipelineBarrier(
+			VK_PIPELINE_STAGE_HOST_BIT,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, // could be more precise about this?
+			0, // by-region flag?
+			0, nullptr,
+			barrierCount, bufferBarrier,
+			0, nullptr);
+	}
+
 	TemporaryBufferSpace::TemporaryBufferSpace(
-		const Metal_Vulkan::ObjectFactory& factory,
+		const ObjectFactory& factory,
 		const std::shared_ptr<IAsyncTracker>& asyncTracker) 
 	{
 		_pimpl = std::make_unique<Pimpl>(factory, asyncTracker);
@@ -390,7 +465,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		_pendingDestroys.push_back(set);
 	}
 
-    DescriptorPool::DescriptorPool(const Metal_Vulkan::ObjectFactory& factory, const std::shared_ptr<IAsyncTracker>& tracker)
+    DescriptorPool::DescriptorPool(const ObjectFactory& factory, const std::shared_ptr<IAsyncTracker>& tracker)
     : _device(factory.GetDevice())
 	, _gpuTracker(tracker)
     {

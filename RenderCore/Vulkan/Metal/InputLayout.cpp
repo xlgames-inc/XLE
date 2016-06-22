@@ -366,6 +366,8 @@ namespace RenderCore { namespace Metal_Vulkan
         uint64 descSetWrites[s_descriptorSetCount] = { 0x0ull };
         auto& globalPools = context.GetGlobalPools();
 
+		bool temporaryBufferBarrier = false;
+
         for (unsigned stri=0; stri<dimof(streams); ++stri) {
             const auto& s = *streams[stri];
 
@@ -401,18 +403,22 @@ namespace RenderCore { namespace Metal_Vulkan
                     ++writeCount;
                     ++bufferCount;
                 } else if (s._packets && s._packets[p]) {
-                    // todo -- append these onto a large buffer, or use push constant updates
-                    // ConstantBuffer cb(context.GetFactory(), s._packets[p].begin(), s._packets[p].size());
-
                     assert(bufferCount < dimof(bufferInfo));
                     assert(writeCount < dimof(writes));
 
                     auto dstBinding = _cbBindingIndices[stri][p];
                     if (dstBinding == ~0u) continue;
-                    // bufferInfo[bufferCount] = VkDescriptorBufferInfo{cb.GetUnderlying(), 0, VK_WHOLE_SIZE};
 					bufferInfo[bufferCount] = context.GetTemporaryBufferSpace().AllocateBuffer(
 						s._packets[p].begin(), s._packets[p].size());
-                    assert(_shaderBindingMask[0] & (1ull << uint64(dstBinding&0xffff)));
+
+					temporaryBufferBarrier |= bufferInfo[bufferCount].buffer != nullptr;
+					if (!bufferInfo[bufferCount].buffer) {
+						LogWarning << "Failed to allocate temporary buffer space. Falling back to new buffer.";
+						ConstantBuffer cb(context.GetFactory(), s._packets[p].begin(), s._packets[p].size());
+						bufferInfo[bufferCount] = VkDescriptorBufferInfo{ cb.GetUnderlying(), 0, VK_WHOLE_SIZE };
+					}
+
+					assert(_shaderBindingMask[0] & (1ull << uint64(dstBinding&0xffff)));
 
                     #if defined(_DEBUG) // check for duplicate descriptor writes
                         for (unsigned w=0; w<writeCount; ++w)
@@ -580,6 +586,9 @@ namespace RenderCore { namespace Metal_Vulkan
         
         static_assert(dimof(rawDescriptorSets) == 1, "Expecting just a single descriptor set");
         context.BindDescriptorSet(pipelineType, 0, rawDescriptorSets[0]);
+
+		if (temporaryBufferBarrier)
+			context.GetTemporaryBufferSpace().WriteBarrier(context);
     }
 
     void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const
