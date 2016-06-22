@@ -520,12 +520,14 @@ namespace RenderCore { namespace ImplVulkan
 			_trackers[q]._event = factory.CreateEvent();
 			_trackers[q]._frameMarker = Marker_Invalid;
 		}
-		_currentProducerFrame = 0;
+		_currentProducerFrame = 1;
 		_bufferCount = queueDepth;
-		_consumerBufferIndex = 1;
+		_consumerBufferIndex = 0;
 		_producerBufferIndex = 0;
 		_lastConsumerFrame = 0;
 		_device = factory.GetDevice().get();
+
+		_trackers[_producerBufferIndex]._frameMarker = _currentProducerFrame;
 	}
 
 	EventBasedTracker::~EventBasedTracker() {}
@@ -1054,40 +1056,46 @@ namespace RenderCore { namespace ImplVulkan
 
 		//////////////////////////////////////////////////////////////////
 
-		if (_gpuTracker)
-			_gpuTracker->IncrementProducerFrame(*_metalContext);
-        auto cmdBuffer = _metalContext->ResolveCommandList();
+		{
+			auto cmdBuffer = _metalContext->ResolveCommandList();
 
-		VkSubmitInfo submitInfo;
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.pNext = nullptr;
+			VkSubmitInfo submitInfo;
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+			submitInfo.pNext = nullptr;
 
-		VkSemaphore waitSema[] = { syncs._onAcquireComplete.get() };
-		VkSemaphore signalSema[] = { syncs._onCommandBufferComplete.get() };
-        VkCommandBuffer rawCmdBuffers[] = { cmdBuffer.get() };
-		VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		submitInfo.waitSemaphoreCount = dimof(waitSema);
-		submitInfo.pWaitSemaphores = waitSema;
-		submitInfo.signalSemaphoreCount = dimof(signalSema);
-		submitInfo.pSignalSemaphores = signalSema;
-		submitInfo.pWaitDstStageMask = &stage;
-		submitInfo.commandBufferCount = dimof(rawCmdBuffers);
-		submitInfo.pCommandBuffers = rawCmdBuffers;
+			VkSemaphore waitSema[] = { syncs._onAcquireComplete.get() };
+			VkSemaphore signalSema[] = { syncs._onCommandBufferComplete.get() };
+			VkCommandBuffer rawCmdBuffers[] = { cmdBuffer.get() };
+			VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			submitInfo.waitSemaphoreCount = dimof(waitSema);
+			submitInfo.pWaitSemaphores = waitSema;
+			submitInfo.signalSemaphoreCount = dimof(signalSema);
+			submitInfo.pSignalSemaphores = signalSema;
+			submitInfo.pWaitDstStageMask = &stage;
+			submitInfo.commandBufferCount = dimof(rawCmdBuffers);
+			submitInfo.pCommandBuffers = rawCmdBuffers;
 		
-		auto res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
-		if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
+			auto res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
+
+			swapChain->PresentToQueue(_queue);
+		}
+
+		// vkDeviceWaitIdle(_underlyingDevice);
+
+		//////////////////////////////////////////////////////////////////
+		// reset and begin the primary foreground command buffer immediately
+		BeginCommandList();
 
 		if (_gpuTracker) _gpuTracker->UpdateConsumer();
 		if (_destrQueue) _destrQueue->Flush();
 		_globalPools->_mainDescriptorPool.FlushDestroys();
 		_renderingCommandPool.FlushDestroys();
-
-		//////////////////////////////////////////////////////////////////
-		swapChain->PresentToQueue(_queue);
-
-		// reset and begin the primary foreground command buffer immediately
-		BeginCommandList();
+		_tempBufferSpace->FlushDestroys();
+		
+		if (_gpuTracker)
+			_gpuTracker->IncrementProducerFrame(*_metalContext);
 	}
 
     bool ThreadContext::IsImmediate() const

@@ -9,6 +9,7 @@
 #include "DeviceContext.h"
 #include "../../Format.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../Utility/BitUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -230,6 +231,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			unsigned		_lastBarrier;
 			DeviceContext*	_lastBarrierContext;
 
+			unsigned		_alignment;
+
 			ReservedSpace(const ObjectFactory& factory, size_t size);
 			~ReservedSpace();
 		};
@@ -255,6 +258,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		_lastBarrier = 0u;
 		_lastBarrierContext = nullptr;
+		_alignment = 1;
 	}
 
 	TemporaryBufferSpace::Pimpl::ReservedSpace::~ReservedSpace() {}
@@ -291,16 +295,20 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 
 		if (fitsInHeap) {
-			auto space = b._heap.AllocateBack((unsigned)byteCount);
+			auto alignedByteCount = CeilToMultiple((unsigned)byteCount, b._alignment); // (probably pow2, but we don't know for sure)
+			auto space = b._heap.AllocateBack(alignedByteCount);
 			if (space != ~0u) {
 				PushData(_pimpl->_factory->GetDevice().get(), b._buffer, space, data, byteCount);
-				b._markedDestroys.back()._front = space + (unsigned)byteCount;
+				b._markedDestroys.back()._front = space + alignedByteCount;
 
 				// Check if we've crossed over the "last barrier" point (no special
 				// handling for wrap around case required)
 				if (space <= b._lastBarrier && space > b._lastBarrier)
 					b._lastBarrierContext = nullptr;	// reset tracking
 
+				// Some devices have strict alignnment rules for the "offset" value for constant buffers
+				// We must respect the alignment restriction given to use from vkGetPhysicalDeviceProperties!
+				assert((space % b._alignment) == 0);
 				return VkDescriptorBufferInfo { b._buffer.GetUnderlying(), space, byteCount };
 			}
 		}
@@ -422,6 +430,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		const std::shared_ptr<IAsyncTracker>& asyncTracker) 
 	{
 		_pimpl = std::make_unique<Pimpl>(factory, asyncTracker);
+
+		VkPhysicalDeviceProperties physDevProps = {};
+		vkGetPhysicalDeviceProperties(factory.GetPhysicalDevice(), &physDevProps);
+		_pimpl->_cb._alignment = std::max(1u, (unsigned)physDevProps.limits.minUniformBufferOffsetAlignment);
 	}
 	
 	TemporaryBufferSpace::~TemporaryBufferSpace() {}
