@@ -241,6 +241,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void		CommitCommandList(VkCommandBuffer_T&, bool);
 		auto        ResolveCommandList() -> CommandListPtr;
 		bool		IsImmediate() { return false; }
+		VkCommandBuffer	EndAndReuseCommandBuffer();
 		
 		void		InvalidateCachedState() {}
 		static void PrepareForDestruction(IDevice*, IPresentationChain*);

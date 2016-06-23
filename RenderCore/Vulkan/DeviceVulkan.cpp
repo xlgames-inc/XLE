@@ -446,7 +446,8 @@ namespace RenderCore { namespace ImplVulkan
 		virtual Marker GetConsumerMarker() const;
 		virtual Marker GetProducerMarker() const;
 
-		void IncrementProducerFrame(Metal_Vulkan::DeviceContext&);
+		void IncrementProducerFrame();
+		void SetConsumerEndOfFrame(Metal_Vulkan::DeviceContext&);
 		void UpdateConsumer();
 
 		EventBasedTracker(Metal_Vulkan::ObjectFactory& factory, unsigned queueDepth);
@@ -476,12 +477,18 @@ namespace RenderCore { namespace ImplVulkan
 		return _currentProducerFrame;
 	}
 
-	void EventBasedTracker::IncrementProducerFrame(Metal_Vulkan::DeviceContext& context)
+	void EventBasedTracker::SetConsumerEndOfFrame(Metal_Vulkan::DeviceContext& context)
 	{
 		// set the marker on the frame that has just finished --
+		// Note that if we use VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, this is only going 
+		// to be tracking rendering command progress -- not compute shaders!
+		// Is ALL_COMMANDS fine?
 		if (_trackers[_producerBufferIndex]._frameMarker != Marker_Invalid)
 			context.CmdSetEvent(_trackers[_producerBufferIndex]._event.get(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+	}
 
+	void EventBasedTracker::IncrementProducerFrame()
+	{
 		++_currentProducerFrame;
 		_producerBufferIndex = (_producerBufferIndex + 1) % _bufferCount; 
 		// If we start "eating our tail" (ie, we don't have enough buffers to support the queued GPU frames, we will get an assert
@@ -945,6 +952,7 @@ namespace RenderCore { namespace ImplVulkan
         // This pattern is similar to the "Hologram" sample in the Vulkan SDK
         for (unsigned c=0; c<dimof(_presentSyncs); ++c) {
             _presentSyncs[c]._onCommandBufferComplete = factory.CreateSemaphore();
+			_presentSyncs[c]._onCommandBufferComplete2 = factory.CreateSemaphore();
             _presentSyncs[c]._onAcquireComplete = factory.CreateSemaphore();
             _presentSyncs[c]._presentFence = factory.CreateFence(VK_FENCE_CREATE_SIGNALED_BIT);
         }
@@ -1056,20 +1064,38 @@ namespace RenderCore { namespace ImplVulkan
 
 		//////////////////////////////////////////////////////////////////
 
+		// 2 options for setting the event that allows objects from this frame to
+		// be destroyed:
+		//	* at the end of the main command buffer
+		//	* in a separate command buffer that waits on a completion 
+		//		semaphore from the main command buffer
+		// 
+		// Note that it's not a good idea to add the signal into command buffer for
+		// the next frame, because it's possible that there is some overlap between
+		// one frame's commands and the next.
+		// However, if we signal the event from the main command buffer, we have a
+		// problem where the event that triggers the destruction of the command buffer
+		// is executed by the command buffer itself. That could create problems -- so
+		// one possible solution is to retain the command buffer for an extra frame.
+		const bool trackingSeparateCommandBuffer = false;
+
 		{
-			auto cmdBuffer = _metalContext->ResolveCommandList();
+			if (!trackingSeparateCommandBuffer)
+				_gpuTracker->SetConsumerEndOfFrame(*_metalContext);
+
+			auto mainCmdBuffer = _metalContext->EndAndReuseCommandBuffer();
 
 			VkSubmitInfo submitInfo;
 			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 			submitInfo.pNext = nullptr;
 
 			VkSemaphore waitSema[] = { syncs._onAcquireComplete.get() };
-			VkSemaphore signalSema[] = { syncs._onCommandBufferComplete.get() };
-			VkCommandBuffer rawCmdBuffers[] = { cmdBuffer.get() };
+			VkSemaphore signalSema[] = { syncs._onCommandBufferComplete.get(), syncs._onCommandBufferComplete2.get() };
+			VkCommandBuffer rawCmdBuffers[] = { mainCmdBuffer };
 			VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 			submitInfo.waitSemaphoreCount = dimof(waitSema);
 			submitInfo.pWaitSemaphores = waitSema;
-			submitInfo.signalSemaphoreCount = dimof(signalSema);
+			submitInfo.signalSemaphoreCount = trackingSeparateCommandBuffer ? 2 : 1;
 			submitInfo.pSignalSemaphores = signalSema;
 			submitInfo.pWaitDstStageMask = &stage;
 			submitInfo.commandBufferCount = dimof(rawCmdBuffers);
@@ -1078,24 +1104,49 @@ namespace RenderCore { namespace ImplVulkan
 			auto res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
 			if (res != VK_SUCCESS)
 				Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
-
-			swapChain->PresentToQueue(_queue);
 		}
 
-		// vkDeviceWaitIdle(_underlyingDevice);
+		// Converting a semphore to an event (so we can query the progress from the CPU)
+		if (constant_expression<trackingSeparateCommandBuffer>::result() && _gpuTracker) {
+			_metalContext->BeginCommandList();
+			_gpuTracker->SetConsumerEndOfFrame(*_metalContext);
+			auto cmdBuffer = _metalContext->ResolveCommandList();
+
+			VkSubmitInfo submitInfo;
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+			submitInfo.pNext = nullptr;
+
+			VkSemaphore waitSema[] = { syncs._onCommandBufferComplete2.get() };
+			VkCommandBuffer rawCmdBuffers[] = { cmdBuffer.get() };
+			VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			submitInfo.waitSemaphoreCount = dimof(waitSema);
+			submitInfo.pWaitSemaphores = waitSema;
+			submitInfo.signalSemaphoreCount = 0;
+			submitInfo.pSignalSemaphores = nullptr;
+			submitInfo.pWaitDstStageMask = &stage;
+			submitInfo.commandBufferCount = dimof(rawCmdBuffers);
+			submitInfo.pCommandBuffers = rawCmdBuffers;
+
+			auto res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while queuing frame complete signal"));
+		}
 
 		//////////////////////////////////////////////////////////////////
-		// reset and begin the primary foreground command buffer immediately
+		// Reset and begin the primary foreground command buffer immediately
 		BeginCommandList();
+		_gpuTracker->IncrementProducerFrame();
 
 		if (_gpuTracker) _gpuTracker->UpdateConsumer();
 		if (_destrQueue) _destrQueue->Flush();
 		_globalPools->_mainDescriptorPool.FlushDestroys();
 		_renderingCommandPool.FlushDestroys();
 		_tempBufferSpace->FlushDestroys();
-		
-		if (_gpuTracker)
-			_gpuTracker->IncrementProducerFrame(*_metalContext);
+
+		//////////////////////////////////////////////////////////////////
+		// Finally, we can queue the present
+		//		-- do it here to allow it to run in parallel as much as possible
+		swapChain->PresentToQueue(_queue);
 	}
 
     bool ThreadContext::IsImmediate() const
