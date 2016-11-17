@@ -8,6 +8,8 @@
 #include "NascentCommandStream.h"
 #include "NascentRawGeometry.h"
 #include "NascentAnimController.h"
+#include "NascentObjectsSerialize.h"
+#include "NascentGeometryObjects.h"
 
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"    // for AsString
@@ -39,84 +41,26 @@ namespace RenderCore { namespace ColladaConversion
 {
     using namespace ::ColladaConversion;
 
-    static const unsigned ModelScaffoldVersion = 1;
-    static const unsigned ModelScaffoldLargeBlocksVersion = 0;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ColladaScaffold
+    class ColladaCompileOp : public ICompileOperation
     {
     public:
         std::string _name;
-        ImportConfiguration _cfg;
+		::Assets::rstring _rootNode;
+		ImportConfiguration _cfg;
         MemoryMappedFile _fileData;
         std::shared_ptr<DocumentScaffold> _doc;
         ::ColladaConversion::URIResolveContext _resolveContext;
+		std::vector<TargetDesc> _targets;
+
+		unsigned			TargetCount() const;
+		TargetDesc			GetTarget(unsigned idx) const;
+		NascentChunkArray	SerializeTarget(unsigned idx);
+
+		ColladaCompileOp();
+		~ColladaCompileOp();
     };
-
-    static void DestroyModel(const void* model) { delete (ColladaScaffold*)model; }
-    static void DestroyChunkArray(const void* chunkArray) { delete (std::vector<NascentChunk>*)chunkArray; }
-
-    std::shared_ptr<ColladaScaffold> CreateColladaScaffold(const ::Assets::ResChar identifier[])
-    {
-        std::shared_ptr<ColladaScaffold> result(new ColladaScaffold, &DestroyModel);
-
-        result->_cfg = ImportConfiguration("colladaimport.cfg");
-        result->_fileData = MemoryMappedFile(identifier, 0, MemoryMappedFile::Access::Read, BasicFile::ShareMode::Read);
-        if (!result->_fileData.IsValid())
-            Throw(::Exceptions::BasicLabel("Error opening file for read (%s)", identifier));
-
-        XmlInputStreamFormatter<utf8> formatter(
-            MemoryMappedInputStream(
-                result->_fileData.GetData(), 
-                PtrAdd(result->_fileData.GetData(), result->_fileData.GetSize())));
-
-        result->_name = identifier;
-        result->_doc = std::make_shared<ColladaConversion::DocumentScaffold>();
-        result->_doc->Parse(formatter);
-
-        result->_resolveContext = ::ColladaConversion::URIResolveContext(result->_doc);
-        
-        return std::move(result);
-    }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    static NascentChunkArray MakeNascentChunkArray(
-        const std::initializer_list<NascentChunk>& inits)
-    {
-        return NascentChunkArray(
-            new std::vector<NascentChunk>(inits),
-            &DestroyChunkArray);
-    }
-
-    std::vector<uint8> AsVector(const Serialization::NascentBlockSerializer& serializer)
-    {
-        auto block = serializer.AsMemoryBlock();
-        size_t size = Serialization::Block_GetSize(block.get());
-        return std::vector<uint8>(block.get(), PtrAdd(block.get(), size));
-    }
-
-    // static std::vector<uint8> AsVector(MemoryOutputStream<>& stream)
-    // {
-    //     auto& buffer = stream.GetBuffer();
-    //     return std::vector<uint8>((const uint8*)buffer.Begin(), (const uint8*)buffer.End());
-    // }
-
-    template<typename Char>
-        static std::vector<uint8> AsVector(std::basic_stringstream<Char>& stream)
-    {
-        auto str = stream.str();
-        return std::vector<uint8>((const uint8*)AsPointer(str.begin()), (const uint8*)AsPointer(str.end()));
-    }
-
-    template<typename Type>
-        static std::vector<uint8> SerializeToVector(const Type& obj)
-    {
-        Serialization::NascentBlockSerializer serializer;
-        ::Serialize(serializer, obj);
-        return AsVector(serializer);
-    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -253,10 +197,10 @@ namespace RenderCore { namespace ColladaConversion
         NascentGeometryObjects _geoObjects;
         NascentSkeleton _skeleton;
 
-        PreparedSkinFile(const ColladaScaffold&, const VisualScene&, StringSection<utf8>);
+        PreparedSkinFile(const ColladaCompileOp&, const VisualScene&, StringSection<utf8>);
     };
 
-    PreparedSkinFile::PreparedSkinFile(const ColladaScaffold& input, const VisualScene& scene, StringSection<utf8> rootNode)
+    PreparedSkinFile::PreparedSkinFile(const ColladaCompileOp& input, const VisualScene& scene, StringSection<utf8> rootNode)
     {
         using namespace RenderCore::ColladaConversion;
 
@@ -384,103 +328,8 @@ namespace RenderCore { namespace ColladaConversion
         RegisterNodeBindingNames(_cmdStream, jointRefs);
     }
 
-    static void SerializeSkin(
-        Serialization::NascentBlockSerializer& serializer, 
-        std::vector<uint8>& largeResourcesBlock,
-        NascentGeometryObjects& objs)
+    NascentChunkArray SerializeSkin(const ColladaCompileOp& model, const char startingNode[])
     {
-        {
-            Serialization::NascentBlockSerializer tempBlock;
-            for (auto i = objs._rawGeos.begin(); i!=objs._rawGeos.end(); ++i) {
-                i->second.Serialize(tempBlock, largeResourcesBlock);
-            }
-            serializer.SerializeSubBlock(tempBlock);
-            ::Serialize(serializer, objs._rawGeos.size());
-        }
-
-        {
-            Serialization::NascentBlockSerializer tempBlock;
-            for (auto i = objs._skinnedGeos.begin(); i!=objs._skinnedGeos.end(); ++i) {
-                i->second.Serialize(tempBlock, largeResourcesBlock);
-            }
-            serializer.SerializeSubBlock(tempBlock);
-            ::Serialize(serializer, objs._skinnedGeos.size());
-        }
-    }
-
-    class DefaultPoseData
-    {
-    public:
-        std::vector<Float4x4>       _defaultTransforms;
-        std::pair<Float3, Float3>   _boundingBox;
-    };
-
-    static DefaultPoseData CalculateDefaultPoseData(
-        const NascentSkeleton::NascentTransformationMachine& transMachine,
-        const NascentModelCommandStream& cmdStream,
-        const NascentGeometryObjects& geoObjects)
-    {
-        DefaultPoseData result;
-
-        auto skeletonOutput = transMachine.GenerateOutputTransforms(
-            transMachine.GetDefaultParameters());
-
-        auto skelOutputInterface = transMachine.GetOutputInterface();
-        auto streamInputInterface = cmdStream.GetInputInterface();
-        RenderCore::Assets::SkeletonBinding skelBinding(
-            RenderCore::Assets::TransformationMachine::OutputInterface
-                {AsPointer(skelOutputInterface.first.begin()), AsPointer(skelOutputInterface.second.begin()), skelOutputInterface.first.size()},
-            RenderCore::Assets::ModelCommandStream::InputInterface
-                {AsPointer(streamInputInterface.begin()), streamInputInterface.size()});
-
-        auto finalMatrixCount = (unsigned)streamInputInterface.size(); // immData->_visualScene.GetInputInterface()._jointCount;
-        result._defaultTransforms.resize(finalMatrixCount);
-        for (unsigned c=0; c<finalMatrixCount; ++c) {
-            auto machineOutputIndex = skelBinding.ModelJointToMachineOutput(c);
-            if (machineOutputIndex == ~unsigned(0x0)) {
-                result._defaultTransforms[c] = Identity<Float4x4>();
-            } else {
-                result._defaultTransforms[c] = skeletonOutput[machineOutputIndex];
-            }
-        }
-
-            // if we have any non-identity internal transforms, then we should 
-            // write a default set of transformations. But many models don't have any
-            // internal transforms -- in this case all of the generated transforms
-            // will be identity. If we find this case, they we should write zero
-            // default transforms.
-        bool hasNonIdentity = false;
-        const float tolerance = 1e-6f;
-        for (unsigned c=0; c<finalMatrixCount; ++c)
-            hasNonIdentity |= !Equivalent(result._defaultTransforms[c], Identity<Float4x4>(), tolerance);
-        if (!hasNonIdentity) {
-            finalMatrixCount = 0u;
-            result._defaultTransforms.clear();
-        }
-
-        result._boundingBox = geoObjects.CalculateBoundingBox(
-            cmdStream, MakeIteratorRange(result._defaultTransforms));
-
-        return result;
-    }
-
-    static void TraceMetrics(std::ostream& stream, const PreparedSkinFile& skinFile)
-    {
-        stream << "============== Geometry Objects ==============" << std::endl;
-        stream << skinFile._geoObjects;
-        stream << std::endl;
-        stream << "============== Command stream ==============" << std::endl;
-        stream << skinFile._cmdStream;
-        stream << std::endl;
-        stream << "============== Transformation Machine ==============" << std::endl;
-        StreamOperator(stream, skinFile._skeleton.GetTransformationMachine());
-    }
-
-    NascentChunkArray SerializeSkin(const ColladaScaffold& model, const char startingNode[])
-    {
-        Serialization::NascentBlockSerializer serializer;
-        std::vector<uint8> largeResourcesBlock;
-
         const auto* scene = model._doc->FindVisualScene(
             GuidReference(model._doc->_visualScene)._id);
         if (!scene)
@@ -491,53 +340,9 @@ namespace RenderCore { namespace ColladaConversion
         PreparedSkinFile skinFile(model, *scene, startingNodeName);
 
             // Serialize the prepared skin file data to a BlockSerializer
-
-        ::Serialize(serializer, skinFile._cmdStream);
-        SerializeSkin(serializer, largeResourcesBlock, skinFile._geoObjects);
-        ::Serialize(serializer, skinFile._skeleton);
-
-            // Generate the default transforms and serialize them out
-            // unfortunately this requires we use the run-time types to
-            // work out the transforms.
-            // And that requires a bit of hack to get pointers to those 
-            // run-time types
-        {
-            const auto& transMachine = skinFile._skeleton.GetTransformationMachine();
-            const auto& cmdStream = skinFile._cmdStream;
-            const auto& geoObjects = skinFile._geoObjects;
-            
-            auto defaultPoseData = CalculateDefaultPoseData(transMachine, cmdStream, geoObjects);
-            serializer.SerializeSubBlock(
-                AsPointer(defaultPoseData._defaultTransforms.cbegin()), 
-                AsPointer(defaultPoseData._defaultTransforms.cend()));
-            serializer.SerializeValue(size_t(defaultPoseData._defaultTransforms.size()));
-            ::Serialize(serializer, defaultPoseData._boundingBox.first);
-            ::Serialize(serializer, defaultPoseData._boundingBox.second);
-        }
-
-            // Find the max LOD value, and serialize that
-        ::Serialize(serializer, skinFile._cmdStream.GetMaxLOD());
-
-            // Serialize human-readable metrics information
-        std::stringstream metricsStream;
-        TraceMetrics(metricsStream, skinFile);
-
-        auto scaffoldBlock = AsVector(serializer);
-        auto metricsBlock = AsVector(metricsStream);
-
-        Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_ModelScaffold, ModelScaffoldVersion, model._name.c_str(), unsigned(scaffoldBlock.size()));
-        Serialization::ChunkFile::ChunkHeader largeBlockChunk(
-            RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, model._name.c_str(), (unsigned)largeResourcesBlock.size());
-        Serialization::ChunkFile::ChunkHeader metricsChunk(
-            RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock.size());
-
-        return MakeNascentChunkArray(
-            {
-                NascentChunk(scaffoldChunk, std::move(scaffoldBlock)),
-                NascentChunk(largeBlockChunk, std::move(largeResourcesBlock)),
-                NascentChunk(metricsChunk, std::move(metricsBlock))
-            });
+		return SerializeSkinToChunks(
+			model._name.c_str(),
+			skinFile._geoObjects, skinFile._cmdStream, skinFile._skeleton);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -547,10 +352,10 @@ namespace RenderCore { namespace ColladaConversion
     public:
         NascentSkeleton _skeleton;
 
-        PreparedSkeletonFile(const ColladaScaffold&);
+        PreparedSkeletonFile(const ColladaCompileOp&);
     };
 
-    PreparedSkeletonFile::PreparedSkeletonFile(const ColladaScaffold& input)
+    PreparedSkeletonFile::PreparedSkeletonFile(const ColladaCompileOp& input)
     {
         const auto* scene = input._doc->FindVisualScene(
             GuidReference(input._doc->_visualScene)._id);
@@ -565,34 +370,15 @@ namespace RenderCore { namespace ColladaConversion
         _skeleton.GetTransformationMachine().Optimize(optimizer);
     }
 
-    static void TraceMetrics(std::ostream& stream, const PreparedSkeletonFile& file)
-    {
-        StreamOperator(stream, file._skeleton.GetTransformationMachine());
-    }
-
-    NascentChunkArray SerializeSkeleton(const ColladaScaffold& model, const char[])
+    NascentChunkArray SerializeSkeleton(const ColladaCompileOp& model, const char[])
     {
         PreparedSkeletonFile skeleFile(model);
-        auto block = SerializeToVector(skeleFile._skeleton);
-
-        std::stringstream metricsStream;
-        TraceMetrics(metricsStream, skeleFile);
-        auto metricsBlock = AsVector(metricsStream);
-
-        Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_Skeleton, 0, model._name.c_str(), unsigned(block.size()));
-        Serialization::ChunkFile::ChunkHeader metricsChunk(
-            RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock.size());
-
-        return MakeNascentChunkArray({
-            NascentChunk(scaffoldChunk, std::move(block)),
-            NascentChunk(metricsChunk, std::move(metricsBlock))
-            });
+        return SerializeSkeletonToChunks(model._name.c_str(), skeleFile._skeleton);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void SerializeMatTable(OutputStream& stream, const ColladaScaffold& model)
+    static void SerializeMatTable(OutputStream& stream, const ColladaCompileOp& model)
     {
         OutputStreamFormatter formatter(stream);
 
@@ -623,7 +409,7 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    NascentChunkArray SerializeMaterials(const ColladaScaffold& model, const char[])  
+    NascentChunkArray SerializeMaterials(const ColladaCompileOp& model, const char[])  
     { 
         // std::string matSettingsFile;
         // {
@@ -660,10 +446,10 @@ namespace RenderCore { namespace ColladaConversion
         NascentAnimationSet _animationSet;
         std::vector<Assets::RawAnimationCurve> _curves;
 
-        PreparedAnimationFile(const ColladaScaffold&);
+        PreparedAnimationFile(const ColladaCompileOp&);
     };
 
-    PreparedAnimationFile::PreparedAnimationFile(const ColladaScaffold& input)
+    PreparedAnimationFile::PreparedAnimationFile(const ColladaCompileOp& input)
     {
         SkeletonRegistry jointRefs;
 
@@ -719,13 +505,71 @@ namespace RenderCore { namespace ColladaConversion
         return MakeNascentChunkArray({NascentChunk(scaffoldChunk, std::move(block))});
     }
 
-    void ExtractAnimations(WorkingAnimationSet& dest, const ColladaScaffold& source, const char animationName[])
+    void ExtractAnimations(WorkingAnimationSet& dest, const ICompileOperation& source, const char animationName[])
     {
-        PreparedAnimationFile animFile(source);
+        PreparedAnimationFile animFile((ColladaCompileOp&)source);
         dest._animationSet.MergeAnimation(
             animFile._animationSet, animationName, 
             animFile._curves, dest._curves);
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	static const uint64 Type_Model = ConstHash64<'Mode', 'l'>::Value;
+	static const uint64 Type_AnimationSet = ConstHash64<'Anim', 'Set'>::Value;
+	static const uint64 Type_Skeleton = ConstHash64<'Skel', 'eton'>::Value;
+	static const uint64 Type_RawMat = ConstHash64<'RawM', 'at'>::Value;
+
+	unsigned			ColladaCompileOp::TargetCount() const { return (unsigned)_targets.size(); }
+	auto				ColladaCompileOp::GetTarget(unsigned idx) const -> TargetDesc { if (idx < _targets.size()) { return _targets[idx]; } else return TargetDesc{0, ""}; }
+	NascentChunkArray	ColladaCompileOp::SerializeTarget(unsigned idx)
+	{
+		if (idx >= _targets.size()) return NascentChunkArray();
+
+		switch (_targets[idx]._type) {
+		case Type_Model:	return SerializeSkin(*this, _rootNode.c_str());
+		case Type_Skeleton: return SerializeSkeleton(*this, _rootNode.c_str());
+		case Type_RawMat:	return SerializeMaterials(*this, _rootNode.c_str());
+		default:
+			Throw(::Exceptions::BasicLabel("Cannot serialize target (%s)", _targets[idx]._name));
+		}
+	}
+
+	ColladaCompileOp::ColladaCompileOp() {}
+	ColladaCompileOp::~ColladaCompileOp() {}
+
+	std::shared_ptr<ICompileOperation> CreateCompileOperation(const ::Assets::ResChar identifier[])
+	{
+		std::shared_ptr<ColladaCompileOp> result = std::make_shared<ColladaCompileOp>();
+
+		auto split = MakeFileNameSplitter(identifier);
+		auto filePath = split.AllExceptParameters().AsString();
+
+		result->_cfg = ImportConfiguration("colladaimport.cfg");
+		result->_fileData = MemoryMappedFile(filePath.c_str(), 0, MemoryMappedFile::Access::Read, BasicFile::ShareMode::Read);
+		if (!result->_fileData.IsValid())
+			Throw(::Exceptions::BasicLabel("Error opening file for read (%s)", filePath.c_str()));
+
+		XmlInputStreamFormatter<utf8> formatter(
+			MemoryMappedInputStream(
+				result->_fileData.GetData(), 
+				PtrAdd(result->_fileData.GetData(), result->_fileData.GetSize())));
+
+		result->_name = identifier;
+		result->_rootNode = split.Parameters().AsString();
+		result->_doc = std::make_shared<ColladaConversion::DocumentScaffold>();
+		result->_doc->Parse(formatter);
+
+		result->_resolveContext = ::ColladaConversion::URIResolveContext(result->_doc);
+
+		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_Skeleton, "Skeleton"});
+		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_Model, "Model"});
+		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_RawMat, "RawMat"});
+
+		return std::move(result);
+	}
+
+	ICompileOperation::~ICompileOperation() {}
 }}
 
 namespace RenderCore { namespace ColladaConversion

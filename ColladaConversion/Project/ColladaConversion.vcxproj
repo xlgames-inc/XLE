@@ -93,6 +93,7 @@
     <ClCompile Include="..\GeometryAlgorithm.cpp" />
     <ClCompile Include="..\NascentAnimController.cpp" />
     <ClCompile Include="..\NascentCommandStream.cpp" />
+    <ClCompile Include="..\NascentGeometryObjects.cpp" />
     <ClCompile Include="..\NascentModel.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -102,6 +103,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\DLLInterface.cpp" />
+    <ClCompile Include="..\NascentObjectsSerialize.cpp" />
     <ClCompile Include="..\OpenCollada\OCAnimationConversion.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -179,6 +181,7 @@
     <ClInclude Include="..\ConversionUtil.h" />
     <ClInclude Include="..\GeometryAlgorithm.h" />
     <ClInclude Include="..\NascentCommandStream.h" />
+    <ClInclude Include="..\NascentGeometryObjects.h" />
     <ClInclude Include="..\NascentMaterial.h" />
     <ClInclude Include="..\NascentModel.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
@@ -189,6 +192,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\DLLInterface.h" />
+    <ClInclude Include="..\NascentObjectsSerialize.h" />
     <ClInclude Include="..\OpenCollada\OCInterface.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>

@@ -14,10 +14,10 @@ namespace ColladaConversion { class Node; class VisualScene; class URIResolveCon
 namespace RenderCore { namespace ColladaConversion
 {
     class NascentSkeleton;
+	class NascentGeometryObjects;
+	class NascentModelCommandStream;
     class SkeletonRegistry;
     class ImportConfiguration;
-    class NascentRawGeometry;
-    class NascentBoundSkinnedGeometry;
 
     void BuildSkeleton(
         NascentSkeleton& skeleton,
@@ -25,24 +25,6 @@ namespace RenderCore { namespace ColladaConversion
         StringSection<utf8> rootNode,
         SkeletonRegistry& skeletonReferences,
         bool fullSkeleton);
-
-    class NascentGeometryObjects
-    {
-    public:
-        std::vector<std::pair<ObjectGuid, NascentRawGeometry>> _rawGeos;
-        std::vector<std::pair<ObjectGuid, NascentBoundSkinnedGeometry>> _skinnedGeos;
-
-        unsigned GetGeo(ObjectGuid id);
-        unsigned GetSkinnedGeo(ObjectGuid id);
-
-        std::pair<Float3, Float3> CalculateBoundingBox
-            (
-                const NascentModelCommandStream& scene,
-                IteratorRange<const Float4x4*> transforms
-            ) const;
-
-        friend std::ostream& operator<<(std::ostream&, const NascentGeometryObjects& geos);
-    };
 
     NascentModelCommandStream::GeometryInstance InstantiateGeometry(
         const ::ColladaConversion::InstanceGeometry& instGeo,

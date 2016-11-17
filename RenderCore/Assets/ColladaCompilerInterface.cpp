@@ -31,10 +31,7 @@ namespace RenderCore { namespace Assets
     {
     public:
             // ---------- interface to DLL functions ----------
-        ColladaConversion::CreateColladaScaffoldFn* _createColladaScaffold;
-        ColladaConversion::ModelSerializeFn*        _serializeSkinFunction;
-        ColladaConversion::ModelSerializeFn*        _serializeSkeletonFunction;
-        ColladaConversion::ModelSerializeFn*        _serializeMaterialsFunction;
+        ColladaConversion::CreateCompileOperationFn* _createCompileOpFunction;
 
         ColladaConversion::CreateAnimationSetFn*    _createAnimationSetFn;
         ColladaConversion::ExtractAnimationsFn*     _extractAnimationsFn;
@@ -207,7 +204,7 @@ namespace RenderCore { namespace Assets
             ConsoleRig::LibVersionDesc libVersionDesc;
             _library.TryGetVersion(libVersionDesc);
 
-            if (op._typeCode == Type_Model || op._typeCode == Type_Skeleton || op._typeCode == Type_RawMat) {
+            if (op._typeCode != Type_AnimationSet) {
 
                     // We need to do some processing of the filename
                     // the filename should take this form:
@@ -216,11 +213,16 @@ namespace RenderCore { namespace Assets
                     // And when there is no root node, we just pass nullptr
                     // to the serialize functions.
 
-                ::Assets::ResChar colladaFile[MaxPath], rootNode[MaxPath];
+                ::Assets::ResChar colladaFile[MaxPath], fileAndParameters[MaxPath];
                 XlCopyString(colladaFile, splitName.AllExceptParameters());
                 if (splitName.Extension().Empty())
                     XlCatString(colladaFile, dimof(colladaFile), ".dae");
-                XlCopyString(rootNode, splitName.Parameters());
+
+				XlCopyString(fileAndParameters, colladaFile);
+				if (!splitName.Parameters().Empty()) {
+					XlCatString(fileAndParameters, ":");
+					XlCatString(fileAndParameters, splitName.Parameters());
+				}
 
                 TRY 
                 {
@@ -236,30 +238,24 @@ namespace RenderCore { namespace Assets
 
                     if (_newPathOk) {
 
-                        auto model = (*_createColladaScaffold)(colladaFile);
-                        switch (op._typeCode) {
-                        case Type_Model:
-                            SerializeToFile(
-                                (*_serializeSkinFunction)(*model, rootNode),
-                                destinationFile, libVersionDesc);
+                        auto model = (*_createCompileOpFunction)(fileAndParameters);
+						
+						// look for the first target of the correct type
+						auto targetCount = model->TargetCount();
+						bool foundTarget = false;
+						for (unsigned t=0; t<targetCount; ++t)
+							if (model->GetTarget(t)._type == op._typeCode) {
+								auto chunks = model->SerializeTarget(t);
+								if (op._typeCode != Type_RawMat) {
+									SerializeToFile(chunks, destinationFile, libVersionDesc);
+								} else 
+									SerializeToFileJustChunk(chunks, destinationFile, libVersionDesc);
+								foundTarget = true;
+								break;
+							}
 
-                                // Note that we could fall through to write rawmat as a freebee
-                                // But it has problems because the .deps file will only be written
-                                // for the model file (not the rawmat file)
-                            break;
-
-                        case Type_RawMat:
-                            SerializeToFileJustChunk(
-                                (*_serializeMaterialsFunction)(*model, rootNode), 
-                                destinationFile, libVersionDesc);
-                            break;
-
-                        case Type_Skeleton:
-                            SerializeToFile(
-                                (*_serializeSkeletonFunction)(*model, rootNode),
-                                destinationFile, libVersionDesc);
-                            break;
-                        }
+						if (!foundTarget)
+							Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", fileAndParameters));
 
                     } else {
 
@@ -299,9 +295,7 @@ namespace RenderCore { namespace Assets
                     throw;
                 } CATCH_END
 
-            } 
-            else 
-            if (op._typeCode == Type_AnimationSet) {
+            }  else {
                     //  source for the animation set should actually be a directory name, and
                     //  we'll use all of the dae files in that directory as animation inputs
                 auto sourceFiles = FindFiles(std::string(op._initializer0) + "/*.dae");
@@ -320,7 +314,7 @@ namespace RenderCore { namespace Assets
                                 //          note that this will do geometry processing; etc -- but all that geometry
                                 //          information will be ignored.
                                 //
-                            auto model = (*_createColladaScaffold)(i->c_str());
+                            auto model = (*_createCompileOpFunction)(i->c_str());
 
                                 //
                                 //      Now, merge the animation data into 
@@ -512,20 +506,14 @@ namespace RenderCore { namespace Assets
                 using namespace RenderCore::ColladaConversion;
 
                 #if !TARGET_64BIT
-                    _createColladaScaffold      = _library.GetFunction<decltype(_createColladaScaffold)>("?CreateColladaScaffold@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VColladaScaffold@ColladaConversion@RenderCore@@@std@@QBD@Z");
-                    _serializeSkinFunction      = _library.GetFunction<decltype(_serializeSkinFunction)>("?SerializeSkin@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@ABVColladaScaffold@12@QBD@Z");
-                    _serializeSkeletonFunction  = _library.GetFunction<decltype(_serializeSkeletonFunction)>("?SerializeSkeleton@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@ABVColladaScaffold@12@QBD@Z");
-                    _serializeMaterialsFunction = _library.GetFunction<decltype(_serializeMaterialsFunction)>("?SerializeMaterials@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@ABVColladaScaffold@12@QBD@Z");
+					_createCompileOpFunction    = _library.GetFunction<decltype(_createCompileOpFunction)>("?CreateCompileOperation@ModelConversion@RenderCore@@YA?AV?$shared_ptr@VICompileOperation@ModelConversion@RenderCore@@@std@@QEBD@Z");
                     _createAnimationSetFn       = _library.GetFunction<decltype(_createAnimationSetFn)>("?CreateAnimationSet@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VWorkingAnimationSet@ColladaConversion@RenderCore@@@std@@QBD@Z");
-                    _extractAnimationsFn        = _library.GetFunction<decltype(_extractAnimationsFn)>("?ExtractAnimations@ColladaConversion@RenderCore@@YAXAAVWorkingAnimationSet@12@ABVColladaScaffold@12@QBD@Z");
+                    _extractAnimationsFn        = _library.GetFunction<decltype(_extractAnimationsFn)>("?ExtractAnimations@ColladaConversion@RenderCore@@YAXAEAVWorkingAnimationSet@12@AEBVICompileOperation@12@QEBD@Z");
                     _serializeAnimationSetFn    = _library.GetFunction<decltype(_serializeAnimationSetFn)>("?SerializeAnimationSet@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@ABVWorkingAnimationSet@12@@Z");
                 #else
-                    _createColladaScaffold      = _library.GetFunction<decltype(_createColladaScaffold)>("?CreateColladaScaffold@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VColladaScaffold@ColladaConversion@RenderCore@@@std@@QEBD@Z");
-                    _serializeSkinFunction      = _library.GetFunction<decltype(_serializeSkinFunction)>("?SerializeSkin@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@AEBVColladaScaffold@12@QEBD@Z");
-                    _serializeSkeletonFunction  = _library.GetFunction<decltype(_serializeSkeletonFunction)>("?SerializeSkeleton@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@AEBVColladaScaffold@12@QEBD@Z");
-                    _serializeMaterialsFunction = _library.GetFunction<decltype(_serializeMaterialsFunction)>("?SerializeMaterials@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@AEBVColladaScaffold@12@QEBD@Z");
+                    _createCompileOpFunction    = _library.GetFunction<decltype(_createCompileOpFunction)>("?CreateCompileOperation@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VICompileOperation@ColladaConversion@RenderCore@@@std@@QEBD@Z");
                     _createAnimationSetFn       = _library.GetFunction<decltype(_createAnimationSetFn)>("?CreateAnimationSet@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VWorkingAnimationSet@ColladaConversion@RenderCore@@@std@@QEBD@Z");
-                    _extractAnimationsFn        = _library.GetFunction<decltype(_extractAnimationsFn)>("?ExtractAnimations@ColladaConversion@RenderCore@@YAXAEAVWorkingAnimationSet@12@AEBVColladaScaffold@12@QEBD@Z");
+                    _extractAnimationsFn        = _library.GetFunction<decltype(_extractAnimationsFn)>("?ExtractAnimations@ColladaConversion@RenderCore@@YAXAEAVWorkingAnimationSet@12@AEBVICompileOperation@12@QEBD@Z");
                     _serializeAnimationSetFn    = _library.GetFunction<decltype(_serializeAnimationSetFn)>("?SerializeAnimationSet@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@AEBVWorkingAnimationSet@12@@Z");
                 #endif
 
@@ -555,7 +543,7 @@ namespace RenderCore { namespace Assets
         if (!_isAttached)
             Throw(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Could not find DLL (%s)", ColladaLibraryName));
 
-        _newPathOk = !!_createColladaScaffold && !!_serializeSkinFunction && !!_serializeSkeletonFunction && !!_serializeMaterialsFunction && !!_createAnimationSetFn && !!_extractAnimationsFn && !!_serializeAnimationSetFn;
+        _newPathOk = !!_createCompileOpFunction && !!_createAnimationSetFn && !!_extractAnimationsFn && !!_serializeAnimationSetFn;
 
         #if defined(SUPPORT_OLD_PATH)
             _oldPathOk = !!_ocCreateModel && !!_ocSerializeSkinFunction && !!_ocSerializeAnimationFunction && !!_ocSerializeSkeletonFunction && !!_ocMergeAnimationDataFunction;

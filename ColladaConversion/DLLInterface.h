@@ -6,13 +6,10 @@
 
 #pragma once
 
+#include "NascentObjectsSerialize.h"
 #include "../Assets/AssetsCore.h"
-#include "../Assets/ChunkFile.h"
-#include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/AttachableLibrary.h"
 #include "../ConsoleRig/GlobalServices.h"
-#include <vector>
-#include <memory>
 
 #if defined(PROJECT_COLLADA_CONVERSION)
     #define CONVERSION_API dll_export
@@ -22,55 +19,33 @@
 
 namespace RenderCore { namespace ColladaConversion
 {
-    class NascentChunk
-    {
-    public:
-        Serialization::ChunkFile::ChunkHeader _hdr;
-        std::vector<uint8> _data;
-
-        NascentChunk(
-            const Serialization::ChunkFile::ChunkHeader& hdr, 
-            std::vector<uint8>&& data)
-            : _hdr(hdr), _data(std::forward<std::vector<uint8>>(data)) {}
-        NascentChunk(NascentChunk&& moveFrom) never_throws
-        : _hdr(moveFrom._hdr)
-        , _data(std::move(moveFrom._data))
-        {}
-        NascentChunk& operator=(NascentChunk&& moveFrom) never_throws
-        {
-            _hdr = moveFrom._hdr;
-            _data = std::move(moveFrom._data);
-            return *this;
-        }
-		NascentChunk(const NascentChunk& copyFrom) : _hdr(copyFrom._hdr), _data(copyFrom._data) {}
-		NascentChunk& operator=(const NascentChunk& copyFrom)
-		{
-			_hdr = copyFrom._hdr;
-			_data = copyFrom._data;
-			return *this;
-		}
-		NascentChunk() {}
-    };
-
-    class ColladaScaffold;
     class WorkingAnimationSet;
 
-    using NascentChunkArray = std::shared_ptr<std::vector<NascentChunk>>;
+	class ICompileOperation
+	{
+	public:
+		class TargetDesc
+		{
+		public:
+			uint64 _type;
+			const char* _name;
+		};
+		virtual unsigned			TargetCount() const = 0;
+		virtual TargetDesc			GetTarget(unsigned idx) const = 0;
+		virtual NascentChunkArray	SerializeTarget(unsigned idx) = 0;
 
-    CONVERSION_API std::shared_ptr<ColladaScaffold> CreateColladaScaffold(const ::Assets::ResChar identifier[]);
-    CONVERSION_API NascentChunkArray SerializeSkin(const ColladaScaffold& model, const char startingNode[]);
-    CONVERSION_API NascentChunkArray SerializeSkeleton(const ColladaScaffold& model, const char startingNode[]);
-    CONVERSION_API NascentChunkArray SerializeMaterials(const ColladaScaffold& model, const char startingNode[]);
+		virtual ~ICompileOperation();
+	};
+
+	CONVERSION_API std::shared_ptr<ICompileOperation> CreateCompileOperation(const ::Assets::ResChar identifier[]);
+	typedef std::shared_ptr<ICompileOperation> CreateCompileOperationFn(const ::Assets::ResChar identifier[]);
 
     CONVERSION_API std::shared_ptr<WorkingAnimationSet> CreateAnimationSet(const char name[]);
-    CONVERSION_API void ExtractAnimations(WorkingAnimationSet& dest, const ColladaScaffold& model, const char animName[]);
+    CONVERSION_API void ExtractAnimations(WorkingAnimationSet& dest, const ICompileOperation& model, const char animName[]);
     CONVERSION_API NascentChunkArray SerializeAnimationSet(const WorkingAnimationSet& animset);
 
-    typedef std::shared_ptr<ColladaScaffold> CreateColladaScaffoldFn(const ::Assets::ResChar identifier[]);
-    typedef NascentChunkArray ModelSerializeFn(const ColladaScaffold&, const char[]);
-
     typedef std::shared_ptr<WorkingAnimationSet> CreateAnimationSetFn(const char name[]);
-    typedef void ExtractAnimationsFn(WorkingAnimationSet&, const ColladaScaffold&, const char[]);
+    typedef void ExtractAnimationsFn(WorkingAnimationSet&, const ICompileOperation&, const char[]);
     typedef NascentChunkArray SerializeAnimationSetFn(const WorkingAnimationSet&);
 }}
 

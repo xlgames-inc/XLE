@@ -91,6 +91,12 @@
     <ClCompile Include="..\..\RenderCore\Assets\Material.cpp">
       <Filter>GenericAssets</Filter>
     </ClCompile>
+    <ClCompile Include="..\NascentObjectsSerialize.cpp">
+      <Filter>NascentObjects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\NascentGeometryObjects.cpp">
+      <Filter>NascentObjects</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\OpenCollada\OCInterface.h">
@@ -170,6 +176,12 @@
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\Assets\Material.h">
       <Filter>GenericAssets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NascentObjectsSerialize.h">
+      <Filter>NascentObjects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NascentGeometryObjects.h">
+      <Filter>NascentObjects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
