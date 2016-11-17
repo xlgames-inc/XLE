@@ -411,7 +411,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
         if (_currentGraphicsPipeline && !GraphicsPipelineBuilder::IsPipelineStale()) return true;
 
-        assert(_renderPass);
+		if (!_renderPass) {
+			LogWarning << "Attempting to bind graphics pipeline without a render pass";
+			return false;
+		}
+
         _currentGraphicsPipeline = GraphicsPipelineBuilder::CreatePipeline(
             *_factory,
             _globalPools->_mainPipelineCache.get(),
@@ -480,7 +484,6 @@ namespace RenderCore { namespace Metal_Vulkan
     void DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
 		assert(_commandList);
-        assert(_renderPass);
 		if (BindGraphicsPipeline()) {
             assert(vertexCount);
             vkCmdDraw(
@@ -493,7 +496,6 @@ namespace RenderCore { namespace Metal_Vulkan
     void        DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
 		assert(_commandList);
-        assert(_renderPass);
 		if (BindGraphicsPipeline()) {
 		    vkCmdDrawIndexed(
 			    _commandList.get(),

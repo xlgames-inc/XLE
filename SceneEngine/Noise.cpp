@@ -42,7 +42,7 @@ namespace SceneEngine
         };
 
         auto& uploads = GetBufferUploads();
-        auto gradDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::ShaderResource, BufferUploads::TextureDesc::Plain1D(dimof(g), Format::R32G32B32_TYPELESS), "NoiseGrad");
+        auto gradDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::ShaderResource, BufferUploads::TextureDesc::Plain1D(dimof(g), Format::R32G32B32A32_TYPELESS), "NoiseGrad");
         auto permDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::ShaderResource, BufferUploads::TextureDesc::Plain1D(dimof(perm), Format::R8_TYPELESS), "NoisePerm");
         auto gradPkt = BufferUploads::CreateEmptyPacket(gradDesc);
         XlCopyMemory(gradPkt->GetData(), g, std::min(sizeof(g), gradPkt->GetDataSize()));
@@ -58,7 +58,7 @@ namespace SceneEngine
             D3DX11SaveTextureToFile(context->GetUnderlying(), permTexture.get(), D3DX11_IFF_DDS, "perlin_perm.dds");
         }*/
 
-        _gradShaderResource = ShaderResourceView(gradTexture->ShareUnderlying(), {Format::R32G32B32_FLOAT});
+        _gradShaderResource = ShaderResourceView(gradTexture->ShareUnderlying(), {Format::R32G32B32A32_FLOAT});
         _permShaderResource = ShaderResourceView(permTexture->ShareUnderlying(), {Format::R8_UNORM});
     }
 
