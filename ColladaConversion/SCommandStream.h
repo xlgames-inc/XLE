@@ -66,7 +66,4 @@ namespace RenderCore { namespace ColladaConversion
     private:
         void Gather(const ::ColladaConversion::Node& node, SkeletonRegistry& nodeRefs, bool terminateOnLODNodes = false);
     };
-
-    void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
-    void RegisterNodeBindingNames(NascentModelCommandStream& stream, const SkeletonRegistry& registry);
 }}

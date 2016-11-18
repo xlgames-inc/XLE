@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "NascentCommandStream.h"
+#include "SkeletonRegistry.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
 #include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/OutputStream.h"
@@ -445,6 +446,25 @@ namespace RenderCore { namespace ColladaConversion
         return stream;
     }
 
+	void RegisterNodeBindingNames(
+		NascentSkeleton& skeleton,
+		const SkeletonRegistry& registry)
+	{
+		for (const auto& nodeDesc:registry.GetImportantNodes()) {
+			auto success = skeleton.GetTransformationMachine().TryRegisterJointName(
+				nodeDesc._bindingName, nodeDesc._inverseBind, nodeDesc._transformMarker);
+			if (!success)
+				LogWarning << "Found possible duplicate joint name in transformation machine: " << nodeDesc._bindingName;
+		}
+	}
 
+	void RegisterNodeBindingNames(
+		NascentModelCommandStream& stream,
+		const SkeletonRegistry& registry)
+	{
+		for (const auto& nodeDesc:registry.GetImportantNodes())
+			stream.RegisterTransformationMachineOutput(
+				nodeDesc._bindingName, nodeDesc._id, nodeDesc._transformMarker);
+	}
 }}
 

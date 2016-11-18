@@ -223,9 +223,11 @@ namespace RenderCore { namespace ColladaConversion
         NascentModelCommandStream& operator=(const NascentModelCommandStream& copyFrom) never_throws;
         NascentModelCommandStream(const NascentModelCommandStream& copyFrom);
     };
-
     
-    
+	class SkeletonRegistry;
+	class NascentSkeleton;
+	void RegisterNodeBindingNames(NascentModelCommandStream& stream, const SkeletonRegistry& registry);
+	void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
 }}
 
 
