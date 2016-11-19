@@ -23,6 +23,7 @@ namespace RenderCore { namespace Assets
         ::Assets::ResChar _initializer1[MaxPath];
 
         const ::Assets::IntermediateAssets::Store* _destinationStore;
+		unsigned _compilerIndex;
     };
 
     /// <summary>Used by the compiler types to manage background operations</summary>

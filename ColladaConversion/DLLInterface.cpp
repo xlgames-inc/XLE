@@ -570,6 +570,32 @@ namespace RenderCore { namespace ColladaConversion
 	}
 
 	ICompileOperation::~ICompileOperation() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class CompilerDesc : public ICompilerDesc
+	{
+	public:
+		const char*			Description() const { return "Compiler and converter for Collada asset files"; }
+
+		virtual unsigned	FileKindCount() const { return 1; }
+		virtual FileKind	GetFileKind(unsigned index) const
+		{
+			assert(index==0);
+			return FileKind { "dae", "Collada XML asset" };
+		}
+
+		CompilerDesc() {}
+		~CompilerDesc() {}
+	};
+
+	ICompilerDesc::~ICompilerDesc() {}
+
+	CONVERSION_API std::shared_ptr<ICompilerDesc> GetCompilerDesc() 
+	{
+		return std::make_shared<CompilerDesc>();
+	}
+
 }}
 
 namespace RenderCore { namespace ColladaConversion

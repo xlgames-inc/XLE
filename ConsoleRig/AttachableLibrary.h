@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Core/Prefix.h"
 #include <memory>
 
 namespace ConsoleRig
@@ -32,6 +33,9 @@ namespace ConsoleRig
 
         AttachableLibrary(const CharType filename[]);
         ~AttachableLibrary();
+
+		AttachableLibrary(AttachableLibrary&&) never_throws;
+		AttachableLibrary& operator=(AttachableLibrary&&) never_throws;
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;

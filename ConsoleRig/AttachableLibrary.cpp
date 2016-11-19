@@ -105,11 +105,21 @@ namespace ConsoleRig
 
     AttachableLibrary::~AttachableLibrary()
     {
-        if (_pimpl->_attachCount > 0) {
+        if (_pimpl && _pimpl->_attachCount > 0) {
                 // force detach
             _pimpl->_attachCount = 1;
             Detach();
         }
     }
+
+	AttachableLibrary::AttachableLibrary(AttachableLibrary&& moveFrom) never_throws
+	: _pimpl(std::move(moveFrom._pimpl))
+	{}
+
+	AttachableLibrary& AttachableLibrary::operator=(AttachableLibrary&& moveFrom) never_throws
+	{
+		_pimpl = std::move(moveFrom._pimpl);
+		return *this;
+	}
 }
 
