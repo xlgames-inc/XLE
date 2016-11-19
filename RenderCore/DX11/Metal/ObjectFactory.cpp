@@ -351,7 +351,9 @@ namespace RenderCore { namespace Metal_DX11
 
 	ObjectFactory& GetObjectFactory(ID3D::Device& device)
 	{
-		return *InitAttachedData(&device)->_factory.get();
+		auto result = InitAttachedData(&device);
+		if (!result) Throw(::Exceptions::BasicLabel("Could not successfully initialize attached data for D3DDevice"));
+		return *result->_factory.get();
 	}
 
 	ObjectFactory& GetObjectFactory(ID3D::Resource& resource)

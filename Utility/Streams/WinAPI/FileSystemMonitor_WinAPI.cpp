@@ -146,7 +146,7 @@ namespace Utility
     {
         auto hash = MonitoredDirectory::HashFilename(filename);
         ScopedLock(_callbacksLock);
-        #if (STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL >= 2)
+        #if 0 //(STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL >= 2)
             auto range = std::_Equal_range(
                 _callbacks.begin(), _callbacks.end(), hash, 
                 CompareFirst<uint64, std::weak_ptr<OnChangeCallback>>(),

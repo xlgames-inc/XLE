@@ -133,8 +133,8 @@ namespace UnitTests
                     ConsoleRig::AttachableLibrary lib("../Finals_Release32/ColladaConversion.dll");
                 #endif
                 lib.TryAttach();
-                auto createScaffold = lib.GetFunction<RenderCore::ColladaConversion::CreateColladaScaffoldFn*>(
-                    "?CreateColladaScaffold@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VColladaScaffold@ColladaConversion@RenderCore@@@std@@QBD@Z");
+                auto createScaffold = lib.GetFunction<RenderCore::ColladaConversion::CreateCompileOperationFn*>(
+                    "?CreateCompileOperation@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VICompileOperation@ColladaConversion@RenderCore@@@std@@QEBD@Z");
 
                 const char sampleAsset[] = "game/testmodels/ironman/ironman.dae";
                 // const char sampleAsset[] = "game/model/spaceship/mccv/mccv.dae";
@@ -207,8 +207,8 @@ namespace UnitTests
                     ConsoleRig::AttachableLibrary lib("../Finals_Profile32/ColladaConversion.dll");
                 #endif
                 lib.TryAttach();
-                auto createScaffold = lib.GetFunction<RenderCore::ColladaConversion::CreateColladaScaffoldFn*>(
-                    "?CreateColladaScaffold@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VColladaScaffold@ColladaConversion@RenderCore@@@std@@QBD@Z");
+                auto createScaffold = lib.GetFunction<RenderCore::ColladaConversion::CreateCompileOperationFn*>(
+					"?CreateCompileOperation@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VICompileOperation@ColladaConversion@RenderCore@@@std@@QEBD@Z");
                 
                 std::vector<std::string> filesWithErrors;
                 for (const auto&f:inputFiles) {

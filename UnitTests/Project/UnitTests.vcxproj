@@ -120,6 +120,9 @@
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
       <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_Vulkan.vcxproj">
+      <Project>{b7525b97-9195-416a-8019-ed7f239cf3e8}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\SceneEngine\Project\SceneEngine.vcxproj">
       <Project>{0a40e6ed-47cc-a08e-71c5-8a3515d81eaf}</Project>
     </ProjectReference>

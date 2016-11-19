@@ -271,7 +271,7 @@ namespace SceneEngine
             const bool needQuery = false;
             if (constant_expression<needQuery>::result()) {
                 begunQuery = res._streamOutputCountsQuery.get();
-                metalContext.GetUnderlying()->Begin(begunQuery);
+                metalContext->GetUnderlying()->Begin(begunQuery);
             }
 #endif
 
@@ -343,12 +343,12 @@ namespace SceneEngine
 
             auto outputBinCount = std::min((unsigned)cfg._objectTypes.size(), (unsigned)res._instanceBufferUAVs.size());
             for (unsigned c=0; c<outputBinCount; ++c) {
-                metalContext.ClearUInt(res._instanceBufferUAVs[c], { 0, 0, 0, 0 });
+                metalContext->ClearUInt(res._instanceBufferUAVs[c], { 0, 0, 0, 0 });
                 outputBins[c] = res._instanceBufferUAVs[c].GetUnderlying();
             }
 
-            metalContext.BindCS(MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
-            metalContext.GetUnderlying()->CSSetUnorderedAccessViews(0, outputBinCount, outputBins, initialCounts);
+            metalContext->BindCS(MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
+            metalContext->GetUnderlying()->CSSetUnorderedAccessViews(0, outputBinCount, outputBins, initialCounts);
 #endif
 
             class InstanceSeparateConstants
@@ -399,8 +399,8 @@ namespace SceneEngine
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
                 // unbind all of the UAVs again
-            metalContext.UnbindCS<Metal::UnorderedAccessView>(0, outputBinCount);
-            metalContext.UnbindCS<Metal::ShaderResourceView>(0, 2);
+            metalContext->UnbindCS<Metal::UnorderedAccessView>(0, outputBinCount);
+            metalContext->UnbindCS<Metal::ShaderResourceView>(0, 2);
 #endif
 
             res._isPrepared = true;
@@ -409,7 +409,7 @@ namespace SceneEngine
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         if (begunQuery)
-            metalContext.GetUnderlying()->End(begunQuery);
+            metalContext->GetUnderlying()->End(begunQuery);
 #endif
 
             // (reset the camera transform if it's changed)

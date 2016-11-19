@@ -42,12 +42,13 @@ namespace UnitTests
                 ConsoleRig::GlobalServices services(GetStartupConfig());
 
 				{
-					auto renderDevice = RenderCore::CreateDevice();
+					auto renderDevice = RenderCore::CreateDevice(RenderCore::UnderlyingAPI::DX11);
                     auto asyncMan = std::make_shared<::Assets::Services>(0);
-                    auto renderAssetsServices = std::make_shared<RenderCore::Assets::Services>(renderDevice.get());
+                    auto renderAssetsServices = std::make_shared<RenderCore::Assets::Services>(renderDevice);
 
-					auto renderVersion = renderDevice->GetVersionInformation();
-					LogInfo << "RenderCore version (" << renderVersion.first << ") and date (" << renderVersion.second << ")";
+					auto renderVersion = renderDevice->GetDesc()._buildVersion;
+					auto renderDate = renderDevice->GetDesc()._buildDate;
+					LogInfo << "RenderCore version (" << renderVersion << ") and date (" << renderDate << ")";
 				}
 			}
 		}
