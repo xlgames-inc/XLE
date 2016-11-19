@@ -629,7 +629,13 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 			} else ++i;
 		}
 
-		return SplitPath(std::move(result), _beginsWithSeparator, _endsWithSeparator, _drive);
+			// If we remove all path elements (ie, because of "." or ".." elements) then we must
+			// supress the "endsWithSeparator" flag. Consider -- "somepath/../". If this becomes
+			// "/", then the meaning has changed
+		auto endsWithSeparator = _endsWithSeparator;
+		if (result.empty()) endsWithSeparator = false;
+
+		return SplitPath(std::move(result), _beginsWithSeparator, endsWithSeparator, _drive);
 	}
 
 	TC auto SplitPath<CharType>::Rebuild(const FilenameRules& rules) const -> String

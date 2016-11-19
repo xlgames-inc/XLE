@@ -228,6 +228,18 @@ namespace UnitTests
 				SplitPath<char>("D:\\LM\\Code../..\\SomeDir/").Simplify().Rebuild());
 
 			Assert::AreEqual(
+				std::string("somefile.txt"),
+				SplitPath<char>(".///somefile.txt").Simplify().Rebuild());
+
+			Assert::AreEqual(
+				std::string(""),
+				SplitPath<char>(".///").Simplify().Rebuild());
+
+			Assert::AreEqual(
+				std::string(""),
+				SplitPath<char>(".///somepath//..//A/B/../..///").Simplify().Rebuild());
+
+			Assert::AreEqual(
 				std::string("someobject"),
 				MakeRelativePath(SplitPath<char>("D:\\LM\\Code"), SplitPath<char>("D:\\LM\\Code\\SomeObject")));
 
