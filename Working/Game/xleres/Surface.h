@@ -234,40 +234,29 @@ float3 TransformNormalMapToWorld(float3 normalTextureSample, VSOutput geo)
 {
 	#if OUTPUT_TANGENT_FRAME==1
 
-		#if (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1)
-
-			TangentFrameStruct tangentFrame = GetWorldTangentFrame(geo);
-			float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
-			return mul(normalTextureSample, normalsTextureToWorld);
-
-		#else
-			return normalize(geo.normal);
-		#endif
+		TangentFrameStruct tangentFrame = GetWorldTangentFrame(geo);
+		float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
+		return mul(normalTextureSample, normalsTextureToWorld);
 
     #elif OUTPUT_LOCAL_TANGENT_FRAME==1
 
-        #if (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1)
+		TangentFrameStruct localTangentFrame = GetLocalTangentFrame(geo);
+		float3x3 normalsTextureToLocal = float3x3(localTangentFrame.tangent.xyz, localTangentFrame.bitangent, localTangentFrame.normal);
+		float3 localNormal = mul(normalTextureSample, normalsTextureToLocal);
 
-			TangentFrameStruct localTangentFrame = GetLocalTangentFrame(geo);
-			float3x3 normalsTextureToLocal = float3x3(localTangentFrame.tangent.xyz, localTangentFrame.bitangent, localTangentFrame.normal);
-			float3 localNormal = mul(normalTextureSample, normalsTextureToLocal);
+            // note --  Problems when there is a scale on LocalToWorld here.
+            //          There are many objects with uniform scale values, and they require a normalize here.
+            //          Ideally we'd have a LocalToWorld matrix with the scale removed,
+            //          or at least a "uniform scale" scalar to remove the scaling
+        return normalize(mul(GetLocalToWorldUniformScale(), localNormal));
 
-                // note --  Problems when there is a scale on LocalToWorld here.
-                //          There are many objects with uniform scale values, and they require a normalize here.
-                //          Ideally we'd have a LocalToWorld matrix with the scale removed,
-                //          or at least a "uniform scale" scalar to remove the scaling
-            return normalize(mul(GetLocalToWorldUniformScale(), localNormal));
-		#else
-			return normalize(mul(GetLocalToWorldUniformScale(), GetLocalTangentFrame(geo).normal));
-		#endif
-
-	#elif (OUTPUT_NORMAL==1) && (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1) && ((OUTPUT_WORLD_VIEW_VECTOR==1) || (OUTPUT_WORLD_VIEW_VECTOR==1))
+	#elif (OUTPUT_NORMAL==1) && ((OUTPUT_WORLD_VIEW_VECTOR==1) || (OUTPUT_WORLD_VIEW_VECTOR==1))
 
 	    float3x3 normalsTextureToWorld = AutoCotangentFrame(normalize(geo.normal), GetWorldViewVector(geo), geo.texCoord);
 			// Note -- matrix multiply opposite from normal (so we can initialise normalsTextureToWorld easily)
 		return mul(normalTextureSample, normalsTextureToWorld);
 
-    #elif (OUTPUT_LOCAL_NORMAL==1) && (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1) && (OUTPUT_LOCAL_VIEW_VECTOR==1)
+    #elif (OUTPUT_LOCAL_NORMAL==1) && (OUTPUT_LOCAL_VIEW_VECTOR==1)
 
 		float3x3 normalsTextureToWorld = AutoCotangentFrame(normalize(geo.localNormal), GetLocalViewVector(geo), geo.texCoord);
 			// Note -- matrix multiply opposite from normal (so we can initialise normalsTextureToWorld easily)
@@ -278,13 +267,23 @@ float3 TransformNormalMapToWorld(float3 normalTextureSample, VSOutput geo)
         return normalize(geo.normal);
 
 	#else
+
 		return 0.0.xxx;
+
 	#endif
 }
 
 float3 GetNormal(VSOutput geo)
 {
-	return TransformNormalMapToWorld(SampleDefaultNormalMap(geo), geo);
+	#if (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1)
+		return TransformNormalMapToWorld(SampleDefaultNormalMap(geo), geo);
+	#elif (OUTPUT_NORMAL==1)
+		return normalize(geo.normal);
+	#elif OUTPUT_LOCAL_TANGENT_FRAME==1
+		return normalize(mul(GetLocalToWorldUniformScale(), GetLocalTangentFrame(geo).normal));
+	#else
+		return 0.0.xxx;
+	#endif
 }
 
 void DoAlphaTest(VSOutput geo, float alphaThreshold)
