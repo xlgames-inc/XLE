@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "AssetUtils.h"
+#include "CompilerLibrary.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
@@ -513,6 +514,10 @@ namespace Assets
                 (const ::Assets::ResChar*)src.begin(),
                 (const ::Assets::ResChar*)src.end()));
     }
+
+
+	ICompileOperation::~ICompileOperation() {}
+	ICompilerDesc::~ICompilerDesc() {}
 
 }
 

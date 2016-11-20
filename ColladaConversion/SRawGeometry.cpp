@@ -9,11 +9,12 @@
 #include "SRawGeometry.h"
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"
-#include "NascentRawGeometry.h"
-#include "NascentAnimController.h"
-#include "GeometryAlgorithm.h"
-#include "ConversionUtil.h"
-#include "../RenderCore/Assets/MeshDatabase.h"
+#include "ConversionConfig.h"
+#include "../RenderCore/GeoProc/NascentRawGeometry.h"
+#include "../RenderCore/GeoProc/NascentAnimController.h"
+#include "../RenderCore/GeoProc/GeometryAlgorithm.h"
+#include "../RenderCore/GeoProc/GeoProcUtil.h"
+#include "../RenderCore/GeoProc/MeshDatabase.h"
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Types.h"      // for Topology...!
 #include "../RenderCore/Format.h"
@@ -26,8 +27,8 @@
 namespace ColladaConversion
 {
     using namespace RenderCore;
-    using namespace RenderCore::ColladaConversion;
     using namespace RenderCore::Assets::GeoProc;
+	using RenderCore::ColladaConversion::ImportConfiguration;
 
     static const std::string DefaultSemantic_Weights         = "WEIGHTS";
     static const std::string DefaultSemantic_JointIndices    = "JOINTINDICES";
@@ -1189,7 +1190,7 @@ namespace ColladaConversion
     auto Convert(   const SkinController& controller, 
                     const URIResolveContext& resolveContext,
                     const ImportConfiguration& cfg)
-        -> RenderCore::ColladaConversion::UnboundSkinController
+        -> RenderCore::Assets::GeoProc::UnboundSkinController
     {
         auto bindShapeMatrix = Identity<Float4x4>();
         ParseXMLList(&bindShapeMatrix(0,0), 16, controller.GetBindShapeMatrix());

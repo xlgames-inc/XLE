@@ -82,150 +82,56 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\RenderCore\Assets\Material.cpp" />
-    <ClCompile Include="..\..\RenderCore\Assets\MeshDatabase.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\ModelScaffold.cpp" />
-    <ClCompile Include="..\..\RenderCore\Assets\NascentTransformationMachine.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\RawAnimationCurve.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\SkinningScaffold.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\TransformationCommands.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\GeometryAlgorithm.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\GeoProcUtil.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\MeshDatabase.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentAnimController.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentCommandStream.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentGeometryObjects.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentObjectsSerialize.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentRawGeometry.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\SkeletonRegistry.cpp" />
     <ClCompile Include="..\ColladaDocument.cpp" />
-    <ClCompile Include="..\ConversionUtil.cpp" />
-    <ClCompile Include="..\GeometryAlgorithm.cpp" />
-    <ClCompile Include="..\NascentAnimController.cpp" />
-    <ClCompile Include="..\NascentCommandStream.cpp" />
-    <ClCompile Include="..\NascentGeometryObjects.cpp" />
-    <ClCompile Include="..\NascentModel.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="..\ConversionConfig.cpp" />
     <ClCompile Include="..\DLLInterface.cpp" />
-    <ClCompile Include="..\NascentObjectsSerialize.cpp" />
-    <ClCompile Include="..\OpenCollada\OCAnimationConversion.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\OpenCollada\OCMisc.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\OpenCollada\OCSkinController.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\OpenCollada\OCModelCommandStream.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\OpenCollada\OCRawGeometry.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\OpenCollada\OCTransformationMachine.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\ScaffoldParsingUtil.cpp" />
-    <ClCompile Include="..\NascentRawGeometry.cpp" />
     <ClCompile Include="..\SAnimation.cpp" />
     <ClCompile Include="..\SCommandStream.cpp" />
     <ClCompile Include="..\SEffect.cpp" />
-    <ClCompile Include="..\SkeletonRegistry.cpp" />
     <ClCompile Include="..\SRawGeometry.cpp" />
-    <ClCompile Include="..\TableOfObjects.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\STransformationMachine.cpp" />
     <ClCompile Include="..\Version.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\RenderCore\Assets\Material.h" />
-    <ClInclude Include="..\..\RenderCore\Assets\MeshDatabase.h" />
-    <ClInclude Include="..\..\RenderCore\Assets\NascentTransformationMachine.h" />
     <ClInclude Include="..\..\RenderCore\Assets\RawAnimationCurve.h" />
     <ClInclude Include="..\..\RenderCore\Assets\TransformationCommands.h" />
-    <ClInclude Include="..\ConversionCore.h" />
-    <ClInclude Include="..\NascentAnimController.h" />
-    <ClInclude Include="..\ConversionUtil.h" />
-    <ClInclude Include="..\GeometryAlgorithm.h" />
-    <ClInclude Include="..\NascentCommandStream.h" />
-    <ClInclude Include="..\NascentGeometryObjects.h" />
-    <ClInclude Include="..\NascentMaterial.h" />
-    <ClInclude Include="..\NascentModel.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\GeoProc\GeometryAlgorithm.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\GeoProcUtil.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\MeshDatabase.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentAnimController.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentCommandStream.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentGeometryObjects.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentMaterial.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentObjectGuid.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentObjectsSerialize.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentRawGeometry.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\SkeletonRegistry.h" />
+    <ClInclude Include="..\ConversionConfig.h" />
     <ClInclude Include="..\DLLInterface.h" />
-    <ClInclude Include="..\NascentObjectsSerialize.h" />
-    <ClInclude Include="..\OpenCollada\OCInterface.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="..\OpenCollada\OCMisc.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClInclude>
     <ClInclude Include="..\ScaffoldParsingUtil.h" />
-    <ClInclude Include="..\NascentRawGeometry.h" />
     <ClInclude Include="..\SAnimation.h" />
     <ClInclude Include="..\Scaffold.h" />
     <ClInclude Include="..\ScaffoldDataFlow.h" />
     <ClInclude Include="..\SCommandStream.h" />
     <ClInclude Include="..\SEffect.h" />
-    <ClInclude Include="..\SkeletonRegistry.h" />
     <ClInclude Include="..\SRawGeometry.h" />
-    <ClInclude Include="..\TableOfObjects.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClInclude>
     <ClInclude Include="..\STransformationMachine.h" />
   </ItemGroup>
   <ItemGroup>

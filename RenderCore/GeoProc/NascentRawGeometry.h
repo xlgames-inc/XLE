@@ -6,14 +6,14 @@
 
 #pragma once
 
-#include "../RenderCore/Assets/ModelScaffoldInternal.h"
-#include "../RenderCore/Types_Forward.h"
-#include "../Utility/PtrUtils.h"            // for DynamicArray
+#include "../Assets/ModelScaffoldInternal.h"
+#include "../../RenderCore/Types_Forward.h"
+#include "../../Utility/PtrUtils.h"            // for DynamicArray
 #include <vector>
 
 namespace Serialization { class NascentBlockSerializer; }
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
     using GeoInputAssembly = RenderCore::Assets::GeoInputAssembly;
     using DrawCallDesc = RenderCore::Assets::DrawCallDesc;
@@ -55,4 +55,5 @@ namespace RenderCore { namespace ColladaConversion
         friend std::ostream& StreamOperator(std::ostream&, const NascentRawGeometry&);
     };
 
-}}
+}}}
+

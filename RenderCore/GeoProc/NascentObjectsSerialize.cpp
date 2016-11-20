@@ -9,47 +9,15 @@
 #include "NascentCommandStream.h"
 #include "NascentGeometryObjects.h"
 #include "SkeletonRegistry.h"
-#include "SCommandStream.h"
+// #include "SCommandStream.h"
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Assets/ModelImmutableData.h"      // just for RenderCore::Assets::SkeletonBinding
 #include "../Assets/BlockSerializer.h"
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
 	static const unsigned ModelScaffoldVersion = 1;
 	static const unsigned ModelScaffoldLargeBlocksVersion = 0;
-
-	static void DestroyChunkArray(const void* chunkArray) { delete (std::vector<NascentChunk>*)chunkArray; }
-
-	NascentChunkArray MakeNascentChunkArray(
-        const std::initializer_list<NascentChunk>& inits)
-    {
-        return NascentChunkArray(
-            new std::vector<NascentChunk>(inits),
-            &DestroyChunkArray);
-    }
-
-    std::vector<uint8> AsVector(const Serialization::NascentBlockSerializer& serializer)
-    {
-        auto block = serializer.AsMemoryBlock();
-        size_t size = Serialization::Block_GetSize(block.get());
-        return std::vector<uint8>(block.get(), PtrAdd(block.get(), size));
-    }
-
-    template<typename Char>
-        static std::vector<uint8> AsVector(std::basic_stringstream<Char>& stream)
-    {
-        auto str = stream.str();
-        return std::vector<uint8>((const uint8*)AsPointer(str.begin()), (const uint8*)AsPointer(str.end()));
-    }
-
-    template<typename Type>
-        static std::vector<uint8> SerializeToVector(const Type& obj)
-    {
-        Serialization::NascentBlockSerializer serializer;
-        ::Serialize(serializer, obj);
-        return AsVector(serializer);
-    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -85,7 +53,7 @@ namespace RenderCore { namespace ColladaConversion
     };
 
     static DefaultPoseData CalculateDefaultPoseData(
-        const NascentSkeleton::NascentTransformationMachine& transMachine,
+        const NascentTransformationMachine& transMachine,
         const NascentModelCommandStream& cmdStream,
         const NascentGeometryObjects& geoObjects)
     {
@@ -145,7 +113,7 @@ namespace RenderCore { namespace ColladaConversion
 		StreamOperator(stream, skeleton.GetTransformationMachine());
 	}
 
-	NascentChunkArray SerializeSkinToChunks(const char name[], NascentGeometryObjects& geoObjects, NascentModelCommandStream& cmdStream, NascentSkeleton& skeleton)
+	::Assets::NascentChunkArray SerializeSkinToChunks(const char name[], NascentGeometryObjects& geoObjects, NascentModelCommandStream& cmdStream, NascentSkeleton& skeleton)
 	{
 		Serialization::NascentBlockSerializer serializer;
 		std::vector<uint8> largeResourcesBlock;
@@ -178,8 +146,8 @@ namespace RenderCore { namespace ColladaConversion
 		std::stringstream metricsStream;
 		TraceMetrics(metricsStream, geoObjects, cmdStream, skeleton);
 
-		auto scaffoldBlock = AsVector(serializer);
-		auto metricsBlock = AsVector(metricsStream);
+		auto scaffoldBlock = ::Assets::AsVector(serializer);
+		auto metricsBlock = ::Assets::AsVector(metricsStream);
 
 		Serialization::ChunkFile::ChunkHeader scaffoldChunk(
 			RenderCore::Assets::ChunkType_ModelScaffold, ModelScaffoldVersion, name, unsigned(scaffoldBlock.size()));
@@ -188,11 +156,11 @@ namespace RenderCore { namespace ColladaConversion
 		Serialization::ChunkFile::ChunkHeader metricsChunk(
 			RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock.size());
 
-		return MakeNascentChunkArray(
+		return ::Assets::MakeNascentChunkArray(
 			{
-				NascentChunk(scaffoldChunk, std::move(scaffoldBlock)),
-				NascentChunk(largeBlockChunk, std::move(largeResourcesBlock)),
-				NascentChunk(metricsChunk, std::move(metricsBlock))
+				::Assets::NascentChunk(scaffoldChunk, std::move(scaffoldBlock)),
+				::Assets::NascentChunk(largeBlockChunk, std::move(largeResourcesBlock)),
+				::Assets::NascentChunk(metricsChunk, std::move(metricsBlock))
 			});
 	}
 
@@ -203,25 +171,25 @@ namespace RenderCore { namespace ColladaConversion
 		StreamOperator(stream, skeleton.GetTransformationMachine());
 	}
 
-	NascentChunkArray SerializeSkeletonToChunks(
+	::Assets::NascentChunkArray SerializeSkeletonToChunks(
 		const char name[], 
 		NascentSkeleton& skeleton)
 	{
-		auto block = SerializeToVector(skeleton);
+		auto block = ::Assets::SerializeToVector(skeleton);
 
 		std::stringstream metricsStream;
 		TraceMetrics(metricsStream, skeleton);
-		auto metricsBlock = AsVector(metricsStream);
+		auto metricsBlock = ::Assets::AsVector(metricsStream);
 
 		Serialization::ChunkFile::ChunkHeader scaffoldChunk(
 			RenderCore::Assets::ChunkType_Skeleton, 0, name, unsigned(block.size()));
 		Serialization::ChunkFile::ChunkHeader metricsChunk(
 			RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock.size());
 
-		return MakeNascentChunkArray({
-			NascentChunk(scaffoldChunk, std::move(block)),
-			NascentChunk(metricsChunk, std::move(metricsBlock))
+		return ::Assets::MakeNascentChunkArray({
+			::Assets::NascentChunk(scaffoldChunk, std::move(block)),
+			::Assets::NascentChunk(metricsChunk, std::move(metricsBlock))
 		});
 	}
 
-}}
+}}}

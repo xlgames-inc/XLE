@@ -5,26 +5,27 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DLLInterface.h"
-#include "NascentCommandStream.h"
-#include "NascentRawGeometry.h"
-#include "NascentAnimController.h"
-#include "NascentObjectsSerialize.h"
-#include "NascentGeometryObjects.h"
-
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"    // for AsString
-#include "SkeletonRegistry.h"
+#include "ConversionConfig.h"
 
 #include "SEffect.h"
 #include "SCommandStream.h"
 #include "SAnimation.h"
 #include "SCommandStream.h"
 
-#include "ConversionUtil.h"
+#include "../RenderCore/GeoProc/NascentCommandStream.h"
+#include "../RenderCore/GeoProc/NascentRawGeometry.h"
+#include "../RenderCore/GeoProc/NascentAnimController.h"
+#include "../RenderCore/GeoProc/NascentGeometryObjects.h"
+#include "../RenderCore/GeoProc/NascentObjectsSerialize.h"
+#include "../RenderCore/GeoProc/SkeletonRegistry.h"
 
 #include "../RenderCore/Assets/ModelImmutableData.h"      // just for RenderCore::Assets::SkeletonBinding
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Assets/Material.h"
+#include "../Assets/CompilerLibrary.h"
+#include "../Assets/NascentChunkArray.h"
 
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/XmlStreamFormatter.h"
@@ -43,7 +44,7 @@ namespace RenderCore { namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ColladaCompileOp : public ICompileOperation
+    class ColladaCompileOp : public ::Assets::ICompileOperation
     {
     public:
         std::string _name;
@@ -54,9 +55,9 @@ namespace RenderCore { namespace ColladaConversion
         ::ColladaConversion::URIResolveContext _resolveContext;
 		std::vector<TargetDesc> _targets;
 
-		unsigned			TargetCount() const;
-		TargetDesc			GetTarget(unsigned idx) const;
-		NascentChunkArray	SerializeTarget(unsigned idx);
+		unsigned	TargetCount() const;
+		TargetDesc	GetTarget(unsigned idx) const;
+		::Assets::NascentChunkArray	SerializeTarget(unsigned idx);
 
 		ColladaCompileOp();
 		~ColladaCompileOp();
@@ -328,7 +329,7 @@ namespace RenderCore { namespace ColladaConversion
         RegisterNodeBindingNames(_cmdStream, jointRefs);
     }
 
-    NascentChunkArray SerializeSkin(const ColladaCompileOp& model, const char startingNode[])
+    ::Assets::NascentChunkArray SerializeSkin(const ColladaCompileOp& model, const char startingNode[])
     {
         const auto* scene = model._doc->FindVisualScene(
             GuidReference(model._doc->_visualScene)._id);
@@ -370,7 +371,7 @@ namespace RenderCore { namespace ColladaConversion
         _skeleton.GetTransformationMachine().Optimize(optimizer);
     }
 
-    NascentChunkArray SerializeSkeleton(const ColladaCompileOp& model, const char[])
+    ::Assets::NascentChunkArray SerializeSkeleton(const ColladaCompileOp& model, const char[])
     {
         PreparedSkeletonFile skeleFile(model);
         return SerializeSkeletonToChunks(model._name.c_str(), skeleFile._skeleton);
@@ -409,7 +410,7 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    NascentChunkArray SerializeMaterials(const ColladaCompileOp& model, const char[])  
+    ::Assets::NascentChunkArray SerializeMaterials(const ColladaCompileOp& model, const char[])  
     { 
         // std::string matSettingsFile;
         // {
@@ -431,8 +432,8 @@ namespace RenderCore { namespace ColladaConversion
             RenderCore::Assets::ChunkType_RawMat, 0, 
             model._name.c_str(), Serialization::ChunkFile::SizeType(finalSize));
 
-        return MakeNascentChunkArray({
-            NascentChunk(
+        return ::Assets::MakeNascentChunkArray({
+			::Assets::NascentChunk(
                 scaffoldChunk, 
                 std::vector<uint8>(strm.GetBuffer().Begin(), strm.GetBuffer().End()))
             });
@@ -489,7 +490,7 @@ namespace RenderCore { namespace ColladaConversion
             &DestroyWorkingAnimSet);
     }
 
-    NascentChunkArray SerializeAnimationSet(const WorkingAnimationSet& animSet)
+	::Assets::NascentChunkArray SerializeAnimationSet(const WorkingAnimationSet& animSet)
     {
         Serialization::NascentBlockSerializer serializer;
 
@@ -497,15 +498,15 @@ namespace RenderCore { namespace ColladaConversion
         serializer.SerializeSubBlock(AsPointer(animSet._curves.begin()), AsPointer(animSet._curves.end()));
         serializer.SerializeValue(animSet._curves.size());
 
-        auto block = AsVector(serializer);
+        auto block = ::Assets::AsVector(serializer);
 
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
             RenderCore::Assets::ChunkType_AnimationSet, 0, animSet._name.c_str(), unsigned(block.size()));
 
-        return MakeNascentChunkArray({NascentChunk(scaffoldChunk, std::move(block))});
+        return ::Assets::MakeNascentChunkArray({::Assets::NascentChunk(scaffoldChunk, std::move(block))});
     }
 
-    void ExtractAnimations(WorkingAnimationSet& dest, const ICompileOperation& source, const char animationName[])
+    void ExtractAnimations(WorkingAnimationSet& dest, const ::Assets::ICompileOperation& source, const char animationName[])
     {
         PreparedAnimationFile animFile((ColladaCompileOp&)source);
         dest._animationSet.MergeAnimation(
@@ -522,9 +523,9 @@ namespace RenderCore { namespace ColladaConversion
 
 	unsigned			ColladaCompileOp::TargetCount() const { return (unsigned)_targets.size(); }
 	auto				ColladaCompileOp::GetTarget(unsigned idx) const -> TargetDesc { if (idx < _targets.size()) { return _targets[idx]; } else return TargetDesc{0, ""}; }
-	NascentChunkArray	ColladaCompileOp::SerializeTarget(unsigned idx)
+	::Assets::NascentChunkArray	ColladaCompileOp::SerializeTarget(unsigned idx)
 	{
-		if (idx >= _targets.size()) return NascentChunkArray();
+		if (idx >= _targets.size()) return ::Assets::NascentChunkArray();
 
 		switch (_targets[idx]._type) {
 		case Type_Model:	return SerializeSkin(*this, _rootNode.c_str());
@@ -538,8 +539,10 @@ namespace RenderCore { namespace ColladaConversion
 	ColladaCompileOp::ColladaCompileOp() {}
 	ColladaCompileOp::~ColladaCompileOp() {}
 
-	std::shared_ptr<ICompileOperation> CreateCompileOperation(const ::Assets::ResChar identifier[])
+	std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperation(const ::Assets::ResChar identifier[])
 	{
+#pragma comment(linker, "/EXPORT:CreateCompileOperation=" __FUNCDNAME__)
+
 		std::shared_ptr<ColladaCompileOp> result = std::make_shared<ColladaCompileOp>();
 
 		auto split = MakeFileNameSplitter(identifier);
@@ -569,11 +572,9 @@ namespace RenderCore { namespace ColladaConversion
 		return std::move(result);
 	}
 
-	ICompileOperation::~ICompileOperation() {}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class CompilerDesc : public ICompilerDesc
+	class CompilerDesc : public ::Assets::ICompilerDesc
 	{
 	public:
 		const char*			Description() const { return "Compiler and converter for Collada asset files"; }
@@ -589,10 +590,9 @@ namespace RenderCore { namespace ColladaConversion
 		~CompilerDesc() {}
 	};
 
-	ICompilerDesc::~ICompilerDesc() {}
-
-	CONVERSION_API std::shared_ptr<ICompilerDesc> GetCompilerDesc() 
+	std::shared_ptr<::Assets::ICompilerDesc> GetCompilerDesc() 
 	{
+#pragma comment(linker, "/EXPORT:GetCompilerDesc=" __FUNCDNAME__)
 		return std::make_shared<CompilerDesc>();
 	}
 
@@ -604,7 +604,9 @@ namespace RenderCore { namespace ColladaConversion
     extern char BuildDateString[];
 }}
 
-ConsoleRig::LibVersionDesc GetVersionInformation()
+extern "C" {
+
+CONVERSION_API ConsoleRig::LibVersionDesc GetVersionInformation()
 {
     ConsoleRig::LibVersionDesc result;
     result._versionString = RenderCore::ColladaConversion::VersionString;
@@ -614,15 +616,16 @@ ConsoleRig::LibVersionDesc GetVersionInformation()
 
 static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
 
-void AttachLibrary(ConsoleRig::GlobalServices& services)
+CONVERSION_API void AttachLibrary(ConsoleRig::GlobalServices& services)
 {
     s_attachRef = services.Attach();
     LogInfo << "Attached Collada Compiler DLL: {" << RenderCore::ColladaConversion::VersionString << "} -- {" << RenderCore::ColladaConversion::BuildDateString << "}";
 }
 
-void DetachLibrary()
+CONVERSION_API void DetachLibrary()
 {
     s_attachRef.Detach();
     TerminateFileSystemMonitoring();
 }
 
+}

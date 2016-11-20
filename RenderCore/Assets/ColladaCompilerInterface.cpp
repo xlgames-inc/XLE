@@ -6,13 +6,15 @@
 
 #include "ColladaCompilerInterface.h"
 #include "CompilationThread.h"
-#include "../../ColladaConversion/NascentModel.h"
 #include "../../ColladaConversion/DLLInterface.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/CompilerHelper.h"
 #include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/AssetServices.h"
+#include "../../Assets/NascentChunkArray.h"
+#include "../../Assets/CompilerLibrary.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/Threading/LockFree.h"
 #include "../../Utility/Threading/ThreadObject.h"
 #include "../../Utility/Streams/PathUtils.h"
@@ -24,6 +26,9 @@
 
 namespace RenderCore { namespace Assets 
 {
+	typedef std::shared_ptr<::Assets::ICompilerDesc> GetCompilerDescFn();
+	typedef std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperationFn(const ::Assets::ResChar identifier[]);
+
 	class CompilerLibrary
 	{
 	public:
@@ -63,7 +68,7 @@ namespace RenderCore { namespace Assets
 
 	private:
 		// ---------- interface to DLL functions ----------
-		ColladaConversion::CreateCompileOperationFn* _createCompileOpFunction;
+		CreateCompileOperationFn* _createCompileOpFunction;
 
 		ColladaConversion::CreateAnimationSetFn*    _createAnimationSetFn;
 		ColladaConversion::ExtractAnimationsFn*     _extractAnimationsFn;
@@ -98,12 +103,12 @@ namespace RenderCore { namespace Assets
 
     static void BuildChunkFile(
         BasicFile& file,
-        ColladaConversion::NascentChunkArray chunks,
+        IteratorRange<::Assets::NascentChunk*>& chunks,
         const ConsoleRig::LibVersionDesc& versionInfo,
-        std::function<bool(const ColladaConversion::NascentChunk&)> predicate)
+        std::function<bool(const ::Assets::NascentChunk&)> predicate)
     {
         unsigned chunksForMainFile = 0;
-        for (const auto& c:*chunks)
+		for (const auto& c:chunks)
             if (predicate(c))
                 ++chunksForMainFile;
 
@@ -114,7 +119,7 @@ namespace RenderCore { namespace Assets
         file.Write(&header, sizeof(header), 1);
 
         unsigned trackingOffset = unsigned(file.TellP() + sizeof(ChunkHeader) * chunksForMainFile);
-        for (const auto& c:*chunks)
+        for (const auto& c:chunks)
             if (predicate(c)) {
                 auto hdr = c._hdr;
                 hdr._fileOffset = trackingOffset;
@@ -122,7 +127,7 @@ namespace RenderCore { namespace Assets
                 trackingOffset += hdr._size;
             }
 
-        for (const auto& c:*chunks)
+        for (const auto& c:chunks)
             if (predicate(c))
                 file.Write(AsPointer(c._data.begin()), c._data.size(), 1);
     }
@@ -130,7 +135,7 @@ namespace RenderCore { namespace Assets
     static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
 
     static void SerializeToFile(
-        ColladaConversion::NascentChunkArray chunks,
+		IteratorRange<::Assets::NascentChunk*> chunks,
         const char destinationFilename[],
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
@@ -144,10 +149,10 @@ namespace RenderCore { namespace Assets
         {
             BasicFile outputFile(destinationFilename, "wb");
             BuildChunkFile(outputFile, chunks, versionInfo,
-                [](const ColladaConversion::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
+                [](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
         }
 
-        for (const auto& c:*chunks)
+        for (const auto& c:chunks)
             if (c._hdr._type == ChunkType_Metrics) {
                 BasicFile outputFile(
                     StringMeld<MaxPath>() << destinationFilename << "-" << c._hdr._name,
@@ -157,46 +162,13 @@ namespace RenderCore { namespace Assets
     }
 
     static void SerializeToFileJustChunk(
-        ColladaConversion::NascentChunkArray chunks,
+		IteratorRange<::Assets::NascentChunk*> chunks,
         const char destinationFilename[],
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
         BasicFile outputFile(destinationFilename, "wb");
-        for (unsigned i=0; i<(unsigned)chunks->size(); ++i) {
-            auto& c = (*chunks)[i];
+		for (const auto& c:chunks)
             outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
-        }
-    }
-
-    static void SerializeToFileJustChunk(
-        RenderCore::ColladaConversion::NascentModel& model, 
-        RenderCore::ColladaConversion::OCModelSerializeFunction fn,
-        const char destinationFilename[],
-        const ConsoleRig::LibVersionDesc& versionInfo)
-    {
-        auto chunks = (model.*fn)();
-    
-        BasicFile outputFile(destinationFilename, "wb");
-        for (unsigned i=0; i<(unsigned)chunks->size(); ++i) {
-            auto& c = (*chunks)[i];
-            outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
-        }
-    }
-
-    static void SerializeToFile(
-        RenderCore::ColladaConversion::NascentModel& model, 
-        RenderCore::ColladaConversion::OCModelSerializeFunction fn,
-        const char destinationFilename[],
-        const ConsoleRig::LibVersionDesc& versionInfo)
-    {
-        auto chunks = (model.*fn)();
-    
-            // (create the directory if we need to)
-        CreateDirectoryRecursive(MakeFileNameSplitter(destinationFilename).DriveAndPath());
-    
-        BasicFile outputFile(destinationFilename, "wb");
-        BuildChunkFile(outputFile, chunks, versionInfo,
-            [](const ColladaConversion::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -256,9 +228,9 @@ namespace RenderCore { namespace Assets
 						if (model->GetTarget(t)._type == typeCode) {
 							auto chunks = model->SerializeTarget(t);
 							if (typeCode != ColladaCompiler::Type_RawMat) {
-								SerializeToFile(chunks, destinationFile, libVersionDesc);
+								SerializeToFile(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
 							} else 
-								SerializeToFileJustChunk(chunks, destinationFile, libVersionDesc);
+								SerializeToFileJustChunk(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
 							foundTarget = true;
 							break;
 						}
@@ -316,7 +288,8 @@ namespace RenderCore { namespace Assets
                     deps.push_back(destinationStore.GetDependentFileState(i->c_str()));
                 }
 
-                SerializeToFile((*_serializeAnimationSetFn)(*mergedAnimationSet), compileMarker.GetLocator()._sourceID0, libVersionDesc);
+				auto chunks = (*_serializeAnimationSetFn)(*mergedAnimationSet);
+                SerializeToFile(MakeIteratorRange(*chunks), compileMarker.GetLocator()._sourceID0, libVersionDesc);
 
 				compileMarker.GetLocator()._dependencyValidation = destinationStore.WriteDependencies(compileMarker.GetLocator()._sourceID0, splitName.DriveAndPath(), MakeIteratorRange(deps));
                 if (::Assets::Services::GetInvalidAssetMan())
@@ -345,12 +318,12 @@ namespace RenderCore { namespace Assets
 			if (_isAttached) {
 				using namespace RenderCore::ColladaConversion;
 
-				_createCompileOpFunction    = _library.GetFunction<decltype(_createCompileOpFunction)>("?CreateCompileOperation@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VICompileOperation@ColladaConversion@RenderCore@@@std@@QEBD@Z");
+				_createCompileOpFunction    = _library.GetFunction<decltype(_createCompileOpFunction)>("CreateCompileOperation");
 				_createAnimationSetFn       = _library.GetFunction<decltype(_createAnimationSetFn)>("?CreateAnimationSet@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VWorkingAnimationSet@ColladaConversion@RenderCore@@@std@@QEBD@Z");
 				_extractAnimationsFn        = _library.GetFunction<decltype(_extractAnimationsFn)>("?ExtractAnimations@ColladaConversion@RenderCore@@YAXAEAVWorkingAnimationSet@12@AEBVICompileOperation@12@QEBD@Z");
 				_serializeAnimationSetFn    = _library.GetFunction<decltype(_serializeAnimationSetFn)>("?SerializeAnimationSet@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@AEBVWorkingAnimationSet@12@@Z");
 
-				auto compilerDescFn = _library.GetFunction<GetCompilerDescFn*>("?GetCompilerDesc@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VICompilerDesc@ColladaConversion@RenderCore@@@std@@XZ");
+				auto compilerDescFn = _library.GetFunction<GetCompilerDescFn*>("GetCompilerDesc");
 				if (compilerDescFn) {
 					auto compilerDesc = (*compilerDescFn)();
 					auto targetCount = compilerDesc->FileKindCount();
@@ -508,11 +481,7 @@ namespace RenderCore { namespace Assets
         _pimpl->_thread->StallOnPendingOperations(cancelAll);
     }
 
-    ColladaCompiler::ColladaCompiler()
-    {
-        _pimpl = std::make_shared<Pimpl>();
-    }
-
+    ColladaCompiler::ColladaCompiler() { _pimpl = std::make_shared<Pimpl>(); }
     ColladaCompiler::~ColladaCompiler() {}
 
 	void ColladaCompiler::Pimpl::PerformCompile(QueuedCompileOperation& op)

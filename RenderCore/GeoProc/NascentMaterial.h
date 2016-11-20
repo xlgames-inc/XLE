@@ -6,11 +6,11 @@
 
 #pragma once
 
-#include "ConversionCore.h"
-#include "../Core/Types.h"
+#include "NascentObjectGuid.h"
+#include "../../Core/Types.h"
 #include <string>
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
     class ReferencedTexture
     {
@@ -34,5 +34,5 @@ namespace RenderCore { namespace ColladaConversion
         : _effectId(effectId), _guid(guid), _descriptiveName(descriptiveName) {}
     };
 
-}}
+}}}
 

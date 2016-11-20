@@ -14,7 +14,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc { class MeshDatabase
 namespace RenderCore { namespace Assets { class VertexElement; }}
 namespace RenderCore { class InputElementDesc; }
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
     void GenerateNormalsAndTangents( 
         RenderCore::Assets::GeoProc::MeshDatabase& mesh, 
@@ -42,4 +42,4 @@ namespace RenderCore { namespace ColladaConversion
     unsigned CalculateVertexSize(
         const InputElementDesc* layoutBegin,  
         const InputElementDesc* layoutEnd);
-}}
+}}}

@@ -6,15 +6,15 @@
 
 #include "NascentCommandStream.h"
 #include "SkeletonRegistry.h"
-#include "../RenderCore/Assets/RawAnimationCurve.h"
-#include "../Assets/BlockSerializer.h"
-#include "../ConsoleRig/OutputStream.h"
-#include "../ConsoleRig/Log.h"
-#include "../Utility/MemoryUtils.h"
-#include "../Utility/StringUtils.h"
-#include "../Utility/IteratorUtils.h"
+#include "../Assets/RawAnimationCurve.h"
+#include "../../Assets/BlockSerializer.h"
+#include "../../ConsoleRig/OutputStream.h"
+#include "../../ConsoleRig/Log.h"
+#include "../../Utility/MemoryUtils.h"
+#include "../../Utility/StringUtils.h"
+#include "../../Utility/IteratorUtils.h"
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 { 
     using ::Assets::Exceptions::FormatError;
 
@@ -466,5 +466,4 @@ namespace RenderCore { namespace ColladaConversion
 			stream.RegisterTransformationMachineOutput(
 				nodeDesc._bindingName, nodeDesc._id, nodeDesc._transformMarker);
 	}
-}}
-
+}}}

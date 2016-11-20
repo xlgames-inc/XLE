@@ -12,7 +12,7 @@
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/Streams/Serialization.h"
 
-namespace RenderCore { namespace Assets
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
 
     class NascentTransformationMachine::Joint
@@ -487,6 +487,6 @@ namespace RenderCore { namespace Assets
         _commandStream = std::move(optimized);
     }
 
-}}
+}}}
 
 

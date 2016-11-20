@@ -1,47 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\OpenCollada\OCRawGeometry.cpp">
-      <Filter>OpenCollada</Filter>
-    </ClCompile>
-    <ClCompile Include="..\OpenCollada\OCModelCommandStream.cpp">
-      <Filter>OpenCollada</Filter>
-    </ClCompile>
-    <ClCompile Include="..\OpenCollada\OCTransformationMachine.cpp">
-      <Filter>OpenCollada</Filter>
-    </ClCompile>
-    <ClCompile Include="..\OpenCollada\OCSkinController.cpp">
-      <Filter>OpenCollada</Filter>
-    </ClCompile>
-    <ClCompile Include="..\OpenCollada\OCMisc.cpp">
-      <Filter>OpenCollada</Filter>
-    </ClCompile>
-    <ClCompile Include="..\OpenCollada\OCAnimationConversion.cpp">
-      <Filter>OpenCollada</Filter>
-    </ClCompile>
-    <ClCompile Include="..\NascentAnimController.cpp">
-      <Filter>NascentObjects</Filter>
-    </ClCompile>
-    <ClCompile Include="..\NascentCommandStream.cpp">
-      <Filter>NascentObjects</Filter>
-    </ClCompile>
-    <ClCompile Include="..\NascentRawGeometry.cpp">
-      <Filter>NascentObjects</Filter>
-    </ClCompile>
-    <ClCompile Include="..\GeometryAlgorithm.cpp">
-      <Filter>GeoProcessing</Filter>
-    </ClCompile>
-    <ClCompile Include="..\SkeletonRegistry.cpp">
-      <Filter>Core</Filter>
-    </ClCompile>
     <ClCompile Include="..\ColladaDocument.cpp">
       <Filter>Scaffold</Filter>
     </ClCompile>
     <ClCompile Include="..\ScaffoldParsingUtil.cpp">
       <Filter>Scaffold</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ConversionUtil.cpp">
-      <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="..\SAnimation.cpp">
       <Filter>NewPath</Filter>
@@ -64,65 +28,56 @@
     <ClCompile Include="..\DLLInterface.cpp">
       <Filter>NascentObjects</Filter>
     </ClCompile>
-    <ClCompile Include="..\TableOfObjects.cpp">
-      <Filter>OpenCollada</Filter>
+    <ClCompile Include="..\ConversionConfig.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="..\NascentModel.cpp">
-      <Filter>OpenCollada</Filter>
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentAnimController.cpp">
+      <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\RenderCore\Assets\NascentTransformationMachine.cpp">
-      <Filter>GenericAssets</Filter>
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentCommandStream.cpp">
+      <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\RenderCore\Assets\RawAnimationCurve.cpp">
-      <Filter>GenericAssets</Filter>
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentGeometryObjects.cpp">
+      <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\RenderCore\Assets\MeshDatabase.cpp">
-      <Filter>GenericAssets</Filter>
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentObjectsSerialize.cpp">
+      <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\RenderCore\Assets\TransformationCommands.cpp">
-      <Filter>GenericAssets</Filter>
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentRawGeometry.cpp">
+      <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\RenderCore\Assets\SkinningScaffold.cpp">
-      <Filter>GenericAssets</Filter>
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.cpp">
+      <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\RenderCore\Assets\ModelScaffold.cpp">
-      <Filter>GenericAssets</Filter>
+    <ClCompile Include="..\..\RenderCore\GeoProc\SkeletonRegistry.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\GeoProc\GeometryAlgorithm.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\GeoProc\MeshDatabase.cpp">
+      <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\RenderCore\Assets\Material.cpp">
-      <Filter>GenericAssets</Filter>
+      <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\NascentObjectsSerialize.cpp">
-      <Filter>NascentObjects</Filter>
+    <ClCompile Include="..\..\RenderCore\GeoProc\GeoProcUtil.cpp">
+      <Filter>GeoProc\CoreAssets</Filter>
     </ClCompile>
-    <ClCompile Include="..\NascentGeometryObjects.cpp">
-      <Filter>NascentObjects</Filter>
+    <ClCompile Include="..\..\RenderCore\Assets\RawAnimationCurve.cpp">
+      <Filter>GeoProc\CoreAssets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\ModelScaffold.cpp">
+      <Filter>GeoProc\CoreAssets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\SkinningScaffold.cpp">
+      <Filter>GeoProc\CoreAssets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\TransformationCommands.cpp">
+      <Filter>GeoProc\CoreAssets</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\OpenCollada\OCInterface.h">
-      <Filter>OpenCollada</Filter>
-    </ClInclude>
-    <ClInclude Include="..\OpenCollada\OCMisc.h">
-      <Filter>OpenCollada</Filter>
-    </ClInclude>
-    <ClInclude Include="..\NascentAnimController.h">
-      <Filter>NascentObjects</Filter>
-    </ClInclude>
-    <ClInclude Include="..\NascentCommandStream.h">
-      <Filter>NascentObjects</Filter>
-    </ClInclude>
-    <ClInclude Include="..\NascentMaterial.h">
-      <Filter>NascentObjects</Filter>
-    </ClInclude>
-    <ClInclude Include="..\NascentRawGeometry.h">
-      <Filter>NascentObjects</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GeometryAlgorithm.h">
-      <Filter>GeoProcessing</Filter>
-    </ClInclude>
-    <ClInclude Include="..\SkeletonRegistry.h">
-      <Filter>Core</Filter>
-    </ClInclude>
     <ClInclude Include="..\Scaffold.h">
       <Filter>Scaffold</Filter>
     </ClInclude>
@@ -131,12 +86,6 @@
     </ClInclude>
     <ClInclude Include="..\ScaffoldParsingUtil.h">
       <Filter>Scaffold</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ConversionCore.h">
-      <Filter>Core</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ConversionUtil.h">
-      <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="..\SAnimation.h">
       <Filter>NewPath</Filter>
@@ -156,43 +105,58 @@
     <ClInclude Include="..\DLLInterface.h">
       <Filter>NascentObjects</Filter>
     </ClInclude>
-    <ClInclude Include="..\TableOfObjects.h">
-      <Filter>OpenCollada</Filter>
+    <ClInclude Include="..\ConversionConfig.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="..\NascentModel.h">
-      <Filter>OpenCollada</Filter>
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentAnimController.h">
+      <Filter>GeoProc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\RenderCore\Assets\NascentTransformationMachine.h">
-      <Filter>GenericAssets</Filter>
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentCommandStream.h">
+      <Filter>GeoProc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\RenderCore\Assets\RawAnimationCurve.h">
-      <Filter>GenericAssets</Filter>
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentGeometryObjects.h">
+      <Filter>GeoProc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\RenderCore\Assets\MeshDatabase.h">
-      <Filter>GenericAssets</Filter>
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentMaterial.h">
+      <Filter>GeoProc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\RenderCore\Assets\TransformationCommands.h">
-      <Filter>GenericAssets</Filter>
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentObjectGuid.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentObjectsSerialize.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentRawGeometry.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\GeoProc\SkeletonRegistry.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\GeoProc\GeometryAlgorithm.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\GeoProc\MeshDatabase.h">
+      <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\Assets\Material.h">
-      <Filter>GenericAssets</Filter>
+      <Filter>GeoProc</Filter>
     </ClInclude>
-    <ClInclude Include="..\NascentObjectsSerialize.h">
-      <Filter>NascentObjects</Filter>
+    <ClInclude Include="..\..\RenderCore\GeoProc\GeoProcUtil.h">
+      <Filter>GeoProc\CoreAssets</Filter>
     </ClInclude>
-    <ClInclude Include="..\NascentGeometryObjects.h">
-      <Filter>NascentObjects</Filter>
+    <ClInclude Include="..\..\RenderCore\Assets\RawAnimationCurve.h">
+      <Filter>GeoProc\CoreAssets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\Assets\TransformationCommands.h">
+      <Filter>GeoProc\CoreAssets</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="OpenCollada">
-      <UniqueIdentifier>{d8edab2d-628d-452d-a0a1-7fe39b13a6fa}</UniqueIdentifier>
-    </Filter>
     <Filter Include="NascentObjects">
       <UniqueIdentifier>{35f687f2-2bad-4a49-9c33-76eff5137c2c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="GeoProcessing">
-      <UniqueIdentifier>{ca2c07df-1116-43ba-839b-0f5c43bef04a}</UniqueIdentifier>
     </Filter>
     <Filter Include="Core">
       <UniqueIdentifier>{ef61231f-e47d-42c5-a1e1-00e9cd6dac20}</UniqueIdentifier>
@@ -203,8 +167,11 @@
     <Filter Include="NewPath">
       <UniqueIdentifier>{d1b61ed1-da25-4266-895b-47256f02c4bf}</UniqueIdentifier>
     </Filter>
-    <Filter Include="GenericAssets">
+    <Filter Include="GeoProc">
       <UniqueIdentifier>{901c9cd7-ba36-438b-8018-9567ed2f259c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GeoProc\CoreAssets">
+      <UniqueIdentifier>{0706fd4a-4c2c-437f-a328-03fa801a2c37}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

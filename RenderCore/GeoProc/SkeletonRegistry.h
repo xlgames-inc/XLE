@@ -6,13 +6,13 @@
 
 #pragma once
 
-#include "ConversionCore.h"
+#include "NascentObjectGuid.h"
 #include "../Math/Matrix.h"
 #include "../Utility/IteratorUtils.h"
 #include <vector>
 #include <algorithm>
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
     class SkeletonRegistry
     {
@@ -65,5 +65,5 @@ namespace RenderCore { namespace ColladaConversion
 
         TransformMarker _nextOutputIndex;
     };
-}}
+}}}
 

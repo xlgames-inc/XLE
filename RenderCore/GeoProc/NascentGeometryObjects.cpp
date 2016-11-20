@@ -4,11 +4,11 @@
 
 #include "NascentGeometryObjects.h"
 #include "NascentCommandStream.h"
-#include "../RenderCore/Format.h"
-#include "ConversionUtil.h"
+#include "GeoProcUtil.h"
+#include "../Format.h"
 
-namespace RenderCore { namespace ColladaConversion {
-
+namespace RenderCore { namespace Assets { namespace GeoProc
+{
 	unsigned NascentGeometryObjects::GetGeo(ObjectGuid id)
 	{
 		for (const auto& i:_rawGeos)
@@ -35,7 +35,6 @@ namespace RenderCore { namespace ColladaConversion {
 		//      transform it into model space, and calculate the min and max values
 		//      found;
 		//
-		using namespace ColladaConversion;
 		auto result = InvalidBoundingBox();
 		// const auto finalMatrices = 
 		//     _skeleton.GetTransformationMachine().GenerateOutputTransforms(
@@ -129,5 +128,5 @@ namespace RenderCore { namespace ColladaConversion {
         return stream;
     }
 
-}}
+}}}
 

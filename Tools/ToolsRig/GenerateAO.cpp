@@ -11,11 +11,11 @@
 #include "../../SceneEngine/LightInternal.h"    // for shadow projection constants;
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/LightingParser.h"   // for SetFrameGlobalStates
+#include "../../RenderCore/GeoProc/MeshDatabase.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
-#include "../../RenderCore/Assets/MeshDatabase.h"
 #include "../../RenderCore/Assets/CompilationThread.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Metal/TextureView.h"

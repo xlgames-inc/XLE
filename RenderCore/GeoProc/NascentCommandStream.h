@@ -6,19 +6,20 @@
 
 #pragma once
 
-#include "ConversionCore.h"  // for ObjectGuid
+#include "NascentObjectGuid.h"
+#include "NascentTransformationMachine.h"
 #include "../RenderCore/Assets/TransformationCommands.h"
-#include "../RenderCore/Assets/NascentTransformationMachine.h"
 #include "../Utility/Mixins.h"
 #include <vector>
 
 namespace Serialization { class NascentBlockSerializer; }
-namespace RenderCore { namespace Assets { class NascentTransformationMachine; class RawAnimationCurve; }}
+namespace RenderCore { namespace Assets { class RawAnimationCurve; }}
 namespace Utility { class OutputStream; }
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
     class NascentSkeleton;
+	class NascentTransformationMachine;
 
         //
         //      "NascentAnimationSet" is a set of animations
@@ -122,8 +123,6 @@ namespace RenderCore { namespace ColladaConversion
     class NascentSkeleton : noncopyable
     {
     public:
-        using NascentTransformationMachine = RenderCore::Assets::NascentTransformationMachine;
-
         NascentTransformationMachine&           GetTransformationMachine()          { return _transformationMachine; }
         const NascentTransformationMachine&     GetTransformationMachine() const    { return _transformationMachine; }
 
@@ -228,6 +227,6 @@ namespace RenderCore { namespace ColladaConversion
 	class NascentSkeleton;
 	void RegisterNodeBindingNames(NascentModelCommandStream& stream, const SkeletonRegistry& registry);
 	void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
-}}
+}}}
 
 

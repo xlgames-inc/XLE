@@ -8,11 +8,15 @@
 
 #include "../Math/Matrix.h"
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
     class NascentRawGeometry;
     class UnboundSkinController;
-    class ImportConfiguration;
+}}}
+
+namespace RenderCore { namespace ColladaConversion
+{
+	class ImportConfiguration;
 }}
 
 namespace ColladaConversion
@@ -22,9 +26,9 @@ namespace ColladaConversion
     class URIResolveContext;
 
     auto Convert(const MeshGeometry& mesh, const Float4x4& mergedTransform, const URIResolveContext& pubEles, const RenderCore::ColladaConversion::ImportConfiguration& cfg)
-        -> RenderCore::ColladaConversion::NascentRawGeometry;
+        -> RenderCore::Assets::GeoProc::NascentRawGeometry;
 
     auto Convert(const SkinController& controller, const URIResolveContext& pubEles, const RenderCore::ColladaConversion::ImportConfiguration& cfg)
-        -> RenderCore::ColladaConversion::UnboundSkinController;
+        -> RenderCore::Assets::GeoProc::UnboundSkinController;
 }
 

@@ -5,15 +5,15 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "STransformationMachine.h"
-#include "SkeletonRegistry.h"
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"            // just for AsString
-#include "../../RenderCore/Assets/NascentTransformationMachine.h"
-#include "../../ConsoleRig/Log.h"
-#include "../../Math/Transformations.h"
-#include "../../Utility/StringFormat.h"
-#include "../../Utility/StringUtils.h"
-#include "../../Utility/MemoryUtils.h"
+#include "../RenderCore/GeoProc/NascentTransformationMachine.h"
+#include "../RenderCore/GeoProc/SkeletonRegistry.h"
+#include "../ConsoleRig/Log.h"
+#include "../Math/Transformations.h"
+#include "../Utility/StringFormat.h"
+#include "../Utility/StringUtils.h"
+#include "../Utility/MemoryUtils.h"
 
 
 namespace RenderCore { namespace ColladaConversion
@@ -38,10 +38,10 @@ namespace RenderCore { namespace ColladaConversion
     //}
 
     unsigned PushTransformations(
-        RenderCore::Assets::NascentTransformationMachine& dst,
+        RenderCore::Assets::GeoProc::NascentTransformationMachine& dst,
         const Transformation& transformations,
         const char nodeName[],
-        const SkeletonRegistry& nodeRefs, bool assumeEverythingAnimated)
+        const RenderCore::Assets::GeoProc::SkeletonRegistry& nodeRefs, bool assumeEverythingAnimated)
     {
         dst.ResolvePendingPops();
 

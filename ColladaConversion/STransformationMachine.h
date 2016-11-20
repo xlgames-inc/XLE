@@ -6,15 +6,14 @@
 
 #pragma once
 
-namespace RenderCore { namespace Assets { class NascentTransformationMachine; }}
+namespace RenderCore { namespace Assets { namespace GeoProc { class NascentTransformationMachine; class SkeletonRegistry; }}}
 namespace ColladaConversion { class Transformation; }
 
 namespace RenderCore { namespace ColladaConversion
 {
-    class SkeletonRegistry;
     unsigned PushTransformations(
-        RenderCore::Assets::NascentTransformationMachine& dst,
+        RenderCore::Assets::GeoProc::NascentTransformationMachine& dst,
         const ::ColladaConversion::Transformation& transformations,
         const char nodeName[],
-        const SkeletonRegistry& nodeRefs, bool assumeEverythingAnimated = false);
+        const RenderCore::Assets::GeoProc::SkeletonRegistry& nodeRefs, bool assumeEverythingAnimated = false);
 }}

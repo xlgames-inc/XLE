@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "NascentObjectsSerialize.h"
-#include "../Assets/AssetsCore.h"
+#include "../Assets/CompilerLibrary.h"
 #include "../ConsoleRig/AttachableLibrary.h"
 #include "../ConsoleRig/GlobalServices.h"
 
@@ -21,54 +20,12 @@ namespace RenderCore { namespace ColladaConversion
 {
     class WorkingAnimationSet;
 
-	class ICompilerDesc
-	{
-	public:
-		virtual const char*			Description() const = 0;
-
-		class FileKind
-		{
-		public:
-			const ::Assets::ResChar*	_extension;
-			const char*					_name;
-		};
-		virtual unsigned			FileKindCount() const = 0;
-		virtual FileKind			GetFileKind(unsigned index) const = 0;
-
-		virtual ~ICompilerDesc();
-	};
-
-	class ICompileOperation
-	{
-	public:
-		class TargetDesc
-		{
-		public:
-			uint64			_type;
-			const char*		_name;
-		};
-		virtual unsigned			TargetCount() const = 0;
-		virtual TargetDesc			GetTarget(unsigned idx) const = 0;
-		virtual NascentChunkArray	SerializeTarget(unsigned idx) = 0;
-
-		virtual ~ICompileOperation();
-	};
-
-	CONVERSION_API std::shared_ptr<ICompilerDesc> GetCompilerDesc();
-	typedef std::shared_ptr<ICompilerDesc> GetCompilerDescFn();
-
-	CONVERSION_API std::shared_ptr<ICompileOperation> CreateCompileOperation(const ::Assets::ResChar identifier[]);
-	typedef std::shared_ptr<ICompileOperation> CreateCompileOperationFn(const ::Assets::ResChar identifier[]);
-
     CONVERSION_API std::shared_ptr<WorkingAnimationSet> CreateAnimationSet(const char name[]);
-    CONVERSION_API void ExtractAnimations(WorkingAnimationSet& dest, const ICompileOperation& model, const char animName[]);
-    CONVERSION_API NascentChunkArray SerializeAnimationSet(const WorkingAnimationSet& animset);
+    CONVERSION_API void ExtractAnimations(WorkingAnimationSet& dest, const ::Assets::ICompileOperation& model, const char animName[]);
+    CONVERSION_API ::Assets::NascentChunkArray SerializeAnimationSet(const WorkingAnimationSet& animset);
 
     typedef std::shared_ptr<WorkingAnimationSet> CreateAnimationSetFn(const char name[]);
-    typedef void ExtractAnimationsFn(WorkingAnimationSet&, const ICompileOperation&, const char[]);
-    typedef NascentChunkArray SerializeAnimationSetFn(const WorkingAnimationSet&);
+    typedef void ExtractAnimationsFn(WorkingAnimationSet&, const ::Assets::ICompileOperation&, const char[]);
+    typedef ::Assets::NascentChunkArray SerializeAnimationSetFn(const WorkingAnimationSet&);
 }}
 
-extern "C" CONVERSION_API ConsoleRig::LibVersionDesc GetVersionInformation();
-extern "C" CONVERSION_API void AttachLibrary(ConsoleRig::GlobalServices&);
-extern "C" CONVERSION_API void DetachLibrary();

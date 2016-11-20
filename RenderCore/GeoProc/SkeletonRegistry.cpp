@@ -7,7 +7,7 @@
 #include "SkeletonRegistry.h"
 #include "../Utility/IteratorUtils.h"
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
     class CompareId
     {
@@ -100,4 +100,6 @@ namespace RenderCore { namespace ColladaConversion
 
     SkeletonRegistry::SkeletonRegistry() : _nextOutputIndex(0) {}
     SkeletonRegistry::~SkeletonRegistry() {}
-}}
+
+}}}
+

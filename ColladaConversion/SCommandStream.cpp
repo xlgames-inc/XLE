@@ -9,20 +9,20 @@
 #include "SRawGeometry.h"
 #include "SAnimation.h"
 
-#include "NascentCommandStream.h"
-#include "NascentRawGeometry.h"
-#include "NascentAnimController.h"
-#include "NascentGeometryObjects.h"
-
-#include "SkeletonRegistry.h"
 #include "Scaffold.h"
-#include "ScaffoldParsingUtil.h"    // for AsString
-#include "ConversionUtil.h"
+#include "ScaffoldParsingUtil.h"
+
+#include "../RenderCore/GeoProc/NascentCommandStream.h"
+#include "../RenderCore/GeoProc/NascentRawGeometry.h"
+#include "../RenderCore/GeoProc/NascentAnimController.h"
+#include "../RenderCore/GeoProc/NascentGeometryObjects.h"
+#include "../RenderCore/GeoProc/SkeletonRegistry.h"
+#include "../RenderCore/GeoProc/GeoProcUtil.h"
+
 #include "../RenderCore/Assets/Material.h"  // for MakeMaterialGuid
 #include "../RenderCore/Format.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringFormat.h"
-#include "ConversionCore.h"
 #include <string>
 
 namespace ColladaConversion
@@ -421,7 +421,7 @@ namespace RenderCore { namespace ColladaConversion
             auto geo = objects.GetGeo(controller._sourceRef);
             if (geo == ~unsigned(0x0)) {
                 auto* scaffoldGeo = FindElement(
-                    GuidReference(controller._sourceRef._objectId, controller._sourceRef._fileId),
+                    GuidReference(controller._sourceRef._objectId, controller._sourceRef._namespaceId),
                     resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
                 if (!scaffoldGeo)
                     Throw(::Assets::Exceptions::FormatError("Could not find geometry object to instantiate (%s)",

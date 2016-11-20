@@ -101,11 +101,13 @@
     <ClInclude Include="..\ChunkFileAsset.h" />
     <ClInclude Include="..\CompileAndAsyncManager.h" />
     <ClInclude Include="..\CompilerHelper.h" />
+    <ClInclude Include="..\CompilerLibrary.h" />
     <ClInclude Include="..\ConfigFileContainer.h" />
     <ClInclude Include="..\DivergentAsset.h" />
     <ClInclude Include="..\AssetServices.h" />
     <ClInclude Include="..\IntermediateAssets.h" />
     <ClInclude Include="..\InvalidAssetManager.h" />
+    <ClInclude Include="..\NascentChunkArray.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\ArchiveCache.cpp" />
@@ -122,6 +124,7 @@
     <ClCompile Include="..\AssetServices.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />
     <ClCompile Include="..\InvalidAssetManager.cpp" />
+    <ClCompile Include="..\NascentChunkArray.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "NascentRawGeometry.h"
+#include "NascentObjectGuid.h"
 #include "SkeletonRegistry.h"
 #include "../RenderCore/Types.h"
 #include "../Math/Matrix.h"
@@ -15,7 +16,7 @@
 #include "../Utility/PtrUtils.h"
 #include <vector>
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
 
         ////////////////////////////////////////////////////////
@@ -148,5 +149,5 @@ namespace RenderCore { namespace ColladaConversion
         const UnboundSkinController& controller,
         DynamicArray<uint16>&& jointMatrices,
         const char nodeName[]);
-}}
+}}}
 

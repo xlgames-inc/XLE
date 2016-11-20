@@ -13,6 +13,7 @@
 #include <vector>
 
 namespace ColladaConversion { class Animation; class URIResolveContext; }
+namespace RenderCore { namespace Assets { namespace GeoProc { class SkeletonRegistry; }}}
 
 namespace RenderCore { namespace ColladaConversion
 {
@@ -54,11 +55,9 @@ namespace RenderCore { namespace ColladaConversion
         std::vector<Curve> _curves;
     };
 
-    class SkeletonRegistry;
-
     UnboundAnimation Convert(
         const ::ColladaConversion::Animation& animation,
         const ::ColladaConversion::URIResolveContext& resolveContext,
-        SkeletonRegistry& nodeRefs);
+        RenderCore::Assets::GeoProc::SkeletonRegistry& nodeRefs);
 }}
 

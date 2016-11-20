@@ -5,9 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SAnimation.h"
-#include "SkeletonRegistry.h"
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"
+#include "../RenderCore/GeoProc/SkeletonRegistry.h"
 #include "../RenderCore/Format.h"
 #include "../Assets/Assets.h"
 #include "../Utility/IteratorUtils.h"
@@ -284,7 +284,7 @@ namespace RenderCore { namespace ColladaConversion
     UnboundAnimation Convert(
         const Animation& animation, 
         const URIResolveContext& resolveContext, 
-        SkeletonRegistry& nodeRefs)
+        RenderCore::Assets::GeoProc::SkeletonRegistry& nodeRefs)
     {
         UnboundAnimation result;
 

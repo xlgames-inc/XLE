@@ -28,9 +28,6 @@
     <ClCompile Include="..\Assets\Services.cpp" />
     <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
     <ClCompile Include="..\Assets\ModelCache.cpp" />
-    <ClCompile Include="..\Assets\MeshDatabase.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
     <ClCompile Include="..\Assets\Material.cpp">
       <Filter>Assets\Material</Filter>
     </ClCompile>
@@ -42,9 +39,6 @@
     </ClCompile>
     <ClCompile Include="..\Assets\ModelRunTime.cpp">
       <Filter>Assets\Model</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Assets\NascentTransformationMachine.cpp">
-      <Filter>Assets\Anim</Filter>
     </ClCompile>
     <ClCompile Include="..\Assets\RawAnimationCurve.cpp">
       <Filter>Assets\Anim</Filter>
@@ -68,6 +62,36 @@
     <ClCompile Include="..\Assets\SkinningScaffold.cpp">
       <Filter>Assets\Anim</Filter>
     </ClCompile>
+    <ClCompile Include="..\GeoProc\NascentGeometryObjects.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GeoProc\NascentObjectsSerialize.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GeoProc\NascentRawGeometry.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GeoProc\NascentTransformationMachine.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GeoProc\MeshDatabase.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GeoProc\NascentAnimController.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GeoProc\NascentCommandStream.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GeoProc\SkeletonRegistry.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GeoProc\GeometryAlgorithm.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GeoProc\GeoProcUtil.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\SharedStateSet.h" />
@@ -80,9 +104,6 @@
     <ClInclude Include="..\Assets\Services.h" />
     <ClInclude Include="..\Assets\LocalCompiledShaderSource.h" />
     <ClInclude Include="..\Assets\ModelCache.h" />
-    <ClInclude Include="..\Assets\MeshDatabase.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
     <ClInclude Include="..\Assets\Material.h">
       <Filter>Assets\Material</Filter>
     </ClInclude>
@@ -97,9 +118,6 @@
     </ClInclude>
     <ClInclude Include="..\Assets\ModelScaffoldInternal.h">
       <Filter>Assets\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\NascentTransformationMachine.h">
-      <Filter>Assets\Anim</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\RawAnimationCurve.h">
       <Filter>Assets\Anim</Filter>
@@ -123,5 +141,41 @@
       <Filter>Assets\Model</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\CompilationThread.h" />
+    <ClInclude Include="..\GeoProc\NascentGeometryObjects.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\NascentMaterial.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\NascentObjectsSerialize.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\NascentRawGeometry.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\NascentTransformationMachine.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\MeshDatabase.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\NascentAnimController.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\NascentCommandStream.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\NascentObjectGuid.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\SkeletonRegistry.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\GeometryAlgorithm.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\GeoProcUtil.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

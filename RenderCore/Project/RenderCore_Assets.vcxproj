@@ -69,7 +69,6 @@
   <ItemGroup>
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
     <ClCompile Include="..\Assets\CompilationThread.cpp" />
-    <ClCompile Include="..\Assets\MeshDatabase.cpp" />
     <ClCompile Include="..\Assets\ModelCache.cpp" />
     <ClCompile Include="..\Assets\ModelScaffold.cpp" />
     <ClCompile Include="..\Assets\ModelScaffoldSerialization.cpp" />
@@ -82,19 +81,27 @@
     <ClCompile Include="..\Assets\MaterialCompiler.cpp" />
     <ClCompile Include="..\Assets\ModelFormatPlugins.cpp" />
     <ClCompile Include="..\Assets\ModelRunTime.cpp" />
-    <ClCompile Include="..\Assets\NascentTransformationMachine.cpp" />
     <ClCompile Include="..\Assets\DelayedDrawCall.cpp" />
     <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
     <ClCompile Include="..\Assets\SharedStateSet.cpp" />
     <ClCompile Include="..\Assets\SkinningRunTime.cpp" />
     <ClCompile Include="..\Assets\SkinningScaffold.cpp" />
     <ClCompile Include="..\Assets\TransformationCommands.cpp" />
+    <ClCompile Include="..\GeoProc\GeometryAlgorithm.cpp" />
+    <ClCompile Include="..\GeoProc\GeoProcUtil.cpp" />
+    <ClCompile Include="..\GeoProc\MeshDatabase.cpp" />
+    <ClCompile Include="..\GeoProc\NascentAnimController.cpp" />
+    <ClCompile Include="..\GeoProc\NascentCommandStream.cpp" />
+    <ClCompile Include="..\GeoProc\NascentGeometryObjects.cpp" />
+    <ClCompile Include="..\GeoProc\NascentObjectsSerialize.cpp" />
+    <ClCompile Include="..\GeoProc\NascentRawGeometry.cpp" />
+    <ClCompile Include="..\GeoProc\NascentTransformationMachine.cpp" />
+    <ClCompile Include="..\GeoProc\SkeletonRegistry.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\AnimationScaffoldInternal.h" />
     <ClInclude Include="..\Assets\AssetUtils.h" />
     <ClInclude Include="..\Assets\CompilationThread.h" />
-    <ClInclude Include="..\Assets\MeshDatabase.h" />
     <ClInclude Include="..\Assets\ModelCache.h" />
     <ClInclude Include="..\Assets\ModelImmutableData.h" />
     <ClInclude Include="..\Assets\ModelScaffoldInternal.h" />
@@ -108,12 +115,23 @@
     <ClInclude Include="..\Assets\ModelFormatPlugins.h" />
     <ClInclude Include="..\Assets\ModelRendererInternal.h" />
     <ClInclude Include="..\Assets\ModelRunTime.h" />
-    <ClInclude Include="..\Assets\NascentTransformationMachine.h" />
     <ClInclude Include="..\Assets\DelayedDrawCall.h" />
     <ClInclude Include="..\Assets\LocalCompiledShaderSource.h" />
     <ClInclude Include="..\Assets\SharedStateSet.h" />
     <ClInclude Include="..\Assets\SkeletonScaffoldInternal.h" />
     <ClInclude Include="..\Assets\TransformationCommands.h" />
+    <ClInclude Include="..\GeoProc\GeometryAlgorithm.h" />
+    <ClInclude Include="..\GeoProc\GeoProcUtil.h" />
+    <ClInclude Include="..\GeoProc\MeshDatabase.h" />
+    <ClInclude Include="..\GeoProc\NascentAnimController.h" />
+    <ClInclude Include="..\GeoProc\NascentCommandStream.h" />
+    <ClInclude Include="..\GeoProc\NascentGeometryObjects.h" />
+    <ClInclude Include="..\GeoProc\NascentMaterial.h" />
+    <ClInclude Include="..\GeoProc\NascentObjectGuid.h" />
+    <ClInclude Include="..\GeoProc\NascentObjectsSerialize.h" />
+    <ClInclude Include="..\GeoProc\NascentRawGeometry.h" />
+    <ClInclude Include="..\GeoProc\NascentTransformationMachine.h" />
+    <ClInclude Include="..\GeoProc\SkeletonRegistry.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\BufferUploads\Project\BufferUploads.vcxproj">

@@ -5,21 +5,19 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "GeometryAlgorithm.h"
-#include "../RenderCore/Assets/MeshDatabase.h"
-#include "../RenderCore/Assets/ModelScaffoldInternal.h"
-#include "../RenderCore/Format.h"
-#include "../RenderCore/Types.h"
-#include "../Math/Geometry.h"
-#include "../Math/Transformations.h"
-#include "../Utility/MemoryUtils.h"
-#include "../Utility/StringUtils.h"
-#include "../Utility/ArithmeticUtils.h"
-#include "../Core/Exceptions.h"
+#include "MeshDatabase.h"
+#include "../Assets/ModelScaffoldInternal.h"
+#include "../Format.h"
+#include "../Types.h"
+#include "../../Math/Geometry.h"
+#include "../../Math/Transformations.h"
+#include "../../Utility/MemoryUtils.h"
+#include "../../Utility/StringUtils.h"
+#include "../../Utility/ArithmeticUtils.h"
+#include "../../Core/Exceptions.h"
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    using namespace RenderCore::Assets::GeoProc;
-
     Float3 CorrectAxisDirection(const Float3& input, const Float3& p0, const Float3& p1, const Float3& p2, float t0, float t1, float t2)
     {
         float A0 = Dot(p0 - p1, input);
@@ -514,5 +512,5 @@ namespace RenderCore { namespace ColladaConversion
         return result/8;
     }
 
-}}
+}}}
 

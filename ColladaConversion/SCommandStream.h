@@ -6,17 +6,20 @@
 
 #pragma once
 
-#include "NascentCommandStream.h"
+#include "../RenderCore/GeoProc/NascentCommandStream.h"
 #include "../Utility/StringUtils.h"
 
 namespace ColladaConversion { class Node; class VisualScene; class URIResolveContext; class InstanceGeometry; class InstanceController; }
+namespace RenderCore { namespace Assets { namespace GeoProc { 
+	class NascentSkeleton;
+	class NascentGeometryObjects;
+	class NascentModelCommandStream;
+	class SkeletonRegistry;
+}}}
 
 namespace RenderCore { namespace ColladaConversion
 {
-    class NascentSkeleton;
-	class NascentGeometryObjects;
-	class NascentModelCommandStream;
-    class SkeletonRegistry;
+	using namespace RenderCore::Assets::GeoProc;
     class ImportConfiguration;
 
     void BuildSkeleton(

@@ -19,6 +19,8 @@
     <ClInclude Include="..\ChunkFileAsset.h" />
     <ClInclude Include="..\AssetsInternal.h" />
     <ClInclude Include="..\AssetSetInternal.h" />
+    <ClInclude Include="..\CompilerLibrary.h" />
+    <ClInclude Include="..\NascentChunkArray.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />
@@ -35,6 +37,7 @@
     <ClCompile Include="..\IntermediateAssets.cpp" />
     <ClCompile Include="..\ChunkFileAsset.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
+    <ClCompile Include="..\NascentChunkArray.cpp" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

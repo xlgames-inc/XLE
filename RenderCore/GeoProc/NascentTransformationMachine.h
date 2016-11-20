@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "TransformationCommands.h"
+#include "../Assets/TransformationCommands.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
@@ -17,7 +17,7 @@
 #include "../../Core/Types.h"
 #include <vector>
 
-namespace RenderCore { namespace Assets
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
     typedef TransformationParameterSet::Type::Enum AnimSamplerType;
 
@@ -141,7 +141,8 @@ namespace RenderCore { namespace Assets
         tables.first.insert(i, std::make_pair(parameterHash, paramIndex));
         return true;
     }
-}}
+
+}}}
 
 
 

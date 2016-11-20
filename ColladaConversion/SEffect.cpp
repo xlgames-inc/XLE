@@ -5,8 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Scaffold.h"
-#include "ConversionUtil.h"
 #include "ScaffoldParsingUtil.h"
+#include "ConversionConfig.h"
 #include "../RenderCore/Assets/Material.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Conversion.h"

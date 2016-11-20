@@ -5,14 +5,14 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "NascentRawGeometry.h"
-#include "../RenderCore/Format.h"
-#include "../RenderCore/Assets/AssetUtils.h"
-#include "../Assets/BlockSerializer.h"
-#include "../Utility/StringUtils.h"
-#include "../Utility/MemoryUtils.h"
-#include "../Utility/StreamUtils.h"
+#include "../Format.h"
+#include "../Assets/AssetUtils.h"
+#include "../../Assets/BlockSerializer.h"
+#include "../../Utility/StringUtils.h"
+#include "../../Utility/MemoryUtils.h"
+#include "../../Utility/StreamUtils.h"
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
     NascentRawGeometry::NascentRawGeometry(
         DynamicArray<uint8>&&       vb,
@@ -114,8 +114,6 @@ namespace RenderCore { namespace ColladaConversion
         return stream;
     }
 
-    
-
-}}
+}}}
 
 

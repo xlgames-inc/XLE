@@ -9,19 +9,19 @@
 #include "NascentAnimController.h"
 #include "NascentRawGeometry.h"
 #include "GeometryAlgorithm.h"
-#include "ConversionUtil.h"
-#include "../RenderCore/Assets/AssetUtils.h"
-#include "../RenderCore/Format.h"
-#include "../RenderCore/Types.h"
-#include "../Assets/BlockSerializer.h"
-#include "../ConsoleRig/Log.h"
-#include "../Assets/Assets.h"
-#include "../Math/Transformations.h"
-#include "../Utility/MemoryUtils.h"
-#include "../Utility/StringUtils.h"
-#include "../Utility/StreamUtils.h"
+#include "GeoProcUtil.h"
+#include "../Assets/AssetUtils.h"
+#include "../Format.h"
+#include "../Types.h"
+#include "../../Assets/BlockSerializer.h"
+#include "../../ConsoleRig/Log.h"
+#include "../../Assets/Assets.h"
+#include "../../Math/Transformations.h"
+#include "../../Utility/MemoryUtils.h"
+#include "../../Utility/StringUtils.h"
+#include "../../Utility/StreamUtils.h"
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
     using ::Assets::Exceptions::FormatError;
 
@@ -624,5 +624,5 @@ namespace RenderCore { namespace ColladaConversion
     }
 
 
-}}
+}}}
 

@@ -1,18 +1,17 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
 
-#include "../Assets/ChunkFile.h"
+#include "ChunkFile.h"
+#include "../Core/Prefix.h"
 #include <vector>
 #include <memory>
 
 namespace Serialization { class NascentBlockSerializer; }
 
-namespace RenderCore { namespace ColladaConversion
+namespace Assets
 {
 	class NascentChunk
 	{
@@ -45,23 +44,21 @@ namespace RenderCore { namespace ColladaConversion
 	};
 
 	using NascentChunkArray = std::shared_ptr<std::vector<NascentChunk>>;
-
-	class NascentGeometryObjects;
-	class NascentModelCommandStream;
-	class NascentSkeleton;
-
-	NascentChunkArray SerializeSkinToChunks(
-		const char name[], 
-		NascentGeometryObjects& geoObjects, 
-		NascentModelCommandStream& cmdStream, 
-		NascentSkeleton& skeleton);
-
-	NascentChunkArray SerializeSkeletonToChunks(
-		const char name[], 
-		NascentSkeleton& skeleton);
-
-	NascentChunkArray MakeNascentChunkArray(
-		const std::initializer_list<NascentChunk>& inits);
-
+	NascentChunkArray MakeNascentChunkArray(const std::initializer_list<NascentChunk>& inits);
 	std::vector<uint8> AsVector(const Serialization::NascentBlockSerializer& serializer);
-}}
+
+	template<typename Char>
+		static std::vector<uint8> AsVector(std::basic_stringstream<Char>& stream)
+	{
+		auto str = stream.str();
+		return std::vector<uint8>((const uint8*)AsPointer(str.begin()), (const uint8*)AsPointer(str.end()));
+	}
+
+	template<typename Type>
+		static std::vector<uint8> SerializeToVector(const Type& obj)
+	{
+		Serialization::NascentBlockSerializer serializer;
+		::Serialize(serializer, obj);
+		return AsVector(serializer);
+	}
+}

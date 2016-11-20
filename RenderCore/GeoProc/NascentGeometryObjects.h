@@ -6,7 +6,8 @@
 #include "NascentAnimController.h"
 #include <vector>
 
-namespace RenderCore { namespace ColladaConversion {
+namespace RenderCore { namespace Assets { namespace GeoProc
+{
 
 	class NascentGeometryObjects
 	{
@@ -26,5 +27,5 @@ namespace RenderCore { namespace ColladaConversion {
 		friend std::ostream& operator<<(std::ostream&, const NascentGeometryObjects& geos);
 	};
 
-}}
+}}}
 

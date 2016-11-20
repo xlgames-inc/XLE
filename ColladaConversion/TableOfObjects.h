@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "ConversionCore.h"
-#include "../../../Utility/Mixins.h"
+#include "../RenderCore/GeoProc/NascentObjectGuid.h"
+#include "../Utility/Mixins.h"
 #include <string>
 #include <utility>
 #include <vector>
@@ -28,6 +28,8 @@ namespace RenderCore { namespace ColladaConversion
     class NascentBoundSkinnedGeometry;
     class ReferencedTexture;
     class ReferencedMaterial;
+
+	using ObjectGuid = RenderCore::Assets::GeoProc::ObjectGuid;
 
     class TableOfObjects : noncopyable
     {
