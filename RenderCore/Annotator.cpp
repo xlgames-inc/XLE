@@ -13,7 +13,7 @@
 #include <deque>
 #include <assert.h>
 
-#define SELECT_VULKAN
+// #define SELECT_VULKAN
 
 #include "Metal/QueryPool.h"
 #include "Metal/DeviceContext.h"

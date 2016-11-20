@@ -8,7 +8,6 @@
 #include "DebuggingDisplays/ConsoleDisplay.h"
 #include "DebuggingDisplays/TestDisplays.h"
 
-#include "../RenderCore/Assets/IModelFormat.h"
 #include "../RenderCore/Assets/Services.h"
 
 #include "../RenderOverlays/Overlays/Browser.h"

@@ -86,7 +86,7 @@ namespace UnitTests
                 auto aservices = std::make_shared<::Assets::Services>(0);
 				auto& asyncMan = aservices->GetAsyncMan();
                 auto raservices = std::make_shared<RenderCore::Assets::Services>(nullptr);
-                raservices->InitColladaCompilers();
+                raservices->InitModelCompilers();
 
 				const char sampleAsset[] = "game/model/galleon/galleon.dae";
 				using RenderCore::Assets::ModelScaffold;

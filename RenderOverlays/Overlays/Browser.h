@@ -10,8 +10,6 @@
 #include "../../RenderCore/Metal/Forward.h"
 #include <memory>
 
-namespace RenderCore { namespace Assets { class IModelFormat; } }
-
 namespace Overlays
 {
     using namespace RenderOverlays;

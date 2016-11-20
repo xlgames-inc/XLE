@@ -8,7 +8,7 @@
 #include "LocalCompiledShaderSource.h"
 #include "MaterialCompiler.h"
 #include "Material.h"   // just for MaterialScaffold::CompileProcessType
-#include "ColladaCompilerInterface.h"
+#include "ModelCompiler.h"
 #include "../Metal/Metal.h"
 #include "../Metal/Shader.h"            // (for Metal::CreateLowLevelShaderCompiler)
 #include "../IDevice.h"
@@ -74,19 +74,18 @@ namespace RenderCore { namespace Assets
         ConsoleRig::GlobalServices::GetCrossModule().Withhold(*this);
     }
 
-    void Services::InitColladaCompilers()
+    void Services::InitModelCompilers()
     {
             // attach the collada compilers to the assert services
             // this is optional -- not all applications will need these compilers
         auto& asyncMan = ::Assets::Services::GetAsyncMan();
         auto& compilers = asyncMan.GetIntermediateCompilers();
 
-        typedef RenderCore::Assets::ColladaCompiler ColladaCompiler;
-        auto colladaProcessor = std::make_shared<ColladaCompiler>();
-        compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
-        compilers.AddCompiler(ColladaCompiler::Type_AnimationSet, colladaProcessor);
-        compilers.AddCompiler(ColladaCompiler::Type_Skeleton, colladaProcessor);
-        compilers.AddCompiler(ColladaCompiler::Type_RawMat, colladaProcessor);
+        auto modelCompiler = std::make_shared<RenderCore::Assets::ModelCompiler>();
+        compilers.AddCompiler(ModelCompiler::Type_Model, modelCompiler);
+        compilers.AddCompiler(ModelCompiler::Type_AnimationSet, modelCompiler);
+        compilers.AddCompiler(ModelCompiler::Type_Skeleton, modelCompiler);
+        compilers.AddCompiler(ModelCompiler::Type_RawMat, modelCompiler);
     }
 
     void Services::AttachCurrentModule()

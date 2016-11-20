@@ -17,7 +17,6 @@
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
-#include "../../RenderCore/Assets/IModelFormat.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"

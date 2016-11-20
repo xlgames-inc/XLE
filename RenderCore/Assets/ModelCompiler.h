@@ -14,7 +14,7 @@
 namespace RenderCore { namespace Assets 
 {
 
-    class ColladaCompiler : public ::Assets::IntermediateAssets::IAssetCompiler, public std::enable_shared_from_this<ColladaCompiler>
+    class ModelCompiler : public ::Assets::IntermediateAssets::IAssetCompiler, public std::enable_shared_from_this<ModelCompiler>
     {
     public:
         std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
@@ -29,8 +29,8 @@ namespace RenderCore { namespace Assets
         static const uint64 Type_Skeleton = ConstHash64<'Skel', 'eton'>::Value;
         static const uint64 Type_RawMat = ConstHash64<'RawM', 'at'>::Value;
 
-        ColladaCompiler();
-        ~ColladaCompiler();
+        ModelCompiler();
+        ~ModelCompiler();
     protected:
         class Pimpl;
         std::shared_ptr<Pimpl> _pimpl;

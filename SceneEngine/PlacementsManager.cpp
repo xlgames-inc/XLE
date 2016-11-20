@@ -478,7 +478,6 @@ namespace SceneEngine
         std::shared_ptr<ModelCache> _cache;
         DelayedDrawCallSet _preparedRenders;
 
-        std::shared_ptr<RenderCore::Assets::IModelFormat> _modelFormat;
         std::shared_ptr<DynamicImposters> _imposters;
     };
 

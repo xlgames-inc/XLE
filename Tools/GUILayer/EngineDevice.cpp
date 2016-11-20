@@ -56,7 +56,7 @@ namespace GUILayer
 
     void NativeEngineDevice::AttachDefaultCompilers()
     {
-        _renderAssetsServices->InitColladaCompilers();
+        _renderAssetsServices->InitModelCompilers();
 
             // add compiler for precalculated internal AO
         auto& asyncMan = ::Assets::Services::GetAsyncMan();

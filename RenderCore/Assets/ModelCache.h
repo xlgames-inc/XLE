@@ -18,7 +18,6 @@ namespace RenderCore { namespace Assets
     class ModelScaffold;
     class MaterialScaffold;
     class SharedStateSet;
-    class IModelFormat;
 
     class ModelCache
     {
@@ -85,7 +84,7 @@ namespace RenderCore { namespace Assets
 
         uint32              GetReloadId();
 
-        ModelCache(const Config& cfg = Config(), std::shared_ptr<IModelFormat> format = nullptr);
+        ModelCache(const Config& cfg = Config());
         ~ModelCache();
     protected:
         class Pimpl;

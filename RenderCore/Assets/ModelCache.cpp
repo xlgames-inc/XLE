@@ -28,7 +28,6 @@ namespace RenderCore { namespace Assets
         LRUCache<MaterialScaffold>  _materialScaffolds;
         LRUCache<ModelRenderer>     _modelRenderers;
 
-        std::shared_ptr<RenderCore::Assets::IModelFormat> _format;
         std::unique_ptr<SharedStateSet> _sharedStateSet;
 
         uint32 _reloadId;
@@ -56,8 +55,7 @@ namespace RenderCore { namespace Assets
     namespace Internal
     {
         static std::shared_ptr<ModelScaffold> CreateModelScaffold(
-            const ::Assets::ResChar filename[], 
-            RenderCore::Assets::IModelFormat& modelFormat)
+            const ::Assets::ResChar filename[])
         {
             auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
             auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
@@ -70,8 +68,7 @@ namespace RenderCore { namespace Assets
 
         static std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(
             const ::Assets::ResChar model[], 
-            const ::Assets::ResChar material[], 
-            RenderCore::Assets::IModelFormat& modelFormat)
+            const ::Assets::ResChar material[])
         {
                 // note --  we need to remove any parameters after ':' in the model name
                 //          these are references to sub-nodes within the model hierarchy
@@ -105,7 +102,7 @@ namespace RenderCore { namespace Assets
         result._hashedModelName = Hash64(modelFilename);
         result._model = _pimpl->_modelScaffolds.Get(result._hashedModelName).get();
         if (!result._model || result._model->GetDependencyValidation()->GetValidationIndex() > 0) {
-            auto model = Internal::CreateModelScaffold(modelFilename, *_pimpl->_format);
+            auto model = Internal::CreateModelScaffold(modelFilename);
             auto insertType = _pimpl->_modelScaffolds.Insert(result._hashedModelName, model);
                 // we upload the "_reloadId" value when change one of our pointers from a previous
                 // valid value to something new
@@ -122,7 +119,7 @@ namespace RenderCore { namespace Assets
 
             result._material = _pimpl->_materialScaffolds.Get(result._hashedMaterialName).get();
             if (!result._material || result._material->GetDependencyValidation()->GetValidationIndex() > 0) {
-                auto mat = Internal::CreateMaterialScaffold(modelFilename, matNamePtr, *_pimpl->_format);
+                auto mat = Internal::CreateMaterialScaffold(modelFilename, matNamePtr);
                 auto insertType = _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, mat);
                 if (result._material || insertType == LRUCacheInsertType::EvictAndReplace) ++_pimpl->_reloadId;
                 result._material = mat.get();
@@ -248,7 +245,7 @@ namespace RenderCore { namespace Assets
         auto hashedModelName = Hash64(modelFilename);
         auto* result = _pimpl->_modelScaffolds.Get(hashedModelName).get();
         if (!result || result->GetDependencyValidation()->GetValidationIndex() > 0) {
-            auto model = Internal::CreateModelScaffold(modelFilename, *_pimpl->_format);
+            auto model = Internal::CreateModelScaffold(modelFilename);
             if (result) { ++_pimpl->_reloadId; }
             auto insertType = _pimpl->_modelScaffolds.Insert(hashedModelName, model);
             if (insertType == LRUCacheInsertType::EvictAndReplace) { ++_pimpl->_reloadId; }
@@ -259,11 +256,10 @@ namespace RenderCore { namespace Assets
 
     SharedStateSet& ModelCache::GetSharedStateSet() { return *_pimpl->_sharedStateSet; }
 
-    ModelCache::ModelCache(const Config& cfg, std::shared_ptr<RenderCore::Assets::IModelFormat> format)
+    ModelCache::ModelCache(const Config& cfg)
     {
         _pimpl = std::make_unique<Pimpl>(cfg);
         _pimpl->_sharedStateSet = std::make_unique<SharedStateSet>(RenderCore::Assets::Services::GetTechniqueConfigDirs());
-        _pimpl->_format = std::move(format);
     }
 
     ModelCache::~ModelCache()

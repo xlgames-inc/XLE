@@ -26,7 +26,7 @@ namespace RenderCore { namespace Assets
         static const ::Assets::DirectorySearchRules& GetTechniqueConfigDirs() { return s_instance->_techConfDirs; }
 
         static UnderlyingAPI GetTargetAPI();
-        void InitColladaCompilers();
+        void InitModelCompilers();
 
         Services(const std::shared_ptr<RenderCore::IDevice>& device);
         ~Services();

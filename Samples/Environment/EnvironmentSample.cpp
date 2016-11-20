@@ -143,7 +143,7 @@ namespace Sample
 
     static void SetupCompilers(PrimaryManagers& primMan)
     {
-        primMan._renderAssetServices->InitColladaCompilers();
+        primMan._renderAssetServices->InitModelCompilers();
 
             // Add compiler for precalculated internal AO
             // (note -- requires ToolsRig library for this)

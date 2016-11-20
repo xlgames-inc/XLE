@@ -20,7 +20,6 @@
   <ItemGroup>
     <ClCompile Include="..\Assets\SharedStateSet.cpp" />
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
-    <ClCompile Include="..\Assets\ModelFormatPlugins.cpp" />
     <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
     <ClCompile Include="..\Assets\DelayedDrawCall.cpp">
       <Filter>Assets</Filter>
@@ -33,9 +32,6 @@
     </ClCompile>
     <ClCompile Include="..\Assets\MaterialCompiler.cpp">
       <Filter>Assets\Material</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Assets\ColladaCompilerInterface.cpp">
-      <Filter>Assets\Model</Filter>
     </ClCompile>
     <ClCompile Include="..\Assets\ModelRunTime.cpp">
       <Filter>Assets\Model</Filter>
@@ -92,11 +88,13 @@
     <ClCompile Include="..\GeoProc\GeoProcUtil.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\ModelCompiler.cpp">
+      <Filter>Assets\Model</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\SharedStateSet.h" />
     <ClInclude Include="..\Assets\AssetUtils.h" />
-    <ClInclude Include="..\Assets\ModelFormatPlugins.h" />
     <ClInclude Include="..\Assets\DeferredShaderResource.h" />
     <ClInclude Include="..\Assets\DelayedDrawCall.h">
       <Filter>Assets</Filter>
@@ -109,9 +107,6 @@
     </ClInclude>
     <ClInclude Include="..\Assets\MaterialCompiler.h">
       <Filter>Assets\Material</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\ColladaCompilerInterface.h">
-      <Filter>Assets\Model</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\ModelRunTime.h">
       <Filter>Assets\Model</Filter>
@@ -176,6 +171,9 @@
     </ClInclude>
     <ClInclude Include="..\GeoProc\GeoProcUtil.h">
       <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\ModelCompiler.h">
+      <Filter>Assets\Model</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

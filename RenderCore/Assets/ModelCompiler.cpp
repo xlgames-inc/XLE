@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "ColladaCompilerInterface.h"
+#include "ModelCompiler.h"
 #include "CompilationThread.h"
 #include "../../ColladaConversion/DLLInterface.h"
 #include "../../Assets/AssetUtils.h"
@@ -82,7 +82,7 @@ namespace RenderCore { namespace Assets
 		bool _attemptedAttach;
 	};
 
-    class ColladaCompiler::Pimpl
+    class ModelCompiler::Pimpl
     {
     public:
 		std::vector<CompilerLibrary>		_compilers;
@@ -187,7 +187,7 @@ namespace RenderCore { namespace Assets
             ConsoleRig::LibVersionDesc libVersionDesc;
             _library.TryGetVersion(libVersionDesc);
 
-            if (typeCode != ColladaCompiler::Type_AnimationSet) {
+            if (typeCode != ModelCompiler::Type_AnimationSet) {
 
                     // We need to do some processing of the filename
                     // the filename should take this form:
@@ -211,7 +211,7 @@ namespace RenderCore { namespace Assets
                 {
                     const auto* destinationFile = compileMarker.GetLocator()._sourceID0;
                     ::Assets::ResChar temp[MaxPath];
-                    if (typeCode == ColladaCompiler::Type_RawMat) {
+                    if (typeCode == ModelCompiler::Type_RawMat) {
                             // When building rawmat, a material name could be on the op._sourceID0
                             // string. But we need to remove it from the path to find the real output
                             // name.
@@ -227,7 +227,7 @@ namespace RenderCore { namespace Assets
 					for (unsigned t=0; t<targetCount; ++t)
 						if (model->GetTarget(t)._type == typeCode) {
 							auto chunks = model->SerializeTarget(t);
-							if (typeCode != ColladaCompiler::Type_RawMat) {
+							if (typeCode != ModelCompiler::Type_RawMat) {
 								SerializeToFile(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
 							} else 
 								SerializeToFileJustChunk(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
@@ -344,7 +344,7 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ColladaCompiler::Marker : public ::Assets::ICompileMarker
+    class ModelCompiler::Marker : public ::Assets::ICompileMarker
     {
     public:
         ::Assets::IntermediateAssetLocator GetExistingAsset() const;
@@ -354,10 +354,10 @@ namespace RenderCore { namespace Assets
         Marker(
             const ::Assets::ResChar requestName[], uint64 typeCode,
             const ::Assets::IntermediateAssets::Store& store,
-            std::shared_ptr<ColladaCompiler> compiler);
+            std::shared_ptr<ModelCompiler> compiler);
         ~Marker();
     private:
-        std::weak_ptr<ColladaCompiler> _compiler;
+        std::weak_ptr<ModelCompiler> _compiler;
         ::Assets::rstring _requestName;
         uint64 _typeCode;
         const ::Assets::IntermediateAssets::Store* _store;
@@ -365,9 +365,9 @@ namespace RenderCore { namespace Assets
         void MakeIntermediateName(::Assets::ResChar destination[], size_t count) const;
     };
 
-    void ColladaCompiler::Marker::MakeIntermediateName(::Assets::ResChar destination[], size_t count) const
+    void ModelCompiler::Marker::MakeIntermediateName(::Assets::ResChar destination[], size_t count) const
     {
-        bool stripParams = _typeCode == ColladaCompiler::Type_RawMat;
+        bool stripParams = _typeCode == ModelCompiler::Type_RawMat;
         if (stripParams) {
             _store->MakeIntermediateName(
                 destination, (unsigned)count, MakeFileNameSplitter(_requestName).AllExceptParameters());
@@ -385,7 +385,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    ::Assets::IntermediateAssetLocator ColladaCompiler::Marker::GetExistingAsset() const
+    ::Assets::IntermediateAssetLocator ModelCompiler::Marker::GetExistingAsset() const
     {
         ::Assets::IntermediateAssetLocator result;
         MakeIntermediateName(result._sourceID0, dimof(result._sourceID0));
@@ -395,7 +395,7 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    std::shared_ptr<::Assets::PendingCompileMarker> ColladaCompiler::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::PendingCompileMarker> ModelCompiler::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;
@@ -450,21 +450,21 @@ namespace RenderCore { namespace Assets
         return std::move(backgroundOp);
     }
 
-    StringSection<::Assets::ResChar> ColladaCompiler::Marker::Initializer() const
+    StringSection<::Assets::ResChar> ModelCompiler::Marker::Initializer() const
     {
         return MakeStringSection(_requestName);
     }
 
-    ColladaCompiler::Marker::Marker(
+    ModelCompiler::Marker::Marker(
         const ::Assets::ResChar requestName[], uint64 typeCode,
         const ::Assets::IntermediateAssets::Store& store,
-        std::shared_ptr<ColladaCompiler> compiler)
+        std::shared_ptr<ModelCompiler> compiler)
     : _compiler(std::move(compiler)), _requestName(requestName), _typeCode(typeCode), _store(&store)
     {}
 
-    ColladaCompiler::Marker::~Marker() {}
+    ModelCompiler::Marker::~Marker() {}
 
-    std::shared_ptr<::Assets::ICompileMarker> ColladaCompiler::PrepareAsset(
+    std::shared_ptr<::Assets::ICompileMarker> ModelCompiler::PrepareAsset(
         uint64 typeCode, 
         const ::Assets::ResChar* initializers[], unsigned initializerCount, 
         const ::Assets::IntermediateAssets::Store& destinationStore)
@@ -472,7 +472,7 @@ namespace RenderCore { namespace Assets
         return std::make_shared<Marker>(initializers[0], typeCode, destinationStore, shared_from_this());
     }
 
-    void ColladaCompiler::StallOnPendingOperations(bool cancelAll)
+    void ModelCompiler::StallOnPendingOperations(bool cancelAll)
     {
         {
             ScopedLock(_pimpl->_threadLock);
@@ -481,16 +481,16 @@ namespace RenderCore { namespace Assets
         _pimpl->_thread->StallOnPendingOperations(cancelAll);
     }
 
-    ColladaCompiler::ColladaCompiler() { _pimpl = std::make_shared<Pimpl>(); }
-    ColladaCompiler::~ColladaCompiler() {}
+    ModelCompiler::ModelCompiler() { _pimpl = std::make_shared<Pimpl>(); }
+    ModelCompiler::~ModelCompiler() {}
 
-	void ColladaCompiler::Pimpl::PerformCompile(QueuedCompileOperation& op)
+	void ModelCompiler::Pimpl::PerformCompile(QueuedCompileOperation& op)
 	{
 		assert(op._compilerIndex < _compilers.size());
 		_compilers[op._compilerIndex].PerformCompile(op._typeCode, op._initializer0, op, *op._destinationStore);
 	}
 
-	void ColladaCompiler::Pimpl::DiscoverLibraries()
+	void ModelCompiler::Pimpl::DiscoverLibraries()
 	{
 		if (_discoveryDone) return;
 

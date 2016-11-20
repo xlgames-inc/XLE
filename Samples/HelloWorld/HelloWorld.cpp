@@ -106,7 +106,7 @@ namespace Sample
             //  * init the gpu profiler (this init step will probably change someday)
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
-        renderAssetServices->InitColladaCompilers();
+        renderAssetServices->InitModelCompilers();
         RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices->GetBufferUploads());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
 

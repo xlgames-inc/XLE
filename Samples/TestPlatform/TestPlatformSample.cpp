@@ -110,7 +110,7 @@ namespace Sample
         PrimaryManagers primMan;
 
             // Some secondary initalisation:
-        primMan._renderAssetServices->InitColladaCompilers();
+        primMan._renderAssetServices->InitModelCompilers();
         g_gpuProfiler = RenderCore::CreateAnnotator(*primMan._rDevice);
         RenderOverlays::InitFontSystem(
             primMan._rDevice.get(), 

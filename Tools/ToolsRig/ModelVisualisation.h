@@ -13,7 +13,6 @@
 
 namespace RenderCore { namespace Assets 
 {
-    class IModelFormat; 
     class ModelRenderer;
     class SharedStateSet;
     class ModelScaffold;
