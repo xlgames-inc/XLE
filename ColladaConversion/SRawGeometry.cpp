@@ -28,7 +28,6 @@ namespace ColladaConversion
 {
     using namespace RenderCore;
     using namespace RenderCore::Assets::GeoProc;
-	using RenderCore::ColladaConversion::ImportConfiguration;
 
     static const std::string DefaultSemantic_Weights         = "WEIGHTS";
     static const std::string DefaultSemantic_JointIndices    = "JOINTINDICES";

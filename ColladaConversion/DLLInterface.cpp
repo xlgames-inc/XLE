@@ -36,11 +36,12 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../ConsoleRig/OutputStream.h"
+#include "../ConsoleRig/AttachableLibrary.h"
+#include "../ConsoleRig/GlobalServices.h"
 #include <memory>
 
-namespace RenderCore { namespace ColladaConversion
+namespace ColladaConversion
 {
-    using namespace ::ColladaConversion;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -107,7 +108,7 @@ namespace RenderCore { namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class TransMachineOptimizer : public Assets::ITransformationMachineOptimizer
+    class TransMachineOptimizer : public RenderCore::Assets::ITransformationMachineOptimizer
     {
     public:
         bool CanMergeIntoOutputMatrix(unsigned outputMatrixIndex) const;
@@ -203,8 +204,6 @@ namespace RenderCore { namespace ColladaConversion
 
     PreparedSkinFile::PreparedSkinFile(const ColladaCompileOp& input, const VisualScene& scene, StringSection<utf8> rootNode)
     {
-        using namespace RenderCore::ColladaConversion;
-
         SkeletonRegistry jointRefs;
 
         ReferencedGeometries refGeos;
@@ -269,7 +268,7 @@ namespace RenderCore { namespace ColladaConversion
         for (auto c:refGeos._meshes) {
             TRY {
                 _cmdStream.Add(
-                    RenderCore::ColladaConversion::InstantiateGeometry(
+                    InstantiateGeometry(
                         scene.GetInstanceGeometry(c._objectIndex),
                         c._outputMatrixIndex, optimizer.GetMergedOutputMatrix(c._outputMatrixIndex),
                         c._levelOfDetail,
@@ -287,7 +286,7 @@ namespace RenderCore { namespace ColladaConversion
             bool skinSuccessful = false;
             TRY {
                 _cmdStream.Add(
-                    RenderCore::ColladaConversion::InstantiateController(
+                    InstantiateController(
                         scene.GetInstanceController(c._objectIndex),
                         c._outputMatrixIndex,
                         c._levelOfDetail,
@@ -310,7 +309,7 @@ namespace RenderCore { namespace ColladaConversion
                 LogWarning << "Could not instantiate controller as a skinned object. Falling back to rigid object.";
                 TRY {
                     _cmdStream.Add(
-                        RenderCore::ColladaConversion::InstantiateGeometry(
+                        InstantiateGeometry(
                             scene.GetInstanceController(c._objectIndex),
                             c._outputMatrixIndex, Identity<Float4x4>(), c._levelOfDetail, 
                             input._resolveContext, _geoObjects, jointRefs,
@@ -363,7 +362,6 @@ namespace RenderCore { namespace ColladaConversion
         if (!scene)
             Throw(::Assets::Exceptions::FormatError("No visual scene found"));
 
-        using namespace RenderCore::ColladaConversion;
         SkeletonRegistry jointRefs;
         BuildSkeleton(_skeleton, scene->GetRootNode(), StringSection<utf8>(), jointRefs, true);
         RegisterNodeBindingNames(_skeleton, jointRefs);
@@ -383,7 +381,7 @@ namespace RenderCore { namespace ColladaConversion
     {
         OutputStreamFormatter formatter(stream);
 
-        std::vector<std::pair<ObjectGuid, Assets::RawMaterial>> compiledEffects;
+        std::vector<std::pair<ObjectGuid, RenderCore::Assets::RawMaterial>> compiledEffects;
 
         const auto& effects = model._doc->_effects;
         for (auto i=effects.cbegin(); i!=effects.cend(); ++i) {
@@ -445,7 +443,7 @@ namespace RenderCore { namespace ColladaConversion
     {
     public:
         NascentAnimationSet _animationSet;
-        std::vector<Assets::RawAnimationCurve> _curves;
+        std::vector<RenderCore::Assets::RawAnimationCurve> _curves;
 
         PreparedAnimationFile(const ColladaCompileOp&);
     };
@@ -475,7 +473,7 @@ namespace RenderCore { namespace ColladaConversion
     {
     public:
         NascentAnimationSet _animationSet;
-        std::vector<Assets::RawAnimationCurve> _curves;
+        std::vector<RenderCore::Assets::RawAnimationCurve> _curves;
         std::string _name;
 
         WorkingAnimationSet(const char name[]) : _name(name) {}
@@ -483,14 +481,14 @@ namespace RenderCore { namespace ColladaConversion
 
     static void DestroyWorkingAnimSet(const void* model) { delete (WorkingAnimationSet*)model; }
 
-    std::shared_ptr<WorkingAnimationSet> CreateAnimationSet(const char name[])
+    dll_export std::shared_ptr<WorkingAnimationSet> CreateAnimationSet(const char name[])
     {
         return std::shared_ptr<WorkingAnimationSet>(
             new WorkingAnimationSet(name),
             &DestroyWorkingAnimSet);
     }
 
-	::Assets::NascentChunkArray SerializeAnimationSet(const WorkingAnimationSet& animSet)
+	dll_export ::Assets::NascentChunkArray SerializeAnimationSet(const WorkingAnimationSet& animSet)
     {
         Serialization::NascentBlockSerializer serializer;
 
@@ -506,7 +504,7 @@ namespace RenderCore { namespace ColladaConversion
         return ::Assets::MakeNascentChunkArray({::Assets::NascentChunk(scaffoldChunk, std::move(block))});
     }
 
-    void ExtractAnimations(WorkingAnimationSet& dest, const ::Assets::ICompileOperation& source, const char animationName[])
+	dll_export void ExtractAnimations(WorkingAnimationSet& dest, const ::Assets::ICompileOperation& source, const char animationName[])
     {
         PreparedAnimationFile animFile((ColladaCompileOp&)source);
         dest._animationSet.MergeAnimation(
@@ -596,33 +594,33 @@ namespace RenderCore { namespace ColladaConversion
 		return std::make_shared<CompilerDesc>();
 	}
 
-}}
+}
 
-namespace RenderCore { namespace ColladaConversion
+namespace ColladaConversion
 {
     extern char VersionString[];
     extern char BuildDateString[];
-}}
+}
 
 extern "C" {
 
-CONVERSION_API ConsoleRig::LibVersionDesc GetVersionInformation()
+dll_export ConsoleRig::LibVersionDesc GetVersionInformation()
 {
     ConsoleRig::LibVersionDesc result;
-    result._versionString = RenderCore::ColladaConversion::VersionString;
-    result._buildDateString = RenderCore::ColladaConversion::BuildDateString;
+    result._versionString = ColladaConversion::VersionString;
+    result._buildDateString = ColladaConversion::BuildDateString;
     return result;
 }
 
 static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
 
-CONVERSION_API void AttachLibrary(ConsoleRig::GlobalServices& services)
+dll_export void AttachLibrary(ConsoleRig::GlobalServices& services)
 {
     s_attachRef = services.Attach();
-    LogInfo << "Attached Collada Compiler DLL: {" << RenderCore::ColladaConversion::VersionString << "} -- {" << RenderCore::ColladaConversion::BuildDateString << "}";
+    LogInfo << "Attached Collada Compiler DLL: {" << ColladaConversion::VersionString << "} -- {" << ColladaConversion::BuildDateString << "}";
 }
 
-CONVERSION_API void DetachLibrary()
+dll_export void DetachLibrary()
 {
     s_attachRef.Detach();
     TerminateFileSystemMonitoring();

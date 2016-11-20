@@ -14,21 +14,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class UnboundSkinController;
 }}}
 
-namespace RenderCore { namespace ColladaConversion
-{
-	class ImportConfiguration;
-}}
-
 namespace ColladaConversion
 {
+	class ImportConfiguration;
     class MeshGeometry;
     class SkinController;
     class URIResolveContext;
 
-    auto Convert(const MeshGeometry& mesh, const Float4x4& mergedTransform, const URIResolveContext& pubEles, const RenderCore::ColladaConversion::ImportConfiguration& cfg)
+    auto Convert(const MeshGeometry& mesh, const Float4x4& mergedTransform, const URIResolveContext& pubEles, const ImportConfiguration& cfg)
         -> RenderCore::Assets::GeoProc::NascentRawGeometry;
 
-    auto Convert(const SkinController& controller, const URIResolveContext& pubEles, const RenderCore::ColladaConversion::ImportConfiguration& cfg)
+    auto Convert(const SkinController& controller, const URIResolveContext& pubEles, const ImportConfiguration& cfg)
         -> RenderCore::Assets::GeoProc::UnboundSkinController;
 }
 

@@ -13,9 +13,8 @@
 #include "../Utility/IteratorUtils.h"
 #include "../ConsoleRig/Log.h"
 
-namespace RenderCore { namespace ColladaConversion
+namespace ColladaConversion
 {
-    using namespace ::ColladaConversion;
     using ::Assets::Exceptions::FormatError;
 
     class SidBreakdown
@@ -239,7 +238,7 @@ namespace RenderCore { namespace ColladaConversion
             dest[c*outputStride] = 0.f;
     }
 
-    static Assets::RawAnimationCurve::InterpolationType AsInterpolationType(const DataFlow::Source& src)
+    static RenderCore::Assets::RawAnimationCurve::InterpolationType AsInterpolationType(const DataFlow::Source& src)
     {
             // Let's make sure the format of the source is exactly what we expect. 
             // If there is anything strange or unexpected, we must fail.
@@ -272,13 +271,13 @@ namespace RenderCore { namespace ColladaConversion
             type = newSection;
         }
 
-        if (Is(type, u("BEZIER"))) return Assets::RawAnimationCurve::Bezier;
-        if (Is(type, u("HERMITE"))) return Assets::RawAnimationCurve::Hermite;
-        if (Is(type, u("LINEAR"))) return Assets::RawAnimationCurve::Linear;
+        if (Is(type, u("BEZIER"))) return RenderCore::Assets::RawAnimationCurve::Bezier;
+        if (Is(type, u("HERMITE"))) return RenderCore::Assets::RawAnimationCurve::Hermite;
+        if (Is(type, u("LINEAR"))) return RenderCore::Assets::RawAnimationCurve::Linear;
 
         // "BSPLINE" is also part of the "common profile" of collada -- but not supported
         LogWarning << "Interpolation type for animation sampler not understood. Falling back to linear interpolation. At: " << src.GetLocation();
-        return Assets::RawAnimationCurve::Linear;
+        return RenderCore::Assets::RawAnimationCurve::Linear;
     }
 
     UnboundAnimation Convert(
@@ -346,18 +345,19 @@ namespace RenderCore { namespace ColladaConversion
             SimpleChannel firstChannel(animation.GetChannel(i->second), resolveContext);
             auto keyCount = firstChannel._inputSource->FindAccessorForTechnique()->GetCount();
 
+			using RenderCore::Format;
             Format
                 positionFormat    = Format::Unknown,
                 inTangentFormat   = Format::Unknown,
                 outTangentFormat  = Format::Unknown;
 
-            Assets::TransformationParameterSet::Type::Enum samplerType;
+			RenderCore::Assets::TransformationParameterSet::Type::Enum samplerType;
             
             switch (outDimension) {
-            case 1:     positionFormat = Format::R32_FLOAT; samplerType = Assets::TransformationParameterSet::Type::Float1; break;
-            case 3:     positionFormat = Format::R32G32B32_FLOAT; samplerType = Assets::TransformationParameterSet::Type::Float3; break;
-            case 4:     positionFormat = Format::R32G32B32A32_FLOAT; samplerType = Assets::TransformationParameterSet::Type::Float4; break;
-            case 16:    positionFormat = Format::Matrix4x4; samplerType = Assets::TransformationParameterSet::Type::Float4x4; break;
+			case 1:     positionFormat = Format::R32_FLOAT; samplerType = RenderCore::Assets::TransformationParameterSet::Type::Float1; break;
+            case 3:     positionFormat = Format::R32G32B32_FLOAT; samplerType = RenderCore::Assets::TransformationParameterSet::Type::Float3; break;
+            case 4:     positionFormat = Format::R32G32B32A32_FLOAT; samplerType = RenderCore::Assets::TransformationParameterSet::Type::Float4; break;
+            case 16:    positionFormat = Format::Matrix4x4; samplerType = RenderCore::Assets::TransformationParameterSet::Type::Float4x4; break;
             default:    Throw(FormatError("Out dimension in animation is invalid (%i). Expected 1, 3, 4 or 16.", outDimension));
             }
 
@@ -445,11 +445,11 @@ namespace RenderCore { namespace ColladaConversion
                 firstChannel._inputSource->FindAccessorForTechnique()->GetStride()-1);
 
                 // todo -- we need to find the correct animation curve type
-            auto interpolationType = Assets::RawAnimationCurve::Linear;
+            auto interpolationType = RenderCore::Assets::RawAnimationCurve::Linear;
             if (firstChannel._interpolationSource)
                 interpolationType = AsInterpolationType(*firstChannel._interpolationSource);
 
-            Assets::RawAnimationCurve curve(
+			RenderCore::Assets::RawAnimationCurve curve(
                 (size_t)keyCount, std::move(inputTimeBlock),
                 DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>(
                     std::move(keyBlock), elementBytes * keyCount),
@@ -466,5 +466,5 @@ namespace RenderCore { namespace ColladaConversion
         return std::move(result);
     }
 
-}}
+}
 

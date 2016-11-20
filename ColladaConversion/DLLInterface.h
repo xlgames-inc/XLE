@@ -6,26 +6,16 @@
 
 #pragma once
 
-#include "../Assets/CompilerLibrary.h"
-#include "../ConsoleRig/AttachableLibrary.h"
-#include "../ConsoleRig/GlobalServices.h"
+#include "../Assets/NascentChunkArray.h"
+#include <memory>
 
-#if defined(PROJECT_COLLADA_CONVERSION)
-    #define CONVERSION_API dll_export
-#else
-    #define CONVERSION_API dll_import
-#endif
+namespace Assets { class ICompileOperation; }
 
-namespace RenderCore { namespace ColladaConversion
+namespace ColladaConversion
 {
     class WorkingAnimationSet;
-
-    CONVERSION_API std::shared_ptr<WorkingAnimationSet> CreateAnimationSet(const char name[]);
-    CONVERSION_API void ExtractAnimations(WorkingAnimationSet& dest, const ::Assets::ICompileOperation& model, const char animName[]);
-    CONVERSION_API ::Assets::NascentChunkArray SerializeAnimationSet(const WorkingAnimationSet& animset);
-
     typedef std::shared_ptr<WorkingAnimationSet> CreateAnimationSetFn(const char name[]);
     typedef void ExtractAnimationsFn(WorkingAnimationSet&, const ::Assets::ICompileOperation&, const char[]);
     typedef ::Assets::NascentChunkArray SerializeAnimationSetFn(const WorkingAnimationSet&);
-}}
+}
 

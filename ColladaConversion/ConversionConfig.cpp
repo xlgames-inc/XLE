@@ -11,7 +11,7 @@
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 
-namespace RenderCore { namespace ColladaConversion
+namespace ColladaConversion
 {
     bool ImportCameras = true;
 
@@ -86,4 +86,4 @@ namespace RenderCore { namespace ColladaConversion
         return (i != _bindingSuppressed.cend());
     }
 
-}}
+}

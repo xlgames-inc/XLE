@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-namespace RenderCore { namespace ColladaConversion
+namespace ColladaConversion
 {
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,5 +39,5 @@ __declspec(allocate(".ver$f")) static char BuildDateString_End[] = ">VERSION_DAT
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-}}
+}
 

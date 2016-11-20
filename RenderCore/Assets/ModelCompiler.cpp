@@ -316,8 +316,6 @@ namespace RenderCore { namespace Assets
 
 			_isAttached = _library.TryAttach();
 			if (_isAttached) {
-				using namespace RenderCore::ColladaConversion;
-
 				_createCompileOpFunction    = _library.GetFunction<decltype(_createCompileOpFunction)>("CreateCompileOperation");
 				_createAnimationSetFn       = _library.GetFunction<decltype(_createAnimationSetFn)>("?CreateAnimationSet@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VWorkingAnimationSet@ColladaConversion@RenderCore@@@std@@QEBD@Z");
 				_extractAnimationsFn        = _library.GetFunction<decltype(_extractAnimationsFn)>("?ExtractAnimations@ColladaConversion@RenderCore@@YAXAEAVWorkingAnimationSet@12@AEBVICompileOperation@12@QEBD@Z");

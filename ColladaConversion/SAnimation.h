@@ -12,11 +12,12 @@
 #include <string>
 #include <vector>
 
-namespace ColladaConversion { class Animation; class URIResolveContext; }
 namespace RenderCore { namespace Assets { namespace GeoProc { class SkeletonRegistry; }}}
 
-namespace RenderCore { namespace ColladaConversion
+namespace ColladaConversion
 {
+	class Animation; class URIResolveContext;
+
     class UnboundAnimation
     {
     public:
@@ -24,13 +25,13 @@ namespace RenderCore { namespace ColladaConversion
         {
         public:
             std::string                 _parameterName;
-            Assets::RawAnimationCurve   _curve;
-            Assets::TransformationParameterSet::Type::Enum _samplerType;
+            RenderCore::Assets::RawAnimationCurve   _curve;
+			RenderCore::Assets::TransformationParameterSet::Type::Enum _samplerType;
             unsigned                    _samplerOffset;
 
             Curve(
-                const std::string parameterName, Assets::RawAnimationCurve&& curve,
-                Assets::TransformationParameterSet::Type::Enum samplerType,
+                const std::string parameterName, RenderCore::Assets::RawAnimationCurve&& curve,
+				RenderCore::Assets::TransformationParameterSet::Type::Enum samplerType,
                 unsigned samplerOffset)
             : _parameterName(parameterName), _curve(std::move(curve))
             , _samplerType(samplerType), _samplerOffset(samplerOffset) {}
@@ -59,5 +60,5 @@ namespace RenderCore { namespace ColladaConversion
         const ::ColladaConversion::Animation& animation,
         const ::ColladaConversion::URIResolveContext& resolveContext,
         RenderCore::Assets::GeoProc::SkeletonRegistry& nodeRefs);
-}}
+}
 

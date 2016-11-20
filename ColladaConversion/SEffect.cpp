@@ -13,10 +13,8 @@
 #include "../Utility/Streams/PathUtils.h"
 #include <string>
 
-namespace RenderCore { namespace ColladaConversion
+namespace ColladaConversion
 {
-    using namespace ::ColladaConversion;
-
     static const ParameterSet::SamplerParameter* FindSamplerParameter(
         const ParameterSet& paramSet, Section sid)
     {
@@ -171,4 +169,4 @@ namespace RenderCore { namespace ColladaConversion
         return std::move(matSettings);
     }
 
-}}
+}

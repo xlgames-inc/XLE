@@ -28,11 +28,6 @@
 namespace ColladaConversion
 {
     std::vector<std::basic_string<utf8>> GetJointNames(const SkinController& controller, const URIResolveContext& resolveContext);
-}
-
-namespace RenderCore { namespace ColladaConversion
-{
-    using namespace ::ColladaConversion;
 
     static std::string  SkeletonBindingName(const Node& node);
     static ObjectGuid   AsObjectGuid(const Node& node);
@@ -487,5 +482,5 @@ namespace RenderCore { namespace ColladaConversion
         return false;
     }
 
-}}
+}
 

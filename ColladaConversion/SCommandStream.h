@@ -9,7 +9,6 @@
 #include "../RenderCore/GeoProc/NascentCommandStream.h"
 #include "../Utility/StringUtils.h"
 
-namespace ColladaConversion { class Node; class VisualScene; class URIResolveContext; class InstanceGeometry; class InstanceController; }
 namespace RenderCore { namespace Assets { namespace GeoProc { 
 	class NascentSkeleton;
 	class NascentGeometryObjects;
@@ -17,9 +16,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc {
 	class SkeletonRegistry;
 }}}
 
-namespace RenderCore { namespace ColladaConversion
+namespace ColladaConversion
 {
 	using namespace RenderCore::Assets::GeoProc;
+	class Node; class VisualScene; class URIResolveContext; class InstanceGeometry; class InstanceController;
     class ImportConfiguration;
 
     void BuildSkeleton(
@@ -69,4 +69,4 @@ namespace RenderCore { namespace ColladaConversion
     private:
         void Gather(const ::ColladaConversion::Node& node, SkeletonRegistry& nodeRefs, bool terminateOnLODNodes = false);
     };
-}}
+}

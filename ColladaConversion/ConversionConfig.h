@@ -19,7 +19,7 @@ namespace Utility
 	template<typename Type> class InputStreamFormatter;
 }
 
-namespace RenderCore { namespace ColladaConversion
+namespace ColladaConversion
 {
 	class BindingConfig
 	{
@@ -57,5 +57,5 @@ namespace RenderCore { namespace ColladaConversion
 		std::shared_ptr<::Assets::DependencyValidation> _depVal;
 	};
 
-}}
+}
 
