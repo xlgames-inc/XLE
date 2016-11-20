@@ -8,28 +8,19 @@
       <Filter>Scaffold</Filter>
     </ClCompile>
     <ClCompile Include="..\SAnimation.cpp">
-      <Filter>NewPath</Filter>
+      <Filter>ObjectConversion</Filter>
     </ClCompile>
     <ClCompile Include="..\SCommandStream.cpp">
-      <Filter>NewPath</Filter>
+      <Filter>ObjectConversion</Filter>
     </ClCompile>
     <ClCompile Include="..\SEffect.cpp">
-      <Filter>NewPath</Filter>
+      <Filter>ObjectConversion</Filter>
     </ClCompile>
     <ClCompile Include="..\SRawGeometry.cpp">
-      <Filter>NewPath</Filter>
+      <Filter>ObjectConversion</Filter>
     </ClCompile>
     <ClCompile Include="..\STransformationMachine.cpp">
-      <Filter>NewPath</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Version.cpp">
-      <Filter>Core</Filter>
-    </ClCompile>
-    <ClCompile Include="..\DLLInterface.cpp">
-      <Filter>NascentObjects</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ConversionConfig.cpp">
-      <Filter>Core</Filter>
+      <Filter>ObjectConversion</Filter>
     </ClCompile>
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentAnimController.cpp">
       <Filter>GeoProc</Filter>
@@ -61,9 +52,6 @@
     <ClCompile Include="..\..\RenderCore\Assets\Material.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\RenderCore\GeoProc\GeoProcUtil.cpp">
-      <Filter>GeoProc\CoreAssets</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\RenderCore\Assets\RawAnimationCurve.cpp">
       <Filter>GeoProc\CoreAssets</Filter>
     </ClCompile>
@@ -75,6 +63,14 @@
     </ClCompile>
     <ClCompile Include="..\..\RenderCore\Assets\TransformationCommands.cpp">
       <Filter>GeoProc\CoreAssets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DLLInterface.cpp" />
+    <ClCompile Include="..\ConversionConfig.cpp">
+      <Filter>ObjectConversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Version.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\GeoProcUtil.cpp">
+      <Filter>GeoProc</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -88,25 +84,19 @@
       <Filter>Scaffold</Filter>
     </ClInclude>
     <ClInclude Include="..\SAnimation.h">
-      <Filter>NewPath</Filter>
+      <Filter>ObjectConversion</Filter>
     </ClInclude>
     <ClInclude Include="..\SCommandStream.h">
-      <Filter>NewPath</Filter>
+      <Filter>ObjectConversion</Filter>
     </ClInclude>
     <ClInclude Include="..\SEffect.h">
-      <Filter>NewPath</Filter>
+      <Filter>ObjectConversion</Filter>
     </ClInclude>
     <ClInclude Include="..\SRawGeometry.h">
-      <Filter>NewPath</Filter>
+      <Filter>ObjectConversion</Filter>
     </ClInclude>
     <ClInclude Include="..\STransformationMachine.h">
-      <Filter>NewPath</Filter>
-    </ClInclude>
-    <ClInclude Include="..\DLLInterface.h">
-      <Filter>NascentObjects</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ConversionConfig.h">
-      <Filter>Core</Filter>
+      <Filter>ObjectConversion</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentAnimController.h">
       <Filter>GeoProc</Filter>
@@ -144,34 +134,32 @@
     <ClInclude Include="..\..\RenderCore\Assets\Material.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\RenderCore\GeoProc\GeoProcUtil.h">
-      <Filter>GeoProc\CoreAssets</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\RenderCore\Assets\RawAnimationCurve.h">
       <Filter>GeoProc\CoreAssets</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\Assets\TransformationCommands.h">
       <Filter>GeoProc\CoreAssets</Filter>
     </ClInclude>
+    <ClInclude Include="..\DLLInterface.h" />
+    <ClInclude Include="..\ConversionConfig.h">
+      <Filter>ObjectConversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\GeoProc\GeoProcUtil.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="NascentObjects">
-      <UniqueIdentifier>{35f687f2-2bad-4a49-9c33-76eff5137c2c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Core">
-      <UniqueIdentifier>{ef61231f-e47d-42c5-a1e1-00e9cd6dac20}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Scaffold">
       <UniqueIdentifier>{ae0dea89-e831-4095-b423-ce740deeef94}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="NewPath">
-      <UniqueIdentifier>{d1b61ed1-da25-4266-895b-47256f02c4bf}</UniqueIdentifier>
     </Filter>
     <Filter Include="GeoProc">
       <UniqueIdentifier>{901c9cd7-ba36-438b-8018-9567ed2f259c}</UniqueIdentifier>
     </Filter>
     <Filter Include="GeoProc\CoreAssets">
       <UniqueIdentifier>{0706fd4a-4c2c-437f-a328-03fa801a2c37}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ObjectConversion">
+      <UniqueIdentifier>{d1b61ed1-da25-4266-895b-47256f02c4bf}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
