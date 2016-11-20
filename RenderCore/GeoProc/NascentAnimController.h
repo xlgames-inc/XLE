@@ -100,13 +100,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<std::basic_string<utf8>> _jointNames;
         DynamicArray<Float4x4>  _inverseBindMatrices;
 
-        ObjectGuid _sourceRef;
+        NascentObjectGuid _sourceRef;
 
         UnboundSkinController(  
             Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0, 
             DynamicArray<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
             std::vector<std::basic_string<utf8>>&& jointNames,
-            ObjectGuid sourceRef,
+            NascentObjectGuid sourceRef,
             std::vector<uint32>&& vertexPositionToBucketIndex);
         UnboundSkinController(UnboundSkinController&& moveFrom) never_throws;
         UnboundSkinController& operator=(UnboundSkinController&& moveFrom) never_throws;
@@ -120,7 +120,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class UnboundMorphController
     {
     public:
-        ObjectGuid   _source;
+        NascentObjectGuid   _source;
 
         UnboundMorphController();
         UnboundMorphController(UnboundMorphController&& moveFrom);
@@ -134,9 +134,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class UnboundSkinControllerAndAttachedSkeleton
     {
     public:
-        ObjectGuid                  _unboundControllerId;
-        ObjectGuid                  _source;
-        std::vector<ObjectGuid>     _jointIds;
+        NascentObjectGuid                  _unboundControllerId;
+        NascentObjectGuid                  _source;
+        std::vector<NascentObjectGuid>     _jointIds;
     };
 
 

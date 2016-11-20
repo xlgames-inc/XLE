@@ -381,13 +381,13 @@ namespace ColladaConversion
     {
         OutputStreamFormatter formatter(stream);
 
-        std::vector<std::pair<ObjectGuid, RenderCore::Assets::RawMaterial>> compiledEffects;
+        std::vector<std::pair<NascentObjectGuid, RenderCore::Assets::RawMaterial>> compiledEffects;
 
         const auto& effects = model._doc->_effects;
         for (auto i=effects.cbegin(); i!=effects.cend(); ++i) {
             TRY
             {
-                ObjectGuid id = i->GetId().GetHash();
+                NascentObjectGuid id = i->GetId().GetHash();
                 compiledEffects.insert(
                     LowerBound(compiledEffects, id), 
                     std::make_pair(id, Convert(*i, model._resolveContext, model._cfg)));
@@ -398,8 +398,8 @@ namespace ColladaConversion
         const auto& mats = model._doc->_materials;
         for (auto m=mats.cbegin(); m!=mats.cend(); ++m) {
             GuidReference effect(m->_effectReference);
-            auto i = LowerBound(compiledEffects, ObjectGuid(effect._id, effect._fileHash));
-            if (i == compiledEffects.end() || !(i->first == ObjectGuid(effect._id, effect._fileHash)))
+            auto i = LowerBound(compiledEffects, NascentObjectGuid(effect._id, effect._fileHash));
+            if (i == compiledEffects.end() || !(i->first == NascentObjectGuid(effect._id, effect._fileHash)))
                 continue;
 
             auto ele = formatter.BeginElement(m->_name.AsString());

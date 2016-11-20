@@ -17,7 +17,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class SkeletonRegistry
     {
     public:
-        bool            IsImportant(ObjectGuid node) const;
+        bool            IsImportant(NascentObjectGuid node) const;
 
         using TransformMarker = unsigned;
         static const TransformMarker TransformMarker_UnSet = ~unsigned(0);
@@ -25,7 +25,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         class ImportantNode
         {
         public:
-            ObjectGuid      _id;
+            NascentObjectGuid      _id;
             std::string     _bindingName;
             TransformMarker _transformMarker;
             Float4x4        _inverseBind;
@@ -37,7 +37,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             , _transformMarker(TransformMarker_UnSet) {}
 
             ImportantNode(
-                ObjectGuid id, const std::string& bindingName, 
+                NascentObjectGuid id, const std::string& bindingName, 
                 TransformMarker transformMarker, 
                 const Float4x4& inverseBind, bool hasInverseBind)
             : _id(id), _bindingName(bindingName)
@@ -46,13 +46,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         };
 
         auto            GetImportantNodes() const -> IteratorRange<const ImportantNode*>;
-        ImportantNode   GetNode(ObjectGuid node) const;
+        ImportantNode   GetNode(NascentObjectGuid node) const;
         
-        bool            TryRegisterNode(ObjectGuid node, const char bindingName[]);
-        TransformMarker GetOutputMatrixIndex(ObjectGuid node);
+        bool            TryRegisterNode(NascentObjectGuid node, const char bindingName[]);
+        TransformMarker GetOutputMatrixIndex(NascentObjectGuid node);
 
-        void            AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind);
-        void            AttachMergeGeometry(ObjectGuid node, const Float4x4& mergeToGeometry);
+        void            AttachInverseBindMatrix(NascentObjectGuid node, const Float4x4& inverseBind);
+        void            AttachMergeGeometry(NascentObjectGuid node, const Float4x4& mergeToGeometry);
 
         void            MarkParameterAnimated(const std::string& paramName);
         bool            IsAnimated(const std::string& paramName) const;

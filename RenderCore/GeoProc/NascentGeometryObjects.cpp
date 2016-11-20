@@ -9,14 +9,14 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-	unsigned NascentGeometryObjects::GetGeo(ObjectGuid id)
+	unsigned NascentGeometryObjects::GetGeo(NascentObjectGuid id)
 	{
 		for (const auto& i:_rawGeos)
 			if (i.first == id) return unsigned(&i - AsPointer(_rawGeos.cbegin()));
 		return ~0u;
 	}
 
-	unsigned NascentGeometryObjects::GetSkinnedGeo(ObjectGuid id)
+	unsigned NascentGeometryObjects::GetSkinnedGeo(NascentObjectGuid id)
 	{
 		for (const auto& i:_skinnedGeos)
 			if (i.first == id) return unsigned(&i - AsPointer(_skinnedGeos.cbegin()));

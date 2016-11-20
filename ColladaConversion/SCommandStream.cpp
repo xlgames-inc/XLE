@@ -30,7 +30,7 @@ namespace ColladaConversion
     std::vector<std::basic_string<utf8>> GetJointNames(const SkinController& controller, const URIResolveContext& resolveContext);
 
     static std::string  SkeletonBindingName(const Node& node);
-    static ObjectGuid   AsObjectGuid(const Node& node);
+    static NascentObjectGuid   AsObjectGuid(const Node& node);
     static bool         IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -208,7 +208,7 @@ namespace ColladaConversion
         for (auto c:_skinControllers) {
             const auto& instGeo = scene.GetInstanceController(c._objectIndex);
             GuidReference controllerRef(instGeo._reference);
-            ObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
+            NascentObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
             auto* scaffoldController = FindElement(controllerRef, resolveContext, &IDocScopeIdResolver::FindSkinController);
             if (scaffoldController) {
                 auto skeleton = FindElement(instGeo.GetSkeleton(), resolveContext, &IDocScopeIdResolver::FindNode);
@@ -294,7 +294,7 @@ namespace ColladaConversion
         const ImportConfiguration& cfg)
     {
         GuidReference refGuid(instGeo._reference);
-        ObjectGuid geoId(refGuid._id, refGuid._fileHash);
+        NascentObjectGuid geoId(refGuid._id, refGuid._fileHash);
         auto geo = objects.GetGeo(geoId);
         if (geo == ~unsigned(0x0)) {
             auto* scaffoldGeo = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
@@ -304,7 +304,7 @@ namespace ColladaConversion
                 auto* scaffoldController = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindSkinController);
 
                 GuidReference sourceMeshRefGuid(scaffoldController->GetBaseMesh());
-                geo = objects.GetGeo(ObjectGuid(sourceMeshRefGuid._id, refGuid._fileHash));
+                geo = objects.GetGeo(NascentObjectGuid(sourceMeshRefGuid._id, refGuid._fileHash));
                 if (geo == ~unsigned(0x0))
                     scaffoldGeo = FindElement(sourceMeshRefGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
             }
@@ -394,7 +394,7 @@ namespace ColladaConversion
         const ImportConfiguration& cfg)
     {
         GuidReference controllerRef(instGeo._reference);
-        ObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
+        NascentObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
         auto* scaffoldController = FindElement(controllerRef, resolveContext, &IDocScopeIdResolver::FindSkinController);
         if (!scaffoldController)
             Throw(::Assets::Exceptions::FormatError("Could not find controller object to instantiate (%s)",
@@ -457,7 +457,7 @@ namespace ColladaConversion
         return XlDynFormatString("Unnamed%i", (unsigned)node.GetIndex());
     }
 
-    static ObjectGuid AsObjectGuid(const Node& node)
+    static NascentObjectGuid AsObjectGuid(const Node& node)
     { 
         if (!node.GetId().IsEmpty())
             return node.GetId().GetHash(); 
@@ -467,7 +467,7 @@ namespace ColladaConversion
         // If we have no name & no id -- it is truly anonymous. 
         // We can just use the index of the node, it's the only unique
         // thing we have.
-        return ObjectGuid(node.GetIndex());
+        return NascentObjectGuid(node.GetIndex());
     }
 
     static bool IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences)

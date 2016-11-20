@@ -12,11 +12,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	class NascentGeometryObjects
 	{
 	public:
-		std::vector<std::pair<ObjectGuid, NascentRawGeometry>> _rawGeos;
-		std::vector<std::pair<ObjectGuid, NascentBoundSkinnedGeometry>> _skinnedGeos;
+		std::vector<std::pair<NascentObjectGuid, NascentRawGeometry>> _rawGeos;
+		std::vector<std::pair<NascentObjectGuid, NascentBoundSkinnedGeometry>> _skinnedGeos;
 
-		unsigned GetGeo(ObjectGuid id);
-		unsigned GetSkinnedGeo(ObjectGuid id);
+		unsigned GetGeo(NascentObjectGuid id);
+		unsigned GetSkinnedGeo(NascentObjectGuid id);
 
 		std::pair<Float3, Float3> CalculateBoundingBox
 		(

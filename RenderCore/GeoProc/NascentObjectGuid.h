@@ -8,17 +8,17 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    class ObjectGuid
+    class NascentObjectGuid
     {
     public:
         uint64  _objectId;
         uint64  _namespaceId;
 
-        ObjectGuid() : _objectId(~0ull), _namespaceId(~0ull) {}
-        ObjectGuid(uint64 objectId, uint64 fileId = 0) : _objectId(objectId), _namespaceId(fileId) {}
+        NascentObjectGuid() : _objectId(~0ull), _namespaceId(~0ull) {}
+        NascentObjectGuid(uint64 objectId, uint64 fileId = 0) : _objectId(objectId), _namespaceId(fileId) {}
     };
 
-    inline bool operator==(const ObjectGuid& lhs, const ObjectGuid& rhs)   { return (lhs._objectId == rhs._objectId) && (lhs._namespaceId == rhs._namespaceId); }
-    inline bool operator<(const ObjectGuid& lhs, const ObjectGuid& rhs)    { if (lhs._namespaceId < rhs._namespaceId) return true; return lhs._objectId < rhs._objectId; }
+    inline bool operator==(const NascentObjectGuid& lhs, const NascentObjectGuid& rhs)   { return (lhs._objectId == rhs._objectId) && (lhs._namespaceId == rhs._namespaceId); }
+    inline bool operator<(const NascentObjectGuid& lhs, const NascentObjectGuid& rhs)    { if (lhs._namespaceId < rhs._namespaceId) return true; return lhs._objectId < rhs._objectId; }
 
 }}}

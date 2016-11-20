@@ -23,12 +23,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     {
     public:
         typedef uint64 Guid;
-        ObjectGuid      _effectId;
+        NascentObjectGuid      _effectId;
         Guid            _guid;
         std::string     _descriptiveName;
 
         ReferencedMaterial(
-            const ObjectGuid& effectId,
+            const NascentObjectGuid& effectId,
             const Guid& guid,
             const std::string& descriptiveName)
         : _effectId(effectId), _guid(guid), _descriptiveName(descriptiveName) {}

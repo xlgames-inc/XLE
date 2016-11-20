@@ -284,11 +284,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class NascentModelCommandStream::TransformationMachineOutput
     {
     public:
-        ObjectGuid _colladaId;
+        NascentObjectGuid _colladaId;
         std::string _name;
     };
 
-    void NascentModelCommandStream::RegisterTransformationMachineOutput(const std::string& bindingName, ObjectGuid id, unsigned transformMarker)
+    void NascentModelCommandStream::RegisterTransformationMachineOutput(const std::string& bindingName, NascentObjectGuid id, unsigned transformMarker)
     {
         // auto existing = FindTransformationMachineOutput(id);
         // if (existing != ~unsigned(0)) return existing;
@@ -302,7 +302,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         _transformationMachineOutputs[transformMarker] = TransformationMachineOutput{id, bindingName};
     }
 
-    unsigned    NascentModelCommandStream::FindTransformationMachineOutput(ObjectGuid nodeId) const
+    unsigned    NascentModelCommandStream::FindTransformationMachineOutput(NascentObjectGuid nodeId) const
     {
         auto i2=_transformationMachineOutputs.cbegin();
         for (;i2!=_transformationMachineOutputs.cend(); ++i2) {

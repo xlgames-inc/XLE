@@ -12,21 +12,21 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class CompareId
     {
     public:
-        bool operator()(const SkeletonRegistry::ImportantNode& lhs, ObjectGuid rhs) const   { return lhs._id < rhs; }
-        bool operator()(ObjectGuid lhs, const SkeletonRegistry::ImportantNode& rhs) const   { return lhs < rhs._id; }
-        bool operator()(ObjectGuid lhs, ObjectGuid rhs) const                               { return lhs < rhs; }
+        bool operator()(const SkeletonRegistry::ImportantNode& lhs, NascentObjectGuid rhs) const   { return lhs._id < rhs; }
+        bool operator()(NascentObjectGuid lhs, const SkeletonRegistry::ImportantNode& rhs) const   { return lhs < rhs._id; }
+        bool operator()(NascentObjectGuid lhs, NascentObjectGuid rhs) const                               { return lhs < rhs; }
     };
 
-    bool SkeletonRegistry::IsImportant(ObjectGuid node) const
+    bool SkeletonRegistry::IsImportant(NascentObjectGuid node) const
     {
-        if (node == ObjectGuid()) return false;
+        if (node == NascentObjectGuid()) return false;
         auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
         return i != _importantNodes.end() && i->_id == node;
     }
 
-    auto SkeletonRegistry::GetOutputMatrixIndex(ObjectGuid node) -> TransformMarker
+    auto SkeletonRegistry::GetOutputMatrixIndex(NascentObjectGuid node) -> TransformMarker
     {
-        if (node == ObjectGuid()) return ~0u;
+        if (node == NascentObjectGuid()) return ~0u;
         auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
         if (i != _importantNodes.end() && i->_id == node) {
             if (i->_transformMarker == TransformMarker_UnSet)
@@ -39,9 +39,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return result;
     }
 
-    bool SkeletonRegistry::TryRegisterNode(ObjectGuid node, const char bindingName[])
+    bool SkeletonRegistry::TryRegisterNode(NascentObjectGuid node, const char bindingName[])
     {
-        if (node == ObjectGuid()) return false;
+        if (node == NascentObjectGuid()) return false;
         // look for other nodes bound to the same name
         for(const auto&i:_importantNodes)
             if (i._bindingName == bindingName)
@@ -60,9 +60,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return true;
     }
 
-    void SkeletonRegistry::AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind)
+    void SkeletonRegistry::AttachInverseBindMatrix(NascentObjectGuid node, const Float4x4& inverseBind)
     {
-        if (node == ObjectGuid()) return;
+        if (node == NascentObjectGuid()) return;
         auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
         if (i != _importantNodes.end() && i->_id == node) {
             i->_inverseBind = inverseBind;
@@ -77,7 +77,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return MakeIteratorRange(_importantNodes);
     }
 
-    auto SkeletonRegistry::GetNode(ObjectGuid node) const -> ImportantNode
+    auto SkeletonRegistry::GetNode(NascentObjectGuid node) const -> ImportantNode
     {
         auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
         if (i != _importantNodes.end() && i->_id == node)

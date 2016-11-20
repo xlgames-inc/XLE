@@ -544,7 +544,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0,
         DynamicArray<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
         std::vector<std::basic_string<utf8>>&& jointNames,
-        ObjectGuid sourceRef,
+        NascentObjectGuid sourceRef,
         std::vector<uint32>&& vertexPositionToBucketIndex)
     :       _inverseBindMatrices(std::forward<DynamicArray<Float4x4>>(inverseBindMatrices))
     ,       _bindShapeMatrix(bindShapeMatrix)

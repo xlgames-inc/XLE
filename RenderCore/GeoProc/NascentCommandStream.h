@@ -198,8 +198,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         bool IsEmpty() const { return _geometryInstances.empty() && _cameraInstances.empty() && _skinControllerInstances.empty(); }
         void Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
-        void RegisterTransformationMachineOutput(const std::string& bindingName, ObjectGuid id, unsigned transformMarker);
-        unsigned FindTransformationMachineOutput(ObjectGuid nodeId) const;
+        void RegisterTransformationMachineOutput(const std::string& bindingName, NascentObjectGuid id, unsigned transformMarker);
+        unsigned FindTransformationMachineOutput(NascentObjectGuid nodeId) const;
 
         std::vector<uint64> GetInputInterface() const;
         unsigned GetMaxLOD() const;
