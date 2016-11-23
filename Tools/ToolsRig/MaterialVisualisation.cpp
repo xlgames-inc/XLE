@@ -26,6 +26,7 @@
 #include "../../RenderCore/Assets/ModelRendererInternal.h"      // for BuildLowLevelInputAssembly
 
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IFileSystem.h"
 
 #include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -173,8 +174,8 @@ namespace ToolsRig
         auto buffer = std::make_unique<uint8[]>(vb._size);
         
         {
-            BasicFile inputFile(scaffold.Filename().c_str(), "rb");
-            inputFile.Seek(scaffold.LargeBlocksOffset() + vb._offset, SEEK_SET);
+            auto inputFile = ::Assets::MainFileSystem::OpenBasicFile(scaffold.Filename(), "rb");
+            inputFile.Seek(scaffold.LargeBlocksOffset() + vb._offset);
             inputFile.Read(buffer.get(), vb._size, 1);
         }
 
@@ -191,11 +192,11 @@ namespace ToolsRig
         auto buffer = std::make_unique<uint8[]>(vb0._size + vb1._size);
         
         {
-            BasicFile inputFile(scaffold.Filename().c_str(), "rb");
-            inputFile.Seek(scaffold.LargeBlocksOffset() + vb0._offset, SEEK_SET);
+            auto inputFile = ::Assets::MainFileSystem::OpenBasicFile(scaffold.Filename(), "rb");
+            inputFile.Seek(scaffold.LargeBlocksOffset() + vb0._offset);
             inputFile.Read(buffer.get(), vb0._size, 1);
 
-            inputFile.Seek(scaffold.LargeBlocksOffset() + vb1._offset, SEEK_SET);
+            inputFile.Seek(scaffold.LargeBlocksOffset() + vb1._offset);
             inputFile.Read(PtrAdd(buffer.get(), vb0._size), vb1._size, 1);
         }
 
@@ -214,8 +215,8 @@ namespace ToolsRig
         auto buffer = std::make_unique<uint8[]>(ib._size);
         
         {
-            BasicFile inputFile(scaffold.Filename().c_str(), "rb");
-            inputFile.Seek(scaffold.LargeBlocksOffset() + ib._offset, SEEK_SET);
+            auto inputFile = ::Assets::MainFileSystem::OpenBasicFile(scaffold.Filename().c_str(), "rb");
+            inputFile.Seek(scaffold.LargeBlocksOffset() + ib._offset);
             inputFile.Read(buffer.get(), ib._size, 1);
         }
 

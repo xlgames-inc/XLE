@@ -6,6 +6,7 @@
 
 #include "FT_Font.h"
 #include "FT_FontTexture.h"
+#include "../Assets/IFileSystem.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringUtils.h"
@@ -160,24 +161,10 @@ private:
 
     std::unique_ptr<FontFileBuffer> CreateBuffer(const char path[])
     {
-        std::unique_ptr<uint8[]> memBuffer;
-        size_t nSize;
-        {
-            BasicFile fp(path, "rb");
-
-            fp.Seek(0, SEEK_END);
-            nSize = fp.TellP();
-            fp.Seek(0, SEEK_SET);
-
-            if (!nSize) {
-                return nullptr;
-            }
-
-            memBuffer.reset(new uint8[nSize]);
-            if (!fp.Read(memBuffer.get(), nSize, 1)) {
-                return nullptr;
-            }
-        }
+		size_t nSize = 0;
+        auto memBuffer = ::Assets::TryLoadFileAsMemoryBlock(path, &nSize);
+        if (!nSize) 
+            return nullptr;
 
         std::unique_ptr<FontFileBuffer> buffer = std::make_unique<FontFileBuffer>();
         buffer->_buffer = std::move(memBuffer);
@@ -839,30 +826,11 @@ bool InitFTFontSystem()
 
 static bool LoadDataFromPak(const char* path, Data* out)
 {
-    std::unique_ptr<char[]> str;
-    size_t read, size = 0;
+	size_t size = 0;
+    auto str = ::Assets::TryLoadFileAsMemoryBlock(path, &size);
+	if (!size) return false;
 
-    {
-        BasicFile file(path, "rb");
-
-        file.Seek(0, SEEK_END);
-        size = file.TellP();
-        file.Seek(0, SEEK_SET);
-        if (!size) {
-            return false;
-        }
-    
-        str.reset(new char[size]);
-        read = (size_t)file.Read(str.get(), 1, size);
-    }
-
-    bool result;
-    if (read == size) {
-        result = out->Load(str.get(), (int)size);
-    } else {
-        result = false;
-    }
-    return result;
+	return out->Load((const char*)str.get(), (int)size);
 }
 
 bool LoadFontConfigFile()

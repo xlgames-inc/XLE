@@ -11,6 +11,7 @@
 #include "../Assets/Assets.h"
 #include "../Assets/AssetServices.h"
 #include "../Assets/InvalidAssetManager.h"
+#include "../Assets/IFileSystem.h"
 #include "../Math/Transformations.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/StreamDOM.h"
@@ -293,7 +294,7 @@ namespace SceneEngine
     TerrainCachedData::TerrainCachedData(const ::Assets::ResChar filename[])
     {
         size_t fileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
+        auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
 
         InputStreamFormatter<utf8> formatter(
             MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));

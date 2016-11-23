@@ -66,31 +66,22 @@ namespace Serialization { namespace ChunkFile
     std::vector<ChunkHeader> LoadChunkTable(Utility::BasicFile& file);
 
     ChunkHeader FindChunk(
-        const char filename[], std::vector<ChunkHeader>& hdrs,
+        const utf8 filename[], std::vector<ChunkHeader>& hdrs,
         TypeIdentifier chunkType, unsigned expectedVersion);
 
     std::unique_ptr<uint8[]> RawChunkAsMemoryBlock(
-        const char filename[], TypeIdentifier chunkType, unsigned expectedVersion);
+        const utf8 filename[], TypeIdentifier chunkType, unsigned expectedVersion);
 
     namespace Internal
     {
-        class SCFW_File : public BasicFile
-        {
-        public:
-            typedef std::tuple<
-                const char*, const char*, 
-                BasicFile::ShareMode::BitField> Initializer;
-            SCFW_File(Initializer init);
-        };
-
         template<typename Writer>
-            class SimpleChunkFileWriterT : public Writer
+            class SimpleChunkFileWriterT
         {
         public:
             SimpleChunkFileWriterT(
-                unsigned chunkCount, 
-                const char buildVersionString[], const char buildDateString[],
-                typename Writer::Initializer init);
+                Writer&& writer, 
+				unsigned chunkCount,
+                const char buildVersionString[], const char buildDateString[]);
             ~SimpleChunkFileWriterT();
 
             void BeginChunk(
@@ -98,7 +89,13 @@ namespace Serialization { namespace ChunkFile
                 unsigned version, const char name[]);
             void FinishCurrentChunk();
 
+			size_t Write(const void *buffer, size_t size, size_t count) never_throws;
+			size_t Seek(size_t offset, FileSeekAnchor anchor = FileSeekAnchor::Start) never_throws;
+			size_t TellP() const never_throws;
+			void Flush() never_throws;
+
         protected:
+			Writer _writer;
             Serialization::ChunkFile::ChunkHeader _activeChunk;
             size_t _activeChunkStart;
             bool _hasActiveChunk;
@@ -107,7 +104,7 @@ namespace Serialization { namespace ChunkFile
         };
     }
 
-    using SimpleChunkFileWriter = Internal::SimpleChunkFileWriterT<Internal::SCFW_File>;
+    using SimpleChunkFileWriter = Internal::SimpleChunkFileWriterT<BasicFile>;
 
 }}
 

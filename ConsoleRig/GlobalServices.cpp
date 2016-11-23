@@ -9,6 +9,8 @@
 #include "LogStartup.h"
 #include "Console.h"
 #include "IProgress.h"
+#include "../Assets/IFileSystem.h"
+#include "../Assets/OSFileSystem.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/PathUtils.h"
@@ -68,6 +70,8 @@ namespace ConsoleRig
 
 		serv.Add<std::basic_string<utf8>()>(Fn_GetAssetRoot, [assetRoot](){ return assetRoot; });
 
+		::Assets::MainFileSystem::SetDefaultFileSystem(::Assets::CreateFileSystem_OS());
+
             //
             //      We need to initialize logging output.
             //      The "int" directory stands for "intermediate." We cache processed 
@@ -76,7 +80,7 @@ namespace ConsoleRig
             //      git and it contains only temporary data).
             //      Note that we overwrite the log file every time, destroying previous data.
             //
-        CreateDirectoryRecursive("int");
+        RawFS::CreateDirectoryRecursive("int");
     }
 
     StartupConfig::StartupConfig()

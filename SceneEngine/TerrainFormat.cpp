@@ -10,6 +10,7 @@
 #include "../RenderCore/Format.h"
 #include "../Assets/ChunkFile.h"
 #include "../Assets/Assets.h"
+#include "../Assets/IFileSystem.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Core/Types.h"
@@ -128,7 +129,7 @@ namespace SceneEngine
             std::vector<NodeField> nodeFields;
             std::vector<std::unique_ptr<Node>> nodes;
 
-            BasicFile file(filename, "rb");
+            auto file = ::Assets::MainFileSystem::OpenBasicFile(filename, "rb");
 
                 // Load the chunks. We should have 2 chunks:
                 //  . cell scaffold
@@ -147,7 +148,7 @@ namespace SceneEngine
             }
 
             CellDesc cellDesc;
-            file.Seek(scaffoldChunk._fileOffset, SEEK_SET);
+            file.Seek(scaffoldChunk._fileOffset);
             file.Read(&cellDesc._hdr, sizeof(cellDesc._hdr), 1);
 
             _encodedGradientFlags = !!(cellDesc._hdr._flags & CellDesc::Header::Flags::EncodedGradientFlags);
@@ -184,9 +185,9 @@ namespace SceneEngine
                             if (loadInfo._hdr._compressionDataSize) {
                                 if (loadInfo._hdr._compressionType == Compression::QuantRange && loadInfo._hdr._compressionDataSize >= (sizeof(float)*2)) {
                                     file.Read(compressionData, sizeof(float), 2);
-                                    file.Seek(loadInfo._hdr._compressionDataSize - sizeof(float)*2, SEEK_CUR);
+                                    file.Seek(loadInfo._hdr._compressionDataSize - sizeof(float)*2, FileSeekAnchor::Current);
                                 } else {
-                                    file.Seek(loadInfo._hdr._compressionDataSize, SEEK_CUR);
+                                    file.Seek(loadInfo._hdr._compressionDataSize, FileSeekAnchor::Current);
                                 }
                             }
 
@@ -231,7 +232,7 @@ namespace SceneEngine
             auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
 
             TRY {
-                BasicFile file(filename, "rb");
+                auto file = ::Assets::MainFileSystem::OpenBasicFile(filename, "rb");
 
                     // Load the chunks. We should have 2 chunks:
                     //  . cell scaffold
@@ -250,7 +251,7 @@ namespace SceneEngine
                 }
 
                 CellDesc cellDesc;
-                file.Seek(scaffoldChunk._fileOffset, SEEK_SET);
+                file.Seek(scaffoldChunk._fileOffset);
                 file.Read(&cellDesc._hdr, sizeof(cellDesc._hdr), 1);
 
                 std::vector<unsigned> fileOffsetsBreadthFirst;
@@ -425,9 +426,9 @@ namespace SceneEngine
                 return 3;
             }
 
-        template<typename Element>
+        template<typename Element, typename File>
             static CoverageDataResult WriteCoverageData(
-                BasicFile& destinationFile, TerrainUberSurfaceGeneric& surface,
+				File& destinationFile, TerrainUberSurfaceGeneric& surface,
                 unsigned startx, unsigned starty, signed downsample, unsigned dimensionsInElements,
                 const GradientFlagsSettings& gradFlagsSettings, Compression::Enum compression)
         {
@@ -545,8 +546,8 @@ namespace SceneEngine
 
             const unsigned chunkCount = 2;
             SimpleChunkFileWriter outputFile(
-                chunkCount, versionInfo.first, versionInfo.second,
-                std::make_tuple(destinationFile, "wb", SimpleChunkFileWriter::ShareMode::Read));
+				::Assets::MainFileSystem::OpenBasicFile(destinationFile, "wb", FileShareMode::Read),
+                chunkCount, versionInfo.first, versionInfo.second);
 
                 //  write an area of the uber surface to our native terrain format
             auto nodeCount = NodeCountFromTreeDepth(treeDepth);
@@ -571,7 +572,7 @@ namespace SceneEngine
 
                 // Skip over the node header array for now
             auto nodeHeaderArray = outputFile.TellP();
-            outputFile.Seek(nodeHeaders.size(), SEEK_CUR);
+            outputFile.Seek(nodeHeaders.size(), FileSeekAnchor::Current);
 
                 //  Now write the header for the height data part
                 //  At the moment each node has the same amount of height data...
@@ -618,7 +619,7 @@ namespace SceneEngine
             outputFile.FinishCurrentChunk();
 
                 // go back and write the node headers in the node header chunk
-            outputFile.Seek(nodeHeaderArray, SEEK_SET);
+            outputFile.Seek(nodeHeaderArray);
             outputFile.Write(AsPointer(nodeHeaders.begin()), nodeHeaders.size(), 1);
         }
     }

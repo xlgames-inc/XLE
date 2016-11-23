@@ -6,6 +6,7 @@
 
 #include "ChunkFile.h"
 #include "Assets.h"
+#include "IFileSystem.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/PtrUtils.h"
@@ -54,7 +55,7 @@ namespace Serialization { namespace ChunkFile
     }
 
     Serialization::ChunkFile::ChunkHeader FindChunk(
-        const char filename[],
+        const utf8 filename[],
         std::vector<Serialization::ChunkFile::ChunkHeader>& hdrs,
         Serialization::ChunkFile::TypeIdentifier chunkType,
         unsigned expectedVersion)
@@ -79,16 +80,16 @@ namespace Serialization { namespace ChunkFile
     }
 
     std::unique_ptr<uint8[]> RawChunkAsMemoryBlock(
-            const char filename[],
-            Serialization::ChunkFile::TypeIdentifier chunkType,
-            unsigned expectedVersion)
+        const utf8 filename[],
+        Serialization::ChunkFile::TypeIdentifier chunkType,
+        unsigned expectedVersion)
     {
-        BasicFile file(filename, "rb");
+        auto file = Assets::MainFileSystem::OpenBasicFile(filename, "rb");
         auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
 
         auto scaffoldChunk = FindChunk(filename, chunks, chunkType, expectedVersion);
         auto rawMemoryBlock = std::make_unique<uint8[]>(scaffoldChunk._size);
-        file.Seek(scaffoldChunk._fileOffset, SEEK_SET);
+        file.Seek(scaffoldChunk._fileOffset);
         file.Read(rawMemoryBlock.get(), 1, scaffoldChunk._size);
         return std::move(rawMemoryBlock);
     }
@@ -97,16 +98,12 @@ namespace Serialization { namespace ChunkFile
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     namespace Internal
     {
-        SCFW_File::SCFW_File(Initializer init)
-        : BasicFile(std::get<0>(init), std::get<1>(init), std::get<2>(init))
-        {}
-
         template<typename Writer>
             SimpleChunkFileWriterT<Writer>::SimpleChunkFileWriterT(
-                unsigned chunkCount, const char buildVersionString[], const char buildDateString[],
-                typename Writer::Initializer init)
-            : Writer(init)
-            , _chunkCount(chunkCount)
+				Writer&& writer,
+                unsigned chunkCount, const char buildVersionString[], const char buildDateString[])
+        : _writer(std::move(writer))
+        , _chunkCount(chunkCount)
         {
             _activeChunkStart = 0;
             _hasActiveChunk = false;
@@ -114,10 +111,10 @@ namespace Serialization { namespace ChunkFile
             
             ChunkFileHeader fileHeader = MakeChunkFileHeader(
                 chunkCount, buildVersionString, buildDateString);
-            Write(&fileHeader, sizeof(fileHeader), 1);
+			_writer.Write(&fileHeader, sizeof(fileHeader), 1);
             for (unsigned c=0; c<chunkCount; ++c) {
                 ChunkHeader t;
-                Write(&t, sizeof(ChunkHeader), 1);
+				_writer.Write(&t, sizeof(ChunkHeader), 1);
             }
         }
 
@@ -142,7 +139,7 @@ namespace Serialization { namespace ChunkFile
             _activeChunk._type = type;
             _activeChunk._chunkVersion = version;
             XlCopyString(_activeChunk._name, name);
-            _activeChunkStart = TellP();
+            _activeChunkStart = _writer.TellP();
             _activeChunk._fileOffset = (ChunkFile::SizeType)_activeChunkStart;
             _activeChunk._size = 0; // unknown currently
 
@@ -153,15 +150,39 @@ namespace Serialization { namespace ChunkFile
             void SimpleChunkFileWriterT<Writer>::FinishCurrentChunk()
         {
             using namespace Serialization::ChunkFile;
-            auto oldLoc = TellP();
+            auto oldLoc = _writer.TellP();
             auto chunkHeaderLoc = sizeof(ChunkFileHeader) + _activeChunkIndex * sizeof(ChunkHeader);
-            Seek(chunkHeaderLoc, SEEK_SET);
+            _writer.Seek(chunkHeaderLoc);
             _activeChunk._size = (ChunkFile::SizeType)std::max(size_t(0), oldLoc - _activeChunkStart);
-            Write(&_activeChunk, sizeof(ChunkHeader), 1);
-            Seek(oldLoc, SEEK_SET);
+			_writer.Write(&_activeChunk, sizeof(ChunkHeader), 1);
+            _writer.Seek(oldLoc);
             ++_activeChunkIndex;
             _hasActiveChunk = false;
         }
+
+		template<typename Writer>
+			size_t SimpleChunkFileWriterT<Writer>::Write(const void *buffer, size_t size, size_t count) never_throws
+		{
+			return _writer.Write(buffer, size, count);
+		}
+
+		template<typename Writer>
+			size_t SimpleChunkFileWriterT<Writer>::Seek(size_t offset, FileSeekAnchor anchor) never_throws
+		{
+			return _writer.Seek(offset, anchor);
+		}
+
+		template<typename Writer>
+			size_t SimpleChunkFileWriterT<Writer>::TellP() const never_throws
+		{
+			return _writer.TellP();
+		}
+
+		template<typename Writer>
+			void SimpleChunkFileWriterT<Writer>::Flush() never_throws
+		{
+			return _writer.Flush();
+		}
         
     }
 

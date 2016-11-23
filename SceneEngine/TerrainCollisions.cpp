@@ -7,6 +7,7 @@
 #include "Terrain.h"
 #include "TerrainScaffold.h"
 #include "TerrainConfig.h"
+#include "../Assets/IFileSystem.h"
 #include "../Math/Transformations.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Streams/FileUtils.h"
@@ -166,8 +167,8 @@ namespace SceneEngine
         auto& node = *cell._nodes[nodeIndex];
         auto heightData = std::make_unique<uint16[]>(node._heightMapFileSize/2);
         {
-            BasicFile file(cellFilename, "rb");
-            file.Seek(node._heightMapFileOffset, SEEK_SET);
+            auto file = ::Assets::MainFileSystem::OpenBasicFile(cellFilename, "rb");
+            file.Seek(node._heightMapFileOffset);
             file.Read(heightData.get(), 1, node._heightMapFileSize);
         }
 

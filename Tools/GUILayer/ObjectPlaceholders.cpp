@@ -23,6 +23,7 @@
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../Assets/Assets.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/Geometry.h"
@@ -105,7 +106,7 @@ namespace GUILayer
 
 	template<typename T> static T ReadFromFile(BasicFile& file, size_t size, size_t offset)
 	{
-		file.Seek(offset, SEEK_SET);
+		file.Seek(offset);
 		auto data = std::make_unique<uint8[]>(size);
 		file.Read(data.get(), size, 1);
 		return T(data.get(), size);
@@ -127,7 +128,7 @@ namespace GUILayer
 	void SimpleModel::Build(const RenderCore::Assets::RawGeometry& geo, const ::Assets::ResChar filename[], unsigned largeBlocksOffset)
 	{
 		// load the vertex buffer & index buffer from the geo input, and copy draw calls data
-		BasicFile file(filename, "rb");
+		auto file = ::Assets::MainFileSystem::OpenBasicFile(filename, "rb");
 		_vb = ReadFromFile<Metal::VertexBuffer>(file, geo._vb._size, geo._vb._offset + largeBlocksOffset);
 		_ib = ReadFromFile<Metal::IndexBuffer>(file, geo._ib._size, geo._ib._offset + largeBlocksOffset);
 		_drawCalls.insert(_drawCalls.begin(), geo._drawCalls.cbegin(), geo._drawCalls.cend());

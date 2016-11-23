@@ -6,6 +6,7 @@
 
 #include "TerrainOp.h"
 #include "../../SceneEngine/TerrainUberSurface.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/IProgress.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -44,10 +45,10 @@ namespace ToolsRig
         UInt2 dims,
         ImpliedTyping::TypeDesc format)
     {
-        _file = MemoryMappedFile(
+        _file = ::Assets::MainFileSystem::OpenMemoryMappedFile(
             outFile,
             sizeof(TerrainUberHeader) + dims[0] * dims[1] * format.GetSize(),
-            MemoryMappedFile::Access::Write);
+            "w");
 
         TerrainUberHeader hdr;
         hdr._magic = TerrainUberHeader::Magic;

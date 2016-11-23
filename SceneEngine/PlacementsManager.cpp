@@ -23,6 +23,7 @@
 #include "../Assets/ChunkFile.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/InvalidAssetManager.h"
+#include "../Assets/IFileSystem.h"
 
 #include "../RenderCore/RenderUtils.h"
 
@@ -128,8 +129,8 @@ namespace SceneEngine
     {
         using namespace Serialization::ChunkFile;
         SimpleChunkFileWriter fileWriter(
-            1, RenderCore::VersionString, RenderCore::BuildDateString,
-            std::make_tuple(destinationFile, "wb", 0));
+			::Assets::MainFileSystem::OpenBasicFile(destinationFile, "wb", 0),
+            1, RenderCore::VersionString, RenderCore::BuildDateString);
         fileWriter.BeginChunk(ChunkType_Placements, 0, "Placements");
 
         PlacementsHeader hdr;

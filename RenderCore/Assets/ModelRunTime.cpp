@@ -28,6 +28,7 @@
 #include "../Types.h"
 #include "../Format.h"
 
+#include "../../Assets/IFileSystem.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/IteratorUtils.h"
@@ -140,7 +141,7 @@ namespace RenderCore { namespace Assets
 
         static void LoadBlock(BasicFile& file, uint8 destination[], size_t fileOffset, size_t readSize)
         {
-            file.Seek(fileOffset, SEEK_SET);
+            file.Seek(fileOffset);
             file.Read(destination, 1, readSize);
         }
 
@@ -646,13 +647,13 @@ namespace RenderCore { namespace Assets
         nascentIB.resize(workingBuffers._ibSize);
 
         {
-            BasicFile file(scaffold.Filename().c_str(), "rb");
+			auto file = ::Assets::MainFileSystem::OpenBasicFile(scaffold.Filename(), "rb");
             ReadImmediately(nascentIB, file, scaffold.LargeBlocksOffset(), MakeIteratorRange(workingBuffers._ibUploads));
             ReadImmediately(nascentVB, file, scaffold.LargeBlocksOffset(), MakeIteratorRange(workingBuffers._vbUploads));
         }
 
         for (unsigned s=0; s<supplements.size(); ++s) {
-            BasicFile file(supplements[s]->Filename().c_str(), "rb");
+			auto file = ::Assets::MainFileSystem::OpenBasicFile(supplements[s]->Filename(), "rb");
             ReadImmediately(nascentVB, file, supplements[s]->LargeBlocksOffset(), MakeIteratorRange(workingBuffers._vbUploads), s);
         }
 

@@ -14,6 +14,7 @@
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/CompilerHelper.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -55,7 +56,7 @@ namespace RenderCore { namespace Assets
             //  to the geometry export (eg, .dae file).
 
         size_t sourceFileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(locator._sourceID0, &sourceFileSize);
+        auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(locator._sourceID0, &sourceFileSize);
         if (!sourceFile || sourceFileSize == 0)
             Throw(::Assets::Exceptions::InvalidAsset(
                 initializer, 
@@ -192,8 +193,8 @@ namespace RenderCore { namespace Assets
             auto block = blockSerializer.AsMemoryBlock();
 
             Serialization::ChunkFile::SimpleChunkFileWriter output(
-                1, VersionString, BuildDateString, 
-                std::make_tuple(destination, "wb", 0));
+				::Assets::MainFileSystem::OpenBasicFile(destination, "wb"),
+                1, VersionString, BuildDateString);
 
             output.BeginChunk(ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion, Meld() << sourceModel << "&" << sourceMaterial);
             output.Write(block.get(), 1, blockSize);

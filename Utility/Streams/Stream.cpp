@@ -30,11 +30,11 @@ public:
     virtual int Read(void* p, int len);
     virtual bool Seek(StreamSeekType type, int64 offset);
 private:
-    BasicFile _file;
+    RawFS::BasicFile _file;
 };
 
 FileInputStream::FileInputStream(const char filename[], const char openMode[]) :
-_file(filename, openMode)
+_file((const utf8*)filename, openMode, FileShareMode::Read)
 {
 }
 
@@ -47,7 +47,7 @@ bool FileInputStream::Seek(StreamSeekType type, int64 offset)
 {
     switch (type) {
     case SST_CUR:
-        return _file.Seek(long(offset), SEEK_CUR) != size_t(0);
+        return _file.Seek(long(offset)) != size_t(0);
     }
     return false;
 }
@@ -78,7 +78,7 @@ private:
 };
 
 FileOutputStream::FileOutputStream(const char filename[], const char openMode[]) 
-: _file(filename, openMode)
+: _file(RawFS::BasicFile((const utf8*)filename, openMode, FileShareMode::Read))
 {}
 
 FileOutputStream::FileOutputStream(const BasicFile& copyFrom)

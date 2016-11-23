@@ -6,6 +6,7 @@
 
 #include "AssetUtils.h"
 #include "CompilerLibrary.h"
+#include "IFileSystem.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
@@ -211,6 +212,11 @@ namespace Assets
         return false;
     }
 
+	static bool DoesFileExist(const ResChar fn[])
+	{
+		return MainFileSystem::TryGetDesc((const utf8*)fn)._state == FileDesc::State::Normal;
+	}
+
     void DirectorySearchRules::ResolveFile(ResChar destination[], unsigned destinationCount, const ResChar baseName[]) const
     {
         ResChar tempBuffer[MaxPath];
@@ -274,7 +280,7 @@ namespace Assets
             //  there is some ambiguity. Let's prefer to use the first
             //  registered path for simple relative paths like this.
         bool useBaseName = 
-            (baseName[0] != '.' && DoesDirectoryExist(baseName));
+            (baseName[0] != '.' && RawFS::DoesDirectoryExist(baseName));
 
         if (!useBaseName) {
             const ResChar* b = _buffer;
@@ -290,7 +296,7 @@ namespace Assets
 
             for (unsigned c=0; c<_startPointCount; ++c) {
                 XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName, baseEnd);
-                if (DoesDirectoryExist(workingBuffer)) {
+                if (RawFS::DoesDirectoryExist(workingBuffer)) {
                     if (workingBuffer != destination)
                         XlCopyString(destination, destinationCount, workingBuffer);
                     return;

@@ -26,6 +26,7 @@
 #include "../RenderCore/Assets/Material.h"
 #include "../Assets/CompilerLibrary.h"
 #include "../Assets/NascentChunkArray.h"
+#include "../Assets/IFileSystem.h"
 
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/XmlStreamFormatter.h"
@@ -547,10 +548,7 @@ namespace ColladaConversion
 		auto filePath = split.AllExceptParameters().AsString();
 
 		result->_cfg = ImportConfiguration("colladaimport.cfg");
-		result->_fileData = MemoryMappedFile(filePath.c_str(), 0, MemoryMappedFile::Access::Read, BasicFile::ShareMode::Read);
-		if (!result->_fileData.IsValid())
-			Throw(::Exceptions::BasicLabel("Error opening file for read (%s)", filePath.c_str()));
-
+		result->_fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(filePath.c_str(), 0, "r", FileShareMode::Read);
 		XmlInputStreamFormatter<utf8> formatter(
 			MemoryMappedInputStream(
 				result->_fileData.GetData(), 

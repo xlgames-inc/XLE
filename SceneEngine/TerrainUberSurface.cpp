@@ -26,6 +26,7 @@
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/DataPacket.h"
 
+#include "../Assets/IFileSystem.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
@@ -38,7 +39,7 @@ namespace SceneEngine
 
     void* TerrainUberSurfaceGeneric::GetData(UInt2 coord)
     {
-        assert(_mappedFile && _dataStart);
+        assert(_mappedFile.IsGood() && _dataStart);
         if (coord[0] >= _width || coord[1] >= _height) return nullptr;
         auto stride = _width * _sampleBytes;
         return PtrAdd(_dataStart, coord[1] * stride + coord[0] * _sampleBytes);
@@ -60,25 +61,22 @@ namespace SceneEngine
             //  Load the file as a Win32 "mapped file"
             //  the format is very simple.. it's just a basic header, and then
             //  a huge 2D array of height values
-        auto mappedFile = std::make_unique<MemoryMappedFile>(filename, 0, MemoryMappedFile::Access::Read|MemoryMappedFile::Access::Write, BasicFile::ShareMode::Read);
-        if (!mappedFile->IsValid())
-            Throw(::Assets::Exceptions::InvalidAsset(
-                filename, "Failed while opening uber surface file"));
+        auto mappedFile = ::Assets::MainFileSystem::OpenMemoryMappedFile(filename, 0, "r+", FileShareMode::Read);
         
-        auto& hdr = *(TerrainUberHeader*)mappedFile->GetData();
+        auto& hdr = *(TerrainUberHeader*)mappedFile.GetData();
         if (hdr._magic != TerrainUberHeader::Magic)
             Throw(::Assets::Exceptions::InvalidAsset(
                 filename, "Uber surface file appears to be corrupt"));
 
         _width = hdr._width;
         _height = hdr._height;
-        _dataStart = PtrAdd(mappedFile->GetData(), sizeof(TerrainUberHeader));
+        _dataStart = PtrAdd(mappedFile.GetData(), sizeof(TerrainUberHeader));
         _format = ImpliedTyping::TypeDesc(
             ImpliedTyping::TypeCat(hdr._typeCat), 
             (uint16)hdr._typeArrayCount);
         _sampleBytes = _format.GetSize();
 
-        if (mappedFile->GetSize() < (sizeof(TerrainUberHeader) + hdr._width * hdr._height * _sampleBytes))
+        if (mappedFile.GetSize() < (sizeof(TerrainUberHeader) + hdr._width * hdr._height * _sampleBytes))
             Throw(::Assets::Exceptions::InvalidAsset(
                 filename, "Uber surface file appears to be corrupt (it is smaller than it should be)"));
 
@@ -544,7 +542,7 @@ namespace SceneEngine
         const ::Assets::ResChar destinationFile[], 
         unsigned width, unsigned height, const ImpliedTyping::TypeDesc& type)
     {
-        BasicFile outputFile(destinationFile, "wb");
+		auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(destinationFile, "wb");
 
         TerrainUberHeader hdr;
         hdr._magic = TerrainUberHeader::Magic;

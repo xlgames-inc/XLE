@@ -7,6 +7,7 @@
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "IntermediateAssets.h"
+#include "IFileSystem.h"
 
 #include "CompileAndAsyncManager.h"     // for ~PendingCompileMarker -- remove
 
@@ -77,7 +78,7 @@ namespace Assets { namespace IntermediateAssets
         void OnChange()
         {
                 // on change, update the modification time record
-            _state._timeMarker = GetFileModificationTime(_state._filename.c_str());
+            _state._timeMarker = MainFileSystem::TryGetDesc(_state._filename)._modificationTime;
             DependencyValidation::OnChange();
         }
 
@@ -107,7 +108,7 @@ namespace Assets { namespace IntermediateAssets
                 //  file's current modification time
             auto newRecord = std::make_shared<RetainedFileRecord>(assetName._fn);
             RegisterFileDependency(newRecord, assetName._fn);
-            newRecord->_state._timeMarker = GetFileModificationTime(assetName._fn);
+            newRecord->_state._timeMarker = MainFileSystem::TryGetDesc(assetName._fn)._modificationTime;
 
             RetainedRecords.insert(i, std::make_pair(hash, newRecord));
             return std::move(newRecord);
@@ -146,7 +147,7 @@ namespace Assets { namespace IntermediateAssets
 
         ResChar buffer[MaxPath];
         MakeDepFileName(buffer, _baseDirectory.c_str(), intermediateFileName);
-        if (!DoesFileExist(buffer)) return nullptr;
+        if (MainFileSystem::TryGetDesc(buffer)._state != FileDesc::State::Normal) return nullptr;
 
         Data data;
         data.LoadFromFile(buffer);
@@ -235,7 +236,7 @@ namespace Assets { namespace IntermediateAssets
             // first, create the directory if we need to
         char dirName[MaxPath];
         XlDirname(dirName, dimof(dirName), buffer);
-        CreateDirectoryRecursive(dirName);
+        RawFS::CreateDirectoryRecursive(dirName);
 
             // now, write -- 
         data.Save(buffer);
@@ -271,7 +272,7 @@ namespace Assets { namespace IntermediateAssets
 								//          same app from using the same intermediate assets store.
 								//          We can do this by use a "non-shareable" file mode when
 								//          we load these files. 
-							BasicFile markerFile(buffer, "rb", 0);
+							auto markerFile = MainFileSystem::OpenBasicFile(buffer, "rb", 0);
 							auto fileSize = markerFile.GetSize();
 							if (fileSize != 0) {
 								auto rawData = std::unique_ptr<uint8[]>(new uint8[int(fileSize)]);
@@ -311,14 +312,14 @@ namespace Assets { namespace IntermediateAssets
 						continue;
 					}
 
-					CreateDirectoryRecursive(buffer);
+					RawFS::CreateDirectoryRecursive(buffer);
 					goodBranchDir = buffer;
 
 					_snprintf_s(buffer, _TRUNCATE, "%s/%s_%i/.store", baseDirectory, configString, d);
 
                         // Opening without sharing to prevent other instances of XLE apps from using
                         // the same directory.
-                    _markerFile = BasicFile(buffer, "wb", 0);
+                    _markerFile = MainFileSystem::OpenBasicFile(buffer, "wb", 0);
 					auto stream = OpenFileOutput(_markerFile);
                     OutputStreamFormatter formatter(*stream);
                     formatter.WriteAttribute(u("VersionString"), (const utf8*)versionString);

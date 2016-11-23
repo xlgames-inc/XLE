@@ -12,6 +12,7 @@
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../Utility/ParameterBox.h"        // for ImpliedTyping::TypeDesc
 #include "../Utility/PtrUtils.h"
+#include "../Utility/Streams/FileUtils.h"
 #include "../Assets/Assets.h"
 #include "../Math/Vector.h"
 #include "../Utility/IntrusivePtr.h"
@@ -51,7 +52,7 @@ namespace SceneEngine
         TerrainUberSurfaceGeneric(TerrainUberSurfaceGeneric&& moveFrom);
         TerrainUberSurfaceGeneric& operator=(TerrainUberSurfaceGeneric&& moveFrom);
     protected:
-        std::unique_ptr<Utility::MemoryMappedFile> _mappedFile;
+        Utility::MemoryMappedFile _mappedFile;
 
         unsigned _width, _height;
         void* _dataStart;
@@ -177,7 +178,7 @@ namespace SceneEngine
 
     inline void* TerrainUberSurfaceGeneric::GetDataFast(UInt2 coord)
     {
-        assert(_mappedFile && _dataStart);
+        assert(_mappedFile.IsGood() && _dataStart);
         assert(coord[0] < _width && coord[1] < _height);
         auto stride = _width * _sampleBytes;
         return PtrAdd(_dataStart, coord[1] * stride + coord[0] * _sampleBytes);
@@ -192,7 +193,7 @@ namespace SceneEngine
     template <typename Type>
         inline Type TerrainUberSurface<Type>::GetValue(unsigned x, unsigned y) const
     {
-        assert(_mappedFile && _dataStart);
+        assert(_mappedFile.IsGood() && _dataStart);
         if (y >= _height || x >= _width)
             return Internal::DummyValue<Type>();
         return ((Type*)_dataStart)[y*_width+x];
@@ -201,7 +202,7 @@ namespace SceneEngine
     template <typename Type>
         inline void TerrainUberSurface<Type>::SetValue(unsigned x, unsigned y, Type newValue)
     {
-        assert(_mappedFile && _dataStart);
+        assert(_mappedFile.IsGood() && _dataStart);
         if (y < _height && x < _width) {
             ((Type*)_dataStart)[y*_width+x] = newValue;
         }
@@ -210,7 +211,7 @@ namespace SceneEngine
     template <typename Type>
         inline Type TerrainUberSurface<Type>::GetValueFast(unsigned x, unsigned y) const
     {
-        assert(_mappedFile && _dataStart);
+        assert(_mappedFile.IsGood() && _dataStart);
         assert(y < _height && x < _width);
         return ((Type*)_dataStart)[y*_width+x];
     }

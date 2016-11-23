@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../Utility/Threading/Mutex.h"
+#include "../Utility/UTFUtils.h"
 #include "../Core/Types.h"
 
 #include <memory>
@@ -80,7 +81,7 @@ namespace Assets
 
         mutable Threading::Mutex _pendingBlocksLock;
         std::vector<PendingCommit> _pendingBlocks;
-        std::string _mainFileName, _directoryFileName;
+        std::basic_string<utf8> _mainFileName, _directoryFileName;
 
         const char*     _buildVersionString;
         const char*     _buildDateString;

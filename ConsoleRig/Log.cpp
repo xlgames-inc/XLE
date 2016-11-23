@@ -133,7 +133,7 @@ namespace ConsoleRig
                 // if a configuration file exists, 
             if (configFile) {
                 size_t configFileLength = 0;
-                auto configFileData = LoadFileAsMemoryBlock(configFile, &configFileLength);
+                auto configFileData = RawFS::TryLoadFileAsMemoryBlock(configFile, &configFileLength);
                 if (configFileData && configFileLength) {
                     c.parseFromText(std::string(configFileData.get(), &configFileData[configFileLength]));
                 }

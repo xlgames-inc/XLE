@@ -29,6 +29,7 @@
 #include "../../RenderCore/Format.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -451,7 +452,7 @@ namespace ToolsRig
         std::vector<std::pair<unsigned, MeshDatabase>> meshes;
         
         {
-            MemoryMappedFile file(model.Filename().c_str(), 0ull, MemoryMappedFile::Access::Read);
+			auto file = ::Assets::MainFileSystem::OpenMemoryMappedFile(model.Filename().c_str(), 0ull, "r");
 
             const auto& immData = model.ImmutableData();
             auto geoIndicies = GetGeoList(immData);
@@ -656,8 +657,8 @@ namespace ToolsRig
         {
             using namespace Serialization::ChunkFile;
             SimpleChunkFileWriter file(
-                2, RenderCore::VersionString, RenderCore::BuildDateString,
-                std::make_tuple(destinationFile, "wb", 0));
+				::Assets::MainFileSystem::OpenBasicFile(destinationFile, "wb", 0),
+                2, RenderCore::VersionString, RenderCore::BuildDateString);
 
             file.BeginChunk(
                 RenderCore::Assets::ChunkType_ModelScaffold, 

@@ -235,9 +235,7 @@ namespace GUILayer
 
     static void PrepareDirectoryForFile(std::string& destinationFile)
     {
-        utf8 dirName[MaxPath];
-        XlDirname((char*)dirName, dimof(dirName), destinationFile.c_str());
-        CreateDirectoryRecursive((char*)dirName);
+        RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFile).DriveAndPath());
     }
 
     ref class TextPendingExport : public EditorSceneManager::PendingExport

@@ -8,6 +8,7 @@
 #include "ObjectFactory.h"
 #include "IncludeVulkan.h"
 #include "../../../Assets/IntermediateAssets.h"
+#include "../../../Assets/IFileSystem.h"
 #include "../../../Utility/Streams/StreamDOM.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
 #include "../../../Utility/Streams/FileUtils.h"
@@ -363,7 +364,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         // attempt to load the source file and extract the root signature
         size_t fileSize = 0;
-        auto block = LoadFileAsMemoryBlock(filename, &fileSize);
+        auto block = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
         if (!block || !fileSize)
             Throw(::Exceptions::BasicLabel("Failure while attempting to load root signature (%s)", filename));
 

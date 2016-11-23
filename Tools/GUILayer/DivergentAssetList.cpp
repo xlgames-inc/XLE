@@ -13,6 +13,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/AssetServices.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/Data.h"
@@ -277,11 +278,11 @@ namespace GUILayer
     static array<Byte>^ LoadOriginalFileAsByteArray(const char filename[])
     {
         TRY {
-            BasicFile file(filename, "rb");
+            auto file = ::Assets::MainFileSystem::OpenBasicFile(filename, "rb");
 
-            file.Seek(0, SEEK_END);
+            file.Seek(0, FileSeekAnchor::End);
             size_t size = file.TellP();
-            file.Seek(0, SEEK_SET);
+            file.Seek(0);
 
             auto block = gcnew array<Byte>(int(size));
             {
@@ -478,7 +479,7 @@ namespace GUILayer
                 TRY
                 {
 					{
-						BasicFile outputFile(dstFile.c_str(), "wb");
+						auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(dstFile.c_str(), "wb");
 						outputFile.Write(strm.GetBuffer().Begin(), 1, size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin()));
 					}
 

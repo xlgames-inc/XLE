@@ -843,10 +843,10 @@ bool DataParser::InitFromFile(const char* filename)
 
     size_t size = 0;
     {
-        Utility::BasicFile file(filename, "rb");
-        file.Seek(0, SEEK_END);
+        RawFS::BasicFile file((const utf8*)filename, "rb", FileShareMode::Read);
+        file.Seek(0, FileSeekAnchor::End);
         size = file.TellP();
-        file.Seek(0, SEEK_SET);
+        file.Seek(0);
 
         _data = new char[size];
         file.Read(_data, 1, size);

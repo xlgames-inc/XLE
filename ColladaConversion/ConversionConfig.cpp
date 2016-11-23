@@ -6,6 +6,7 @@
 
 #include "ConversionConfig.h"
 #include "../../Assets/Assets.h"       // (for RegisterFileDependency)
+#include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/StreamDOM.h"
@@ -20,7 +21,7 @@ namespace ColladaConversion
         TRY 
         {
             size_t fileSize = 0;
-            auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
+            auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
             InputStreamFormatter<utf8> formatter(
                 MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
             Document<InputStreamFormatter<utf8>> doc(formatter);

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MinimalShaderSource.h"
+#include "../Assets/IFileSystem.h"
 #include "../Assets/AssetUtils.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/StringFormat.h"
@@ -89,7 +90,7 @@ namespace RenderCore
         auto resId = ShaderService::MakeResId(resource, *_compiler);
 
         size_t fileSize = 0;
-        auto fileData = LoadFileAsMemoryBlock(resId._filename, &fileSize);
+        auto fileData = ::Assets::TryLoadFileAsMemoryBlock(resId._filename, &fileSize);
         return Compile(fileData.get(), fileSize, resId, definesTable);
     }
             

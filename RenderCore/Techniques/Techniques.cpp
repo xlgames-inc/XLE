@@ -15,6 +15,7 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../ConsoleRig/Log.h"
@@ -523,7 +524,7 @@ namespace RenderCore { namespace Techniques
     ParameterBoxTable::ParameterBoxTable(const ::Assets::ResChar filename[])
     {
         size_t sourceFileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(filename, &sourceFileSize);
+        auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &sourceFileSize);
 
         _depVal = std::make_shared<::Assets::DependencyValidation>();
         RegisterFileDependency(_depVal, filename);
@@ -783,7 +784,7 @@ namespace RenderCore { namespace Techniques
         _hasEmbeddedCBLayout = false;
 
         size_t sourceFileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(resourceName, &sourceFileSize);
+        auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(resourceName, &sourceFileSize);
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterFileDependency(_validationCallback, resourceName);

@@ -18,6 +18,7 @@
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/StringUtils.h"
@@ -313,7 +314,7 @@ namespace ToolsRig
                                 str.c_str());
 
                                 // check DoesFileExist (but only for default resources)
-                            if (!isDefaultRes || DoesFileExist(resolvedFile)) {
+                            if (!isDefaultRes || ::Assets::MainFileSystem::TryGetDesc(resolvedFile)._state == ::Assets::FileDesc::State::Normal) {
                                 const RenderCore::Assets::DeferredShaderResource& texture = 
                                     ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(resolvedFile);
 

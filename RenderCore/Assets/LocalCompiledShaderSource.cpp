@@ -15,6 +15,7 @@
 #include "../../Assets/ArchiveCache.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AsyncLoadOperation.h"
+#include "../../Assets/IFileSystem.h"
 
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
@@ -110,7 +111,7 @@ namespace RenderCore { namespace Assets
 
                 // push file load & compile into this (foreground) thread
             size_t fileSize = 0;
-            auto fileData = LoadFileAsMemoryBlock(_shaderPath._filename, &fileSize);
+            auto fileData = ::Assets::TryLoadFileAsMemoryBlock(_shaderPath._filename, &fileSize);
             ::Assets::AssetState state = ::Assets::AssetState::Invalid;
 
             if (fileData.get() && fileSize)
@@ -300,10 +301,10 @@ namespace RenderCore { namespace Assets
             auto dir = dirs.back();
             dirs.pop_back();
 
-            auto files = FindFiles(dir + "*.dir", FindFilesFilter::File);
+            auto files = RawFS::FindFiles(dir + "*.dir", RawFS::FindFilesFilter::File);
             allArchives.insert(allArchives.end(), files.begin(), files.end());
 
-            auto subDirs = FindFiles(dir + "*.*", FindFilesFilter::Directory);
+            auto subDirs = RawFS::FindFiles(dir + "*.*", RawFS::FindFilesFilter::Directory);
             for (auto d=subDirs.cbegin(); d!=subDirs.cend(); ++d) {
                 if (!d->empty() && d->at(d->size()-1) != '.') {
                     dirs.push_back(*d + "/");

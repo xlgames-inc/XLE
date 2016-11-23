@@ -13,6 +13,7 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/NascentChunkArray.h"
 #include "../../Assets/CompilerLibrary.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Threading/LockFree.h"
@@ -140,21 +141,21 @@ namespace RenderCore { namespace Assets
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
             // Create the directory if we need to...
-        CreateDirectoryRecursive(MakeFileNameSplitter(destinationFilename).DriveAndPath());
+        RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFilename).DriveAndPath());
 
             // We need to separate out chunks that will be written to
             // the main output file from chunks that will be written to
             // a metrics file.
 
         {
-            BasicFile outputFile(destinationFilename, "wb");
+            auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(destinationFilename, "wb");
             BuildChunkFile(outputFile, chunks, versionInfo,
                 [](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
         }
 
         for (const auto& c:chunks)
             if (c._hdr._type == ChunkType_Metrics) {
-                BasicFile outputFile(
+                auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(
                     StringMeld<MaxPath>() << destinationFilename << "-" << c._hdr._name,
                     "wb");
                 outputFile.Write((const void*)AsPointer(c._data.cbegin()), 1, c._data.size());
@@ -166,7 +167,7 @@ namespace RenderCore { namespace Assets
         const char destinationFilename[],
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
-        BasicFile outputFile(destinationFilename, "wb");
+        auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(destinationFilename, "wb");
 		for (const auto& c:chunks)
             outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
     }
@@ -260,7 +261,7 @@ namespace RenderCore { namespace Assets
 
                     //  source for the animation set should actually be a directory name, and
                     //  we'll use all of the dae files in that directory as animation inputs
-                auto sourceFiles = FindFiles(std::string(initializer) + "/*.dae");
+                auto sourceFiles = RawFS::FindFiles(std::string(initializer) + "/*.dae");
                 std::vector<::Assets::DependentFileState> deps;
 
                 auto mergedAnimationSet = (*_createAnimationSetFn)("mergedanim");
@@ -498,7 +499,7 @@ namespace RenderCore { namespace Assets
 		XlGetProcessPath((utf8*)processPath, dimof(processPath));
 
 		auto searchPath = MakeFileNameSplitter(processPath).DriveAndPath().AsString() + "\\*Conversion.dll";
-		auto candidateCompilers = FindFiles(searchPath.c_str());
+		auto candidateCompilers = RawFS::FindFiles(searchPath.c_str());
 		for (auto& c:candidateCompilers)
 			_compilers.emplace_back(CompilerLibrary(c));
 

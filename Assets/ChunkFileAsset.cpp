@@ -7,6 +7,7 @@
 #include "ChunkFileAsset.h"
 #include "BlockSerializer.h"
 #include "IntermediateAssets.h"
+#include "IFileSystem.h"
 #include "../Utility/StringFormat.h"
 #include "../Core/Exceptions.h"
 #include "../ConsoleRig/Log.h"
@@ -14,10 +15,10 @@
 namespace Assets
 {
     static std::vector<AssetChunkResult> LoadRawData(
-        const char filename[],
+        const utf8 filename[],
         IteratorRange<const AssetChunkRequest*> requests)
     {
-        BasicFile file(filename, "rb");
+		auto file = MainFileSystem::OpenBasicFile(filename, "rb");
         auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
         
         std::vector<AssetChunkResult> result;
@@ -55,7 +56,7 @@ namespace Assets
 
             if (r._dataType != AssetChunkRequest::DataType::DontLoad) {
                 chunkResult._buffer = std::make_unique<uint8[]>(i->_size);
-                file.Seek(i->_fileOffset, SEEK_SET);
+                file.Seek(i->_fileOffset);
                 file.Read(chunkResult._buffer.get(), 1, i->_size);
 
                 // initialize with the block serializer (if requested)
@@ -103,7 +104,7 @@ namespace Assets
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         RegisterFileDependency(_validationCallback, filename);
-        auto pendingResult = LoadRawData(filename, op._requests);
+        auto pendingResult = LoadRawData((const utf8*)filename, op._requests);
         ExecuteResolve(op._fn, this, MakeIteratorRange(pendingResult), filename, _assetTypeName);
         _completedState = ::Assets::AssetState::Ready;
     }
@@ -121,7 +122,7 @@ namespace Assets
         if (existing._dependencyValidation && existing._dependencyValidation->GetValidationIndex() == 0) {
             TRY
             {
-                auto pendingResult = LoadRawData(existing._sourceID0, op._requests);
+                auto pendingResult = LoadRawData((const utf8*)existing._sourceID0, op._requests);
                 (*op._fn)(this, MakeIteratorRange(pendingResult));
                 _filename = existing._sourceID0;
                 _validationCallback = existing._dependencyValidation;
@@ -241,7 +242,7 @@ namespace Assets
         _filename = locator._sourceID0;
 
         if (_completedState == Assets::AssetState::Ready) {
-            auto chunks = LoadRawData(locator._sourceID0, _pendingResolveOp._requests);
+            auto chunks = LoadRawData((const utf8*)locator._sourceID0, _pendingResolveOp._requests);
             if (_pendingResolveOp._fn) {
                 ExecuteResolve(_pendingResolveOp._fn, this, MakeIteratorRange(chunks), _filename.c_str(), _assetTypeName);
                 _pendingResolveOp._fn = nullptr;

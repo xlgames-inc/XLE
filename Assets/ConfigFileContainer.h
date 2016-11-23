@@ -9,6 +9,7 @@
 #include "Assets.h"
 #include "AssetUtils.h" // for DirectorySearchRules
 #include "InvalidAssetManager.h"
+#include "../Assets/IFileSystem.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/PathUtils.h"
@@ -143,7 +144,7 @@ namespace Assets
         else configName = "default";
 
         size_t fileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
+        auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
 
         TRY
         {

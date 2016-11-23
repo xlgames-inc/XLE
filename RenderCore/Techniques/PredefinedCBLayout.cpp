@@ -8,6 +8,7 @@
 #include "../RenderUtils.h"
 #include "../ShaderLangUtil.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/BitUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -22,7 +23,7 @@ namespace RenderCore { namespace Techniques
         // of a constant buffer. Sometimes we need to get the layout of a constant 
         // buffer without compiling any shader code, or really touching the HLSL at all.
         size_t size;
-        auto file = LoadFileAsMemoryBlock(initializer, &size);
+        auto file = ::Assets::TryLoadFileAsMemoryBlock(initializer, &size);
         StringSection<char> configSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
 
         // if it's a compound document, we're only going to extra the cb layout part

@@ -21,6 +21,9 @@
     <ClInclude Include="..\AssetSetInternal.h" />
     <ClInclude Include="..\CompilerLibrary.h" />
     <ClInclude Include="..\NascentChunkArray.h" />
+    <ClInclude Include="..\MountingTree.h" />
+    <ClInclude Include="..\OSFileSystem.h" />
+    <ClInclude Include="..\IFileSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />
@@ -38,7 +41,15 @@
     <ClCompile Include="..\ChunkFileAsset.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
     <ClCompile Include="..\NascentChunkArray.cpp" />
+    <ClCompile Include="..\MountingTree.cpp" />
+    <ClCompile Include="..\MainFileSystem.cpp" />
+    <ClCompile Include="..\OSFileSystem_WinAPI.cpp">
+      <Filter>WinAPI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <Filter Include="WinAPI">
+      <UniqueIdentifier>{05b881a3-726f-4192-ac6a-76cd7d5d96d7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

@@ -18,6 +18,7 @@
 #include "../../Math/Vector.h"
 #include "../../ConsoleRig/IProgress.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -34,6 +35,11 @@
 namespace ToolsRig
 {
     using namespace SceneEngine;
+
+	static bool DoesFileExist(const char fn[])
+	{
+		return ::Assets::MainFileSystem::TryGetDesc(fn)._state == ::Assets::FileDesc::State::Normal;
+	}
 
     //////////////////////////////////////////////////////////////////////////////////////////
     static void WriteCellCoverageData(
@@ -56,7 +62,7 @@ namespace ToolsRig
             cfg.GetCellFilename(cellFile, dimof(cellFile), c->_cellIndex, layer._id);
             if (!DoesFileExist(cellFile) || overwriteExisting) {
                 XlDirname(path, dimof(path), cellFile);
-                CreateDirectoryRecursive(path);
+                RawFS::CreateDirectoryRecursive(path);
 
                 TRY {
                     ioFormat.WriteCell(
@@ -135,7 +141,7 @@ namespace ToolsRig
                     if (overwriteExisting || !DoesFileExist(heightMapFile)) {
                         char path[MaxPath];
                         XlDirname(path, dimof(path), heightMapFile);
-                        CreateDirectoryRecursive(path);
+                        RawFS::CreateDirectoryRecursive(path);
                         TRY {
                             outputIOFormat->WriteCell(
                                 heightMapFile, *uberSurfaceInterface.GetUberSurface(), 
@@ -270,7 +276,7 @@ namespace ToolsRig
         const ::Assets::ResChar uberSurfaceDir[],
         ConsoleRig::IProgress* progress)
     {
-        CreateDirectoryRecursive(uberSurfaceDir);
+        RawFS::CreateDirectoryRecursive(uberSurfaceDir);
 
         auto step = progress ? progress->BeginStep("Generate UberSurface Files", (unsigned)cfg.GetCoverageLayerCount(), true) : nullptr;
         for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l) {
@@ -379,7 +385,7 @@ namespace ToolsRig
             XlCatString(inputFile, dimof(inputFile), ".hdr");
 
             size_t fileSize = 0;
-            auto block = LoadFileAsMemoryBlock(inputFile, &fileSize);
+            auto block = ::Assets::TryLoadFileAsMemoryBlock(inputFile, &fileSize);
             if (block.get() && fileSize) {
                 std::string configAsString(block.get(), &block[fileSize]);
                 std::regex parse("^(\\S+)\\s+(.*)");
@@ -547,7 +553,7 @@ namespace ToolsRig
         UInt2 importOffset =  op._importMins;
         UInt2 finalDims = ClampImportDims(op._importMaxs - op._importMins, destNodeDims, destCellTreeDepth);
 
-        CreateDirectoryRecursive(outputDir);
+        RawFS::CreateDirectoryRecursive(outputDir);
 
         auto dstSampleSize = ImpliedTyping::TypeDesc(dstType).GetSize();
         uint64 resultSize = 
@@ -560,9 +566,7 @@ namespace ToolsRig
             outputUberFileName, dimof(outputUberFileName),
             outputDir, coverageId);
 
-        MemoryMappedFile outputUberFile(outputUberFileName, resultSize, MemoryMappedFile::Access::Write);
-        if (!outputUberFile.IsValid())
-            Throw(::Exceptions::BasicLabel("Couldn't open output file (%s)", outputUberFileName));
+        auto outputUberFile = ::Assets::MainFileSystem::OpenMemoryMappedFile(outputUberFileName, resultSize, "w");
 
         auto& hdr   = *(TerrainUberHeader*)outputUberFile.GetData();
         hdr._magic  = TerrainUberHeader::Magic;
@@ -579,9 +583,7 @@ namespace ToolsRig
             if (dstType != ImpliedTyping::TypeCat::Float)
                 Throw(::Exceptions::BasicLabel("Attempting to load float format input into non-float destination (%s)", op._sourceFile.c_str()));
 
-            MemoryMappedFile inputFileData(op._sourceFile.c_str(), 0, MemoryMappedFile::Access::Read);
-            if (!inputFileData.IsValid())
-                Throw(::Exceptions::BasicLabel("Couldn't open input file (%s)", op._sourceFile.c_str()));
+            auto inputFileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(op._sourceFile, 0, "r");
 
             if (op._sourceFormat!=TerrainImportOp::SourceFormat::AbsoluteFloats)
                 Throw(::Exceptions::BasicLabel("Expecting absolute floats when loading from raw float array"));
@@ -759,7 +761,7 @@ namespace ToolsRig
             // Export a uber surface file to tiff format.
         ::Assets::ResChar dirName[MaxPath];
         XlDirname(dirName, dimof(dirName), dstFile);
-        CreateDirectoryRecursive(dirName);
+        RawFS::CreateDirectoryRecursive(dirName);
 
         ::Assets::ResChar srcFN[MaxPath];
         srcCfg.GetUberSurfaceFilename(srcFN, dimof(srcFN), srcDir, coverageId);
@@ -829,7 +831,7 @@ namespace ToolsRig
         unsigned destNodeDims, unsigned destCellTreeDepth,
         ConsoleRig::IProgress* progress)
     {
-        CreateDirectoryRecursive(outputDir);
+        RawFS::CreateDirectoryRecursive(outputDir);
 
         UInt2 finalDims(
             cellCountX * destNodeDims * (1<<(destCellTreeDepth-1)),
@@ -845,9 +847,7 @@ namespace ToolsRig
             outputUberFileName, dimof(outputUberFileName),
             outputDir, SceneEngine::CoverageId_Heights);
 
-        MemoryMappedFile outputUberFile(outputUberFileName, resultSize, MemoryMappedFile::Access::Write);
-        if (!outputUberFile.IsValid())
-            Throw(::Exceptions::BasicLabel("Couldn't open output file (%s)", outputUberFile));
+        auto outputUberFile = ::Assets::MainFileSystem::OpenMemoryMappedFile(outputUberFileName, resultSize, "w");
 
         auto& hdr   = *(TerrainUberHeader*)outputUberFile.GetData();
         hdr._magic  = TerrainUberHeader::Magic;
@@ -867,7 +867,7 @@ namespace ToolsRig
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     static UInt2 GetUberSurfaceDimensions(const ::Assets::ResChar fn[])
     {
-        BasicFile file(fn, "rb", BasicFile::ShareMode::Read|BasicFile::ShareMode::Write);
+        auto file = ::Assets::MainFileSystem::OpenBasicFile(fn, "rb", FileShareMode::Read|FileShareMode::Write);
         TerrainUberHeader hdr;
         if ((file.Read(&hdr, sizeof(hdr), 1) != 1) || (hdr._magic != TerrainUberHeader::Magic))
             Throw(::Exceptions::BasicLabel("Error while reading from: (%s)", fn));

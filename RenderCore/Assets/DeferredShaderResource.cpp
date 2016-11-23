@@ -17,6 +17,7 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/CompileAndAsyncManager.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -330,7 +331,7 @@ namespace RenderCore { namespace Assets
                 XlCatString(metadataFile, ".metadata");
 
                 size_t filesize = 0;
-                auto rawFile = LoadFileAsMemoryBlock(metadataFile, &filesize);
+                auto rawFile = ::Assets::TryLoadFileAsMemoryBlock(metadataFile, &filesize);
                 if (rawFile.get())
                     LoadColorSpaceFromMetadataFile(finalColSpace, rawFile.get(), filesize);
             
@@ -407,7 +408,7 @@ namespace RenderCore { namespace Assets
         ~CachedTextureFormats();
 
         typedef std::pair<uint64, Format> Entry;
-        std::unique_ptr<MemoryMappedFile> _cache;
+        MemoryMappedFile _cache;
 
         class Header
         {
@@ -425,10 +426,9 @@ namespace RenderCore { namespace Assets
             //  use a memory mapped file for this. This way, we never have to 
             //  worry about flushing out to disk... The OS will take care of 
             //  committing the results to disk on exit
-        auto cache = std::make_unique<MemoryMappedFile>(
-            "int/TextureFormatCache.dat", entrySize * MaxCachedTextures + sizeof(Header),
-            MemoryMappedFile::Access::Read|MemoryMappedFile::Access::Write|MemoryMappedFile::Access::OpenAlways);
-        _cache = std::move(cache);
+		_cache = ::Assets::MainFileSystem::OpenMemoryMappedFile(
+            u("int/TextureFormatCache.dat"), entrySize * MaxCachedTextures + sizeof(Header),
+			"r+", 0u);
     }
 
     CachedTextureFormats::~CachedTextureFormats() {}
@@ -448,7 +448,7 @@ namespace RenderCore { namespace Assets
 
         typedef CachedTextureFormats::Header Hdr;
         typedef CachedTextureFormats::Entry Entry;
-        auto* data = cache._cache->GetData();
+        auto* data = cache._cache.GetData();
         if (!data) {
             static bool firstTime = true;
             if (firstTime) {

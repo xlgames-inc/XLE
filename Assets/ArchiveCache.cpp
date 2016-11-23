@@ -6,6 +6,7 @@
 
 #include "ArchiveCache.h"
 #include "ChunkFile.h"
+#include "IFileSystem.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/PathUtils.h"
@@ -116,18 +117,18 @@ namespace Assets
         }
     }
 
-    static bool LoadBlockList(const char filename[], std::vector<ArchiveDirectoryBlock>& blocks)
+    static bool LoadBlockList(const utf8 filename[], std::vector<ArchiveDirectoryBlock>& blocks)
     {
         using namespace Serialization::ChunkFile;
         BasicFile directoryFile;
-        if (directoryFile.TryOpen(filename, "rb") != BasicFile::Reason::Success)
+        if (MainFileSystem::TryOpen(directoryFile, filename, "rb") != MainFileSystem::IOReason::Success)
             return false;
 
         auto chunkTable = LoadChunkTable(directoryFile);
         auto chunk = FindChunk(filename, chunkTable, ChunkType_ArchiveDirectory, 0);
 
         DirectoryChunk dirHdr;
-        directoryFile.Seek(chunk._fileOffset, SEEK_SET);
+        directoryFile.Seek(chunk._fileOffset);
         directoryFile.Read(&dirHdr, sizeof(dirHdr), 1);
 
         // we're going to remove any previous contents of "blocks"
@@ -173,8 +174,8 @@ namespace Assets
             auto bi = std::lower_bound(blocks->begin(), blocks->end(), id, DirectoryChunk::CompareBlock());
             if (bi != blocks->end() && bi->_id == id) {
                 BasicFile dataFile;
-                if (dataFile.TryOpen(_mainFileName.c_str(), "rb") == BasicFile::Reason::Success) {
-                    dataFile.Seek(bi->_start, SEEK_SET);
+                if (MainFileSystem::TryOpen(dataFile, _mainFileName.c_str(), "rb") == MainFileSystem::IOReason::Success) {
+                    dataFile.Seek(bi->_start);
                     auto result = std::make_shared<std::vector<uint8>>(bi->_size);
                     dataFile.Read(AsPointer(result->begin()), 1, bi->_size);
                     return result;
@@ -232,12 +233,12 @@ namespace Assets
             bool directoryFileOpened = false;
 
             // using a soft "TryOpen" to prevent annoying exception messages when the file is being created for the first time
-            if (directoryFile.TryOpen(_directoryFileName.c_str(), "r+b") == BasicFile::Reason::Success) {
+            if (MainFileSystem::TryOpen(directoryFile, _directoryFileName.c_str(), "r+b") == MainFileSystem::IOReason::Success) {
                 TRY {
                     auto chunkTable = LoadChunkTable(directoryFile);
                     auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveDirectory, 0);
 
-                    directoryFile.Seek(chunk._fileOffset, SEEK_SET);
+                    directoryFile.Seek(chunk._fileOffset);
                     directoryFile.Read(&dirHdr, sizeof(dirHdr), 1);
 
                     blocks.resize(dirHdr._blockCount);
@@ -252,7 +253,7 @@ namespace Assets
 
             if (!directoryFileOpened) {
                 directoryFile = BasicFile();
-                directoryFile = BasicFile(_directoryFileName.c_str(), "wb");
+                directoryFile = MainFileSystem::OpenBasicFile(_directoryFileName.c_str(), "wb");
             }
 
             SpanningHeap<uint32> spanningHeap(flattenedSpanningHeap.get(), dirHdr._spanningHeapSize);
@@ -321,11 +322,11 @@ namespace Assets
                 [](const PendingCommit& lhs, const PendingCommit& rhs) { return lhs._pendingCommitPtr < rhs._pendingCommitPtr; });
             {
                 BasicFile dataFile;
-                bool good = dataFile.TryOpen(_mainFileName.c_str(), "r+b") == BasicFile::Reason::Success;
+                bool good = MainFileSystem::TryOpen(dataFile, _mainFileName.c_str(), "r+b") == MainFileSystem::IOReason::Success;
                 if (!good)
-                    dataFile = BasicFile(_mainFileName.c_str(), "wb");
+                    dataFile = MainFileSystem::OpenBasicFile(_mainFileName.c_str(), "wb");
                 for (auto i=_pendingBlocks.begin(); i!=_pendingBlocks.end(); ++i) {
-                    dataFile.Seek(i->_pendingCommitPtr, SEEK_SET);
+                    dataFile.Seek(i->_pendingCommitPtr);
                     dataFile.Write(AsPointer(i->_data->cbegin()), 1, i->_data->size());
                 }
             }
@@ -354,7 +355,7 @@ namespace Assets
                     //  note that there's a potential problem here, because
                     //  we don't truncate the file before writing this. So if there is
                     //  some data in there (but invalid data), then it will remain in the file
-                directoryFile.Seek(0, SEEK_SET);
+                directoryFile.Seek(0);
                 directoryFile.Write(&fileHeader, sizeof(fileHeader), 1);
                 directoryFile.Write(&chunkHeader, sizeof(chunkHeader), 1);
                 directoryFile.Write(&chunkData, sizeof(chunkData), 1);
@@ -367,20 +368,21 @@ namespace Assets
             {
                         //  read the old string table, and then merge it
                         //  with the new. This will destroy and re-write the entire debugging file in one go.
-                char debugFilename[MaxPath];
-                XlCombineString(debugFilename, dimof(debugFilename), _mainFileName.c_str(), ".debug");
+                utf8 debugFilename[MaxPath];
+				XlCopyString(debugFilename, _mainFileName);
+				XlCatString(debugFilename, u(".debug"));
                     
                 std::vector<std::pair<uint64, std::string>> attachedStrings;
 
                 // try to open an existing file -- but if there are any errors, we can just discard the
                 // old contents
                 BasicFile debugFile;
-                if (debugFile.TryOpen(debugFilename, "rb") == BasicFile::Reason::Success) {
+                if (MainFileSystem::TryOpen(debugFile, debugFilename, "rb") == MainFileSystem::IOReason::Success) {
                     auto chunkTable = LoadChunkTable(debugFile);
                     auto chunk = FindChunk(debugFilename, chunkTable, ChunkType_ArchiveAttachments, 0);
 
                     AttachedStringChunk hdr;
-                    debugFile.Seek(chunk._fileOffset, SEEK_SET);
+                    debugFile.Seek(chunk._fileOffset);
                     debugFile.Read(&hdr, sizeof(hdr), 1);
 
                     std::vector<AttachedStringChunk::Block> attachedBlocks;
@@ -388,7 +390,7 @@ namespace Assets
                     debugFile.Read(AsPointer(attachedBlocks.begin()), sizeof(AttachedStringChunk::Block), hdr._blockCount);
                     auto startPt = debugFile.TellP();
                     for (auto b=attachedBlocks.cbegin(); b!=attachedBlocks.cend(); ++b) {
-                        debugFile.Seek(startPt + b->_start, SEEK_SET);
+                        debugFile.Seek(startPt + b->_start);
                         std::string t; t.resize(b->_size);
                         debugFile.Read(AsPointer(t.begin()), 1, b->_size);
                         attachedStrings.push_back(std::make_pair(b->_id, t));
@@ -407,7 +409,9 @@ namespace Assets
 
                         // write the new debugging file
                 TRY {
-                    SimpleChunkFileWriter debugFile(1, _buildVersionString, _buildDateString, std::make_tuple(debugFilename, "wb", 0));
+                    SimpleChunkFileWriter debugFile(
+						MainFileSystem::OpenBasicFile(debugFilename, "wb", 0),
+						1, _buildVersionString, _buildDateString);
                     debugFile.BeginChunk(ChunkType_ArchiveAttachments, 0, "ArchiveAttachments");
 
                     AttachedStringChunk hdr;
@@ -448,12 +452,12 @@ namespace Assets
         ////////////////////////////////////////////////////////////////////////////////////
         std::vector<ArchiveDirectoryBlock> fileBlocks;
         TRY {
-            BasicFile directoryFile(_directoryFileName.c_str(), "rb");
+            auto directoryFile = MainFileSystem::OpenBasicFile(_directoryFileName.c_str(), "rb");
 
             auto chunkTable = LoadChunkTable(directoryFile);
             auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveDirectory, 0);
 
-            directoryFile.Seek(chunk._fileOffset, SEEK_SET);
+            directoryFile.Seek(chunk._fileOffset);
             DirectoryChunk dirHdr;
             directoryFile.Read(&dirHdr, sizeof(dirHdr), 1);
 
@@ -468,14 +472,15 @@ namespace Assets
             BasicFile debugFile;
             unsigned debugFileStartPoint = 0;
             TRY {
-                char debugFilename[MaxPath];
-                XlCombineString(debugFilename, dimof(debugFilename), _mainFileName.c_str(), ".debug");
-                debugFile = BasicFile(debugFilename, "rb");
+                utf8 debugFilename[MaxPath];
+				XlCopyString(debugFilename, _mainFileName.c_str());
+				XlCatString(debugFilename, u(".debug"));
+                debugFile = MainFileSystem::OpenBasicFile(debugFilename, "rb");
 
                 auto chunkTable = LoadChunkTable(debugFile);
                 auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveAttachments, 0);
 
-                debugFile.Seek(chunk._fileOffset, SEEK_SET);
+                debugFile.Seek(chunk._fileOffset);
                 AttachedStringChunk dirHdr;
                 debugFile.Read(&dirHdr, sizeof(dirHdr), 1);
 
@@ -502,7 +507,7 @@ namespace Assets
                     TRY {
                         std::string t;
                         t.resize(s->_size);
-                        debugFile.Seek(s->_start + debugFileStartPoint, SEEK_SET);
+                        debugFile.Seek(s->_start + debugFileStartPoint);
                         debugFile.Read(AsPointer(t.begin()), 1, s->_size);
                         metrics._attachedString = t;
                     } CATCH (...) {
@@ -538,7 +543,7 @@ namespace Assets
         Metrics result;
         result._blocks = std::move(blocks);
         result._usedSpace = usedSpace;
-        result._allocatedFileSize = unsigned(Utility::GetFileSize(_mainFileName.c_str()));
+        result._allocatedFileSize = unsigned(MainFileSystem::TryGetDesc(_mainFileName.c_str())._size);
         return result;
     }
 
@@ -546,17 +551,15 @@ namespace Assets
         const char archiveName[],
         const char buildVersionString[],
         const char buildDateString[]) 
-    : _mainFileName(archiveName)
+    : _mainFileName((const utf8*)archiveName)
     , _buildVersionString(buildVersionString)
     , _buildDateString(buildDateString)
     , _cachedBlockListValid(false)
     {
-        _directoryFileName = _mainFileName + ".dir";
+        _directoryFileName = _mainFileName + u(".dir");
 
             // (make sure the directory provided exists)
-        char dirName[MaxPath];
-        XlDirname(dirName, dimof(dirName), _mainFileName.c_str());
-        CreateDirectoryRecursive(dirName);
+        RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(_mainFileName).DriveAndPath());
     }
 
     ArchiveCache::~ArchiveCache() 
