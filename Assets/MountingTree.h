@@ -61,32 +61,6 @@ namespace Assets
 		std::unique_ptr<Pimpl> _pimpl;
 	};
 
-	/*IFileSystem::IOReason TryOpen(
-		std::unique_ptr<IFileInterface>& result,
-		MountingTree::EnumerableLookup& lookup,
-		const char openMode[],
-		FileShareMode::BitField shareMode=0u);
-
-	IFileSystem::IOReason TryOpen(
-		BasicFile& result,
-		MountingTree::EnumerableLookup& lookup,
-		const char openMode[],
-		FileShareMode::BitField shareMode=0u);
-
-	IFileSystem::IOReason TryOpen(
-		MemoryMappedFile& result,
-		MountingTree::EnumerableLookup& lookup,
-		const char openMode[],
-		FileShareMode::BitField shareMode=0u);
-
-	IFileSystem::IOReason TryMonitor(
-		MountingTree::EnumerableLookup& lookup,
-		const std::shared_ptr<IFileMonitor>& evnt);
-
-	FileDesc TryGetDesc(
-		MountingTree::EnumerableLookup& lookup);
-		*/
-
 	/// <summary>Represents a candidate resolution from a MountingTree query</summary>
 	/// Note that the candidate may not exist, or may be invalid. The filesystem must be
 	/// accessed to find the state of the object.

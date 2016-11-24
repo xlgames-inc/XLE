@@ -559,7 +559,7 @@ namespace Utility
 			if (fileHandle == INVALID_HANDLE_VALUE)
 				return AsExceptionReason(GetLastError());
 
-			unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_GENERIC_WRITE) ? PAGE_READWRITE : PAGE_READONLY;
+			unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? PAGE_READWRITE : PAGE_READONLY;
 			auto mapping = CreateFileMappingA(
 				fileHandle, nullptr, pageAccessMode, DWORD(size>>32), DWORD(size), nullptr);
 			if (!mapping || mapping == INVALID_HANDLE_VALUE) {
@@ -567,7 +567,7 @@ namespace Utility
 				return AsExceptionReason(GetLastError());
 			}
 
-			unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_GENERIC_WRITE) ? FILE_MAP_WRITE : FILE_MAP_READ;
+			unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? FILE_MAP_WRITE : FILE_MAP_READ;
 			auto mappingStart = MapViewOfFile(mapping, mapAccess, 0, 0, 0);
 			if (!mappingStart) {
 				CloseHandle(mapping);
