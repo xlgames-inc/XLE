@@ -540,13 +540,18 @@ namespace Utility
 
 	namespace RawFS
 	{
+		static size_t GetFileSize(HANDLE fileHandle)
+		{
+			LARGE_INTEGER fileSize;
+			GetFileSizeEx(fileHandle, &fileSize);
+			return (size_t)fileSize.QuadPart;
+		}
+
 		Exceptions::IOException::Reason MemoryMappedFile::TryOpen(
 			const utf8 filename[], uint64 size, const char openMode[], 
 			FileShareMode::BitField shareMode)
 		{
-			assert(_mapping == INVALID_HANDLE_VALUE);
-			assert(_fileHandle == INVALID_HANDLE_VALUE);
-			assert(_mappedData == nullptr);
+			assert(_begin == nullptr && _end == nullptr && !_closeFn);
 
 			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
@@ -575,9 +580,15 @@ namespace Utility
 				return AsExceptionReason(GetLastError());
 			}
 
-			_mappedData = mappingStart;
-			_mapping = mapping;
-			_fileHandle = fileHandle;
+			_begin = mappingStart;
+			_end = PtrAdd(mappingStart, GetFileSize(fileHandle));
+			_closeFn = [fileHandle, mapping](const void* begin, const void* end)
+				{
+					assert(begin != nullptr);
+					UnmapViewOfFile(begin);
+					CloseHandle(mapping);
+					CloseHandle(fileHandle);
+				};
 			return Exceptions::IOException::Reason::Success;
 		}
 
@@ -585,9 +596,7 @@ namespace Utility
 			const utf16 filename[], uint64 size, const char openMode[],
 			FileShareMode::BitField shareMode)
 		{
-			assert(_mapping == INVALID_HANDLE_VALUE);
-			assert(_fileHandle == INVALID_HANDLE_VALUE);
-			assert(_mappedData == nullptr);
+			assert(_begin == nullptr && _end == nullptr && !_closeFn);
 
 			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
@@ -600,7 +609,7 @@ namespace Utility
 			if (fileHandle == INVALID_HANDLE_VALUE)
 				return AsExceptionReason(GetLastError());
 
-			unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_GENERIC_WRITE) ? PAGE_READWRITE : PAGE_READONLY;
+			unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? PAGE_READWRITE : PAGE_READONLY;
 			auto mapping = CreateFileMappingA(
 				fileHandle, nullptr, pageAccessMode, DWORD(size>>32), DWORD(size), nullptr);
 			if (!mapping || mapping == INVALID_HANDLE_VALUE) {
@@ -608,7 +617,7 @@ namespace Utility
 				return AsExceptionReason(GetLastError());
 			}
 
-			unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_GENERIC_WRITE) ? FILE_MAP_WRITE : FILE_MAP_READ;
+			unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? FILE_MAP_WRITE : FILE_MAP_READ;
 			auto mappingStart = MapViewOfFile(mapping, mapAccess, 0, 0, 0);
 			if (!mappingStart) {
 				CloseHandle(mapping);
@@ -616,9 +625,15 @@ namespace Utility
 				return AsExceptionReason(GetLastError());
 			}
 
-			_mappedData = mappingStart;
-			_mapping = mapping;
-			_fileHandle = fileHandle;
+			_begin = mappingStart;
+			_end = PtrAdd(mappingStart, GetFileSize(fileHandle));
+			_closeFn = [fileHandle, mapping](const void* begin, const void* end)
+				{
+					assert(begin != nullptr);
+					UnmapViewOfFile(begin);
+					CloseHandle(mapping);
+					CloseHandle(fileHandle);
+				};
 			return Exceptions::IOException::Reason::Success;
 		}
 
@@ -626,10 +641,6 @@ namespace Utility
 			const utf8 filename[], uint64 size, const char openMode[], 
 			FileShareMode::BitField shareMode)
 		{
-			_mapping = INVALID_HANDLE_VALUE;
-			_fileHandle = INVALID_HANDLE_VALUE;
-			_mappedData = nullptr;
-
 			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
 
@@ -641,7 +652,7 @@ namespace Utility
 			if (fileHandle == INVALID_HANDLE_VALUE)
 				ThrowFileOpenException(MakeStringSection(filename), openMode);
 
-			unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_GENERIC_WRITE) ? PAGE_READWRITE : PAGE_READONLY;
+			unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? PAGE_READWRITE : PAGE_READONLY;
 			auto mapping = CreateFileMappingA(
 				fileHandle, nullptr, pageAccessMode, DWORD(size>>32), DWORD(size), nullptr);
 			if (!mapping || mapping == INVALID_HANDLE_VALUE) {
@@ -649,7 +660,7 @@ namespace Utility
 				ThrowFileOpenException(MakeStringSection(filename), openMode);
 			}
 
-			unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_GENERIC_WRITE) ? FILE_MAP_WRITE : FILE_MAP_READ;
+			unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? FILE_MAP_WRITE : FILE_MAP_READ;
 			auto mappingStart = MapViewOfFile(mapping, mapAccess, 0, 0, 0);
 			if (!mappingStart) {
 				CloseHandle(mapping);
@@ -657,19 +668,21 @@ namespace Utility
 				ThrowFileOpenException(MakeStringSection(filename), openMode);
 			}
 
-			_mappedData = mappingStart;
-			_mapping = mapping;
-			_fileHandle = fileHandle;
+			_begin = mappingStart;
+			_end = PtrAdd(mappingStart, GetFileSize(fileHandle));
+			_closeFn = [fileHandle, mapping](const void* begin, const void* end)
+				{
+					assert(begin != nullptr);
+					UnmapViewOfFile(begin);
+					CloseHandle(mapping);
+					CloseHandle(fileHandle);
+				};
 		}
 
 		MemoryMappedFile::MemoryMappedFile(
 			const utf16 filename[], uint64 size, const char openMode[],
 			FileShareMode::BitField shareMode)
 		{
-			_mapping = INVALID_HANDLE_VALUE;
-			_fileHandle = INVALID_HANDLE_VALUE;
-			_mappedData = nullptr;
-
 			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
 
@@ -681,7 +694,7 @@ namespace Utility
 			if (fileHandle == INVALID_HANDLE_VALUE)
 				ThrowFileOpenException(MakeStringSection(filename), openMode);
 
-			unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_GENERIC_WRITE) ? PAGE_READWRITE : PAGE_READONLY;
+			unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? PAGE_READWRITE : PAGE_READONLY;
 			auto mapping = CreateFileMappingA(
 				fileHandle, nullptr, pageAccessMode, DWORD(size>>32), DWORD(size), nullptr);
 			if (!mapping || mapping == INVALID_HANDLE_VALUE) {
@@ -689,7 +702,7 @@ namespace Utility
 				ThrowFileOpenException(MakeStringSection(filename), openMode);
 			}
 
-			unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_GENERIC_WRITE) ? FILE_MAP_WRITE : FILE_MAP_READ;
+			unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? FILE_MAP_WRITE : FILE_MAP_READ;
 			auto mappingStart = MapViewOfFile(mapping, mapAccess, 0, 0, 0);
 			if (!mappingStart) {
 				CloseHandle(mapping);
@@ -697,62 +710,18 @@ namespace Utility
 				ThrowFileOpenException(MakeStringSection(filename), openMode);
 			}
 
-			_mappedData = mappingStart;
-			_mapping = mapping;
-			_fileHandle = fileHandle;
+			_begin = mappingStart;
+			_end = PtrAdd(mappingStart, GetFileSize(fileHandle));
+			_closeFn = [fileHandle, mapping](const void* begin, const void* end)
+				{
+					assert(begin != nullptr);
+					UnmapViewOfFile(begin);
+					CloseHandle(mapping);
+					CloseHandle(fileHandle);
+				};
 		}
 
 		MemoryMappedFile::MemoryMappedFile() {}
 	}
-
-    MemoryMappedFile::~MemoryMappedFile()
-    {
-        if (_mappedData != nullptr) {
-            UnmapViewOfFile(_mappedData);
-        }
-        CloseHandle(_mapping);
-        CloseHandle(_fileHandle);
-    }
-
-    MemoryMappedFile::MemoryMappedFile()
-    {
-        _mapping = INVALID_HANDLE_VALUE;
-        _fileHandle = INVALID_HANDLE_VALUE;
-        _mappedData = nullptr;
-    }
-
-    MemoryMappedFile::MemoryMappedFile(MemoryMappedFile&& moveFrom) never_throws
-    {
-        _mapping = moveFrom._mapping;
-        _fileHandle = moveFrom._fileHandle;
-        _mappedData = moveFrom._mappedData;
-        moveFrom._mapping = INVALID_HANDLE_VALUE;
-        moveFrom._fileHandle = INVALID_HANDLE_VALUE;
-        moveFrom._mappedData = nullptr;
-    }
-
-    MemoryMappedFile& MemoryMappedFile::operator=(MemoryMappedFile&& moveFrom) never_throws
-    {
-        if (_mappedData != nullptr) {
-            UnmapViewOfFile(_mappedData);
-        }
-        CloseHandle(_mapping);
-        CloseHandle(_fileHandle);
-
-        _mapping = moveFrom._mapping;
-        _fileHandle = moveFrom._fileHandle;
-        _mappedData = moveFrom._mappedData;
-        moveFrom._mapping = INVALID_HANDLE_VALUE;
-        moveFrom._fileHandle = INVALID_HANDLE_VALUE;
-        moveFrom._mappedData = nullptr;
-        return *this;
-    }
-
-    size_t MemoryMappedFile::GetSize() const
-    {
-        LARGE_INTEGER fileSize;
-        GetFileSizeEx(_fileHandle, &fileSize);
-        return (size_t)fileSize.QuadPart;
-    }
 }
 

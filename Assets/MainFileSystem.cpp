@@ -8,7 +8,7 @@
 
 namespace Assets
 {
-	static std::shared_ptr<MountingTree> s_mainMountingTree = std::make_shared<MountingTree>(s_defaultFilenameRules);
+	static std::shared_ptr<MountingTree> s_mainMountingTree;
 	static std::shared_ptr<IFileSystem> s_defaultFileSystem;
 
 	static IFileSystem::IOReason AsIOReason(IFileSystem::TranslateResult transResult)
@@ -229,6 +229,36 @@ namespace Assets
 			return IOReason::FileNotFound;
 	}
 
+	auto MainFileSystem::TryOpen(BasicFile& result, StringSection<utf16> filename, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
+	{
+		result = BasicFile();
+
+		auto lookup = s_mainMountingTree->Lookup(filename);
+		if (lookup.IsGood())
+			return ::Assets::TryOpen(result, lookup, openMode, shareMode);
+
+		// attempt opening with the default file system...
+		if (s_defaultFileSystem) {
+			return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, openMode, shareMode);
+		} else
+			return IOReason::FileNotFound;
+	}
+
+	auto MainFileSystem::TryOpen(MemoryMappedFile& result, StringSection<utf16> filename, uint64 size, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
+	{
+		result = MemoryMappedFile();
+
+		auto lookup = s_mainMountingTree->Lookup(filename);
+		if (lookup.IsGood())
+			return ::Assets::TryOpen(result, lookup, size, openMode, shareMode);
+
+		// attempt opening with the default file system...
+		if (s_defaultFileSystem) {
+			return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, size, openMode, shareMode);
+		} else
+			return IOReason::FileNotFound;
+	}
+
 	IFileSystem::IOReason MainFileSystem::TryMonitor(StringSection<utf16> filename, const std::shared_ptr<IFileMonitor>& evnt)
 	{
 		auto lookup = s_mainMountingTree->Lookup(filename);
@@ -273,9 +303,10 @@ namespace Assets
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	const std::shared_ptr<MountingTree>& MainFileSystem::GetMountingTree() { return s_mainMountingTree; }
-	void MainFileSystem::SetDefaultFileSystem(std::shared_ptr<IFileSystem> fs)
+	void MainFileSystem::Init(std::shared_ptr<MountingTree>& mountingTree, std::shared_ptr<IFileSystem>& defaultFileSystem)
 	{
-		s_defaultFileSystem = std::move(fs);
+		s_mainMountingTree = mountingTree;
+		s_defaultFileSystem = defaultFileSystem;
 	}
 
 	T2(CharType, FileObject) IFileSystem::IOReason TryOpen(FileObject& result, IFileSystem& fs, StringSection<CharType> fn, const char openMode[], FileShareMode::BitField shareMode)

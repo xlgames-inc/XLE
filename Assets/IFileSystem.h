@@ -145,7 +145,7 @@ namespace Assets
 		static FileDesc	TryGetDesc(StringSection<utf16> filename);
 
 		static const std::shared_ptr<MountingTree>& GetMountingTree();
-		static void SetDefaultFileSystem(std::shared_ptr<IFileSystem> fs);
+		static void Init(std::shared_ptr<MountingTree>& mountingTree, std::shared_ptr<IFileSystem>& defaultFileSystem);
 
 
 		static IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, StringSection<char> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default)

@@ -15,6 +15,7 @@
 
 #include <vector>
 #include <string>
+#include <functional>
 
 typedef struct _iobuf FILE;
 
@@ -91,20 +92,22 @@ namespace Utility
     class MemoryMappedFile
     {
     public:
-        void*           GetData()           { return _mappedData; }
-        const void*     GetData() const     { return _mappedData; }
-        bool            IsGood() const		{ return _mappedData != 0; }
-        size_t          GetSize() const;
+        void*           GetData()           { return _begin; }
+        const void*     GetData() const     { return _begin; }
+        bool            IsGood() const		{ return _begin != 0; }
+        size_t          GetSize() const		{ return ptrdiff_t(_end) - ptrdiff_t(_begin); }
+
+		using CloseFn = std::function<void(const void*, const void*)>;
 
         MemoryMappedFile();
+		MemoryMappedFile(void* begin, void* end, CloseFn&& close);
         MemoryMappedFile(MemoryMappedFile&& moveFrom) never_throws;
         MemoryMappedFile& operator=(MemoryMappedFile&& moveFrom) never_throws;
         ~MemoryMappedFile();
 
 	protected:
-        void* _mapping;
-        void* _fileHandle;
-        void* _mappedData;
+        void* _begin, *_end;
+		CloseFn _closeFn;
     };
 
 	namespace RawFS

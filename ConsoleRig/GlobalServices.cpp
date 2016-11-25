@@ -11,6 +11,7 @@
 #include "IProgress.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/OSFileSystem.h"
+#include "../Assets/MountingTree.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/PathUtils.h"
@@ -48,6 +49,7 @@ namespace ConsoleRig
     static auto Fn_GuidGen = ConstHash64<'guid', 'gen'>::Value;
     static auto Fn_RedirectCout = ConstHash64<'redi', 'rect', 'cout'>::Value;
 	static auto Fn_GetAssetRoot = ConstHash64<'asse', 'troo', 't'>::Value;
+	static auto Fn_DefaultFileSystem = ConstHash64<'defa', 'ultf', 's'>::Value;
 
     static void MainRig_Startup(const StartupConfig& cfg, VariantFunctions& serv)
     {
@@ -69,8 +71,6 @@ namespace ConsoleRig
 			XlChDir(assetRoot.c_str());
 
 		serv.Add<std::basic_string<utf8>()>(Fn_GetAssetRoot, [assetRoot](){ return assetRoot; });
-
-		::Assets::MainFileSystem::SetDefaultFileSystem(::Assets::CreateFileSystem_OS());
 
             //
             //      We need to initialize logging output.
@@ -118,6 +118,24 @@ namespace ConsoleRig
         } else {
             Console::SetInstance(serv.Call<Console*>(Fn_GetConsole));
         }
+
+		std::shared_ptr<::Assets::MountingTree> mountingTree;
+		if (!serv.Has<ModuleId()>(typeid(::Assets::MountingTree).hash_code())) {
+			mountingTree = std::make_shared<::Assets::MountingTree>(s_defaultFilenameRules);
+			serv.Add(typeid(::Assets::MountingTree).hash_code(), [mountingTree]() { return mountingTree; });
+		} else {
+			mountingTree = serv.Call<std::shared_ptr<::Assets::MountingTree>>(typeid(::Assets::MountingTree).hash_code());
+		}
+
+		std::shared_ptr<::Assets::IFileSystem> defaultFileSystem;
+		if (!serv.Has<ModuleId()>(Fn_DefaultFileSystem)) {
+			defaultFileSystem = ::Assets::CreateFileSystem_OS();
+			serv.Add(Fn_DefaultFileSystem, [defaultFileSystem]() { return defaultFileSystem; });
+		} else {
+			defaultFileSystem = serv.Call<std::shared_ptr<::Assets::IFileSystem>>(Fn_DefaultFileSystem);
+		}
+
+		::Assets::MainFileSystem::Init(mountingTree, defaultFileSystem);
     }
 
     static void MainRig_Detach()

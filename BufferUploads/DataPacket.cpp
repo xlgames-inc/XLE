@@ -8,12 +8,14 @@
 #include "PlatformInterface.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/ResourceUtils.h"
+#include "../Assets/IFileSystem.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/Streams/FileUtils.h"
 #include <queue>
 #include <thread>
 
@@ -371,15 +373,35 @@ namespace BufferUploads
 				const auto *iend = &this->_filename[dimof(this->_filename)];
 				while (*filename && filename < iend) {
 					auto fmt = GetTexFmt((const ucs2*)filename);
-                
-					if (fmt == TexFmt::DDS) {
-						hresult = LoadFromDDSFile(filename, DDS_FLAGS_NONE, &_texMetadata, _image);
-					} else if (fmt == TexFmt::TGA) {
-						hresult = LoadFromTGAFile(filename, &_texMetadata, _image);
-					} else if (fmt == TexFmt::WIC) {
-						hresult = LoadFromWICFile(filename, WIC_FLAGS_NONE, &_texMetadata, _image);
+
+					// If we want to support loading textures from within archives, we need to use the 
+					// file functions in ::Assets::MainFileSystem. We want to avoid doing too many copies
+					// during the texture initialization process, so we'll use the MemoryMappedFile interface.
+					const bool loadViaMainFileSystem = true;
+					if (loadViaMainFileSystem) {
+						MemoryMappedFile srcFile;
+						auto ioResult = ::Assets::MainFileSystem::TryOpen(srcFile, (const utf16*)filename, 0ull, "r");
+						if (ioResult == ::Assets::IFileSystem::IOReason::Success) {
+							if (fmt == TexFmt::DDS) {
+								hresult = LoadFromDDSMemory(srcFile.GetData(), srcFile.GetSize(), DDS_FLAGS_NONE, &_texMetadata, _image);
+							} else if (fmt == TexFmt::TGA) {
+								hresult = LoadFromTGAMemory(srcFile.GetData(), srcFile.GetSize(), &_texMetadata, _image);
+							} else if (fmt == TexFmt::WIC) {
+								hresult = LoadFromWICMemory(srcFile.GetData(), srcFile.GetSize(), WIC_FLAGS_NONE, &_texMetadata, _image);
+							} else {
+								LogWarning << "Texture format not apparent from filename (" << filename << ")";
+							}
+						}
 					} else {
-						LogWarning << "Texture format not apparent from filename (" << filename << ")";
+						if (fmt == TexFmt::DDS) {
+							hresult = LoadFromDDSFile(filename, DDS_FLAGS_NONE, &_texMetadata, _image);
+						} else if (fmt == TexFmt::TGA) {
+							hresult = LoadFromTGAFile(filename, &_texMetadata, _image);
+						} else if (fmt == TexFmt::WIC) {
+							hresult = LoadFromWICFile(filename, WIC_FLAGS_NONE, &_texMetadata, _image);
+						} else {
+							LogWarning << "Texture format not apparent from filename (" << filename << ")";
+						}
 					}
 
 					if (SUCCEEDED(hresult)) { loadedDDSFormat = fmt == TexFmt::DDS; break; }

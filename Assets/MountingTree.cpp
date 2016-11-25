@@ -236,6 +236,7 @@ namespace Assets
 	{
 		if (filename.Empty()) return EnumerableLookup();
 		if (IsRawFilesystem(filename)) return EnumerableLookup();
+		if (!_pimpl->_hasAtLeastOneMount) return EnumerableLookup();
 		std::vector<uint8> request((const uint8*)filename.begin(), (const uint8*)filename.end());
 		return EnumerableLookup
 			{
