@@ -11,7 +11,7 @@
 #include "../../RenderCore/ShaderService.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Metal/Format.h"
+#include "../../RenderCore/Format.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/TextureView.h"
@@ -58,7 +58,7 @@ namespace TextureTransform
         Metal::ShaderResourceView _srv;
         intrusive_ptr<BufferUploads::ResourceLocator> _resLocator;
         BufferUploads::TextureDesc _desc;
-        Metal::NativeFormat::Enum _finalFormat;
+		Format _finalFormat;
         uint64 _bindingHash;
 
         InputResource(const ::Assets::ResChar initializer[]);
@@ -69,8 +69,8 @@ namespace TextureTransform
 
     InputResource::InputResource(const ::Assets::ResChar initializer[])
     {
-        _finalFormat = Metal::NativeFormat::Unknown;
-        _desc = BufferUploads::TextureDesc::Plain1D(0, Metal::NativeFormat::Unknown);
+        _finalFormat = Format::Unknown;
+        _desc = BufferUploads::TextureDesc::Plain1D(0, Format::Unknown);
         _bindingHash = 0;
 
         auto splitter = MakeFileNameSplitter(initializer);
@@ -84,9 +84,9 @@ namespace TextureTransform
         if (colSpace == SourceColorSpace::Unspecified)
             colSpace = XlFindStringI(initializer, "_ddn") ? SourceColorSpace::Linear : SourceColorSpace::SRGB;
         
-        using namespace BufferUploads;
+        using namespace RenderCore;
         auto& uploads = Samples::MinimalAssetServices::GetBufferUploads();
-        auto inputPacket = CreateStreamingTextureSource(splitter.AllExceptParameters());
+        auto inputPacket = BufferUploads::CreateStreamingTextureSource(splitter.AllExceptParameters());
         _resLocator = uploads.Transaction_Immediate(
             CreateDesc(
                 BindFlag::ShaderResource,
@@ -95,30 +95,30 @@ namespace TextureTransform
             inputPacket.get());
 
         if (_resLocator) {
-            _desc = ExtractDesc(*_resLocator->GetUnderlying())._textureDesc;
+            _desc = Metal::ExtractDesc(_resLocator->GetUnderlying())._textureDesc;
 
-            auto format = (Metal::NativeFormat::Enum)_desc._nativePixelFormat;
-            if (colSpace == SourceColorSpace::SRGB) format = Metal::AsSRGBFormat(format);
-            else if (colSpace == SourceColorSpace::Linear) format = Metal::AsLinearFormat(format);
-            _srv = Metal::ShaderResourceView(_resLocator->GetUnderlying(), format);
+            auto format = (Format)_desc._format;
+            if (colSpace == SourceColorSpace::SRGB) format = AsSRGBFormat(format);
+            else if (colSpace == SourceColorSpace::Linear) format = AsLinearFormat(format);
+			_srv = Metal::ShaderResourceView(_resLocator->GetUnderlying(), TextureViewWindow{format});
             _finalFormat = format;
         }
     }
 
     InputResource::~InputResource(){}
 
-    static Metal::NativeFormat::Enum AsRTFormat(Metal::NativeFormat::Enum input)
+    static Format AsRTFormat(Format input)
     {
         // Convert the input format into a format that we can write to.
         // Normally this should mean just converting a compressed format into
         // a plain RGBA format.
-        auto compression = Metal::GetCompressionType(input);
-        if (compression == Metal::FormatCompressionType::BlockCompression) {
-            return Metal::FindFormat(
-                Metal::FormatCompressionType::None,
-                Metal::GetComponents(input),
-                Metal::GetComponentType(input),
-                Metal::GetDecompressedComponentPrecision(input));
+        auto compression = GetCompressionType(input);
+        if (compression == FormatCompressionType::BlockCompression) {
+            return FindFormat(
+                FormatCompressionType::None,
+                GetComponents(input),
+                GetComponentType(input),
+                GetDecompressedComponentPrecision(input));
         }
         return input;
     }
@@ -162,7 +162,7 @@ namespace TextureTransform
             // an initial width/height/format.
             // Otherwise, let's look for parameters named "Dims" and "Format"
 
-        auto rtFormat = Metal::NativeFormat::Unknown;
+        auto rtFormat = Format::Unknown;
         UInt2 viewDims(0, 0);
         unsigned arrayCount = 1;
         unsigned mipCount = 1;
@@ -177,17 +177,17 @@ namespace TextureTransform
 
         auto formatParam = parameters.GetString<char>(ParameterBox::MakeParameterNameHash("Format"));
         if (!formatParam.empty())
-            rtFormat = Metal::AsNativeFormat(formatParam.c_str());
+            rtFormat = AsFormat(formatParam.c_str());
 
         arrayCount = std::max(1u, parameters.GetParameter(ParameterBox::MakeParameterNameHash("ArrayCount"), arrayCount));
         mipCount = std::max(1u, parameters.GetParameter(ParameterBox::MakeParameterNameHash("MipCount"), mipCount));
         passCount = std::max(1u, parameters.GetParameter(ParameterBox::MakeParameterNameHash("PassCount"), passCount));
         
-        if (!viewDims[0] || !viewDims[1] || rtFormat == Metal::NativeFormat::Unknown)
+        if (!viewDims[0] || !viewDims[1] || rtFormat == Format::Unknown)
             Throw(::Exceptions::BasicLabel("Missing Dims or Format parameter"));
 
-        auto dstDesc = TextureDesc::Plain2D(
-            viewDims[0], viewDims[1], unsigned(rtFormat), 
+        auto dstDesc = RenderCore::TextureDesc::Plain2D(
+            viewDims[0], viewDims[1], rtFormat, 
             uint8(mipCount), uint16(arrayCount));
 
         auto i = fns.find(shaderName.AsString());
@@ -195,8 +195,8 @@ namespace TextureTransform
             return (i->second)(dstDesc, parameters);
         } else {
             rtFormat = AsRTFormat(rtFormat);
-            dstDesc._nativePixelFormat = rtFormat;
-            if (rtFormat == Metal::NativeFormat::Unknown)
+            dstDesc._format = rtFormat;
+            if (rtFormat == Format::Unknown)
                 Throw(::Exceptions::BasicLabel("Could not find match pixel format for render target. Check inputs."));
 
             auto psShaderName = xleDir.AsString() + "/Working/game/xleres/" + shaderName.AsString();
@@ -239,7 +239,10 @@ namespace TextureTransform
                     metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(mipDims[0]), float(mipDims[1])));
                     Metal::RenderTargetView rtv(
                         dstTexture->GetUnderlying(),
-                        rtFormat, Metal::SubResourceSlice(1, a, m));
+                        TextureViewWindow(
+							rtFormat, RenderCore::TextureDesc::Dimensionality::Undefined,
+							RenderCore::TextureViewWindow::SubResourceRange{m, 1},
+							RenderCore::TextureViewWindow::SubResourceRange{a, 1}));
                     metalContext->Bind(MakeResourceList(rtv), nullptr);
 
                     for (unsigned p=0; p<passCount; ++p) {
@@ -278,7 +281,7 @@ namespace TextureTransform
             metalContext->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
 
             auto result = uploads.Resource_ReadBack(*dstTexture);
-            return TextureResult { result, unsigned(rtFormat), viewDims, mipCount, arrayCount };
+            return TextureResult { result, rtFormat, viewDims, mipCount, arrayCount };
         }
     }
 
@@ -292,7 +295,7 @@ namespace TextureTransform
         metaData.mipLevels = desc._mipCount;
         metaData.miscFlags = 0;
         metaData.miscFlags2 = 0;
-        metaData.format = Metal::AsDXGIFormat(Metal::NativeFormat::Enum(desc._nativePixelFormat));
+        metaData.format = Metal::AsDXGIFormat(desc._format);
         metaData.dimension = DirectX::TEX_DIMENSION_TEXTURE2D;
 
             // Let's assume that all 6 element arrays are cubemaps. 
@@ -310,7 +313,7 @@ namespace TextureTransform
         images.reserve(metaData.mipLevels * metaData.arraySize);
         for (unsigned a=0; a<metaData.arraySize; ++a) {
             for (unsigned m=0; m<metaData.mipLevels; ++m) {
-                auto subRes = BufferUploads::DataPacket::TexSubRes(m, a);
+				auto subRes = SubResourceId {m, a};
                 auto rowPitch = pkt.GetPitches(subRes)._rowPitch;
                 auto slicePitch = pkt.GetPitches(subRes)._slicePitch;
                 UInt2 mipDims(
@@ -340,7 +343,7 @@ namespace TextureTransform
             auto slicePitch = _pkt->GetPitches()._slicePitch;
             DirectX::Image image {
                 _dimensions[0], _dimensions[1],
-                Metal::AsDXGIFormat(Metal::NativeFormat::Enum(_format)),
+                Metal::AsDXGIFormat(_format),
                 rowPitch, slicePitch,
                 (uint8_t*)_pkt->GetData() };
             

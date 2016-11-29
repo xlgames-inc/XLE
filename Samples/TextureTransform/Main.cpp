@@ -10,6 +10,7 @@
 #include "../../BufferUploads/DataPacket.h"
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/Init.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Assets/AssetServices.h"
@@ -85,7 +86,7 @@ namespace TextureTransform
 
             // we can now construct basic services
         auto cleanup = MakeAutoCleanup([]() { TerminateFileSystemMonitoring(); });
-        auto device = RenderCore::CreateDevice();
+        auto device = RenderCore::CreateDevice(RenderCore::UnderlyingAPI::DX11);
         Samples::MinimalAssetServices services(device.get());
             
             // We need to think about SRGB modes... do we want to do the processing in

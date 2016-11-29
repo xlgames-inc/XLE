@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/Format.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 #include "../../Utility/IntrusivePtr.h"
@@ -12,8 +13,9 @@
 #include <functional>
 #include <map>
 
-namespace BufferUploads { class DataPacket; struct TextureDesc; }
 namespace Utility { class ParameterBox; }
+namespace RenderCore { class TextureDesc; }
+namespace BufferUploads { class DataPacket; }
 
 namespace TextureTransform
 {
@@ -21,16 +23,16 @@ namespace TextureTransform
     {
     public:
         using Pkt = intrusive_ptr<BufferUploads::DataPacket>;
-        Pkt             _pkt;
-        unsigned        _format;
-        UInt2           _dimensions;
-        unsigned        _mipCount;
-        unsigned        _arrayCount;
+        Pkt					_pkt;
+        RenderCore::Format  _format;
+        UInt2				_dimensions;
+        unsigned			_mipCount;
+        unsigned			_arrayCount;
 
         void Save(const ::Assets::ResChar destinationFile[]) const;
     };
 
-    using ProcessingFn = std::function<TextureResult(const BufferUploads::TextureDesc&, const ParameterBox&)>;
+    using ProcessingFn = std::function<TextureResult(const RenderCore::TextureDesc&, const ParameterBox&)>;
 
     TextureResult ExecuteTransform(
         RenderCore::IDevice& device,
@@ -39,6 +41,6 @@ namespace TextureTransform
         const ParameterBox& parameters,
         std::map<std::string, ProcessingFn> fns);
 
-    TextureResult HosekWilkieSky(const BufferUploads::TextureDesc&, const ParameterBox& parameters);
-    TextureResult CompressTexture(const BufferUploads::TextureDesc& desc, const ParameterBox& parameters);
+    TextureResult HosekWilkieSky(const RenderCore::TextureDesc&, const ParameterBox& parameters);
+    TextureResult CompressTexture(const RenderCore::TextureDesc& desc, const ParameterBox& parameters);
 }

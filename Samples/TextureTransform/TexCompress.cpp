@@ -5,7 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Transform.h"
-#include "../../RenderCore/Metal/Format.h"
+#include "../../RenderCore/Format.h"
+#include "../../RenderCore/DX11/Metal/Format.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../BufferUploads/DataPacket.h"
 #include "../../Utility/ParameterBox.h"
@@ -35,9 +36,9 @@ namespace TextureTransform
     class ScratchImagePacket : public BufferUploads::DataPacket
     {
     public:
-        virtual void*   GetData         (SubResource subRes);
-        virtual size_t  GetDataSize     (SubResource subRes) const;
-        virtual auto    GetPitches      (SubResource subRes) const -> BufferUploads::TexturePitches;
+        virtual void*   GetData         (SubResourceId subRes);
+        virtual size_t  GetDataSize     (SubResourceId subRes) const;
+        virtual auto    GetPitches      (SubResourceId subRes) const -> BufferUploads::TexturePitches;
         virtual std::shared_ptr<Marker>     BeginBackgroundLoad();
 
         ScratchImagePacket(DirectX::ScratchImage&& moveFrom);
@@ -46,29 +47,26 @@ namespace TextureTransform
         DirectX::ScratchImage _image;
     };
 
-    void*   ScratchImagePacket::GetData         (SubResource subRes)
+    void*   ScratchImagePacket::GetData         (SubResourceId subRes)
     {
-        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
-        auto* image = _image.GetImage(mip, arrayIndex, 0);
+        auto* image = _image.GetImage(subRes._mip, subRes._arrayLayer, 0);
         assert(image);
         return image->pixels;
     }
 
-    size_t  ScratchImagePacket::GetDataSize     (SubResource subRes) const
+    size_t  ScratchImagePacket::GetDataSize     (SubResourceId subRes) const
     {
-        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
-        auto* image = _image.GetImage(mip, arrayIndex, 0);
+        auto* image = _image.GetImage(subRes._mip, subRes._arrayLayer, 0);
         assert(image);
         return image->slicePitch;
     }
 
-    auto    ScratchImagePacket::GetPitches      (SubResource subRes) const 
+    auto    ScratchImagePacket::GetPitches      (SubResourceId subRes) const 
         -> BufferUploads::TexturePitches
     {
-        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
-        auto* image = _image.GetImage(mip, arrayIndex, 0);
+        auto* image = _image.GetImage(subRes._mip, subRes._arrayLayer, 0);
         assert(image);
-        return BufferUploads::TexturePitches(unsigned(image->rowPitch), unsigned(image->slicePitch));
+		return BufferUploads::TexturePitches{unsigned(image->rowPitch), unsigned(image->slicePitch)};
     }
 
     auto    ScratchImagePacket::BeginBackgroundLoad() -> std::shared_ptr<Marker> { return nullptr; }
@@ -84,7 +82,7 @@ namespace TextureTransform
     static DirectX::ScratchImage PeformCompression_DXTex(
         const BufferUploads::TextureDesc& srcDesc, 
         BufferUploads::DataPacket& pkt,
-        RenderCore::Metal::NativeFormat::Enum dstFormat)
+        RenderCore::Format dstFormat)
     {
         // use SRGB compression for formats where it makes sense.
         const auto flags = DirectX::TEX_COMPRESS_SRGB | DirectX::TEX_COMPRESS_PARALLEL;
@@ -96,7 +94,7 @@ namespace TextureTransform
         auto hresult = DirectX::Compress(
             AsPointer(images.cbegin()), images.size(),
             metaData, 
-            RenderCore::Metal::AsDXGIFormat(dstFormat),
+            RenderCore::Metal_DX11::AsDXGIFormat(dstFormat),
             flags, 0.5f, scratchImage);
         if (!SUCCEEDED(hresult))
             Throw(::Exceptions::BasicLabel("Error while performing compression. Check formats"));
@@ -194,11 +192,11 @@ namespace TextureTransform
                 totalTaskCount += std::max(1u, mipHeight/rowsPerStrip);
             }
 
-        const auto srcFormat = srcDesc._nativePixelFormat;
+        const auto srcFormat = srcDesc._format;
 
         for (unsigned a=0; a<srcDesc._arrayCount; ++a)
             for (unsigned m=0; m<srcDesc._mipCount; ++m) {
-                auto subRes = BufferUploads::DataPacket::TexSubRes(m, a);
+				auto subRes = BufferUploads::DataPacket::SubResourceId{m, a};
                 auto* srcData = pkt.GetData(subRes);
                 auto srcPitches = pkt.GetPitches(subRes);
                 auto* dstImage = result.GetImage(m, a, 0);
@@ -224,11 +222,11 @@ namespace TextureTransform
                             auto modSrc = src;
 
                             std::unique_ptr<uint8[]> midwayBuffer;
-                            if (srcFormat == RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT
-                                || srcFormat == RenderCore::Metal::NativeFormat::R32G32B32_FLOAT) {
+                            if (srcFormat == RenderCore::Format::R32G32B32A32_FLOAT
+                                || srcFormat == RenderCore::Format::R32G32B32_FLOAT) {
                     
                                 const unsigned midwayPixelPitch = 8;
-                                const unsigned srcPixelPitch = (srcFormat == RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT?4:3)*4;                    
+                                const unsigned srcPixelPitch = (srcFormat == RenderCore::Format::R32G32B32A32_FLOAT?4:3)*4;                    
                                 midwayBuffer = std::make_unique<uint8[]>(src.width*src.height*midwayPixelPitch);
                     
                                 // convert 32 bit float -> unsigned 16 bit float
@@ -284,17 +282,16 @@ namespace TextureTransform
 
         // interpret input as a SRGB format (if possible)
         // todo -- handle SRGB input flags
-        srcDesc._nativePixelFormat = (unsigned)RenderCore::Metal::AsSRGBFormat(
-            RenderCore::Metal::NativeFormat::Enum(srcDesc._nativePixelFormat));
+        srcDesc._format = RenderCore::AsSRGBFormat(srcDesc._format);
 
-        auto dstFormat = RenderCore::Metal::NativeFormat::Enum(desc._nativePixelFormat);
-        auto srcFormat = RenderCore::Metal::NativeFormat::Enum(srcDesc._nativePixelFormat);
+        auto dstFormat = desc._format;
+        auto srcFormat = srcDesc._format;
 
         DirectX::ScratchImage scratchImage;
-        if (dstFormat == RenderCore::Metal::NativeFormat::BC6H_UF16
-            && (srcFormat == RenderCore::Metal::NativeFormat::R16G16B16A16_FLOAT
-                || srcFormat == RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT
-                || srcFormat == RenderCore::Metal::NativeFormat::R32G32B32_FLOAT)) {
+        if (dstFormat == RenderCore::Format::BC6H_UF16
+            && (srcFormat == RenderCore::Format::R16G16B16A16_FLOAT
+                || srcFormat == RenderCore::Format::R32G32B32A32_FLOAT
+                || srcFormat == RenderCore::Format::R32G32B32_FLOAT)) {
             // When writing to BC6H_UF16, prefer to use the intel compressor. This compressor
             // is both much faster and more accurate. However, it doesn't support a wide range of
             // input formats -- our version will only work with 
@@ -314,7 +311,7 @@ namespace TextureTransform
         return TextureResult
             {
                 std::move(resultPkt),
-                unsigned(format), dims, mipCount, arrayCount
+                RenderCore::Metal_DX11::AsFormat(format), dims, mipCount, arrayCount
             };
     }
 }

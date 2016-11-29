@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Transform.h"
-#include "../../RenderCore/Metal/Format.h"
+#include "../../RenderCore/Format.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/DataPacket.h"
 #include "../../Math/Geometry.h"
@@ -104,8 +104,8 @@ namespace TextureTransform
                 BufferUploads::CreateBasicPacket(
                     (desc._width*desc._height)*sizeof(Float4),
                     pixels.get(),
-                    BufferUploads::TexturePitches(desc._width*sizeof(Float4), desc._width*desc._height*sizeof(Float4))),
-                RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT,
+					BufferUploads::TexturePitches{desc._width*sizeof(Float4), desc._width*desc._height*sizeof(Float4)}),
+                RenderCore::Format::R32G32B32A32_FLOAT,
                 UInt2(desc._width, desc._height)
             };
     }
