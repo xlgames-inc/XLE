@@ -14,8 +14,8 @@ float2 EquirectangularMappingCoord(float3 direction, bool hemi)
 		// note -- 	the trigonometry here is a little inaccurate. It causes shaking
 		//			when the camera moves. We might need to replace it with more
 		//			accurate math.
-	float theta = atan2(direction.x, direction.y);
-	float inc = atan(direction.z * rsqrt(dot(direction.xy, direction.xy)));
+	float theta = atan2(direction.y, direction.x);
+	float inc = asin(direction.z); // atan(direction.z * rsqrt(dot(direction.xy, direction.xy)));
 
 	float x = 0.5f + 0.5f*(theta / (1.f*pi));
 	float y = .5f-(inc / pi);
