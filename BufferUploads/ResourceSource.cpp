@@ -886,7 +886,7 @@ namespace BufferUploads
                 context.GetCommitStepUnderConstruction().Add(
                     CommitStep::DeferredDefragCopy(GetHeap()->_heapResource->ShareUnderlying(), sourceResource, _steps));
             } else {
-                context.GetDeviceContext().ResourceCopy_DefragSteps(*GetHeap()->_heapResource->GetUnderlying(), *sourceResource, _steps);
+                context.GetDeviceContext().ResourceCopy_DefragSteps(GetHeap()->_heapResource->ShareUnderlying(), sourceResource, _steps);
             }
             _doneResourceCopy = true;
         }

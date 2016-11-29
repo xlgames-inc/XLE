@@ -389,7 +389,7 @@ namespace TextureTransform
             }
 
             if (!SUCCEEDED(hresult))
-                Throw(::Exceptions::BasicLabel("Failure while written output image"));
+                Throw(::Exceptions::BasicLabel("Failure while writing output image"));
         } else {
 
             // When we have multiple mipmaps or array elements, we're creating a multi subresource
@@ -409,7 +409,7 @@ namespace TextureTransform
                 DirectX::DDS_FLAGS_NONE, (const wchar_t*)fn.c_str());
 
             if (!SUCCEEDED(hresult))
-                Throw(::Exceptions::BasicLabel("Failure while written output image"));
+                Throw(::Exceptions::BasicLabel("Failure while writing output image"));
         }
     }
 

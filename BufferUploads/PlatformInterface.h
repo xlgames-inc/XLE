@@ -68,7 +68,7 @@ namespace BufferUploads { namespace PlatformInterface
             const RenderCore::Box2D& srcBox = RenderCore::Box2D());
 
             ////////   R E S O U R C E   C O P Y   ////////
-        void ResourceCopy_DefragSteps(UnderlyingResource& destination, UnderlyingResource& source, const std::vector<Utility::DefragStep>& steps);
+        void ResourceCopy_DefragSteps(const UnderlyingResourcePtr& destination, const UnderlyingResourcePtr& source, const std::vector<Utility::DefragStep>& steps);
         void ResourceCopy(UnderlyingResource& destination, UnderlyingResource& source);
 
             ////////   C O M M A N D   L I S T S   ////////

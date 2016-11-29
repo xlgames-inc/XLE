@@ -383,7 +383,7 @@ namespace BufferUploads
         if (!_deferredDefragCopies.empty()) {
             PlatformInterface::UnderlyingDeviceContext immediateContext(immContext);
             for (auto i=_deferredDefragCopies.begin(); i!=_deferredDefragCopies.end(); ++i)
-                immediateContext.ResourceCopy_DefragSteps(*i->_destination, *i->_source, i->_steps);
+                immediateContext.ResourceCopy_DefragSteps(i->_destination, i->_source, i->_steps);
         }
     }
 

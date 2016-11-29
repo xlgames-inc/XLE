@@ -265,20 +265,20 @@
             const void*     GetData() const         { return _data; }
             TexturePitches  GetPitches() const      { return _pitches; }
         
-            MappedBuffer(Metal::DeviceContext&, UnderlyingResource&, unsigned, void*, TexturePitches pitches);
+            MappedBuffer(Metal::DeviceContext&, const UnderlyingResourcePtr&, unsigned, void*, TexturePitches pitches);
             MappedBuffer();
             MappedBuffer(MappedBuffer&& moveFrom) never_throws;
             const MappedBuffer& operator=(MappedBuffer&& moveFrom) never_throws;
             ~MappedBuffer();
         private:
             Metal::DeviceContext* _sourceContext;
-			UnderlyingResource* _resource;
+			UnderlyingResourcePtr _resource;
             unsigned _subResourceIndex;
             void* _data;
             TexturePitches _pitches;
         };
 
-        static MappedBuffer Map(Metal::DeviceContext& context, UnderlyingResource& resource, MapType::Enum mapType, unsigned subResource=0)
+        static MappedBuffer Map(Metal::DeviceContext& context, const UnderlyingResourcePtr& resource, MapType::Enum mapType, unsigned subResource=0)
         {
             // uint32 subResource = 0;
             // intrusive_ptr<ID3D::Texture2D> tex2D = QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource));
@@ -298,7 +298,7 @@
             case MapType::ReadOnly:     platformMap = D3D11_MAP_READ;               break;
             default:                    platformMap = D3D11_MAP_WRITE;              break;
             }
-            HRESULT hresult = context.GetUnderlying()->Map(ResPtr(resource), subResource, platformMap, 0/*D3D11_MAP_FLAG_DO_NOT_WAIT*/, &result);
+            HRESULT hresult = context.GetUnderlying()->Map(ResPtr(*resource), subResource, platformMap, 0/*D3D11_MAP_FLAG_DO_NOT_WAIT*/, &result);
             if (SUCCEEDED(hresult)) {
                 return MappedBuffer(context, resource, subResource, result.pData, TexturePitches{result.RowPitch, result.DepthPitch});
             }
@@ -362,10 +362,10 @@
         }
 
         MappedBuffer::MappedBuffer(
-            Metal::DeviceContext& context, UnderlyingResource& resource, 
+            Metal::DeviceContext& context, const UnderlyingResourcePtr& resource, 
             unsigned subResourceIndex, void* data,
             TexturePitches pitches)
-	    : _resource(&resource)
+	    : _resource(resource)
         {
             _sourceContext = &context;
             _subResourceIndex = subResourceIndex;
@@ -373,7 +373,7 @@
             _pitches = pitches;
         }
 
-        void UnderlyingDeviceContext::ResourceCopy_DefragSteps(UnderlyingResource& destination, UnderlyingResource& source, const std::vector<DefragStep>& steps)
+        void UnderlyingDeviceContext::ResourceCopy_DefragSteps(const UnderlyingResourcePtr& destination, const UnderlyingResourcePtr& source, const std::vector<DefragStep>& steps)
         {
             auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext); 
             if (!constant_expression<UseMapBasedDefrag>::result()) {
@@ -385,8 +385,8 @@
                     using namespace RenderCore;
                     Metal::CopyPartial(
                         *metalContext,
-                        Metal::CopyPartial_Dest(ResPtr(destination), {0, i->_destination}),
-                        Metal::CopyPartial_Src(ResPtr(source), {0, i->_sourceStart}, {i->_sourceEnd, 1, 1}));
+                        Metal::CopyPartial_Dest(destination, {0, i->_destination}),
+                        Metal::CopyPartial_Src(source, {0, i->_sourceStart}, {i->_sourceEnd, 1, 1}));
                 }
             } else {
                 MappedBuffer sourceBuffer       = Map(*metalContext, source, MapType::ReadOnly);
@@ -510,7 +510,7 @@
     : _dataOffset(0)
     {
         assert(!locator.IsEmpty());
-        auto resource = locator.GetUnderlying();
+        auto resource = locator.ShareUnderlying();
         UnderlyingResourcePtr stagingResource;
 
         auto desc = PlatformInterface::ExtractDesc(*resource);
@@ -534,7 +534,7 @@
             stagingResource = CreateResource(*context.GetObjectFactory(), stagingDesc);
             if (stagingResource.get()) {
                 context.ResourceCopy(*stagingResource.get(), *resource);
-                resource = stagingResource.get();
+                resource = stagingResource;
             }
         }
 
@@ -549,7 +549,7 @@
                     locator.Offset(), locator.Size(), c));
         } else {
             for (unsigned c=0; c<subResCount; ++c)
-                _mappedBuffer.push_back(Map(*metalContext, *resource, MapType::ReadOnly, c));
+                _mappedBuffer.push_back(Map(*metalContext, resource, MapType::ReadOnly, c));
             _dataOffset = (locator.Offset() != ~unsigned(0x0))?locator.Offset():0;
         }
     }
