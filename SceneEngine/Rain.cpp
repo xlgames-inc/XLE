@@ -84,9 +84,9 @@ namespace SceneEngine
             Metal::ConstantBuffer cb0(nullptr, sizeof(RainSpawnConstants));
 
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/effects/rainparticles.sh:vs_main:vs_*", 
-                "game/xleres/effects/rainparticles.sh:gs_main:gs_*",
-                "game/xleres/effects/rainparticles.sh:ps_main:ps_*",
+                "xleres/effects/rainparticles.sh:vs_main:vs_*", 
+                "xleres/effects/rainparticles.sh:gs_main:gs_*",
+                "xleres/effects/rainparticles.sh:ps_main:ps_*",
                 "");
             Metal::BoundUniforms uniforms(shader);
             Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
@@ -96,7 +96,7 @@ namespace SceneEngine
             uniforms.BindShaderResource(HashRandomValuesTexture, 0, 1);
 
             auto& balancedNoise 
-                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT");
+                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT");
 
             const Metal::ConstantBuffer* cbs[]      = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource() };
@@ -201,10 +201,10 @@ namespace SceneEngine
             // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), Format::R24_UNORM_X8_TYPELESS);
 
             auto& simulationShaderByteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(
-                "game/xleres/effects/simrain.sh:SimulateDrops:cs_*", 
+                "xleres/effects/simrain.sh:SimulateDrops:cs_*", 
                 "");
             auto& simulationShader = ::Assets::GetAssetDep<Metal::ComputeShader>(
-                "game/xleres/effects/simrain.sh:SimulateDrops:cs_*", 
+                "xleres/effects/simrain.sh:SimulateDrops:cs_*", 
                 "");
             Metal::BoundUniforms simUniforms(simulationShaderByteCode);
             Techniques::TechniqueContext::BindGlobalUniforms(simUniforms);
@@ -258,7 +258,7 @@ namespace SceneEngine
             Metal::ConstantBuffer cb0(&simParam, sizeof(simParam));
 
             auto& balancedNoise 
-                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT");
+                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT");
             const Metal::ConstantBuffer* cbs[]      = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource(), &resources._simParticlesSRV, &depthsSRV, &normalsSRV };
             
@@ -282,9 +282,9 @@ namespace SceneEngine
                 //  buffer shader resource;
 
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/effects/simrain.sh:vs_main:vs_*", 
-                "game/xleres/effects/rainparticles.sh:gs_main:gs_*",
-                "game/xleres/effects/rainparticles.sh:ps_main:ps_*",
+                "xleres/effects/simrain.sh:vs_main:vs_*", 
+                "xleres/effects/rainparticles.sh:gs_main:gs_*",
+                "xleres/effects/rainparticles.sh:ps_main:ps_*",
                 "");
             Metal::BoundUniforms drawUniforms(shader);
             Techniques::TechniqueContext::BindGlobalUniforms(drawUniforms);
@@ -340,10 +340,10 @@ namespace SceneEngine
             // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), NativeFormat::R24_UNORM_X8_TYPELESS);
 
             auto& simulationShaderByteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(
-                "game/xleres/effects/sparkparticlestest.sh:SimulateDrops:cs_*", 
+                "xleres/effects/sparkparticlestest.sh:SimulateDrops:cs_*", 
                 "");
             auto& simulationShader = ::Assets::GetAssetDep<Metal::ComputeShader>(
-                "game/xleres/effects/sparkparticlestest.sh:SimulateDrops:cs_*", 
+                "xleres/effects/sparkparticlestest.sh:SimulateDrops:cs_*", 
                 "");
             Metal::BoundUniforms simUniforms(simulationShaderByteCode);
             Techniques::TechniqueContext::BindGlobalUniforms(simUniforms);
@@ -411,7 +411,7 @@ namespace SceneEngine
             Metal::ConstantBuffer cb0(&simParam, sizeof(simParam));
 
             auto& balancedNoise 
-                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT");
+                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT");
             const Metal::ConstantBuffer* cbs[]      = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource(), &resources._simParticlesSRV, &depthsSRV, &normalsSRV };
             
@@ -435,9 +435,9 @@ namespace SceneEngine
                 //  buffer shader resource;
 
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/effects/sparkparticlestest.sh:vs_main:vs_*", 
-                "game/xleres/effects/sparkparticlestest.sh:gs_main:gs_*",
-                "game/xleres/effects/sparkparticlestest.sh:ps_main:ps_*",
+                "xleres/effects/sparkparticlestest.sh:vs_main:vs_*", 
+                "xleres/effects/sparkparticlestest.sh:gs_main:gs_*",
+                "xleres/effects/sparkparticlestest.sh:ps_main:ps_*",
                 "");
             Metal::BoundUniforms drawUniforms(shader);
             Techniques::TechniqueContext::BindGlobalUniforms(drawUniforms);

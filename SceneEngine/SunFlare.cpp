@@ -78,8 +78,8 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////
 
         _commitShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/effects/occludingsunflare.sh:vs_sunflare:vs_*",
-            "game/xleres/effects/occludingsunflare.sh:ps_sunflare:ps_*",
+            "xleres/effects/occludingsunflare.sh:vs_sunflare:vs_*",
+            "xleres/effects/occludingsunflare.sh:ps_sunflare:ps_*",
             (StringMeld<64>() << "ROWS_OPTIMISATION=" << int(desc._rowsOptimisation)).get());
 
         _commitUniforms = Metal::BoundUniforms(*_commitShader);
@@ -90,8 +90,8 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////
 
         _blurShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2d.vsh:fullscreen:vs_*",
-            "game/xleres/effects/occludingsunflare.sh:ps_blur:ps_*",
+            "xleres/basic2d.vsh:fullscreen:vs_*",
+            "xleres/effects/occludingsunflare.sh:ps_blur:ps_*",
             (StringMeld<128>() 
                 << "SINGLE_PASS=" << int(desc._singlePass)
                 << ";ROWS_OPTIMISATION=" << int(desc._rowsOptimisation)
@@ -105,8 +105,8 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////
 
         _toRadialShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/effects/occludingsunflare.sh:vs_sunflare_full:vs_*",
-            "game/xleres/effects/occludingsunflare.sh:ps_toradial:ps_*");
+            "xleres/effects/occludingsunflare.sh:vs_sunflare_full:vs_*",
+            "xleres/effects/occludingsunflare.sh:ps_toradial:ps_*");
 
         _toRadialUniforms = Metal::BoundUniforms(*_toRadialShader);
         Techniques::TechniqueContext::BindGlobalUniforms(_toRadialUniforms);
@@ -116,8 +116,8 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////
 
         _directBlurShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/effects/occludingsunflare.sh:vs_sunflare:vs_*",
-            "game/xleres/effects/occludingsunflare.sh:ps_sunflare_directblur:ps_*");
+            "xleres/effects/occludingsunflare.sh:vs_sunflare:vs_*",
+            "xleres/effects/occludingsunflare.sh:ps_sunflare_directblur:ps_*");
 
         _directBlurUniforms = Metal::BoundUniforms(*_directBlurShader);
         Techniques::TechniqueContext::BindGlobalUniforms(_directBlurUniforms);

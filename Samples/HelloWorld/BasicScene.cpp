@@ -178,9 +178,9 @@ namespace Sample
             //  any way, but they should stay constant over the course of a single frame.
         GlobalLightingDesc result;
         result._ambientLight = Float3(0.f, 0.f, 0.f);
-        XlCopyString(result._skyTexture, "game/xleres/defaultresources/sky/samplesky2.dds");
-        XlCopyString(result._diffuseIBL, "game/xleres/defaultresources/sky/samplesky2_diffuse.dds");
-        XlCopyString(result._specularIBL, "game/xleres/defaultresources/sky/samplesky2_specular.dds");
+        XlCopyString(result._skyTexture, "xleres/defaultresources/sky/samplesky2.dds");
+        XlCopyString(result._diffuseIBL, "xleres/defaultresources/sky/samplesky2_diffuse.dds");
+        XlCopyString(result._specularIBL, "xleres/defaultresources/sky/samplesky2_specular.dds");
         result._skyTextureType = GlobalLightingDesc::SkyTextureType::Cube;
         result._skyReflectionScale = 1.f;
         return result;

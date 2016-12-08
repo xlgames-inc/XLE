@@ -199,8 +199,8 @@ public:
 TextStyleResources::TextStyleResources(const Desc& desc)
 {
 	using namespace RenderCore;
-    const char vertexShaderSource[]   = "game/xleres/basic2D.vsh:P2CT:" VS_DefShaderModel;
-    const char pixelShaderSource[]    = "game/xleres/basic.psh:PCT_Text:" PS_DefShaderModel;
+    const char vertexShaderSource[]   = "xleres/basic2D.vsh:P2CT:" VS_DefShaderModel;
+    const char pixelShaderSource[]    = "xleres/basic.psh:PCT_Text:" PS_DefShaderModel;
 
     const auto& shaderProgram = Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, pixelShaderSource);
 	Metal::BoundInputLayout boundInputLayout(RenderCore::GlobalInputLayouts::PCT, shaderProgram);

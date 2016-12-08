@@ -70,7 +70,7 @@ namespace SceneEngine
         context->Bind(newViewport);
 
         context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/Ocean/FFTDebugging.psh:copy:ps_*"));
+            "xleres/basic2D.vsh:fullscreen:vs_*", "xleres/Ocean/FFTDebugging.psh:copy:ps_*"));
         context->Bind(MakeResourceList(box._workingTextureRealRTV, box._workingTextureImaginaryRTV), nullptr);
         context->BindPS(MakeResourceList(::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/objects/env/nature/grassland/plant/co_gland_weed_a_df.dds").GetShaderResource()));
         SetupVertexGeneratorShader(*context);
@@ -78,8 +78,8 @@ namespace SceneEngine
         savedTargets.ResetToOldTargets(*context);
         context->Bind(oldViewport);
 
-        auto& fft1 = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/FFT.csh:FFT2D_1:cs_*");
-        auto& fft2 = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/FFT.csh:FFT2D_2:cs_*");
+        auto& fft1 = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:FFT2D_1:cs_*");
+        auto& fft2 = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:FFT2D_2:cs_*");
 
         context->BindCS(MakeResourceList(box._workingTextureRealUVA, box._workingTextureImaginaryUVA));
         unsigned constants[4] = {1, 0, 0, 0};
@@ -87,7 +87,7 @@ namespace SceneEngine
         context->Bind(fft1); context->Dispatch((dimensions + (32-1))/32);
         context->Bind(fft2); context->Dispatch((dimensions + (32-1))/32);
 
-        context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/FFT.csh:Lowpass:cs_*"));
+        context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:Lowpass:cs_*"));
         context->Dispatch((dimensions + (32-1))/32);
 
         constants[0] = 0;
@@ -98,7 +98,7 @@ namespace SceneEngine
 
         context->Bind(Techniques::CommonResources()._blendStraightAlpha);
         context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/Ocean/FFTDebugging.psh:main:ps_*"));
+            "xleres/basic2D.vsh:fullscreen:vs_*", "xleres/Ocean/FFTDebugging.psh:main:ps_*"));
         context->BindPS(MakeResourceList(box._workingTextureRealSRV, box._workingTextureImaginarySRV));
         context->Draw(4);
     }
@@ -499,8 +499,8 @@ namespace SceneEngine
 
             context->Bind(MakeResourceList(temporaryBuffer), sizeof(Vertex), 0);
             auto& shader = ::Assets::GetAsset<ShaderProgram>(
-                "game/xleres/forward/illum.vsh:main:vs_*", 
-                "game/xleres/forward/illum.psh:main:ps_*",
+                "xleres/forward/illum.vsh:main:vs_*", 
+                "xleres/forward/illum.psh:main:ps_*",
                 "GEO_HAS_COLOUR=1");
             auto localTransform = Techniques::MakeLocalTransform(
                 Identity<Float4x4>(), 
@@ -669,7 +669,7 @@ namespace SceneEngine
         const bool useWireframeRender               = Tweakable("OceanRenderWireframe", false);
         if (!useWireframeRender) {
 
-            auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/ocean/oceanmaterial.tech");
+            auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("xleres/ocean/oceanmaterial.tech");
 
             ParameterBox materialParameters;
             materialParameters.SetParameter((const utf8*)"MAT_USE_DERIVATIVES_MAP", unsigned(fftBuffer._useDerivativesMapForNormals));
@@ -700,7 +700,7 @@ namespace SceneEngine
                     context->Bind(*variation._boundLayout);
                 }
 
-                //auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/defaultresources/waternoise.png");
+                //auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/defaultresources/waternoise.png");
                 auto& surfaceSpecularity = Techniques::FindCachedBox2<WaterNoiseTexture>();
                 const ConstantBuffer* prebuiltBuffers[] = { &oceanMaterialConstants, &oceanGridConstants, &oceanRenderingConstants, &oceanLightingConstants };
                 const ShaderResourceView* srvs[]        = { &OceanReflectionResource, &surfaceSpecularity._srv };
@@ -713,9 +713,9 @@ namespace SceneEngine
         } else {
 
             auto& patchRender = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/Ocean/OceanPatch.vsh:main:vs_*",
-                "game/xleres/solidwireframe.gsh:main:gs_*",
-                "game/xleres/solidwireframe.psh:outlinepatch:ps_*",
+                "xleres/Ocean/OceanPatch.vsh:main:vs_*",
+                "xleres/solidwireframe.gsh:main:gs_*",
+                "xleres/solidwireframe.psh:outlinepatch:ps_*",
                 "SOLIDWIREFRAME_TEXCOORD=1");
             BoundUniforms boundUniforms(patchRender);
             Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
@@ -736,7 +736,7 @@ namespace SceneEngine
         context->BindPS(MakeResourceList(1, fftBuffer._normalsTextureSRV));
         context->BindPS(MakeResourceList(3, 
             fftBuffer._foamQuantitySRV[OceanBufferCounter&1], 
-            // ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/defaultresources/waternoise.png").GetShaderResource()
+            // ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/defaultresources/waternoise.png").GetShaderResource()
             Techniques::FindCachedBox2<WaterNoiseTexture>()._srv));
         if (shallowWater) {
             shallowWater->BindForOceanRender(*context, OceanBufferCounter);

@@ -573,8 +573,8 @@ namespace SceneEngine
             Metal::ShaderResourceView  gpuCacheSRV(_pimpl->_gpucache[0]->ShareUnderlying());
             metalContext->BindPS(MakeResourceList(5, gpuCacheSRV));
             auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                "game/xleres/ui/terrainmodification.sh:GpuCacheDebugging:ps_*",
+                "xleres/basic2D.vsh:fullscreen:vs_*", 
+                "xleres/ui/terrainmodification.sh:GpuCacheDebugging:ps_*",
                 "");
             metalContext->Bind(debuggingShader);
             metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
@@ -620,7 +620,7 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    #define baseShader "game/xleres/ui/terrainmodification.sh:"
+    #define baseShader "xleres/ui/terrainmodification.sh:"
 
     auto HeightsUberSurfaceInterface::AdjustHeights(RenderCore::IThreadContext& threadContext, Float2 center, float radius, float adjustment, float powerValue) -> TerrainToolResult
     {
@@ -971,7 +971,7 @@ namespace SceneEngine
             std::make_tuple(Hash64("PaintParameters"), &params, sizeof(params))
         };
 
-        return ApplyTool(context, adjMins, adjMaxs, "game/xleres/ui/terrainmodification_int.sh:Paint", centre, radius, 0.f, extraPackets, dimof(extraPackets));
+        return ApplyTool(context, adjMins, adjMaxs, "xleres/ui/terrainmodification_int.sh:Paint", centre, radius, 0.f, extraPackets, dimof(extraPackets));
     }
 
     void CoverageUberSurfaceInterface::CancelActiveOperations()

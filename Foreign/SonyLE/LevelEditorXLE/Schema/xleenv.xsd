@@ -82,7 +82,7 @@
     <xs:attribute name="DiffuseIBL" type="xs:anyURI"/>
     <xs:attribute name="SpecularIBL" type="xs:anyURI"/>
     
-    <xs:attribute name="SkyTexture" type="xs:anyURI" default="./Game/xleres/DefaultResources/sky/samplesky2.dds" />
+    <xs:attribute name="SkyTexture" type="xs:anyURI" default="xleres/DefaultResources/sky/samplesky2.dds" />
     <xs:attribute name="SkyTextureType" type="xs:int" default="1"/>
     <xs:attribute name="SkyReflectionScale" type="xs:float" default="1"/>
     <xs:attribute name="SkyReflectionBlurriness" type="xs:float" default="2"/>

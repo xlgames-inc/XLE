@@ -1350,9 +1350,9 @@ namespace ToolsRig
 
             const char* icons[] = 
             {
-                "game/xleres/DefaultResources/icon_save.png",
-                "game/xleres/DefaultResources/icon_test.png",
-                "game/xleres/DefaultResources/icon_test.png",
+                "xleres/DefaultResources/icon_save.png",
+                "xleres/DefaultResources/icon_test.png",
+                "xleres/DefaultResources/icon_test.png",
             };
             const InteractableId iconIds[] = { Id_PlacementsSave, 0, 0 };
             const auto iconCount = dimof(icons);

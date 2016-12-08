@@ -60,8 +60,8 @@ namespace SceneEngine
             constantBufferPackets[0] = MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
 
             const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(
-                "game/xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
-                "game/xleres/forward/illum.psh:main", 
+                "xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
+                "xleres/forward/illum.psh:main", 
                 "GEO_HAS_COLOUR=1");
             BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
             context->Bind(boundVertexInputLayout);

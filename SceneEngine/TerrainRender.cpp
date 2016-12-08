@@ -219,12 +219,12 @@ namespace SceneEngine
             }
 
         const char* ps = isTextured 
-            ? "game/xleres/objects/terrain/TerrainBasePS.sh:ps_main:!ps_*" 
-            : "game/xleres/solidwireframe.psh:main:ps_*";
+            ? "xleres/objects/terrain/TerrainBasePS.sh:ps_main:!ps_*" 
+            : "xleres/solidwireframe.psh:main:ps_*";
 
         if (Tweakable("LightingModel", 0) == 1 && isTextured) {
                 // manually switch to the forward shading pixel shader depending on the lighting model
-            ps = "game/xleres/objects/terrain/TerrainTexturing.sh:ps_main_forward:!ps_*";
+            ps = "xleres/objects/terrain/TerrainTexturing.sh:ps_main_forward:!ps_*";
         }
 
         InputElementDesc eles[] = {
@@ -237,22 +237,22 @@ namespace SceneEngine
             unsigned strides = sizeof(float)*4;
             GeometryShader::SetDefaultStreamOutputInitializers(
                 GeometryShader::StreamOutputInitializers(eles, dimof(eles), &strides, 1));
-            gs = "game/xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*";
+            gs = "xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*";
         } else if (desc._mode == TerrainRenderingContext::Mode_VegetationPrepare) {
             definesBuffer << ";TERRAIN_NORMAL=" << unsigned(desc._vegetationAlignToTerrainUp);
             ps = "";
-            gs = "game/xleres/Vegetation/InstanceSpawn.gsh:main:gs_*";
+            gs = "xleres/Vegetation/InstanceSpawn.gsh:main:gs_*";
         } else if (desc._drawWireframe) {
-            gs = "game/xleres/solidwireframe.gsh:main:gs_*";
+            gs = "xleres/solidwireframe.gsh:main:gs_*";
         }
 
         const DeepShaderProgram* shaderProgram;
         TRY {
             shaderProgram = &::Assets::GetAssetDep<DeepShaderProgram>(
-                "game/xleres/objects/terrain/GeoGenerator.sh:vs_dyntess_main:vs_*", 
+                "xleres/objects/terrain/GeoGenerator.sh:vs_dyntess_main:vs_*", 
                 gs, ps, 
-                "game/xleres/objects/terrain/GeoGenerator.sh:hs_main:hs_*",
-                "game/xleres/objects/terrain/GeoGenerator.sh:ds_main:ds_*",
+                "xleres/objects/terrain/GeoGenerator.sh:hs_main:hs_*",
+                "xleres/objects/terrain/GeoGenerator.sh:ds_main:ds_*",
                 definesBuffer.get());
         } CATCH (...) {
             GeometryShader::SetDefaultStreamOutputInitializers(GeometryShader::StreamOutputInitializers());
@@ -312,18 +312,18 @@ namespace SceneEngine
             const ShaderProgram* shaderProgram;
             if (mode == Mode_Normal) {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
-                    "game/xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
-                    "game/xleres/solidwireframe.gsh:main:gs_*", 
-                    "game/xleres/solidwireframe.psh:main:ps_*", "");
+                    "xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
+                    "xleres/solidwireframe.gsh:main:gs_*", 
+                    "xleres/solidwireframe.psh:main:ps_*", "");
             } else if (mode == Mode_VegetationPrepare) {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
-                    "game/xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
-                    "game/xleres/Vegetation/InstanceSpawn.gsh:main:gs_*", 
+                    "xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
+                    "xleres/Vegetation/InstanceSpawn.gsh:main:gs_*", 
                     "", "OUTPUT_WORLD_POSITION=1");
             } else {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
-                    "game/xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
-                    "game/xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*", 
+                    "xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
+                    "xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*", 
                     "", "OUTPUT_WORLD_POSITION=1");
             }
 

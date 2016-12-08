@@ -250,7 +250,7 @@ namespace Sample
         std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> overlaySystemInputListener)
     {
         auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
-        mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("game/xleres/hotkey.txt"));
+        mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("xleres/hotkey.txt"));
         if (overlaySystemInputListener) {
             mainInputHandler->AddListener(overlaySystemInputListener);
         }

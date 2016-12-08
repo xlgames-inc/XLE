@@ -296,7 +296,7 @@ namespace ToolsRig
                     if (str.empty()) {
                             //  It's not mentioned in the material resources. try to look
                             //  for a default resource for this bind point
-                        str = ::Assets::rstring("game/xleres/DefaultResources/") + bindDesc.Name + ".dds";
+                        str = ::Assets::rstring("xleres/DefaultResources/") + bindDesc.Name + ".dds";
                         isDefaultRes = true;
                     }
 

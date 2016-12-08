@@ -92,8 +92,8 @@ namespace SceneEngine
             if (needStepDown) {
                 metalContext.Bind(
                     ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                        "game/xleres/Effects/SeparableFilter.psh:SingleStepDownSample:ps_*",
+                        "xleres/basic2D.vsh:fullscreen:vs_*", 
+                        "xleres/Effects/SeparableFilter.psh:SingleStepDownSample:ps_*",
                         (textureDesc.SampleDesc.Count>1)?"MSAA_SAMPLERS=1":""));
                 metalContext.Draw(4);
 
@@ -109,8 +109,8 @@ namespace SceneEngine
             metalContext.Bind(MakeResourceList(_refractionsBackTarget), nullptr);
             metalContext.Bind(
                 ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "game/xleres/Effects/SeparableFilter.psh:HorizontalBlur:ps_*"));
+                    "xleres/basic2D.vsh:fullscreen:vs_*", 
+                    "xleres/Effects/SeparableFilter.psh:HorizontalBlur:ps_*"));
             metalContext.Draw(4);
 
             metalContext.UnbindPS<Metal::ShaderResourceView>(0, 1);
@@ -119,8 +119,8 @@ namespace SceneEngine
             metalContext.BindPS(MakeResourceList(_refractionsBackSRV));
             metalContext.Bind(
                 ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "game/xleres/Effects/SeparableFilter.psh:VerticalBlur:ps_*"));
+                    "xleres/basic2D.vsh:fullscreen:vs_*", 
+                    "xleres/Effects/SeparableFilter.psh:VerticalBlur:ps_*"));
             metalContext.Draw(4);
                         
             metalContext.UnbindPS<Metal::ShaderResourceView>(0, 1);

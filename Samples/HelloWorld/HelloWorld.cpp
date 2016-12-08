@@ -34,6 +34,9 @@
 #include "../../SceneEngine/PreparedScene.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetSetManager.h"
+#include "../../Assets/IFileSystem.h"
+#include "../../Assets/OSFileSystem.h"
+#include "../../Assets/MountingTree.h"
 
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
@@ -69,6 +72,8 @@ namespace Sample
     {
         using namespace PlatformRig;
         using namespace Sample;
+
+		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 
             // We need to startup some basic objects:
             //      * OverlappedWindow (corresponds to a single basic window on Windows)
@@ -153,7 +158,7 @@ namespace Sample
                 //      * The order in which we add handlers determines their priority in intercepting messages
             LogInfo << "Setup input";
             auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
-            mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("game/xleres/hotkey.txt"));
+            mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("xleres/hotkey.txt"));
             mainInputHandler->AddListener(frameRig.GetMainOverlaySystem()->GetInputListener());
             window.GetInputTranslator().AddListener(mainInputHandler);
 

@@ -150,8 +150,8 @@ namespace Overlays
         context->Bind(MakeResourceList(vertexBuffer), sizeof(Vertex), 0);
 
         const auto& shaderProgram = ::Assets::GetAssetDep<ShaderProgram>(
-            "game/xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
-            "game/xleres/basic.psh:copy_point_scrolllimit:" PS_DefShaderModel);
+            "xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
+            "xleres/basic.psh:copy_point_scrolllimit:" PS_DefShaderModel);
         BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
         context->Bind(boundVertexInputLayout);
         context->Bind(shaderProgram);

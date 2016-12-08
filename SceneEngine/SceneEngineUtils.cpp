@@ -549,8 +549,8 @@ namespace SceneEngine
         context.Bind(Techniques::CommonResources()._dssWriteOnly);
         context.Bind(
             ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2d.vsh:fullscreen:vs_*",
-                "game/xleres/basic.psh:copy_depth:ps_*"));
+                "xleres/basic2d.vsh:fullscreen:vs_*",
+                "xleres/basic.psh:copy_depth:ps_*"));
         context.BindPS(MakeResourceList(src));
         SetupVertexGeneratorShader(context);
         context.Draw(4);
@@ -582,20 +582,20 @@ namespace SceneEngine
                     // only sample some pixels in large downsampling 
                     // operations)
                 _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/basic2d.vsh:screenspacerect:vs_*",
-                    "game/xleres/basic.psh:copy_boxfilter:ps_*");
+                    "xleres/basic2d.vsh:screenspacerect:vs_*",
+                    "xleres/basic.psh:copy_boxfilter:ps_*");
                 break;
 
             case CopyFilter::BoxFilterAlphaComplementWeight:
                 _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/basic2d.vsh:screenspacerect:vs_*",
-                    "game/xleres/basic.psh:copy_boxfilter_alphacomplementweight:ps_*");
+                    "xleres/basic2d.vsh:screenspacerect:vs_*",
+                    "xleres/basic.psh:copy_boxfilter_alphacomplementweight:ps_*");
                 break;
 
             default:
                 _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/basic2d.vsh:screenspacerect:vs_*",
-                    "game/xleres/basic.psh:copy_bilinear:ps_*");
+                    "xleres/basic2d.vsh:screenspacerect:vs_*",
+                    "xleres/basic.psh:copy_bilinear:ps_*");
                 break;
             }
             _uniforms = Metal::BoundUniforms(*_shader);

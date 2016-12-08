@@ -95,17 +95,17 @@ namespace RenderCore { namespace Assets
 
             ///////////////////////////////////////////////
 
-        const char* skinningVertexShaderSourceP4    = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:P4:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:P4:" VS_DefShaderModel);
-        const char* skinningVertexShaderSourceP2    = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:P2:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:P2:" VS_DefShaderModel);
-        const char* skinningVertexShaderSourceP1    = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:P1:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:P1:" VS_DefShaderModel);
-        const char* skinningVertexShaderSourceP0    = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:P0:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:P0:" VS_DefShaderModel);
-        const char* geometryShaderSourceP           = "game/xleres/animation/skinning.gsh:P:" GS_DefShaderModel;
+        const char* skinningVertexShaderSourceP4    = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:P4:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:P4:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourceP2    = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:P2:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:P2:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourceP1    = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:P1:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:P1:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourceP0    = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:P0:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:P0:" VS_DefShaderModel);
+        const char* geometryShaderSourceP           = "xleres/animation/skinning.gsh:P:" GS_DefShaderModel;
 
-        const char* skinningVertexShaderSourcePN4   = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:PN4:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:PN4:" VS_DefShaderModel);
-        const char* skinningVertexShaderSourcePN2   = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:PN2:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:PN2:" VS_DefShaderModel);
-        const char* skinningVertexShaderSourcePN1   = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:PN1:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:PN1:" VS_DefShaderModel);
-        const char* skinningVertexShaderSourcePN0   = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:PN0:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:PN0:" VS_DefShaderModel);
-        const char* geometryShaderSourcePN          = "game/xleres/animation/skinning.gsh:PN:" GS_DefShaderModel;
+        const char* skinningVertexShaderSourcePN4   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:PN4:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:PN4:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourcePN2   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:PN2:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:PN2:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourcePN1   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:PN1:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:PN1:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourcePN0   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:PN0:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:PN0:" VS_DefShaderModel);
+        const char* geometryShaderSourcePN          = "xleres/animation/skinning.gsh:PN:" GS_DefShaderModel;
 
         const bool hasNormals = !!HasElement(AsPointer(skinningOutputLayout.cbegin()), AsPointer(skinningOutputLayout.cend()), "NORMAL");
 
@@ -725,8 +725,8 @@ namespace RenderCore { namespace Assets
         auto metalContext = Metal::DeviceContext::Get(context);
 
         const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(  
-            "game/xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
-            "game/xleres/forward/illum.psh:main", "GEO_HAS_COLOUR=1");
+            "xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
+            "xleres/forward/illum.psh:main", "GEO_HAS_COLOUR=1");
         BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
         metalContext->Bind(boundVertexInputLayout);
         metalContext->Bind(shaderProgram);

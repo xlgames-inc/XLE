@@ -289,7 +289,7 @@ namespace SceneEngine
         auto simSize = _pimpl->_simSize;
 
             // update sediment
-        auto& updateShader = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/ocean/tickerosion.csh:UpdateSediment:cs_*", defines);
+        auto& updateShader = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ocean/tickerosion.csh:UpdateSediment:cs_*", defines);
         metalContext.Bind(updateShader);
         metalContext.Dispatch(simSize[0]/16, simSize[1]/16, 1);
 
@@ -297,14 +297,14 @@ namespace SceneEngine
         Metal::Copy(metalContext, _pimpl->_softMaterialsCopy->GetUnderlying(), _pimpl->_softMaterials->GetUnderlying());
         metalContext.BindCS(RenderCore::MakeResourceList(1, _pimpl->_softMaterialsCopySRV));
 
-        auto& shiftShader = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/ocean/tickerosion.csh:ShiftSediment:cs_*", defines);
+        auto& shiftShader = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ocean/tickerosion.csh:ShiftSediment:cs_*", defines);
         metalContext.Bind(shiftShader);
         metalContext.Dispatch(simSize[0]/16, simSize[1]/16, 1);
 
             // "thermal" erosion
         Metal::Copy(metalContext, _pimpl->_softMaterialsCopy->GetUnderlying(), _pimpl->_hardMaterials->GetUnderlying());
 
-        auto& thermalShader = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/ocean/tickerosion.csh:ThermalErosion:cs_*", defines);
+        auto& thermalShader = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ocean/tickerosion.csh:ThermalErosion:cs_*", defines);
         metalContext.Bind(thermalShader);
         metalContext.Dispatch(simSize[0]/16, simSize[1]/16, 1);
         
@@ -361,13 +361,13 @@ namespace SceneEngine
 
                 const ::Assets::ResChar* pixelShader;
                 if (mode == RenderDebugMode::HardMaterials) {
-                    pixelShader = "game/xleres/ocean/erosiondebug.sh:ps_hardMaterials:ps_*";
+                    pixelShader = "xleres/ocean/erosiondebug.sh:ps_hardMaterials:ps_*";
                 } else {
-                    pixelShader = "game/xleres/ocean/erosiondebug.sh:ps_softMaterials:ps_*";
+                    pixelShader = "xleres/ocean/erosiondebug.sh:ps_softMaterials:ps_*";
                 }
 
                 auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/basic3D.vsh:PT:vs_*", pixelShader);
+                    "xleres/basic3D.vsh:PT:vs_*", pixelShader);
 
                 Float2 wsDims = _pimpl->_simSize * _pimpl->_worldSpaceSpacing;
 

@@ -63,8 +63,8 @@ namespace SceneEngine
             // the CPU.
         const auto& shader = ::Assets::GetAssetDep<Metal::DeepShaderProgram>(
             (StringMeld<MaxPath, ::Assets::ResChar>() << shaderName << ":metricsrig_main:!vs_*").get(),
-            "game/xleres/utility/metricsrender.gsh:main:gs_*",
-            "game/xleres/utility/metricsrender.psh:main:ps_*",
+            "xleres/utility/metricsrender.gsh:main:gs_*",
+            "xleres/utility/metricsrender.psh:main:ps_*",
             "", "", 
             (StringMeld<64>() << "VALUE_SOURCE_COUNT=" << valueSources.size()).get());
         Metal::BoundClassInterfaces boundInterfaces(shader);
@@ -72,7 +72,7 @@ namespace SceneEngine
             boundInterfaces.Bind(Hash64("ValueSource"), c, valueSources.begin()[c]);
         context.Bind(shader, boundInterfaces);
 
-        const auto* metricsDigits = "game/xleres/DefaultResources/metricsdigits.dds:T";
+        const auto* metricsDigits = "xleres/DefaultResources/metricsdigits.dds:T";
         context.BindPS(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(metricsDigits).GetShaderResource()));
 
         Metal::BoundUniforms uniforms(shader);

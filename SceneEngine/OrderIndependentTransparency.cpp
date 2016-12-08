@@ -139,9 +139,9 @@ namespace SceneEngine
             //      Bind some resources required by the glass shader
             //
 
-        // auto box5   = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_5.dds").GetShaderResource();
-        // auto box12  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_12.dds").GetShaderResource();
-        // auto box34  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_34.dds").GetShaderResource();
+        // auto box5   = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/refltexture/boxc_5.dds").GetShaderResource();
+        // auto box12  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/refltexture/boxc_12.dds").GetShaderResource();
+        // auto box34  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/refltexture/boxc_34.dds").GetShaderResource();
         // context->BindPS(MakeResourceList(8, box12, box34, box5));
 
         // auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
@@ -184,8 +184,8 @@ namespace SceneEngine
             const auto checkForInfiniteLoops = transparencyTargets._desc._checkInfiniteLoops;
             if (checkForInfiniteLoops) {
                 metalContext.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "game/xleres/forward/transparency/resolve.psh:FindInfiniteLoops:ps_*"));
+                    "xleres/basic2D.vsh:fullscreen:vs_*", 
+                    "xleres/forward/transparency/resolve.psh:FindInfiniteLoops:ps_*"));
                 metalContext.Bind(MakeResourceList(transparencyTargets._infiniteLoopRTV), nullptr);
                 metalContext.Bind(Techniques::CommonResources()._blendOpaque);
                 metalContext.Draw(4);
@@ -199,8 +199,8 @@ namespace SceneEngine
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
             auto& resolveShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                "game/xleres/forward/transparency/resolve.psh:main:ps_*",
+                "xleres/basic2D.vsh:fullscreen:vs_*", 
+                "xleres/forward/transparency/resolve.psh:main:ps_*",
                 checkForInfiniteLoops ? "DETECT_INFINITE_LISTS=1" : nullptr);
             metalContext.Bind(resolveShader);
 

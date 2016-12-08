@@ -63,8 +63,8 @@ namespace SceneEngine
 
     ShortCircuitResources::ShortCircuitResources(const Desc& desc)
     {
-        const ::Assets::ResChar firstPassShader[] = "game/xleres/ui/copyterraintile.sh:WriteToMidway:cs_*";
-        const ::Assets::ResChar secondPassShader[] = "game/xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
+        const ::Assets::ResChar firstPassShader[] = "xleres/ui/copyterraintile.sh:WriteToMidway:cs_*";
+        const ::Assets::ResChar secondPassShader[] = "xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
         StringMeld<64, char> defines; 
         defines << "VALUE_FORMAT=" << unsigned(desc._valueFormat) << ";FILTER_TYPE=" << desc._filterType;
         auto encodedGradientFlags = desc._gradientFlagsEnable;
@@ -73,7 +73,7 @@ namespace SceneEngine
         auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(firstPassShader, defines.get());
         _cs0 = &::Assets::GetAssetDep<Metal::ComputeShader>(firstPassShader, defines.get());
         _cs1 = &::Assets::GetAssetDep<Metal::ComputeShader>(secondPassShader, defines.get());
-        _cs2 = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/ui/copyterraintile.sh:DirectToFinal:cs_*", defines.get());
+        _cs2 = &::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ui/copyterraintile.sh:DirectToFinal:cs_*", defines.get());
 
         _boundLayout = Metal::BoundUniforms(byteCode);
         _boundLayout.BindConstantBuffers(1, {"Parameters"});

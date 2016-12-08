@@ -378,7 +378,7 @@ namespace PlatformRig
         return normalState;
     }
 
-    static const std::string String_IconBegin("game/xleres/defaultresources/icon_");
+    static const std::string String_IconBegin("xleres/defaultresources/icon_");
     static const std::string String_IconEnd(".png");
 
     void    FrameRigDisplay::Render(IOverlayContext& context, Layout& layout, 

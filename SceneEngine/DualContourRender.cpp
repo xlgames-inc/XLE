@@ -34,7 +34,7 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
-    static const ::Assets::ResChar s_techniqueConfig[] = "game/xleres/techniques/cloudvolume.tech";
+    static const ::Assets::ResChar s_techniqueConfig[] = "xleres/techniques/cloudvolume.tech";
 
     class DualContourRenderer::Pimpl
     {
@@ -162,8 +162,8 @@ namespace SceneEngine
             context->Bind(Techniques::CommonResources()._dssReadOnly);
 
             auto& resolveShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                "game/xleres/forward/transparency/cloudresolve.psh:main:ps_*");
+                "xleres/basic2D.vsh:fullscreen:vs_*", 
+                "xleres/forward/transparency/cloudresolve.psh:main:ps_*");
             context->Bind(resolveShader);
             context->BindPS(MakeResourceList(0, parserContext.GetGlobalTransformCB()));
             SetupVertexGeneratorShader(*context);
@@ -326,7 +326,7 @@ namespace SceneEngine
                 { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
                 ParameterBox());
 
-            auto shader = material.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/illum.tech");
+            auto shader = material.FindVariation(parserContext, techniqueIndex, "xleres/techniques/illum.tech");
             if (shader._shader._shaderProgram) {
                 shader._shader.Apply(
                     *context, parserContext, 

@@ -468,7 +468,7 @@ namespace ShaderPatcherLayer
 
                 sw->WriteLine();
                 sw->Write("/* <<Chunk:TechniqueConfig:main>>--("); sw->WriteLine();
-                sw->Write("~Inherit; game/xleres/techniques/illum.tech"); sw->WriteLine();
+                sw->Write("~Inherit; xleres/techniques/illum.tech"); sw->WriteLine();
 
 				WriteTechniqueConfigSection(sw, "Forward", "forward_main", context->ShaderParameters);
                 WriteTechniqueConfigSection(sw, "Deferred", "deferred_main", context->ShaderParameters);

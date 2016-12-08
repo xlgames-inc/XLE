@@ -222,7 +222,7 @@ namespace ToolsRig
         // metalContext.Bind(*_pimpl->_stepDownShader);
         metalContext.Bind(
             ::Assets::GetAssetDep<Metal::ComputeShader>(
-                "game/xleres/toolshelper/aogenprocess.sh:CubeMapStepDown:cs_*"));
+                "xleres/toolshelper/aogenprocess.sh:CubeMapStepDown:cs_*"));
         metalContext.Dispatch(1u);
 
         metalContext.UnbindCS<Metal::ShaderResourceView>(0, 1);
@@ -320,7 +320,7 @@ namespace ToolsRig
         _pimpl->_miniUAV = Metal::UnorderedAccessView(_pimpl->_miniLocator->ShareUnderlying());
 
         // _pimpl->_stepDownShader = &::Assets::GetAssetDep<Metal::ComputeShader>(
-        //     "game/xleres/toolshelper/aogenprocess.sh:CubeMapStepDown:cs_*");
+        //     "xleres/toolshelper/aogenprocess.sh:CubeMapStepDown:cs_*");
 
         _pimpl->_depVal = std::make_shared<::Assets::DependencyValidation>();
         // ::Assets::RegisterAssetDependency(_pimpl->_depVal, _pimpl->_stepDownShader->GetDependencyValidation());

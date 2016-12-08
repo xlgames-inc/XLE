@@ -499,25 +499,25 @@ namespace RenderOverlays
         if (desc._topology == Topology::PointList) {
 
             if (desc._format == PCR) {
-                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CR:vs_*":"game/xleres/basic3D.vsh:PCR:vs_*";
-                geometryShaderSource = "game/xleres/basic.gsh:PCR:gs_*";
-                pixelShaderDefault = "game/xleres/basic.psh:PC:ps_*";
+                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vsh:P2CR:vs_*":"xleres/basic3D.vsh:PCR:vs_*";
+                geometryShaderSource = "xleres/basic.gsh:PCR:gs_*";
+                pixelShaderDefault = "xleres/basic.psh:PC:ps_*";
                 inputLayout = std::make_pair(Vertex_PCR::inputElements, dimof(Vertex_PCR::inputElements));
             }
 
         } else {
 
             if (desc._format == PC) {
-                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2C:vs_*":"game/xleres/basic3D.vsh:PC:vs_*";
-                pixelShaderDefault = "game/xleres/basic.psh:PC:ps_*";
+                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vsh:P2C:vs_*":"xleres/basic3D.vsh:PC:vs_*";
+                pixelShaderDefault = "xleres/basic.psh:PC:ps_*";
                 inputLayout = std::make_pair(Vertex_PC::inputElements, dimof(Vertex_PC::inputElements));
             } else if (desc._format == PCT) {
-                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CT:vs_*":"game/xleres/basic3D.vsh:PCT:vs_*";
-                pixelShaderDefault = "game/xleres/basic.psh:PCT:ps_*";
+                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vsh:P2CT:vs_*":"xleres/basic3D.vsh:PCT:vs_*";
+                pixelShaderDefault = "xleres/basic.psh:PCT:ps_*";
                 inputLayout = std::make_pair(Vertex_PCT::inputElements, dimof(Vertex_PCT::inputElements));
             } else if (desc._format == PCCTT) {
-                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CCTT:vs_*":"game/xleres/basic3D.vsh:PCCTT:vs_*";
-                pixelShaderDefault = "game/xleres/basic.psh:PCT:ps_*";
+                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vsh:P2CCTT:vs_*":"xleres/basic3D.vsh:PCCTT:vs_*";
+                pixelShaderDefault = "xleres/basic.psh:PCT:ps_*";
                 inputLayout = std::make_pair(Vertex_PCCTT::inputElements, dimof(Vertex_PCCTT::inputElements));
             }
 
@@ -536,7 +536,7 @@ namespace RenderOverlays
                     //
                     // Build a version of this shader with dynamic linking enabled,
                     // and create a binding for the class interfaces we want.
-                assetName << "game/xleres/" << desc._pixelShaderName.substr(0, comma) << ":!ps_*";
+                assetName << "xleres/" << desc._pixelShaderName.substr(0, comma) << ":!ps_*";
 
                 _shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource?geometryShaderSource:"", assetName.get(), "");
                 _boundClassInterfaces = Metal::BoundClassInterfaces(*_shaderProgram);
@@ -561,7 +561,7 @@ namespace RenderOverlays
                     }
                 }
             } else {
-                assetName << "game/xleres/" << desc._pixelShaderName << ":ps_*";
+                assetName << "xleres/" << desc._pixelShaderName << ":ps_*";
                 _shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource?geometryShaderSource:"", assetName.get(), "");
             }
         }

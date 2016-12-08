@@ -553,11 +553,11 @@ namespace RenderCore { namespace ImplVulkan
 			auto tempBufferSpace = std::make_unique<Metal_Vulkan::TemporaryBufferSpace>(_objectFactory, frameTracker);
 
             _graphicsPipelineLayout = std::make_shared<Metal_Vulkan::PipelineLayout>(
-                _objectFactory, "game/xleres/System/RootSignature.cfg",
+                _objectFactory, "xleres/System/RootSignature.cfg",
                 VK_SHADER_STAGE_ALL_GRAPHICS);
 
             _computePipelineLayout = std::make_shared<Metal_Vulkan::PipelineLayout>(
-                _objectFactory, "game/xleres/System/RootSignatureCS.cfg",
+                _objectFactory, "xleres/System/RootSignatureCS.cfg",
                 VK_SHADER_STAGE_COMPUTE_BIT);
 
             _foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(

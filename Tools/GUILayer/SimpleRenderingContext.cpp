@@ -129,7 +129,7 @@ namespace GUILayer
                 {Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants},
                 materialParameters);
 
-            auto variation = material.FindVariation(parsingContext, techniqueIndex, "game/xleres/techniques/illum.tech");
+            auto variation = material.FindVariation(parsingContext, techniqueIndex, "xleres/techniques/illum.tech");
             if (variation._shader._shaderProgram == nullptr) {
                 return false; // we can't render because we couldn't resolve a good shader variation
             }

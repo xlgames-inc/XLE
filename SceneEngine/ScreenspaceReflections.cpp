@@ -209,7 +209,7 @@ namespace SceneEngine
 
             ////////////
         _buildMask = &::Assets::GetAssetDep<Metal::ComputeShader>(
-            "game/xleres/screenspacerefl/buildmask.csh:BuildMask:cs_*");
+            "xleres/screenspacerefl/buildmask.csh:BuildMask:cs_*");
 
         StringMeld<256> definesBuffer;
         definesBuffer 
@@ -220,22 +220,22 @@ namespace SceneEngine
             ;
 
         _buildReflections = &::Assets::GetAssetDep<Metal::ComputeShader>(
-            "game/xleres/screenspacerefl/buildreflection.csh:BuildReflection:cs_*",
+            "xleres/screenspacerefl/buildreflection.csh:BuildReflection:cs_*",
             definesBuffer.get());
     
         _downsampleTargets = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*",
-            "game/xleres/screenspacerefl/DownsampleStep.psh:main:ps_*",
+            "xleres/basic2D.vsh:fullscreen:vs_*",
+            "xleres/screenspacerefl/DownsampleStep.psh:main:ps_*",
             definesBuffer.get());
 
         _horizontalBlur = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*",
-            "game/xleres/screenspacerefl/BlurStep.psh:HorizontalBlur:ps_*",
+            "xleres/basic2D.vsh:fullscreen:vs_*",
+            "xleres/screenspacerefl/BlurStep.psh:HorizontalBlur:ps_*",
             definesBuffer.get());
 
         _verticalBlur = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*",
-            "game/xleres/screenspacerefl/BlurStep.psh:VerticalBlur:ps_*",
+            "xleres/basic2D.vsh:fullscreen:vs_*",
+            "xleres/screenspacerefl/BlurStep.psh:VerticalBlur:ps_*",
             definesBuffer.get());
 
             ////////////
@@ -385,8 +385,8 @@ namespace SceneEngine
             << "DOWNSAMPLE_SCALE=" << resources._desc._downsampleScale 
             << ";INTERPOLATE_SAMPLES=" << int(resources._desc._interpolateSamples);
         auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*", 
-            "game/xleres/screenspacerefl/debugging.psh:main:ps_*",
+            "xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*", 
+            "xleres/screenspacerefl/debugging.psh:main:ps_*",
             definesBuffer.get());
         context.Bind(debuggingShader);
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);

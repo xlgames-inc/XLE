@@ -60,8 +60,8 @@ namespace RenderOverlays
 
         {
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                "game/xleres/Vis/HighlightVis.psh:HighlightByStencil:ps_*",
+                "xleres/basic2D.vsh:fullscreen:vs_*", 
+                "xleres/Vis/HighlightVis.psh:HighlightByStencil:ps_*",
                 (const ::Assets::ResChar*)params);
                 
             metalContext.Bind(shader);
@@ -70,8 +70,8 @@ namespace RenderOverlays
 
         {
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                "game/xleres/Vis/HighlightVis.psh:OutlineByStencil:ps_*",
+                "xleres/basic2D.vsh:fullscreen:vs_*", 
+                "xleres/Vis/HighlightVis.psh:OutlineByStencil:ps_*",
                 (const ::Assets::ResChar*)params);
                 
             metalContext.Bind(shader);
@@ -168,15 +168,15 @@ namespace RenderOverlays
     {
         //// ////
         _drawHighlight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-            "game/xleres/effects/outlinehighlight.psh:main:ps_*");
+            "xleres/basic2D.vsh:fullscreen:vs_*", 
+            "xleres/effects/outlinehighlight.psh:main:ps_*");
         _drawHighlightUniforms = Metal::BoundUniforms(*_drawHighlight);
         _drawHighlightUniforms.BindConstantBuffer(Hash64("$Globals"), 0, 1);
 
         //// ////
         _drawShadow = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-            "game/xleres/effects/outlinehighlight.psh:main_shadow:ps_*");
+            "xleres/basic2D.vsh:fullscreen:vs_*", 
+            "xleres/effects/outlinehighlight.psh:main_shadow:ps_*");
         _drawShadowUniforms = Metal::BoundUniforms(*_drawShadow);
         _drawShadowUniforms.BindConstantBuffer(Hash64("ShadowHighlightSettings"), 0, 1);
 

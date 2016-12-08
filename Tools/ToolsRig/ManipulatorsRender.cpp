@@ -115,8 +115,8 @@ namespace ToolsRig
         {
                 // note -- we might need access to the MSAA defines for this shader
             auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
-                "game/xleres/ui/terrainmanipulators.sh:ps_circlehighlight:ps_*");
+                "xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
+                "xleres/ui/terrainmanipulators.sh:ps_circlehighlight:ps_*");
             
             struct HighlightParameters
             {
@@ -126,7 +126,7 @@ namespace ToolsRig
             Metal::ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = MakeSharedPkt(highlightParameters);
 
-            auto& circleHighlight = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/circlehighlight.png:L");
+            auto& circleHighlight = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L");
             const Metal::ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
 
             Metal::BoundUniforms boundLayout(shaderProgram);
@@ -185,10 +185,10 @@ namespace ToolsRig
         {
                 // note -- we might need access to the MSAA defines for this shader
             auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
+                "xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
                 (type == RectangleHighlightType::Tool)
-					? "game/xleres/ui/terrainmanipulators.sh:ps_rectanglehighlight:ps_*"
-					: "game/xleres/ui/terrainmanipulators.sh:ps_lockedareahighlight:ps_*");
+					? "xleres/ui/terrainmanipulators.sh:ps_rectanglehighlight:ps_*"
+					: "xleres/ui/terrainmanipulators.sh:ps_lockedareahighlight:ps_*");
             
             struct HighlightParameters
             {
@@ -200,7 +200,7 @@ namespace ToolsRig
             Metal::ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = MakeSharedPkt(highlightParameters);
 
-            auto& circleHighlight = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/circlehighlight.png:L");
+            auto& circleHighlight = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L");
             const Metal::ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
 
             Metal::BoundUniforms boundLayout(shaderProgram);
@@ -280,7 +280,7 @@ namespace ToolsRig
 
             auto shader = box._materialGenCylinder.FindVariation(
                 parserContext, Techniques::TechniqueIndex::Forward, 
-                "game/xleres/ui/objgen/arealight.tech");
+                "xleres/ui/objgen/arealight.tech");
             
             if (shader._shader._shaderProgram) {
                 auto& metalContext = *Metal::DeviceContext::Get(threadContext);
@@ -333,8 +333,8 @@ namespace ToolsRig
         metalContext.Bind(MakeResourceList(vertexBuffer), sizeof(Vertex), 0);
 
         const auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
-            "game/xleres/basic.psh:copy_bilinear:" PS_DefShaderModel);
+            "xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
+            "xleres/basic.psh:copy_bilinear:" PS_DefShaderModel);
         Metal::BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
         metalContext.Bind(boundVertexInputLayout);
         metalContext.Bind(shaderProgram);

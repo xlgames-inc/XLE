@@ -20,9 +20,9 @@ namespace UnitTests
             ConsoleRig::GlobalServices services(GetStartupConfig());
 
                 // Search for all of the shader sources in the xleres directory
-            auto inputFiles = FindFilesHierarchical("game/xleres", "*.h", FindFilesFilter::File);
-            auto inputFiles1 = FindFilesHierarchical("game/xleres", "*.sh", FindFilesFilter::File);
-            auto inputFiles2 = FindFilesHierarchical("game/xleres", "*.?sh", FindFilesFilter::File);
+            auto inputFiles = FindFilesHierarchical("xleres", "*.h", FindFilesFilter::File);
+            auto inputFiles1 = FindFilesHierarchical("xleres", "*.sh", FindFilesFilter::File);
+            auto inputFiles2 = FindFilesHierarchical("xleres", "*.?sh", FindFilesFilter::File);
 
             inputFiles.insert(inputFiles.end(), inputFiles1.begin(), inputFiles1.end());
             inputFiles.insert(inputFiles.end(), inputFiles2.begin(), inputFiles2.end());

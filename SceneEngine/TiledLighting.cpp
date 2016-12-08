@@ -137,10 +137,10 @@ namespace SceneEngine
     {
         context.BindPS(MakeResourceList(tileLightingResources._lightOutputTextureSRV));
         context.BindPS(MakeResourceList(1, tileLightingResources._debuggingTextureSRV[0], tileLightingResources._debuggingTextureSRV[1], tileLightingResources._debuggingTextureSRV[2]));
-        context.BindPS(MakeResourceList(4, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/digits.dds:T").GetShaderResource()));
+        context.BindPS(MakeResourceList(4, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/digits.dds:T").GetShaderResource()));
         auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-            "game/xleres/deferred/debugging.psh:DepthsDebuggingTexture:ps_*");
+            "xleres/basic2D.vsh:fullscreen:vs_*", 
+            "xleres/deferred/debugging.psh:DepthsDebuggingTexture:ps_*");
         context.Bind(debuggingShader);
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         SetupVertexGeneratorShader(context);
@@ -275,16 +275,16 @@ namespace SceneEngine
                     lightingParserContext.GetMetricsBox()->_metricsBufferUAV, 
                     tileLightingResources._debuggingTexture[0], tileLightingResources._debuggingTexture[1], tileLightingResources._debuggingTexture[2]));
 
-                context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/deferred/tiled.csh:PrepareLights"));
+                context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/deferred/tiled.csh:PrepareLights"));
                 context->Dispatch((tileLightCount + 256 - 1) / 256);
                         
                 char definesTable[256];
                 Utility::XlFormatString(definesTable, dimof(definesTable), "MSAA_SAMPLES=%i", sampleCount);
         
                 if (doClusteredRenderingTest) {
-                    context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/deferred/clustered.csh:main", definesTable));
+                    context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/deferred/clustered.csh:main", definesTable));
                 } else {
-                    context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/deferred/tiled.csh:main", definesTable));
+                    context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/deferred/tiled.csh:main", definesTable));
                 }
                 context->Dispatch(lightCulling._groupCounts[0], lightCulling._groupCounts[1]);
 
@@ -299,7 +299,7 @@ namespace SceneEngine
                         auto& airLight = FindCachedBox<AirLightResources>(AirLightResources::Desc());
                         
                         context->BindCS(MakeResourceList(3, fogRes._inscatterPointLightsValuesUnorderedAccess));
-                        context->BindCS(MakeResourceList(13, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
+                        context->BindCS(MakeResourceList(13, Assets::GetAssetDep<Metal::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
                         context->BindCS(MakeResourceList(1, airLight._lookupShaderResource));
                         context->Bind(*fogShaders._injectPointLightSources);
                         context->Dispatch(160/10, 90/10, 128/8);
@@ -359,9 +359,9 @@ namespace SceneEngine
                 bool isShadowsPass = techniqueIndex == TechniqueIndex_ShadowGen;
 
                 auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/deferred/debugging/beams.vsh:main:vs_*", 
-                    "game/xleres/deferred/debugging/beams.gsh:main:gs_*", 
-                    "game/xleres/deferred/debugging/beams.psh:main:ps_*",
+                    "xleres/deferred/debugging/beams.vsh:main:vs_*", 
+                    "xleres/deferred/debugging/beams.gsh:main:gs_*", 
+                    "xleres/deferred/debugging/beams.psh:main:ps_*",
                     isShadowsPass?"SHADOWS=1;SHADOW_CASCADE_MODE=1":"");    // hack -- SHADOW_CASCADE_MODE let explicitly here
 
                 Metal::BoundUniforms uniforms(debuggingShader);
@@ -384,9 +384,9 @@ namespace SceneEngine
                 if (!isShadowsPass && Tweakable("TiledBeamsTransparent", false)) {
                     context->Bind(Techniques::CommonResources()._blendStraightAlpha);
                     auto& predepth = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        "game/xleres/deferred/debugging/beams.vsh:main:vs_*", 
-                        "game/xleres/deferred/debugging/beams.gsh:main:gs_*", 
-                        "game/xleres/deferred/debugging/beams.psh:predepth:ps_*",
+                        "xleres/deferred/debugging/beams.vsh:main:vs_*", 
+                        "xleres/deferred/debugging/beams.gsh:main:gs_*", 
+                        "xleres/deferred/debugging/beams.psh:predepth:ps_*",
                         "");
                     context->Bind(predepth);
                     context->Draw(globals[0]*globals[1]);
@@ -399,9 +399,9 @@ namespace SceneEngine
 
                 if (!isShadowsPass) {
                     context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        "game/xleres/deferred/debugging/beams.vsh:main:vs_*", 
-                        "game/xleres/deferred/debugging/beams.gsh:Outlines:gs_*", 
-                        "game/xleres/deferred/debugging/beams.psh:main:ps_*",
+                        "xleres/deferred/debugging/beams.vsh:main:vs_*", 
+                        "xleres/deferred/debugging/beams.gsh:Outlines:gs_*", 
+                        "xleres/deferred/debugging/beams.psh:main:ps_*",
                         ""));
                     context->Draw(globals[0]*globals[1]);
                 }

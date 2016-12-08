@@ -288,8 +288,8 @@ namespace SceneEngine
 
         const char* vertexShader_viewFrustumVector = 
             desc._flipDirection
-                ? "game/xleres/basic2D.vsh:fullscreen_flip_viewfrustumvector:vs_*"
-                : "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*"
+                ? "xleres/basic2D.vsh:fullscreen_flip_viewfrustumvector:vs_*"
+                : "xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*"
                 ;
 
         LightShader& dest = _shaders[type.AsIndex()];
@@ -299,24 +299,24 @@ namespace SceneEngine
         if (desc._debugging) {
             dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
-                "game/xleres/deferred/debugging/resolvedebug.psh:main:ps_*",
+                "xleres/deferred/debugging/resolvedebug.psh:main:ps_*",
                 definesTable.get());
         } else if (desc._dynamicLinking==1) {
             dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
-                "game/xleres/deferred/resolvelightgraph.psh:main:ps_*",
+                "xleres/deferred/resolvelightgraph.psh:main:ps_*",
                 definesTable.get());
         } else if (desc._dynamicLinking==2) {
             dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
-                "game/xleres/deferred/resolvelight.psh:main:!ps_*",
+                "xleres/deferred/resolvelight.psh:main:!ps_*",
                 definesTable.get());
         } else {
             dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
                 (!desc._debugging)
-                    ? "game/xleres/deferred/resolvelight.psh:main:ps_*"
-                    : "game/xleres/deferred/debugging/resolvedebug.psh:main:ps_*",
+                    ? "xleres/deferred/resolvelight.psh:main:ps_*"
+                    : "xleres/deferred/debugging/resolvedebug.psh:main:ps_*",
                 definesTable.get());
         }
 
@@ -470,13 +470,13 @@ namespace SceneEngine
 
         const char* vertexShader_viewFrustumVector = 
             desc._flipDirection
-                ? "game/xleres/basic2D.vsh:fullscreen_flip_viewfrustumvector:vs_*"
-                : "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*"
+                ? "xleres/basic2D.vsh:fullscreen_flip_viewfrustumvector:vs_*"
+                : "xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*"
                 ;
 
         auto* ambientLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader_viewFrustumVector, 
-            "game/xleres/deferred/resolveambient.psh:ResolveAmbient:ps_*",
+            "xleres/deferred/resolveambient.psh:ResolveAmbient:ps_*",
             definesTable.get());
 
         auto ambientLightUniforms = std::make_unique<Metal::BoundUniforms>(std::ref(*ambientLight));
@@ -532,9 +532,9 @@ namespace SceneEngine
     {
         using namespace RenderCore;
 
-        const auto* ps = "game/xleres/deferred/debugging.psh:GBufferDebugging:ps_*";
+        const auto* ps = "xleres/deferred/debugging.psh:GBufferDebugging:ps_*";
         if (debuggingType == 2)
-            ps = "game/xleres/deferred/debugging.psh:GenericDebugging:!ps_*";
+            ps = "xleres/deferred/debugging.psh:GenericDebugging:!ps_*";
 
         StringMeld<256> meld;
         meld << useMsaaSamplers?"MSAA_SAMPLERS=1":"";
@@ -542,7 +542,7 @@ namespace SceneEngine
         meld << ";GBUFFER_TYPE=" << enableParametersBuffer?1:2;
         
         auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", ps, meld.get());
+            "xleres/basic2D.vsh:fullscreen:vs_*", ps, meld.get());
 
         if (debuggingType == 2) {
             Metal::BoundClassInterfaces boundInterfaces(debuggingShader);

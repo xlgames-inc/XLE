@@ -262,11 +262,11 @@ namespace SceneEngine
                 DEBUG_ONLY(CheckSpecularIBLMipMapCount(::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._specularIBL).GetShaderResource()));
             }
 
-            context.BindPS_G(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
-            context.BindPS_G(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
+            context.BindPS_G(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
+            context.BindPS_G(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
             context.BindPS_G(MakeResourceList(21, 
-				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/glosslut.dds:LT").GetShaderResource(),
-				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/glosstranslut.dds:LT").GetShaderResource()));
+				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/glosslut.dds:LT").GetShaderResource(),
+				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/glosstranslut.dds:LT").GetShaderResource()));
 
             // context.BindPS_G(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
         CATCH_ASSETS_END(parserContext)
@@ -725,8 +725,8 @@ namespace SceneEngine
         char definesTable[256];
         Utility::XlFormatString(definesTable, dimof(definesTable), "MSAA_SAMPLES=%i", desc._samplingCount);
         auto* perSampleMask = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-            "game/xleres/deferred/persamplemask.psh:main:ps_*", definesTable);
+            "xleres/basic2D.vsh:fullscreen:vs_*", 
+            "xleres/deferred/persamplemask.psh:main:ps_*", definesTable);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(validationCallback, perSampleMask->GetDependencyValidation());

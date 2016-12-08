@@ -48,7 +48,7 @@ namespace RenderCore { namespace Assets
         // shaders used by rendering models. Each material can reference one
         // of these configuration files. But we can add some flexibility to the
         // engine by searching for these files in multiple directories. 
-        _techConfDirs.AddSearchDirectory("game/xleres/techniques");
+        _techConfDirs.AddSearchDirectory("xleres/techniques");
 
             // Setup required compilers.
             //  * material scaffold compiler

@@ -27,7 +27,7 @@ namespace MaterialTool
                     if (gc.HasTechniqueConfig)
                     {
                         var cwd = new Uri(System.IO.Directory.GetCurrentDirectory().TrimEnd('\\') + "\\");
-                        var relTo = new Uri(cwd, "game/xleres/techniques/");
+                        var relTo = new Uri(cwd, "xleres/techniques/");
                         var t = relTo.MakeRelativeUri(doc.Uri).OriginalString;
                         var e = t.LastIndexOf('.'); // we must remove the extension... Using simple string parsing
                         if (e > 0) t = t.Substring(0, e);

@@ -144,8 +144,8 @@ namespace SceneEngine
         context.BindVS_G(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
         context.BindPS_G(RenderCore::MakeResourceList(6, samplerWrapU));
 
-        const auto& normalsFittingResource = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/normalsfitting.dds:LT").GetShaderResource();
-		const auto& distintColors = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/distinctcolors.dds:T").GetShaderResource();
+        const auto& normalsFittingResource = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/normalsfitting.dds:LT").GetShaderResource();
+		const auto& distintColors = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/distinctcolors.dds:T").GetShaderResource();
         context.BindPS_G(RenderCore::MakeResourceList(14, normalsFittingResource, distintColors));
         context.BindCS_G(RenderCore::MakeResourceList(14, normalsFittingResource));
 
@@ -154,8 +154,8 @@ namespace SceneEngine
         context.BindPS_G(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             // procedural scratch texture for scratches test
-        // context.BindPS(MakeResourceList(18, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchnorm.dds:L").GetShaderResource()));
-        // context.BindPS(MakeResourceList(19, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchocc.dds:L").GetShaderResource()));
+        // context.BindPS(MakeResourceList(18, Assets::GetAssetDep<Metal::DeferredShaderResource>("xleres/scratchnorm.dds:L").GetShaderResource()));
+        // context.BindPS(MakeResourceList(19, Assets::GetAssetDep<Metal::DeferredShaderResource>("xleres/scratchocc.dds:L").GetShaderResource()));
     }
 
     void ReturnToSteadyState(Metal::DeviceContext& context)
@@ -331,13 +331,13 @@ namespace SceneEngine
                 using namespace RenderCore;
                 using namespace RenderCore::Metal;
                 auto& metricsShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        "game/xleres/utility/metricsrender.vsh:main:vs_*", 
-                        "game/xleres/utility/metricsrender.gsh:main:gs_*",
-                        "game/xleres/utility/metricsrender.psh:main:ps_*",
+                        "xleres/utility/metricsrender.vsh:main:vs_*", 
+                        "xleres/utility/metricsrender.gsh:main:gs_*",
+                        "xleres/utility/metricsrender.psh:main:ps_*",
                         "");
                 metalContext->Bind(metricsShader);
                 metalContext->BindPS(MakeResourceList(
-                    3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
+                    3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
                 metalContext->Bind(BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
                 metalContext->Bind(DepthStencilState(false));
                 metalContext->BindVS(MakeResourceList(parserContext.GetMetricsBox()->_metricsBufferSRV));

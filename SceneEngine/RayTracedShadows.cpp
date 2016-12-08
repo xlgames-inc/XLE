@@ -257,9 +257,9 @@ namespace SceneEngine
             // todo -- also calculate min/max for each grid during this step
         CATCH_ASSETS_BEGIN
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/shadowgen/rtwritetiles.sh:vs_passthrough:vs_*",
-                "game/xleres/shadowgen/consraster.sh:gs_conservativeRasterization:gs_*",
-                "game/xleres/shadowgen/rtwritetiles.sh:ps_main:ps_*",
+                "xleres/shadowgen/rtwritetiles.sh:vs_passthrough:vs_*",
+                "xleres/shadowgen/consraster.sh:gs_conservativeRasterization:gs_*",
+                "xleres/shadowgen/rtwritetiles.sh:ps_main:ps_*",
                 "OUTPUT_PRIM_ID=1;INPUT_RAYTEST_TRIS=1");
             metalContext.Bind(shader);
 
@@ -311,8 +311,8 @@ namespace SceneEngine
         if (useMsaaSamplers) defines << ";MSAA_SAMPLERS=1";
 
         auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-            "game/xleres/shadowgen/rtshadmetrics.sh:ps_main:ps_*",
+            "xleres/basic2D.vsh:fullscreen:vs_*", 
+            "xleres/shadowgen/rtshadmetrics.sh:ps_main:ps_*",
             defines.get());
         Metal::BoundUniforms uniforms(debuggingShader);
         Techniques::TechniqueContext::BindGlobalUniforms(uniforms);

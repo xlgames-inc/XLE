@@ -105,7 +105,7 @@ namespace SceneEngine
                     //	actually getting better results with point resampling.
 		            //	After the compression, the bilinear sampled texture looks quite dithered
 		            //	and ugly... it might be a consequence of compressing twice?
-                auto& resamplingShader = GetAssetImmediate<RenderCore::Metal::ComputeShader>("game/xleres/basic.csh:ResamplePoint:cs_*");
+                auto& resamplingShader = GetAssetImmediate<RenderCore::Metal::ComputeShader>("xleres/basic.csh:ResamplePoint:cs_*");
                 context.Bind(resamplingShader);
                 context.BindCS(MakeResourceList(uav));
                 context.BindCS(MakeResourceList(inputTexture));

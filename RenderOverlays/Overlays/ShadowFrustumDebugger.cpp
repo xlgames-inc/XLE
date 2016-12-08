@@ -54,8 +54,8 @@ namespace Overlays
     SFDResources::SFDResources(const Desc& desc)
     {
         _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
-            "game/xleres/deferred/debugging/cascadevis.psh:main:ps_*",
+            "xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
+            "xleres/deferred/debugging/cascadevis.psh:main:ps_*",
             (const ::Assets::ResChar*)(StringMeld<128, ::Assets::ResChar>() 
                 << "SHADOW_CASCADE_MODE=" << desc._cascadeMode 
                 << ";SHADOW_ENABLE_NEAR_CASCADE=" << (desc._enableNearCascade?1:0)));

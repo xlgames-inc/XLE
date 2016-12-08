@@ -393,7 +393,7 @@ namespace SceneEngine
                 Metal::ConstantBuffer(&instanceSeparateConstants, sizeof(instanceSeparateConstants))));
 
             metalContext->Bind(::Assets::GetAssetDep<Metal::ComputeShader>(
-                "game/xleres/Vegetation/InstanceSpawnSeparate.csh:main:cs_*", 
+                "xleres/Vegetation/InstanceSpawnSeparate.csh:main:cs_*", 
                 shaderParams.get()));
             metalContext->Dispatch(StreamOutputMaxCount / 256);
 

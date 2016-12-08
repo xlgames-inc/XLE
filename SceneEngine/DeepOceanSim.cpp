@@ -95,15 +95,15 @@ namespace SceneEngine
         if (useMirrorOptimisation) {
             fftDefines = "USE_MIRROR_OPT=1";
         }
-        auto& fft1 = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/FFT.csh:FFT2D_1:cs_*");
-        auto& fft2 = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/FFT.csh:FFT2D_2:cs_*");
-        auto& setup = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/FFT.csh:Setup:cs_*", fftDefines);
+        auto& fft1 = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:FFT2D_1:cs_*");
+        auto& fft2 = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:FFT2D_2:cs_*");
+        auto& setup = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:Setup:cs_*", fftDefines);
 
         StringMeld<64> shaderDefines;
         shaderDefines << "DO_FOAM_SIM=" << int(_foamQuantityUAV[0].IsGood());
 
-        auto& buildNormals = ::Assets::GetAssetDep<Metal::ComputeShader>(_useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*", shaderDefines.get());
-        auto& buildNormalsMipmaps = ::Assets::GetAssetDep<Metal::ComputeShader>(_useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivativesMipmap:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormalsMipmap:cs_*", shaderDefines.get());
+        auto& buildNormals = ::Assets::GetAssetDep<Metal::ComputeShader>(_useDerivativesMapForNormals ? "xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" : "xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*", shaderDefines.get());
+        auto& buildNormalsMipmaps = ::Assets::GetAssetDep<Metal::ComputeShader>(_useDerivativesMapForNormals ? "xleres/Ocean/OceanNormals.csh:BuildDerivativesMipmap:cs_*" : "xleres/Ocean/OceanNormals.csh:BuildNormalsMipmap:cs_*", shaderDefines.get());
     
         const float shallowGridPhysicalDimension = Tweakable("OceanShallowPhysicalDimension", 256.f);
         // const float currentTime = parserContext.GetSceneParser()->GetTimeValue();
@@ -117,7 +117,7 @@ namespace SceneEngine
         } gridConstants = { dimensions, dimensions, oceanSettings._spectrumFade, 0 };
         Metal::ConstantBuffer gridConstantsBuffer(&gridConstants, sizeof(gridConstants));
 
-        Metal::BoundUniforms setupUniforms(::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/Ocean/FFT.csh:Setup:cs_*", "DO_INVERSE=0"));
+        Metal::BoundUniforms setupUniforms(::Assets::GetAssetDep<CompiledShaderByteCode>("xleres/Ocean/FFT.csh:Setup:cs_*", "DO_INVERSE=0"));
         Techniques::TechniqueContext::BindGlobalUniforms(setupUniforms);
         setupUniforms.BindConstantBuffer(Hash64("OceanGridConstants"), 0, 1);
         setupUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 1, 1);
@@ -164,8 +164,8 @@ namespace SceneEngine
             Metal::BoundUniforms buildNormalsUniforms(
                 ::Assets::GetAssetDep<CompiledShaderByteCode>(
                     _useDerivativesMapForNormals 
-                    ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" 
-                    : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*",
+                    ? "xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" 
+                    : "xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*",
                     shaderDefines.get()));
             Techniques::TechniqueContext::BindGlobalUniforms(buildNormalsUniforms);
             buildNormalsUniforms.BindConstantBuffer(Hash64("OceanGridConstants"), 0, 1);
@@ -224,7 +224,7 @@ namespace SceneEngine
         SetupVertexGeneratorShader(context);
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/Ocean/FFTDebugging.psh:main:ps_*"));
+            "xleres/basic2D.vsh:fullscreen:vs_*", "xleres/Ocean/FFTDebugging.psh:main:ps_*"));
         context.BindPS(MakeResourceList(
             _workingTextureRealSRV, _workingTextureImaginarySRV,
             calmSpectrum._inputRealShaderResource, calmSpectrum._inputImaginaryShaderResource,

@@ -135,8 +135,8 @@ namespace SceneEngine
         {
             SetupVertexGeneratorShader(*_context);
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2d.vsh:fullscreen:vs_*",
-                "game/xleres/forward/transparency/depthweighted.sh:resolve:ps_*");
+                "xleres/basic2d.vsh:fullscreen:vs_*",
+                "xleres/forward/transparency/depthweighted.sh:resolve:ps_*");
             Metal::BoundUniforms uniforms(shader);
             Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
             uniforms.BindShaderResources(1, {"Accumulator", "Modulator", "Refraction"});

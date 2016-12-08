@@ -873,7 +873,7 @@ namespace ShaderPatcher
             //
 
         std::stringstream result;
-        result << "#include \"game/xleres/System/Prefix.h\"" << std::endl;
+        result << "#include \"xleres/System/Prefix.h\"" << std::endl;
         result << std::endl;
 
             //
@@ -1370,7 +1370,7 @@ namespace ShaderPatcher
 
     ParameterMachine::ParameterMachine()
     {
-        auto buildInterpolatorsSource = LoadSourceFile("game/xleres/System/BuildInterpolators.h");
+        auto buildInterpolatorsSource = LoadSourceFile("xleres/System/BuildInterpolators.h");
         _systemHeader = ShaderSourceParser::BuildShaderFragmentSignature(
             AsPointer(buildInterpolatorsSource.begin()), buildInterpolatorsSource.size());
     }
@@ -1547,7 +1547,7 @@ namespace ShaderPatcher
     static std::string GetPreviewTemplate(const char templateName[])
     {
         StringMeld<MaxPath, Assets::ResChar> str;
-        str << "game/xleres/System/PreviewTemplates.sh:" << templateName;
+        str << "xleres/System/PreviewTemplates.sh:" << templateName;
         return ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<TemplateItem, InputStreamFormatter<char>>>(str.get())._asset._item;
     }
 
@@ -1589,7 +1589,7 @@ namespace ShaderPatcher
         const bool renderAsChart = previewOptions._type == PreviewOptions::Type::Chart;
         if (renderAsChart)
             result << "#define SHADER_NODE_EDITOR_CHART 1" << std::endl;
-        result << "#include \"game/xleres/System/BuildInterpolators.h\"" << std::endl;
+        result << "#include \"xleres/System/BuildInterpolators.h\"" << std::endl;
 
             //  
             //      First write the "varying" parameters
@@ -1739,7 +1739,7 @@ namespace ShaderPatcher
 	static std::string GetTechniqueTemplate(const char templateName[])
     {
         StringMeld<MaxPath, Assets::ResChar> str;
-        str << "game/xleres/System/TechniqueTemplates.sh:" << templateName;
+        str << "xleres/System/TechniqueTemplates.sh:" << templateName;
         return ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<TemplateItem, InputStreamFormatter<char>>>(str.get())._asset._item;
     }
 

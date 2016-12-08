@@ -283,7 +283,7 @@ namespace SceneEngine
         context.BindPS(MakeResourceList(resources._aoSRV));
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/postprocess/debugging.psh:AODebugging:ps_*"));
+            "xleres/basic2D.vsh:fullscreen:vs_*", "xleres/postprocess/debugging.psh:AODebugging:ps_*"));
         context.Draw(4);
     }
 

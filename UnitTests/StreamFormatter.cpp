@@ -28,7 +28,7 @@ namespace UnitTests
 		BloomThreshold=10f; LuminanceMin=0.06f; BloomScale=-1405359i
 	
 	~AmbientSettings; AmbientLight=-12080934i; AmbientBrightness=0.1f; SkyReflectionBlurriness=2f
-		SkyTexture=Game/xleres/DefaultResources/sky/desertsky.dds; SkyReflectionScale=8f
+		SkyTexture=xleres/DefaultResources/sky/desertsky.dds; SkyReflectionScale=8f
 		SkyBrightness=0.68f
 	
 	~ShadowFrustumSettings; FrustumCount=5i; ShadowRasterDepthBias=400i; FrustumSizeFactor=4f

@@ -362,13 +362,13 @@ namespace SceneEngine
 
             const ::Assets::ResChar* pixelShader = "";
             if (debuggingMode == RenderFluidMode::Scalar) {
-                pixelShader = "game/xleres/cfd/debug.sh:ps_scalarfield:ps_*";
+                pixelShader = "xleres/cfd/debug.sh:ps_scalarfield:ps_*";
             } else if (debuggingMode == RenderFluidMode::Vector) {
-                pixelShader = "game/xleres/cfd/debug.sh:ps_vectorfield:ps_*";
+                pixelShader = "xleres/cfd/debug.sh:ps_vectorfield:ps_*";
             }
 
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic3D.vsh:PT:vs_*", pixelShader);
+                "xleres/basic3D.vsh:PT:vs_*", pixelShader);
 
             Float2 wsDims = dimensions;
 
@@ -431,10 +431,10 @@ namespace SceneEngine
             metalContext.BindPS(MakeResourceList(Metal::ConstantBuffer(constants, sizeof(constants))));
 
             const ::Assets::ResChar* pixelShader = "";
-            if (debuggingMode == RenderFluidMode::Scalar)       pixelShader = "game/xleres/cfd/debug3d.sh:ps_scalarfield:ps_*";
-            else if (debuggingMode == RenderFluidMode::Vector)  pixelShader = "game/xleres/cfd/debug3d.sh:ps_vectorfield:ps_*";
+            if (debuggingMode == RenderFluidMode::Scalar)       pixelShader = "xleres/cfd/debug3d.sh:ps_scalarfield:ps_*";
+            else if (debuggingMode == RenderFluidMode::Vector)  pixelShader = "xleres/cfd/debug3d.sh:ps_vectorfield:ps_*";
 
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>("game/xleres/basic3D.vsh:PT:vs_*", pixelShader);
+            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>("xleres/basic3D.vsh:PT:vs_*", pixelShader);
             Float2 wsDims = Truncate(dimensions);
 
             struct Vertex { Float3 position; Float2 texCoord; } 
