@@ -35,12 +35,13 @@ namespace RenderCore { namespace Assets
 
     enum class SourceColorSpace { SRGB, Linear, Unspecified };
 
-    class MetadataLoadMarker : public ::Assets::AsyncLoadOperation
+    class MetadataLoadMarker : public ::Assets::PendingOperationMarker, public ::Assets::AsyncLoadOperation
     {
     public:
         SourceColorSpace _colorSpace;
 
-        virtual ::Assets::AssetState Complete(const void* buffer, size_t bufferSize);
+        virtual void Complete(const void* buffer, size_t bufferSize);
+		virtual void OnFailure();
         MetadataLoadMarker() : _colorSpace(SourceColorSpace::Unspecified) {}
     };
 
@@ -73,14 +74,21 @@ namespace RenderCore { namespace Assets
         return true;
     }
 
-    ::Assets::AssetState MetadataLoadMarker::Complete(const void* buffer, size_t bufferSize)
+    void MetadataLoadMarker::Complete(const void* buffer, size_t bufferSize)
     {
             // Attempt to parse the xml in our data buffer...
-        if (!LoadColorSpaceFromMetadataFile(_colorSpace, buffer, bufferSize))
-            return ::Assets::AssetState::Invalid;
+        if (!LoadColorSpaceFromMetadataFile(_colorSpace, buffer, bufferSize)) {
+            SetState(::Assets::AssetState::Invalid);
+			return;
+		}
 
-        return ::Assets::AssetState::Ready;
+        SetState(::Assets::AssetState::Ready);
     }
+
+	void MetadataLoadMarker::OnFailure() 
+	{
+		SetState(::Assets::AssetState::Invalid);
+	}
 
     class DeferredShaderResource::Pimpl
     {
@@ -179,7 +187,7 @@ namespace RenderCore { namespace Assets
             RegisterFileDependency(_validationCallback, filename);
 
             _pimpl->_metadataMarker = std::make_shared<MetadataLoadMarker>();
-            _pimpl->_metadataMarker->Enqueue(filename, ConsoleRig::GlobalServices::GetShortTaskThreadPool());
+			MetadataLoadMarker::Enqueue(_pimpl->_metadataMarker, filename, ConsoleRig::GlobalServices::GetShortTaskThreadPool());
         }
 
         using namespace BufferUploads;

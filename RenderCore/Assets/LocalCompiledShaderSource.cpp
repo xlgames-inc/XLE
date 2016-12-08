@@ -36,7 +36,7 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    class ShaderCompileMarker : public ShaderService::IPendingMarker, public ::Assets::AsyncLoadOperation
+    class ShaderCompileMarker : public ShaderService::IPendingMarker, public ::Assets::PendingOperationMarker, public ::Assets::AsyncLoadOperation
     {
     public:
         using Payload = std::shared_ptr<std::vector<uint8>>;
@@ -71,7 +71,8 @@ namespace RenderCore { namespace Assets
         ShaderCompileMarker(ShaderCompileMarker&) = delete;
         ShaderCompileMarker& operator=(const ShaderCompileMarker&) = delete;
     protected:
-        virtual ::Assets::AssetState Complete(const void* buffer, size_t bufferSize);
+        virtual void Complete(const void* buffer, size_t bufferSize);
+		virtual void OnFailure();
         void CommitToArchive();
 
         Payload _payload;
@@ -104,6 +105,7 @@ namespace RenderCore { namespace Assets
                 // note that Enqueue can't be called from a constructor, because it
                 // calls shared_from_this()
             AsyncLoadOperation::Enqueue(
+				std::static_pointer_cast<ShaderCompileMarker>(shared_from_this()),
                 _shaderPath._filename,
                 ConsoleRig::GlobalServices::GetLongTaskThreadPool());
 
@@ -112,12 +114,11 @@ namespace RenderCore { namespace Assets
                 // push file load & compile into this (foreground) thread
             size_t fileSize = 0;
             auto fileData = ::Assets::TryLoadFileAsMemoryBlock(_shaderPath._filename, &fileSize);
-            ::Assets::AssetState state = ::Assets::AssetState::Invalid;
-
-            if (fileData.get() && fileSize)
-                state = Complete(fileData.get(), fileSize);
-
-            SetState(state);
+            if (fileData.get() && fileSize) {
+                Complete(fileData.get(), fileSize);
+			} else {
+				OnFailure();
+			}
 
         }
     }
@@ -136,19 +137,12 @@ namespace RenderCore { namespace Assets
         _chain = nullptr;
 
         if (constant_expression<CompileInBackground>::result()) {
-
-            auto sharedToThis = shared_from_this();
+            auto sharedToThis = std::static_pointer_cast<ShaderCompileMarker>(shared_from_this());
             std::string sourceCopy(shaderInMemory, &shaderInMemory[shaderBufferSize]);
             ConsoleRig::GlobalServices::GetLongTaskThreadPool().Enqueue(
-                [sourceCopy, sharedToThis, this]()
-                {
-                    auto state = this->Complete(AsPointer(sourceCopy.cbegin()), sourceCopy.size());
-                    sharedToThis->SetState(state);
-                });
-
+                [sourceCopy, sharedToThis]() { sharedToThis->Complete(AsPointer(sourceCopy.cbegin()), sourceCopy.size()); });
         } else {
-            auto state = Complete(shaderInMemory, shaderBufferSize);
-            SetState(state);
+            Complete(shaderInMemory, shaderBufferSize);
         }
     }
 
@@ -158,45 +152,53 @@ namespace RenderCore { namespace Assets
 
     static bool CancelAllShaderCompiles = false;
 
-    ::Assets::AssetState ShaderCompileMarker::Complete(
-        const void* buffer, size_t bufferSize)
+	void ShaderCompileMarker::OnFailure()
+	{
+		_chain(::Assets::AssetState::Invalid, nullptr, nullptr, nullptr);
+		SetState(::Assets::AssetState::Invalid);
+	}
+
+    void ShaderCompileMarker::Complete(const void* buffer, size_t bufferSize)
     {
         if (CancelAllShaderCompiles) {
-            _chain(::Assets::AssetState::Invalid, nullptr, nullptr, nullptr);
-            return ::Assets::AssetState::Invalid;
+			OnFailure();
+            return;
         }
 
-        Payload errors;
-        _payload.reset();
-        _deps.clear();
+		TRY {
+			Payload errors;
+			_payload.reset();
+			_deps.clear();
 
-        auto success = _compiler->DoLowLevelCompile(
-            _payload, errors, _deps,
-            buffer, bufferSize, _shaderPath,
-            _definesTable.c_str());
+			auto success = _compiler->DoLowLevelCompile(
+				_payload, errors, _deps,
+				buffer, bufferSize, _shaderPath,
+				_definesTable.c_str());
 
-            // before we can finish the "complete" step, we need to commit
-            // to archive output
-        auto result = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
+				// before we can finish the "complete" step, we need to commit
+				// to archive output
+			auto result = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
         
-            // We need to call "_chain" on either failure or success
-            // this is important because _chain can hold a reference to this
-            // object. We need to call chain explicitly in order to release
-            // this object (otherwise we end up with a cyclic reference that
-            // doesn't get broken, and a leak)
-        if (_chain) {
-            TRY 
-            {
-                _chain(
-                    result, _payload, 
-                    AsPointer(_deps.cbegin()), AsPointer(_deps.cend()));
-            } CATCH (const std::bad_function_call& e) {
-                LogWarning 
-                    << "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")" // << std::endl 
-                    << "This may prevent the shader from being flushed to disk in it's compiled form. But the shader should still be useable";
-            } CATCH_END
-        }
-        return result;
+				// We need to call "_chain" on either failure or success
+				// this is important because _chain can hold a reference to this
+				// object. We need to call chain explicitly in order to release
+				// this object (otherwise we end up with a cyclic reference that
+				// doesn't get broken, and a leak)
+			if (_chain) {
+				TRY {
+					_chain(result, _payload, AsPointer(_deps.cbegin()), AsPointer(_deps.cend()));
+				} CATCH (const std::bad_function_call& e) {
+					LogWarning 
+						<< "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")" // << std::endl 
+						<< "This may prevent the shader from being flushed to disk in it's compiled form. But the shader should still be useable";
+				} CATCH_END
+			}
+
+			SetState(result);
+		} CATCH(...) {
+			SetState(::Assets::AssetState::Invalid);
+			throw;
+		} CATCH_END
     }
 
     auto ShaderCompileMarker::Resolve(

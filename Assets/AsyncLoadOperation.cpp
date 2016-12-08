@@ -34,7 +34,6 @@ namespace Assets
     {
         auto* o = (SpecialOverlapped*)lpOverlapped;
         assert(o && o->_returnPointer);
-        assert(o->_returnPointer->GetAssetState() == ::Assets::AssetState::Pending);
 
         if (o->_fileHandle != INVALID_HANDLE_VALUE)
             CloseHandle(o->_fileHandle);
@@ -54,18 +53,14 @@ namespace Assets
 
             // Someone is still waiting on our results...
             // Call the Compete() method to finish all processing
-        TRY {
-            obj->SetState(obj->Complete(obj->GetBuffer(), obj->GetBufferSize()));
-        } CATCH(...) {
-            obj->SetState(::Assets::AssetState::Invalid);
-        } CATCH_END
+        obj->Complete(obj->GetBuffer(), obj->GetBufferSize());
     }
 
-    void AsyncLoadOperation::Enqueue(const ResChar filename[], CompletionThreadPool& pool)
+    void AsyncLoadOperation::Enqueue(const std::shared_ptr<AsyncLoadOperation>& op, const ResChar filename[], CompletionThreadPool& pool)
     {
-        assert(!_hasBeenQueued);
-        _hasBeenQueued = true;
-        XlCopyString(_filename, filename);
+        assert(!op->_hasBeenQueued);
+        op->_hasBeenQueued = true;
+        XlCopyString(op->_filename, filename);
 
             // We will hold an extra reference to this object
             // during the queueing processing and while the background
@@ -78,7 +73,7 @@ namespace Assets
             // hold a strong reference at least until the read has
             // completed
 
-        std::weak_ptr<AsyncLoadOperation> weakToThis = std::static_pointer_cast<AsyncLoadOperation>(shared_from_this());
+        std::weak_ptr<AsyncLoadOperation> weakToThis = op;
         pool.Enqueue(
             [weakToThis]()
             {
@@ -97,14 +92,14 @@ namespace Assets
 
                 if (h == INVALID_HANDLE_VALUE) {
                         // failed to load the file -- probably because it's missing
-                    thisOp->SetState(::Assets::AssetState::Invalid);
+                    thisOp->OnFailure();
                     return;
                 }
                     
                 auto fileSize = GetFileSize(h, nullptr);
                 if (!fileSize || fileSize == INVALID_FILE_SIZE) {
-                    thisOp->SetState(::Assets::AssetState::Invalid);
                     CloseHandle(h);
+					thisOp->OnFailure();
                     return;
                 }
 
@@ -121,8 +116,8 @@ namespace Assets
                     thisOp->_overlapped.get(), &SpecialOverlapped::CompletionRoutine);
                 if (!readResult) {
                     CloseHandle(h);
-                    thisOp->SetState(::Assets::AssetState::Invalid);
                     thisOp->_overlapped->_returnPointer.reset();
+					thisOp->OnFailure();
                     return;
                 }
 

@@ -521,7 +521,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    void RawMaterial::Resolve(
+    ::Assets::AssetState RawMaterial::TryResolve(
         ResolvedMaterial& result,
         const ::Assets::DirectorySearchRules& searchRules,
         std::vector<::Assets::DependentFileState>* deps) const
@@ -537,18 +537,18 @@ namespace RenderCore { namespace Assets
                 // we still need to add a dependency, even if it's a missing file
             if (deps) AddDep(*deps, splitName.FullFilename());
 
-            TRY {
-                auto& rawParams = GetAsset(i->c_str());
+            auto& rawParams = GetAsset(i->c_str());
 
-                ::Assets::DirectorySearchRules newSearchRules = searchRules;
-                newSearchRules.Merge(rawParams._searchRules);
+            ::Assets::DirectorySearchRules newSearchRules = searchRules;
+            newSearchRules.Merge(rawParams._searchRules);
 
-                rawParams._asset.Resolve(result, newSearchRules, deps);
-            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-            } CATCH_END
+            auto state = rawParams._asset.TryResolve(result, newSearchRules, deps);
+			if (state == ::Assets::AssetState::Pending)
+				return ::Assets::AssetState::Pending;
         }
 
         MergeInto(result);
+		return ::Assets::AssetState::Ready;
     }
 
 

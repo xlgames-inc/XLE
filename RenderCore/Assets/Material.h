@@ -122,7 +122,7 @@ namespace RenderCore { namespace Assets
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
-        void Resolve(
+        ::Assets::AssetState TryResolve(
             ResolvedMaterial& result,
             const ::Assets::DirectorySearchRules& searchRules,
             std::vector<::Assets::DependentFileState>* deps = nullptr) const;

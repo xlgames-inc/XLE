@@ -144,36 +144,36 @@ namespace RenderCore { namespace Assets
                 // different material settings (eg, when we want one thing to have
                 // a red version and a blue version)
             
-            TRY {
-                    // resolve in model:configuration
-                auto configName = Conversion::Convert<::Assets::rstring>(*i);
-                Meld meld; meld << sourceModel << ":" << configName;
-                resName << meld;
-                auto& rawMat = RawMaterial::GetAsset(meld);
-                rawMat._asset.Resolve(resMat, searchRules, &deps);
-            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-            } CATCH_END
+                // resolve in model:configuration
+            auto configName = Conversion::Convert<::Assets::rstring>(*i);
+            Meld meld; meld << sourceModel << ":" << configName;
+            resName << meld;
+            auto& rawMat = RawMaterial::GetAsset(meld);
+            auto subMatState = rawMat._asset.TryResolve(resMat, searchRules, &deps);
+
+			// Allow both "invalid" and "ready" assets to continue on. Invalid assets are
+			// treated as empty materials
+			if (subMatState == ::Assets::AssetState::Pending)
+				Throw(::Assets::Exceptions::PendingAsset(meld, "Sub material is pending"));
 
             if (resolvedSourceMaterial[0] != '\0') {
                 AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
 
-                TRY {
-                        // resolve in material:*
-                    Meld meld; meld << resolvedSourceMaterial << ":*";
-                    resName << ";" << meld;
-                    auto& rawMat = RawMaterial::GetAsset(meld);
-                    rawMat._asset.Resolve(resMat, searchRules, &deps);
-                } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-                } CATCH_END
+                    // resolve in material:*
+                Meld starInit; starInit << resolvedSourceMaterial << ":*";
+                resName << ";" << starInit;
+                auto& starMat = RawMaterial::GetAsset(starInit);
+				subMatState = starMat._asset.TryResolve(resMat, searchRules, &deps);
+				if (subMatState == ::Assets::AssetState::Pending)
+					Throw(::Assets::Exceptions::PendingAsset(starInit, "Sub material is pending"));
 
-                TRY {
-                        // resolve in material:configuration
-                    Meld meld; meld << resolvedSourceMaterial << ":" << Conversion::Convert<::Assets::rstring>(*i);
-                    resName << ";" << meld;
-                    auto& rawMat = RawMaterial::GetAsset(meld);
-                    rawMat._asset.Resolve(resMat, searchRules, &deps);
-                } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-                } CATCH_END
+                    // resolve in material:configuration
+                Meld configInit; configInit << resolvedSourceMaterial << ":" << Conversion::Convert<::Assets::rstring>(*i);
+                resName << ";" << configInit;
+                auto& configMat = RawMaterial::GetAsset(configInit);
+				subMatState = configMat._asset.TryResolve(resMat, searchRules, &deps);
+				if (subMatState == ::Assets::AssetState::Pending)
+					Throw(::Assets::Exceptions::PendingAsset(configInit, "Sub material is pending"));
             }
 
             resolved.push_back(std::make_pair(guid, std::move(resMat)));

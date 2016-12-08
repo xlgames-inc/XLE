@@ -77,7 +77,7 @@ namespace Assets
 		// note -- "invalidated" means the EnumerableLookup has been invalidated by a change
 		//			to the MountingTree
 		enum class Result { Success, NoCandidates, Invalidated };
-		Result TryGetNext(CandidateObject& result);
+		Result TryGetNext(CandidateObject& result) const;
 		bool IsGood() const { return _pimpl != nullptr; }
 
 		EnumerableLookup(const EnumerableLookup&) = delete;
@@ -91,17 +91,17 @@ namespace Assets
 		std::vector<uint8>		_request;
 		enum Encoding { UTF8, UTF16 };
 		Encoding				_encoding;
-		uint32					_nextMountToTest;
+		mutable uint32			_nextMountToTest;
 		uint32					_changeId;
 		MountingTree::Pimpl *	_pimpl;			// raw pointer; client must be careful
-		uint64					_cachedHashValues[8] = { 0,0,0,0,0,0,0,0 };
-		uint32					_cachedRemainders[8] = { ~0u,~0u,~0u,~0u,~0u,~0u,~0u,~0u };
+		mutable uint64			_cachedHashValues[8] = { 0,0,0,0,0,0,0,0 };
+		mutable uint32			_cachedRemainders[8] = { ~0u,~0u,~0u,~0u,~0u,~0u,~0u,~0u };
 
 		EnumerableLookup(std::vector<uint8>&& request, Encoding encoding, MountingTree::Pimpl* pimpl);
 		EnumerableLookup();
 
 		template<typename CharType>
-			Result TryGetNext_Internal(CandidateObject& result);
+			Result TryGetNext_Internal(CandidateObject& result) const;
 
 		friend class MountingTree;
 	};

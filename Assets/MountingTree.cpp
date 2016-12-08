@@ -68,7 +68,7 @@ namespace Assets
 		}
 
 	template<typename CharType>
-		auto MountingTree::EnumerableLookup::TryGetNext_Internal(CandidateObject& result) -> Result
+		auto MountingTree::EnumerableLookup::TryGetNext_Internal(CandidateObject& result) const -> Result
 	{
 		ScopedLock(_pimpl->_mountsLock);
 		if (!_pimpl || _pimpl->_changeId != _changeId)
@@ -149,7 +149,7 @@ namespace Assets
 		}
 	}
 
-	auto MountingTree::EnumerableLookup::TryGetNext(CandidateObject& result) -> Result
+	auto MountingTree::EnumerableLookup::TryGetNext(CandidateObject& result) const -> Result
 	{
 		if (_encoding == Encoding::UTF8) {
 			return TryGetNext_Internal<utf8>(result);

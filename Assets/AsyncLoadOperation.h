@@ -15,10 +15,10 @@ namespace Utility { class CompletionThreadPool; }
 namespace Assets
 {
 
-    class AsyncLoadOperation : public ::Assets::PendingOperationMarker
+    class AsyncLoadOperation
     {
     public:
-        void Enqueue(const ResChar filename[], CompletionThreadPool& pool);
+        static void Enqueue(const std::shared_ptr<AsyncLoadOperation>& op, const ResChar filename[], CompletionThreadPool& pool);
 
         AsyncLoadOperation();
         virtual ~AsyncLoadOperation();
@@ -32,7 +32,8 @@ namespace Assets
 
         mutable ResChar _filename[MaxPath];
 
-        virtual ::Assets::AssetState Complete(const void* buffer, size_t bufferSize) = 0;
+        virtual void Complete(const void* buffer, size_t bufferSize) = 0;
+		virtual void OnFailure() = 0;
     private:
         std::unique_ptr<uint8[], PODAlignedDeletor> _buffer;
         size_t _bufferLength;
