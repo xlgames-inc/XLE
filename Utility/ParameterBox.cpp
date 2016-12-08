@@ -551,19 +551,14 @@ namespace Utility
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ParameterBox::ParameterNameHash ParameterBox::MakeParameterNameHash(const std::basic_string<utf8>& name)
+    ParameterBox::ParameterNameHash ParameterBox::MakeParameterNameHash(StringSection<utf8> name)
     {
-        return Hash32(AsPointer(name.cbegin()), AsPointer(name.cend()));
+        return Hash32(name.begin(), name.end());
     }
 
-    ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(const utf8 name[])
+    ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(StringSection<char> name)
     {
-        return Hash32(name, XlStringEnd(name));
-    }
-
-    ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(const char name[])
-    {
-        return MakeParameterNameHash((const utf8*)name);
+        return Hash32(name.begin(), name.end());
     }
 
     void ParameterBox::SetParameter(const utf8 name[], const char* stringDataBegin, const char* stringDataEnd)

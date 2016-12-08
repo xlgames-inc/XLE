@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "IteratorUtils.h"
 #include "../Core/Types.h"
 #include "Threading/Mutex.h"
 #include <vector>

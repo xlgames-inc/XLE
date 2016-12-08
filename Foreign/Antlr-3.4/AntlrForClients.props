@@ -11,10 +11,10 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)\..\Foreign\antlr-3.4\libantlr3c-3.4\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ForeignDir)\antlr-3.4\libantlr3c-3.4\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Lib>
-      <AdditionalDependencies>$(SolutionDir)/../Foreign/Antlr-3.4\libantlr3c-3.4\$(AntlrConfiguration)\$(AntlrLib).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(ForeignDir)/Antlr-3.4\libantlr3c-3.4\$(AntlrConfiguration)\$(AntlrLib).lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup />

@@ -120,7 +120,7 @@ namespace ConsoleRig
         }
 
 		std::shared_ptr<::Assets::MountingTree> mountingTree;
-		if (!serv.Has<ModuleId()>(typeid(::Assets::MountingTree).hash_code())) {
+		if (!serv.Has<std::shared_ptr<::Assets::MountingTree>()>(typeid(::Assets::MountingTree).hash_code())) {
 			mountingTree = std::make_shared<::Assets::MountingTree>(s_defaultFilenameRules);
 			serv.Add(typeid(::Assets::MountingTree).hash_code(), [mountingTree]() { return mountingTree; });
 		} else {
@@ -128,7 +128,7 @@ namespace ConsoleRig
 		}
 
 		std::shared_ptr<::Assets::IFileSystem> defaultFileSystem;
-		if (!serv.Has<ModuleId()>(Fn_DefaultFileSystem)) {
+		if (!serv.Has<std::shared_ptr<::Assets::IFileSystem>()>(Fn_DefaultFileSystem)) {
 			defaultFileSystem = ::Assets::CreateFileSystem_OS();
 			serv.Add(Fn_DefaultFileSystem, [defaultFileSystem]() { return defaultFileSystem; });
 		} else {

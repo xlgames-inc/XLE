@@ -11,6 +11,7 @@
 namespace Utility
 {
     class OutputStream;
+	class BasicFile;
 
     class Data {
     public:
@@ -108,8 +109,10 @@ namespace Utility
 
         // serialization
         bool Load(const char* ptr, int len);
-        bool LoadFromFile(const char* filename, bool* noFile = 0);
-        bool Save(const char* filename, bool includeComment = true) const;
+        // bool LoadFromFile(const char* filename, bool* noFile = 0);
+        // bool Save(const char* filename, bool includeComment = true) const;
+		bool LoadFromFile(BasicFile& file);
+
         bool SaveToBuffer(char* s, int* len) const ;
         bool SavePrettyValue(char* s, int* len) const;
         void SaveToOutputStream(OutputStream& f, bool includeComment = true) const;

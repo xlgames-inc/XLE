@@ -267,7 +267,7 @@ namespace Utility
 
     template<typename CharType>
         const CharType* ReadToStringEnd(
-            MemoryMappedInputStream& stream, bool protectedStringMode,
+            MemoryMappedInputStream& stream, bool protectedStringMode, bool allowEquals,
             StreamLocation location)
     {
         const auto pattern = FormatterConstants<CharType>::ProtectedNamePostfix;
@@ -296,7 +296,7 @@ namespace Utility
             const auto* stringEnd = ptr;
             for (;;) {
                     // here, hitting EOF is the same as hitting a formatting char
-                if (ptr == end || FormattingChar(*ptr)) {
+                if (ptr == end || (FormattingChar(*ptr) && (!allowEquals || *ptr != '='))) {
                     stream.SetPointer(ptr);
                     return stringEnd;
                 } else if (!WhitespaceChar(*ptr)) {
@@ -470,7 +470,7 @@ namespace Utility
                 
                 {
                     const auto* aValueStart = (const CharType*)_stream.ReadPointer();
-                    const auto* aValueEnd = ReadToStringEnd<CharType>(_stream, false, GetLocation());
+                    const auto* aValueEnd = ReadToStringEnd<CharType>(_stream, false, true, GetLocation());
 
                     char convBuffer[12];
                     Conversion::Convert(convBuffer, dimof(convBuffer), aNameStart, aNameEnd);
@@ -488,7 +488,7 @@ namespace Utility
 
             default:
                 aNameStart = next;
-                aNameEnd = ReadToStringEnd<CharType>(_stream, false, GetLocation());
+                aNameEnd = ReadToStringEnd<CharType>(_stream, false, false, GetLocation());
                 break;
             }
         }
@@ -500,7 +500,7 @@ namespace Utility
         if (PeekNext() != Blob::BeginElement) return false;
 
         name._start = (const CharType*)_stream.ReadPointer();
-        name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, GetLocation());
+        name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, false, GetLocation());
 
         // the new "parent base line" should be the indentation level of the line this element started on
         if ((_baseLineStackPtr+1) > dimof(_baseLineStack))
@@ -571,7 +571,7 @@ namespace Utility
         if (PeekNext() != Blob::AttributeName) return false;
 
         name._start = (const CharType*)_stream.ReadPointer();
-        name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, GetLocation());
+        name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, false, GetLocation());
         EatWhitespace<CharType>(_stream);
 
         _primed = Blob::None;
@@ -579,7 +579,7 @@ namespace Utility
 
         if (PeekNext() == Blob::AttributeValue) {
             value._start = (const CharType*)_stream.ReadPointer();
-            value._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, GetLocation());
+            value._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, true, GetLocation());
             _protectedStringMode = false;
             _primed = Blob::None;
         } else {

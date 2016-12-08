@@ -29,7 +29,7 @@
       <MaxRules>4</MaxRules>
       <MaxDFAEdges>65534</MaxDFAEdges>
       <DFATimeout>1000</DFATimeout>
-      <CommandLineTemplate>[java] [JavaOptions] [ANTLR3Jar] org.antlr.Tool [LibDir] -[Absolute]o [OutputDirectory]  -message-format vs2005 [DFA] [NFA] [Report] [Print] [Debug] [Profile] [AST] [TextDFA] [EBNFExits] [CollapseEdges] [DebugNFA] [MaxRules] [MaxDFAEdges] [DFATimeout] [inputs]</CommandLineTemplate>
+      <CommandLineTemplate>[java] [JavaOptions] [ANTLR3Jar] [LibDir] -[Absolute]o [OutputDirectory]  -message-format vs2005 [DFA] [NFA] [Report] [Print] [Debug] [Profile] [AST] [TextDFA] [EBNFExits] [CollapseEdges] [DebugNFA] [MaxRules] [MaxDFAEdges] [DFATimeout] [inputs]</CommandLineTemplate>
       <Outputs>[OutputDirectory]\%(Filename).c;[OutputDirectory]\%(Filename).h</Outputs>
       <ExecutionDescription>Translating to tree parser.</ExecutionDescription>
     </Antlr3TreeParser>

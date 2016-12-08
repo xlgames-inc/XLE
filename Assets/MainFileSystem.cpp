@@ -362,7 +362,7 @@ namespace Assets
 	template IFileSystem::IOReason TryMonitor<utf16>(IFileSystem& fs, StringSection<utf16> fn, const std::shared_ptr<IFileMonitor>& evnt);
 	template FileDesc TryGetDesc<utf16>(IFileSystem& fs, StringSection<utf16> fn);
 
-	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(const char sourceFileName[], size_t* sizeResult)
+	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult)
 	{
 		std::unique_ptr<IFileInterface> file;
 		if (MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read) == IFileSystem::IOReason::Success) {

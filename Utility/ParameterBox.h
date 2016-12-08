@@ -7,6 +7,7 @@
 #pragma once
 
 #include "UTFUtils.h"
+#include "StringUtils.h"
 #include "Streams/Serialization.h"
 #include "../Core/Types.h"
 #include <string>
@@ -112,15 +113,13 @@ namespace Utility
         public:
             ParameterNameHash _hash;
 
-            ParameterName(const std::basic_string<utf8>& name);
-            ParameterName(const utf8 name[]);
-            ParameterName(const char name[]);
+            ParameterName(StringSection<utf8> name);
+            ParameterName(StringSection<char> name);
             ParameterName(ParameterNameHash hash);
         };
 
-        static ParameterNameHash    MakeParameterNameHash(const std::basic_string<utf8>& name);
-        static ParameterNameHash    MakeParameterNameHash(const utf8 name[]);
-        static ParameterNameHash    MakeParameterNameHash(const char name[]);
+        static ParameterNameHash    MakeParameterNameHash(StringSection<utf8> name);
+        static ParameterNameHash    MakeParameterNameHash(StringSection<char> name);
 
         using TypeDesc = ImpliedTyping::TypeDesc;
 
@@ -250,17 +249,12 @@ namespace Utility
         }
     }
 
-    inline ParameterBox::ParameterName::ParameterName(const std::basic_string<utf8>& name)
+    inline ParameterBox::ParameterName::ParameterName(StringSection<utf8> name)
     {
         _hash = ParameterBox::MakeParameterNameHash(name);
     }
 
-    inline ParameterBox::ParameterName::ParameterName(const utf8 name[])
-    {
-        _hash = ParameterBox::MakeParameterNameHash(name);
-    }
-
-    inline ParameterBox::ParameterName::ParameterName(const char name[])
+    inline ParameterBox::ParameterName::ParameterName(StringSection<char> name)
     {
         _hash = ParameterBox::MakeParameterNameHash(name);
     }

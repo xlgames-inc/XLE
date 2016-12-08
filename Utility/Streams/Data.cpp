@@ -730,7 +730,7 @@ public:
     DataParser(Data* root);
     ~DataParser();
 
-    bool InitFromFile(const char* filename);
+    bool InitFromFile(BasicFile& file);
     void InitFromString(const char* str, int len);
 
     int Space();
@@ -824,7 +824,7 @@ void DataParser::Init()
     NextChar();
 }
 
-bool DataParser::InitFromFile(const char* filename)
+bool DataParser::InitFromFile(BasicFile& file)
 {
     // MemoryMap* mm = XlOpenMemoryMap(filename);
     // if (!mm) {
@@ -843,10 +843,9 @@ bool DataParser::InitFromFile(const char* filename)
 
     size_t size = 0;
     {
-        RawFS::BasicFile file((const utf8*)filename, "rb", FileShareMode::Read);
-        file.Seek(0, FileSeekAnchor::End);
-        size = file.TellP();
-        file.Seek(0);
+        auto start = file.Seek(0, FileSeekAnchor::End);
+        size = file.TellP() - start;
+        file.Seek(start);
 
         _data = new char[size];
         file.Read(_data, 1, size);
@@ -1262,16 +1261,11 @@ bool Data::Load(const char* ptr, int len)
     return !parser.Error();
 }
 
-bool Data::LoadFromFile(const char* filename, bool* noFile)
+bool Data::LoadFromFile(BasicFile& src)
 {
-    SetValue(filename);
     DataParser parser(this);
-    if (!parser.InitFromFile(filename)) {
-        if (noFile) {
-            *noFile = true;
-        }
+    if (!parser.InitFromFile(src)) 
         return false;
-    }
 
     Clear();
     parser.Graph();
@@ -1470,19 +1464,6 @@ void Data::SaveToOutputStream(OutputStream& f, bool includeComment) const
     if (postComment && includeComment) {
         PrintComment(f, 0, postComment);
     }
-}
-
-bool Data::Save(const char* filename, bool includeComment) const
-{
-    auto f = OpenFileOutput(filename, "wb");
-    if (!f) {
-        //LOG_ERROR("Cannot open file %s for writing", filename);
-        return false;
-    }
-
-    SaveToOutputStream(*f, includeComment);
-
-    return true;
 }
 
 bool Data::SaveToBuffer(char* s, int* len) const

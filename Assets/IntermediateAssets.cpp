@@ -150,7 +150,10 @@ namespace Assets { namespace IntermediateAssets
         if (MainFileSystem::TryGetDesc(buffer)._state != FileDesc::State::Normal) return nullptr;
 
         Data data;
-        data.LoadFromFile(buffer);
+		BasicFile file;
+		if (MainFileSystem::TryOpen(file, buffer, "rb") != IFileSystem::IOReason::Success)
+			return nullptr;
+		data.LoadFromFile(file);
 
         auto* basePath = data.StrAttribute("BasePath");
         auto validation = std::make_shared<DependencyValidation>();
@@ -239,7 +242,11 @@ namespace Assets { namespace IntermediateAssets
         RawFS::CreateDirectoryRecursive(dirName);
 
             // now, write -- 
-        data.Save(buffer);
+		BasicFile file;
+		if (MainFileSystem::TryOpen(file, buffer, "wb") != IFileSystem::IOReason::Success)
+			return nullptr;
+		auto stream = OpenFileOutput(file);
+        data.SaveToOutputStream(*stream);
 
         return result;
     }
