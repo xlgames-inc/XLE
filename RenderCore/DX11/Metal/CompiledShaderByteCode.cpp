@@ -207,26 +207,16 @@ namespace RenderCore { namespace Metal_DX11
             std::unique_ptr<uint8[]> file;
             ::Assets::DependentFileState timeMarker;
             {
-                    // need to use Win32 file operations, so we can get the modification time
-                    //  at exactly the time we're reading it.
-                auto handle = CreateFile(
-                    (const char*)path, GENERIC_READ, FILE_SHARE_READ,
-                    nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-                if (handle != INVALID_HANDLE_VALUE) {
-                    LARGE_INTEGER fileSize;
-                    GetFileSizeEx(handle, &fileSize);
-                    assert(!fileSize.HighPart); // not supporting very large files
-                    size = fileSize.LowPart;
+				std::unique_ptr<::Assets::IFileInterface> fileInterface;
+				auto ioResult = ::Assets::MainFileSystem::TryOpen(fileInterface, path, "rb");
+				if (ioResult == ::Assets::IFileSystem::IOReason::Success && fileInterface) {
+					auto desc = fileInterface->GetDesc();
+                    size = desc._size;
+                    timeMarker._timeMarker = desc._modificationTime;
 
-                    FILETIME ft;
-                    GetFileTime(handle, nullptr, nullptr, &ft);
-
-                    timeMarker._timeMarker = (uint64(ft.dwHighDateTime) << 32ull) | uint64(ft.dwLowDateTime);
                     file = std::make_unique<uint8[]>(size);
-                    DWORD byteRead = 0;
-                    auto b = ReadFile(handle, file.get(), DWORD(size), &byteRead, nullptr);
-                    assert(b); (void)b;
-                    CloseHandle(handle);
+                    auto blocksRead = fileInterface->Read(file.get(), size);
+                    assert(blocksRead == 1); (void)blocksRead;
                 }
             }
 

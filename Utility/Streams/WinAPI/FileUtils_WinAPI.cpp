@@ -389,7 +389,7 @@ namespace Utility
 
 	bool		BasicFile::IsGood() const never_throws
 	{
-		return _file == INVALID_HANDLE_VALUE;
+		return _file != INVALID_HANDLE_VALUE;
 	}
 
 	static uint64 AsUInt64(FILETIME ft) { return (uint64(ft.dwHighDateTime) << 32ull) | uint64(ft.dwLowDateTime); }
@@ -556,6 +556,9 @@ namespace Utility
 			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
 
+			if (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA)		// writable memory mapped files must have read access enabled, so the CreateFileMapping will succeed
+				underlyingOpenMode._underlyingAccessMode |= FILE_GENERIC_READ;
+
 			auto fileHandle = CreateFileA(
 				(const char*)filename, underlyingOpenMode._underlyingAccessMode, 
 				underlyingShareMode, 
@@ -601,6 +604,9 @@ namespace Utility
 			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
 
+			if (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA)		// writable memory mapped files must have read access enabled, so the CreateFileMapping will succeed
+				underlyingOpenMode._underlyingAccessMode |= FILE_GENERIC_READ;
+
 			auto fileHandle = CreateFileW(
 				(const wchar_t*)filename, underlyingOpenMode._underlyingAccessMode, 
 				underlyingShareMode, 
@@ -644,6 +650,9 @@ namespace Utility
 			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
 
+			if (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA)		// writable memory mapped files must have read access enabled, so the CreateFileMapping will succeed
+				underlyingOpenMode._underlyingAccessMode |= FILE_GENERIC_READ;
+
 			auto fileHandle = CreateFileA(
 				(const char*)filename, underlyingOpenMode._underlyingAccessMode, 
 				underlyingShareMode, 
@@ -685,6 +694,9 @@ namespace Utility
 		{
 			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+
+			if (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA)		// writable memory mapped files must have read access enabled, so the CreateFileMapping will succeed
+				underlyingOpenMode._underlyingAccessMode |= FILE_GENERIC_READ;
 
 			auto fileHandle = CreateFileW(
 				(const wchar_t*)filename, underlyingOpenMode._underlyingAccessMode, 

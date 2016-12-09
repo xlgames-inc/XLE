@@ -9,6 +9,7 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileSystemMonitor.h"
+#include "../Utility/Conversion.h"
 #include "../Core/Exceptions.h"
 #include <sstream>
 #include <vector>
@@ -199,14 +200,18 @@ namespace Assets
 				(const utf8*)PtrAdd(AsPointer(marker.cbegin()), 2),
 				(const utf8*)PtrAdd(AsPointer(marker.cend()), -(ptrdiff_t)sizeof(utf8)));
 			auto split = MakeFileNameSplitter(fn);
-			AttachFileSystemMonitor(split.DriveAndPath(), split.FileAndExtension(), evnt);
+			utf8 directoryName[MaxPath];
+			MakeSplitPath(split.DriveAndPath()).Simplify().Rebuild(directoryName);
+			AttachFileSystemMonitor(directoryName, split.FileAndExtension(), evnt);
 			return IOReason::Success;
 		} else if (type == 2) {
 			auto fn = MakeStringSection(
 				(const utf16*)PtrAdd(AsPointer(marker.cbegin()), 2),
 				(const utf16*)PtrAdd(AsPointer(marker.cend()), -(ptrdiff_t)sizeof(utf16)));
 			auto split = MakeFileNameSplitter(fn);
-			AttachFileSystemMonitor(split.DriveAndPath(), split.FileAndExtension(), evnt);
+			utf16 directoryName[MaxPath];
+			MakeSplitPath(split.DriveAndPath()).Simplify().Rebuild(directoryName);
+			AttachFileSystemMonitor(directoryName, split.FileAndExtension(), evnt);
 			return IOReason::Success;
 		}
 		return IOReason::Complex;
@@ -231,21 +236,33 @@ namespace Assets
 				(const char*)PtrAdd(AsPointer(marker.begin()), 2), 
 				GetFileExInfoStandard,
 				&attribs);
+
+			if (!result)
+				return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+
+			return FileDesc
+				{
+					std::basic_string<utf8>((const utf8*)PtrAdd(AsPointer(marker.begin()), 2)), FileDesc::State::Normal,
+					AsUInt64(attribs.ftLastWriteTime), uint64(attribs.nFileSizeHigh) << 32 | uint64(attribs.nFileSizeLow)
+				};
 		} else if (type == 2) {
-			result = GetFileAttributesExA(
-				(const char*)PtrAdd(AsPointer(marker.begin()), 2),
+			result = GetFileAttributesExW(
+				(const wchar_t*)PtrAdd(AsPointer(marker.begin()), 2),
 				GetFileExInfoStandard,
 				&attribs);
+
+			if (!result)
+				return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+
+			return FileDesc
+				{
+					Conversion::Convert<std::basic_string<utf8>>(std::basic_string<ucs2>((const ucs2*)PtrAdd(AsPointer(marker.begin()), 2))), 
+					FileDesc::State::Normal,
+					AsUInt64(attribs.ftLastWriteTime), uint64(attribs.nFileSizeHigh) << 32 | uint64(attribs.nFileSizeLow)
+				};
 		} 
 
-		if (!result)
-			return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
-
-		return FileDesc
-			{
-				std::basic_string<utf8>(), FileDesc::State::Normal,
-				AsUInt64(attribs.ftLastWriteTime), uint64(attribs.nFileSizeHigh) << 32 | uint64(attribs.nFileSizeLow)
-			};
+		return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 	}
 
 	#pragma warning(pop)

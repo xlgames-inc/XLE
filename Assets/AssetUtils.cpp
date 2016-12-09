@@ -129,14 +129,7 @@ namespace Assets
         const std::shared_ptr<Utility::OnChangeCallback>& validationIndex, 
         StringSection<ResChar> filename)
     {
-            // try to prevent unoptimisated path names from getting here!
-        // assert(!XlFindString(filename, "../") && !XlFindString(filename, "./"));
-
-        utf8 directoryName[MaxPath];
-        FileNameSplitter<utf8> splitter(StringSection<utf8>((const utf8*)filename.begin(), (const utf8*)filename.end()));
-        SplitPath<utf8>(splitter.DriveAndPath()).Simplify().Rebuild(directoryName);
-        Utility::AttachFileSystemMonitor(
-            MakeStringSection(directoryName), splitter.FileAndExtension(), validationIndex);
+		MainFileSystem::TryMonitor(filename, validationIndex);
     }
 
     void RegisterAssetDependency(
@@ -475,6 +468,8 @@ namespace Assets
         static SplitPath<ResChar> result;
         static bool init = false;
         if (!init) {
+			static Threading::Mutex lock;
+			ScopedLock(lock);
             XlGetCurrentDirectory(dimof(buffer._fn), buffer._fn);
             SplitPath<ResChar>(buffer._fn).Rebuild(buffer._fn, dimof(buffer._fn));
             result = SplitPath<ResChar>(buffer._fn);

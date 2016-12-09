@@ -60,10 +60,10 @@ namespace Assets
         Status _status;
 
         DependentFileState() : _timeMarker(0ull), _status(Status::Normal) {}
-        DependentFileState(
-            const std::basic_string<ResChar>& filename, 
-            uint64 timeMarker)
-        : _filename(filename), _timeMarker(timeMarker), _status(Status::Normal) {}
+        DependentFileState(StringSection<ResChar> filename, uint64 timeMarker)
+        : _filename(filename.AsString()), _timeMarker(timeMarker), _status(Status::Normal) {}
+		DependentFileState(const std::basic_string<ResChar>& filename, uint64 timeMarker)
+		: _filename(filename), _timeMarker(timeMarker), _status(Status::Normal) {}
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

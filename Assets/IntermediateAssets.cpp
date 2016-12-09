@@ -82,7 +82,7 @@ namespace Assets { namespace IntermediateAssets
             DependencyValidation::OnChange();
         }
 
-        RetainedFileRecord(const ResChar filename[])
+        RetainedFileRecord(StringSection<ResChar> filename)
         : _state(filename, 0ull) {}
     };
 
@@ -91,24 +91,32 @@ namespace Assets { namespace IntermediateAssets
 
     static std::shared_ptr<RetainedFileRecord> GetRetainedFileRecord(StringSection<ResChar> filename)
     {
-            //  We should normalize to avoid problems related to
-            //  case insensitivity and slash differences
-        ResolvedAssetFile assetName;
-        MakeAssetName(assetName, filename);
-        auto hash = Hash64(assetName._fn);
-
+		// Use HashFilename to avoid case sensitivity/slash direction problems
+		// todo --	we could also consider a system where we could use MainFileSystem::TryTranslate
+		//			to transform the filename into some more definitive representation
+        auto hash = HashFilename(MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()), s_defaultFilenameRules);
         {
             ScopedLock(RetainedRecordsLock);
             auto i = LowerBound(RetainedRecords, hash);
-            if (i!=RetainedRecords.end() && i->first == hash) {
+            if (i!=RetainedRecords.end() && i->first == hash)
                 return i->second;
-            }
+		}
 
-                //  we should call "AttachFileSystemMonitor" before we query for the
-                //  file's current modification time
-            auto newRecord = std::make_shared<RetainedFileRecord>(assetName._fn);
-            RegisterFileDependency(newRecord, assetName._fn);
-            newRecord->_state._timeMarker = MainFileSystem::TryGetDesc(assetName._fn)._modificationTime;
+		// We (probably) have to create a new marker... Do it outside of the mutex lock, because it
+		// can be expensive.
+        // We should call "AttachFileSystemMonitor" before we query for the
+        // file's current modification time.
+        auto newRecord = std::make_shared<RetainedFileRecord>(filename);
+        RegisterFileDependency(newRecord, filename);
+        newRecord->_state._timeMarker = MainFileSystem::TryGetDesc(filename)._modificationTime;
+
+		{
+			ScopedLock(RetainedRecordsLock);
+			auto i = LowerBound(RetainedRecords, hash);
+			// It's possible that another thread has just added the record... In that case, we abandon
+			// the new marker we just made, and return the one already there.
+			if (i!=RetainedRecords.end() && i->first == hash)
+				return i->second;		
 
             RetainedRecords.insert(i, std::make_pair(hash, newRecord));
             return std::move(newRecord);

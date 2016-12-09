@@ -434,9 +434,15 @@ namespace RenderCore { namespace Assets
             //  use a memory mapped file for this. This way, we never have to 
             //  worry about flushing out to disk... The OS will take care of 
             //  committing the results to disk on exit
-		_cache = ::Assets::MainFileSystem::OpenMemoryMappedFile(
-            u("int/TextureFormatCache.dat"), entrySize * MaxCachedTextures + sizeof(Header),
+		auto size = entrySize * MaxCachedTextures + sizeof(Header);
+		auto ioResult = ::Assets::MainFileSystem::TryOpen(
+			_cache,
+            u("int/TextureFormatCache.dat"), size,
 			"r+", 0u);
+		if (ioResult != ::Assets::IFileSystem::IOReason::Success) {
+			_cache = ::Assets::MainFileSystem::OpenMemoryMappedFile(u("int/TextureFormatCache.dat"), size, "w", 0u);
+			XlClearMemory(_cache.GetData(), size);
+		}
     }
 
     CachedTextureFormats::~CachedTextureFormats() {}

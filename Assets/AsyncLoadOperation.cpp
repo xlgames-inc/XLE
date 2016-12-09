@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "AsyncLoadOperation.h"
+#include "IFileSystem.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/StringUtils.h"
 #include "../Core/SelectConfiguration.h"
@@ -83,10 +84,16 @@ namespace Assets
                     // it a cancel
                 if (!thisOp) return;
 
+				auto translated = MainFileSystem::TryGetDesc(thisOp->_filename);
+				if (translated._state != FileDesc::State::Normal || translated._naturalName.empty()) {
+					thisOp->OnFailure();
+					return;
+				}
+
                     // if we got to this point, we cannot cancel until the load
                     // level read operation has been completed
-                auto h = CreateFile(
-                    thisOp->_filename, GENERIC_READ, FILE_SHARE_READ,
+                auto h = CreateFileA(
+					(const char*)translated._naturalName.c_str(), GENERIC_READ, FILE_SHARE_READ,
                     nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED,
                     nullptr);
 

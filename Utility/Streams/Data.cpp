@@ -843,7 +843,8 @@ bool DataParser::InitFromFile(BasicFile& file)
 
     size_t size = 0;
     {
-        auto start = file.Seek(0, FileSeekAnchor::End);
+        auto start = file.TellP();
+		file.Seek(0, FileSeekAnchor::End);
         size = file.TellP() - start;
         file.Seek(start);
 

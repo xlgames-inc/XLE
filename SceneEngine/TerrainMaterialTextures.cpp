@@ -204,7 +204,9 @@ namespace SceneEngine
     class ResolvedTextureFiles
     {
     public:
-        ::Assets::ResolvedAssetFile _diffuse, _normals, _roughness;
+		::Assets::ResChar _diffuse[MaxPath];
+		::Assets::ResChar _normals[MaxPath];
+		::Assets::ResChar _roughness[MaxPath];
 
         ResolvedTextureFiles(
             const ::Assets::ResChar baseName[],
@@ -212,7 +214,8 @@ namespace SceneEngine
 
     protected:
         void PatchFilename(
-            ::Assets::ResolvedAssetFile& dest, const ::Assets::ResChar input[], 
+			::Assets::ResChar dest[], size_t destCount,
+			const ::Assets::ResChar input[], 
             const ::Assets::ResChar marker[], const ::Assets::ResChar markerEnd[],
             const ::Assets::ResChar replacement[]);
     };
@@ -225,25 +228,26 @@ namespace SceneEngine
         if (marker) {
             auto* markerEnd = marker+2;
             const ::Assets::ResChar d[] = "_df", n[] = "_ddn", p[] = "_r";
-            PatchFilename(_diffuse, baseName, marker, markerEnd, d);
-            PatchFilename(_normals, baseName, marker, markerEnd, n);
-            PatchFilename(_roughness, baseName, marker, markerEnd, p);
+            PatchFilename(_diffuse, dimof(_diffuse), baseName, marker, markerEnd, d);
+            PatchFilename(_normals, dimof(_normals), baseName, marker, markerEnd, n);
+            PatchFilename(_roughness, dimof(_roughness), baseName, marker, markerEnd, p);
 
-            searchRules.ResolveFile(_diffuse._fn, dimof(_diffuse._fn), _diffuse._fn);
-            searchRules.ResolveFile(_normals._fn, dimof(_normals._fn), _normals._fn);
-            searchRules.ResolveFile(_roughness._fn, dimof(_roughness._fn), _roughness._fn);
+            searchRules.ResolveFile(_diffuse, dimof(_diffuse), _diffuse);
+            searchRules.ResolveFile(_normals, dimof(_normals), _normals);
+            searchRules.ResolveFile(_roughness, dimof(_roughness), _roughness);
         } else {
-            searchRules.ResolveFile(_diffuse._fn, dimof(_diffuse._fn), baseName);
+            searchRules.ResolveFile(_diffuse, dimof(_diffuse), baseName);
         }
     }
 
     void ResolvedTextureFiles::PatchFilename(
-        ::Assets::ResolvedAssetFile& dest, const ::Assets::ResChar input[], 
+		::Assets::ResChar dest[], size_t destCount,
+		const ::Assets::ResChar input[], 
         const ::Assets::ResChar marker[], const ::Assets::ResChar markerEnd[],
         const ::Assets::ResChar replacement[])
     {
-        auto*i = dest._fn;
-        auto*iend = &dest._fn[dimof(dest._fn)];
+        auto*i = dest;
+        auto*iend = &dest[destCount];
 
             // fill in part before the marker
         {
@@ -479,9 +483,9 @@ namespace SceneEngine
 
                 // --- Diffuse --->
             TRY {
-                if (texFiles._diffuse.get()[0]) {
-                    LoadTextureIntoArray(metalContext, *diffuseTextureArray->GetUnderlying(), texFiles._diffuse.get(), (unsigned)std::distance(atlasTextureNames.cbegin(), i));
-                    RegisterFileDependency(_validationCallback, texFiles._diffuse.get());
+                if (texFiles._diffuse[0]) {
+                    LoadTextureIntoArray(metalContext, *diffuseTextureArray->GetUnderlying(), texFiles._diffuse, (unsigned)std::distance(atlasTextureNames.cbegin(), i));
+                    RegisterFileDependency(_validationCallback, texFiles._diffuse);
                 }
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {}
             CATCH_END
@@ -489,9 +493,9 @@ namespace SceneEngine
                 // --- Normals --->
             bool fillInDummyNormals = true;
             TRY {
-                if (texFiles._normals.get()[0]) {
-                    LoadTextureIntoArray(metalContext, *normalTextureArray->GetUnderlying(), texFiles._normals.get(), (unsigned)std::distance(atlasTextureNames.cbegin(), i));
-                    RegisterFileDependency(_validationCallback, texFiles._normals.get());
+                if (texFiles._normals[0]) {
+                    LoadTextureIntoArray(metalContext, *normalTextureArray->GetUnderlying(), texFiles._normals, (unsigned)std::distance(atlasTextureNames.cbegin(), i));
+                    RegisterFileDependency(_validationCallback, texFiles._normals);
                     fillInDummyNormals = false;
                 }
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {}
@@ -501,9 +505,9 @@ namespace SceneEngine
             bool fillInBlackRoughness = true;
             auto index = (unsigned)std::distance(atlasTextureNames.cbegin(), i);
             TRY {
-                if (texFiles._roughness.get()[0]) {
-                    LoadTextureIntoArray(metalContext, *normalTextureArray->GetUnderlying(), texFiles._roughness.get(), index);
-                    RegisterFileDependency(_validationCallback, texFiles._roughness.get());
+                if (texFiles._roughness[0]) {
+                    LoadTextureIntoArray(metalContext, *normalTextureArray->GetUnderlying(), texFiles._roughness, index);
+                    RegisterFileDependency(_validationCallback, texFiles._roughness);
                     fillInBlackRoughness = false;
                 }
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
