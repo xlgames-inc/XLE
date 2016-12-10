@@ -1,12 +1,12 @@
 // CompoundDocument:1
-#include "game/xleres/System/Prefix.h"
+#include "xleres/System/Prefix.h"
 
-#include "game/xleres/Surface.h"
-#include "game/xleres/Nodes/Texture.sh"
-#include "game/xleres/Nodes/Output.sh"
-#include "game/xleres/Nodes/Basic.sh"
-#include "game/xleres/ToolsHelper/DecodeParametersTexture_ColoredSpecular.sh"
-#include "game/xleres/Colour.h"
+#include "xleres/Surface.h"
+#include "xleres/Nodes/Texture.sh"
+#include "xleres/Nodes/Output.sh"
+#include "xleres/Nodes/Basic.sh"
+#include "xleres/ToolsHelper/DecodeParametersTexture_ColoredSpecular.sh"
+#include "xleres/Colour.h"
 
 
 Texture2D SpecularColorTexture;
@@ -386,115 +386,115 @@ void ConvToPBR(VSOutput geo, out GBufferValues Out)
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/Surface.h:GetNormal</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Surface.h:GetNormal</FragmentArchiveName>
 			<NodeId>27</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>0</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:SampleTextureAO</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:SampleTextureAO</FragmentArchiveName>
 			<NodeId>36</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>6</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Output.sh:Output_PerPixel</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Output.sh:Output_PerPixel</FragmentArchiveName>
 			<NodeId>18</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>7</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:GetVertexAOMultiplier</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:GetVertexAOMultiplier</FragmentArchiveName>
 			<NodeId>19</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>8</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>20</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>9</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:SampleAnisotropic</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:SampleAnisotropic</FragmentArchiveName>
 			<NodeId>21</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>10</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:SampleTextureDiffuse</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:SampleTextureDiffuse</FragmentArchiveName>
 			<NodeId>22</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>11</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:MaybeMakeDoubleSided</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:MaybeMakeDoubleSided</FragmentArchiveName>
 			<NodeId>23</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>12</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/ToolsHelper\DecodeParametersTexture_ColoredSpecular.sh:DecodeParametersTexture_ColoredSpecular</FragmentArchiveName>
+			<FragmentArchiveName>xleres/ToolsHelper\DecodeParametersTexture_ColoredSpecular.sh:DecodeParametersTexture_ColoredSpecular</FragmentArchiveName>
 			<NodeId>24</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>13</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:MaybeDoAlphaTest</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:MaybeDoAlphaTest</FragmentArchiveName>
 			<NodeId>25</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>14</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>26</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>15</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Surface.h:GetTexCoord</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Surface.h:GetTexCoord</FragmentArchiveName>
 			<NodeId>28</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>16</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>29</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>17</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:GetVertexOpacityMultiplier</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:GetVertexOpacityMultiplier</FragmentArchiveName>
 			<NodeId>30</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>18</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Colour.h:SRGBToLinear</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Colour.h:SRGBToLinear</FragmentArchiveName>
 			<NodeId>31</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>19</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Multiply3</FragmentArchiveName>
 			<NodeId>32</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>20</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Combine2</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Combine2</FragmentArchiveName>
 			<NodeId>33</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>21</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Combine2</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Combine2</FragmentArchiveName>
 			<NodeId>34</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>22</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Combine2</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Combine2</FragmentArchiveName>
 			<NodeId>35</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>23</VisualNodeId>
@@ -855,7 +855,7 @@ GBufferEncoded deferred_main(VSOutput geo)
 
 
 
-#include "game/xleres/Forward/Transparency/util.h"
+#include "xleres/Forward/Transparency/util.h"
 
 float4 io_main(VSOutput geo, SystemInputs sys) : SV_Target0
 {
@@ -969,7 +969,7 @@ float4 stochastic_main(VSOutput geo,
 
 
 /* <<Chunk:TechniqueConfig:main>>--(
-~Inherit; game/xleres/techniques/illum.tech
+~Inherit; xleres/techniques/illum.tech
 ~Forward
     PixelShader=<.>:forward_main
 ~Deferred

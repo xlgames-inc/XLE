@@ -21,8 +21,8 @@
         ~Runtime
             BASIC_LIGHT_COUNT=1
             SHADOW_CASCADE_MODE=2
-    VertexShader=game/xleres/forward/illum.vsh:main
-    PixelShader=game/xleres/forward/illum.psh:main
+    VertexShader=xleres/forward/illum.vsh:main
+    PixelShader=xleres/forward/illum.psh:main
 ~DepthOnly
     ~Inherit; shared.tech:Skinnable; shared.tech:VegetationSpawn
     ~Parameters
@@ -39,8 +39,8 @@
             STOCHASTIC_TRANS
             STOCHASTIC_TRANS_PRIMITIVEID
             STOCHASTIC_TRANS_OPACITY
-    VertexShader=game/xleres/forward/illum.vsh:main
-    PixelShader=game/xleres/forward/depthonly.psh:main
+    VertexShader=xleres/forward/illum.vsh:main
+    PixelShader=xleres/forward/depthonly.psh:main
 ~Deferred
     ~Inherit; shared.tech:CommonMaterial; shared.tech:Skinnable; shared.tech:VegetationSpawn; shared.tech:System; shared.tech:Deferred
     ~Parameters
@@ -54,8 +54,8 @@
         ~GlobalEnvironment
             CLASSIFY_NORMAL_MAP
             SKIP_MATERIAL_DIFFUSE=0
-    VertexShader=game/xleres/deferred/basic.vsh:main
-    PixelShader=game/xleres/deferred/basic.psh:main
+    VertexShader=xleres/deferred/basic.vsh:main
+    PixelShader=xleres/deferred/basic.psh:main
 ~ShadowGen
     ~Inherit; shared.tech:Skinnable; shared.tech:VegetationSpawn
     ~Parameters
@@ -72,9 +72,9 @@
             SHADOW_CASCADE_MODE
             OUTPUT_SHADOW_PROJECTION_COUNT=6
             SHADOW_ENABLE_NEAR_CASCADE
-    VertexShader=game/xleres/shadowgen/depthonly.vsh:main
-    GeometryShader=game/xleres/shadowgen/depthonly.gsh:main
-    PixelShader=game/xleres/shadowgen/depthonly.psh:main
+    VertexShader=xleres/shadowgen/depthonly.vsh:main
+    GeometryShader=xleres/shadowgen/depthonly.gsh:main
+    PixelShader=xleres/shadowgen/depthonly.psh:main
 ~OrderIndependentTransparency
     ~Inherit; shared.tech:CommonMaterial; shared.tech:Skinnable; shared.tech:VegetationSpawn; shared.tech:System
     ~Parameters
@@ -96,8 +96,8 @@
         ~Runtime
             BASIC_LIGHT_COUNT=1
             SHADOW_CASCADE_MODE=2
-    VertexShader=game/xleres/forward/illum.vsh:main
-    PixelShader=game/xleres/forward/transparency/illum.psh:main_oi
+    VertexShader=xleres/forward/illum.vsh:main
+    PixelShader=xleres/forward/transparency/illum.psh:main_oi
 ~RayTest
     ~Inherit; shared.tech:Skinnable; shared.tech:VegetationSpawn
     ~Parameters
@@ -109,8 +109,8 @@
             MAT_VCOLOR_IS_ANIM_PARAM
         ~Runtime
             INTERSECTION_TEST
-    VertexShader=game/xleres/forward/illum.vsh:main
-    GeometryShader=game/xleres/forward/raytest.gsh:triangles
+    VertexShader=xleres/forward/illum.vsh:main
+    GeometryShader=xleres/forward/raytest.gsh:triangles
     PixelShader=null
 ~VisNormals
     ~Parameters
@@ -121,17 +121,17 @@
             GEO_HAS_TANGENT_FRAME
             GEO_HAS_BITANGENT
             GEO_HAS_NORMAL
-    VertexShader=game/xleres/forward/illum.vsh:main
-    GeometryShader=game/xleres/vis/geowires.gsh:NormalsAndTangents
-    PixelShader=game/xleres/basic.psh:PC
+    VertexShader=xleres/forward/illum.vsh:main
+    GeometryShader=xleres/vis/geowires.gsh:NormalsAndTangents
+    PixelShader=xleres/basic.psh:PC
 ~VisWireframe
     ~Parameters
         ~Geometry
             GEO_HAS_TEXCOORD
             OUTPUT_WORLD_POSITION=1
-    VertexShader=game/xleres/forward/illum.vsh:main
-    GeometryShader=game/xleres/solidwireframe.gsh:main
-    PixelShader=game/xleres/solidwireframe.psh:main
+    VertexShader=xleres/forward/illum.vsh:main
+    GeometryShader=xleres/solidwireframe.gsh:main
+    PixelShader=xleres/solidwireframe.psh:main
 ~WriteTriangleIndex
     ~Inherit; shared.tech:Skinnable; shared.tech:VegetationSpawn
     ~Parameters
@@ -139,8 +139,8 @@
             OUTPUT_WORLD_POSITION=0
         ~Runtime
             SHADOW_CASCADE_MODE
-    VertexShader=game/xleres/shadowgen/rtwritetiles.sh:vs_writetris
-    GeometryShader=game/xleres/shadowgen/rtwritetiles.sh:gs_writetris
+    VertexShader=xleres/shadowgen/rtwritetiles.sh:vs_writetris
+    GeometryShader=xleres/shadowgen/rtwritetiles.sh:gs_writetris
     PixelShader=null
 ~StochasticTransparency
     ~Inherit; shared.tech:CommonMaterial; shared.tech:Skinnable; shared.tech:VegetationSpawn; shared.tech:System
@@ -167,8 +167,8 @@
             STOCHASTIC_SAMPLE_COUNT=8
             STOCHASTIC_TRANS_PRIMITIVEID
             STOCHASTIC_TRANS_OPACITY
-    VertexShader=game/xleres/forward/illum.vsh:main
-    PixelShader=game/xleres/forward/transparency/illum.psh:main_stochastic
+    VertexShader=xleres/forward/illum.vsh:main
+    PixelShader=xleres/forward/transparency/illum.psh:main_stochastic
 ~DepthWeightedTransparency
     ~Inherit; shared.tech:CommonMaterial; shared.tech:Skinnable; shared.tech:VegetationSpawn; shared.tech:System
     ~Parameters
@@ -191,5 +191,5 @@
         ~Runtime
             BASIC_LIGHT_COUNT=1
             SHADOW_CASCADE_MODE=2
-    VertexShader=game/xleres/forward/illum.vsh:main
-    PixelShader=game/xleres/forward/transparency/depthweighted.sh:main_depth_weighted_oi
+    VertexShader=xleres/forward/illum.vsh:main
+    PixelShader=xleres/forward/transparency/depthweighted.sh:main_depth_weighted_oi

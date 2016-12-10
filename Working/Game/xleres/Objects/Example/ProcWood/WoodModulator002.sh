@@ -1,7 +1,7 @@
 // CompoundDocument:1
-#include "game/xleres/System/Prefix.h"
+#include "xleres/System/Prefix.h"
 
-#include "game/xleres/Nodes/Basic.sh"
+#include "xleres/Nodes/Basic.sh"
 
 
 void WoodModulator002(float value, float period, out float int : SV_Target0, out float frac : SV_Target1)
@@ -100,31 +100,31 @@ void WoodModulator002(float value, float period, out float int : SV_Target0, out
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Divide1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Divide1</FragmentArchiveName>
 			<NodeId>69</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>0</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Subtract1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Subtract1</FragmentArchiveName>
 			<NodeId>73</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>2</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Round1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Round1</FragmentArchiveName>
 			<NodeId>70</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>3</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>71</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>4</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>72</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>5</VisualNodeId>

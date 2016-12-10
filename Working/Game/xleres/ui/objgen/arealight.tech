@@ -188,7 +188,7 @@ VSOutput vs_main(uint vIndex : SV_VertexID)
 }
 
 /* <<Chunk:TechniqueConfig:main>>--(
-~Inherit; game/xleres/techniques/illum.tech
+~Inherit; xleres/techniques/illum.tech
 ~*
     ~Parameters
         ~Material

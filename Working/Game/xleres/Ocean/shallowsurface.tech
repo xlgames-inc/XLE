@@ -10,8 +10,8 @@
             OUTPUT_TEXCOORD=1
             OUTPUT_FOG_COLOR=1
         ~GlobalEnvironment
-    VertexShader=game/xleres/ocean/shallowsurface.sh:vs_main
-    PixelShader=game/xleres/ocean/shallowsurface.sh:ps_main
+    VertexShader=xleres/ocean/shallowsurface.sh:vs_main
+    PixelShader=xleres/ocean/shallowsurface.sh:ps_main
 ~VisWireframe
     ~Parameters
         ~Material
@@ -21,6 +21,6 @@
             OUTPUT_WORLD_VIEW_VECTOR=1
             OUTPUT_TEXCOORD=1
         ~GlobalEnvironment
-    VertexShader=game/xleres/ocean/shallowsurface.sh:vs_main
-    GeometryShader=game/xleres/solidwireframe.gsh:main
-    PixelShader=game/xleres/solidwireframe.psh:main
+    VertexShader=xleres/ocean/shallowsurface.sh:vs_main
+    GeometryShader=xleres/solidwireframe.gsh:main
+    PixelShader=xleres/solidwireframe.psh:main

@@ -1,9 +1,9 @@
 // CompoundDocument:1
-#include "game/xleres/System/Prefix.h"
+#include "xleres/System/Prefix.h"
 
-#include "game/xleres/ProcMat/Wood/WoodModulator002.sh"
-#include "game/xleres/Nodes/Basic.sh"
-#include "game/xleres/Nodes/Texture.sh"
+#include "xleres/ProcMat/Wood/WoodModulator002.sh"
+#include "xleres/Nodes/Basic.sh"
+#include "xleres/Nodes/Texture.sh"
 
 
 void WoodPlanks(float width, float length, float height, float3 offcenter, float shift1, float shift3, float shift2, float3 coords, out float3 plankCoords : SV_Target0)
@@ -444,133 +444,133 @@ void WoodPlanks(float width, float length, float height, float3 offcenter, float
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/ProcMat\Wood\WoodModulator002.sh:WoodModulator002</FragmentArchiveName>
+			<FragmentArchiveName>xleres/ProcMat\Wood\WoodModulator002.sh:WoodModulator002</FragmentArchiveName>
 			<NodeId>78</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>0</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
 			<NodeId>96</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>2</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:NoiseTexture3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:NoiseTexture3</FragmentArchiveName>
 			<NodeId>75</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>3</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/ProcMat\Wood\WoodModulator002.sh:WoodModulator002</FragmentArchiveName>
+			<FragmentArchiveName>xleres/ProcMat\Wood\WoodModulator002.sh:WoodModulator002</FragmentArchiveName>
 			<NodeId>76</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>4</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Add3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Add3</FragmentArchiveName>
 			<NodeId>77</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>5</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/ProcMat\Wood\WoodModulator002.sh:WoodModulator002</FragmentArchiveName>
+			<FragmentArchiveName>xleres/ProcMat\Wood\WoodModulator002.sh:WoodModulator002</FragmentArchiveName>
 			<NodeId>79</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>6</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>80</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>7</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>81</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>8</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Combine3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Combine3</FragmentArchiveName>
 			<NodeId>82</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>9</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply3</FragmentArchiveName>
 			<NodeId>83</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>10</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Subtract3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Subtract3</FragmentArchiveName>
 			<NodeId>84</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>11</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Combine3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Combine3</FragmentArchiveName>
 			<NodeId>85</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>12</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
 			<NodeId>86</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>13</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>87</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>14</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
 			<NodeId>88</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>15</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>89</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>16</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>90</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>17</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>91</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>18</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Divide1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Divide1</FragmentArchiveName>
 			<NodeId>92</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>19</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Divide1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Divide1</FragmentArchiveName>
 			<NodeId>93</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>20</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Divide1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Divide1</FragmentArchiveName>
 			<NodeId>94</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>21</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Separate3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Separate3</FragmentArchiveName>
 			<NodeId>95</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>22</VisualNodeId>

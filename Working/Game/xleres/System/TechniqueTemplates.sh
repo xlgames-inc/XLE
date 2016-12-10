@@ -77,7 +77,7 @@ float4 forward_main({{MainFunctionParameterSignature}}, SystemInputs sys) : SV_T
 
 ~oi_main; item=<:(
 
-#include "game/xleres/Forward/Transparency/util.h"
+#include "xleres/Forward/Transparency/util.h"
 
 float4 io_main({{MainFunctionParameterSignature}}, SystemInputs sys) : SV_Target0
 {

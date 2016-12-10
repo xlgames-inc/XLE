@@ -1,9 +1,9 @@
 // CompoundDocument:1
-#include "game/xleres/System/Prefix.h"
+#include "xleres/System/Prefix.h"
 
-#include "game/xleres/Nodes/Basic.sh"
-#include "game/xleres/Nodes/MaterialParam.sh"
-#include "game/xleres/Nodes/Color.sh"
+#include "xleres/Nodes/Basic.sh"
+#include "xleres/Nodes/MaterialParam.sh"
+#include "xleres/Nodes/Color.sh"
 
 
 void DecodeParametersTexture_ColoredSpecular(float2 metalRange, float2 roughnessRange, float2 specularRange, float3 diffuseSample, float3 specColorSample, out float3 finalDiffuseSample : SV_Target0, out CommonMaterialParam materialParam)
@@ -291,85 +291,85 @@ void DecodeParametersTexture_ColoredSpecular(float2 metalRange, float2 roughness
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Remap1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Remap1</FragmentArchiveName>
 			<NodeId>15</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>2</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Power1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Power1</FragmentArchiveName>
 			<NodeId>2</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>3</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\MaterialParam.sh:CommonMaterialParam_Make</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\MaterialParam.sh:CommonMaterialParam_Make</FragmentArchiveName>
 			<NodeId>3</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>4</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\MaterialParam.sh:ScaleByRange</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\MaterialParam.sh:ScaleByRange</FragmentArchiveName>
 			<NodeId>4</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>5</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Max1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Max1</FragmentArchiveName>
 			<NodeId>5</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>6</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Remap1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Remap1</FragmentArchiveName>
 			<NodeId>6</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>7</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Saturate1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Saturate1</FragmentArchiveName>
 			<NodeId>7</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>8</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Lerp3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Lerp3</FragmentArchiveName>
 			<NodeId>8</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>9</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
 			<NodeId>9</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>10</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Saturate1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Saturate1</FragmentArchiveName>
 			<NodeId>10</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>11</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Saturate1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Saturate1</FragmentArchiveName>
 			<NodeId>11</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>12</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Color.sh:Luminance</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Color.sh:Luminance</FragmentArchiveName>
 			<NodeId>12</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>13</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Color.sh:Luminance</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Color.sh:Luminance</FragmentArchiveName>
 			<NodeId>13</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>14</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Remap1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Remap1</FragmentArchiveName>
 			<NodeId>14</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>15</VisualNodeId>

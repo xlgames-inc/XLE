@@ -1,11 +1,11 @@
 // CompoundDocument:1
-#include "game/xleres/System/Prefix.h"
+#include "xleres/System/Prefix.h"
 
-#include "game/xleres/Nodes/Texture.sh"
-#include "game/xleres/ToolsHelper/DecodeParametersTexture_ColoredSpecular.sh"
-#include "game/xleres/Nodes/Basic.sh"
-#include "game/xleres/Nodes/MaterialParam.sh"
-#include "game/xleres/Nodes/Output.sh"
+#include "xleres/Nodes/Texture.sh"
+#include "xleres/ToolsHelper/DecodeParametersTexture_ColoredSpecular.sh"
+#include "xleres/Nodes/Basic.sh"
+#include "xleres/Nodes/MaterialParam.sh"
+#include "xleres/Nodes/Output.sh"
 
 
 Texture2D Mask;
@@ -610,139 +610,139 @@ void SpecularWithMask(uint2 pixelCoords, float2 texCoord : TEXCOORD0, out float4
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:LoadAbsolute</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:LoadAbsolute</FragmentArchiveName>
 			<NodeId>24</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>6</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/ToolsHelper\DecodeParametersTexture_ColoredSpecular.sh:DecodeParametersTexture_ColoredSpecular</FragmentArchiveName>
+			<FragmentArchiveName>xleres/ToolsHelper\DecodeParametersTexture_ColoredSpecular.sh:DecodeParametersTexture_ColoredSpecular</FragmentArchiveName>
 			<NodeId>2</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>7</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:Sample</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:Sample</FragmentArchiveName>
 			<NodeId>3</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>8</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:Sample</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:Sample</FragmentArchiveName>
 			<NodeId>4</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>9</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:SeparateAlpha</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:SeparateAlpha</FragmentArchiveName>
 			<NodeId>5</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>10</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:SeparateAlpha</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:SeparateAlpha</FragmentArchiveName>
 			<NodeId>6</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>11</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\MaterialParam.sh:Scale</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\MaterialParam.sh:Scale</FragmentArchiveName>
 			<NodeId>7</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>12</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\MaterialParam.sh:Add</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\MaterialParam.sh:Add</FragmentArchiveName>
 			<NodeId>8</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>13</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Divide4Scalar</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Divide4Scalar</FragmentArchiveName>
 			<NodeId>9</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>14</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Combine4</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Combine4</FragmentArchiveName>
 			<NodeId>10</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>15</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:AddMany1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:AddMany1</FragmentArchiveName>
 			<NodeId>11</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>16</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Separate4</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Separate4</FragmentArchiveName>
 			<NodeId>12</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>17</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Output.sh:Output_ParamTex</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Output.sh:Output_ParamTex</FragmentArchiveName>
 			<NodeId>13</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>18</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\MaterialParam.sh:Add</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\MaterialParam.sh:Add</FragmentArchiveName>
 			<NodeId>14</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>19</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\MaterialParam.sh:Scale</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\MaterialParam.sh:Scale</FragmentArchiveName>
 			<NodeId>15</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>20</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\MaterialParam.sh:Add</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\MaterialParam.sh:Add</FragmentArchiveName>
 			<NodeId>16</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>21</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\MaterialParam.sh:Scale</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\MaterialParam.sh:Scale</FragmentArchiveName>
 			<NodeId>17</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>22</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\MaterialParam.sh:Scale</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\MaterialParam.sh:Scale</FragmentArchiveName>
 			<NodeId>18</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>23</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/ToolsHelper\DecodeParametersTexture_ColoredSpecular.sh:DecodeParametersTexture_ColoredSpecular</FragmentArchiveName>
+			<FragmentArchiveName>xleres/ToolsHelper\DecodeParametersTexture_ColoredSpecular.sh:DecodeParametersTexture_ColoredSpecular</FragmentArchiveName>
 			<NodeId>19</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>24</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/ToolsHelper\DecodeParametersTexture_ColoredSpecular.sh:DecodeParametersTexture_ColoredSpecular</FragmentArchiveName>
+			<FragmentArchiveName>xleres/ToolsHelper\DecodeParametersTexture_ColoredSpecular.sh:DecodeParametersTexture_ColoredSpecular</FragmentArchiveName>
 			<NodeId>20</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>25</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/ToolsHelper\DecodeParametersTexture_ColoredSpecular.sh:DecodeParametersTexture_ColoredSpecular</FragmentArchiveName>
+			<FragmentArchiveName>xleres/ToolsHelper\DecodeParametersTexture_ColoredSpecular.sh:DecodeParametersTexture_ColoredSpecular</FragmentArchiveName>
 			<NodeId>21</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>26</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Separate4</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Separate4</FragmentArchiveName>
 			<NodeId>22</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>27</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Remap1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Remap1</FragmentArchiveName>
 			<NodeId>23</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>28</VisualNodeId>

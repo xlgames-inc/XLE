@@ -1,11 +1,11 @@
 // CompoundDocument:1
-#include "game/xleres/System/Prefix.h"
+#include "xleres/System/Prefix.h"
 
-#include "game/xleres/Nodes/Basic.sh"
-#include "game/xleres/ProcMat/Wood/WoodRings002.sh"
-#include "game/xleres/ProcMat/Wood/WoodPlanks.sh"
-#include "game/xleres/Nodes/Color.sh"
-#include "game/xleres/ProcMat/Wood/WoodGnarlGrainStain.sh"
+#include "xleres/Nodes/Basic.sh"
+#include "xleres/ProcMat/Wood/WoodRings002.sh"
+#include "xleres/ProcMat/Wood/WoodPlanks.sh"
+#include "xleres/Nodes/Color.sh"
+#include "xleres/ProcMat/Wood/WoodGnarlGrainStain.sh"
 
 
 void Wood_04_G(float3 coords, out float3 color : SV_Target0)
@@ -270,55 +270,55 @@ void Wood_04_G(float3 coords, out float3 color : SV_Target0)
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Mix3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Mix3</FragmentArchiveName>
 			<NodeId>36</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>0</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/ProcMat\Wood\WoodRings002.sh:WoodRings002</FragmentArchiveName>
+			<FragmentArchiveName>xleres/ProcMat\Wood\WoodRings002.sh:WoodRings002</FragmentArchiveName>
 			<NodeId>44</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>2</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/ProcMat\Wood\WoodPlanks.sh:WoodPlanks</FragmentArchiveName>
+			<FragmentArchiveName>xleres/ProcMat\Wood\WoodPlanks.sh:WoodPlanks</FragmentArchiveName>
 			<NodeId>37</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>3</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Mix3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Mix3</FragmentArchiveName>
 			<NodeId>38</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>4</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Color.sh:RGB</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Color.sh:RGB</FragmentArchiveName>
 			<NodeId>39</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>5</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Color.sh:RGB</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Color.sh:RGB</FragmentArchiveName>
 			<NodeId>40</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>6</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Color.sh:RGB</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Color.sh:RGB</FragmentArchiveName>
 			<NodeId>41</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>7</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Mix3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Mix3</FragmentArchiveName>
 			<NodeId>42</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>8</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/ProcMat\Wood\WoodGnarlGrainStain.sh:WoodGnarlGrainStain</FragmentArchiveName>
+			<FragmentArchiveName>xleres/ProcMat\Wood\WoodGnarlGrainStain.sh:WoodGnarlGrainStain</FragmentArchiveName>
 			<NodeId>43</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>9</VisualNodeId>

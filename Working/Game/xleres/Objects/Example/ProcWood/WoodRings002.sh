@@ -1,7 +1,7 @@
 // CompoundDocument:1
-#include "game/xleres/System/Prefix.h"
+#include "xleres/System/Prefix.h"
 
-#include "game/xleres/Nodes/Basic.sh"
+#include "xleres/Nodes/Basic.sh"
 
 
 void WoodRings002(float3 coords, float density, float strength, float shape, out float rings : SV_Target0)
@@ -256,85 +256,85 @@ void WoodRings002(float3 coords, float density, float strength, float shape, out
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>111</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>1</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Separate3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Separate3</FragmentArchiveName>
 			<NodeId>98</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>2</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Round1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Round1</FragmentArchiveName>
 			<NodeId>99</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>3</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
 			<NodeId>100</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>4</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Subtract1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Subtract1</FragmentArchiveName>
 			<NodeId>101</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>5</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>102</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>6</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
 			<NodeId>103</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>7</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>104</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>8</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Cosine1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Cosine1</FragmentArchiveName>
 			<NodeId>105</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>9</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>106</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>10</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Power1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Power1</FragmentArchiveName>
 			<NodeId>107</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>11</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Power1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Power1</FragmentArchiveName>
 			<NodeId>108</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>12</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
 			<NodeId>109</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>13</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>110</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>14</VisualNodeId>

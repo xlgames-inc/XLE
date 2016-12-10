@@ -1,10 +1,10 @@
 // CompoundDocument:1
-#include "game/xleres/System/Prefix.h"
+#include "xleres/System/Prefix.h"
 
-#include "game/xleres/Objects/Example/ProcWood/Wood_04_G.sh"
-#include "game/xleres/Surface.h"
-#include "game/xleres/Nodes/Output.sh"
-#include "game/xleres/Nodes/MaterialParam.sh"
+#include "xleres/Objects/Example/ProcWood/Wood_04_G.sh"
+#include "xleres/Surface.h"
+#include "xleres/Nodes/Output.sh"
+#include "xleres/Nodes/MaterialParam.sh"
 
 
 void ProcWood(VSOutput geo, out GBufferValues result)
@@ -113,31 +113,31 @@ void ProcWood(VSOutput geo, out GBufferValues result)
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/Objects/Example/ProcWood\Wood_04_G.sh:Wood_04_G</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Objects/Example/ProcWood\Wood_04_G.sh:Wood_04_G</FragmentArchiveName>
 			<NodeId>31</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>0</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Surface.h:GetWorldPosition</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Surface.h:GetWorldPosition</FragmentArchiveName>
 			<NodeId>35</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>1</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Output.sh:Output_PerPixel</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Output.sh:Output_PerPixel</FragmentArchiveName>
 			<NodeId>32</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>2</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\MaterialParam.sh:CommonMaterialParam_Make</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\MaterialParam.sh:CommonMaterialParam_Make</FragmentArchiveName>
 			<NodeId>33</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>3</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Surface.h:GetNormal</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Surface.h:GetNormal</FragmentArchiveName>
 			<NodeId>34</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>4</VisualNodeId>
@@ -291,7 +291,7 @@ GBufferEncoded deferred_main(VSOutput geo)
 
 
 
-#include "game/xleres/Forward/Transparency/util.h"
+#include "xleres/Forward/Transparency/util.h"
 
 float4 io_main(VSOutput geo, SystemInputs sys) : SV_Target0
 {
@@ -405,7 +405,7 @@ float4 stochastic_main(VSOutput geo,
 
 
 /* <<Chunk:TechniqueConfig:main>>--(
-~Inherit; game/xleres/techniques/illum.tech
+~Inherit; xleres/techniques/illum.tech
 ~Forward
     ~Parameters
         ~Material

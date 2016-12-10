@@ -1,8 +1,8 @@
 // CompoundDocument:1
-#include "game/xleres/System/Prefix.h"
+#include "xleres/System/Prefix.h"
 
-#include "game/xleres/Nodes/Texture.sh"
-#include "game/xleres/Nodes/Basic.sh"
+#include "xleres/Nodes/Texture.sh"
+#include "xleres/Nodes/Basic.sh"
 
 
 void WoodGnarlGrainStain(float gnarlDensity, float3 coords, float gnarlStrength, float grainStrength, float stain, float grainDensity, out float grain : SV_Target0, out float3 gnarledCoords : SV_Target1)
@@ -315,97 +315,97 @@ void WoodGnarlGrainStain(float gnarlDensity, float3 coords, float gnarlStrength,
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:NoiseTexture3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:NoiseTexture3</FragmentArchiveName>
 			<NodeId>57</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>0</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Subtract1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Subtract1</FragmentArchiveName>
 			<NodeId>61</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>2</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply3Scalar</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply3Scalar</FragmentArchiveName>
 			<NodeId>46</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>3</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>47</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>4</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>48</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>5</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Subtract1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Subtract1</FragmentArchiveName>
 			<NodeId>49</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>6</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Subtract1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Subtract1</FragmentArchiveName>
 			<NodeId>50</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>7</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>51</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>8</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>52</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>9</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Add3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Add3</FragmentArchiveName>
 			<NodeId>53</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>10</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:NoiseTexture3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Texture.sh:NoiseTexture3</FragmentArchiveName>
 			<NodeId>54</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>11</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply3</FragmentArchiveName>
 			<NodeId>55</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>12</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Subtract3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Subtract3</FragmentArchiveName>
 			<NodeId>56</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>13</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Subtract1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Subtract1</FragmentArchiveName>
 			<NodeId>58</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>14</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>59</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>15</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes/Basic.sh:Add1</FragmentArchiveName>
 			<NodeId>60</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>16</VisualNodeId>

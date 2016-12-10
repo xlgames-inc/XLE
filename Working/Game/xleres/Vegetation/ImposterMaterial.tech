@@ -10,8 +10,8 @@
         ~Runtime
             BASIC_LIGHT_COUNT=1
             SHADOW_CASCADE_MODE=2
-    VertexShader0=game/xleres/vegetation/imposter.sh:vs_main
-    PixelShader0=game/xleres/vegetation/imposter.sh:ps_illum
+    VertexShader0=xleres/vegetation/imposter.sh:vs_main
+    PixelShader0=xleres/vegetation/imposter.sh:ps_illum
 ~DepthOnly
     ~Inherit;
     ~Parameters
@@ -20,21 +20,21 @@
             MAT_ALPHA_TEST
             MAT_ALPHA_TEST_PREDEPTH
         ~Runtime
-    VertexShader=game/xleres/vegetation/imposter.sh:vs_main
-    PixelShader=game/xleres/vegetation/imposter.sh:ps_depthonly
-    GeometryShader=game/xleres/vegetation/imposter.sh:gs_main
+    VertexShader=xleres/vegetation/imposter.sh:vs_main
+    PixelShader=xleres/vegetation/imposter.sh:ps_depthonly
+    GeometryShader=xleres/vegetation/imposter.sh:gs_main
 ~Deferred
     ~Inherit; ../techniques/shared.tech:Deferred
     ~Parameters
         ~Geometry
         ~GlobalEnvironment
-    VertexShader=game/xleres/vegetation/imposter.sh:vs_main
-    PixelShader=game/xleres/vegetation/imposter.sh:ps_deferred
-    GeometryShader=game/xleres/vegetation/imposter.sh:gs_main
+    VertexShader=xleres/vegetation/imposter.sh:vs_main
+    PixelShader=xleres/vegetation/imposter.sh:ps_deferred
+    GeometryShader=xleres/vegetation/imposter.sh:gs_main
 ~VisWireframe
     ~Parameters
         ~Geometry
             OUTPUT_WORLD_POSITION=1
-    VertexShader=game/xleres/forward/illum.vsh:main
-    GeometryShader=game/xleres/solidwireframe.gsh:main
-    PixelShader=game/xleres/solidwireframe.psh:main
+    VertexShader=xleres/forward/illum.vsh:main
+    GeometryShader=xleres/solidwireframe.gsh:main
+    PixelShader=xleres/solidwireframe.psh:main

@@ -10,8 +10,8 @@
             SKIP_MATERIAL_DIFFUSE=0
         ~Material
             MAT_BLEND_FOG=1
-    VertexShader=game/xleres/forward/illum.vsh:main
-    PixelShader=game/xleres/forward/illum.psh:main
+    VertexShader=xleres/forward/illum.vsh:main
+    PixelShader=xleres/forward/illum.psh:main
 ~DepthOnly
     ~Inherit; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn
     ~Parameters
@@ -19,8 +19,8 @@
             GEO_HAS_TEXCOORD
         ~Material
             MAT_ALPHA_TEST
-    VertexShader=game/xleres/forward/depthonly.vsh:main
-    PixelShader=game/xleres/forward/depthonly.psh:main
+    VertexShader=xleres/forward/depthonly.vsh:main
+    PixelShader=xleres/forward/depthonly.psh:main
 ~Deferred
     ~Inherit; ../techniques/shared.tech:CommonMaterial; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn; ../techniques/shared.tech:System; ../techniques/shared.tech:Deferred
     ~Parameters
@@ -32,8 +32,8 @@
         ~GlobalEnvironment
             CLASSIFY_NORMAL_MAP
             SKIP_MATERIAL_DIFFUSE=0
-    VertexShader=game/xleres/deferred/basic.vsh:main
-    PixelShader=game/xleres/deferred/basic.psh:main
+    VertexShader=xleres/deferred/basic.vsh:main
+    PixelShader=xleres/deferred/basic.psh:main
 ~ShadowGen
     ~Inherit; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn
     ~Parameters
@@ -49,9 +49,9 @@
             SHADOW_CASCADE_MODE
             OUTPUT_SHADOW_PROJECTION_COUNT=6
             SHADOW_ENABLE_NEAR_CASCADE
-    VertexShader=game/xleres/shadowgen/depthonly.vsh:main
-    GeometryShader=game/xleres/shadowgen/depthonly.gsh:main
-    PixelShader=game/xleres/shadowgen/depthonly.psh:main
+    VertexShader=xleres/shadowgen/depthonly.vsh:main
+    GeometryShader=xleres/shadowgen/depthonly.gsh:main
+    PixelShader=xleres/shadowgen/depthonly.psh:main
 ~OrderIndependentTransparency
     ~Inherit; ../techniques/shared.tech:CommonMaterial; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn; ../techniques/shared.tech:System
     ~Parameters
@@ -64,8 +64,8 @@
             OUTPUT_LOCAL_VIEW_VECTOR=1
             OUTPUT_WORLD_VIEW_VECTOR=1
             OUTPUT_WORLD_POSITION=1
-    VertexShader=game/xleres/forward/illum.vsh:main
-    PixelShader=game/xleres/forward/transparency/illum.psh:main
+    VertexShader=xleres/forward/illum.vsh:main
+    PixelShader=xleres/forward/transparency/illum.psh:main
 ~RayTest
     ~Inherit; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn
     ~Parameters
@@ -74,6 +74,6 @@
             OUTPUT_WORLD_POSITION=1
         ~Material
             MAT_ALPHA_TEST
-    VertexShader=game/xleres/forward/illum.vsh:main
-    GeometryShader=game/xleres/forward/raytest.gsh:triangles
+    VertexShader=xleres/forward/illum.vsh:main
+    GeometryShader=xleres/forward/raytest.gsh:triangles
     PixelShader=null

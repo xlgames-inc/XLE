@@ -1,9 +1,9 @@
 // CompoundDocument:1
-#include "game/xleres/System/Prefix.h"
+#include "xleres/System/Prefix.h"
 
-#include "game/xleres/Nodes/Basic.sh"
-#include "game/xleres/Lighting/SpecularMethods.h"
-#include "game/xleres/Lighting/LightingAlgorithm.h"
+#include "xleres/Nodes/Basic.sh"
+#include "xleres/Lighting/SpecularMethods.h"
+#include "xleres/Lighting/LightingAlgorithm.h"
 
 
 void GGXTransmission(float roughness, float iorIncident, float iorOutgoing, float3 i, float3 o, float3 n, out float result : SV_Target0)
@@ -516,157 +516,157 @@ void GGXTransmission(float roughness, float iorIncident, float iorOutgoing, floa
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Subtract1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Subtract1</FragmentArchiveName>
 			<NodeId>66</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>0</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>20</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>1</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>22</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>2</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:RoughnessToDAlpha</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Lighting\SpecularMethods.h:RoughnessToDAlpha</FragmentArchiveName>
 			<NodeId>23</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>3</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>39</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>4</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>27</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>5</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
 			<NodeId>19</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>6</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
 			<NodeId>29</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>7</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
 			<NodeId>35</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>8</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
 			<NodeId>40</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>9</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
 			<NodeId>34</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>10</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
 			<NodeId>28</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>11</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
 			<NodeId>25</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>12</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
 			<NodeId>24</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>13</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
 			<NodeId>30</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>14</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
 			<NodeId>38</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>15</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Square1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Square1</FragmentArchiveName>
 			<NodeId>31</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>16</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:MultiplyMany1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:MultiplyMany1</FragmentArchiveName>
 			<NodeId>15</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>18</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
 			<NodeId>37</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>19</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:RoughnessToGAlpha</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Lighting\SpecularMethods.h:RoughnessToGAlpha</FragmentArchiveName>
 			<NodeId>33</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>20</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:SmithG</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Lighting\SpecularMethods.h:SmithG</FragmentArchiveName>
 			<NodeId>26</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>21</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:SmithG</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Lighting\SpecularMethods.h:SmithG</FragmentArchiveName>
 			<NodeId>36</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>22</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>17</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>23</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:TrowReitzD</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Lighting\SpecularMethods.h:TrowReitzD</FragmentArchiveName>
 			<NodeId>16</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>24</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Square1</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Nodes\Basic.sh:Square1</FragmentArchiveName>
 			<NodeId>18</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>25</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\LightingAlgorithm.h:CalculateHt</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Lighting\LightingAlgorithm.h:CalculateHt</FragmentArchiveName>
 			<NodeId>21</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>27</VisualNodeId>
