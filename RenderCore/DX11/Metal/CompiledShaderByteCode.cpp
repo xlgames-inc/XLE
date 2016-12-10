@@ -178,14 +178,7 @@ namespace RenderCore { namespace Metal_DX11
         IncludeHandler(const utf8 baseDirectory[]) : _baseDirectory(baseDirectory) 
         {
             _searchDirectories.push_back(baseDirectory);
-
-			if (&ConsoleRig::GlobalServices::GetInstance()) {
-				auto& serv = ConsoleRig::GlobalServices::GetCrossModule()._services;
-				auto assetRoot = serv.CallDefault(ConstHash64<'asse', 'troo', 't'>::Value, std::basic_string<utf8>());
-				_searchDirectories.push_back(assetRoot);		// if we can't find a file relative to the base directory, then search relative the current working folder
-			} else {
-				_searchDirectories.push_back(u(""));
-			}
+			_searchDirectories.push_back(u(""));
         }
         ~IncludeHandler() {}
     private:
