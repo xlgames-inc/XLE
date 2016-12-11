@@ -10,6 +10,9 @@
 #include <string>
 #include <memory>
 
+namespace Utility { template<typename CharType> class StringSection; }
+using namespace Utility;
+
 namespace Assets
 {
     typedef char ResChar;
@@ -29,7 +32,7 @@ namespace Assets
             const ResChar* Initializer() const { return _initializer; }
             virtual AssetState State() const = 0;
 
-            AssetException(const ResChar initializer[], const char what[]);
+            AssetException(StringSection<ResChar> initializer, const char what[]);
         private:
             ResChar _initializer[512];
         };
@@ -47,7 +50,7 @@ namespace Assets
             virtual bool CustomReport() const;
             virtual AssetState State() const;
 
-            InvalidAsset(const ResChar initializer[], const char what[]);
+            InvalidAsset(StringSection<ResChar> initializer, const char what[]);
         };
 
         /// <summary>An asset is still being loaded</summary>
@@ -63,7 +66,7 @@ namespace Assets
             virtual bool CustomReport() const;
             virtual AssetState State() const;
 
-            PendingAsset(const ResChar initializer[], const char what[]);
+            PendingAsset(StringSection<ResChar> initializer, const char what[]);
         };
 
         class FormatError : public ::Exceptions::BasicLabel

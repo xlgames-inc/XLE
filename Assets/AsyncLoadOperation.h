@@ -18,7 +18,7 @@ namespace Assets
     class AsyncLoadOperation
     {
     public:
-        static void Enqueue(const std::shared_ptr<AsyncLoadOperation>& op, const ResChar filename[], CompletionThreadPool& pool);
+        static void Enqueue(const std::shared_ptr<AsyncLoadOperation>& op, StringSection<ResChar> filename, CompletionThreadPool& pool);
 
         AsyncLoadOperation();
         virtual ~AsyncLoadOperation();

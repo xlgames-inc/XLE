@@ -412,7 +412,7 @@ namespace RenderCore { namespace Assets
     }
 
 	std::shared_ptr<::Assets::DeferredConstruction> SkeletonScaffold::BeginDeferredConstruction(
-		const ::Assets::ResChar* initializers[], unsigned initializerCount)
+		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
 	{
 		return ::Assets::DefaultBeginDeferredConstruction<SkeletonScaffold>(initializers, initializerCount);
 	}
@@ -506,7 +506,7 @@ namespace RenderCore { namespace Assets
     }
 
 	std::shared_ptr<::Assets::DeferredConstruction> AnimationSetScaffold::BeginDeferredConstruction(
-		const ::Assets::ResChar* initializers[], unsigned initializerCount)
+		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
 	{
 		return ::Assets::DefaultBeginDeferredConstruction<AnimationSetScaffold>(initializers, initializerCount);
 	}

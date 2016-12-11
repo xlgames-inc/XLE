@@ -229,7 +229,7 @@ namespace RenderCore { namespace Assets
     }
 
 	std::shared_ptr<::Assets::DeferredConstruction> ModelScaffold::BeginDeferredConstruction(
-		const ::Assets::ResChar* initializers[], unsigned initializerCount)
+		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
 	{
 		return ::Assets::DefaultBeginDeferredConstruction<ModelScaffold>(initializers, initializerCount);
 	}
@@ -321,12 +321,12 @@ namespace RenderCore { namespace Assets
     }
 
 	std::shared_ptr<::Assets::DeferredConstruction> ModelSupplementScaffold::BeginDeferredConstruction(
-		const ::Assets::ResChar* initializers[], unsigned initializerCount)
+		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
 	{
 		// Special case version of this function for ModelSupplementScaffold
 		// First parameter is actually a uint64, which is our compile type
-		assert(initializerCount >= 2);
-		return ::Assets::DefaultBeginDeferredConstruction<ModelScaffold>(initializers+1, initializerCount-1, *(const uint64*)initializers[0]);
+		assert(initializerCount >= 2 && (initializers[0].size()*sizeof(::Assets::ResChar)) >= sizeof(uint64));
+		return ::Assets::DefaultBeginDeferredConstruction<ModelScaffold>(initializers+1, initializerCount-1, *(const uint64*)initializers[0].begin());
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

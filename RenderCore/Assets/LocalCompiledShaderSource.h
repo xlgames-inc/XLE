@@ -27,17 +27,17 @@ namespace RenderCore { namespace Assets
     {
     public:
         std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
-            uint64 typeCode, const ::Assets::ResChar* initializers[], unsigned initializerCount,
+            uint64 typeCode, const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& destinationStore);
 
         using IPendingMarker = ShaderService::IPendingMarker;
         std::shared_ptr<IPendingMarker> CompileFromFile(
-            const ::Assets::ResChar resId[], 
-            const ::Assets::ResChar definesTable[]) const;
+            StringSection<::Assets::ResChar> resId, 
+            StringSection<::Assets::ResChar> definesTable) const;
             
         std::shared_ptr<IPendingMarker> CompileFromMemory(
-            const char shaderInMemory[], const char entryPoint[], 
-            const char shaderModel[], const ::Assets::ResChar definesTable[]) const;
+            StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
+            StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
 
         void StallOnPendingOperations(bool cancelAll);
 

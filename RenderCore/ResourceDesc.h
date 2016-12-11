@@ -254,7 +254,7 @@ namespace RenderCore
         CPUAccess::BitField cpuAccess, 
         GPUAccess::BitField gpuAccess,
         const TextureDesc& textureDesc,
-        const char name[])
+        StringSection<char> name)
     {
 		ResourceDesc desc;
         desc._type = ResourceDesc::Type::Texture;
@@ -272,7 +272,7 @@ namespace RenderCore
         CPUAccess::BitField cpuAccess, 
         GPUAccess::BitField gpuAccess,
         const LinearBufferDesc& linearBufferDesc,
-        const char name[])
+        StringSection<char> name)
     {
 		ResourceDesc desc;
         desc._type = ResourceDesc::Type::LinearBuffer;

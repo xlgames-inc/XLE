@@ -269,7 +269,7 @@ namespace Assets
 
 	FileSystem_OS::FileSystem_OS(StringSection<utf8> root)
 	{
-		if (!root.Empty()) {
+		if (!root.IsEmpty()) {
 			_rootUTF8 = root.AsString() + u("/");
 
 			// primitive utf8 -> utf16 conversion

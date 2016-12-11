@@ -17,7 +17,7 @@
 
 namespace RenderCore { namespace Techniques
 {
-    PredefinedCBLayout::PredefinedCBLayout(const ::Assets::ResChar initializer[])
+    PredefinedCBLayout::PredefinedCBLayout(StringSection<::Assets::ResChar> initializer)
     {
         // Here, we will read a simple configuration file that will define the layout
         // of a constant buffer. Sometimes we need to get the layout of a constant 

@@ -52,7 +52,7 @@ namespace SceneEngine
 
     ImpliedTyping::TypeDesc TerrainUberSurfaceGeneric::Format() const { return _format; }
 
-    TerrainUberSurfaceGeneric::TerrainUberSurfaceGeneric(const ::Assets::ResChar filename[])
+    TerrainUberSurfaceGeneric::TerrainUberSurfaceGeneric(StringSection<::Assets::ResChar> filename)
     {
         _width = _height = 0;
         _dataStart = nullptr;
@@ -116,7 +116,7 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template <typename Type>
-        TerrainUberSurface<Type>::TerrainUberSurface(const ::Assets::ResChar filename[])
+        TerrainUberSurface<Type>::TerrainUberSurface(StringSection<::Assets::ResChar> filename)
             : TerrainUberSurfaceGeneric(filename)
         {
             if (!(_format == ImpliedTyping::TypeOf<Type>()))

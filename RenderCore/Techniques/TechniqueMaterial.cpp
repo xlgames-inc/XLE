@@ -10,6 +10,7 @@
 #include "../Types.h"
 #include "../../Assets/Assets.h"
 #include "../../Utility/StringUtils.h"
+#include "../../Utility/StringFormat.h"
 
 namespace RenderCore { namespace Techniques
 {
@@ -78,7 +79,7 @@ namespace RenderCore { namespace Techniques
 
     auto TechniqueMaterial::FindVariation(
         ParsingContext& parsingContext,
-        unsigned techniqueIndex, const char techniqueConfigName[]) const -> Variation
+        unsigned techniqueIndex, StringSection<::Assets::ResChar> techniqueConfig) const -> Variation
     {
         const ParameterBox* state[] = {
             &_geometryParameters, 
@@ -87,7 +88,7 @@ namespace RenderCore { namespace Techniques
             &_materialParameters
         };
 
-        auto& techConfig = ::Assets::GetAssetDep<ShaderType>(techniqueConfigName);
+        auto& techConfig = ::Assets::GetAssetDep<ShaderType>(techniqueConfig);
 
         Variation result;
         result._cbLayout = nullptr;
@@ -103,22 +104,22 @@ namespace RenderCore { namespace Techniques
         // we must define the layout of this cb in some way that is independent from the compiled
         // shader code...
         if (techConfig.HasEmbeddedCBLayout()) {
-            result._cbLayout = &::Assets::GetAssetDep<PredefinedCBLayout>(techniqueConfigName);
+            result._cbLayout = &::Assets::GetAssetDep<PredefinedCBLayout>(techniqueConfig);
         } else {
             // This is the default CB layout where there isn't one explicitly referenced by the
             // technique config file
-            result._cbLayout = &::Assets::GetAssetDep<PredefinedCBLayout>(DefaultPredefinedCBLayout);
+            result._cbLayout = &::Assets::GetAssetDep<PredefinedCBLayout>(MakeStringSection(DefaultPredefinedCBLayout));
         }
         return result;
     }
 
-    const PredefinedCBLayout& TechniqueMaterial::GetCBLayout(const ::Assets::ResChar techniqueConfigName[])
+    const PredefinedCBLayout& TechniqueMaterial::GetCBLayout(StringSection<::Assets::ResChar> techniqueConfigName)
     {
         auto& techConfig = ::Assets::GetAssetDep<ShaderType>(techniqueConfigName);
         if (techConfig.HasEmbeddedCBLayout()) {
             return ::Assets::GetAssetDep<PredefinedCBLayout>(techniqueConfigName);
         } else {
-            return ::Assets::GetAssetDep<PredefinedCBLayout>(DefaultPredefinedCBLayout);
+            return ::Assets::GetAssetDep<PredefinedCBLayout>(MakeStringSection(DefaultPredefinedCBLayout));
         }
     }
 

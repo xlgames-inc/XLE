@@ -7,6 +7,7 @@
 #pragma once
 
 #include "AssetsCore.h"
+#include "../Utility/StringUtils.h"
 #include "../Core/Types.h"
 #include <memory>
 #include <vector>
@@ -38,8 +39,8 @@ namespace Assets
         ChangeEventId AddOnChangeEvent(OnChangeEvent evnt);
         void RemoveOnChangeEvent(ChangeEventId id);
 
-        void MarkInvalid(const rstring& name, const rstring& errorString);
-        void MarkValid(const ResChar name[]);
+        void MarkInvalid(StringSection<ResChar> name, StringSection<ResChar> errorString);
+        void MarkValid(StringSection<ResChar> name);
         bool HasInvalidAssets() const;
 
         InvalidAssetManager(bool active);

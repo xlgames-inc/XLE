@@ -374,7 +374,7 @@ namespace SceneEngine
     void PlacementsCache::Item::Reload()
     {
         _placements.reset();
-        _placements = std::make_unique<Placements>(_filename.c_str());
+        _placements = std::make_unique<Placements>(MakeStringSection(_filename));
     }
 
     PlacementsCache::PlacementsCache() {}

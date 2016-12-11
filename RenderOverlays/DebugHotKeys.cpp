@@ -54,7 +54,7 @@ namespace RenderOverlays
         while (attrib) {
 
             auto executeString = attrib.Value();
-            if (!executeString.Empty()) {
+            if (!executeString.IsEmpty()) {
                 auto keyName = attrib.Name();
                 auto p = std::make_pair(
                     RenderOverlays::DebuggingDisplay::KeyId_Make(

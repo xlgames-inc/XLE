@@ -46,16 +46,16 @@ namespace RenderCore { namespace Assets
     public:
         const Metal::ShaderResourceView&        GetShaderResource() const;
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
-        const ::Assets::ResChar*                Initializer() const;
+        StringSection<::Assets::ResChar>		Initializer() const;
 
-        static Metal::ShaderResourceView LoadImmediately(const ::Assets::ResChar initializer[]);
-        static Format LoadFormat(const ::Assets::ResChar initializer[]);
-        static bool IsDXTNormalMap(const ::Assets::ResChar initializer[]);
+        static Metal::ShaderResourceView LoadImmediately(StringSection<::Assets::ResChar> initializer);
+        static Format LoadFormat(StringSection<::Assets::ResChar> initializer);
+        static bool IsDXTNormalMap(StringSection<::Assets::ResChar> initializer);
 
         ::Assets::AssetState GetAssetState() const;
         ::Assets::AssetState TryResolve() const;
 
-        explicit DeferredShaderResource(const ::Assets::ResChar resourceName[]);
+        explicit DeferredShaderResource(StringSection<::Assets::ResChar> resourceName);
         DeferredShaderResource(DeferredShaderResource&& moveFrom) never_throws;
         DeferredShaderResource& operator=(DeferredShaderResource&& moveFrom) never_throws;
         ~DeferredShaderResource();

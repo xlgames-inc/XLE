@@ -92,6 +92,9 @@ namespace Utility
     XL_UTILITY_API uint64 Hash64(const char str[], uint64 seed = DefaultSeed64);
     XL_UTILITY_API uint64 Hash64(const std::string& str, uint64 seed = DefaultSeed64);
 
+	template <typename CharType> class StringSection;
+	XL_UTILITY_API uint64 Hash64(StringSection<char> str, uint64 seed = DefaultSeed64);
+
 	inline uint64 HashCombine(uint64 high, uint64 low)
 	{
 		// This code based on "FarmHash"... which was in-turn

@@ -14,7 +14,7 @@ namespace RenderCore
 {
 
     auto MinimalShaderSource::PendingMarker::Resolve(
-        const char initializer[],
+        StringSection<::Assets::ResChar> initializer,
         const std::shared_ptr<::Assets::DependencyValidation>& depVal) const -> const Payload&
     {
         if (!_payload) {

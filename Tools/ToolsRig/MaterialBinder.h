@@ -72,7 +72,7 @@ namespace ToolsRig
             const ::Assets::DirectorySearchRules& searchRules,
             const RenderCore::InputLayout& geoInputLayout);
         
-        MaterialBinder(const ::Assets::ResChar shaderTypeName[]);
+        MaterialBinder(StringSection<::Assets::ResChar> shaderTypeName);
         virtual ~MaterialBinder();
     protected:
         ::Assets::rstring _shaderTypeName;

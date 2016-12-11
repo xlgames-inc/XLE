@@ -19,7 +19,7 @@ namespace RenderCore { namespace Assets
     public:
         std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
             uint64 typeCode, 
-            const ::Assets::ResChar* initializers[], unsigned initializerCount,
+            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& destinationStore);
 
         void StallOnPendingOperations(bool cancelAll);

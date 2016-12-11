@@ -32,7 +32,7 @@ namespace RenderCore { namespace Techniques
         SharedPkt BuildCBDataAsPkt(const ParameterBox& parameters) const;
 
         PredefinedCBLayout();
-        PredefinedCBLayout(const ::Assets::ResChar initializer[]);
+        PredefinedCBLayout(StringSection<::Assets::ResChar> initializer);
         PredefinedCBLayout(StringSection<char> source, bool);
         ~PredefinedCBLayout();
 

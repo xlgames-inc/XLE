@@ -75,7 +75,7 @@ namespace Assets
         }
 
         std::shared_ptr<ICompileMarker> BeginCompileOperation(
-            uint64 typeCode, const ResChar* initializers[], 
+            uint64 typeCode, const StringSection<ResChar> initializers[], 
             unsigned initializerCount)
         {
             auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();

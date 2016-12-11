@@ -538,7 +538,7 @@ namespace ColladaConversion
 	ColladaCompileOp::ColladaCompileOp() {}
 	ColladaCompileOp::~ColladaCompileOp() {}
 
-	std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperation(const ::Assets::ResChar identifier[])
+	std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperation(StringSection<::Assets::ResChar> identifier)
 	{
 #pragma comment(linker, "/EXPORT:CreateCompileOperation=" __FUNCDNAME__)
 
@@ -554,7 +554,7 @@ namespace ColladaConversion
 				result->_fileData.GetData(), 
 				PtrAdd(result->_fileData.GetData(), result->_fileData.GetSize())));
 
-		result->_name = identifier;
+		result->_name = identifier.AsString();
 		result->_rootNode = split.Parameters().AsString();
 		result->_doc = std::make_shared<ColladaConversion::DocumentScaffold>();
 		result->_doc->Parse(formatter);

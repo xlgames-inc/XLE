@@ -11,12 +11,13 @@
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/StringFormat.h"
 
 namespace ColladaConversion
 {
     bool ImportCameras = true;
 
-    ImportConfiguration::ImportConfiguration(const ::Assets::ResChar filename[])
+    ImportConfiguration::ImportConfiguration(StringSection<::Assets::ResChar> filename)
     {
         TRY 
         {

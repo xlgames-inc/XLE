@@ -34,9 +34,9 @@ namespace Assets
     }
 
 
-    ITransaction::ITransaction(const char name[], uint64 assetId, uint64 typeCode, std::shared_ptr<UndoQueue> undoQueue)
+    ITransaction::ITransaction(StringSection<ResChar> name, uint64 assetId, uint64 typeCode, std::shared_ptr<UndoQueue> undoQueue)
 	: _undoQueue(std::move(undoQueue))
-    , _name(name), _assetId(assetId), _typeCode(typeCode)
+    , _name(name.AsString()), _assetId(assetId), _typeCode(typeCode)
 	{}
 
 	ITransaction::~ITransaction()

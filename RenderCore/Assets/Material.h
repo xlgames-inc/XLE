@@ -98,7 +98,7 @@ namespace RenderCore { namespace Assets
         ~MaterialScaffold();
 
 		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const ::Assets::ResChar* initializers[], unsigned initializerCount);
+			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
     protected:
         std::unique_ptr<uint8[]> _rawMemoryBlock;
 
@@ -153,11 +153,11 @@ namespace RenderCore { namespace Assets
         ~RawMaterial();
 
 		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const ::Assets::ResChar* initializers[], unsigned initializerCount);
+			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 
-        static const RawMaterial& GetAsset(const ::Assets::ResChar initializer[]);
-        static const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>& GetDivergentAsset(const ::Assets::ResChar initializer[]);
-		static std::unique_ptr<RawMaterial> CreateNew(const ::Assets::ResChar initialiser[]);
+        static const RawMaterial& GetAsset(StringSection<::Assets::ResChar> initializer);
+        static const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>& GetDivergentAsset(StringSection<::Assets::ResChar> initializer);
+		static std::unique_ptr<RawMaterial> CreateNew(StringSection<::Assets::ResChar> initialiser);
 
     private:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
@@ -168,8 +168,8 @@ namespace RenderCore { namespace Assets
 
     void ResolveMaterialFilename(
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
-        const ::Assets::DirectorySearchRules& searchRules, const char baseMatName[]);
-    uint64 MakeMaterialGuid(const utf8* nameStart, const utf8* nameEnd);
+        const ::Assets::DirectorySearchRules& searchRules, StringSection<char> baseMatName);
+    uint64 MakeMaterialGuid(StringSection<utf8> name);
 
     template<typename Serializer>
         void ResolvedMaterial::Serialize(Serializer& serializer) const

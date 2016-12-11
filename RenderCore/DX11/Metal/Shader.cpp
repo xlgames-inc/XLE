@@ -24,7 +24,7 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    VertexShader::VertexShader(const ResChar initializer[])
+    VertexShader::VertexShader(StringSection<ResChar> initializer)
     {
             //
             //      We have to append the shader model to the resource name
@@ -61,7 +61,7 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    PixelShader::PixelShader(const ResChar initializer[])
+    PixelShader::PixelShader(StringSection<ResChar> initializer)
     {
             //
             //      We have to append the shader model to the resource name
@@ -118,7 +118,7 @@ namespace RenderCore { namespace Metal_DX11
         return finalCount;
     }
 
-    GeometryShader::GeometryShader( const ResChar initializer[],
+    GeometryShader::GeometryShader( StringSection<ResChar> initializer,
                                     const StreamOutputInitializers& soInitializers)
     {
             //
@@ -228,7 +228,7 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ComputeShader::ComputeShader(const ResChar initializer[], const ResChar definesTable[])
+    ComputeShader::ComputeShader(StringSection<ResChar> initializer, StringSection<ResChar> definesTable)
     {
         ResChar temp[MaxPath];
         if (!XlFindStringI(initializer, "cs_")) {
@@ -236,7 +236,7 @@ namespace RenderCore { namespace Metal_DX11
             initializer = temp;
         }
 
-        const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable?definesTable:"");
+        const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
         assert(compiledShader.GetStage() == ShaderStage::Compute);
         auto byteCode = compiledShader.GetByteCode();
         _underlying = GetObjectFactory().CreateComputeShader(byteCode.first, byteCode.second);
@@ -263,7 +263,7 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    DomainShader::DomainShader(const ResChar initializer[], const ResChar definesTable[])
+    DomainShader::DomainShader(StringSection<ResChar> initializer, StringSection<ResChar> definesTable)
     {
         ResChar temp[MaxPath];
         if (!XlFindStringI(initializer, "ds_")) {
@@ -271,7 +271,7 @@ namespace RenderCore { namespace Metal_DX11
             initializer = temp;
         }
 
-		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable?definesTable:"");
+		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
         assert(compiledShader.GetStage() == ShaderStage::Domain);
         auto byteCode = compiledShader.GetByteCode();
         _underlying = GetObjectFactory().CreateDomainShader(byteCode.first, byteCode.second);
@@ -296,7 +296,7 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    HullShader::HullShader(const ResChar initializer[], const ResChar definesTable[])
+    HullShader::HullShader(StringSection<ResChar> initializer, StringSection<ResChar> definesTable)
     {
         ResChar temp[MaxPath];
         if (!XlFindStringI(initializer, "hs_")) {
@@ -304,7 +304,7 @@ namespace RenderCore { namespace Metal_DX11
             initializer = temp;
         }
 
-		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable?definesTable:"");
+		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
         assert(compiledShader.GetStage() == ShaderStage::Hull);
         auto byteCode = compiledShader.GetByteCode();
         _underlying = GetObjectFactory().CreateHullShader(byteCode.first, byteCode.second);
@@ -329,8 +329,8 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ShaderProgram::ShaderProgram(   const ResChar vertexShaderInitializer[], 
-                                    const ResChar fragmentShaderInitializer[])
+    ShaderProgram::ShaderProgram(   StringSection<ResChar> vertexShaderInitializer, 
+                                    StringSection<ResChar> fragmentShaderInitializer)
     :   _compiledVertexShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer)) // (odd..?)
     ,   _compiledPixelShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer)) // (odd..?)
     ,   _vertexShader(*_compiledVertexShader)
@@ -342,9 +342,9 @@ namespace RenderCore { namespace Metal_DX11
         Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader->GetDependencyValidation());
     }
     
-    ShaderProgram::ShaderProgram(   const ResChar vertexShaderInitializer[], 
-                                    const ResChar fragmentShaderInitializer[],
-                                    const ResChar definesTable[])
+    ShaderProgram::ShaderProgram(   StringSection<ResChar> vertexShaderInitializer, 
+                                    StringSection<ResChar> fragmentShaderInitializer,
+                                    StringSection<ResChar> definesTable)
     :   _compiledVertexShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer, definesTable)) // (odd..?)
     ,   _compiledPixelShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer, definesTable)) // (odd..?)
     ,   _vertexShader(*_compiledVertexShader)
@@ -356,17 +356,17 @@ namespace RenderCore { namespace Metal_DX11
         Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader->GetDependencyValidation());
     }
 
-    ShaderProgram::ShaderProgram(   const ResChar vertexShaderInitializer[], 
-                                    const ResChar geometryShaderInitializer[],
-                                    const ResChar fragmentShaderInitializer[],
-                                    const ResChar definesTable[])
+    ShaderProgram::ShaderProgram(   StringSection<ResChar> vertexShaderInitializer, 
+                                    StringSection<ResChar> geometryShaderInitializer,
+                                    StringSection<ResChar> fragmentShaderInitializer,
+                                    StringSection<ResChar> definesTable)
     :   _compiledVertexShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer, definesTable)) // (odd..?)
     ,   _compiledPixelShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer, definesTable)) // (odd..?)
     ,   _vertexShader(*_compiledVertexShader)
     ,   _pixelShader(*_compiledPixelShader)
     ,   _compiledGeometryShader(nullptr)
     {
-        if (geometryShaderInitializer && geometryShaderInitializer[0]) {
+        if (!geometryShaderInitializer.IsEmpty()) {
             _compiledGeometryShader = &::Assets::GetAssetComp<CompiledShaderByteCode>(geometryShaderInitializer, definesTable);
             _geometryShader = GeometryShader(*_compiledGeometryShader);
         }
@@ -446,12 +446,12 @@ namespace RenderCore { namespace Metal_DX11
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     DeepShaderProgram::DeepShaderProgram(  
-        const ResChar vertexShaderInitializer[], 
-        const ResChar geometryShaderInitializer[],
-        const ResChar fragmentShaderInitializer[],
-        const ResChar hullShaderInitializer[],
-        const ResChar domainShaderInitializer[],
-        const ResChar definesTable[])
+        StringSection<ResChar> vertexShaderInitializer, 
+        StringSection<ResChar> geometryShaderInitializer,
+        StringSection<ResChar> fragmentShaderInitializer,
+        StringSection<ResChar> hullShaderInitializer,
+        StringSection<ResChar> domainShaderInitializer,
+        StringSection<ResChar> definesTable)
     :   ShaderProgram(vertexShaderInitializer, geometryShaderInitializer, fragmentShaderInitializer, definesTable)
     ,   _compiledHullShader(::Assets::GetAssetComp<CompiledShaderByteCode>(hullShaderInitializer, definesTable))
     ,   _compiledDomainShader(::Assets::GetAssetComp<CompiledShaderByteCode>(domainShaderInitializer, definesTable))

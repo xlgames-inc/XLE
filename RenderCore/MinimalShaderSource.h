@@ -17,7 +17,7 @@ namespace RenderCore
         class PendingMarker : public ShaderService::IPendingMarker
         {
         public:
-            const Payload& Resolve(const char initializer[], const ::Assets::DepValPtr& depVal) const; 
+            const Payload& Resolve(StringSection<::Assets::ResChar> initializer, const ::Assets::DepValPtr& depVal) const; 
             ::Assets::AssetState TryResolve(Payload& result, const ::Assets::DepValPtr& depVal) const;
             Payload GetErrors() const;
 

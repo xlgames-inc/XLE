@@ -57,7 +57,7 @@ namespace Assets
         obj->Complete(obj->GetBuffer(), obj->GetBufferSize());
     }
 
-    void AsyncLoadOperation::Enqueue(const std::shared_ptr<AsyncLoadOperation>& op, const ResChar filename[], CompletionThreadPool& pool)
+    void AsyncLoadOperation::Enqueue(const std::shared_ptr<AsyncLoadOperation>& op, StringSection<ResChar> filename, CompletionThreadPool& pool)
     {
         assert(!op->_hasBeenQueued);
         op->_hasBeenQueued = true;

@@ -79,7 +79,7 @@ namespace Utility
         const CharType* _end;
 
         size_t Length() const                           { return size_t(_end - _start); }
-        bool Empty() const                              { return _end <= _start; }
+        bool IsEmpty() const                            { return _end <= _start; }
         std::basic_string<CharType> AsString() const    { return std::basic_string<CharType>(_start, _end); }
 
         const CharType* begin() const   { return _start; }
@@ -139,6 +139,7 @@ namespace Utility
         ////////////   S T R I N G   S E A R C H I N G   ////////////
     XL_UTILITY_API const char*  XlFindChar          (const char* s, const char ch);
     XL_UTILITY_API char*        XlFindChar          (char* s, const char ch);
+	XL_UTILITY_API const char*  XlFindChar          (StringSection<char> s, char ch);
     XL_UTILITY_API const char*  XlFindAnyChar       (const char s[], const char ch[]);
     XL_UTILITY_API char*        XlFindAnyChar       (char s[], const char delims[]);
     XL_UTILITY_API const char*  XlFindNot           (const char s[], const char ch[]);
@@ -147,6 +148,8 @@ namespace Utility
     XL_UTILITY_API const char*  XlFindString        (const char* s, const char* x);
     XL_UTILITY_API char*        XlFindString        (char* s, const char* x);
     XL_UTILITY_API const char*  XlFindStringI       (const char* s, const char* x);
+	XL_UTILITY_API const char*  XlFindString        (StringSection<char> s, StringSection<char> x);
+	XL_UTILITY_API const char*  XlFindStringI       (StringSection<char> s, StringSection<char> x);
     XL_UTILITY_API const char*  XlFindStringSafe    (const char* s, const char* x, size_t size);
     XL_UTILITY_API const char*  XlReplaceString     (char* dst, size_t size, const char* src, const char* strOld, const char* strNew);
 
@@ -701,6 +704,17 @@ namespace Utility
         }
     }
 
+}
+
+namespace std
+{
+	template<typename CharType>
+		basic_ostream<CharType>& operator<<(basic_ostream<CharType>& stream, Utility::StringSection<CharType> section)
+	{
+		using Demoted = typename Utility::Internal::DemoteCharType<CharType>::Value;
+		stream.write((const Demoted*)section.begin(), section.size());
+		return stream;
+	}
 }
 
 using namespace Utility;

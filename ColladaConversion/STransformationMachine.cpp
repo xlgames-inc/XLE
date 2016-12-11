@@ -100,7 +100,7 @@ namespace ColladaConversion
                 //  animated (because normally the animation controller should use the sid to
                 //  reference it)
             auto paramName = std::string(nodeName) + "/" + AsString(trans.GetSid());
-            const bool isAnimated = !trans.GetSid().Empty() && (assumeEverythingAnimated || nodeRefs.IsAnimated(paramName));
+            const bool isAnimated = !trans.GetSid().IsEmpty() && (assumeEverythingAnimated || nodeRefs.IsAnimated(paramName));
             parameterType = isAnimated ? ParameterType_Animated : ParameterType_Embedded;
             auto parameterId = Hash32(AsPointer(paramName.cbegin()), AsPointer(paramName.cend()));
 

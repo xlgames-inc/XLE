@@ -64,7 +64,7 @@ namespace Assets
 
 		std::vector<AssetChunkResult> ResolveRequests(IteratorRange<const AssetChunkRequest*> requests) const;
 
-		ChunkFileContainer(const ResChar assetTypeName[]);
+		ChunkFileContainer(StringSection<ResChar> assetTypeName);
         ~ChunkFileContainer();
 
 		ChunkFileContainer(const ChunkFileContainer&) = delete;

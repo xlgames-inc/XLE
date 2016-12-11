@@ -57,7 +57,7 @@ namespace Sample
 
         void FlushLoading();
 
-        EnvironmentSceneParser(const ::Assets::ResChar cfgDir[]);
+        EnvironmentSceneParser(StringSection<::Assets::ResChar> cfgDir);
         ~EnvironmentSceneParser();
 
     protected:

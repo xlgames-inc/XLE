@@ -189,7 +189,7 @@ namespace RenderCore { namespace Techniques
         auto GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _validationCallback; }
         bool HasEmbeddedCBLayout() const { return _hasEmbeddedCBLayout; }
 
-        ShaderType(const ::Assets::ResChar resourceName[]);
+        ShaderType(StringSection<::Assets::ResChar> resourceName);
         ~ShaderType();
     private:
         Technique           _technique[size_t(TechniqueIndex::Max)];

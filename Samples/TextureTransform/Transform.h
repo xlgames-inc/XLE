@@ -29,10 +29,10 @@ namespace TextureTransform
         unsigned			_mipCount;
         unsigned			_arrayCount;
 
-        void Save(const ::Assets::ResChar destinationFile[]) const;
+        void Save(StringSection<::Assets::ResChar> destinationFile) const;
 
 	private:
-		void SaveXMLFormat(const ::Assets::ResChar destinationFile[]) const;
+		void SaveXMLFormat(StringSection<::Assets::ResChar> destinationFile) const;
     };
 
     using ProcessingFn = std::function<TextureResult(const RenderCore::TextureDesc&, const ParameterBox&)>;

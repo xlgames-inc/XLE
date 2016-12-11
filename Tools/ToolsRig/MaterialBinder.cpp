@@ -72,8 +72,8 @@ namespace ToolsRig
         return true;
     }
         
-    MaterialBinder::MaterialBinder(const ::Assets::ResChar shaderTypeName[])
-    : _shaderTypeName(shaderTypeName)
+    MaterialBinder::MaterialBinder(StringSection<::Assets::ResChar> shaderTypeName)
+    : _shaderTypeName(shaderTypeName.AsString())
     {}
 
     MaterialBinder::~MaterialBinder() {}

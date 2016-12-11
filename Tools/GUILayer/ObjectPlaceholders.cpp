@@ -54,13 +54,13 @@ namespace GUILayer
 			Metal::DeviceContext& devContext,
 			ParsingContext& parserContext,
 			Metal::ConstantBufferPacket localTransform,
-			unsigned techniqueIndex, const ::Assets::ResChar techniqueConfig[],
+			unsigned techniqueIndex, StringSection<::Assets::ResChar> techniqueConfig,
 			const ParameterBox& materialParams) const;
 
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
-		SimpleModel(const RenderCore::Assets::RawGeometry& geo, const ::Assets::ResChar filename[], unsigned largeBlocksOffset);
-		SimpleModel(const ::Assets::ResChar filename[]);
+		SimpleModel(const RenderCore::Assets::RawGeometry& geo, StringSection<::Assets::ResChar> filename, unsigned largeBlocksOffset);
+		SimpleModel(StringSection<::Assets::ResChar> filename);
 		~SimpleModel();
 	private:
 		Metal::VertexBuffer _vb;
@@ -71,14 +71,14 @@ namespace GUILayer
 		Format _ibFormat;
 		::Assets::DepValPtr _depVal;
 
-		void Build(const RenderCore::Assets::RawGeometry& geo, const ::Assets::ResChar filename[], unsigned largeBlocksOffset);
+		void Build(const RenderCore::Assets::RawGeometry& geo, StringSection<::Assets::ResChar> filename, unsigned largeBlocksOffset);
 	};
 
 	void SimpleModel::Render(
 		Metal::DeviceContext& devContext,
 		ParsingContext& parserContext,
 		Metal::ConstantBufferPacket localTransform,
-		unsigned techniqueIndex, const ::Assets::ResChar techniqueConfig[],
+		unsigned techniqueIndex, StringSection<::Assets::ResChar> techniqueConfig,
 		const ParameterBox& materialParams) const
 	{
 		auto shader = _material.FindVariation(parserContext, techniqueIndex, techniqueConfig);
@@ -112,12 +112,12 @@ namespace GUILayer
 		return T(data.get(), size);
 	}
 
-	SimpleModel::SimpleModel(const RenderCore::Assets::RawGeometry& geo, const ::Assets::ResChar filename[], unsigned largeBlocksOffset)
+	SimpleModel::SimpleModel(const RenderCore::Assets::RawGeometry& geo, StringSection<::Assets::ResChar> filename, unsigned largeBlocksOffset)
 	{
 		Build(geo, filename, largeBlocksOffset);
 	}
 
-	SimpleModel::SimpleModel(const ::Assets::ResChar filename[])
+	SimpleModel::SimpleModel(StringSection<::Assets::ResChar> filename)
 	{
 		auto& scaffold = ::Assets::GetAssetComp<RenderCore::Assets::ModelScaffold>(filename);
 		if (scaffold.ImmutableData()._geoCount > 0)
@@ -125,7 +125,7 @@ namespace GUILayer
 		_depVal = scaffold.GetDependencyValidation();
 	}
 
-	void SimpleModel::Build(const RenderCore::Assets::RawGeometry& geo, const ::Assets::ResChar filename[], unsigned largeBlocksOffset)
+	void SimpleModel::Build(const RenderCore::Assets::RawGeometry& geo, StringSection<::Assets::ResChar> filename, unsigned largeBlocksOffset)
 	{
 		// load the vertex buffer & index buffer from the geo input, and copy draw calls data
 		auto file = ::Assets::MainFileSystem::OpenBasicFile(filename, "rb");
@@ -248,7 +248,7 @@ namespace GUILayer
 
     static void DrawSphereStandIn(
         Metal::DeviceContext& devContext, ParsingContext& parserContext, 
-		const ObjectParams& params, unsigned techniqueIndex, const ::Assets::ResChar technique[],
+		const ObjectParams& params, unsigned techniqueIndex, StringSection<::Assets::ResChar> technique,
 		const VisGeoBox& visBox, const TechniqueMaterial::Variation& fallbackShader)
     {
 		CATCH_ASSETS_BEGIN
@@ -267,7 +267,7 @@ namespace GUILayer
 
 	static void DrawPointerStandIn(
 		Metal::DeviceContext& devContext, ParsingContext& parserContext,
-		const ObjectParams& params, unsigned techniqueIndex, const ::Assets::ResChar technique[],
+		const ObjectParams& params, unsigned techniqueIndex, StringSection<::Assets::ResChar> technique,
 		const VisGeoBox& visBox, const TechniqueMaterial::Variation& fallbackShader)
 	{
 		CATCH_ASSETS_BEGIN

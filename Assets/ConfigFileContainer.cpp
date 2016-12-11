@@ -15,8 +15,8 @@ namespace Assets
 
 	namespace Internal
 	{
-		void MarkInvalid(const ResChar initializer[], const char reason[]);
-		void MarkValid(const ResChar initializer[]);
+		void MarkInvalid(StringSection<ResChar> initializer, const char reason[]);
+		void MarkValid(StringSection<ResChar> initializer);
 	}
 
 	template<typename Formatter>
@@ -71,7 +71,7 @@ namespace Assets
 	}
 
 	template<typename Formatter>
-		ConfigFileContainer<Formatter>::ConfigFileContainer(const ResChar initializer[])
+		ConfigFileContainer<Formatter>::ConfigFileContainer(StringSection<ResChar> initializer)
 	{
 		_fileData = ::Assets::TryLoadFileAsMemoryBlock(initializer, &_fileSize);
 		if (_fileData.get() && _fileSize) {
@@ -87,7 +87,7 @@ namespace Assets
 		ConfigFileContainer<Formatter>::~ConfigFileContainer() {}
 
 	template<typename Formatter>
-		auto ConfigFileContainer<Formatter>::CreateNew(const ResChar initialiser[])
+		auto ConfigFileContainer<Formatter>::CreateNew(StringSection<ResChar> initialiser)
 			-> std::unique_ptr<ConfigFileContainer>
 	{
 		return std::make_unique<ConfigFileContainer>(initialiser);
@@ -198,13 +198,13 @@ namespace Assets
 
     namespace Internal
     {
-        void MarkInvalid(const ResChar initializer[], const char reason[])
+        void MarkInvalid(StringSection<ResChar> initializer, const char reason[])
         {
             if (Services::GetInvalidAssetMan())
                 Services::GetInvalidAssetMan()->MarkInvalid(initializer, reason);
         }
 
-        void MarkValid(const ResChar initializer[])
+        void MarkValid(StringSection<ResChar> initializer)
         {
             if (Services::GetInvalidAssetMan())
                 Services::GetInvalidAssetMan()->MarkValid(initializer);

@@ -45,7 +45,7 @@ namespace ToolsRig
         const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
         VisEnvSettings();
-        VisEnvSettings(const ::Assets::ResChar filename[]);
+        VisEnvSettings(StringSection<::Assets::ResChar> filename);
         ~VisEnvSettings();
     protected:
         ::Assets::DepValPtr _depVal;

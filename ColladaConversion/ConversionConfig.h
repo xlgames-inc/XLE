@@ -46,7 +46,7 @@ namespace ColladaConversion
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
-		ImportConfiguration(const ::Assets::ResChar filename[]);
+		ImportConfiguration(StringSection<::Assets::ResChar> filename);
 		ImportConfiguration();
 		~ImportConfiguration();
 	private:

@@ -141,7 +141,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 // InstructionDesc[OpEntryPoint].operands.push(OperandLiteralString, "'Name'");
                 // InstructionDesc[OpEntryPoint].operands.push(OperandVariableIds, "'Interface'");
                 {
-                    assert(_entryPoint._name.Empty() && _entryPoint._interface.empty());
+                    assert(_entryPoint._name.IsEmpty() && _entryPoint._interface.empty());
                     auto executionModel = paramStart[0]; (void)executionModel;
                     _entryPoint._id = paramStart[1];
                     _entryPoint._name = (const char*)&paramStart[2];

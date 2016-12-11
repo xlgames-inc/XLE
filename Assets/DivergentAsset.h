@@ -26,7 +26,7 @@ namespace Assets
         uint64 GetAssetId() const { return _assetId; }
         uint64 GetTypeCode() const { return _typeCode; }
 
-		ITransaction(const ResChar name[], uint64 assetId, uint64 typeCode, std::shared_ptr<UndoQueue> undoQueue);
+		ITransaction(StringSection<ResChar> name, uint64 assetId, uint64 typeCode, std::shared_ptr<UndoQueue> undoQueue);
 		virtual ~ITransaction();
 	protected:
 		std::shared_ptr<UndoQueue> _undoQueue;

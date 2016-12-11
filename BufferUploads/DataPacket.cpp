@@ -241,7 +241,7 @@ namespace BufferUploads
         virtual std::shared_ptr<Marker>     BeginBackgroundLoad();
 
         StreamingTexture(
-            const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[],
+            StringSection<::Assets::ResChar> filename,
             TextureLoadFlags::BitField flags);
         virtual ~StreamingTexture();
 
@@ -445,13 +445,13 @@ namespace BufferUploads
     }
 
     StreamingTexture::StreamingTexture(
-        const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[],
+        StringSection<::Assets::ResChar> filename,
         TextureLoadFlags::BitField flags)
     : _flags(flags)
     {
         XlZeroMemory(_texMetadata);
 		XlZeroMemory(_filename);
-        Conversion::Convert(_filename, dimof(_filename), filename, filenameEnd);
+        Conversion::Convert(_filename, dimof(_filename), filename.begin(), filename.end());
 
 		// replace semicolon dividers with null chars
 		for (auto* i=_filename; *i; ++i)
@@ -464,7 +464,7 @@ namespace BufferUploads
     intrusive_ptr<DataPacket> CreateStreamingTextureSource(
         StringSection<::Assets::ResChar> filename, TextureLoadFlags::BitField flags)
     {
-        return make_intrusive<StreamingTexture>(filename.begin(), filename.end(), flags);
+        return make_intrusive<StreamingTexture>(filename, flags);
     }
 
     TextureDesc LoadTextureFormat(StringSection<::Assets::ResChar> filename)

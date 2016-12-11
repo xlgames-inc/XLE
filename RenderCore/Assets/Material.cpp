@@ -288,22 +288,22 @@ namespace RenderCore { namespace Assets
 
     void ResolveMaterialFilename(
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
-        const ::Assets::DirectorySearchRules& searchRules, const char baseMatName[])
+        const ::Assets::DirectorySearchRules& searchRules, StringSection<char> baseMatName)
     {
-        if (baseMatName != resolvedFile)
+        if (baseMatName.begin() != resolvedFile)
             XlCopyString(resolvedFile, resolvedFileCount, baseMatName);
         if (!XlExtension(resolvedFile))
             XlCatString(resolvedFile, resolvedFileCount, ".material");
         searchRules.ResolveFile(resolvedFile, resolvedFileCount, resolvedFile);
     }
 
-    uint64 MakeMaterialGuid(const utf8* nameStart, const utf8* nameEnd)
+    uint64 MakeMaterialGuid(StringSection<utf8> name)
     {
             //  If the material name is just a number, then we will use that
             //  as the guid. Otherwise we hash the name.
         const char* parseEnd = nullptr;
-        uint64 hashId = XlAtoI64((const char*)nameStart, &parseEnd, 16);
-        if (!parseEnd || parseEnd != (const char*)nameEnd) { hashId = Hash64(nameStart, nameEnd); }
+        uint64 hashId = XlAtoI64((const char*)name.begin(), &parseEnd, 16);
+        if (!parseEnd || parseEnd != (const char*)name.end()) { hashId = Hash64(name.begin(), name.end()); }
         return hashId;
     }
 
@@ -476,7 +476,7 @@ namespace RenderCore { namespace Assets
 
     static void AddDep(
         std::vector<::Assets::DependentFileState>& deps, 
-        const StringSection<::Assets::ResChar> filename)
+        StringSection<::Assets::ResChar> filename)
     {
             // we need to call "GetDependentFileState" first, because this can change the
             // format of the filename. String compares alone aren't working well for us here
@@ -492,7 +492,7 @@ namespace RenderCore { namespace Assets
 
     static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
     
-    auto RawMaterial::GetAsset(const ::Assets::ResChar initializer[]) -> const RawMaterial& 
+    auto RawMaterial::GetAsset(StringSection<::Assets::ResChar> initializer) -> const RawMaterial& 
     {
         // There are actually 2 paths here... Normally the requested file is a
         // .material file -- in which case we can load it with a  
@@ -516,7 +516,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    auto RawMaterial::GetDivergentAsset(const ::Assets::ResChar initializer[])
+    auto RawMaterial::GetDivergentAsset(StringSection<::Assets::ResChar> initializer)
         -> const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>&
     {
         if (!IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializer).Extension())) {
@@ -526,7 +526,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-	std::unique_ptr<RawMaterial> RawMaterial::CreateNew(const ::Assets::ResChar initialiser[])
+	std::unique_ptr<RawMaterial> RawMaterial::CreateNew(StringSection<::Assets::ResChar> initialiser)
 	{
 		return std::make_unique<RawMaterial>();
 	}
@@ -562,7 +562,7 @@ namespace RenderCore { namespace Assets
     }
 
 	std::shared_ptr<::Assets::DeferredConstruction> RawMaterial::BeginDeferredConstruction(
-		const ::Assets::ResChar* initializers[], unsigned initializerCount)
+		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
 	{
 		return ::Assets::DefaultBeginDeferredConstruction<RawMaterial>(initializers, initializerCount);
 	}

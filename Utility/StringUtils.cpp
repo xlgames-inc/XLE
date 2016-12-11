@@ -702,6 +702,13 @@ char* XlFindChar(char* s, const char ch)
     return strchr(s, ch);
 }
 
+const char*  XlFindChar(StringSection<char> s, char ch)
+{
+	for (const auto& chr:s)
+		if (chr == ch) return &chr;
+	return nullptr;
+}
+
 const char*  XlFindAnyChar(const char s[], const char delims[])
 {
     for (const char* i = s; *i; ++i) {
@@ -763,16 +770,32 @@ char* XlFindString(char* s, const char* x)
 
 const char* XlFindStringI(const char* s, const char* x)
 {
-    size_t sb = XlStringSize(s);
-    size_t xb = XlStringSize(x);
-    if (sb < xb) return 0;
-
-    for (size_t i = 0; i <= sb - xb; ++i) {
-        if (XlComparePrefixI(s + i, x, xb) == 0) {
+    size_t sb = XlStringSize(s), xb = XlStringSize(x);
+    if (sb < xb) return nullptr;
+    for (size_t i = 0; i <= sb - xb; ++i)
+        if (XlComparePrefixI(s + i, x, xb) == 0)
             return s + i;
-        }
-    }
-    return 0;
+    return nullptr;
+}
+
+const char*  XlFindString(StringSection<char> s, StringSection<char> x)
+{
+	size_t sb = s.size(), xb = x.size();
+	if (sb < xb) return nullptr;
+	for (size_t i = 0; i <= sb - xb; ++i)
+		if (XlEqString(MakeStringSection(s.begin() + i, s.begin() + i + xb), x))
+			return s.begin() + i;
+	return nullptr;
+}
+
+const char*  XlFindStringI(StringSection<char> s, StringSection<char> x)
+{
+	size_t sb = s.size(), xb = x.size();
+	if (sb < xb) return nullptr;
+	for (size_t i = 0; i <= sb - xb; ++i)
+		if (XlEqStringI(MakeStringSection(s.begin() + i, s.begin() + i + xb), x))
+			return s.begin() + i;
+	return nullptr;
 }
 
 const char* XlFindStringSafe(const char* s, const char* x, size_t size)

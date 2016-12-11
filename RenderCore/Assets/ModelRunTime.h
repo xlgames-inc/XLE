@@ -96,7 +96,7 @@ namespace RenderCore { namespace Assets
         ~ModelScaffold();
 
 		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const ::Assets::ResChar* initializers[], unsigned initializerCount);
+			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 
     private:
         std::unique_ptr<uint8[]>    _rawMemoryBlock;
@@ -259,7 +259,7 @@ namespace RenderCore { namespace Assets
         ~ModelSupplementScaffold();
 
 		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const ::Assets::ResChar* initializers[], unsigned initializerCount);
+			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 
     private:
         std::unique_ptr<uint8[]>    _rawMemoryBlock;
@@ -319,7 +319,7 @@ namespace RenderCore { namespace Assets
         ~SkeletonScaffold();
 
 		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const ::Assets::ResChar* initializers[], unsigned initializerCount);
+			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 
     private:
         std::unique_ptr<uint8[]>    _rawMemoryBlock;
@@ -357,7 +357,7 @@ namespace RenderCore { namespace Assets
         ~AnimationSetScaffold();
 
 		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const ::Assets::ResChar* initializers[], unsigned initializerCount);
+			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 
     private:
         std::unique_ptr<uint8[]>    _rawMemoryBlock;

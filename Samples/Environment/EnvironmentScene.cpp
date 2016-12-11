@@ -67,7 +67,7 @@ namespace Sample
         ::Assets::rstring _cfgDir;
         float _time;
 
-        void LoadGameObjects(const ::Assets::ResChar filename[]);
+        void LoadGameObjects(StringSection<::Assets::ResChar> filename);
 
         ::Assets::rstring MakeCfgName(const ::Assets::ResChar cfg[])
         {
@@ -76,7 +76,7 @@ namespace Sample
 
     };
 
-    void EnvironmentSceneParser::Pimpl::LoadGameObjects(const ::Assets::ResChar filename[])
+    void EnvironmentSceneParser::Pimpl::LoadGameObjects(StringSection<::Assets::ResChar> filename)
     {
         size_t fileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
@@ -345,7 +345,7 @@ namespace Sample
         }
     }
 
-    EnvironmentSceneParser::EnvironmentSceneParser(const ::Assets::ResChar cfgDir[])
+    EnvironmentSceneParser::EnvironmentSceneParser(StringSection<::Assets::ResChar> cfgDir)
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_time = 0.f;

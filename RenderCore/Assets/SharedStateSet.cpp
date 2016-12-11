@@ -22,6 +22,7 @@
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/StringUtils.h"
+#include "../../Utility/StringFormat.h"
 #include <vector>
 
 namespace RenderCore { namespace Assets
@@ -101,9 +102,9 @@ namespace RenderCore { namespace Assets
         return techniqueInterfaceIndex;
     }
 
-    SharedTechniqueConfig SharedStateSet::InsertTechniqueConfig(const ::Assets::ResChar shaderName[])
+    SharedTechniqueConfig SharedStateSet::InsertTechniqueConfig(StringSection<::Assets::ResChar> shaderName)
     {
-        auto hash = Hash64(shaderName);
+        auto hash = Hash64(shaderName.begin(), shaderName.end());
         auto& rawShaderNames = _pimpl->_rawTechniqueConfigs;
         auto n = std::find(rawShaderNames.begin(), rawShaderNames.end(), hash);
         if (n == rawShaderNames.end()) {
@@ -180,7 +181,7 @@ namespace RenderCore { namespace Assets
 
         auto& techniqueContext = context._parserContext->GetTechniqueContext();
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
-        auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(sn.c_str());
+        auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(MakeStringSection(sn));
         const ParameterBox* state[] = {
             &_pimpl->_parameterBoxes[geoParamBox.Value()],
             &techniqueContext._globalEnvironmentState,
@@ -241,9 +242,9 @@ namespace RenderCore { namespace Assets
         // If the technique config has an embedded cblayout, we must return that.
         // Otherwise, we return the default
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
-        auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(sn.c_str());
+        auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(MakeStringSection(sn));
         if (shaderType.HasEmbeddedCBLayout())
-            return &::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(sn.c_str());
+            return &::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(MakeStringSection(sn));
         return &::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(Techniques::DefaultPredefinedCBLayout);
     }
 

@@ -975,7 +975,7 @@ namespace ColladaConversion
                 break;
             }
         // sometimes there a source might have just a single unnamed param. In these cases, we must select that one.
-        if (!param && accessor->GetParamCount() == 1 && accessor->GetParam(0)._name.Empty()) {
+        if (!param && accessor->GetParamCount() == 1 && accessor->GetParam(0)._name.IsEmpty()) {
             param = &accessor->GetParam(0);
         }
         if (!param) {

@@ -29,7 +29,7 @@ namespace RenderCore { namespace Metal_DX11
             //
             //          Resource interface
             //
-        explicit VertexShader(const ::Assets::ResChar initializer[]);
+        explicit VertexShader(StringSection<::Assets::ResChar> initializer);
         explicit VertexShader(const CompiledShaderByteCode& byteCode);
         VertexShader();
         ~VertexShader();
@@ -51,7 +51,7 @@ namespace RenderCore { namespace Metal_DX11
             //
             //          Resource interface
             //
-        explicit PixelShader(const ::Assets::ResChar initializer[]);
+        explicit PixelShader(StringSection<::Assets::ResChar> initializer);
         explicit PixelShader(const CompiledShaderByteCode& byteCode);
         PixelShader();
         ~PixelShader();
@@ -93,7 +93,7 @@ namespace RenderCore { namespace Metal_DX11
             //
             //          Resource interface
             //
-        GeometryShader(const ::Assets::ResChar initializer[], const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
+        GeometryShader(StringSection<::Assets::ResChar> initializer, const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
         explicit GeometryShader(const CompiledShaderByteCode& byteCode, const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
         GeometryShader();
         ~GeometryShader();
@@ -116,7 +116,7 @@ namespace RenderCore { namespace Metal_DX11
     class HullShader
     {
     public:
-        explicit HullShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
+        explicit HullShader(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> definesTable=StringSection<::Assets::ResChar>());
         explicit HullShader(const CompiledShaderByteCode& byteCode);
         ~HullShader();
 
@@ -135,7 +135,7 @@ namespace RenderCore { namespace Metal_DX11
     class DomainShader
     {
     public:
-        explicit DomainShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
+        explicit DomainShader(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> definesTable=StringSection<::Assets::ResChar>());
         explicit DomainShader(const CompiledShaderByteCode& byteCode);
         ~DomainShader();
 
@@ -154,7 +154,7 @@ namespace RenderCore { namespace Metal_DX11
     class ComputeShader
     {
     public:
-        explicit ComputeShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
+        explicit ComputeShader(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> definesTable=StringSection<::Assets::ResChar>());
         explicit ComputeShader(const CompiledShaderByteCode& byteCode);
         ComputeShader();
         ~ComputeShader();
@@ -217,17 +217,17 @@ namespace RenderCore { namespace Metal_DX11
     class ShaderProgram
     {
     public:
-        ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
-                        const ::Assets::ResChar fragmentShaderInitializer[]);
+        ShaderProgram(  StringSection<::Assets::ResChar> vertexShaderInitializer, 
+                        StringSection<::Assets::ResChar> fragmentShaderInitializer);
         
-        ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
-                        const ::Assets::ResChar fragmentShaderInitializer[],
-                        const ::Assets::ResChar definesTable[]);
+        ShaderProgram(  StringSection<::Assets::ResChar> vertexShaderInitializer, 
+                        StringSection<::Assets::ResChar> fragmentShaderInitializer,
+                        StringSection<::Assets::ResChar> definesTable);
 
-        ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
-                        const ::Assets::ResChar geometryShaderInitializer[],
-                        const ::Assets::ResChar fragmentShaderInitializer[],
-                        const ::Assets::ResChar definesTable[]);
+        ShaderProgram(  StringSection<::Assets::ResChar> vertexShaderInitializer, 
+                        StringSection<::Assets::ResChar> geometryShaderInitializer,
+                        StringSection<::Assets::ResChar> fragmentShaderInitializer,
+                        StringSection<::Assets::ResChar> definesTable);
 
         ShaderProgram(  const CompiledShaderByteCode& compiledVertexShader, 
                         const CompiledShaderByteCode& compiledFragmentShader);
@@ -271,12 +271,12 @@ namespace RenderCore { namespace Metal_DX11
     class DeepShaderProgram : public ShaderProgram
     {
     public:
-        DeepShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
-                            const ::Assets::ResChar geometryShaderInitializer[],
-                            const ::Assets::ResChar fragmentShaderInitializer[],
-                            const ::Assets::ResChar hullShaderInitializer[],
-                            const ::Assets::ResChar domainShaderInitializer[],
-                            const ::Assets::ResChar definesTable[]);
+        DeepShaderProgram(  StringSection<::Assets::ResChar> vertexShaderInitializer, 
+                            StringSection<::Assets::ResChar> geometryShaderInitializer,
+                            StringSection<::Assets::ResChar> fragmentShaderInitializer,
+                            StringSection<::Assets::ResChar> hullShaderInitializer,
+                            StringSection<::Assets::ResChar> domainShaderInitializer,
+                            StringSection<::Assets::ResChar> definesTable);
         ~DeepShaderProgram();
 
         const HullShader&                   GetHullShader() const               { return _hullShader; }

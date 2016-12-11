@@ -30,7 +30,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         PipelineLayout(
             const ObjectFactory& objectFactory,
-            const ::Assets::ResChar rootSignatureCfg[],
+            StringSection<::Assets::ResChar> rootSignatureCfg,
             VkShaderStageFlags stageFlags);
         ~PipelineLayout();
     private:
@@ -80,7 +80,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const ::Assets::DependentFileState& GetDependentFileState() const { return _dependentFileState; };
         const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
-        RootSignature(const ::Assets::ResChar filename[]);
+        RootSignature(StringSection<::Assets::ResChar> filename);
         ~RootSignature();
     private:
         ::Assets::DependentFileState _dependentFileState;

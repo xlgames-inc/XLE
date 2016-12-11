@@ -91,7 +91,7 @@ namespace ColladaConversion
                 auto texture = techValue.Element(u("texture"));
                 if (texture) {
                     auto samplerRef = texture.Attribute(u("texture")).Value();
-                    if (!samplerRef.Empty()) {
+                    if (!samplerRef.IsEmpty()) {
                         auto binding = cfg.GetResourceBindings().AsNative(n);
                         AddSamplerBinding(
                             matSettings, params, 

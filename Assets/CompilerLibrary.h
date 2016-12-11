@@ -48,6 +48,6 @@ namespace Assets
 	};
 
 	typedef std::shared_ptr<ICompilerDesc> GetCompilerDescFn();
-	typedef std::shared_ptr<ICompileOperation> CreateCompileOperationFn(const ::Assets::ResChar identifier[]);
+	typedef std::shared_ptr<ICompileOperation> CreateCompileOperationFn(StringSection<::Assets::ResChar> identifier);
 }
 

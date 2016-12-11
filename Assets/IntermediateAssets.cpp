@@ -376,7 +376,7 @@ namespace Assets { namespace IntermediateAssets
     }
 
     std::shared_ptr<ICompileMarker> CompilerSet::PrepareAsset(
-        uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
+        uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
         Store& store)
     {
             // look for a "processor" object with the given type code, and rebuild the file

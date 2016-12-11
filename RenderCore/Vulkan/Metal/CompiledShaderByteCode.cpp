@@ -48,7 +48,7 @@ namespace RenderCore { namespace Metal_Vulkan
         virtual void AdaptShaderModel(
             ResChar destination[], 
             const size_t destinationCount,
-            const ResChar source[]) const;
+            StringSection<ResChar> source) const;
 
         virtual bool DoLowLevelCompile(
             /*out*/ Payload& payload,
@@ -56,7 +56,7 @@ namespace RenderCore { namespace Metal_Vulkan
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
             const ShaderService::ResId& shaderPath,
-            const ::Assets::ResChar definesTable[]) const;
+            StringSection<::Assets::ResChar> definesTable) const;
 
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
@@ -81,13 +81,12 @@ namespace RenderCore { namespace Metal_Vulkan
     void HLSLToSPIRVCompiler::AdaptShaderModel(
         ResChar destination[], 
         const size_t destinationCount,
-        const ResChar inputShaderModel[]) const
+        StringSection<ResChar> inputShaderModel) const
     {
         // _hlslCompiler->AdaptShaderModel(destination, destinationCount, inputShaderModel);
 
-        assert(inputShaderModel);
         if (inputShaderModel[0] != '\0') {
-            size_t length = XlStringLen(inputShaderModel);
+            size_t length = inputShaderModel.size();
 
             //  Some shaders end with vs_*, gs_*, etc..
             //  Change this to the default shader model version. We should use
@@ -97,7 +96,7 @@ namespace RenderCore { namespace Metal_Vulkan
             //  should be ok.
             if (inputShaderModel[length-1] == '*') {
                 const char* bestShaderModel = "5_0";
-                if (destination != inputShaderModel) 
+                if (destination != inputShaderModel.begin()) 
                     XlCopyString(destination, destinationCount, inputShaderModel);
                 destination[std::min(length-1, destinationCount-1)] = '\0';
                 XlCatString(destination, destinationCount, bestShaderModel);
@@ -105,7 +104,7 @@ namespace RenderCore { namespace Metal_Vulkan
             }
         }
 
-        if (destination != inputShaderModel) 
+        if (destination != inputShaderModel.begin()) 
             XlCopyString(destination, destinationCount, inputShaderModel);
     }
 
@@ -436,7 +435,7 @@ namespace RenderCore { namespace Metal_Vulkan
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
         const ShaderService::ResId& shaderPath,
-        const ::Assets::ResChar definesTable[]) const
+        StringSection<::Assets::ResChar> definesTable) const
     {
         // So, this is a complex process for converting from HLSL source code into SPIR-V.
         // In time, hopefully there will be better solutions for this problem.

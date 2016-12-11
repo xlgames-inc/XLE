@@ -44,7 +44,7 @@ namespace RenderCore { namespace Assets
             ::Assets::AssetState, const Payload& payload,
             const ::Assets::DependentFileState*, const ::Assets::DependentFileState*)>;
 
-        const Payload& Resolve(const char initializer[], const std::shared_ptr<::Assets::DependencyValidation>& depVal = nullptr) const;
+        const Payload& Resolve(StringSection<::Assets::ResChar> initializer, const std::shared_ptr<::Assets::DependencyValidation>& depVal = nullptr) const;
 
         ::Assets::AssetState TryResolve(
             Payload& result,
@@ -56,12 +56,12 @@ namespace RenderCore { namespace Assets
         const std::vector<::Assets::DependentFileState>& GetDependencies() const;
 
         void Enqueue(
-            const ResId& shaderPath, ::Assets::rstring definesTable, 
+            const ResId& shaderPath, const ::Assets::rstring& definesTable, 
             ChainFn chain = nullptr,
             const std::shared_ptr<::Assets::DependencyValidation>& depVal = nullptr);
         void Enqueue(
-            const char shaderInMemory[], const char entryPoint[], 
-            const char shaderModel[], const ResChar definesTable[]);
+            StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
+            StringSection<char> shaderModel, StringSection<ResChar> definesTable);
 
         ShaderStage::Enum GetStage() const { return _shaderPath.AsShaderStage(); }
 
@@ -91,7 +91,7 @@ namespace RenderCore { namespace Assets
     }
 
     void ShaderCompileMarker::Enqueue(
-        const ResId& shaderPath, ::Assets::rstring definesTable, 
+        const ResId& shaderPath, const ::Assets::rstring& definesTable, 
         ChainFn chain,
         const std::shared_ptr<::Assets::DependencyValidation>& depVal)
     {
@@ -124,25 +124,22 @@ namespace RenderCore { namespace Assets
     }
 
     void ShaderCompileMarker::Enqueue(
-        const char shaderInMemory[], 
-        const char entryPoint[], const char shaderModel[], const ResChar definesTable[])
+        StringSection<char> shaderInMemory, 
+        StringSection<char> entryPoint, StringSection<char> shaderModel, StringSection<ResChar> definesTable)
     {
-        size_t shaderBufferSize = XlStringLen(shaderInMemory);
-        assert(&shaderInMemory[shaderBufferSize] == XlStringEnd(shaderInMemory));
-
         _shaderPath = ResId(
-            StringMeld<64>() << "ShaderInMemory_" << Hash64(shaderInMemory, &shaderInMemory[shaderBufferSize]), 
+            StringMeld<64>() << "ShaderInMemory_" << Hash64(shaderInMemory.begin(), shaderInMemory.end()), 
             entryPoint, shaderModel);
-        if (definesTable) _definesTable = definesTable;
+        _definesTable = definesTable.AsString();
         _chain = nullptr;
 
         if (constant_expression<CompileInBackground>::result()) {
             auto sharedToThis = std::static_pointer_cast<ShaderCompileMarker>(shared_from_this());
-            std::string sourceCopy(shaderInMemory, &shaderInMemory[shaderBufferSize]);
+            std::string sourceCopy = shaderInMemory.AsString();
             ConsoleRig::GlobalServices::GetLongTaskThreadPool().Enqueue(
                 [sourceCopy, sharedToThis]() { sharedToThis->Complete(AsPointer(sourceCopy.cbegin()), sourceCopy.size()); });
         } else {
-            Complete(shaderInMemory, shaderBufferSize);
+            Complete(shaderInMemory.begin(), shaderInMemory.size());
         }
     }
 
@@ -202,7 +199,7 @@ namespace RenderCore { namespace Assets
     }
 
     auto ShaderCompileMarker::Resolve(
-        const char initializer[], 
+        StringSection<::Assets::ResChar> initializer, 
         const std::shared_ptr<::Assets::DependencyValidation>& depVal) const -> const Payload&
     {
         auto state = GetAssetState();
@@ -420,8 +417,8 @@ namespace RenderCore { namespace Assets
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
-            const ::Assets::ResChar initializer[], 
-            const ShaderService::ResId& res, const ::Assets::ResChar definesTable[],
+            StringSection<::Assets::ResChar> initializer, 
+            const ShaderService::ResId& res, StringSection<::Assets::ResChar> definesTable,
             const ::Assets::IntermediateAssets::Store& store,
             std::shared_ptr<LocalCompiledShaderSource> compiler);
         ~Marker();
@@ -574,16 +571,16 @@ namespace RenderCore { namespace Assets
     }
 
     LocalCompiledShaderSource::Marker::Marker(
-        const ::Assets::ResChar initializer[], const ShaderService::ResId& res, const ::Assets::ResChar definesTable[],
+        StringSection<::Assets::ResChar> initializer, const ShaderService::ResId& res, StringSection<::Assets::ResChar> definesTable,
         const ::Assets::IntermediateAssets::Store& store,
         std::shared_ptr<LocalCompiledShaderSource> compiler)
-    : _initializer(initializer), _res(res), _definesTable(definesTable), _compiler(std::move(compiler)), _store(&store)
+    : _initializer(initializer.AsString()), _res(res), _definesTable(definesTable.AsString()), _compiler(std::move(compiler)), _store(&store)
     {}
 
     LocalCompiledShaderSource::Marker::~Marker() {}
     
     std::shared_ptr<::Assets::ICompileMarker> LocalCompiledShaderSource::PrepareAsset(
-        uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
+        uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
         const ::Assets::IntermediateAssets::Store& destinationStore)
     {
             //  Execute an offline compile. This should happen in the background
@@ -618,28 +615,28 @@ namespace RenderCore { namespace Assets
         }
 
         auto shaderId = ShaderService::MakeResId(initializers[0], *_compiler);
-        const char* definesTable = (initializerCount > 1)?initializers[1]:"";
+		StringSection<ResChar> definesTable = (initializerCount > 1)?initializers[1]:StringSection<ResChar>();
 
             // for a "null" shader, we must return nullptr
-        if (!initializers[0] || initializers[0][0] == '\0' || XlEqString(shaderId._filename, "null"))
+        if (initializers[0].IsEmpty() || XlEqString(shaderId._filename, "null"))
             return nullptr;
 
         return std::make_shared<Marker>(initializers[0], shaderId, definesTable, destinationStore, shared_from_this());
     }
 
     auto LocalCompiledShaderSource::CompileFromFile(
-        const ::Assets::ResChar resource[], 
-        const ResChar definesTable[]) const -> std::shared_ptr<IPendingMarker>
+        StringSection<ResChar> resource, 
+        StringSection<ResChar> definesTable) const -> std::shared_ptr<IPendingMarker>
     {
         auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler);
         auto resId = ShaderService::MakeResId(resource, *_compiler);
-        compileHelper->Enqueue(resId, definesTable?definesTable:"", nullptr);
+        compileHelper->Enqueue(resId, definesTable.AsString(), nullptr);
         return compileHelper;
     }
             
     auto LocalCompiledShaderSource::CompileFromMemory(
-        const char shaderInMemory[], const char entryPoint[], 
-        const char shaderModel[], const ResChar definesTable[]) const -> std::shared_ptr<IPendingMarker>
+        StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
+        StringSection<char> shaderModel, StringSection<ResChar> definesTable) const -> std::shared_ptr<IPendingMarker>
     {
         auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler);
         compileHelper->Enqueue(shaderInMemory, entryPoint, shaderModel, definesTable); 

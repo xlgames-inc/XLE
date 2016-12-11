@@ -218,10 +218,10 @@ namespace ShaderPatcher
             [=](const Node& node) { return node.NodeId() == nodeId; }) != _nodes.end();
     }
 
-    static std::string LoadSourceFile(const std::string& sourceFileName)
+    static std::string LoadSourceFile(StringSection<char> sourceFileName)
     {
         TRY {
-            Utility::BasicFile file(sourceFileName.c_str(), "rb");
+            Utility::BasicFile file(sourceFileName.AsString().c_str(), "rb");
 
             file.Seek(0, SEEK_END);
             size_t size = file.TellP();
@@ -253,7 +253,7 @@ namespace ShaderPatcher
 		auto GetFunction(const char fnName[]) const -> const ShaderSourceParser::FunctionSignature*;
 		auto GetParameterStruct(const char structName[]) const -> const ShaderSourceParser::ParameterStructSignature*;
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
-		ShaderFragment(const ::Assets::ResChar fn[]);
+		ShaderFragment(StringSection<::Assets::ResChar> fn);
 		~ShaderFragment();
 	private:
 		ShaderSourceParser::ShaderFragmentSignature _sig;
@@ -280,7 +280,7 @@ namespace ShaderPatcher
 		return nullptr;
 	}
 
-	ShaderFragment::ShaderFragment(const ::Assets::ResChar fn[])
+	ShaderFragment::ShaderFragment(StringSection<::Assets::ResChar> fn)
 	{
 		auto shaderFile = LoadSourceFile(fn);
 		_sig = ShaderSourceParser::BuildShaderFragmentSignature(shaderFile.c_str(), shaderFile.size());

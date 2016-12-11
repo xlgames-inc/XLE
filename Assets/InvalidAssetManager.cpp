@@ -25,18 +25,18 @@ namespace Assets
         Pimpl() { _active = false; _nextChangeEventId = 1; }
     };
 
-    void InvalidAssetManager::MarkInvalid(const rstring& name, const rstring& errorString)
+    void InvalidAssetManager::MarkInvalid(StringSection<ResChar> name, StringSection<ResChar> errorString)
     {
         bool fireChangedEvents = false;
         if (_pimpl->_active) {
             ScopedLock(_pimpl->_assetsLock);
-            auto hashName = Hash64(name);
+            auto hashName = Hash64(name.begin(), name.end());
             auto i = LowerBound(_pimpl->_assets, hashName);
             if (i != _pimpl->_assets.end() && i->first == hashName) {
-                assert(i->second._name == name);
-                i->second._errorString = errorString;
+                assert(XlEqString(name, i->second._name));
+                i->second._errorString = errorString.AsString();
             } else {
-                _pimpl->_assets.insert(i, std::make_pair(hashName, AssetRef { name, errorString }));
+                _pimpl->_assets.insert(i, std::make_pair(hashName, AssetRef { name.AsString(), errorString.AsString() }));
             }
             fireChangedEvents = true;
         }
@@ -44,12 +44,12 @@ namespace Assets
             _pimpl->FireChangeEvents();
     }
 
-    void InvalidAssetManager::MarkValid(const ResChar name[])
+    void InvalidAssetManager::MarkValid(StringSection<ResChar> name)
     {
         bool fireChangedEvents = false;
         if (_pimpl->_active) {
             ScopedLock(_pimpl->_assetsLock);
-            auto hashName = Hash64(name);
+            auto hashName = Hash64(name.begin(), name.end());
             auto i = LowerBound(_pimpl->_assets, hashName);
             if (i != _pimpl->_assets.end() && i->first == hashName) {
                 _pimpl->_assets.erase(i);

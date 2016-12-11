@@ -715,7 +715,7 @@ namespace ColladaConversion
 
                         // Do not record <param>s without names -- those are only used to skip over a slots
                         // (except when we find an accessor with just a single unnamed param... Then we still need it)
-                    if (!newParam._name.Empty()) {
+                    if (!newParam._name.IsEmpty()) {
                         if (_paramCount < dimof(_params)) {
                             _params[_paramCount] = newParam;
                         } else

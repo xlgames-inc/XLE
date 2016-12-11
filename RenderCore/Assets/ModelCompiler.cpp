@@ -28,13 +28,13 @@
 namespace RenderCore { namespace Assets 
 {
 	typedef std::shared_ptr<::Assets::ICompilerDesc> GetCompilerDescFn();
-	typedef std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperationFn(const ::Assets::ResChar identifier[]);
+	typedef std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperationFn(StringSection<::Assets::ResChar> identifier);
 
 	class CompilerLibrary
 	{
 	public:
 		void PerformCompile(
-			uint64 typeCode, ::Assets::ResChar initializer[], 
+			uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
 			::Assets::PendingCompileMarker& compileMarker,
 			const ::Assets::IntermediateAssets::Store& destinationStore);
 		void AttachLibrary();
@@ -53,7 +53,7 @@ namespace RenderCore { namespace Assets
 			return !!_createAnimationSetFn && !!_extractAnimationsFn && !!_serializeAnimationSetFn;
 		}
 
-		CompilerLibrary(const StringSection<::Assets::ResChar> libraryName)
+		CompilerLibrary(StringSection<::Assets::ResChar> libraryName)
 			: _library(libraryName.AsString().c_str())
 		{
 			_createCompileOpFunction = nullptr;
@@ -175,7 +175,7 @@ namespace RenderCore { namespace Assets
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void CompilerLibrary::PerformCompile(
-		uint64 typeCode, ::Assets::ResChar initializer[], 
+		uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
 		::Assets::PendingCompileMarker& compileMarker,
 		const ::Assets::IntermediateAssets::Store& destinationStore)
     {
@@ -199,11 +199,11 @@ namespace RenderCore { namespace Assets
 
                 ::Assets::ResChar colladaFile[MaxPath], fileAndParameters[MaxPath];
                 XlCopyString(colladaFile, splitName.AllExceptParameters());
-                if (splitName.Extension().Empty())
+                if (splitName.Extension().IsEmpty())
                     XlCatString(colladaFile, dimof(colladaFile), ".dae");
 
 				XlCopyString(fileAndParameters, colladaFile);
-				if (!splitName.Parameters().Empty()) {
+				if (!splitName.Parameters().IsEmpty()) {
 					XlCatString(fileAndParameters, ":");
 					XlCatString(fileAndParameters, splitName.Parameters());
 				}
@@ -261,7 +261,7 @@ namespace RenderCore { namespace Assets
 
                     //  source for the animation set should actually be a directory name, and
                     //  we'll use all of the dae files in that directory as animation inputs
-                auto sourceFiles = RawFS::FindFiles(std::string(initializer) + "/*.dae");
+                auto sourceFiles = RawFS::FindFiles(initializer.AsString() + "/*.dae");
                 std::vector<::Assets::DependentFileState> deps;
 
                 auto mergedAnimationSet = (*_createAnimationSetFn)("mergedanim");
@@ -351,7 +351,7 @@ namespace RenderCore { namespace Assets
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
-            const ::Assets::ResChar requestName[], uint64 typeCode,
+            StringSection<::Assets::ResChar> requestName, uint64 typeCode,
             const ::Assets::IntermediateAssets::Store& store,
             std::shared_ptr<ModelCompiler> compiler);
         ~Marker();
@@ -455,17 +455,17 @@ namespace RenderCore { namespace Assets
     }
 
     ModelCompiler::Marker::Marker(
-        const ::Assets::ResChar requestName[], uint64 typeCode,
+        StringSection<::Assets::ResChar> requestName, uint64 typeCode,
         const ::Assets::IntermediateAssets::Store& store,
         std::shared_ptr<ModelCompiler> compiler)
-    : _compiler(std::move(compiler)), _requestName(requestName), _typeCode(typeCode), _store(&store)
+    : _compiler(std::move(compiler)), _requestName(requestName.AsString()), _typeCode(typeCode), _store(&store)
     {}
 
     ModelCompiler::Marker::~Marker() {}
 
     std::shared_ptr<::Assets::ICompileMarker> ModelCompiler::PrepareAsset(
         uint64 typeCode, 
-        const ::Assets::ResChar* initializers[], unsigned initializerCount, 
+        const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount, 
         const ::Assets::IntermediateAssets::Store& destinationStore)
     {
         return std::make_shared<Marker>(initializers[0], typeCode, destinationStore, shared_from_this());

@@ -374,7 +374,7 @@ namespace RenderCore { namespace Techniques
         };
         std::vector<std::pair<uint64,Setting>> _settings;
 
-        ParameterBoxTable(const ::Assets::ResChar filename[]);
+        ParameterBoxTable(StringSection<::Assets::ResChar> filename);
         ParameterBoxTable(ParameterBoxTable&& moveFrom);
         ~ParameterBoxTable();
         ParameterBoxTable& operator=(ParameterBoxTable&& moveFrom);
@@ -521,7 +521,7 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    ParameterBoxTable::ParameterBoxTable(const ::Assets::ResChar filename[])
+    ParameterBoxTable::ParameterBoxTable(StringSection<::Assets::ResChar> filename)
     {
         size_t sourceFileSize = 0;
         auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &sourceFileSize);
@@ -779,7 +779,7 @@ namespace RenderCore { namespace Techniques
         return ~0u;
     }
 
-    ShaderType::ShaderType(const ::Assets::ResChar resourceName[])
+    ShaderType::ShaderType(StringSection<::Assets::ResChar> resourceName)
     {
         _hasEmbeddedCBLayout = false;
 

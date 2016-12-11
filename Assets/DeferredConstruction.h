@@ -69,7 +69,7 @@ namespace Assets
 
 	template<typename AssetType>
 		static std::shared_ptr<DeferredConstruction> DefaultBeginDeferredConstruction(
-			const ResChar* initializers[], unsigned initializerCount,
+			const StringSection<ResChar> initializers[], unsigned initializerCount,
 			uint64 compileTypeCode = GetCompileProcessType<AssetType>())
 	{
 		// Begin a compilation operation via the registered compilers for this type.
@@ -77,7 +77,7 @@ namespace Assets
 		// and then construct the final asset from the result
 
 		auto marker = Internal::BeginCompileOperation(compileTypeCode, initializers, initializerCount);
-		std::basic_string<ResChar> init0 = initializers[0];
+		std::basic_string<ResChar> init0 = initializers[0].AsString();
 
 		auto existingLoc = marker->GetExistingAsset();
 		if (!existingLoc._dependencyValidation || existingLoc._dependencyValidation->GetValidationIndex()!=0) {

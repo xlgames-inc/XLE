@@ -44,7 +44,7 @@ namespace RenderCore { namespace Metal_DX11
         virtual void AdaptShaderModel(
             ResChar destination[], 
             const size_t destinationCount,
-            const ResChar source[]) const;
+			StringSection<ResChar> inputShaderModel) const;
 
         virtual bool DoLowLevelCompile(
             /*out*/ Payload& payload,
@@ -52,7 +52,7 @@ namespace RenderCore { namespace Metal_DX11
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
             const ShaderService::ResId& shaderPath,
-            const ::Assets::ResChar definesTable[]) const;
+			StringSection<::Assets::ResChar> definesTable) const;
 
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
@@ -111,11 +111,11 @@ namespace RenderCore { namespace Metal_DX11
     void D3DShaderCompiler::AdaptShaderModel(
         ResChar destination[], 
         const size_t destinationCount,
-        const ResChar inputShaderModel[]) const
+		StringSection<ResChar> inputShaderModel) const
     {
-        assert(inputShaderModel);
+        assert(inputShaderModel.size() >= 1);
         if (inputShaderModel[0] != '\0') {
-            size_t length = XlStringLen(inputShaderModel);
+            size_t length = inputShaderModel.size();
 
                 //
                 //      Some shaders end with vs_*, gs_*, etc..
@@ -131,7 +131,7 @@ namespace RenderCore { namespace Metal_DX11
                 else if (featureLevel >= D3D_FEATURE_LEVEL_9_2)     { bestShaderModel = "4_0_level_9_2"; } 
                 else                                                { bestShaderModel = "4_0_level_9_1"; }
             
-                if (destination != inputShaderModel) 
+                if (destination != inputShaderModel.begin()) 
                     XlCopyString(destination, destinationCount, inputShaderModel);
 
                 destination[std::min(length-1, destinationCount-1)] = '\0';
@@ -140,7 +140,7 @@ namespace RenderCore { namespace Metal_DX11
             }
         }
 
-        if (destination != inputShaderModel) 
+        if (destination != inputShaderModel.begin())
             XlCopyString(destination, destinationCount, inputShaderModel);
     }
 
@@ -258,10 +258,10 @@ namespace RenderCore { namespace Metal_DX11
     static const char s_shaderModelDef_C[] = "CSH";
 
     static std::vector<D3D10_SHADER_MACRO> MakeDefinesTable(
-        const char definesTable[], const char shaderModel[], std::string& definesCopy,
+        StringSection<char> definesTable, const char shaderModel[], std::string& definesCopy,
         IteratorRange<const D3D10_SHADER_MACRO*> fixedDefines)
     {
-        definesCopy = definesTable?definesTable:std::string();
+        definesCopy = definesTable.AsString();
         unsigned definesCount = 1;
         size_t offset = 0;
         while ((offset = definesCopy.find_first_of(';', offset)) != std::string::npos) {
@@ -550,14 +550,14 @@ namespace RenderCore { namespace Metal_DX11
         ID3D11Module* GetUnderlying() { return _module.get(); }
         ID3D11LibraryReflection* GetReflection() { return _reflection.get(); }
 
-        FunctionLinkingModule(const ::Assets::ResChar initializer[], const ::Assets::ResChar defines[]);
+        FunctionLinkingModule(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> defines);
         ~FunctionLinkingModule();
     private:
         intrusive_ptr<ID3D11Module> _module;
         intrusive_ptr<ID3D11LibraryReflection> _reflection;
     };
 
-    FunctionLinkingModule::FunctionLinkingModule(const ::Assets::ResChar initializer[], const ::Assets::ResChar defines[])
+    FunctionLinkingModule::FunctionLinkingModule(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> defines)
     {
         // note --  we have to be a little bit careful here. If all of the compilation threads hit this point
         //          and start waiting for other pending assets, there may be no threads left to compile the other assets!
@@ -1233,7 +1233,7 @@ namespace RenderCore { namespace Metal_DX11
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
         const ShaderService::ResId& shaderPath,
-        const ::Assets::ResChar definesTable[]) const
+		StringSection<::Assets::ResChar> definesTable) const
     {
             // This is called (typically in a background thread)
             // after the shader data has been loaded from disk.

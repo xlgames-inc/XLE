@@ -43,14 +43,14 @@ namespace RenderCore { namespace Assets
 
         RawMatConfigurations(
             const ::Assets::IntermediateAssetLocator& locator, 
-            const ::Assets::ResChar initializer[]);
+            StringSection<::Assets::ResChar> initializer);
 
         static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
 
         auto GetDependencyValidation() const -> const std::shared_ptr<::Assets::DependencyValidation>& { return _validationCallback; }
 
 		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const ::Assets::ResChar* initializers[], unsigned initializerCount)
+			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
 		{
 			return ::Assets::DefaultBeginDeferredConstruction<RawMatConfigurations>(initializers, initializerCount);
 		}
@@ -58,7 +58,7 @@ namespace RenderCore { namespace Assets
         std::shared_ptr<::Assets::DependencyValidation> _validationCallback;
     };
 
-    RawMatConfigurations::RawMatConfigurations(const ::Assets::IntermediateAssetLocator& locator, const ::Assets::ResChar initializer[])
+    RawMatConfigurations::RawMatConfigurations(const ::Assets::IntermediateAssetLocator& locator, StringSection<::Assets::ResChar> initializer)
     {
             //  Get associated "raw" material information. This is should contain the material information attached
             //  to the geometry export (eg, .dae file).
@@ -76,7 +76,7 @@ namespace RenderCore { namespace Assets
             
         for (auto config=doc.FirstChild(); config; config=config.NextSibling()) {
             auto name = config.Name();
-            if (name.Empty()) continue;
+            if (name.IsEmpty()) continue;
             _configurations.push_back(name.AsString());
         }
 
@@ -86,7 +86,7 @@ namespace RenderCore { namespace Assets
 
     static void AddDep(
         std::vector<::Assets::DependentFileState>& deps,
-        const char newDep[])
+        StringSection<::Assets::ResChar> newDep)
     {
             // we need to call "GetDependentFileState" first, because this can change the
             // format of the filename. String compares alone aren't working well for us here
@@ -99,13 +99,13 @@ namespace RenderCore { namespace Assets
     }
 
     static ::Assets::CompilerHelper::CompileResult CompileMaterialScaffold(
-        const ::Assets::ResChar sourceMaterial[], const ::Assets::ResChar sourceModel[],
-        const ::Assets::ResChar destination[])
+        StringSection<::Assets::ResChar> sourceMaterial, StringSection<::Assets::ResChar> sourceModel,
+        StringSection<::Assets::ResChar> destination)
     {
             // Parameters must be stripped off the source model filename before we get here.
             // the parameters are irrelevant to the compiler -- so if they stay on the request
             // name, will we end up with multiple assets that are equivalent
-        assert(MakeFileNameSplitter(sourceModel).ParametersWithDivider().Empty());
+        assert(MakeFileNameSplitter(sourceModel).ParametersWithDivider().IsEmpty());
 
             // note -- we can throw pending & invalid from here...
         auto& modelMat = ::Assets::GetAssetComp<RawMatConfigurations>(sourceModel);
@@ -131,7 +131,7 @@ namespace RenderCore { namespace Assets
 
             ResolvedMaterial resMat;
             std::basic_stringstream<::Assets::ResChar> resName;
-            auto guid = MakeMaterialGuid(AsPointer(i->cbegin()), AsPointer(i->cend()));
+            auto guid = MakeMaterialGuid(MakeStringSection(*i));
 
                 // Our resolved material comes from 3 separate inputs:
                 //  1) model:configuration
@@ -316,14 +316,14 @@ namespace RenderCore { namespace Assets
 
     std::shared_ptr<::Assets::ICompileMarker> MaterialScaffoldCompiler::PrepareAsset(
         uint64 typeCode, 
-        const ::Assets::ResChar* initializers[], unsigned initializerCount,
+        const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
         const ::Assets::IntermediateAssets::Store& store)
     {
         if (initializerCount != 2 || !initializers[0][0] || !initializers[1][0]) 
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in MaterialScaffoldCompiler. Material filename first, then model filename"));
 
-        const auto* materialFilename = initializers[0], *modelFilename = initializers[1];
-        return std::make_shared<MatCompilerMarker>(materialFilename, modelFilename, store, shared_from_this());
+        const auto materialFilename = initializers[0], modelFilename = initializers[1];
+        return std::make_shared<MatCompilerMarker>(materialFilename.AsString(), modelFilename.AsString(), store, shared_from_this());
     }
 
     void MaterialScaffoldCompiler::StallOnPendingOperations(bool cancelAll)
@@ -469,7 +469,7 @@ namespace RenderCore { namespace Assets
     }
 
 	std::shared_ptr<::Assets::DeferredConstruction> MaterialScaffold::BeginDeferredConstruction(
-		const ::Assets::ResChar* initializers[], unsigned initializerCount)
+		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
 	{
 		return ::Assets::DefaultBeginDeferredConstruction<MaterialScaffold>(initializers, initializerCount);
 	}

@@ -66,20 +66,20 @@ namespace RenderCore { namespace Assets
         using SupplementRange = IteratorRange<const SupplementGUID*>;
 
         Model GetModel(
-            const ResChar modelFilename[], 
-            const ResChar materialFilename[],
+            StringSection<ResChar> modelFilename, 
+            StringSection<ResChar> materialFilename,
             SupplementRange supplements = SupplementRange(),
             unsigned LOD = 0);
         Scaffolds GetScaffolds(
-            const ResChar modelFilename[], 
-            const ResChar materialFilename[]);
+            StringSection<ResChar> modelFilename, 
+            StringSection<ResChar> materialFilename);
         ::Assets::AssetState PrepareModel(
-            const ResChar modelFilename[],
-            const ResChar materialFilename[],
+            StringSection<ResChar> modelFilename,
+            StringSection<ResChar> materialFilename,
             SupplementRange supplements = SupplementRange(),
             unsigned LOD = 0); 
 
-        ModelScaffold*      GetModelScaffold(const ResChar modelFilename[]);
+        ModelScaffold*      GetModelScaffold(StringSection<ResChar> modelFilename);
         SharedStateSet&     GetSharedStateSet();
 
         uint32              GetReloadId();

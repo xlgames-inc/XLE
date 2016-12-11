@@ -43,6 +43,11 @@ namespace Utility
         return Hash64(AsPointer(str.begin()), AsPointer(str.end()), seed);
     }
 
+	uint64 Hash64(StringSection<char> str, uint64 seed)
+	{
+		return Hash64(str.begin(), str.end(), seed);
+	}
+
     uint32 Hash32(const void* begin, const void* end, uint32 seed)
     {
         uint32 temp;

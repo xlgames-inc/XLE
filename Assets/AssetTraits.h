@@ -6,6 +6,7 @@
 
 #include "AssetsCore.h"
 #include "../Utility/UTFUtils.h"
+#include "../Utility/StringUtils.h"
 #include <assert.h>
 
 namespace Utility
@@ -37,7 +38,7 @@ namespace Assets
 
 			template<typename T> struct HasBeginDeferredConstructionHelper
 			{
-				template<typename U, std::shared_ptr<DeferredConstruction> (*)(const ResChar*[], unsigned)> struct FunctionSignature {};
+				template<typename U, std::shared_ptr<DeferredConstruction> (*)(const StringSection<ResChar>[], unsigned)> struct FunctionSignature {};
 				template<typename U> static std::true_type Test1(FunctionSignature<U, &U::BeginDeferredConstruction>*);
 				template<typename U> static std::false_type Test1(...);
 				static const bool Result = decltype(Test1<T>(0))::value;
@@ -48,7 +49,7 @@ namespace Assets
 
 			static const bool Constructor_DeferredConstruction = std::is_constructible<AssetType, const std::shared_ptr<DeferredConstruction>&>::value;
 			static const bool Constructor_Formatter = std::is_constructible<AssetType, InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&>::value;
-			static const bool Constructor_IntermediateAssetLocator = std::is_constructible<AssetType, const IntermediateAssetLocator&, const ResChar[]>::value;
+			static const bool Constructor_IntermediateAssetLocator = std::is_constructible<AssetType, const IntermediateAssetLocator&, StringSection<ResChar>>::value;
 			static const bool Constructor_ChunkFileContainer = std::is_constructible<AssetType, const ChunkFileContainer&>::value;
 
 			static const bool HasBeginDeferredConstruction = HasBeginDeferredConstructionHelper<AssetType>::Result;
@@ -57,20 +58,20 @@ namespace Assets
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////
 
-		const ConfigFileContainer<InputStreamFormatter<utf8>>& GetConfigFileContainer(const ResChar identifier[]);
-		const ChunkFileContainer& GetChunkFileContainer(const ResChar identifier[]);
+		const ConfigFileContainer<InputStreamFormatter<utf8>>& GetConfigFileContainer(StringSection<ResChar> identifier);
+		const ChunkFileContainer& GetChunkFileContainer(StringSection<ResChar> identifier);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template<typename AssetType, typename std::enable_if<Internal::AssetTraits<AssetType>::Constructor_Formatter>::type* = nullptr>
-		static std::unique_ptr<AssetType> AutoConstructAsset(const ResChar initializer[])
+		static std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
 		// First parameter should be the section of the input file to read (or just use the root of the file if it doesn't exist)
 		const char* p = XlFindChar(initializer, ':');
 		if (p) {
 			char buffer[256];
-			XlCopyString(buffer, MakeStringSection(initializer, p));
+			XlCopyString(buffer, MakeStringSection(initializer.begin(), p));
 			const auto& container = Internal::GetConfigFileContainer(buffer);
 			auto fmttr = container.GetFormatter((const utf8*)(p+1));
 			return std::make_unique<AssetType>(
@@ -111,7 +112,7 @@ namespace Assets
 			auto assetSet = Internal::GetAssetSet<AssetType>();
 			auto i = LowerBound(assetSet->_deferredConstructions, hash);
 			if (i == assetSet->_deferredConstructions.end() || i->first != hash) {
-				const char* inits[] = { ((const char*)initialisers)... };
+				StringSection<ResChar> inits[] = { initialisers... };
 				deferredConstruction = AssetType::BeginDeferredConstruction(inits, dimof(inits));
 				i = assetSet->_deferredConstructions.insert(i, std::make_pair(hash, deferredConstruction));
 			} else {
@@ -133,7 +134,7 @@ namespace Assets
 			auto assetSet = Internal::GetAssetSet<AssetType>();
 			auto i = LowerBound(assetSet->_deferredConstructions, hash);
 			if (i == assetSet->_deferredConstructions.end() || i->first != hash) {
-				const char* inits[] = { ((const char*)initialisers)... };
+				StringSection<ResChar> inits[] = { initialisers... };
 				deferredConstruction = AssetType::BeginDeferredConstruction(inits, dimof(inits));
 				i = assetSet->_deferredConstructions.insert(i, std::make_pair(hash, deferredConstruction));
 			} else {
@@ -142,7 +143,7 @@ namespace Assets
 		}
 
 		auto state = deferredConstruction->GetAssetState();
-		const auto* initializer = (const char*)std::get<0>(std::tuple<Params...>(initialisers...));
+		const auto initializer = std::get<0>(std::tuple<Params...>(initialisers...));
 		if (state == AssetState::Pending)
 			Throw(Exceptions::PendingAsset(initializer, "Pending deferred construction"));
 		if (state == AssetState::Invalid)

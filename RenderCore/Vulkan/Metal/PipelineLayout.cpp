@@ -229,12 +229,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
     PipelineLayout::PipelineLayout(
         const ObjectFactory& objectFactory,
-        const ::Assets::ResChar rootSignatureCfg[],
+        StringSection<::Assets::ResChar> rootSignatureCfg,
         VkShaderStageFlags stageFlags)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_pendingLayoutRebuild = true;
-        _pimpl->_rootSignatureFilename = rootSignatureCfg;
+        _pimpl->_rootSignatureFilename = rootSignatureCfg.AsString();
         _pimpl->_stageFlags = stageFlags;
         RebuildLayout(objectFactory);
     }
@@ -249,7 +249,7 @@ namespace RenderCore { namespace Metal_Vulkan
     static Qualifier AsQualifier(StringSection<char> str)
     {
         // look for "(image)" or "(buffer)" qualifiers
-        if (str.Empty() || str[0] != '(') return Qualifier::None;
+        if (str.IsEmpty() || str[0] != '(') return Qualifier::None;
 
         if (XlEqStringI(StringSection<char>(str.begin()+1, str.end()), "buffer)"))
             return Qualifier::Buffer;
@@ -262,7 +262,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     static unsigned AsShaderStageMask(StringSection<char> str)
     {
-        if (str.Empty() || str[0] != '(')
+        if (str.IsEmpty() || str[0] != '(')
             return VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
         unsigned result = 0u;
@@ -313,7 +313,7 @@ namespace RenderCore { namespace Metal_Vulkan
         // SM5.1 adds a "space" parameter to allow for overlaps. But we don't support this currently.
         DescriptorSetSignature result;
         for (auto a=element.FirstAttribute(); a; a=a.Next()) {
-            if (a.Name().Empty()) continue;
+            if (a.Name().IsEmpty()) continue;
 
             if (XlEqStringI(a.Name(), "Name")) {
                 result._name = a.Value().AsString();
@@ -340,7 +340,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         PushConstantsRangeSigniture result = {std::string(), 0u, 0u, 0u};
         for (auto a=element.FirstAttribute(); a; a=a.Next()) {
-            if (a.Name().Empty()) continue;
+            if (a.Name().IsEmpty()) continue;
 
             if (XlEqStringI(a.Name(), "Name")) {
                 result._name = a.Value().AsString();
@@ -360,7 +360,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
-    RootSignature::RootSignature(const ::Assets::ResChar filename[])
+    RootSignature::RootSignature(StringSection<::Assets::ResChar> filename)
     {
         // attempt to load the source file and extract the root signature
         size_t fileSize = 0;

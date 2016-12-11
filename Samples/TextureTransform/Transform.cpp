@@ -34,7 +34,7 @@ namespace TextureTransform
 {
     using namespace RenderCore;
 
-    static CompiledShaderByteCode LoadShaderImmediate(const ::Assets::ResChar name[])
+    static CompiledShaderByteCode LoadShaderImmediate(StringSection<::Assets::ResChar> name)
     {
         CompiledShaderByteCode compiledByteCode(name);
         auto state = compiledByteCode.StallWhilePending();
@@ -62,13 +62,13 @@ namespace TextureTransform
 		Format _finalFormat;
         uint64 _bindingHash;
 
-        InputResource(const ::Assets::ResChar initializer[]);
+        InputResource(StringSection<::Assets::ResChar> initializer);
         ~InputResource();
     private:
         enum class SourceColorSpace { SRGB, Linear, Unspecified };
     };
 
-    InputResource::InputResource(const ::Assets::ResChar initializer[])
+    InputResource::InputResource(StringSection<::Assets::ResChar> initializer)
     {
         _finalFormat = Format::Unknown;
         _desc = BufferUploads::TextureDesc::Plain1D(0, Format::Unknown);
@@ -124,7 +124,7 @@ namespace TextureTransform
         return input;
     }
 
-    static ::Assets::rstring GetCBLayoutName(const ::Assets::ResChar input[])
+    static ::Assets::rstring GetCBLayoutName(StringSection<::Assets::ResChar> input)
     {
         auto splitter = MakeFileNameSplitter(input);
         return splitter.DriveAndPath().AsString()
@@ -331,10 +331,10 @@ namespace TextureTransform
         return std::move(images);
     }
 
-	void TextureResult::SaveXMLFormat(const ::Assets::ResChar destinationFile[]) const
+	void TextureResult::SaveXMLFormat(StringSection<::Assets::ResChar> destinationFile) const
 	{
 		std::fstream out;
-		out.open(destinationFile, std::fstream::out|std::fstream::trunc);
+		out.open(destinationFile.AsString().c_str(), std::fstream::out|std::fstream::trunc);
 		out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << std::endl;
 		out << "<image width=\"" << _dimensions[0] << "\" height=\"" << _dimensions[1] << "\" format=\"" << AsString(_format) << "\">" << std::endl;
 		auto fmt = AsImpliedType(_format);
@@ -355,7 +355,7 @@ namespace TextureTransform
 		out << "</image>" << std::endl;
 	}
 
-    void TextureResult::Save(const ::Assets::ResChar destinationFile[]) const
+    void TextureResult::Save(StringSection<::Assets::ResChar> destinationFile) const
     {
             // using DirectXTex to save to disk...
             // This provides a nice layer over a number of underlying formats

@@ -71,7 +71,7 @@ namespace ToolsRig
 
     void CalculateVertexAO(
         RenderCore::IThreadContext& threadContext,
-        const ::Assets::ResChar destinationFile[],
+        StringSection<::Assets::ResChar> destinationFile,
         AoGen& gen,
         const RenderCore::Assets::ModelScaffold& model,
         const RenderCore::Assets::MaterialScaffold& material,
@@ -83,7 +83,7 @@ namespace ToolsRig
     public:
         std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
             uint64 typeCode, 
-            const ::Assets::ResChar* initializers[], unsigned initializerCount,
+            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& destinationStore);
         void StallOnPendingOperations(bool cancelAll);
 

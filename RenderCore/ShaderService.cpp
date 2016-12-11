@@ -20,8 +20,9 @@ namespace RenderCore
 
         ////////////////////////////////////////////////////////////
 
-    static ShaderStage::Enum AsShaderStage(const ::Assets::ResChar shaderModel[])
+    static ShaderStage::Enum AsShaderStage(StringSection<::Assets::ResChar> shaderModel)
     {
+		assert(shaderModel.size() >= 1);
         switch (shaderModel[0]) {
         case 'v':   return ShaderStage::Vertex;
         case 'p':   return ShaderStage::Pixel;
@@ -67,7 +68,7 @@ namespace RenderCore
             _validationCallback = std::make_shared<Assets::DependencyValidation>();
     }
 
-    CompiledShaderByteCode::CompiledShaderByteCode(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[])
+    CompiledShaderByteCode::CompiledShaderByteCode(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> definesTable)
     {
         _stage = ShaderStage::Null;
         auto validationCallback = std::make_shared<Assets::DependencyValidation>();
@@ -76,7 +77,7 @@ namespace RenderCore
             XlCopyString(_initializer, initializer);
         #endif
 
-        if (initializer && initializer[0] != '\0' && XlCompareStringI(initializer, "null")!=0) {
+        if (!initializer.IsEmpty() && !XlEqStringI(initializer, "null")) {
             compileHelper = 
                 ShaderService::GetInstance().CompileFromFile(
                     initializer, definesTable);
@@ -92,8 +93,8 @@ namespace RenderCore
     }
 
     CompiledShaderByteCode::CompiledShaderByteCode(
-        const char shaderInMemory[], const char entryPoint[], 
-        const char shaderModel[], const ::Assets::ResChar definesTable[])
+        StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
+        StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable)
     {
         _stage = AsShaderStage(shaderModel);
         auto validationCallback = std::make_shared<Assets::DependencyValidation>();
@@ -288,14 +289,17 @@ namespace RenderCore
 
         ////////////////////////////////////////////////////////////
 
-    ShaderService::ResId::ResId(const ResChar filename[], const ResChar entryPoint[], const ResChar shaderModel[])
+    ShaderService::ResId::ResId(StringSection<ResChar> filename, StringSection<ResChar> entryPoint, StringSection<ResChar> shaderModel)
     {
         XlCopyString(_filename, filename);
         XlCopyString(_entryPoint, entryPoint);
 
         _dynamicLinkageEnabled = shaderModel[0] == '!';
-        if (_dynamicLinkageEnabled) ++shaderModel;
-        XlCopyString(_shaderModel, shaderModel);
+        if (_dynamicLinkageEnabled) {
+			XlCopyString(_shaderModel, MakeStringSection(shaderModel.begin()+1, shaderModel.end()));
+		} else {
+			XlCopyString(_shaderModel, shaderModel);
+		}
     }
 
     ShaderService::ResId::ResId()
@@ -306,7 +310,7 @@ namespace RenderCore
 
 
     auto ShaderService::MakeResId(
-        const ::Assets::ResChar initializer[],
+        StringSection<::Assets::ResChar> initializer,
         ILowLevelCompiler& compiler) -> ResId
     {
         ResId shaderId;
@@ -315,7 +319,7 @@ namespace RenderCore
         auto splitter = MakeFileNameSplitter(initializer);
         XlCopyString(shaderId._filename, splitter.AllExceptParameters());
 
-        if (splitter.Parameters().Empty()) {
+        if (splitter.Parameters().IsEmpty()) {
             XlCopyString(shaderId._entryPoint, "main");
         } else {
             startShaderModel = XlFindChar(splitter.Parameters().begin(), ':');
@@ -344,8 +348,8 @@ namespace RenderCore
     }
 
     auto ShaderService::CompileFromFile(
-        const ::Assets::ResChar resId[], 
-        const ::Assets::ResChar definesTable[]) const -> std::shared_ptr<IPendingMarker>
+        StringSection<::Assets::ResChar> resId, 
+        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<IPendingMarker>
     {
         for (const auto& i:_shaderSources) {
             auto r = i->CompileFromFile(resId, definesTable);
@@ -355,9 +359,9 @@ namespace RenderCore
     }
 
     auto ShaderService::CompileFromMemory(
-        const char shaderInMemory[], 
-        const char entryPoint[], const char shaderModel[], 
-        const ::Assets::ResChar definesTable[]) const -> std::shared_ptr<IPendingMarker>
+        StringSection<char> shaderInMemory, 
+        StringSection<char> entryPoint, StringSection<char> shaderModel, 
+        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<IPendingMarker>
     {
         for (const auto& i:_shaderSources) {
             auto r = i->CompileFromMemory(shaderInMemory, entryPoint, shaderModel, definesTable);

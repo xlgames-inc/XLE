@@ -45,7 +45,7 @@ namespace SceneEngine
         unsigned GetWidth() const { return _width; }
         unsigned GetHeight() const { return _height; }
 
-        TerrainUberSurfaceGeneric(const ::Assets::ResChar filename[]);
+        TerrainUberSurfaceGeneric(StringSection<::Assets::ResChar> filename);
         ~TerrainUberSurfaceGeneric();
         
         TerrainUberSurfaceGeneric();
@@ -84,7 +84,7 @@ namespace SceneEngine
         void SetValue(unsigned x, unsigned y, Type newValue);
         Type GetValueFast(unsigned x, unsigned y) const;
 
-        TerrainUberSurface(const ::Assets::ResChar filename[]);
+        TerrainUberSurface(StringSection<::Assets::ResChar> filename);
         TerrainUberSurface();
     private:
         friend class HeightsUberSurfaceInterface;

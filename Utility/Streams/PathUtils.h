@@ -94,9 +94,9 @@ namespace Utility
 		Section		Drive() const					{ return _drive; }
 		Section		Path() const					{ return _path; }
 		Section		File() const					{ return _file; }
-		Section		Extension() const				{ return !_extension.Empty() ? Section(_extension._start+1, _extension._end) : Section(); }
+		Section		Extension() const				{ return !_extension.IsEmpty() ? Section(_extension._start+1, _extension._end) : Section(); }
 		Section		ExtensionWithPeriod() const		{ return _extension; }
-        Section		Parameters() const				{ return !_parameters.Empty() ? Section(_parameters._start+1, _parameters._end) : Section(); }
+        Section		Parameters() const				{ return !_parameters.IsEmpty() ? Section(_parameters._start+1, _parameters._end) : Section(); }
         Section     ParametersWithDivider() const   { return _parameters; }
 
 		Section     DriveAndPath() const			{ return Section(_drive._start, _path._end); }

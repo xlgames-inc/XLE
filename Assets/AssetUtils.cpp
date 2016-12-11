@@ -216,7 +216,7 @@ namespace Assets
 
         auto splitter = MakeFileNameSplitter(baseName);
         bool baseFileExist = false;
-        if (!splitter.ParametersWithDivider().Empty()) {
+        if (!splitter.ParametersWithDivider().IsEmpty()) {
             XlCopyString(tempBuffer, splitter.AllExceptParameters());
             baseFileExist = DoesFileExist(tempBuffer);
         } else {
@@ -353,13 +353,13 @@ namespace Assets
 
     namespace Exceptions
     {
-        AssetException::AssetException(const ResChar initializer[], const char what[])
+        AssetException::AssetException(StringSection<ResChar> initializer, const char what[])
         : ::Exceptions::BasicLabel(what) 
         {
             XlCopyString(_initializer, dimof(_initializer), initializer); 
         }
 
-        InvalidAsset::InvalidAsset(const char initializer[], const char what[]) 
+        InvalidAsset::InvalidAsset(StringSection<ResChar> initializer, const char what[]) 
         : AssetException(initializer, what) 
         {
                 // Highlight cases where parameters are not filled in
@@ -377,7 +377,7 @@ namespace Assets
 
         auto InvalidAsset::State() const -> AssetState { return AssetState::Invalid; }
 
-        PendingAsset::PendingAsset(const char initializer[], const char what[]) 
+        PendingAsset::PendingAsset(StringSection<ResChar> initializer, const char what[]) 
         : AssetException(initializer, what) 
         {}
 
@@ -499,7 +499,7 @@ namespace Assets
 
         while (i!=iend && s!=send) { *i = ConvertPathChar(*s, rules); ++i; ++s; }
         
-        if (!srcSplit.ParametersWithDivider().Empty()) {
+        if (!srcSplit.ParametersWithDivider().IsEmpty()) {
             s = srcSplit.ParametersWithDivider()._start;
             send = srcSplit.ParametersWithDivider()._end;
             while (i!=iend && s!=send) { *i = *s; ++i; ++s; }

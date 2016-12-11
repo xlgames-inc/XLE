@@ -119,7 +119,7 @@ namespace ColladaConversion
         SkeletonRegistry& skeletonReferences,
         bool fullSkeleton)
     {
-        if (rootNode.Empty()) {
+        if (rootNode.IsEmpty()) {
             BuildSkeleton(skeleton, sceneRoot, skeletonReferences, 0, false, fullSkeleton);
         } else {
             // Scan through look for a node that matches the name exactly, or is an 
@@ -142,7 +142,7 @@ namespace ColladaConversion
         StringSection<utf8> rootNode,
         SkeletonRegistry& nodeRefs)
     {
-        if (rootNode.Empty()) {
+        if (rootNode.IsEmpty()) {
             Gather(sceneRoot, nodeRefs);
             return true;
         } else {
@@ -264,7 +264,7 @@ namespace ColladaConversion
                     const auto* mat = file->FindMaterial(ref._id);
                     if (mat) {
                         newMaterialGuid = 
-                            RenderCore::Assets::MakeMaterialGuid(mat->_name._start, mat->_name._end);
+                            RenderCore::Assets::MakeMaterialGuid(mat->_name);
                     }
                 }
 
@@ -461,7 +461,7 @@ namespace ColladaConversion
     { 
         if (!node.GetId().IsEmpty())
             return node.GetId().GetHash(); 
-        if (!node.GetName().Empty())
+        if (!node.GetName().IsEmpty())
             return Hash64(node.GetName().begin(), node.GetName().end());
 
         // If we have no name & no id -- it is truly anonymous. 

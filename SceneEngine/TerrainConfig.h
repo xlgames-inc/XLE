@@ -52,7 +52,8 @@ namespace SceneEngine
             float elementSpacing = 10.f, float sunPathAngle = 0.f, bool encodedGradientFlags = false);
         TerrainConfig(
             InputStreamFormatter<utf8>& formatter,
-            const ::Assets::DirectorySearchRules& searchRules);
+            const ::Assets::DirectorySearchRules& searchRules,
+			const ::Assets::DepValPtr&);
         TerrainConfig();
 
         void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
@@ -135,7 +136,7 @@ namespace SceneEngine
         void Write(Utility::OutputStream& stream) const;
 
         TerrainCachedData();
-        TerrainCachedData(const ::Assets::ResChar filename[]);
+        TerrainCachedData(StringSection<::Assets::ResChar> filename);
         TerrainCachedData(const TerrainConfig& cfg, ITerrainFormat& ioFormat);
         TerrainCachedData(TerrainCachedData&& moveFrom);
         TerrainCachedData& operator=(TerrainCachedData&& moveFrom);

@@ -27,7 +27,7 @@ namespace Assets { namespace Internal
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template <typename... Params>
-	std::basic_string<ResChar> AsString(Params... initialisers);
+		std::basic_string<ResChar> AsString(Params... initialisers);
 
 	template<typename Asset, typename... Params>
 		std::basic_string<ResChar> BuildDescriptiveName(Params... initialisers)
@@ -49,7 +49,7 @@ namespace Assets { namespace Internal
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64 typeCode, const ResChar* initializers[], unsigned initializerCount);
+	std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
     template<typename AssetType> using Ptr = std::unique_ptr<AssetType>;
 
     template <int DoCheckDependancy> struct CheckDependancy { template<typename Resource> static bool NeedsRefresh(const Resource* resource); };

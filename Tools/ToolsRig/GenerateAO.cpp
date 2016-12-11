@@ -353,7 +353,7 @@ namespace ToolsRig
     }
     
     static void WriteSupplementalModel(
-        const ::Assets::ResChar destinationFile[],
+        StringSection<::Assets::ResChar> destinationFile,
         IteratorRange<std::pair<unsigned, MeshDatabase>*> meshes,
         const NativeVBSettings& nativeVbSettings);
 
@@ -375,7 +375,7 @@ namespace ToolsRig
 
     void CalculateVertexAO(
         RenderCore::IThreadContext& threadContext,
-        const ::Assets::ResChar destinationFile[],
+        StringSection<::Assets::ResChar> destinationFile,
         AoGen& gen,
         const RenderCore::Assets::ModelScaffold& model,
         const RenderCore::Assets::MaterialScaffold& material,
@@ -619,7 +619,7 @@ namespace ToolsRig
     }
 
     static void WriteSupplementalModel(
-        const ::Assets::ResChar destinationFile[],
+        StringSection<::Assets::ResChar> destinationFile,
         IteratorRange<std::pair<unsigned, MeshDatabase>*> meshes,
         const NativeVBSettings& nativeVbSettings)
     {
@@ -719,19 +719,19 @@ namespace ToolsRig
 
         using CompileResult = ::Assets::CompilerHelper::CompileResult;
         CompileResult PerformCompile(
-            const ::Assets::ResChar modelFilename[], const ::Assets::ResChar materialFilename[],
-            const ::Assets::ResChar destinationFile[]);
+            StringSection<::Assets::ResChar> modelFilename, StringSection<::Assets::ResChar> materialFilename,
+            StringSection<::Assets::ResChar> destinationFile);
     };
 
     auto AOSupplementCompiler::Pimpl::PerformCompile(
-        const ::Assets::ResChar modelFilename[], const ::Assets::ResChar materialFilename[],
-        const ::Assets::ResChar destinationFile[]) -> CompileResult
+        StringSection<::Assets::ResChar> modelFilename, StringSection<::Assets::ResChar> materialFilename,
+        StringSection<::Assets::ResChar> destinationFile) -> CompileResult
     {
         ::Assets::ResChar modelFilenameNoParam[MaxPath];
         XlCopyString(modelFilenameNoParam, MakeFileNameSplitter(modelFilename).AllExceptParameters());
 
         const auto& model    = ::Assets::GetAssetComp<ModelScaffold>(modelFilename);
-        const auto& material = ::Assets::GetAssetComp<MaterialScaffold>(materialFilename, modelFilenameNoParam);
+        const auto& material = ::Assets::GetAssetComp<MaterialScaffold>(materialFilename, MakeStringSection(modelFilenameNoParam));
         auto searchRules     = ::Assets::DefaultDirectorySearchRules(modelFilename);
 
         CalculateVertexAO(
@@ -813,8 +813,8 @@ namespace ToolsRig
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
-            const ::Assets::ResChar modelFilename[],
-            const ::Assets::ResChar materialFilename[],
+            StringSection<::Assets::ResChar> modelFilename,
+            StringSection<::Assets::ResChar> materialFilename,
             uint64 typeCode,
             const ::Assets::IntermediateAssets::Store& store,
             std::shared_ptr<AOSupplementCompiler> compiler);
@@ -869,15 +869,15 @@ namespace ToolsRig
     StringSection<::Assets::ResChar> AOSupplementCompiler::Marker::Initializer() const { return MakeStringSection(_initializer); }
 
     AOSupplementCompiler::Marker::Marker(
-        const ::Assets::ResChar modelFilename[],
-        const ::Assets::ResChar materialFilename[],
+        StringSection<::Assets::ResChar> modelFilename,
+        StringSection<::Assets::ResChar> materialFilename,
         uint64 typeCode,
         const ::Assets::IntermediateAssets::Store& store,
         std::shared_ptr<AOSupplementCompiler> compiler)
-    : _modelFilename(modelFilename), _materialFilename(materialFilename)
+    : _modelFilename(modelFilename.AsString()), _materialFilename(materialFilename.AsString())
     , _typeCode(typeCode), _store(&store), _compiler(std::move(compiler))
     {
-        _initializer = ::Assets::rstring(modelFilename) + "(AO supplement)";
+        _initializer = modelFilename.AsString() + "(AO supplement)";
     }
     
     AOSupplementCompiler::Marker::~Marker() {}
@@ -885,12 +885,12 @@ namespace ToolsRig
     std::shared_ptr<::Assets::ICompileMarker> 
         AOSupplementCompiler::PrepareAsset(
             uint64 typeCode, 
-            const ::Assets::ResChar* initializers[], unsigned initializerCount,
+            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& store)
     {
-        if (initializerCount != 2 || !initializers[0][0] || !initializers[1][0]) 
+        if (initializerCount != 2 || initializers[0].IsEmpty() || initializers[1].IsEmpty()) 
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in AOSupplementCompiler. Model filename first, then material filename"));
-        const auto* modelFilename = initializers[0], *materialFilename = initializers[1];
+        const auto modelFilename = initializers[0], materialFilename = initializers[1];
         return std::make_shared<Marker>(modelFilename, materialFilename, typeCode, store, shared_from_this());
     }
 

@@ -79,7 +79,7 @@ namespace RenderCore { namespace Assets
             const RenderCore::InputElementDesc vertexElements[], unsigned count,
             const uint64 textureBindPoints[], unsigned textureBindPointsCount);
 
-        SharedTechniqueConfig InsertTechniqueConfig(const ::Assets::ResChar shaderName[]);
+        SharedTechniqueConfig InsertTechniqueConfig(StringSection<::Assets::ResChar> shaderName);
         SharedParameterBox InsertParameterBox(const Utility::ParameterBox& box);
         unsigned InsertRenderStateSet(const Techniques::RenderStateSet& states);
 

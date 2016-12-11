@@ -71,8 +71,8 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ChunkFileContainer::ChunkFileContainer(const char assetTypeName[])
-    : _filename(assetTypeName)
+    ChunkFileContainer::ChunkFileContainer(StringSection<ResChar> assetTypeName)
+    : _filename(assetTypeName.AsString())
     {
 		_validationCallback = std::make_shared<DependencyValidation>();
 		RegisterFileDependency(_validationCallback, MakeStringSection(_filename));

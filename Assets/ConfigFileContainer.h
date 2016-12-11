@@ -58,9 +58,9 @@ namespace Assets
 		Formatter GetRootFormatter() const;
 		Formatter GetFormatter(StringSection<typename Formatter::value_type>) const;
 
-		static std::unique_ptr<ConfigFileContainer> CreateNew(const ResChar initialiser[]);
+		static std::unique_ptr<ConfigFileContainer> CreateNew(StringSection<ResChar> initialiser);
 
-        ConfigFileContainer(const ResChar initializer[]);
+        ConfigFileContainer(StringSection<ResChar> initializer);
         ~ConfigFileContainer();
 
         const std::shared_ptr<DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }

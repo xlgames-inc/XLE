@@ -9,12 +9,12 @@
 
 namespace Assets { namespace Internal
 {
-	const ConfigFileContainer<>& GetConfigFileContainer(const ResChar identifier[])
+	const ConfigFileContainer<>& GetConfigFileContainer(StringSection<ResChar> identifier)
 	{
 		return ::Assets::GetAsset<ConfigFileContainer<>>(identifier);
 	}
 
-	const ChunkFileContainer& GetChunkFileContainer(const ResChar identifier[])
+	const ChunkFileContainer& GetChunkFileContainer(StringSection<ResChar> identifier)
 	{
 		return ::Assets::GetAsset<ChunkFileContainer>(identifier);
 	}

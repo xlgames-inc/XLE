@@ -118,7 +118,7 @@ namespace Assets { namespace IntermediateAssets
     {
     public:
         virtual std::shared_ptr<ICompileMarker> PrepareAsset(
-            uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
+            uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
             const Store& destinationStore) = 0;
         virtual void StallOnPendingOperations(bool cancelAll) = 0;
         virtual ~IAssetCompiler();
@@ -129,7 +129,7 @@ namespace Assets { namespace IntermediateAssets
     public:
         void AddCompiler(uint64 typeCode, const std::shared_ptr<IAssetCompiler>& processor);
         std::shared_ptr<ICompileMarker> PrepareAsset(
-            uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
+            uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
             Store& store);
         void StallOnPendingOperations(bool cancelAll);
 

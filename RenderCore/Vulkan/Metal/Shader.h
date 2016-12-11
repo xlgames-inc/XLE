@@ -37,7 +37,7 @@ namespace RenderCore { namespace Metal_Vulkan
             //
             //          Resource interface
             //
-		explicit VertexShader(const ::Assets::ResChar initializer[]);
+		explicit VertexShader(StringSection<::Assets::ResChar> initializer);
         explicit VertexShader(const CompiledShaderByteCode& byteCode);
         VertexShader();
     };
@@ -50,7 +50,7 @@ namespace RenderCore { namespace Metal_Vulkan
             //
             //          Resource interface
             //
-        explicit PixelShader(const ::Assets::ResChar initializer[]);
+        explicit PixelShader(StringSection<::Assets::ResChar> initializer);
         explicit PixelShader(const CompiledShaderByteCode& byteCode);
         PixelShader();
     };
@@ -83,7 +83,7 @@ namespace RenderCore { namespace Metal_Vulkan
             //
             //          Resource interface
             //
-        GeometryShader(const ::Assets::ResChar initializer[], const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
+        GeometryShader(StringSection<::Assets::ResChar> initializer, const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
         explicit GeometryShader(const CompiledShaderByteCode& byteCode, const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
         GeometryShader();
 
@@ -96,7 +96,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class HullShader : public Shader
     {
     public:
-        explicit HullShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
+        explicit HullShader(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> definesTable=StringSection<::Assets::ResChar>());
         explicit HullShader(const CompiledShaderByteCode& byteCode);
     };
 
@@ -105,7 +105,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class DomainShader : public Shader
     {
     public:
-        explicit DomainShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
+        explicit DomainShader(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> definesTable=StringSection<::Assets::ResChar>());
         explicit DomainShader(const CompiledShaderByteCode& byteCode);
     };
 
@@ -114,7 +114,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class ComputeShader : public Shader
     {
     public:
-        explicit ComputeShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
+        explicit ComputeShader(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> definesTable=StringSection<::Assets::ResChar>());
         explicit ComputeShader(const CompiledShaderByteCode& byteCode);
         ComputeShader();
         ~ComputeShader();
@@ -129,17 +129,17 @@ namespace RenderCore { namespace Metal_Vulkan
     class ShaderProgram
     {
     public:
-        ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
-                        const ::Assets::ResChar fragmentShaderInitializer[]);
+        ShaderProgram(  StringSection<::Assets::ResChar> vertexShaderInitializer, 
+                        StringSection<::Assets::ResChar> fragmentShaderInitializer);
         
-        ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
-                        const ::Assets::ResChar fragmentShaderInitializer[],
-                        const ::Assets::ResChar definesTable[]);
+        ShaderProgram(  StringSection<::Assets::ResChar> vertexShaderInitializer, 
+                        StringSection<::Assets::ResChar> fragmentShaderInitializer,
+                        StringSection<::Assets::ResChar> definesTable);
 
-        ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
-                        const ::Assets::ResChar geometryShaderInitializer[],
-                        const ::Assets::ResChar fragmentShaderInitializer[],
-                        const ::Assets::ResChar definesTable[]);
+        ShaderProgram(  StringSection<::Assets::ResChar> vertexShaderInitializer, 
+                        StringSection<::Assets::ResChar> geometryShaderInitializer,
+                        StringSection<::Assets::ResChar> fragmentShaderInitializer,
+                        StringSection<::Assets::ResChar> definesTable);
 
         ShaderProgram(  const CompiledShaderByteCode& compiledVertexShader, 
                         const CompiledShaderByteCode& compiledFragmentShader);
@@ -176,12 +176,12 @@ namespace RenderCore { namespace Metal_Vulkan
     class DeepShaderProgram : public ShaderProgram
     {
     public:
-        DeepShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
-                            const ::Assets::ResChar geometryShaderInitializer[],
-                            const ::Assets::ResChar fragmentShaderInitializer[],
-                            const ::Assets::ResChar hullShaderInitializer[],
-                            const ::Assets::ResChar domainShaderInitializer[],
-                            const ::Assets::ResChar definesTable[]);
+        DeepShaderProgram(  StringSection<::Assets::ResChar> vertexShaderInitializer, 
+                            StringSection<::Assets::ResChar> geometryShaderInitializer,
+                            StringSection<::Assets::ResChar> fragmentShaderInitializer,
+                            StringSection<::Assets::ResChar> hullShaderInitializer,
+                            StringSection<::Assets::ResChar> domainShaderInitializer,
+                            StringSection<::Assets::ResChar> definesTable);
         ~DeepShaderProgram();
 
         const HullShader&                   GetHullShader() const               { return _hullShader; }

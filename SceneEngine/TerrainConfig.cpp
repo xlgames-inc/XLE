@@ -141,7 +141,8 @@ namespace SceneEngine
 
     TerrainConfig::TerrainConfig(
         InputStreamFormatter<utf8>& formatter,
-        const ::Assets::DirectorySearchRules& searchRules)
+        const ::Assets::DirectorySearchRules& searchRules,
+		const ::Assets::DepValPtr&)
     : TerrainConfig()
     {
         Document<InputStreamFormatter<utf8>> doc(formatter);
@@ -291,7 +292,7 @@ namespace SceneEngine
     }
 
     TerrainCachedData::TerrainCachedData() {}
-    TerrainCachedData::TerrainCachedData(const ::Assets::ResChar filename[])
+    TerrainCachedData::TerrainCachedData(StringSection<::Assets::ResChar> filename)
     {
         size_t fileSize = 0;
         auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);

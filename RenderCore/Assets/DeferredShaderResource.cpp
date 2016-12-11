@@ -111,10 +111,10 @@ namespace RenderCore { namespace Assets
         SourceColorSpace    _colSpaceDefault;
         bool                _generateMipmaps;
 
-        DecodedInitializer(const ResChar initializer[]);
+        DecodedInitializer(StringSection<ResChar> initializer);
     };
 
-    DecodedInitializer::DecodedInitializer(const ResChar initializer[])
+    DecodedInitializer::DecodedInitializer(StringSection<ResChar> initializer)
     : _splitter(initializer)
     {
         _generateMipmaps = true;
@@ -153,7 +153,7 @@ namespace RenderCore { namespace Assets
 		XlCatString(buffer, Count, splitter.AllExceptParameters());
 	}
 
-    DeferredShaderResource::DeferredShaderResource(const ResChar initializer[])
+    DeferredShaderResource::DeferredShaderResource(StringSection<ResChar> initializer)
     {
         DEBUG_ONLY(XlCopyString(_initializer, dimof(_initializer), initializer);)
         _pimpl = std::make_unique<Pimpl>();
@@ -316,12 +316,12 @@ namespace RenderCore { namespace Assets
         return ::Assets::AssetState::Ready;
     }
 
-    const char* DeferredShaderResource::Initializer() const
+	StringSection<::Assets::ResChar> DeferredShaderResource::Initializer() const
     {
         #if defined(_DEBUG)
             return _initializer;
         #else
-            return "";
+            return StringSection<::Assets::ResChar>();
         #endif
     }
 
@@ -353,7 +353,7 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-	Format DeferredShaderResource::LoadFormat(const ::Assets::ResChar initializer[])
+	Format DeferredShaderResource::LoadFormat(StringSection<::Assets::ResChar> initializer)
     {
         DecodedInitializer init(initializer);
 
@@ -369,7 +369,7 @@ namespace RenderCore { namespace Assets
         return ResolveFormatImmediate(result, init);
     }
 
-    Metal::ShaderResourceView DeferredShaderResource::LoadImmediately(const char initializer[])
+    Metal::ShaderResourceView DeferredShaderResource::LoadImmediately(StringSection<::Assets::ResChar> initializer)
     {
         DecodedInitializer init(initializer);
 
@@ -453,9 +453,9 @@ namespace RenderCore { namespace Assets
             && unsigned(format) <= unsigned(RenderCore::Format::BC1_UNORM_SRGB);
     }
 
-    bool DeferredShaderResource::IsDXTNormalMap(const ::Assets::ResChar textureName[])
+    bool DeferredShaderResource::IsDXTNormalMap(StringSection<::Assets::ResChar> textureName)
     {
-        if (!textureName || !textureName[0]) return false;
+        if (textureName.IsEmpty()) return false;
 
         auto& cache = Techniques::FindCachedBox<CachedTextureFormats>(
             CachedTextureFormats::Desc());

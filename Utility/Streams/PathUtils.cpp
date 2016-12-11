@@ -642,7 +642,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 	{
 		std::basic_stringstream<CharType> stream;
 
-        if (!_drive.Empty()) {
+        if (!_drive.IsEmpty()) {
             auto*s = _drive._start;
             while (s!=_drive._end) {
                 auto chr = ConvertPathChar(*s++, rules);
@@ -680,7 +680,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
         auto* i = dest;
         auto* iend = &dest[destCount];
 
-        if (!_drive.Empty()) {
+        if (!_drive.IsEmpty()) {
             auto*s = _drive._start;
             while (s!=_drive._end && i!=iend) {
                 if (s >= dest && s < iend) assert(s>=i);   // check for reading&writing from the same place
@@ -815,7 +815,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
             // then we'll assume that destinationObject is on the same drive
         auto destinationObject = iDestinationObject.Simplify();
         
-        if (!iDestinationObject.GetDrive().Empty()) {
+        if (!iDestinationObject.GetDrive().IsEmpty()) {
             if (!XlEqStringI(iBasePath.GetDrive(), iDestinationObject.GetDrive()))
                 return destinationObject.Rebuild(rules);
         }

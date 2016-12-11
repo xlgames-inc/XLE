@@ -31,9 +31,9 @@ namespace RenderCore { namespace Techniques
         Variation FindVariation(
             ParsingContext& parsingContext,
             unsigned techniqueIndex,
-            const ::Assets::ResChar techniqueConfig[]) const;
+            StringSection<::Assets::ResChar> techniqueConfig) const;
 
-        const PredefinedCBLayout& GetCBLayout(const ::Assets::ResChar techniqueConfig[]);
+        const PredefinedCBLayout& GetCBLayout(StringSection<::Assets::ResChar> techniqueConfig);
 
         TechniqueMaterial(
             const InputLayout& inputLayout,

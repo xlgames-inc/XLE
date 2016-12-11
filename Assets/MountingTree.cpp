@@ -195,7 +195,7 @@ namespace Assets
 	{
 		// If the filename begins with a "/" or a Windows-style drive (eg, c:/) then we can't
 		// use the mounting system, and we must drop back to the raw OS filesystem.
-		if (filename.Empty()) return EnumerableLookup();
+		if (filename.IsEmpty()) return EnumerableLookup();
 
 		// todo -- fall back to raw filesystem in this case
 		if (IsRawFilesystem(filename)) return EnumerableLookup();
@@ -236,7 +236,7 @@ namespace Assets
 
 	auto MountingTree::Lookup(StringSection<utf16> filename) -> EnumerableLookup
 	{
-		if (filename.Empty()) return EnumerableLookup();
+		if (filename.IsEmpty()) return EnumerableLookup();
 		if (IsRawFilesystem(filename)) return EnumerableLookup();
 		if (!_pimpl->_hasAtLeastOneMount) return EnumerableLookup();
 		std::vector<uint8> request((const uint8*)filename.begin(), (const uint8*)filename.end());
@@ -254,7 +254,7 @@ namespace Assets
 		auto split = MakeSplitPath(mountPoint);
 		#if defined(_DEBUG)
 			for (auto i:split.GetSections()) 
-				assert(!XlEqStringI(i, u(".")) && !XlEqStringI(i, u("..")) && !i.Empty());
+				assert(!XlEqStringI(i, u(".")) && !XlEqStringI(i, u("..")) && !i.IsEmpty());
 		#endif
 
 		uint64 hash = 0;

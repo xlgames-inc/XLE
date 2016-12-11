@@ -38,8 +38,8 @@ namespace RenderCore { namespace Assets
         LRUCache<ModelSupplementScaffold>   _supplements;
         std::vector<const ModelSupplementScaffold*> 
             LoadSupplementScaffolds(
-                const ResChar modelFilename[], 
-                const ResChar materialFilename[],
+                StringSection<ResChar> modelFilename, 
+                StringSection<ResChar> materialFilename,
                 IteratorRange<const SupplementGUID*> supplements);
     };
         
@@ -54,14 +54,14 @@ namespace RenderCore { namespace Assets
 
     namespace Internal
     {
-        static std::shared_ptr<ModelScaffold> CreateModelScaffold(const ::Assets::ResChar filename[])
+        static std::shared_ptr<ModelScaffold> CreateModelScaffold(StringSection<::Assets::ResChar> filename)
         {
             return ::Assets::AutoConstructAssetDeferred<ModelScaffold>(filename);
         }
 
         static std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(
-            const ::Assets::ResChar model[], 
-            const ::Assets::ResChar material[])
+            StringSection<::Assets::ResChar> model, 
+            StringSection<::Assets::ResChar> material)
         {
                 // note --  we need to remove any parameters after ':' in the model name
                 //          these are references to sub-nodes within the model hierarchy
@@ -69,7 +69,7 @@ namespace RenderCore { namespace Assets
                 //          materials are shared for the entire model file)
             ::Assets::ResChar temp[MaxPath];
             auto splitter = MakeFileNameSplitter(model);
-            if (!splitter.ParametersWithDivider().Empty()) {
+            if (!splitter.ParametersWithDivider().IsEmpty()) {
                 XlCopyString(temp, splitter.AllExceptParameters());
                 model = temp;
             }
@@ -81,11 +81,11 @@ namespace RenderCore { namespace Assets
     uint32 ModelCache::GetReloadId() { return _pimpl->_reloadId; }
 
     auto ModelCache::GetScaffolds(
-        const ResChar modelFilename[], 
-        const ResChar materialFilename[]) -> Scaffolds
+        StringSection<ResChar> modelFilename, 
+        StringSection<ResChar> materialFilename) -> Scaffolds
     {
         Scaffolds result;
-        result._hashedModelName = Hash64(modelFilename);
+        result._hashedModelName = Hash64(modelFilename.begin(), modelFilename.end());
         result._model = _pimpl->_modelScaffolds.Get(result._hashedModelName).get();
         if (!result._model || result._model->GetDependencyValidation()->GetValidationIndex() > 0) {
             auto model = Internal::CreateModelScaffold(modelFilename);
@@ -100,7 +100,7 @@ namespace RenderCore { namespace Assets
             // So don't even try unless we get a successful resolve
         auto resolveResult = result._model->TryResolve();
         if (resolveResult == ::Assets::AssetState::Ready) {
-            result._hashedMaterialName = HashCombine(Hash64(materialFilename), result._hashedModelName);
+            result._hashedMaterialName = HashCombine(Hash64(materialFilename.begin(), materialFilename.end()), result._hashedModelName);
             auto matNamePtr = materialFilename;
 
             result._material = _pimpl->_materialScaffolds.Get(result._hashedMaterialName).get();
@@ -123,21 +123,22 @@ namespace RenderCore { namespace Assets
     {
         static std::shared_ptr<ModelSupplementScaffold> CreateSupplement(
             uint64 compilerHash,
-            const ::Assets::ResChar modelFilename[],
-            const ::Assets::ResChar materialFilename[])
+            StringSection<::Assets::ResChar> modelFilename,
+            StringSection<::Assets::ResChar> materialFilename)
         {
             return ::Assets::AutoConstructAssetDeferred<ModelSupplementScaffold>(
-				(const ::Assets::ResChar*)&compilerHash, modelFilename, materialFilename);
+				MakeStringSection((const ::Assets::ResChar*)&compilerHash, (const ::Assets::ResChar*)PtrAdd(&compilerHash, sizeof(compilerHash))),
+				modelFilename, materialFilename);
         }
     }
 
     std::vector<const ModelSupplementScaffold*> ModelCache::Pimpl::LoadSupplementScaffolds(
-        const ResChar modelFilename[], const ResChar materialFilename[],
+        StringSection<ResChar> modelFilename, StringSection<ResChar> materialFilename,
         IteratorRange<const SupplementGUID*> supplements)
     {
         std::vector<const ModelSupplementScaffold*> result;
         for (auto s=supplements.cbegin(); s!=supplements.cend(); ++s) {
-            auto hashName = HashCombine(HashCombine(Hash64(modelFilename), Hash64(materialFilename)), *s);
+            auto hashName = HashCombine(HashCombine(Hash64(modelFilename.begin(), modelFilename.end()), Hash64(materialFilename.begin(), materialFilename.end())), *s);
             auto supp = _supplements.Get(hashName);
             if (!supp || supp->GetDependencyValidation()->GetValidationIndex() > 0) {
                 if (supp) { ++_reloadId; }
@@ -154,7 +155,7 @@ namespace RenderCore { namespace Assets
     }
 
     auto ModelCache::GetModel(
-        const ResChar modelFilename[], const ResChar materialFilename[],
+        StringSection<ResChar> modelFilename, StringSection<ResChar> materialFilename,
         IteratorRange<const SupplementGUID*> supplements,
         unsigned LOD) -> Model
     {
@@ -168,7 +169,7 @@ namespace RenderCore { namespace Assets
             // we also need to load supplements, for any that are requested
         std::vector<const ModelSupplementScaffold*> supplementScaffolds;
 
-        uint64 hashedModel = HashCombine(HashCombine(Hash64(modelFilename), Hash64(materialFilename)), LOD);
+        uint64 hashedModel = HashCombine(HashCombine(Hash64(modelFilename.begin(), modelFilename.end()), Hash64(materialFilename.begin(), materialFilename.end())), LOD);
         for (auto s=supplements.begin(); s!=supplements.end(); ++s)
             hashedModel = HashCombine(hashedModel, *s);
 
@@ -210,7 +211,7 @@ namespace RenderCore { namespace Assets
     }
 
     ::Assets::AssetState ModelCache::PrepareModel(
-        const ResChar modelFilename[], const ResChar materialFilename[],
+        StringSection<ResChar> modelFilename, StringSection<ResChar> materialFilename,
         SupplementRange supplements,
         unsigned LOD)
     {
@@ -220,9 +221,9 @@ namespace RenderCore { namespace Assets
         return ::Assets::AssetState::Ready;
     }
 
-    ModelScaffold* ModelCache::GetModelScaffold(const ResChar modelFilename[])
+    ModelScaffold* ModelCache::GetModelScaffold(StringSection<ResChar> modelFilename)
     {
-        auto hashedModelName = Hash64(modelFilename);
+        auto hashedModelName = Hash64(modelFilename.begin(), modelFilename.end());
         auto* result = _pimpl->_modelScaffolds.Get(hashedModelName).get();
         if (!result || result->GetDependencyValidation()->GetValidationIndex() > 0) {
             auto model = Internal::CreateModelScaffold(modelFilename);
