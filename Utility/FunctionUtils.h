@@ -196,6 +196,7 @@ namespace Utility
             void Add(Id id, ReturnType(ClassType::*p)(Args...));
 
         bool Remove(Id id);
+		bool IsEmpty() const { return _fns.empty(); }
 
         class DuplicateFunction;
         class NoFunction;

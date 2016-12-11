@@ -133,6 +133,10 @@ namespace Utility
 
         InputStreamFormatter(const MemoryMappedInputStream& stream);
         ~InputStreamFormatter();
+
+		InputStreamFormatter();
+		InputStreamFormatter(const InputStreamFormatter& cloneFrom);
+		InputStreamFormatter& operator=(const InputStreamFormatter& cloneFrom);
     protected:
         MemoryMappedInputStream _stream;
         Blob _primed;

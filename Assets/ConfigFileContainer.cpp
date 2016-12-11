@@ -6,10 +6,56 @@
 
 #include "ConfigFileContainer.h"
 #include "AssetServices.h"
+#include "Assets.h"
 #include <regex>
 
 namespace Assets
 {
+
+	namespace Internal
+	{
+		void MarkInvalid(const ResChar initializer[], const char reason[]);
+		void MarkValid(const ResChar initializer[]);
+	}
+
+	template<typename Formatter>
+		Formatter ConfigFileContainer<Formatter>::GetRootFormatter() const
+	{
+		return Formatter(MemoryMappedInputStream(_fileData.get(), PtrAdd(_fileData.get(), _fileSize)));
+	}
+
+	template<typename Formatter>
+		Formatter ConfigFileContainer<Formatter>::GetFormatter(StringSection<typename Formatter::value_type>) const
+	{
+		assert(0);
+		return Formatter();
+	}
+
+	template<typename Formatter>
+		ConfigFileContainer<Formatter>::ConfigFileContainer(const ResChar initializer[])
+	{
+		_fileData = ::Assets::TryLoadFileAsMemoryBlock(initializer, &_fileSize);
+		if (_fileData.get() && _fileSize) {
+			Internal::MarkValid(initializer);
+		} else {
+			Internal::MarkInvalid(initializer, "Could not open file");
+		}
+		_validationCallback = std::make_shared<DependencyValidation>();
+		RegisterFileDependency(_validationCallback, initializer);
+	}
+
+	template<typename Formatter> 
+		ConfigFileContainer<Formatter>::~ConfigFileContainer() {}
+
+	template<typename Formatter>
+		auto ConfigFileContainer<Formatter>::CreateNew(const ResChar initialiser[])
+			-> std::unique_ptr<ConfigFileContainer>
+	{
+		return std::make_unique<ConfigFileContainer>(initialiser);
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     template<typename DestType = unsigned, typename CharType = char>
         DestType StringToUnsigned(const StringSection<CharType> source)
     {
@@ -125,5 +171,8 @@ namespace Assets
                 Services::GetInvalidAssetMan()->MarkValid(initializer);
         }
     }
+
+	template class ConfigFileContainer<InputStreamFormatter<utf8>>;
+	template class ConfigFileContainer<InputStreamFormatter<utf16>>;
 }
 

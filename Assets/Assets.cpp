@@ -74,7 +74,7 @@ namespace Assets
             return Services::GetAssetSets();
         }
 
-        std::shared_ptr<ICompileMarker> PrepareAsset(
+        std::shared_ptr<ICompileMarker> BeginCompileOperation(
             uint64 typeCode, const ResChar* initializers[], 
             unsigned initializerCount)
         {

@@ -15,10 +15,10 @@
 #include "../../Utility/Mixins.h"
 #include <memory>
 
-namespace Assets { 
+namespace Assets 
+{ 
     class DependencyValidation; class DirectorySearchRules; 
     class PendingCompileMarker; 
-    template<typename T, typename F> class ConfigFileListContainer;
 }
 namespace Utility { class Data; }
 
@@ -124,7 +124,7 @@ namespace RenderCore { namespace Assets
 
         ::Assets::AssetState TryResolve(
             ResolvedMaterial& result,
-            const ::Assets::DirectorySearchRules& searchRules,
+			const ::Assets::DirectorySearchRules& searchRules,
             std::vector<::Assets::DependentFileState>* deps = nullptr) const;
 
         std::vector<AssetName> ResolveInherited(
@@ -133,17 +133,25 @@ namespace RenderCore { namespace Assets
         void Serialize(OutputStreamFormatter& formatter) const;
         
         RawMaterial();
+		RawMaterial(const std::shared_ptr<::Assets::DeferredConstruction>& deferredConstructor);
         RawMaterial(
             InputStreamFormatter<utf8>& formatter, 
-            const ::Assets::DirectorySearchRules&);
+            const ::Assets::DirectorySearchRules&,
+			const ::Assets::DepValPtr& depVal);
         ~RawMaterial();
+		RawMaterial(RawMaterial&&) never_throws;
+		RawMaterial& operator=(RawMaterial&&) never_throws;
 
-        using Container = ::Assets::ConfigFileListContainer<RawMaterial, InputStreamFormatter<utf8>>;
-        static const Container& GetAsset(const ::Assets::ResChar initializer[]);
-        static const std::shared_ptr<::Assets::DivergentAsset<Container>>& GetDivergentAsset(const ::Assets::ResChar initializer[]);
+		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
+			const ::Assets::ResChar* initializers[], unsigned initializerCount);
+
+        static const RawMaterial& GetAsset(const ::Assets::ResChar initializer[]);
+        static const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>& GetDivergentAsset(const ::Assets::ResChar initializer[]);
+		static std::unique_ptr<RawMaterial> CreateNew(const ::Assets::ResChar initialiser[]);
 
     private:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
+		::Assets::DirectorySearchRules _searchRules;
 
         void MergeInto(ResolvedMaterial& dest) const;
     };

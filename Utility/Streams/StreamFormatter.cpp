@@ -617,6 +617,61 @@ namespace Utility
         InputStreamFormatter<CharType>::~InputStreamFormatter()
     {}
 
+	template<typename CharType>
+		InputStreamFormatter<CharType>::InputStreamFormatter()
+		: _stream(nullptr, nullptr)
+	{
+		_primed = Blob::None;
+		_activeLineSpaces = _parentBaseLine = 0;
+
+		for (signed& s:_baseLineStack) s = 0;
+		_baseLineStackPtr = 0u;
+
+		_lineIndex = 0u;
+		_lineStart = nullptr;
+
+		_protectedStringMode = false;
+		_format = _tabWidth = 0u;
+		_pendingHeader = false;
+	}
+
+	template<typename CharType>
+		InputStreamFormatter<CharType>::InputStreamFormatter(const InputStreamFormatter& cloneFrom)
+	: _stream(cloneFrom._stream)
+	, _primed(cloneFrom._primed)
+	, _activeLineSpaces(cloneFrom._activeLineSpaces)
+	, _parentBaseLine(cloneFrom._parentBaseLine)
+	, _baseLineStackPtr(cloneFrom._baseLineStackPtr)
+	, _lineIndex(cloneFrom._lineIndex)
+	, _lineStart(cloneFrom._lineStart)
+	, _protectedStringMode(cloneFrom._protectedStringMode)
+	, _format(cloneFrom._format)
+	, _tabWidth(cloneFrom._tabWidth)
+	, _pendingHeader(cloneFrom._pendingHeader)
+	{
+		for (unsigned c=0; c<dimof(_baseLineStack); ++c)
+			_baseLineStack[c] = cloneFrom._baseLineStack[c];
+	}
+
+	template<typename CharType>
+		InputStreamFormatter<CharType>& InputStreamFormatter<CharType>::operator=(const InputStreamFormatter& cloneFrom)
+	{
+		_stream = cloneFrom._stream;
+		_primed = cloneFrom._primed;
+		_activeLineSpaces = cloneFrom._activeLineSpaces;
+		_parentBaseLine = cloneFrom._parentBaseLine;
+		_baseLineStackPtr = cloneFrom._baseLineStackPtr;
+		for (unsigned c=0; c<dimof(_baseLineStack); ++c)
+			_baseLineStack[c] = cloneFrom._baseLineStack[c];
+		_lineIndex = cloneFrom._lineIndex;
+		_lineStart = cloneFrom._lineStart;
+		_protectedStringMode = cloneFrom._protectedStringMode;
+		_format = cloneFrom._format;
+		_tabWidth = cloneFrom._tabWidth;
+		_pendingHeader = cloneFrom._pendingHeader;
+		return *this;
+	}
+
     template class InputStreamFormatter<utf8>;
     template class InputStreamFormatter<ucs4>;
     template class InputStreamFormatter<ucs2>;

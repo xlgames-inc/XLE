@@ -50,16 +50,12 @@ namespace Assets { namespace Internal
 
 	public:
 		using DivAsset = DivergentAsset<AssetType>;
-        static const bool HasIntermediateConstructor = std::is_constructible<AssetType, const IntermediateAssetLocator&, const ResChar*>::value;
+
+        static const bool Constructor_DeferredConstruction = std::is_constructible<AssetType, const std::shared_ptr<DeferredConstruction>&>::value;
+		static const bool Constructor_Formatter = std::is_constructible<AssetType, InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&>::value;
+
         static const bool HasGetAssetState = HasGetAssetStateHelper<AssetType>::Result;
 	};
-
-    class ActiveCompileOperation
-    {
-    public:
-        std::shared_ptr<PendingCompileMarker> _compileMarker;
-        ::Assets::rstring _initializer;
-    };
 
     template <typename AssetType>
         class AssetSet : public IAssetSet
@@ -88,7 +84,6 @@ namespace Assets { namespace Internal
         };
 
         std::vector<std::pair<uint64, AssetContainer>> _assets;
-        std::vector<std::pair<uint64, ActiveCompileOperation>> _activeCompiles;
 
         AssetType* Add(uint64 hash, std::unique_ptr<AssetType>&& asset)
         {

@@ -8,6 +8,7 @@
 
 #include "AssetSetInternal.h"
 #include "AssetsCore.h"
+#include "ConfigFileContainer.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Core/Types.h"
@@ -29,26 +30,60 @@ namespace Assets { namespace Internal
 	std::basic_string<ResChar> AsString(Params... initialisers);
 
 	template<typename Asset, typename... Params>
-	std::basic_string<ResChar> BuildDescriptiveName(Params... initialisers)
+		std::basic_string<ResChar> BuildDescriptiveName(Params... initialisers)
 	{
 		return Internal::AsString(initialisers...);
 	}
 
 	template<typename Asset>
-	std::basic_string<ResChar> BuildTargetFilename()
+		std::basic_string<ResChar> BuildTargetFilename()
 	{
 		return std::basic_string<ResChar>();
 	}
 
 	template<typename Asset, typename... Params>
-	std::basic_string<ResChar> BuildTargetFilename(Params... initialisers)
+		std::basic_string<ResChar> BuildTargetFilename(Params... initialisers)
 	{
 		return Internal::AsString(std::get<0>(std::tuple<Params...>(initialisers...)));
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	std::shared_ptr<ICompileMarker> PrepareAsset(uint64 typeCode, const ResChar* initializers[], unsigned initializerCount);
+	const ConfigFileContainer<>& GetAssetContainer(const ResChar identifier[]);
+
+	template<typename AssetType, typename std::enable_if<AssetTraits<AssetType>::Constructor_Formatter>::type* = nullptr>
+		static AssetType AutoConstructAsset(const ResChar initializer[])
+	{
+		// First parameter should be the section of the input file to read (or just use the root of the file if it doesn't exist)
+		const char* p = XlFindChar(initializer, ':');
+		if (p) {
+			char buffer[256];
+			XlCopyString(buffer, MakeStringSection(initializer, p));
+			const auto& container = GetAssetContainer(buffer);
+			auto fmttr = container.GetFormatter((const utf8*)(p+1));
+			return AssetType(
+				fmttr, 
+				DefaultDirectorySearchRules(buffer),
+				container.GetDependencyValidation());
+		} else {
+			const auto& container = GetAssetContainer(initializer);
+			auto fmttr = container.GetFormatter((const utf8*)(p+1));
+			return AssetType(
+				fmttr,
+				DefaultDirectorySearchRules(initializer),
+				container.GetDependencyValidation());
+		}
+	}
+		
+	template<typename AssetType, typename... Params, typename std::enable_if<!AssetTraits<AssetType>::Constructor_Formatter>::type* = nullptr>
+		static AssetType AutoConstructAsset(Params... initialisers)
+	{
+		return AssetType(std::forward<Params>(initialisers)...);
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64 typeCode, const ResChar* initializers[], unsigned initializerCount);
     template<typename AssetType> using Ptr = std::unique_ptr<AssetType>;
 
     template <int DoCheckDependancy> struct CheckDependancy { template<typename Resource> static bool NeedsRefresh(const Resource* resource); };
@@ -60,97 +95,34 @@ namespace Assets { namespace Internal
     template<> struct ConstructAsset<0>
     { 
         template<typename AssetType, typename... Params> 
-			static typename Ptr<AssetType> Create(AssetSet<AssetType>&, uint64 hash, Params... initialisers)
+			static typename Ptr<AssetType> Create(Params... initialisers)
 		{
-			return std::make_unique<AssetType>(std::forward<Params>(initialisers)...);
+			return std::make_unique<AssetType>(AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...));
 		}
     };
 
     template<> struct ConstructAsset<1>
-    { 
+    {
         template<
             typename AssetType, typename... Params, 
-            typename std::enable_if<!AssetTraits<AssetType>::HasIntermediateConstructor>::type* = nullptr>
-            static typename Ptr<AssetType> Create(AssetSet<AssetType>&, uint64 hash, Params... initialisers)
-        {
-                // This asset type handles the compilation process manually. We will get a ICompileMarker
-                // from the compiler and pass it directly to the asset.
-            const char* inits[] = { ((const char*)initialisers)... };
-            auto marker = PrepareAsset(GetCompileProcessType<AssetType>(), inits, dimof(inits));
-            return std::make_unique<AssetType>(std::move(marker));
-        }
-
-        template<
-            typename AssetType, typename... Params, 
-            typename std::enable_if<AssetTraits<AssetType>::HasIntermediateConstructor>::type* = nullptr>
-            static typename Ptr<AssetType> Create(AssetSet<AssetType>& set, uint64 hash, Params... initialisers)
+            typename std::enable_if<AssetTraits<AssetType>::Constructor_DeferredConstruction>::type* = nullptr>
+            static typename Ptr<AssetType> Create(Params... initialisers)
         {
                 // This asset type uses the default compilation process. The asset type itself only has
                 // the logic for loading the completed intermediate asset. We will use general code for 
                 // testing for existing assets and invoking compiles (etc).
-
             const char* inits[] = { ((const char*)initialisers)... };
-
-            auto i = LowerBound(set._activeCompiles, hash);
-            if (i != set._activeCompiles.end() && i->first == hash) {
-                auto state = i->second._compileMarker->GetAssetState();
-                if (state == AssetState::Pending)
-                    Throw(Exceptions::PendingAsset(i->second._initializer.c_str(), "Compile still pending"));
-                if (state == AssetState::Invalid)
-                    Throw(Exceptions::PendingAsset(i->second._initializer.c_str(), "Asset became invalid during compile"));
-
-                // note --  If we get an exception here, every subsequent call will follow this same path
-                //          and reach this same invalid state.
-                auto result = std::make_unique<AssetType>(i->second._compileMarker->GetLocator(), "CompiledAsset");
-                set._activeCompiles.erase(i);
-                return std::move(result);
-            }
-
-			auto marker = PrepareAsset(GetCompileProcessType<AssetType>(), inits, dimof(inits));
-            auto existingLoc = marker->GetExistingAsset();
-            if (!existingLoc._dependencyValidation || existingLoc._dependencyValidation->GetValidationIndex()!=0) {
-                    // no existing asset (or out-of-date) -- we must invoke a compile
-                auto pendingCompile = marker->InvokeCompile();
-                auto initializer = marker->Initializer().AsString();
-                set._activeCompiles.insert(i, std::make_pair(hash, ActiveCompileOperation{std::move(pendingCompile), initializer}));
-                Throw(Exceptions::PendingAsset(initializer.c_str(), "Pending recompile"));
-            }
-
-            TRY {
-                auto result = std::make_unique<AssetType>(existingLoc, "CompiledAsset");
-                return std::move(result);
-            } 
-                
-            // We should catch only some exceptions and force a recompile... This should happen on
-            // missing file, or if the file has a bad version number. We also need to catch InvalidAsset,
-            // because some assets will throw this on failure.
-            // Note that other exceptions could be a problem here.
-            CATCH (const Exceptions::InvalidAsset&) 
-            {
-                // LogWarning << "Asset (" << existingLoc._sourceID0 << ") appears to be invalid. Attempting recompile.";
-            } 
-            CATCH(const ::Assets::Exceptions::FormatError& e) 
-            {
-                if (e.GetReason() != ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
-                    throw;
-
-                // LogWarning << "Asset (" << existingLoc._sourceID0 << ") appears to be incorrect version. Attempting recompile.";
-            }
-            CATCH(const Utility::Exceptions::IOException& e)
-            {
-                if (e.GetReason() != Utility::Exceptions::IOException::Reason::FileNotFound)
-                    throw;
-
-                // LogWarning << "Asset (" << existingLoc._sourceID0 << ") is missing. Attempting compile.";
-            }
-            CATCH_END
-
-            // on invalid (eg, missing or out-of-date), we can try to invoke a recompile
-            auto pendingCompile = marker->InvokeCompile();
-            auto initializer = marker->Initializer().AsString();
-            set._activeCompiles.insert(i, std::make_pair(hash, ActiveCompileOperation{std::move(pendingCompile), initializer}));
-            Throw(Exceptions::PendingAsset(initializer.c_str(), "Pending recompile"));
+			auto deferredConstructor = AssetType::BeginDeferredConstruction(inits, dimof(inits));
+			return std::make_unique<AssetType>(deferredConstructor);
         }
+
+		template<
+			typename AssetType, typename... Params, 
+			typename std::enable_if<!AssetTraits<AssetType>::Constructor_DeferredConstruction>::type* = nullptr>
+			static typename Ptr<AssetType> Create(Params... initialisers)
+		{
+			return std::make_unique<AssetType>(AutoConstructAsset<AssetType>(initialisers));
+		}
     };
 
 	template <typename... Params> uint64 BuildHash(Params... initialisers);
@@ -204,7 +176,7 @@ namespace Assets { namespace Internal
                         //  locked for awhile. Or, even worse, we could try for a recursive lock on the same
                         //  asset set.
                     cnt._pendingReplacement.reset();
-                    cnt._pendingReplacement = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(*assetSet.get(), hash, std::forward<Params>(initialisers)...);
+                    cnt._pendingReplacement = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(std::forward<Params>(initialisers)...);
                 }
 
                 // note that this will sometimes replace a "valid" asset with an "invalid" one
@@ -218,7 +190,7 @@ namespace Assets { namespace Internal
                 auto name = AsString(initialisers...);  // (have to do this before constructor (incase constructor does std::move operations)
             #endif
 
-            auto newAsset = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(*assetSet.get(), hash, std::forward<Params>(initialisers)...);
+            auto newAsset = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(std::forward<Params>(initialisers)...);
             #if defined(ASSETS_STORE_NAMES)
                     // This is extra functionality designed for debugging and profiling
                     // attach a name to this hash value, so we can query the contents

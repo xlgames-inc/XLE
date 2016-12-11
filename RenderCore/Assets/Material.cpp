@@ -24,7 +24,7 @@
 
 namespace Assets
 {
-    template<> uint64 GetCompileProcessType<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>>() 
+    template<> uint64 GetCompileProcessType<::RenderCore::Assets::RawMaterial>() 
         { return ConstHash64<'RawM', 'at'>::Value; }
 }
 
@@ -337,7 +337,11 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    RawMaterial::RawMaterial(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules&)
+    RawMaterial::RawMaterial(
+		InputStreamFormatter<utf8>& formatter, 
+		const ::Assets::DirectorySearchRules& searchRules, 
+		const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+	: _depVal(depVal), _searchRules(searchRules)
     {
         for (;;) {
             using Blob = InputStreamFormatter<utf8>::Blob;
@@ -487,7 +491,7 @@ namespace RenderCore { namespace Assets
 
     static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
     
-    auto RawMaterial::GetAsset(const ::Assets::ResChar initializer[]) -> const Container& 
+    auto RawMaterial::GetAsset(const ::Assets::ResChar initializer[]) -> const RawMaterial& 
     {
         // There are actually 2 paths here... Normally the requested file is a
         // .material file -- in which case we can load it with a  
@@ -505,21 +509,26 @@ namespace RenderCore { namespace Assets
         // loading from a .material file should never be pending
 
         if (!IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializer).Extension())) {
-            return ::Assets::GetAssetComp<Container>(initializer);
+            return ::Assets::GetAssetComp<RawMaterial>(initializer);
         } else {
-            return ::Assets::GetAssetDep<Container>(initializer);
+            return ::Assets::GetAsset<RawMaterial>(initializer);
         }
     }
 
     auto RawMaterial::GetDivergentAsset(const ::Assets::ResChar initializer[])
-        -> const std::shared_ptr<::Assets::DivergentAsset<Container>>&
+        -> const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>&
     {
         if (!IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializer).Extension())) {
-            return ::Assets::GetDivergentAssetComp<Container>(initializer);
+            return ::Assets::GetDivergentAssetComp<RawMaterial>(initializer);
         } else {
-            return ::Assets::GetDivergentAsset<Container>(initializer);
+            return ::Assets::GetDivergentAsset<RawMaterial>(initializer);
         }
     }
+
+	std::unique_ptr<RawMaterial> RawMaterial::CreateNew(const ::Assets::ResChar initialiser[])
+	{
+		return std::make_unique<RawMaterial>();
+	}
 
     ::Assets::AssetState RawMaterial::TryResolve(
         ResolvedMaterial& result,
@@ -530,6 +539,9 @@ namespace RenderCore { namespace Assets
             // ResolvedMaterial object. We need to start at the bottom of the
             // inheritance tree, and merge in new parameters as we come across them.
 
+		::Assets::DirectorySearchRules newSearchRules = _searchRules;
+		newSearchRules.Merge(searchRules);
+
         auto inheritted = ResolveInherited(searchRules);
         for (auto i=inheritted.cbegin(); i!=inheritted.cend(); ++i) {
             FileNameSplitter<::Assets::ResChar> splitName(i->c_str());
@@ -538,11 +550,7 @@ namespace RenderCore { namespace Assets
             if (deps) AddDep(*deps, splitName.FullFilename());
 
             auto& rawParams = GetAsset(i->c_str());
-
-            ::Assets::DirectorySearchRules newSearchRules = searchRules;
-            newSearchRules.Merge(rawParams._searchRules);
-
-            auto state = rawParams._asset.TryResolve(result, newSearchRules, deps);
+            auto state = rawParams.TryResolve(result, newSearchRules, deps);
 			if (state == ::Assets::AssetState::Pending)
 				return ::Assets::AssetState::Pending;
         }
@@ -551,7 +559,46 @@ namespace RenderCore { namespace Assets
 		return ::Assets::AssetState::Ready;
     }
 
+	template<typename AssetType>
+		static std::shared_ptr<::Assets::DeferredConstruction> DefaultBeginDeferredConstruction(
+			const ::Assets::ResChar* initializers[], unsigned initializerCount)
+	{
+		// Begin a compilation operation via the registered compilers for this type.
+		// Our deferred constructor will wait for the completion of that compilation operation,
+		// and then construct the final asset from the result
 
+		auto marker = ::Assets::Internal::BeginCompileOperation(
+			::Assets::GetCompileProcessType<AssetType>(), initializers, initializerCount);
+
+		auto existingLoc = marker->GetExistingAsset();
+		if (!existingLoc._dependencyValidation || existingLoc._dependencyValidation->GetValidationIndex()!=0) {
+			// no existing asset (or out-of-date) -- we must invoke a compile
+			auto pendingCompile = marker->InvokeCompile();
+			std::basic_string<::Assets::ResChar> init0 = initializers[0];
+			std::function<AssetType()> constructorCallback(
+				[pendingCompile, init0]() -> AssetType {
+					auto state = pendingCompile->GetAssetState();
+					if (state == ::Assets::AssetState::Pending)
+						Throw(::Assets::Exceptions::PendingAsset(init0.c_str(), "Pending compilation operation"));
+					if (state == ::Assets::AssetState::Invalid)
+						Throw(::Assets::Exceptions::InvalidAsset(init0.c_str(), "Failure during compilation operation"));
+					assert(state == ::Assets::AssetState::Ready);
+					return ::Assets::Internal::AutoConstructAsset<AssetType>(pendingCompile->GetLocator()._sourceID0);
+				});
+			return std::make_shared<::Assets::DeferredConstruction>(pendingCompile, pendingCompile->GetLocator()._dependencyValidation, std::move(constructorCallback));
+		} else {
+			std::basic_string<::Assets::ResChar> intermediateAsset(existingLoc._sourceID0);
+			std::function<AssetType()> constructorCallback(
+				[intermediateAsset]() -> AssetType { return ::Assets::Internal::AutoConstructAsset<AssetType>(intermediateAsset.c_str()); });
+			return std::make_shared<::Assets::DeferredConstruction>(nullptr, existingLoc._dependencyValidation, std::move(constructorCallback));
+		}
+	}
+
+	std::shared_ptr<::Assets::DeferredConstruction> RawMaterial::BeginDeferredConstruction(
+		const ::Assets::ResChar* initializers[], unsigned initializerCount)
+	{
+		return DefaultBeginDeferredConstruction<RawMaterial>(initializers, initializerCount);
+	}
 
 }}
 
