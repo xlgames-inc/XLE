@@ -67,10 +67,8 @@ namespace Assets
 		ChunkFileContainer(const ResChar assetTypeName[]);
         ~ChunkFileContainer();
 
-		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
-			ChunkFileContainer(const ChunkFileContainer&) = default;
-			ChunkFileContainer& operator=(const ChunkFileContainer&) = default;
-		#endif
+		ChunkFileContainer(const ChunkFileContainer&) = delete;
+		ChunkFileContainer& operator=(const ChunkFileContainer&) = delete;
     private:
         rstring			_filename;
 		DepValPtr		_validationCallback;

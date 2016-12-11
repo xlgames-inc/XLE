@@ -49,8 +49,14 @@ namespace PlatformRig
         EnvironmentSettings();
         EnvironmentSettings(
             InputStreamFormatter<utf8>& formatter,
-            const ::Assets::DirectorySearchRules&);
+            const ::Assets::DirectorySearchRules&,
+			const ::Assets::DepValPtr&);
         ~EnvironmentSettings();
+
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+
+	private:
+		::Assets::DepValPtr _depVal;
     };
 
     /// <summary>Simple & partial implementation of the ISceneParser interface<summary>

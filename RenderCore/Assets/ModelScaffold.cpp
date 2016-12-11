@@ -155,6 +155,19 @@ namespace RenderCore { namespace Assets
 		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
 	}
 
+	::Assets::AssetState ModelScaffold::StallWhilePending() const
+	{
+		if (_deferredConstructor) {
+			auto state = _deferredConstructor->StallWhilePending();
+			auto constructor = std::move(_deferredConstructor);
+			if (state == ::Assets::AssetState::Ready) {
+				*const_cast<ModelScaffold*>(this) = std::move(*constructor->PerformConstructor<ModelScaffold>());
+			} // (else fall through);
+		}
+
+		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
+	}
+
     const ModelImmutableData*   ModelScaffold::TryImmutableData() const
     {
         if (!_rawMemoryBlock) return nullptr;
@@ -185,7 +198,9 @@ namespace RenderCore { namespace Assets
     ModelScaffold::ModelScaffold(const std::shared_ptr<::Assets::DeferredConstruction>& deferredConstruction)
     : _deferredConstructor(deferredConstruction)
 	, _depVal(deferredConstruction->GetDependencyValidation())
-    {}
+	, _largeBlocksOffset(0u)
+    {
+	}
 
     ModelScaffold::ModelScaffold(ModelScaffold&& moveFrom) never_throws
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
@@ -197,6 +212,7 @@ namespace RenderCore { namespace Assets
 
     ModelScaffold& ModelScaffold::operator=(ModelScaffold&& moveFrom) never_throws
     {
+		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
         _largeBlocksOffset = moveFrom._largeBlocksOffset;
 		_deferredConstructor = std::move(moveFrom._deferredConstructor);
@@ -275,6 +291,7 @@ namespace RenderCore { namespace Assets
     ModelSupplementScaffold::ModelSupplementScaffold(const std::shared_ptr<::Assets::DeferredConstruction>& deferredConstruction)
 	: _deferredConstructor(deferredConstruction)
 	, _depVal(deferredConstruction->GetDependencyValidation())
+	, _largeBlocksOffset(0u)
 	{}
 
     ModelSupplementScaffold::ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom)
@@ -287,6 +304,7 @@ namespace RenderCore { namespace Assets
 
     ModelSupplementScaffold& ModelSupplementScaffold::operator=(ModelSupplementScaffold&& moveFrom)
     {
+		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
         _largeBlocksOffset = moveFrom._largeBlocksOffset;
 		_deferredConstructor = std::move(moveFrom._deferredConstructor);

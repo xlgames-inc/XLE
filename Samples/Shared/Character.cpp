@@ -75,14 +75,14 @@ namespace Sample
         const unsigned levelOfDetail = 0;
 
             // stall here until our resources are full loaded
-        _model->StallAndResolve();
-        matScaffold.StallAndResolve();
+        _model->StallWhilePending();
+        matScaffold.StallWhilePending();
         _renderer = std::make_unique<ModelRenderer>(
             *_model, matScaffold, ModelRenderer::Supplements(), 
             sharedStates, &searchRules, levelOfDetail);
 
-        _skeleton->StallAndResolve();
-        _animationSet->StallAndResolve();
+        _skeleton->StallWhilePending();
+        _animationSet->StallWhilePending();
         _prepareMachine = std::make_unique<SkinPrepareMachine>(*_model, *_animationSet, *_skeleton);
     }
 

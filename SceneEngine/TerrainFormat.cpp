@@ -109,7 +109,7 @@ namespace SceneEngine
             Header _hdr;
         };
 
-        static NodeDesc LoadNodeStructure(BasicFile& file)
+        static NodeDesc LoadNodeStructure(::Assets::IFileInterface& file)
         {
             NodeDesc result;
             file.Read(&result._hdr, sizeof(result._hdr), 1);
@@ -129,12 +129,12 @@ namespace SceneEngine
             std::vector<NodeField> nodeFields;
             std::vector<std::unique_ptr<Node>> nodes;
 
-            auto file = ::Assets::MainFileSystem::OpenBasicFile(filename, "rb");
+            auto file = ::Assets::MainFileSystem::OpenFileInterface(filename, "rb");
 
                 // Load the chunks. We should have 2 chunks:
                 //  . cell scaffold
                 //  . height map data
-            auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
+            auto chunks = Serialization::ChunkFile::LoadChunkTable(*file);
 
             Serialization::ChunkFile::ChunkHeader scaffoldChunk;
             Serialization::ChunkFile::ChunkHeader heightDataChunk;
@@ -148,8 +148,8 @@ namespace SceneEngine
             }
 
             CellDesc cellDesc;
-            file.Seek(scaffoldChunk._fileOffset);
-            file.Read(&cellDesc._hdr, sizeof(cellDesc._hdr), 1);
+            file->Seek(scaffoldChunk._fileOffset);
+            file->Read(&cellDesc._hdr, sizeof(cellDesc._hdr), 1);
 
             _encodedGradientFlags = !!(cellDesc._hdr._flags & CellDesc::Header::Flags::EncodedGradientFlags);
 
@@ -174,7 +174,7 @@ namespace SceneEngine
 
                     for (unsigned y=0; y<(1u<<l); ++y) {
                         for (unsigned x=0; x<(1u<<l); ++x) {
-                            auto loadInfo = LoadNodeStructure(file);
+                            auto loadInfo = LoadNodeStructure(*file);
                             if (loadInfo._hdr._nodeHeaderVersion != 0) {
                                 throw ::Assets::Exceptions::FormatError(
                                     "Unexpected version number in terrain node file: %s (node header version: %i)", 
@@ -184,10 +184,10 @@ namespace SceneEngine
                             float compressionData[2] = { 0.f, 1.f };
                             if (loadInfo._hdr._compressionDataSize) {
                                 if (loadInfo._hdr._compressionType == Compression::QuantRange && loadInfo._hdr._compressionDataSize >= (sizeof(float)*2)) {
-                                    file.Read(compressionData, sizeof(float), 2);
-                                    file.Seek(loadInfo._hdr._compressionDataSize - sizeof(float)*2, FileSeekAnchor::Current);
+                                    file->Read(compressionData, sizeof(float), 2);
+                                    file->Seek(loadInfo._hdr._compressionDataSize - sizeof(float)*2, FileSeekAnchor::Current);
                                 } else {
-                                    file.Seek(loadInfo._hdr._compressionDataSize, FileSeekAnchor::Current);
+                                    file->Seek(loadInfo._hdr._compressionDataSize, FileSeekAnchor::Current);
                                 }
                             }
 
@@ -232,12 +232,12 @@ namespace SceneEngine
             auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
 
             TRY {
-                auto file = ::Assets::MainFileSystem::OpenBasicFile(filename, "rb");
+                auto file = ::Assets::MainFileSystem::OpenFileInterface(filename, "rb");
 
                     // Load the chunks. We should have 2 chunks:
                     //  . cell scaffold
                     //  . coverage data
-                auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
+                auto chunks = Serialization::ChunkFile::LoadChunkTable(*file);
 
                 Serialization::ChunkFile::ChunkHeader scaffoldChunk;
                 Serialization::ChunkFile::ChunkHeader coverageDataChunk;
@@ -251,8 +251,8 @@ namespace SceneEngine
                 }
 
                 CellDesc cellDesc;
-                file.Seek(scaffoldChunk._fileOffset);
-                file.Read(&cellDesc._hdr, sizeof(cellDesc._hdr), 1);
+                file->Seek(scaffoldChunk._fileOffset);
+                file->Read(&cellDesc._hdr, sizeof(cellDesc._hdr), 1);
 
                 std::vector<unsigned> fileOffsetsBreadthFirst;
         
@@ -267,7 +267,7 @@ namespace SceneEngine
                     for (unsigned l=0; l<cellDesc._hdr._treeDepth; ++l) {
                         for (unsigned y=0; y<(1u<<l); ++y) {
                             for (unsigned x=0; x<(1u<<l); ++x) {
-                                auto loadInfo = LoadNodeStructure(file);
+                                auto loadInfo = LoadNodeStructure(*file);
                                 fileOffsetsBreadthFirst.push_back(loadInfo._hdr._dataOffset + coverageDataChunk._fileOffset);
                                 if (!_nodeTextureByteCount) {
                                     _nodeTextureByteCount = loadInfo._hdr._dataSize;

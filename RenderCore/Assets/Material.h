@@ -85,7 +85,9 @@ namespace RenderCore { namespace Assets
         const char*                     GetMaterialName(MaterialGuid guid) const;
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::rstring&		Filename() const { return _filename; }
 		::Assets::AssetState			TryResolve() const;
+		::Assets::AssetState			StallWhilePending() const;
 
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
 

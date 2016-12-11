@@ -7,6 +7,7 @@
 #include "ConfigFileContainer.h"
 #include "AssetServices.h"
 #include "Assets.h"
+#include "../Utility/StringUtils.h"
 #include <regex>
 
 namespace Assets
@@ -25,9 +26,47 @@ namespace Assets
 	}
 
 	template<typename Formatter>
-		Formatter ConfigFileContainer<Formatter>::GetFormatter(StringSection<typename Formatter::value_type>) const
+		Formatter ConfigFileContainer<Formatter>::GetFormatter(StringSection<typename Formatter::value_type> configName) const
 	{
-		assert(0);
+		bool gotConfig = false;
+
+		// search through for the specific element we need (ignoring other elements)
+		Formatter formatter(MemoryMappedInputStream(_fileData.get(), PtrAdd(_fileData.get(), _fileSize)));
+
+		while (!gotConfig) {
+			using Blob = Formatter::Blob;
+			switch (formatter.PeekNext()) {
+			case Blob::BeginElement:
+				{
+					Formatter::InteriorSection eleName;
+					if (!formatter.TryBeginElement(eleName))
+						Throw(Utility::FormatException("Poorly formed begin element in config file", formatter.GetLocation()));
+
+					if (XlEqStringI(eleName, configName)) {
+						return formatter;
+					} else {
+						formatter.SkipElement();    // skip the whole element; it's not required
+					}
+
+					if (!formatter.TryEndElement())
+						Throw(Utility::FormatException("Expecting end element in config file", formatter.GetLocation()));
+
+					continue;
+				}
+
+			case Blob::AttributeName:
+				{
+					Formatter::InteriorSection name, value;
+					formatter.TryAttribute(name, value);
+					continue;
+				}
+
+			default:
+				break;
+			}
+			break;
+		}
+
 		return Formatter();
 	}
 

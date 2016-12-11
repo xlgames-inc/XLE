@@ -19,6 +19,7 @@ namespace Assets
 	template <typename Formatter> class ConfigFileContainer;
 	class DeferredConstruction;
 	class DirectorySearchRules;
+	class ChunkFileContainer;
 
 	namespace Internal
 	{
@@ -48,6 +49,7 @@ namespace Assets
 			static const bool Constructor_DeferredConstruction = std::is_constructible<AssetType, const std::shared_ptr<DeferredConstruction>&>::value;
 			static const bool Constructor_Formatter = std::is_constructible<AssetType, InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&>::value;
 			static const bool Constructor_IntermediateAssetLocator = std::is_constructible<AssetType, const IntermediateAssetLocator&, const ResChar[]>::value;
+			static const bool Constructor_ChunkFileContainer = std::is_constructible<AssetType, const ChunkFileContainer&>::value;
 
 			static const bool HasBeginDeferredConstruction = HasBeginDeferredConstructionHelper<AssetType>::Result;
 			static const bool HasGetAssetState = HasGetAssetStateHelper<AssetType>::Result;
@@ -55,7 +57,8 @@ namespace Assets
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////
 
-		const ConfigFileContainer<InputStreamFormatter<utf8>>& GetAssetContainer(const ResChar identifier[]);
+		const ConfigFileContainer<InputStreamFormatter<utf8>>& GetConfigFileContainer(const ResChar identifier[]);
+		const ChunkFileContainer& GetChunkFileContainer(const ResChar identifier[]);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -68,14 +71,14 @@ namespace Assets
 		if (p) {
 			char buffer[256];
 			XlCopyString(buffer, MakeStringSection(initializer, p));
-			const auto& container = Internal::GetAssetContainer(buffer);
+			const auto& container = Internal::GetConfigFileContainer(buffer);
 			auto fmttr = container.GetFormatter((const utf8*)(p+1));
 			return std::make_unique<AssetType>(
 				fmttr, 
 				DefaultDirectorySearchRules(buffer),
 				container.GetDependencyValidation());
 		} else {
-			const auto& container = Internal::GetAssetContainer(initializer);
+			const auto& container = Internal::GetConfigFileContainer(initializer);
 			auto fmttr = container.GetFormatter((const utf8*)(p+1));
 			return std::make_unique<AssetType>(
 				fmttr,
@@ -83,8 +86,15 @@ namespace Assets
 				container.GetDependencyValidation());
 		}
 	}
-		
-	template<typename AssetType, typename... Params, typename std::enable_if<!Internal::AssetTraits<AssetType>::Constructor_Formatter>::type* = nullptr>
+	
+	template<typename AssetType, typename... Params, typename std::enable_if<Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer>::type* = nullptr>
+		static std::unique_ptr<AssetType> AutoConstructAsset(const ResChar initializer[])
+	{
+		const auto& container = Internal::GetChunkFileContainer(initializer);
+		return std::make_unique<AssetType>(container);
+	}
+
+	template<typename AssetType, typename... Params, typename std::enable_if<!Internal::AssetTraits<AssetType>::Constructor_Formatter && !Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer>::type* = nullptr>
 		static std::unique_ptr<AssetType> AutoConstructAsset(Params... initialisers)
 	{
 		return std::make_unique<AssetType>(std::forward<Params>(initialisers)...);

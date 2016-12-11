@@ -245,10 +245,10 @@ namespace ToolsRig
         const uint64 boundMaterial = _object->_previewMaterialBinding;
 
         const auto& model = ::Assets::GetAssetComp<ModelScaffold>(modelFile);
-        model.StallAndResolve();
+        model.StallWhilePending();
 
         // const auto& skeletonScaff = ::Assets::GetAssetComp<SkeletonScaffold>(modelFile);
-        // skeletonScaff.StallAndResolve();
+        // skeletonScaff.StallWhilePending();
         // const auto& skeleton = skeletonScaff.GetTransformationMachine();
         const auto& skeleton = model.EmbeddedSkeleton();
 
@@ -373,7 +373,7 @@ namespace ToolsRig
                 using namespace RenderCore::Assets;
                 const ::Assets::ResChar* modelFile = object._previewModelFile.c_str();
                 const auto& model = ::Assets::GetAssetComp<ModelScaffold>(modelFile);
-                model.StallAndResolve();
+                model.StallWhilePending();
                 *settings._camera = AlignCameraToBoundingBox(settings._camera->_verticalFieldOfView, model.GetStaticBoundingBox());
             } else {
                     // just reset camera to the default

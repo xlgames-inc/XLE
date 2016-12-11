@@ -385,6 +385,19 @@ namespace RenderCore { namespace Assets
 		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
 	}
 
+	::Assets::AssetState MaterialScaffold::StallWhilePending() const
+	{
+		if (_deferredConstructor) {
+			auto state = _deferredConstructor->StallWhilePending();
+			auto constructor = std::move(_deferredConstructor);
+			if (state == ::Assets::AssetState::Ready) {
+				*const_cast<MaterialScaffold*>(this) = std::move(*constructor->PerformConstructor<MaterialScaffold>());
+			} // (else fall through);
+		}
+
+		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
+	}
+
     const MaterialImmutableData*   MaterialScaffold::TryImmutableData() const
     {
         if (!_rawMemoryBlock) return nullptr;
@@ -440,6 +453,7 @@ namespace RenderCore { namespace Assets
 
     MaterialScaffold& MaterialScaffold::operator=(MaterialScaffold&& moveFrom) never_throws
     {
+		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
 		_deferredConstructor = std::move(moveFrom._deferredConstructor);
 		_filename = std::move(moveFrom._filename);
@@ -453,6 +467,12 @@ namespace RenderCore { namespace Assets
         if (data)
             data->~MaterialImmutableData();
     }
+
+	std::shared_ptr<::Assets::DeferredConstruction> MaterialScaffold::BeginDeferredConstruction(
+		const ::Assets::ResChar* initializers[], unsigned initializerCount)
+	{
+		return ::Assets::DefaultBeginDeferredConstruction<MaterialScaffold>(initializers, initializerCount);
+	}
 
 }}
 

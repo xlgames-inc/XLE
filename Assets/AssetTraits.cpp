@@ -5,12 +5,18 @@
 #include "AssetTraits.h"
 #include "Assets.h"
 #include "ConfigFileContainer.h"
+#include "ChunkFileContainer.h"
 
-namespace Assets
+namespace Assets { namespace Internal
 {
-	const ConfigFileContainer<>& GetAssetContainer(const ResChar identifier[])
+	const ConfigFileContainer<>& GetConfigFileContainer(const ResChar identifier[])
 	{
-		return GetAsset<ConfigFileContainer<>>(identifier);
+		return ::Assets::GetAsset<ConfigFileContainer<>>(identifier);
 	}
-}
+
+	const ChunkFileContainer& GetChunkFileContainer(const ResChar identifier[])
+	{
+		return ::Assets::GetAsset<ChunkFileContainer>(identifier);
+	}
+}}
 

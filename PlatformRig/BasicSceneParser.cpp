@@ -165,7 +165,9 @@ namespace PlatformRig
 
     EnvironmentSettings::EnvironmentSettings(
         InputStreamFormatter<utf8>& formatter, 
-        const ::Assets::DirectorySearchRules&)
+        const ::Assets::DirectorySearchRules&,
+		const ::Assets::DepValPtr& depVal)
+	: _depVal(depVal)
     {
         using namespace SceneEngine;
 

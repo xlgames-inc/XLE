@@ -85,6 +85,7 @@ namespace RenderCore { namespace Assets
 		const ::Assets::rstring&		Filename() const				{ return _filename; }
 		const ::Assets::DepValPtr&		GetDependencyValidation() const	{ return _depVal; }
 		::Assets::AssetState			TryResolve() const;
+		::Assets::AssetState			StallWhilePending() const;
 
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
 
@@ -307,6 +308,8 @@ namespace RenderCore { namespace Assets
 		const ::Assets::rstring&		Filename() const				{ return _filename; }
 		const ::Assets::DepValPtr&		GetDependencyValidation() const { return _depVal; }
 
+		::Assets::AssetState			StallWhilePending() const;
+
         static const auto CompileProcessType = ConstHash64<'Skel', 'eton'>::Value;
 
         SkeletonScaffold(const ::Assets::ChunkFileContainer& chunkFile);
@@ -342,6 +345,8 @@ namespace RenderCore { namespace Assets
         const AnimationImmutableData&   ImmutableData() const;
 		const ::Assets::rstring&		Filename() const				{ return _filename; }
 		const ::Assets::DepValPtr&		GetDependencyValidation() const	{ return _depVal; }
+
+		::Assets::AssetState AnimationSetScaffold::StallWhilePending() const;
 
         static const auto CompileProcessType = ConstHash64<'Anim', 'Set'>::Value;
 

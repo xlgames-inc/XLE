@@ -289,7 +289,7 @@ namespace ShaderPatcherLayer
             if (geometry == PreviewGeometry::Model && !visObject._previewModelFile.empty()) {
                 const auto& model = ::Assets::GetAssetComp<RenderCore::Assets::ModelScaffold>(
                     visObject._previewModelFile.c_str());
-                model.StallAndResolve();
+                model.StallWhilePending();
                 *visSettings._camera = ToolsRig::AlignCameraToBoundingBox(
                     visSettings._camera->_verticalFieldOfView, 
                     model.GetStaticBoundingBox());

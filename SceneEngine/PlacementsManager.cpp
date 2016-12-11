@@ -14,13 +14,15 @@
 
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/IntermediateAssets.h"
+
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderCore/Assets/ModelCache.h"
 
 #include "../RenderCore/Techniques/ParsingContext.h"
 
-#include "../Assets/Assets.h"
+#include "../Assets/ChunkFileContainer.h"
 #include "../Assets/ChunkFile.h"
+#include "../Assets/DeferredConstruction.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/InvalidAssetManager.h"
 #include "../Assets/IFileSystem.h"
@@ -70,7 +72,7 @@ namespace SceneEngine
         // Note that "placements" that interface methods in Placements are actually
         // very rarely called. So it should be fine to make those methods into virtual
         // methods, and use an abstract base class.
-    class Placements : public ::Assets::ChunkFileAsset
+    class Placements
     {
     public:
         typedef std::pair<Float3, Float3> BoundingBox;
@@ -94,7 +96,9 @@ namespace SceneEngine
         void Write(const Assets::ResChar destinationFile[]) const;
         void LogDetails(const char title[]) const;
 
-        Placements(const ResChar filename[]);
+		const ::Assets::DepValPtr& GetDependencyValidation() const	{ return _dependencyValidation; }
+
+        Placements(const ::Assets::ChunkFileContainer& chunkFile);
         Placements();
         ~Placements();
     protected:
@@ -102,10 +106,8 @@ namespace SceneEngine
         std::vector<uint8>              _filenamesBuffer;
         std::vector<uint64>             _supplementsBuffer;
 
-        std::shared_ptr<::Assets::DependencyValidation>   _dependencyValidation;
+		::Assets::DepValPtr				_dependencyValidation;
         void ReplaceString(const char oldString[], const char newString[]);
-
-        static void Resolver(void*, IteratorRange<::Assets::AssetChunkResult*>);
     };
 
     auto            Placements::GetObjectReferences() const -> const ObjectReference*   { return AsPointer(_objects.begin()); }
@@ -252,16 +254,11 @@ namespace SceneEngine
         }
     };
 
-    Placements::Placements(const ResChar filename[])
-    : ChunkFileAsset("Placements")
+    Placements::Placements(const ::Assets::ChunkFileContainer& chunkFile)
+	: _dependencyValidation(chunkFile.GetDependencyValidation())
     {
-        Prepare(filename, ResolveOp{MakeIteratorRange(PlacementsChunkRequests), Resolver});
-    }
-
-    void Placements::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)
-    {
+		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(PlacementsChunkRequests));
         assert(chunks.size() == 1);
-        auto* plc = (Placements*)obj;
 
             //
             //      Extremely simple file format for placements
@@ -280,35 +277,31 @@ namespace SceneEngine
                 StringMeld<128>() << "Unexpected version number (" << hdr._version << ")"));
         i = PtrAdd(i, sizeof(PlacementsHeader));
 
-        plc->_objects.clear();
-        plc->_filenamesBuffer.clear();
-        plc->_supplementsBuffer.clear();
+        _objects.clear();
+        _filenamesBuffer.clear();
+        _supplementsBuffer.clear();
 
-        plc->_objects.insert(plc->_objects.end(),
+        _objects.insert(_objects.end(),
             (const ObjectReference*)i, (const ObjectReference*)i + hdr._objectRefCount);
         i = (const ObjectReference*)i + hdr._objectRefCount;
 
-        plc->_filenamesBuffer.insert(plc->_filenamesBuffer.end(),
+        _filenamesBuffer.insert(_filenamesBuffer.end(),
             (const uint8*)i, (const uint8*)i + hdr._filenamesBufferSize);
         i = (const uint8*)i + hdr._filenamesBufferSize;
 
-        plc->_supplementsBuffer.insert(plc->_supplementsBuffer.end(),
+        _supplementsBuffer.insert(_supplementsBuffer.end(),
             (const uint64*)i, (const uint64*)PtrAdd(i, hdr._supplementsBufferSize));
         i = PtrAdd(i, hdr._supplementsBufferSize);
 
         #if defined(_DEBUG)
-            const auto* filename = plc->Filename().c_str();
-            if (!plc->_objects.empty())
-                plc->LogDetails(filename);
+            if (!_objects.empty())
+                LogDetails(chunkFile.Filename().c_str());
         #endif
     }
 
-    Placements::Placements()
-    : ChunkFileAsset("Placements")
-    {
-        auto depValidation = std::make_shared<Assets::DependencyValidation>();
-        _dependencyValidation = std::move(depValidation);
-    }
+	Placements::Placements() 
+	: _dependencyValidation(std::make_shared<::Assets::DependencyValidation>())
+	{}
 
     Placements::~Placements()
     {}
@@ -398,7 +391,7 @@ namespace SceneEngine
         if (!model) return ::Assets::AssetState::Invalid;
 
         ::Assets::AssetState state;
-        if (stallWhilePending)  { state = model->StallAndResolve(); } 
+        if (stallWhilePending)  { state = model->StallWhilePending(); } 
         else                    { state = model->TryResolve(); }
         if (state != ::Assets::AssetState::Ready) return state;
 
@@ -1865,7 +1858,7 @@ namespace SceneEngine
             // get the local bounding box for a model
             // ... but stall waiting for any pending resources
         auto* model = _editorPimpl->_modelCache->GetModelScaffold(filename);
-        auto state = model->StallAndResolve();
+        auto state = model->StallWhilePending();
         if (state != ::Assets::AssetState::Ready) {
             result = std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
             return false;

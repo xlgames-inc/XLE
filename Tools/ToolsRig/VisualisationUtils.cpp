@@ -8,6 +8,7 @@
 #include "../../SceneEngine/LightDesc.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/AssetUtils.h"
 #include "../../Math/Transformations.h"
 
 namespace ToolsRig
@@ -87,7 +88,7 @@ namespace ToolsRig
     VisEnvSettings::VisEnvSettings(const ::Assets::ResChar filename[])
     {
         TRY {
-            _activeSetting = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<PlatformRig::EnvironmentSettings>>(filename)._asset;
+            _activeSetting = ::Assets::GetAssetDep<PlatformRig::EnvironmentSettings>(filename);
             _depVal = std::make_shared<::Assets::DependencyValidation>();
             ::Assets::RegisterFileDependency(_depVal, filename);
         } CATCH (const ::Assets::Exceptions::InvalidAsset&) {

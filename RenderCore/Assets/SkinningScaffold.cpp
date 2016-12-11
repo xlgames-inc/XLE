@@ -349,6 +349,19 @@ namespace RenderCore { namespace Assets
 			Throw(::Assets::Exceptions::InvalidAsset(_filename.c_str(), "Missing data"));
 	}
 
+	::Assets::AssetState SkeletonScaffold::StallWhilePending() const
+	{
+		if (_deferredConstructor) {
+			auto state = _deferredConstructor->StallWhilePending();
+			auto constructor = std::move(_deferredConstructor);
+			if (state == ::Assets::AssetState::Ready) {
+				*const_cast<SkeletonScaffold*>(this) = std::move(*constructor->PerformConstructor<SkeletonScaffold>());
+			} // (else fall through);
+		}
+
+		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
+	}
+
     const TransformationMachine*   SkeletonScaffold::TryImmutableData() const
     {
         if (!_rawMemoryBlock) return nullptr;
@@ -383,6 +396,7 @@ namespace RenderCore { namespace Assets
 
     SkeletonScaffold& SkeletonScaffold::operator=(SkeletonScaffold&& moveFrom)
     {
+		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
 		_deferredConstructor = std::move(moveFrom._deferredConstructor);
 		_filename = std::move(moveFrom._filename);
@@ -435,6 +449,19 @@ namespace RenderCore { namespace Assets
         return (const AnimationImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
+	::Assets::AssetState AnimationSetScaffold::StallWhilePending() const
+	{
+		if (_deferredConstructor) {
+			auto state = _deferredConstructor->StallWhilePending();
+			auto constructor = std::move(_deferredConstructor);
+			if (state == ::Assets::AssetState::Ready) {
+				*const_cast<AnimationSetScaffold*>(this) = std::move(*constructor->PerformConstructor<AnimationSetScaffold>());
+			} // (else fall through);
+		}
+
+		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
+	}
+
     static const ::Assets::AssetChunkRequest AnimationSetScaffoldChunkRequests[]
     {
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_AnimationSet, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
@@ -463,6 +490,7 @@ namespace RenderCore { namespace Assets
 
     AnimationSetScaffold& AnimationSetScaffold::operator=(AnimationSetScaffold&& moveFrom)
     {
+		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
 		_deferredConstructor = std::move(moveFrom._deferredConstructor);
 		_filename = std::move(moveFrom._filename);

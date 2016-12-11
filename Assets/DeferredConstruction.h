@@ -34,7 +34,7 @@ namespace Assets
 	};
 
 	template<typename Type>
-		std::unique_ptr<Type> PerformConstructor() { return _fns.Call<std::unique_ptr<Type>>(typeid(Type).hash_code()); }
+		std::unique_ptr<Type> DeferredConstruction::PerformConstructor() { return _fns.Call<std::unique_ptr<Type>>(typeid(Type).hash_code()); }
 
 	template<typename Type>
 		DeferredConstruction::DeferredConstruction(
@@ -43,6 +43,8 @@ namespace Assets
 			std::function<std::unique_ptr<Type>()>&& constructor)
 			: _upstreamMarker(upstream), _depVal(depVal) 
 		{
+			if (!_depVal)
+				_depVal = std::make_shared<DependencyValidation>();
 			_fns.Add<std::unique_ptr<Type>()>(typeid(Type).hash_code(), std::move(constructor));
 		}
 
