@@ -31,15 +31,112 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	using LookupResult = MountingTree::EnumerableLookup::Result;
-	static LookupResult TryTranslate(MountingTree::CandidateObject& candidate, const MountingTree::EnumerableLookup& lookup)
+	namespace Internal 
 	{
-		if (!lookup.IsGood()) 
-			return LookupResult::NoCandidates;
-		return lookup.TryGetNext(candidate);
-	}
+		using LookupResult = MountingTree::EnumerableLookup::Result;
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
+		template<typename FileType, typename CharType>
+			static IFileSystem::IOReason TryOpen(FileType& result, StringSection<CharType> filename, const char openMode[], FileShareMode::BitField shareMode)
+		{
+			result = FileType();
+
+			MountingTree::CandidateObject candidateObject;
+			auto lookup = s_mainMountingTree->Lookup(filename);
+			for (;;) {
+				auto r = lookup.TryGetNext(candidateObject);
+				if (r == LookupResult::Invalidated)
+					Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
+
+				if (r == LookupResult::NoCandidates)
+					break;
+
+				assert(candidateObject._fileSystem);
+				auto ioRes = candidateObject._fileSystem->TryOpen(result, candidateObject._marker, openMode, shareMode);
+				if (ioRes != IFileSystem::IOReason::FileNotFound && ioRes != IFileSystem::IOReason::Invalid)
+					return ioRes;
+			}
+
+			// attempt opening with the default file system...
+			if (s_defaultFileSystem)
+				return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, openMode, shareMode);
+			return IFileSystem::IOReason::FileNotFound;
+		}
+
+		template<typename FileType, typename CharType>
+			static IFileSystem::IOReason TryOpen(FileType& result, StringSection<CharType> filename, uint64 size, const char openMode[], FileShareMode::BitField shareMode)
+		{
+			result = FileType();
+
+			MountingTree::CandidateObject candidateObject;
+			auto lookup = s_mainMountingTree->Lookup(filename);
+			for (;;) {
+				auto r = lookup.TryGetNext(candidateObject);
+				if (r == LookupResult::Invalidated)
+					Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
+
+				if (r == LookupResult::NoCandidates)
+					break;
+
+				assert(candidateObject._fileSystem);
+				auto ioRes = candidateObject._fileSystem->TryOpen(result, candidateObject._marker, size, openMode, shareMode);
+				if (ioRes != IFileSystem::IOReason::FileNotFound && ioRes != IFileSystem::IOReason::Invalid)
+					return ioRes;
+			}
+
+			// attempt opening with the default file system...
+			if (s_defaultFileSystem) 
+				return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, size, openMode, shareMode);
+			return IFileSystem::IOReason::FileNotFound;
+		}
+
+		template<typename CharType>
+			IFileSystem::IOReason TryMonitor(StringSection<CharType> filename, const std::shared_ptr<IFileMonitor>& evnt)
+		{
+			MountingTree::CandidateObject candidateObject;
+			auto lookup = s_mainMountingTree->Lookup(filename);
+			for (;;) {
+				auto r = lookup.TryGetNext(candidateObject);
+				if (r == LookupResult::Invalidated)
+					Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
+
+				if (r == LookupResult::NoCandidates)
+					break;
+
+				assert(candidateObject._fileSystem);
+				auto ioRes = candidateObject._fileSystem->TryMonitor(candidateObject._marker, evnt);
+				if (ioRes != IFileSystem::IOReason::FileNotFound && ioRes != IFileSystem::IOReason::Invalid)
+					return ioRes;
+			}
+
+			if (s_defaultFileSystem) 
+				return ::Assets::TryMonitor(*s_defaultFileSystem, filename, evnt);
+			return IFileSystem::IOReason::FileNotFound;
+		}
+
+		template<typename CharType>
+			FileDesc TryGetDesc(StringSection<CharType> filename)
+		{
+			MountingTree::CandidateObject candidateObject;
+			auto lookup = s_mainMountingTree->Lookup(filename);
+			for (;;) {
+				auto r = lookup.TryGetNext(candidateObject);
+				if (r == LookupResult::Invalidated)
+					Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
+
+				if (r == LookupResult::NoCandidates) 
+					break;
+
+				assert(candidateObject._fileSystem);
+				auto res = candidateObject._fileSystem->TryGetDesc(candidateObject._marker);
+				if (res._state != FileDesc::State::DoesNotExist)
+					return std::move(res);
+			}
+
+			if (s_defaultFileSystem)
+				return ::Assets::TryGetDesc(*s_defaultFileSystem, filename);
+			return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+		}
+	}
 
 	//
 	// note -- the UTF8 and UTF16 versions of these functions are identical... They could be implemented
@@ -53,198 +150,52 @@ namespace Assets
 
 	auto MainFileSystem::TryOpen(std::unique_ptr<IFileInterface>& result, StringSection<utf8> filename, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
 	{
-		result = nullptr;
-
-		MountingTree::CandidateObject candidateObject;
-		auto r = TryTranslate(candidateObject, s_mainMountingTree->Lookup(filename));
-		if (r == LookupResult::Invalidated)
-			Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
-
-		if (r != LookupResult::NoCandidates) {
-			assert(candidateObject._fileSystem);
-			return candidateObject._fileSystem->TryOpen(result, candidateObject._marker, openMode, shareMode);
-		}
-
-		// attempt opening with the default file system...
-		if (s_defaultFileSystem) {
-			return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, openMode, shareMode);
-		} else
-			return IOReason::FileNotFound;
+		return Internal::TryOpen(result, filename, openMode, shareMode);
 	}
 
 	auto MainFileSystem::TryOpen(BasicFile& result, StringSection<utf8> filename, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
 	{
-		result = BasicFile();
-
-		MountingTree::CandidateObject candidateObject;
-		auto r = TryTranslate(candidateObject, s_mainMountingTree->Lookup(filename));
-		if (r == LookupResult::Invalidated)
-			Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
-
-		if (r != LookupResult::NoCandidates) {
-			assert(candidateObject._fileSystem);
-			return candidateObject._fileSystem->TryOpen(result, candidateObject._marker, openMode, shareMode);
-		}
-
-		// attempt opening with the default file system...
-		if (s_defaultFileSystem) {
-			return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, openMode, shareMode);
-		} else
-			return IOReason::FileNotFound;
+		return Internal::TryOpen(result, filename, openMode, shareMode);
 	}
 
 	auto MainFileSystem::TryOpen(MemoryMappedFile& result, StringSection<utf8> filename, uint64 size, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
 	{
-		result = MemoryMappedFile();
-
-		MountingTree::CandidateObject candidateObject;
-		auto r = TryTranslate(candidateObject, s_mainMountingTree->Lookup(filename));
-		if (r == LookupResult::Invalidated)
-			Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
-
-		if (r != LookupResult::NoCandidates) {
-			assert(candidateObject._fileSystem);
-			return candidateObject._fileSystem->TryOpen(result, candidateObject._marker, size, openMode, shareMode);
-		}
-
-		// attempt opening with the default file system...
-		if (s_defaultFileSystem) {
-			return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, size, openMode, shareMode);
-		} else
-			return IOReason::FileNotFound;
+		return Internal::TryOpen(result, filename, size, openMode, shareMode);
 	}
 
 	IFileSystem::IOReason MainFileSystem::TryMonitor(StringSection<utf8> filename, const std::shared_ptr<IFileMonitor>& evnt)
 	{
-		MountingTree::CandidateObject candidateObject;
-		auto r = TryTranslate(candidateObject, s_mainMountingTree->Lookup(filename));
-		if (r == LookupResult::Invalidated)
-			Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
-
-		if (r != LookupResult::NoCandidates) {
-			assert(candidateObject._fileSystem);
-			return candidateObject._fileSystem->TryMonitor(candidateObject._marker, evnt);
-		}
-
-		if (s_defaultFileSystem) 
-			return ::Assets::TryMonitor(*s_defaultFileSystem, filename, evnt);
-		return IFileSystem::IOReason::FileNotFound;
+		return Internal::TryMonitor(filename, evnt);
 	}
 
 	FileDesc MainFileSystem::TryGetDesc(StringSection<utf8> filename)
 	{
-		MountingTree::CandidateObject candidateObject;
-		auto r = TryTranslate(candidateObject, s_mainMountingTree->Lookup(filename));
-		if (r == LookupResult::Invalidated)
-			Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
-
-		if (r != LookupResult::NoCandidates) {
-			assert(candidateObject._fileSystem);
-			return candidateObject._fileSystem->TryGetDesc(candidateObject._marker);
-		}
-
-		if (s_defaultFileSystem)
-			return ::Assets::TryGetDesc(*s_defaultFileSystem, filename);
-
-		return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+		return Internal::TryGetDesc(filename);
 	}
 
 	auto MainFileSystem::TryOpen(std::unique_ptr<IFileInterface>& result, StringSection<utf16> filename, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
 	{
-		result = nullptr;
-
-		MountingTree::CandidateObject candidateObject;
-		auto r = TryTranslate(candidateObject, s_mainMountingTree->Lookup(filename));
-		if (r == LookupResult::Invalidated)
-			Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
-
-		if (r != LookupResult::NoCandidates) {
-			assert(candidateObject._fileSystem);
-			return candidateObject._fileSystem->TryOpen(result, candidateObject._marker, openMode, shareMode);
-		}
-
-		// attempt opening with the default file system...
-		if (s_defaultFileSystem) {
-			return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, openMode, shareMode);
-		} else
-			return IOReason::FileNotFound;
+		return Internal::TryOpen(result, filename, openMode, shareMode);
 	}
 
 	auto MainFileSystem::TryOpen(BasicFile& result, StringSection<utf16> filename, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
 	{
-		result = BasicFile();
-
-		MountingTree::CandidateObject candidateObject;
-		auto r = TryTranslate(candidateObject, s_mainMountingTree->Lookup(filename));
-		if (r == LookupResult::Invalidated)
-			Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
-
-		if (r != LookupResult::NoCandidates) {
-			assert(candidateObject._fileSystem);
-			return candidateObject._fileSystem->TryOpen(result, candidateObject._marker, openMode, shareMode);
-		}
-
-		// attempt opening with the default file system...
-		if (s_defaultFileSystem) {
-			return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, openMode, shareMode);
-		} else
-			return IOReason::FileNotFound;
+		return Internal::TryOpen(result, filename, openMode, shareMode);
 	}
 
 	auto MainFileSystem::TryOpen(MemoryMappedFile& result, StringSection<utf16> filename, uint64 size, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
 	{
-		result = MemoryMappedFile();
-
-		MountingTree::CandidateObject candidateObject;
-		auto r = TryTranslate(candidateObject, s_mainMountingTree->Lookup(filename));
-		if (r == LookupResult::Invalidated)
-			Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
-
-		if (r != LookupResult::NoCandidates) {
-			assert(candidateObject._fileSystem);
-			return candidateObject._fileSystem->TryOpen(result, candidateObject._marker, size, openMode, shareMode);
-		}
-
-		// attempt opening with the default file system...
-		if (s_defaultFileSystem) {
-			return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, size, openMode, shareMode);
-		} else
-			return IOReason::FileNotFound;
+		return Internal::TryOpen(result, filename, size, openMode, shareMode);
 	}
 
 	IFileSystem::IOReason MainFileSystem::TryMonitor(StringSection<utf16> filename, const std::shared_ptr<IFileMonitor>& evnt)
 	{
-		MountingTree::CandidateObject candidateObject;
-		auto r = TryTranslate(candidateObject, s_mainMountingTree->Lookup(filename));
-		if (r == LookupResult::Invalidated)
-			Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
-
-		if (r != LookupResult::NoCandidates) {
-			assert(candidateObject._fileSystem);
-			return candidateObject._fileSystem->TryMonitor(candidateObject._marker, evnt);
-		}
-
-		if (s_defaultFileSystem)
-			return ::Assets::TryMonitor(*s_defaultFileSystem, filename, evnt);
-		return IFileSystem::IOReason::FileNotFound;
+		return Internal::TryMonitor(filename, evnt);
 	}
 
 	FileDesc MainFileSystem::TryGetDesc(StringSection<utf16> filename)
 	{
-		MountingTree::CandidateObject candidateObject;
-		auto r = TryTranslate(candidateObject, s_mainMountingTree->Lookup(filename));
-		if (r == LookupResult::Invalidated)
-			Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
-
-		if (r != LookupResult::NoCandidates) {
-			assert(candidateObject._fileSystem);
-			return candidateObject._fileSystem->TryGetDesc(candidateObject._marker);
-		}
-
-		if (s_defaultFileSystem)
-			return ::Assets::TryGetDesc(*s_defaultFileSystem, filename);
-
-		return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+		return Internal::TryGetDesc(filename);
 	}
 
 	BasicFile MainFileSystem::OpenBasicFile(StringSection<utf8> filename, const char openMode[], FileShareMode::BitField shareMode)

@@ -151,10 +151,12 @@ namespace Assets
 
 	auto MountingTree::EnumerableLookup::TryGetNext(CandidateObject& result) const -> Result
 	{
-		if (_encoding == Encoding::UTF8) {
-			return TryGetNext_Internal<utf8>(result);
-		} else if (_encoding == Encoding::UTF16) {
-			return TryGetNext_Internal<utf16>(result);
+		if (IsGood()) {
+			if (_encoding == Encoding::UTF8) {
+				return TryGetNext_Internal<utf8>(result);
+			} else if (_encoding == Encoding::UTF16) {
+				return TryGetNext_Internal<utf16>(result);
+			}
 		}
 
 		return Result::NoCandidates;

@@ -281,36 +281,35 @@ namespace Assets { namespace IntermediateAssets
 				do {
 					if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
 						_snprintf_s(buffer, _TRUNCATE, "%s/%s/.store", baseDirectory, findData.cFileName);
-						TRY 
-						{
-								// Note --  Ideally we want to prevent two different instances of the
-								//          same app from using the same intermediate assets store.
-								//          We can do this by use a "non-shareable" file mode when
-								//          we load these files. 
-							auto markerFile = MainFileSystem::OpenBasicFile(buffer, "rb", 0);
-							auto fileSize = markerFile.GetSize();
-							if (fileSize != 0) {
-								auto rawData = std::unique_ptr<uint8[]>(new uint8[int(fileSize)]);
-								markerFile.Read(rawData.get(), 1, size_t(fileSize));
+							// Note --  Ideally we want to prevent two different instances of the
+							//          same app from using the same intermediate assets store.
+							//          We can do this by use a "non-shareable" file mode when
+							//          we load these files. 
+						BasicFile markerFile;
+						auto ioReason = MainFileSystem::TryOpen(markerFile, buffer, "rb", 0);
+						if (ioReason != IFileSystem::IOReason::Success)
+							continue;
 
-                                InputStreamFormatter<utf8> formatter(
-                                    MemoryMappedInputStream(rawData.get(), PtrAdd(rawData.get(), (ptrdiff_t)fileSize)));
-                                Document<InputStreamFormatter<utf8>> doc(formatter);
+						auto fileSize = markerFile.GetSize();
+						if (fileSize != 0) {
+							auto rawData = std::unique_ptr<uint8[]>(new uint8[int(fileSize)]);
+							markerFile.Read(rawData.get(), 1, size_t(fileSize));
 
-								auto compareVersion = doc.Attribute(u("VersionString")).Value();
-								if (XlEqString(compareVersion, (const utf8*)versionString)) {
-									// this branch is already present, and is good... so use it
-									goodBranchDir = std::string(baseDirectory) + "/" + findData.cFileName;
-                                    _markerFile = std::move(markerFile);
-									break;
-								}
+                            InputStreamFormatter<utf8> formatter(
+                                MemoryMappedInputStream(rawData.get(), PtrAdd(rawData.get(), (ptrdiff_t)fileSize)));
+                            Document<InputStreamFormatter<utf8>> doc(formatter);
 
-								// it's a store for some other version of the executable. Try the next one
-								continue;
+							auto compareVersion = doc.Attribute(u("VersionString")).Value();
+							if (XlEqString(compareVersion, (const utf8*)versionString)) {
+								// this branch is already present, and is good... so use it
+								goodBranchDir = std::string(baseDirectory) + "/" + findData.cFileName;
+                                _markerFile = std::move(markerFile);
+								break;
 							}
+
+							// it's a store for some other version of the executable. Try the next one
+							continue;
 						}
-						CATCH (...) {}  // on any kind of error, we just check the next directory
-						CATCH_END
 					}
 				} while (FindNextFileA(findHandle, &findData));
 
@@ -322,7 +321,7 @@ namespace Assets { namespace IntermediateAssets
 					// search through to find the first unused directory
 				for (unsigned d=0;;++d) {
 					_snprintf_s(buffer, _TRUNCATE, "%s/%s_%i", baseDirectory, configString, d);
-					DWORD dwAttrib = GetFileAttributes(buffer);
+					DWORD dwAttrib = GetFileAttributesA(buffer);
 					if (dwAttrib != INVALID_FILE_ATTRIBUTES) {
 						continue;
 					}
