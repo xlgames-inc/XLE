@@ -11,10 +11,12 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
+#include "../../Assets/ChunkFileAsset.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/CompilerHelper.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/DeferredConstruction.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -46,6 +48,12 @@ namespace RenderCore { namespace Assets
         static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
 
         auto GetDependencyValidation() const -> const std::shared_ptr<::Assets::DependencyValidation>& { return _validationCallback; }
+
+		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
+			const ::Assets::ResChar* initializers[], unsigned initializerCount)
+		{
+			return ::Assets::DefaultBeginDeferredConstruction<RawMatConfigurations>(initializers, initializerCount);
+		}
     protected:
         std::shared_ptr<::Assets::DependencyValidation> _validationCallback;
     };
@@ -74,6 +82,7 @@ namespace RenderCore { namespace Assets
 
         _validationCallback = locator._dependencyValidation;
     }
+
 
     static void AddDep(
         std::vector<::Assets::DependentFileState>& deps,
@@ -149,7 +158,7 @@ namespace RenderCore { namespace Assets
             Meld meld; meld << sourceModel << ":" << configName;
             resName << meld;
             auto& rawMat = RawMaterial::GetAsset(meld);
-            auto subMatState = rawMat._asset.TryResolve(resMat, searchRules, &deps);
+            auto subMatState = rawMat.TryResolve(resMat, searchRules, &deps);
 
 			// Allow both "invalid" and "ready" assets to continue on. Invalid assets are
 			// treated as empty materials
@@ -163,7 +172,7 @@ namespace RenderCore { namespace Assets
                 Meld starInit; starInit << resolvedSourceMaterial << ":*";
                 resName << ";" << starInit;
                 auto& starMat = RawMaterial::GetAsset(starInit);
-				subMatState = starMat._asset.TryResolve(resMat, searchRules, &deps);
+				subMatState = starMat.TryResolve(resMat, searchRules, &deps);
 				if (subMatState == ::Assets::AssetState::Pending)
 					Throw(::Assets::Exceptions::PendingAsset(starInit, "Sub material is pending"));
 
@@ -171,7 +180,7 @@ namespace RenderCore { namespace Assets
                 Meld configInit; configInit << resolvedSourceMaterial << ":" << Conversion::Convert<::Assets::rstring>(*i);
                 resName << ";" << configInit;
                 auto& configMat = RawMaterial::GetAsset(configInit);
-				subMatState = configMat._asset.TryResolve(resMat, searchRules, &deps);
+				subMatState = configMat.TryResolve(resMat, searchRules, &deps);
 				if (subMatState == ::Assets::AssetState::Pending)
 					Throw(::Assets::Exceptions::PendingAsset(configInit, "Sub material is pending"));
             }
@@ -342,6 +351,40 @@ namespace RenderCore { namespace Assets
         return *(const MaterialImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
+	void MaterialScaffold::Resolve() const
+	{
+		if (_deferredConstructor) {
+			auto state = _deferredConstructor->GetAssetState();
+			if (state == ::Assets::AssetState::Pending)
+				Throw(::Assets::Exceptions::PendingAsset(_filename.c_str(), "Pending deferred construction"));
+
+			auto constructor = std::move(_deferredConstructor);
+			if (state == ::Assets::AssetState::Ready) {
+				*const_cast<MaterialScaffold*>(this) = std::move(*constructor->PerformConstructor<MaterialScaffold>());
+			} else {
+				assert(state == ::Assets::AssetState::Invalid);
+			}
+		}
+		if (!_rawMemoryBlock)
+			Throw(::Assets::Exceptions::InvalidAsset(_filename.c_str(), "Missing data"));
+	}
+	
+	::Assets::AssetState MaterialScaffold::TryResolve() const
+	{
+		if (_deferredConstructor) {
+			auto state = _deferredConstructor->GetAssetState();
+			if (state == ::Assets::AssetState::Pending)
+				return state;
+
+			auto constructor = std::move(_deferredConstructor);
+			if (state == ::Assets::AssetState::Ready) {
+				*const_cast<MaterialScaffold*>(this) = std::move(*constructor->PerformConstructor<MaterialScaffold>());
+			} // (else fall through);
+		}
+
+		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
+	}
+
     const MaterialImmutableData*   MaterialScaffold::TryImmutableData() const
     {
         if (!_rawMemoryBlock) return nullptr;
@@ -374,21 +417,33 @@ namespace RenderCore { namespace Assets
         }
     };
 
-    MaterialScaffold::MaterialScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker)
-        : ChunkFileAsset("MaterialScaffold")
+    MaterialScaffold::MaterialScaffold(const ::Assets::ChunkFileAsset& chunkFile)
+	: _filename(chunkFile.Filename())
+	, _depVal(chunkFile.GetDependencyValidation())
     {
-        Prepare(*marker, ResolveOp{MakeIteratorRange(MaterialScaffoldChunkRequests), &Resolver}); 
+		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(MaterialScaffoldChunkRequests));
+		assert(chunks.size() == 1);
+		_rawMemoryBlock = std::move(chunks[0]._buffer);
     }
 
+	MaterialScaffold::MaterialScaffold(const std::shared_ptr<::Assets::DeferredConstruction>& deferredConstruction)
+	: _deferredConstructor(deferredConstruction)
+	, _depVal(deferredConstruction->GetDependencyValidation())
+	{}
+
     MaterialScaffold::MaterialScaffold(MaterialScaffold&& moveFrom) never_throws
-    :   ::Assets::ChunkFileAsset(std::move(moveFrom))
-    ,   _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+    : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+	, _deferredConstructor(std::move(moveFrom._deferredConstructor))
+	, _filename(std::move(moveFrom._filename))
+	, _depVal(moveFrom._depVal)
     {}
 
     MaterialScaffold& MaterialScaffold::operator=(MaterialScaffold&& moveFrom) never_throws
     {
-        ::Assets::ChunkFileAsset::operator=(std::move(moveFrom));
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
+		_deferredConstructor = std::move(moveFrom._deferredConstructor);
+		_filename = std::move(moveFrom._filename);
+		_depVal = moveFrom._depVal;
         return *this;
     }
 
@@ -397,12 +452,6 @@ namespace RenderCore { namespace Assets
         auto* data = TryImmutableData();
         if (data)
             data->~MaterialImmutableData();
-    }
-
-    void MaterialScaffold::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)
-    {
-        assert(chunks.size() == 1);
-        ((MaterialScaffold*)obj)->_rawMemoryBlock = std::move(chunks[0]._buffer);
     }
 
 }}

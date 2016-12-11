@@ -54,16 +54,9 @@ namespace RenderCore { namespace Assets
 
     namespace Internal
     {
-        static std::shared_ptr<ModelScaffold> CreateModelScaffold(
-            const ::Assets::ResChar filename[])
+        static std::shared_ptr<ModelScaffold> CreateModelScaffold(const ::Assets::ResChar filename[])
         {
-            auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-            auto marker = compilers.PrepareAsset(
-                ModelScaffold::CompileProcessType, 
-                (const char**)&filename, 1, store);
-            if (!marker) return nullptr;
-            return std::make_shared<ModelScaffold>(std::move(marker));
+            return ::Assets::AutoConstructAssetDeferred<ModelScaffold>(filename);
         }
 
         static std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(
@@ -81,14 +74,7 @@ namespace RenderCore { namespace Assets
                 model = temp;
             }
 
-            auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-            const ::Assets::ResChar* inits[] = { material, model };
-            auto marker = compilers.PrepareAsset(
-                MaterialScaffold::CompileProcessType, 
-                inits, dimof(inits), store);
-            if (!marker) return nullptr;
-            return std::make_shared<MaterialScaffold>(std::move(marker));
+            return ::Assets::AutoConstructAssetDeferred<MaterialScaffold>(material, model);
         }
     }
 
@@ -140,14 +126,8 @@ namespace RenderCore { namespace Assets
             const ::Assets::ResChar modelFilename[],
             const ::Assets::ResChar materialFilename[])
         {
-            auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-            const ::Assets::ResChar* inits[] = { modelFilename, materialFilename };
-            auto marker = compilers.PrepareAsset(
-                compilerHash, // ConstHash64<'PER_', 'VERT', 'EX_A', 'O'>::Value, 
-                inits, dimof(inits), store);
-            if (!marker) return nullptr;
-            return std::make_shared<ModelSupplementScaffold>(std::move(marker));
+            return ::Assets::AutoConstructAssetDeferred<ModelSupplementScaffold>(
+				(const ::Assets::ResChar*)&compilerHash, modelFilename, materialFilename);
         }
     }
 

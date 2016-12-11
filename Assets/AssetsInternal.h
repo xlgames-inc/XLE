@@ -8,7 +8,7 @@
 
 #include "AssetSetInternal.h"
 #include "AssetsCore.h"
-#include "ConfigFileContainer.h"
+#include "AssetTraits.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Core/Types.h"
@@ -49,40 +49,6 @@ namespace Assets { namespace Internal
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	const ConfigFileContainer<>& GetAssetContainer(const ResChar identifier[]);
-
-	template<typename AssetType, typename std::enable_if<AssetTraits<AssetType>::Constructor_Formatter>::type* = nullptr>
-		static AssetType AutoConstructAsset(const ResChar initializer[])
-	{
-		// First parameter should be the section of the input file to read (or just use the root of the file if it doesn't exist)
-		const char* p = XlFindChar(initializer, ':');
-		if (p) {
-			char buffer[256];
-			XlCopyString(buffer, MakeStringSection(initializer, p));
-			const auto& container = GetAssetContainer(buffer);
-			auto fmttr = container.GetFormatter((const utf8*)(p+1));
-			return AssetType(
-				fmttr, 
-				DefaultDirectorySearchRules(buffer),
-				container.GetDependencyValidation());
-		} else {
-			const auto& container = GetAssetContainer(initializer);
-			auto fmttr = container.GetFormatter((const utf8*)(p+1));
-			return AssetType(
-				fmttr,
-				DefaultDirectorySearchRules(initializer),
-				container.GetDependencyValidation());
-		}
-	}
-		
-	template<typename AssetType, typename... Params, typename std::enable_if<!AssetTraits<AssetType>::Constructor_Formatter>::type* = nullptr>
-		static AssetType AutoConstructAsset(Params... initialisers)
-	{
-		return AssetType(std::forward<Params>(initialisers)...);
-	}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 	std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64 typeCode, const ResChar* initializers[], unsigned initializerCount);
     template<typename AssetType> using Ptr = std::unique_ptr<AssetType>;
 
@@ -97,31 +63,16 @@ namespace Assets { namespace Internal
         template<typename AssetType, typename... Params> 
 			static typename Ptr<AssetType> Create(Params... initialisers)
 		{
-			return std::make_unique<AssetType>(AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...));
+			return AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
 		}
     };
 
     template<> struct ConstructAsset<1>
     {
-        template<
-            typename AssetType, typename... Params, 
-            typename std::enable_if<AssetTraits<AssetType>::Constructor_DeferredConstruction>::type* = nullptr>
-            static typename Ptr<AssetType> Create(Params... initialisers)
-        {
-                // This asset type uses the default compilation process. The asset type itself only has
-                // the logic for loading the completed intermediate asset. We will use general code for 
-                // testing for existing assets and invoking compiles (etc).
-            const char* inits[] = { ((const char*)initialisers)... };
-			auto deferredConstructor = AssetType::BeginDeferredConstruction(inits, dimof(inits));
-			return std::make_unique<AssetType>(deferredConstructor);
-        }
-
-		template<
-			typename AssetType, typename... Params, 
-			typename std::enable_if<!AssetTraits<AssetType>::Constructor_DeferredConstruction>::type* = nullptr>
+		template<typename AssetType, typename... Params> 
 			static typename Ptr<AssetType> Create(Params... initialisers)
 		{
-			return std::make_unique<AssetType>(AutoConstructAsset<AssetType>(initialisers));
+			return AutoConstructAssetDeferred<AssetType>(std::forward<Params>(initialisers)...);
 		}
     };
 

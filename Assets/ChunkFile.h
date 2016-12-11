@@ -12,7 +12,8 @@
 #include <algorithm>
 #include <vector>
 
-namespace Utility { class BasicFile; class OutputStream; }
+namespace Utility { class OutputStream; }
+namespace Assets { class IFileInterface; }
 
 namespace Serialization { namespace ChunkFile
 {
@@ -63,7 +64,7 @@ namespace Serialization { namespace ChunkFile
     };
 
     ChunkFileHeader MakeChunkFileHeader(unsigned chunkCount, const char buildVersionString[], const char buildDateString[]);
-    std::vector<ChunkHeader> LoadChunkTable(Utility::BasicFile& file);
+    std::vector<ChunkHeader> LoadChunkTable(::Assets::IFileInterface& file);
 
     ChunkHeader FindChunk(
         const utf8 filename[], std::vector<ChunkHeader>& hdrs,

@@ -24,6 +24,8 @@
     <ClInclude Include="..\MountingTree.h" />
     <ClInclude Include="..\OSFileSystem.h" />
     <ClInclude Include="..\IFileSystem.h" />
+    <ClInclude Include="..\AssetTraits.h" />
+    <ClInclude Include="..\DeferredConstruction.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />
@@ -46,6 +48,8 @@
     <ClCompile Include="..\OSFileSystem_WinAPI.cpp">
       <Filter>WinAPI</Filter>
     </ClCompile>
+    <ClCompile Include="..\AssetTraits.cpp" />
+    <ClCompile Include="..\DeferredConstruction.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="WinAPI">

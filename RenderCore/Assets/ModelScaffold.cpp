@@ -11,6 +11,7 @@
 #include "../Format.h"
 #include "../Types.h"
 #include "../../Assets/ChunkFileAsset.h"
+#include "../../Assets/DeferredConstruction.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/PtrUtils.h"
@@ -120,6 +121,40 @@ namespace RenderCore { namespace Assets
         return *(const ModelImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
+	void ModelScaffold::Resolve() const
+	{
+		if (_deferredConstructor) {
+			auto state = _deferredConstructor->GetAssetState();
+			if (state == ::Assets::AssetState::Pending)
+				Throw(::Assets::Exceptions::PendingAsset(_filename.c_str(), "Pending deferred construction"));
+
+			auto constructor = std::move(_deferredConstructor);
+			if (state == ::Assets::AssetState::Ready) {
+				*const_cast<ModelScaffold*>(this) = std::move(*constructor->PerformConstructor<ModelScaffold>());
+			} else {
+				assert(state == ::Assets::AssetState::Invalid);
+			}
+		}
+		if (!_rawMemoryBlock)
+			Throw(::Assets::Exceptions::InvalidAsset(_filename.c_str(), "Missing data"));
+	}
+
+	::Assets::AssetState ModelScaffold::TryResolve() const
+	{
+		if (_deferredConstructor) {
+			auto state = _deferredConstructor->GetAssetState();
+			if (state == ::Assets::AssetState::Pending)
+				return state;
+
+			auto constructor = std::move(_deferredConstructor);
+			if (state == ::Assets::AssetState::Ready) {
+				*const_cast<ModelScaffold*>(this) = std::move(*constructor->PerformConstructor<ModelScaffold>());
+			} // (else fall through);
+		}
+
+		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
+	}
+
     const ModelImmutableData*   ModelScaffold::TryImmutableData() const
     {
         if (!_rawMemoryBlock) return nullptr;
@@ -137,29 +172,36 @@ namespace RenderCore { namespace Assets
         ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, ::Assets::AssetChunkRequest::DataType::DontLoad }
     };
     
-    ModelScaffold::ModelScaffold(const ::Assets::ResChar filename[])
-    : ChunkFileAsset("ModelScaffold")
+    ModelScaffold::ModelScaffold(const ::Assets::ChunkFileAsset& chunkFile)
+	: _filename(chunkFile.Filename())
+	, _depVal(chunkFile.GetDependencyValidation())
     {
-        Prepare(filename, ResolveOp{MakeIteratorRange(ModelScaffoldChunkRequests), &Resolver});
+        auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(ModelScaffoldChunkRequests));
+		assert(chunks.size() == 2);
+		_rawMemoryBlock = std::move(chunks[0]._buffer);
+		_largeBlocksOffset = chunks[1]._offset;
     }
 
-    ModelScaffold::ModelScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker)
-    : ChunkFileAsset("ModelScaffold")
-    {
-        Prepare(*marker, ResolveOp{MakeIteratorRange(ModelScaffoldChunkRequests), &Resolver}); 
-    }
+    ModelScaffold::ModelScaffold(const std::shared_ptr<::Assets::DeferredConstruction>& deferredConstruction)
+    : _deferredConstructor(deferredConstruction)
+	, _depVal(deferredConstruction->GetDependencyValidation())
+    {}
 
     ModelScaffold::ModelScaffold(ModelScaffold&& moveFrom) never_throws
-    : ::Assets::ChunkFileAsset(std::move(moveFrom)) 
-    , _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+    : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
     , _largeBlocksOffset(moveFrom._largeBlocksOffset)
+	, _deferredConstructor(std::move(moveFrom._deferredConstructor))
+	, _filename(std::move(moveFrom._filename))
+	, _depVal(std::move(moveFrom._depVal))
     {}
 
     ModelScaffold& ModelScaffold::operator=(ModelScaffold&& moveFrom) never_throws
     {
-        ::Assets::ChunkFileAsset::operator=(std::move(moveFrom));
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
         _largeBlocksOffset = moveFrom._largeBlocksOffset;
+		_deferredConstructor = std::move(moveFrom._deferredConstructor);
+		_filename = std::move(moveFrom._filename);
+		_depVal = std::move(moveFrom._depVal);
         return *this;
     }
 
@@ -170,15 +212,12 @@ namespace RenderCore { namespace Assets
             data->~ModelImmutableData();
     }
 
-    void ModelScaffold::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)
-    {
-        auto* scaffold = (ModelScaffold*)obj;
-        if (scaffold) {
-            scaffold->_rawMemoryBlock = std::move(chunks[0]._buffer);
-            scaffold->_largeBlocksOffset = chunks[1]._offset;
-        }
-    }
-    
+	std::shared_ptr<::Assets::DeferredConstruction> ModelScaffold::BeginDeferredConstruction(
+		const ::Assets::ResChar* initializers[], unsigned initializerCount)
+	{
+		return ::Assets::DefaultBeginDeferredConstruction<ModelScaffold>(initializers, initializerCount);
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     unsigned    ModelSupplementScaffold::LargeBlocksOffset() const            
@@ -193,6 +232,24 @@ namespace RenderCore { namespace Assets
         return *(const ModelSupplementImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
+	void ModelSupplementScaffold::Resolve() const
+	{
+		if (_deferredConstructor) {
+			auto state = _deferredConstructor->GetAssetState();
+			if (state == ::Assets::AssetState::Pending)
+				Throw(::Assets::Exceptions::PendingAsset(_filename.c_str(), "Pending deferred construction"));
+
+			auto constructor = std::move(_deferredConstructor);
+			if (state == ::Assets::AssetState::Ready) {
+				*const_cast<ModelSupplementScaffold*>(this) = std::move(*constructor->PerformConstructor<ModelSupplementScaffold>());
+			} else {
+				assert(state == ::Assets::AssetState::Invalid);
+			}
+		}
+		if (!_rawMemoryBlock)
+			Throw(::Assets::Exceptions::InvalidAsset(_filename.c_str(), "Missing data"));
+	}
+
     const ModelSupplementImmutableData*   ModelSupplementScaffold::TryImmutableData() const
     {
         if (!_rawMemoryBlock) return nullptr;
@@ -205,29 +262,36 @@ namespace RenderCore { namespace Assets
         ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, 0, ::Assets::AssetChunkRequest::DataType::DontLoad }
     };
     
-    ModelSupplementScaffold::ModelSupplementScaffold(const ::Assets::ResChar filename[])
-    : ChunkFileAsset("ModelSupplementScaffold")
-    {
-        Prepare(filename, ResolveOp{MakeIteratorRange(ModelSupplementScaffoldChunkRequests), &Resolver});
-    }
+    ModelSupplementScaffold::ModelSupplementScaffold(const ::Assets::ChunkFileAsset& chunkFile)
+	: _filename(chunkFile.Filename())
+	, _depVal(chunkFile.GetDependencyValidation())
+	{
+		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(ModelSupplementScaffoldChunkRequests));
+		assert(chunks.size() == 2);
+		_rawMemoryBlock = std::move(chunks[0]._buffer);
+		_largeBlocksOffset = chunks[1]._offset;
+	}
 
-    ModelSupplementScaffold::ModelSupplementScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker)
-    : ChunkFileAsset("ModelSupplementScaffold")
-    {
-        Prepare(*marker, ResolveOp{MakeIteratorRange(ModelSupplementScaffoldChunkRequests), &Resolver});
-    }
+    ModelSupplementScaffold::ModelSupplementScaffold(const std::shared_ptr<::Assets::DeferredConstruction>& deferredConstruction)
+	: _deferredConstructor(deferredConstruction)
+	, _depVal(deferredConstruction->GetDependencyValidation())
+	{}
 
     ModelSupplementScaffold::ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom)
-    : ::Assets::ChunkFileAsset(std::move(moveFrom)) 
-    , _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+    : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
     , _largeBlocksOffset(moveFrom._largeBlocksOffset)
+	, _deferredConstructor(std::move(moveFrom._deferredConstructor))
+	, _filename(std::move(moveFrom._filename))
+	, _depVal(moveFrom._depVal)
     {}
 
     ModelSupplementScaffold& ModelSupplementScaffold::operator=(ModelSupplementScaffold&& moveFrom)
     {
-        ::Assets::ChunkFileAsset::operator=(std::move(moveFrom));
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
         _largeBlocksOffset = moveFrom._largeBlocksOffset;
+		_deferredConstructor = std::move(moveFrom._deferredConstructor);
+		_filename = std::move(moveFrom._filename);
+		_depVal = std::move(moveFrom._depVal);
         return *this;
     }
 
@@ -238,14 +302,14 @@ namespace RenderCore { namespace Assets
             data->~ModelSupplementImmutableData();
     }
 
-    void ModelSupplementScaffold::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)
-    {
-        auto* scaffold = (ModelSupplementScaffold*)obj;
-        if (scaffold) {
-            scaffold->_rawMemoryBlock = std::move(chunks[0]._buffer);
-            scaffold->_largeBlocksOffset = chunks[1]._offset;
-        }
-    }
+	std::shared_ptr<::Assets::DeferredConstruction> ModelSupplementScaffold::BeginDeferredConstruction(
+		const ::Assets::ResChar* initializers[], unsigned initializerCount)
+	{
+		// Special case version of this function for ModelSupplementScaffold
+		// First parameter is actually a uint64, which is our compile type
+		assert(initializerCount >= 2);
+		return ::Assets::DefaultBeginDeferredConstruction<ModelScaffold>(initializers+1, initializerCount-1, *(const uint64*)initializers[0]);
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

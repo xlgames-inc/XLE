@@ -10,6 +10,7 @@
 #include "RawAnimationCurve.h"
 #include "AssetUtils.h"
 #include "../../Assets/ChunkFileAsset.h"
+#include "../../Assets/DeferredConstruction.h"
 #include "../../ConsoleRig/Log.h"
 
 namespace RenderCore { namespace Assets
@@ -330,6 +331,24 @@ namespace RenderCore { namespace Assets
         return *(const TransformationMachine*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
+	void SkeletonScaffold::Resolve() const
+	{
+		if (_deferredConstructor) {
+			auto state = _deferredConstructor->GetAssetState();
+			if (state == ::Assets::AssetState::Pending)
+				Throw(::Assets::Exceptions::PendingAsset(_filename.c_str(), "Pending deferred construction"));
+
+			auto constructor = std::move(_deferredConstructor);
+			if (state == ::Assets::AssetState::Ready) {
+				*const_cast<SkeletonScaffold*>(this) = std::move(*constructor->PerformConstructor<SkeletonScaffold>());
+			} else {
+				assert(state == ::Assets::AssetState::Invalid);
+			}
+		}
+		if (!_rawMemoryBlock)
+			Throw(::Assets::Exceptions::InvalidAsset(_filename.c_str(), "Missing data"));
+	}
+
     const TransformationMachine*   SkeletonScaffold::TryImmutableData() const
     {
         if (!_rawMemoryBlock) return nullptr;
@@ -341,27 +360,33 @@ namespace RenderCore { namespace Assets
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_Skeleton, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
     };
     
-    SkeletonScaffold::SkeletonScaffold(const ::Assets::ResChar filename[])
-    : ChunkFileAsset("SkeletonScaffold")
+    SkeletonScaffold::SkeletonScaffold(const ::Assets::ChunkFileAsset& chunkFile)
+	: _filename(chunkFile.Filename())
+	, _depVal(chunkFile.GetDependencyValidation())
     {
-        Prepare(filename, ResolveOp{MakeIteratorRange(SkeletonScaffoldChunkRequests), &Resolver});
+		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(SkeletonScaffoldChunkRequests));
+		assert(chunks.size() == 1);
+		_rawMemoryBlock = std::move(chunks[0]._buffer);
     }
 
-    SkeletonScaffold::SkeletonScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker)
-    : ChunkFileAsset("SkeletonScaffold")
-    {
-        Prepare(*marker, ResolveOp{MakeIteratorRange(SkeletonScaffoldChunkRequests), &Resolver});
-    }
+    SkeletonScaffold::SkeletonScaffold(const std::shared_ptr<::Assets::DeferredConstruction>& deferredConstruction)
+	: _deferredConstructor(deferredConstruction)
+	, _depVal(deferredConstruction->GetDependencyValidation())
+    {}
 
     SkeletonScaffold::SkeletonScaffold(SkeletonScaffold&& moveFrom)
-    : ::Assets::ChunkFileAsset(std::move(moveFrom)) 
-    , _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+    : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+	, _deferredConstructor(std::move(moveFrom._deferredConstructor))
+	, _filename(std::move(moveFrom._filename))
+	, _depVal(std::move(moveFrom._depVal))
     {}
 
     SkeletonScaffold& SkeletonScaffold::operator=(SkeletonScaffold&& moveFrom)
     {
-        ::Assets::ChunkFileAsset::operator=(std::move(moveFrom));
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
+		_deferredConstructor = std::move(moveFrom._deferredConstructor);
+		_filename = std::move(moveFrom._filename);
+		_depVal = std::move(moveFrom._depVal);
         return *this;
     }
 
@@ -372,13 +397,11 @@ namespace RenderCore { namespace Assets
             data->~TransformationMachine();
     }
 
-    void SkeletonScaffold::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)
-    {
-        auto* scaffold = (SkeletonScaffold*)obj;
-        if (scaffold) {
-            scaffold->_rawMemoryBlock = std::move(chunks[0]._buffer);
-        }
-    }
+	std::shared_ptr<::Assets::DeferredConstruction> SkeletonScaffold::BeginDeferredConstruction(
+		const ::Assets::ResChar* initializers[], unsigned initializerCount)
+	{
+		return ::Assets::DefaultBeginDeferredConstruction<SkeletonScaffold>(initializers, initializerCount);
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -387,6 +410,24 @@ namespace RenderCore { namespace Assets
         Resolve(); 
         return *(const AnimationImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
+
+	void AnimationSetScaffold::Resolve() const
+	{
+		if (_deferredConstructor) {
+			auto state = _deferredConstructor->GetAssetState();
+			if (state == ::Assets::AssetState::Pending)
+				Throw(::Assets::Exceptions::PendingAsset(_filename.c_str(), "Pending deferred construction"));
+
+			auto constructor = std::move(_deferredConstructor);
+			if (state == ::Assets::AssetState::Ready) {
+				*const_cast<AnimationSetScaffold*>(this) = std::move(*constructor->PerformConstructor<AnimationSetScaffold>());
+			} else {
+				assert(state == ::Assets::AssetState::Invalid);
+			}
+		}
+		if (!_rawMemoryBlock)
+			Throw(::Assets::Exceptions::InvalidAsset(_filename.c_str(), "Missing data"));
+	}
 
     const AnimationImmutableData*   AnimationSetScaffold::TryImmutableData() const
     {
@@ -399,27 +440,33 @@ namespace RenderCore { namespace Assets
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_AnimationSet, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
     };
     
-    AnimationSetScaffold::AnimationSetScaffold(const ::Assets::ResChar filename[])
-    : ChunkFileAsset("AnimationSetScaffold")
+    AnimationSetScaffold::AnimationSetScaffold(const ::Assets::ChunkFileAsset& chunkFile)
+	: _filename(chunkFile.Filename())
+	, _depVal(chunkFile.GetDependencyValidation())
     {
-        Prepare(filename, ResolveOp{MakeIteratorRange(AnimationSetScaffoldChunkRequests), &Resolver});
+		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(AnimationSetScaffoldChunkRequests));
+		assert(chunks.size() == 1);
+		_rawMemoryBlock = std::move(chunks[0]._buffer);
     }
 
-    AnimationSetScaffold::AnimationSetScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker)
-    : ChunkFileAsset("AnimationSetScaffold")
-    {
-        Prepare(*marker, ResolveOp{MakeIteratorRange(AnimationSetScaffoldChunkRequests), &Resolver});
-    }
+    AnimationSetScaffold::AnimationSetScaffold(const std::shared_ptr<::Assets::DeferredConstruction>& deferredConstruction)
+	: _deferredConstructor(deferredConstruction)
+	, _depVal(deferredConstruction->GetDependencyValidation())
+	{}
 
     AnimationSetScaffold::AnimationSetScaffold(AnimationSetScaffold&& moveFrom)
-    : ::Assets::ChunkFileAsset(std::move(moveFrom)) 
-    , _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+    : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+	, _deferredConstructor(std::move(moveFrom._deferredConstructor))
+	, _filename(std::move(moveFrom._filename))
+	, _depVal(std::move(moveFrom._depVal))
     {}
 
     AnimationSetScaffold& AnimationSetScaffold::operator=(AnimationSetScaffold&& moveFrom)
     {
-        ::Assets::ChunkFileAsset::operator=(std::move(moveFrom));
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
+		_deferredConstructor = std::move(moveFrom._deferredConstructor);
+		_filename = std::move(moveFrom._filename);
+		_depVal = std::move(moveFrom._depVal);
         return *this;
     }
 
@@ -430,13 +477,11 @@ namespace RenderCore { namespace Assets
             data->~AnimationImmutableData();
     }
 
-    void AnimationSetScaffold::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)
-    {
-        auto* scaffold = (AnimationSetScaffold*)obj;
-        if (scaffold) {
-            scaffold->_rawMemoryBlock = std::move(chunks[0]._buffer);
-        }
-    }
+	std::shared_ptr<::Assets::DeferredConstruction> AnimationSetScaffold::BeginDeferredConstruction(
+		const ::Assets::ResChar* initializers[], unsigned initializerCount)
+	{
+		return ::Assets::DefaultBeginDeferredConstruction<AnimationSetScaffold>(initializers, initializerCount);
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -12,6 +12,7 @@
 #include "../../Assets/ChunkFile.h"
 #include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/DeferredConstruction.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -535,6 +536,7 @@ namespace RenderCore { namespace Assets
         const ::Assets::DirectorySearchRules& searchRules,
         std::vector<::Assets::DependentFileState>* deps) const
     {
+
             // resolve all of the inheritance options and generate a final 
             // ResolvedMaterial object. We need to start at the bottom of the
             // inheritance tree, and merge in new parameters as we come across them.
@@ -559,45 +561,10 @@ namespace RenderCore { namespace Assets
 		return ::Assets::AssetState::Ready;
     }
 
-	template<typename AssetType>
-		static std::shared_ptr<::Assets::DeferredConstruction> DefaultBeginDeferredConstruction(
-			const ::Assets::ResChar* initializers[], unsigned initializerCount)
-	{
-		// Begin a compilation operation via the registered compilers for this type.
-		// Our deferred constructor will wait for the completion of that compilation operation,
-		// and then construct the final asset from the result
-
-		auto marker = ::Assets::Internal::BeginCompileOperation(
-			::Assets::GetCompileProcessType<AssetType>(), initializers, initializerCount);
-
-		auto existingLoc = marker->GetExistingAsset();
-		if (!existingLoc._dependencyValidation || existingLoc._dependencyValidation->GetValidationIndex()!=0) {
-			// no existing asset (or out-of-date) -- we must invoke a compile
-			auto pendingCompile = marker->InvokeCompile();
-			std::basic_string<::Assets::ResChar> init0 = initializers[0];
-			std::function<AssetType()> constructorCallback(
-				[pendingCompile, init0]() -> AssetType {
-					auto state = pendingCompile->GetAssetState();
-					if (state == ::Assets::AssetState::Pending)
-						Throw(::Assets::Exceptions::PendingAsset(init0.c_str(), "Pending compilation operation"));
-					if (state == ::Assets::AssetState::Invalid)
-						Throw(::Assets::Exceptions::InvalidAsset(init0.c_str(), "Failure during compilation operation"));
-					assert(state == ::Assets::AssetState::Ready);
-					return ::Assets::Internal::AutoConstructAsset<AssetType>(pendingCompile->GetLocator()._sourceID0);
-				});
-			return std::make_shared<::Assets::DeferredConstruction>(pendingCompile, pendingCompile->GetLocator()._dependencyValidation, std::move(constructorCallback));
-		} else {
-			std::basic_string<::Assets::ResChar> intermediateAsset(existingLoc._sourceID0);
-			std::function<AssetType()> constructorCallback(
-				[intermediateAsset]() -> AssetType { return ::Assets::Internal::AutoConstructAsset<AssetType>(intermediateAsset.c_str()); });
-			return std::make_shared<::Assets::DeferredConstruction>(nullptr, existingLoc._dependencyValidation, std::move(constructorCallback));
-		}
-	}
-
 	std::shared_ptr<::Assets::DeferredConstruction> RawMaterial::BeginDeferredConstruction(
 		const ::Assets::ResChar* initializers[], unsigned initializerCount)
 	{
-		return DefaultBeginDeferredConstruction<RawMaterial>(initializers, initializerCount);
+		return ::Assets::DefaultBeginDeferredConstruction<RawMaterial>(initializers, initializerCount);
 	}
 
 }}

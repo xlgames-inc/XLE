@@ -10,7 +10,6 @@
 #include "Assets.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
-#include "../Utility/FunctionUtils.h"
 
 namespace Assets
 {
@@ -91,42 +90,6 @@ namespace Assets
     };
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class DeferredConstruction
-	{
-	public:
-		template<typename Type>
-			Type PerformConstructor();
-
-		AssetState GetAssetState() const;
-		AssetState StallWhilePending() const;
-
-		template<typename Type>
-			DeferredConstruction(
-				const std::shared_ptr<PendingOperationMarker>& upstream, 
-				const DepValPtr& depVal,
-				std::function<Type()>&& constructor);
-		~DeferredConstruction();
-	private:
-		VariantFunctions _fns;
-		std::shared_ptr<PendingOperationMarker> _upstreamMarker;
-		DepValPtr _depVal;
-	};
-
-	template<typename Type>
-		Type PerformConstructor() { return _fns.Call<Type>(typeid(Type).hash_code()); }
-
-	template<typename Type>
-		DeferredConstruction::DeferredConstruction(
-			const std::shared_ptr<PendingOperationMarker>& upstream, 
-			const DepValPtr& depVal,
-			std::function<Type()>&& constructor)
-			: _upstreamMarker(upstream), _depVal(depVal) 
-		{
-			_fns.Add<Type()>(typeid(Type).hash_code(), std::move(constructor));
-		}
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// <summary>Container for a asset filename in string format<summary>
     /// Just a simple generalisation of a path and file name in char array form.

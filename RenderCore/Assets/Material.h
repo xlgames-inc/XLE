@@ -8,7 +8,6 @@
 
 #include "../Techniques/RenderStateResolver.h"
 #include "../../Assets/Assets.h"
-#include "../../Assets/ChunkFileAsset.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Streams/Serialization.h"
@@ -18,7 +17,8 @@
 namespace Assets 
 { 
     class DependencyValidation; class DirectorySearchRules; 
-    class PendingCompileMarker; 
+	class ChunkFileAsset;
+	class DeferredConstruction;
 }
 namespace Utility { class Data; }
 
@@ -77,24 +77,35 @@ namespace RenderCore { namespace Assets
     /// This is the equivalent of other scaffold objects (like ModelScaffold
     /// and AnimationSetScaffold). It contains the processed and ready-to-use
     /// material information.
-    class MaterialScaffold : public ::Assets::ChunkFileAsset
+    class MaterialScaffold
     {
     public:
         const MaterialImmutableData&    ImmutableData() const;
         const ResolvedMaterial*         GetMaterial(MaterialGuid guid) const;
         const char*                     GetMaterialName(MaterialGuid guid) const;
 
+		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
+		::Assets::AssetState			TryResolve() const;
+
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
 
-        MaterialScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker);
+        MaterialScaffold(const ::Assets::ChunkFileAsset& chunkFile);
+		MaterialScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
         MaterialScaffold(MaterialScaffold&& moveFrom) never_throws;
         MaterialScaffold& operator=(MaterialScaffold&& moveFrom) never_throws;
         ~MaterialScaffold();
+
+		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
+			const ::Assets::ResChar* initializers[], unsigned initializerCount);
     protected:
         std::unique_ptr<uint8[]> _rawMemoryBlock;
 
-        static void Resolver(void*, IteratorRange<::Assets::AssetChunkResult*>);
+		std::shared_ptr<::Assets::DeferredConstruction> _deferredConstructor;
+		::Assets::rstring			_filename;
+		::Assets::DepValPtr			_depVal;
+        
         const MaterialImmutableData*   TryImmutableData() const;
+		void Resolve() const;
     };
 
     /// <summary>Pre-resolved material settings</summary>
@@ -133,14 +144,11 @@ namespace RenderCore { namespace Assets
         void Serialize(OutputStreamFormatter& formatter) const;
         
         RawMaterial();
-		RawMaterial(const std::shared_ptr<::Assets::DeferredConstruction>& deferredConstructor);
         RawMaterial(
             InputStreamFormatter<utf8>& formatter, 
             const ::Assets::DirectorySearchRules&,
 			const ::Assets::DepValPtr& depVal);
         ~RawMaterial();
-		RawMaterial(RawMaterial&&) never_throws;
-		RawMaterial& operator=(RawMaterial&&) never_throws;
 
 		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
 			const ::Assets::ResChar* initializers[], unsigned initializerCount);

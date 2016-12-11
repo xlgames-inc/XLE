@@ -39,6 +39,3 @@ namespace RenderCore { namespace Assets
 
 }}
 
-
-
-

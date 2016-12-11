@@ -120,21 +120,21 @@ namespace Assets
     static bool LoadBlockList(const utf8 filename[], std::vector<ArchiveDirectoryBlock>& blocks)
     {
         using namespace Serialization::ChunkFile;
-        BasicFile directoryFile;
+        std::unique_ptr<IFileInterface> directoryFile;
         if (MainFileSystem::TryOpen(directoryFile, filename, "rb") != MainFileSystem::IOReason::Success)
             return false;
 
-        auto chunkTable = LoadChunkTable(directoryFile);
+        auto chunkTable = LoadChunkTable(*directoryFile);
         auto chunk = FindChunk(filename, chunkTable, ChunkType_ArchiveDirectory, 0);
 
         DirectoryChunk dirHdr;
-        directoryFile.Seek(chunk._fileOffset);
-        directoryFile.Read(&dirHdr, sizeof(dirHdr), 1);
+        directoryFile->Seek(chunk._fileOffset);
+        directoryFile->Read(&dirHdr, sizeof(dirHdr), 1);
 
         // we're going to remove any previous contents of "blocks"
         blocks.clear();
         blocks.resize(dirHdr._blockCount);
-        directoryFile.Read(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
+        directoryFile->Read(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
         return true;
     }
 
@@ -229,22 +229,22 @@ namespace Assets
             std::vector<ArchiveDirectoryBlock> blocks;
             std::unique_ptr<uint8[]> flattenedSpanningHeap;
         
-            BasicFile directoryFile;
+            std::unique_ptr<IFileInterface> directoryFile;
             bool directoryFileOpened = false;
 
             // using a soft "TryOpen" to prevent annoying exception messages when the file is being created for the first time
             if (MainFileSystem::TryOpen(directoryFile, _directoryFileName.c_str(), "r+b") == MainFileSystem::IOReason::Success) {
                 TRY {
-                    auto chunkTable = LoadChunkTable(directoryFile);
+                    auto chunkTable = LoadChunkTable(*directoryFile);
                     auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveDirectory, 0);
 
-                    directoryFile.Seek(chunk._fileOffset);
-                    directoryFile.Read(&dirHdr, sizeof(dirHdr), 1);
+                    directoryFile->Seek(chunk._fileOffset);
+                    directoryFile->Read(&dirHdr, sizeof(dirHdr), 1);
 
                     blocks.resize(dirHdr._blockCount);
-                    directoryFile.Read(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
+                    directoryFile->Read(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
                     flattenedSpanningHeap = std::make_unique<uint8[]>(dirHdr._spanningHeapSize);
-                    directoryFile.Read(flattenedSpanningHeap.get(), 1, dirHdr._spanningHeapSize);
+                    directoryFile->Read(flattenedSpanningHeap.get(), 1, dirHdr._spanningHeapSize);
                     directoryFileOpened = true;
                 } CATCH (...) {
                     // We can get format errors while reading. In this case, will just overwrite the file
@@ -252,8 +252,8 @@ namespace Assets
             }
 
             if (!directoryFileOpened) {
-                directoryFile = BasicFile();
-                directoryFile = MainFileSystem::OpenBasicFile(_directoryFileName.c_str(), "wb");
+                directoryFile.reset();
+                directoryFile = MainFileSystem::OpenFileInterface(_directoryFileName.c_str(), "wb");
             }
 
             SpanningHeap<uint32> spanningHeap(flattenedSpanningHeap.get(), dirHdr._spanningHeapSize);
@@ -355,12 +355,12 @@ namespace Assets
                     //  note that there's a potential problem here, because
                     //  we don't truncate the file before writing this. So if there is
                     //  some data in there (but invalid data), then it will remain in the file
-                directoryFile.Seek(0);
-                directoryFile.Write(&fileHeader, sizeof(fileHeader), 1);
-                directoryFile.Write(&chunkHeader, sizeof(chunkHeader), 1);
-                directoryFile.Write(&chunkData, sizeof(chunkData), 1);
-                directoryFile.Write(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), blocks.size());
-                directoryFile.Write(flattenedHeap.first.get(), 1, flattenedHeap.second);
+                directoryFile->Seek(0);
+                directoryFile->Write(&fileHeader, sizeof(fileHeader), 1);
+                directoryFile->Write(&chunkHeader, sizeof(chunkHeader), 1);
+                directoryFile->Write(&chunkData, sizeof(chunkData), 1);
+                directoryFile->Write(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), blocks.size());
+                directoryFile->Write(flattenedHeap.first.get(), 1, flattenedHeap.second);
             }
         }
 
@@ -376,23 +376,23 @@ namespace Assets
 
                 // try to open an existing file -- but if there are any errors, we can just discard the
                 // old contents
-                BasicFile debugFile;
+                std::unique_ptr<IFileInterface> debugFile;
                 if (MainFileSystem::TryOpen(debugFile, debugFilename, "rb") == MainFileSystem::IOReason::Success) {
-                    auto chunkTable = LoadChunkTable(debugFile);
+                    auto chunkTable = LoadChunkTable(*debugFile);
                     auto chunk = FindChunk(debugFilename, chunkTable, ChunkType_ArchiveAttachments, 0);
 
                     AttachedStringChunk hdr;
-                    debugFile.Seek(chunk._fileOffset);
-                    debugFile.Read(&hdr, sizeof(hdr), 1);
+                    debugFile->Seek(chunk._fileOffset);
+                    debugFile->Read(&hdr, sizeof(hdr), 1);
 
                     std::vector<AttachedStringChunk::Block> attachedBlocks;
                     attachedStrings.resize(hdr._blockCount);
-                    debugFile.Read(AsPointer(attachedBlocks.begin()), sizeof(AttachedStringChunk::Block), hdr._blockCount);
-                    auto startPt = debugFile.TellP();
+                    debugFile->Read(AsPointer(attachedBlocks.begin()), sizeof(AttachedStringChunk::Block), hdr._blockCount);
+                    auto startPt = debugFile->TellP();
                     for (auto b=attachedBlocks.cbegin(); b!=attachedBlocks.cend(); ++b) {
-                        debugFile.Seek(startPt + b->_start);
+                        debugFile->Seek(startPt + b->_start);
                         std::string t; t.resize(b->_size);
-                        debugFile.Read(AsPointer(t.begin()), 1, b->_size);
+                        debugFile->Read(AsPointer(t.begin()), 1, b->_size);
                         attachedStrings.push_back(std::make_pair(b->_id, t));
                     }
                 }
@@ -452,41 +452,41 @@ namespace Assets
         ////////////////////////////////////////////////////////////////////////////////////
         std::vector<ArchiveDirectoryBlock> fileBlocks;
         TRY {
-            auto directoryFile = MainFileSystem::OpenBasicFile(_directoryFileName.c_str(), "rb");
+            auto directoryFile = MainFileSystem::OpenFileInterface(_directoryFileName.c_str(), "rb");
 
-            auto chunkTable = LoadChunkTable(directoryFile);
+            auto chunkTable = LoadChunkTable(*directoryFile);
             auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveDirectory, 0);
 
-            directoryFile.Seek(chunk._fileOffset);
+            directoryFile->Seek(chunk._fileOffset);
             DirectoryChunk dirHdr;
-            directoryFile.Read(&dirHdr, sizeof(dirHdr), 1);
+            directoryFile->Read(&dirHdr, sizeof(dirHdr), 1);
 
             fileBlocks.resize(dirHdr._blockCount);
-            directoryFile.Read(AsPointer(fileBlocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
+            directoryFile->Read(AsPointer(fileBlocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
         } CATCH (...) {
         } CATCH_END
 
         ////////////////////////////////////////////////////////////////////////////////////
         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
             std::vector<AttachedStringChunk::Block> attachedBlocks;
-            BasicFile debugFile;
+            std::unique_ptr<IFileInterface> debugFile;
             unsigned debugFileStartPoint = 0;
             TRY {
                 utf8 debugFilename[MaxPath];
 				XlCopyString(debugFilename, _mainFileName.c_str());
 				XlCatString(debugFilename, u(".debug"));
-                debugFile = MainFileSystem::OpenBasicFile(debugFilename, "rb");
+                debugFile = MainFileSystem::OpenFileInterface(debugFilename, "rb");
 
-                auto chunkTable = LoadChunkTable(debugFile);
+                auto chunkTable = LoadChunkTable(*debugFile);
                 auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveAttachments, 0);
 
-                debugFile.Seek(chunk._fileOffset);
+                debugFile->Seek(chunk._fileOffset);
                 AttachedStringChunk dirHdr;
-                debugFile.Read(&dirHdr, sizeof(dirHdr), 1);
+                debugFile->Read(&dirHdr, sizeof(dirHdr), 1);
 
                 attachedBlocks.resize(dirHdr._blockCount);
-                debugFile.Read(AsPointer(attachedBlocks.begin()), sizeof(AttachedStringChunk::Block), dirHdr._blockCount);
-                debugFileStartPoint = (unsigned)debugFile.TellP();
+                debugFile->Read(AsPointer(attachedBlocks.begin()), sizeof(AttachedStringChunk::Block), dirHdr._blockCount);
+                debugFileStartPoint = (unsigned)debugFile->TellP();
             } CATCH (...) {
             } CATCH_END
         #endif
@@ -507,8 +507,8 @@ namespace Assets
                     TRY {
                         std::string t;
                         t.resize(s->_size);
-                        debugFile.Seek(s->_start + debugFileStartPoint);
-                        debugFile.Read(AsPointer(t.begin()), 1, s->_size);
+                        debugFile->Seek(s->_start + debugFileStartPoint);
+                        debugFile->Read(AsPointer(t.begin()), 1, s->_size);
                         metrics._attachedString = t;
                     } CATCH (...) {
                     } CATCH_END

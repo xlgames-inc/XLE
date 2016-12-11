@@ -59,49 +59,21 @@ namespace Assets
     class ChunkFileAsset
     {
     public:
-        const rstring& Filename() const       { return _filename; }
-         
-        auto GetDependencyValidation() const -> const std::shared_ptr<DependencyValidation>& { return _validationCallback; }
+        const rstring& Filename() const						{ return _filename; }
+		const DepValPtr& GetDependencyValidation() const	{ return _validationCallback; }
 
-        void Resolve() const;
-        ::Assets::AssetState TryResolve() const;
-        ::Assets::AssetState StallAndResolve() const;
+		std::vector<AssetChunkResult> ResolveRequests(IteratorRange<const AssetChunkRequest*> requests) const;
 
-        ChunkFileAsset(ChunkFileAsset&& moveFrom) never_throws;
-        ChunkFileAsset& operator=(ChunkFileAsset&& moveFrom) never_throws;
+		ChunkFileAsset(const ResChar assetTypeName[]);
         ~ChunkFileAsset();
 
 		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
 			ChunkFileAsset(const ChunkFileAsset&) = default;
 			ChunkFileAsset& operator=(const ChunkFileAsset&) = default;
 		#endif
-
-    protected:
-        using ResolveFn = void(void*, IteratorRange<AssetChunkResult*>);
-
-        class ResolveOp
-        {
-        public:
-            IteratorRange<const AssetChunkRequest*> _requests;
-            ResolveFn* _fn;
-        };
-
-        ChunkFileAsset(const char assetTypeName[]);
-        void Prepare(const ::Assets::ResChar filename[], const ResolveOp& op);
-        void Prepare(::Assets::ICompileMarker& marker, const ResolveOp& op);
     private:
-        rstring _filename;
-        std::shared_ptr<DependencyValidation> _validationCallback;
-        const char* _assetTypeName;
-
-        mutable std::shared_ptr<PendingCompileMarker> _pendingCompile;
-        ResolveOp _pendingResolveOp;
-        ::Assets::AssetState _completedState;
-
-        void CompleteFromMarker(::Assets::PendingCompileMarker& marker);
-        static void ExecuteResolve(
-            ResolveFn*, void*, IteratorRange<AssetChunkResult*>, 
-            const ResChar filename[], const char assetNameType[]);
+        rstring			_filename;
+		DepValPtr		_validationCallback;
     };
 
 }

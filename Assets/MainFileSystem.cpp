@@ -216,6 +216,15 @@ namespace Assets
 		return std::move(result);
 	}
 
+	std::unique_ptr<IFileInterface> MainFileSystem::OpenFileInterface(StringSection<utf8> filename, const char openMode[], FileShareMode::BitField shareMode)
+	{
+		std::unique_ptr<IFileInterface> result;
+		auto ioRes = TryOpen(result, filename, openMode, shareMode);
+		if (ioRes != IOReason::Success)
+			Throw(Utility::Exceptions::IOException(ioRes, "Failure while opening file (%s) in mode (%s)", std::string((const char*)filename.begin(), (const char*)filename.end()).c_str(), openMode));
+		return std::move(result);
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	const std::shared_ptr<MountingTree>& MainFileSystem::GetMountingTree() { return s_mainMountingTree; }

@@ -71,7 +71,6 @@
     <ClCompile Include="..\Assets\CompilationThread.cpp" />
     <ClCompile Include="..\Assets\ModelCache.cpp" />
     <ClCompile Include="..\Assets\ModelScaffold.cpp" />
-    <ClCompile Include="..\Assets\ModelScaffoldSerialization.cpp" />
     <ClCompile Include="..\Assets\ModelUtils.cpp" />
     <ClCompile Include="..\Assets\RawAnimationCurve.cpp" />
     <ClCompile Include="..\Assets\Services.cpp" />

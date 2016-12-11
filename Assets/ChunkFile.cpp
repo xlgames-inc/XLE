@@ -29,7 +29,7 @@ namespace Serialization { namespace ChunkFile
         return header;
     }
 
-    std::vector<ChunkHeader> LoadChunkTable(BasicFile& file)
+    std::vector<ChunkHeader> LoadChunkTable(::Assets::IFileInterface& file)
     {
         ChunkFileHeader fileHeader;
         if (file.Read(&fileHeader, sizeof(ChunkFileHeader), 1) != 1) {
@@ -84,13 +84,13 @@ namespace Serialization { namespace ChunkFile
         Serialization::ChunkFile::TypeIdentifier chunkType,
         unsigned expectedVersion)
     {
-        auto file = Assets::MainFileSystem::OpenBasicFile(filename, "rb");
-        auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
+        auto file = Assets::MainFileSystem::OpenFileInterface(filename, "rb");
+        auto chunks = Serialization::ChunkFile::LoadChunkTable(*file);
 
         auto scaffoldChunk = FindChunk(filename, chunks, chunkType, expectedVersion);
         auto rawMemoryBlock = std::make_unique<uint8[]>(scaffoldChunk._size);
-        file.Seek(scaffoldChunk._fileOffset);
-        file.Read(rawMemoryBlock.get(), 1, scaffoldChunk._size);
+        file->Seek(scaffoldChunk._fileOffset);
+        file->Read(rawMemoryBlock.get(), 1, scaffoldChunk._size);
         return std::move(rawMemoryBlock);
     }
 

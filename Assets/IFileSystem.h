@@ -137,6 +137,7 @@ namespace Assets
 
 		static BasicFile OpenBasicFile(StringSection<utf8> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
 		static MemoryMappedFile OpenMemoryMappedFile(StringSection<utf8> filename, uint64 size, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
+		static std::unique_ptr<IFileInterface> OpenFileInterface(StringSection<utf8> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
 
 		static IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, StringSection<utf16> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
 		static IOReason	TryOpen(BasicFile& result, StringSection<utf16> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
@@ -163,6 +164,8 @@ namespace Assets
 			{ return OpenBasicFile(MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()), openMode, shareMode); }
 		static MemoryMappedFile OpenMemoryMappedFile(StringSection<char> filename, uint64 size, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default)
 			{ return OpenMemoryMappedFile(MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()), size, openMode, shareMode); }
+		static std::unique_ptr<IFileInterface> OpenFileInterface(StringSection<char> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default)
+			{ return OpenFileInterface(MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()), openMode, shareMode); }
 	};
 
 	T2(CharType, FileObject) IFileSystem::IOReason TryOpen(FileObject& result, IFileSystem& fs, StringSection<CharType> fn, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);

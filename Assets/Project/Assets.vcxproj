@@ -96,6 +96,7 @@
     <ClInclude Include="..\AssetsInternal.h" />
     <ClInclude Include="..\AssetUtils.h" />
     <ClInclude Include="..\AsyncLoadOperation.h" />
+    <ClInclude Include="..\AssetTraits.h" />
     <ClInclude Include="..\BlockSerializer.h" />
     <ClInclude Include="..\ChunkFile.h" />
     <ClInclude Include="..\ChunkFileAsset.h" />
@@ -103,6 +104,7 @@
     <ClInclude Include="..\CompilerHelper.h" />
     <ClInclude Include="..\CompilerLibrary.h" />
     <ClInclude Include="..\ConfigFileContainer.h" />
+    <ClInclude Include="..\DeferredConstruction.h" />
     <ClInclude Include="..\DivergentAsset.h" />
     <ClInclude Include="..\AssetServices.h" />
     <ClInclude Include="..\IFileSystem.h" />
@@ -116,6 +118,7 @@
     <ClCompile Include="..\ArchiveCache.cpp" />
     <ClCompile Include="..\Assets.cpp" />
     <ClCompile Include="..\AssetSetManager.cpp" />
+    <ClCompile Include="..\AssetTraits.cpp" />
     <ClCompile Include="..\AssetUtils.cpp" />
     <ClCompile Include="..\AsyncLoadOperation.cpp" />
     <ClCompile Include="..\BlockSerializer.cpp" />
@@ -123,6 +126,7 @@
     <ClCompile Include="..\ChunkFileAsset.cpp" />
     <ClCompile Include="..\CompileAndAsyncManager.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
+    <ClCompile Include="..\DeferredConstruction.cpp" />
     <ClCompile Include="..\DivergentAsset.cpp" />
     <ClCompile Include="..\AssetServices.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />

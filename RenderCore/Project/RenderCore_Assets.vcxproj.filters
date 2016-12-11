@@ -42,9 +42,6 @@
     <ClCompile Include="..\Assets\SkinningRunTime.cpp">
       <Filter>Assets\Anim</Filter>
     </ClCompile>
-    <ClCompile Include="..\Assets\ModelScaffoldSerialization.cpp">
-      <Filter>Assets\Model</Filter>
-    </ClCompile>
     <ClCompile Include="..\Assets\ModelUtils.cpp">
       <Filter>Assets\Model</Filter>
     </ClCompile>

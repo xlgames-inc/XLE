@@ -8,6 +8,7 @@
 
 #include "AssetSetManager.h"
 #include "AssetsCore.h"
+#include "AssetTraits.h"
 #include <vector>
 #include <assert.h>
 
@@ -36,27 +37,6 @@ namespace Assets { namespace Internal
 {
     AssetSetManager& GetAssetSetManager();
 
-	template <typename AssetType>
-		class AssetTraits
-	{
-    private:
-        template<typename T> struct HasGetAssetStateHelper
-        {
-            template<typename U, AssetState (U::*)() const> struct FunctionSignature {};
-            template<typename U> static std::true_type Test1(FunctionSignature<U, &U::GetAssetState>*);
-            template<typename U> static std::false_type Test1(...);
-            static const bool Result = decltype(Test1<T>(0))::value;
-        };
-
-	public:
-		using DivAsset = DivergentAsset<AssetType>;
-
-        static const bool Constructor_DeferredConstruction = std::is_constructible<AssetType, const std::shared_ptr<DeferredConstruction>&>::value;
-		static const bool Constructor_Formatter = std::is_constructible<AssetType, InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&>::value;
-
-        static const bool HasGetAssetState = HasGetAssetStateHelper<AssetType>::Result;
-	};
-
     template <typename AssetType>
         class AssetSet : public IAssetSet
     {
@@ -84,6 +64,7 @@ namespace Assets { namespace Internal
         };
 
         std::vector<std::pair<uint64, AssetContainer>> _assets;
+		std::vector<std::pair<uint64, std::shared_ptr<DeferredConstruction>>> _deferredConstructions;
 
         AssetType* Add(uint64 hash, std::unique_ptr<AssetType>&& asset)
         {
