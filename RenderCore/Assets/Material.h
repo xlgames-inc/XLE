@@ -17,7 +17,7 @@
 namespace Assets 
 { 
     class DependencyValidation; class DirectorySearchRules; 
-	class ChunkFileAsset;
+	class ChunkFileContainer;
 	class DeferredConstruction;
 }
 namespace Utility { class Data; }
@@ -89,7 +89,7 @@ namespace RenderCore { namespace Assets
 
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
 
-        MaterialScaffold(const ::Assets::ChunkFileAsset& chunkFile);
+        MaterialScaffold(const ::Assets::ChunkFileContainer& chunkFile);
 		MaterialScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
         MaterialScaffold(MaterialScaffold&& moveFrom) never_throws;
         MaterialScaffold& operator=(MaterialScaffold&& moveFrom) never_throws;

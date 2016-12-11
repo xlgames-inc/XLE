@@ -11,7 +11,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
-#include "../../Assets/ChunkFileAsset.h"
+#include "../../Assets/ChunkFileContainer.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/CompilerHelper.h"
@@ -417,7 +417,7 @@ namespace RenderCore { namespace Assets
         }
     };
 
-    MaterialScaffold::MaterialScaffold(const ::Assets::ChunkFileAsset& chunkFile)
+    MaterialScaffold::MaterialScaffold(const ::Assets::ChunkFileContainer& chunkFile)
 	: _filename(chunkFile.Filename())
 	, _depVal(chunkFile.GetDependencyValidation())
     {

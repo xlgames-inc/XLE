@@ -9,7 +9,7 @@
 #include "ModelImmutableData.h"
 #include "RawAnimationCurve.h"
 #include "AssetUtils.h"
-#include "../../Assets/ChunkFileAsset.h"
+#include "../../Assets/ChunkFileContainer.h"
 #include "../../Assets/DeferredConstruction.h"
 #include "../../ConsoleRig/Log.h"
 
@@ -360,7 +360,7 @@ namespace RenderCore { namespace Assets
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_Skeleton, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
     };
     
-    SkeletonScaffold::SkeletonScaffold(const ::Assets::ChunkFileAsset& chunkFile)
+    SkeletonScaffold::SkeletonScaffold(const ::Assets::ChunkFileContainer& chunkFile)
 	: _filename(chunkFile.Filename())
 	, _depVal(chunkFile.GetDependencyValidation())
     {
@@ -440,7 +440,7 @@ namespace RenderCore { namespace Assets
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_AnimationSet, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
     };
     
-    AnimationSetScaffold::AnimationSetScaffold(const ::Assets::ChunkFileAsset& chunkFile)
+    AnimationSetScaffold::AnimationSetScaffold(const ::Assets::ChunkFileContainer& chunkFile)
 	: _filename(chunkFile.Filename())
 	, _depVal(chunkFile.GetDependencyValidation())
     {

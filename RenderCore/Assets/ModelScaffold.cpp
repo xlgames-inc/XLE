@@ -10,7 +10,7 @@
 #include "AssetUtils.h"
 #include "../Format.h"
 #include "../Types.h"
-#include "../../Assets/ChunkFileAsset.h"
+#include "../../Assets/ChunkFileContainer.h"
 #include "../../Assets/DeferredConstruction.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StringUtils.h"
@@ -172,7 +172,7 @@ namespace RenderCore { namespace Assets
         ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, ::Assets::AssetChunkRequest::DataType::DontLoad }
     };
     
-    ModelScaffold::ModelScaffold(const ::Assets::ChunkFileAsset& chunkFile)
+    ModelScaffold::ModelScaffold(const ::Assets::ChunkFileContainer& chunkFile)
 	: _filename(chunkFile.Filename())
 	, _depVal(chunkFile.GetDependencyValidation())
     {
@@ -262,7 +262,7 @@ namespace RenderCore { namespace Assets
         ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, 0, ::Assets::AssetChunkRequest::DataType::DontLoad }
     };
     
-    ModelSupplementScaffold::ModelSupplementScaffold(const ::Assets::ChunkFileAsset& chunkFile)
+    ModelSupplementScaffold::ModelSupplementScaffold(const ::Assets::ChunkFileContainer& chunkFile)
 	: _filename(chunkFile.Filename())
 	, _depVal(chunkFile.GetDependencyValidation())
 	{

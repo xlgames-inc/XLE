@@ -16,7 +16,6 @@
     <ClInclude Include="..\IntermediateAssets.h" />
     <ClInclude Include="..\ConfigFileContainer.h" />
     <ClInclude Include="..\CompilerHelper.h" />
-    <ClInclude Include="..\ChunkFileAsset.h" />
     <ClInclude Include="..\AssetsInternal.h" />
     <ClInclude Include="..\AssetSetInternal.h" />
     <ClInclude Include="..\CompilerLibrary.h" />
@@ -26,6 +25,7 @@
     <ClInclude Include="..\IFileSystem.h" />
     <ClInclude Include="..\AssetTraits.h" />
     <ClInclude Include="..\DeferredConstruction.h" />
+    <ClInclude Include="..\ChunkFileContainer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />
@@ -40,7 +40,6 @@
     <ClCompile Include="..\InvalidAssetManager.cpp" />
     <ClCompile Include="..\AsyncLoadOperation.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />
-    <ClCompile Include="..\ChunkFileAsset.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
     <ClCompile Include="..\NascentChunkArray.cpp" />
     <ClCompile Include="..\MountingTree.cpp" />
@@ -50,6 +49,7 @@
     </ClCompile>
     <ClCompile Include="..\AssetTraits.cpp" />
     <ClCompile Include="..\DeferredConstruction.cpp" />
+    <ClCompile Include="..\ChunkFileContainer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="WinAPI">

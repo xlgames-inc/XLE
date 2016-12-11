@@ -99,7 +99,7 @@
     <ClInclude Include="..\AssetTraits.h" />
     <ClInclude Include="..\BlockSerializer.h" />
     <ClInclude Include="..\ChunkFile.h" />
-    <ClInclude Include="..\ChunkFileAsset.h" />
+    <ClInclude Include="..\ChunkFileContainer.h" />
     <ClInclude Include="..\CompileAndAsyncManager.h" />
     <ClInclude Include="..\CompilerHelper.h" />
     <ClInclude Include="..\CompilerLibrary.h" />
@@ -123,7 +123,7 @@
     <ClCompile Include="..\AsyncLoadOperation.cpp" />
     <ClCompile Include="..\BlockSerializer.cpp" />
     <ClCompile Include="..\ChunkFile.cpp" />
-    <ClCompile Include="..\ChunkFileAsset.cpp" />
+    <ClCompile Include="..\ChunkFileContainer.cpp" />
     <ClCompile Include="..\CompileAndAsyncManager.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
     <ClCompile Include="..\DeferredConstruction.cpp" />

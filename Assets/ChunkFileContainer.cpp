@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "ChunkFileAsset.h"
+#include "ChunkFileContainer.h"
 #include "BlockSerializer.h"
 #include "IntermediateAssets.h"
 #include "IFileSystem.h"
@@ -14,7 +14,7 @@
 
 namespace Assets
 {
-    std::vector<AssetChunkResult> ChunkFileAsset::ResolveRequests(
+    std::vector<AssetChunkResult> ChunkFileContainer::ResolveRequests(
         IteratorRange<const AssetChunkRequest*> requests) const
     {
 		auto file = MainFileSystem::OpenFileInterface(_filename.c_str(), "rb");
@@ -71,14 +71,14 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ChunkFileAsset::ChunkFileAsset(const char assetTypeName[])
+    ChunkFileContainer::ChunkFileContainer(const char assetTypeName[])
     : _filename(assetTypeName)
     {
 		_validationCallback = std::make_shared<DependencyValidation>();
 		RegisterFileDependency(_validationCallback, MakeStringSection(_filename));
     }
 
-    ChunkFileAsset::~ChunkFileAsset() {}
+    ChunkFileContainer::~ChunkFileContainer() {}
 
 }
 

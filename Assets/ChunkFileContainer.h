@@ -56,7 +56,7 @@ namespace Assets
     /// Some simple assets simply want to load some raw data from a chunk in a file, or
     /// perhaps from a few chunks in the same file. This is a base class to take away some
     /// of the leg-work involved in implementing that class.
-    class ChunkFileAsset
+    class ChunkFileContainer
     {
     public:
         const rstring& Filename() const						{ return _filename; }
@@ -64,12 +64,12 @@ namespace Assets
 
 		std::vector<AssetChunkResult> ResolveRequests(IteratorRange<const AssetChunkRequest*> requests) const;
 
-		ChunkFileAsset(const ResChar assetTypeName[]);
-        ~ChunkFileAsset();
+		ChunkFileContainer(const ResChar assetTypeName[]);
+        ~ChunkFileContainer();
 
 		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
-			ChunkFileAsset(const ChunkFileAsset&) = default;
-			ChunkFileAsset& operator=(const ChunkFileAsset&) = default;
+			ChunkFileContainer(const ChunkFileContainer&) = default;
+			ChunkFileContainer& operator=(const ChunkFileContainer&) = default;
 		#endif
     private:
         rstring			_filename;

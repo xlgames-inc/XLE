@@ -19,7 +19,7 @@
 #include <vector>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
-namespace Assets { class DirectorySearchRules; class ICompileMarker; class DependencyValidation; class DeferredConstruction; class ChunkFileAsset; }
+namespace Assets { class DirectorySearchRules; class ICompileMarker; class DependencyValidation; class DeferredConstruction; class ChunkFileContainer; }
 
 namespace RenderCore { namespace Assets
 {
@@ -88,7 +88,7 @@ namespace RenderCore { namespace Assets
 
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
 
-        ModelScaffold(const ::Assets::ChunkFileAsset& chunkFile);
+        ModelScaffold(const ::Assets::ChunkFileContainer& chunkFile);
         ModelScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
         ModelScaffold(ModelScaffold&& moveFrom) never_throws;
         ModelScaffold& operator=(ModelScaffold&& moveFrom) never_throws;
@@ -251,7 +251,7 @@ namespace RenderCore { namespace Assets
 		const ::Assets::rstring&		Filename() const				{ return _filename; }
 		const ::Assets::DepValPtr&		GetDependencyValidation() const	{ return _depVal; }
 
-        ModelSupplementScaffold(const ::Assets::ChunkFileAsset& chunkFile);
+        ModelSupplementScaffold(const ::Assets::ChunkFileContainer& chunkFile);
 		ModelSupplementScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
         ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom) never_throws;
         ModelSupplementScaffold& operator=(ModelSupplementScaffold&& moveFrom) never_throws;
@@ -309,7 +309,7 @@ namespace RenderCore { namespace Assets
 
         static const auto CompileProcessType = ConstHash64<'Skel', 'eton'>::Value;
 
-        SkeletonScaffold(const ::Assets::ChunkFileAsset& chunkFile);
+        SkeletonScaffold(const ::Assets::ChunkFileContainer& chunkFile);
 		SkeletonScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
         SkeletonScaffold(SkeletonScaffold&& moveFrom) never_throws;
         SkeletonScaffold& operator=(SkeletonScaffold&& moveFrom) never_throws;
@@ -345,7 +345,7 @@ namespace RenderCore { namespace Assets
 
         static const auto CompileProcessType = ConstHash64<'Anim', 'Set'>::Value;
 
-        AnimationSetScaffold(const ::Assets::ChunkFileAsset& chunkFile);
+        AnimationSetScaffold(const ::Assets::ChunkFileContainer& chunkFile);
 		AnimationSetScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
         AnimationSetScaffold(AnimationSetScaffold&& moveFrom) never_throws;
         AnimationSetScaffold& operator=(AnimationSetScaffold&& moveFrom) never_throws;
