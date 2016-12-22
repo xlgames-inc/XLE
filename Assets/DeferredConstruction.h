@@ -52,8 +52,6 @@ namespace Assets
 
 	namespace Internal 
 	{
-		void TryRecompile(const Assets::Exceptions::FormatError&); 
-
 		template<typename AssetType, typename std::enable_if<Internal::AssetTraits<AssetType>::Constructor_IntermediateAssetLocator>::type* = nullptr>
 			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IntermediateAssetLocator& locator, const ResChar initializer[])
 			{
@@ -79,32 +77,48 @@ namespace Assets
 		auto marker = Internal::BeginCompileOperation(compileTypeCode, initializers, initializerCount);
 		std::basic_string<ResChar> init0 = initializers[0].AsString();
 
+		// Attempt to load the existing asset immediate. If we get an unsupported version error, we will attempt a recompile
+
 		auto existingLoc = marker->GetExistingAsset();
-		if (!existingLoc._dependencyValidation || existingLoc._dependencyValidation->GetValidationIndex()!=0) {
-			// no existing asset (or out-of-date) -- we must invoke a compile
-			auto pendingCompile = marker->InvokeCompile();
-			std::function<std::unique_ptr<AssetType>()> constructorCallback(
-				[pendingCompile, init0]() -> std::unique_ptr<AssetType> {
-					auto state = pendingCompile->GetAssetState();
-					if (state == AssetState::Pending)
-						Throw(Exceptions::PendingAsset(init0.c_str(), "Pending compilation operation"));
-					if (state == AssetState::Invalid)
-						Throw(Exceptions::InvalidAsset(init0.c_str(), "Failure during compilation operation"));
-					assert(state == AssetState::Ready);
-					return Internal::ConstructFromIntermediateAssetLocator<AssetType>(pendingCompile->GetLocator(), init0.c_str());
-				});
-			return std::make_shared<DeferredConstruction>(pendingCompile, pendingCompile->GetLocator()._dependencyValidation, std::move(constructorCallback));
-		} else {
-			std::function<std::unique_ptr<AssetType>()> constructorCallback(
-				[existingLoc, init0]() -> std::unique_ptr<AssetType> { 
-					// Since we're not explicitly executing the compile in this case, we should check for
-					// cases were we should invoke a recompile
-					TRY { return Internal::ConstructFromIntermediateAssetLocator<AssetType>(existingLoc, init0.c_str()); }
-					CATCH (const Exceptions::FormatError& e) { Internal::TryRecompile(e); throw; } 
-					CATCH_END;
-				});
-			return std::make_shared<DeferredConstruction>(nullptr, existingLoc._dependencyValidation, std::move(constructorCallback));
-		}
+		if (existingLoc._dependencyValidation && existingLoc._dependencyValidation->GetValidationIndex()==0) {
+
+			std::unique_ptr<AssetType> asset = nullptr;
+			// Attempt recompile if we catch InvalidAsset or a FormatError with UnsupportedVersion or an IOException with FileNotFound
+			TRY {
+				asset = Internal::ConstructFromIntermediateAssetLocator<AssetType>(existingLoc, init0.c_str());
+			} CATCH (const Exceptions::InvalidAsset&) {
+			} CATCH (const Exceptions::FormatError& e) {
+				if (e.GetReason() != ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
+					throw;
+			} CATCH(const Utility::Exceptions::IOException& e) {
+				if (e.GetReason() != Utility::Exceptions::IOException::Reason::FileNotFound)
+					throw;
+			} CATCH_END
+
+			if (asset) {
+				// (awkward shared_ptr wrapper required here to get around difficulties moving variables into lambdas and move-only std::function<> objects
+				std::shared_ptr<std::unique_ptr<AssetType>> wrapper = std::make_shared<std::unique_ptr<AssetType>>(std::move(asset));
+				std::function<std::unique_ptr<AssetType>()> constructorCallback([wrapper]() -> std::unique_ptr<AssetType> { return std::move(*wrapper.get()); });
+				return std::make_shared<DeferredConstruction>(nullptr, existingLoc._dependencyValidation, std::move(constructorCallback));
+			}
+
+			// If we didn't get a valid asset, we will fall through and attempt recompile...
+
+		} ////////////////////////////////////////////////////////////////////////////////////////////////
+
+		// no existing asset (or out-of-date) -- we must invoke a compile
+		auto pendingCompile = marker->InvokeCompile();
+		std::function<std::unique_ptr<AssetType>()> constructorCallback(
+			[pendingCompile, init0]() -> std::unique_ptr<AssetType> {
+				auto state = pendingCompile->GetAssetState();
+				if (state == AssetState::Pending)
+					Throw(Exceptions::PendingAsset(init0.c_str(), "Pending compilation operation"));
+				if (state == AssetState::Invalid)
+					Throw(Exceptions::InvalidAsset(init0.c_str(), "Failure during compilation operation"));
+				assert(state == AssetState::Ready);
+				return Internal::ConstructFromIntermediateAssetLocator<AssetType>(pendingCompile->GetLocator(), init0.c_str());
+			});
+		return std::make_shared<DeferredConstruction>(pendingCompile, pendingCompile->GetLocator()._dependencyValidation, std::move(constructorCallback));
 	}
 }
 

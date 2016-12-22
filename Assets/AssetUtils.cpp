@@ -88,22 +88,44 @@ namespace Assets
         ResourceDependenciesLock.unlock();
     }
 
-    void    DependencyValidation::RegisterDependency(const std::shared_ptr<Utility::OnChangeCallback>& dependency)
+    void    DependencyValidation::RegisterDependency(const std::shared_ptr<DependencyValidation>& dependency)
     {
-        ResourceDependenciesLock.lock();
-        auto i = LowerBound(ResourceDependencies, (const OnChangeCallback*)dependency.get());
-        ResourceDependencies.insert(i, std::make_pair(dependency.get(), shared_from_this()));
-        ResourceDependenciesLock.unlock();
+		bool hasInvalidationAtStart = false;
+		{
+			ScopedLock(ResourceDependenciesLock);
+			hasInvalidationAtStart = dependency->GetValidationIndex() != 0;
+			auto i = LowerBound(ResourceDependencies, (const OnChangeCallback*)dependency.get());
+			ResourceDependencies.insert(i, std::make_pair(dependency.get(), shared_from_this()));
+		}
 
             // We must hold a reference to the dependency -- otherwise it can be destroyed,
             // and links to downstream assets/files might be lost
             // It's a little awkward to hold it here, but it's the only way
             // to make sure that it gets destroyed when "this" gets destroyed
 
+		bool isOverflow = true;
         for (unsigned c=0; c<dimof(_dependencies); ++c)
-            if (!_dependencies[c]) { _dependencies[c] = dependency; return; }
+            if (!_dependencies[c]) { _dependencies[c] = dependency; isOverflow = false; break; }
         
-        _dependenciesOverflow.push_back(dependency);
+		if (isOverflow)
+			_dependenciesOverflow.push_back(dependency);
+
+		// If the attached dependency already has a invalidation index, we must propagate it up the tree now.
+		// This is because of an awkward race condition:
+		//		1) Construct asset A
+		//		2) Begin construction of asset B, using a pointer to asset A
+		//		3) Asset A changes on disk
+		//		4) Filesystem monitor records change to asset A and updates the dependency validation
+		//		5) Asset A is registered as a dependency to asset B
+		// Now, as we complete the construction of asset B, asset A is already invalidated on disk. 
+		// However, the invalidation will not flow up to asset B's dependency invalidation, because the change
+		// was recorded before we completed registering the dependency relationship between the 2 assets.
+		//
+		// However, if we check for any pending invalidations before we unlock the mutex above, and propagate 
+		// the invalidation up the tree now, then we will guard against this case.
+
+		if (hasInvalidationAtStart)
+			OnChange();
     }
 
     DependencyValidation::DependencyValidation(DependencyValidation&& moveFrom) never_throws
@@ -134,7 +156,7 @@ namespace Assets
 
     void RegisterAssetDependency(
         const std::shared_ptr<DependencyValidation>& dependentResource, 
-        const std::shared_ptr<Utility::OnChangeCallback>& dependency)
+        const std::shared_ptr<DependencyValidation>& dependency)
     {
         assert(dependentResource && dependency);
         dependentResource->RegisterDependency(dependency);

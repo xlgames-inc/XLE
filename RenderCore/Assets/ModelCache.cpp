@@ -96,24 +96,15 @@ namespace RenderCore { namespace Assets
             result._model = model.get();
         }
 
-            // We can't build the material properly until the material scaffold is ready
-            // So don't even try unless we get a successful resolve
-        auto resolveResult = result._model->TryResolve();
-        if (resolveResult == ::Assets::AssetState::Ready) {
-            result._hashedMaterialName = HashCombine(Hash64(materialFilename.begin(), materialFilename.end()), result._hashedModelName);
-            auto matNamePtr = materialFilename;
+        result._hashedMaterialName = HashCombine(Hash64(materialFilename.begin(), materialFilename.end()), result._hashedModelName);
+        auto matNamePtr = materialFilename;
 
-            result._material = _pimpl->_materialScaffolds.Get(result._hashedMaterialName).get();
-            if (!result._material || result._material->GetDependencyValidation()->GetValidationIndex() > 0) {
-                auto mat = Internal::CreateMaterialScaffold(modelFilename, matNamePtr);
-                auto insertType = _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, mat);
-                if (result._material || insertType == LRUCacheInsertType::EvictAndReplace) ++_pimpl->_reloadId;
-                result._material = mat.get();
-            }
-        } else if (resolveResult == ::Assets::AssetState::Invalid) {
-            Throw(::Assets::Exceptions::InvalidAsset(modelFilename, "Scaffolds invalid in ModelCache"));
-        } else {
-            result._material = nullptr;
+        result._material = _pimpl->_materialScaffolds.Get(result._hashedMaterialName).get();
+        if (!result._material || result._material->GetDependencyValidation()->GetValidationIndex() > 0) {
+            auto mat = Internal::CreateMaterialScaffold(modelFilename, matNamePtr);
+            auto insertType = _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, mat);
+            if (result._material || insertType == LRUCacheInsertType::EvictAndReplace) ++_pimpl->_reloadId;
+            result._material = mat.get();
         }
 
         return result;
@@ -166,37 +157,40 @@ namespace RenderCore { namespace Assets
         auto maxLOD = scaffold._model->GetMaxLOD();
         LOD = std::min(LOD, maxLOD);
 
-            // we also need to load supplements, for any that are requested
-        std::vector<const ModelSupplementScaffold*> supplementScaffolds;
-
         uint64 hashedModel = HashCombine(HashCombine(Hash64(modelFilename.begin(), modelFilename.end()), Hash64(materialFilename.begin(), materialFilename.end())), LOD);
         for (auto s=supplements.begin(); s!=supplements.end(); ++s)
             hashedModel = HashCombine(hashedModel, *s);
 
-        auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
-        if (!renderer || renderer->GetDependencyValidation()->GetValidationIndex() > 0) {
-            auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
-            searchRules.AddSearchDirectoryFromFilename(materialFilename);
-            auto suppScaff = _pimpl->LoadSupplementScaffolds(modelFilename, materialFilename, supplements);
-            if (renderer) { ++_pimpl->_reloadId; }
-            renderer = std::make_shared<ModelRenderer>(
-                std::ref(*scaffold._model), std::ref(*scaffold._material), 
-                MakeIteratorRange(suppScaff),
-                std::ref(*_pimpl->_sharedStateSet), &searchRules, LOD);
+		BoundingBox boundingBox = std::make_pair(Zero<Float3>(), Zero<Float3>());
+		std::shared_ptr<ModelRenderer> renderer;
 
-            auto insertType = _pimpl->_modelRenderers.Insert(hashedModel, renderer);
-            if (insertType == LRUCacheInsertType::EvictAndReplace) { ++_pimpl->_reloadId; }
-        }
+		if (	scaffold._model->TryResolve() == ::Assets::AssetState::Ready
+			&&	scaffold._material->TryResolve() == ::Assets::AssetState::Ready) {
 
-            // cache the bounding box, because it's an expensive operation to recalculate
-        BoundingBox boundingBox;
-        auto boundingBoxI = _pimpl->_boundingBoxes.find(scaffold._hashedModelName);
-        if (boundingBoxI== _pimpl->_boundingBoxes.end()) {
-            boundingBox = scaffold._model->GetStaticBoundingBox(0);
-            _pimpl->_boundingBoxes.insert(std::make_pair(scaffold._hashedModelName, boundingBox));
-        } else {
-            boundingBox = boundingBoxI->second;
-        }
+			renderer = _pimpl->_modelRenderers.Get(hashedModel);
+			if (!renderer || renderer->GetDependencyValidation()->GetValidationIndex() > 0) {
+				auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
+				searchRules.AddSearchDirectoryFromFilename(materialFilename);
+				auto suppScaff = _pimpl->LoadSupplementScaffolds(modelFilename, materialFilename, supplements);
+				if (renderer) { ++_pimpl->_reloadId; }
+				renderer = std::make_shared<ModelRenderer>(
+					std::ref(*scaffold._model), std::ref(*scaffold._material), 
+					MakeIteratorRange(suppScaff),
+					std::ref(*_pimpl->_sharedStateSet), &searchRules, LOD);
+
+				auto insertType = _pimpl->_modelRenderers.Insert(hashedModel, renderer);
+				if (insertType == LRUCacheInsertType::EvictAndReplace) { ++_pimpl->_reloadId; }
+			}
+
+				// cache the bounding box, because it's an expensive operation to recalculate
+			auto boundingBoxI = _pimpl->_boundingBoxes.find(scaffold._hashedModelName);
+			if (boundingBoxI== _pimpl->_boundingBoxes.end()) {
+				boundingBox = scaffold._model->GetStaticBoundingBox(0);
+				_pimpl->_boundingBoxes.insert(std::make_pair(scaffold._hashedModelName, boundingBox));
+			} else {
+				boundingBox = boundingBoxI->second;
+			}
+		}
 
         Model result;
         result._renderer = renderer.get();

@@ -66,7 +66,7 @@ namespace Assets
         virtual void    OnChange();
         unsigned        GetValidationIndex() const        { return _validationIndex; }
 
-        void    RegisterDependency(const std::shared_ptr<Utility::OnChangeCallback>& dependency);
+        void    RegisterDependency(const std::shared_ptr<DependencyValidation>& dependency);
 
         DependencyValidation() : _validationIndex(0)  {}
         DependencyValidation(DependencyValidation&&) never_throws;
@@ -104,7 +104,7 @@ namespace Assets
     /// will also receive the OnChange() message.
     void RegisterAssetDependency(
         const std::shared_ptr<DependencyValidation>& dependentResource, 
-        const std::shared_ptr<Utility::OnChangeCallback>& dependency);
+        const std::shared_ptr<DependencyValidation>& dependency);
 
 }
 

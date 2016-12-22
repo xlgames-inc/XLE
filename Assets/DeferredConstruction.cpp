@@ -27,13 +27,4 @@ namespace Assets
 	}
 
 	DeferredConstruction::~DeferredConstruction() {}
-
-	namespace Internal 
-	{
-		void TryRecompile(const Assets::Exceptions::FormatError& e)
-		{
-			if (e.GetReason() == ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
-				LogWarning << "Data file is unsupported version! Recommend recompile";
-		}
-	}
 }
