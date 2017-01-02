@@ -25,6 +25,7 @@
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
 #include <map>
+#include <fstream>
 
 #include "../../Core/WinAPI/IncludeWindows.h"
 #include "../../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
@@ -330,6 +331,30 @@ namespace TextureTransform
         return std::move(images);
     }
 
+	void TextureResult::SaveXMLFormat(const ::Assets::ResChar destinationFile[]) const
+	{
+		std::fstream out;
+		out.open(destinationFile, std::fstream::out|std::fstream::trunc);
+		out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << std::endl;
+		out << "<image width=\"" << _dimensions[0] << "\" height=\"" << _dimensions[1] << "\" format=\"" << AsString(_format) << "\">" << std::endl;
+		auto fmt = AsImpliedType(_format);
+		auto pixSize = fmt.GetSize();
+		const auto stringTyping = false;
+		if (fmt.GetSize() != 0) {
+			const auto* rawData = _pkt->GetData();
+			auto stride = _pkt->GetPitches()._rowPitch;
+			for (unsigned y = 0; y < _dimensions[1]; ++y) {
+				for (unsigned x = 0; x < _dimensions[0]; ++x) {
+					const auto *pixData = PtrAdd(rawData, y*stride + x*pixSize);
+					if (x != 0) out << ", ";
+					out << ImpliedTyping::AsString(pixData, pixSize, fmt, stringTyping);
+				}
+				out << std::endl;
+			}
+		}
+		out << "</image>" << std::endl;
+	}
+
     void TextureResult::Save(const ::Assets::ResChar destinationFile[]) const
     {
             // using DirectXTex to save to disk...
@@ -369,7 +394,10 @@ namespace TextureTransform
 				}
 
                 hresult = DirectX::SaveToDDSFile(&image, 1, mdata, flags, (const wchar_t*)fn.c_str());
-            } else {
+            } else if (XlEqStringI(ext, "xml")) {
+				SaveXMLFormat(destinationFile);
+				hresult = S_OK;
+			} else {
                 const GUID GUID_ContainerFormatTiff = 
                     { 0x163bcc30, 0xe2e9, 0x4f0b, { 0x96, 0x1d, 0xa3, 0xe9, 0xfd, 0xb7, 0x88, 0xa3 }};
                 const GUID GUID_ContainerFormatPng  = 

@@ -273,7 +273,7 @@ class DiffuseCubeMapGen extends ProcessStep
 class SpecularIBLFilter extends TextureTransformStep
 {
     @Input
-    String format = "R32G32B32A32_FLOAT"
+    String format = "R32G32B32_FLOAT"
 
 	@Input
     int faceSize = 512
@@ -282,14 +282,14 @@ class SpecularIBLFilter extends TextureTransformStep
 	{
 		return makeCommandLine(output,
 			"ToolsHelper/SplitSum.sh:EquiRectFilterGlossySpecular",
-			"MipCount=${(int)(Math.log(faceSize)/Math.log(2.0f))}; ArrayCount=6; PassCount=128; Input=${input}; Dims={${faceSize}, ${faceSize}}; Format=${format}");
+			"MipCount=${(int)(1+Math.log(faceSize)/Math.log(2.0f))}; ArrayCount=6; PassCount=128; Input=${input}; Dims={${faceSize}, ${faceSize}}; Format=${format}");
 	}
 }
 
 class SpecularTransIBLFilter extends TextureTransformStep
 {
     @Input
-    String format = "R32G32B32A32_FLOAT"
+    String format = "R32G32B32_FLOAT"
 
 	@Input
     int faceSize = 512
@@ -298,7 +298,7 @@ class SpecularTransIBLFilter extends TextureTransformStep
 	{
 		return makeCommandLine(output,
 			"ToolsHelper/SplitSum.sh:EquiRectFilterGlossySpecularTrans",
-			"MipCount=${(int)(Math.log(faceSize)/Math.log(2.0f))}; ArrayCount=6; PassCount=128; Input=${input}; Dims={${faceSize}, ${faceSize}}; Format=${format}");
+			"MipCount=${(int)(1+Math.log(faceSize)/Math.log(2.0f))}; ArrayCount=6; PassCount=128; Input=${input}; Dims={${faceSize}, ${faceSize}}; Format=${format}");
 	}
 }
 

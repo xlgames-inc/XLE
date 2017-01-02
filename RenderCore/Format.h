@@ -89,6 +89,8 @@ namespace RenderCore
         const Utility::ImpliedTyping::TypeDesc& type,
         ShaderNormalizationMode norm = ShaderNormalizationMode::Integer);
 
+	Utility::ImpliedTyping::TypeDesc AsImpliedType(Format fmt);
+
     const char* AsString(Format);
 	Format AsFormat(const char name[]);
 }
