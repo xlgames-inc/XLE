@@ -71,7 +71,7 @@ namespace TextureTransform
         auto outputFile = doc.Attribute("o").Value();
         auto shader = doc.Attribute("s").Value();
 
-        if (outputFile.Empty() || shader.Empty()) {
+        if (outputFile.IsEmpty() || shader.IsEmpty()) {
             LogAlwaysError << "Output file and shader required on the command line";
             LogAlwaysError << "Cmdline: " << cmdLine.AsString().c_str();
             return -1;

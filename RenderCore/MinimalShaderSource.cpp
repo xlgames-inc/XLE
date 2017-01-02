@@ -66,7 +66,7 @@ namespace RenderCore
     auto MinimalShaderSource::Compile(
         const void* shaderInMemory, size_t size,
         const ShaderService::ResId& resId,
-        const ::Assets::ResChar definesTable[]) const -> std::shared_ptr<IPendingMarker>
+		StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<IPendingMarker>
     {
         using Payload = PendingMarker::Payload;
         Payload payload, errors;
@@ -83,8 +83,8 @@ namespace RenderCore
     }
 
     auto MinimalShaderSource::CompileFromFile(
-        const ::Assets::ResChar resource[], 
-        const ::Assets::ResChar definesTable[]) const
+		StringSection<::Assets::ResChar> resource, 
+		StringSection<::Assets::ResChar> definesTable) const
         -> std::shared_ptr<IPendingMarker>
     {
         auto resId = ShaderService::MakeResId(resource, *_compiler);
@@ -95,15 +95,14 @@ namespace RenderCore
     }
             
     auto MinimalShaderSource::CompileFromMemory(
-        const char shaderInMemory[], const char entryPoint[], 
-        const char shaderModel[], const ::Assets::ResChar definesTable[]) const
+		StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
+		StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const
         -> std::shared_ptr<IPendingMarker>
     {
-        auto shaderLen = XlStringLen(shaderInMemory);
         return Compile(
-            shaderInMemory, shaderLen,
+            shaderInMemory.begin(), shaderInMemory.size(),
             ShaderService::ResId(
-                StringMeld<64>() << "ShaderInMemory_" << Hash64(shaderInMemory, &shaderInMemory[shaderLen]), 
+                StringMeld<64>() << "ShaderInMemory_" << Hash64(shaderInMemory.begin(), shaderInMemory.end()), 
                 entryPoint, shaderModel),
             definesTable);
     }

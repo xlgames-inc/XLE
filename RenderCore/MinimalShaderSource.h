@@ -40,12 +40,12 @@ namespace RenderCore
 
         using IPendingMarker = ShaderService::IPendingMarker;
         std::shared_ptr<IPendingMarker> CompileFromFile(
-            const ::Assets::ResChar resId[], 
-            const ::Assets::ResChar definesTable[]) const;
+			StringSection<::Assets::ResChar> resId, 
+			StringSection<::Assets::ResChar> definesTable) const;
             
         std::shared_ptr<IPendingMarker> CompileFromMemory(
-            const char shaderInMemory[], const char entryPoint[], 
-            const char shaderModel[], const ::Assets::ResChar definesTable[]) const;
+			StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
+			StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
 
         MinimalShaderSource(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler);
         ~MinimalShaderSource();
@@ -56,7 +56,7 @@ namespace RenderCore
         std::shared_ptr<IPendingMarker> Compile(
             const void* shaderInMemory, size_t size,
             const ShaderService::ResId& resId,
-            const ::Assets::ResChar definesTable[]) const;
+			StringSection<::Assets::ResChar> definesTable) const;
     };
 }
 

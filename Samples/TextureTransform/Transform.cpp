@@ -360,7 +360,7 @@ namespace TextureTransform
             // using DirectXTex to save to disk...
             // This provides a nice layer over a number of underlying formats
         auto ext = MakeFileNameSplitter(destinationFile).Extension();
-        auto fn = Conversion::Convert<std::basic_string<utf16>>(std::string(destinationFile));
+        auto fn = Conversion::Convert<std::basic_string<utf16>>(destinationFile.AsString());
 
         bool singleSubresource = (_mipCount <= 1) && (_arrayCount <= 1);
         if (singleSubresource) {

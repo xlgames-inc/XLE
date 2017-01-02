@@ -7,7 +7,6 @@
 #if !defined(LIGHTING_ALGORITHM_H)
 #define LIGHTING_ALGORITHM_H
 
-#include "../CommonResources.h"
 #include "../Utility/MathConstants.h"
 #include "../Utility/Misc.h"
 
@@ -70,13 +69,13 @@ float SchlickFresnelF0_Modified(float3 viewDirection, float3 halfVector, float F
 float3 SchlickFresnelF0(float3 viewDirection, float3 halfVector, float3 F0)
 {
 	float q = SchlickFresnelCore(dot(viewDirection, halfVector));
-	return lerp(F0, float3(1.f), float3(q));
+	return lerp(F0, float3(1.f,1.f,1.f), float3(q,q,q));
 }
 
 float3 SchlickFresnelF0_Modified(float3 viewDirection, float3 halfVector, float3 F0)
 {
 	float q = SchlickFresnelCore(dot(viewDirection, halfVector));
-	float3 upperLimit = min(float3(1.f), 50.f * (F0+0.001f));
+	float3 upperLimit = min(float3(1.f,1.f,1.f), 50.f * (F0+0.001f));
 	return F0 + (upperLimit - F0) * q;
 }
 
@@ -470,7 +469,7 @@ float3 CalculateTransmissionOutgoing(float3 i, float3 m, float iorIncident, floa
 	// there maybe a small error in the Walter07 paper... Expecting eta^2 here --
 	// float k = 1.f + eta*eta*(c*c - 1.f);
 	float k = 1.f + Sq(eta)*(c*c - 1.f);
-	if (k < 0.f) return float3(0.0f);
+	if (k < 0.f) return float3(0.0f, 0.0f, 0.0f);
 	return (eta * c - s * sqrt(k)) * m - eta * i;
 }
 
