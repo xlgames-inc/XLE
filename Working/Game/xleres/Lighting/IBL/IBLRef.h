@@ -34,8 +34,8 @@ float3 SampleSpecularIBL_Ref(
     //      http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
 
     float alphad = RoughnessToDAlpha(specParam.roughness);
-    float3 result = 0.0.xxx;
-    for (uint s=0; s<passSampleCount; ++s) {
+    float3 result = float3(0.0f);
+    for (uint s=0u; s<passSampleCount; ++s) {
             // We could build a distribution of "H" vectors here,
             // or "L" vectors. It makes sense to use H vectors
         precise float3 H = SampleMicrofacetNormalGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
@@ -45,7 +45,7 @@ float3 SampleSpecularIBL_Ref(
             // is a directonal light
 
             // note -- "CalculateSpecular" has NdotL term built-in
-        float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(L), 0).rgb;
+        float3 lightColor = SampleLevelZero_Default(tex, AdjSkyCubeMapCoords(L)).rgb;
         precise float3 brdf = CalculateSpecular(normal, viewDirection, L, H, specParam); // (also contains NdotL term)
         float pdfWeight = InversePDFWeight(H, normal, viewDirection, alphad);
         result += lightColor * brdf * pdfWeight;
@@ -67,8 +67,8 @@ float3 SampleTransmittedSpecularIBL_Ref(
         // We're going to follow the same method and microfacet distribution as
         // SampleSpecularIBL_Ref
     float alphad = RoughnessToDAlpha(specParam.roughness);
-    float3 result = 0.0.xxx;
-    for (uint s=0; s<passSampleCount; ++s) {
+    float3 result = float3(0.0);
+    for (uint s=0u; s<passSampleCount; ++s) {
         // using the same distribution of half-vectors that we use for reflection
         // (except we flip the normal because of the way the equation is built)
         precise float3 H = SampleMicrofacetNormalGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
@@ -86,7 +86,7 @@ float3 SampleTransmittedSpecularIBL_Ref(
         // ok, we've got our incoming vector. We can do the cube map lookup
         // Note that when we call "CalculateSpecular", it's going to recalculate
         // the transmission half vector and come out with the same result.
-        float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(i), 0).rgb;
+        float3 lightColor = SampleLevelZero_Default(tex, AdjSkyCubeMapCoords(i)).rgb;
         // precise float3 brdf = CalculateSpecular(normal, viewDirection, i, H, specParam); // (also contains NdotL term)
 
         float bsdf;
@@ -175,10 +175,10 @@ float3 SampleDiffuseIBL_Ref(
     // to the diffuse equation (eg, just NdotL; even if we're using a more complex
     // diffuse equation, this is a good approximation)
 
-    float3 result = 0.0.xxx;
-    for (uint s=0; s<passSampleCount; ++s) {
+    float3 result = float3(0.0);
+    for (uint s=0u; s<passSampleCount; ++s) {
         precise float3 i = CosWeightedDirection(s*passCount+passIndex, passSampleCount*passCount, normal);
-        float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(i), 0).rgb;
+        float3 lightColor = SampleLevelZero_Default(tex, AdjSkyCubeMapCoords(i)).rgb;
         // here, our lighting equation (lambert diffuse) is just the same as the pdf -- so it's gets factored out
         result += lightColor;
     }

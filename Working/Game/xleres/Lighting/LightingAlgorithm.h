@@ -11,12 +11,10 @@
 #include "../Utility/MathConstants.h"
 #include "../Utility/Misc.h"
 
-float Square(float x) { return x*x; }
-
 float RefractiveIndexToF0(float refractiveIndex)
 {
         // (note -- the 1.f here assumes one side of the interface is air)
-	return Square((refractiveIndex - 1.f) / (refractiveIndex + 1.f));
+	return Sq((refractiveIndex - 1.f) / (refractiveIndex + 1.f));
 }
 
 float F0ToRefractiveIndex(float F0)
@@ -72,13 +70,13 @@ float SchlickFresnelF0_Modified(float3 viewDirection, float3 halfVector, float F
 float3 SchlickFresnelF0(float3 viewDirection, float3 halfVector, float3 F0)
 {
 	float q = SchlickFresnelCore(dot(viewDirection, halfVector));
-	return lerp(F0, 1.f, q);
+	return lerp(F0, float3(1.f), float3(q));
 }
 
 float3 SchlickFresnelF0_Modified(float3 viewDirection, float3 halfVector, float3 F0)
 {
 	float q = SchlickFresnelCore(dot(viewDirection, halfVector));
-	float3 upperLimit = min(1.f, 50.f * (F0+0.001f));
+	float3 upperLimit = min(float3(1.f), 50.f * (F0+0.001f));
 	return F0 + (upperLimit - F0) * q;
 }
 
@@ -95,7 +93,7 @@ float CalculateMipmapLevel(float2 texCoord, uint2 textureSize)
 		// hardware -- but it should be a good alternative to the
 		// built in hardware mipmap calculation when an explicit
 		// formula is required.
-	float2 et = abs(texCoord * textureSize);
+	float2 et = abs(texCoord * float2(textureSize));
 	float2 dx = ddx(et), dy = ddy(et);
 	float d = max(dot(dx, dx), dot(dy, dy));
 	return 0.5f*log2(d); // == log2(sqrt(d))
@@ -109,8 +107,9 @@ void OrenNayar_CalculateInputs(float roughness, out float rho, out float shinine
     shininess = 2.0f / (roughness*roughness);
 }
 
-float4 ReadReflectionHemiBox( float3 direction,
+float4 ReadReflectionHemiBox( 	float3 direction,
                                 Texture2D face12, Texture2D face34, Texture2D face5,
+								SamplerState clampingSampler,
                                 uint2 textureSize, uint defaultMipMap)
 {
 	float3 absDirection = abs(direction);
@@ -160,35 +159,67 @@ float4 ReadReflectionHemiBox( float3 direction,
     } else {
         uint mipMap = CalculateMipmapLevel(tc, textureSize);
         [branch] if (textureIndex == 2) {
-            return face5.SampleLevel(ClampingSampler, tc, mipMap);
+            return face5.SampleLevel(clampingSampler, tc, mipMap);
 	    } else if (textureIndex == 0) {
-		    return face12.SampleLevel(ClampingSampler, tc, mipMap);
+		    return face12.SampleLevel(clampingSampler, tc, mipMap);
 	    } else {
-		    return face34.SampleLevel(ClampingSampler, tc, mipMap);
+		    return face34.SampleLevel(clampingSampler, tc, mipMap);
 	    }
     }
 }
 
-float2 EquirectangularMappingCoord(float3 direction)
+float3 SphericalToCartesian_YUp(float inc, float theta)
+{
+    float s0, c0, s1, c1;
+    sincos(inc, s0, c0);
+    sincos(theta, s1, c1);
+    return float3(c0 * -s1, s0, c0 * c1);
+}
+
+float3 CartesianToSpherical_YUp(float3 direction)
+{
+    // This method is arranged to match the projection in Substance Painter 2
+    // Here, theta starts at +Z, and then wraps around towards -X
+    // X,Z = ( 0,  1); theta=0
+    // X,Z = (-1,  0); theta=PI/2
+    // X,Z = ( 0, -1); theta=PI
+    // X,Z = ( 1,  0); theta=-PI/2
+    //
+    // inc is the angle of inclination, and starts at 0 on the XZ plane,
+    // and is a positive number looking up
+    float3 result;
+    float rDist = rsqrt(dot(direction, direction));
+    result[0] = asin(direction.y * rDist);			// inc
+    result[1] = atan2(-direction.x, direction.z);	// theta
+    result[2] = 1.0f / rDist;
+    return result;
+}
+
+float3 EquirectangularCoordToDirection_YUp(uint2 inCoord, uint2 dims)
+{
+    // Given the x, y pixel coord within an equirectangular texture, what
+    // is the corresponding direction vector?
+    float theta = 2.f * pi * (float(inCoord.x) / float(dims.x));
+    float inc = pi * (.5f - float(inCoord.y) / float(dims.y));
+    return SphericalToCartesian_YUp(inc, theta);
+}
+
+float2 DirectionToEquirectangularCoord_YUp(float3 direction)
 {
 		// note -- 	the trigonometry here is a little inaccurate. It causes shaking
 		//			when the camera moves. We might need to replace it with more
 		//			accurate math.
-	float theta = atan2(direction.y, direction.x);
-	float inc = asin(direction.z); // atan(direction.z * rsqrt(dot(direction.xy, direction.xy)));
-
-	float x = 0.5f + 0.5f*(theta / (1.f*pi));
-	float y = .5f-(inc / pi);
+	float3 spherical = CartesianToSpherical_YUp(direction);
+	float x = spherical.y * 0.5f * reciprocalPi;
+	float y = .5f-(spherical.x * reciprocalPi);
 	return float2(x, y);
 }
 
-float2 HemiEquirectangularMappingCoord(float3 direction)
+float2 DirectionToHemiEquirectangularCoord_YUp(float3 direction)
 {
-	float theta = atan2(direction.x, direction.y);
-	float inc = atan(direction.z * rsqrt(dot(direction.xy, direction.xy)));
-
-	float x = 0.5f + 0.5f*(theta / (1.f*pi));
-	float y = 1.f-(inc / (.5f*pi));
+	float3 spherical = CartesianToSpherical_YUp(direction);
+	float x = spherical.y * (2.0f * pi);
+	float y = 1.f-(spherical.x * 2.0f * reciprocalPi);
 	return float2(x, y);
 }
 
@@ -205,11 +236,11 @@ float SimplifiedOrenNayer(float3 normal, float3 viewDirection, float3 lightDirec
 		//			http://www1.cs.columbia.edu/CAVE/publications/pdfs/Oren_SIGGRAPH94.pdf
 		//
 
-	const float NL	 = dot(normal, lightDirection);
-	const float NE	 = dot(normal, viewDirection);
-	const float EL	 = dot(viewDirection, lightDirection);
-	float A			 = EL - NE * NL;
-	const float E0	 = 1.f;		// (from the Oren-Nayar paper, E0 is the irradiance when the facet is illuminated head-on)
+	float NL	 = dot(normal, lightDirection);
+	float NE	 = dot(normal, viewDirection);
+	float EL	 = dot(viewDirection, lightDirection);
+	float A      = EL - NE * NL;
+	float E0	 = 1.f;		// (from the Oren-Nayar paper, E0 is the irradiance when the facet is illuminated head-on)
 	float B;
 	/*if (A >= 0.f) {		// (better to branch or unwrap?)
 		B = min(1.f, NL / NE);		(this branch is causing a wierd discontinuity. There must be something wrong with the equation)
@@ -217,8 +248,8 @@ float SimplifiedOrenNayer(float3 normal, float3 viewDirection, float3 lightDirec
 		B = NL;
 	}
 
-	const float C = (1.0f / (2.22222f + .1f * shininess)) * A * B;
-	const float D = NL * (1.0f - 1.0f / (2.f + .65 * shininess)) + C;
+	float C = (1.0f / (2.22222f + .1f * shininess)) * A * B;
+	float D = NL * (1.0f - 1.0f / (2.f + .65 * shininess)) + C;
 	return saturate(E0 * rho / pi * D);
 }
 
@@ -249,19 +280,8 @@ float TriAceSpecularOcclusion(float NdotV, float ao)
     // a*a - 1 + a + d*(2*a + d)
 }
 
-float3 AdjSkyCubeMapCoords(float3 input)
-{
-	//float theta = 140.f * 3.14159f / 180.f;
-	//viewFrustumVector.xy = float2(
-	//	viewFrustumVector.x * cos(theta) - viewFrustumVector.y * sin(theta),
-	//	viewFrustumVector.x * sin(theta) + viewFrustumVector.y * cos(theta));
-	return float3(input.x, input.z, -input.y);
-}
-
-float3 InvAdjSkyCubeMapCoords(float3 input)
-{
-	return float3(input.x, -input.z, input.y);
-}
+float3 AdjSkyCubeMapCoords(float3 inCoord) { return inCoord; }
+float3 InvAdjSkyCubeMapCoords(float3 inCoord) { return inCoord; }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -335,7 +355,7 @@ bool CalculateTransmissionIncident(out float3 i, float3 ot, float3 m, float iorI
 
 	i = -m * l / iorIncident - iorOutgoing / iorIncident * ot;
 #else
-	float flip = (iorIncident > iorOutgoing)?1:-1;
+	float flip = (iorIncident > iorOutgoing)?1.f:-1.f;
 	float c = dot(ot, m);
 
 	float eta = iorOutgoing/iorIncident;
@@ -384,8 +404,8 @@ float RefractionIncidentAngleDerivative2(float odotm, float iorIncident, float i
 	float cos2x = Sq(cosx) - Sq(sinx);		// f
 	float sqr2 = sqrt(2.f);
 
-	float A = sin2x * (a*a*cos2x+1) / (sqr2 * sqrt(Sq(cosx)*(a*a*cos2x-a*a+2)));
-	float B = sqrt(1.f - Sq(sqrt(Sq(cosx)*(a*a*Sq(cosx)-a*a+1))-a*Sq(cosx)+a));
+	float A = sin2x * (a*a*cos2x+1.0f) / (sqr2 * sqrt(Sq(cosx)*(a*a*cos2x-a*a+2.0f)));
+	float B = sqrt(1.f - Sq(sqrt(Sq(cosx)*(a*a*Sq(cosx)-a*a+1.0f))-a*Sq(cosx)+a));
 	float angleDev = (a * sin2x - A) / B;
 
 	const bool useApproximation = true;
@@ -427,7 +447,7 @@ float RefractionIncidentAngleDerivative(float odotm, float iorIncident, float io
 	// where cos(x) is odotm
 
 	float eta = iorOutgoing/iorIncident;
-	float flip = (iorIncident > iorOutgoing)?1:-1;
+	float flip = (iorIncident > iorOutgoing)?1.0f:-1.0f;
 
 	float cosx = odotm;
 	float sinxSq = 1.f - cosx*cosx;
@@ -444,13 +464,13 @@ float3 CalculateTransmissionOutgoing(float3 i, float3 m, float iorIncident, floa
 {
 	float c = dot(i, m);
 	float eta = iorIncident / iorOutgoing;
-	float s = (iorIncident > iorOutgoing)?-1:1; // sign(dot(i, n))
+	float s = (iorIncident > iorOutgoing)?-1.0f:1.0f; // sign(dot(i, n))
 	// return (eta * c - s * sqrt(1.f + eta * (c*c - 1.f))) * m - eta * i;
 
 	// there maybe a small error in the Walter07 paper... Expecting eta^2 here --
 	// float k = 1.f + eta*eta*(c*c - 1.f);
 	float k = 1.f + Sq(eta)*(c*c - 1.f);
-	if (k < 0.f) return 0.0.xxx;
+	if (k < 0.f) return float3(0.0f);
 	return (eta * c - s * sqrt(k)) * m - eta * i;
 }
 

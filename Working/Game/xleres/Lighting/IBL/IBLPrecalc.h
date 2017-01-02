@@ -10,6 +10,7 @@
 #include "IBLAlgorithm.h"
 #include "../Lighting/LightingAlgorithm.h"
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     //  Split-term LUT
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -50,7 +51,7 @@ float2 GenerateSplitTerm(
     float G2 = SmithG(NdotV, alphag);
 
     float A = 0.f, B = 0.f;
-    [loop] for (uint s=0; s<passSampleCount; ++s) {
+    LOOP_DIRECTIVE for (uint s=0u; s<passSampleCount; ++s) {
         float3 H, L;
 
             // Our sampling variable is the microfacet normal (which is the halfVector)
@@ -74,7 +75,7 @@ float2 GenerateSplitTerm(
         float NdotH = saturate(H.z);
         float VdotH = saturate(dot(V, H));
 
-        if (NdotL > 0) {
+        if (NdotL > 0.0f) {
                 // using "precise" here has a massive effect...
                 // Without it, there are clear errors in the result.
             precise float G = SmithG(NdotL, alphag) * G2;
@@ -102,7 +103,7 @@ float2 GenerateSplitTerm(
         }
     }
 
-    return float2(A, B) / float(passSampleCount).xx;
+    return float2(A, B) / float2(passSampleCount);
 }
 
 float GenerateSplitTermTrans(
@@ -127,9 +128,9 @@ float GenerateSplitTermTrans(
     roughness = max(roughness, MinSamplingRoughness);
     float alphad = RoughnessToDAlpha(roughness);
 
-    uint goodSampleCount = 0;
+    uint goodSampleCount = 0u;
     float A = 0.f;
-    [loop] for (uint s=0; s<passSampleCount; ++s) {
+    LOOP_DIRECTIVE for (uint s=0u; s<passSampleCount; ++s) {
 
         precise float3 H = SampleMicrofacetNormalGGX(
             s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
@@ -218,12 +219,12 @@ float3 GenerateFilteredSpecular(
     // when NdotH is 1.f. We must clamp roughness, or this convergence produces bad
     // floating point numbers.
     roughness = max(roughness, MinSamplingRoughness);
-    SpecularParameters specParam = SpecularParameters_RoughF0(roughness, 1.0.xxx);
+    SpecularParameters specParam = SpecularParameters_RoughF0(roughness, float3(1.0));
 
     float alphag = RoughnessToGAlpha(specParam.roughness);
     float alphad = RoughnessToDAlpha(specParam.roughness);
 
-    float3 result = 0.0.xxx;
+    float3 result = float3(0.0f);
     float totalWeight = 0.f;
 
     #if 0
@@ -237,7 +238,7 @@ float3 GenerateFilteredSpecular(
         // Perhaps we should use double precision math?
         // Anyway, we need to split it up into multiple passes, otherwise
         // the GPU gets locked up in the single draw call for too long.
-    [loop] for (uint s=0; s<passSampleCount; ++s) {
+    LOOP_DIRECTIVE for (uint s=0u; s<passSampleCount; ++s) {
             // We could build a distribution of "H" vectors here,
             // or "L" vectors. It makes sense to use H vectors
         precise float3 H = SampleMicrofacetNormalGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
@@ -253,13 +254,13 @@ float3 GenerateFilteredSpecular(
 
         float3 lightColor = IBLPrecalc_SampleInputTexture(L);
 
-        const uint Method_Unreal = 0;
-        const uint Method_Flat = 1;
-        const uint Method_PDF = 2;
-        const uint Method_Constant = 3;
-        const uint Method_Balanced = 4;
-        const uint Method_NdotH = 5;
-        const uint Method_Complex = 6;
+        const uint Method_Unreal = 0u;
+        const uint Method_Flat = 1u;
+        const uint Method_PDF = 2u;
+        const uint Method_Constant = 3u;
+        const uint Method_Balanced = 4u;
+        const uint Method_NdotH = 5u;
+        const uint Method_Complex = 6u;
         const uint method = Method_Complex;
         float weight;
         if (method == Method_Unreal) {
@@ -341,8 +342,8 @@ float3 CalculateFilteredTextureTrans(
     float alphag = RoughnessToGAlpha(roughness);
 
     float totalWeight = 0.f;
-    float3 result = 0.0.xxx;
-    [loop] for (uint s=0; s<passSampleCount; ++s) {
+    float3 result = float3(0.0f);
+    LOOP_DIRECTIVE for (uint s=0u; s<passSampleCount; ++s) {
 
         // Ok, here's where it gets complex. We have a "corei" direction,
         //  -- "i" direction when H == normal. However, there are many
@@ -406,7 +407,7 @@ float3 CalculateFilteredTextureTrans(
         bsdf *= 1.0f - SchlickFresnelCore(saturate(dot(ot, H)));
         bsdf *= -dot(i, normal);
 
-        float weight = bsdf * InversePDFWeight(H, coreNormal, 0.0.xxx, alphad);
+        float weight = bsdf * InversePDFWeight(H, coreNormal, float3(0.0f), alphad);
 #endif
 
         result += lightColor * weight;

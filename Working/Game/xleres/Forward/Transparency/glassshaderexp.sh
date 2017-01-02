@@ -83,7 +83,7 @@ void GlassShader(VSOutput geo)
     //	worldSpaceReflection,
     //	ReflectionBox12, ReflectionBox34, ReflectionBox5,
     //	reflectionTextureDims, 4);
-    float2 skyReflectionCoord = EquirectangularMappingCoord(worldSpaceReflection);
+    float2 skyReflectionCoord = DirectionToEquirectangularCoord_YUp(worldSpaceReflection);
     float4 reflectionLookup = SkyReflectionTexture[0].Load(
         int3(skyReflectionCoord.xy * float2(reflectionTextureDims.xy), 0));
 

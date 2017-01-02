@@ -171,7 +171,7 @@ float MipmapToRoughness(uint mipIndex)
     // will be using trilinear filtering to get a value between 2 mipmaps.
     // Arguably a roughness of "0.0" is not very interesting -- but we commit our
     // highest resolution mipmap to that.
-    return 0.05f + saturate(mipIndex / float(SpecularIBLMipMapCount));
+    return 0.05f + saturate(float(mipIndex) / float(SpecularIBLMipMapCount));
 }
 
 float RoughnessToMipmap(float roughness)

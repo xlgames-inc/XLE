@@ -50,12 +50,7 @@ float3 SampleDiffuseIBL(float3 worldSpaceNormal, LightScreenDest lsd)
         const uint sampleCount = 64;
         return SampleDiffuseIBL_Ref(worldSpaceNormal, SkyReflectionTexture, sampleCount, dither, 16*GlobalSamplingPassCount);
     #elif HAS_DIFFUSE_IBL==1
-        float3 result = DiffuseIBL.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(worldSpaceNormal), 0).rgb;
-        // note -- our pipeline doesn't currently factor the 1.0f / pi normalization factor into
-        // the texture. We could burn this, rather than having to multiply here
-        const float normalizationFactor = 1.0f / pi;
-        result *= normalizationFactor;
-        return result;
+        return DiffuseIBL.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(worldSpaceNormal), 0).rgb;
     #else
         return 0.0.xxx;
     #endif
@@ -232,7 +227,7 @@ float3 SampleSpecularIBLTrans_SplitSum(
 
     float3 i;
     if (!CalculateTransmissionIncident(i, viewDirection, normal, iorIncident, iorOutgoing))
-        return 0.0.xxx;
+        return float3(0.0);
 
     float3 prefilteredColor = SplitSumIBLTrans_PrefilterEnvMap(
         specParam.roughness, i, viewDirection, normal,
@@ -251,7 +246,7 @@ float3 SampleSpecularIBLTrans(
     // flip the normal.
     float surfaceIOR = F0ToRefractiveIndex(specParam.F0.g);
     float iorIncident, iorOutgoing;
-    if (dot(normal, viewDirection) > 0) {
+    if (dot(normal, viewDirection) > 0.0f) {
         // viewer is outside of the object, incident light is coming from behind the interface
         iorIncident = surfaceIOR;
         iorOutgoing = 1.f;

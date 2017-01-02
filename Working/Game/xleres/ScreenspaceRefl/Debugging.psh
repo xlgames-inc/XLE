@@ -61,7 +61,7 @@ float4 TilesDebugging(	float4 position				: SV_Position,
 
 	float3 reflectionVector = CalculateReflectionVector(
 		uint2(texCoord.xy*normalDim.xy), viewFrustumVector, gbuffer.worldSpaceNormal);
-	float2 skyReflectionCoord = EquirectangularMappingCoord(reflectionVector);
+	float2 skyReflectionCoord = DirectionToEquirectangularCoord_YUp(reflectionVector);
 	float3 skyReflection = SkyReflectionTexture[0].Sample(DefaultSampler, skyReflectionCoord).rgb;
 	// return float4(skyReflection, 1.f);
 	// reflectivity = 1;

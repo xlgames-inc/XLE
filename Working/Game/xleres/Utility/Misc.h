@@ -7,6 +7,14 @@
 #if !defined(UTILITY_MISC_H)
 #define UTILITY_MISC_H
 
+#if !defined(LOOP_DIRECTIVE)
+    #define LOOP_DIRECTIVE [loop]
+#endif
+
+#if !defined(BRANCH_DIRECTIVE)
+    #define BRANCH_DIRECTIVE [branch]
+#endif
+
 float Sq(float x) { return x*x; }
 
 uint DitherPatternInt(uint2 pixelCoords)

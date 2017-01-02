@@ -34,7 +34,7 @@ float CookTorrenceSpecular(float NdotL, float NdotH, float NdotV, float VdotH, f
 	float finalRoughness;
 	{
 			// beckmann distribution
-		float roughness_a = 1.0f / ( 4.0f * roughnessSquared * pow( NdotH, 4 ) );
+		float roughness_a = 1.0f / ( 4.0f * roughnessSquared * pow( NdotH, 4.0f ) );
         float roughness_b = NdotH * NdotH - 1.0f;
         float roughness_c = roughnessSquared * NdotH * NdotH;
         finalRoughness = roughness_a * exp( roughness_b / roughness_c );
@@ -75,7 +75,7 @@ float SmithG(float NdotV, float alpha)
 
     float a = alpha * alpha;
     float b = NdotV * NdotV;
-    return (2.f * NdotV) / (NdotV + sqrt(lerp(b, 1, a)));
+    return (2.f * NdotV) / (NdotV + sqrt(lerp(b, 1.0f, a)));
     // return 1.f/(NdotV + sqrt(a + (1.f-a) * b));
     // return 1.f/(NdotV + sqrt(a + b - a*b));
 }
@@ -217,7 +217,7 @@ float3 ReferenceSpecularGGX(
     #endif
 
     float NdotH = dot(normal, halfVector);
-    if (NdotV <= 0.f) return 0.0.xxx;
+    if (NdotV <= 0.f) return float3(0.0f);
 
     #if !MAT_DOUBLE_SIDED_LIGHTING
         // Getting some problems on grazing angles, possibly when
@@ -225,7 +225,7 @@ float3 ReferenceSpecularGGX(
         // check these cases with double sided lighting, as well.
         // Note that roughness is zero, and NdotH is zero -- we'll get a divide by zero
         // in the D term
-        if (NdotH <= 0.f || NdotL <= 0.f) return 0.0.xxx;
+        if (NdotH <= 0.f || NdotL <= 0.f) return float3(0.0f);
     #endif
 
     // Note that when N or H contain NaNs, this calculation is doomed to also result
@@ -261,7 +261,7 @@ float3 ReferenceSpecularGGX(
         float3 upperLimit = min(1.0.xxx, 50.0f * F0);
         float3 F = F0 + (upperLimit - F0) * q;
     #else
-        float3 F = lerp(F0, 1.f, q);
+        float3 F = lerp(F0, float3(1.f), q);
     #endif
 
     /////////// Microfacet ///////////
@@ -325,20 +325,25 @@ SpecularParameters SpecularParameters_Init(float roughness, float refractiveInde
 {
     SpecularParameters result;
     result.roughness = roughness;
-    result.F0 = RefractiveIndexToF0(refractiveIndex);
+    result.F0 = float3(RefractiveIndexToF0(refractiveIndex));
     result.mirrorSurface = false;
-    result.transmission = 0.0.xxx;
+    result.transmission = float3(0.0f);
     return result;
 }
 
-SpecularParameters SpecularParameters_RoughF0(float roughness, float3 F0, bool mirrorSurface = false)
+SpecularParameters SpecularParameters_RoughF0(float roughness, float3 F0, bool mirrorSurface)
 {
     SpecularParameters result;
     result.roughness = roughness;
     result.F0 = F0;
     result.mirrorSurface = mirrorSurface;
-    result.transmission = 0.0.xxx;
+    result.transmission = float3(0.0f);
     return result;
+}
+
+SpecularParameters SpecularParameters_RoughF0(float roughness, float3 F0)
+{
+    return SpecularParameters_RoughF0(roughness, F0, false);
 }
 
 SpecularParameters SpecularParameters_RoughF0Transmission(float roughness, float3 F0, float3 transmission)
@@ -364,7 +369,7 @@ float GGXTransmissionFresnel(float3 i, float3 ot, float F0, float iorIncident, f
     // reflection case?
     // Walter07 paper uses i and Ht. He also uses abs() here, but that produces very strange results.
     // float HdotI = max(0, dot(CalculateHt(i, ot, iorIncident, iorOutgoing), i));
-    float HdotI = max(0, dot(CalculateHt(i, ot, iorIncident, iorOutgoing), i));
+    float HdotI = max(0.0f, dot(CalculateHt(i, ot, iorIncident, iorOutgoing), i));
     // return 1.f - lerp(F0, 1.f, SchlickFresnelCore(HdotI));
     // return lerp(1.f - F0, 0.f, SchlickFresnelCore(HdotI));
     return (1.f - F0) * (1.f - SchlickFresnelCore(HdotI));

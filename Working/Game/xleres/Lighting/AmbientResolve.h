@@ -54,6 +54,7 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float mipMap)
         return ReadReflectionHemiBox(
             reflectionVector,
             SkyReflectionTexture[0], SkyReflectionTexture[1], SkyReflectionTexture[2],
+            ClampingSampler,
             reflectionTextureDims, uint(mipMap));
 
     #elif (SKY_PROJECTION == 3) || (SKY_PROJECTION == 4)
@@ -62,9 +63,9 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float mipMap)
         SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
 
         #if (SKY_PROJECTION == 3)
-            float2 skyReflectionCoord = EquirectangularMappingCoord(reflectionVector);
+            float2 skyReflectionCoord = DirectionToEquirectangularCoord_YUp(reflectionVector);
         #else
-            float2 skyReflectionCoord = HemiEquirectangularMappingCoord(reflectionVector);
+            float2 skyReflectionCoord = DirectionToHemiEquirectangularCoord_YUp(reflectionVector);
         #endif
         mipMap = max(mipMap, CalculateMipmapLevel(skyReflectionCoord.xy, reflectionTextureDims));
 

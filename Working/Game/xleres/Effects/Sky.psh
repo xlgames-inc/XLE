@@ -30,6 +30,7 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 		return ReadReflectionHemiBox(
 			normalize(viewFrustumVector),
 			ReflectionBox[0], ReflectionBox[1], ReflectionBox[2],
+			ClampingSampler,
 			reflectionTextureDims, 0).rgb;
 
 	#elif SKY_PROJECTION == 2
@@ -42,9 +43,9 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 
 			//	this is "panoramic projection."
 		#if (SKY_PROJECTION == 3)
-			float2 t = EquirectangularMappingCoord(viewFrustumVector);
+			float2 t = DirectionToEquirectangularCoord_YUp(viewFrustumVector);
 		#else
-			float2 t = HemiEquirectangularMappingCoord(viewFrustumVector);
+			float2 t = DirectionToHemiEquirectangularCoord_YUp(viewFrustumVector);
 		#endif
 		{
 

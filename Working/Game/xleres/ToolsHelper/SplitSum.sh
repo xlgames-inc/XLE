@@ -6,6 +6,7 @@
 
 #define FORCE_GGX_REF
 
+#include "Cubemap.h"
 #include "../Lighting/SpecularMethods.h"
 #include "../Lighting/MaterialQuery.h"
 
@@ -13,9 +14,7 @@ Texture2D Input;
 
 float3 IBLPrecalc_SampleInputTexture(float3 direction)
 {
-    direction = float3(direction.y, direction.x, direction.z);
-    float2 coord = EquirectangularMappingCoord(direction);
-    coord.x = -coord.x; // hack to match IBL Baker
+    float2 coord = DirectionToEquirectangularCoord_YUp(direction);
     return Input.SampleLevel(DefaultSampler, coord, 0).rgb;
 }
 
@@ -31,8 +30,9 @@ cbuffer SubResourceId
 
 float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
-    float NdotV = texCoord.x;
-    float roughness = 1.f-texCoord.y;
+    float2 dims = position.xy / texCoord.xy;
+    float NdotV = texCoord.x + (.1/dims.x);  // (add some small amount just to get better values in the lower left corner)
+    float roughness = texCoord.y;
     const uint sampleCount = 64 * 1024;
     return float4(GenerateSplitTerm(NdotV, roughness, sampleCount, 0, 1), 0, 1);
 }
@@ -40,7 +40,7 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Tar
 float4 main_trans(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
     float NdotV = texCoord.x;
-    float roughness = 1.f-texCoord.y;
+    float roughness = texCoord.y;
     const uint sampleCount = 64 * 1024;
 
     float specular = saturate(0.05f + ArrayIndex / 32.f);
@@ -50,34 +50,6 @@ float4 main_trans(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : 
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-// See DirectX documentation:
-// https://msdn.microsoft.com/en-us/library/windows/desktop/bb204881(v=vs.85).aspx
-static const float3 CubeMapPanels_DX[6][3] =
-{
-        // +X, -X
-    { float3(0,0,-1), float3(0,-1,0), float3(1,0,0) },
-    { float3(0,0,1), float3(0,-1,0), float3(-1,0,0) },
-
-        // +Y, -Y
-    { float3(1,0,0), float3(0,0,1), float3(0,1,0) },
-    { float3(1,0,0), float3(0,0,-1), float3(0,-1,0) },
-
-        // +Z, -Z
-    { float3(1,0,0), float3(0,-1,0), float3(0,0,1) },
-    { float3(-1,0,0), float3(0,-1,0), float3(0,0,-1) }
-};
-
-float3 CalculateCubeMapDirection(uint panelIndex, float2 texCoord)
-{
-    float3 plusX  = CubeMapPanels_DX[panelIndex][0];
-    float3 plusY  = CubeMapPanels_DX[panelIndex][1];
-    float3 center = CubeMapPanels_DX[panelIndex][2];
-    return normalize(
-          center
-        + plusX * (2.f * texCoord.x - 1.f)
-        + plusY * (2.f * texCoord.y - 1.f));
-}
 
 float4 EquiRectFilterGlossySpecular(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
@@ -97,15 +69,6 @@ float4 EquiRectFilterGlossySpecular(float4 position : SV_Position, float2 texCoo
     // this step (it's just taken care of by the probability density function weighting)
 
     float3 cubeMapDirection = CalculateCubeMapDirection(ArrayIndex, texCoord);
-
-        // undoing AdjSkyCubeMapCoords
-    cubeMapDirection = float3(cubeMapDirection.x, -cubeMapDirection.z, cubeMapDirection.y);
-
-        // have to add another flip to get the same result as the rest of the pipeline
-        // it feels like there's some confusion coming in from going through CubeMapGen (which
-        // natively uses an OpenGL cubemap format). Plus all these other conversion and adjustments!!
-    cubeMapDirection = float3(-cubeMapDirection.x, -cubeMapDirection.y, cubeMapDirection.z);
-
     float roughness = MipmapToRoughness(MipIndex);
     float3 r = GenerateFilteredSpecular(cubeMapDirection, roughness, PassSampleCount, PassIndex, PassCount);
     return float4(r / float(PassCount), 1.f);
@@ -118,11 +81,6 @@ float4 EquiRectFilterGlossySpecularTrans(float4 position : SV_Position, float2 t
     // Following the simplifications we use for split-sum specular reflections, here
     // is the equivalent sampling for specular transmission
     float3 cubeMapDirection = CalculateCubeMapDirection(ArrayIndex, texCoord);
-
-        // undoing AdjSkyCubeMapCoords
-    cubeMapDirection = float3(cubeMapDirection.x, -cubeMapDirection.z, cubeMapDirection.y);
-    cubeMapDirection = float3(-cubeMapDirection.x, -cubeMapDirection.y, cubeMapDirection.z);
-
     float roughness = MipmapToRoughness(MipIndex);
     float iorIncident = SpecularTransmissionIndexOfRefraction;
     float iorOutgoing = 1.f;

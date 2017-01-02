@@ -3,59 +3,31 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../Utility/MathConstants.h"
+#include "../Lighting/LightingAlgorithm.h"
+#include "../Lighting/SphericalHarmonics.h"
+#include "Cubemap.h"
 
 Texture2D<float3> Input;
 SamplerState DefaultSampler;
 
-float3 SphericalToCartesian(float3 spherical)
-{
-    float s0, c0, s1, c1;
-    sincos(spherical.x, s0, c0);
-    sincos(spherical.y, s1, c1);
-    return float3(
-        spherical.z * s0 * c1,
-        spherical.z * s0 * s1,
-        spherical.z * c0);
-}
-
-float3 EquirectangularCoordToDirection(uint2 input, uint2 dims)
-{
-    // Given the x, y pixel coord within an equirectangular texture, what
-    // is the corresponding direction vector?
-    float phi = 2.0f * pi * (input.x / float(dims.x) - 0.5f);
-    float theta = pi * input.y / float(dims.y);
-    return SphericalToCartesian(float3(theta, phi, 1.0f));
-}
-
-float2 EquirectangularMappingCoord(float3 direction)
-{
-		// note -- 	the trigonometry here is a little inaccurate. It causes shaking
-		//			when the camera moves. We might need to replace it with more
-		//			accurate math.
-	float theta = atan2(direction.y, direction.x);
-	float inc = asin(direction.z); // atan(direction.z * rsqrt(dot(direction.xy, direction.xy)));
-
-	float x = 0.5f + 0.5f*(theta / (1.f*pi));
-	float y = .5f-(inc / pi);
-	return float2(x, y);
-}
-
 float4 ReferenceDiffuseFilter(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
     uint2 dims = uint2(position.xy / texCoord);
-    float3 direction = EquirectangularCoordToDirection(uint2(position.xy), dims);
+    float3 direction = EquirectangularCoordToDirection_YUp(uint2(position.xy), dims);
 
     float3 result = float3(0,0,0);
 
     uint2 inputDims;
     Input.GetDimensions(inputDims.x, inputDims.y);
     for (uint y=0; y<inputDims.y; ++y) {
-        for (uint x=0; x<inputDims.x; ++x) {
-            float3 sampleDirection = EquirectangularCoordToDirection(uint2(x, y), inputDims);
-            float cosFilter = max(0.0, dot(sampleDirection, direction));
+		float texelAreaWeight = (4*pi*pi)/(2.f*inputDims.x*inputDims.y);
+		float verticalDistortion = sin(pi * (float(y)+0.5f) / float(inputDims.y));
+        texelAreaWeight *= verticalDistortion;
 
-            float texelAreaWeight = (2.0f * pi / inputDims.x) * (pi / inputDims.y);
-            texelAreaWeight *= sin(pi * y / float(inputDims.y));
+        for (uint x=0; x<inputDims.x; ++x) {
+            float3 sampleDirection = EquirectangularCoordToDirection_YUp(uint2(x, y), inputDims);
+            float cosFilter = max(0.0, dot(sampleDirection, direction)) / pi;
+
             result += texelAreaWeight * cosFilter * Input.Load(uint3(x, y, 0));
         }
     }
@@ -70,81 +42,175 @@ float4 ReferenceDiffuseFilter(float4 position : SV_Position, float2 texCoord : T
 
 ////////////////////////////////////////////////////////////////////////////////
 
-float Sq(float v) { return v*v; }
+static const uint coefficientCount = 25;
 
 // Take an input equirectangular input texture and generate the spherical
 // harmonic coefficients that best represent it.
 float4 ProjectToSphericalHarmonic(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
     // We're only going to support the first 3 orders; which means we generate 9 coefficients
-    // l= 0, m= 0 -- .5/sqrt(1/pi)
-    // l= 1, m=-1 -- -sqrt(3/(4pi)) * y
-    // l= 1, m= 0 --  sqrt(3/(4pi)) * z
-    // l= 1, m= 1 -- -sqrt(3/(4pi)) * x
-    // l= 2, m=-2 --  0.5  * sqrt(15/pi) * x * y
-    // l= 2, m=-1 -- -0.5  * sqrt(15/pi) * y * z
-    // l= 2, m= 0 --  0.25 * sqrt( 5/pi) * (-x^2-y^2+2z^2)
-    // l= 2, m= 1 -- -0.5  * sqrt(15/pi) * x * z
-    // l= 2, m= 2 --  0.25 * sqrt(15/pi) * (x^2 - y^2)
 
-    uint index = uint(position.x)%9;
-
+    uint index = uint(position.x)%coefficientCount;
+	float weightAccum = 0.0f;
     float3 result = float3(0, 0, 0);
+
+	// This function will attempt to build the spherical coefficients that best fit the
+	// input environment map.
+	//
+	// We can use this directly as an approximation for the diffuse lighting (ie, by assuming that
+	// the blurring that is given by the spherical harmonic equations roughly match the cosine
+	// lobe associated with lambert diffuse).
+	//
+	// Or, alternatively, we can factor in the cosine lobe during the resolve step.
+
     uint2 inputDims;
     Input.GetDimensions(inputDims.x, inputDims.y);
     for (uint y=0; y<inputDims.y; ++y) {
+
+		// Let's weight the texel area based on the solid angle of each texel.
+		// The accumulated weight should total 4*pi, which is the total solid angle
+		// across a sphere in steradians.
+		//
+		// The solid angle varies for each row of the input texture. The integral
+		// of the "verticalDistortion" equation is 2.
+		//
+
+        // float texelAreaWeight = 1.0f/(inputDims.x*inputDims.y); // (2.0f * pi / inputDims.x) * (pi / inputDims.y);
+		float texelAreaWeight = (4*pi*pi)/(2.f*inputDims.x*inputDims.y);
+		float verticalDistortion = sin(pi * (y+0.5f) / float(inputDims.y));
+        texelAreaWeight *= verticalDistortion;
+
         for (uint x=0; x<inputDims.x; ++x) {
-            float3 sampleDirection = EquirectangularCoordToDirection(uint2(x, y), inputDims);
-            float texelAreaWeight = (2.0f * pi / inputDims.x) * (pi / inputDims.y);
-            texelAreaWeight *= sin(pi * y / float(inputDims.y));
+            float3 sampleDirection = EquirectangularCoordToDirection_YUp(uint2(x, y), inputDims);
 
-            float value;
-            switch (index) {
-            case 0: value = .5/sqrt(1/pi); break;
-            case 1: value = -sqrt(3/(4*pi)) * sampleDirection.y; break;
-            case 2: value =  sqrt(3/(4*pi)) * sampleDirection.z; break;
-            case 3: value = -sqrt(3/(4*pi)) * sampleDirection.x; break;
-            case 4: value =  0.5  * sqrt(15/pi) * sampleDirection.x * sampleDirection.y; break;
-            case 5: value = -0.5  * sqrt(15/pi) * sampleDirection.y * sampleDirection.z; break;
-            case 6: value =  0.25 * sqrt( 5/pi) * (-Sq(sampleDirection.x) - Sq(sampleDirection.y) + 2*Sq(sampleDirection.z)); break;
-            case 7: value = -0.5  * sqrt(15/pi) * sampleDirection.x * sampleDirection.z; break;
-            case 8: value =  0.25 * sqrt(15/pi) * (Sq(sampleDirection.x) - Sq(sampleDirection.y)); break;
-            }
+			float value = EvalSHBasis(index, sampleDirection);
+            result += (texelAreaWeight) * value * Input.Load(uint3(x, y, 0)).rgb;
 
-            result += texelAreaWeight * value * Input.Load(uint3(x, y, 0));
+			weightAccum += texelAreaWeight;
         }
     }
 
+	// we should expect weightAccum to be exactly 4*pi here
+	// return float4((4*pi)/weightAccum.xxx, 1.0);
     return float4(result, 1.0f);
+}
+
+// These are the band factors from Peter-Pike Sloan's paper, via S�bastien Lagarde's modified cubemapgen
+// They are a normalized cosine lobe premultiplied by the factor used in modulating by a zonal harmonic
+static const float SHBandFactor[] =
+{
+	1.0,
+	2.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0,
+	1.0 / 4.0, 1.0 / 4.0, 1.0 / 4.0, 1.0 / 4.0, 1.0 / 4.0,
+	0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+	- 1.0 / 24.0, - 1.0 / 24.0, - 1.0 / 24.0, - 1.0 / 24.0, - 1.0 / 24.0, - 1.0 / 24.0, - 1.0 / 24.0, - 1.0 / 24.0, - 1.0 / 24.0
+};
+
+float3 ResolveSH(float3 direction)
+{
+    const bool useSharedCodePath = false;
+    if (!useSharedCodePath) {
+    	const uint coefficients = 25;
+    	float3 result = float3(0,0,0);
+
+    	for (uint c=0; c<coefficientCount; ++c) {
+            #if 0
+    		      result += Input.Load(uint3(c,0,0)).rgb * EvalSHBasis(c, direction) * SHBandFactor[c];
+            #elif 0
+                result += Input.Load(uint3(c,0,0)).rgb * EvalSHBasis(c, v);
+            #else
+                // Using Peter-Pike Sloan's formula for rotating a zonal harmonic
+                // See the section on Zonal Harmonics in Stupid Spherical Harmonics tricks
+                // The coefficients of the zonal harmonic are a normalized cosine lobe
+                // Also note constant factor associated with modulating by the rotated zonal harmonic
+                // This demonstrates how the critical "SHBandFactor" parameters are de
+                float rsqrtPi = rsqrt(pi);
+                float z[] = { .5 * rsqrtPi, sqrt(3)/3.0 * rsqrtPi, sqrt(5)/8.0f * rsqrtPi, 0, -1/16.0f * rsqrtPi };
+                uint l = (c>=16) ? 4 : ((c>=9) ? 3 : ((c>=4) ? 2 : ((c>=1) ? 1 : 0)));
+                float A = sqrt(4 * pi / (2*float(l)+1));
+                float f = A * z[l] * EvalSHBasis(c, direction);
+                result += Input.Load(uint3(c,0,0)).rgb * f;
+
+                // note -- "B" is "A" evaluated for the first few bands
+                //      and C[i] is z[i] * B[i] (which is equal to SHBandFactor)
+                float B[] = { 2*sqrt(pi), 2*sqrt(pi)/sqrt(3.0f), 2*sqrt(pi)/sqrt(5.0f), 2*sqrt(pi)/sqrt(7.0), 2*sqrt(pi)/sqrt(9.0) };
+                float C[] = { 1.0f, 2/3, 1/4, 0, 1/24 };
+            #endif
+    	}
+        return result;
+    } else {
+        float3 coefficients[9];
+        for (uint c=0; c<9; ++c) coefficients[c] = Input.Load(uint3(c,0,0)).rgb;
+        return ResolveSH_Reference(coefficients, direction);
+    }
 }
 
 float4 ResolveSphericalHarmonic(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
-    float3 L00  = Input.Load(uint3(0,0,0)).rgb;
-    float3 L1n1 = Input.Load(uint3(1,0,0)).rgb;
-    float3 L10  = Input.Load(uint3(2,0,0)).rgb;
-    float3 L1p1 = Input.Load(uint3(3,0,0)).rgb;
-    float3 L2n2 = Input.Load(uint3(4,0,0)).rgb;
-    float3 L2n1 = Input.Load(uint3(5,0,0)).rgb;
-    float3 L20  = Input.Load(uint3(6,0,0)).rgb;
-    float3 L2p1 = Input.Load(uint3(7,0,0)).rgb;
-    float3 L2p2 = Input.Load(uint3(8,0,0)).rgb;
-
-    float c1 = 0.429043, c2 = 0.511664,
-        c3 = 0.743125, c4 = 0.886227, c5 = 0.247708;
-
     uint2 dims = uint2(position.xy / texCoord);
-    float3 D = EquirectangularCoordToDirection(uint2(position.xy), dims);
-    float3 result =
-          L00
-        + L1n1 * D.y
-        + L10  * D.z
-        + L1p1 * D.x
-        + L2n2 * D.x * D.y
-        + L2n1 * D.y * D.z
-        + L20  * (D.z*D.z*D.z - 1)
-        + L2p1 * (D.x * D.z)
-        + L2p2 * (D.x*D.x - D.y*D.y)
-        ;
-    return float4(result/5.0f, 1.0f);
+    float3 D = EquirectangularCoordToDirection_YUp(uint2(position.xy), dims);
+	return float4(ResolveSH(D), 1.0f);
 }
+
+cbuffer SubResourceId
+{
+    uint ArrayIndex, MipIndex;
+    uint PassIndex, PassCount;
+}
+
+float4 ResolveSphericalHarmonicToCubeMap(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+    float3 cubeMapDirection = CalculateCubeMapDirection(ArrayIndex, texCoord);
+	return float4(ResolveSH(cubeMapDirection), 1.0f);
+}
+
+#if 0
+void RotateOrder3SH(float input[9], float output[9], float3x3 rotationMatrix)
+{
+    // Rotate an order-3 spherical harmonic coefficients through the
+    // given rotation matrix.
+    // We have to do 3 bands:
+    //  1st is unmodified
+    //  2nd is just a permutation of the basic rotation matrix
+    //  3rd is 5x5 matrix which will requires a few calculations
+
+    output[0] = input[1];   // (first band)
+
+    float3x3 band2Rotation = float3x3(
+        float3( rotationMatrix[1][1], -rotationMatrix[1][2],  rotationMatrix[1][0]),
+        float3(-rotationMatrix[2][1],  rotationMatrix[2][2], -rotationMatrix[2][0]),
+        float3( rotationMatrix[0][1], -rotationMatrix[0][2],  rotationMatrix[0][0]));
+    float3 t = mul(band2Rotation, float3(output[1], output[2], output[3]));
+    output[1] = t.x;
+    output[2] = t.y;
+    output[3] = t.z;
+
+    for (uint c=0; c<5; ++c) output[4+c] = input[4+c];
+}
+
+float4 ResolveSphericalHarmonic2(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+    uint2 dims = uint2(position.xy / texCoord);
+    float3 D = EquirectangularCoordToDirection_YUp(uint2(position.xy), dims);
+    float3 radial = CartesianToSpherical_YUp(D);
+
+    float3x3 aroundY = float3x3(
+        float3(cos(radial.y), 0, sin(radial.y)),
+        float3(0, 1, 0),
+        float3(-sin(radial.y), 0, cos(radial.y)));
+    float3x3 aroundZ = float3x3(
+        float3(cos(radial.x), -sin(radial.x), 0),
+        float3(sin(radial.x), cos(radial.x), 0),
+        float3(0, 0, 1));
+
+    float3x3 rotationMatrix = mul(aroundZ, aroundY);
+    D = mul(rotationMatrix, float3(0,0,1));
+
+    float3 result = float3(0,0,0);
+    for (uint c=0; c<coefficientCount; ++c) {
+		result += Input.Load(uint3(c,0,0)).rgb * EvalSHBasis(c, D) * SHBandFactor[c];
+	}
+
+	return float4(result, 1.0f);
+}
+#endif
