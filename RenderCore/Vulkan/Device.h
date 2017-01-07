@@ -66,17 +66,20 @@ namespace RenderCore { namespace ImplVulkan
 		class PresentSync
 		{
 		public:
-			VulkanUniquePtr<VkSemaphore>    _onAcquireComplete;
-			VulkanUniquePtr<VkSemaphore>    _onCommandBufferComplete;
-			VulkanUniquePtr<VkSemaphore>    _onCommandBufferComplete2;
-			VulkanUniquePtr<VkFence>        _presentFence;
+			VulkanUniquePtr<VkSemaphore>		_onAcquireComplete;
+			VulkanUniquePtr<VkSemaphore>		_onCommandBufferComplete;
+			VulkanUniquePtr<VkSemaphore>		_onCommandBufferComplete2;
+			VulkanUniquePtr<VkFence>			_presentFence;
 		};
 		PresentSync& GetSyncs() { return _presentSyncs[_activePresentSync]; }
+		VkCommandBuffer GetPrimaryBuffer() { return _primaryBuffers[_activePresentSync].get(); }
+		VulkanSharedPtr<VkCommandBuffer> SharePrimaryBuffer() { return _primaryBuffers[_activePresentSync]; }
 
         PresentationChain(
 			const Metal_Vulkan::ObjectFactory& factory,
             VulkanSharedPtr<VkSurfaceKHR> surface, 
 			VectorPattern<unsigned, 2> extent,
+			unsigned queueFamilyIndex,
             const void* platformValue);
         ~PresentationChain();
     private:
@@ -101,6 +104,9 @@ namespace RenderCore { namespace ImplVulkan
         PresentSync     _presentSyncs[3];
         unsigned        _activePresentSync;
 
+		Metal_Vulkan::CommandPool _primaryBufferPool;
+		VulkanSharedPtr<VkCommandBuffer> _primaryBuffers[3];
+
         void BuildImages();
     };
 
@@ -119,7 +125,6 @@ namespace RenderCore { namespace ImplVulkan
         std::shared_ptr<IDevice>    GetDevice() const;
         void                        IncrFrameId();
 		void						InvalidateCachedState() const;
-        void                        BeginCommandList();
 
         Metal_Vulkan::CommandPool&  GetRenderingCommandPool()   { return _renderingCommandPool; }
         VkQueue                     GetQueue()                  { return _queue; }

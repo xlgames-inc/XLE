@@ -131,13 +131,13 @@ namespace RenderCore { namespace Metal_Vulkan
         return *this;
     }
 
-	CommandPool::CommandPool(const ObjectFactory& factory, unsigned queueFamilyIndex, const std::shared_ptr<IAsyncTracker>& tracker)
+	CommandPool::CommandPool(const ObjectFactory& factory, unsigned queueFamilyIndex, bool resetable, const std::shared_ptr<IAsyncTracker>& tracker)
 	: _device(factory.GetDevice())
 	, _gpuTracker(tracker)
 	{
 		_pool = factory.CreateCommandPool(
             queueFamilyIndex, 
-            VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+			resetable ? VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT : 0);
 	}
 
 	CommandPool::CommandPool() {}

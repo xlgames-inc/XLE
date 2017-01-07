@@ -35,7 +35,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void FlushDestroys();
 
-		CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex, const std::shared_ptr<IAsyncTracker>& tracker);
+		CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex, bool resetable, const std::shared_ptr<IAsyncTracker>& tracker);
 		CommandPool();
 		~CommandPool();
 

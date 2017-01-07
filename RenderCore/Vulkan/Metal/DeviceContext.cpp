@@ -552,6 +552,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void		DeviceContext::BeginCommandList()
 	{
+		if (!_cmdPool) return;
+		BeginCommandList(_cmdPool->Allocate(_cmdBufferType));
+	}
+
+	void		DeviceContext::BeginCommandList(CommandListPtr cmdList)
+	{
         // hack -- clear some state
         *(GraphicsPipelineBuilder*)this = GraphicsPipelineBuilder();
         *(ComputePipelineBuilder*)this = ComputePipelineBuilder();
@@ -572,19 +578,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         _boundViewport = ViewportDesc();
 
-        // Unless the context is already tied to a primary command list, we will always
-		// create a secondary command list here.
-		// Also, all command lists are marked as "one time submit"
-		//
-		// Note that we should consider the situation where multiple subsequent frames overlap.
-		if (!_commandList) {
-            if (!_cmdPool) return;
-			_commandList = _cmdPool->Allocate(_cmdBufferType);
-		} else {
-			// auto res = vkResetCommandBuffer(_commandList.get(), 0);
-			// if (res != VK_SUCCESS)
-			// 	Throw(VulkanAPIFailure(res, "Failure while resetting command buffer"));
-		}
+		assert(!_commandList);
+		_commandList = std::move(cmdList);
 
 		VkCommandBufferInheritanceInfo inheritInfo = {};
 		inheritInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
@@ -627,15 +622,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		// We will release our reference on _command list here.
 		auto result = std::move(_commandList);
 		return result;
-	}
-
-	VkCommandBuffer DeviceContext::EndAndReuseCommandBuffer()
-	{
-		assert(_commandList);
-		auto res = vkEndCommandBuffer(_commandList.get());
-		if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
-		return _commandList.get();
 	}
 
     void        DeviceContext::BeginRenderPass(

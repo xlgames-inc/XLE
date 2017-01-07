@@ -238,10 +238,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::shared_ptr<DeviceContext> Fork();
 
 		void		BeginCommandList();
+		void		BeginCommandList(CommandListPtr cmdList);
 		void		CommitCommandList(VkCommandBuffer_T&, bool);
 		auto        ResolveCommandList() -> CommandListPtr;
 		bool		IsImmediate() { return false; }
-		VkCommandBuffer	EndAndReuseCommandBuffer();
 		
 		void		InvalidateCachedState() {}
 		static void PrepareForDestruction(IDevice*, IPresentationChain*);

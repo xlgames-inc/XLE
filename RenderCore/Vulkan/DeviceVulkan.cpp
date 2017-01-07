@@ -572,12 +572,11 @@ namespace RenderCore { namespace ImplVulkan
 				GetQueue(_underlying.get(), _physDev._renderingQueueFamily),
                 *_graphicsPipelineLayout,
                 *_computePipelineLayout,
-                Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, frameTracker),
+                Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, false, frameTracker),
 				Metal_Vulkan::CommandBufferType::Primary,
 				std::move(tempBufferSpace));
 			_foregroundPrimaryContext->AttachDestroyer(destroyer);
 			_foregroundPrimaryContext->SetGPUTracker(frameTracker);
-            _foregroundPrimaryContext->BeginCommandList();
 		}
     }
 
@@ -688,7 +687,7 @@ namespace RenderCore { namespace ImplVulkan
             Throw(::Exceptions::BasicLabel("Presentation surface is not compatible with selected physical device. This may occur if the wrong physical device is selected, and it cannot render to the output window."));
         
         auto finalChain = std::make_unique<PresentationChain>(
-            _objectFactory, std::move(surface), VectorPattern<unsigned, 2>{width, height}, platformValue);
+            _objectFactory, std::move(surface), VectorPattern<unsigned, 2>{width, height}, _physDev._renderingQueueFamily, platformValue);
 
         // (synchronously) set the initial layouts for the presentation chain images
         // It's a bit odd, but the Vulkan samples do this
@@ -720,7 +719,7 @@ namespace RenderCore { namespace ImplVulkan
             nullptr, 
             *_graphicsPipelineLayout,
             *_computePipelineLayout,
-            Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, nullptr),
+            Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, false, nullptr),
             Metal_Vulkan::CommandBufferType::Secondary, nullptr);
     }
 
@@ -930,11 +929,13 @@ namespace RenderCore { namespace ImplVulkan
 		const Metal_Vulkan::ObjectFactory& factory,
         VulkanSharedPtr<VkSurfaceKHR> surface, 
 		VectorPattern<unsigned, 2> extent,
+		unsigned queueFamilyIndex,
         const void* platformValue)
     : _surface(std::move(surface))
     , _device(factory.GetDevice())
     , _factory(&factory)
     , _platformValue(platformValue)
+	, _primaryBufferPool(factory, queueFamilyIndex, true, nullptr)
     {
         _activeImageIndex = ~0x0u;
         auto props = DecideSwapChainProperties(factory.GetPhysicalDevice(), _surface.get(), extent[0], extent[1]);
@@ -956,6 +957,8 @@ namespace RenderCore { namespace ImplVulkan
             _presentSyncs[c]._onAcquireComplete = factory.CreateSemaphore();
             _presentSyncs[c]._presentFence = factory.CreateFence(VK_FENCE_CREATE_SIGNALED_BIT);
         }
+		for (unsigned c = 0; c<dimof(_primaryBuffers); ++c)
+			_primaryBuffers[c] = _primaryBufferPool.Allocate(Metal_Vulkan::CommandBufferType::Primary);
         _activePresentSync = 0;
     }
 
@@ -1050,8 +1053,12 @@ namespace RenderCore { namespace ImplVulkan
 
 	ResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
 	{
+		if (_gpuTracker)
+			_gpuTracker->IncrementProducerFrame();
+
 		PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
 		auto nextImage = swapChain->AcquireNextImage();
+		_metalContext->BeginCommandList(swapChain->SharePrimaryBuffer());
         _metalContext->SetPresentationTarget(nextImage, {swapChain->GetBufferDesc()._width, swapChain->GetBufferDesc()._height});
         _metalContext->Bind(Metal_Vulkan::ViewportDesc(0.f, 0.f, (float)swapChain->GetBufferDesc()._width, (float)swapChain->GetBufferDesc()._height));
         return nextImage->ShareResource();
@@ -1083,7 +1090,7 @@ namespace RenderCore { namespace ImplVulkan
 			if (!trackingSeparateCommandBuffer)
 				_gpuTracker->SetConsumerEndOfFrame(*_metalContext);
 
-			auto mainCmdBuffer = _metalContext->EndAndReuseCommandBuffer();
+			auto mainCmdBuffer = _metalContext->ResolveCommandList();
 
 			VkSubmitInfo submitInfo;
 			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1091,7 +1098,7 @@ namespace RenderCore { namespace ImplVulkan
 
 			VkSemaphore waitSema[] = { syncs._onAcquireComplete.get() };
 			VkSemaphore signalSema[] = { syncs._onCommandBufferComplete.get(), syncs._onCommandBufferComplete2.get() };
-			VkCommandBuffer rawCmdBuffers[] = { mainCmdBuffer };
+			VkCommandBuffer rawCmdBuffers[] = { mainCmdBuffer.get() };
 			VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 			submitInfo.waitSemaphoreCount = dimof(waitSema);
 			submitInfo.pWaitSemaphores = waitSema;
@@ -1132,12 +1139,8 @@ namespace RenderCore { namespace ImplVulkan
 				Throw(VulkanAPIFailure(res, "Failure while queuing frame complete signal"));
 		}
 
-		//////////////////////////////////////////////////////////////////
-		// Reset and begin the primary foreground command buffer immediately
-		BeginCommandList();
-		_gpuTracker->IncrementProducerFrame();
-
 		if (_gpuTracker) _gpuTracker->UpdateConsumer();
+		// Maybe we should reset our finished command buffers here?
 		if (_destrQueue) _destrQueue->Flush();
 		_globalPools->_mainDescriptorPool.FlushDestroys();
 		_renderingCommandPool.FlushDestroys();
@@ -1161,11 +1164,6 @@ namespace RenderCore { namespace ImplVulkan
     }
 
 	void ThreadContext::InvalidateCachedState() const {}
-
-    void ThreadContext::BeginCommandList()
-    {
-        _metalContext->BeginCommandList();
-    }
 
 	IAnnotator& ThreadContext::GetAnnotator()
 	{
