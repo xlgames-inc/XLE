@@ -227,7 +227,7 @@ float3 SampleSpecularIBLTrans_SplitSum(
 
     float3 i;
     if (!CalculateTransmissionIncident(i, viewDirection, normal, iorIncident, iorOutgoing))
-        return float3(0.0);
+        return float3(0.0f, 0.0f, 0.0f);
 
     float3 prefilteredColor = SplitSumIBLTrans_PrefilterEnvMap(
         specParam.roughness, i, viewDirection, normal,

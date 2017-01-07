@@ -103,7 +103,7 @@ float2 GenerateSplitTerm(
         }
     }
 
-    return float2(A, B) / float2(passSampleCount);
+    return float2(A, B) / float2(passSampleCount, passSampleCount);
 }
 
 float GenerateSplitTermTrans(
@@ -219,12 +219,12 @@ float3 GenerateFilteredSpecular(
     // when NdotH is 1.f. We must clamp roughness, or this convergence produces bad
     // floating point numbers.
     roughness = max(roughness, MinSamplingRoughness);
-    SpecularParameters specParam = SpecularParameters_RoughF0(roughness, float3(1.0));
+    SpecularParameters specParam = SpecularParameters_RoughF0(roughness, float3(1.0f, 1.0f, 1.0f));
 
     float alphag = RoughnessToGAlpha(specParam.roughness);
     float alphad = RoughnessToDAlpha(specParam.roughness);
 
-    float3 result = float3(0.0f);
+    float3 result = float3(0.0f, 0.0f, 0.0f);
     float totalWeight = 0.f;
 
     #if 0
@@ -342,7 +342,7 @@ float3 CalculateFilteredTextureTrans(
     float alphag = RoughnessToGAlpha(roughness);
 
     float totalWeight = 0.f;
-    float3 result = float3(0.0f);
+    float3 result = float3(0.0f, 0.0f, 0.0f);
     LOOP_DIRECTIVE for (uint s=0u; s<passSampleCount; ++s) {
 
         // Ok, here's where it gets complex. We have a "corei" direction,
@@ -407,7 +407,7 @@ float3 CalculateFilteredTextureTrans(
         bsdf *= 1.0f - SchlickFresnelCore(saturate(dot(ot, H)));
         bsdf *= -dot(i, normal);
 
-        float weight = bsdf * InversePDFWeight(H, coreNormal, float3(0.0f), alphad);
+        float weight = bsdf * InversePDFWeight(H, coreNormal, float3(0.0f, 0.0f, 0.0f), alphad);
 #endif
 
         result += lightColor * weight;

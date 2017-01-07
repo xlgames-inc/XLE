@@ -9,6 +9,10 @@
 
 #include "IBLAlgorithm.h"
 
+#if !defined(SampleLevelZero_Default)
+    #define SampleLevelZero_Default(t, x) t.SampleLevel(DefaultSampler, x, 0)
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     //  Reference specular reflections
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -34,7 +38,7 @@ float3 SampleSpecularIBL_Ref(
     //      http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
 
     float alphad = RoughnessToDAlpha(specParam.roughness);
-    float3 result = float3(0.0f);
+    float3 result = float3(0.0f, 0.0f, 0.0f);
     for (uint s=0u; s<passSampleCount; ++s) {
             // We could build a distribution of "H" vectors here,
             // or "L" vectors. It makes sense to use H vectors
@@ -67,7 +71,7 @@ float3 SampleTransmittedSpecularIBL_Ref(
         // We're going to follow the same method and microfacet distribution as
         // SampleSpecularIBL_Ref
     float alphad = RoughnessToDAlpha(specParam.roughness);
-    float3 result = float3(0.0);
+    float3 result = float3(0.0f, 0.0f, 0.0f);
     for (uint s=0u; s<passSampleCount; ++s) {
         // using the same distribution of half-vectors that we use for reflection
         // (except we flip the normal because of the way the equation is built)
@@ -175,7 +179,7 @@ float3 SampleDiffuseIBL_Ref(
     // to the diffuse equation (eg, just NdotL; even if we're using a more complex
     // diffuse equation, this is a good approximation)
 
-    float3 result = float3(0.0);
+    float3 result = float3(0.0f, 0.0f, 0.0f);
     for (uint s=0u; s<passSampleCount; ++s) {
         precise float3 i = CosWeightedDirection(s*passCount+passIndex, passSampleCount*passCount, normal);
         float3 lightColor = SampleLevelZero_Default(tex, AdjSkyCubeMapCoords(i)).rgb;

@@ -217,7 +217,7 @@ float3 ReferenceSpecularGGX(
     #endif
 
     float NdotH = dot(normal, halfVector);
-    if (NdotV <= 0.f) return float3(0.0f);
+    if (NdotV <= 0.f) return float3(0.0f, 0.0f, 0.0f);
 
     #if !MAT_DOUBLE_SIDED_LIGHTING
         // Getting some problems on grazing angles, possibly when
@@ -225,7 +225,7 @@ float3 ReferenceSpecularGGX(
         // check these cases with double sided lighting, as well.
         // Note that roughness is zero, and NdotH is zero -- we'll get a divide by zero
         // in the D term
-        if (NdotH <= 0.f || NdotL <= 0.f) return float3(0.0f);
+        if (NdotH <= 0.f || NdotL <= 0.f) return float3(0.0f, 0.0f, 0.0f);
     #endif
 
     // Note that when N or H contain NaNs, this calculation is doomed to also result
@@ -261,7 +261,7 @@ float3 ReferenceSpecularGGX(
         float3 upperLimit = min(1.0.xxx, 50.0f * F0);
         float3 F = F0 + (upperLimit - F0) * q;
     #else
-        float3 F = lerp(F0, float3(1.f), q);
+        float3 F = lerp(F0, float3(1.f, 1.f, 1.0f), q);
     #endif
 
     /////////// Microfacet ///////////
@@ -325,9 +325,10 @@ SpecularParameters SpecularParameters_Init(float roughness, float refractiveInde
 {
     SpecularParameters result;
     result.roughness = roughness;
-    result.F0 = float3(RefractiveIndexToF0(refractiveIndex));
+    float f0 = RefractiveIndexToF0(refractiveIndex);
+    result.F0 = float3(f0, f0, f0);
     result.mirrorSurface = false;
-    result.transmission = float3(0.0f);
+    result.transmission = float3(0.0f, 0.0f, 0.0f);
     return result;
 }
 
@@ -337,7 +338,7 @@ SpecularParameters SpecularParameters_RoughF0(float roughness, float3 F0, bool m
     result.roughness = roughness;
     result.F0 = F0;
     result.mirrorSurface = mirrorSurface;
-    result.transmission = float3(0.0f);
+    result.transmission = float3(0.0f, 0.0f, 0.0f);
     return result;
 }
 

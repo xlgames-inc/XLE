@@ -73,11 +73,11 @@ namespace RenderCore { namespace Assets
                 }
             }
 
-        } else (_interpolationType == Hermite) {
+        } else if (_interpolationType == Hermite) {
 			assert(0);      // hermite version not implemented (though we could just convert on load in)
 		}
 
-        return *(OutType*)PtrAdd(_parameterData.get(), (_keyCount-1) * _elementSize );
+        return *(OutType*)PtrAdd(_parameterData.get(), (_keyCount-1) * _elementSize);
     }
 
     float       RawAnimationCurve::StartTime() const
