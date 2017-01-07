@@ -5,12 +5,16 @@
 #pragma once
 
 #include "../Assets/NascentChunkArray.h"
+#include "../../Utility/IteratorUtils.h"
+
+namespace RenderCore { namespace Assets { class RawAnimationCurve; }}
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
 	class NascentGeometryObjects;
 	class NascentModelCommandStream;
 	class NascentSkeleton;
+	class NascentAnimationSet;
 
 	::Assets::NascentChunkArray SerializeSkinToChunks(
 		const char name[], 
@@ -20,5 +24,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 	::Assets::NascentChunkArray SerializeSkeletonToChunks(
 		const char name[], 
-		NascentSkeleton& skeleton);
+		const NascentSkeleton& skeleton);
+
+	::Assets::NascentChunkArray SerializeAnimationsToChunks(
+		const char name[],
+		const NascentAnimationSet& animationSet,
+		IteratorRange<const RawAnimationCurve*> curves);
 }}}

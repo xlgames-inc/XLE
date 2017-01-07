@@ -47,20 +47,10 @@ namespace RenderCore { namespace Assets
 			return false;
 		}
 
-		bool HasAnimationSetInterface()
-		{
-			AttachLibrary();
-			return !!_createAnimationSetFn && !!_extractAnimationsFn && !!_serializeAnimationSetFn;
-		}
-
 		CompilerLibrary(StringSection<::Assets::ResChar> libraryName)
 			: _library(libraryName.AsString().c_str())
 		{
 			_createCompileOpFunction = nullptr;
-			_createAnimationSetFn = nullptr;
-			_extractAnimationsFn = nullptr;
-			_serializeAnimationSetFn = nullptr;
-
 			_isAttached = _attemptedAttach = false;
 		}
 
@@ -70,10 +60,6 @@ namespace RenderCore { namespace Assets
 	private:
 		// ---------- interface to DLL functions ----------
 		CreateCompileOperationFn* _createCompileOpFunction;
-
-		ColladaConversion::CreateAnimationSetFn*    _createAnimationSetFn;
-		ColladaConversion::ExtractAnimationsFn*     _extractAnimationsFn;
-		ColladaConversion::SerializeAnimationSetFn* _serializeAnimationSetFn;
 
 		std::vector<::Assets::rstring> _knownExtensions;
 
@@ -188,7 +174,8 @@ namespace RenderCore { namespace Assets
             ConsoleRig::LibVersionDesc libVersionDesc;
             _library.TryGetVersion(libVersionDesc);
 
-            if (typeCode != ModelCompiler::Type_AnimationSet) {
+			bool requiresMerge = (typeCode == ModelCompiler::Type_AnimationSet) && XlFindChar(initializer, '*');
+            if (!requiresMerge) {
 
                     // We need to do some processing of the filename
                     // the filename should take this form:
@@ -256,6 +243,10 @@ namespace RenderCore { namespace Assets
 
             }  else {
 
+				assert(0);	// broken when generalizing animation set serialization functionality.
+							// We now need to do the merging in this module; just serialize animations from single
+							// source models in the converter, and deserialize from chunks and merge together here
+#if 0
 				if (!_extractAnimationsFn || !_serializeAnimationSetFn || !_createAnimationSetFn)
 					Throw(::Exceptions::BasicLabel("Could not execute animation conversion operation because this compiler library doesn't provide an interface for animations"));
 
@@ -296,6 +287,7 @@ namespace RenderCore { namespace Assets
                 if (::Assets::Services::GetInvalidAssetMan())
                     ::Assets::Services::GetInvalidAssetMan()->MarkValid(initializer);
 				compileMarker.SetState(::Assets::AssetState::Ready);
+#endif
             }
         } CATCH(const std::exception& e) {
             LogAlwaysError << "Caught exception while performing Collada conversion. Exception details as follows:";
@@ -318,9 +310,6 @@ namespace RenderCore { namespace Assets
 			_isAttached = _library.TryAttach();
 			if (_isAttached) {
 				_createCompileOpFunction    = _library.GetFunction<decltype(_createCompileOpFunction)>("CreateCompileOperation");
-				_createAnimationSetFn       = _library.GetFunction<decltype(_createAnimationSetFn)>("?CreateAnimationSet@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VWorkingAnimationSet@ColladaConversion@RenderCore@@@std@@QEBD@Z");
-				_extractAnimationsFn        = _library.GetFunction<decltype(_extractAnimationsFn)>("?ExtractAnimations@ColladaConversion@RenderCore@@YAXAEAVWorkingAnimationSet@12@AEBVICompileOperation@12@QEBD@Z");
-				_serializeAnimationSetFn    = _library.GetFunction<decltype(_serializeAnimationSetFn)>("?SerializeAnimationSet@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@AEBVWorkingAnimationSet@12@@Z");
 
 				auto compilerDescFn = _library.GetFunction<GetCompilerDescFn*>("GetCompilerDesc");
 				if (compilerDescFn) {
@@ -405,16 +394,9 @@ namespace RenderCore { namespace Assets
 
 		unsigned compilerIndex = 0;
 			// Find the compiler that can handle this asset type (just by looking at the extension)
-		if (_typeCode != Type_AnimationSet) {
-			for (; compilerIndex < c->_pimpl->_compilers.size(); ++compilerIndex)
-				if (c->_pimpl->_compilers[compilerIndex].IsKnownExtension(splitRequest.Extension()))
-					break;
-		} else {
-			// (special case for animation sets; we're expecting
-			for (; compilerIndex < c->_pimpl->_compilers.size(); ++compilerIndex)
-				if (c->_pimpl->_compilers[compilerIndex].HasAnimationSetInterface()) 
-					break;
-		}
+		for (; compilerIndex < c->_pimpl->_compilers.size(); ++compilerIndex)
+			if (c->_pimpl->_compilers[compilerIndex].IsKnownExtension(splitRequest.Extension()))
+				break;
 
 		if (compilerIndex >= c->_pimpl->_compilers.size())
 			Throw(::Exceptions::BasicLabel("Could not find compiler to handle request (%s)", _requestName.c_str()));

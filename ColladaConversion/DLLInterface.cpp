@@ -470,6 +470,15 @@ namespace ColladaConversion
         }
     }
 
+	::Assets::NascentChunkArray SerializeAnimations(const ColladaCompileOp& model, const char[])  
+	{
+		PreparedAnimationFile animFile(model);
+		return SerializeAnimationsToChunks(
+			model._name.c_str(), animFile._animationSet,
+			MakeIteratorRange(animFile._curves));
+	}
+
+#if 0
     class WorkingAnimationSet
     {
     public:
@@ -489,21 +498,7 @@ namespace ColladaConversion
             &DestroyWorkingAnimSet);
     }
 
-	dll_export ::Assets::NascentChunkArray SerializeAnimationSet(const WorkingAnimationSet& animSet)
-    {
-        Serialization::NascentBlockSerializer serializer;
-
-        ::Serialize(serializer, animSet._animationSet);
-        serializer.SerializeSubBlock(AsPointer(animSet._curves.begin()), AsPointer(animSet._curves.end()));
-        serializer.SerializeValue(animSet._curves.size());
-
-        auto block = ::Assets::AsVector(serializer);
-
-        Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_AnimationSet, 0, animSet._name.c_str(), unsigned(block.size()));
-
-        return ::Assets::MakeNascentChunkArray({::Assets::NascentChunk(scaffoldChunk, std::move(block))});
-    }
+	
 
 	dll_export void ExtractAnimations(WorkingAnimationSet& dest, const ::Assets::ICompileOperation& source, const char animationName[])
     {
@@ -512,6 +507,7 @@ namespace ColladaConversion
             animFile._animationSet, animationName, 
             animFile._curves, dest._curves);
     }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -527,9 +523,10 @@ namespace ColladaConversion
 		if (idx >= _targets.size()) return ::Assets::NascentChunkArray();
 
 		switch (_targets[idx]._type) {
-		case Type_Model:	return SerializeSkin(*this, _rootNode.c_str());
-		case Type_Skeleton: return SerializeSkeleton(*this, _rootNode.c_str());
-		case Type_RawMat:	return SerializeMaterials(*this, _rootNode.c_str());
+		case Type_Model:			return SerializeSkin(*this, _rootNode.c_str());
+		case Type_Skeleton:			return SerializeSkeleton(*this, _rootNode.c_str());
+		case Type_RawMat:			return SerializeMaterials(*this, _rootNode.c_str());
+		case Type_AnimationSet:		return SerializeAnimations(*this, _rootNode.c_str());
 		default:
 			Throw(::Exceptions::BasicLabel("Cannot serialize target (%s)", _targets[idx]._name));
 		}
@@ -564,6 +561,7 @@ namespace ColladaConversion
 		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_Skeleton, "Skeleton"});
 		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_Model, "Model"});
 		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_RawMat, "RawMat"});
+		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_AnimationSet, "Animations"});
 
 		return std::move(result);
 	}

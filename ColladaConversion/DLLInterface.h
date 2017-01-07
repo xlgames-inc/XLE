@@ -13,9 +13,9 @@ namespace Assets { class ICompileOperation; }
 
 namespace ColladaConversion
 {
-    class WorkingAnimationSet;
-    typedef std::shared_ptr<WorkingAnimationSet> CreateAnimationSetFn(const char name[]);
-    typedef void ExtractAnimationsFn(WorkingAnimationSet&, const ::Assets::ICompileOperation&, const char[]);
-    typedef ::Assets::NascentChunkArray SerializeAnimationSetFn(const WorkingAnimationSet&);
+    // class WorkingAnimationSet;
+	// typedef std::shared_ptr<WorkingAnimationSet> CreateAnimationSetFn(const char name[]);
+	// typedef void ExtractAnimationsFn(WorkingAnimationSet&, const ::Assets::ICompileOperation&, const char[]);
+	// typedef ::Assets::NascentChunkArray SerializeAnimationSetFn(const WorkingAnimationSet&);
 }
 

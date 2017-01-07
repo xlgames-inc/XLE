@@ -206,7 +206,7 @@ namespace Utility
             _directoryHandle, _resultBuffer, sizeof(_resultBuffer),
             FALSE, FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_FILE_NAME,
             /*&_bytesReturned*/nullptr, &_overlapped, &CompletionRoutine);
-        assert(hresult); (void)hresult;
+        /*assert(hresult);*/ (void)hresult;
     }
 
     unsigned int xl_thread_call MonitoringEntryPoint(void*)
@@ -260,7 +260,7 @@ namespace Utility
         }
     }
 
-	static void CheckExists(const utf16* dirName)
+	/*static void CheckExists(const utf16* dirName)
 	{
 		#if defined(_DEBUG)
             {
@@ -273,7 +273,7 @@ namespace Utility
                 CloseHandle(handle);
             }
         #endif
-	}
+	}*/
 
     void AttachFileSystemMonitor(
         StringSection<utf16> directoryName,
@@ -281,7 +281,7 @@ namespace Utility
         std::shared_ptr<OnChangeCallback> callback)
     {
         ScopedLock(MonitoredDirectoriesLock);
-        if (directoryName.Empty())
+        if (directoryName.IsEmpty())
             directoryName = StringSection<utf16>(u"./");
 
         auto hash = MonitoredDirectory::HashFilename(directoryName);
@@ -295,7 +295,7 @@ namespace Utility
 
             // we must have a null terminated string -- so use a temp buffer
         auto dirNameCopy = directoryName.AsString();
-		CheckExists(dirNameCopy.c_str());
+		// CheckExists(dirNameCopy.c_str());
 
         ++CreationOrderId_Foreground;
         auto i2 = MonitoredDirectories.insert(
@@ -313,7 +313,7 @@ namespace Utility
 		std::shared_ptr<OnChangeCallback> callback)
 	{
 		ScopedLock(MonitoredDirectoriesLock);
-		if (directoryName.Empty())
+		if (directoryName.IsEmpty())
 			directoryName = StringSection<utf8>(u("./"));
 
 		auto hash = MonitoredDirectory::HashFilename(directoryName);
@@ -327,7 +327,7 @@ namespace Utility
 
 		// we must have a null terminated string -- so use a temp buffer
 		auto dirNameCopy = Conversion::Convert<std::basic_string<utf16>>(directoryName.AsString());
-		CheckExists(dirNameCopy.c_str());
+		// CheckExists(dirNameCopy.c_str());
 
 		++CreationOrderId_Foreground;
 		auto i2 = MonitoredDirectories.insert(

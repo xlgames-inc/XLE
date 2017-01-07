@@ -10,9 +10,10 @@
 #include "NascentGeometryObjects.h"
 #include "SkeletonRegistry.h"
 // #include "SCommandStream.h"
-#include "../RenderCore/Assets/AssetUtils.h"
-#include "../RenderCore/Assets/ModelImmutableData.h"      // just for RenderCore::Assets::SkeletonBinding
-#include "../Assets/BlockSerializer.h"
+#include "../Assets/AssetUtils.h"
+#include "../Assets/ModelImmutableData.h"      // just for RenderCore::Assets::SkeletonBinding
+#include "../Assets/RawAnimationCurve.h"
+#include "../../Assets/BlockSerializer.h"
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
@@ -101,7 +102,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return result;
     }
 
-	static void TraceMetrics(std::ostream& stream, NascentGeometryObjects& geoObjects, NascentModelCommandStream& cmdStream, NascentSkeleton& skeleton)
+	static void TraceMetrics(std::ostream& stream, const NascentGeometryObjects& geoObjects, const NascentModelCommandStream& cmdStream, const NascentSkeleton& skeleton)
 	{
 		stream << "============== Geometry Objects ==============" << std::endl;
 		stream << geoObjects;
@@ -166,14 +167,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static void TraceMetrics(std::ostream& stream, NascentSkeleton& skeleton)
+	static void TraceMetrics(std::ostream& stream, const NascentSkeleton& skeleton)
 	{
 		StreamOperator(stream, skeleton.GetTransformationMachine());
 	}
 
 	::Assets::NascentChunkArray SerializeSkeletonToChunks(
 		const char name[], 
-		NascentSkeleton& skeleton)
+		const NascentSkeleton& skeleton)
 	{
 		auto block = ::Assets::SerializeToVector(skeleton);
 
@@ -190,6 +191,25 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			::Assets::NascentChunk(scaffoldChunk, std::move(block)),
 			::Assets::NascentChunk(metricsChunk, std::move(metricsBlock))
 		});
+	}
+
+	::Assets::NascentChunkArray SerializeAnimationsToChunks(
+		const char name[],
+		const NascentAnimationSet& animationSet,
+		IteratorRange<const RenderCore::Assets::RawAnimationCurve*> curves)
+	{
+		Serialization::NascentBlockSerializer serializer;
+
+		::Serialize(serializer, animationSet);
+		serializer.SerializeSubBlock(curves.begin(), curves.end());
+		serializer.SerializeValue(curves.size());
+
+		auto block = ::Assets::AsVector(serializer);
+
+		Serialization::ChunkFile::ChunkHeader scaffoldChunk(
+			RenderCore::Assets::ChunkType_AnimationSet, 0, name, unsigned(block.size()));
+
+		return ::Assets::MakeNascentChunkArray({::Assets::NascentChunk(scaffoldChunk, std::move(block))});
 	}
 
 }}}

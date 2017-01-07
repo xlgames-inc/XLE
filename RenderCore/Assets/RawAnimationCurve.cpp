@@ -47,36 +47,35 @@ namespace RenderCore { namespace Assets
                 }
             }
 
-        } else if (_interpolationType == Bezier || _interpolationType == Hermite) {
+        } else if (_interpolationType == Bezier) {
 
             assert(_inTangentFormat != Format::Unknown);
             assert(_outTangentFormat != Format::Unknown);
 
             const size_t inTangentOffset = BitsPerPixel(_positionFormat)/8;
             const size_t outTangentOffset = inTangentOffset + BitsPerPixel(_inTangentFormat)/8;
+            for (unsigned c=0; c<(_keyCount-1); ++c) {
+                if (inputTime < _timeMarkers[c+1]) {
+                    assert(_timeMarkers[c+1] > _timeMarkers[c]);
+                    float alpha = LerpParameter(_timeMarkers[c], _timeMarkers[c+1], inputTime);
 
-            if (_interpolationType == Bezier) {
+                    const OutType& P0 = *(const OutType*)PtrAdd(_parameterData.get(), c * _elementSize);
+                    const OutType& P1 = *(const OutType*)PtrAdd(_parameterData.get(), (c+1) * _elementSize);
 
-                for (unsigned c=0; c<(_keyCount-1); ++c) {
-                    if (inputTime < _timeMarkers[c+1]) {
-                        assert(_timeMarkers[c+1] > _timeMarkers[c]);
-                        float alpha = LerpParameter(_timeMarkers[c], _timeMarkers[c+1], inputTime);
+					// This is a convention of the Collada format
+					// (see Collada spec 1.4.1, page 4-4)
+					//		the first control point is stored under the semantic "OUT_TANGENT" for P0
+					//		and second control point is stored under the semantic "IN_TANGENT" for P1
+                    const OutType& C0 = *(const OutType*)PtrAdd(_parameterData.get(), c * _elementSize + outTangentOffset);
+                    const OutType& C1 = *(const OutType*)PtrAdd(_parameterData.get(), (c+1) * _elementSize + inTangentOffset);
 
-                        const OutType& P0 = *(const OutType*)PtrAdd(_parameterData.get(), c * _elementSize);
-                        const OutType& P1 = *(const OutType*)PtrAdd(_parameterData.get(), (c+1) * _elementSize);
-
-                        const OutType& C0 = *(const OutType*)PtrAdd(_parameterData.get(), c * _elementSize + outTangentOffset);
-                        const OutType& C1 = *(const OutType*)PtrAdd(_parameterData.get(), (c+1) * _elementSize + inTangentOffset);
-
-                        return SphericalBezierInterpolate(P0, C0, C1, P1, alpha);
-                    }
+                    return SphericalBezierInterpolate(P0, C0, C1, P1, alpha);
                 }
-
-            } else {
-                assert(0);      // hermite version not implemented (though we could just convert on load in)
             }
 
-        }
+        } else (_interpolationType == Hermite) {
+			assert(0);      // hermite version not implemented (though we could just convert on load in)
+		}
 
         return *(OutType*)PtrAdd(_parameterData.get(), (_keyCount-1) * _elementSize );
     }
