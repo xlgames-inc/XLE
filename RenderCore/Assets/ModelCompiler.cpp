@@ -74,6 +74,7 @@ namespace RenderCore { namespace Assets
     public:
 		std::vector<CompilerLibrary>		_compilers;
 		bool								_discoveryDone;
+		::Assets::DirectorySearchRules		_librarySearchRules;
 
         Threading::Mutex					_threadLock;   // (used while initialising _thread for the first time)
         std::unique_ptr<CompilationThread>	_thread;
@@ -462,7 +463,24 @@ namespace RenderCore { namespace Assets
         _pimpl->_thread->StallOnPendingOperations(cancelAll);
     }
 
-    ModelCompiler::ModelCompiler() { _pimpl = std::make_shared<Pimpl>(); }
+	void ModelCompiler::AddLibrarySearchDirectories(const ::Assets::DirectorySearchRules& directories)
+	{
+		assert(!_pimpl->_discoveryDone);
+		_pimpl->_librarySearchRules.Merge(directories);
+	}
+
+    ModelCompiler::ModelCompiler() 
+	{ 
+		_pimpl = std::make_shared<Pimpl>(); 
+
+		// Default search path for libraries is just the process path.
+		// In some cases (eg, for unit tests where the process path points to an internal visual studio path), 
+		// we have to include extra paths
+		char processPath[MaxPath];
+		XlGetProcessPath((utf8*)processPath, dimof(processPath));
+		_pimpl->_librarySearchRules.AddSearchDirectory(
+			MakeFileNameSplitter(processPath).DriveAndPath());
+	}
     ModelCompiler::~ModelCompiler() {}
 
 	void ModelCompiler::Pimpl::PerformCompile(QueuedCompileOperation& op)
@@ -477,11 +495,7 @@ namespace RenderCore { namespace Assets
 
 		// Look for attachable libraries that can compile raw assets
 		// We're expecting to find them in the same directory as the executable with the form "*Conversion.dll" 
-		char processPath[MaxPath];
-		XlGetProcessPath((utf8*)processPath, dimof(processPath));
-
-		auto searchPath = MakeFileNameSplitter(processPath).DriveAndPath().AsString() + "\\*Conversion.dll";
-		auto candidateCompilers = RawFS::FindFiles(searchPath.c_str());
+		auto candidateCompilers = _librarySearchRules.FindFiles(MakeStringSection("*Conversion.dll"));
 		for (auto& c:candidateCompilers)
 			_compilers.emplace_back(CompilerLibrary(c));
 

@@ -19,8 +19,6 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    typedef TransformationParameterSet::Type::Enum AnimSamplerType;
-
     using AnimationParameterId = uint32;
 
     class NascentTransformationMachine : noncopyable
@@ -55,7 +53,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         friend std::ostream& StreamOperator(std::ostream& stream, const NascentTransformationMachine& transMachine);
 
-        template<typename Type> uint32 AddParameter(Type defaultValue, AnimationParameterId HashedColladaUniqueId, const char nodeName[]);
         template<typename Type> bool TryAddParameter(uint32& paramIndex, Type defaultValue, AnimationParameterId HashedColladaUniqueId, const char nodeName[]);
 
         void    PushCommand(uint32 cmd);
@@ -90,34 +87,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         unsigned _lastReturnedOutputMatrixMarker;
 
         template<typename Type>
-            std::pair<
-                std::vector<std::pair<AnimationParameterId, uint32>>&,
-                SerializableVector<Type>& >
-                GetTables();
+			std::vector<std::pair<AnimationParameterId, uint32>>& GetTables();
     };
 
 
         ////////////////// template implementation //////////////////
-
-    template<typename Type>
-        uint32      NascentTransformationMachine::AddParameter( 
-            Type defaultValue, 
-            AnimationParameterId parameterHash, 
-            const char nodeName[])
-    {
-        auto tables = GetTables<Type>();
-        auto i = std::lower_bound(
-            tables.first.begin(), tables.first.end(), 
-            parameterHash, CompareFirst<AnimationParameterId, uint32>());
-        if (i!=tables.first.end() && i->first == parameterHash)
-            Throw(::Assets::Exceptions::FormatError("Non-unique parameter hash found for animatable property in node (%s)", nodeName));
-
-        _stringNameMapping.push_back(std::make_pair(std::string(nodeName), parameterHash));
-        size_t parameterIndex = tables.second.size();
-        tables.second.push_back(defaultValue);
-        tables.first.insert(i, std::make_pair(parameterHash, (uint32)parameterIndex));
-        return (uint32)parameterIndex;
-    }
 
     template<typename Type>
         bool NascentTransformationMachine::TryAddParameter( 
@@ -126,7 +100,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             AnimationParameterId parameterHash, 
             const char nodeName[])
     {
-        auto tables = GetTables<Type>();
+        auto& tables = GetTables<Type>();
         auto i = std::lower_bound(
             tables.first.begin(), tables.first.end(), 
             parameterHash, CompareFirst<AnimationParameterId, uint32>());
@@ -136,8 +110,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         }
 
         _stringNameMapping.push_back(std::make_pair(std::string(nodeName), parameterHash));
-        paramIndex = (uint32)tables.second.size();
-        tables.second.push_back(defaultValue);
+        paramIndex = (uint32)_defaultParameters.AddParameter(defaultValue);
         tables.first.insert(i, std::make_pair(parameterHash, paramIndex));
         return true;
     }

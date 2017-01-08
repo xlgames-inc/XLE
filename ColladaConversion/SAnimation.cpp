@@ -351,7 +351,7 @@ namespace ColladaConversion
                 inTangentFormat   = Format::Unknown,
                 outTangentFormat  = Format::Unknown;
 
-			RenderCore::Assets::TransformationParameterSet::Type::Enum samplerType;
+			RenderCore::Assets::TransformationParameterSet::Type samplerType;
             
             switch (outDimension) {
 			case 1:     positionFormat = Format::R32_FLOAT; samplerType = RenderCore::Assets::TransformationParameterSet::Type::Float1; break;

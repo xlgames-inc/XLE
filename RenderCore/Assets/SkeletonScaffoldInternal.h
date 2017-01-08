@@ -45,7 +45,7 @@ namespace RenderCore { namespace Assets
             {
                 uint64  _name;
                 uint32  _index;
-                TransformationParameterSet::Type::Enum  _type;
+                AnimSamplerType  _type;
             };
 
             Parameter*  _parameters;

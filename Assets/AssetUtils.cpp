@@ -227,9 +227,16 @@ namespace Assets
         return false;
     }
 
-	static bool DoesFileExist(const ResChar fn[])
+	static bool DoesFileExist(StringSection<ResChar> fn)
 	{
-		return MainFileSystem::TryGetDesc((const utf8*)fn)._state == FileDesc::State::Normal;
+		return MainFileSystem::TryGetDesc(fn)._state == FileDesc::State::Normal;
+	}
+
+	static std::vector<std::basic_string<ResChar>> FindFiles(
+		StringSection<ResChar> searchPath, 
+		RawFS::FindFilesFilter::BitField filter)
+	{
+		return RawFS::FindFiles(searchPath.AsString(), filter);
 	}
 
     void DirectorySearchRules::ResolveFile(ResChar destination[], unsigned destinationCount, const ResChar baseName[]) const
@@ -337,7 +344,24 @@ namespace Assets
             AddSearchDirectory(&b[mergeFrom._startOffsets[c]]);
     }
 
-    const ResChar* DirectorySearchRules::GetFirstSearchDir() const { return _buffer; }
+	std::vector<std::basic_string<ResChar>> DirectorySearchRules::FindFiles(StringSection<char> wildcardSearch) const
+	{
+		const ResChar* b = _buffer;
+        if (!_bufferOverflow.empty()) {
+            b = AsPointer(_bufferOverflow.begin());
+        }
+
+		ResChar workingBuffer[MaxPath];
+		std::vector<std::basic_string<ResChar>> result;
+
+		for (unsigned c=0; c<_startPointCount; ++c) {
+			XlConcatPath(workingBuffer, dimof(workingBuffer), &b[_startOffsets[c]], wildcardSearch.begin(), wildcardSearch.end());
+			auto partialRes = Assets::FindFiles(workingBuffer, RawFS::FindFilesFilter::File);
+			result.insert(result.end(), partialRes.begin(), partialRes.end());
+		}
+		
+		return std::move(result);
+	}
 
     DirectorySearchRules::DirectorySearchRules()
     {

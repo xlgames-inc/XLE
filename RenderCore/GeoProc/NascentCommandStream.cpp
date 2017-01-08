@@ -32,12 +32,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     AnimSamplerType      SamplerWidthToType(unsigned samplerWidth)
     {
-        Assets::TransformationParameterSet::Type::Enum samplerType = Assets::TransformationParameterSet::Type::Float1;
+        auto samplerType = AnimSamplerType::Float1;
         switch (samplerWidth) {
-        case  1:    samplerType = Assets::TransformationParameterSet::Type::Float1;     break;
-        case  3:    samplerType = Assets::TransformationParameterSet::Type::Float3;     break;
-        case  4:    samplerType = Assets::TransformationParameterSet::Type::Float4;     break;
-        case 16:    samplerType = Assets::TransformationParameterSet::Type::Float4x4;   break;
+        case  1:    samplerType = AnimSamplerType::Float1;     break;
+        case  3:    samplerType = AnimSamplerType::Float3;     break;
+        case  4:    samplerType = AnimSamplerType::Float4;     break;
+        case 16:    samplerType = AnimSamplerType::Float4x4;   break;
         default: 
             Throw(
                 FormatError(
@@ -50,10 +50,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     size_t      SamplerSize(AnimSamplerType samplerType)
     {
         switch (samplerType) {
-        case Assets::TransformationParameterSet::Type::Float1:      return sizeof(float);
-        case Assets::TransformationParameterSet::Type::Float3:      return sizeof(Float3);
-        case Assets::TransformationParameterSet::Type::Float4:      return sizeof(Float4);
-        case Assets::TransformationParameterSet::Type::Float4x4:    return sizeof(Float4x4);
+        case AnimSamplerType::Float1:      return sizeof(float);
+        case AnimSamplerType::Float3:      return sizeof(Float3);
+        case AnimSamplerType::Float4:      return sizeof(Float4);
+        case AnimSamplerType::Float4x4:    return sizeof(Float4x4);
         }
         return 0;
     }

@@ -60,32 +60,27 @@ namespace RenderCore { namespace Assets
         Comment
     };
 
+	enum class AnimSamplerType { Float1, Float3, Float4, Float4x4 };
+
             //////////////////////////////////////////////////////////
 
     class TransformationParameterSet
     {
     public:
-        struct Type { enum Enum { Float1, Float3, Float4, Float4x4 }; };
+        IteratorRange<const float*>     GetFloat1Parameters() const     { return MakeIteratorRange(_float1Parameters);      }
+        IteratorRange<const Float3*>    GetFloat3Parameters() const     { return MakeIteratorRange(_float3Parameters);      }
+        IteratorRange<const Float4*>    GetFloat4Parameters() const     { return MakeIteratorRange(_float4Parameters);      }
+        IteratorRange<const Float4x4*>	GetFloat4x4Parameters() const	{ return MakeIteratorRange(_float4x4Parameters);	}
 
-        float*              GetFloat1Parameters()                       { return AsPointer(_float1Parameters.begin());         }
-        Float3*             GetFloat3Parameters()                       { return AsPointer(_float3Parameters.begin());         }
-        Float4*             GetFloat4Parameters()                       { return AsPointer(_float4Parameters.begin());         }
-        Float4x4*           GetFloat4x4Parameters()                     { return AsPointer(_float4x4Parameters.begin());       }
+		IteratorRange<float*>			GetFloat1Parameters()			{ return MakeIteratorRange(_float1Parameters);      }
+        IteratorRange<Float3*>			GetFloat3Parameters()			{ return MakeIteratorRange(_float3Parameters);      }
+        IteratorRange<Float4*>			GetFloat4Parameters()			{ return MakeIteratorRange(_float4Parameters);      }
+        IteratorRange<Float4x4*>		GetFloat4x4Parameters()			{ return MakeIteratorRange(_float4x4Parameters);	}
 
-        const float*        GetFloat1Parameters() const                 { return AsPointer(_float1Parameters.begin());         }
-        const Float3*       GetFloat3Parameters() const                 { return AsPointer(_float3Parameters.begin());         }
-        const Float4*       GetFloat4Parameters() const                 { return AsPointer(_float4Parameters.begin());         }
-        const Float4x4*     GetFloat4x4Parameters() const               { return AsPointer(_float4x4Parameters.begin());       }
-
-        size_t              GetFloat1ParametersCount() const            { return _float1Parameters.size();    }
-        size_t              GetFloat3ParametersCount() const            { return _float3Parameters.size();    }
-        size_t              GetFloat4ParametersCount() const            { return _float4Parameters.size();    }
-        size_t              GetFloat4x4ParametersCount() const          { return _float4x4Parameters.size();  }
-
-        SerializableVector<Float4x4>&   GetFloat4x4ParametersVector()   { return _float4x4Parameters; }
-        SerializableVector<Float4>&     GetFloat4ParametersVector()     { return _float4Parameters; }
-        SerializableVector<Float3>&     GetFloat3ParametersVector()     { return _float3Parameters; }
-        SerializableVector<float>&      GetFloat1ParametersVector()     { return _float1Parameters; }
+		uint32 AddParameter(float);
+		uint32 AddParameter(Float3);
+		uint32 AddParameter(Float4);
+		uint32 AddParameter(const Float4x4&);
             
         TransformationParameterSet();
         TransformationParameterSet(TransformationParameterSet&& moveFrom);
@@ -121,7 +116,7 @@ namespace RenderCore { namespace Assets
         std::ostream&                   outputStream,
         IteratorRange<const uint32*>    commandStream,
         std::function<std::string(unsigned)> outputMatrixToName,
-        std::function<std::string(TransformationParameterSet::Type::Enum, unsigned)> parameterToName);
+        std::function<std::string(AnimSamplerType, unsigned)> parameterToName);
 
     class ITransformationMachineOptimizer
     {

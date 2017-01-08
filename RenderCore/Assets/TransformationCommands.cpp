@@ -771,24 +771,16 @@ namespace RenderCore { namespace Assets
         Float4x4* workingTransform = workingStack;
         *workingTransform = Identity<Float4x4>();
 
-        const float*    float1s = nullptr;
-        const Float3*   float3s = nullptr;
-        const Float4*   float4s = nullptr;
-        const Float4x4* float4x4s = nullptr;
-        size_t    float1Count, float3Count, float4Count, float4x4Count;
+        IteratorRange<const float*> float1s;
+        IteratorRange<const Float3*> float3s;
+        IteratorRange<const Float4*> float4s;
+        IteratorRange<const Float4x4*> float4x4s;
         if (parameterSet) {
             float1s         = parameterSet->GetFloat1Parameters();
             float3s         = parameterSet->GetFloat3Parameters();
             float4s         = parameterSet->GetFloat4Parameters();
             float4x4s       = parameterSet->GetFloat4x4Parameters();
-            float1Count     = parameterSet->GetFloat1ParametersCount();
-            float3Count     = parameterSet->GetFloat3ParametersCount();
-            float4Count     = parameterSet->GetFloat4ParametersCount();
-            float4x4Count   = parameterSet->GetFloat4x4ParametersCount();
-        } else {
-            float1Count = float3Count = float4Count = float4x4Count = 0;
         }
-        (void)float1s; (void)float3s; (void)float4s; (void)float4x4s;
 
         for (auto i=commandStream.cbegin(); i!=commandStream.cend();) {
             auto commandIndex = *i++;
@@ -868,7 +860,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::TransformFloat4x4_Parameter:
                 {
                     uint32 parameterIndex = *i++;
-                    if (parameterIndex < float4x4Count) {
+                    if (parameterIndex < float4x4s.size()) {
                         *workingTransform = Combine(float4x4s[parameterIndex], *workingTransform);
                     } else {
                         LogWarning << "Warning -- bad parameter index for TransformFloat4x4_Parameter command (" << parameterIndex << ")";
@@ -879,7 +871,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::Translate_Parameter:
                 {
                     uint32 parameterIndex = *i++;
-                    if (parameterIndex < float3Count) {
+                    if (parameterIndex < float3s.size()) {
                         Combine_InPlace(float3s[parameterIndex], *workingTransform);
                     } else {
                         LogWarning << "Warning -- bad parameter index for Translate_Parameter command (" << parameterIndex << ")";
@@ -890,7 +882,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::RotateX_Parameter:
                 {
                     uint32 parameterIndex = *i++;
-                    if (parameterIndex < float1Count) {
+                    if (parameterIndex < float1s.size()) {
                         Combine_InPlace(RotationX(Deg2Rad(float1s[parameterIndex])), *workingTransform);
                     } else {
                         LogWarning << "Warning -- bad parameter index for RotateX_Parameter command (" << parameterIndex << ")";
@@ -901,7 +893,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::RotateY_Parameter:
                 {
                     uint32 parameterIndex = *i++;
-                    if (parameterIndex < float1Count) {
+                    if (parameterIndex < float1s.size()) {
                         Combine_InPlace(RotationY(Deg2Rad(float1s[parameterIndex])), *workingTransform);
                     } else {
                         LogWarning << "Warning -- bad parameter index for RotateY_Parameter command (" << parameterIndex << ")";
@@ -912,7 +904,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::RotateZ_Parameter:
                 {
                     uint32 parameterIndex = *i++;
-                    if (parameterIndex < float1Count) {
+                    if (parameterIndex < float1s.size()) {
                         Combine_InPlace(RotationZ(Deg2Rad(float1s[parameterIndex])), *workingTransform);
                     } else {
                         LogWarning << "Warning -- bad parameter index for RotateZ_Parameter command (" << parameterIndex << ")";
@@ -923,7 +915,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::Rotate_Parameter:
                 {
                     uint32 parameterIndex = *i++;
-                    if (parameterIndex < float4Count) {
+                    if (parameterIndex < float4s.size()) {
                         *workingTransform = Combine(MakeRotationMatrix(Truncate(float4s[parameterIndex]), Deg2Rad(float4s[parameterIndex][3])), *workingTransform);
                     } else {
                         LogWarning << "Warning -- bad parameter index for Rotate_Parameter command (" << parameterIndex << ")";
@@ -934,7 +926,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::UniformScale_Parameter:
                 {
                     uint32 parameterIndex = *i++;
-                    if (parameterIndex < float1Count) {
+                    if (parameterIndex < float1s.size()) {
                         Combine_InPlace(UniformScale(float1s[parameterIndex]), *workingTransform);
                     } else {
                         LogWarning << "Warning -- bad parameter index for UniformScale_Parameter command (" << parameterIndex << ")";
@@ -945,7 +937,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::ArbitraryScale_Parameter:
                 {
                     uint32 parameterIndex = *i++;
-                    if (parameterIndex < float3Count) {
+                    if (parameterIndex < float3s.size()) {
                         Combine_InPlace(ArbitraryScale(float3s[parameterIndex]), *workingTransform);
                     } else {
                         LogWarning << "Warning -- bad parameter index for ArbitraryScale_Parameter command (" << parameterIndex << ")";
@@ -986,7 +978,7 @@ namespace RenderCore { namespace Assets
                 {
                     uint32 outputIndex = *i++;
                     uint32 parameterIndex = *i++;
-                    if (parameterIndex < float4x4Count) {
+                    if (parameterIndex < float4x4s.size()) {
                         if (outputIndex < resultCount) {
                             result[outputIndex] = Combine(float4x4s[parameterIndex], *workingTransform);
                             if (constant_expression<UseDebugIterator>::result())
@@ -1041,7 +1033,7 @@ namespace RenderCore { namespace Assets
         std::ostream&   stream,
         IteratorRange<const uint32*>    commandStream,
         std::function<std::string(unsigned)> outputMatrixToName,
-        std::function<std::string(TransformationParameterSet::Type::Enum, unsigned)> parameterToName)
+        std::function<std::string(AnimSamplerType, unsigned)> parameterToName)
     {
         stream << "Transformation machine size: (" << (commandStream.size()) * sizeof(uint32) << ") bytes" << std::endl;
 
@@ -1124,7 +1116,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::TransformFloat4x4_Parameter:
                 stream << indentBuffer << "TransformFloat4x4_Parameter [" << *i << "]";
                 if (parameterToName)
-                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float4x4, *i) << ")";
+                    stream << " (" << parameterToName(AnimSamplerType::Float4x4, *i) << ")";
                 stream << std::endl;
                 i++;
                 break;
@@ -1132,7 +1124,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::Translate_Parameter:
                 stream << indentBuffer << "Translate_Parameter [" << *i << "]";
                 if (parameterToName)
-                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float3, *i) << ")";
+                    stream << " (" << parameterToName(AnimSamplerType::Float3, *i) << ")";
                 stream << std::endl;
                 i++;
                 break;
@@ -1140,7 +1132,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::RotateX_Parameter:
                 stream << indentBuffer << "RotateX_Parameter [" << *i << "]";
                 if (parameterToName)
-                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float1, *i) << ")";
+                    stream << " (" << parameterToName(AnimSamplerType::Float1, *i) << ")";
                 stream << std::endl;
                 i++;
                 break;
@@ -1148,7 +1140,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::RotateY_Parameter:
                 stream << indentBuffer << "RotateY_Parameter [" << *i << "]";
                 if (parameterToName)
-                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float1, *i) << ")";
+                    stream << " (" << parameterToName(AnimSamplerType::Float1, *i) << ")";
                 stream << std::endl;
                 i++;
                 break;
@@ -1156,7 +1148,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::RotateZ_Parameter:
                 stream << indentBuffer << "RotateZ_Parameter [" << *i << "]";
                 if (parameterToName)
-                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float1, *i) << ")";
+                    stream << " (" << parameterToName(AnimSamplerType::Float1, *i) << ")";
                 stream << std::endl;
                 i++;
                 break;
@@ -1164,7 +1156,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::Rotate_Parameter:
                 stream << indentBuffer << "Rotate_Parameter [" << *i << "]";
                 if (parameterToName)
-                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float4, *i) << ")";
+                    stream << " (" << parameterToName(AnimSamplerType::Float4, *i) << ")";
                 stream << std::endl;
                 i++;
                 break;
@@ -1172,7 +1164,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::UniformScale_Parameter:
                 stream << indentBuffer << "UniformScale_Parameter [" << *i << "]";
                 if (parameterToName)
-                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float1, *i) << ")";
+                    stream << " (" << parameterToName(AnimSamplerType::Float1, *i) << ")";
                 stream << std::endl;
                 i++;
                 break;
@@ -1180,7 +1172,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::ArbitraryScale_Parameter:
                 stream << indentBuffer << "ArbitraryScale_Parameter [" << *i << "]";
                 if (parameterToName)
-                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float3, *i) << ")";
+                    stream << " (" << parameterToName(AnimSamplerType::Float3, *i) << ")";
                 stream << std::endl;
                 i++;
                 break;
@@ -1210,7 +1202,7 @@ namespace RenderCore { namespace Assets
                 if (outputMatrixToName)
                     stream << " (" << outputMatrixToName(*i) << ")";
                 stream << indentBuffer << " param: (" 
-                    << parameterToName(TransformationParameterSet::Type::Float4x4, *(i+1)) << ")" << std::endl;
+                    << parameterToName(AnimSamplerType::Float4x4, *(i+1)) << ")" << std::endl;
                 i+=2;
                 break;
 

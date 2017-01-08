@@ -14,70 +14,151 @@
 
 namespace RenderCore { namespace Assets
 {
+    static float LerpParameter(float A, float B, float input) { return (input - A) / (B-A); }
 
-    template<> Format   RawAnimationCurve::ExpectedFormat<Float4x4>()        { return Format::Matrix4x4; }
-    template<> Format   RawAnimationCurve::ExpectedFormat<Float4>()          { return Format::R32G32B32A32_FLOAT; }
-    template<> Format   RawAnimationCurve::ExpectedFormat<Float3>()          { return Format::R32G32B32_FLOAT; }
-    template<> Format   RawAnimationCurve::ExpectedFormat<float>()           { return Format::R32_FLOAT; }
+	template<typename OutType>
+		class CurveElementDecompressor
+		{
+		public:
+			using T = const OutType&;
+			const OutType& operator()(const void* data) { return *(const OutType*)data; }
+			CurveElementDecompressor(Format fmt);
+		};
 
-    static float LerpParameter(float A, float B, float input)
-    {
-        return (input - A) / (B-A);
-    }
+	CurveElementDecompressor<float>::CurveElementDecompressor(Format fmt)
+	{
+		assert(fmt == Format::R32_FLOAT
+			|| fmt == Format::R32G32_FLOAT
+			|| fmt == Format::R32G32B32_FLOAT
+			|| fmt == Format::R32G32B32A32_FLOAT);
+	}
+
+	CurveElementDecompressor<Float3>::CurveElementDecompressor(Format fmt)
+	{
+		assert(fmt == Format::R32G32B32_FLOAT
+			|| fmt == Format::R32G32B32A32_FLOAT);
+	}
+
+	CurveElementDecompressor<Float4x4>::CurveElementDecompressor(Format fmt)
+	{
+		assert(fmt == Format::Matrix4x4);
+	}
+		
+	template<>
+		class CurveElementDecompressor<Float4>
+		{
+		public:
+			using T = const Float4;
+			Float4 operator()(const void* data) 
+			{ 
+				if (_fmt == Format::R10G10B10A10_SNORM) {
+					// Decompress 5 byte quaternion format
+					// This is 4 10-bit signed values, in x,y,z,w form
+					struct Q {
+						int x : 10;
+						int y : 10;
+						int z : 10;
+						int w : 10;
+					};
+					const auto& q = *(const Q*)data;
+					// note --	min value should be -0x200, but max positive value is 0x1ff
+					//			so, this calculation will never actually return +1.0f
+					return Float4(q.x/float(0x200), q.y/float(0x200), q.z/float(0x200), q.w/float(200));
+				} else {
+					return *(const Float4*)data;
+				}
+			}
+
+			CurveElementDecompressor(Format fmt) : _fmt(fmt)
+			{
+				assert(fmt == Format::R10G10B10A10_SNORM || fmt == Format::R32G32B32A32_FLOAT);
+			}
+		private:
+			Format _fmt;
+		};
 
     template<typename OutType>
         OutType        RawAnimationCurve::Calculate(float inputTime) const never_throws
     {
-        assert(_positionFormat == ExpectedFormat<OutType>());
+		CurveElementDecompressor<OutType> decomp(_positionFormat);
+		using T = decltype(decomp)::T;
 
-            // note -- clamping at start and end positions of the curve
-        if (inputTime < _timeMarkers[0])
-            return *(OutType*)_parameterData.get();
+		// reminder -- lower_bound returns a pointer to the first key that is not smaller than inputTime (eg, equal or larger)
+		auto* key = std::lower_bound(_timeMarkers.get(), &_timeMarkers[_keyCount], inputTime);
+
+			// note -- clamping at start and end positions of the curve
+		if (key == _timeMarkers.get())
+			return decomp(_parameterData.get());
+
+		--key;	// (back one, to the first key that is smaller)
+		auto keyIndex = key-_timeMarkers.get();
+		float alpha = LerpParameter(key[0], key[1], inputTime);
 
         if (_interpolationType == Linear) {
 
-            for (unsigned c=0; c<(_keyCount-1); ++c) {
-                if (inputTime < _timeMarkers[c+1]) {
-                    assert(_timeMarkers[c+1] > _timeMarkers[c]);
-                    float alpha = LerpParameter(_timeMarkers[c], _timeMarkers[c+1], inputTime);
+			// (need at least one key greater than the interpolation point, to perform interpolation correctly)
+			if ((key+1) >= &_timeMarkers[_keyCount])
+				return decomp(PtrAdd(_parameterData.get(), (_keyCount-1)*_elementStride));
 
-                    const OutType& P0 = *(const OutType*)PtrAdd(_parameterData.get(), c * _elementSize);
-                    const OutType& P1 = *(const OutType*)PtrAdd(_parameterData.get(), (c+1) * _elementSize);
-                    return SphericalInterpolate(P0, P1, alpha);
-                }
-            }
+            assert(key[1] >= key[0]);		// (validating sorting assumption)
+            
+            T P0 = decomp(PtrAdd(_parameterData.get(), keyIndex * _elementStride));
+            T P1 = decomp(PtrAdd(_parameterData.get(), (keyIndex+1) * _elementStride));
+            return SphericalInterpolate(P0, P1, alpha);
 
         } else if (_interpolationType == Bezier) {
 
             assert(_inTangentFormat != Format::Unknown);
             assert(_outTangentFormat != Format::Unknown);
 
+			// (need at least one key greater than the interpolation point, to perform interpolation correctly)
+			if ((key+1) >= &_timeMarkers[_keyCount])
+				return decomp(PtrAdd(_parameterData.get(), (_keyCount-1) * _elementStride));
+
+			assert(key[1] >= key[0]);		// (validating sorting assumption)
             const size_t inTangentOffset = BitsPerPixel(_positionFormat)/8;
             const size_t outTangentOffset = inTangentOffset + BitsPerPixel(_inTangentFormat)/8;
-            for (unsigned c=0; c<(_keyCount-1); ++c) {
-                if (inputTime < _timeMarkers[c+1]) {
-                    assert(_timeMarkers[c+1] > _timeMarkers[c]);
-                    float alpha = LerpParameter(_timeMarkers[c], _timeMarkers[c+1], inputTime);
 
-                    const OutType& P0 = *(const OutType*)PtrAdd(_parameterData.get(), c * _elementSize);
-                    const OutType& P1 = *(const OutType*)PtrAdd(_parameterData.get(), (c+1) * _elementSize);
+            T P0 = decomp(PtrAdd(_parameterData.get(), keyIndex * _elementStride));
+            T P1 = decomp(PtrAdd(_parameterData.get(), (keyIndex+1) * _elementStride));
 
-					// This is a convention of the Collada format
-					// (see Collada spec 1.4.1, page 4-4)
-					//		the first control point is stored under the semantic "OUT_TANGENT" for P0
-					//		and second control point is stored under the semantic "IN_TANGENT" for P1
-                    const OutType& C0 = *(const OutType*)PtrAdd(_parameterData.get(), c * _elementSize + outTangentOffset);
-                    const OutType& C1 = *(const OutType*)PtrAdd(_parameterData.get(), (c+1) * _elementSize + inTangentOffset);
+			// This is a convention of the Collada format
+			// (see Collada spec 1.4.1, page 4-4)
+			//		the first control point is stored under the semantic "OUT_TANGENT" for P0
+			//		and second control point is stored under the semantic "IN_TANGENT" for P1
+            T C0 = decomp(PtrAdd(_parameterData.get(), keyIndex * _elementStride + outTangentOffset));
+            T C1 = decomp(PtrAdd(_parameterData.get(), (keyIndex+1) * _elementStride + inTangentOffset));
 
-                    return SphericalBezierInterpolate(P0, C0, C1, P1, alpha);
-                }
-            }
+            return SphericalBezierInterpolate(P0, C0, C1, P1, alpha);
+
+		} else if (_interpolationType == CatmullRom) {
+
+			// (need at least one key greater than the interpolation point, to perform interpolation correctly)
+			if ((key+2) >= &_timeMarkers[_keyCount])
+				return decomp(PtrAdd(_parameterData.get(), (_keyCount-1) * _elementStride));
+
+			T P0 = decomp(PtrAdd(_parameterData.get(), keyIndex * _elementStride));
+            T P1 = decomp(PtrAdd(_parameterData.get(), (keyIndex+1) * _elementStride));
+			// (note the clamp here that can result in P0 == P0n1 at the start of the curve)
+			T P0n1 = decomp(PtrAdd(_parameterData.get(), std::max(0, signed(keyIndex)-1) * _elementStride));
+			T P1p1 = decomp(PtrAdd(_parameterData.get(), (keyIndex+2) * _elementStride));
+
+			float P0n1T = _timeMarkers[std::max(0, signed(keyIndex)-1)];
+			float P1p1T = _timeMarkers[keyIndex+2];
+
+			return SphericalCatmullRomInterpolate(
+				P0n1, P0, P1, P1p1, 
+				(P0n1T - key[0]) / (key[1] - key[0]), (P1p1T - key[0]) / (key[1] - key[0]),
+				alpha);
 
         } else if (_interpolationType == Hermite) {
-			assert(0);      // hermite version not implemented (though we could just convert on load in)
+			// hermite version not implemented
+			//  -- but it's similar to both the Bezier and Catmull Rom implementations, nad
+			//		could be easily hooked up
+			assert(0);      
 		}
 
-        return *(OutType*)PtrAdd(_parameterData.get(), (_keyCount-1) * _elementSize);
+        return decomp(_parameterData.get());
     }
 
     float       RawAnimationCurve::StartTime() const
@@ -110,7 +191,7 @@ namespace RenderCore { namespace Assets
     :       _keyCount(keyCount)
     ,       _timeMarkers(std::forward<std::unique_ptr<float[], BlockSerializerDeleter<float[]>>>(timeMarkers))
     ,       _parameterData(std::forward<DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>>(keyPositions))
-    ,       _elementSize(elementSize)
+    ,       _elementStride(elementSize)
     ,       _interpolationType(interpolationType)
     ,       _positionFormat(positionFormat)
     ,       _inTangentFormat(inTangentFormat)
@@ -121,7 +202,7 @@ namespace RenderCore { namespace Assets
     :       _keyCount(curve._keyCount)
     ,       _timeMarkers(std::move(curve._timeMarkers))
     ,       _parameterData(std::move(curve._parameterData))
-    ,       _elementSize(curve._elementSize)
+    ,       _elementStride(curve._elementStride)
     ,       _interpolationType(curve._interpolationType)
     ,       _positionFormat(curve._positionFormat)
     ,       _inTangentFormat(curve._inTangentFormat)
@@ -131,7 +212,7 @@ namespace RenderCore { namespace Assets
     RawAnimationCurve::RawAnimationCurve(const RawAnimationCurve& copyFrom)
     :       _keyCount(copyFrom._keyCount)
     ,       _parameterData(DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>::Copy(copyFrom._parameterData))
-    ,       _elementSize(copyFrom._elementSize)
+    ,       _elementStride(copyFrom._elementStride)
     ,       _interpolationType(copyFrom._interpolationType)
     ,       _positionFormat(copyFrom._positionFormat)
     ,       _inTangentFormat(copyFrom._inTangentFormat)
@@ -146,7 +227,7 @@ namespace RenderCore { namespace Assets
         _keyCount = curve._keyCount;
         _timeMarkers = std::move(curve._timeMarkers);
         _parameterData = std::move(curve._parameterData);
-        _elementSize = curve._elementSize;
+        _elementStride = curve._elementStride;
         _interpolationType = curve._interpolationType;
         _positionFormat = curve._positionFormat;
         _inTangentFormat = curve._inTangentFormat;

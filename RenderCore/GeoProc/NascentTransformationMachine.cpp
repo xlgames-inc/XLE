@@ -31,13 +31,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         };
     };
 
-    static const char* AsString(Assets::TransformationParameterSet::Type::Enum value)
+    static const char* AsString(AnimSamplerType value)
     {
         switch (value) {
-        case Assets::TransformationParameterSet::Type::Float1: return "Float1";
-        case Assets::TransformationParameterSet::Type::Float3: return "Float3";
-        case Assets::TransformationParameterSet::Type::Float4: return "Float4";
-        case Assets::TransformationParameterSet::Type::Float4x4: return "Float4x4";
+        case AnimSamplerType::Float1: return "Float1";
+        case AnimSamplerType::Float3: return "Float3";
+        case AnimSamplerType::Float4: return "Float4";
+        case AnimSamplerType::Float4x4: return "Float4x4";
         }
         return "<<unknown>>";
     }
@@ -58,9 +58,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         #pragma pack(1)
             struct Param    /* must match TransformationMachine::InputInterface::Parameter */
             {
-                uint64      _name;
-                uint32      _index;
-                Assets::TransformationParameterSet::Type::Enum  _type;
+                uint64				_name;
+                uint32				_index;
+                AnimSamplerType		_type;
 
                 void    Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
                 {
@@ -73,11 +73,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         std::vector<Param> runTimeInputInterface;
         typedef std::vector<std::pair<AnimationParameterId, uint32>> T;
-        std::pair<const T*, Assets::TransformationParameterSet::Type::Enum> tables[] = {
-            std::make_pair(&_float1ParameterNames,      Assets::TransformationParameterSet::Type::Float1),
-            std::make_pair(&_float3ParameterNames,      Assets::TransformationParameterSet::Type::Float3),
-            std::make_pair(&_float4ParameterNames,      Assets::TransformationParameterSet::Type::Float4),
-            std::make_pair(&_float4x4ParameterNames,    Assets::TransformationParameterSet::Type::Float4x4)
+        std::pair<const T*, AnimSamplerType> tables[] = {
+            std::make_pair(&_float1ParameterNames,      AnimSamplerType::Float1),
+            std::make_pair(&_float3ParameterNames,      AnimSamplerType::Float3),
+            std::make_pair(&_float4ParameterNames,      AnimSamplerType::Float4),
+            std::make_pair(&_float4x4ParameterNames,    AnimSamplerType::Float4x4)
         };
 
         ConsoleRig::DebuggerOnlyWarning("Transformation Machine input interface:\n");
@@ -187,11 +187,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             [&transMachine](AnimSamplerType samplerType, unsigned parameterIndex) -> std::string
             {
                 using T = std::vector<std::pair<AnimationParameterId, uint32>>;
-                std::pair<const T*, Assets::TransformationParameterSet::Type::Enum> tables[] = {
-                    std::make_pair(&transMachine._float1ParameterNames,      Assets::TransformationParameterSet::Type::Float1),
-                    std::make_pair(&transMachine._float3ParameterNames,      Assets::TransformationParameterSet::Type::Float3),
-                    std::make_pair(&transMachine._float4ParameterNames,      Assets::TransformationParameterSet::Type::Float4),
-                    std::make_pair(&transMachine._float4x4ParameterNames,    Assets::TransformationParameterSet::Type::Float4x4)
+                std::pair<const T*, AnimSamplerType> tables[] = {
+                    std::make_pair(&transMachine._float1ParameterNames,      AnimSamplerType::Float1),
+                    std::make_pair(&transMachine._float3ParameterNames,      AnimSamplerType::Float3),
+                    std::make_pair(&transMachine._float4ParameterNames,      AnimSamplerType::Float4),
+                    std::make_pair(&transMachine._float4x4ParameterNames,    AnimSamplerType::Float4x4)
                 };
                 
                 auto& names = *tables[unsigned(samplerType)].first;
@@ -242,25 +242,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return *this;
     }
 
-    template<> auto NascentTransformationMachine::GetTables<float>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,SerializableVector<float>&>
-    {
-        return std::make_pair(std::ref(_float1ParameterNames), std::ref(_defaultParameters.GetFloat1ParametersVector()));
-    }
-
-    template<> auto NascentTransformationMachine::GetTables<Float3>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,SerializableVector<Float3>&>
-    {
-        return std::make_pair(std::ref(_float3ParameterNames), std::ref(_defaultParameters.GetFloat3ParametersVector()));
-    }
-
-    template<> auto NascentTransformationMachine::GetTables<Float4>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,SerializableVector<Float4>&>
-    {
-        return std::make_pair(std::ref(_float4ParameterNames), std::ref(_defaultParameters.GetFloat4ParametersVector()));
-    }
-
-    template<> auto NascentTransformationMachine::GetTables<Float4x4>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,SerializableVector<Float4x4>&>
-    {
-        return std::make_pair(std::ref(_float4x4ParameterNames), std::ref(_defaultParameters.GetFloat4x4ParametersVector())); //(note, ref is needed to make sure we get the right type of pair)
-    }
+    template<> auto NascentTransformationMachine::GetTables<float>()    -> std::vector<std::pair<AnimationParameterId, uint32>>& { return _float1ParameterNames; }
+    template<> auto NascentTransformationMachine::GetTables<Float3>()   -> std::vector<std::pair<AnimationParameterId, uint32>>& { return _float3ParameterNames; }
+    template<> auto NascentTransformationMachine::GetTables<Float4>()   -> std::vector<std::pair<AnimationParameterId, uint32>>& { return _float4ParameterNames; }
+    template<> auto NascentTransformationMachine::GetTables<Float4x4>() -> std::vector<std::pair<AnimationParameterId, uint32>>& { return _float4x4ParameterNames; }
 
     void            NascentTransformationMachine::Pop(unsigned popCount)
     {
@@ -287,58 +272,58 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         _outputMatrixCount = std::max(_outputMatrixCount, marker+1);
     }
 
-    auto NascentTransformationMachine::GetParameterIndex(AnimationParameterId parameterName) const -> std::pair<Assets::TransformationParameterSet::Type::Enum, uint32>
+    auto NascentTransformationMachine::GetParameterIndex(AnimationParameterId parameterName) const -> std::pair<AnimSamplerType, uint32>
     {
         {
             auto i = LowerBound(_float1ParameterNames, parameterName);
             if (i!=_float1ParameterNames.end() && i->first == parameterName) {
-                return std::make_pair(Assets::TransformationParameterSet::Type::Float1, i->second);
+                return std::make_pair(AnimSamplerType::Float1, i->second);
             }
         }
         {
             auto i = LowerBound(_float3ParameterNames, parameterName);
             if (i!=_float3ParameterNames.end() && i->first == parameterName) {
-                return std::make_pair(Assets::TransformationParameterSet::Type::Float3, i->second);
+                return std::make_pair(AnimSamplerType::Float3, i->second);
             }
         }
         {
             auto i = LowerBound(_float4ParameterNames, parameterName);
             if (i!=_float4ParameterNames.end() && i->first == parameterName) {
-                return std::make_pair(Assets::TransformationParameterSet::Type::Float4, i->second);
+                return std::make_pair(AnimSamplerType::Float4, i->second);
             }
         }
         {
             auto i = LowerBound(_float4x4ParameterNames, parameterName);
             if (i!=_float4x4ParameterNames.end() && i->first == parameterName) {
-                return std::make_pair(Assets::TransformationParameterSet::Type::Float4x4, i->second);
+                return std::make_pair(AnimSamplerType::Float4x4, i->second);
             }
         }
 
-        return std::make_pair(Assets::TransformationParameterSet::Type::Float1, ~uint32(0x0));
+        return std::make_pair(AnimSamplerType::Float1, ~uint32(0x0));
     }
 
     auto   NascentTransformationMachine::GetParameterName(AnimSamplerType type, uint32 index) const -> AnimationParameterId
     {
         typedef std::pair<AnimationParameterId, uint32> P;
-        if (type == Assets::TransformationParameterSet::Type::Float4x4) {
+        if (type == AnimSamplerType::Float4x4) {
             auto i = std::find_if(_float4x4ParameterNames.begin(), _float4x4ParameterNames.end(), [=](const P&p) { return p.second == index; });
             if (i!=_float4x4ParameterNames.end()) {
                 return i->first;
             }
         }
-        if (type == Assets::TransformationParameterSet::Type::Float4) {
+        if (type == AnimSamplerType::Float4) {
             auto i = std::find_if(_float4ParameterNames.begin(), _float4ParameterNames.end(), [=](const P&p) { return p.second == index; });
             if (i!=_float4ParameterNames.end()) {
                 return i->first;
             }
         }
-        if (type == Assets::TransformationParameterSet::Type::Float3) {
+        if (type == AnimSamplerType::Float3) {
             auto i = std::find_if(_float3ParameterNames.begin(), _float3ParameterNames.end(), [=](const P&p) { return p.second == index; });
             if (i!=_float3ParameterNames.end()) {
                 return i->first;
             }
         }
-        if (type == Assets::TransformationParameterSet::Type::Float1) {
+        if (type == AnimSamplerType::Float1) {
             auto i = std::find_if(_float1ParameterNames.begin(), _float1ParameterNames.end(), [=](const P&p) { return p.second == index; });
             if (i!=_float1ParameterNames.end()) {
                 return i->first;

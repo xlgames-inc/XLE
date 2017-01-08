@@ -38,10 +38,10 @@ namespace RenderCore { namespace Assets
         size_t                          curvesCount) const
     {
         TransformationParameterSet result(transformationMachine.GetDefaultParameters());
-        float* float1s      = result.GetFloat1Parameters();
-        Float3* float3s     = result.GetFloat3Parameters();
-        Float4* float4s     = result.GetFloat4Parameters();
-        Float4x4* float4x4s = result.GetFloat4x4Parameters();
+        auto float1s	= result.GetFloat1Parameters();
+        auto float3s	= result.GetFloat3Parameters();
+        auto float4s	= result.GetFloat4Parameters();
+        auto float4x4s	= result.GetFloat4x4Parameters();
 
         AnimationState animState = animState__;
 
@@ -72,45 +72,45 @@ namespace RenderCore { namespace Assets
             const TransformationMachine::InputInterface::Parameter& p 
                 = inputInterface._parameters[transInputIndex];
 
-            if (driver._samplerType == TransformationParameterSet::Type::Float4x4) {
+            if (driver._samplerType == AnimSamplerType::Float4x4) {
                 if (driver._curveId < curvesCount) {
                     const RawAnimationCurve& curve = curves[driver._curveId];
-                    assert(p._type == TransformationParameterSet::Type::Float4x4);
+                    assert(p._type == AnimSamplerType::Float4x4);
                     // assert(i->_index < float4x4s.size());
                     float4x4s[p._index] = curve.Calculate<Float4x4>(animState._time);
                 }
-            } else if (driver._samplerType == TransformationParameterSet::Type::Float4) {
+            } else if (driver._samplerType == AnimSamplerType::Float4) {
                 if (driver._curveId < curvesCount) {
                     const RawAnimationCurve& curve = curves[driver._curveId];
-                    if (p._type == TransformationParameterSet::Type::Float4) {
+                    if (p._type == AnimSamplerType::Float4) {
                         float4s[p._index] = curve.Calculate<Float4>(animState._time);
-                    } else if (p._type == TransformationParameterSet::Type::Float3) {
+                    } else if (p._type == AnimSamplerType::Float3) {
                         float3s[p._index] = Truncate(curve.Calculate<Float4>(animState._time));
                     } else {
-                        assert(p._type == TransformationParameterSet::Type::Float1);
+                        assert(p._type == AnimSamplerType::Float1);
                         float1s[p._index] = curve.Calculate<Float4>(animState._time)[0];
                     }
                 }
-            } else if (driver._samplerType == TransformationParameterSet::Type::Float3) {
+            } else if (driver._samplerType == AnimSamplerType::Float3) {
                 if (driver._curveId < curvesCount) {
                     const RawAnimationCurve& curve = curves[driver._curveId];
-                    if (p._type == TransformationParameterSet::Type::Float3) {
+                    if (p._type == AnimSamplerType::Float3) {
                         float3s[p._index] = curve.Calculate<Float3>(animState._time);
                     } else {
-                        assert(p._type == TransformationParameterSet::Type::Float1);
+                        assert(p._type == AnimSamplerType::Float1);
                         float1s[p._index] = curve.Calculate<Float3>(animState._time)[0];
                     }
                 }
-            } else if (driver._samplerType == TransformationParameterSet::Type::Float1) {
+            } else if (driver._samplerType == AnimSamplerType::Float1) {
                 if (driver._curveId < curvesCount) {
                     const RawAnimationCurve& curve = curves[driver._curveId];
                     float result = curve.Calculate<float>(animState._time);
-                    if (p._type == TransformationParameterSet::Type::Float1) {
+                    if (p._type == AnimSamplerType::Float1) {
                         float1s[p._index] = result;
-                    } else if (p._type == TransformationParameterSet::Type::Float3) {
+                    } else if (p._type == AnimSamplerType::Float3) {
                         assert(driver._samplerOffset < 3);
                         float3s[p._index][driver._samplerOffset] = result;
-                    } else if (p._type == TransformationParameterSet::Type::Float4) {
+                    } else if (p._type == AnimSamplerType::Float4) {
                         assert(driver._samplerOffset < 4);
                         float4s[p._index][driver._samplerOffset] = result;
                     }
@@ -130,25 +130,25 @@ namespace RenderCore { namespace Assets
                 = inputInterface._parameters[transInputIndex];
 
             const void* data    = PtrAdd(_constantData, driver._dataOffset);
-            if (driver._samplerType == TransformationParameterSet::Type::Float4x4) {
-                assert(p._type == TransformationParameterSet::Type::Float4x4);
+            if (driver._samplerType == AnimSamplerType::Float4x4) {
+                assert(p._type == AnimSamplerType::Float4x4);
                 float4x4s[p._index] = *(const Float4x4*)data;
-            } else if (driver._samplerType == TransformationParameterSet::Type::Float4) {
-                if (p._type == TransformationParameterSet::Type::Float4) {
+            } else if (driver._samplerType == AnimSamplerType::Float4) {
+                if (p._type == AnimSamplerType::Float4) {
                     float4s[p._index] = *(const Float4*)data;
-                } else if (p._type == TransformationParameterSet::Type::Float3) {
+                } else if (p._type == AnimSamplerType::Float3) {
                     float3s[p._index] = Truncate(*(const Float4*)data);
                 }
-            } else if (driver._samplerType == TransformationParameterSet::Type::Float3) {
-                assert(p._type == TransformationParameterSet::Type::Float3);
+            } else if (driver._samplerType == AnimSamplerType::Float3) {
+                assert(p._type == AnimSamplerType::Float3);
                 float3s[p._index] = *(Float3*)data;
-            } else if (driver._samplerType == TransformationParameterSet::Type::Float1) {
-                if (p._type == TransformationParameterSet::Type::Float1) {
+            } else if (driver._samplerType == AnimSamplerType::Float1) {
+                if (p._type == AnimSamplerType::Float1) {
                     float1s[p._index] = *(float*)data;
-                } else if (p._type == TransformationParameterSet::Type::Float3) {
+                } else if (p._type == AnimSamplerType::Float3) {
                     assert(driver._samplerOffset < 3);
                     float3s[p._index][driver._samplerOffset] = *(const float*)data;
-                } else if (p._type == TransformationParameterSet::Type::Float4) {
+                } else if (p._type == AnimSamplerType::Float4) {
                     assert(driver._samplerOffset < 4);
                     float4s[p._index][driver._samplerOffset] = *(const float*)data;
                 }
@@ -513,18 +513,42 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    TransformationParameterSet::TransformationParameterSet()
-    {
-    }
+	uint32 TransformationParameterSet::AddParameter(float p) 
+	{
+		uint32 res = (uint32)_float1Parameters.size();
+		_float1Parameters.push_back(p);
+		return res;
+	}
+
+	uint32 TransformationParameterSet::AddParameter(Float3 p)
+	{
+		uint32 res = (uint32)_float1Parameters.size();
+		_float3Parameters.push_back(p);
+		return res;
+	}
+
+	uint32 TransformationParameterSet::AddParameter(Float4 p)
+	{
+		uint32 res = (uint32)_float1Parameters.size();
+		_float4Parameters.push_back(p);
+		return res;
+	}
+
+	uint32 TransformationParameterSet::AddParameter(const Float4x4& p)
+	{
+		uint32 res = (uint32)_float4x4Parameters.size();
+		_float4x4Parameters.push_back(p);
+		return res;
+	}
+
+    TransformationParameterSet::TransformationParameterSet() {}
 
     TransformationParameterSet::TransformationParameterSet(TransformationParameterSet&& moveFrom)
     :       _float4x4Parameters(    std::move(moveFrom._float4x4Parameters))
     ,       _float4Parameters(      std::move(moveFrom._float4Parameters))
     ,       _float3Parameters(      std::move(moveFrom._float3Parameters))
     ,       _float1Parameters(      std::move(moveFrom._float1Parameters))
-    {
-
-    }
+    {}
 
     TransformationParameterSet& TransformationParameterSet::operator=(TransformationParameterSet&& moveFrom)
     {

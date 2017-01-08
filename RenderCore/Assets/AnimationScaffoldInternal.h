@@ -12,7 +12,6 @@ namespace RenderCore { namespace Assets
 {
     class RawAnimationCurve;
     class AnimationSetBinding;
-    typedef TransformationParameterSet::Type::Enum AnimSamplerType;
     class AnimationState;
     class TransformationMachine;
 

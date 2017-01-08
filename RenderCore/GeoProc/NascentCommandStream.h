@@ -26,9 +26,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         //      and some information to bind these animations to
         //      a skeleton
         //
-
-    typedef Assets::TransformationParameterSet::Type::Enum AnimSamplerType;
-
+	
     class NascentAnimationSet : noncopyable
     {
     public:

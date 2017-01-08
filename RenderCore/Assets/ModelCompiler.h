@@ -29,6 +29,8 @@ namespace RenderCore { namespace Assets
         static const uint64 Type_Skeleton = ConstHash64<'Skel', 'eton'>::Value;
         static const uint64 Type_RawMat = ConstHash64<'RawM', 'at'>::Value;
 
+		void AddLibrarySearchDirectories(const ::Assets::DirectorySearchRules&);
+
         ModelCompiler();
         ~ModelCompiler();
     protected:

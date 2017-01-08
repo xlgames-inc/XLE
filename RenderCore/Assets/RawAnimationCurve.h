@@ -17,7 +17,7 @@ namespace RenderCore { namespace Assets
     class RawAnimationCurve 
     {
     public:
-        enum InterpolationType { Linear, Bezier, Hermite };
+        enum InterpolationType { Linear, Bezier, Hermite, CatmullRom };
 
         RawAnimationCurve(  size_t keyCount, 
                             std::unique_ptr<float[], BlockSerializerDeleter<float[]>>&&  timeMarkers, 
@@ -42,15 +42,12 @@ namespace RenderCore { namespace Assets
         size_t                          _keyCount;
         std::unique_ptr<float[], BlockSerializerDeleter<float[]>>    _timeMarkers;
         DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>         _parameterData;
-        size_t                          _elementSize;
+        size_t                          _elementStride;
         InterpolationType               _interpolationType;
 
         Format       _positionFormat;
         Format       _inTangentFormat;
         Format       _outTangentFormat;
-
-        template<typename OutType>
-            static Format   ExpectedFormat();
     };
 
     template<typename Serializer>
@@ -59,7 +56,7 @@ namespace RenderCore { namespace Assets
         ::Serialize(outputSerializer, _keyCount);
         ::Serialize(outputSerializer, _timeMarkers, _keyCount);
         ::Serialize(outputSerializer, _parameterData);
-        ::Serialize(outputSerializer, _elementSize);
+        ::Serialize(outputSerializer, _elementStride);
         ::Serialize(outputSerializer, unsigned(_interpolationType));
         ::Serialize(outputSerializer, unsigned(_positionFormat));
         ::Serialize(outputSerializer, unsigned(_inTangentFormat));
