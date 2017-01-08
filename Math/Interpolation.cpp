@@ -9,21 +9,19 @@
 
 namespace XLEMath
 {
-    float BezierInterpolate(float P0, float C0, float C1, float P1, float alpha)
+    float BezierInterpolate(float P0, float C0, float C1, float P1, float s)
     {
-        float alpha2 = alpha*alpha;
-        float alpha3 = alpha2*alpha;
-        float complement = 1.0f-alpha;
+        float sSq = s*s;
+        float sCb = sSq*s;
+        float complement = 1.f-s;
         float complement2 = complement*complement;
         float complement3 = complement2*complement;
 
             //  This the standard Bezier equation (as seen in textbooks everywhere)
-        return
-                P0 * complement3
-            +   3.f * C0 * alpha * complement2
-            +   3.f * C1 * alpha2 * complement
-            +   P1 * alpha3
-            ;
+        return	P0 * complement3
+            +   3.f * C0 * s * complement2
+            +   3.f * C1 * sSq * complement
+            +   P1 * sCb;
     }
 
     Float3 BezierInterpolate(Float3 P0, Float3 C0, Float3 C1, Float3 P1, float alpha)
@@ -109,5 +107,71 @@ namespace XLEMath
         return BezierInterpolate(P0, C0, C1, P1, alpha);
     }
 
+
+
+	float HermiteInterpolate(float P0, float m0, float P1, float m1, float s)
+    {
+        float sSq = s*s;
+        float complement = 1.0f-s;
+        float complementSq = complement*complement;
+
+            //  This is the hermite interpolation formula
+			//  Note that if we wanted to interpolate the same spline segment
+			//	multiple times, with different values for 's', then we could
+			//	refactor this into the form:
+			//		c3*s^3 + c2*s^2 + c1*s^1 + c0
+        return	P0 * ((1.f+2.f*s) * complementSq)
+            +   m0 * (s * complementSq)
+            +   P1 * (sSq * (3.f-2.f*s))
+            +   m1 * -(sSq * complement);
+    }
+
+	template<typename Type>
+		typename std::remove_reference<Type>::type HermiteInterpolate(
+			Type P0, Type m0, float m0Scale,
+			Type P1, Type m1, float m1Scale,
+			float t)
+    {
+        float tSq = t*t;
+        float complement = 1.0f-t;
+        float complementSq = complement*complement;
+
+            //  This the standard Bezier equation (as seen in textbooks everywhere)
+        return	P0 * ((1.f+2.f*t) * complementSq)
+            +   m0 * ((t * complementSq) * m0Scale)
+            +   P1 * (tSq * (3.f-2.f*t))
+            +   m1 * ((tSq * (t - 1.f)) * m1Scale);
+    }
+
+	float       SphericalCatmullRomInterpolate(float P0n1, float P0, float P1, float P1p1, float P0n1t, float P1p1t, float alpha)
+	{
+		float m0 = (P1 - P0n1) / (1.f - P0n1t);
+		float m1 = (P1p1 - P0) / (P1p1t - 0.f);
+		return HermiteInterpolate(P0, m0, P1, m1, alpha);
+	}
+
+    Float3      SphericalCatmullRomInterpolate(Float3 P0n1, Float3 P0, Float3 P1, Float3 P1p1, float P0n1t, float P1p1t, float alpha)
+	{
+		return HermiteInterpolate<Float3>(
+			P0, P1 - P0n1, 1.f / (1.f - P0n1t),
+			P1, P1p1 - P0, 1.f / (P1p1t - 0.f),
+			alpha);
+	}
+
+    Float4      SphericalCatmullRomInterpolate(const Float4& P0n1, const Float4& P0, const Float4& P1, const Float4& P1p1, float P0n1t, float P1p1t, float alpha)
+	{
+		return HermiteInterpolate<const Float4&>(
+			P0, P1 - P0n1, 1.f / (1.f - P0n1t),
+			P1, P1p1 - P0, 1.f / (P1p1t - 0.f),
+			alpha);
+	}
+
+    Float4x4    SphericalCatmullRomInterpolate(const Float4x4& P0n1, const Float4x4& P0, const Float4x4& P1, const Float4x4& P1p1, float P0n1t, float P1p1t, float alpha)
+	{
+		return HermiteInterpolate<const Float4x4&>(
+			P0, P1 - P0n1, 1.f / (1.f - P0n1t),
+			P1, P1p1 - P0, 1.f / (P1p1t - 0.f),
+			alpha);
+	}
 
 }
