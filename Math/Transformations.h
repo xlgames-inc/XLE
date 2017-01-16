@@ -143,6 +143,8 @@ namespace XLEMath
     void            Combine_InPlace(RotationX rotation, Float4x4& transform);
     void            Combine_InPlace(RotationY rotation, Float4x4& transform);
     void            Combine_InPlace(RotationZ rotation, Float4x4& transform);
+	void            Combine_InPlace(ArbitraryRotation rotation, Float4x4& transform);
+	void            Combine_InPlace(Quaternion rotation, Float4x4& transform);
 
     void            Combine_InPlace(Float4x4& transform, const Float3& translate);
     void            Combine_InPlace(Float4x4& transform, const UniformScale& scale);
@@ -150,7 +152,8 @@ namespace XLEMath
     void            Combine_InPlace(Float4x4& transform, RotationX rotation);
     void            Combine_InPlace(Float4x4& transform, RotationY rotation);
     void            Combine_InPlace(Float4x4& transform, RotationZ rotation);
-    
+	void            Combine_InPlace(Float4x4& transform, ArbitraryRotation rotation);
+    void            Combine_InPlace(Float4x4& transform, Quaternion rotation);
 
     Float4x4        Combine(const Float3x3& rotation, const Float4x4& transform);
 	Float4x4        Combine(const Float4x4& transform, const Float3x3& rotation);

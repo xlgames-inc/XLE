@@ -6,6 +6,7 @@
 
 #include "NascentCommandStream.h"
 #include "SkeletonRegistry.h"
+#include "../Format.h"
 #include "../Assets/RawAnimationCurve.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../ConsoleRig/OutputStream.h"
@@ -30,37 +31,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             : _name(name), _begin(begin), _end(end), _constantBegin(constantBegin), _constantEnd(constantEnd), _startTime(startTime), _endTime(endTime) {}
     };
 
-    AnimSamplerType      SamplerWidthToType(unsigned samplerWidth)
-    {
-        auto samplerType = AnimSamplerType::Float1;
-        switch (samplerWidth) {
-        case  1:    samplerType = AnimSamplerType::Float1;     break;
-        case  3:    samplerType = AnimSamplerType::Float3;     break;
-        case  4:    samplerType = AnimSamplerType::Float4;     break;
-        case 16:    samplerType = AnimSamplerType::Float4x4;   break;
-        default: 
-            Throw(
-                FormatError(
-                    "Strange sampler width encountered when adding animation driver!"));
-        }
-
-        return samplerType;
-    }
-
-    size_t      SamplerSize(AnimSamplerType samplerType)
-    {
-        switch (samplerType) {
-        case AnimSamplerType::Float1:      return sizeof(float);
-        case AnimSamplerType::Float3:      return sizeof(Float3);
-        case AnimSamplerType::Float4:      return sizeof(Float4);
-        case AnimSamplerType::Float4x4:    return sizeof(Float4x4);
-        }
-        return 0;
-    }
-
     void    NascentAnimationSet::AddConstantDriver( 
                                     const std::string&  parameterName, 
                                     const void*         constantValue, 
+									size_t				valueSize,
+									Format				format,
                                     AnimSamplerType     samplerType, 
                                     unsigned            samplerOffset)
     {
@@ -73,13 +48,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             _parameterInterfaceDefinition.push_back(parameterName);
         }
 
+		// Expecting a single value -- it should match the bits per pixel value
+		// associated with the given format
+		assert(unsigned(valueSize) == RenderCore::BitsPerPixel(format)/8);
+
         unsigned dataOffset = unsigned(_constantData.size());
         std::copy(
-            (uint8*)constantValue, PtrAdd((uint8*)constantValue, SamplerSize(samplerType)),
+            (uint8*)constantValue, PtrAdd((uint8*)constantValue, valueSize),
             std::back_inserter(_constantData));
 
         _constantDrivers.push_back(
-            ConstantDriver(dataOffset, (unsigned)parameterIndex, samplerType, samplerOffset));
+            ConstantDriver(dataOffset, (unsigned)parameterIndex, format, samplerType, samplerOffset));
     }
 
     void    NascentAnimationSet::AddAnimationDriver( 
@@ -152,7 +131,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         for (auto i=animation._constantDrivers.cbegin(); i!=animation._constantDrivers.end(); ++i) {
             const std::string& name = animation._parameterInterfaceDefinition[i->_parameterIndex];
-            AddConstantDriver(name, PtrAdd(AsPointer(animation._constantData.begin()), i->_dataOffset), i->_samplerType, i->_samplerOffset);
+            AddConstantDriver(
+				name, PtrAdd(AsPointer(animation._constantData.begin()), i->_dataOffset), 
+				BitsPerPixel(i->_format), i->_format,
+				i->_samplerType, i->_samplerOffset);
         }
 
         _animations.push_back(Animation(name, 

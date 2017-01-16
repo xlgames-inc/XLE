@@ -904,7 +904,7 @@ namespace SceneEngine
 
     void TerrainManager::SetWorldSpaceOrigin(const Float3& origin)
     {
-        auto change = origin - _pimpl->_coords.TerrainOffset();
+        auto change = Float3(origin - _pimpl->_coords.TerrainOffset());
         _pimpl->_coords.SetTerrainOffset(origin);
 
             //  We have to update the _cellToWorld transforms

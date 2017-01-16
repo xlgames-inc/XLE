@@ -14,21 +14,25 @@
 
 namespace RenderCore { namespace Assets
 {
+	struct CurveKeyDataDesc
+	{
+		struct Flags { enum BitValue { Quantized = 1<<0, HasInTangent = 1<<1, HasOutTangent = 1<<2 }; using BitField = unsigned; };
+		Flags::BitField	_flags;
+		unsigned		_elementStride;
+		Format			_elementFormat;
+	};
+
+	struct CurveDequantizationBlock
+	{
+		unsigned _elementFlags;
+		float _mins[4], _maxs[4];
+	};
+
+	enum class CurveInterpolationType : unsigned { Linear, Bezier, Hermite, CatmullRom };
+
     class RawAnimationCurve 
     {
     public:
-        enum InterpolationType { Linear, Bezier, Hermite, CatmullRom };
-
-        RawAnimationCurve(  size_t keyCount, 
-                            std::unique_ptr<float[], BlockSerializerDeleter<float[]>>&&  timeMarkers, 
-                            DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>&&       keyPositions,
-                            size_t elementSize, InterpolationType interpolationType,
-                            Format positionFormat, Format inTangentFormat,
-                            Format outTangentFormat);
-        RawAnimationCurve(RawAnimationCurve&& curve);
-        RawAnimationCurve(const RawAnimationCurve& copyFrom);
-        RawAnimationCurve& operator=(RawAnimationCurve&& curve);
-
         template<typename Serializer>
             void        Serialize(Serializer& outputSerializer) const;
 
@@ -38,29 +42,32 @@ namespace RenderCore { namespace Assets
         template<typename OutType>
             OutType        Calculate(float inputTime) const never_throws;
 
-    protected:
-        size_t                          _keyCount;
-        std::unique_ptr<float[], BlockSerializerDeleter<float[]>>    _timeMarkers;
-        DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>         _parameterData;
-        size_t                          _elementStride;
-        InterpolationType               _interpolationType;
+		RawAnimationCurve(  DynamicArray<float>&&	timeMarkers, 
+                            DynamicArray<uint8>&&   keyData,
+							const CurveKeyDataDesc&	keyDataDesc,
+                            CurveInterpolationType	interpolationType);
+        RawAnimationCurve(RawAnimationCurve&& moveFrom) = default;
+        RawAnimationCurve& operator=(RawAnimationCurve&& moveFrom) = default;
+		RawAnimationCurve(const RawAnimationCurve& copyFrom);
+		RawAnimationCurve& operator=(const RawAnimationCurve& copyFrom);
+		~RawAnimationCurve();
 
-        Format       _positionFormat;
-        Format       _inTangentFormat;
-        Format       _outTangentFormat;
+    protected:
+        DynamicArray<float, BlockSerializerDeleter<float[]>>    _timeMarkers;
+        DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>	_keyData;
+        CurveKeyDataDesc		_keyDataDesc;
+		CurveInterpolationType  _interpolationType;
     };
 
     template<typename Serializer>
         void        RawAnimationCurve::Serialize(Serializer& outputSerializer) const
     {
-        ::Serialize(outputSerializer, _keyCount);
-        ::Serialize(outputSerializer, _timeMarkers, _keyCount);
-        ::Serialize(outputSerializer, _parameterData);
-        ::Serialize(outputSerializer, _elementStride);
-        ::Serialize(outputSerializer, unsigned(_interpolationType));
-        ::Serialize(outputSerializer, unsigned(_positionFormat));
-        ::Serialize(outputSerializer, unsigned(_inTangentFormat));
-        ::Serialize(outputSerializer, unsigned(_outTangentFormat));
+        ::Serialize(outputSerializer, _timeMarkers);
+        ::Serialize(outputSerializer, _keyData);
+        ::Serialize(outputSerializer, _keyDataDesc._flags);
+		::Serialize(outputSerializer, _keyDataDesc._elementStride);
+        ::Serialize(outputSerializer, unsigned(_keyDataDesc._elementFormat));
+		::Serialize(outputSerializer, unsigned(_interpolationType));
     }
 
 }}

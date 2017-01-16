@@ -238,7 +238,7 @@ namespace ColladaConversion
             dest[c*outputStride] = 0.f;
     }
 
-    static RenderCore::Assets::RawAnimationCurve::InterpolationType AsInterpolationType(const DataFlow::Source& src)
+    static RenderCore::Assets::CurveInterpolationType AsInterpolationType(const DataFlow::Source& src)
     {
             // Let's make sure the format of the source is exactly what we expect. 
             // If there is anything strange or unexpected, we must fail.
@@ -271,13 +271,13 @@ namespace ColladaConversion
             type = newSection;
         }
 
-        if (Is(type, u("BEZIER"))) return RenderCore::Assets::RawAnimationCurve::Bezier;
-        if (Is(type, u("HERMITE"))) return RenderCore::Assets::RawAnimationCurve::Hermite;
-        if (Is(type, u("LINEAR"))) return RenderCore::Assets::RawAnimationCurve::Linear;
+        if (Is(type, u("BEZIER"))) return RenderCore::Assets::CurveInterpolationType::Bezier;
+        if (Is(type, u("HERMITE"))) return RenderCore::Assets::CurveInterpolationType::Hermite;
+        if (Is(type, u("LINEAR"))) return RenderCore::Assets::CurveInterpolationType::Linear;
 
         // "BSPLINE" is also part of the "common profile" of collada -- but not supported
         LogWarning << "Interpolation type for animation sampler not understood. Falling back to linear interpolation. At: " << src.GetLocation();
-        return RenderCore::Assets::RawAnimationCurve::Linear;
+        return RenderCore::Assets::CurveInterpolationType::Linear;
     }
 
     UnboundAnimation Convert(
@@ -346,18 +346,19 @@ namespace ColladaConversion
             auto keyCount = firstChannel._inputSource->FindAccessorForTechnique()->GetCount();
 
 			using RenderCore::Format;
+			using RenderCore::Assets::AnimSamplerType;
             Format
                 positionFormat    = Format::Unknown,
                 inTangentFormat   = Format::Unknown,
                 outTangentFormat  = Format::Unknown;
 
-			RenderCore::Assets::TransformationParameterSet::Type samplerType;
+			AnimSamplerType samplerType;
             
             switch (outDimension) {
-			case 1:     positionFormat = Format::R32_FLOAT; samplerType = RenderCore::Assets::TransformationParameterSet::Type::Float1; break;
-            case 3:     positionFormat = Format::R32G32B32_FLOAT; samplerType = RenderCore::Assets::TransformationParameterSet::Type::Float3; break;
-            case 4:     positionFormat = Format::R32G32B32A32_FLOAT; samplerType = RenderCore::Assets::TransformationParameterSet::Type::Float4; break;
-            case 16:    positionFormat = Format::Matrix4x4; samplerType = RenderCore::Assets::TransformationParameterSet::Type::Float4x4; break;
+			case 1:     positionFormat = Format::R32_FLOAT; samplerType = AnimSamplerType::Float1; break;
+            case 3:     positionFormat = Format::R32G32B32_FLOAT; samplerType = AnimSamplerType::Float3; break;
+            case 4:     positionFormat = Format::R32G32B32A32_FLOAT; samplerType = AnimSamplerType::Float4; break;
+            case 16:    positionFormat = Format::Matrix4x4; samplerType = AnimSamplerType::Float4x4; break;
             default:    Throw(FormatError("Out dimension in animation is invalid (%i). Expected 1, 3, 4 or 16.", outDimension));
             }
 
@@ -368,8 +369,7 @@ namespace ColladaConversion
             const auto inTangentBytes = BitsPerPixel(inTangentFormat)/8;
             const auto elementBytes = positionBytes + inTangentBytes+ BitsPerPixel(outTangentFormat)/8;
 
-            auto keyBlock = std::unique_ptr<uint8[], BlockSerializerDeleter<uint8[]>>(
-                new uint8[elementBytes * keyCount]);
+            auto keyBlock = std::make_unique<uint8[]>(elementBytes * keyCount);
             auto inTangentsOffsetBytes = positionBytes;
             auto outTangentsOffsetBytes = inTangentsOffsetBytes + inTangentBytes;
 
@@ -437,7 +437,7 @@ namespace ColladaConversion
                 //          array. If they are not the same, it means the key frames for
                 //          different fields are in different places. That would cause a lot
                 //          of problems.
-            auto inputTimeBlock = std::unique_ptr<float[], BlockSerializerDeleter<float[]>>(new float[keyCount]);
+            auto inputTimeBlock = std::make_unique<float[]>(keyCount);
             LoadSource(
                 inputTimeBlock.get(),
                 1, keyCount, 1, 
@@ -445,16 +445,23 @@ namespace ColladaConversion
                 firstChannel._inputSource->FindAccessorForTechnique()->GetStride()-1);
 
                 // todo -- we need to find the correct animation curve type
-            auto interpolationType = RenderCore::Assets::RawAnimationCurve::Linear;
+            auto interpolationType = RenderCore::Assets::CurveInterpolationType::Linear;
             if (firstChannel._interpolationSource)
                 interpolationType = AsInterpolationType(*firstChannel._interpolationSource);
 
+			RenderCore::Assets::CurveKeyDataDesc keyDataDesc { 0, elementBytes, positionFormat };
+			if (inTangentFormat != Format::Unknown) {
+				assert(inTangentFormat == positionFormat);
+				keyDataDesc._flags |= RenderCore::Assets::CurveKeyDataDesc::Flags::HasInTangent;
+			}
+			if (outTangentFormat != Format::Unknown) {
+				assert(outTangentFormat == positionFormat);
+				keyDataDesc._flags |= RenderCore::Assets::CurveKeyDataDesc::Flags::HasOutTangent;
+			}
 			RenderCore::Assets::RawAnimationCurve curve(
-                (size_t)keyCount, std::move(inputTimeBlock),
-                DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>(
-                    std::move(keyBlock), elementBytes * keyCount),
-                elementBytes, interpolationType,
-                positionFormat, inTangentFormat, outTangentFormat);
+                DynamicArray<float>(std::move(inputTimeBlock), size_t(keyCount)),
+                DynamicArray<uint8>(std::move(keyBlock), elementBytes * keyCount),
+				keyDataDesc, interpolationType);
             result._curves.emplace_back(UnboundAnimation::Curve(
                 i->first, std::move(curve), samplerType, 0));
             

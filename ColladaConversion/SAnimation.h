@@ -26,12 +26,12 @@ namespace ColladaConversion
         public:
             std::string                 _parameterName;
             RenderCore::Assets::RawAnimationCurve   _curve;
-			RenderCore::Assets::TransformationParameterSet::Type _samplerType;
+			RenderCore::Assets::AnimSamplerType _samplerType;
             unsigned                    _samplerOffset;
 
             Curve(
                 const std::string parameterName, RenderCore::Assets::RawAnimationCurve&& curve,
-				RenderCore::Assets::TransformationParameterSet::Type samplerType,
+				RenderCore::Assets::AnimSamplerType samplerType,
                 unsigned samplerOffset)
             : _parameterName(parameterName), _curve(std::move(curve))
             , _samplerType(samplerType), _samplerOffset(samplerOffset) {}

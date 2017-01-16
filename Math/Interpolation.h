@@ -8,6 +8,7 @@
 
 #include "Vector.h"
 #include "Matrix.h"
+#include "Quaternion.h"
 
 namespace XLEMath
 {
@@ -15,16 +16,19 @@ namespace XLEMath
     Float3      BezierInterpolate(Float3 P0, Float3 C0, Float3 C1, Float3 P1, float alpha);
     Float4      BezierInterpolate(const Float4& P0, const Float4& C0, const Float4& C1, const Float4& P1, float alpha);
     Float4x4    BezierInterpolate(const Float4x4& P0, const Float4x4& C0, const Float4x4& C1, const Float4x4& P1, float alpha);
+	Quaternion  BezierInterpolate(const Quaternion& P0, const Quaternion& C0, const Quaternion& C1, const Quaternion& P1, float alpha);
 
     float       SphericalInterpolate(float A, float B, float alpha);
     Float3      SphericalInterpolate(Float3 A, Float3 B, float alpha);
     Float4      SphericalInterpolate(const Float4& A, const Float4& B, float alpha);
     Float4x4    SphericalInterpolate(const Float4x4& A, const Float4x4& B, float alpha);
+	// Quaternion  SphericalInterpolate(const Quaternion& A, const Quaternion& B, float alpha); (declared in Quaternion.h)
 
     float       SphericalBezierInterpolate(float P0, float C0, float C1, float P1, float alpha);
     Float3      SphericalBezierInterpolate(Float3 P0, Float3 C0, Float3 C1, Float3 P1, float alpha);
     Float4      SphericalBezierInterpolate(const Float4& P0, const Float4& C0, const Float4& C1, const Float4& P1, float alpha);
     Float4x4    SphericalBezierInterpolate(const Float4x4& P0, const Float4x4& C0, const Float4x4& C1, const Float4x4& P1, float alpha);
+	Quaternion  SphericalBezierInterpolate(const Quaternion& P0, const Quaternion& C0, const Quaternion& C1, const Quaternion& P1, float alpha);
 
 	// Perform Catmull Rom interpolation along a spline (using spherical methods for rotation types)
 	// P0n1 is the point before P0, and P1p1 is the point after P1
@@ -36,5 +40,6 @@ namespace XLEMath
     Float3      SphericalCatmullRomInterpolate(Float3 P0n1, Float3 P0, Float3 P1, Float3 P1p1, float P0n1t, float P1p1t, float alpha);
     Float4      SphericalCatmullRomInterpolate(const Float4& P0n1, const Float4& P0, const Float4& P1, const Float4& P1p1, float P0n1t, float P1p1t, float alpha);
     Float4x4    SphericalCatmullRomInterpolate(const Float4x4& P0n1, const Float4x4& P0, const Float4x4& P1, const Float4x4& P1p1, float P0n1t, float P1p1t, float alpha);
+	Quaternion  SphericalCatmullRomInterpolate(const Quaternion& P0n1, const Quaternion& P0, const Quaternion& P1, const Quaternion& P1p1, float P0n1t, float P1p1t, float alpha);
 }
 

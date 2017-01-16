@@ -23,6 +23,7 @@ namespace RenderCore { namespace Assets
         case TransformStackCommand::RotateY_Static:             return 1;
         case TransformStackCommand::RotateZ_Static:             return 1;
         case TransformStackCommand::Rotate_Static:              return 4;
+		case TransformStackCommand::RotateQuaternion_Static:    return 4;
         case TransformStackCommand::UniformScale_Static:        return 1;
         case TransformStackCommand::ArbitraryScale_Static:      return 3;
 
@@ -32,6 +33,7 @@ namespace RenderCore { namespace Assets
         case TransformStackCommand::RotateY_Parameter:
         case TransformStackCommand::RotateZ_Parameter:
         case TransformStackCommand::Rotate_Parameter:
+		case TransformStackCommand::RotateQuaternion_Parameter:
         case TransformStackCommand::UniformScale_Parameter:
         case TransformStackCommand::ArbitraryScale_Parameter:
             return 1;
@@ -157,6 +159,7 @@ namespace RenderCore { namespace Assets
         case TransformStackCommand::RotateY_Static:
         case TransformStackCommand::RotateZ_Static:
         case TransformStackCommand::Rotate_Static:
+		case TransformStackCommand::RotateQuaternion_Static:
         case TransformStackCommand::UniformScale_Static:
         case TransformStackCommand::ArbitraryScale_Static:  return MergeType::StaticTransform;
 
@@ -249,11 +252,13 @@ namespace RenderCore { namespace Assets
         case TransformStackCommand::RotateY_Static:
         case TransformStackCommand::RotateZ_Static:
         case TransformStackCommand::Rotate_Static:
+		case TransformStackCommand::RotateQuaternion_Static:
                 // only merge into another rotate
             return (rhs == TransformStackCommand::RotateX_Static)
                 || (rhs == TransformStackCommand::RotateY_Static)
                 || (rhs == TransformStackCommand::RotateZ_Static)
                 || (rhs == TransformStackCommand::Rotate_Static)
+				|| (rhs == TransformStackCommand::RotateQuaternion_Static)
                 ;
 
         case TransformStackCommand::UniformScale_Static:
@@ -287,6 +292,9 @@ namespace RenderCore { namespace Assets
 
         case TransformStackCommand::Rotate_Static:
             return AsFloat4x4(*(const ArbitraryRotation*)(cmd+1));
+
+		case TransformStackCommand::RotateQuaternion_Static:
+            return AsFloat4x4(*(const Quaternion*)(cmd+1));
 
         case TransformStackCommand::UniformScale_Static:
             return AsFloat4x4(*(const UniformScale*)(cmd+1));
@@ -843,9 +851,14 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::Rotate_Static:
                 // i = AdvanceTo16ByteAlignment(i);
-                *workingTransform = Combine(MakeRotationMatrix(AsFloat3(reinterpret_cast<const float*>(AsPointer(i))), Deg2Rad(*reinterpret_cast<const float*>(AsPointer(i+3)))), *workingTransform);
+                Combine_InPlace(ArbitraryRotation(AsFloat3(reinterpret_cast<const float*>(AsPointer(i))), Deg2Rad(*reinterpret_cast<const float*>(AsPointer(i+3)))), *workingTransform);
                 i += 4;
                 break;
+
+			case TransformStackCommand::RotateQuaternion_Static:
+				Combine_InPlace(*reinterpret_cast<const Quaternion*>(AsPointer(i)), *workingTransform);
+				i += 4;
+				break;
 
             case TransformStackCommand::UniformScale_Static:
                 Combine_InPlace(UniformScale(*reinterpret_cast<const float*>(AsPointer(i))), *workingTransform);
@@ -916,9 +929,21 @@ namespace RenderCore { namespace Assets
                 {
                     uint32 parameterIndex = *i++;
                     if (parameterIndex < float4s.size()) {
-                        *workingTransform = Combine(MakeRotationMatrix(Truncate(float4s[parameterIndex]), Deg2Rad(float4s[parameterIndex][3])), *workingTransform);
+						Combine_InPlace(ArbitraryRotation(Truncate(float4s[parameterIndex]), Deg2Rad(float4s[parameterIndex][3])), *workingTransform);
                     } else {
                         LogWarning << "Warning -- bad parameter index for Rotate_Parameter command (" << parameterIndex << ")";
+                    }
+                }
+                break;
+
+			case TransformStackCommand::RotateQuaternion_Parameter:
+				{
+                    uint32 parameterIndex = *i++;
+                    if (parameterIndex < float4s.size()) {
+						const Float4& p = float4s[parameterIndex];
+                        Combine_InPlace(Quaternion(p[0], p[1], p[2], p[3]), *workingTransform);
+                    } else {
+                        LogWarning << "Warning -- bad parameter index for RotateQuaternion_Parameter command (" << parameterIndex << ")";
                     }
                 }
                 break;
@@ -1100,6 +1125,14 @@ namespace RenderCore { namespace Assets
                 }
                 break;
 
+			case TransformStackCommand::RotateQuaternion_Static:
+                {
+                    auto q = reinterpret_cast<const Quaternion*>(AsPointer(i));
+                    stream << indentBuffer << "RotateQuaternion_Static (" << q[0] << ", " << q[1] << ", " << q[2] << ", " << q[3] << ")" << std::endl;
+                    i += 4;
+                }
+                break;
+
             case TransformStackCommand::UniformScale_Static:
                 stream << indentBuffer << "UniformScale_Static (" << *reinterpret_cast<const float*>(AsPointer(i)) << ")" << std::endl;
                 i++;
@@ -1157,6 +1190,14 @@ namespace RenderCore { namespace Assets
                 stream << indentBuffer << "Rotate_Parameter [" << *i << "]";
                 if (parameterToName)
                     stream << " (" << parameterToName(AnimSamplerType::Float4, *i) << ")";
+                stream << std::endl;
+                i++;
+                break;
+
+			case TransformStackCommand::RotateQuaternion_Parameter:
+                stream << indentBuffer << "RotateQuaternion_Parameter [" << *i << "]";
+                if (parameterToName)
+                    stream << " (" << parameterToName(AnimSamplerType::Quaternion, *i) << ")";
                 stream << std::endl;
                 i++;
                 break;

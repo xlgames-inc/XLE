@@ -41,6 +41,7 @@ namespace RenderCore { namespace Assets
         RotateY_Static,                 // rotation around X (float)
         RotateZ_Static,                 // rotation around X (float)
         Rotate_Static,                  // Axis X, Y, Z, rotation (float)
+		RotateQuaternion_Static,		// Rotate through a quaternion
         UniformScale_Static,            // scalar (float)
         ArbitraryScale_Static,          // X, Y, Z scales (float)
 
@@ -50,6 +51,7 @@ namespace RenderCore { namespace Assets
         RotateY_Parameter,              // rotation around X (float)
         RotateZ_Parameter,              // rotation around X (float)
         Rotate_Parameter,               // Axis X, Y, Z, rotation (float)
+		RotateQuaternion_Parameter,		// Rotate through a quaternion
         UniformScale_Parameter,         // scalar (float)
         ArbitraryScale_Parameter,       // X, Y, Z scales (float)
 
@@ -60,7 +62,7 @@ namespace RenderCore { namespace Assets
         Comment
     };
 
-	enum class AnimSamplerType { Float1, Float3, Float4, Float4x4 };
+	enum class AnimSamplerType { Float1, Float3, Float4, Float4x4, Quaternion };
 
             //////////////////////////////////////////////////////////
 

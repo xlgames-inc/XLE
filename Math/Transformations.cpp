@@ -437,6 +437,32 @@ namespace XLEMath
         rhs(3,3) = rhs(3,3);
     }
 
+	void            Combine_InPlace(ArbitraryRotation rotation, Float4x4& transform)
+	{
+		// note -- inefficient implementation!
+		transform = Combine(MakeRotationMatrix(rotation._axis, rotation._angle), transform);
+	}
+	
+	void            Combine_InPlace(Float4x4& transform, ArbitraryRotation rotation)
+	{
+		// note -- inefficient implementation!
+		transform = Combine(transform, MakeRotationMatrix(rotation._axis, rotation._angle));
+	}
+
+	void            Combine_InPlace(Quaternion rotation, Float4x4& transform)
+	{
+		// note -- inefficient implementation!
+		// When using quaternions frequently, we're probably better off avoiding
+		// matrix form until the last moment. That is, we should combine local to parent
+		// transforms using a quaternion/translation/scale object (ie, ScaleRotationTranslationQ)
+		transform = Combine(AsFloat3x3(rotation), transform);
+	}
+
+	void            Combine_InPlace(Float4x4& transform, Quaternion rotation)
+	{
+		// note -- inefficient implementation!
+		transform = Combine(transform, AsFloat3x3(rotation));
+	}
 
     void Combine_InPlace(Float4x4& transform, const UniformScale& scale)
     {

@@ -50,7 +50,10 @@ namespace XLEMath
         return result;
     }
 
-
+	Quaternion  BezierInterpolate(const Quaternion& P0, const Quaternion& C0, const Quaternion& C1, const Quaternion& P1, float alpha)
+	{
+		return P0;		// (not implemented)
+	}
 
 
     float SphericalInterpolate(float A, float B, float alpha)
@@ -79,7 +82,6 @@ namespace XLEMath
             ScaleRotationTranslationQ(B), alpha);
         return AsFloat4x4(result);
     }
-        
 
 
         
@@ -106,6 +108,12 @@ namespace XLEMath
             // (just do the non-spherical interpolate, for lazyness)
         return BezierInterpolate(P0, C0, C1, P1, alpha);
     }
+
+	Quaternion  SphericalBezierInterpolate(const Quaternion& P0, const Quaternion& C0, const Quaternion& C1, const Quaternion& P1, float alpha)
+	{
+			// (just do the non-spherical interpolate, for lazyness)
+		return BezierInterpolate(P0, C0, C1, P1, alpha);
+	}
 
 
 
@@ -172,6 +180,15 @@ namespace XLEMath
 			P0, P1 - P0n1, 1.f / (1.f - P0n1t),
 			P1, P1p1 - P0, 1.f / (P1p1t - 0.f),
 			alpha);
+	}
+
+	Quaternion  SphericalCatmullRomInterpolate(const Quaternion& P0n1, const Quaternion& P0, const Quaternion& P1, const Quaternion& P1p1, float P0n1t, float P1p1t, float alpha)
+	{
+		/*assert( Equivalent(MagnitudeSquared(P0n1), 1.0f, 1e-5f)
+			&&	Equivalent(MagnitudeSquared(P0), 1.0f, 1e-5f)
+			&&	Equivalent(MagnitudeSquared(P1), 1.0f, 1e-5f)
+			&&	Equivalent(MagnitudeSquared(P1p1), 1.0f, 1e-5f));*/
+		return P0;   // (not implemented)
 	}
 
 }

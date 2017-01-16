@@ -37,6 +37,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         case AnimSamplerType::Float1: return "Float1";
         case AnimSamplerType::Float3: return "Float3";
         case AnimSamplerType::Float4: return "Float4";
+		case AnimSamplerType::Quaternion: return "Quaternion";
         case AnimSamplerType::Float4x4: return "Float4x4";
         }
         return "<<unknown>>";
@@ -152,6 +153,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 {
                     auto& f4 = transMachine.GetDefaultParameters().GetFloat4Parameters()[paramIndex.second];
                     stream << "Float4[" << paramIndex.second << "], default: " << f4[0] << ", " << f4[1] << ", " << f4[2] << ", " << f4[3];
+                }
+                break;
+			case AnimSamplerType::Quaternion:
+                {
+                    auto& f4 = transMachine.GetDefaultParameters().GetFloat4Parameters()[paramIndex.second];
+                    stream << "Quaternion[" << paramIndex.second << "], default: " << f4[0] << ", " << f4[1] << ", " << f4[2] << ", " << f4[3];
                 }
                 break;
             case AnimSamplerType::Float4x4:

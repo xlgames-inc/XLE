@@ -8,6 +8,7 @@
 
 #include "NascentObjectGuid.h"
 #include "NascentTransformationMachine.h"
+#include "../Format.h"
 #include "../RenderCore/Assets/TransformationCommands.h"
 #include "../Utility/Mixins.h"
 #include <vector>
@@ -58,16 +59,19 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         public:
             unsigned            _dataOffset;
             unsigned            _parameterIndex;
+			Format				_format;
             unsigned            _samplerOffset;
             AnimSamplerType     _samplerType;
 
             ConstantDriver(
                 unsigned            dataOffset,
                 unsigned            parameterIndex,
+				Format				format,
                 AnimSamplerType     samplerType,
                 unsigned            samplerOffset)
             : _dataOffset(dataOffset)
             , _parameterIndex(parameterIndex)
+			, _format(format)
             , _samplerType(samplerType)
             , _samplerOffset(samplerOffset) {}
 
@@ -82,7 +86,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         void    AddConstantDriver(  
             const std::string&  parameterName, 
-            const void*         constantValue, 
+            const void*         constantValue,
+			size_t				constantValueSize,
+			Format				format,
             AnimSamplerType     samplerType, 
             unsigned            samplerOffset);
 
@@ -108,7 +114,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<uint8>              _constantData;
     };
 
-    AnimSamplerType     SamplerWidthToType(unsigned samplerWidth);
     size_t              SamplerSize(AnimSamplerType samplerType);
 
         //

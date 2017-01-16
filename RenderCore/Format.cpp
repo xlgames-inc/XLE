@@ -126,6 +126,7 @@ namespace RenderCore
             case Format::S8_UINT: input = UINT; break;
             case Format::Matrix4x4: input = FLOAT; break;
             case Format::Matrix3x4: input = FLOAT; break;
+			case Format::R10G10B10A10_SNORM: return FormatComponentType::SNorm;
             default: input = TYPELESS; break;
         }
         switch (input) {
@@ -153,6 +154,7 @@ namespace RenderCore
         case Format::S8_UINT: return 8;
         case Format::Matrix4x4: return 16 * sizeof(float) * 8;
         case Format::Matrix3x4: return 12 * sizeof(float) * 8;
+		case Format::R10G10B10A10_SNORM: return 40;
         default: return 0;
         }
     }
@@ -541,6 +543,7 @@ namespace RenderCore
         case Format::S8_UINT: return "S8_UINT";
         case Format::Matrix4x4: return "Matrix4x4";
         case Format::Matrix3x4: return "Matrix3x4";
+		case Format::R10G10B10A10_SNORM: return "R10G10B10A10_SNORM";
         default: return "Unknown";
         }
     }
@@ -557,6 +560,7 @@ namespace RenderCore
         if (!XlEqStringI(name, "S8_UINT")) return Format::S8_UINT;
         if (!XlEqStringI(name, "Matrix4x4")) return Format::Matrix4x4;
         if (!XlEqStringI(name, "Matrix3x4")) return Format::Matrix3x4;
+		if (!XlEqStringI(name, "R10G10B10A10_SNORM")) return Format::R10G10B10A10_SNORM;
         return Format::Unknown;
     }
 

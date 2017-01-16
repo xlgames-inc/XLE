@@ -101,17 +101,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             const char nodeName[])
     {
         auto& tables = GetTables<Type>();
-        auto i = std::lower_bound(
-            tables.first.begin(), tables.first.end(), 
-            parameterHash, CompareFirst<AnimationParameterId, uint32>());
-        if (i!=tables.first.end() && i->first == parameterHash) {
+        auto i = LowerBound(tables, parameterHash);
+        if (i!=tables.end() && i->first == parameterHash) {
             LogWarning << "Duplicate animation parameter name in node " << nodeName << ". Only the first will work. The rest will be static.";
             return false;
         }
 
         _stringNameMapping.push_back(std::make_pair(std::string(nodeName), parameterHash));
         paramIndex = (uint32)_defaultParameters.AddParameter(defaultValue);
-        tables.first.insert(i, std::make_pair(parameterHash, paramIndex));
+        tables.insert(i, std::make_pair(parameterHash, paramIndex));
         return true;
     }
 

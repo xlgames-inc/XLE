@@ -337,7 +337,7 @@ namespace Utility
         Type*           end() never_throws                              { return &_elements[_count]; }
         size_t          size() const never_throws                       { return _count; }
         Type&           operator[](size_t index) never_throws           { assert(index < _count); return _elements[index]; }
-        bool            empty() never_throws                            { return !_count; }
+        bool            empty() const never_throws                      { return !_count; }
 
         const Type*     begin() const never_throws                      { return _elements.get(); }
         const Type*     end() const never_throws                        { return &_elements[_count]; }
@@ -381,9 +381,10 @@ namespace Utility
     template<typename Type, typename Deletor>
         template<typename OtherDeletor>
             DynamicArray<Type, Deletor>::DynamicArray(DynamicArray<Type, OtherDeletor>&& moveFrom) never_throws
-            : _elements(std::move(moveFrom._elements))
-            , _count(moveFrom._count)
-    {}
+    {
+		_count = moveFrom.size();
+		_elements = moveFrom.release();
+	}
 
     template<typename Type, typename Deletor>
         template<typename OtherDeletor>
