@@ -79,10 +79,10 @@ namespace RenderCore { namespace Assets
         IteratorRange<Float4*>			GetFloat4Parameters()			{ return MakeIteratorRange(_float4Parameters);      }
         IteratorRange<Float4x4*>		GetFloat4x4Parameters()			{ return MakeIteratorRange(_float4x4Parameters);	}
 
-		uint32 AddParameter(float);
-		uint32 AddParameter(Float3);
-		uint32 AddParameter(Float4);
-		uint32 AddParameter(const Float4x4&);
+		void Set(uint32 index, float);
+		void Set(uint32 index, Float3);
+		void Set(uint32 index, Float4);
+		void Set(uint32 index, const Float4x4&);
             
         TransformationParameterSet();
         TransformationParameterSet(TransformationParameterSet&& moveFrom);

@@ -39,6 +39,7 @@
 #include "../ConsoleRig/OutputStream.h"
 #include "../ConsoleRig/AttachableLibrary.h"
 #include "../ConsoleRig/GlobalServices.h"
+#include "../ConsoleRig/Log.h"
 #include <memory>
 
 namespace ColladaConversion
@@ -240,14 +241,14 @@ namespace ColladaConversion
                 // Push on the coordinate transform (if there is one)
                 // This should be optimised into other matrices (or even into
                 // the geometry) when we perform the skeleton optimisation steps.
-            topLevelPops = _skeleton.GetTransformationMachine().PushTransformation(
+            topLevelPops = _skeleton.GetSkeletonMachine().PushTransformation(
                 coordinateTransform);
         }
 
             // When extracting an internal node, we ignore the transform 
             // on that internal node
         BuildSkeleton(_skeleton, scene.GetRootNode(), rootNode, jointRefs, false);
-        _skeleton.GetTransformationMachine().Pop(topLevelPops);
+        _skeleton.GetSkeletonMachine().Pop(topLevelPops);
 
             // For each output matrix, we want to know if we can merge a transformation into it.
             // We can only do this if (unskinned) geometry instances are attached -- and those
@@ -256,8 +257,8 @@ namespace ColladaConversion
             // attached to more than one matrix, or if something other than a geometry instance is
             // attached, then we cannot do any merging.
         
-        TransMachineOptimizer optimizer(refGeos, _skeleton.GetTransformationMachine().GetOutputMatrixCount(), scene);
-        _skeleton.GetTransformationMachine().Optimize(optimizer);
+        TransMachineOptimizer optimizer(refGeos, _skeleton.GetSkeletonMachine().GetOutputMatrixCount(), scene);
+        _skeleton.GetSkeletonMachine().Optimize(optimizer);
 
             // We can try to optimise the skeleton here. We should collect the list
             // of meshes that we can optimise transforms into (ie, meshes that aren't
@@ -367,7 +368,7 @@ namespace ColladaConversion
         BuildSkeleton(_skeleton, scene->GetRootNode(), StringSection<utf8>(), jointRefs, true);
         RegisterNodeBindingNames(_skeleton, jointRefs);
         TransMachineOptimizer optimizer;
-        _skeleton.GetTransformationMachine().Optimize(optimizer);
+        _skeleton.GetSkeletonMachine().Optimize(optimizer);
     }
 
     ::Assets::NascentChunkArray SerializeSkeleton(const ColladaCompileOp& model, const char[])

@@ -66,13 +66,14 @@ namespace RenderCore { namespace Assets
         TransformationMachine();
         ~TransformationMachine();
     protected:
-        uint32*                         _commandStream;
-        size_t                          _commandStreamSize;
-        unsigned                        _outputMatrixCount;
-        TransformationParameterSet      _defaultParameters;
+        uint32*             _commandStream;
+        size_t              _commandStreamSize;
+        unsigned            _outputMatrixCount;
 
         InputInterface      _inputInterface;
         OutputInterface     _outputInterface;
+
+		TransformationParameterSet      _defaultParameters;
 
         const uint32*   GetCommandStream()      { return _commandStream; }
         const size_t    GetCommandStreamSize()  { return _commandStreamSize; }

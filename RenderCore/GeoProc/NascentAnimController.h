@@ -45,7 +45,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<DrawCallDesc>   _preskinningDrawCalls;
         GeoInputAssembly            _preskinningIA;
 
-        std::pair<Float3, Float3>           _localBoundingBox;
+        std::pair<Float3, Float3>	_localBoundingBox;
 
         void    Serialize(Serialization::NascentBlockSerializer& outputSerializer, std::vector<uint8>& largeResourcesBlock) const;
 

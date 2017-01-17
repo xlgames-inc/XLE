@@ -7,9 +7,12 @@
 #pragma once
 
 #include "../RenderCore/GeoProc/NascentCommandStream.h"
+#include "../RenderCore/GeoProc/NascentObjectGuid.h"
 #include "../Utility/StringUtils.h"
+#include <vector>
 
-namespace RenderCore { namespace Assets { namespace GeoProc { 
+namespace RenderCore { namespace Assets { namespace GeoProc
+{ 
 	class NascentSkeleton;
 	class NascentGeometryObjects;
 	class NascentModelCommandStream;
@@ -29,21 +32,26 @@ namespace ColladaConversion
         SkeletonRegistry& skeletonReferences,
         bool fullSkeleton);
 
-    NascentModelCommandStream::GeometryInstance InstantiateGeometry(
+	struct InstantiatedGeo
+	{
+		unsigned _geoId;
+		std::vector<NascentModelCommandStream::MaterialGuid> _materials;
+	};
+
+	InstantiatedGeo InstantiateGeometry(
         const ::ColladaConversion::InstanceGeometry& instGeo,
-        unsigned outputTransformIndex, const Float4x4& mergedTransform,
-        unsigned levelOfDetail,
         const ::ColladaConversion::URIResolveContext& resolveContext,
+		const Float4x4& mergedTransform,
         NascentGeometryObjects& objects,
-        SkeletonRegistry& nodeRefs,
         const ImportConfiguration& cfg);
 
-    NascentModelCommandStream::SkinControllerInstance InstantiateController(
+	using JointToTransformMarker = std::function<unsigned(const NascentObjectGuid&)>;
+
+	InstantiatedGeo InstantiateController(
         const ::ColladaConversion::InstanceController& instGeo,
-        unsigned outputTransformIndex, unsigned levelOfDetail,
         const ::ColladaConversion::URIResolveContext& resolveContext,
-        NascentGeometryObjects& objects,
-        SkeletonRegistry& nodeRefs,
+		const JointToTransformMarker& jointToTransformMarker,
+		NascentGeometryObjects& objects,
         const ImportConfiguration& cfg);
 
     class ReferencedGeometries
@@ -52,9 +60,9 @@ namespace ColladaConversion
         class AttachedObject
         {
         public:
-            unsigned    _outputMatrixIndex;
-            unsigned    _objectIndex;
-            unsigned    _levelOfDetail;
+            NascentObjectGuid	_nodeGuid;
+            unsigned			_objectIndex;
+            unsigned			_levelOfDetail;
         };
         std::vector<AttachedObject>   _meshes;
         std::vector<AttachedObject>   _skinControllers;

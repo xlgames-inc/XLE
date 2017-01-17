@@ -54,16 +54,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     };
 
     static DefaultPoseData CalculateDefaultPoseData(
-        const NascentTransformationMachine& transMachine,
+        const NascentSkeletonMachine& skeleton,
+		const NascentSkeletonInterface& skeletonInterf,
+		const TransformationParameterSet& parameters,
         const NascentModelCommandStream& cmdStream,
         const NascentGeometryObjects& geoObjects)
     {
         DefaultPoseData result;
 
-        auto skeletonOutput = transMachine.GenerateOutputTransforms(
-            transMachine.GetDefaultParameters());
+        auto skeletonOutput = skeleton.GenerateOutputTransforms(parameters);
 
-        auto skelOutputInterface = transMachine.GetOutputInterface();
+        auto skelOutputInterface = skeletonInterf.GetOutputInterface();
         auto streamInputInterface = cmdStream.GetInputInterface();
         RenderCore::Assets::SkeletonBinding skelBinding(
             RenderCore::Assets::TransformationMachine::OutputInterface
@@ -111,7 +112,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		stream << cmdStream;
 		stream << std::endl;
 		stream << "============== Transformation Machine ==============" << std::endl;
-		StreamOperator(stream, skeleton.GetTransformationMachine());
+		StreamOperator(stream, skeleton.GetSkeletonMachine(), skeleton.GetInterface(), skeleton.GetDefaultParameters());
 	}
 
 	::Assets::NascentChunkArray SerializeSkinToChunks(const char name[], NascentGeometryObjects& geoObjects, NascentModelCommandStream& cmdStream, NascentSkeleton& skeleton)
@@ -129,9 +130,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			// And that requires a bit of hack to get pointers to those 
 			// run-time types
 		{
-			const auto& transMachine = skeleton.GetTransformationMachine();
-
-			auto defaultPoseData = CalculateDefaultPoseData(transMachine, cmdStream, geoObjects);
+			auto defaultPoseData = CalculateDefaultPoseData(skeleton.GetSkeletonMachine(), skeleton.GetInterface(), skeleton.GetDefaultParameters(), cmdStream, geoObjects);
 			serializer.SerializeSubBlock(
 				AsPointer(defaultPoseData._defaultTransforms.cbegin()), 
 				AsPointer(defaultPoseData._defaultTransforms.cend()));
@@ -169,7 +168,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 	static void TraceMetrics(std::ostream& stream, const NascentSkeleton& skeleton)
 	{
-		StreamOperator(stream, skeleton.GetTransformationMachine());
+		StreamOperator(stream, skeleton.GetSkeletonMachine(), skeleton.GetInterface(), skeleton.GetDefaultParameters());
 	}
 
 	::Assets::NascentChunkArray SerializeSkeletonToChunks(

@@ -9,6 +9,7 @@
 #include "../Format.h"
 #include "../Assets/RawAnimationCurve.h"
 #include "../../Assets/BlockSerializer.h"
+#include "../../Assets/AssetsCore.h"
 #include "../../ConsoleRig/OutputStream.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/MemoryUtils.h"
@@ -246,53 +247,30 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     void NascentSkeleton::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        ::Serialize(serializer, _transformationMachine);
+        ::Serialize(serializer, _skeletonMachine);
+		::Serialize(serializer, _interface);
+		::Serialize(serializer, _defaultParameters);
     }
 
     NascentSkeleton::NascentSkeleton() {}
     NascentSkeleton::~NascentSkeleton() {}
-    NascentSkeleton::NascentSkeleton(NascentSkeleton&& moveFrom)
-    :   _transformationMachine(std::move(moveFrom._transformationMachine))
-    {}
-    NascentSkeleton& NascentSkeleton::operator=(NascentSkeleton&& moveFrom)
+
+
+
+
+    unsigned NascentModelCommandStream::RegisterInputInterfaceMarker(const std::string& name)
     {
-        _transformationMachine = std::move(moveFrom._transformationMachine);
-        return *this;
-    }
+		auto hash = Hash64(name);
+		auto existing = std::find(_inputInterface.begin(), _inputInterface.end(), hash);
+		if (existing != _inputInterface.end()) {
+			assert(_inputInterfaceNames[std::distance(_inputInterface.begin(), existing)] == name);
+			return (unsigned)std::distance(_inputInterface.begin(), existing);
+		}
 
-
-
-
-    class NascentModelCommandStream::TransformationMachineOutput
-    {
-    public:
-        NascentObjectGuid _colladaId;
-        std::string _name;
-    };
-
-    void NascentModelCommandStream::RegisterTransformationMachineOutput(const std::string& bindingName, NascentObjectGuid id, unsigned transformMarker)
-    {
-        // auto existing = FindTransformationMachineOutput(id);
-        // if (existing != ~unsigned(0)) return existing;
-        // 
-        // auto result = (unsigned)_transformationMachineOutputs.size();
-        // _transformationMachineOutputs.push_back(
-        //     TransformationMachineOutput{id, bindingName});
-        // return result;
-        if (_transformationMachineOutputs.size() < transformMarker+1)
-            _transformationMachineOutputs.resize(transformMarker+1);
-        _transformationMachineOutputs[transformMarker] = TransformationMachineOutput{id, bindingName};
-    }
-
-    unsigned    NascentModelCommandStream::FindTransformationMachineOutput(NascentObjectGuid nodeId) const
-    {
-        auto i2=_transformationMachineOutputs.cbegin();
-        for (;i2!=_transformationMachineOutputs.cend(); ++i2) {
-            if (i2->_colladaId == nodeId) {
-                return (unsigned)std::distance(_transformationMachineOutputs.cbegin(), i2);
-            }
-        }
-        return ~unsigned(0x0);
+        auto result = (unsigned)_inputInterfaceNames.size();
+		_inputInterface.push_back(hash);
+		_inputInterfaceNames.push_back(name);
+		return result;
     }
 
     void NascentModelCommandStream::Add(GeometryInstance&& geoInstance)
@@ -310,33 +288,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         _skinControllerInstances.emplace_back(std::move(skinControllerInstance));
     }
 
-    NascentModelCommandStream::NascentModelCommandStream()
-    {
-    }
+    NascentModelCommandStream::NascentModelCommandStream() {}
+    NascentModelCommandStream::~NascentModelCommandStream() {}
 
-    NascentModelCommandStream::~NascentModelCommandStream()
-    {
-
-    }
-
-    NascentModelCommandStream::NascentModelCommandStream(NascentModelCommandStream&& moveFrom)
-    :       _transformationMachineOutputs(std::move(moveFrom._transformationMachineOutputs))
-    ,       _geometryInstances(std::move(moveFrom._geometryInstances))
-    // ,       _modelInstances(std::move(moveFrom._modelInstances))
-    ,       _cameraInstances(std::move(moveFrom._cameraInstances))
-    ,       _skinControllerInstances(std::move(moveFrom._skinControllerInstances))
-    {
-    }
-
-    NascentModelCommandStream& NascentModelCommandStream::operator=(NascentModelCommandStream&& moveFrom) never_throws
-    {
-        _transformationMachineOutputs = std::move(moveFrom._transformationMachineOutputs);
-        _geometryInstances = std::move(moveFrom._geometryInstances);
-        // _modelInstances = std::move(moveFrom._modelInstances);
-        _cameraInstances = std::move(moveFrom._cameraInstances);
-        _skinControllerInstances = std::move(moveFrom._skinControllerInstances);
-        return *this;
-    }
 
     void NascentModelCommandStream::GeometryInstance::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
@@ -368,19 +322,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //      run-time input interface definition...
             //
         ConsoleRig::DebuggerOnlyWarning("Command stream input interface:\n");
-        auto inputInterface = GetInputInterface();
-        serializer.SerializeSubBlock(AsPointer(inputInterface.cbegin()), AsPointer(inputInterface.cend()));
-        serializer.SerializeValue(_transformationMachineOutputs.size());
+        serializer.SerializeSubBlock(AsPointer(_inputInterface.cbegin()), AsPointer(_inputInterface.cend()));
+        serializer.SerializeValue(_inputInterface.size());
     }
 
-    std::vector<uint64> NascentModelCommandStream::GetInputInterface() const
-    {
-        std::vector<uint64> inputInterface(_transformationMachineOutputs.size());
-        unsigned c=0;
-        for (auto i=_transformationMachineOutputs.begin(); i!=_transformationMachineOutputs.end(); ++i, ++c)
-            inputInterface[c] = Hash64(AsPointer(i->_name.begin()), AsPointer(i->_name.end()));
-        return std::move(inputInterface);
-    }
+    std::vector<uint64> NascentModelCommandStream::GetInputInterface() const { return _inputInterface; }
 
     unsigned NascentModelCommandStream::GetMaxLOD() const
     {
@@ -423,18 +369,19 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         stream << " --- Input interface:" << std::endl;
         c=0;
-        for (const auto& i:cmdStream._transformationMachineOutputs)
-            stream << "  [" << c++ << "] " << i._name << std::endl;
+        for (const auto& i:cmdStream._inputInterfaceNames)
+            stream << "  [" << c++ << "] " << i << std::endl;
         return stream;
     }
 
+#if 0
 	void RegisterNodeBindingNames(
 		NascentSkeleton& skeleton,
 		const SkeletonRegistry& registry)
 	{
 		for (const auto& nodeDesc:registry.GetImportantNodes()) {
-			auto success = skeleton.GetTransformationMachine().TryRegisterJointName(
-				nodeDesc._bindingName, nodeDesc._inverseBind, nodeDesc._transformMarker);
+			auto success = skeleton.GetInterface().TryRegisterJointName(
+				AsStringSection(nodeDesc._bindingName), nodeDesc._inverseBind);
 			if (!success)
 				LogWarning << "Found possible duplicate joint name in transformation machine: " << nodeDesc._bindingName;
 		}
@@ -448,4 +395,5 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			stream.RegisterTransformationMachineOutput(
 				nodeDesc._bindingName, nodeDesc._id, nodeDesc._transformMarker);
 	}
+#endif
 }}}

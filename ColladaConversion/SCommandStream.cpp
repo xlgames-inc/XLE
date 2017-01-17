@@ -21,6 +21,7 @@
 
 #include "../RenderCore/Assets/Material.h"  // for MakeMaterialGuid
 #include "../RenderCore/Format.h"
+#include "../ConsoleRig/Log.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringFormat.h"
 #include <string>
@@ -75,7 +76,8 @@ namespace ColladaConversion
         if (!fullSkeleton && !IsUseful(node, skeletonReferences)) return;
 
         auto nodeId = AsObjectGuid(node);
-        auto bindingName = skeletonReferences.GetNode(nodeId)._bindingName;
+		auto nodeDesc = skeletonReferences.GetNode(nodeId);
+        auto bindingName = nodeDesc._bindingName;
         if (bindingName.empty()) bindingName = SkeletonBindingName(node);
 
         auto pushCount = 0u;
@@ -84,7 +86,9 @@ namespace ColladaConversion
                 // so ignoreTransforms is a countdown on the depth of
                 // the node in the hierarchy.
             pushCount = PushTransformations(
-                skeleton.GetTransformationMachine(),
+                skeleton.GetSkeletonMachine(),
+				skeleton.GetInterface(),
+				skeleton.GetDefaultParameters(),
                 node.GetFirstTransform(), bindingName.c_str(),
                 skeletonReferences, fullSkeleton);
         }
@@ -92,10 +96,15 @@ namespace ColladaConversion
         bool isReferenced = fullSkeleton || skeletonReferences.IsImportant(nodeId);
         if (isReferenced) {
                 // (prevent a reference if the transformation machine is completely empty)
-            if (!skeleton.GetTransformationMachine().IsEmpty()) {
-                auto thisOutputMatrix = skeletonReferences.GetOutputMatrixIndex(nodeId);
-                skeleton.GetTransformationMachine().MakeOutputMatrixMarker(thisOutputMatrix);
-                skeletonReferences.TryRegisterNode(nodeId, bindingName.c_str());
+            if (!skeleton.GetSkeletonMachine().IsEmpty()) {
+				uint32 outputMarker = ~0u;
+				assert(nodeDesc._hasInverseBind);
+				if (skeleton.GetInterface().TryRegisterJointName(outputMarker, MakeStringSection(nodeDesc._bindingName), nodeDesc._inverseBind)) {
+					skeleton.GetSkeletonMachine().WriteOutputMarker(outputMarker);
+					skeletonReferences.TryRegisterNode(nodeId, bindingName.c_str());
+				} else {
+					Throw(::Exceptions::BasicLabel("Couldn't register joint name in skeleton interface for node (%s)", nodeDesc._bindingName.c_str()));
+				}
             }
         }
 
@@ -109,7 +118,7 @@ namespace ColladaConversion
             child = child.GetNextSibling();
         }
 
-        skeleton.GetTransformationMachine().Pop(pushCount);
+        skeleton.GetSkeletonMachine().Pop(pushCount);
     }
 
     void BuildSkeleton(
@@ -175,13 +184,13 @@ namespace ColladaConversion
         const auto& scene = node.GetScene();
         for (unsigned c=0; c<scene.GetInstanceGeometryCount(); ++c)
             if (scene.GetInstanceGeometry_Attach(c).GetIndex() == node.GetIndex()) {
-                _meshes.push_back(AttachedObject{nodeRefs.GetOutputMatrixIndex(nodeAsGuid), c, GetLevelOfDetail(node)._lod});
+                _meshes.push_back(AttachedObject{nodeAsGuid, c, GetLevelOfDetail(node)._lod});
                 gotAttachment = true;
             }
 
         for (unsigned c=0; c<scene.GetInstanceControllerCount(); ++c)
             if (scene.GetInstanceController_Attach(c).GetIndex() == node.GetIndex()) {
-                _skinControllers.push_back(AttachedObject{nodeRefs.GetOutputMatrixIndex(nodeAsGuid), c, GetLevelOfDetail(node)._lod});
+                _skinControllers.push_back(AttachedObject{nodeAsGuid, c, GetLevelOfDetail(node)._lod});
                 gotAttachment = true;
             }
 
@@ -284,13 +293,11 @@ namespace ColladaConversion
         return std::move(materialGuids);
     }
 
-    NascentModelCommandStream::GeometryInstance InstantiateGeometry(
+	InstantiatedGeo InstantiateGeometry(
         const ::ColladaConversion::InstanceGeometry& instGeo,
-        unsigned outputTransformIndex, const Float4x4& mergedTransform,
-        unsigned levelOfDetail,
         const URIResolveContext& resolveContext,
+		const Float4x4& mergedTransform,
         NascentGeometryObjects& objects,
-        SkeletonRegistry& nodeRefs,
         const ImportConfiguration& cfg)
     {
         GuidReference refGuid(instGeo._reference);
@@ -328,7 +335,7 @@ namespace ColladaConversion
                 }
 
                 objects._rawGeos.push_back(std::make_pair(geoId, std::move(convertedMesh)));
-                geo = (unsigned)(objects._rawGeos.size()-1);
+                geo = unsigned(objects._rawGeos.size()-1);
             }
         }
         
@@ -336,15 +343,14 @@ namespace ColladaConversion
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
             objects._rawGeos[geo].second._matBindingSymbols, resolveContext);
 
-        return NascentModelCommandStream::GeometryInstance(
-            geo, outputTransformIndex, std::move(materials), levelOfDetail);
+        return InstantiatedGeo{geo, std::move(materials)};
     }
 
     static DynamicArray<uint16> BuildJointArray(
         const GuidReference skeletonRef,
         const UnboundSkinController& unboundController,
         const URIResolveContext& resolveContext,
-        SkeletonRegistry& nodeRefs)
+		const JointToTransformMarker& jointToTransformMarker)
     {
             // Build the joints array for the given controller instantiation
             // the <instance_controller> references a skeleton, which contains
@@ -370,13 +376,9 @@ namespace ColladaConversion
                 [&compareSection](const Node& compare) { return XlEqString(compare.GetSid(), compareSection); });
 
             if (node) {
-                auto bindingMatIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(node));
-                nodeRefs.TryRegisterNode(AsObjectGuid(node), SkeletonBindingName(node).c_str());
-
-                result[c] = (uint16)bindingMatIndex;
-
-                if (c < invBindMats.size())
-                    nodeRefs.AttachInverseBindMatrix(AsObjectGuid(node), invBindMats[c]);
+                auto objectGuid = AsObjectGuid(node);
+				// We need to transform from this guid value to the skeleton machine output marker.
+                result[c] = (uint16)jointToTransformMarker(objectGuid);
             } else {
                 result[c] = (uint16)~uint16(0);
             }
@@ -385,12 +387,11 @@ namespace ColladaConversion
         return std::move(result);
     }
 
-    NascentModelCommandStream::SkinControllerInstance InstantiateController(
+	InstantiatedGeo InstantiateController(
         const ::ColladaConversion::InstanceController& instGeo,
-        unsigned outputTransformIndex, unsigned levelOfDetail,
         const URIResolveContext& resolveContext,
-        NascentGeometryObjects& objects,
-        SkeletonRegistry& nodeRefs,
+		const JointToTransformMarker& jointToTransformMarker,
+		NascentGeometryObjects& objects,
         const ImportConfiguration& cfg)
     {
         GuidReference controllerRef(instGeo._reference);
@@ -402,7 +403,7 @@ namespace ColladaConversion
 
         auto controller = Convert(*scaffoldController, resolveContext, cfg);
 
-        auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), controller, resolveContext, nodeRefs);
+        auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), controller, resolveContext, jointToTransformMarker);
         if (!jointMatrices.size() || !jointMatrices.get())
             Throw(::Assets::Exceptions::FormatError("Skin controller object has no joints. Cannot instantiate as skinned object. (%s)",
                 instGeo._reference.AsString().c_str()));
@@ -439,9 +440,7 @@ namespace ColladaConversion
                     *source, controller, std::move(jointMatrices),
                     ColladaConversion::AsString(instGeo._reference).c_str())));
 
-        return NascentModelCommandStream::SkinControllerInstance(
-            (unsigned)(objects._skinnedGeos.size()-1), 
-            outputTransformIndex, std::move(materials), levelOfDetail);
+		return InstantiatedGeo{unsigned(objects._skinnedGeos.size()-1), std::move(materials)};
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

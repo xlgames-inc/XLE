@@ -513,32 +513,28 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	uint32 TransformationParameterSet::AddParameter(float p) 
+	void TransformationParameterSet::Set(uint32 index, float p) 
 	{
-		uint32 res = (uint32)_float1Parameters.size();
-		_float1Parameters.push_back(p);
-		return res;
+		if (_float1Parameters.size() < (index+1)) _float1Parameters.resize(index+1, 0.f);
+		_float1Parameters[index] = p;
 	}
 
-	uint32 TransformationParameterSet::AddParameter(Float3 p)
+	void TransformationParameterSet::Set(uint32 index, Float3 p)
 	{
-		uint32 res = (uint32)_float1Parameters.size();
-		_float3Parameters.push_back(p);
-		return res;
+		if (_float3Parameters.size() < (index+1)) _float3Parameters.resize(index+1, Zero<Float3>());
+		_float3Parameters[index] = p;
 	}
 
-	uint32 TransformationParameterSet::AddParameter(Float4 p)
+	void TransformationParameterSet::Set(uint32 index, Float4 p)
 	{
-		uint32 res = (uint32)_float1Parameters.size();
-		_float4Parameters.push_back(p);
-		return res;
+		if (_float4Parameters.size() < (index+1)) _float4Parameters.resize(index+1, Zero<Float4>());
+		_float4Parameters[index] = p;
 	}
 
-	uint32 TransformationParameterSet::AddParameter(const Float4x4& p)
+	void TransformationParameterSet::Set(uint32 index, const Float4x4& p)
 	{
-		uint32 res = (uint32)_float4x4Parameters.size();
-		_float4x4Parameters.push_back(p);
-		return res;
+		if (_float4x4Parameters.size() < (index+1)) _float4x4Parameters.resize(index+1, Zero<Float4x4>());
+		_float4x4Parameters[index] = p;
 	}
 
     TransformationParameterSet::TransformationParameterSet() {}

@@ -6,21 +6,19 @@
 
 #pragma once
 
-#include "NascentObjectGuid.h"
 #include "NascentTransformationMachine.h"
-#include "../Format.h"
-#include "../RenderCore/Assets/TransformationCommands.h"
-#include "../Utility/Mixins.h"
+#include "../RenderCore/Assets/TransformationCommands.h"		// (for TransformationParameterSet)
 #include <vector>
 
 namespace Serialization { class NascentBlockSerializer; }
 namespace RenderCore { namespace Assets { class RawAnimationCurve; }}
+namespace RenderCore { enum class Format : int; }
 namespace Utility { class OutputStream; }
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
     class NascentSkeleton;
-	class NascentTransformationMachine;
+	class NascentSkeletonMachine;
 
         //
         //      "NascentAnimationSet" is a set of animations
@@ -28,7 +26,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         //      a skeleton
         //
 	
-    class NascentAnimationSet : noncopyable
+    class NascentAnimationSet
     {
     public:
                     /////   A N I M A T I O N   D R I V E R   /////
@@ -123,20 +121,26 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         //      matrices of the transformation machine to joints.
         //
 
-    class NascentSkeleton : noncopyable
+    class NascentSkeleton
     {
     public:
-        NascentTransformationMachine&           GetTransformationMachine()          { return _transformationMachine; }
-        const NascentTransformationMachine&     GetTransformationMachine() const    { return _transformationMachine; }
+        NascentSkeletonMachine&				GetSkeletonMachine()			{ return _skeletonMachine; }
+        const NascentSkeletonMachine&		GetSkeletonMachine() const		{ return _skeletonMachine; }
+		NascentSkeletonInterface&			GetInterface()					{ return _interface; }
+		const NascentSkeletonInterface&		GetInterface() const			{ return _interface; }
+		TransformationParameterSet&         GetDefaultParameters()			{ return _defaultParameters; }
+		const TransformationParameterSet&   GetDefaultParameters() const	{ return _defaultParameters; }
 
-        void        Serialize(Serialization::NascentBlockSerializer& serializer) const;
+		void        Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
         NascentSkeleton();
         ~NascentSkeleton();
-        NascentSkeleton(NascentSkeleton&& moveFrom);
-        NascentSkeleton& operator=(NascentSkeleton&& moveFrom);
+        NascentSkeleton(NascentSkeleton&& moveFrom) = default;
+        NascentSkeleton& operator=(NascentSkeleton&& moveFrom) = default;
     private:
-        NascentTransformationMachine    _transformationMachine;
+        NascentSkeletonMachine		_skeletonMachine;
+		NascentSkeletonInterface	_interface;
+		TransformationParameterSet	_defaultParameters;
     };
 
         //
@@ -145,7 +149,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         //      and skin controller elements.
         //
 
-    class NascentModelCommandStream : noncopyable
+    class NascentModelCommandStream
     {
     public:
         typedef uint64 MaterialGuid;
@@ -201,16 +205,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         bool IsEmpty() const { return _geometryInstances.empty() && _cameraInstances.empty() && _skinControllerInstances.empty(); }
         void Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
-        void RegisterTransformationMachineOutput(const std::string& bindingName, NascentObjectGuid id, unsigned transformMarker);
-        unsigned FindTransformationMachineOutput(NascentObjectGuid nodeId) const;
+        unsigned RegisterInputInterfaceMarker(const std::string& name);
 
         std::vector<uint64> GetInputInterface() const;
         unsigned GetMaxLOD() const;
 
         NascentModelCommandStream();
         ~NascentModelCommandStream();
-        NascentModelCommandStream(NascentModelCommandStream&& moveFrom);
-        NascentModelCommandStream& operator=(NascentModelCommandStream&& moveFrom);
+        NascentModelCommandStream(NascentModelCommandStream&& moveFrom) = default;
+        NascentModelCommandStream& operator=(NascentModelCommandStream&& moveFrom) = default;
 
         std::vector<GeometryInstance>               _geometryInstances;
         std::vector<CameraInstance>                 _cameraInstances;
@@ -219,17 +222,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         friend std::ostream& operator<<(std::ostream&, const NascentModelCommandStream&);
 
     private:
-        class TransformationMachineOutput;
-        std::vector<TransformationMachineOutput>    _transformationMachineOutputs;
+        std::vector<uint64>			_inputInterface;
+		std::vector<std::string>	_inputInterfaceNames;
 
         NascentModelCommandStream& operator=(const NascentModelCommandStream& copyFrom) never_throws;
         NascentModelCommandStream(const NascentModelCommandStream& copyFrom);
     };
     
-	class SkeletonRegistry;
+	/*class SkeletonRegistry;
 	class NascentSkeleton;
 	void RegisterNodeBindingNames(NascentModelCommandStream& stream, const SkeletonRegistry& registry);
-	void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
+	void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);*/
 }}}
 
 

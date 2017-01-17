@@ -7,9 +7,10 @@
 #include "STransformationMachine.h"
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"            // just for AsString
+#include "../ConsoleRig/Log.h"
 #include "../RenderCore/GeoProc/NascentTransformationMachine.h"
 #include "../RenderCore/GeoProc/SkeletonRegistry.h"
-#include "../ConsoleRig/Log.h"
+#include "../RenderCore/Assets/TransformationCommands.h"
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
@@ -38,7 +39,9 @@ namespace ColladaConversion
     //}
 
     unsigned PushTransformations(
-        RenderCore::Assets::GeoProc::NascentTransformationMachine& dst,
+        RenderCore::Assets::GeoProc::NascentSkeletonMachine& dst,
+		RenderCore::Assets::GeoProc::NascentSkeletonInterface& interf,
+		RenderCore::Assets::TransformationParameterSet& defaultParameters,
         const Transformation& transformations,
         const char nodeName[],
         const RenderCore::Assets::GeoProc::SkeletonRegistry& nodeRefs, bool assumeEverythingAnimated)
@@ -117,8 +120,9 @@ namespace ColladaConversion
                     //
                 uint32 paramIndex = ~0u;
                 if (    parameterType != ParameterType_Embedded
-                    &&  dst.TryAddParameter(paramIndex, *(const Float4x4*)trans.GetUnionData(), parameterId, paramName.c_str())) {
+                    &&  interf.TryAddParameter<Float4x4>(paramIndex, parameterId, paramName.c_str())) {
 
+					defaultParameters.Set(paramIndex, *(const Float4x4*)trans.GetUnionData());
                     dst.PushCommand(TransformStackCommand::TransformFloat4x4_Parameter);
                     dst.PushCommand(paramIndex);
                 } else {
@@ -134,8 +138,9 @@ namespace ColladaConversion
 
                 uint32 paramIndex = ~0u;
                 if (    parameterType != ParameterType_Embedded
-                    &&  dst.TryAddParameter(paramIndex, *(const Float3*)trans.GetUnionData(), parameterId, paramName.c_str())) {
+                    &&  interf.TryAddParameter<Float3>(paramIndex, parameterId, paramName.c_str())) {
 
+					defaultParameters.Set(paramIndex, *(const Float3*)trans.GetUnionData());
                     dst.PushCommand(TransformStackCommand::Translate_Parameter);
                     dst.PushCommand(paramIndex);
                 } else {
@@ -152,7 +157,9 @@ namespace ColladaConversion
                 const auto& rot = *(const ArbitraryRotation*)trans.GetUnionData();
                 uint32 paramIndex = ~0u;
                 if (    parameterType != ParameterType_Embedded
-                    &&  dst.TryAddParameter(paramIndex, *(const Float4*)&rot, parameterId, paramName.c_str())) {
+                    &&  interf.TryAddParameter<Float4>(paramIndex, parameterId, paramName.c_str())) {
+
+					defaultParameters.Set(paramIndex, *(const Float4*)&rot);
 
                         // Post animation, this may become a rotation around any axis. So
                         // we can't perform an optimisation to squish it to rotation around
@@ -198,13 +205,15 @@ namespace ColladaConversion
                 if (parameterType != ParameterType_Embedded) {
                     uint32 paramIndex = ~0u;
                     if (isUniform) {
-                        if (dst.TryAddParameter(paramIndex, scale[0], parameterId, paramName.c_str())) {
+                        if (interf.TryAddParameter<float>(paramIndex, parameterId, paramName.c_str())) {
+							defaultParameters.Set(paramIndex, scale[0]);
                             dst.PushCommand(TransformStackCommand::UniformScale_Parameter);
                             dst.PushCommand(paramIndex);
                             writeEmbedded = false;
                         }
                     } else {
-                        if (dst.TryAddParameter(paramIndex, scale, parameterId, paramName.c_str())) {
+                        if (interf.TryAddParameter<Float3>(paramIndex, parameterId, paramName.c_str())) {
+							defaultParameters.Set(paramIndex, scale);
                             dst.PushCommand(TransformStackCommand::ArbitraryScale_Parameter);
                             dst.PushCommand(paramIndex);
                             writeEmbedded = false;
