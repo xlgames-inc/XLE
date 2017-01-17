@@ -32,7 +32,7 @@ namespace RenderCore { namespace Assets
 
     TransformationParameterSet      AnimationSet::BuildTransformationParameterSet(
         const AnimationState&           animState__,
-        const TransformationMachine&    transformationMachine,
+        const SkeletonMachine&    transformationMachine,
         const AnimationSetBinding&      binding,
         const RawAnimationCurve*        curves,
         size_t                          curvesCount) const
@@ -59,7 +59,7 @@ namespace RenderCore { namespace Assets
             }
         }
 
-        const TransformationMachine::InputInterface& inputInterface 
+        const SkeletonMachine::InputInterface& inputInterface 
             = transformationMachine.GetInputInterface();
         for (size_t c=driverStart; c<driverEnd; ++c) {
             const AnimationDriver& driver = _animationDrivers[c];
@@ -69,7 +69,7 @@ namespace RenderCore { namespace Assets
             }
 
             assert(transInputIndex < inputInterface._parameterCount);
-            const TransformationMachine::InputInterface::Parameter& p 
+            const SkeletonMachine::InputInterface::Parameter& p 
                 = inputInterface._parameters[transInputIndex];
 
             if (driver._samplerType == AnimSamplerType::Float4x4) {
@@ -126,7 +126,7 @@ namespace RenderCore { namespace Assets
             }
 
             assert(transInputIndex < inputInterface._parameterCount);
-            const TransformationMachine::InputInterface::Parameter& p 
+            const SkeletonMachine::InputInterface::Parameter& p 
                 = inputInterface._parameters[transInputIndex];
 
             const void* data    = PtrAdd(_constantData, driver._dataOffset);
@@ -198,7 +198,7 @@ namespace RenderCore { namespace Assets
 
     AnimationSetBinding::AnimationSetBinding(
             const AnimationSet::OutputInterface&            output,
-            const TransformationMachine::InputInterface&    input)
+            const SkeletonMachine::InputInterface&    input)
     {
             //
             //      for each animation set output value, match it with a 
@@ -241,23 +241,16 @@ namespace RenderCore { namespace Assets
     }
     AnimationSetBinding::~AnimationSetBinding() {}
 
-    SkeletonBinding::SkeletonBinding(   const TransformationMachine::OutputInterface&   output,
-                                        const ModelCommandStream::InputInterface&       input)
+    SkeletonBinding::SkeletonBinding(   const SkeletonMachine::OutputInterface&		output,
+                                        const ModelCommandStream::InputInterface&   input)
     {
-        std::vector<unsigned> result;
-        std::vector<Float4x4> inverseBindMatrices;
-        result.resize(input._jointCount);
-        inverseBindMatrices.resize(input._jointCount);
+        std::vector<unsigned> result(input._jointCount, ~0u);
 
         for (size_t c=0; c<input._jointCount; ++c) {
             uint64 name = input._jointNames[c];
-            result[c] = ~unsigned(0x0);
-            inverseBindMatrices[c] = Identity<Float4x4>();
-
             for (size_t c2=0; c2<output._outputMatrixNameCount; ++c2) {
                 if (output._outputMatrixNames[c2] == name) {
                     result[c] = unsigned(c2);
-                    inverseBindMatrices[c] = output._skeletonInverseBindMatrices[c2];
                     break;
                 }
             }
@@ -270,65 +263,62 @@ namespace RenderCore { namespace Assets
         }
             
         _modelJointIndexToMachineOutput = std::move(result);
-        _modelJointIndexToInverseBindMatrix = std::move(inverseBindMatrices);
     }
 
     SkeletonBinding::SkeletonBinding() {}
     SkeletonBinding::SkeletonBinding(SkeletonBinding&& moveFrom) never_throws
     : _modelJointIndexToMachineOutput(std::move(moveFrom._modelJointIndexToMachineOutput))
-    , _modelJointIndexToInverseBindMatrix(std::move(moveFrom._modelJointIndexToInverseBindMatrix))
     {}
     SkeletonBinding& SkeletonBinding::operator=(SkeletonBinding&& moveFrom) never_throws
     {
         _modelJointIndexToMachineOutput = std::move(moveFrom._modelJointIndexToMachineOutput);
-        _modelJointIndexToInverseBindMatrix = std::move(moveFrom._modelJointIndexToInverseBindMatrix);
         return *this;
     }
     SkeletonBinding::~SkeletonBinding() {}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void TransformationMachine::GenerateOutputTransforms(   
+    void SkeletonMachine::GenerateOutputTransforms(   
         Float4x4 output[], unsigned outputCount,
         const TransformationParameterSet*   parameterSet) const
     {
         if (outputCount < _outputMatrixCount)
-            Throw(::Exceptions::BasicLabel("Output buffer to TransformationMachine::GenerateOutputTransforms is too small"));
+            Throw(::Exceptions::BasicLabel("Output buffer to SkeletonMachine::GenerateOutputTransforms is too small"));
         GenerateOutputTransformsFree(
             output, outputCount, parameterSet, 
             MakeIteratorRange(_commandStream, _commandStream + _commandStreamSize));
     }
 
-    void TransformationMachine::GenerateOutputTransforms(   
+    void SkeletonMachine::GenerateOutputTransforms(   
         Float4x4 output[], unsigned outputCount,
         const TransformationParameterSet*   parameterSet,
         const DebugIterator& debugIterator) const
     {
         if (outputCount < _outputMatrixCount)
-            Throw(::Exceptions::BasicLabel("Output buffer to TransformationMachine::GenerateOutputTransforms is too small"));
+            Throw(::Exceptions::BasicLabel("Output buffer to SkeletonMachine::GenerateOutputTransforms is too small"));
         GenerateOutputTransformsFree(
             output, outputCount, parameterSet, 
             MakeIteratorRange(_commandStream, _commandStream + _commandStreamSize), 
             debugIterator);
     }
 
-    TransformationMachine::TransformationMachine()
+    SkeletonMachine::SkeletonMachine()
     {
         _commandStream = nullptr;
         _commandStreamSize = 0;
         _outputMatrixCount = 0;
     }
 
-    TransformationMachine::~TransformationMachine()
+    SkeletonMachine::~SkeletonMachine()
     {
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    const TransformationMachine&   SkeletonScaffold::GetTransformationMachine() const                
+    const SkeletonMachine&   SkeletonScaffold::GetTransformationMachine() const                
     {
         Resolve(); 
-        return *(const TransformationMachine*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+        return *(const SkeletonMachine*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
 	void SkeletonScaffold::Resolve() const
@@ -362,10 +352,10 @@ namespace RenderCore { namespace Assets
 		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
 	}
 
-    const TransformationMachine*   SkeletonScaffold::TryImmutableData() const
+    const SkeletonMachine*   SkeletonScaffold::TryImmutableData() const
     {
         if (!_rawMemoryBlock) return nullptr;
-        return (const TransformationMachine*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+        return (const SkeletonMachine*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
     static const ::Assets::AssetChunkRequest SkeletonScaffoldChunkRequests[]
@@ -408,7 +398,7 @@ namespace RenderCore { namespace Assets
     {
         auto* data = TryImmutableData();
         if (data)
-            data->~TransformationMachine();
+            data->~SkeletonMachine();
     }
 
 	std::shared_ptr<::Assets::DeferredConstruction> SkeletonScaffold::BeginDeferredConstruction(

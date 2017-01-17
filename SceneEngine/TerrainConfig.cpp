@@ -142,7 +142,7 @@ namespace SceneEngine
     TerrainConfig::TerrainConfig(
         InputStreamFormatter<utf8>& formatter,
         const ::Assets::DirectorySearchRules& searchRules,
-		const ::Assets::DepValPtr&)
+		const ::Assets::DepValPtr& depVal)
     : TerrainConfig()
     {
         Document<InputStreamFormatter<utf8>> doc(formatter);
@@ -173,6 +173,8 @@ namespace SceneEngine
                 _coverageLayers.push_back(layer);
             }
         }
+
+		_depVal = depVal;
     }
 
     void TerrainConfig::Write(OutputStreamFormatter& formatter) const

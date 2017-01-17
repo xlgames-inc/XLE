@@ -30,11 +30,12 @@
 #include "../../SceneEngine/PreparedScene.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../SceneEngine/PlacementsQuadTreeDebugger.h"
 #include "../../SceneEngine/IntersectionTest.h"
 
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/GPUProfiler.h"
+#include "../../RenderCore/IAnnotator.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
@@ -43,6 +44,9 @@
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/AssetServices.h"
+#include "../../Assets/IFileSystem.h"
+#include "../../Assets/MountingTree.h"
+#include "../../Assets/OSFileSystem.h"
 
 #include "../../Tools/ToolsRig/GenerateAO.h"
 
@@ -85,16 +89,16 @@ namespace Sample
         {
             auto clientRect = _window.GetRect();
 
-            _rDevice = RenderCore::CreateDevice();
+            _rDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
             _presChain = _rDevice->CreatePresentationChain(_window.GetUnderlyingHandle(), 
                     clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
 
             _assetServices = std::make_unique<::Assets::Services>(0);
-            _renderAssetServices = std::make_unique<RenderCore::Assets::Services>(_rDevice.get());
+            _renderAssetServices = std::make_unique<RenderCore::Assets::Services>(_rDevice);
 
             _window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(_presChain));
-            auto v = _rDevice->GetVersionInformation();
-            _window.SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v.first << ", " << v.second << "]");
+            auto v = _rDevice->GetDesc();
+            _window.SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v._buildVersion << ", " << v._buildDate << "]");
 
             _globalTechContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
         }
@@ -157,6 +161,7 @@ namespace Sample
 
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
+		const RenderCore::ResourcePtr& presentationResource,
         SceneEngine::LightingParserContext& lightingParserContext, EnvironmentSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys);
@@ -167,6 +172,8 @@ namespace Sample
         using namespace Sample;
 
         // RunPerformanceTest();
+
+		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 
             // We need to startup some basic objects:
             //      * OverlappedWindow (corresponds to a single basic window on Windows)
@@ -217,7 +224,7 @@ namespace Sample
 
             auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
                 primMan._rDevice->GetImmediateContext(), mainScene, 
-                primMan._presChain->GetViewportContext(), primMan._globalTechContext);
+                primMan._presChain->GetDesc(), primMan._globalTechContext);
 
                 //  We also create some "overlay systems" in this sample. 
                 //  Again, it's optional. An overlay system will redirect all input
@@ -272,6 +279,8 @@ namespace Sample
             LogInfo << "Setup frame rig and rendering context";
             auto context = primMan._rDevice->GetImmediateContext();
 
+			RenderCore::Techniques::NamedResources namedResources;
+
                 //  Finally, we execute the frame loop
             for (;;) {
                 auto pump = OverlappedWindow::DoMsgPump();
@@ -285,8 +294,7 @@ namespace Sample
                 }
 
                     // ------- Render ----------------------------------------
-                SceneEngine::LightingParserContext lightingParserContext(
-                    *primMan._globalTechContext);
+                SceneEngine::LightingParserContext lightingParserContext(*primMan._globalTechContext, &namedResources);
                 lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto& screenshot = Tweakable("Screenshot", 0);
@@ -294,16 +302,16 @@ namespace Sample
                     TiledScreenshot(
                         *context, lightingParserContext,
                         *mainScene, mainScene->GetCameraDesc(),
-                        primMan._presChain->GetViewportContext()->_dimensions,
+						SceneEngine::RenderingQualitySettings(UInt2(primMan._presChain->GetDesc()->_width, primMan._presChain->GetDesc()->_height)),
                         UInt2(screenshot, screenshot));
                     screenshot = 0;
                 }
 
                 auto frameResult = frameRig.ExecuteFrame(
                     *context.get(), primMan._presChain.get(), 
-                    g_gpuProfiler.get(), &g_cpuProfiler,
+                    &g_cpuProfiler,
                     std::bind(
-                        RenderFrame, std::placeholders::_1,
+                        RenderFrame, std::placeholders::_1, std::placeholders::_2,
                         std::ref(lightingParserContext), mainScene.get(), 
                         primMan._presChain.get(), 
                         frameRig.GetMainOverlaySystem().get()));
@@ -337,6 +345,7 @@ namespace Sample
 
     PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
+		const RenderCore::ResourcePtr& presentationResource,
         SceneEngine::LightingParserContext& parserContext,
         EnvironmentSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
@@ -344,11 +353,17 @@ namespace Sample
     {
         CPUProfileEvent pEvnt("RenderFrame", g_cpuProfiler);
 
+		auto& namedRes = parserContext.GetNamedResources();
+		auto viewContext = presentationChain->GetDesc();
+		auto samples = RenderCore::TextureSamples::Create((uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0));
+		namedRes.Bind(RenderCore::FrameBufferProperties{viewContext->_width, viewContext->_height, samples});
+		namedRes.Bind(0u, presentationResource);
+
         using namespace SceneEngine;
         if (scene) {
-
+			auto presChainDesc = presentationChain->GetDesc();
             RenderingQualitySettings qualSettings(
-                presentationChain->GetViewportContext()->_dimensions, 
+                UInt2(presChainDesc->_width, presChainDesc->_height), 
                 (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
                 Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0));
 
@@ -362,7 +377,7 @@ namespace Sample
         }
 
         if (overlaySys) {
-            overlaySys->RenderToScene(&context, parserContext);
+            overlaySys->RenderToScene(context, parserContext);
         }
 
         if (!scene->GetPlayerCharacter()->IsPresent())
@@ -375,7 +390,7 @@ namespace Sample
             DrawQuickMetrics(context, parserContext, usefulFonts._defaultFont1.get());
 
         if (overlaySys) {
-            overlaySys->RenderWidgets(context, parserContext.GetProjectionDesc());
+            overlaySys->RenderWidgets(context, parserContext);
         }
 
         return PlatformRig::FrameRig::RenderResult(parserContext.HasPendingAssets());

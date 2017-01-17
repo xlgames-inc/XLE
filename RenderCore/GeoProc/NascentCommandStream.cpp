@@ -374,14 +374,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return stream;
     }
 
-#if 0
 	void RegisterNodeBindingNames(
 		NascentSkeleton& skeleton,
 		const SkeletonRegistry& registry)
 	{
 		for (const auto& nodeDesc:registry.GetImportantNodes()) {
+			uint32 outputMarker = 0u;
 			auto success = skeleton.GetInterface().TryRegisterJointName(
-				AsStringSection(nodeDesc._bindingName), nodeDesc._inverseBind);
+				outputMarker, MakeStringSection(nodeDesc._bindingName));
 			if (!success)
 				LogWarning << "Found possible duplicate joint name in transformation machine: " << nodeDesc._bindingName;
 		}
@@ -392,8 +392,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		const SkeletonRegistry& registry)
 	{
 		for (const auto& nodeDesc:registry.GetImportantNodes())
-			stream.RegisterTransformationMachineOutput(
-				nodeDesc._bindingName, nodeDesc._id, nodeDesc._transformMarker);
+			stream.RegisterInputInterfaceMarker(nodeDesc._bindingName);
 	}
-#endif
 }}}

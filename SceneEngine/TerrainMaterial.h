@@ -77,10 +77,13 @@ namespace SceneEngine
 
         void Write(Utility::OutputStreamFormatter& formatter) const;
 
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+
         TerrainMaterialConfig();
         TerrainMaterialConfig(
             InputStreamFormatter<utf8>& formatter,
-            const ::Assets::DirectorySearchRules& searchRules);
+            const ::Assets::DirectorySearchRules& searchRules,
+			const ::Assets::DepValPtr& depVal);
         ~TerrainMaterialConfig();
 
             // the following constructor is intended for performance comparisons only
@@ -88,6 +91,9 @@ namespace SceneEngine
             InputStreamFormatter<utf8>& formatter,
             const ::Assets::DirectorySearchRules& searchRules,
             bool);
+
+	private:
+		::Assets::DepValPtr _depVal;
     };
 }
 

@@ -50,14 +50,14 @@ namespace Sample
             RenderCore::IThreadContext& devContext, 
             SceneEngine::LightingParserContext& parserContext)
         {
-            _manipulatorsInterface->Render(*devContext, parserContext);
+            _manipulatorsInterface->Render(devContext, parserContext);
         }
 
         void RenderWidgets(
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parserContext)
         {
-            _screens->Render(device, parserContext.GetProjectionDesc());
+            _screens->Render(device, nullptr, parserContext.GetProjectionDesc());
         }
 
         void SetActivationState(bool) {}

@@ -45,6 +45,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return true;
     }
 
+	std::string SkeletonRegistry::GetBindingName(NascentObjectGuid node) const
+	{
+		for(const auto&i:_importantNodes)
+			if (i._id == node) return i._bindingName;
+		return std::string();
+	}
+
     auto    SkeletonRegistry::GetImportantNodes() const -> IteratorRange<const ImportantNode*>
     {
         return MakeIteratorRange(_importantNodes);

@@ -175,7 +175,7 @@ namespace RenderCore { namespace Assets
     }
 
     const ModelCommandStream&       ModelScaffold::CommandStream() const                { return ImmutableData()._visualScene; }
-    const TransformationMachine&    ModelScaffold::EmbeddedSkeleton() const             { return ImmutableData()._embeddedSkeleton; }
+    const SkeletonMachine&    ModelScaffold::EmbeddedSkeleton() const             { return ImmutableData()._embeddedSkeleton; }
     std::pair<Float3, Float3>       ModelScaffold::GetStaticBoundingBox(unsigned) const { return ImmutableData()._boundingBox; }
     unsigned                        ModelScaffold::GetMaxLOD() const                    { return ImmutableData()._maxLOD; }
 

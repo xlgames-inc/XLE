@@ -55,7 +55,7 @@ namespace ToolsRig
     using RenderCore::Assets::MaterialScaffold;
     using RenderCore::Assets::SharedStateSet;
     using RenderCore::Assets::ModelCache;
-    using RenderCore::Assets::TransformationMachine;
+    using RenderCore::Assets::SkeletonMachine;
     using RenderCore::Assets::DelayedDrawCallSet;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

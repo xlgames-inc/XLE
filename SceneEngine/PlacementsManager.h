@@ -34,10 +34,16 @@ namespace SceneEngine
         };
         std::vector<Cell> _cells;
 
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+
         WorldPlacementsConfig(
             Utility::InputStreamFormatter<utf8>& formatter,
-            const ::Assets::DirectorySearchRules& searchRules);
+            const ::Assets::DirectorySearchRules& searchRules,
+			const ::Assets::DepValPtr& depVal);
         WorldPlacementsConfig();
+
+	private:
+		::Assets::DepValPtr _depVal;
     };
 
     class PlacementsRenderer;

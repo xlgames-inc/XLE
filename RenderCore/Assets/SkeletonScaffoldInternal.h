@@ -24,7 +24,7 @@ namespace RenderCore { namespace Assets
     ////////////////////////////////////////////////////////////////////////////////////////////
     //      s k e l e t o n         //
 
-    class TransformationMachine
+    class SkeletonMachine
     {
     public:
         unsigned                            GetOutputMatrixCount() const        { return _outputMatrixCount; }
@@ -56,15 +56,14 @@ namespace RenderCore { namespace Assets
         {
         public:
             uint64*     _outputMatrixNames;
-            Float4x4*   _skeletonInverseBindMatrices;
             size_t      _outputMatrixNameCount;
         };
 
         const InputInterface&   GetInputInterface() const   { return _inputInterface; }
         const OutputInterface&  GetOutputInterface() const  { return _outputInterface; }
 
-        TransformationMachine();
-        ~TransformationMachine();
+        SkeletonMachine();
+        ~SkeletonMachine();
     protected:
         uint32*             _commandStream;
         size_t              _commandStreamSize;

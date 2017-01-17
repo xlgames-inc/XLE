@@ -32,7 +32,7 @@ namespace RenderCore { namespace Assets
         BoundSkinnedGeometry*       _boundSkinnedControllers;
         size_t                      _boundSkinnedControllerCount;
 
-        TransformationMachine       _embeddedSkeleton;
+        SkeletonMachine       _embeddedSkeleton;
         Float4x4*                   _defaultTransforms;
         size_t                      _defaultTransformCount;        
 
@@ -69,7 +69,7 @@ namespace RenderCore { namespace Assets
         unsigned AnimDriverToMachineParameter(unsigned index) const { return _animDriverToMachineParameter[index]; }
 
         AnimationSetBinding(const AnimationSet::OutputInterface&            output,
-                            const TransformationMachine::InputInterface&    input);
+                            const SkeletonMachine::InputInterface&    input);
         AnimationSetBinding();
         AnimationSetBinding(AnimationSetBinding&& moveFrom) never_throws;
         AnimationSetBinding& operator=(AnimationSetBinding&& moveFrom) never_throws;
@@ -84,10 +84,9 @@ namespace RenderCore { namespace Assets
     public:
         unsigned GetModelJointCount() const { return (unsigned)_modelJointIndexToMachineOutput.size(); }
         unsigned ModelJointToMachineOutput(unsigned index) const { return _modelJointIndexToMachineOutput[index]; }
-        const Float4x4& ModelJointToInverseBindMatrix(unsigned index) const { return _modelJointIndexToInverseBindMatrix[index]; }
 
-        SkeletonBinding(    const TransformationMachine::OutputInterface&   output,
-                            const ModelCommandStream::InputInterface&       input);
+        SkeletonBinding(    const SkeletonMachine::OutputInterface&		output,
+                            const ModelCommandStream::InputInterface&   input);
         SkeletonBinding();
         SkeletonBinding(SkeletonBinding&& moveFrom) never_throws;
         SkeletonBinding& operator=(SkeletonBinding&& moveFrom) never_throws;
@@ -95,6 +94,5 @@ namespace RenderCore { namespace Assets
 
     private:
         std::vector<unsigned>   _modelJointIndexToMachineOutput;
-        std::vector<Float4x4>   _modelJointIndexToInverseBindMatrix;
     };
 }}

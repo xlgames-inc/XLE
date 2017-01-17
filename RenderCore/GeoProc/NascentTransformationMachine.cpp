@@ -126,9 +126,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	{
 	public:
 		std::string     _name;
-		Float4x4        _inverseBindMatrix;
 
-		class CompareColladaId
+		class CompareName
 		{
 		public:
 			bool operator()(const Joint& lhs, const Joint& rhs) { return lhs._name < rhs._name; }
@@ -168,7 +167,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		//
 #pragma pack(push)
 #pragma pack(1)
-		struct Param    /* must match TransformationMachine::InputInterface::Parameter */
+		struct Param    /* must match SkeletonMachine::InputInterface::Parameter */
 		{
 			uint64				_name;
 			uint32				_index;
@@ -213,33 +212,27 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		//
 		//      Now, output interface...
 		//
-		std::vector<uint64> jointHashNames;
-		std::vector<Float4x4> jointInverseBindMatrices;
-		std::tie(jointHashNames, jointInverseBindMatrices) = GetOutputInterface();
+		std::vector<uint64> jointHashNames= GetOutputInterface();
 		outputSerializer.SerializeSubBlock(AsPointer(jointHashNames.cbegin()), AsPointer(jointHashNames.cend()));
-		outputSerializer.SerializeSubBlock(AsPointer(jointInverseBindMatrices.cbegin()), AsPointer(jointInverseBindMatrices.cend()));
 		outputSerializer.SerializeValue(jointHashNames.size());
-		assert(jointHashNames.size() == jointInverseBindMatrices.size());
 	}
 
-	std::pair<std::vector<uint64>, std::vector<Float4x4>> NascentSkeletonInterface::GetOutputInterface() const
+	std::vector<uint64> NascentSkeletonInterface::GetOutputInterface() const
 	{
 		ConsoleRig::DebuggerOnlyWarning("Transformation Machine output interface:\n");
 		std::vector<uint64> jointHashNames(_jointTags.size(), 0ull);
-		std::vector<Float4x4> jointInverseBindMatrices(_jointTags.size(), Identity<Float4x4>());
 
 		for (auto i=_jointTags.begin(); i!=_jointTags.end(); ++i) {
 			auto outputMatrixIndex = (unsigned)std::distance(_jointTags.begin(), i);
 			if (outputMatrixIndex < jointHashNames.size()) {
 				ConsoleRig::DebuggerOnlyWarning("  [%i] %s\n", std::distance(_jointTags.begin(), i), i->_name.c_str());
 
-				assert(jointHashNames[i->_outputMatrixIndex] == 0ull);
+				assert(jointHashNames[outputMatrixIndex] == 0ull);
 				jointHashNames[outputMatrixIndex] = Hash64(AsPointer(i->_name.begin()), AsPointer(i->_name.end()));
-				jointInverseBindMatrices[outputMatrixIndex] = i->_inverseBindMatrix;
 			}
 		}
 
-		return std::make_pair(std::move(jointHashNames), std::move(jointInverseBindMatrices));
+		return std::move(jointHashNames);
 	}
 
 	std::ostream& StreamOperator(
@@ -377,18 +370,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return ~AnimationParameterHashName(0x0);
     }
 
-    bool    NascentSkeletonInterface::TryRegisterJointName(
-		uint32& outputMarker, StringSection<char> name, const Float4x4& inverseBindMatrix)
+    bool    NascentSkeletonInterface::TryRegisterJointName(uint32& outputMarker, StringSection<char> name)
     {
 		auto nameAsString = name.AsString();
         auto insertionPoint = std::lower_bound(
             _jointTags.begin(), _jointTags.end(), 
-			nameAsString, Joint::CompareColladaId());
+			nameAsString, Joint::CompareName());
         if (insertionPoint != _jointTags.end() && insertionPoint->_name==nameAsString)
             return false;
 
 		outputMarker = (uint32)_jointTags.size();
-        _jointTags.insert(insertionPoint, Joint{nameAsString, inverseBindMatrix});
+        _jointTags.insert(insertionPoint, Joint{nameAsString});
         return true;
     }
 

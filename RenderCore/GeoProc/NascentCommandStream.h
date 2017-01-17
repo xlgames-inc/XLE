@@ -229,10 +229,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         NascentModelCommandStream(const NascentModelCommandStream& copyFrom);
     };
     
-	/*class SkeletonRegistry;
 	class NascentSkeleton;
+	class SkeletonRegistry;
 	void RegisterNodeBindingNames(NascentModelCommandStream& stream, const SkeletonRegistry& registry);
-	void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);*/
+	void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
 }}}
 
 

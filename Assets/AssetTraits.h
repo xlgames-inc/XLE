@@ -73,14 +73,14 @@ namespace Assets
 			char buffer[256];
 			XlCopyString(buffer, MakeStringSection(initializer.begin(), p));
 			const auto& container = Internal::GetConfigFileContainer(buffer);
-			auto fmttr = container.GetFormatter((const utf8*)(p+1));
+			auto fmttr = container.GetFormatter(MakeStringSection((const utf8*)(p+1), (const utf8*)initializer.end()));
 			return std::make_unique<AssetType>(
 				fmttr, 
 				DefaultDirectorySearchRules(buffer),
 				container.GetDependencyValidation());
 		} else {
 			const auto& container = Internal::GetConfigFileContainer(initializer);
-			auto fmttr = container.GetFormatter((const utf8*)(p+1));
+			auto fmttr = container.GetRootFormatter();
 			return std::make_unique<AssetType>(
 				fmttr,
 				DefaultDirectorySearchRules(initializer),

@@ -71,7 +71,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	{
 	public:
 		T1(Type) bool	TryAddParameter(uint32& paramIndex, StringSection<char> paramName, AnimationParameterHashName hashName);
-		bool			TryRegisterJointName(uint32& outputMarker, StringSection<char> name, const Float4x4& inverseBindMatrix);
+		bool			TryRegisterJointName(uint32& outputMarker, StringSection<char> name);
+
+		std::vector<uint64>		GetOutputInterface() const;
 
 		template<typename Serializer>
 			void    Serialize(Serializer& outputSerializer) const;
@@ -103,7 +105,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		template<typename Type>
 			std::vector<AnimationParameterHashName>& GetTables();
 
-		std::pair<std::vector<uint64>, std::vector<Float4x4>> GetOutputInterface() const;
 		std::pair<AnimSamplerType, uint32>  GetParameterIndex(AnimationParameterHashName parameterName) const;
 		AnimationParameterHashName			GetParameterName(AnimSamplerType type, uint32 index) const;
 

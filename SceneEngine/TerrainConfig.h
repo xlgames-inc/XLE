@@ -78,6 +78,8 @@ namespace SceneEngine
 
         void        Write(OutputStreamFormatter& formatter) const;
 
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+
     protected:
         unsigned    _nodeDimsInElements;
         unsigned    _cellTreeDepth;
@@ -86,6 +88,7 @@ namespace SceneEngine
         float       _sunPathAngle;
         bool        _encodedGradientFlags;
         std::vector<CoverageLayer> _coverageLayers;
+		::Assets::DepValPtr _depVal;
     };
 
     /// <summary>Describes the position and size of terrain in world coordinates<summary>

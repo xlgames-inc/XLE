@@ -13,6 +13,7 @@
 #include "../../SceneEngine/VegetationSpawn.h"
 #include "../../SceneEngine/SceneEngineUtils.h" // for AsDelaySteps
 #include "../../RenderCore/IAnnotator.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../Tools/EntityInterface/EnvironmentSettings.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
 #include "../../Assets/ConfigFileContainer.h"
@@ -27,9 +28,9 @@ namespace Sample
         _updateMan->FlushUpdates();
 
         if (_vegetationSpawnManager && (!_vegetationSpawnCfgVal || _vegetationSpawnCfgVal->GetValidationIndex() != 0)) {
-            ::Assets::ConfigFileContainer<SceneEngine::VegetationSpawnConfig> container((_cfgDir + VegetationSpawnCfg).c_str());
-            _vegetationSpawnManager->Load(container._asset);
-            _vegetationSpawnCfgVal = container.GetDependencyValidation();
+            auto vegeSpawnCfg = ::Assets::AutoConstructAsset<SceneEngine::VegetationSpawnConfig>(MakeStringSection(_cfgDir + VegetationSpawnCfg));
+            _vegetationSpawnManager->Load(*vegeSpawnCfg);
+            _vegetationSpawnCfgVal = vegeSpawnCfg->GetDependencyValidation();
         }
     }
 
@@ -67,6 +68,7 @@ namespace Sample
         using Toggles = SceneEngine::SceneParseSettings::Toggles;
 
         if (parseSettings._toggles & Toggles::NonTerrain) {
+			auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
             auto delaySteps = SceneEngine::AsDelaySteps(parseSettings._batchFilter);
 
             if (!delaySteps.empty()) {
@@ -75,7 +77,7 @@ namespace Sample
                 RenderCore::GPUProfilerBlock profileBlock(context, name);
                 CATCH_ASSETS_BEGIN
                     for (auto i:delaySteps)
-                        _vegetationSpawnManager->Render(context, parserContext, techniqueIndex, i);
+                        _vegetationSpawnManager->Render(*metalContext, parserContext, techniqueIndex, i);
                 CATCH_ASSETS_END(parserContext)
             }
 
@@ -83,7 +85,7 @@ namespace Sample
                 CPUProfileEvent pEvnt("ShallowSurface", g_cpuProfiler);
 				RenderCore::GPUProfilerBlock profileBlock(context, "ShallowSurface");
                 if (_shallowSurfaces && _surfaceHeights)
-                    _shallowSurfaces->RenderDebugging(context, parserContext, techniqueIndex, _surfaceHeights.get());
+                    _shallowSurfaces->RenderDebugging(*metalContext, parserContext, techniqueIndex, _surfaceHeights.get());
             }
         }
     }

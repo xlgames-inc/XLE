@@ -522,10 +522,10 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void    PlacementsQuadTreeDebugger::Render(
-        RenderOverlays::IOverlayContext* context, Layout& layout, 
+        RenderOverlays::IOverlayContext& context, Layout& layout, 
         Interactables& interactables, InterfaceState& interfaceState)
     {
-        RenderCore::Metal::DeviceContext::Get(*context->GetDeviceContext())->Bind(Techniques::CommonResources()._dssDisable);
+        RenderCore::Metal::DeviceContext::Get(*context.GetDeviceContext())->Bind(Techniques::CommonResources()._dssDisable);
         static signed treeDepthFilter = -1;
         static bool drawObjects = false;
 
@@ -546,7 +546,7 @@ namespace SceneEngine
                 // render some debugging information (including bounding boxes for
                 // the nodes in the quad tree).
             auto quadTrees = _placementsManager->GetRenderer()->GetVisibleQuadTrees(
-                *_cells, context->GetProjectionDesc()._worldToProjection);
+                *_cells, context.GetProjectionDesc()._worldToProjection);
             for (auto i=quadTrees.cbegin(); i!=quadTrees.cend(); ++i) {
                 auto cellToWorld = i->first;
                 auto quadTree = i->second;
@@ -556,31 +556,31 @@ namespace SceneEngine
                 for (auto n=nodes.cbegin(); n!=nodes.cend(); ++n) {
                     if (treeDepthFilter < 0 || signed(n->_treeDepth) == treeDepthFilter) {
                         DrawBoundingBox(
-                            context, n->_boundary, cellToWorld,
+                            &context, n->_boundary, cellToWorld,
                             cols[std::min((unsigned)dimof(cols), n->_treeDepth)], 0x1);
                     }
                 }
                 for (auto n=nodes.cbegin(); n!=nodes.cend(); ++n) {
                     if (treeDepthFilter < 0 || signed(n->_treeDepth) == treeDepthFilter) {
                         DrawBoundingBox(
-                            context, n->_boundary, cellToWorld,
+							&context, n->_boundary, cellToWorld,
                             cols[std::min((unsigned)dimof(cols), n->_treeDepth)], 0x2);
                     }
                 }
             }
         } else {
-            auto cells = _placementsManager->GetRenderer()->GetObjectBoundingBoxes(*_cells, context->GetProjectionDesc()._worldToProjection);
+            auto cells = _placementsManager->GetRenderer()->GetObjectBoundingBoxes(*_cells, context.GetProjectionDesc()._worldToProjection);
             for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
                 auto cellToWorld = c->first;
                 auto objs = c->second;
 
                 for (unsigned c=0; c<objs._count; ++c) {
                     auto& boundary = *PtrAdd(objs._boundingBox, c*objs._stride);
-                    DrawBoundingBox(context, boundary, cellToWorld, cols[0], 0x1);
+                    DrawBoundingBox(&context, boundary, cellToWorld, cols[0], 0x1);
                 }
                 for (unsigned c=0; c<objs._count; ++c) {
                     auto& boundary = *PtrAdd(objs._boundingBox, c*objs._stride);
-                    DrawBoundingBox(context, boundary, cellToWorld, cols[0], 0x2);
+                    DrawBoundingBox(&context, boundary, cellToWorld, cols[0], 0x2);
                 }
             }
         }

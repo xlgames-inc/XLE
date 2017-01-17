@@ -100,11 +100,13 @@ namespace SceneEngine
 
     VegetationSpawnConfig::VegetationSpawnConfig(
         InputStreamFormatter<utf8>& formatter,
-        const ::Assets::DirectorySearchRules& searchRules)
+        const ::Assets::DirectorySearchRules& searchRules,
+		const ::Assets::DepValPtr& depVal)
     : VegetationSpawnConfig()
     {
         AccessorDeserialize(formatter, *this);
         _searchRules = searchRules;
+		_depVal = depVal;
     }
 
     VegetationSpawnConfig::VegetationSpawnConfig() 

@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../../RenderCore/GPUProfiler.h"
 #include <memory>
 #define ENABLE_TERRAIN
 

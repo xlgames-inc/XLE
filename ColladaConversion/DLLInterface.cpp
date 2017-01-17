@@ -117,7 +117,9 @@ namespace ColladaConversion
         void MergeIntoOutputMatrix(unsigned outputMatrixIndex, const Float4x4& transform);
         Float4x4 GetMergedOutputMatrix(unsigned outputMatrixIndex) const;
 
-        TransMachineOptimizer(ReferencedGeometries& refGeos, unsigned outputMatrixCount, const VisualScene& scene);
+        TransMachineOptimizer(
+			ReferencedGeometries& refGeos, unsigned outputMatrixCount, const VisualScene& scene,
+			const SkeletonRegistry& skeleReg, IteratorRange<uint64*> outputMatricesBindingValues);
         TransMachineOptimizer();
         ~TransMachineOptimizer();
     protected:
@@ -146,7 +148,9 @@ namespace ColladaConversion
         return Identity<Float4x4>();
     }
 
-    TransMachineOptimizer::TransMachineOptimizer(ReferencedGeometries& refGeos, unsigned outputMatrixCount, const VisualScene& scene)
+    TransMachineOptimizer::TransMachineOptimizer(
+		ReferencedGeometries& refGeos, unsigned outputMatrixCount, const VisualScene& scene,
+		const SkeletonRegistry& skeleReg, IteratorRange<uint64*> outputMatricesBindingValues)
     {
         _canMergeIntoTransform.resize(outputMatrixCount, false);
         _mergedTransforms.resize(outputMatrixCount, Identity<Float4x4>());
@@ -154,28 +158,41 @@ namespace ColladaConversion
             // if there are any skin controllers at all, we need to prevent merging for now
         if (refGeos._skinControllers.empty()) {
             for (unsigned c=0; c<outputMatrixCount; ++c) {
+
+					// find the NascentObjectGuid associated with this outputMatrixIndex
+					//	 -- we'll use this to see if any objects are attached
+				auto bindingHash = outputMatricesBindingValues[c];
+				NascentObjectGuid attachmentPoint;
+				bool foundAttachmentPoint = false;
+				for (auto&i:skeleReg.GetImportantNodes())
+					if (Hash64(i._bindingName) == bindingHash) {
+						foundAttachmentPoint = true;
+						attachmentPoint = i._id;
+					}
+				assert(foundAttachmentPoint);
+
                     // if we've got a skin controller attached, we can't do any merging
                 auto skinI = std::find_if(
                     refGeos._skinControllers.cbegin(), refGeos._skinControllers.cend(),
-                    [c](const ReferencedGeometries::AttachedObject& obj) { return obj._outputMatrixIndex == c; });
+                    [attachmentPoint](const ReferencedGeometries::AttachedObject& obj) { return obj._nodeGuid == attachmentPoint; });
                 if (skinI != refGeos._skinControllers.cend()) continue;
 
                     // check to see if we have at least one mesh attached...
                 auto geoI = std::find_if(
                     refGeos._meshes.cbegin(), refGeos._meshes.cend(),
-                    [c](const ReferencedGeometries::AttachedObject& obj) { return obj._outputMatrixIndex == c; });
+                    [attachmentPoint](const ReferencedGeometries::AttachedObject& obj) { return obj._nodeGuid == attachmentPoint; });
                 if (geoI == refGeos._meshes.cend()) continue;
 
                     // find all of the meshes attached, and check if any are attached in
                     // multiple places
                 bool doublyAttachedObject = false;
                 for (auto i=refGeos._meshes.cbegin(); i!=refGeos._meshes.cend() && !doublyAttachedObject; ++i) {
-                    if (i->_outputMatrixIndex == c) {
+                    if (i->_nodeGuid == attachmentPoint) {
                         GuidReference refGuid(scene.GetInstanceGeometry(i->_objectIndex)._reference);
                         for (auto i2=refGeos._meshes.cbegin(); i2!=refGeos._meshes.cend(); ++i2) {
                             GuidReference refGuid2(scene.GetInstanceGeometry(i2->_objectIndex)._reference);
-                            if (refGuid == refGuid2 && i2->_outputMatrixIndex != i->_outputMatrixIndex) {
-                                doublyAttachedObject = true;
+                            if (refGuid == refGuid2 && !(i2->_nodeGuid == i->_nodeGuid)) {
+                                doublyAttachedObject = true;	// (ie, single object attached to multiple parents)
                                 break;
                             }
                         }
@@ -257,7 +274,8 @@ namespace ColladaConversion
             // attached to more than one matrix, or if something other than a geometry instance is
             // attached, then we cannot do any merging.
         
-        TransMachineOptimizer optimizer(refGeos, _skeleton.GetSkeletonMachine().GetOutputMatrixCount(), scene);
+		auto skelOutputInterface = _skeleton.GetInterface().GetOutputInterface();
+        TransMachineOptimizer optimizer(refGeos, _skeleton.GetSkeletonMachine().GetOutputMatrixCount(), scene, jointRefs, MakeIteratorRange(skelOutputInterface));
         _skeleton.GetSkeletonMachine().Optimize(optimizer);
 
             // We can try to optimise the skeleton here. We should collect the list
@@ -269,13 +287,16 @@ namespace ColladaConversion
 
         for (auto c:refGeos._meshes) {
             TRY {
-                _cmdStream.Add(
-                    InstantiateGeometry(
-                        scene.GetInstanceGeometry(c._objectIndex),
-                        c._outputMatrixIndex, optimizer.GetMergedOutputMatrix(c._outputMatrixIndex),
-                        c._levelOfDetail,
-                        input._resolveContext, _geoObjects, jointRefs,
-                        input._cfg));
+				auto bindingName = jointRefs.GetBindingName(c._nodeGuid);
+				assert(!bindingName.empty());
+				auto outputMatrixMarker = _cmdStream.RegisterInputInterfaceMarker(bindingName);
+
+				auto geo = InstantiateGeometry(
+					scene.GetInstanceGeometry(c._objectIndex), input._resolveContext,
+					optimizer.GetMergedOutputMatrix(outputMatrixMarker),
+					_geoObjects, input._cfg);
+
+                _cmdStream.Add(NascentModelCommandStream::GeometryInstance { geo._geoId, outputMatrixMarker, std::move(geo._materials), c._levelOfDetail });
             } CATCH(const std::exception& e) {
                 LogWarning << "Got exception while instantiating geometry (" << scene.GetInstanceGeometry(c._objectIndex)._reference.AsString().c_str() << "). Exception details:";
                 LogWarning << e.what();
@@ -285,15 +306,24 @@ namespace ColladaConversion
         }
 
         for (auto c:refGeos._skinControllers) {
+
+			auto bindingName = jointRefs.GetBindingName(c._nodeGuid);
+			assert(!bindingName.empty());
+			auto outputMatrixMarker = _cmdStream.RegisterInputInterfaceMarker(bindingName);
+
             bool skinSuccessful = false;
             TRY {
-                _cmdStream.Add(
+				auto* cmdStream = &_cmdStream;
+                auto geo =
                     InstantiateController(
-                        scene.GetInstanceController(c._objectIndex),
-                        c._outputMatrixIndex,
-                        c._levelOfDetail,
-                        input._resolveContext, _geoObjects, jointRefs,
-                        input._cfg));
+                        scene.GetInstanceController(c._objectIndex), input._resolveContext, 
+						[&jointRefs, cmdStream](const NascentObjectGuid& guid) -> unsigned
+						{
+							auto bindingName = jointRefs.GetBindingName(guid);
+							return cmdStream->RegisterInputInterfaceMarker(bindingName);
+						},
+                        _geoObjects, input._cfg);
+				_cmdStream.Add(NascentModelCommandStream::SkinControllerInstance { geo._geoId, outputMatrixMarker, std::move(geo._materials), c._levelOfDetail });
                 skinSuccessful = true;
             } CATCH(const std::exception& e) {
                 LogWarning << "Got exception while instantiating controller (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << "). Exception details:";
@@ -310,12 +340,12 @@ namespace ColladaConversion
                     //      only transform that can affect them is the parent node -- or maybe the skeleton root?)
                 LogWarning << "Could not instantiate controller as a skinned object. Falling back to rigid object.";
                 TRY {
-                    _cmdStream.Add(
+                    auto geo =
                         InstantiateGeometry(
-                            scene.GetInstanceController(c._objectIndex),
-                            c._outputMatrixIndex, Identity<Float4x4>(), c._levelOfDetail, 
-                            input._resolveContext, _geoObjects, jointRefs,
-                            input._cfg));
+                            scene.GetInstanceController(c._objectIndex), input._resolveContext, 
+                            Identity<Float4x4>(),
+                            _geoObjects, input._cfg);
+					_cmdStream.Add(NascentModelCommandStream::GeometryInstance { geo._geoId, outputMatrixMarker, std::move(geo._materials), c._levelOfDetail });
                 } CATCH(const std::exception& e) {
                     LogWarning << "Got exception while instantiating geometry (after controller failed) (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << "). Exception details:";
                     LogWarning << e.what();
@@ -326,7 +356,7 @@ namespace ColladaConversion
         }
 
             // register the names so the skeleton and command stream can be bound together
-        RegisterNodeBindingNames(_skeleton, jointRefs);
+        // RegisterNodeBindingNames(_skeleton, jointRefs);
         RegisterNodeBindingNames(_cmdStream, jointRefs);
     }
 

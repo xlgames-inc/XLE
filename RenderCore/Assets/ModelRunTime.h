@@ -25,7 +25,7 @@ namespace RenderCore { namespace Assets
 {
     class SharedStateSet;
     class ModelCommandStream;
-    class TransformationMachine;
+    class SkeletonMachine;
     class ModelRendererContext;
     class SkeletonBinding;
     
@@ -78,7 +78,7 @@ namespace RenderCore { namespace Assets
         unsigned                        LargeBlocksOffset() const;
         const ModelCommandStream&       CommandStream() const;
         const ModelImmutableData&       ImmutableData() const;
-        const TransformationMachine&    EmbeddedSkeleton() const;
+        const SkeletonMachine&    EmbeddedSkeleton() const;
         std::pair<Float3, Float3>       GetStaticBoundingBox(unsigned lodIndex = 0) const;
         unsigned                        GetMaxLOD() const;
 
@@ -304,11 +304,11 @@ namespace RenderCore { namespace Assets
     class SkeletonScaffold
     {
     public:
-        const TransformationMachine&    GetTransformationMachine() const;
-		const ::Assets::rstring&		Filename() const				{ return _filename; }
-		const ::Assets::DepValPtr&		GetDependencyValidation() const { return _depVal; }
+        const SkeletonMachine&		GetTransformationMachine() const;
+		const ::Assets::rstring&	Filename() const				{ return _filename; }
+		const ::Assets::DepValPtr&	GetDependencyValidation() const { return _depVal; }
 
-		::Assets::AssetState			StallWhilePending() const;
+		::Assets::AssetState		StallWhilePending() const;
 
         static const auto CompileProcessType = ConstHash64<'Skel', 'eton'>::Value;
 
@@ -328,7 +328,7 @@ namespace RenderCore { namespace Assets
 		::Assets::rstring			_filename;
 		::Assets::DepValPtr			_depVal;
 
-		const TransformationMachine*   TryImmutableData() const;
+		const SkeletonMachine*		TryImmutableData() const;
 		void Resolve() const;
     };
 
@@ -433,7 +433,7 @@ namespace RenderCore { namespace Assets
             const AnimationState& animState, const Float4x4& localToWorld);
         
         SkinPrepareMachine(const ModelScaffold&, const AnimationSetScaffold&, const SkeletonScaffold&);
-        SkinPrepareMachine(const ModelScaffold& skinScaffold, const TransformationMachine& skeletonScaffold);
+        SkinPrepareMachine(const ModelScaffold& skinScaffold, const SkeletonMachine& skeletonScaffold);
         ~SkinPrepareMachine();
     protected:
         class Pimpl;

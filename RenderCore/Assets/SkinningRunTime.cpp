@@ -622,7 +622,7 @@ namespace RenderCore { namespace Assets
         std::unique_ptr<AnimationSetBinding> _animationSetBinding;
         std::unique_ptr<SkeletonBinding> _skeletonBinding;
         const AnimationSetScaffold* _animationSetScaffold;
-        const TransformationMachine* _transMachine;
+        const SkeletonMachine* _transMachine;
     };
 
     void SkinPrepareMachine::PrepareAnimation(
@@ -671,7 +671,7 @@ namespace RenderCore { namespace Assets
         _pimpl = std::move(pimpl);
     }
 
-    SkinPrepareMachine::SkinPrepareMachine(const ModelScaffold& skinScaffold, const TransformationMachine& transMachine)
+    SkinPrepareMachine::SkinPrepareMachine(const ModelScaffold& skinScaffold, const SkeletonMachine& transMachine)
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_skeletonBinding = std::make_unique<SkeletonBinding>(

@@ -13,7 +13,7 @@ namespace RenderCore { namespace Assets
     class RawAnimationCurve;
     class AnimationSetBinding;
     class AnimationState;
-    class TransformationMachine;
+    class SkeletonMachine;
 
     #pragma pack(push)
     #pragma pack(1)
@@ -58,7 +58,7 @@ namespace RenderCore { namespace Assets
 
         TransformationParameterSet  BuildTransformationParameterSet(
             const AnimationState&           animState,
-            const TransformationMachine&    transformationMachine,
+            const SkeletonMachine&    transformationMachine,
             const AnimationSetBinding&      binding,
             const RawAnimationCurve*        curves,
             size_t                          curvesCount) const;

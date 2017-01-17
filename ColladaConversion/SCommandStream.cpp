@@ -98,8 +98,7 @@ namespace ColladaConversion
                 // (prevent a reference if the transformation machine is completely empty)
             if (!skeleton.GetSkeletonMachine().IsEmpty()) {
 				uint32 outputMarker = ~0u;
-				assert(nodeDesc._hasInverseBind);
-				if (skeleton.GetInterface().TryRegisterJointName(outputMarker, MakeStringSection(nodeDesc._bindingName), nodeDesc._inverseBind)) {
+				if (skeleton.GetInterface().TryRegisterJointName(outputMarker, MakeStringSection(nodeDesc._bindingName))) {
 					skeleton.GetSkeletonMachine().WriteOutputMarker(outputMarker);
 					skeletonReferences.TryRegisterNode(nodeId, bindingName.c_str());
 				} else {
@@ -359,8 +358,6 @@ namespace ColladaConversion
             // build transformation machine output indices for each of them.
         auto skeleton = FindElement(skeletonRef, resolveContext, &IDocScopeIdResolver::FindNode);
         if (!skeleton) return DynamicArray<uint16>();
-
-        const auto& invBindMats = unboundController._inverseBindMatrices;
 
             // data is stored in xml list format, with whitespace deliminated elements
             // there should be an <accessor> that describes how to read this list

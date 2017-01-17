@@ -67,8 +67,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         auto skelOutputInterface = skeletonInterf.GetOutputInterface();
         auto streamInputInterface = cmdStream.GetInputInterface();
         RenderCore::Assets::SkeletonBinding skelBinding(
-            RenderCore::Assets::TransformationMachine::OutputInterface
-                {AsPointer(skelOutputInterface.first.begin()), AsPointer(skelOutputInterface.second.begin()), skelOutputInterface.first.size()},
+            RenderCore::Assets::SkeletonMachine::OutputInterface
+                {AsPointer(skelOutputInterface.begin()), skelOutputInterface.size()},
             RenderCore::Assets::ModelCommandStream::InputInterface
                 {AsPointer(streamInputInterface.begin()), streamInputInterface.size()});
 

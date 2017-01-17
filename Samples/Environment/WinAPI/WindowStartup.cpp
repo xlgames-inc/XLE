@@ -48,9 +48,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 
     auto finalsDirectory = lpCmdLine;
     if (!finalsDirectory[0]
-        || FindFiles(
+        || RawFS::FindFiles(
             std::string(finalsDirectory) + "/*.*", 
-            FindFilesFilter::File).empty()) {
+			RawFS::FindFilesFilter::File).empty()) {
         MessageBox(0, "Expecting the same of a directory on the command line. This should be the 'finals' directory exported from the level editor.", "Environment Sample", MB_OK);
     }
 

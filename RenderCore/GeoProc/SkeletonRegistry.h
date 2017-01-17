@@ -30,8 +30,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         ImportantNode   GetNode(NascentObjectGuid node) const;
         
         bool            TryRegisterNode(NascentObjectGuid node, const char bindingName[]);
-
-        void            AttachMergeGeometry(NascentObjectGuid node, const Float4x4& mergeToGeometry);
+		std::string		GetBindingName(NascentObjectGuid node) const;
 
         void            MarkParameterAnimated(const std::string& paramName);
         bool            IsAnimated(const std::string& paramName) const;

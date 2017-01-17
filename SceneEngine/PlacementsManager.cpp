@@ -2578,7 +2578,8 @@ namespace SceneEngine
 
     WorldPlacementsConfig::WorldPlacementsConfig(
         InputStreamFormatter<utf8>& formatter,
-        const ::Assets::DirectorySearchRules& searchRules)
+        const ::Assets::DirectorySearchRules& searchRules,
+		const ::Assets::DepValPtr& depVal)
     : WorldPlacementsConfig()
     {
         Document<InputStreamFormatter<utf8>> doc(formatter);
@@ -2595,6 +2596,7 @@ namespace SceneEngine
                 baseFile.c_str());
             _cells.push_back(cell);
         }
+		_depVal = depVal;
     }
 
     WorldPlacementsConfig::WorldPlacementsConfig()

@@ -120,7 +120,7 @@ namespace ColladaConversion
                     //
                 uint32 paramIndex = ~0u;
                 if (    parameterType != ParameterType_Embedded
-                    &&  interf.TryAddParameter<Float4x4>(paramIndex, parameterId, paramName.c_str())) {
+                    &&  interf.TryAddParameter<Float4x4>(paramIndex, MakeStringSection(paramName), parameterId)) {
 
 					defaultParameters.Set(paramIndex, *(const Float4x4*)trans.GetUnionData());
                     dst.PushCommand(TransformStackCommand::TransformFloat4x4_Parameter);
@@ -138,7 +138,7 @@ namespace ColladaConversion
 
                 uint32 paramIndex = ~0u;
                 if (    parameterType != ParameterType_Embedded
-                    &&  interf.TryAddParameter<Float3>(paramIndex, parameterId, paramName.c_str())) {
+                    &&  interf.TryAddParameter<Float3>(paramIndex, MakeStringSection(paramName), parameterId)) {
 
 					defaultParameters.Set(paramIndex, *(const Float3*)trans.GetUnionData());
                     dst.PushCommand(TransformStackCommand::Translate_Parameter);
@@ -157,7 +157,7 @@ namespace ColladaConversion
                 const auto& rot = *(const ArbitraryRotation*)trans.GetUnionData();
                 uint32 paramIndex = ~0u;
                 if (    parameterType != ParameterType_Embedded
-                    &&  interf.TryAddParameter<Float4>(paramIndex, parameterId, paramName.c_str())) {
+                    &&  interf.TryAddParameter<Float4>(paramIndex, MakeStringSection(paramName), parameterId)) {
 
 					defaultParameters.Set(paramIndex, *(const Float4*)&rot);
 
@@ -205,14 +205,14 @@ namespace ColladaConversion
                 if (parameterType != ParameterType_Embedded) {
                     uint32 paramIndex = ~0u;
                     if (isUniform) {
-                        if (interf.TryAddParameter<float>(paramIndex, parameterId, paramName.c_str())) {
+                        if (interf.TryAddParameter<float>(paramIndex, MakeStringSection(paramName), parameterId)) {
 							defaultParameters.Set(paramIndex, scale[0]);
                             dst.PushCommand(TransformStackCommand::UniformScale_Parameter);
                             dst.PushCommand(paramIndex);
                             writeEmbedded = false;
                         }
                     } else {
-                        if (interf.TryAddParameter<Float3>(paramIndex, parameterId, paramName.c_str())) {
+                        if (interf.TryAddParameter<Float3>(paramIndex, MakeStringSection(paramName), parameterId)) {
 							defaultParameters.Set(paramIndex, scale);
                             dst.PushCommand(TransformStackCommand::ArbitraryScale_Parameter);
                             dst.PushCommand(paramIndex);

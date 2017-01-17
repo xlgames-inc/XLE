@@ -193,11 +193,11 @@ namespace Sample
                 if (curve) {
                     float startTime = curve->StartTime();
                     float endTime = curve->EndTime();
-                    if (driver._samplerType == RenderCore::Assets::TransformationParameterSet::Type::Float3) {
+                    if (driver._samplerType == RenderCore::Assets::AnimSamplerType::Float3) {
                         Float3 start    = curve->Calculate<Float3>(startTime);
                         Float3 end      = curve->Calculate<Float3>(endTime);
                         return (end - start) / (endTime - startTime) / _characterScale;
-                    } else if (driver._samplerType == RenderCore::Assets::TransformationParameterSet::Type::Float4x4) {
+                    } else if (driver._samplerType == RenderCore::Assets::AnimSamplerType::Float4x4) {
                         Float4x4 start    = curve->Calculate<Float4x4>(startTime);
                         Float4x4 end      = curve->Calculate<Float4x4>(endTime);
                         return (ExtractTranslation(end) - ExtractTranslation(start)) / (endTime - startTime) / _characterScale;

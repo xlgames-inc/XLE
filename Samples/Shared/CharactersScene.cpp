@@ -274,7 +274,7 @@ namespace Sample
                     for (auto i2=blockStart; i2<i; ++i2) {
                         Float4x4 final = i2->_localToWorld;
                         Combine_InPlace(RotationZ((float)M_PI), final);     // compensate for flip in the sample art
-                        Combine_InPlace(i2->_animState._motionCompensation * newState._time, final);
+                        Combine_InPlace(Float3(i2->_animState._motionCompensation * newState._time), final);
 
                         __declspec(align(16)) auto localToCulling = Combine(i2->_localToWorld, worldToProjection);
                         if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
@@ -301,7 +301,7 @@ namespace Sample
     
             Float4x4 final      = i->_localToWorld;
             Combine_InPlace(RotationZ((float)M_PI), final);     // compensate for flip in the sample art
-            Combine_InPlace(i->_animState._motionCompensation * i->_animState._time, final);
+            Combine_InPlace(Float3(i->_animState._motionCompensation * i->_animState._time), final);
 
             __declspec(align(16)) auto localToCulling = Combine(i->_localToWorld, worldToProjection);
             if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
@@ -318,7 +318,7 @@ namespace Sample
     
             Float4x4 final = _pimpl->_playerCharacter->_localToWorld;
             Combine_InPlace(RotationZ((float)M_PI), final);     // compensate for flip in the sample art
-            Combine_InPlace(_pimpl->_playerCharacter->_animState._motionCompensation * _pimpl->_playerCharacter->_animState._time, final);
+            Combine_InPlace(Float3(_pimpl->_playerCharacter->_animState._motionCompensation * _pimpl->_playerCharacter->_animState._time), final);
     
             __declspec(align(16)) auto localToCulling = Combine(_pimpl->_playerCharacter->_localToWorld, worldToProjection);
             if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
@@ -496,8 +496,8 @@ namespace Sample
 
                         auto model = CreateFromParameters<CharacterInputFiles>(ent->_properties);
                         auto anim = CreateFromParameters<AnimationNames>(ent->_properties);
-                        bool isPlayer = ent->_properties.GetParameter<int>("CharacterType", 1) == 0;
-                        auto localToWorld = Transpose(ent->_properties.GetParameter<Float4x4>("Transform", Identity<Float4x4>()));
+                        bool isPlayer = ent->_properties.GetParameter<int>(MakeStringSection(u("CharacterType")), 1) == 0;
+                        auto localToWorld = Transpose(ent->_properties.GetParameter<Float4x4>(MakeStringSection(u("Transform")), Identity<Float4x4>()));
                         scene->CreateCharacter(id.Object(), model, anim, isPlayer, localToWorld);
                     }
                 });

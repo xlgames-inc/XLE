@@ -21,11 +21,12 @@
 #include "../../SceneEngine/DynamicImposters.h"
 #include "../../SceneEngine/SceneEngineUtils.h"     // for AsDelaySteps
 
-#include "../../RenderCore/GPUProfiler.h"
+#include "../../RenderCore/IAnnotator.h"
 #include "../../RenderCore/Assets/ModelCache.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
 
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Streams/PathUtils.h"
@@ -35,8 +36,6 @@ namespace Sample
     std::shared_ptr<SceneEngine::ITerrainFormat>     MainTerrainFormat;
     SceneEngine::TerrainCoordinateSystem             MainTerrainCoords;
     SceneEngine::TerrainConfig                       MainTerrainConfig;
-
-    namespace GPUProfiler = RenderCore::Metal::GPUProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -79,7 +78,7 @@ namespace Sample
     void EnvironmentSceneParser::Pimpl::LoadGameObjects(StringSection<::Assets::ResChar> filename)
     {
         size_t fileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
+        auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
         using Formatter = InputStreamFormatter<utf8>;
         Formatter formatter(
             MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
@@ -169,15 +168,16 @@ namespace Sample
     {
         CPUProfileEvent pEvnt("ExecuteScene", g_cpuProfiler);
         
+		auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         using Toggles = SceneParseSettings::Toggles;
         using BF = SceneParseSettings::BatchFilter;
         #if defined(ENABLE_TERRAIN)
             if (    parseSettings._toggles & Toggles::Terrain
                 &&  parseSettings._batchFilter == BF::General) {
                 CPUProfileEvent pEvnt("TerrainRender", g_cpuProfiler);
-                RenderCore::GPUProfilerBlock profilerBlock(*g_gpuProfiler.get(), context, "TerrainRender");
+                RenderCore::GPUProfilerBlock profilerBlock(context, "TerrainRender");
                 CATCH_ASSETS_BEGIN
-                    _pimpl->_terrainManager->Render(context, parserContext, preparedPackets, techniqueIndex);
+                    _pimpl->_terrainManager->Render(metalContext.get(), parserContext, preparedPackets, techniqueIndex);
                 CATCH_ASSETS_END(parserContext)
             }
         #endif
@@ -193,21 +193,20 @@ namespace Sample
                 auto delaySteps = SceneEngine::AsDelaySteps(parseSettings._batchFilter);
                 auto* name = PlacementsRenderName(parseSettings._batchFilter);
                 CPUProfileEvent pEvnt(name, g_cpuProfiler);
-				RenderCore::GPUProfilerBlock profilerBlock(*g_gpuProfiler.get(), context, name);
+				RenderCore::GPUProfilerBlock profilerBlock(context, name);
                 CATCH_ASSETS_BEGIN
                     for (auto i:delaySteps)
                         if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
-                            _pimpl->_placementsRenderer->CommitTransparent(context, parserContext, techniqueIndex, i);
+                            _pimpl->_placementsRenderer->CommitTransparent(*metalContext, parserContext, techniqueIndex, i);
                         } else {
-                            _pimpl->_placementsRenderer->Render(context, parserContext, techniqueIndex, *_pimpl->_placementsCells);
+                            _pimpl->_placementsRenderer->Render(*metalContext, parserContext, techniqueIndex, *_pimpl->_placementsCells);
                         }
                 CATCH_ASSETS_END(parserContext)
             }
         }
 
-		auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         for (const auto&p:_pimpl->_scenePlugins)
-            p->ExecuteScene(metalContext.get(), parserContext, parseSettings, techniqueIndex);
+            p->ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
     }
 
     bool EnvironmentSceneParser::HasContent(const SceneParseSettings& parseSettings) const
@@ -299,11 +298,11 @@ namespace Sample
     {
         #if defined(ENABLE_TERRAIN)
             if (!_pimpl->_terrainCfgVal || _pimpl->_terrainCfgVal->GetValidationIndex() != 0) {
-                ::Assets::ConfigFileContainer<SceneEngine::TerrainConfig> container(_pimpl->MakeCfgName(TerrainCfg).c_str());
-                _pimpl->_terrainManager->Load(container._asset);
-                _pimpl->_terrainCfgVal = container.GetDependencyValidation();
+				auto terrainCfg = ::Assets::AutoConstructAsset<SceneEngine::TerrainConfig>(MakeStringSection(_pimpl->MakeCfgName(TerrainCfg)));
+                _pimpl->_terrainManager->Load(*terrainCfg);
+                _pimpl->_terrainCfgVal = terrainCfg->GetDependencyValidation();
 
-                MainTerrainConfig = container._asset;
+                MainTerrainConfig = *terrainCfg;
                 MainTerrainCoords = _pimpl->_terrainManager->GetCoords();
 
                 if (_pimpl->_envFeatures)
@@ -311,18 +310,18 @@ namespace Sample
             }
 
             if (!_pimpl->_terrainTexturesCfgVal || _pimpl->_terrainTexturesCfgVal->GetValidationIndex() != 0) {
-                ::Assets::ConfigFileContainer<SceneEngine::TerrainMaterialConfig> container(_pimpl->MakeCfgName(TerrainMaterialCfg).c_str());
-                _pimpl->_terrainManager->LoadMaterial(container._asset);
-                _pimpl->_terrainTexturesCfgVal = container.GetDependencyValidation();
+                auto terrainMaterialCfg = ::Assets::AutoConstructAsset<SceneEngine::TerrainMaterialConfig>(MakeStringSection(_pimpl->MakeCfgName(TerrainMaterialCfg)));
+                _pimpl->_terrainManager->LoadMaterial(*terrainMaterialCfg);
+                _pimpl->_terrainTexturesCfgVal = terrainMaterialCfg->GetDependencyValidation();
             }
         #endif
 
         if (!_pimpl->_placementsCfgVal || _pimpl->_placementsCfgVal->GetValidationIndex() != 0) {
-            ::Assets::ConfigFileContainer<SceneEngine::WorldPlacementsConfig> container(_pimpl->MakeCfgName(PlacementsCfg).c_str());
+            auto placementsCfg = ::Assets::AutoConstructAsset<SceneEngine::WorldPlacementsConfig>(MakeStringSection(_pimpl->MakeCfgName(PlacementsCfg)));
             _pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(_pimpl->_modelCache);
             _pimpl->_placementsRenderer = _pimpl->_placementsManager->GetRenderer();
-            _pimpl->_placementsCells = std::make_shared<SceneEngine::PlacementCellSet>(container._asset, WorldOffset);
-            _pimpl->_placementsCfgVal = container.GetDependencyValidation();
+            _pimpl->_placementsCells = std::make_shared<SceneEngine::PlacementCellSet>(*placementsCfg, WorldOffset);
+            _pimpl->_placementsCfgVal = placementsCfg->GetDependencyValidation();
 
             _pimpl->_imposters = std::make_shared<SceneEngine::DynamicImposters>(
                 _pimpl->_modelCache->GetSharedStateSet());
@@ -333,9 +332,9 @@ namespace Sample
         if (!_pimpl->_environmentCfgVal || _pimpl->_environmentCfgVal->GetValidationIndex() != 0) {
             TRY
             {
-                ::Assets::ConfigFileListContainer<PlatformRig::EnvironmentSettings> asset(_pimpl->MakeCfgName(EnvironmentCfg).c_str());
-                _pimpl->_envSettings = asset._asset;
-                _pimpl->_environmentCfgVal = asset.GetDependencyValidation();
+                auto envSettings = ::Assets::AutoConstructAsset<PlatformRig::EnvironmentSettings>(MakeStringSection(_pimpl->MakeCfgName(EnvironmentCfg)));
+                _pimpl->_envSettings = *envSettings;
+                _pimpl->_environmentCfgVal = envSettings->GetDependencyValidation();
             } CATCH(...) {
             } CATCH_END
         }
