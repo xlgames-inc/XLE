@@ -190,7 +190,7 @@ namespace BufferUploads { namespace PlatformInterface
         if (desc._type == BufferDesc::Type::Texture) {
             const TextureDesc& tDesc = desc._textureDesc;
             xl_snprintf(buffer, dimof(buffer), "[%s] Tex(%4s) (%4ix%4i) mips:(%2i)", 
-                desc._name, (tDesc._dimensionality==TextureDesc::Dimensionality::T2D)?"  2D":"Cube",
+                desc._name, AsString(tDesc._dimensionality),
                 tDesc._width, tDesc._height, tDesc._mipCount);
         } else if (desc._type == BufferDesc::Type::LinearBuffer) {
             if (desc._bindFlags & BindFlag::VertexBuffer) {

@@ -533,10 +533,12 @@ namespace RenderCore
 		return TypeCat::Void;
 	}
 
+	#define STRINGIZE(X) #X
+
     const char* AsString(Format format)
     {
         switch (format) {
-            #define _EXP(X, Y, Z, U)    case Format::X##_##Y: return #X;
+			#define _EXP(X, Y, Z, U)    case Format::X##_##Y: return STRINGIZE(X##_##Y);
                 #include "Metal/Detail/DXGICompatibleFormats.h"
             #undef _EXP
         case Format::D32_SFLOAT_S8_UINT: return "D32_FLOAT_S8_UINT";
@@ -547,8 +549,6 @@ namespace RenderCore
         default: return "Unknown";
         }
     }
-
-    #define STRINGIZE(X) #X
 
     Format AsFormat(const char name[])
     {

@@ -7,6 +7,7 @@
 #include "Device.h"
 #include "../IAnnotator.h"
 #include "../Format.h"
+#include "../RenderUtils.h"		// (for Exceptions::GenericFailure)
 #include "Metal/DeviceContext.h"
 #include "Metal/State.h"
 #include "Metal/ObjectFactory.h"
@@ -136,7 +137,7 @@ namespace RenderCore { namespace ImplDX11
         }
 
         if (!SUCCEEDED(hresult)) {
-            Throw(Exceptions::BasicLabel("Failure in D3D11 device construction. Aborting."));
+            Throw(::Exceptions::BasicLabel("Failure in D3D11 device construction. Aborting."));
         }
 
         // Metal_DX11::ObjectFactory::PrepareDevice(*underlying);
@@ -243,7 +244,7 @@ namespace RenderCore { namespace ImplDX11
             result = moveptr(swapChainTemp);
         }
         if (!SUCCEEDED(hresult)) {
-            Throw(Exceptions::BasicLabel("Failure while constructing a swap chain. Aborting."));
+            Throw(::Exceptions::BasicLabel("Failure while constructing a swap chain. Aborting."));
         }
 
             //
@@ -294,11 +295,44 @@ namespace RenderCore { namespace ImplDX11
         return nullptr;
     }
 
+	static const char* AsString(TextureDesc::Dimensionality dimensionality)
+	{
+		switch (dimensionality) {
+		case TextureDesc::Dimensionality::CubeMap:  return "Cube";
+		case TextureDesc::Dimensionality::T1D:      return "T1D";
+		case TextureDesc::Dimensionality::T2D:      return "T2D";
+		case TextureDesc::Dimensionality::T3D:      return "T3D";
+		default:                                    return "<<unknown>>";
+		}
+	}
+
 	ResourcePtr Device::CreateResource(
 		const ResourceDesc& desc,
 		const std::function<SubResourceInitData(SubResourceId)>& init)
 	{
-		return Metal_DX11::CreateResource(*_mainFactory, desc, init);
+		try {
+			return Metal_DX11::CreateResource(*_mainFactory, desc, init);
+		} catch (const Exceptions::GenericFailure& e) {
+			// try to make "GenericFailure" exceptions a little more expressive
+			if (desc._type == ResourceDesc::Type::LinearBuffer) {
+				Throw(::Exceptions::BasicLabel(
+					"Generic failure in Device::CreateResource while creating linear buffer resource with size (%i) and structure size (%i). Resource Flags (0x%x, 0x%x, 0x%x, 0x%x). Name: (%s). Failure message (%s)",
+					desc._linearBufferDesc._sizeInBytes, desc._linearBufferDesc._structureByteSize,
+					desc._bindFlags, desc._cpuAccess, desc._gpuAccess, desc._allocationRules,
+					desc._name,
+					e.what()));
+			} else if (desc._type == ResourceDesc::Type::Texture) {
+				const auto& tDesc = desc._textureDesc;
+				Throw(::Exceptions::BasicLabel(
+					"Generic failure in Device::CreateResource while creating texture resource [Tex(%4s) (%4ix%4i) mips:(%2i) format:(%s)]. Resource Flags (0x%x, 0x%x, 0x%x, 0x%x). Name: (%s). Failure message (%s)",
+					AsString(tDesc._dimensionality), tDesc._width, tDesc._height, tDesc._mipCount, AsString(tDesc._format),
+					desc._bindFlags, desc._cpuAccess, desc._gpuAccess, desc._allocationRules,
+					desc._name,
+					e.what()));
+			} else {
+				throw;
+			}
+		}
 	}
 
     static const char* s_underlyingApi = "DX11";
@@ -385,7 +419,7 @@ namespace RenderCore { namespace ImplDX11
                 newWidth = clientRect.right - clientRect.left;
                 newHeight = clientRect.bottom - clientRect.top;
             } else {
-                Throw(Exceptions::BasicLabel("Cannot resize because this presentation chain isn't attached to a window."));
+                Throw(::Exceptions::BasicLabel("Cannot resize because this presentation chain isn't attached to a window."));
             }
         }
 

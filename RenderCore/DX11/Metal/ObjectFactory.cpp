@@ -61,7 +61,7 @@ namespace RenderCore { namespace Metal_DX11
         static intrusive_ptr<ResultType> D3DDevice_FinalizeCreate(ResultType* tempPtr, HRESULT hresult, const char name[])
     {
         if (!SUCCEEDED(hresult) || !tempPtr) {
-            throw Exceptions::GenericFailure("Failure during construction of D3D object");
+            Throw(Exceptions::GenericFailure("Failure during construction of D3D object"));
         }
 
         intrusive_ptr<ResultType> result(tempPtr, false);
