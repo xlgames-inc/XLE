@@ -8,6 +8,7 @@
 #include "ExportedNativeTypes.h"
 #include "../EntityInterface/RetainedEntities.h"
 #include "../ToolsRig/VisualisationGeo.h"
+#include "../../Utility/StringFormat.h"
 #include "../../RenderCore/Assets/ModelScaffoldInternal.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"

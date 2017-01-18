@@ -321,7 +321,7 @@ namespace GUILayer
         if (!_underlying) { return nullptr; }
 		CheckBindingInvalidation();
         if (!_materialParameterBox) {
-            _materialParameterBox = BindingConv::AsBindingList(_underlying->GetAsset()._asset._matParamBox);
+            _materialParameterBox = BindingConv::AsBindingList(_underlying->GetAsset()._matParamBox);
             _materialParameterBox->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ParameterBox_Changed);
@@ -336,7 +336,7 @@ namespace GUILayer
         if (!_underlying) { return nullptr; }
 		CheckBindingInvalidation();
         if (!_shaderConstants) {
-            _shaderConstants = BindingConv::AsBindingList(_underlying->GetAsset()._asset._constants);
+            _shaderConstants = BindingConv::AsBindingList(_underlying->GetAsset()._constants);
             _shaderConstants->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ParameterBox_Changed);
@@ -351,7 +351,7 @@ namespace GUILayer
         if (!_underlying) { return nullptr; }
 		CheckBindingInvalidation();
         if (!_resourceBindings) {
-            _resourceBindings = BindingConv::AsBindingList(_underlying->GetAsset()._asset._resourceBindings);
+            _resourceBindings = BindingConv::AsBindingList(_underlying->GetAsset()._resourceBindings);
             _resourceBindings->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ResourceBinding_Changed);
@@ -390,13 +390,13 @@ namespace GUILayer
             if (isMatParams) {
                 auto transaction = _underlying->Transaction_Begin("Material parameter");
                 if (transaction) {
-                    transaction->GetAsset()._asset._matParamBox = BindingConv::AsParameterBox((BindingList<StringStringPair^>^)obj);
+                    transaction->GetAsset()._matParamBox = BindingConv::AsParameterBox((BindingList<StringStringPair^>^)obj);
                     _transId = transaction->Commit();
                 }
             } else if (isMatConstants) {
                 auto transaction = _underlying->Transaction_Begin("Material constant");
                 if (transaction) {
-                    transaction->GetAsset()._asset._constants = BindingConv::AsParameterBox((BindingList<StringStringPair^>^)obj);
+                    transaction->GetAsset()._constants = BindingConv::AsParameterBox((BindingList<StringStringPair^>^)obj);
 					_transId = transaction->Commit();
                 }
             }
@@ -423,7 +423,7 @@ namespace GUILayer
 				CheckBindingInvalidation();
 				auto transaction = _underlying->Transaction_Begin("Resource Binding");
 				if (transaction) {
-					transaction->GetAsset()._asset._resourceBindings = BindingConv::AsParameterBox((BindingList<StringStringPair^>^)obj);
+					transaction->GetAsset()._resourceBindings = BindingConv::AsParameterBox((BindingList<StringStringPair^>^)obj);
 					_transId = transaction->Commit();
 				}
 			}
@@ -438,7 +438,7 @@ namespace GUILayer
                 MakeStringSection(clix::marshalString<clix::E_UTF8>(Filename)));
             
             System::String^ result = "";
-            auto inheritted = asset._asset.ResolveInherited(searchRules);
+            auto inheritted = asset.ResolveInherited(searchRules);
             for (auto i = inheritted.cbegin(); i != inheritted.cend(); ++i) {
                 if (result->Length != 0) result += ";";
                 result += clix::marshalString<clix::E_UTF8>(*i);
@@ -453,7 +453,9 @@ namespace GUILayer
         if (!!_underlying) {
             auto searchRules = Assets::DefaultDirectorySearchRules(
                 MakeStringSection(clix::marshalString<clix::E_UTF8>(Filename)));
-            _underlying->GetAsset()._asset.Resolve(destination, searchRules);
+            auto state = _underlying->GetAsset().TryResolve(destination, searchRules);
+			assert(state == ::Assets::AssetState::Ready);
+			(void)state;
         }
     }
 
@@ -463,7 +465,7 @@ namespace GUILayer
             // into a path relative to the main material file here..?
         auto transaction = _underlying->Transaction_Begin("Add inheritted");
         if (transaction)
-            transaction->GetAsset()._asset._inherit.push_back(clix::marshalString<clix::E_UTF8>(item));
+            transaction->GetAsset()._inherit.push_back(clix::marshalString<clix::E_UTF8>(item));
     }
 
     void RawMaterial::RemoveInheritted(String^ item)
@@ -480,19 +482,19 @@ namespace GUILayer
 
     const RenderCore::Assets::RawMaterial* RawMaterial::GetUnderlying() 
     { 
-        return (!!_underlying) ? &_underlying->GetAsset()._asset : nullptr; 
+        return (!!_underlying) ? &_underlying->GetAsset() : nullptr; 
     }
 
-    String^ RawMaterial::TechniqueConfig::get() { return clix::marshalString<clix::E_UTF8>(_underlying->GetAsset()._asset._techniqueConfig); }
+    String^ RawMaterial::TechniqueConfig::get() { return clix::marshalString<clix::E_UTF8>(_underlying->GetAsset()._techniqueConfig); }
 
     void RawMaterial::TechniqueConfig::set(String^ value)
     {
         auto native = Conversion::Convert<::Assets::rstring>(clix::marshalString<clix::E_UTF8>(value));
-        if (_underlying->GetAsset()._asset._techniqueConfig != native) {
+        if (_underlying->GetAsset()._techniqueConfig != native) {
 			CheckBindingInvalidation();
             auto transaction = _underlying->Transaction_Begin("Technique Config");
             if (transaction) {
-                transaction->GetAsset()._asset._techniqueConfig = native;
+                transaction->GetAsset()._techniqueConfig = native;
                 _transId = transaction->Commit();
             }
         }
@@ -565,7 +567,7 @@ namespace GUILayer
 
     auto RenderStateSet::DoubleSided::get() -> CheckState
     {
-        auto& stateSet = _underlying->GetAsset()._asset._stateSet;
+        auto& stateSet = _underlying->GetAsset()._stateSet;
         if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::DoubleSided) {
             if (stateSet._doubleSided) return CheckState::Checked;
             else return CheckState::Unchecked;
@@ -576,7 +578,7 @@ namespace GUILayer
     void RenderStateSet::DoubleSided::set(CheckState checkState)
     {
         auto transaction = _underlying->Transaction_Begin("RenderState");
-        auto& stateSet = transaction->GetAsset()._asset._stateSet;
+        auto& stateSet = transaction->GetAsset()._stateSet;
         if (checkState == CheckState::Indeterminate) {
             stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::DoubleSided;
         } else {
@@ -589,7 +591,7 @@ namespace GUILayer
 
     CheckState RenderStateSet::Wireframe::get()
     {
-        auto& stateSet = _underlying->GetAsset()._asset._stateSet;
+        auto& stateSet = _underlying->GetAsset()._stateSet;
         if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::Wireframe) {
             if (stateSet._wireframe) return CheckState::Checked;
             else return CheckState::Unchecked;
@@ -600,7 +602,7 @@ namespace GUILayer
     void RenderStateSet::Wireframe::set(CheckState checkState)
     {
         auto transaction = _underlying->Transaction_Begin("RenderState");
-        auto& stateSet = transaction->GetAsset()._asset._stateSet;
+        auto& stateSet = transaction->GetAsset()._stateSet;
         if (checkState == CheckState::Indeterminate) {
             stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::Wireframe;
         } else {
@@ -686,7 +688,7 @@ namespace GUILayer
     auto RenderStateSet::StandardBlendMode::get() -> StandardBlendModes
     {
         const auto& underlying = _underlying->GetAsset();
-        return AsStandardBlendMode(underlying._asset._stateSet);
+        return AsStandardBlendMode(underlying._stateSet);
     }
     
     void RenderStateSet::StandardBlendMode::set(StandardBlendModes newMode)
@@ -696,7 +698,7 @@ namespace GUILayer
 
         if (newMode == StandardBlendModes::Inherit) {
             auto transaction = _underlying->Transaction_Begin("RenderState");
-            auto& stateSet = transaction->GetAsset()._asset._stateSet;
+            auto& stateSet = transaction->GetAsset()._stateSet;
             stateSet._forwardBlendOp = BlendOp::NoBlending;
             stateSet._forwardBlendSrc = Blend::One;
             stateSet._forwardBlendDst = Blend::Zero;
@@ -711,7 +713,7 @@ namespace GUILayer
         for (unsigned c=0; c<dimof(s_standardBlendDefs); ++c)
             if (s_standardBlendDefs[c]._standardMode == newMode) {
                 auto transaction = _underlying->Transaction_Begin("RenderState");
-                auto& stateSet = transaction->GetAsset()._asset._stateSet;
+                auto& stateSet = transaction->GetAsset()._stateSet;
 
                 stateSet._forwardBlendOp = s_standardBlendDefs[c]._op;
                 stateSet._forwardBlendSrc = s_standardBlendDefs[c]._src;

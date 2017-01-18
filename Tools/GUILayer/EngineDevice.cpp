@@ -23,6 +23,9 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
+#include "../../Assets/IFileSystem.h"
+#include "../../Assets/MountingTree.h"
+#include "../../Assets/OSFileSystem.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/SystemUtils.h"
@@ -82,6 +85,8 @@ namespace GUILayer
         ConsoleRig::StartupConfig cfg;
         cfg._applicationName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
         _services = std::make_unique<ConsoleRig::GlobalServices>(cfg);
+
+		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 
         _renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
         _immediateContext = _renderDevice->GetImmediateContext();

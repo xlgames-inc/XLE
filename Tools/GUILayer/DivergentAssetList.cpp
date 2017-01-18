@@ -60,7 +60,7 @@ namespace GUILayer
 
 	static String^ GetAssetTypeName(uint64 typeCode)
 	{
-		using MatType = ::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>;
+		using MatType = RenderCore::Assets::RawMaterial;
 		if (typeCode == typeid(MatType).hash_code()) {
 			return "Material";
 		}
@@ -75,7 +75,7 @@ namespace GUILayer
 
 	static System::Drawing::Image^ GetAssetTypeImage(uint64 typeCode)
 	{
-		using MatType = ::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>;
+		using MatType = RenderCore::Assets::RawMaterial;
 		if (typeCode == typeid(MatType).hash_code()) {
 			if (!ResourceImages::s_materialImage) {
 				System::IO::Stream^ stream = System::Reflection::Assembly::GetExecutingAssembly()->GetManifestResourceStream("materialS.png");
@@ -327,7 +327,7 @@ namespace GUILayer
                 {
                     InputStreamFormatter<utf8>::InteriorSection eleName;
                     formatter.TryBeginElement(eleName);
-                    RenderCore::Assets::RawMaterial mat(formatter, searchRules);
+                    RenderCore::Assets::RawMaterial mat(formatter, searchRules, ::Assets::DepValPtr());
                     result.emplace_back(
                         std::make_pair(
                             Conversion::Convert<::Assets::rstring>(eleName.AsString()), std::move(mat)));
@@ -410,7 +410,7 @@ namespace GUILayer
 
                     // HACK -- special case for RawMaterial objects!
             using namespace RenderCore::Assets;
-            auto materials = ::Assets::Internal::GetAssetSet<::Assets::ConfigFileListContainer<RawMaterial>>();
+            auto materials = ::Assets::Internal::GetAssetSet<RawMaterial>();
             for (const auto& a:materials->_divergentAssets) {
                 auto asset = a.second;
                 auto hash = a.first;
@@ -424,7 +424,7 @@ namespace GUILayer
                 OutputStreamFormatter fmtter(strm);
                 MergeAndSerialize(fmtter, originalFile, 
                     splitName.AllExceptParameters(), splitName.Parameters(), 
-                    asset->GetAsset()._asset);
+                    asset->GetAsset());
                 auto newFile = AsByteArray(strm.GetBuffer().Begin(), strm.GetBuffer().End());
 
                 result->Add(
@@ -446,7 +446,7 @@ namespace GUILayer
 			auto errorMessages = gcnew System::Text::StringBuilder;
 
             using namespace RenderCore::Assets;
-            auto materials = ::Assets::Internal::GetAssetSet<::Assets::ConfigFileListContainer<RawMaterial>>();
+            auto materials = ::Assets::Internal::GetAssetSet<RawMaterial>();
 			for (const auto& a:materials->_divergentAssets) {
                 auto asset = a.second;
                 auto hash = a.first;
@@ -473,7 +473,7 @@ namespace GUILayer
                 OutputStreamFormatter fmtter(strm);
                 MergeAndSerialize(fmtter, originalFile, 
                     splitName.AllExceptParameters(), splitName.Parameters(), 
-                    asset->GetAsset()._asset);
+                    asset->GetAsset());
 
 				auto dstFile = splitName.AllExceptParameters().AsString();
                 TRY
@@ -515,7 +515,7 @@ namespace GUILayer
     {
         #if defined(ASSETS_STORE_DIVERGENT)
 
-            auto materials = ::Assets::Internal::GetAssetSet<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>>();
+            auto materials = ::Assets::Internal::GetAssetSet<RenderCore::Assets::RawMaterial>();
             for (const auto&a:materials->_divergentAssets)
                 if (a.second->HasChanges()) return true;
 

@@ -318,7 +318,7 @@ namespace GUILayer
 
         virtual event System::ComponentModel::PropertyChangedEventHandler^ PropertyChanged;
 
-        using NativeConfig = ::Assets::DivergentAsset<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial, InputStreamFormatter<utf8>>>;
+        using NativeConfig = ::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>;
         RenderStateSet(std::shared_ptr<NativeConfig> underlying);
         ~RenderStateSet();
     protected:
@@ -365,7 +365,7 @@ namespace GUILayer
 
         ~RawMaterial();
     private:
-        using NativeConfig = ::Assets::DivergentAsset<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial, InputStreamFormatter<utf8>>>;
+        using NativeConfig = ::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>;
         clix::shared_ptr<NativeConfig> _underlying;
 
         RenderStateSet^ _renderStateSet;

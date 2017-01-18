@@ -134,7 +134,6 @@ namespace TextureTransform
 
     TextureResult ExecuteTransform(
         IDevice& device,
-        StringSection<char> xleDir,
         StringSection<char> shaderName,
         const ParameterBox& parameters,
         std::map<std::string, ProcessingFn> fns)
@@ -200,12 +199,12 @@ namespace TextureTransform
             if (rtFormat == Format::Unknown)
                 Throw(::Exceptions::BasicLabel("Could not find match pixel format for render target. Check inputs."));
 
-            auto psShaderName = xleDir.AsString() + "/Working/game/xleres/" + shaderName.AsString();
+            auto psShaderName = "xleres/" + shaderName.AsString();
             if (!XlFindStringI(psShaderName.c_str(), "ps_"))
                 psShaderName += ":" PS_DefShaderModel;
 
             auto psByteCode = LoadShaderImmediate(psShaderName.c_str());
-            auto vsByteCode = LoadShaderImmediate((xleDir.AsString() + "/Working/game/xleres/basic2D.vsh:fullscreen:" VS_DefShaderModel).c_str());
+            auto vsByteCode = LoadShaderImmediate("xleres/basic2D.vsh:fullscreen:" VS_DefShaderModel);
 
             Metal::ShaderProgram shaderProg(vsByteCode, psByteCode);
             Metal::BoundUniforms uniforms(shaderProg);

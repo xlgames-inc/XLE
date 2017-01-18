@@ -14,10 +14,14 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Assets/AssetServices.h"
+#include "../../Assets/IFileSystem.h"
+#include "../../Assets/MountingTree.h"
+#include "../../Assets/OSFileSystem.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/ParameterBox.h"
+#include "../../Utility/Conversion.h"
 
 #include "../../../Core/WinAPI/IncludeWindows.h"
 
@@ -84,6 +88,8 @@ namespace TextureTransform
             return -1;
         }
 
+		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(MakeStringSection(Conversion::Convert<std::basic_string<utf8>>(xleDir + "/Working/Game/xleres"))));
+
             // we can now construct basic services
         auto cleanup = MakeAutoCleanup([]() { TerminateFileSystemMonitoring(); });
         auto device = RenderCore::CreateDevice(RenderCore::UnderlyingAPI::DX11);
@@ -94,7 +100,7 @@ namespace TextureTransform
         auto shaderParameters = CreateParameterBox(doc.Element("p"));
 
         auto resultTexture = ExecuteTransform(
-            *device, MakeStringSection(xleDir), shader, shaderParameters,
+            *device, shader, shaderParameters,
             {
                 { "Sky", HosekWilkieSky },
                 { "Compress", CompressTexture }

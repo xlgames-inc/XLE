@@ -56,8 +56,10 @@ namespace GUILayer
                 // also grab the directory with the preview model in it
             searchRules.AddSearchDirectoryFromFilename(clix::marshalString<clix::E_UTF8>(_previewModel).c_str());
 
-            for each(auto c in _config)
-                c->GetUnderlying()->Resolve(resMat, searchRules);
+            for each(auto c in _config) {
+                auto state = c->GetUnderlying()->TryResolve(resMat, searchRules);
+				assert(state == ::Assets::AssetState::Ready); (void)state;
+			}
         }
 
         const ::Assets::ResChar* shader = (resMat._techniqueConfig[0]) ? resMat._techniqueConfig : "illum";

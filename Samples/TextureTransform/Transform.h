@@ -39,7 +39,6 @@ namespace TextureTransform
 
     TextureResult ExecuteTransform(
         RenderCore::IDevice& device,
-        StringSection<char> xleDir,
         StringSection<char> shaderName,
         const ParameterBox& parameters,
         std::map<std::string, ProcessingFn> fns);

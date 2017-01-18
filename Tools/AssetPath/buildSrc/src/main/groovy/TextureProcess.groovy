@@ -273,7 +273,7 @@ class DiffuseCubeMapGen extends ProcessStep
 class SpecularIBLFilter extends TextureTransformStep
 {
     @Input
-    String format = "R32G32B32_FLOAT"
+    String format = "R32G32B32A32_FLOAT"
 
 	@Input
     int faceSize = 512
@@ -289,7 +289,7 @@ class SpecularIBLFilter extends TextureTransformStep
 class SpecularTransIBLFilter extends TextureTransformStep
 {
     @Input
-    String format = "R32G32B32_FLOAT"
+    String format = "R32G32B32A32_FLOAT"
 
 	@Input
     int faceSize = 512
