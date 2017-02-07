@@ -13,8 +13,8 @@
 namespace Assets
 {
 
-    template<typename AssetType, typename... Params> const AssetType& GetAsset(Params... initialisers)		    { return Internal::GetAsset<false, false, AssetType>(std::forward<Params>(initialisers)...); }
-    template<typename AssetType, typename... Params> const AssetType& GetAssetDep(Params... initialisers)	    { return Internal::GetAsset<true, false, AssetType>(std::forward<Params>(initialisers)...); }
+    template<typename AssetType, typename... Params> const AssetType& GetAsset(Params... initialisers)		    { return Internal::GetAsset<false, true, AssetType>(std::forward<Params>(initialisers)...); }
+    template<typename AssetType, typename... Params> const AssetType& GetAssetDep(Params... initialisers)	    { return Internal::GetAsset<true, true, AssetType>(std::forward<Params>(initialisers)...); }
     template<typename AssetType, typename... Params> const AssetType& GetAssetComp(Params... initialisers)	    { return Internal::GetAsset<true, true, AssetType>(std::forward<Params>(initialisers)...); }
 
     template<typename AssetType, typename... Params> 

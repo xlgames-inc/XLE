@@ -250,13 +250,13 @@ float3 TransformNormalMapToWorld(float3 normalTextureSample, VSOutput geo)
             //          or at least a "uniform scale" scalar to remove the scaling
         return normalize(mul(GetLocalToWorldUniformScale(), localNormal));
 
-	#elif (OUTPUT_NORMAL==1) && ((OUTPUT_WORLD_VIEW_VECTOR==1) || (OUTPUT_WORLD_VIEW_VECTOR==1))
+	#elif (OUTPUT_NORMAL==1) && ((OUTPUT_WORLD_VIEW_VECTOR==1) || (OUTPUT_WORLD_VIEW_VECTOR==1)) && (OUTPUT_TEXCOORD > 0)
 
 	    float3x3 normalsTextureToWorld = AutoCotangentFrame(normalize(geo.normal), GetWorldViewVector(geo), geo.texCoord);
 			// Note -- matrix multiply opposite from normal (so we can initialise normalsTextureToWorld easily)
 		return mul(normalTextureSample, normalsTextureToWorld);
 
-    #elif (OUTPUT_LOCAL_NORMAL==1) && (OUTPUT_LOCAL_VIEW_VECTOR==1)
+    #elif (OUTPUT_LOCAL_NORMAL==1) && (OUTPUT_LOCAL_VIEW_VECTOR==1) && (OUTPUT_TEXCOORD > 0)
 
 		float3x3 normalsTextureToWorld = AutoCotangentFrame(normalize(geo.localNormal), GetLocalViewVector(geo), geo.texCoord);
 			// Note -- matrix multiply opposite from normal (so we can initialise normalsTextureToWorld easily)

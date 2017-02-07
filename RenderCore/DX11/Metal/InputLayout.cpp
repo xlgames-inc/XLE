@@ -85,11 +85,11 @@ namespace RenderCore { namespace Metal_DX11
     {
             //  In this case, we must bind with every shader stage 
             //      (since a shader program actually reflects the state of the entire stage pipeline) 
-        _stageBindings[ShaderStage::Vertex]._reflection     = CreateReflection(shader.GetCompiledVertexShader());
-        _stageBindings[ShaderStage::Pixel]._reflection      = CreateReflection(shader.GetCompiledPixelShader());
+        _stageBindings[(unsigned)ShaderStage::Vertex]._reflection     = CreateReflection(shader.GetCompiledVertexShader());
+        _stageBindings[(unsigned)ShaderStage::Pixel]._reflection      = CreateReflection(shader.GetCompiledPixelShader());
         auto* geoShader = shader.GetCompiledGeometryShader();
         if (geoShader) {
-            _stageBindings[ShaderStage::Geometry]._reflection   = CreateReflection(*geoShader);
+            _stageBindings[(unsigned)ShaderStage::Geometry]._reflection   = CreateReflection(*geoShader);
         }
     }
 
@@ -97,22 +97,22 @@ namespace RenderCore { namespace Metal_DX11
     {
             //  In this case, we must bind with every shader stage 
             //      (since a shader program actually reflects the state of the entire stage pipeline) 
-        _stageBindings[ShaderStage::Vertex]._reflection     = CreateReflection(shader.GetCompiledVertexShader());
-        _stageBindings[ShaderStage::Pixel]._reflection      = CreateReflection(shader.GetCompiledPixelShader());
+        _stageBindings[(unsigned)ShaderStage::Vertex]._reflection     = CreateReflection(shader.GetCompiledVertexShader());
+        _stageBindings[(unsigned)ShaderStage::Pixel]._reflection      = CreateReflection(shader.GetCompiledPixelShader());
         auto* geoShader = shader.GetCompiledGeometryShader();
         if (geoShader) {
-            _stageBindings[ShaderStage::Geometry]._reflection   = CreateReflection(*geoShader);
+            _stageBindings[(unsigned)ShaderStage::Geometry]._reflection   = CreateReflection(*geoShader);
         }
-        _stageBindings[ShaderStage::Hull]._reflection       = CreateReflection(shader.GetCompiledHullShader());
-        _stageBindings[ShaderStage::Domain]._reflection     = CreateReflection(shader.GetCompiledDomainShader());
+        _stageBindings[(unsigned)ShaderStage::Hull]._reflection       = CreateReflection(shader.GetCompiledHullShader());
+        _stageBindings[(unsigned)ShaderStage::Domain]._reflection     = CreateReflection(shader.GetCompiledDomainShader());
     }
 
 	BoundUniforms::BoundUniforms(const CompiledShaderByteCode& shader)
     {
             //  In this case, we're binding with a single shader stage
-        ShaderStage::Enum stage = shader.GetStage();
-        if (stage < dimof(_stageBindings)) {
-            _stageBindings[stage]._reflection = CreateReflection(shader);
+        auto stage = shader.GetStage();
+        if ((unsigned)stage < dimof(_stageBindings)) {
+            _stageBindings[(unsigned)stage]._reflection = CreateReflection(shader);
         }
     }
 
@@ -315,7 +315,7 @@ namespace RenderCore { namespace Metal_DX11
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
         #if defined(_DEBUG)
-            for (unsigned c=0; c<ShaderStage::Max; ++c)
+            for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c)
                 for (const auto& i:_stageBindings[c]._shaderConstantBindings)
                     assert((i._inputInterfaceSlot>>16) != uniformsStream);
         #endif
@@ -331,7 +331,7 @@ namespace RenderCore { namespace Metal_DX11
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
         #if defined(_DEBUG)
-            for (unsigned c=0; c<ShaderStage::Max; ++c)
+            for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c)
                 for (const auto& i:_stageBindings[c]._shaderConstantBindings)
                     assert((i._inputInterfaceSlot>>16) != uniformsStream);
         #endif
@@ -345,7 +345,7 @@ namespace RenderCore { namespace Metal_DX11
     bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res)
     {
         #if defined(_DEBUG)
-            for (unsigned c=0; c<ShaderStage::Max; ++c)
+            for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c)
                 for (const auto& i:_stageBindings[c]._shaderResourceBindings)
                     assert((i._inputInterfaceSlot>>16) != uniformsStream);
         #endif
@@ -359,7 +359,7 @@ namespace RenderCore { namespace Metal_DX11
     bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res)
     {
         #if defined(_DEBUG)
-            for (unsigned c=0; c<ShaderStage::Max; ++c)
+            for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c)
                 for (const auto& i:_stageBindings[c]._shaderResourceBindings)
                     assert((i._inputInterfaceSlot>>16) != uniformsStream);
         #endif
@@ -372,16 +372,16 @@ namespace RenderCore { namespace Metal_DX11
 
 	void BoundUniforms::CopyReflection(const BoundUniforms& copyFrom)
 	{
-		for (unsigned c=0; c<ShaderStage::Max; ++c) {
+		for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c) {
 			_stageBindings[c]._shaderConstantBindings.clear();
 			_stageBindings[c]._shaderResourceBindings.clear();
 			_stageBindings[c]._reflection = copyFrom._stageBindings[c]._reflection;
 		}
 	}
 
-	intrusive_ptr<ID3D::ShaderReflection> BoundUniforms::GetReflection(ShaderStage::Enum stage)
+	intrusive_ptr<ID3D::ShaderReflection> BoundUniforms::GetReflection(ShaderStage stage)
 	{
-		return _stageBindings[stage]._reflection;
+		return _stageBindings[(unsigned)stage]._reflection;
 	}
 
     ConstantBufferLayout::ConstantBufferLayout() { _size = 0; _elementCount = 0; }
@@ -460,9 +460,9 @@ namespace RenderCore { namespace Metal_DX11
         return std::move(result);
     }
 
-    std::vector<std::pair<ShaderStage::Enum,unsigned>> BoundUniforms::GetConstantBufferBinding(const char name[])
+    std::vector<std::pair<ShaderStage,unsigned>> BoundUniforms::GetConstantBufferBinding(const char name[])
     {
-        std::vector<std::pair<ShaderStage::Enum,unsigned>> result;
+        std::vector<std::pair<ShaderStage,unsigned>> result;
         for (unsigned s=0; s<dimof(_stageBindings); ++s) {
             if (!_stageBindings[s]._reflection) continue;
 
@@ -473,7 +473,7 @@ namespace RenderCore { namespace Metal_DX11
             D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
             HRESULT hresult = _stageBindings[s]._reflection->GetResourceBindingDescByName(name, &bindingDesc);
             if (SUCCEEDED(hresult)) {
-                result.push_back(std::make_pair(ShaderStage::Enum(s), bindingDesc.BindPoint));
+                result.push_back(std::make_pair(ShaderStage(s), bindingDesc.BindPoint));
             }
         }
         return result;
@@ -516,7 +516,7 @@ namespace RenderCore { namespace Metal_DX11
         typedef void (__stdcall ID3D::DeviceContext::*SetConstantBuffers)(UINT, UINT, ID3D::Buffer *const *);
         typedef void (__stdcall ID3D::DeviceContext::*SetShaderResources)(UINT, UINT, ID3D11ShaderResourceView *const *);
 
-        SetConstantBuffers scb[ShaderStage::Max] = 
+        SetConstantBuffers scb[(unsigned)ShaderStage::Max] = 
         {
             &ID3D::DeviceContext::VSSetConstantBuffers,
             &ID3D::DeviceContext::PSSetConstantBuffers,
@@ -526,7 +526,7 @@ namespace RenderCore { namespace Metal_DX11
             &ID3D::DeviceContext::CSSetConstantBuffers,
         };
 
-        SetShaderResources scr[ShaderStage::Max] = 
+        SetShaderResources scr[(unsigned)ShaderStage::Max] = 
         {
             &ID3D::DeviceContext::VSSetShaderResources,
             &ID3D::DeviceContext::PSSetShaderResources,
@@ -623,31 +623,31 @@ namespace RenderCore { namespace Metal_DX11
 
     void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const
     {
-        for (const auto& b:_stageBindings[ShaderStage::Vertex]._shaderResourceBindings) {
+        for (const auto& b:_stageBindings[(unsigned)ShaderStage::Vertex]._shaderResourceBindings) {
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
                 context.UnbindVS<ShaderResourceView>(b._shaderSlot, 1);
-                context._currentSRVs[ShaderStage::Vertex][b._shaderSlot] = nullptr;
+                context._currentSRVs[(unsigned)ShaderStage::Vertex][b._shaderSlot] = nullptr;
             }
         }
 
-        for (const auto& b:_stageBindings[ShaderStage::Pixel]._shaderResourceBindings) {
+        for (const auto& b:_stageBindings[(unsigned)ShaderStage::Pixel]._shaderResourceBindings) {
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
                 context.UnbindPS<ShaderResourceView>(b._shaderSlot, 1);
-                context._currentSRVs[ShaderStage::Pixel][b._shaderSlot] = nullptr;
+                context._currentSRVs[(unsigned)ShaderStage::Pixel][b._shaderSlot] = nullptr;
             }
         }
 
-        for (const auto& b:_stageBindings[ShaderStage::Geometry]._shaderResourceBindings) {
+        for (const auto& b:_stageBindings[(unsigned)ShaderStage::Geometry]._shaderResourceBindings) {
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
                 context.UnbindGS<ShaderResourceView>(b._shaderSlot, 1);
-                context._currentSRVs[ShaderStage::Geometry][b._shaderSlot] = nullptr;
+                context._currentSRVs[(unsigned)ShaderStage::Geometry][b._shaderSlot] = nullptr;
             }
         }
 
-        for (const auto& b:_stageBindings[ShaderStage::Compute]._shaderResourceBindings) {
+        for (const auto& b:_stageBindings[(unsigned)ShaderStage::Compute]._shaderResourceBindings) {
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
                 context.UnbindCS<ShaderResourceView>(b._shaderSlot, 1);
-                context._currentSRVs[ShaderStage::Compute][b._shaderSlot] = nullptr;
+                context._currentSRVs[(unsigned)ShaderStage::Compute][b._shaderSlot] = nullptr;
             }
         }
     }
@@ -655,7 +655,7 @@ namespace RenderCore { namespace Metal_DX11
 
     void BoundClassInterfaces::Bind(uint64 hashName, unsigned bindingArrayIndex, const char instance[])
     {
-        for (auto s=0; s<ShaderStage::Max; ++s) {
+        for (auto s=0; s<(unsigned)ShaderStage::Max; ++s) {
             if (!_stageBindings[s]._linkage || !_stageBindings[s]._reflection) continue;
 
             bool gotoNextStage = false;
@@ -710,7 +710,7 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-    const std::vector<intrusive_ptr<ID3D::ClassInstance>>& BoundClassInterfaces::GetClassInstances(ShaderStage::Enum stage) const
+    const std::vector<intrusive_ptr<ID3D::ClassInstance>>& BoundClassInterfaces::GetClassInstances(ShaderStage stage) const
     {
         return _stageBindings[unsigned(stage)]._classInstanceArray;
     }
@@ -719,21 +719,21 @@ namespace RenderCore { namespace Metal_DX11
     {
             // only implemented for a few shader stages currently
         if (shader.GetCompiledVertexShader().DynamicLinkingEnabled()) {
-            _stageBindings[ShaderStage::Vertex]._reflection 
+            _stageBindings[(unsigned)ShaderStage::Vertex]._reflection 
                 = CreateReflection(shader.GetCompiledVertexShader());
-            _stageBindings[ShaderStage::Vertex]._linkage = shader.GetVertexShader().GetClassLinkage();
-            if (_stageBindings[ShaderStage::Vertex]._reflection)
-				_stageBindings[ShaderStage::Vertex]._classInstanceArray.resize(
-					_stageBindings[ShaderStage::Vertex]._reflection->GetNumInterfaceSlots(), nullptr);
+            _stageBindings[(unsigned)ShaderStage::Vertex]._linkage = shader.GetVertexShader().GetClassLinkage();
+            if (_stageBindings[(unsigned)ShaderStage::Vertex]._reflection)
+				_stageBindings[(unsigned)ShaderStage::Vertex]._classInstanceArray.resize(
+					_stageBindings[(unsigned)ShaderStage::Vertex]._reflection->GetNumInterfaceSlots(), nullptr);
         }
         
         if (shader.GetCompiledPixelShader().DynamicLinkingEnabled()) {
-            _stageBindings[ShaderStage::Pixel]._reflection 
+            _stageBindings[(unsigned)ShaderStage::Pixel]._reflection 
                 = CreateReflection(shader.GetCompiledPixelShader());
-            _stageBindings[ShaderStage::Pixel]._linkage = shader.GetPixelShader().GetClassLinkage();
-			if (_stageBindings[ShaderStage::Pixel]._reflection)
-				_stageBindings[ShaderStage::Pixel]._classInstanceArray.resize(
-					_stageBindings[ShaderStage::Pixel]._reflection->GetNumInterfaceSlots(), nullptr);
+            _stageBindings[(unsigned)ShaderStage::Pixel]._linkage = shader.GetPixelShader().GetClassLinkage();
+			if (_stageBindings[(unsigned)ShaderStage::Pixel]._reflection)
+				_stageBindings[(unsigned)ShaderStage::Pixel]._classInstanceArray.resize(
+					_stageBindings[(unsigned)ShaderStage::Pixel]._reflection->GetNumInterfaceSlots(), nullptr);
         }
     }
 
@@ -741,21 +741,21 @@ namespace RenderCore { namespace Metal_DX11
     {
             // only implemented for a few shader stages currently
         if (shader.GetCompiledVertexShader().DynamicLinkingEnabled()) {
-            _stageBindings[ShaderStage::Vertex]._reflection 
+            _stageBindings[(unsigned)ShaderStage::Vertex]._reflection 
                 = CreateReflection(shader.GetCompiledVertexShader());
-            _stageBindings[ShaderStage::Vertex]._linkage = shader.GetVertexShader().GetClassLinkage();
-			if (_stageBindings[ShaderStage::Vertex]._reflection)
-				_stageBindings[ShaderStage::Vertex]._classInstanceArray.resize(
-					_stageBindings[ShaderStage::Vertex]._reflection->GetNumInterfaceSlots(), nullptr);
+            _stageBindings[(unsigned)ShaderStage::Vertex]._linkage = shader.GetVertexShader().GetClassLinkage();
+			if (_stageBindings[(unsigned)ShaderStage::Vertex]._reflection)
+				_stageBindings[(unsigned)ShaderStage::Vertex]._classInstanceArray.resize(
+					_stageBindings[(unsigned)ShaderStage::Vertex]._reflection->GetNumInterfaceSlots(), nullptr);
         }
         
         if (shader.GetCompiledPixelShader().DynamicLinkingEnabled()) {
-            _stageBindings[ShaderStage::Pixel]._reflection 
+            _stageBindings[(unsigned)ShaderStage::Pixel]._reflection 
                 = CreateReflection(shader.GetCompiledPixelShader());
-            _stageBindings[ShaderStage::Pixel]._linkage = shader.GetPixelShader().GetClassLinkage();
-			if (_stageBindings[ShaderStage::Pixel]._reflection)
-				_stageBindings[ShaderStage::Pixel]._classInstanceArray.resize(
-					_stageBindings[ShaderStage::Pixel]._reflection->GetNumInterfaceSlots(), nullptr);
+            _stageBindings[(unsigned)ShaderStage::Pixel]._linkage = shader.GetPixelShader().GetClassLinkage();
+			if (_stageBindings[(unsigned)ShaderStage::Pixel]._reflection)
+				_stageBindings[(unsigned)ShaderStage::Pixel]._classInstanceArray.resize(
+					_stageBindings[(unsigned)ShaderStage::Pixel]._reflection->GetNumInterfaceSlots(), nullptr);
         }
     }
 

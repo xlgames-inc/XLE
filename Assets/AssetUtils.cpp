@@ -457,11 +457,6 @@ namespace Assets
     }
 
 
-    PendingOperationMarker::PendingOperationMarker() : _state(AssetState::Pending)
-    {
-        DEBUG_ONLY(_initializer[0] = '\0');
-    }
-
     PendingOperationMarker::PendingOperationMarker(AssetState state) 
     : _state(state)
     {

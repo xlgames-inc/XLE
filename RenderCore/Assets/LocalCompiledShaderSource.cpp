@@ -36,22 +36,20 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    class ShaderCompileMarker : public ShaderService::IPendingMarker, public ::Assets::PendingOperationMarker, public ::Assets::AsyncLoadOperation
+    class ShaderCompileMarker : public ::Assets::PendingCompileMarker, public ::Assets::AsyncLoadOperation
     {
     public:
         using Payload = std::shared_ptr<std::vector<uint8>>;
         using ChainFn = std::function<void(
-            ::Assets::AssetState, const Payload& payload,
+            ::Assets::AssetState, const Payload& payload, const Payload& errors,
             const ::Assets::DependentFileState*, const ::Assets::DependentFileState*)>;
 
-        const Payload& Resolve(StringSection<::Assets::ResChar> initializer, const std::shared_ptr<::Assets::DependencyValidation>& depVal = nullptr) const;
-
-        ::Assets::AssetState TryResolve(
-            Payload& result,
-            const std::shared_ptr<::Assets::DependencyValidation>& depVal) const;
+        const Payload& Resolve(StringSection<::Assets::ResChar> initializer, const ::Assets::DepValPtr& depVal = nullptr) const;
+        ::Assets::AssetState TryResolve(Payload& result, const ::Assets::DepValPtr& depVal) const;
         Payload GetErrors() const;
 
         ::Assets::AssetState StallWhilePending() const;
+		ShaderStage GetStage() const { return _shaderPath.AsShaderStage(); }
 
         const std::vector<::Assets::DependentFileState>& GetDependencies() const;
 
@@ -62,8 +60,6 @@ namespace RenderCore { namespace Assets
         void Enqueue(
             StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
             StringSection<char> shaderModel, StringSection<ResChar> definesTable);
-
-        ShaderStage::Enum GetStage() const { return _shaderPath.AsShaderStage(); }
 
         ShaderCompileMarker(std::shared_ptr<ShaderService::ILowLevelCompiler>);
         ~ShaderCompileMarker();
@@ -151,7 +147,7 @@ namespace RenderCore { namespace Assets
 
 	void ShaderCompileMarker::OnFailure()
 	{
-		_chain(::Assets::AssetState::Invalid, nullptr, nullptr, nullptr);
+		_chain(::Assets::AssetState::Invalid, nullptr, nullptr, nullptr, nullptr);
 		SetState(::Assets::AssetState::Invalid);
 	}
 
@@ -183,7 +179,7 @@ namespace RenderCore { namespace Assets
 				// doesn't get broken, and a leak)
 			if (_chain) {
 				TRY {
-					_chain(result, _payload, AsPointer(_deps.cbegin()), AsPointer(_deps.cend()));
+					_chain(result, _payload, errors, AsPointer(_deps.cbegin()), AsPointer(_deps.cend()));
 				} CATCH (const std::bad_function_call& e) {
 					LogWarning 
 						<< "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")" // << std::endl 
@@ -508,7 +504,7 @@ namespace RenderCore { namespace Assets
         compileHelper->Enqueue(
             _res, _definesTable,
             [marker, archiveCacheAttachment, depNameAsString, store, tempPtr, c]
-            (   ::Assets::AssetState newState, const Payload& payload, 
+            (   ::Assets::AssetState newState, const Payload& payload, const Payload& errors,
                 const ::Assets::DependentFileState* depsBegin, const ::Assets::DependentFileState* depsEnd)
             {
                 if (newState == ::Assets::AssetState::Ready && marker->GetLocator()._archive) {
@@ -543,6 +539,8 @@ namespace RenderCore { namespace Assets
                     (void)archiveCacheAttachment;
                 }
 
+				marker->GetLocator()._payload = payload;
+				marker->GetLocator()._errors = errors;
                 marker->GetLocator()._dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
                 for (auto i=depsBegin; i!=depsEnd; ++i)
                     RegisterFileDependency(marker->GetLocator()._dependencyValidation, i->_filename.c_str());
@@ -626,7 +624,7 @@ namespace RenderCore { namespace Assets
 
     auto LocalCompiledShaderSource::CompileFromFile(
         StringSection<ResChar> resource, 
-        StringSection<ResChar> definesTable) const -> std::shared_ptr<IPendingMarker>
+        StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
     {
         auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler);
         auto resId = ShaderService::MakeResId(resource, *_compiler);
@@ -636,7 +634,7 @@ namespace RenderCore { namespace Assets
             
     auto LocalCompiledShaderSource::CompileFromMemory(
         StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
-        StringSection<char> shaderModel, StringSection<ResChar> definesTable) const -> std::shared_ptr<IPendingMarker>
+        StringSection<char> shaderModel, StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
     {
         auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler);
         compileHelper->Enqueue(shaderInMemory, entryPoint, shaderModel, definesTable); 

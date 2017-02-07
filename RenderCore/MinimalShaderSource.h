@@ -14,6 +14,7 @@ namespace RenderCore
     class MinimalShaderSource : public ShaderService::IShaderSource
     {
     public:
+#if 0
         class PendingMarker : public ShaderService::IPendingMarker
         {
         public:
@@ -22,11 +23,11 @@ namespace RenderCore
             Payload GetErrors() const;
 
             ::Assets::AssetState StallWhilePending() const;
-            ShaderStage::Enum GetStage() const;
+            ShaderStage GetStage() const;
 
             PendingMarker(
                 Payload payload, 
-                std::vector<::Assets::DependentFileState> deps, ShaderStage::Enum stage);
+                std::vector<::Assets::DependentFileState> deps, ShaderStage stage);
             PendingMarker(Payload errors);
             ~PendingMarker();
             PendingMarker(const PendingMarker&) = delete;
@@ -34,16 +35,16 @@ namespace RenderCore
         private:
             Payload _payload;
             std::vector<::Assets::DependentFileState> _deps;
-            ShaderStage::Enum _stage;
+            ShaderStage _stage;
             Payload _errors;
         };
+#endif
 
-        using IPendingMarker = ShaderService::IPendingMarker;
-        std::shared_ptr<IPendingMarker> CompileFromFile(
+        std::shared_ptr<::Assets::PendingCompileMarker> CompileFromFile(
 			StringSection<::Assets::ResChar> resId, 
 			StringSection<::Assets::ResChar> definesTable) const;
             
-        std::shared_ptr<IPendingMarker> CompileFromMemory(
+        std::shared_ptr<::Assets::PendingCompileMarker> CompileFromMemory(
 			StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 			StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
 
@@ -53,7 +54,7 @@ namespace RenderCore
     protected:
         std::shared_ptr<ShaderService::ILowLevelCompiler> _compiler;
 
-        std::shared_ptr<IPendingMarker> Compile(
+        std::shared_ptr<::Assets::PendingCompileMarker> Compile(
             const void* shaderInMemory, size_t size,
             const ShaderService::ResId& resId,
 			StringSection<::Assets::ResChar> definesTable) const;

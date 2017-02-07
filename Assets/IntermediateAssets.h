@@ -26,6 +26,9 @@ namespace Assets
         uint64      _sourceID1;
         std::shared_ptr<ArchiveCache> _archive;
 
+		std::shared_ptr<std::vector<uint8>> _payload;
+		std::shared_ptr<std::vector<uint8>> _errors;
+
         IntermediateAssetLocator();
         ~IntermediateAssetLocator();
     };
@@ -49,8 +52,6 @@ namespace Assets
     public:
         // this has become very much like a std::promise<IntermediateAssetLocator>!
         const IntermediateAssetLocator& GetLocator() const;
-        IntermediateAssetLocator& GetLocator();
-        void SetLocator(const IntermediateAssetLocator& locator);
 
         PendingCompileMarker();
         ~PendingCompileMarker();
@@ -59,6 +60,9 @@ namespace Assets
 		PendingCompileMarker& operator=(PendingCompileMarker&&) = delete;
 		PendingCompileMarker(const PendingCompileMarker&) = delete;
 		PendingCompileMarker& operator=(const PendingCompileMarker&) = delete;
+
+		void SetLocator(const IntermediateAssetLocator& locator);
+		IntermediateAssetLocator& GetLocator();
 
 	private:
 		IntermediateAssetLocator _locator;

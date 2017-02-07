@@ -30,12 +30,11 @@ namespace RenderCore { namespace Assets
             uint64 typeCode, const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& destinationStore);
 
-        using IPendingMarker = ShaderService::IPendingMarker;
-        std::shared_ptr<IPendingMarker> CompileFromFile(
+        std::shared_ptr<::Assets::PendingCompileMarker> CompileFromFile(
             StringSection<::Assets::ResChar> resId, 
             StringSection<::Assets::ResChar> definesTable) const;
             
-        std::shared_ptr<IPendingMarker> CompileFromMemory(
+        std::shared_ptr<::Assets::PendingCompileMarker> CompileFromMemory(
             StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
             StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
 

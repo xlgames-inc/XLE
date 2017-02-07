@@ -264,7 +264,7 @@ namespace ToolsRig
             //      default objects.
             //
 
-        const ShaderStage::Enum stages[] = {
+        const ShaderStage stages[] = {
             ShaderStage::Vertex,
 			ShaderStage::Pixel,
 			ShaderStage::Geometry

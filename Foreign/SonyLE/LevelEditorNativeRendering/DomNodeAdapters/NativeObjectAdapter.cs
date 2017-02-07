@@ -531,8 +531,6 @@ namespace RenderingInterop
             } 
             else
                 result = result.ToLower();
-            if (result.EndsWith(".dae"))        // Remove .dae extensions for this moment, because they cause havok with placements
-                result = result.Substring(0, result.Length - 4);
             return result;
         }
 

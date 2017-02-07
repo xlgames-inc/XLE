@@ -168,8 +168,6 @@ namespace RenderCore { namespace Assets
     {
         TRY
         {
-            auto splitName = MakeFileNameSplitter(initializer);
-
             AttachLibrary();
 
             ConsoleRig::LibVersionDesc libVersionDesc;
@@ -177,24 +175,6 @@ namespace RenderCore { namespace Assets
 
 			bool requiresMerge = (typeCode == ModelCompiler::Type_AnimationSet) && XlFindChar(initializer, '*');
             if (!requiresMerge) {
-
-                    // We need to do some processing of the filename
-                    // the filename should take this form:
-                    //      [drive]path/filename[.extension][:rootnode]
-                    // We will paste on .dae if the extension is missing.
-                    // And when there is no root node, we just pass nullptr
-                    // to the serialize functions.
-
-                ::Assets::ResChar colladaFile[MaxPath], fileAndParameters[MaxPath];
-                XlCopyString(colladaFile, splitName.AllExceptParameters());
-                if (splitName.Extension().IsEmpty())
-                    XlCatString(colladaFile, dimof(colladaFile), ".dae");
-
-				XlCopyString(fileAndParameters, colladaFile);
-				if (!splitName.Parameters().IsEmpty()) {
-					XlCatString(fileAndParameters, ":");
-					XlCatString(fileAndParameters, splitName.Parameters());
-				}
 
                 TRY 
                 {
@@ -208,7 +188,7 @@ namespace RenderCore { namespace Assets
                         destinationFile = temp;
                     }
 
-                    auto model = (*_createCompileOpFunction)(fileAndParameters);
+                    auto model = (*_createCompileOpFunction)(initializer);
 						
 					// look for the first target of the correct type
 					auto targetCount = model->TargetCount();
@@ -225,11 +205,12 @@ namespace RenderCore { namespace Assets
 						}
 
 					if (!foundTarget)
-						Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", fileAndParameters));
+						Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer));
 
                         // write new dependencies
+					auto splitName = MakeFileNameSplitter(initializer);
                     std::vector<::Assets::DependentFileState> deps;
-                    deps.push_back(destinationStore.GetDependentFileState(colladaFile));
+                    deps.push_back(destinationStore.GetDependentFileState(splitName.AllExceptParameters()));
 					compileMarker.GetLocator()._dependencyValidation = destinationStore.WriteDependencies(destinationFile, splitName.DriveAndPath(), MakeIteratorRange(deps));
         
 					compileMarker.SetState(::Assets::AssetState::Ready);
@@ -237,7 +218,7 @@ namespace RenderCore { namespace Assets
                 } CATCH(...) {
                     if (!compileMarker.GetLocator()._dependencyValidation) {
 						compileMarker.GetLocator()._dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
-                        ::Assets::RegisterFileDependency(compileMarker.GetLocator()._dependencyValidation, colladaFile);
+                        ::Assets::RegisterFileDependency(compileMarker.GetLocator()._dependencyValidation, MakeFileNameSplitter(initializer).AllExceptParameters());
                     }
                     throw;
                 } CATCH_END

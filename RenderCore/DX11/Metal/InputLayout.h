@@ -144,10 +144,10 @@ namespace RenderCore { namespace Metal_DX11
         bool BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res);
 
 		void CopyReflection(const BoundUniforms& copyFrom);
-		intrusive_ptr<ID3D::ShaderReflection> GetReflection(ShaderStage::Enum stage);
+		intrusive_ptr<ID3D::ShaderReflection> GetReflection(ShaderStage stage);
 
-        ConstantBufferLayout                                GetConstantBufferLayout(const char name[]);
-        std::vector<std::pair<ShaderStage::Enum,unsigned>>  GetConstantBufferBinding(const char name[]);
+        ConstantBufferLayout                            GetConstantBufferLayout(const char name[]);
+        std::vector<std::pair<ShaderStage,unsigned>>	GetConstantBufferBinding(const char name[]);
 
         void Apply( DeviceContext& context, 
                     const UniformsStream& stream0, const UniformsStream& stream1) const;
@@ -186,7 +186,7 @@ namespace RenderCore { namespace Metal_DX11
     public:
         void Bind(uint64 hashName, unsigned bindingArrayIndex, const char instance[]);
 
-        const std::vector<intrusive_ptr<ID3D::ClassInstance>>& GetClassInstances(ShaderStage::Enum stage) const;
+        const std::vector<intrusive_ptr<ID3D::ClassInstance>>& GetClassInstances(ShaderStage stage) const;
 
         BoundClassInterfaces(const ShaderProgram& shader);
         BoundClassInterfaces(const DeepShaderProgram& shader);

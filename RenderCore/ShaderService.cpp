@@ -9,6 +9,7 @@
 #include "../Assets/Assets.h"
 #include "../Assets/IntermediateAssets.h"
 #include "../Assets/ArchiveCache.h"
+#include "../Assets/DeferredConstruction.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/PtrUtils.h"
@@ -20,7 +21,7 @@ namespace RenderCore
 
         ////////////////////////////////////////////////////////////
 
-    static ShaderStage::Enum AsShaderStage(StringSection<::Assets::ResChar> shaderModel)
+    static ShaderStage AsShaderStage(StringSection<::Assets::ResChar> shaderModel)
     {
 		assert(shaderModel.size() >= 1);
         switch (shaderModel[0]) {
@@ -34,183 +35,188 @@ namespace RenderCore
         }
     }
 
-    ShaderStage::Enum ShaderService::ResId::AsShaderStage() const { return RenderCore::AsShaderStage(_shaderModel); }
+    ShaderStage ShaderService::ResId::AsShaderStage() const { return RenderCore::AsShaderStage(_shaderModel); }
 
-    CompiledShaderByteCode::CompiledShaderByteCode(std::shared_ptr<::Assets::ICompileMarker>&& marker)
+    CompiledShaderByteCode::CompiledShaderByteCode(const std::shared_ptr<::Assets::DeferredConstruction>& construction)
+	: _deferredConstructor(construction)
     {
-            // no way to know the shader stage in this mode...
-            //  Maybe the shader stage should be encoded in the intermediate file name
         _stage = ShaderStage::Null;
         #if defined(STORE_SHADER_INITIALIZER)
             _initializer[0] = '\0';
         #endif
 
-        if (marker) {
-            #if defined(STORE_SHADER_INITIALIZER)
-                XlCopyString(_initializer, marker->Initializer());
-            #endif
-            auto existing = marker->GetExistingAsset();
-
-            auto i = strrchr(existing._sourceID0, '-');
-            if (i) _stage = AsShaderStage(i+1);
-
-            if (existing._dependencyValidation && existing._dependencyValidation->GetValidationIndex() == 0) {
-                _shader = existing._archive->TryOpenFromCache(existing._sourceID1);
-                if (_shader)
-                    _validationCallback = std::move(existing._dependencyValidation);
-            } 
-
-            if (!_shader) {
-                _validationCallback = std::make_shared<Assets::DependencyValidation>();
-                _marker = marker->InvokeCompile();
-            }
-        } else
-            _validationCallback = std::make_shared<Assets::DependencyValidation>();
+		if (_deferredConstructor) {
+			_validationCallback = _deferredConstructor->GetDependencyValidation();
+			auto shaderStageFn = ConstHash64<'Shad','erSt','age'>::Value;
+			if (_deferredConstructor->GetVariants().Has<ShaderStage()>(shaderStageFn))
+				_stage = _deferredConstructor->GetVariants().CallDefault<>(shaderStageFn, _stage);
+			assert(_stage != ShaderStage::Null);
+		} else
+			_validationCallback = std::make_shared<Assets::DependencyValidation>();
     }
 
-    CompiledShaderByteCode::CompiledShaderByteCode(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> definesTable)
-    {
-        _stage = ShaderStage::Null;
-        auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-        std::shared_ptr<ShaderService::IPendingMarker> compileHelper;
+	CompiledShaderByteCode::CompiledShaderByteCode(const ::Assets::IntermediateAssetLocator& locator, ShaderStage stage, StringSection<::Assets::ResChar> initializer)
+	: _shader(locator._payload)
+	, _validationCallback(locator._dependencyValidation)
+	, _stage(stage)
+	{
+		assert(_validationCallback);
         #if defined(STORE_SHADER_INITIALIZER)
-            XlCopyString(_initializer, initializer);
+			XlCopyString(_initializer, initializer);
         #endif
 
-        if (!initializer.IsEmpty() && !XlEqStringI(initializer, "null")) {
-            compileHelper = 
-                ShaderService::GetInstance().CompileFromFile(
-                    initializer, definesTable);
+		if (!_shader && locator._archive) {
+			_shader = locator._archive->TryOpenFromCache(locator._sourceID1);
+		}
+	}
 
-            if (compileHelper != nullptr)
-                _stage = compileHelper->GetStage();
+	CompiledShaderByteCode::CompiledShaderByteCode(const std::shared_ptr<std::vector<uint8>>& shader, ShaderStage stage, const ::Assets::DepValPtr& depVal) 
+	: _shader(shader)
+	, _validationCallback(depVal)
+	, _stage(stage)
+	{
+		#if defined(STORE_SHADER_INITIALIZER)
+			_initializer[0] = '\0';
+		#endif
+	}
 
-            RegisterFileDependency(validationCallback, MakeFileNameSplitter(initializer).AllExceptParameters());
-        }
+	std::shared_ptr<::Assets::DeferredConstruction> CompiledShaderByteCode::BeginDeferredConstruction(
+		StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
+		StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable)
+	{
+		return nullptr;
+	}
 
-        _validationCallback = std::move(validationCallback);
-        _compileHelper = std::move(compileHelper);
-    }
-
-    CompiledShaderByteCode::CompiledShaderByteCode(
-        StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
-        StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable)
+	std::shared_ptr<::Assets::DeferredConstruction> CompiledShaderByteCode::BeginDeferredConstruction(
+		StringSection<::Assets::ResChar> initializer, 
+		StringSection<::Assets::ResChar> definesTable)
     {
-        _stage = AsShaderStage(shaderModel);
-        auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-        #if defined(STORE_SHADER_INITIALIZER)
-            XlCopyString(_initializer, "ShaderInMemory");
-        #endif
-        auto compileHelper = 
-            ShaderService::GetInstance().CompileFromMemory(
-                shaderInMemory, entryPoint, shaderModel, definesTable);
+		const StringSection<::Assets::ResChar> initializers[] = { initializer, definesTable };
+		auto marker = ::Assets::Internal::BeginCompileOperation(
+			::Assets::GetCompileProcessType<CompiledShaderByteCode>(), 
+			initializers, dimof(initializers));
+		if (!marker) return nullptr;
 
-        _validationCallback = std::move(validationCallback);
-        _compileHelper = std::move(compileHelper);
+		auto existingLoc = marker->GetExistingAsset();
+		auto i = strrchr(existingLoc._sourceID0, '-');
+		auto stage = i ? AsShaderStage(i+1) : ShaderStage::Null;
+
+		if (existingLoc._dependencyValidation && existingLoc._dependencyValidation->GetValidationIndex()==0) {
+
+			std::unique_ptr<CompiledShaderByteCode> asset = nullptr;
+			TRY {
+				asset = ::Assets::Internal::ConstructFromIntermediateAssetLocator<CompiledShaderByteCode>(existingLoc, stage, initializer);
+			} CATCH (const ::Assets::Exceptions::InvalidAsset&) {
+			} CATCH (const ::Assets::Exceptions::FormatError& e) {
+				if (e.GetReason() != ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
+					throw;
+			} CATCH(const Utility::Exceptions::IOException& e) {
+				if (e.GetReason() != Utility::Exceptions::IOException::Reason::FileNotFound)
+					throw;
+			} CATCH_END
+
+			if (asset) {
+				auto wrapper = std::make_shared<std::unique_ptr<CompiledShaderByteCode>>(std::move(asset));
+				std::function<std::unique_ptr<CompiledShaderByteCode>()> constructorCallback(
+					[wrapper]() -> std::unique_ptr<CompiledShaderByteCode> { return std::move(*wrapper.get()); });
+				auto result = std::make_shared<::Assets::DeferredConstruction>(
+					nullptr, existingLoc._dependencyValidation, std::move(constructorCallback));
+				result->GetVariants().Add(ConstHash64<'Shad','erSt','age'>::Value, [stage](){ return stage; });
+				return result;
+			}
+		}
+
+		auto init0 = initializer.AsString();
+		auto pendingCompile = marker->InvokeCompile();
+		std::function<std::unique_ptr<CompiledShaderByteCode>()> constructorCallback(
+			[pendingCompile, init0, stage]() -> std::unique_ptr<CompiledShaderByteCode> {
+				auto state = pendingCompile->GetAssetState();
+				if (state == ::Assets::AssetState::Pending)
+					Throw(::Assets::Exceptions::PendingAsset(init0.c_str(), "Pending compilation operation"));
+				if (state == ::Assets::AssetState::Invalid)
+					Throw(::Assets::Exceptions::InvalidAsset(init0.c_str(), "Failure during compilation operation"));
+				assert(state == ::Assets::AssetState::Ready);
+				return ::Assets::Internal::ConstructFromIntermediateAssetLocator<CompiledShaderByteCode>(
+					pendingCompile->GetLocator(), stage, MakeStringSection(init0));
+			});
+		auto result = std::make_shared<::Assets::DeferredConstruction>(
+			pendingCompile, pendingCompile->GetLocator()._dependencyValidation, std::move(constructorCallback));
+		result->GetVariants().Add(ConstHash64<'Shad','erSt','age'>::Value, [stage](){ return stage; });
+		return result;
     }
 
-    CompiledShaderByteCode::CompiledShaderByteCode(std::shared_ptr<ShaderService::IPendingMarker>&& marker)
-    {
-        #if defined(STORE_SHADER_INITIALIZER)
-            XlCopyString(_initializer, "ManualShader");
-        #endif
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        _stage = marker->GetStage();
-        _compileHelper = std::move(marker);
-    }
+	std::shared_ptr<::Assets::DeferredConstruction> CompiledShaderByteCode::BeginDeferredConstruction(
+		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
+	{
+		if (initializerCount == 1 || initializerCount == 2) {
+			return BeginDeferredConstruction(initializers[0], (initializerCount>=2)?initializers[1]:StringSection<::Assets::ResChar>());
+		} else if (initializerCount == 3 || initializerCount == 4) {
+			return BeginDeferredConstruction(
+				initializers[0], initializers[1], 
+				initializers[2], (initializerCount>= 4)?initializers[3]:StringSection<::Assets::ResChar>());
+		}
+		return nullptr;
+	}
 
     CompiledShaderByteCode::~CompiledShaderByteCode()
     {
     }
 
-    void CompiledShaderByteCode::Resolve() const
-    {
-        if (_compileHelper) {
-                //  compile helper will either return a completed blob,
-                //  or throw and exception
-            _shader = _compileHelper->Resolve(Initializer(), _validationCallback);
-            _compileHelper.reset();
-        } else if (_marker) {
-            if (_marker->GetAssetState() == ::Assets::AssetState::Pending)
-                Throw(Assets::Exceptions::PendingAsset(Initializer(), "Marker is still pending while resolving shader code"));
-            
-            ResolveFromCompileMarker();
-        }
+	void CompiledShaderByteCode::Resolve() const
+	{
+		if (!_shader && _deferredConstructor) {
+			auto state = _deferredConstructor->GetAssetState();
+			if (state == ::Assets::AssetState::Pending)
+				Throw(Assets::Exceptions::PendingAsset(Initializer(), "Marker is still pending while resolving shader code"));
 
-        if (!_shader || _shader->empty()) {
-            _shader.reset();
-            Throw(Assets::Exceptions::InvalidAsset(Initializer(), "CompiledShaderByteCode invalid"));
-        }
-    }
+			if (state == ::Assets::AssetState::Ready) {
+				auto constructor = std::move(_deferredConstructor);
+				*const_cast<CompiledShaderByteCode*>(this) = std::move(*constructor->PerformConstructor<CompiledShaderByteCode>());
+				if (_shader && _shader->empty()) 
+					_shader.reset();
+			}
+		}
 
-    void CompiledShaderByteCode::ResolveFromCompileMarker() const
-    {
-        if (_marker->GetAssetState() != ::Assets::AssetState::Invalid) {
-            auto loc = _marker->GetLocator();
+		if (!_shader) {
+			_shader.reset();
+			Throw(Assets::Exceptions::InvalidAsset(Initializer(), "CompiledShaderByteCode invalid"));
+		}
+	}
 
-                //  Our shader should be stored in a shader cache file
-                //  Find that file, and get the completed shader.
-                //  Note that this might hit the disk currently...?
-            if (loc._archive) {
-                _shader = loc._archive->TryOpenFromCache(loc._sourceID1);
-                if (!_shader) {
-                    LogWarning << "Compilation marker is finished, but shader couldn't be opened from cache (" << loc._sourceID0 << ":" <<loc._sourceID1 << ")";
-                    // caller should throw InvalidAsset in this case
-                }
-            }
-        }
-
-            //  Even when we're considered invalid, we must register a dependency, and release
-            //  the marker. This way we will be recompiled if the asset is changed (eg, to fix
-            //  the compile error)
-        if (_marker->GetLocator()._dependencyValidation)
-            Assets::RegisterAssetDependency(_validationCallback, _marker->GetLocator()._dependencyValidation);
-
-        if (_marker->GetAssetState() == ::Assets::AssetState::Invalid)
-            Throw(Assets::Exceptions::InvalidAsset(Initializer(), "CompiledShaderByteCode invalid"));
-
-        _marker.reset();
-    }
-
-    std::pair<const void*, size_t> CompiledShaderByteCode::GetByteCode() const
-    {
-        Resolve();
-        return std::make_pair(
-            PtrAdd(AsPointer(_shader->begin()), sizeof(ShaderService::ShaderHeader)),
-            _shader->size() - sizeof(ShaderService::ShaderHeader));
-    }
-
-    ::Assets::AssetState CompiledShaderByteCode::GetAssetState() const
+    ::Assets::AssetState CompiledShaderByteCode::TryResolve() const
     {
         if (_shader)
             return ::Assets::AssetState::Ready;
 
-        if (_compileHelper) {
-            auto resolveRes = _compileHelper->TryResolve(_shader, _validationCallback);
-            if (resolveRes != ::Assets::AssetState::Ready)
-                return resolveRes;
+        if (_deferredConstructor) {
+			auto state = _deferredConstructor->GetAssetState();
+			if (state != ::Assets::AssetState::Ready)
+				return state;
 
-            _compileHelper.reset();
-        } else if (_marker) {
-            auto markerState = _marker->GetAssetState();
-            if (markerState != ::Assets::AssetState::Ready)
-                return markerState;
-            
-            ResolveFromCompileMarker();
-        }
+			auto constructor = std::move(_deferredConstructor);
+			*const_cast<CompiledShaderByteCode*>(this) = std::move(*constructor->PerformConstructor<CompiledShaderByteCode>());
+		
+			if (_shader && !_shader->empty())
+				return ::Assets::AssetState::Ready;
 
-        if (!_shader || _shader->empty()) {
-            _shader.reset();
-            return ::Assets::AssetState::Invalid;
-        }
+			_shader.reset();
+		}
 
-        return ::Assets::AssetState::Ready;
+        return ::Assets::AssetState::Invalid;
     }
+
+	std::pair<const void*, size_t> CompiledShaderByteCode::GetByteCode() const
+	{
+		Resolve();
+		return std::make_pair(
+			PtrAdd(AsPointer(_shader->begin()), sizeof(ShaderService::ShaderHeader)),
+			_shader->size() - sizeof(ShaderService::ShaderHeader));
+	}
 
     ::Assets::AssetState CompiledShaderByteCode::TryGetByteCode(
         void const*& byteCode, size_t& size)
     {
-        auto state = GetAssetState();
+        auto state = TryResolve();
         if (state != ::Assets::AssetState::Ready) return state;
 
         assert(_shader && !_shader->empty());
@@ -221,8 +227,6 @@ namespace RenderCore
 
     std::shared_ptr<std::vector<uint8>> CompiledShaderByteCode::GetErrors() const
     {
-        if (_compileHelper)
-            return _compileHelper->GetErrors();
         return std::shared_ptr<std::vector<uint8>>();
     }
 
@@ -231,11 +235,8 @@ namespace RenderCore
         if (_shader)
             return ::Assets::AssetState::Ready;
 
-        if (_compileHelper) {
-            return _compileHelper->StallWhilePending();
-        } else if (_marker) {
-            return _marker->StallWhilePending();
-        }
+        if (_deferredConstructor)
+            return _deferredConstructor->StallWhilePending();
 
         return ::Assets::AssetState::Invalid;
     }
@@ -264,8 +265,7 @@ namespace RenderCore
     : _shader(std::move(moveFrom._shader))
     , _stage(moveFrom._stage)
     , _validationCallback(std::move(moveFrom._validationCallback))
-    , _compileHelper(std::move(moveFrom._compileHelper))
-    , _marker(std::move(moveFrom._marker))
+    , _deferredConstructor(std::move(moveFrom._deferredConstructor))
     {
         #if defined(STORE_SHADER_INITIALIZER)
             XlCopyString(_initializer, moveFrom._initializer);
@@ -277,8 +277,7 @@ namespace RenderCore
         _shader = std::move(moveFrom._shader);
         _stage = moveFrom._stage;
         _validationCallback = std::move(moveFrom._validationCallback);
-        _compileHelper = std::move(moveFrom._compileHelper);
-        _marker = std::move(moveFrom._marker);
+		_deferredConstructor = std::move(moveFrom._deferredConstructor);
         #if defined(STORE_SHADER_INITIALIZER)
             XlCopyString(_initializer, moveFrom._initializer);
         #endif
@@ -349,7 +348,7 @@ namespace RenderCore
 
     auto ShaderService::CompileFromFile(
         StringSection<::Assets::ResChar> resId, 
-        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<IPendingMarker>
+        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
     {
         for (const auto& i:_shaderSources) {
             auto r = i->CompileFromFile(resId, definesTable);
@@ -361,7 +360,7 @@ namespace RenderCore
     auto ShaderService::CompileFromMemory(
         StringSection<char> shaderInMemory, 
         StringSection<char> entryPoint, StringSection<char> shaderModel, 
-        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<IPendingMarker>
+        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
     {
         for (const auto& i:_shaderSources) {
             auto r = i->CompileFromMemory(shaderInMemory, entryPoint, shaderModel, definesTable);
@@ -389,7 +388,6 @@ namespace RenderCore
     ShaderService::ShaderService() {}
     ShaderService::~ShaderService() {}
 
-    ShaderService::IPendingMarker::~IPendingMarker() {}
     ShaderService::IShaderSource::~IShaderSource() {}
     ShaderService::ILowLevelCompiler::~ILowLevelCompiler() {}
 }

@@ -73,19 +73,23 @@ namespace Assets
     {
     public:
         AssetState		GetAssetState() const { return _state; }
-        void			SetState(AssetState newState);
         AssetState		StallWhilePending() const;
+        const char*     Initializer() const;  // "initializer" interface only provided in debug builds, and only intended for debugging
 
-            // "initializer" interface only provided in debug builds, and only intended for debugging
-        const char*     Initializer() const;
-        void            SetInitializer(const char initializer[]);
-
-        PendingOperationMarker();
-        PendingOperationMarker(AssetState state);
+        PendingOperationMarker(AssetState state = AssetState::Pending);
         ~PendingOperationMarker();
-    protected:
-        AssetState _state;
-        DEBUG_ONLY(char _initializer[MaxPath];)
+
+		PendingOperationMarker(PendingOperationMarker&&) = delete;
+		PendingOperationMarker& operator=(PendingOperationMarker&&) = delete;
+		PendingOperationMarker(const PendingOperationMarker&) = delete;
+		PendingOperationMarker& operator=(const PendingOperationMarker&) = delete;
+
+		void	SetState(AssetState newState);
+		void	SetInitializer(const ResChar initializer[]);
+
+	private:
+		AssetState _state;
+		DEBUG_ONLY(ResChar _initializer[MaxPath];)
     };
 
 		////////////////////////////////////////////////////////////////////////////////////////////////

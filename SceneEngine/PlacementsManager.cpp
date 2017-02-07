@@ -733,7 +733,9 @@ namespace SceneEngine
                 _currentSupplements = obj._supplementsOffset;
                 _currentModelRendered = false;
             }
-                
+
+			if (!_current._renderer) return;
+
             auto localToWorld = Combine(obj._localToCell, cellToWorld);
 
             if (constant_expression<UseImposters>::result() && distanceSq > _maxDistanceSq) {

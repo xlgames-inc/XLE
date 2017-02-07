@@ -75,12 +75,12 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         _isComputeShader = false;
         if (shader.GetCompiledVertexShader().GetStage() != ShaderStage::Null)
-            _reflection[ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
+            _reflection[(unsigned)ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
         if (shader.GetCompiledPixelShader().GetStage() != ShaderStage::Null)
-            _reflection[ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
+            _reflection[(unsigned)ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
         auto* geoShader = shader.GetCompiledGeometryShader();
         if (geoShader && geoShader->GetStage() != ShaderStage::Null)
-            _reflection[ShaderStage::Geometry] = SPIRVReflection(geoShader->GetByteCode());
+            _reflection[(unsigned)ShaderStage::Geometry] = SPIRVReflection(geoShader->GetByteCode());
         BuildShaderBindingMask();
     }
 
@@ -88,24 +88,24 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         _isComputeShader = false;
         if (shader.GetCompiledVertexShader().GetStage() != ShaderStage::Null)
-            _reflection[ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
+            _reflection[(unsigned)ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
         if (shader.GetCompiledPixelShader().GetStage() != ShaderStage::Null)
-            _reflection[ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
+            _reflection[(unsigned)ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
         auto* geoShader = shader.GetCompiledGeometryShader();
         if (geoShader && geoShader->GetStage() != ShaderStage::Null)
-            _reflection[ShaderStage::Geometry] = SPIRVReflection(geoShader->GetByteCode());
+            _reflection[(unsigned)ShaderStage::Geometry] = SPIRVReflection(geoShader->GetByteCode());
         if (shader.GetCompiledHullShader().GetStage() != ShaderStage::Null)
-            _reflection[ShaderStage::Hull] = SPIRVReflection(shader.GetCompiledHullShader().GetByteCode());
+            _reflection[(unsigned)ShaderStage::Hull] = SPIRVReflection(shader.GetCompiledHullShader().GetByteCode());
         if (shader.GetCompiledDomainShader().GetStage() != ShaderStage::Null)
-            _reflection[ShaderStage::Domain] = SPIRVReflection(shader.GetCompiledDomainShader().GetByteCode());
+            _reflection[(unsigned)ShaderStage::Domain] = SPIRVReflection(shader.GetCompiledDomainShader().GetByteCode());
         BuildShaderBindingMask();
     }
 
 	BoundUniforms::BoundUniforms(const CompiledShaderByteCode& shader)
     {
-        ShaderStage::Enum stage = shader.GetStage();
-        if (stage < dimof(_reflection)) {
-            _reflection[stage] = SPIRVReflection(shader.GetByteCode());
+        auto stage = shader.GetStage();
+        if ((unsigned)stage < dimof(_reflection)) {
+            _reflection[(unsigned)stage] = SPIRVReflection(shader.GetByteCode());
         }
         _isComputeShader = stage == ShaderStage::Compute;
         BuildShaderBindingMask();
@@ -183,7 +183,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         for (unsigned d=0; d<s_descriptorSetCount; ++d) {
             _shaderBindingMask[d] = 0x0ull;
-            for (unsigned r=0; r<ShaderStage::Max; ++r) {
+            for (unsigned r=0; r<(unsigned)ShaderStage::Max; ++r) {
                 // Look for all of the bindings in this descriptor set that are referenced by the shader
                 for(const auto&b:_reflection[r]._bindings) {
                     if (b.second._descriptorSet == d && b.second._bindingPoint != ~0x0u)

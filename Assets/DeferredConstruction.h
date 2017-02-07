@@ -21,6 +21,9 @@ namespace Assets
 		AssetState StallWhilePending() const;
 		const DepValPtr& GetDependencyValidation() const { return _depVal; }
 
+		const VariantFunctions& GetVariants() const { return _fns; }
+		VariantFunctions& GetVariants() { return _fns; }
+
 		template<typename Type>
 			DeferredConstruction(
 				const std::shared_ptr<PendingOperationMarker>& upstream, 
@@ -52,14 +55,16 @@ namespace Assets
 
 	namespace Internal 
 	{
-		template<typename AssetType, typename std::enable_if<Internal::AssetTraits<AssetType>::Constructor_IntermediateAssetLocator>::type* = nullptr>
-			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IntermediateAssetLocator& locator, const ResChar initializer[])
+		template<	typename AssetType, 
+					typename... Args,
+					typename std::enable_if<std::is_constructible<AssetType, const IntermediateAssetLocator&, Args...>::value>::type* = nullptr>
+			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IntermediateAssetLocator& locator, Args... args)
 			{
-				return std::make_unique<AssetType>(locator, initializer);
+				return std::make_unique<AssetType>(locator, std::forward<Args>(args)...);
 			}
 
 		template<typename AssetType, typename std::enable_if<!Internal::AssetTraits<AssetType>::Constructor_IntermediateAssetLocator>::type* = nullptr>
-			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IntermediateAssetLocator& locator, const ResChar initializer[])
+			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IntermediateAssetLocator& locator, StringSection<ResChar> initializer)
 			{
 				return AutoConstructAsset<AssetType>(locator._sourceID0);
 			}
@@ -85,7 +90,7 @@ namespace Assets
 			std::unique_ptr<AssetType> asset = nullptr;
 			// Attempt recompile if we catch InvalidAsset or a FormatError with UnsupportedVersion or an IOException with FileNotFound
 			TRY {
-				asset = Internal::ConstructFromIntermediateAssetLocator<AssetType>(existingLoc, init0.c_str());
+				asset = Internal::ConstructFromIntermediateAssetLocator<AssetType>(existingLoc, MakeStringSection(init0));
 			} CATCH (const Exceptions::InvalidAsset&) {
 			} CATCH (const Exceptions::FormatError& e) {
 				if (e.GetReason() != ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
@@ -116,7 +121,7 @@ namespace Assets
 				if (state == AssetState::Invalid)
 					Throw(Exceptions::InvalidAsset(init0.c_str(), "Failure during compilation operation"));
 				assert(state == AssetState::Ready);
-				return Internal::ConstructFromIntermediateAssetLocator<AssetType>(pendingCompile->GetLocator(), init0.c_str());
+				return Internal::ConstructFromIntermediateAssetLocator<AssetType>(pendingCompile->GetLocator(), MakeStringSection(init0));
 			});
 		return std::make_shared<DeferredConstruction>(pendingCompile, pendingCompile->GetLocator()._dependencyValidation, std::move(constructorCallback));
 	}
