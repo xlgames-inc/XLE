@@ -13,6 +13,7 @@
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/Conversion.h"
 #include <sstream>
 #include <set>
 #include <assert.h>
@@ -221,11 +222,11 @@ namespace ShaderPatcher
     static std::string LoadSourceFile(StringSection<char> sourceFileName)
     {
         TRY {
-            Utility::BasicFile file(sourceFileName.AsString().c_str(), "rb");
+			auto file = ::Assets::MainFileSystem::OpenBasicFile(sourceFileName.AsString().c_str(), "rb");
 
-            file.Seek(0, SEEK_END);
+            file.Seek(0, FileSeekAnchor::End);
             size_t size = file.TellP();
-            file.Seek(0, SEEK_SET);
+            file.Seek(0, FileSeekAnchor::Start);
 
             std::string result;
             result.resize(size, '\0');
@@ -1529,26 +1530,32 @@ namespace ShaderPatcher
     class TemplateItem
     {
     public:
-        std::basic_string<char> _item;
+        std::basic_string<utf8> _item;
+
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+
         TemplateItem(
-            InputStreamFormatter<char>& formatter,
-            const ::Assets::DirectorySearchRules&)
+            InputStreamFormatter<utf8>& formatter,
+            const ::Assets::DirectorySearchRules&,
+			const ::Assets::DepValPtr& depVal)
         {
-            InputStreamFormatter<char>::InteriorSection name, value;
-            using Blob = InputStreamFormatter<char>::Blob;
+            InputStreamFormatter<utf8>::InteriorSection name, value;
+            using Blob = InputStreamFormatter<utf8>::Blob;
             if (formatter.PeekNext() == Blob::AttributeName && formatter.TryAttribute(name, value)) {
                 _item = value.AsString();
             } else
                 Throw(Utility::FormatException("Expecting single string attribute", formatter.GetLocation()));
         }
         TemplateItem() {}
+	private:
+		::Assets::DepValPtr _depVal;
     };
 
     static std::string GetPreviewTemplate(const char templateName[])
     {
         StringMeld<MaxPath, Assets::ResChar> str;
         str << "xleres/System/PreviewTemplates.sh:" << templateName;
-        return ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<TemplateItem, InputStreamFormatter<char>>>(str.get())._asset._item;
+		return Conversion::Convert<std::string>(::Assets::GetAssetDep<TemplateItem>(str.AsStringSection())._item);
     }
 
     std::string         GenerateStructureForPreview(
@@ -1740,7 +1747,7 @@ namespace ShaderPatcher
     {
         StringMeld<MaxPath, Assets::ResChar> str;
         str << "xleres/System/TechniqueTemplates.sh:" << templateName;
-        return ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<TemplateItem, InputStreamFormatter<char>>>(str.get())._asset._item;
+        return Conversion::Convert<std::string>(::Assets::GetAssetDep<TemplateItem>(str.AsStringSection())._item);
     }
 
 	std::string GenerateStructureForTechniqueConfig(const MainFunctionInterface& interf, const char graphName[])

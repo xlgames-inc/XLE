@@ -169,8 +169,8 @@ namespace ShaderPatcherLayer
 				_shaderText.c_str(), "ps_main", PS_DefShaderModel, definesTable.c_str());
 
 			using namespace RenderCore;
-			CompiledShaderByteCode vsCode(std::move(vsCompileMarker));
-			CompiledShaderByteCode psCode(std::move(psCompileMarker));
+			CompiledShaderByteCode vsCode(vsCompileMarker->GetLocator(), ShaderStage::Vertex, "InMemoryShader");
+			CompiledShaderByteCode psCode(psCompileMarker->GetLocator(), ShaderStage::Pixel, "InMemoryShader");
 			vsCode.StallWhilePending();
 			psCode.StallWhilePending();
         
@@ -245,7 +245,8 @@ namespace ShaderPatcherLayer
                     if (!rawMat) continue;
 
                     auto searchRules = Assets::DefaultDirectorySearchRules(MakeStringSection(nativeName));
-                    rawMat->GetAsset()._asset.Resolve(visObject._parameters, searchRules);
+                    auto resolveAttempt = rawMat->GetAsset().TryResolve(visObject._parameters, searchRules);
+					assert(resolveAttempt == ::Assets::AssetState::Ready);
 
                     visObject._searchRules.AddSearchDirectoryFromFilename(MakeStringSection(nativeName));
                 }

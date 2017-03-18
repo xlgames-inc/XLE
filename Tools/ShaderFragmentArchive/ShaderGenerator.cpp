@@ -333,7 +333,7 @@ namespace ShaderPatcherLayer
         // We're going to use a combination of native and managed stuff -- so it's easier
         // if the caller just passes in a filename
         size_t size = 0;
-        auto block = LoadFileAsMemoryBlock(
+        auto block = ::Assets::TryLoadFileAsMemoryBlock(
             clix::marshalString<clix::E_UTF8>(filename).c_str(), &size);
         if (!block.get() || !size)
             throw gcnew System::Exception(System::String::Format("Missing or empty file {0}", filename));

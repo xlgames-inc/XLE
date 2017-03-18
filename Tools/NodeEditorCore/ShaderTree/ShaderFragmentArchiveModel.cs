@@ -292,7 +292,7 @@ namespace NodeEditorCore
 
 		public System.Collections.IEnumerable GetChildren(TreePath treePath)
 		{
-            const string FragmentArchiveDirectoryRoot = "xleres/";
+            const string FragmentArchiveDirectoryRoot = "game/xleres/";
 
             string basePath = null;
             BaseItem parent = null;
