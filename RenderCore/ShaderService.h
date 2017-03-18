@@ -175,6 +175,7 @@ namespace RenderCore
 		CompiledShaderByteCode(const std::shared_ptr<::Assets::DeferredConstruction>&);
 		CompiledShaderByteCode(const std::shared_ptr<std::vector<uint8>>&, ShaderStage stage, const ::Assets::DepValPtr&);
 		CompiledShaderByteCode(const ::Assets::IntermediateAssetLocator&, ShaderStage stage, StringSection<::Assets::ResChar> initializer);
+		CompiledShaderByteCode();
         ~CompiledShaderByteCode();
 
 		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(

@@ -272,7 +272,9 @@ namespace ToolsRig
         using namespace SceneEngine;
 
         auto model = _pimpl->GetModel();
-        assert(model._renderer && model._sharedStateSet);
+		if (!model._renderer || !model._sharedStateSet)
+			return;
+        // assert(model._renderer && model._sharedStateSet);
 
         if (_pimpl->_settings->_pendingCameraAlignToModel) {
                 // After the model is loaded, if we have a pending camera align,
@@ -493,7 +495,8 @@ namespace ToolsRig
         using namespace SceneEngine;
 
         auto model = GetModel(*_cache, *_settings);
-        assert(model._renderer && model._sharedStateSet);
+		if (!model._renderer || !model._sharedStateSet)
+			return Result();
 
         auto cam = context.GetCameraDesc();
         ModelIntersectionStateContext stateContext(

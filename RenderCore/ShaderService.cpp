@@ -80,6 +80,14 @@ namespace RenderCore
 		#endif
 	}
 
+	CompiledShaderByteCode::CompiledShaderByteCode()
+	{
+		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
+		#if defined(STORE_SHADER_INITIALIZER)
+			_initializer[0] = '\0';
+		#endif
+	}
+
 	std::shared_ptr<::Assets::DeferredConstruction> CompiledShaderByteCode::BeginDeferredConstruction(
 		StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 		StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable)

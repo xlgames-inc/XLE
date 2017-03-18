@@ -1545,8 +1545,10 @@ namespace ShaderPatcher
                 _item = value.AsString();
             } else
                 Throw(Utility::FormatException("Expecting single string attribute", formatter.GetLocation()));
+
+			_depVal = depVal;
         }
-        TemplateItem() {}
+        TemplateItem() : _depVal(std::make_shared<::Assets::DependencyValidation>()) {}
 	private:
 		::Assets::DepValPtr _depVal;
     };
