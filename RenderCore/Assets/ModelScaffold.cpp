@@ -128,9 +128,11 @@ namespace RenderCore { namespace Assets
 			if (state == ::Assets::AssetState::Pending)
 				Throw(::Assets::Exceptions::PendingAsset(_filename.c_str(), "Pending deferred construction"));
 
-			auto constructor = std::move(_deferredConstructor);
+			auto* mutableThis = const_cast<ModelScaffold*>(this);
+			auto constructor = std::move(mutableThis->_deferredConstructor);
+			assert(!mutableThis->_deferredConstructor);
 			if (state == ::Assets::AssetState::Ready) {
-				*const_cast<ModelScaffold*>(this) = std::move(*constructor->PerformConstructor<ModelScaffold>());
+				*mutableThis = std::move(*constructor->PerformConstructor<ModelScaffold>());
 			} else {
 				assert(state == ::Assets::AssetState::Invalid);
 			}
@@ -146,9 +148,11 @@ namespace RenderCore { namespace Assets
 			if (state == ::Assets::AssetState::Pending)
 				return state;
 
-			auto constructor = std::move(_deferredConstructor);
+			auto* mutableThis = const_cast<ModelScaffold*>(this);
+			auto constructor = std::move(mutableThis->_deferredConstructor);
+			assert(!mutableThis->_deferredConstructor);
 			if (state == ::Assets::AssetState::Ready) {
-				*const_cast<ModelScaffold*>(this) = std::move(*constructor->PerformConstructor<ModelScaffold>());
+				*mutableThis = std::move(*constructor->PerformConstructor<ModelScaffold>());
 			} // (else fall through);
 		}
 
@@ -159,9 +163,11 @@ namespace RenderCore { namespace Assets
 	{
 		if (_deferredConstructor) {
 			auto state = _deferredConstructor->StallWhilePending();
-			auto constructor = std::move(_deferredConstructor);
+			auto* mutableThis = const_cast<ModelScaffold*>(this);
+			auto constructor = std::move(mutableThis->_deferredConstructor);
+			assert(!mutableThis->_deferredConstructor);
 			if (state == ::Assets::AssetState::Ready) {
-				*const_cast<ModelScaffold*>(this) = std::move(*constructor->PerformConstructor<ModelScaffold>());
+				*mutableThis = std::move(*constructor->PerformConstructor<ModelScaffold>());
 			} // (else fall through);
 		}
 
@@ -255,9 +261,11 @@ namespace RenderCore { namespace Assets
 			if (state == ::Assets::AssetState::Pending)
 				Throw(::Assets::Exceptions::PendingAsset(_filename.c_str(), "Pending deferred construction"));
 
-			auto constructor = std::move(_deferredConstructor);
+			auto* mutableThis = const_cast<ModelSupplementScaffold*>(this);
+			auto constructor = std::move(mutableThis->_deferredConstructor);
+			assert(!mutableThis->_deferredConstructor);
 			if (state == ::Assets::AssetState::Ready) {
-				*const_cast<ModelSupplementScaffold*>(this) = std::move(*constructor->PerformConstructor<ModelSupplementScaffold>());
+				*mutableThis = std::move(*constructor->PerformConstructor<ModelSupplementScaffold>());
 			} else {
 				assert(state == ::Assets::AssetState::Invalid);
 			}

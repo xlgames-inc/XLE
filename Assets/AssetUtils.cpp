@@ -412,7 +412,7 @@ namespace Assets
                 // We particularly want to include a lot of debugging information
                 // with InvalidAsset exceptions -- because the user almost always
                 // needs to do something in response to them.
-            assert(initializer[0] && what[0]);
+            // assert(initializer[0] && what[0]);
         }
 
         bool InvalidAsset::CustomReport() const

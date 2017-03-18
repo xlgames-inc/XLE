@@ -226,7 +226,11 @@ namespace RenderCore { namespace Assets
             op.SetState(::Assets::AssetState::Ready);
         } CATCH(const ::Assets::Exceptions::PendingAsset&) {
             throw;
-        } CATCH(...) {
+        } CATCH(const std::exception& e) {
+			LogWarning << "Got exception while compiling material scaffold (" << e.what() << ")";
+			op.SetState(::Assets::AssetState::Invalid);
+		} CATCH(...) {
+			LogWarning << "Got unknown exception while compiling material scaffold";
             op.SetState(::Assets::AssetState::Invalid);
         } CATCH_END
     }
@@ -356,17 +360,19 @@ namespace RenderCore { namespace Assets
 		if (_deferredConstructor) {
 			auto state = _deferredConstructor->GetAssetState();
 			if (state == ::Assets::AssetState::Pending)
-				Throw(::Assets::Exceptions::PendingAsset(_filename.c_str(), "Pending deferred construction"));
+				Throw(::Assets::Exceptions::PendingAsset(MakeStringSection(_filename), "Pending deferred construction"));
 
-			auto constructor = std::move(_deferredConstructor);
+			auto* mutableThis = const_cast<MaterialScaffold*>(this);
+			auto constructor = std::move(mutableThis->_deferredConstructor);
+			assert(!mutableThis->_deferredConstructor);
 			if (state == ::Assets::AssetState::Ready) {
-				*const_cast<MaterialScaffold*>(this) = std::move(*constructor->PerformConstructor<MaterialScaffold>());
+				*mutableThis = std::move(*constructor->PerformConstructor<MaterialScaffold>());
 			} else {
 				assert(state == ::Assets::AssetState::Invalid);
 			}
 		}
 		if (!_rawMemoryBlock)
-			Throw(::Assets::Exceptions::InvalidAsset(_filename.c_str(), "Missing data"));
+			Throw(::Assets::Exceptions::InvalidAsset(MakeStringSection(_filename), "Missing data"));
 	}
 	
 	::Assets::AssetState MaterialScaffold::TryResolve() const
@@ -376,9 +382,11 @@ namespace RenderCore { namespace Assets
 			if (state == ::Assets::AssetState::Pending)
 				return state;
 
-			auto constructor = std::move(_deferredConstructor);
+			auto* mutableThis = const_cast<MaterialScaffold*>(this);
+			auto constructor = std::move(mutableThis->_deferredConstructor);
+			assert(!mutableThis->_deferredConstructor);
 			if (state == ::Assets::AssetState::Ready) {
-				*const_cast<MaterialScaffold*>(this) = std::move(*constructor->PerformConstructor<MaterialScaffold>());
+				*mutableThis = std::move(*constructor->PerformConstructor<MaterialScaffold>());
 			} // (else fall through);
 		}
 
@@ -389,9 +397,11 @@ namespace RenderCore { namespace Assets
 	{
 		if (_deferredConstructor) {
 			auto state = _deferredConstructor->StallWhilePending();
-			auto constructor = std::move(_deferredConstructor);
+			auto* mutableThis = const_cast<MaterialScaffold*>(this);
+			auto constructor = std::move(mutableThis->_deferredConstructor);
+			assert(!mutableThis->_deferredConstructor);
 			if (state == ::Assets::AssetState::Ready) {
-				*const_cast<MaterialScaffold*>(this) = std::move(*constructor->PerformConstructor<MaterialScaffold>());
+				*mutableThis = std::move(*constructor->PerformConstructor<MaterialScaffold>());
 			} // (else fall through);
 		}
 

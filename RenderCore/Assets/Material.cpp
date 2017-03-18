@@ -284,7 +284,9 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    RawMaterial::RawMaterial() {}
+    RawMaterial::RawMaterial()
+	: _depVal(std::make_shared<::Assets::DependencyValidation>())
+	{}
 
     void ResolveMaterialFilename(
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
@@ -490,8 +492,6 @@ namespace RenderCore { namespace Assets
             deps.push_back(depState);
     }
 
-    static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
-    
     auto RawMaterial::GetAsset(StringSection<::Assets::ResChar> initializer) -> const RawMaterial& 
     {
         // There are actually 2 paths here... Normally the requested file is a
@@ -508,22 +508,13 @@ namespace RenderCore { namespace Assets
         //
         // Note that when loading from a model file, we can throw "pending". But
         // loading from a .material file should never be pending
-
-        if (!IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializer).Extension())) {
-            return ::Assets::GetAssetComp<RawMaterial>(initializer);
-        } else {
-            return ::Assets::GetAsset<RawMaterial>(initializer);
-        }
+        return ::Assets::GetAssetComp<RawMaterial>(initializer);
     }
 
     auto RawMaterial::GetDivergentAsset(StringSection<::Assets::ResChar> initializer)
         -> const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>&
     {
-        if (!IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializer).Extension())) {
-            return ::Assets::GetDivergentAssetComp<RawMaterial>(initializer);
-        } else {
-            return ::Assets::GetDivergentAsset<RawMaterial>(initializer);
-        }
+        return ::Assets::GetDivergentAssetComp<RawMaterial>(initializer);
     }
 
 	std::unique_ptr<RawMaterial> RawMaterial::CreateNew(StringSection<::Assets::ResChar> initialiser)
@@ -561,9 +552,14 @@ namespace RenderCore { namespace Assets
 		return ::Assets::AssetState::Ready;
     }
 
+	static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
+
 	std::shared_ptr<::Assets::DeferredConstruction> RawMaterial::BeginDeferredConstruction(
 		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
 	{
+		if (initializerCount && IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializers[0]).Extension()))
+			return nullptr;
+
 		return ::Assets::DefaultBeginDeferredConstruction<RawMaterial>(initializers, initializerCount);
 	}
 

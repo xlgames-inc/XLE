@@ -170,8 +170,10 @@ namespace RenderCore
 				Throw(Assets::Exceptions::PendingAsset(Initializer(), "Marker is still pending while resolving shader code"));
 
 			if (state == ::Assets::AssetState::Ready) {
-				auto constructor = std::move(_deferredConstructor);
-				*const_cast<CompiledShaderByteCode*>(this) = std::move(*constructor->PerformConstructor<CompiledShaderByteCode>());
+				auto* mutableThis = const_cast<CompiledShaderByteCode*>(this);
+				auto constructor = std::move(mutableThis->_deferredConstructor);
+				assert(!mutableThis->_deferredConstructor);
+				*mutableThis = std::move(*constructor->PerformConstructor<CompiledShaderByteCode>());
 				if (_shader && _shader->empty()) 
 					_shader.reset();
 			}
@@ -193,8 +195,10 @@ namespace RenderCore
 			if (state != ::Assets::AssetState::Ready)
 				return state;
 
-			auto constructor = std::move(_deferredConstructor);
-			*const_cast<CompiledShaderByteCode*>(this) = std::move(*constructor->PerformConstructor<CompiledShaderByteCode>());
+			auto* mutableThis = const_cast<CompiledShaderByteCode*>(this);
+			auto constructor = std::move(mutableThis->_deferredConstructor);
+			assert(!mutableThis->_deferredConstructor);
+			*mutableThis = std::move(*constructor->PerformConstructor<CompiledShaderByteCode>());
 		
 			if (_shader && !_shader->empty())
 				return ::Assets::AssetState::Ready;

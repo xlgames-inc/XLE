@@ -101,6 +101,15 @@ namespace Assets
 		return std::make_unique<AssetType>(std::forward<Params>(initialisers)...);
 	}
 
+	template<typename AssetType, typename... Params, typename std::enable_if<std::is_constructible<AssetType, Params...>::value>::type* = nullptr>
+		static std::unique_ptr<AssetType> AutoConstructAssetDefault(Params... initialisers) { return std::make_unique<AssetType>(std::forward<Params>(initialisers)...); }
+
+	template<typename AssetType, typename... Params, typename std::enable_if<!std::is_constructible<AssetType, Params...>::value && std::is_constructible<AssetType>::value>::type* = nullptr>
+		static std::unique_ptr<AssetType> AutoConstructAssetDefault(Params... initialisers) { return std::make_unique<AssetType>(); }
+
+	template<typename AssetType, typename... Params, typename std::enable_if<!std::is_constructible<AssetType, Params...>::value && !std::is_constructible<AssetType>::value>::type* = nullptr>
+		static std::unique_ptr<AssetType> AutoConstructAssetDefault(Params... initialisers) { return nullptr; }
+
 	template<
         typename AssetType, typename... Params, 
         typename std::enable_if<Internal::AssetTraits<AssetType>::Constructor_DeferredConstruction && Internal::AssetTraits<AssetType>::HasBeginDeferredConstruction>::type* = nullptr>
@@ -118,6 +127,10 @@ namespace Assets
 			} else {
 				deferredConstruction = i->second;
 			}
+		}
+
+		if (!deferredConstruction) {
+			return AutoConstructAssetDefault<AssetType>(std::forward<Params>(initialisers)...);
 		}
 
 		return std::make_unique<AssetType>(deferredConstruction);
@@ -140,6 +153,10 @@ namespace Assets
 			} else {
 				deferredConstruction = i->second;
 			}
+		}
+
+		if (!deferredConstruction) {
+			return AutoConstructAssetDefault<AssetType>(std::forward<Params>(initialisers)...);
 		}
 
 		auto state = deferredConstruction->GetAssetState();
