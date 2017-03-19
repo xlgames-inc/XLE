@@ -37,6 +37,8 @@ namespace Assets
         DirectorySearchRules();
         DirectorySearchRules(const DirectorySearchRules&);
         DirectorySearchRules& operator=(const DirectorySearchRules&);
+		DirectorySearchRules(DirectorySearchRules&&) never_throws;
+        DirectorySearchRules& operator=(DirectorySearchRules&&) never_throws;
     protected:
         ResChar _buffer[512];
         std::vector<ResChar> _bufferOverflow;

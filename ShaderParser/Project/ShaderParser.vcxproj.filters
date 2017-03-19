@@ -29,6 +29,7 @@
     <ClCompile Include="..\Grammar\GraphSyntaxEval.c">
       <Filter>Generated</Filter>
     </ClCompile>
+    <ClCompile Include="..\StructureForPreview.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Grammar\ShaderLexer.h">
@@ -52,16 +53,17 @@
     <ClInclude Include="..\Grammar\GraphSyntaxEval.h">
       <Filter>Generated</Filter>
     </ClInclude>
+    <ClInclude Include="..\ShaderPatcher_Internal.h" />
   </ItemGroup>
   <ItemGroup>
     <Antlr3ParserLexer Include="..\Grammar\Shader.g">
       <Filter>Grammar</Filter>
     </Antlr3ParserLexer>
+    <Antlr3ParserLexer Include="..\Grammar\GraphSyntax.g">
+      <Filter>Grammar</Filter>
+    </Antlr3ParserLexer>
   </ItemGroup>
   <ItemGroup>
-    <Antlr3TreeParser Include="..\Grammar\GraphSyntax.g">
-      <Filter>Grammar</Filter>
-    </Antlr3TreeParser>
     <Antlr3TreeParser Include="..\Grammar\GraphSyntaxEval.g">
       <Filter>Grammar</Filter>
     </Antlr3TreeParser>

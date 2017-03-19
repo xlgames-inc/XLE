@@ -178,7 +178,7 @@ namespace ShaderPatcherLayer
                 marshalString<E_UTF8>(
                         ShaderPatcher::GenerateShaderHeader(nativeGraph) 
                     +   ShaderPatcher::GenerateShaderBody(nativeGraph, interf) 
-                    +   ShaderPatcher::GenerateStructureForPreview(nativeGraph, interf, options)),
+                    +   ShaderPatcher::GenerateStructureForPreview(MakeStringSection(nativeGraph.GetName()), interf, nativeGraph.GetSearchRules(), options)),
                 marshalString<E_UTF8>(GenerateCBLayoutInt(interf)));
         } catch (const std::exception& e) {
             return gcnew Tuple<String^,String^>(

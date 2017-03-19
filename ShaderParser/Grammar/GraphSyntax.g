@@ -11,6 +11,7 @@ tokens
 	TOPLEVEL;
 
 	NODE_DECL;
+	SLOT_DECL;
 
 	FUNCTION_PATH;
 	FUNCTION_CALL;
@@ -23,8 +24,6 @@ tokens
 	ENTRYPOINT_ASSIGNMENT;
 
 	LITERAL;
-
-	NODE_REF;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -64,6 +63,7 @@ scopedConnection : l=lconnection ':' r=rconnection -> ^(SCOPED_CONNECTION $l $r)
 
 declaration
 	:	'node' n1=Identifier '=' f=functionCall -> ^(NODE_DECL $n1 $f)
+	|	'slot' n0=Identifier '=' f0=functionPath -> ^(SLOT_DECL $n0 $f0)
 	;
 
 connection : n=Identifier '.' l=lconnection ':' r=rconnection -> ^(CONNECTION $n $l $r);
@@ -108,9 +108,7 @@ StringLiteral
 	:  '"' ( EscapeSequence | ~('\\'|'"') )* '"'
 	;
 
-FileSpecLiteral
-	:  '<' (~'>')* '>'
-	;
+FileSpecLiteral : '<' (~'>')* '>';
 
 fragment Letter
 	:  '\u0024' |

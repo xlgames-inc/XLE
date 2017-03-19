@@ -15,6 +15,10 @@
 #include <memory>
 #include <string>
 
+typedef void ExceptionHandler(const ANTLR3_EXCEPTION* exception, const ANTLR3_UINT8**);
+extern "C" ExceptionHandler* g_ShaderParserExceptionHandler;
+extern "C" void* g_ShaderParserExceptionHandlerUserData;
+
 namespace ShaderSourceParser { namespace AntlrHelper
 {
     namespace Internal
@@ -83,6 +87,18 @@ namespace ShaderSourceParser { namespace AntlrHelper
 			const ANTLR3_UINT8 ** tokenNames);
 	};
 
+	class ExceptionContext
+	{
+	public:
+		ExceptionSet _exceptions;
+
+		ExceptionContext();
+		~ExceptionContext();
+	private:
+		ExceptionHandler* _previousExceptionHandler;
+		void* _previousExceptionHandlerUserData;
+	};
+
     class ParserRig
     {
     public:
@@ -98,7 +114,3 @@ namespace ShaderSourceParser { namespace AntlrHelper
         std::unique_ptr<Pimpl> _pimpl;
     };
 }}
-
-typedef void ExceptionHandler(const ANTLR3_EXCEPTION* exception, const ANTLR3_UINT8**);
-extern "C" ExceptionHandler* g_ShaderParserExceptionHandler;
-extern "C" void* g_ShaderParserExceptionHandlerUserData;

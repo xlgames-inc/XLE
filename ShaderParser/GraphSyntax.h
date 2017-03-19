@@ -6,8 +6,9 @@
 
 #include "../Utility/StringUtils.h"
 
+namespace Assets { class DirectorySearchRules; }
 namespace ShaderPatcher
 {
-	void ReadGraphSyntax(StringSection<char> input);
+	std::string ReadGraphSyntax(StringSection<char> input, const ::Assets::DirectorySearchRules& searchRules);
 }
 

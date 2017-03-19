@@ -390,6 +390,35 @@ namespace Assets
         return *this;
     }
 
+	DirectorySearchRules::DirectorySearchRules(DirectorySearchRules&& moveFrom) never_throws
+	: _bufferOverflow(std::move(moveFrom._bufferOverflow))
+    {
+        std::copy(moveFrom._buffer, &moveFrom._buffer[dimof(_buffer)], _buffer);
+        std::copy(moveFrom._startOffsets, &moveFrom._startOffsets[dimof(_startOffsets)], _startOffsets);
+        _bufferUsed = moveFrom._bufferUsed;
+        _startPointCount = moveFrom._startPointCount;
+
+		moveFrom._buffer[0] = '\0';
+        moveFrom._startPointCount = 0;
+        moveFrom._bufferUsed = 0;
+        std::fill(moveFrom._startOffsets, &moveFrom._startOffsets[dimof(moveFrom._startOffsets)], 0);
+    }
+        
+	DirectorySearchRules& DirectorySearchRules::operator=(DirectorySearchRules&& moveFrom) never_throws
+	{
+		std::copy(moveFrom._buffer, &moveFrom._buffer[dimof(_buffer)], _buffer);
+        std::copy(moveFrom._startOffsets, &moveFrom._startOffsets[dimof(_startOffsets)], _startOffsets);
+        _bufferOverflow = std::move(moveFrom._bufferOverflow);
+        _bufferUsed = moveFrom._bufferUsed;
+        _startPointCount = moveFrom._startPointCount;
+
+		moveFrom._buffer[0] = '\0';
+        moveFrom._startPointCount = 0;
+        moveFrom._bufferUsed = 0;
+        std::fill(moveFrom._startOffsets, &moveFrom._startOffsets[dimof(moveFrom._startOffsets)], 0);
+        return *this;
+	}
+
     DirectorySearchRules DefaultDirectorySearchRules(StringSection<ResChar> baseFile)
     {
         Assets::DirectorySearchRules searchRules;

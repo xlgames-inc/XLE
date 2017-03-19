@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Assets/AssetUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Core/Types.h"
 #include <string>
@@ -32,9 +33,13 @@ namespace ShaderPatcher
         };
         
         Node(const std::string& archiveName, uint32 nodeId, Type::Enum type);
-        Node(Node&& moveFrom) never_throws;
-        Node& operator=(Node&& moveFrom) never_throws;
-        Node& operator=(const Node& cloneFrom);
+
+		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
+			Node(Node&& moveFrom) never_throws = default;
+			Node& operator=(Node&& moveFrom) never_throws = default;
+			Node(const Node& cloneFrom) = default;
+			Node& operator=(const Node& cloneFrom) = default;
+		#endif
 
         const std::string&  ArchiveName() const         { return _archiveName; }
         uint32              NodeId() const              { return _nodeId; }
@@ -169,6 +174,8 @@ namespace ShaderPatcher
 
         std::string     GetName() const                 { return _name; }
         void            SetName(std::string newName)    { _name = newName; }
+		void			SetSearchRules(const ::Assets::DirectorySearchRules& rules) { _searchRules = rules; }
+		const ::Assets::DirectorySearchRules& GetSearchRules() const { return _searchRules; }
 
         void            TrimForPreview(uint32 previewNode);
         bool            TrimForOutputs(const std::string outputs[], size_t outputCount);
@@ -176,10 +183,15 @@ namespace ShaderPatcher
 
         const Node*     GetNode(uint32 nodeId) const;
 
-        NodeGraph(NodeGraph&& moveFrom) never_throws;
-        NodeGraph& operator=(NodeGraph&& moveFrom) never_throws;
         NodeGraph(const std::string& name = std::string());
         ~NodeGraph();
+
+		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
+			NodeGraph(NodeGraph&&) never_throws = default;
+			NodeGraph& operator=(NodeGraph&&) never_throws = default;
+			NodeGraph(const NodeGraph&) = default;
+			NodeGraph& operator=(const NodeGraph&) = default;
+		#endif
 
     private:
         std::vector<Node> _nodes;
@@ -187,6 +199,8 @@ namespace ShaderPatcher
         std::vector<ConstantConnection> _constantConnections;
         std::vector<InputParameterConnection> _inputParameterConnections;
         std::string _name;
+
+		::Assets::DirectorySearchRules _searchRules;
 
         void        Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd);
         bool        IsUpstream(uint32 startNode, uint32 searchingForNode);
@@ -245,8 +259,9 @@ namespace ShaderPatcher
     };
 
     std::string GenerateStructureForPreview(
-        const NodeGraph& graph, 
+        StringSection<char> graphName, 
         const MainFunctionInterface& interf, 
+		const ::Assets::DirectorySearchRules& searchRules,
         const PreviewOptions& previewOptions = { PreviewOptions::Type::Object, std::string(), PreviewOptions::VariableRestrictions() });
 
 	std::string GenerateStructureForTechniqueConfig(const MainFunctionInterface& interf, const char graphName[]);

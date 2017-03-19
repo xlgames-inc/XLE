@@ -115,8 +115,6 @@ namespace ShaderSourceParser { namespace AntlrHelper
         AntlrPtr<struct ANTLR3_COMMON_TOKEN_STREAM_struct>  _tokenStream;
 		AntlrPtr<struct ShaderLexer_Ctx_struct>				_lxr;
         AntlrPtr<struct ShaderParser_Ctx_struct>            _psr;
-
-		ExceptionSet _exceptionSet;
     };
 
     ANTLR3_BASE_TREE* ParserRig::BuildAST()
@@ -125,22 +123,10 @@ namespace ShaderSourceParser { namespace AntlrHelper
 
         // Antlr stuff is in 'C' -- so we have to drop back to a C way of doing things
         // these globals means we can only do a single parse at a time.
-        auto* oldHandler = g_ShaderParserExceptionHandler;
-        auto* oldHandlerUserData = g_ShaderParserExceptionHandlerUserData;
-        auto cleanup = AutoCleanup(
-            [oldHandler, oldHandlerUserData]() 
-            {
-                g_ShaderParserExceptionHandler = oldHandler;
-                g_ShaderParserExceptionHandlerUserData = oldHandlerUserData;
-            });
-
-        _pimpl->_exceptionSet._errors.clear();
-        g_ShaderParserExceptionHandlerUserData = &_pimpl->_exceptionSet;
-        g_ShaderParserExceptionHandler = (ExceptionHandler*)&ExceptionSet::HandleException;
-
+		ExceptionContext exceptionContext;
         auto result = parser->fx_file(parser).tree;
-        if (!_pimpl->_exceptionSet._errors.empty())
-            Throw(Exceptions::ParsingFailure(MakeIteratorRange(_pimpl->_exceptionSet._errors)));
+        if (!exceptionContext._exceptions._errors.empty())
+            Throw(Exceptions::ParsingFailure(MakeIteratorRange(exceptionContext._exceptions._errors)));
 
 		return result;
     }
@@ -169,6 +155,24 @@ namespace ShaderSourceParser { namespace AntlrHelper
     }
 
     ParserRig::~ParserRig() {}
+
+
+	ExceptionContext::ExceptionContext()
+	{
+		// Antlr stuff is in 'C' -- so we have to drop back to a C way of doing things
+        // these globals means we can only do a single parse at a time.
+		_previousExceptionHandler = g_ShaderParserExceptionHandler;
+        _previousExceptionHandlerUserData = g_ShaderParserExceptionHandlerUserData;
+
+		g_ShaderParserExceptionHandlerUserData = &_exceptions;
+        g_ShaderParserExceptionHandler = (ExceptionHandler*)&ExceptionSet::HandleException;
+	}
+	
+	ExceptionContext::~ExceptionContext()
+	{
+		g_ShaderParserExceptionHandler = _previousExceptionHandler;
+        g_ShaderParserExceptionHandlerUserData = _previousExceptionHandlerUserData;
+	}
 
 }}
 

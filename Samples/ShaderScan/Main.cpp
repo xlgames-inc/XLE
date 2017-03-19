@@ -10,6 +10,7 @@
 #include "Assets/IFileSystem.h"
 #include "Assets/ConfigFileContainer.h"
 #include "Assets/AssetUtils.h"
+#include "Assets/AssetServices.h"
 #include "Core/WinAPI/IncludeWindows.h"
 #include "ConsoleRig/GlobalServices.h"
 #include "ConsoleRig/Log.h"
@@ -56,14 +57,16 @@ namespace ShaderScan
 
 	static void TestGraphSyntax()
 	{
+		const auto* filename = "game/xleres/System/SlotPrototype.sh";
 		size_t inputFileSize;
-        auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock("game/xleres/System/SlotPrototype.sh", &inputFileSize);
+        auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(filename, &inputFileSize);
 
 		auto compoundDoc = ::Assets::ReadCompoundTextDocument<char>(MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize)));
 		auto i = std::find_if(compoundDoc.begin(), compoundDoc.end(),
 			[](const ::Assets::TextChunk<char>& chunk) { return XlEqString(chunk._type, "GraphSyntax"); });
 		if (i!=compoundDoc.end()) {
-			ShaderPatcher::ReadGraphSyntax(i->_content);
+			auto str = ShaderPatcher::ReadGraphSyntax(i->_content, ::Assets::DefaultDirectorySearchRules(filename));
+			LogWarning << "Output: " << str;
 		}
 	}
 }
@@ -74,6 +77,8 @@ int main(int argc, char *argv[])
     cfg._setWorkingDir = false;
     cfg._redirectCout = false;
     ConsoleRig::GlobalServices services(cfg);
+
+	::Assets::Services assetServices;
 
     TRY {
 		ShaderScan::TestGraphSyntax();
