@@ -179,8 +179,7 @@ namespace ShaderFragmentArchive
         if (!nativeString.empty()) {
 
             try {
-                auto nativeSignature = ShaderSourceParser::BuildShaderFragmentSignature(
-                    nativeString.c_str(), nativeString.size());
+                auto nativeSignature = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection(nativeString));
 
                     //
                     //      \todo -- support compilation errors in the shader code!

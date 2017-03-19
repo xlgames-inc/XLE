@@ -4,16 +4,20 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../../ShaderParser/InterfaceSignature.h"
-#include "../../ShaderParser/Exceptions.h"
-#include "../../Core/WinAPI/IncludeWindows.h"
-#include "../../ConsoleRig/GlobalServices.h"
-#include "../../ConsoleRig/Log.h"
-#include "../../Utility/StringUtils.h"
-#include "../../Utility/Streams/StreamFormatter.h"
-#include "../../Utility/Streams/StreamDOM.h"
-#include "../../Utility/Streams/FileUtils.h"
-#include "../../Utility/ParameterBox.h"
+#include "ShaderParser/InterfaceSignature.h"
+#include "ShaderParser/Exceptions.h"
+#include "ShaderParser/GraphSyntax.h"
+#include "Assets/IFileSystem.h"
+#include "Assets/ConfigFileContainer.h"
+#include "Assets/AssetUtils.h"
+#include "Core/WinAPI/IncludeWindows.h"
+#include "ConsoleRig/GlobalServices.h"
+#include "ConsoleRig/Log.h"
+#include "Utility/StringUtils.h"
+#include "Utility/Streams/StreamFormatter.h"
+#include "Utility/Streams/StreamDOM.h"
+#include "Utility/Streams/FileUtils.h"
+#include "Utility/ParameterBox.h"
 
 namespace ShaderScan
 {
@@ -24,17 +28,16 @@ namespace ShaderScan
         Document<InputStreamFormatter<char>> doc(formatter);
 
         auto inputFile = doc.Attribute("i").Value();
-        if (inputFile.Empty()) {
+        if (inputFile.IsEmpty()) {
             return;     // expecting "i=<input filename"> on the command line
         }
 
         std::cout << "Scanning file: " << inputFile.AsString().c_str() << std::endl;
         size_t inputFileSize;
-        auto inputFileBlock = LoadFileAsMemoryBlock(inputFile.AsString().c_str(), &inputFileSize);
+        auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(inputFile.AsString().c_str(), &inputFileSize);
 
         TRY {
-            ShaderSourceParser::BuildShaderFragmentSignature(
-                (const char*)inputFileBlock.get(), inputFileSize);
+            ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize)));
         } CATCH(const ShaderSourceParser::Exceptions::ParsingFailure& e) {
 
                 // catch the list of errors, and report each one...
@@ -50,6 +53,19 @@ namespace ShaderScan
 
         } CATCH_END
     }
+
+	static void TestGraphSyntax()
+	{
+		size_t inputFileSize;
+        auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock("game/xleres/System/SlotPrototype.sh", &inputFileSize);
+
+		auto compoundDoc = ::Assets::ReadCompoundTextDocument<char>(MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize)));
+		auto i = std::find_if(compoundDoc.begin(), compoundDoc.end(),
+			[](const ::Assets::TextChunk<char>& chunk) { return XlEqString(chunk._type, "GraphSyntax"); });
+		if (i!=compoundDoc.end()) {
+			ShaderPatcher::ReadGraphSyntax(i->_content);
+		}
+	}
 }
 
 int main(int argc, char *argv[])
@@ -60,6 +76,8 @@ int main(int argc, char *argv[])
     ConsoleRig::GlobalServices services(cfg);
 
     TRY {
+		ShaderScan::TestGraphSyntax();
+
         std::string cmdLine;
         for (unsigned c=1; c<unsigned(argc); ++c) {
             if (c!=0) cmdLine += " ";

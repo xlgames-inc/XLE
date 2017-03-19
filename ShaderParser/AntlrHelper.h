@@ -6,9 +6,12 @@
 
 #pragma once
 
+#include "Exceptions.h"
+#include "../Utility/StringUtils.h"
 #include <antlr3defs.h>
 #include <antlr3interfaces.h>
 #include <antlr3basetree.h>
+#include <antlr3exception.h>
 #include <memory>
 #include <string>
 
@@ -69,12 +72,23 @@ namespace ShaderSourceParser { namespace AntlrHelper
     template<typename CharType>
         std::basic_string<CharType> AsString(ANTLR3_STRING* antlrString);
 
+	class ExceptionSet
+	{
+	public:
+		std::vector<Error> _errors;
+
+		static void __cdecl HandleException(
+			ExceptionSet* pimpl,
+			const ANTLR3_EXCEPTION* exc,
+			const ANTLR3_UINT8 ** tokenNames);
+	};
+
     class ParserRig
     {
     public:
         ANTLR3_BASE_TREE* BuildAST();
 
-        ParserRig(const char sourceCode[], size_t sourceCodeLength);
+        ParserRig(StringSection<char> sourceCode);
         ~ParserRig();
 
         ParserRig(const ParserRig&) = delete;
@@ -84,3 +98,7 @@ namespace ShaderSourceParser { namespace AntlrHelper
         std::unique_ptr<Pimpl> _pimpl;
     };
 }}
+
+typedef void ExceptionHandler(const ANTLR3_EXCEPTION* exception, const ANTLR3_UINT8**);
+extern "C" ExceptionHandler* g_ShaderParserExceptionHandler;
+extern "C" void* g_ShaderParserExceptionHandlerUserData;

@@ -284,7 +284,7 @@ namespace ShaderPatcher
 	ShaderFragment::ShaderFragment(StringSection<::Assets::ResChar> fn)
 	{
 		auto shaderFile = LoadSourceFile(fn);
-		_sig = ShaderSourceParser::BuildShaderFragmentSignature(shaderFile.c_str(), shaderFile.size());
+		_sig = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection(shaderFile));
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		::Assets::RegisterFileDependency(_depVal, fn);
 	}
@@ -641,7 +641,7 @@ namespace ShaderPatcher
             result << "ConstantValue_" << connection.InputNodeId() << "_" << connection.InputParameterName();
             return ExpressionString{result.str(), connection.InputType()._name};
 
-        } else if (inputNodeType == Node::Type::InterpolatorIntoPixel || inputNodeType == Node::Type::InterpolatorIntoVertex || inputNodeType == Node::Type::SystemParameters) {
+        } else if (inputNodeType == Node::Type::SystemParameters) {
 
             std::stringstream result;
             result << InterpolatorParameterName(connection.InputNodeId()) << "." << connection.InputParameterName();
@@ -1114,9 +1114,7 @@ namespace ShaderPatcher
             //      required in the shader.
             //
         for (const auto& i:graph.GetNodes()) {
-            if (    i.GetType() == Node::Type::InterpolatorIntoPixel 
-                ||  i.GetType() == Node::Type::InterpolatorIntoVertex
-                ||  i.GetType() == Node::Type::SystemParameters) {
+            if (i.GetType() == Node::Type::SystemParameters) {
                 
                 const auto& signature = LoadParameterStructSignature(SplitArchiveName(i.ArchiveName()));
                 std::string type = (!signature._name.empty()) ? signature._name : i.ArchiveName();
@@ -1372,8 +1370,7 @@ namespace ShaderPatcher
     ParameterMachine::ParameterMachine()
     {
         auto buildInterpolatorsSource = LoadSourceFile("xleres/System/BuildInterpolators.h");
-        _systemHeader = ShaderSourceParser::BuildShaderFragmentSignature(
-            AsPointer(buildInterpolatorsSource.begin()), buildInterpolatorsSource.size());
+        _systemHeader = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection(buildInterpolatorsSource));
     }
 
     ParameterMachine::~ParameterMachine() {}

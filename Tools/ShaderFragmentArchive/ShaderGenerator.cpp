@@ -31,8 +31,8 @@ namespace ShaderPatcherLayer
         default:
         case Node::Type::Procedure:               return ShaderPatcher::Node::Type::Procedure;
         case Node::Type::MaterialCBuffer:         return ShaderPatcher::Node::Type::MaterialCBuffer;
-        case Node::Type::InterpolatorIntoVertex:  return ShaderPatcher::Node::Type::InterpolatorIntoVertex;
-        case Node::Type::InterpolatorIntoPixel:   return ShaderPatcher::Node::Type::InterpolatorIntoPixel;
+        case Node::Type::InterpolatorIntoVertex:
+        case Node::Type::InterpolatorIntoPixel:
         case Node::Type::SystemCBuffer:           return ShaderPatcher::Node::Type::SystemParameters;
         case Node::Type::Output:                  return ShaderPatcher::Node::Type::Output;
         case Node::Type::Constants:               return ShaderPatcher::Node::Type::Constants;

@@ -1,3 +1,5 @@
 ShaderLexer.*
 ShaderParser.*
+GraphSyntax*.c
+GraphSyntax*.h
 *.tokens

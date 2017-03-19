@@ -10,6 +10,7 @@
 #include "../Core/Exceptions.h"
 #include "../Utility/Mixins.h"
 #include "../Utility/UTFUtils.h"
+#include "../Utility/StringUtils.h"
 #include <vector>
 
 namespace ShaderSourceParser
@@ -74,6 +75,6 @@ namespace ShaderSourceParser
     };
 
 
-    ShaderFragmentSignature     BuildShaderFragmentSignature(const char sourceCode[], size_t sourceCodeLength);
+    ShaderFragmentSignature     BuildShaderFragmentSignature(StringSection<char> sourceCode);
 }
 

@@ -40,9 +40,9 @@ namespace ShaderSourceParser
         return result;
     }
 
-    ShaderFragmentSignature     BuildShaderFragmentSignature(const char sourceCode[], size_t sourceCodeLength)
+    ShaderFragmentSignature     BuildShaderFragmentSignature(StringSection<char> sourceCode)
     {
-        AntlrHelper::ParserRig psr(sourceCode, sourceCodeLength);
+        AntlrHelper::ParserRig psr(sourceCode);
 
         auto treeRoot = psr.BuildAST();
 

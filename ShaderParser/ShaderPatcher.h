@@ -24,12 +24,10 @@ namespace ShaderPatcher
             enum Enum
             {
                 Procedure,
-                MaterialCBuffer,
-                InterpolatorIntoVertex,
-                InterpolatorIntoPixel,
                 SystemParameters,
                 Output,
-                Constants           // (ie, true constants -- hard coded into the shader)
+                Constants,           // (ie, true constants -- hard coded into the shader)
+				MaterialCBuffer,
             };
         };
         
