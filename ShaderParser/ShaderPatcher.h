@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+namespace ShaderSourceParser { class FunctionSignature; }
+
 namespace ShaderPatcher 
 {
 
@@ -177,6 +179,7 @@ namespace ShaderPatcher
 		void			SetSearchRules(const ::Assets::DirectorySearchRules& rules) { _searchRules = rules; }
 		const ::Assets::DirectorySearchRules& GetSearchRules() const { return _searchRules; }
 
+		void			Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd);
         void            TrimForPreview(uint32 previewNode);
         bool            TrimForOutputs(const std::string outputs[], size_t outputCount);
         void            AddDefaultOutputs();
@@ -202,7 +205,6 @@ namespace ShaderPatcher
 
 		::Assets::DirectorySearchRules _searchRules;
 
-        void        Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd);
         bool        IsUpstream(uint32 startNode, uint32 searchingForNode);
         bool        IsDownstream(uint32 startNode, const uint32* searchingForNodesStart, const uint32* searchingForNodesEnd);
         bool        HasNode(uint32 nodeId);
@@ -218,29 +220,33 @@ namespace ShaderPatcher
 		class Parameter
 		{
 		public:
+			enum Direction { In, Out };
 			std::string _type, _name, _archiveName, _semantic, _default;
+			Direction _direction;
 			Parameter(
 				const std::string& type, const std::string& name, 
-				const std::string& archiveName, const std::string& semantic = std::string(), const std::string& defaultValue = std::string())
-				: _type(type), _name(name), _archiveName(archiveName), _semantic(semantic), _default(defaultValue) {}
+				const std::string& archiveName, 
+				Direction direction = In,
+				const std::string& semantic = std::string(), const std::string& defaultValue = std::string())
+				: _type(type), _name(name), _archiveName(archiveName), _direction(direction), _semantic(semantic), _default(defaultValue) {}
 			Parameter() {}
 		};
 
-        auto GetInputParameters() const -> IteratorRange<const Parameter*>		{ return MakeIteratorRange(_inputParameters); }
-        auto GetOutputParameters() const -> IteratorRange<const Parameter*>     { return MakeIteratorRange(_outputParameters); }
-        auto GetGlobalParameters() const -> IteratorRange<const Parameter*>				{ return MakeIteratorRange(_globalParameters); }
+        auto GetFunctionParameters() const -> IteratorRange<const Parameter*>	{ return MakeIteratorRange(_functionParameters); }
+        auto GetGlobalParameters() const -> IteratorRange<const Parameter*>		{ return MakeIteratorRange(_globalParameters); }
+		const std::string& GetName() const { return _name; }
         bool IsCBufferGlobal(unsigned c) const;
 
-		void AddInputParameter(const Parameter& param);
-		void AddOutputParameter(const Parameter& param);
+		void AddFunctionParameter(const Parameter& param);
 		void AddGlobalParameter(const Parameter& param);
+		void SetName(const std::string& newName) { _name = newName; }
 
         FunctionInterface();
         ~FunctionInterface();
     private:
-        std::vector<Parameter> _inputParameters;
-        std::vector<Parameter> _outputParameters;
+        std::vector<Parameter> _functionParameters;
         std::vector<Parameter> _globalParameters;
+		std::string _name;
     };
 
     std::string GenerateShaderHeader(const NodeGraph& graph);
@@ -263,5 +269,7 @@ namespace ShaderPatcher
         const PreviewOptions& previewOptions = { PreviewOptions::Type::Object, std::string(), PreviewOptions::VariableRestrictions() });
 
 	std::string GenerateStructureForTechniqueConfig(const FunctionInterface& interf, const char graphName[]);
+
+	std::string GenerateScaffoldFunction(const ShaderSourceParser::FunctionSignature& slotSignature, const FunctionInterface& generatedFunctionSignature);
 }
 

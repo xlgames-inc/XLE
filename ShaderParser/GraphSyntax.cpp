@@ -6,6 +6,7 @@
 
 #include "GraphSyntax.h"
 #include "ShaderPatcher.h"
+#include "ShaderPatcher_Internal.h"
 #include "AntlrHelper.h"
 #include "Grammar/GraphSyntaxLexer.h"
 #include "Grammar/GraphSyntaxParser.h"
@@ -98,16 +99,22 @@ namespace ShaderPatcher
 		// build a function.
 		auto nodes = graph.GetNodes();
 		for (const auto& n:nodes) {
-			if (n.ArchiveName().find("Slot_") != std::string::npos && n.GetType() == Node::Type::Procedure) {
+			if (n.ArchiveName().find("Slot_") != std::string::npos && n.GetType() == Node::Type::Output) {
 				NodeGraph subGraph = graph;
-				subGraph.SetName(n.ArchiveName().substr(n.ArchiveName().find_first_of(':')));
+
+				auto splitName = ShaderPatcher::SplitArchiveName(n.ArchiveName());
+				subGraph.SetName(std::get<1>(splitName) + "_impl");
 				subGraph.SetSearchRules(searchRules);
-				subGraph.TrimForPreview(n.NodeId());
+				auto ni = n.NodeId();
+				subGraph.Trim(&ni, &ni+1);
 
 				std::string slotImplementation;
-				FunctionInterface interf;
-				std::tie(slotImplementation, interf) = GenerateFunction(subGraph);
+				FunctionInterface generatedInterface;
+				std::tie(slotImplementation, generatedInterface) = GenerateFunction(subGraph);
 				result += slotImplementation;
+
+				const auto& slotSig = ShaderPatcher::LoadFunctionSignature(splitName, searchRules);
+				result += GenerateScaffoldFunction(slotSig, generatedInterface);
 			}
 		}
 
@@ -125,7 +132,7 @@ extern "C" NodeId LNode_Register(const void* ctx, const char archiveName[])
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
 
 	NodeId nextId = (NodeId)ng->_graph.GetNodes().size();
-	ShaderPatcher::Node newNode(archiveName, nextId, ShaderPatcher::Node::Type::Procedure);
+	ShaderPatcher::Node newNode(archiveName, nextId, ShaderPatcher::Node::Type::Output);
 	ng->_graph.Add(std::move(newNode));
 	return nextId;
 }

@@ -96,7 +96,7 @@ namespace ShaderSourceParser
                                     auto tokenType = GetType(GetToken(child));
                                     if (tokenType == DIRECTION_OUT) {
                                         parameter._direction = FunctionSignature::Parameter::Out;
-                                    } else if (tokenType == DIRECTION_OUT) {
+                                    } else if (tokenType == DIRECTION_IN_OUT) {
                                         parameter._direction = FunctionSignature::Parameter::In | FunctionSignature::Parameter::Out;
                                     } else if (tokenType == SEMANTIC) {
                                         if (child->getChildCount(child) >= 1) {

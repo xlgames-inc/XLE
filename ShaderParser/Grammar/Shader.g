@@ -190,8 +190,8 @@ function
 	;
 
 function_signature
-	:	'export'? functionAttributes ret=ident name=ident '(' args=formal_arglist ')' ';'
-		-> ^(FUNCTION $ret $name $args)
+	:	'export'? functionAttributes ret=ident name=ident '(' args=formal_arglist ')' semantic? ';'
+		-> ^(FUNCTION $ret $name $args semantic?)
 	;
 
 // Note --	

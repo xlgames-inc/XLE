@@ -272,7 +272,9 @@ namespace ShaderPatcher
 
     ParameterGenerator::ParameterGenerator(const FunctionInterface& interf, const PreviewOptions& previewOptions)
     {
-        _parameters = std::vector<FunctionInterface::Parameter>(interf.GetInputParameters().cbegin(), interf.GetInputParameters().cend());
+		for (const auto&p:interf.GetFunctionParameters())
+			if (p._direction == FunctionInterface::Parameter::In)
+				_parameters.push_back(p);
         for (auto i=_parameters.cbegin(); i!=_parameters.cend(); ++i)
             _buildSystemFunctions.push_back(_paramMachine.GetBuildSystem(*i));
 		_previewOptions = &previewOptions;
@@ -344,8 +346,9 @@ namespace ShaderPatcher
             //
         result << "struct NE_" << graphName.AsString() << "_Output" << std::endl << "{" << std::endl;
         unsigned svTargetCounter = 0;
-        for (const auto& i:interf.GetOutputParameters())
-            result << "\t" << i._type << " " << i._name << ": SV_Target" << (svTargetCounter++) << ";" << std::endl;
+        for (const auto& i:interf.GetFunctionParameters())
+			if (i._direction == FunctionInterface::Parameter::Out)
+				result << "\t" << i._type << " " << i._name << ": SV_Target" << (svTargetCounter++) << ";" << std::endl;
         result << "};" << std::endl << std::endl;
 
             //
@@ -386,10 +389,12 @@ namespace ShaderPatcher
         }
             
             //  Also pass each output as a parameter to the main function
-        for (const auto& i:interf.GetOutputParameters()) {
-            if (!parametersToMainFunctionCall.empty())
-                parametersToMainFunctionCall += ", ";
-            parametersToMainFunctionCall += "functionResult." + i._name;
+        for (const auto& i:interf.GetFunctionParameters()) {
+			if (i._direction == FunctionInterface::Parameter::Out) {
+				if (!parametersToMainFunctionCall.empty())
+					parametersToMainFunctionCall += ", ";
+				parametersToMainFunctionCall += "functionResult." + i._name;
+			}
         }
 
         Plustache::template_t preprocessor;
@@ -414,7 +419,9 @@ namespace ShaderPatcher
                 } else {
                     // Find all of the scalar values written out from main function,
                     // including searching through parameter strructures.
-                    for (const auto& i:interf.GetOutputParameters()) {
+                    for (const auto& i:interf.GetFunctionParameters()) {
+						if (i._direction != FunctionInterface::Parameter::Out) continue;
+
                         const auto& signature = LoadParameterStructSignature(SplitArchiveName(i._archiveName), searchRules);
                         if (!signature._name.empty()) {
                             for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
@@ -479,7 +486,9 @@ namespace ShaderPatcher
 	{
 		std::stringstream mainFunctionParameterSignature;
 		std::stringstream forwardMainParameters;
-		for (const auto& p:interf.GetInputParameters()) {
+		for (const auto& p:interf.GetFunctionParameters()) {
+			if (p._direction != FunctionInterface::Parameter::In) continue;
+
 			MaybeComma(mainFunctionParameterSignature);
 			mainFunctionParameterSignature << p._type << " " << p._name;
 
