@@ -104,7 +104,9 @@ namespace ShaderPatcher
 				subGraph.SetSearchRules(searchRules);
 				subGraph.TrimForPreview(n.NodeId());
 
-				auto slotImplementation = GenerateShaderBody(subGraph, MainFunctionInterface(subGraph));
+				std::string slotImplementation;
+				FunctionInterface interf;
+				std::tie(slotImplementation, interf) = GenerateFunction(subGraph);
 				result += slotImplementation;
 			}
 		}

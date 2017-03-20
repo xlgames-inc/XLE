@@ -42,12 +42,24 @@ options
 	char* StripAngleBrackets(const char* input)
 	{
 		if (!input || !input[0]) return NULL;
-		char* result = strdup(input[0] == '<' ? (input+1) : input);
+		if (input[0] != '<') return strdup(input);
+
+		char* result = strdup(input+1);
 		size_t len = strlen(result);
 		if (len && result[len-1] == '>') result[len-1] = '\0';
 		return result;
 	}
 
+	char* StripQuotesBrackets(const char* input)
+	{
+		if (!input || !input[0]) return NULL;
+		if (input[0] != '"') return strdup(input);
+
+		char* result = strdup(input+1);
+		size_t len = strlen(result);
+		if (len && result[len-1] == '"') result[len-1] = '\0';
+		return result;
+	}
 }
 
 /*@apifuncs
@@ -95,7 +107,9 @@ rconnection returns [ConnectorId connector = ~0u]
 	}
 	| ^(LITERAL StringLiteral)
 	{
-		connector = LiteralConnector_Register(ctx, (const char*)$StringLiteral.text->chars);
+		char* s = StripQuotesBrackets((const char*)$StringLiteral.text->chars);
+		connector = LiteralConnector_Register(ctx, s);
+		free(s);
 	}
 	;
 

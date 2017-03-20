@@ -64,10 +64,10 @@ namespace ShaderPatcher
     class ParameterMachine
     {
     public:
-        auto GetBuildInterpolator(const MainFunctionParameter& param) const
+        auto GetBuildInterpolator(const FunctionInterface::Parameter& param) const
             -> std::pair<std::string, VaryingParamsFlags::BitField>;
 
-        auto GetBuildSystem(const MainFunctionParameter& param) const -> std::string;
+        auto GetBuildSystem(const FunctionInterface::Parameter& param) const -> std::string;
 
         ParameterMachine();
         ~ParameterMachine();
@@ -75,7 +75,7 @@ namespace ShaderPatcher
         ShaderSourceParser::ShaderFragmentSignature _systemHeader;
     };
 
-    auto ParameterMachine::GetBuildInterpolator(const MainFunctionParameter& param) const
+    auto ParameterMachine::GetBuildInterpolator(const FunctionInterface::Parameter& param) const
         -> std::pair<std::string, VaryingParamsFlags::BitField>
     {
         std::string searchName = "BuildInterpolator_" + param._semantic;
@@ -118,7 +118,7 @@ namespace ShaderPatcher
         return std::make_pair(std::string(), 0);
     }
 
-    auto ParameterMachine::GetBuildSystem(const MainFunctionParameter& param) const -> std::string
+    auto ParameterMachine::GetBuildSystem(const FunctionInterface::Parameter& param) const -> std::string
     {
         std::string searchName = "BuildSystem_" + param._type;
         auto i = std::find_if(
@@ -147,14 +147,14 @@ namespace ShaderPatcher
         std::string VSInitExpression(unsigned index);
         std::string PSExpression(unsigned index, const char vsOutputName[], const char varyingParameterStruct[]) const;
         bool IsGlobalResource(unsigned index) const;
-        const MainFunctionParameter& Param(unsigned index) const { return _parameters[index]; }
+        const FunctionInterface::Parameter& Param(unsigned index) const { return _parameters[index]; }
 
         bool IsInitializedBySystem(unsigned index) const { return !_buildSystemFunctions[index].empty(); }
 
-        ParameterGenerator(const MainFunctionInterface& interf, const PreviewOptions& previewOptions);
+        ParameterGenerator(const FunctionInterface& interf, const PreviewOptions& previewOptions);
         ~ParameterGenerator();
     private:
-        std::vector<MainFunctionParameter>  _parameters;
+        std::vector<FunctionInterface::Parameter>  _parameters;
         std::vector<std::string>            _buildSystemFunctions;
         std::string                         _vsOutputMember;
         ParameterMachine                    _paramMachine;
@@ -270,9 +270,9 @@ namespace ShaderPatcher
         return !CanBeStoredInCBuffer(MakeStringSection(_parameters[index]._type));
     }
 
-    ParameterGenerator::ParameterGenerator(const MainFunctionInterface& interf, const PreviewOptions& previewOptions)
+    ParameterGenerator::ParameterGenerator(const FunctionInterface& interf, const PreviewOptions& previewOptions)
     {
-        _parameters = std::vector<MainFunctionParameter>(interf.GetInputParameters().cbegin(), interf.GetInputParameters().cend());
+        _parameters = std::vector<FunctionInterface::Parameter>(interf.GetInputParameters().cbegin(), interf.GetInputParameters().cend());
         for (auto i=_parameters.cbegin(); i!=_parameters.cend(); ++i)
             _buildSystemFunctions.push_back(_paramMachine.GetBuildSystem(*i));
 		_previewOptions = &previewOptions;
@@ -281,7 +281,7 @@ namespace ShaderPatcher
     ParameterGenerator::~ParameterGenerator() {}
 
     std::string         GenerateStructureForPreview(
-        const StringSection<char> graphName, const MainFunctionInterface& interf, 
+        const StringSection<char> graphName, const FunctionInterface& interf, 
 		const ::Assets::DirectorySearchRules& searchRules,
         const PreviewOptions& previewOptions)
     {
@@ -475,7 +475,7 @@ namespace ShaderPatcher
 
 	static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }
 
-	std::string GenerateStructureForTechniqueConfig(const MainFunctionInterface& interf, const char graphName[])
+	std::string GenerateStructureForTechniqueConfig(const FunctionInterface& interf, const char graphName[])
 	{
 		std::stringstream mainFunctionParameterSignature;
 		std::stringstream forwardMainParameters;

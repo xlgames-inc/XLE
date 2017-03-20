@@ -212,41 +212,39 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    class MainFunctionParameter
+    class FunctionInterface
     {
     public:
-        std::string _type, _name, _archiveName, _semantic, _default;
-        MainFunctionParameter(
-            const std::string& type, const std::string& name, 
-            const std::string& archiveName, const std::string& semantic = std::string(), const std::string& defaultValue = std::string())
-            : _type(type), _name(name), _archiveName(archiveName), _semantic(semantic), _default(defaultValue) {}
-        MainFunctionParameter() {}
-    };
+		class Parameter
+		{
+		public:
+			std::string _type, _name, _archiveName, _semantic, _default;
+			Parameter(
+				const std::string& type, const std::string& name, 
+				const std::string& archiveName, const std::string& semantic = std::string(), const std::string& defaultValue = std::string())
+				: _type(type), _name(name), _archiveName(archiveName), _semantic(semantic), _default(defaultValue) {}
+			Parameter() {}
+		};
 
-    class MainFunctionInterface
-    {
-    public:
-        auto GetInputParameters() const -> IteratorRange<const MainFunctionParameter*>      { return MakeIteratorRange(_inputParameters); }
-        auto GetOutputParameters() const -> IteratorRange<const MainFunctionParameter*>     { return MakeIteratorRange(_outputParameters); }
-        auto GetGlobalParameters() const -> IteratorRange<const MainFunctionParameter*>     { return MakeIteratorRange(_globalParameters); }
-        const NodeGraph& GetGraphOfTemporaries() const { return _graphOfTemporaries; }
-        std::string GetOutputParameterName(const NodeBaseConnection& c) const;
+        auto GetInputParameters() const -> IteratorRange<const Parameter*>		{ return MakeIteratorRange(_inputParameters); }
+        auto GetOutputParameters() const -> IteratorRange<const Parameter*>     { return MakeIteratorRange(_outputParameters); }
+        auto GetGlobalParameters() const -> IteratorRange<const Parameter*>				{ return MakeIteratorRange(_globalParameters); }
         bool IsCBufferGlobal(unsigned c) const;
 
-        MainFunctionInterface(const NodeGraph& graph);
-        ~MainFunctionInterface();
-    private:
-        std::vector<MainFunctionParameter> _inputParameters;
-        std::vector<MainFunctionParameter> _outputParameters;
-        std::vector<MainFunctionParameter> _globalParameters;
-        std::vector<std::pair<const NodeBaseConnection*, std::string>> _outputParameterNames;
-        NodeGraph _graphOfTemporaries;
+		void AddInputParameter(const Parameter& param);
+		void AddOutputParameter(const Parameter& param);
+		void AddGlobalParameter(const Parameter& param);
 
-        void BuildMainFunctionOutputParameters(const NodeGraph& graph);
+        FunctionInterface();
+        ~FunctionInterface();
+    private:
+        std::vector<Parameter> _inputParameters;
+        std::vector<Parameter> _outputParameters;
+        std::vector<Parameter> _globalParameters;
     };
 
     std::string GenerateShaderHeader(const NodeGraph& graph);
-    std::string GenerateShaderBody(const NodeGraph& graph, const MainFunctionInterface& interf);
+    std::pair<std::string, FunctionInterface> GenerateFunction(const NodeGraph& graph);
 
     struct PreviewOptions
     {
@@ -260,10 +258,10 @@ namespace ShaderPatcher
 
     std::string GenerateStructureForPreview(
         StringSection<char> graphName, 
-        const MainFunctionInterface& interf, 
+        const FunctionInterface& interf, 
 		const ::Assets::DirectorySearchRules& searchRules,
         const PreviewOptions& previewOptions = { PreviewOptions::Type::Object, std::string(), PreviewOptions::VariableRestrictions() });
 
-	std::string GenerateStructureForTechniqueConfig(const MainFunctionInterface& interf, const char graphName[]);
+	std::string GenerateStructureForTechniqueConfig(const FunctionInterface& interf, const char graphName[]);
 }
 
