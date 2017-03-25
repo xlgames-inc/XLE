@@ -253,7 +253,10 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    RawMaterial::RawMaterial() {}
+    RawMaterial::RawMaterial()
+    {
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
+    }
 
     void ResolveMaterialFilename(
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
