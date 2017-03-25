@@ -145,6 +145,7 @@
     <ClCompile Include="..\Grammar\GraphSyntaxParser.c" />
     <ClCompile Include="..\Grammar\ShaderLexer.c" />
     <ClCompile Include="..\Grammar\ShaderParser.c" />
+    <ClCompile Include="..\Grammar\ShaderTreeWalk.c" />
     <ClCompile Include="..\GraphSyntax.cpp" />
     <ClCompile Include="..\InterfaceSignature.cpp" />
     <ClCompile Include="..\ParameterSignature.cpp" />
@@ -159,6 +160,7 @@
     <ClInclude Include="..\Grammar\GraphSyntaxParser.h" />
     <ClInclude Include="..\Grammar\ShaderLexer.h" />
     <ClInclude Include="..\Grammar\ShaderParser.h" />
+    <ClInclude Include="..\Grammar\ShaderTreeWalk.h" />
     <ClInclude Include="..\GraphSyntax.h" />
     <ClInclude Include="..\InterfaceSignature.h" />
     <ClInclude Include="..\ParameterSignature.h" />
@@ -177,6 +179,17 @@
   </ItemGroup>
   <ItemGroup>
     <Antlr3TreeParser Include="..\Grammar\GraphSyntaxEval.g">
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+    </Antlr3TreeParser>
+    <Antlr3TreeParser Include="..\Grammar\ShaderTreeWalk.g">
       <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
       <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
       <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>

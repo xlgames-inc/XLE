@@ -30,6 +30,9 @@
       <Filter>Generated</Filter>
     </ClCompile>
     <ClCompile Include="..\StructureForPreview.cpp" />
+    <ClCompile Include="..\Grammar\ShaderTreeWalk.c">
+      <Filter>Generated</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Grammar\ShaderLexer.h">
@@ -54,6 +57,9 @@
       <Filter>Generated</Filter>
     </ClInclude>
     <ClInclude Include="..\ShaderPatcher_Internal.h" />
+    <ClInclude Include="..\Grammar\ShaderTreeWalk.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Antlr3ParserLexer Include="..\Grammar\Shader.g">
@@ -65,6 +71,9 @@
   </ItemGroup>
   <ItemGroup>
     <Antlr3TreeParser Include="..\Grammar\GraphSyntaxEval.g">
+      <Filter>Grammar</Filter>
+    </Antlr3TreeParser>
+    <Antlr3TreeParser Include="..\Grammar\ShaderTreeWalk.g">
       <Filter>Grammar</Filter>
     </Antlr3TreeParser>
   </ItemGroup>

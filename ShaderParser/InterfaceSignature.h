@@ -8,7 +8,6 @@
 
 #include "../Core/Prefix.h"
 #include "../Core/Exceptions.h"
-#include "../Utility/Mixins.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
 #include <vector>
@@ -17,61 +16,46 @@ namespace ShaderSourceParser
 {
     using StringType = std::string;
 
-    class FunctionSignature : noncopyable
+    class FunctionSignature
     {
     public:
-        StringType  _returnType;
-        StringType  _returnSemantic;
         StringType  _name;
+		StringType  _returnType;
+        StringType  _returnSemantic;
 
         class Parameter
         {
         public:
             enum Direction { In = 1<<0, Out = 1<<1 };
-            StringType _type;
-            StringType _semantic;
             StringType _name;
+			StringType _type;
+            StringType _semantic;
             unsigned _direction;
         };
 
         std::vector<Parameter> _parameters;
-
-        FunctionSignature();
-        ~FunctionSignature();
-        FunctionSignature(FunctionSignature&& moveFrom);
-        FunctionSignature& operator=(FunctionSignature&& moveFrom) never_throws;
     };
 
-    class ParameterStructSignature : noncopyable
+    class ParameterStructSignature
     {
     public:
         class Parameter
         {
         public:
-            StringType _type;
-            StringType _semantic;
             StringType _name;
+			StringType _type;
+            StringType _semantic;
         };
 
         StringType _name;
         std::vector<Parameter> _parameters;
-
-        ParameterStructSignature();
-        ~ParameterStructSignature();
-        ParameterStructSignature(ParameterStructSignature&& moveFrom);
-        ParameterStructSignature& operator=(ParameterStructSignature&& moveFrom) never_throws;
     };
 
-    class ShaderFragmentSignature : noncopyable
+    class ShaderFragmentSignature
     {
     public:
         std::vector<FunctionSignature>          _functions;
         std::vector<ParameterStructSignature>   _parameterStructs;
-
-        ShaderFragmentSignature();
-        ~ShaderFragmentSignature();
-        ShaderFragmentSignature(ShaderFragmentSignature&& moveFrom);
-        ShaderFragmentSignature& operator=(ShaderFragmentSignature&& moveFrom) never_throws;
     };
 
 

@@ -50,6 +50,7 @@ tokens
 	ARG_LIST;
 	FORMAL_ARG;
 	BLOCK;
+	ASSIGNMENT_EXPRESSION;
 	
 	IF;
 	IF_ELSE;
@@ -108,8 +109,8 @@ tokens
 storage_class : 'extern' | 'nointerpolation' | 'precise' | 'shared' | 'groupshared' | 'static' | 'uniform' | 'volatile';
 type_modifier : 'const' | 'row_major' | 'column_major';
 
-fx_file
-	:	toplevels+=toplevel* -> ^(TOPLEVEL $toplevels*)
+entrypoint
+	:	toplevels+=toplevel*
 	;
 	
 toplevel
@@ -125,7 +126,7 @@ global
 	:	uniform
 	;
 	
-variablename_single : id=ident sub+=subscript* sem=semantic? registerAssignment? ('=' e=expression)? -> ^(VARIABLE_NAME $id $sub* $sem? $e?);
+variablename_single : id=ident sub+=subscript* sem=semantic? registerAssignment? ('=' e=expression)? -> ^(VARIABLE_NAME $id $sub* $sem? ^(ASSIGNMENT_EXPRESSION $e)?);
 variablename_list	: variablename_single (',' variablename_single)* -> variablename_single+;
 
 uniform
@@ -139,7 +140,7 @@ variable
 	;
 	
 subscript
-	:	'[' (num=expression)? ']' -> ^(SUBSCRIPT $num?)
+	:	'[' (e=expression)? ']' -> ^(SUBSCRIPT $e)
 	;
 
 registerValue : ident;
@@ -185,13 +186,13 @@ staticExpressionList : staticExpression (','! staticExpression)*;
 functionAttributes :	('[' functionAttributeType ('(' staticExpressionList ')')? ']')*;
 
 function
-	:	'export'? functionAttributes ret=ident name=ident '(' args=formal_arglist ')' semantic? block
-		-> ^(FUNCTION $ret $name $args semantic? block)
+	:	'export'? functionAttributes ret=type_name name=ident '(' args=formal_arglist ')' semantic? block
+		-> ^(FUNCTION $name $ret $args semantic? block)
 	;
 
 function_signature
-	:	'export'? functionAttributes ret=ident name=ident '(' args=formal_arglist ')' semantic? ';'
-		-> ^(FUNCTION $ret $name $args semantic?)
+	:	'export'? functionAttributes ret=type_name name=ident '(' args=formal_arglist ')' semantic? ';'
+		-> ^(FUNCTION $name $ret $args semantic?)
 	;
 
 // Note --	
@@ -254,11 +255,11 @@ formal_arglist
 	
 formal_arg
 	:	(dir=direction | storage_class | type_modifier)* geometryPrimitiveType? ty=type_name id=ident sub+=subscript* sem=semantic? ('=' expression)?
-		-> ^(FORMAL_ARG $ty $id $sub* $sem? $dir?)
+		-> ^(FORMAL_ARG $id $ty $sub* $sem? $dir?)
 	;
 	
 direction
-	:	'in' | 'out' -> ^(DIRECTION_OUT) | 'inout' -> ^(DIRECTION_IN_OUT)
+	:	'in' | 'out' -> DIRECTION_OUT | 'inout' -> DIRECTION_IN_OUT
 	;
 	
 // geometryPrimitiveType is only required for geometry shaders. So there may be

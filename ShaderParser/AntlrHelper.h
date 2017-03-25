@@ -98,19 +98,4 @@ namespace ShaderSourceParser { namespace AntlrHelper
 		ExceptionHandler* _previousExceptionHandler;
 		void* _previousExceptionHandlerUserData;
 	};
-
-    class ParserRig
-    {
-    public:
-        ANTLR3_BASE_TREE* BuildAST();
-
-        ParserRig(StringSection<char> sourceCode);
-        ~ParserRig();
-
-        ParserRig(const ParserRig&) = delete;
-        ParserRig& operator=(const ParserRig&) = delete;
-    private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
 }}
