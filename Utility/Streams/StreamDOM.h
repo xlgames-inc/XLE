@@ -6,8 +6,11 @@
 
 #pragma once
 
-#include "../PtrUtils.h"    // (for Default)
-#include "../StringUtils.h" // (for StringSection)
+#include "StreamFormatter.h"
+#include "../PtrUtils.h"        // (for Default)
+#include "../StringUtils.h"     // (for StringSection)
+#include "../Conversion.h"
+#include "../ParameterBox.h"
 #include <vector>
 #include <string>
 
@@ -143,7 +146,7 @@ namespace Utility
         template<typename Type>
             Type Document<Formatter>::Attribute(const value_type name[], const Type& def) const
     {
-        auto temp = Attribute(name).As<Type>();
+        auto temp = Attribute(name).template As<Type>();
         if (temp.first) return temp.second;
         return def;
     }
@@ -152,9 +155,15 @@ namespace Utility
         template<typename Type>
             Type DocElementHelper<Formatter>::Attribute(const value_type name[], const Type& def) const
     {
-        auto temp = Attribute(name).As<Type>();
+        auto temp = Attribute(name).template As<Type>();
         if (temp.first) return temp.second;
         return def;
+    }
+    
+    namespace ImpliedTyping
+    {
+        template <typename Type>
+            std::pair<bool, Type> Parse(const char* expressionBegin, const char* expressionEnd);
     }
 
     template<typename Formatter>

@@ -6,7 +6,9 @@
 
 #pragma once
 
+#include "../Core/Types.h"
 #include "Types_Forward.h"
+#include "../Utility/IteratorUtils.h"
 #include <string>
 
 namespace RenderCore
@@ -50,13 +52,10 @@ namespace RenderCore
 
 	using InputLayout = std::pair<const InputElementDesc*, size_t>;
 
-    unsigned CalculateVertexStride(
-        const InputElementDesc* start, const InputElementDesc* end,
-        unsigned slot);
-
-    unsigned HasElement(const InputElementDesc* begin, const InputElementDesc* end, const char elementSemantic[]);
-    unsigned FindElement(const InputElementDesc* begin, const InputElementDesc* end, const char elementSemantic[], unsigned semanticIndex = 0);
-
+    unsigned CalculateVertexStride(IteratorRange<const InputElementDesc*> elements, unsigned slot);
+    unsigned HasElement(IteratorRange<const InputElementDesc*> elements, const char elementSemantic[]);
+    unsigned FindElement(IteratorRange<const InputElementDesc*> elements, const char elementSemantic[], unsigned semanticIndex = 0);
+   
     /// Contains some common reusable vertex input layouts
     namespace GlobalInputLayouts
     {
@@ -85,6 +84,22 @@ namespace RenderCore
 		_alignedByteOffset = alignedByteOffset; _inputSlotClass = inputSlotClass;
 		_instanceDataStepRate = instanceDataStepRate;
 	}
+    
+///////////////////////////////////////////////////////////////////////////////////////////////////
+    
+#pragma pack(push)
+#pragma pack(1)
+    class MiniInputElementDesc
+    {
+    public:
+        uint64				_semanticHash;
+        RenderCore::Format	_nativeFormat;
+        
+        static const bool SerializeRaw = true;
+    } attribute_packed;
+#pragma pack(pop)
+
+	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

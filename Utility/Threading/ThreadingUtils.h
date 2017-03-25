@@ -71,66 +71,96 @@
 
 #if (THREAD_LIBRARY == THREAD_LIBRARY_TINYTHREAD) || (THREAD_LIBRARY == THREAD_LIBRARY_STDCPP)
 
-    #include <intrin.h>
+    #if 1 // __APPLE__
 
-    #if defined(_M_IA64) || defined(_M_AMD64)
-        #define EXCHANGE64_INTRINSIC
-    #endif
+        #include <atomic>
 
-    namespace Utility { namespace Interlocked 
-    {
-        typedef long Value;
-        typedef int64 Value64;
+        namespace Utility { namespace Interlocked
+        {
+            typedef std::atomic<int32> Value;
+            typedef std::atomic<int64> Value64;
 
-        force_inline Value Exchange(Value volatile* target, Value newValue)           { return _InterlockedExchange(target, newValue); }
+            force_inline int32 Exchange(Value volatile* target, int32 newValue)                                             { return std::atomic_exchange(target, newValue); }
+            force_inline int32 CompareExchange(Value volatile* target, int32 newValue, int32 comparisonValue)               { auto prev = std::atomic_load(target); return std::atomic_compare_exchange_strong(target, &comparisonValue, newValue) ? comparisonValue : prev; }
+            force_inline int32 Load(Value volatile* target)                   { return std::atomic_load(target); }
+            
+            force_inline int64 Exchange64(Value64 volatile* target, int64 newValue)                                       { return std::atomic_exchange(target, newValue); }
+            force_inline int64 CompareExchange64(Value64 volatile* target, int64 newValue, int64 comparisonValue)         { auto prev = std::atomic_load(target); return std::atomic_compare_exchange_strong(target, &comparisonValue, newValue) ? comparisonValue : prev; }
+            force_inline int64 Load64(Value64 volatile const* target)         { return std::atomic_load(target); }
+            
+            force_inline int32 Increment(Value volatile* target)              { return std::atomic_fetch_add(target, 1); }
+            force_inline int32 Decrement(Value volatile* target)              { return std::atomic_fetch_add(target, -1); }
+            force_inline int32 Add(Value volatile* target, int32 addition)    { return std::atomic_fetch_add(target, addition); }
+            
+            T1(Type) force_inline Type* ExchangePointer(std::atomic<Type*>* target, Type* newValue)                                 { return std::atomic_exchange(target, newValue); }
+            T1(Type) force_inline Type* CompareExchangePointer(std::atomic<Type*>* target, Type* newValue, Type* comparisonValue)   { auto prev = std::atomic_load(target); return std::atomic_compare_exchange_strong(target, &comparisonValue, newValue) ? comparisonValue : prev; }
+            T1(Type) force_inline Type* LoadPointer(std::atomic<Type*> volatile const* target)                                      { return std::atomic_load(target); }
+        }}
 
-        inline Value CompareExchange(Value volatile* target, Value newValue, Value comparisonValue)                     { return _InterlockedCompareExchange(target, newValue, comparisonValue); }
-        force_inline Value64 CompareExchange64(Value64 volatile* target, Value64 newValue, Value64 comparisonValue)     { return _InterlockedCompareExchange64(target, newValue, comparisonValue); }
+    #else
 
-        #if defined(EXCHANGE64_INTRINSIC)
-            force_inline Value64 Exchange64(Value64 volatile* target, Value64 newValue)   { return _InterlockedExchange64(target, newValue); }
-            force_inline void* ExchangePointer(void* volatile* target, void* newValue)    { return _InterlockedExchangePointer(target, newValue); }
-            force_inline void* CompareExchangePointer(void* volatile* target, void* newValue, void* comparisonValue)      { return _InterlockedCompareExchangePointer(target, newValue, comparisonValue); }
-        #else
-            force_inline Value64 Exchange64(Value64 volatile* target, Value64 newValue)   
-            {
-                    //  Intrinsic for Exchange64 is not provided in <intrin.h> for 32 bit targets
-                    //  however, the behaviour should be as follows -- 
-                Value64 old;
-                do {
-                    old = *target;
-                } while (CompareExchange64(target, newValue, old) != old);
-                return old;
-            }
+        #include <intrin.h>
 
-            force_inline void* ExchangePointer(void* volatile* target, void* newValue)    
-            { 
-                if (constant_expression<sizeof(void*) == 4>::result()) {
-                    return (void*)Exchange((Value volatile*)target, (Value)newValue);
-                } else {
-                    return (void*)Exchange64((Value64 volatile*)target, (Value64)newValue);
-                }
-            }
-
-            force_inline void* CompareExchangePointer(void* volatile* target, void* newValue, void* comparisonValue)      
-            { 
-                if (constant_expression<sizeof(void*) == 4>::result()) {
-                    return (void*)CompareExchange((Value volatile*)target, (Value)newValue, (Value)comparisonValue);
-                } else {
-                    return (void*)CompareExchange64((Value64 volatile*)target, (Value64)newValue, (Value)comparisonValue);
-                }
-            }
+        #if defined(_M_IA64) || defined(_M_AMD64)
+            #define EXCHANGE64_INTRINSIC
         #endif
 
-            /* note -- "_InterlockedIncrement" will not return the correct result on Win95 and earlier! Expect crashes and leaks on that platform! */
-        force_inline Value Increment(Value volatile* target)              { return _InterlockedIncrement(target)-1; }
-        force_inline Value Decrement(Value volatile* target)              { return _InterlockedDecrement(target)+1; }
-        force_inline Value Add(Value volatile* target, Value addition)    { return _InterlockedExchangeAdd(target, addition); }
+        namespace Utility { namespace Interlocked 
+        {
+            typedef long Value;
+            typedef int64 Value64;
 
-        force_inline Value Load(Value volatile* target)                   { return *target; }
-        force_inline Value64 Load64(Value64 volatile const* target)       { return *target; }
-        force_inline void* LoadPointer(void* volatile const* target)      { return *target; }
-    }}
+            force_inline Value Exchange(Value volatile* target, Value newValue)           { return _InterlockedExchange(target, newValue); }
+
+            inline Value CompareExchange(Value volatile* target, Value newValue, Value comparisonValue)                     { return _InterlockedCompareExchange(target, newValue, comparisonValue); }
+            force_inline Value64 CompareExchange64(Value64 volatile* target, Value64 newValue, Value64 comparisonValue)     { return _InterlockedCompareExchange64(target, newValue, comparisonValue); }
+
+            #if defined(EXCHANGE64_INTRINSIC)
+                force_inline Value64 Exchange64(Value64 volatile* target, Value64 newValue)   { return _InterlockedExchange64(target, newValue); }
+                force_inline void* ExchangePointer(void* volatile* target, void* newValue)    { return _InterlockedExchangePointer(target, newValue); }
+                force_inline void* CompareExchangePointer(void* volatile* target, void* newValue, void* comparisonValue)      { return _InterlockedCompareExchangePointer(target, newValue, comparisonValue); }
+            #else
+                force_inline Value64 Exchange64(Value64 volatile* target, Value64 newValue)   
+                {
+                        //  Intrinsic for Exchange64 is not provided in <intrin.h> for 32 bit targets
+                        //  however, the behaviour should be as follows -- 
+                    Value64 old;
+                    do {
+                        old = *target;
+                    } while (CompareExchange64(target, newValue, old) != old);
+                    return old;
+                }
+
+                force_inline void* ExchangePointer(void* volatile* target, void* newValue)    
+                { 
+                    if (constant_expression<sizeof(void*) == 4>::result()) {
+                        return (void*)Exchange((Value volatile*)target, (Value)newValue);
+                    } else {
+                        return (void*)Exchange64((Value64 volatile*)target, (Value64)newValue);
+                    }
+                }
+
+                force_inline void* CompareExchangePointer(void* volatile* target, void* newValue, void* comparisonValue)      
+                { 
+                    if (constant_expression<sizeof(void*) == 4>::result()) {
+                        return (void*)CompareExchange((Value volatile*)target, (Value)newValue, (Value)comparisonValue);
+                    } else {
+                        return (void*)CompareExchange64((Value64 volatile*)target, (Value64)newValue, (Value)comparisonValue);
+                    }
+                }
+            #endif
+
+                /* note -- "_InterlockedIncrement" will not return the correct result on Win95 and earlier! Expect crashes and leaks on that platform! */
+            force_inline Value Increment(Value volatile* target)              { return _InterlockedIncrement(target)-1; }
+            force_inline Value Decrement(Value volatile* target)              { return _InterlockedDecrement(target)+1; }
+            force_inline Value Add(Value volatile* target, Value addition)    { return _InterlockedExchangeAdd(target, addition); }
+
+            force_inline Value Load(Value volatile* target)                   { return *target; }
+            force_inline Value64 Load64(Value64 volatile const* target)       { return *target; }
+            force_inline void* LoadPointer(void* volatile const* target)      { return *target; }
+        }}
+
+    #endif
 
 #endif
 

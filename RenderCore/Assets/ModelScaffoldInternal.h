@@ -11,6 +11,7 @@
 #include "../../Math/Matrix.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Utility/Streams/Serialization.h"
+#include "../../Utility/MemoryUtils.h"
 #include "../../Core/Types.h"
 
 namespace RenderCore { namespace Assets 
@@ -189,6 +190,24 @@ namespace RenderCore { namespace Assets
 
     #pragma pack(pop)
 
+	inline VertexElement::VertexElement()
+	{
+		_nativeFormat = Format(0); _alignedByteOffset = 0; _semanticIndex = 0;
+		XlZeroMemory(_semanticName);
+	}
+
+	inline VertexElement::VertexElement(const VertexElement& ele)
+	{
+		_nativeFormat = ele._nativeFormat; _alignedByteOffset = ele._alignedByteOffset; _semanticIndex = ele._semanticIndex;
+		XlCopyMemory(_semanticName, ele._semanticName, sizeof(_semanticName));
+	}
+
+	inline VertexElement& VertexElement::operator=(const VertexElement& ele)
+	{
+		_nativeFormat = ele._nativeFormat; _alignedByteOffset = ele._alignedByteOffset; _semanticIndex = ele._semanticIndex;
+		XlCopyMemory(_semanticName, ele._semanticName, sizeof(_semanticName));
+		return *this;
+	}
 }}
 
 template<>

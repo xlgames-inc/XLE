@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <memory>       // for std::move
+
 namespace Utility
 {
     class OutputStreamFormatter;

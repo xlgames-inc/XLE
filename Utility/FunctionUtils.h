@@ -34,7 +34,7 @@ namespace Utility
     {};
 
     template<>
-    struct FunctionTraits<nullptr_t> {};
+        struct FunctionTraits<std::nullptr_t> {};
  
     // for pointers to member function
     template <typename ClassType, typename ReturnType, typename... Args>
@@ -82,7 +82,7 @@ namespace Utility
       return {p};
     }
 
-    inline auto MakeFunction(nullptr_t) -> std::function<void()> { 
+    inline auto MakeFunction(std::nullptr_t) -> std::function<void()> {
       return nullptr;
     }
 
@@ -277,7 +277,7 @@ namespace Utility
         if ((_buffer.size() + sfn._size) > _buffer.capacity())
             ExpandBuffer((_buffer.size() + sfn._size) * 2);
         assert((_buffer.size() + sfn._size) <= _buffer.capacity());
-        _buffer.insert(_buffer.end(), sfn._size, uint8(0xcd));
+        _buffer.insert(_buffer.end(), sfn._size, uint8_t(0xcd));
 
         _fns.insert(i, std::make_pair(id, sfn));
 

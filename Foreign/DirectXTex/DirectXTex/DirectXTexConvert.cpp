@@ -1532,6 +1532,64 @@ _Use_decl_annotations_ bool _LoadScanline( XMVECTOR* pDestination, size_t count,
 #undef LOAD_SCANLINE2
 
 
+inline float DJ_round_to_nearest(float x)
+{
+	float i = floorf(x);
+	x -= i;
+	if (x < 0.5f)
+		return i;
+	if (x > 0.5f)
+		return i + 1.f;
+
+	float int_part;
+	modff(i / 2.f, &int_part);
+	if ((2.f*int_part) == i)
+	{
+		return i;
+	}
+
+	return i + 1.f;
+}
+
+_Use_decl_annotations_
+inline void XM_CALLCONV DJ_XMStoreFloat3SE
+(
+	XMFLOAT3SE* pDestination,
+	FXMVECTOR V
+)
+{
+	assert(pDestination);
+
+	XMFLOAT3A tmp;
+	XMStoreFloat3A(&tmp, V);
+
+	static const float maxf9 = float(0x1FF << 7);
+	static const float minf9 = float(1.f / (1 << 16));
+
+	float x = (tmp.x >= 0.f) ? ((tmp.x > maxf9) ? maxf9 : tmp.x) : 0.f;
+	float y = (tmp.y >= 0.f) ? ((tmp.y > maxf9) ? maxf9 : tmp.y) : 0.f;
+	float z = (tmp.z >= 0.f) ? ((tmp.z > maxf9) ? maxf9 : tmp.z) : 0.f;
+
+	const float max_xy = (x > y) ? x : y;
+	const float max_xyz = (max_xy > z) ? max_xy : z;
+
+	const float maxColor = (max_xyz > minf9) ? max_xyz : minf9;
+
+	union { float f; int32_t i; } fi;
+	fi.f = maxColor;
+	fi.i += 0x00004000; // round up leaving 9 bits in fraction (including assumed 1)
+
+	uint32_t exp = fi.i >> 23;
+	pDestination->e = exp - 0x6f;
+
+	fi.i = 0x83000000 - (exp << 23);
+	float ScaleR = fi.f;
+
+	pDestination->xm = static_cast<uint32_t>(DJ_round_to_nearest(x * ScaleR));
+	pDestination->ym = static_cast<uint32_t>(DJ_round_to_nearest(y * ScaleR));
+	pDestination->zm = static_cast<uint32_t>(DJ_round_to_nearest(z * ScaleR));
+}
+
 //-------------------------------------------------------------------------------------
 // Stores an image row from standard RGBA XMVECTOR (aligned) array
 //-------------------------------------------------------------------------------------
@@ -1951,7 +2009,7 @@ bool _StoreScanline( LPVOID pDestination, size_t size, DXGI_FORMAT format,
         return false;
 
     case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
-        STORE_SCANLINE( XMFLOAT3SE, XMStoreFloat3SE )
+        STORE_SCANLINE( XMFLOAT3SE, DJ_XMStoreFloat3SE )
 
     case DXGI_FORMAT_R8G8_B8G8_UNORM:
         if ( size >= sizeof(XMUBYTEN4) )

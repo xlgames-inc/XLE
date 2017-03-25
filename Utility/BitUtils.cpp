@@ -16,7 +16,7 @@ namespace Utility
         for (auto i=_heap.begin(); i!=_heap.end(); ++i) {
             if (*i != 0) {
                 auto bitIndex = LeastSignificantBitSet(*i);
-                (*i) &= ~(1ui64<<uint64(bitIndex));
+                (*i) &= ~(1ull<<uint64(bitIndex));
                 return ((uint32)std::distance(_heap.begin(), i))*64 + bitIndex;
             }
         }
@@ -31,7 +31,7 @@ namespace Utility
         for (auto i=_heap.begin(); i!=_heap.end(); ++i) {
             if (*i != 0) {
                 auto bitIndex = LeastSignificantBitSet(*i);
-                (*i) &= ~(1ui64<<uint64(bitIndex));
+                (*i) &= ~(1ull<<uint64(bitIndex));
                 return ((uint32)std::distance(_heap.begin(), i))*64 + bitIndex;
             }
         }
@@ -45,8 +45,8 @@ namespace Utility
         uint32 arrayIndex = value>>6;
         ScopedLock(_lock);
         if (arrayIndex < _heap.size()) {
-            assert((_heap[arrayIndex] & (1ui64<<uint64(bitIndex))) == 0);
-            _heap[arrayIndex] |= 1ui64<<uint64(bitIndex);
+            assert((_heap[arrayIndex] & (1ull<<uint64(bitIndex))) == 0);
+            _heap[arrayIndex] |= 1ull<<uint64(bitIndex);
         }
     }
 
@@ -56,7 +56,7 @@ namespace Utility
         uint32 arrayIndex = value>>6;
         ScopedLock(_lock);
         if (arrayIndex < _heap.size()) {
-            return (_heap[arrayIndex] & (1ui64<<uint64(bitIndex))) == 0;
+            return (_heap[arrayIndex] & (1ull<<uint64(bitIndex))) == 0;
         }
         return false;
     }

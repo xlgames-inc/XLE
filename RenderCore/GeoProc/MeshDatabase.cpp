@@ -16,12 +16,13 @@
 #include "../../Utility/BitUtils.h"
 #include "../../Foreign/half-1.9.2/include/half.hpp"
 #include <iterator>
+#include <queue>
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
     using ::Assets::Exceptions::FormatError;
 
-    enum class ComponentType { Float32, Float16, UNorm8 };
+    enum class ComponentType { Float32, Float16, UNorm8, UNorm16, SNorm8, SNorm16 };
     static std::pair<ComponentType, unsigned> BreakdownFormat(Format fmt);
     static unsigned short AsFloat16(float input);
     static float AsFloat32(unsigned short f16input);
@@ -252,10 +253,22 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         if (brkdn.first == ComponentType::UNorm8) {
                 // consider also Metal::FindFormat
-            if (brkdn.second == 1)          return Format::R8_UNORM;
-            else if (brkdn.second == 2)     return Format::R8G8_UNORM;
-            else                            return Format::R8G8B8A8_UNORM;
-        } else {
+            if (brkdn.second == 1)				return Format::R8_UNORM;
+            else if (brkdn.second == 2)			return Format::R8G8_UNORM;
+            else								return Format::R8G8B8A8_UNORM;
+		} else if (brkdn.first == ComponentType::UNorm16) {
+			if (brkdn.second == 1)				return Format::R16_UNORM;
+			else if (brkdn.second == 2)			return Format::R16G16_UNORM;
+			else								return Format::R16G16B16A16_UNORM;
+		} else if (brkdn.first == ComponentType::SNorm8) {
+			if (brkdn.second == 1)				return Format::R8_SNORM;
+			else if (brkdn.second == 2)			return Format::R8G8_SNORM;
+			else								return Format::R8G8B8A8_SNORM;
+		} else if (brkdn.first == ComponentType::SNorm16) {
+			if (brkdn.second == 1)				return Format::R16_SNORM;
+			else if (brkdn.second == 2)			return Format::R16G16_SNORM;
+			else								return Format::R16G16B16A16_SNORM;
+		} else {
             if (settings._use16BitFloats) {
                 if (brkdn.second == 1)          return Format::R16_FLOAT;
                 else if (brkdn.second == 2)     return Format::R16G16_FLOAT;
@@ -428,6 +441,67 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         }
     }
 
+	static inline float UNorm16AsFloat32(uint16 value)	{ return value / float(0xffff); }
+	static inline float SNorm16AsFloat32(int16 value)	{ return value / float(0x7fff); }
+
+	static inline void GetVertDataUNorm16(
+		float* dst,
+		const uint16* src, unsigned srcComponentCount,
+		ProcessingFlags::BitField processingFlags)
+	{
+		// In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
+		dst[0] = (srcComponentCount > 0) ? UNorm16AsFloat32(src[0]) : 0.f;
+		dst[1] = (srcComponentCount > 1) ? UNorm16AsFloat32(src[1]) : 0.f;
+		dst[2] = (srcComponentCount > 2) ? UNorm16AsFloat32(src[2]) : 0.f;
+		dst[3] = (srcComponentCount > 3) ? UNorm16AsFloat32(src[3]) : 1.f;
+		if (processingFlags & ProcessingFlags::Renormalize) {
+			float scale;
+			if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
+				dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
+		}
+
+		if (processingFlags & ProcessingFlags::TexCoordFlip) {
+			dst[1] = 1.0f - dst[1];
+		}
+		else if (processingFlags & ProcessingFlags::BitangentFlip) {
+			dst[0] = -dst[0];
+			dst[1] = -dst[1];
+			dst[2] = -dst[2];
+		}
+		else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
+			dst[3] = -dst[3];
+		}
+	}
+
+	static inline void GetVertDataSNorm16(
+		float* dst,
+		const int16* src, unsigned srcComponentCount,
+		ProcessingFlags::BitField processingFlags)
+	{
+		// In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
+		dst[0] = (srcComponentCount > 0) ? SNorm16AsFloat32(src[0]) : 0.f;
+		dst[1] = (srcComponentCount > 1) ? SNorm16AsFloat32(src[1]) : 0.f;
+		dst[2] = (srcComponentCount > 2) ? SNorm16AsFloat32(src[2]) : 0.f;
+		dst[3] = (srcComponentCount > 3) ? SNorm16AsFloat32(src[3]) : 1.f;
+		if (processingFlags & ProcessingFlags::Renormalize) {
+			float scale;
+			if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
+				dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
+		}
+
+		if (processingFlags & ProcessingFlags::TexCoordFlip) {
+			dst[1] = 1.0f - dst[1];
+		}
+		else if (processingFlags & ProcessingFlags::BitangentFlip) {
+			dst[0] = -dst[0];
+			dst[1] = -dst[1];
+			dst[2] = -dst[2];
+		}
+		else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
+			dst[3] = -dst[3];
+		}
+	}
+
     static inline void GetVertData(
         float* dst, 
         const void* src, std::pair<ComponentType, unsigned> fmt,
@@ -440,6 +514,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         case ComponentType::Float16:
             GetVertDataF16(dst, (const uint16*)src, fmt.second, processingFlags);
             break;
+		case ComponentType::UNorm16:
+			GetVertDataUNorm16(dst, (const uint16*)src, fmt.second, processingFlags);
+			break;
+		case ComponentType::SNorm16:
+			GetVertDataSNorm16(dst, (const int16*)src, fmt.second, processingFlags);
+			break;
         default:
             assert(0);
             break;
@@ -495,6 +575,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     {
         auto dstFormat = BreakdownFormat(dstFmt);
         auto srcFormat = BreakdownFormat(srcFmt);
+		auto dstFormatSize = BitsPerPixel(dstFmt) / 8;
+		auto srcFormatSize = BitsPerPixel(srcFmt) / 8;
 
             //      This could be be made more efficient with a smarter loop..
         if (srcFormat.first == ComponentType::Float32) {
@@ -550,16 +632,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             } else {
                 Throw(FormatError("Error while copying vertex data. Unexpected format for destination parameter."));
             }
-        } else if (
-                srcFormat.first == ComponentType::UNorm8 && dstFormat.first == ComponentType::UNorm8
-            &&  srcFormat.second == dstFormat.second) {
+        } else if (srcFormat.first == dstFormat.first &&  srcFormat.second == dstFormat.second) {
 
                 // simple copy of uint8 data
             for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
                 auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
-                assert(srcIndex * srcStride + sizeof(uint8) * dstFormat.second <= srcDataSize);
+                assert(srcIndex * srcStride + srcFormatSize <= srcDataSize);
+
                 auto* srcV = (uint8*)PtrAdd(src, srcIndex * srcStride);
-                for (unsigned c=0; c<dstFormat.second; ++c) {
+                for (unsigned c=0; c<dstFormatSize; ++c) {
                     assert(&((uint8*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
                     ((uint8*)dst)[c] = srcV[c];
                 }
@@ -647,8 +728,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
             // Every vertex in the range [c..c2) has equal quantized coordinates
             // We can now use a brute-force test to find if they are truly "close"
+			std::vector<bool> alreadyProcessedIdentical(c2-c, false);
             float vert0[4], vert1[4];
             for (auto ct0=c; ct0<c2; ++ct0) {
+				if (alreadyProcessedIdentical[ct0-c]) continue;
+
                 GetVertData(
                     vert0, (const float*)PtrAdd(sourceStream.GetData(), ct0->second * stride), 
                     fmtBrkdn, sourceStream.GetProcessingFlags());
@@ -666,6 +750,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                         auto i = std::lower_bound(closeVertices.begin(), closeVertices.end(), p, CompareVertexPair);
                         if (i == closeVertices.end() || *i != p)
                             closeVertices.insert(i, p);
+
+						// As an optimization for a bad case --
+						//		if ct0 and ct1 are completely identical, we can skip 
+						//		processing of ct1 completely (because the result will just be the same as ct0) 
+						if (dstSq == 0.f) {
+							alreadyProcessedIdentical[ct1-c] = true;
+						}
                     }
 
                 }
@@ -764,27 +855,33 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<unsigned> chainBuffer;
         chainBuffer.reserve(32);
 
-        auto i = closeVertices.cbegin();
         for (unsigned c=0; c<sourceStream.GetCount(); c++) {
             if (oldOrderingToNewOrdering[c] != ~0u) continue;
 
-            while (i != closeVertices.end() && i->first < c) ++i;
-            if (i != closeVertices.end() && i->first == c) {
+            chainBuffer.clear();    // clear without deallocate
+			std::queue<unsigned> pendingChainEnds;
+			
+			pendingChainEnds.push(c);
+            while (!pendingChainEnds.empty()) {
+				auto chainEnd = pendingChainEnds.front();
+				pendingChainEnds.pop();
 
-                    // We have a chain of at least 2 vertices. We must
-                    // follow the pairs to find the full chain
-                chainBuffer.clear();    // clear without deallocate
-                chainBuffer.push_back(c);
-                chainBuffer.push_back(i->second);
+				if (std::find(chainBuffer.begin(), chainBuffer.end(), chainEnd) != chainBuffer.end())
+					continue;
+				chainBuffer.push_back(chainEnd);
 
-                auto chainEnd = i->second;
-                for (;;) {
-                    auto i2 = LowerBound(closeVertices, chainEnd);
-                    if (i2 == closeVertices.end() || i2->first != chainEnd) break;
-                    chainBuffer.push_back(i2->second);
-                    chainEnd = i2->second;
-                }
+				// note --	there's an optimization we can perform here, because we know
+				//			that as c increases, we will no longer find matches in the 
+				//			first part of "closeVertices" (because closeVertices ends up in
+				//			sorted order, and 'c' is always the vertex with the smallest index
+				//			in the chain)
+                auto linkRange = EqualRange(closeVertices, chainEnd);
+				for (auto i2 = linkRange.first; i2 != linkRange.second; ++i2) {
+					pendingChainEnds.push(i2->second);
+				}
+            }
 
+			if (chainBuffer.size() > 1) {
                 auto m = FindClosestToAverage(sourceStream, AsPointer(chainBuffer.cbegin()), AsPointer(chainBuffer.cend()));
 
                 const auto* sourceVertex = PtrAdd(sourceStream.GetData(), m * sourceStream.GetStride());
@@ -794,7 +891,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 for (auto q=chainBuffer.cbegin(); q!=chainBuffer.cend(); ++q)
                     oldOrderingToNewOrdering[*q] = (unsigned)finalVBCount;
                 ++finalVBCount;
-
             } else {
                     // This vertex is not part of a chain.
                     // Just append to the finalVB
@@ -825,6 +921,69 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             std::move(finalVB), finalVBCount, vertexSize,  
             sourceStream.GetFormat());
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	MeshDatabase RemoveDuplicates(
+		std::vector<unsigned>& outputMapping,
+		const MeshDatabase& input) 
+	{
+		// Note -- assuming that the vertex streams in "input" have already had RemoveDuplicates() 
+		// called to ensure that duplicate vertex values have been combined into one.
+		// Given that this is the case, we only need to check for cases where the vertex mapping
+		// values are identical in the vertex stream mapping
+
+		outputMapping.clear();
+		class RemappedStream
+		{
+		public:
+			std::vector<unsigned> _unifiedToStreamElement;
+		};
+		std::vector<RemappedStream> workingMapping;
+		auto inputStreams = input.GetStreams();
+		workingMapping.resize(inputStreams.size());
+
+		unsigned finalUnifiedVertexCount = 0u;
+		for (unsigned v = 0; v < input.GetUnifiedVertexCount(); ++v) {
+			// look for an existing vertex that is identical
+			unsigned existingVertex = ~0u;
+			for (unsigned c = 0; c < finalUnifiedVertexCount; ++c) {
+				bool isIdentical = true;
+				for (unsigned s = 0; s < inputStreams.size(); ++s) {
+					if (workingMapping[s]._unifiedToStreamElement[c] != inputStreams[s].GetVertexMap()[v]) {
+						isIdentical = false;
+						break;
+					}
+				}
+				if (isIdentical) {
+					existingVertex = c;
+					break;
+				}
+			}
+
+			if (existingVertex != ~0u) {
+				outputMapping.push_back(existingVertex);
+			} else {
+				// if we got this far, there's no existing identical vertex
+				for (unsigned s = 0; s < inputStreams.size(); ++s)
+					workingMapping[s]._unifiedToStreamElement.push_back(inputStreams[s].GetVertexMap()[v]);
+				outputMapping.push_back(finalUnifiedVertexCount);
+				++finalUnifiedVertexCount;
+			}
+		}
+
+		MeshDatabase result;
+		for (unsigned s = 0; s < inputStreams.size(); ++s) {
+			result.AddStream(
+				inputStreams[s].ShareSourceData(),
+				std::move(workingMapping[s]._unifiedToStreamElement),
+				inputStreams[s].GetSemanticName().c_str(),
+				inputStreams[s].GetSemanticIndex());
+		}
+
+		assert(result.GetUnifiedVertexCount() == finalUnifiedVertexCount);
+		return result;
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -876,11 +1035,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             componentType = ComponentType::Float16;
             break;
 
-        case FormatComponentType::UNorm:
-        case FormatComponentType::SNorm:
+		case FormatComponentType::SNorm:
+			componentType = (prec == 16) ? ComponentType::SNorm16 : ComponentType::SNorm8;
+			break;
+
+		case FormatComponentType::UNorm: 
         case FormatComponentType::UNorm_SRGB:
-            assert(prec==8);
-            componentType = ComponentType::UNorm8;
+            assert(prec==8 || prec==16);
+            componentType = (prec == 16) ? ComponentType::UNorm16 : ComponentType::UNorm8;
             break;
         }
 

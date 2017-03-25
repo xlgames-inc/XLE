@@ -52,12 +52,12 @@ namespace Utility
     private:
         template <typename C> static unsigned StrTest(decltype(&C::str)*);
         template <typename C> static char StrTest(...);
-        template <typename C> static unsigned IsFullTest(decltype(&C::str)*);
+        template <typename C> static unsigned IsFullTest(decltype(&C::IsFull)*);
         template <typename C> static char IsFullTest(...);
 
-        template<typename U, void (U::*)(typename U::char_type*, size_t) const> struct FunctionSignature {};
-        template <typename C> static unsigned ConstructorTest(FunctionSignature<C, &C::C>*);
-        template <typename C> static char ConstructorTest(...);
+        // template<typename U, void (U::*)(typename U::char_type*, size_t) const> struct FunctionSignature {};
+        // template <typename C> static unsigned ConstructorTest(FunctionSignature<C, &C::C>*);
+        // template <typename C> static char ConstructorTest(...);
     public:
 
             //  If the "BufferType" type has a method called str(), then we
@@ -82,9 +82,10 @@ namespace Utility
         StreamBuf();
         ~StreamBuf();
 
-        template<
+        /*template<
             typename Buffer = BufferType,
-            typename std::enable_if<(sizeof(ConstructorTest<Buffer>(0)) > 1)>::type* = nullptr>
+            typename std::enable_if<(sizeof(ConstructorTest<Buffer>(0)) > 1)>::type* = nullptr>*/
+        template<typename std::enable_if<std::is_constructible<BufferType, CharType*, size_t>::value>::type* = nullptr>
             StreamBuf(CharType* buffer, size_t bufferCharCount)
             : _buffer(buffer, bufferCharCount) {}
 
@@ -99,10 +100,10 @@ namespace Utility
         {
             typedef typename std::basic_streambuf<CharType>::char_type char_type;
 
-            bool IsFull() const { return pptr() >= epptr(); }
-            unsigned Length() const { return unsigned(pptr() - pbase()); }
+            bool IsFull() const { return this->pptr() >= this->epptr(); }
+            unsigned Length() const { return unsigned(this->pptr() - this->pbase()); }
 
-            FixedMemoryBuffer2(CharType buffer[], size_t bufferCharCount) 
+            FixedMemoryBuffer2(CharType* buffer, size_t bufferCharCount)
             {
                 this->setp(buffer, &buffer[bufferCharCount-1]);
                 for (unsigned c=0; c<bufferCharCount; ++c) buffer[c] = 0;
@@ -116,11 +117,16 @@ namespace Utility
         {
             typedef typename std::basic_stringbuf<CharType>::char_type char_type;
 
-            CharType* Begin() const { return pbase(); }
-            CharType* End() const   { return pptr(); }
+            CharType* Begin() const { return this->pbase(); }
+            CharType* End() const   { return this->pptr(); }
 
             ResizeableMemoryBuffer() {}
             ~ResizeableMemoryBuffer() {}
+            
+            ResizeableMemoryBuffer(CharType* buffer, size_t bufferCharCount)
+            {
+                assert(0);
+            }
         };
     }
 

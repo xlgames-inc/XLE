@@ -6,8 +6,8 @@
 
 #include "Format.h"
 #include "ResourceDesc.h"
-#include "../../../Utility/ParameterBox.h"
-#include "../../../Utility/StringUtils.h"
+#include "../Utility/ParameterBox.h"
+#include "../Utility/StringUtils.h"
 
 namespace RenderCore
 {

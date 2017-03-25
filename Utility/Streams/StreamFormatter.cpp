@@ -14,6 +14,8 @@
 #include <assert.h>
 #include <algorithm>
 
+#pragma warning(disable:4702)		// warning C4702: unreachable code
+
 namespace Utility
 {
     MemoryMappedInputStream::MemoryMappedInputStream(const void* start, const void* end) 
@@ -39,7 +41,42 @@ namespace Utility
         static const CharType CommentPrefix[];
         static const CharType HeaderPrefix[];
     };
-
+    
+    template<> const utf8 FormatterConstants<utf8>::EndLine[] = { (utf8)'\r', (utf8)'\n' };
+    template<> const ucs2 FormatterConstants<ucs2>::EndLine[] = { (ucs2)'\r', (ucs2)'\n' };
+    template<> const ucs4 FormatterConstants<ucs4>::EndLine[] = { (ucs4)'\r', (ucs4)'\n' };
+    template<> const char FormatterConstants<char>::EndLine[] = { (char)'\r', (char)'\n' };
+    
+    template<> const utf8 FormatterConstants<utf8>::ProtectedNamePrefix[] = { (utf8)'<', (utf8)':', (utf8)'(' };
+    template<> const ucs2 FormatterConstants<ucs2>::ProtectedNamePrefix[] = { (ucs2)'<', (ucs2)':', (ucs2)'(' };
+    template<> const ucs4 FormatterConstants<ucs4>::ProtectedNamePrefix[] = { (ucs4)'<', (ucs4)':', (ucs4)'(' };
+    template<> const char FormatterConstants<char>::ProtectedNamePrefix[] = { (char)'<', (char)':', (char)'(' };
+    
+    template<> const utf8 FormatterConstants<utf8>::ProtectedNamePostfix[] = { (utf8)')', (utf8)':', (utf8)'>' };
+    template<> const ucs2 FormatterConstants<ucs2>::ProtectedNamePostfix[] = { (ucs2)')', (ucs2)':', (ucs2)'>' };
+    template<> const ucs4 FormatterConstants<ucs4>::ProtectedNamePostfix[] = { (ucs4)')', (ucs4)':', (ucs4)'>' };
+    template<> const char FormatterConstants<char>::ProtectedNamePostfix[] = { (char)')', (char)':', (char)'>' };
+    
+    template<> const utf8 FormatterConstants<utf8>::CommentPrefix[] = { (utf8)'~', (utf8)'~' };
+    template<> const ucs2 FormatterConstants<ucs2>::CommentPrefix[] = { (ucs2)'~', (ucs2)'~' };
+    template<> const ucs4 FormatterConstants<ucs4>::CommentPrefix[] = { (ucs4)'~', (ucs4)'~' };
+    template<> const char FormatterConstants<char>::CommentPrefix[] = { (char)'~', (char)'~' };
+    
+    template<> const utf8 FormatterConstants<utf8>::HeaderPrefix[] = { (utf8)'~', (utf8)'~', (utf8)'!' };
+    template<> const ucs2 FormatterConstants<ucs2>::HeaderPrefix[] = { (ucs2)'~', (ucs2)'~', (ucs2)'!' };
+    template<> const ucs4 FormatterConstants<ucs4>::HeaderPrefix[] = { (ucs4)'~', (ucs4)'~', (ucs4)'!' };
+    template<> const char FormatterConstants<char>::HeaderPrefix[] = { (char)'~', (char)'~', (char)'!' };
+    
+    template<> const utf8 FormatterConstants<utf8>::Tab = (utf8)'\t';
+    template<> const ucs2 FormatterConstants<ucs2>::Tab = (ucs2)'\t';
+    template<> const ucs4 FormatterConstants<ucs4>::Tab = (ucs4)'\t';
+    template<> const char FormatterConstants<char>::Tab = (char)'\t';
+    
+    template<> const utf8 FormatterConstants<utf8>::ElementPrefix = (utf8)'~';
+    template<> const ucs2 FormatterConstants<ucs2>::ElementPrefix = (ucs2)'~';
+    template<> const ucs4 FormatterConstants<ucs4>::ElementPrefix = (ucs4)'~';
+    template<> const char FormatterConstants<char>::ElementPrefix = (char)'~';
+    
     template<typename CharType, int Count> 
         static void WriteConst(OutputStream& stream, const CharType (&cnst)[Count], unsigned& lineLength)
     {
@@ -255,7 +292,7 @@ namespace Utility
         void Eat(MemoryMappedInputStream& stream, CharType (&pattern)[Count], StreamLocation location)
     {
         if (stream.RemainingBytes() < (sizeof(CharType)*Count))
-            Throw(FormatException("Blob prefix clipped", lineIndex, charIndex));
+            Throw(FormatException("Blob prefix clipped", location));
 
         const auto* test = (const CharType*)stream.ReadPointer();
         for (unsigned c=0; c<Count; ++c)
@@ -288,6 +325,7 @@ namespace Utility
             }
 
             Throw(FormatException("String deliminator not found", location));
+            return nullptr;
         } else {
                 // we must read forward until we hit a formatting character
                 // the end of the string will be the last non-whitespace before that formatting character
@@ -335,7 +373,7 @@ namespace Utility
         while (_stream.RemainingBytes() >= sizeof(CharType)) {
             const auto* next = (const CharType*)_stream.ReadPointer();
 
-            switch (*next)
+            switch (unsigned(*next))
             {
             case '\t':
                 _stream.AdvancePointer(sizeof(CharType));
@@ -446,7 +484,7 @@ namespace Utility
 
         while (_stream.RemainingBytes() >= sizeof(CharType)) {
             const auto* next = (const CharType*)_stream.ReadPointer();
-            switch (*next)
+            switch (unsigned(*next))
             {
             case '\t':
             case ' ': 
@@ -676,40 +714,5 @@ namespace Utility
     template class InputStreamFormatter<ucs4>;
     template class InputStreamFormatter<ucs2>;
     template class InputStreamFormatter<char>;
-
-    const utf8 FormatterConstants<utf8>::EndLine[] = { (utf8)'\r', (utf8)'\n' };
-    const ucs2 FormatterConstants<ucs2>::EndLine[] = { (ucs2)'\r', (ucs2)'\n' };
-    const ucs4 FormatterConstants<ucs4>::EndLine[] = { (ucs4)'\r', (ucs4)'\n' };
-    const char FormatterConstants<char>::EndLine[] = { (char)'\r', (char)'\n' };
-
-    const utf8 FormatterConstants<utf8>::ProtectedNamePrefix[] = { (utf8)'<', (utf8)':', (utf8)'(' };
-    const ucs2 FormatterConstants<ucs2>::ProtectedNamePrefix[] = { (ucs2)'<', (ucs2)':', (ucs2)'(' };
-    const ucs4 FormatterConstants<ucs4>::ProtectedNamePrefix[] = { (ucs4)'<', (ucs4)':', (ucs4)'(' };
-    const char FormatterConstants<char>::ProtectedNamePrefix[] = { (char)'<', (char)':', (char)'(' };
-
-    const utf8 FormatterConstants<utf8>::ProtectedNamePostfix[] = { (utf8)')', (utf8)':', (utf8)'>' };
-    const ucs2 FormatterConstants<ucs2>::ProtectedNamePostfix[] = { (ucs2)')', (ucs2)':', (ucs2)'>' };
-    const ucs4 FormatterConstants<ucs4>::ProtectedNamePostfix[] = { (ucs4)')', (ucs4)':', (ucs4)'>' };
-    const char FormatterConstants<char>::ProtectedNamePostfix[] = { (char)')', (char)':', (char)'>' };
-
-    const utf8 FormatterConstants<utf8>::CommentPrefix[] = { (utf8)'~', (utf8)'~' };
-    const ucs2 FormatterConstants<ucs2>::CommentPrefix[] = { (ucs2)'~', (ucs2)'~' };
-    const ucs4 FormatterConstants<ucs4>::CommentPrefix[] = { (ucs4)'~', (ucs4)'~' };
-    const char FormatterConstants<char>::CommentPrefix[] = { (char)'~', (char)'~' };
-
-    const utf8 FormatterConstants<utf8>::HeaderPrefix[] = { (utf8)'~', (utf8)'~', (utf8)'!' };
-    const ucs2 FormatterConstants<ucs2>::HeaderPrefix[] = { (ucs2)'~', (ucs2)'~', (ucs2)'!' };
-    const ucs4 FormatterConstants<ucs4>::HeaderPrefix[] = { (ucs4)'~', (ucs4)'~', (ucs4)'!' };
-    const char FormatterConstants<char>::HeaderPrefix[] = { (char)'~', (char)'~', (char)'!' };
-
-    const utf8 FormatterConstants<utf8>::Tab = (utf8)'\t';
-    const ucs2 FormatterConstants<ucs2>::Tab = (ucs2)'\t';
-    const ucs4 FormatterConstants<ucs4>::Tab = (ucs4)'\t';
-    const char FormatterConstants<char>::Tab = (char)'\t';
-
-    const utf8 FormatterConstants<utf8>::ElementPrefix = (utf8)'~';
-    const ucs2 FormatterConstants<ucs2>::ElementPrefix = (ucs2)'~';
-    const ucs4 FormatterConstants<ucs4>::ElementPrefix = (ucs4)'~';
-    const char FormatterConstants<char>::ElementPrefix = (char)'~';
 }
 

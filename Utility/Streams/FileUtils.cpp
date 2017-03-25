@@ -17,7 +17,7 @@ namespace Utility
 		{
 			va_list args;
 			va_start(args, format);
-			_vsnprintf_s(_buffer, _TRUNCATE, format, args);
+            std::vsnprintf(_buffer, dimof(_buffer), format, args);
 			va_end(args);
 		}
 	}

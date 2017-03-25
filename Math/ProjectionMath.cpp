@@ -9,8 +9,13 @@
 
 #include "ProjectionMath.h"
 #include "../Core/Prefix.h"
+#include "../Core/SelectConfiguration.h"
 #include <assert.h>
-#include <intrin.h>
+
+#if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
+    #include <intrin.h>
+    #define HAS_SSE_INSTRUCTIONS
+#endif
 
 namespace XLEMath
 {
@@ -25,7 +30,7 @@ namespace XLEMath
 
     void CalculateAbsFrustumCorners(
         Float3 frustumCorners[8], const Float4x4& worldToProjection,
-        ClipSpaceType::Enum clipSpaceType)
+        ClipSpaceType clipSpaceType)
     {
             //  So long as we can invert the world to projection matrix accurately, we can 
             //  extract the frustum corners easily. We just need to pass the coordinates
@@ -47,10 +52,18 @@ namespace XLEMath
             yAtTop = -1.f;
             yAtBottom = 1.f;
         }
-        Float4 v0 = projectionToWorld * Float4(-1.f, yAtTop,    0.f, 1.f);
-        Float4 v1 = projectionToWorld * Float4(-1.f, yAtBottom, 0.f, 1.f);
-        Float4 v2 = projectionToWorld * Float4( 1.f, yAtTop,    0.f, 1.f);
-        Float4 v3 = projectionToWorld * Float4( 1.f, yAtBottom, 0.f, 1.f);
+        Float4 v0, v1, v2, v3;
+        if (clipSpaceType == ClipSpaceType::StraddlingZero) {
+            v0 = projectionToWorld * Float4(-1.f, yAtTop,    -1.f, 1.f);
+            v1 = projectionToWorld * Float4(-1.f, yAtBottom, -1.f, 1.f);
+            v2 = projectionToWorld * Float4( 1.f, yAtTop,    -1.f, 1.f);
+            v3 = projectionToWorld * Float4( 1.f, yAtBottom, -1.f, 1.f);
+        } else {
+            v0 = projectionToWorld * Float4(-1.f, yAtTop,    0.f, 1.f);
+            v1 = projectionToWorld * Float4(-1.f, yAtBottom, 0.f, 1.f);
+            v2 = projectionToWorld * Float4( 1.f, yAtTop,    0.f, 1.f);
+            v3 = projectionToWorld * Float4( 1.f, yAtBottom, 0.f, 1.f);
+        }
 
         Float4 v4 = projectionToWorld * Float4(-1.f, yAtTop,    1.f, 1.f);
         Float4 v5 = projectionToWorld * Float4(-1.f, yAtBottom, 1.f, 1.f);
@@ -67,6 +80,8 @@ namespace XLEMath
         frustumCorners[6] = Truncate(v6) / v6[3];
         frustumCorners[7] = Truncate(v7) / v7[3];
     }
+    
+#if defined(HAS_SSE_INSTRUCTIONS)
 
     static inline void TestAABB_SSE_TransCorner(
         __m128 corner0, __m128 corner1, 
@@ -319,13 +334,15 @@ namespace XLEMath
         if (orUpperLowerResult[0])  { return AABBIntersection::Boundary; }
         return AABBIntersection::Within;
     }
+    
+#endif
 
     static inline Float4 XYZProj(const Float4x4& localToProjection, const Float3 input)
     {
         return localToProjection * Expand(input, 1.f);
     }
 
-    static AABBIntersection::Enum TestAABB_Basic(const Float4x4& localToProjection, const Float3& mins, const Float3& maxs)
+    static AABBIntersection::Enum TestAABB_Basic(const Float4x4& localToProjection, const Float3& mins, const Float3& maxs, ClipSpaceType clipSpaceType)
     {
             //  for the box to be culled, all points must be outside of the same bounding box
             //  plane... We can do this in clip space (assuming we can do a fast position transform on
@@ -361,15 +378,27 @@ namespace XLEMath
             rightAnd    &= (projectedCorners[c][0] >  projectedCorners[c][3]);
             topAnd      &= (projectedCorners[c][1] < -projectedCorners[c][3]);
             bottomAnd   &= (projectedCorners[c][1] >  projectedCorners[c][3]);
-            nearAnd     &= (projectedCorners[c][2] <  0.f);
             farAnd      &= (projectedCorners[c][2] >  projectedCorners[c][3]);
 
             leftOr      |= (projectedCorners[c][0] < -projectedCorners[c][3]);
             rightOr     |= (projectedCorners[c][0] >  projectedCorners[c][3]);
             topOr       |= (projectedCorners[c][1] < -projectedCorners[c][3]);
             bottomOr    |= (projectedCorners[c][1] >  projectedCorners[c][3]);
-            nearOr      |= (projectedCorners[c][2] <  0.f);
             farOr       |= (projectedCorners[c][2] >  projectedCorners[c][3]);
+        }
+        
+        if (clipSpaceType == ClipSpaceType::Positive) {
+            for (unsigned c=0; c<8; ++c) {
+                nearOr      |= (projectedCorners[c][2] < 0.f);
+                nearAnd     &= (projectedCorners[c][2] < 0.f);
+            }
+        } else if (clipSpaceType == ClipSpaceType::StraddlingZero) {
+            for (unsigned c=0; c<8; ++c) {
+                nearOr      |= (projectedCorners[c][2] < -projectedCorners[c][3]);
+                nearAnd     &= (projectedCorners[c][2] < -projectedCorners[c][3]);
+            }
+        } else {
+            assert(0);  // unsupported clip space type
         }
         
         if (leftAnd | rightAnd | topAnd | bottomAnd | nearAnd | farAnd) {
@@ -383,16 +412,23 @@ namespace XLEMath
 
     AABBIntersection::Enum TestAABB(
         const Float4x4& localToProjection, 
-        const Float3& mins, const Float3& maxs)
+        const Float3& mins, const Float3& maxs,
+        ClipSpaceType clipSpaceType)
     {
-        return TestAABB_Basic(localToProjection, mins, maxs);
+        return TestAABB_Basic(localToProjection, mins, maxs, clipSpaceType);
     }
 
     AABBIntersection::Enum TestAABB_Aligned(
         const Float4x4& localToProjection, 
-        const Float3& mins, const Float3& maxs)
+        const Float3& mins, const Float3& maxs,
+        ClipSpaceType clipSpaceType)
     {
+#if defined(HAS_SSE_INSTRUCTIONS)
+        assert(clipSpaceType == ClipSpaceType::Positive);
         return TestAABB_SSE(AsFloatArray(localToProjection), mins, maxs);
+#else
+        return TestAABB(localToProjection, mins, maxs, clipSpaceType);
+#endif
     }
 
     Float4 ExtractMinimalProjection(const Float4x4& projectionMatrix)
@@ -416,7 +452,7 @@ namespace XLEMath
         float verticalFOV, float aspectRatio,
         float nearClipPlane, float farClipPlane,
         GeometricCoordinateSpace::Enum coordinateSpace,
-        ClipSpaceType::Enum clipSpaceType )
+        ClipSpaceType clipSpaceType )
     {
 
             //
@@ -475,7 +511,7 @@ namespace XLEMath
     Float4x4 PerspectiveProjection(
         float l, float t, float r, float b,
         float nearClipPlane, float farClipPlane,
-        ClipSpaceType::Enum clipSpaceType )
+        ClipSpaceType clipSpaceType )
     {
         const float n = nearClipPlane;
         const float f = farClipPlane;
@@ -526,7 +562,7 @@ namespace XLEMath
         float l, float t, float r, float b,
         float nearClipPlane, float farClipPlane,
         GeometricCoordinateSpace::Enum coordinateSpace,
-        ClipSpaceType::Enum clipSpaceType)
+        ClipSpaceType clipSpaceType)
     {
         const float n = nearClipPlane;
         const float f = farClipPlane;
@@ -558,7 +594,7 @@ namespace XLEMath
     Float4x4 OrthogonalProjection(
         float l, float t, float r, float b,
         float nearClipPlane, float farClipPlane,
-        ClipSpaceType::Enum clipSpaceType)
+        ClipSpaceType clipSpaceType)
     {
         return OrthogonalProjection(
             l, t, r, b, nearClipPlane, farClipPlane,
@@ -566,7 +602,7 @@ namespace XLEMath
     }
 
     std::pair<float, float> CalculateNearAndFarPlane(
-        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType)
+        const Float4& minimalProjection, ClipSpaceType clipSpaceType)
     {
             // Given a "minimal projection", figure out the near and far plane
             // that was used to create this projection matrix (assuming it was a 
@@ -606,7 +642,7 @@ namespace XLEMath
     }
 
     std::pair<float, float> CalculateFov(
-        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType)
+        const Float4& minimalProjection, ClipSpaceType clipSpaceType)
     {
         // calculate the vertical field of view and aspect ration from the given
         // standard projection matrix;
@@ -625,7 +661,7 @@ namespace XLEMath
     }
 
     std::pair<float, float> CalculateNearAndFarPlane_Ortho(
-        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType)
+        const Float4& minimalProjection, ClipSpaceType clipSpaceType)
     {
             // For ClipSpaceType::Positive:
             //      miniProj[2] = A = -1 / (f-n)
@@ -643,7 +679,7 @@ namespace XLEMath
     }
 
     Float2 CalculateDepthProjRatio_Ortho(
-        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType)
+        const Float4& minimalProjection, ClipSpaceType clipSpaceType)
     {
         auto nearAndFar = CalculateNearAndFarPlane_Ortho(minimalProjection, clipSpaceType);
         return Float2(    1.f / (nearAndFar.second - nearAndFar.first),

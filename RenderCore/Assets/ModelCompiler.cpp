@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ModelCompiler.h"
-#include "CompilationThread.h"
 #include "../../ColladaConversion/DLLInterface.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/CompilerHelper.h"
@@ -14,6 +13,7 @@
 #include "../../Assets/NascentChunkArray.h"
 #include "../../Assets/CompilerLibrary.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/CompilationThread.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Threading/LockFree.h"
@@ -77,10 +77,10 @@ namespace RenderCore { namespace Assets
 		::Assets::DirectorySearchRules		_librarySearchRules;
 
         Threading::Mutex					_threadLock;   // (used while initialising _thread for the first time)
-        std::unique_ptr<CompilationThread>	_thread;
+        std::unique_ptr<::Assets::CompilationThread>	_thread;
 
 		void DiscoverLibraries();
-		void PerformCompile(QueuedCompileOperation& op);
+		void PerformCompile(::Assets::QueuedCompileOperation& op);
 
 		Pimpl() : _discoveryDone(false) {}
 		Pimpl(const Pimpl&) = delete;
@@ -390,7 +390,7 @@ namespace RenderCore { namespace Assets
             //
             // However, with the new implementation, we could use one of the global thread pools
             // and it should be ok to queue up multiple compilations at the same time.
-        auto backgroundOp = std::make_shared<QueuedCompileOperation>();
+        auto backgroundOp = std::make_shared<::Assets::QueuedCompileOperation>();
         backgroundOp->SetInitializer(_requestName.c_str());
         XlCopyString(backgroundOp->_initializer0, _requestName);
         MakeIntermediateName(backgroundOp->GetLocator()._sourceID0, dimof(backgroundOp->GetLocator()._sourceID0));
@@ -404,8 +404,8 @@ namespace RenderCore { namespace Assets
             ScopedLock(c->_pimpl->_threadLock);
             if (!c->_pimpl->_thread) {
                 auto* p = c->_pimpl.get();
-                c->_pimpl->_thread = std::make_unique<CompilationThread>(
-                    [p](QueuedCompileOperation& op) { p->PerformCompile(op); });
+                c->_pimpl->_thread = std::make_unique<::Assets::CompilationThread>(
+                    [p](::Assets::QueuedCompileOperation& op) { p->PerformCompile(op); });
             }
         }
         c->_pimpl->_thread->Push(backgroundOp);
@@ -464,7 +464,7 @@ namespace RenderCore { namespace Assets
 	}
     ModelCompiler::~ModelCompiler() {}
 
-	void ModelCompiler::Pimpl::PerformCompile(QueuedCompileOperation& op)
+	void ModelCompiler::Pimpl::PerformCompile(::Assets::QueuedCompileOperation& op)
 	{
 		assert(op._compilerIndex < _compilers.size());
 		_compilers[op._compilerIndex].PerformCompile(op._typeCode, op._initializer0, op, *op._destinationStore);

@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdlib.h>
+#include <limits>
 
 #if OS_OSX
     #include <xlocale.h>
@@ -261,10 +262,12 @@ void XlCopyNString(char* dst, size_t count, const char* src, size_t length)
 }
 
 #pragma warning(disable:4706)       // warning C4706: assignment within conditional expression
-void XlCopySafeUtf(utf8* dst, size_t size, const utf8* src)
+void XlCopySafeUtf(utf8* dst, size_t size_, const utf8* src)
 {
-    if (!size)
+    if (!size_)
         return;
+    
+    ptrdiff_t size = size_;
 
     --size; // reserve null
 
@@ -288,10 +291,12 @@ void XlCopySafeUtf(utf8* dst, size_t size, const utf8* src)
     *dst = 0;
 }
 
-void XlCopySafeUtfN(utf8* dst, size_t size, const utf8* src, const uint32 numSeq)
+void XlCopySafeUtfN(utf8* dst, size_t size_, const utf8* src, const uint32 numSeq)
 {
-    if (!size)
+    if (!size_)
         return;
+    
+    ptrdiff_t size = size_;
 
     --size; // reserve null
 
@@ -1697,7 +1702,7 @@ double XlAtoF64(const char* str, const char** endptr)
 	double result = 0.0;
 	int exponent = 0;
 	while (XlIsDigit(*s)) {
-		if (result > DBL_MAX * 0.1)
+        if (result > std::numeric_limits<double>::max() * 0.1)
 			++exponent;
 		else
 			result = (result * 10.0) + (*s - '0');
@@ -1707,7 +1712,7 @@ double XlAtoF64(const char* str, const char** endptr)
 		++s;
 		while (XlIsDigit(*s)) {
 			--exponent;
-			if (result > DBL_MAX * 0.1)
+			if (result > std::numeric_limits<double>::max() * 0.1)
 				++exponent;
 			else
 				result = (result * 10.0) + (*s - '0');

@@ -189,33 +189,33 @@ template<typename BufferType>
     void StreamBuf<BufferType>::Write(const void* p, size_type len)
 {
     assert((len % sizeof(typename BufferType::char_type)) == 0);
-    _buffer.sputn((const typename BufferType::char_type*)p, len / sizeof(BufferType::char_type));
+    _buffer.sputn((const typename BufferType::char_type*)p, len / sizeof(typename BufferType::char_type));
 }
 
 template<typename BufferType>
     void StreamBuf<BufferType>::WriteChar(utf8 ch)
 {
-    BufferType::char_type buffer[4];
+    typename BufferType::char_type buffer[4];
     auto count = Conversion::Convert(buffer, ch);
-    if (count < 0) _buffer.sputc((BufferType::char_type)"?");
+    if (count < 0) _buffer.sputc((typename BufferType::char_type)'?');
     for (int c=0; c<count; ++c) _buffer.sputc(buffer[c]);
 }
 
 template<typename BufferType>
     void StreamBuf<BufferType>::WriteChar(ucs2 ch)
 {
-    BufferType::char_type buffer[4];
+    typename BufferType::char_type buffer[4];
     auto count = Conversion::Convert(buffer, ch);
-    if (count < 0) _buffer.sputc((BufferType::char_type)"?");
+    if (count < 0) _buffer.sputc((typename BufferType::char_type)'?');
     for (int c=0; c<count; ++c) _buffer.sputc(buffer[c]);
 }
 
 template<typename BufferType>
     void StreamBuf<BufferType>::WriteChar(ucs4 ch)
 {
-    BufferType::char_type buffer[4];
+    typename BufferType::char_type buffer[4];
     auto count = Conversion::Convert(buffer, ch);
-    if (count < 0) _buffer.sputc((BufferType::char_type)"?");
+    if (count < 0) _buffer.sputc((typename BufferType::char_type)'?');
     for (int c=0; c<count; ++c) _buffer.sputc(buffer[c]);
 }
 

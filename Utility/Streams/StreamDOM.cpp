@@ -15,7 +15,7 @@ namespace Utility
     template <typename Formatter>
         unsigned Document<Formatter>::ParseElement(Formatter& formatter)
     {
-        Formatter::InteriorSection section;
+        typename Formatter::InteriorSection section;
         if (!formatter.TryBeginElement(section))
             return ~0u;
 
@@ -43,8 +43,8 @@ namespace Utility
                 }
                 lastChild = newElement;
             } else if (next == Formatter::Blob::AttributeName) {
-                Formatter::InteriorSection name;
-                Formatter::InteriorSection value;
+                typename Formatter::InteriorSection name;
+                typename Formatter::InteriorSection value;
                 if (!formatter.TryAttribute(name, value))
                     Throw(FormatException(
                         "Error while reading attribute in StreamDOM", formatter.GetLocation()));
@@ -149,7 +149,7 @@ namespace Utility
             switch (formatter.PeekNext()) {
             case Formatter::Blob::AttributeName:
                 {
-                    Formatter::InteriorSection name, value;
+                    typename Formatter::InteriorSection name, value;
                     if (formatter.TryAttribute(name, value)) {
                         _attributes.push_back(AttributeDesc{name, value, ~0u});
                         if (lastAttrib != ~0u) {

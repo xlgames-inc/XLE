@@ -100,6 +100,7 @@
     <ClInclude Include="..\BlockSerializer.h" />
     <ClInclude Include="..\ChunkFile.h" />
     <ClInclude Include="..\ChunkFileContainer.h" />
+    <ClInclude Include="..\CompilationThread.h" />
     <ClInclude Include="..\CompileAndAsyncManager.h" />
     <ClInclude Include="..\CompilerHelper.h" />
     <ClInclude Include="..\CompilerLibrary.h" />
@@ -124,6 +125,7 @@
     <ClCompile Include="..\BlockSerializer.cpp" />
     <ClCompile Include="..\ChunkFile.cpp" />
     <ClCompile Include="..\ChunkFileContainer.cpp" />
+    <ClCompile Include="..\CompilationThread.cpp" />
     <ClCompile Include="..\CompileAndAsyncManager.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
     <ClCompile Include="..\DeferredConstruction.cpp" />

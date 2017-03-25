@@ -71,25 +71,6 @@ namespace RenderCore { namespace Assets
     }
     GeoInputAssembly::~GeoInputAssembly() {}
 
-    VertexElement::VertexElement()
-    {
-        _nativeFormat = Format(0); _alignedByteOffset = 0; _semanticIndex = 0;
-        XlZeroMemory(_semanticName);
-    }
-
-    VertexElement::VertexElement(const VertexElement& ele)
-    {
-        _nativeFormat = ele._nativeFormat; _alignedByteOffset = ele._alignedByteOffset; _semanticIndex = ele._semanticIndex;
-        XlCopyMemory(_semanticName, ele._semanticName, sizeof(_semanticName));
-    }
-
-    VertexElement& VertexElement::operator=(const VertexElement& ele)
-    {
-        _nativeFormat = ele._nativeFormat; _alignedByteOffset = ele._alignedByteOffset; _semanticIndex = ele._semanticIndex;
-        XlCopyMemory(_semanticName, ele._semanticName, sizeof(_semanticName));
-        return *this;
-    }
-
     RawGeometry::RawGeometry() {}
     RawGeometry::RawGeometry(RawGeometry&& geo) never_throws
     : _vb(std::move(geo._vb))

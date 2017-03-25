@@ -68,11 +68,11 @@
   <PropertyGroup />
   <ItemGroup>
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
-    <ClCompile Include="..\Assets\CompilationThread.cpp" />
     <ClCompile Include="..\Assets\ModelCache.cpp" />
     <ClCompile Include="..\Assets\ModelScaffold.cpp" />
     <ClCompile Include="..\Assets\ModelUtils.cpp" />
     <ClCompile Include="..\Assets\RawAnimationCurve.cpp" />
+    <ClCompile Include="..\Assets\RawMaterial.cpp" />
     <ClCompile Include="..\Assets\Services.cpp" />
     <ClCompile Include="..\Assets\ModelCompiler.cpp" />
     <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
@@ -99,12 +99,12 @@
   <ItemGroup>
     <ClInclude Include="..\Assets\AnimationScaffoldInternal.h" />
     <ClInclude Include="..\Assets\AssetUtils.h" />
-    <ClInclude Include="..\Assets\CompilationThread.h" />
     <ClInclude Include="..\Assets\ModelCache.h" />
     <ClInclude Include="..\Assets\ModelImmutableData.h" />
     <ClInclude Include="..\Assets\ModelScaffoldInternal.h" />
     <ClInclude Include="..\Assets\ModelUtils.h" />
     <ClInclude Include="..\Assets\RawAnimationCurve.h" />
+    <ClInclude Include="..\Assets\RawMaterial.h" />
     <ClInclude Include="..\Assets\Services.h" />
     <ClInclude Include="..\Assets\ModelCompiler.h" />
     <ClInclude Include="..\Assets\DeferredShaderResource.h" />

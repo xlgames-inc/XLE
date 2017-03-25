@@ -822,7 +822,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 
 		auto basePath = iBasePath.Simplify();
 
-        using SectionType = SplitPath<CharType>::SectionType;
+        using SectionType = typename SplitPath<CharType>::SectionType;
 
 		unsigned basePrefix = 0, destinationPrefix = 0;
 		unsigned baseCount = basePath.GetSectionCount();

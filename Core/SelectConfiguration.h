@@ -10,14 +10,23 @@
 
 #define CLIBRARIES_MSVC     1
 #define CLIBRARIES_GCC      2
+#define CLIBRARIES_LIBCPP   3
 
 #define STL_MSVC            1
 #define STL_GCC             2
+#define STL_LIBCPP          3
 
 #define COMPILER_TYPE_MSVC       1
 #define COMPILER_TYPE_GCC        2
+#define COMPILER_TYPE_CLANG      3
 
-#if defined(__GNUC__)
+#if defined(__clang__)
+
+    #define CLIBRARIES_ACTIVE   CLIBRARIES_LIBCPP
+    #define STL_ACTIVE          STL_LIBCPP
+    #define COMPILER_ACTIVE     COMPILER_TYPE_CLANG
+
+#elif defined(__GNUC__)
 
     #define CLIBRARIES_ACTIVE   CLIBRARIES_GCC
     #define STL_ACTIVE          STL_GCC
@@ -37,7 +46,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
+#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__) || defined(__LP64__)
     #define TARGET_64BIT 1
 #else
     #define TARGET_64BIT 0
@@ -49,7 +58,7 @@
     #define SIZEOF_PTR 4
 #endif
 
-#if COMPILER_ACTIVE == COMPILER_TYPE_GCC
+#if (COMPILER_ACTIVE == COMPILER_TYPE_GCC) || (COMPILER_ACTIVE == COMPILER_TYPE_CLANG)
 
     #if defined(__GXX_RTTI)
         #define FEATURE_RTTI    __GXX_RTTI

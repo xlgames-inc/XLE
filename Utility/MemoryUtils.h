@@ -51,11 +51,11 @@ namespace Utility
 
         inline void* XlMemAlign(size_t size, size_t alignment)
         {
-            // void* result = nullptr;
-            // int errorNumber = posix_memalign(&result, size, alignment);
-            // assert(!errorNumber);
-            // return result;
-            return memalign(size, alignment);
+            void* result = nullptr;
+            int errorNumber = posix_memalign(&result, size, alignment);
+            assert(!errorNumber);
+            return result;
+            // return memalign(size, alignment);
         }
         
         inline void XlMemAlignFree(void* data)

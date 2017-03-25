@@ -133,8 +133,8 @@ namespace Utility
     {
         const Marker sentinel = Marker(~0x0);
         Marker bestSize = sentinel;
-        Marker internalSize = ToInternalSize(AlignSize(size));
-        assert(ToExternalSize(internalSize)>=size);
+        Marker internalSize = MarkerHeap<Marker>::ToInternalSize(MarkerHeap<Marker>::AlignSize(size));
+        assert(MarkerHeap<Marker>::ToExternalSize(internalSize)>=size);
 
         if ((_largestFreeBlockValid && _largestFreeBlock<internalSize) || !_markers.size()) {
             return ~unsigned(0x0);  // threading can cause false return here -- but that shouldn't be a major issue
@@ -147,8 +147,8 @@ namespace Utility
         Marker largestFreeBlock[2] = {0,0};
         Marker largestFreeBlockPosition = 0;
 
-        std::vector<Marker>::iterator best = _markers.end();
-        for (std::vector<Marker>::iterator i=_markers.begin(); i<(_markers.end()-1);i+=2) {
+        typename std::vector<Marker>::iterator best = _markers.end();
+        for (auto i=_markers.begin(); i<(_markers.end()-1);i+=2) {
             Marker blockSize = *(i+1) - *i;
             if (blockSize >= internalSize && blockSize < bestSize) {
                 bestSize = blockSize;
@@ -182,7 +182,7 @@ namespace Utility
         if (bestSize == internalSize) {
                 //  Got an exact match. In this case we remove 2 markers, because the entire span has become 
                 //  allocated, and should just merge into the spans around it.
-            unsigned result = ToExternalSize(*best);
+            unsigned result = MarkerHeap<Marker>::ToExternalSize(*best);
             if (best == _markers.begin()) {
                 if (_markers.size()==2) {   // special case for unallocated heap to fully allocated heap (0,0) -> (0,0,size)
                     _markers.insert(_markers.begin(), 0);
@@ -202,7 +202,7 @@ namespace Utility
             return result;
         } else {
                 //  We'll allocate from the start of the span space. 
-            unsigned result = ToExternalSize(*best);
+            unsigned result = MarkerHeap<Marker>::ToExternalSize(*best);
             if (best == _markers.begin()) {
                     //      We're allocating from the start of the heap. But we can't move the marker
                     //      at the start of the heap, so we have to insert 2 more...
@@ -233,14 +233,14 @@ namespace Utility
         bool        SpanningHeap<Marker>::BlockAdjust_Internal(unsigned ptr, unsigned size, bool allocateOperation)
     {
         ScopedLock(_lock);
-        Marker internalOffset = ToInternalSize(ptr);
-        Marker internalSize = ToInternalSize(AlignSize(size));
+        Marker internalOffset = MarkerHeap<Marker>::ToInternalSize(ptr);
+        Marker internalSize = MarkerHeap<Marker>::ToInternalSize(MarkerHeap<Marker>::AlignSize(size));
         if (_markers.size()==2) {assert(_markers[0]==0 && _markers[1]!=0);}
 
         _largestFreeBlockValid = false; // have to recalculate largest free after deallocate. We could update based on local changes, but...
 
             // find the span in which this belongs, and mark the space deallocated
-        std::vector<Marker>::iterator i = _markers.begin()+(allocateOperation?0:1);
+        typename std::vector<Marker>::iterator i = _markers.begin()+(allocateOperation?0:1);
         for (; (i+1)<_markers.end();i+=2) {
             Marker start = *i;
             Marker end = *(i+1);
@@ -300,7 +300,7 @@ namespace Utility
     {
         Marker largestBlock = 0;
         assert(!_markers.empty());
-        std::vector<Marker>::const_iterator i = _markers.begin();
+        typename std::vector<Marker>::const_iterator i = _markers.begin();
         for (; i<(_markers.end()-1);i+=2) {
             Marker start = *i;
             Marker end = *(i+1);
@@ -314,13 +314,13 @@ namespace Utility
     {
         ScopedLock(_lock);
         unsigned result = 0;
-        std::vector<Marker>::const_iterator i = _markers.begin();
+        auto i = _markers.begin();
         for (; (i+1)<_markers.end();i+=2) {
             Marker start = *i;
             Marker end = *(i+1);
             result += end-start;
         }
-        return ToExternalSize(Marker(result));
+        return MarkerHeap<Marker>::ToExternalSize(Marker(result));
     }
 
     template <typename Marker>
@@ -331,7 +331,7 @@ namespace Utility
             _largestFreeBlock = CalculateLargestFreeBlock_Internal();
             _largestFreeBlockValid = true;
         }
-        return ToExternalSize(_largestFreeBlock);
+        return MarkerHeap<Marker>::ToExternalSize(_largestFreeBlock);
     }
 
     template <typename Marker>
@@ -341,13 +341,13 @@ namespace Utility
         if (_markers.empty()) return 0;
 
         unsigned result = 0;
-        std::vector<Marker>::const_iterator i = _markers.begin()+1;
+        typename std::vector<Marker>::const_iterator i = _markers.begin()+1;
         for (; i<(_markers.end()-1);i+=2) {
             Marker start = *i;
             Marker end = *(i+1);
             result += end-start;
         }
-        return ToExternalSize(Marker(result));
+        return MarkerHeap<Marker>::ToExternalSize(Marker(result));
     }
 
     template <typename Marker>
@@ -357,7 +357,7 @@ namespace Utility
         if (_markers.empty()) {
             return 0;
         }
-        return ToExternalSize(_markers[_markers.size()-1]);
+        return MarkerHeap<Marker>::ToExternalSize(_markers[_markers.size()-1]);
     }
 
     template <typename Marker>
@@ -367,7 +367,7 @@ namespace Utility
         if (!_markers.size()) {
             _markers.push_back(0);
             _markers.push_back(0);
-            _markers.push_back(ToInternalSize(AlignSize(size)));
+            _markers.push_back(MarkerHeap<Marker>::ToInternalSize(MarkerHeap<Marker>::AlignSize(size)));
             return 0;
         }
 
@@ -375,7 +375,7 @@ namespace Utility
 
         const bool endsInAllocatedBlock = _markers.size()&1;  // odd markers == ends in allocated block
         auto finalMarker = _markers[_markers.size()-1];
-        auto newBlockInternalSize = ToInternalSize(AlignSize(size));
+        auto newBlockInternalSize = MarkerHeap<Marker>::ToInternalSize(MarkerHeap<Marker>::AlignSize(size));
         assert((unsigned(finalMarker) + unsigned(newBlockInternalSize)) <= std::numeric_limits<Marker>::max());
         auto newEnd = Marker(finalMarker + newBlockInternalSize);
         if (endsInAllocatedBlock) {
@@ -384,7 +384,7 @@ namespace Utility
             _markers.push_back(newEnd);               // add a final allocated block
         }
 
-        return ToExternalSize(finalMarker);
+        return MarkerHeap<Marker>::ToExternalSize(finalMarker);
     }
     
     template <typename Marker>
@@ -407,9 +407,9 @@ namespace Utility
         ScopedLock(_lock);
         std::vector<unsigned> result;
         result.reserve(_markers.size());
-        std::vector<Marker>::const_iterator i = _markers.begin();
+        typename std::vector<Marker>::const_iterator i = _markers.begin();
         for (; i!=_markers.end();++i) {
-            result.push_back(ToExternalSize(*i));
+            result.push_back(MarkerHeap<Marker>::ToExternalSize(*i));
         }
         #if defined(XL_DEBUG)
             assert(!_largestFreeBlockValid || _largestFreeBlock==CalculateLargestFreeBlock_Internal());
@@ -447,7 +447,7 @@ namespace Utility
 
         std::vector<std::pair<Marker, Marker> > allocatedBlocks;
         allocatedBlocks.reserve(_markers.size()/2);
-        std::vector<Marker>::const_iterator i = _markers.begin()+1;
+        typename std::vector<Marker>::const_iterator i = _markers.begin()+1;
         for (; (i+1)<_markers.end();i+=2) {
             Marker start = *i;
             Marker end   = *(i+1);
@@ -472,14 +472,14 @@ namespace Utility
         result.reserve(allocatedBlocks.size());
 
         Marker compressedPosition = 0;
-        for (std::vector<std::pair<Marker, Marker> >::const_iterator i=allocatedBlocks.begin(); i!=allocatedBlocks.end(); ++i) {
+        for (auto i=allocatedBlocks.begin(); i!=allocatedBlocks.end(); ++i) {
             assert(i->first < i->second);
             DefragStep step;
-            step._sourceStart    = ToExternalSize(i->first);
-            step._sourceEnd      = ToExternalSize(i->second);
-            step._destination    = ToExternalSize(compressedPosition);
+            step._sourceStart    = MarkerHeap<Marker>::ToExternalSize(i->first);
+            step._sourceEnd      = MarkerHeap<Marker>::ToExternalSize(i->second);
+            step._destination    = MarkerHeap<Marker>::ToExternalSize(compressedPosition);
             assert(step._destination < 512*1024);
-            assert((step._destination + step._sourceEnd - step._sourceStart) <= ToExternalSize(_markers[_markers.size()-1]));
+            assert((step._destination + step._sourceEnd - step._sourceStart) <= MarkerHeap<Marker>::ToExternalSize(_markers[_markers.size()-1]));
             assert(step._sourceStart < step._sourceEnd);
             compressedPosition += i->second - i->first;
             result.push_back(step);
@@ -516,12 +516,12 @@ namespace Utility
             std::vector<DefragStep> defragByDestination(defrag);
             std::sort(defragByDestination.begin(), defragByDestination.end(), SortDefragStep_Destination);
 
-            Marker currentAllocatedBlockBegin    = ToInternalSize(defragByDestination.begin()->_destination);
-            Marker currentAllocatedBlockEnd      = ToInternalSize(defragByDestination.begin()->_destination + AlignSize(defragByDestination.begin()->_sourceEnd-defragByDestination.begin()->_sourceStart));
+            Marker currentAllocatedBlockBegin    = MarkerHeap<Marker>::ToInternalSize(defragByDestination.begin()->_destination);
+            Marker currentAllocatedBlockEnd      = MarkerHeap<Marker>::ToInternalSize(defragByDestination.begin()->_destination + MarkerHeap<Marker>::AlignSize(defragByDestination.begin()->_sourceEnd-defragByDestination.begin()->_sourceStart));
 
             for (std::vector<DefragStep>::const_iterator i=defragByDestination.begin()+1; i!=defragByDestination.end(); ++i) {
-                Marker blockBegin    = ToInternalSize(i->_destination);
-                Marker blockEnd      = ToInternalSize(i->_destination+AlignSize(i->_sourceEnd-i->_sourceStart));
+                Marker blockBegin    = MarkerHeap<Marker>::ToInternalSize(i->_destination);
+                Marker blockEnd      = MarkerHeap<Marker>::ToInternalSize(i->_destination+MarkerHeap<Marker>::AlignSize(i->_sourceEnd-i->_sourceStart));
 
                 if (blockBegin == currentAllocatedBlockEnd) {
                     currentAllocatedBlockEnd = blockEnd;
@@ -569,7 +569,7 @@ namespace Utility
     {
         _markers.reserve(64);
         _markers.push_back(0);
-        _markers.push_back(ToInternalSize(AlignSize(size)));
+        _markers.push_back(MarkerHeap<Marker>::ToInternalSize(MarkerHeap<Marker>::AlignSize(size)));
         _largestFreeBlockValid = false;
         _largestFreeBlock = 0;
     }
@@ -634,7 +634,7 @@ namespace Utility
         SpanningHeap<Marker>::~SpanningHeap()
     {}
 
-    template SpanningHeap<uint16>;
-    template SpanningHeap<uint32>;
+    template class SpanningHeap<uint16>;
+    template class SpanningHeap<uint32>;
 }
 

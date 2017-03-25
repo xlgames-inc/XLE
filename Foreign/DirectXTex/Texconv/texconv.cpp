@@ -288,7 +288,7 @@ SValue g_pSaveFileTypes[] =     // valid formats to write to
     { L"JPG",           WIC_CODEC_JPEG },
     { L"JPEG",          WIC_CODEC_JPEG },
     { L"PNG",           WIC_CODEC_PNG  },
-    { L"DDS",           CODEC_DDS      },
+    { L"dds",           CODEC_DDS      },
     { L"TGA",           CODEC_TGA      },
     { L"TIF",           WIC_CODEC_TIFF },
     { L"TIFF",          WIC_CODEC_TIFF },

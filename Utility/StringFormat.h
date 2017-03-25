@@ -13,6 +13,8 @@
 #include "MemoryUtils.h"
 #include "StringUtils.h"        // just for StringSection
 #include <string>
+#include <streambuf>
+#include <ostream>
 #include <stdarg.h>
 
 namespace Utility
@@ -68,8 +70,8 @@ namespace Utility
                 std::fill_n(_buffer, dimof(_buffer), 0);
             }
 
-            const void* begin() const { return pbase(); }
-            const void* end() const { return pptr(); }
+            const void* begin() const { return this->pbase(); }
+            const void* end() const { return this->pptr(); }
         };
 
 		template<typename CharType> struct DemoteCharType { using Value = CharType; };
@@ -167,11 +169,11 @@ namespace Utility
 
             StreamBufInPlace& operator=(StreamBufInPlace&& moveFrom)
             {
-                std::streambuf::operator=(moveFrom);
+                std::basic_streambuf<CharType>::operator=(moveFrom);
                 return *this;
             }
 
-            uint8* Begin() { return (uint8*)pbase(); }
+            uint8* Begin() { return (uint8*)this->pbase(); }
         };
 
         /// <summary>Dynamic string formatting utility<summary>

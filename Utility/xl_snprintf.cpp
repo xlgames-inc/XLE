@@ -784,10 +784,10 @@ repeat:
         qualifier = -1;
 
         if (*fmt == 'l') {
-            if (*++fmt == 'l') {
+            /*if (*++fmt == 'l') {
                 qualifier = 'll';
                 ++fmt;
-            } else {
+            } else*/ {
                 qualifier = 'l';
             }
         } else if (*fmt == 'h' ||  *fmt == 'L') {
@@ -892,13 +892,13 @@ repeat:
                 num = va_arg(args, int);
             else
                 num = va_arg(args, unsigned int);
-        }  else if (qualifier == 'll') {
+        } /*else if (qualifier == 'll') {
             uint64 num64 = va_arg(args, uint64);
             s = number64(str, num64, base, field_width, precision, flags);
             *s = '\0';
 
             continue;
-        }
+        }*/
         else if (flags & SIGN)
             num = va_arg(args, int);
         else
@@ -928,7 +928,7 @@ int xl_vsnprintf(char* buf, int count, const char* fmt, va_list& args)
 {
     int len;
     unsigned long num;
-    uint64 num64;
+    // uint64 num64;
     int i, base;
     char *s;
 
@@ -938,7 +938,7 @@ int xl_vsnprintf(char* buf, int count, const char* fmt, va_list& args)
     int precision;        // Min. # of digits for integers; max number of chars for from string
     int qualifier;        // 'h', 'l', or 'L' for integer fields
 
-    FixedMemoryOutputStream<char> stream(buf, count);
+    FixedMemoryOutputStream<char> stream(buf, (size_t)count);
 
     char numbuf[CVTBUFSIZE]; // number buffer
 
@@ -997,10 +997,10 @@ repeat:
         qualifier = -1;
 
         if (*fmt == 'l') {
-            if (*++fmt == 'l') {
+            /*if (*++fmt == 'l') {
                 qualifier = 'll';
                 ++fmt;
-            } else {
+            } else*/ {
                 qualifier = 'l';
             }
         } else if (*fmt == 'h' ||  *fmt == 'L') {
@@ -1114,13 +1114,13 @@ repeat:
                 num = va_arg(args, int);
             else
                 num = va_arg(args, unsigned int);
-        } else if (qualifier == 'll') {
+        } /*else if (qualifier == 'll') {
             num64 = va_arg(args, uint64);
             s = number64(numbuf, num64, base, field_width, precision, flags);
             *s = '\0';
             stream.Write((const utf8*)numbuf); 
             continue;
-        } else if (flags & SIGN)
+        } */else if (flags & SIGN)
             num = va_arg(args, int);
         else
             num = va_arg(args, unsigned int);

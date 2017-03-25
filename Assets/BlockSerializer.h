@@ -11,6 +11,7 @@
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/Streams/Serialization.h"
 #include <vector>
 #include <iterator>
 #include <type_traits>
@@ -52,6 +53,9 @@ namespace Serialization
         template<typename Type, typename Allocator>
             void    SerializeValue  ( const std::vector<Type, Allocator>& value );
 
+		template<typename Type>
+            void    SerializeValue  ( const SerializableVector<Type>& value );
+
         template<typename Type, typename Deletor>
             void    SerializeValue  ( const DynamicArray<Type, Deletor>& value );
 
@@ -60,6 +64,9 @@ namespace Serialization
 
         template<typename Type, typename Allocator>
             void    SerializeRaw    ( const std::vector<Type, Allocator>& value );
+
+		template<typename Type>
+            void    SerializeRaw    ( const SerializableVector<Type>& value );
 
         template<typename Type>
             void    SerializeRaw    ( Type      type );
@@ -135,6 +142,15 @@ namespace Serialization
             Serialization::NascentBlockSerializer::SpecialBuffer::Vector);
     }
 
+	template<typename Type>
+        void    NascentBlockSerializer::SerializeRaw(const SerializableVector<Type>& vector)
+    {
+            // serialize the vector using just a raw copy of the contents
+        SerializeRawSubBlock(
+            AsPointer(vector.cbegin()), AsPointer(vector.cend()),
+            Serialization::NascentBlockSerializer::SpecialBuffer::Vector);
+    }
+
     template<typename Type>
         void    NascentBlockSerializer::SerializeRaw(Type      type)
     {
@@ -143,6 +159,12 @@ namespace Serialization
 
     template<typename Type, typename Allocator>
         void    NascentBlockSerializer::SerializeValue  ( const std::vector<Type, Allocator>& value )
+    {
+        SerializeSubBlock(AsPointer(value.cbegin()), AsPointer(value.cend()), SpecialBuffer::Vector);
+    }
+
+	template<typename Type>
+        void    NascentBlockSerializer::SerializeValue  ( const SerializableVector<Type>& value )
     {
         SerializeSubBlock(AsPointer(value.cbegin()), AsPointer(value.cend()), SpecialBuffer::Vector);
     }
@@ -189,6 +211,10 @@ template<typename Type, typename std::enable_if<Serialization::Internal::HasSeri
 template <typename Type, typename std::enable_if<Serialization::Internal::IsValueType<Type>::Result>::type* = nullptr>
     void Serialize(Serialization::NascentBlockSerializer& serializer, const Type& value)
         { serializer.SerializeValue(value); }
+
+template <typename Type, typename std::enable_if<std::is_same<const bool, decltype(Type::SerializeRaw)>::value && Type::SerializeRaw>::type* = nullptr>
+	void Serialize(Serialization::NascentBlockSerializer& serializer, const Type& value)
+		{ serializer.SerializeRaw(value); }
 
 template<typename TypeLHS, typename TypeRHS>
     void Serialize(Serialization::NascentBlockSerializer& serializer, const std::pair<TypeLHS, TypeRHS>& value)

@@ -38,6 +38,7 @@ namespace TextureTransform
         return std::move(result);
     }
 
+#if 0
     static std::string GetEnv(const char varName[])
     {
         #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
@@ -53,6 +54,7 @@ namespace TextureTransform
             return std::getenv(varName);
         #endif
     }
+#endif
 
     int Execute(StringSection<char> cmdLine)
     {
@@ -81,14 +83,14 @@ namespace TextureTransform
             return -1;
         }
 
-        auto xleDir = GetEnv("XLE_DIR");
+        /*auto xleDir = GetEnv("XLE_DIR");
         if (xleDir.empty()) {
             LogAlwaysError << "XLE_DIR environment variable isn't set. Expecting this to be set to root XLE directory";
             LogAlwaysError << "This program loads shaders from the $(XLE_DIR)\\Working\\Game\\xleres folder";
             return -1;
-        }
-
-		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(MakeStringSection(Conversion::Convert<std::basic_string<utf8>>(xleDir + "/Working/Game/xleres"))));
+        }*/
+		const utf8* xleResDir = u("game/xleres");
+		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(MakeStringSection(xleResDir))); // Conversion::Convert<std::basic_string<utf8>>(xleDir + "/Working/Game/xleres"))));
 
             // we can now construct basic services
         auto cleanup = MakeAutoCleanup([]() { TerminateFileSystemMonitoring(); });

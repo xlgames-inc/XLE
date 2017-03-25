@@ -51,7 +51,7 @@ namespace Utility
 		template<typename Type, typename std::enable_if<std::is_lvalue_reference<Type>::value>::type* = nullptr>
 			Type DefaultWithStaticRef() 
 			{ 
-				using NoRef = std::remove_reference<Type>::type;
+				using NoRef = typename std::remove_reference<Type>::type;
 				static NoRef s_retainedDefault = Default<NoRef>();
 				return s_retainedDefault;
 			}
@@ -128,7 +128,7 @@ namespace Utility
                 -> typename std::remove_reference<typename PtrToMemberTarget<InType, PtrToMember>::Type>::type::value_type&
             {
                 auto& vec = (t.*ptrToMember);
-                std::remove_reference<decltype(vec)>::type::value_type temp;
+                typename std::remove_reference<decltype(vec)>::type::value_type temp;
                 vec.emplace_back(temp);
                 return vec[vec.size()-1];
             }
@@ -151,7 +151,7 @@ namespace Utility
                 static const auto KeyHash = Hash64("Key");
                 for (const auto&i:vec) {
                     uint64 ckey;
-                    if (props.TryGet<decltype(key)>(ckey, i, KeyHash))
+                    if (props.template TryGet<decltype(key)>(ckey, i, KeyHash))
                         if (ckey == key)
                             return &i;
                 }
@@ -212,7 +212,7 @@ namespace Utility
                 using ValueType = ValueTypeT;
                 using ObjectType = typename std::remove_reference<ObjectTypeT>::type;
                 static const bool IsArrayForm = false;
-                static const bool IsString = IsStringType<std::remove_const<std::remove_reference<ValueTypeT>::type>::type>::Result;
+                static const bool IsString = IsStringType<typename std::remove_const<typename std::remove_reference<ValueTypeT>::type>::type>::Result;
             };
 
         template<typename ObjectTypeT, typename ValueTypeT> 
@@ -221,7 +221,7 @@ namespace Utility
                 using ValueType = ValueTypeT;
                 using ObjectType = typename std::remove_reference<ObjectTypeT>::type;
                 static const bool IsArrayForm = true;
-                static const bool IsString = IsStringType<std::remove_const<std::remove_reference<ValueTypeT>::type>::type>::Result;
+                static const bool IsString = IsStringType<typename std::remove_const<typename std::remove_reference<ValueTypeT>::type>::type>::Result;
             };
 
         template<typename SetSig> struct GetterFnTraits { static const bool IsArrayForm = false; static const bool IsString = false; };
@@ -231,7 +231,7 @@ namespace Utility
                 using ValueType = ReturnTypeT;
                 using ObjectType = typename std::remove_reference<ObjectTypeT>::type;
                 static const bool IsArrayForm = false;
-                static const bool IsString = IsStringType<std::remove_const<std::remove_reference<ReturnTypeT>::type>::type>::Result;
+                static const bool IsString = IsStringType<typename std::remove_const<typename std::remove_reference<ReturnTypeT>::type>::type>::Result;
             };
 
         template<typename ObjectTypeT, typename ReturnTypeT> 
@@ -240,7 +240,7 @@ namespace Utility
                 using ValueType = ReturnTypeT;
                 using ObjectType = typename std::remove_reference<ObjectTypeT>::type;
                 static const bool IsArrayForm = true;
-                static const bool IsString = IsStringType<std::remove_const<std::remove_reference<ReturnTypeT>::type>::type>::Result;
+                static const bool IsString = IsStringType<typename std::remove_const<typename std::remove_reference<ReturnTypeT>::type>::type>::Result;
             };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -253,7 +253,7 @@ namespace Utility
             {
                 static_assert(SetterFnTraits<SetFn>::IsArrayForm == false, "Mismatch on setter array form");
                 using PassToSetter = typename std::remove_const<typename std::remove_reference<typename SetterFnTraits<SetFn>::ValueType>::type>::type;
-                using Type = SetterFnTraits<SetFn>::ObjectType;
+                using Type = typename SetterFnTraits<SetFn>::ObjectType;
 
                 char buffer[ParseBufferSize];
                 auto destType = ImpliedTyping::TypeOf<PassToSetter>();
@@ -275,7 +275,7 @@ namespace Utility
                         return false;
                 }
             
-                setFn(*(std::remove_reference<Type>::type*)obj, *(const PassToSetter*)buffer);
+                setFn(*(typename std::remove_reference<Type>::type*)obj, *(const PassToSetter*)buffer);
                 return true;
             }
 
@@ -286,9 +286,9 @@ namespace Utility
             {
                 static_assert(SetterFnTraits<SetFn>::IsArrayForm == false, "Mismatch on setter array form");
                 using PassToSetter = typename std::remove_const<typename std::remove_reference<typename SetterFnTraits<SetFn>::ValueType>::type>::type;
-                using Type = SetterFnTraits<SetFn>::ObjectType;
+                using Type = typename SetterFnTraits<SetFn>::ObjectType;
 
-                using DestCharType = PassToSetter::value_type;
+                using DestCharType = typename PassToSetter::value_type;
 				std::basic_string<DestCharType> str;
                 if (srcStringForm) {
                     str = std::basic_string<DestCharType>(
@@ -307,7 +307,7 @@ namespace Utility
             {
                 static_assert(SetterFnTraits<SetFn>::IsArrayForm == true, "Mismatch on setter array form");
                 using PassToSetter = typename std::remove_const<typename std::remove_reference<typename SetterFnTraits<SetFn>::ValueType>::type>::type;
-                using Type = SetterFnTraits<SetFn>::ObjectType;
+                using Type = typename SetterFnTraits<SetFn>::ObjectType;
 
                 char buffer[ParseBufferSize];
                 auto destType = ImpliedTyping::TypeOf<PassToSetter>();
@@ -341,9 +341,9 @@ namespace Utility
             {
                 static_assert(SetterFnTraits<SetFn>::IsArrayForm == true, "Mismatch on setter array form");
                 using PassToSetter = typename std::remove_const<typename std::remove_reference<typename SetterFnTraits<SetFn>::ValueType>::type>::type;
-                using Type = SetterFnTraits<SetFn>::ObjectType;
+                using Type = typename SetterFnTraits<SetFn>::ObjectType;
 
-                using DestCharType = PassToSetter::value_type;
+                using DestCharType = typename PassToSetter::value_type;
 				std::basic_string<DestCharType> str;
                 if (srcStringForm) {
 					str = std::basic_string<DestCharType>(

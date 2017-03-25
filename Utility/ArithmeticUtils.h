@@ -27,16 +27,16 @@ namespace Utility
     uint32      xl_ctz1(uint8 x);
     uint32      xl_clz2(uint16 x);
     uint32      xl_ctz2(uint16 x);
-    uint32      xl_ctz4(const uint32& x);
-    uint32      xl_clz4(const uint32& x);
-    uint32      xl_ctz8(const uint64& x);
-    uint32      xl_clz8(const uint64& x);
+    uint32      xl_ctz4(uint32 x);
+    uint32      xl_clz4(uint32 x);
+    uint32      xl_ctz8(uint64 x);
+    uint32      xl_clz8(uint64 x);
 
-    uint32      xl_bsr1(const uint16& x);
-    uint32      xl_bsr2(const uint16& x);
-    uint32      xl_bsr4(const uint32& x);
-    uint32      xl_bsr8(const uint64& x);
-    uint32      xl_lg(const size_t& x);
+    uint32      xl_bsr1(uint16 x);
+    uint32      xl_bsr2(uint16 x);
+    uint32      xl_bsr4(uint32 x);
+    uint32      xl_bsr8(uint64 x);
+    uint32      xl_lg(size_t x);
 
     XL_UTILITY_API void  printbits(const void* blob, int len);
     XL_UTILITY_API void  printhex32(const void* blob, int len);
@@ -109,7 +109,7 @@ namespace Utility
 
         #pragma intrinsic(_BitScanForward, _BitScanReverse)
 
-        inline uint32 xl_ctz4(const uint32& x)
+        inline uint32 xl_ctz4(uint32 x)
         {
             unsigned long i = 0;
             if (!_BitScanForward(&i, (unsigned long)x)) {
@@ -118,7 +118,7 @@ namespace Utility
             return (uint32)i;
         }
 
-        inline uint32 xl_clz4(const uint32& x)
+        inline uint32 xl_clz4(uint32 x)
         {
             unsigned long i = 0;
             if (!_BitScanReverse(&i, (unsigned long)x)) {
@@ -130,7 +130,7 @@ namespace Utility
         #if SIZEOF_PTR == 8
 
             #pragma intrinsic(_BitScanForward64, _BitScanReverse64)
-            inline uint32 xl_ctz8(const uint64& x)
+            inline uint32 xl_ctz8(uint64 x)
             {
                 unsigned long i = 0;
                 if (!_BitScanForward64(&i, x)) {
@@ -139,7 +139,7 @@ namespace Utility
                 return (uint32)i;
             }
 
-            inline uint32 xl_clz8(const uint64& x)
+            inline uint32 xl_clz8(uint64 x)
             {
                 unsigned long i = 0;
                 if (!_BitScanReverse64(&i, x)) {
@@ -163,7 +163,7 @@ namespace Utility
                 };
             }
 
-            inline uint32 xl_ctz8(const uint64& x)
+            inline uint32 xl_ctz8(uint64 x)
             {
                 Internal::Int64U li;
                 li.QuadPart = (uint64)x;
@@ -174,7 +174,7 @@ namespace Utility
                 return xl_ctz4((uint32)li.comp.HighPart) + 32;
             }
 
-            inline uint32 xl_clz8(const uint64& x)
+            inline uint32 xl_clz8(uint64 x)
             {
                 Internal::Int64U li;
                 li.QuadPart = (uint64)x;
@@ -187,12 +187,12 @@ namespace Utility
 
         #endif
 
-    #elif COMPILER_ACTIVE == COMPILER_GCC
+    #elif (COMPILER_ACTIVE == COMPILER_TYPE_GCC) || (COMPILER_ACTIVE == COMPILER_TYPE_CLANG)
 
-        inline uint32 xl_ctz4(const uint32& x) { __builtin_ctz(x); }
-        inline uint32 xl_clz4(const uint32& x) { __builtin_clz(x); }
-        inline uint32 xl_ctz8(const uint64& x) { __builtin_ctzll(x); }
-        inline uint32 xl_clz8(const uint64& x) { __builtin_clzll(x); }
+        inline uint32 xl_ctz4(uint32 x) { return __builtin_ctz(x); }
+        inline uint32 xl_clz4(uint32 x) { return __builtin_clz(x); }
+        inline uint32 xl_ctz8(uint64 x) { return __builtin_ctzll(x); }
+        inline uint32 xl_clz8(uint64 x) { return __builtin_clzll(x); }
 
     #else
 
@@ -246,7 +246,7 @@ namespace Utility
     #define xl_bsf4 xl_ctz4
     #define xl_bsf8 xl_ctz8
 
-    inline uint32 xl_bsr1(const uint16& x)
+    inline uint32 xl_bsr1(uint16 x)
     {
         uint32 i = (uint32)xl_clz2(x);
         if (i == 8) {
@@ -255,7 +255,7 @@ namespace Utility
         return 7 - i;
     }
 
-    inline uint32 xl_bsr2(const uint16& x)
+    inline uint32 xl_bsr2(uint16 x)
     {
         uint32 i = xl_clz2(x);
         if (i == 16) {
@@ -264,7 +264,7 @@ namespace Utility
         return 15 - i;
     }
 
-    inline uint32 xl_bsr4(const uint32& x)
+    inline uint32 xl_bsr4(uint32 x)
     {
         uint32 i = xl_clz4(x);
         if (i == 32) {
@@ -273,7 +273,7 @@ namespace Utility
         return 31 - i;
     }
 
-    inline uint32 xl_bsr8(const uint64& x)
+    inline uint32 xl_bsr8(uint64 x)
     {
         uint32 i = xl_clz8(x);
         if (i == 64) {
@@ -282,7 +282,7 @@ namespace Utility
         return 63 - i;
     }
 
-    inline uint32 xl_lg(const size_t& x)
+    inline uint32 xl_lg(size_t x)
     {
         #if SIZEOF_PTR == 8
             return xl_bsr8(x);

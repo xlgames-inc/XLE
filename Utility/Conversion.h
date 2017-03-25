@@ -49,7 +49,7 @@ namespace Conversion
             const InputElement* begin)
         {
             if (outputDim <= 1) return false;
-            inputLen = XlStringLen(begin);
+            auto inputLen = XlStringLen(begin);
             return Convert(output, outputDim-1, begin, begin+inputLen);
         }
 

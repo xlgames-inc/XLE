@@ -5,7 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CompletionThreadPool.h"
-#include "../../ConsoleRig/Log.h"
+#if defined(HAS_XLE_CONSOLE_RIG)
+    #include "../../ConsoleRig/Log.h"
+#endif
 #include "../../Utility/SystemUtils.h"
 #include "../../Core/Exceptions.h"
 
@@ -57,9 +59,14 @@ namespace Utility
                             {
                                 task();
                             } CATCH(const std::exception& e) {
-                                LogAlwaysError << "Suppressing exception in thread pool thread: " << e.what();
+                                #if defined(HAS_XLE_CONSOLE_RIG)
+                                    LogAlwaysError << "Suppressing exception in thread pool thread: " << e.what();
+                                #endif
+								(void)e;
                             } CATCH(...) {
-                                LogAlwaysError << "Suppressing unknown exception in thread pool thread.";
+                                #if defined(HAS_XLE_CONSOLE_RIG)
+                                    LogAlwaysError << "Suppressing unknown exception in thread pool thread.";
+                                #endif
                             } CATCH_END
 
                                 // That that when using completion routines, we want to attempt to

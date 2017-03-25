@@ -14,28 +14,35 @@ namespace XLEMath
     namespace AABBIntersection {
         enum Enum { Culled, Within, Boundary };
     }
+    
+    namespace GeometricCoordinateSpace      { enum Enum { LeftHanded,       RightHanded };  }
+    enum class ClipSpaceType { StraddlingZero,   Positive,   PositiveRightHanded };
 
     AABBIntersection::Enum TestAABB(
         const Float4x4& localToProjection, 
-        const Float3& mins, const Float3& maxs);
+        const Float3& mins, const Float3& maxs,
+        ClipSpaceType clipSpaceType);
 
     AABBIntersection::Enum TestAABB_Aligned(
         const Float4x4& localToProjection, 
-        const Float3& mins, const Float3& maxs);
+        const Float3& mins, const Float3& maxs,
+        ClipSpaceType clipSpaceType);
 
     inline bool CullAABB(
         const Float4x4& localToProjection, 
-        const Float3& mins, const Float3& maxs)
+        const Float3& mins, const Float3& maxs,
+        ClipSpaceType clipSpaceType)
     {
-        return TestAABB(localToProjection, mins, maxs) 
+        return TestAABB(localToProjection, mins, maxs, clipSpaceType)
             == AABBIntersection::Culled;
     }
 
     inline bool CullAABB_Aligned(
         const Float4x4& localToProjection,
-        const Float3& mins, const Float3& maxs)
+        const Float3& mins, const Float3& maxs,
+        ClipSpaceType clipSpaceType)
     {
-        return TestAABB_Aligned(localToProjection, mins, maxs) 
+        return TestAABB_Aligned(localToProjection, mins, maxs, clipSpaceType)
             == AABBIntersection::Culled;
     }
 
@@ -45,44 +52,39 @@ namespace XLEMath
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //   B U I L D I N G   P R O J E C T I O N   M A T R I C E S
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    namespace GeometricCoordinateSpace      { enum Enum { LeftHanded,       RightHanded };  }
-    namespace ClipSpaceType                 { enum Enum { StraddlingZero,   Positive,   PositiveRightHanded }; }
+    
     Float4x4 PerspectiveProjection(
         float verticalFOV, float aspectRatio,
         float nearClipPlane, float farClipPlane,
         GeometricCoordinateSpace::Enum coordinateSpace,
-        ClipSpaceType::Enum clipSpaceType);
+        ClipSpaceType clipSpaceType);
 
     Float4x4 PerspectiveProjection(
         float l, float t, float r, float b,
         float nearClipPlane, float farClipPlane,
-        ClipSpaceType::Enum clipSpaceType);
+        ClipSpaceType clipSpaceType);
 
     Float4x4 OrthogonalProjection(
         float l, float t, float r, float b,
         float nearClipPlane, float farClipPlane,
         GeometricCoordinateSpace::Enum coordinateSpace,
-        ClipSpaceType::Enum clipSpaceType);
+        ClipSpaceType clipSpaceType);
 
     Float4x4 OrthogonalProjection(
         float l, float t, float r, float b,
         float nearClipPlane, float farClipPlane,
-        ClipSpaceType::Enum clipSpaceType);
+        ClipSpaceType clipSpaceType);
 
     void CalculateAbsFrustumCorners(
         Float3 frustumCorners[8],
         const Float4x4& worldToProjection,
-        ClipSpaceType::Enum clipSpaceType);
+        ClipSpaceType clipSpaceType);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::pair<float, float> CalculateNearAndFarPlane(
-        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType);
-    std::pair<float, float> CalculateFov(
-        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType);
-    Float2 CalculateDepthProjRatio_Ortho(
-        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType);
+    std::pair<float, float> CalculateNearAndFarPlane(const Float4& minimalProjection, ClipSpaceType clipSpaceType);
+    std::pair<float, float> CalculateFov(const Float4& minimalProjection, ClipSpaceType clipSpaceType);
+    Float2 CalculateDepthProjRatio_Ortho(const Float4& minimalProjection, ClipSpaceType clipSpaceType);
 
     std::pair<Float3, Float3> BuildRayUnderCursor(
         Int2 mousePosition, 

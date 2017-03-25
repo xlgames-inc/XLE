@@ -594,7 +594,7 @@ int PrintFormat(OutputStream* stream, const char* fmt, ...)
 
 int XlFormatStringV(char* buf, int count, const char* fmt, va_list args) never_throws
 {
-    FixedMemoryOutputStream<utf8> stream((utf8*)buf, count);
+    FixedMemoryOutputStream<utf8> stream((utf8*)buf, (size_t)count);
     int n = PrintFormatV(&stream, fmt, args);
     stream.WriteChar(decltype(stream)::CharType(0));
     if (n >= count) {

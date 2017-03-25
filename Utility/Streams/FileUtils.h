@@ -17,8 +17,6 @@
 #include <string>
 #include <functional>
 
-typedef struct _iobuf FILE;
-
 namespace Utility 
 {
     namespace Exceptions

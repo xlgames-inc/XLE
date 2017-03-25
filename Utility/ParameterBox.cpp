@@ -13,12 +13,15 @@
 #include "StringFormat.h"
 #include "Conversion.h"
 #include "Streams/StreamFormatter.h"
-#include "../ConsoleRig/Log.h"
-#include "../Math/Vector.h"
-#include "../Math/Matrix.h"
 #include <algorithm>
 #include <utility>
 #include <regex>
+#include <sstream>
+
+#if defined(HAS_XLE_MATH)
+    #include "../Math/Vector.h"
+    #include "../Math/Matrix.h"
+#endif
 
 namespace Utility
 {
@@ -67,15 +70,17 @@ namespace Utility
         template<> TypeDesc TypeOf<bool>()          { return TypeDesc(TypeCat::Bool); }
         template<> TypeDesc TypeOf<float>()         { return TypeDesc(TypeCat::Float); }
         template<> TypeDesc TypeOf<void>()          { return TypeDesc(TypeCat::Void); }
-        template<> TypeDesc TypeOf<Float2>()        { return TypeDesc(TypeCat::Float, 2, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<Float3>()        { return TypeDesc(TypeCat::Float, 3, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<Float4>()        { return TypeDesc(TypeCat::Float, 4, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<Float3x3>()      { return TypeDesc(TypeCat::Float, 9, TypeHint::Matrix); }
-        template<> TypeDesc TypeOf<Float3x4>()      { return TypeDesc(TypeCat::Float, 12, TypeHint::Matrix); }
-        template<> TypeDesc TypeOf<Float4x4>()      { return TypeDesc(TypeCat::Float, 16, TypeHint::Matrix); }
-        template<> TypeDesc TypeOf<UInt2>()         { return TypeDesc(TypeCat::UInt32, 2, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<UInt3>()         { return TypeDesc(TypeCat::UInt32, 3, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<UInt4>()         { return TypeDesc(TypeCat::UInt32, 4, TypeHint::Vector); }
+        #if defined(HAS_XLE_MATH)
+            template<> TypeDesc TypeOf<Float2>()        { return TypeDesc(TypeCat::Float, 2, TypeHint::Vector); }
+            template<> TypeDesc TypeOf<Float3>()        { return TypeDesc(TypeCat::Float, 3, TypeHint::Vector); }
+            template<> TypeDesc TypeOf<Float4>()        { return TypeDesc(TypeCat::Float, 4, TypeHint::Vector); }
+            template<> TypeDesc TypeOf<Float3x3>()      { return TypeDesc(TypeCat::Float, 9, TypeHint::Matrix); }
+            template<> TypeDesc TypeOf<Float3x4>()      { return TypeDesc(TypeCat::Float, 12, TypeHint::Matrix); }
+            template<> TypeDesc TypeOf<Float4x4>()      { return TypeDesc(TypeCat::Float, 16, TypeHint::Matrix); }
+            template<> TypeDesc TypeOf<UInt2>()         { return TypeDesc(TypeCat::UInt32, 2, TypeHint::Vector); }
+            template<> TypeDesc TypeOf<UInt3>()         { return TypeDesc(TypeCat::UInt32, 3, TypeHint::Vector); }
+            template<> TypeDesc TypeOf<UInt4>()         { return TypeDesc(TypeCat::UInt32, 4, TypeHint::Vector); }
+        #endif
         template<> TypeDesc TypeOf<const char*>()   { return TypeDesc(TypeCat::UInt8, (uint16)~uint16(0), TypeHint::String); }
         template<> TypeDesc TypeOf<const utf8*>()   { return TypeDesc(TypeCat::UInt8, (uint16)~uint16(0), TypeHint::String); }
 		template<> TypeDesc TypeOf<const utf16*>()	{ return TypeDesc(TypeCat::UInt16, (uint16)~uint16(0), TypeHint::String); }
@@ -107,6 +112,7 @@ namespace Utility
                         case TypeCat::Int32: *(bool*)dest = !!*(int32*)src; return true;
                         case TypeCat::UInt32: *(bool*)dest = !!*(uint32*)src; return true;
                         case TypeCat::Float: *(bool*)dest = !!*(float*)src; return true;
+                        case TypeCat::Void: break;
                         }
                     }
                     break;
@@ -122,6 +128,7 @@ namespace Utility
                         case TypeCat::Int32: *(int8*)dest = int8(*(int32*)src); return true;
                         case TypeCat::UInt32: *(int8*)dest = int8(*(uint32*)src); return true;
                         case TypeCat::Float: *(int8*)dest = int8(*(float*)src); return true;
+                        case TypeCat::Void: break;
                         }
                     }
                     break;
@@ -137,6 +144,7 @@ namespace Utility
                         case TypeCat::Int32: *(uint8*)dest = uint8(*(int32*)src); return true;
                         case TypeCat::UInt32: *(uint8*)dest = uint8(*(uint32*)src); return true;
                         case TypeCat::Float: *(uint8*)dest = uint8(*(float*)src); return true;
+                        case TypeCat::Void: break;
                         }
                     }
                     break;
@@ -152,6 +160,7 @@ namespace Utility
                         case TypeCat::Int32: *(int16*)dest = int16(*(int32*)src); return true;
                         case TypeCat::UInt32: *(int16*)dest = int16(*(uint32*)src); return true;
                         case TypeCat::Float: *(int16*)dest = int16(*(float*)src); return true;
+                        case TypeCat::Void: break;
                         }
                     }
                     break;
@@ -167,6 +176,7 @@ namespace Utility
                         case TypeCat::Int32: *(uint16*)dest = uint16(*(int32*)src); return true;
                         case TypeCat::UInt32: *(uint16*)dest = uint16(*(uint32*)src); return true;
                         case TypeCat::Float: *(uint16*)dest = uint16(*(float*)src); return true;
+                        case TypeCat::Void: break;
                         }
                     }
                     break;
@@ -182,6 +192,7 @@ namespace Utility
                         case TypeCat::Int32: *(int32*)dest = *(int32*)src; return true;
                         case TypeCat::UInt32: *(int32*)dest = int32(*(uint32*)src); return true;
                         case TypeCat::Float: *(int32*)dest = int32(*(float*)src); return true;
+                        case TypeCat::Void: break;
                         }
                     }
                     break;
@@ -197,6 +208,7 @@ namespace Utility
                         case TypeCat::Int32: *(uint32*)dest = uint32(*(int32*)src); return true;
                         case TypeCat::UInt32: *(uint32*)dest = *(uint32*)src; return true;
                         case TypeCat::Float: *(uint32*)dest = uint32(*(float*)src); return true;
+                        case TypeCat::Void: break;
                         }
                     }
                     break;
@@ -212,9 +224,12 @@ namespace Utility
                         case TypeCat::Int32: *(float*)dest = float(*(int32*)src); return true;
                         case TypeCat::UInt32: *(float*)dest = float(*(uint32*)src); return true;
                         case TypeCat::Float: *(float*)dest = *(float*)src; return true;
+                        case TypeCat::Void: break;
                         }
                     }
                     break;
+                        
+                case TypeCat::Void: break;
                 }
             } else {
 
@@ -406,8 +421,9 @@ namespace Utility
                             bool castSuccess = Cast(   
                                 dstIterator, size_t(dstIteratorSize), TypeDesc(cat),
                                 dstIterator, subType);
-                            if (castSuccess) { LogWarning << "Mixed types in while parsing array in ImpliedTypes::Parse (cast success)"; }
-                            if (castSuccess) { LogWarning << "Mixed types in while parsing array in ImpliedTypes::Parse (cast failed)"; }
+                            (void)castSuccess;
+                            // if (castSuccess) { LogWarning << "Mixed types in while parsing array in ImpliedTypes::Parse (cast success)"; }
+                            // if (castSuccess) { LogWarning << "Mixed types in while parsing array in ImpliedTypes::Parse (cast failed)"; }
                             subType._type = cat;
                         }
 
@@ -513,6 +529,7 @@ namespace Utility
                 switch (desc._typeHint) {
                 case TypeHint::Color: result << "c"; break;
                 case TypeHint::Vector: result << "v"; break;
+                default: break;
                 }
             }
 
@@ -523,29 +540,33 @@ namespace Utility
         template std::pair<bool, unsigned> Parse(const char[]);
         template std::pair<bool, signed> Parse(const char[]);
         template std::pair<bool, float> Parse(const char[]);
-        template std::pair<bool, Float2> Parse(const char[]);
-        template std::pair<bool, Float3> Parse(const char[]);
-        template std::pair<bool, Float4> Parse(const char[]);
-        template std::pair<bool, Float3x3> Parse(const char[]);
-        template std::pair<bool, Float3x4> Parse(const char[]);
-        template std::pair<bool, Float4x4> Parse(const char[]);
-        template std::pair<bool, UInt2> Parse(const char[]);
-        template std::pair<bool, UInt3> Parse(const char[]);
-        template std::pair<bool, UInt4> Parse(const char[]);
+        #if defined(HAS_XLE_MATH)
+            template std::pair<bool, Float2> Parse(const char[]);
+            template std::pair<bool, Float3> Parse(const char[]);
+            template std::pair<bool, Float4> Parse(const char[]);
+            template std::pair<bool, Float3x3> Parse(const char[]);
+            template std::pair<bool, Float3x4> Parse(const char[]);
+            template std::pair<bool, Float4x4> Parse(const char[]);
+            template std::pair<bool, UInt2> Parse(const char[]);
+            template std::pair<bool, UInt3> Parse(const char[]);
+            template std::pair<bool, UInt4> Parse(const char[]);
+        #endif
 
         template std::pair<bool, bool> Parse(const utf8*, const utf8*);
         template std::pair<bool, unsigned> Parse(const utf8*, const utf8*);
         template std::pair<bool, signed> Parse(const utf8*, const utf8*);
         template std::pair<bool, float> Parse(const utf8*, const utf8*);
-        template std::pair<bool, Float2> Parse(const utf8*, const utf8*);
-        template std::pair<bool, Float3> Parse(const utf8*, const utf8*);
-        template std::pair<bool, Float4> Parse(const utf8*, const utf8*);
-        template std::pair<bool, Float3x3> Parse(const utf8*, const utf8*);
-        template std::pair<bool, Float3x4> Parse(const utf8*, const utf8*);
-        template std::pair<bool, Float4x4> Parse(const utf8*, const utf8*);
-        template std::pair<bool, UInt2> Parse(const utf8*, const utf8*);
-        template std::pair<bool, UInt3> Parse(const utf8*, const utf8*);
-        template std::pair<bool, UInt4> Parse(const utf8*, const utf8*);
+        #if defined(HAS_XLE_MATH)
+            template std::pair<bool, Float2> Parse(const utf8*, const utf8*);
+            template std::pair<bool, Float3> Parse(const utf8*, const utf8*);
+            template std::pair<bool, Float4> Parse(const utf8*, const utf8*);
+            template std::pair<bool, Float3x3> Parse(const utf8*, const utf8*);
+            template std::pair<bool, Float3x4> Parse(const utf8*, const utf8*);
+            template std::pair<bool, Float4x4> Parse(const utf8*, const utf8*);
+            template std::pair<bool, UInt2> Parse(const utf8*, const utf8*);
+            template std::pair<bool, UInt3> Parse(const utf8*, const utf8*);
+            template std::pair<bool, UInt4> Parse(const utf8*, const utf8*);
+        #endif
 
     }
 
@@ -834,6 +855,7 @@ namespace Utility
     template std::pair<bool, float> ParameterBox::GetParameter(ParameterName name) const;
 
 
+    /*
     template void ParameterBox::SetParameter(const utf8 name[], Float2 value);
     template std::pair<bool, Float2> ParameterBox::GetParameter(ParameterName name) const;
     
@@ -862,17 +884,18 @@ namespace Utility
 
     template void ParameterBox::SetParameter(const utf8 name[], UInt4 value);
     template std::pair<bool, UInt4> ParameterBox::GetParameter(ParameterName name) const;
-
+    */
+    
     template std::basic_string<char> ParameterBox::GetString(ParameterName name) const;
     template std::basic_string<utf8> ParameterBox::GetString(ParameterName name) const;
 	template std::basic_string<utf16> ParameterBox::GetString(ParameterName name) const;
-	template std::basic_string<ucs2> ParameterBox::GetString(ParameterName name) const;
+	// template std::basic_string<ucs2> ParameterBox::GetString(ParameterName name) const;
     template std::basic_string<ucs4> ParameterBox::GetString(ParameterName name) const;
 
     template bool ParameterBox::GetString(ParameterName name, char dest[], size_t destCount) const;
     template bool ParameterBox::GetString(ParameterName name, utf8 dest[], size_t destCount) const;
 	template bool ParameterBox::GetString(ParameterName name, utf16 dest[], size_t destCount) const;
-	template bool ParameterBox::GetString(ParameterName name, ucs2 dest[], size_t destCount) const;
+	// template bool ParameterBox::GetString(ParameterName name, ucs2 dest[], size_t destCount) const;
     template bool ParameterBox::GetString(ParameterName name, ucs4 dest[], size_t destCount) const;
 
     uint64      ParameterBox::CalculateParameterNamesHash() const
@@ -1109,10 +1132,10 @@ namespace Utility
             // (it could be a sub-element, or the end of this element)
             // then we will stop reading and return
         while (stream.PeekNext() == InputStreamFormatter<CharType>::Blob::AttributeName) {
-            InputStreamFormatter<CharType>::InteriorSection name, value;
+            typename InputStreamFormatter<CharType>::InteriorSection name, value;
             bool success = stream.TryAttribute(name, value);
             if (!success)
-                throw ::Exceptions::BasicLabel("Parsing exception while reading attribute in parameter box deserialization");
+                Throw(::Exceptions::BasicLabel("Parsing exception while reading attribute in parameter box deserialization"));
 
             {
                 auto nameLen = (size_t(name._end) - size_t(name._start)) / sizeof(CharType);
@@ -1123,7 +1146,7 @@ namespace Utility
                     name._start, name._end);
 
                 if (nameConvResult <= 0)
-                    throw ::Exceptions::BasicLabel("Empty name or error converting string name in parameter box deserialization");
+                    Throw(::Exceptions::BasicLabel("Empty name or error converting string name in parameter box deserialization"));
 
                 nameBuffer[std::min(nameBuffer.size()-1, (size_t)nameConvResult)] = '\0';
             }
@@ -1171,7 +1194,7 @@ namespace Utility
         }
     }
 
-    ParameterBox::ParameterBox(ParameterBox&& moveFrom)
+    ParameterBox::ParameterBox(ParameterBox&& moveFrom) never_throws
     : _hashNames(std::move(moveFrom._hashNames))
     , _offsets(std::move(moveFrom._offsets))
     , _names(std::move(moveFrom._names))
@@ -1182,7 +1205,7 @@ namespace Utility
         _cachedParameterNameHash = moveFrom._cachedParameterNameHash;
     }
         
-    ParameterBox& ParameterBox::operator=(ParameterBox&& moveFrom)
+    ParameterBox& ParameterBox::operator=(ParameterBox&& moveFrom) never_throws
     {
         _hashNames = std::move(moveFrom._hashNames);
         _offsets = std::move(moveFrom._offsets);
@@ -1258,7 +1281,7 @@ namespace Utility
         std::for_each(stringTable.cbegin(), stringTable.cend(), 
             [&combinedStrings](const std::pair<const utf8*, std::string>& object) 
             {
-                combinedStrings.insert(combinedStrings.end(), (const char*)object.first, (const char*)XlStringEnd(object.first)); 
+                combinedStrings.insert(combinedStrings.end(), (const char*)object.first, (const char*)XlStringEnd(object.first));
                 combinedStrings.push_back('=');
                 combinedStrings.insert(combinedStrings.end(), object.second.cbegin(), object.second.cend()); 
                 combinedStrings.push_back(';');

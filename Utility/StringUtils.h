@@ -31,6 +31,12 @@ namespace Utility
     inline		   size_t   XlStringLen         (const char* str) { return std::strlen(str); }
     XL_UTILITY_API size_t   XlStringSize        (const utf8* str);
     XL_UTILITY_API size_t   XlStringLen         (const utf8* str);
+    XL_UTILITY_API size_t   XlStringSize        (const utf16* str);
+    XL_UTILITY_API size_t   XlStringLen         (const utf16* str);
+    XL_UTILITY_API size_t   XlStringSize        (const ucs4* str);
+    XL_UTILITY_API size_t   XlStringLen         (const ucs4* str);
+    XL_UTILITY_API size_t   XlStringSize        (const wchar_t* str);
+    XL_UTILITY_API size_t   XlStringLen         (const wchar_t* str);
 
     XL_UTILITY_API void     XlCopyString        (char* dst, size_t size, const char* src);
     XL_UTILITY_API void     XlCopyNString       (char* dst, size_t count, const char* src, size_t length);
@@ -705,6 +711,11 @@ namespace Utility
     }
 
 }
+
+namespace Utility { namespace Internal
+{
+    template<typename CharType> struct DemoteCharType;
+}}
 
 namespace std
 {

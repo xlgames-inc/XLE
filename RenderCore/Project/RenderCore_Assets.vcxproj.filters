@@ -48,7 +48,6 @@
     <ClCompile Include="..\Assets\TransformationCommands.cpp">
       <Filter>Assets\Anim</Filter>
     </ClCompile>
-    <ClCompile Include="..\Assets\CompilationThread.cpp" />
     <ClCompile Include="..\Assets\ModelScaffold.cpp">
       <Filter>Assets\Model</Filter>
     </ClCompile>
@@ -87,6 +86,9 @@
     </ClCompile>
     <ClCompile Include="..\Assets\ModelCompiler.cpp">
       <Filter>Assets\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\RawMaterial.cpp">
+      <Filter>Assets\Material</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -132,7 +134,6 @@
     <ClInclude Include="..\Assets\ModelUtils.h">
       <Filter>Assets\Model</Filter>
     </ClInclude>
-    <ClInclude Include="..\Assets\CompilationThread.h" />
     <ClInclude Include="..\GeoProc\NascentGeometryObjects.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
@@ -171,6 +172,9 @@
     </ClInclude>
     <ClInclude Include="..\Assets\ModelCompiler.h">
       <Filter>Assets\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\RawMaterial.h">
+      <Filter>Assets\Material</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

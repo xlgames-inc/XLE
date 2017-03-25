@@ -8,7 +8,6 @@
 
 #include "Data.h"
 #include "../Conversion.h"
-#include "../../Math/Vector.h"
 #include <vector>
 #include <string>
 #include <utility>
@@ -23,19 +22,6 @@ namespace Utility
     template<typename Type> Type Deserialize(const Data* source, const Type& def)
         {
             return (source && source->child) ? Conversion::Convert<Type>(source->child->value) : def;
-        }
-
-    template<typename Type, int Count>
-        cml::vector<Type, cml::fixed<Count>> Deserialize(const Data* source, const cml::vector<Type, cml::fixed<Count>>& def)
-        {
-            auto result = def;
-            if (source) {
-                for (unsigned c=0; c<Count; ++c)
-                    if (auto* child = source->ChildAt(c)) { 
-                        result[c] = Conversion::Convert<Type>(child->value);
-                    }
-            }
-            return result;
         }
 
     template<typename FirstType, typename SecondType>

@@ -80,8 +80,8 @@ namespace LockFree
             //      Our true capacity is Count-1, and the entry before the
             //      _popPtr is always empty.
         Type* _popPtr;
-        Type* volatile _pushPtr;
-        Type* volatile _pushAllocatePtr;
+        std::atomic<Type*> _pushPtr;
+        std::atomic<Type*> _pushAllocatePtr;
 
         FixedSizeQueue(const FixedSizeQueue<Type,Count>&);
         const FixedSizeQueue<Type,Count>& operator=(const FixedSizeQueue<Type,Count>&);
@@ -98,12 +98,12 @@ namespace LockFree
         FixedSizeQueue<Type,Count>::FixedSizeQueue()
         {
             _popPtr = (Type*)_buffer;
-            Interlocked::ExchangePointer((void* volatile*)&_pushPtr, _buffer);
-            Interlocked::ExchangePointer((void* volatile*)&_pushAllocatePtr, _buffer);
+            Interlocked::ExchangePointer(&_pushPtr, (Type*)_buffer);
+            Interlocked::ExchangePointer(&_pushAllocatePtr, (Type*)_buffer);
 
             #if defined(_DEBUG)
-                void* test0 = Interlocked::LoadPointer((void*volatile const*)&_pushPtr);
-                void* test1 = Interlocked::LoadPointer((void*volatile const*)&_pushAllocatePtr);
+                void* test0 = Interlocked::LoadPointer((std::atomic<void*> volatile const*)&_pushPtr);
+                void* test1 = Interlocked::LoadPointer((std::atomic<void*> volatile const*)&_pushAllocatePtr);
                 assert(test0 == _buffer && test1 == _buffer);
             #endif
 
@@ -126,7 +126,7 @@ namespace LockFree
         {
                 //  In a tight loop, use Interlocked::CompareExchangePointer to do a 
                 //  interlocked add
-            void* originalPushAllocatePtr = Interlocked::LoadPointer((void*volatile const*)&_pushAllocatePtr), *newPushAllocatePtr;
+            void* originalPushAllocatePtr = Interlocked::LoadPointer(&_pushAllocatePtr), *newPushAllocatePtr;
             for (;;) {
                 void* comparisonValue = originalPushAllocatePtr;
                 void* popPtr = _popPtr;
@@ -142,7 +142,7 @@ namespace LockFree
                     return false;
                 }
 
-                originalPushAllocatePtr = Interlocked::CompareExchangePointer((void**)&_pushAllocatePtr, newPushAllocatePtr, comparisonValue);
+                originalPushAllocatePtr = Interlocked::CompareExchangePointer(&_pushAllocatePtr, newPushAllocatePtr, comparisonValue);
                 if (originalPushAllocatePtr == comparisonValue) {
                     break;
                 }
@@ -157,7 +157,7 @@ namespace LockFree
                 //          we increase _pushPtr in the same order than we increased _pushAllocatePtr). But that
                 //          means we may need to stall this thread waiting for another thread to increase _pushPtr
             for (;;) {
-                void* originPushPtr = Interlocked::CompareExchangePointer((void**)&_pushPtr, newPushAllocatePtr, originalPushAllocatePtr);
+                void* originPushPtr = Interlocked::CompareExchangePointer(&_pushPtr, newPushAllocatePtr, originalPushAllocatePtr);
                 if (originPushPtr == originalPushAllocatePtr) {
                     break;
                 }
@@ -171,13 +171,13 @@ namespace LockFree
         {
                 //  In a tight loop, use Interlocked::CompareExchangePointer to do a 
                 //  interlocked add
-            void* originalPushAllocatePtr = Interlocked::LoadPointer((void*volatile const*)&_pushAllocatePtr), *newPushAllocatePtr;
+            Type* originalPushAllocatePtr = Interlocked::LoadPointer(&_pushAllocatePtr), *newPushAllocatePtr;
             for (;;) {
-                void* comparisonValue = originalPushAllocatePtr;
-                void* popPtr = _popPtr;
+                Type* comparisonValue = originalPushAllocatePtr;
+                Type* popPtr = _popPtr;
                 newPushAllocatePtr = PtrAdd(comparisonValue, sizeof(Type));
-                if (newPushAllocatePtr >= PtrAdd(_buffer, sizeof(Type)*Count)) {
-                    newPushAllocatePtr = _buffer; // wrap around. _pushPtr should always point to a valid position
+                if (newPushAllocatePtr >= PtrAdd((Type*)_buffer, sizeof(Type)*Count)) {
+                    newPushAllocatePtr = (Type*)_buffer; // wrap around. _pushPtr should always point to a valid position
                 }
 
                     //  This comparison is safe, because popPtr only moves in one direction (so we 
@@ -187,7 +187,7 @@ namespace LockFree
                     return false;
                 }
 
-                originalPushAllocatePtr = Interlocked::CompareExchangePointer((void**)&_pushAllocatePtr, newPushAllocatePtr, comparisonValue);
+                originalPushAllocatePtr = Interlocked::CompareExchangePointer(&_pushAllocatePtr, newPushAllocatePtr, comparisonValue);
                 if (originalPushAllocatePtr == comparisonValue) {
                     break;
                 }
@@ -202,7 +202,7 @@ namespace LockFree
                 //          we increase _pushPtr in the same order than we increased _pushAllocatePtr). But that
                 //          means we may need to stall this thread waiting for another thread to increase _pushPtr
             for (;;) {
-                void* originPushPtr = Interlocked::CompareExchangePointer((void**)&_pushPtr, newPushAllocatePtr, originalPushAllocatePtr);
+                Type* originPushPtr = Interlocked::CompareExchangePointer(&_pushPtr, newPushAllocatePtr, originalPushAllocatePtr);
                 if (originPushPtr == originalPushAllocatePtr) {
                     break;
                 }
@@ -265,7 +265,7 @@ namespace LockFree
         bool FixedSizeQueue<Type,Count>::try_front(Type*&result) const
         {
                 //  This is safe, so long as only this thread is doing "pop"
-            Type* currentPushPtr = (Type*)Interlocked::LoadPointer((void*volatile const*)&_pushPtr);
+            Type* currentPushPtr = (Type*)Interlocked::LoadPointer(&_pushPtr);
             if (currentPushPtr == _popPtr) {
                 if (!_overflowQueue_isEmpty) {
                     ScopedLock(_overflowQueue_Lock);
@@ -306,7 +306,7 @@ namespace LockFree
                 // because of threading, this can only be an approximate result
                 //  we should load the pushptr first to avoid threading problems 
                 //  when the push ptr passes an old pop ptr
-            Type* pushPtr = (Type*)Interlocked::LoadPointer((void*volatile const*)&_pushPtr);
+            Type* pushPtr = (Type*)Interlocked::LoadPointer(&_pushPtr);
             Type* popPtr = _popPtr;
             if (pushPtr >= popPtr) {
                 return pushPtr - popPtr;

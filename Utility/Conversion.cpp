@@ -17,16 +17,12 @@ namespace Conversion
 
     template<> std::basic_string<char> Convert(uint64 input)
     {
-        char buffer[64];
-        XlUI64toA(input, buffer, dimof(buffer), 10);
-        return buffer;
+        return std::to_string(input);
     }
 
     template<> std::basic_string<wchar_t> Convert(uint64 input)
     {
-        wchar_t buffer[64];
-        _ui64tow_s(input, buffer, dimof(buffer), 10);
-        return buffer;
+        return std::to_wstring(input);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

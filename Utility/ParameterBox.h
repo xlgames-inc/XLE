@@ -101,8 +101,6 @@ namespace Utility
     #pragma pack(push)
     #pragma pack(1)
 
-    #define T1(Type) template<typename Type>
-
     class ParameterBox
     {
     public:

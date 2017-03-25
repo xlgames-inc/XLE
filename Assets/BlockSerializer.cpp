@@ -35,7 +35,8 @@ namespace Serialization
         } else if (specialBuffer == SpecialBuffer::VertexBuffer || specialBuffer == SpecialBuffer::IndexBuffer) {
             assert(0);
         } else if (specialBuffer == SpecialBuffer::Vector) {
-            _memory.insert(_memory.end(), sizeof(std::vector<unsigned, BlockSerializerAllocator<unsigned>>), 0);
+            // _memory.insert(_memory.end(), sizeof(std::vector<unsigned, BlockSerializerAllocator<unsigned>>), 0);
+			_memory.insert(_memory.end(), 3 * sizeof(size_t), 0);
         } else if (specialBuffer == SpecialBuffer::UniquePtr) {
             _memory.insert(_memory.end(), sizeof(std::unique_ptr<void, BlockSerializerDeleter<void>>), 0);
         } else if (specialBuffer == SpecialBuffer::Unknown) {
@@ -250,39 +251,46 @@ namespace Serialization
                     (const char*)(ptr._subBlockOffset + size_t(base) + sizeof(Header)),
                     ptr._subBlockSize);
             } else if (ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::Vector) {
-                size_t* o = (size_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset);
 
-				#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER >= 1900)
-					// This is the flag in the BlockSerializerAllocator in the vector
-					// It's a bit of an awkward hack... but one it's one of those hacks
-					//		-- once it's working, it works well.
-					// In VS2015, it changed position with in vector object. Actually the
-					// new position might be less ideal, because it's before the more
-					// commonly accessed begin/end pointers.
-					*(size_t*)o = 1; o = PtrAdd(o, sizeof(size_t));
-				#endif
+				#if 0
+					size_t* o = (size_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset);
+					#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER >= 1900)
+						// This is the flag in the BlockSerializerAllocator in the vector
+						// It's a bit of an awkward hack... but one it's one of those hacks
+						//		-- once it's working, it works well.
+						// In VS2015, it changed position with in vector object. Actually the
+						// new position might be less ideal, because it's before the more
+						// commonly accessed begin/end pointers.
+						*(size_t*)o = 1; o = PtrAdd(o, sizeof(size_t));
+					#endif
 
-				auto* containerPtr = o;
-				(void)containerPtr;
+					auto* containerPtr = o;
+					(void)containerPtr;
 
-				#if (STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL != 0)
-                        //  in debug, to produce a valid vector, we need to add one of these proxy
-                        //  objects. it requires some extra memory management; but fortunately it's
-                        //  just debug builds!
-                        //  Note that this requires that the caller correctly call the destructors
-                        //  on the returned objects to make sure the vector destructor deletes this
-                        //  object!
-                    auto proxy = std::make_unique<std::_Container_proxy>();
-                    proxy->_Mycont = (std::_Container_base12*)containerPtr;
-                    *o++ = size_t(proxy.release());
-                #endif
+					#if (STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL != 0)
+							//  in debug, to produce a valid vector, we need to add one of these proxy
+							//  objects. it requires some extra memory management; but fortunately it's
+							//  just debug builds!
+							//  Note that this requires that the caller correctly call the destructors
+							//  on the returned objects to make sure the vector destructor deletes this
+							//  object!
+						auto proxy = std::make_unique<std::_Container_proxy>();
+						proxy->_Mycont = (std::_Container_base12*)containerPtr;
+						*o++ = size_t(proxy.release());
+					#endif
 
-                o[0] = (ptr._subBlockOffset + size_t(base) + sizeof(Header));
-                o[1] = (ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header));
-                o[2] = (ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header));
+					o[0] = (ptr._subBlockOffset + size_t(base) + sizeof(Header));
+					o[1] = (ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header));
+					o[2] = (ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header));
 
-				#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER < 1900)
-					*(unsigned*)(&o[3]) = 1;
+					#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER < 1900)
+						*(unsigned*)(&o[3]) = 1;
+					#endif
+				#else
+					size_t* o = (size_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset);
+					o[0] = ptr._subBlockOffset + size_t(base) + sizeof(Header);
+					o[1] = ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header);
+					o[2] = 0;
 				#endif
 
             } else if (ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::UniquePtr) {

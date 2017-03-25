@@ -1439,7 +1439,7 @@ static void PrettyPrint(OutputStream&f, int level, const Data* data, bool includ
 
 bool Data::SavePrettyValue(char* s, int* len) const
 {
-    FixedMemoryOutputStream<char> stream(s, *len);
+    FixedMemoryOutputStream<char> stream(s, (size_t)*len);
     PrintText(stream, this);
     stream.WriteChar(utf8(0));
     *len = (int)stream.GetBuffer().Length();
@@ -1469,7 +1469,7 @@ void Data::SaveToOutputStream(OutputStream& f, bool includeComment) const
 
 bool Data::SaveToBuffer(char* s, int* len) const
 {
-    FixedMemoryOutputStream<char> stream(s, *len);
+    FixedMemoryOutputStream<char> stream(s, (size_t)*len);
     SaveToOutputStream(stream);
     stream.WriteChar(utf8(0));
     return true;

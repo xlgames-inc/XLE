@@ -25,9 +25,9 @@ namespace Utility
     class FixedSizePage
     {
     public:
-        BitHeap                         _allocationStatus;
-        std::vector<Interlocked::Value> _refCounts;
-        std::vector<uint8>              _pageMemory;
+        BitHeap                                 _allocationStatus;
+        std::unique_ptr<Interlocked::Value[]>   _refCounts;
+        std::vector<uint8>                      _pageMemory;
 
         unsigned            Allocate();
 
@@ -45,7 +45,7 @@ namespace Utility
         unsigned result = _allocationStatus.AllocateNoExpand();
         if (result != ~unsigned(0x0)) {
                 // initialize reference count to 1 on allocate, always
-            _refCounts[result] = 1;
+            std::atomic_store(&_refCounts[result], 1);
         }
         return result;
     }
@@ -54,7 +54,10 @@ namespace Utility
         : _allocationStatus(blockCount)
     {
         _allocationStatus.Reserve(blockCount);
-        _refCounts.resize(blockCount, 0);
+        _refCounts = std::make_unique<Interlocked::Value[]>(blockCount);
+        for (unsigned c=0; c<blockCount; ++c) {
+            std::atomic_store(&_refCounts[c], 0);
+        }
         _pageMemory.resize(blockCount * blockSize, 0xac);
     }
 
@@ -83,8 +86,8 @@ namespace Utility
         class Block
         {
         public:
-            unsigned  _offset, _size;
-            Interlocked::Value  _refCount;
+            unsigned    _offset, _size;
+            signed      _refCount;
         };
         std::vector<Block>  _blocks;
 
@@ -118,8 +121,7 @@ namespace Utility
             // add a new "Block" in stored order
         auto i = std::lower_bound(_blocks.begin(), _blocks.end(), offset, CompareBlockOffset());
         assert(i == _blocks.end() || i->_offset != offset);
-        Block newBlock = { offset, size, 1 };   // note -- start with reference count of "1"
-        _blocks.insert(i, newBlock);
+        i = _blocks.insert(i, { offset, size, 1 }); // note -- start with reference count of "1"
 
         return PtrAdd(AsPointer(_pageMemory.begin()), offset);
     }
@@ -377,7 +379,7 @@ namespace Utility
                 throw Exceptions::HeapCorruption();
             }
 
-            Interlocked::Increment(&b->_refCount);
+            ++b->_refCount;
         }
     }
 
@@ -435,7 +437,7 @@ namespace Utility
                 throw Exceptions::HeapCorruption();
             }
 
-            auto oldRefCount = Interlocked::Decrement(&b->_refCount);
+            auto oldRefCount = b->_refCount--;
             assert(oldRefCount >= 1);
             if (oldRefCount == 1) {
                 page._spanningHeap.Deallocate(b->_offset, b->_size);

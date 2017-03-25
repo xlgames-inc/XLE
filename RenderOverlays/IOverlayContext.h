@@ -144,7 +144,7 @@ namespace RenderOverlays
         virtual RenderCore::IThreadContext*                 GetDeviceContext() = 0;
         virtual RenderCore::Techniques::NamedResources*     GetNamedResources() const = 0;
 
-        ~IOverlayContext();
+        virtual ~IOverlayContext();
     };
 
 

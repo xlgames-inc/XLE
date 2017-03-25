@@ -198,7 +198,7 @@ namespace Utility
     template <typename TypeA>
         ptrdiff_t PtrDiff(TypeA * lhs, size_t rhs) { return ptrdiff_t(lhs) - ptrdiff_t(rhs); }
 
-    template <typename Type> 
+    template <typename Type>
         Type * AsPointer( Type * i )                     { return i; }
 
     #if STL_ACTIVE == STL_MSVC
@@ -239,15 +239,23 @@ namespace Utility
 
     #else
 
-        template <typename Type> 
+        /*
+        template <typename Type>
             Type * AsPointer( const typename std::vector<Type>::iterator & i )                   { return &(*i); }
 
         template <typename Type> 
             const Type * AsPointer( const typename std::vector<Type>::const_iterator & i )       { return &(*i); }
-
-        template <typename Type> 
-            Type * AsPointer( const __gnu_cxx::__normal_iterator<Type, std::vector<Type> > & i )       { return &(*i); }
-
+    
+        template <typename Type>
+            Type * AsPointer( const typename std::basic_string<Type>::iterator & i )             { return &(*i); }
+    
+        template <typename Type>
+            const Type * AsPointer( const typename std::basic_string<Type>::const_iterator & i ) { return &(*i); }
+        */
+    
+        template <typename Iterator>
+            decltype(&(*std::declval<Iterator>())) AsPointer(Iterator i) { return &(*i); }
+    
     #endif
 
     /// <summary>Finds the end of a fixed length array</summary>

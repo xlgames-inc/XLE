@@ -8,7 +8,9 @@
 #include "ClassAccessors.h"
 #include "ClassAccessorsImpl.h"
 
-#include "../../ConsoleRig/Log.h"
+#if defined(HAS_XLE_CONSOLE_RIG)
+    #include "../../ConsoleRig/Log.h"
+#endif
 
 #include "../Streams/StreamFormatter.h"
 #include "../StringFormat.h"
@@ -25,8 +27,8 @@ namespace Utility
             Formatter& formatter,
             void* obj, const ClassAccessors& props)
     {
-        using Blob = Formatter::Blob;
-        using CharType = Formatter::value_type;
+        using Blob = typename Formatter::Blob;
+        using CharType = typename Formatter::value_type;
         auto charTypeCat = ImpliedTyping::TypeOf<CharType>()._type;
 
         for (;;) {
@@ -44,8 +46,10 @@ namespace Utility
                             Hash64(name._start, name._end), value._start, 
                             ImpliedTyping::TypeDesc(charTypeCat, uint16(value._end - value._start)), true)) {
 
-                            LogWarning << "Failure while assigning property during deserialization -- " << 
-                                Conversion::Convert<std::string>(std::basic_string<CharType>(name._start, name._end));
+                            #if defined(HAS_XLE_CONSOLE_RIG)
+                                LogWarning << "Failure while assigning property during deserialization -- " <<
+                                    Conversion::Convert<std::string>(std::basic_string<CharType>(name._start, name._end));
+                            #endif
                         }
                     } else {
                         auto arrayIndex = XlAtoUI32((const char*)(arrayBracket+1));
@@ -53,11 +57,17 @@ namespace Utility
                             obj, Hash64(name._start, arrayBracket), arrayIndex, value._start, 
                             ImpliedTyping::TypeDesc(charTypeCat, uint16(value._end - value._start)), true)) {
 
-                            LogWarning << "Failure while assigning array property during deserialization -- " << 
-                                Conversion::Convert<std::string>(std::basic_string<CharType>(name._start, name._end));
+                            #if defined(HAS_XLE_CONSOLE_RIG)
+                                LogWarning << "Failure while assigning array property during deserialization -- " <<
+                                    Conversion::Convert<std::string>(std::basic_string<CharType>(name._start, name._end));
+                            #endif
                         }
                     }
                 }
+                break;
+                    
+            case Blob::AttributeValue:
+                assert(0);
                 break;
 
             case Blob::EndElement:
@@ -74,8 +84,10 @@ namespace Utility
                     if (created.first) {
                         AccessorDeserialize(formatter, created.first, *created.second);
                     } else {
-                        LogWarning << "Couldn't find a match for element name during deserialization -- " << 
-                            Conversion::Convert<std::string>(std::basic_string<CharType>(eleName._start, eleName._end));
+                        #if defined(HAS_XLE_CONSOLE_RIG)
+                            LogWarning << "Couldn't find a match for element name during deserialization -- " <<
+                                Conversion::Convert<std::string>(std::basic_string<CharType>(eleName._start, eleName._end));
+                        #endif
                         formatter.SkipElement();
                     }
 

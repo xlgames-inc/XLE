@@ -7,7 +7,7 @@
 #include "MaterialCompiler.h"
 #include "ModelImmutableData.h"     // for MaterialImmutableData
 #include "Material.h"
-#include "CompilationThread.h"
+#include "../../Assets/CompilationThread.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
@@ -213,7 +213,7 @@ namespace RenderCore { namespace Assets
         return ::Assets::CompilerHelper::CompileResult { std::move(deps), std::string() };
     }
 
-    static void DoCompileMaterialScaffold(QueuedCompileOperation& op)
+    static void DoCompileMaterialScaffold(::Assets::QueuedCompileOperation& op)
     {
         TRY
         {
@@ -241,7 +241,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         Threading::Mutex _threadLock;
-        std::unique_ptr<CompilationThread> _thread;
+        std::unique_ptr<::Assets::CompilationThread> _thread;
     };
 
     class MatCompilerMarker : public ::Assets::ICompileMarker

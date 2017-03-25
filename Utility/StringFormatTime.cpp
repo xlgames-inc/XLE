@@ -308,15 +308,15 @@ namespace Utility
 
                 case 'z':
                     {
-                        long absoff;
+                        int absoff;
                         if (GetTimezone() >= 0) 
                         {
-                            absoff = GetTimezone();
+                            absoff = (int)GetTimezone();
                             pt = _add("+", pt, ptlim);
                         } 
                         else 
                         {
-                            absoff = GetTimezone();
+                            absoff = (int)GetTimezone();
                             pt = _add("-", pt, ptlim);
                         }
                         pt = _conv(absoff / 3600, "%02d", pt, ptlim);
@@ -342,7 +342,7 @@ namespace Utility
         return pt;
     }
 
-    static char *_conv(const int n, const char *format, char *pt, const char *ptlim)
+    static char *_conv(int n, const char *format, char *pt, const char *ptlim)
     {
         char  buf[32];
 

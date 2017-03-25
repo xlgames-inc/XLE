@@ -31,7 +31,7 @@ namespace Utility
         class BlockSerializerAllocator : public std::allocator<Type>
     {
     public:
-        pointer allocate(size_type n, std::allocator<void>::const_pointer ptr= 0)
+        typename std::allocator<Type>::pointer allocate(typename std::allocator<Type>::size_type n, std::allocator<void>::const_pointer ptr= 0)
         {
             if (_fromFixedStorage) {
                 Throw(std::invalid_argument("Cannot allocate from a BlockSerializerAllocator than has been serialized in from a fixed block"));
@@ -40,7 +40,7 @@ namespace Utility
             return std::allocator<Type>::allocate(n, ptr);
         }
 
-        void deallocate(pointer p, size_type n)
+        void deallocate(typename std::allocator<Type>::pointer p, typename std::allocator<Type>::size_type n)
         {
             if (!_fromFixedStorage) {
                 std::allocator<Type>::deallocate(p, n);
@@ -119,8 +119,196 @@ namespace Utility
 
         ////////////////////////////////////////////////////
 
-    template<typename Type>
-        using SerializableVector = std::vector<Type, BlockSerializerAllocator<Type>>;
+    // template<typename Type>
+    //    using SerializableVector = std::vector<Type, BlockSerializerAllocator<Type>>;
+
+
+	#pragma push_macro("new")
+	#undef new
+
+	template<typename Element>
+		class SerializableVector
+	{
+	public:
+		typedef Element value_type;
+		typedef std::size_t size_type;
+		typedef std::ptrdiff_t difference_type;
+		typedef value_type& reference;
+		typedef const value_type& const_reference;
+		typedef value_type* pointer;
+		typedef const value_type* const_pointer;
+		typedef pointer iterator;
+		typedef const_pointer const_iterator;
+
+		size_type size() const { return _end - _begin; }
+		bool empty() const { return _begin == _end; }
+		size_type capacity() const { return _capacity - _begin; }
+		reference operator[](size_type idx) { assert(idx < size());  return _begin[idx]; }
+		const_reference operator[](size_type idx) const { assert(idx < size());  return _begin[idx]; }
+
+		iterator begin() { return _begin; }
+		const_iterator begin() const { return _begin; }
+		const_iterator cbegin() const { return _begin; }
+		iterator end() { return _end; }
+		const_iterator end() const { return _end; }
+		const_iterator cend() const { return _end; }
+
+		void push_back(const Element& value) 
+		{
+			assert(OwnsHeapBlock());
+			if ((_end+1) > _capacity) {
+				Expand(size()+1);
+			}
+			new(_end) Element(value);
+			++_end;
+		}
+
+		void push_back(Element&& value) 
+		{
+			assert(OwnsHeapBlock());
+			if ((_end+1) > _capacity) {
+				Expand(size()+1);
+			}
+			new(_end) Element(std::move(value));
+			++_end;
+		}
+
+		iterator erase(const_iterator pos) 
+		{
+			assert(pos >= _begin && pos < _end);
+			assert(OwnsHeapBlock());
+			for (auto i=pos; (i+1)!=_end; ++i) *i = std::move(*(i+1));
+			--_end;
+			return pos;
+		}
+
+		iterator erase(const_iterator first, const_iterator last) 
+		{
+			assert(first >= _begin && first < _end);
+			assert(last >= _begin && last < _end);
+			assert(first != last);
+			assert(OwnsHeapBlock());
+			auto cnt = last-first;
+			// note -- assuming move operators never throw! If we get an exception during
+			// a move operator, we cannot reverse this operation.
+			for (auto i=const_cast<iterator>(first); (i+cnt)!=_end; ++i) *i = std::move(*(i+cnt));
+			_end = _end - cnt;
+			return const_cast<iterator>(first);
+		}
+
+		iterator insert(const_iterator pos, const Element& ele)
+		{
+			assert(pos >= _begin && pos <= _end);
+			auto idx = pos - _begin;
+			if ((_end+1) > _capacity) {
+				Expand(size()+1);
+			}
+			// note -- assuming move operators never throw! If we get an exception during
+			// a move operator, we cannot reverse this operation.
+			for (auto i=_end; i!=&_begin[idx]; --i) *(i) = std::move(*(i-1));
+			_begin[idx] = ele;
+			++_end;
+			return &_begin[idx];
+		}
+
+		iterator insert(const_iterator pos, Element&& ele)
+		{
+			assert(pos >= _begin && pos <= _end);
+			auto idx = pos - _begin;
+			if ((_end+1) > _capacity) {
+				Expand();
+			}
+			// note -- assuming move operators never throw! If we get an exception during
+			// a move operator, we cannot reverse this operation.
+			for (auto i=_end; i!=&_begin[idx]; --i) *(i) = std::move(*(i-1));
+			_begin[idx] = std::move(ele);
+			++_end;
+			return &_begin[idx];
+		}
+
+		template< class InputIt >
+			iterator insert(const_iterator pos, InputIt first, InputIt last)
+		{
+			assert(pos >= _begin && pos <= _end);
+			assert(first!=last);
+			auto idx = pos - _begin;
+			auto cnt = std::distance(first, last);
+			if ((_end+cnt) > _capacity) {
+				Expand(size()+cnt);
+			}
+			// note -- assuming move operators never throw! If we get an exception during
+			// a move operator, we cannot reverse this operation.
+			for (auto i=_end; i>&_begin[idx+cnt-1]; --i) *(i) = std::move(*(i-cnt));
+			auto c = idx;
+			for (auto i=first; i!=last; ++i, ++c)
+				_begin[c] = *i;
+			_end += cnt;
+			return &_begin[idx];
+		}
+
+		void reserve(size_type amount)
+		{
+			if (amount > capacity())
+				Expand(amount);		// (note; still runs the doubling metric, and so sometimes capacity will end up different from "amount")
+		}
+
+		void resize(size_type newSize)
+		{
+			if (newSize <= size()) {
+				for (auto i=_begin+newSize; i!=_end; ++i) i->~Element();
+				_end = _begin+newSize;
+			} else {
+				reserve(newSize);
+				for (; _end!=_begin+newSize; ++_end) {
+					new(_end) Element();
+				}
+			}
+		}
+
+		bool OwnsHeapBlock() const { return !(_capacity == nullptr && _begin != nullptr); }
+
+		SerializableVector() : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
+		~SerializableVector()
+		{
+			for (auto i=_begin; i!=_end; ++i) i->~Element();
+			if (OwnsHeapBlock()) delete (uint8_t*)_begin;
+		}
+
+		SerializableVector(SerializableVector&& moveFrom) : _begin(moveFrom._begin), _end(moveFrom._end), _capacity(moveFrom._capacity) 
+		{
+			moveFrom._begin = moveFrom._end = moveFrom._capacity = nullptr;
+		}
+
+		SerializableVector& operator=(SerializableVector&& moveFrom)
+		{
+			SerializableVector temp(std::move(*this));
+			_begin = moveFrom._begin; _end = moveFrom._end; _capacity = moveFrom._capacity;
+			moveFrom._begin = moveFrom._end = moveFrom._capacity = nullptr;
+			return *this;
+		}
+
+	private:
+		Element* _begin;
+		Element* _end;
+		Element* _capacity;
+
+		void Expand(size_type requiredSize)
+		{
+			auto originalSize = size();
+			auto newCapacity = std::max(std::max(size()*2-size()/2, size_t(8)), requiredSize);
+			auto newBlock = std::make_unique<uint8_t[]>(newCapacity*sizeof(Element));
+			// note -- assuming move operators never throw! If we get an exception during
+			// a move operator, we cannot reverse this operation.
+			for (size_type c=0; c<originalSize; ++c)
+				((Element*)newBlock.get())[c] = std::move(_begin[c]);
+			SerializableVector temp(std::move(*this));
+			_begin = (Element*)newBlock.release();
+			_end = &_begin[originalSize];
+			_capacity = &_begin[newCapacity];
+		}
+	};
+
+	#pragma pop_macro("new")
 }
 
 template<typename Serializer, typename Object>

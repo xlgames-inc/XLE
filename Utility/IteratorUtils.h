@@ -10,6 +10,15 @@
 #include <vector>
 #include <algorithm>
 
+// support for missing "std::size" in earlier versions of visual studio STL
+#if !((STL_ACTIVE == STL_MSVC) && (_MSC_VER > 1800))
+    namespace std
+    {
+        template<typename ValueType, size_t N>
+            /*constexpr*/ size_t size(ValueType (&c)[N]) { return N; }
+    }
+#endif
+
 namespace Utility
 {
         //
@@ -37,27 +46,34 @@ namespace Utility
         };
 
     template <typename First, typename Second, typename Allocator>
-        static typename std::vector<std::pair<First, Second>, Allocator>::iterator LowerBound(
-            typename std::vector<std::pair<First, Second>, Allocator>&v, First compareToFirst)
+        typename std::vector<std::pair<First, Second>, Allocator>::iterator LowerBound(
+            std::vector<std::pair<First, Second>, Allocator>&v, First compareToFirst)
         {
             return std::lower_bound(v.begin(), v.end(), compareToFirst, CompareFirst<First, Second>());
         }
 
     template <typename First, typename Second, typename Allocator>
-        static typename std::vector<std::pair<First, Second>, Allocator>::const_iterator LowerBound(
-            typename const std::vector<std::pair<First, Second>, Allocator>&v, First compareToFirst)
+        typename std::vector<std::pair<First, Second>, Allocator>::const_iterator LowerBound(
+            const std::vector<std::pair<First, Second>, Allocator>&v, First compareToFirst)
         {
             return std::lower_bound(v.cbegin(), v.cend(), compareToFirst, CompareFirst<First, Second>());
         }
 
+	template<typename FirstType, typename SecondType>
+		std::pair<typename std::vector<std::pair<FirstType, SecondType> >::iterator, typename std::vector<std::pair<FirstType, SecondType> >::iterator>
+			EqualRange(std::vector<std::pair<FirstType, SecondType> >& vector, FirstType searchKey)
+		{
+			return std::equal_range(vector.begin(), vector.end(), searchKey, CompareFirst<FirstType, SecondType>());
+		}
+
     template <typename Vector, typename Pred>
-        static typename Vector::iterator FindIf(Vector& v, Pred&& predicate)
+        typename Vector::iterator FindIf(Vector& v, Pred&& predicate)
         {
             return std::find_if(v.begin(), v.end(), std::forward<Pred>(predicate));
         }
 
     template <typename Vector, typename Pred>
-        static typename Vector::const_iterator FindIf(const Vector& v, Pred&& predicate)
+        typename Vector::const_iterator FindIf(const Vector& v, Pred&& predicate)
         {
             return std::find_if(v.cbegin(), v.cend(), std::forward<Pred>(predicate));
         }
@@ -112,15 +128,15 @@ namespace Utility
         class IteratorRange : public std::pair<Iterator, Iterator>
         {
         public:
-            Iterator begin() const      { return first; }
-            Iterator end() const        { return second; }
-            Iterator cbegin() const     { return first; }
-            Iterator cend() const       { return second; }
-            bool empty() const          { return first == second; }
-			size_t size() const			{ return Internal::IteratorDifference(first, second); }
+            Iterator begin() const      { return this->first; }
+            Iterator end() const        { return this->second; }
+            Iterator cbegin() const     { return this->first; }
+            Iterator cend() const       { return this->second; }
+            bool empty() const          { return this->first == this->second; }
+			size_t size() const			{ return Internal::IteratorDifference(this->first, this->second); }
 
 			template<typename I=Iterator, typename std::enable_if<!std::is_same<typename std::remove_const<I>::type, void*>::value>::type* = nullptr>
-				decltype(*std::declval<Iterator>()) operator[](size_t index) const { return first[index]; }
+				decltype(*std::declval<Iterator>()) operator[](size_t index) const { return this->first[index]; }
 
             IteratorRange() : std::pair<Iterator, Iterator>((Iterator)nullptr, (Iterator)nullptr) {}
             IteratorRange(Iterator f, Iterator s) : std::pair<Iterator, Iterator>(f, s) {}
@@ -225,15 +241,12 @@ namespace Utility
     };
 #pragma warning(pop)
 
+	template <typename Iterator>
+        Iterator LowerBound2(IteratorRange<Iterator> v, decltype(std::declval<Iterator>()->first) compareToFirst)
+        {
+            return std::lower_bound(v.begin(), v.end(), compareToFirst, 
+				CompareFirst<decltype(std::declval<Iterator>()->first), decltype(std::declval<Iterator>()->second)>());
+        }
 }
-
-// support for missing "std::size" in earlier versions of visual studio STL
-#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER <= 1800)
-    namespace std
-    {
-        template<typename ValueType, size_t N>
-            /*constexpr*/ size_t size(ValueType (&c)[N]) { return N; }
-    }
-#endif
 
 using namespace Utility;

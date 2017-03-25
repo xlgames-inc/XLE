@@ -77,6 +77,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             const std::vector<unsigned>& GetVertexMap() const   { return _vertexMap; }
             const std::string& GetSemanticName() const          { return _semanticName; }
             const unsigned GetSemanticIndex() const             { return _semanticIndex; }
+			const std::shared_ptr<IVertexSourceData>& ShareSourceData() const { return _sourceData; }
 
             unsigned UnifiedToStream(unsigned input) const
             {
@@ -173,6 +174,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             const IVertexSourceData& sourceStream,
             const std::vector<unsigned>& originalMapping,
             float threshold);
+
+	MeshDatabase RemoveDuplicates(
+		std::vector<unsigned>& outputMapping,
+		const MeshDatabase& input);
 
     class NativeVBSettings
     {

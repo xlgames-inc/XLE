@@ -26,6 +26,7 @@
     <ClInclude Include="..\AssetTraits.h" />
     <ClInclude Include="..\DeferredConstruction.h" />
     <ClInclude Include="..\ChunkFileContainer.h" />
+    <ClInclude Include="..\CompilationThread.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />
@@ -50,6 +51,7 @@
     <ClCompile Include="..\AssetTraits.cpp" />
     <ClCompile Include="..\DeferredConstruction.cpp" />
     <ClCompile Include="..\ChunkFileContainer.cpp" />
+    <ClCompile Include="..\CompilationThread.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="WinAPI">

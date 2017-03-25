@@ -9,9 +9,12 @@
 #include "Types.h"
 #include "Format.h"
 
-#include "../../ConsoleRig/GlobalServices.h"
-#include "../../Utility/StringFormat.h"
-#include "../../Utility/MemoryUtils.h"
+#define HAS_XLE_CONSOLE_RIG
+#if defined(HAS_XLE_CONSOLE_RIG)
+    #include "../ConsoleRig/GlobalServices.h"
+#endif
+#include "../Utility/StringFormat.h"
+#include "../Utility/MemoryUtils.h"
 
 
 namespace RenderCore
@@ -72,6 +75,7 @@ namespace RenderCore
         if (!MainHeap) {
                 // initialize our global from the global services
                 // this will ensure that the same object will be used across multiple DLLs
+#if defined(HAS_XLE_CONSOLE_RIG)
             static auto Fn_GetStorage = ConstHash64<'gets', 'hare', 'dpkt', 'heap'>::Value;
             auto& services = ConsoleRig::GlobalServices::GetCrossModule()._services;
             if (!services.Has<MiniHeap*()>(Fn_GetStorage)) {
@@ -82,6 +86,10 @@ namespace RenderCore
             } else {
                 MainHeap = services.Call<MiniHeap*>(Fn_GetStorage);
             }
+#else
+            static auto refHolder = std::make_unique<MiniHeap>();
+            MainHeap = refHolder.get();
+#endif
         }
 
         return *MainHeap;
@@ -100,8 +108,7 @@ namespace RenderCore
     {
         namespace Detail
         {
-            static const unsigned AppendAlignedElement = ~unsigned(0x0);
-            InputElementDesc P2CT_Elements[] = 
+            InputElementDesc P2CT_Elements[] =
             {
                 InputElementDesc( "POSITION",   0, Format::R32G32_FLOAT   ),
                 InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM ),
@@ -172,16 +179,14 @@ namespace RenderCore
         InputLayout PNTT = std::make_pair(Detail::PNTT_Elements, dimof(Detail::PNTT_Elements));
     }
 
-    unsigned CalculateVertexStride(
-        const InputElementDesc* start, const InputElementDesc* end,
-        unsigned slot)
+    unsigned CalculateVertexStride(IteratorRange<const InputElementDesc*> range, unsigned slot)
     {
             // note --  Assuming vertex elements are densely packed (which
             //          they usually are).
             //          We could also use the "_alignedByteOffset" member
             //          to find out where the element begins and ends)
         unsigned result = 0;
-        for (auto i=start; i<end; ++i) {
+        for (auto i=range.begin(); i<range.end(); ++i) {
             if (i->_inputSlot == slot) {
                 assert(i->_alignedByteOffset == (result/8) || i->_alignedByteOffset == ~unsigned(0x0));
                 result += BitsPerPixel(i->_nativeFormat);
@@ -190,10 +195,10 @@ namespace RenderCore
         return result / 8;
     }
 
-    unsigned HasElement(const InputElementDesc* begin, const InputElementDesc* end, const char elementSemantic[])
+    unsigned HasElement(IteratorRange<const InputElementDesc*> range, const char elementSemantic[])
     {
         unsigned result = 0;
-        for (auto i = begin; i != end; ++i) {
+        for (auto i = range.begin(); i != range.end(); ++i) {
             if (!XlCompareStringI(i->_semanticName.c_str(), elementSemantic)) {
                 assert((result & (1 << i->_semanticIndex)) == 0);
                 result |= (1 << i->_semanticIndex);
@@ -202,13 +207,21 @@ namespace RenderCore
         return result;
     }
 
-    unsigned FindElement(const InputElementDesc* begin, const InputElementDesc* end, const char elementSemantic[], unsigned semanticIndex)
+    unsigned FindElement(IteratorRange<const InputElementDesc*> range, const char elementSemantic[], unsigned semanticIndex)
     {
-        for (auto i = begin; i != end; ++i)
+        for (auto i = range.begin(); i != range.end(); ++i)
             if (i->_semanticIndex == semanticIndex && !XlCompareStringI(i->_semanticName.c_str(), elementSemantic))
-                return unsigned(i - begin);
+                return unsigned(i - range.begin());
         return ~0u;
     }
+
+	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements) 
+	{
+		unsigned result = 0;
+        for (auto i=elements.begin(); i<elements.end(); ++i)
+            result += BitsPerPixel(i->_nativeFormat);
+        return result / 8;
+	}
 
 }
 

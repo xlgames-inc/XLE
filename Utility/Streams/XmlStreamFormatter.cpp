@@ -174,7 +174,7 @@ namespace Utility
         if (_primed != Blob::None) return _primed;
 
         using Const = FormatterConstants<CharType>;
-        register TextStreamMarker<CharType> mark = _marker;
+        TextStreamMarker<CharType> mark = _marker;
 
         if (_pendingHeader) {
 
