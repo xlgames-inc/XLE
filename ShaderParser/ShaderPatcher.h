@@ -186,7 +186,7 @@ namespace ShaderPatcher
 
         const Node*     GetNode(uint32 nodeId) const;
 
-        NodeGraph(const std::string& name = std::string());
+        explicit NodeGraph(const std::string& name = std::string());
         ~NodeGraph();
 
 		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)

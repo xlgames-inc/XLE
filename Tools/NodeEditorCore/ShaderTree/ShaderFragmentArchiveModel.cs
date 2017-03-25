@@ -362,7 +362,7 @@ namespace NodeEditorCore
                     else
                     {
                             // It's a file. Let's try to parse it as a shader file and get the information within
-                        var fragment = _archive.GetFragment(basePath);
+                        var fragment = _archive.GetFragment(basePath, new GUILayer.DirectorySearchRules());
 
                         ShaderFileItem sfi = (ShaderFileItem)parent;
                         sfi.ExceptionString = fragment.ExceptionString;

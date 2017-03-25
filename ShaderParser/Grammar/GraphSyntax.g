@@ -21,7 +21,7 @@ tokens
 	RCONNECTION_UNIQUE;
 	RCONNECTION_REF;
 
-	ENTRYPOINT_ASSIGNMENT;
+	EXPORT;
 
 	LITERAL;
 }
@@ -71,7 +71,7 @@ connection : n=Identifier '.' l=lconnection ':' r=rconnection -> ^(CONNECTION $n
 toplevel
 	:	declaration ';' -> declaration
 	|	connection ';' -> connection
-	|	'entryPoint' '=' n=Identifier ';' -> ^(ENTRYPOINT_ASSIGNMENT $n)
+	|	'export' n=Identifier ';' -> ^(EXPORT $n)
 	;
 
 entrypoint

@@ -19,7 +19,7 @@ namespace NodeEditorCore
 {
     public interface IModelConversion
     {
-        ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph);
+        ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph, GUILayer.DirectorySearchRules searchRules);
         void AddToHyperGraph(ShaderPatcherLayer.NodeGraph nodeGraph, HyperGraph.IGraphModel graph);
     }
 
@@ -32,8 +32,6 @@ namespace NodeEditorCore
             switch (input)
             {
                 case ShaderFragmentArchive.Parameter.SourceType.Material:                   return ShaderPatcherLayer.Node.Type.MaterialCBuffer;
-                case ShaderFragmentArchive.Parameter.SourceType.InterpolatorIntoVertex:     return ShaderPatcherLayer.Node.Type.InterpolatorIntoVertex;
-                case ShaderFragmentArchive.Parameter.SourceType.InterpolatorIntoPixel:      return ShaderPatcherLayer.Node.Type.InterpolatorIntoPixel;
                 case ShaderFragmentArchive.Parameter.SourceType.System:                     return ShaderPatcherLayer.Node.Type.SystemCBuffer;
                 case ShaderFragmentArchive.Parameter.SourceType.Output:                     return ShaderPatcherLayer.Node.Type.Output;
                 case ShaderFragmentArchive.Parameter.SourceType.Constant:                   return ShaderPatcherLayer.Node.Type.Constants;
@@ -47,8 +45,6 @@ namespace NodeEditorCore
             {
                 default:
                 case ShaderPatcherLayer.Node.Type.MaterialCBuffer:          return ShaderFragmentArchive.Parameter.SourceType.Material;
-                case ShaderPatcherLayer.Node.Type.InterpolatorIntoVertex:   return ShaderFragmentArchive.Parameter.SourceType.InterpolatorIntoVertex;
-                case ShaderPatcherLayer.Node.Type.InterpolatorIntoPixel:    return ShaderFragmentArchive.Parameter.SourceType.InterpolatorIntoPixel;
                 case ShaderPatcherLayer.Node.Type.SystemCBuffer:            return ShaderFragmentArchive.Parameter.SourceType.System;
                 case ShaderPatcherLayer.Node.Type.Output:                   return ShaderFragmentArchive.Parameter.SourceType.Output;
                 case ShaderPatcherLayer.Node.Type.Constants:                return ShaderFragmentArchive.Parameter.SourceType.Constant;
@@ -64,9 +60,10 @@ namespace NodeEditorCore
             //
             //      So, let's just build it from the graph control object.
             //
-        public ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph)
+        public ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph, GUILayer.DirectorySearchRules searchRules)
         {
             ShaderPatcherLayer.NodeGraph nodeGraph = new ShaderPatcherLayer.NodeGraph();
+            nodeGraph.SearchRules = searchRules;
             Dictionary<Node, int> nodeToVisualNodeId = new Dictionary<Node, int>();
             foreach (Node n in graph.Nodes)
             {
@@ -193,8 +190,7 @@ namespace NodeEditorCore
                                     {
                                         InputNodeID = nTag.Id,
                                         OutputNodeID = dstNode.Id,
-                                        OutputParameterName = dstItem.Name,
-                                        OutputType = TypeFromNodeItem(dstItem)
+                                        OutputParameterName = dstItem.Name
                                     };
 
                                 if (connection.From.Item is ShaderFragmentNodeItem)
@@ -245,7 +241,7 @@ namespace NodeEditorCore
         {
             if (nodeItem.ArchiveName != null && nodeItem.ArchiveName.Length != 0)
             {
-                var param = _shaderFragments.GetParameter(nodeItem.ArchiveName);
+                var param = _shaderFragments.GetParameter(nodeItem.ArchiveName, null);
                 return (param != null) ? param.Type : string.Empty;
             }
             return nodeItem.Type;
@@ -287,12 +283,12 @@ namespace NodeEditorCore
                         Node newNode = null;
                         if (n.NodeType == ShaderPatcherLayer.Node.Type.Procedure)
                         {
-                            var fn = _shaderFragments.GetFunction(n.FragmentArchiveName);
+                            var fn = _shaderFragments.GetFunction(n.FragmentArchiveName, nodeGraph.SearchRules);
                             newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName, previewSettings);
                         }
                         else
                         {
-                            var ps = _shaderFragments.GetParameterStruct(n.FragmentArchiveName);
+                            var ps = _shaderFragments.GetParameterStruct(n.FragmentArchiveName, nodeGraph.SearchRules);
                             newNode = _nodeCreator.CreateParameterNode(ps, n.FragmentArchiveName, AsSourceType(n.NodeType));
                         }
 
@@ -318,7 +314,7 @@ namespace NodeEditorCore
                         
                         var outputItem = FindOrCreateNodeItem(nodeIdToControlNode[c.OutputNodeID],
                             (item) => (item.Input != null && item.Input.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.OutputParameterName)),
-                            () => new ShaderFragmentNodeItem(c.OutputParameterName, c.OutputType, null, true, false));
+                            () => new ShaderFragmentNodeItem(c.OutputParameterName, "", null, true, false));
 
                         graph.Connect(inputItem.Output, outputItem.Input);
                     }

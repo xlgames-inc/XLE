@@ -160,7 +160,7 @@ namespace MaterialTool.Controls
                             var archiveName = item.ArchiveName;
                             if (archiveName != null && archiveName.Length > 0)
                             {
-                                var fn = _fragments.GetFunction(archiveName);
+                                var fn = _fragments.GetFunction(archiveName, null);
                                 if (fn != null)
                                 {
                                     this.DoDragDrop(
@@ -176,7 +176,7 @@ namespace MaterialTool.Controls
                             var archiveName = item.ArchiveName;
                             if (archiveName != null && archiveName.Length > 0)
                             {
-                                var fn = _fragments.GetParameterStruct(archiveName);
+                                var fn = _fragments.GetParameterStruct(archiveName, null);
                                 if (fn != null)
                                 {
                                     var node = _nodeCreator.CreateParameterNode(

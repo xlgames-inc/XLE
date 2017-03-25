@@ -49,10 +49,11 @@ namespace NodeEditorCore
     public class DiagramDocument : IDiagramDocument
     {
         public ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
+        public GUILayer.DirectorySearchRules SearchRules { get; set; }
 
         public ShaderPatcherLayer.NodeGraph NodeGraph 
         {
-            get { return _converter.ToShaderPatcherLayer(ViewModel); }  // note -- a lot of conversion work here every frame
+            get { return _converter.ToShaderPatcherLayer(ViewModel, SearchRules); }  // note -- a lot of conversion work here every frame
         }
 
         public HyperGraph.IGraphModel ViewModel { get; set; }
@@ -71,6 +72,7 @@ namespace NodeEditorCore
             // nativeGraph = ShaderPatcherLayer.NodeGraph.Load(source.LocalPath);
             ShaderPatcherLayer.NodeGraph.Load(source.LocalPath, out nativeGraph, out graphContext);
             GraphContext = graphContext;
+            SearchRules = nativeGraph.SearchRules;
             _converter.AddToHyperGraph(nativeGraph, ViewModel);
         }
 
@@ -509,7 +511,8 @@ namespace NodeEditorCore
                 // { ParamSourceType.Output, "Output" },
                 // { ParamSourceType.Constant, "Constant" }
 
-                { ParamSourceType.InterpolatorIntoPixel, "Input" },
+                // { ParamSourceType.InterpolatorIntoPixel, "Input" },
+                { ParamSourceType.System, "Input" },
                 { ParamSourceType.Output, "Output" }
             };
         }

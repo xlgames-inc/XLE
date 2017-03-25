@@ -14,6 +14,7 @@ namespace SceneEngine { class LightingParserContext; class IntersectionTestConte
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class CameraDesc; class ParsingContext; } }
 namespace RenderCore { namespace Assets { class ResolvedMaterial; } }
 namespace RenderOverlays { namespace DebuggingDisplay { class InputSnapshot; } }
+namespace Assets { class DirectorySearchRules; }
 namespace ConsoleRig { class IProgress; class GlobalServices; }
 
 #pragma make_public(GUILayer::NativeEngineDevice)
@@ -29,5 +30,6 @@ namespace ConsoleRig { class IProgress; class GlobalServices; }
 #pragma make_public(RenderCore::Assets::ResolvedMaterial)
 #pragma make_public(RenderCore::IThreadContext)
 #pragma make_public(RenderOverlays::DebuggingDisplay::InputSnapshot)
+#pragma make_public(Assets::DirectorySearchRules)
 #pragma make_public(ConsoleRig::IProgress)
 #pragma make_public(ConsoleRig::GlobalServices)

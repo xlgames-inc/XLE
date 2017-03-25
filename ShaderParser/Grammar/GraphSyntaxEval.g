@@ -127,7 +127,7 @@ toplevel
 		Slot_Name(ctx, lnode, rnode, n1id);
 	}
 	| connection
-	| ^(ENTRYPOINT_ASSIGNMENT Identifier)
+	| ^(EXPORT Identifier)
 	;
 
 entrypoint : toplevel* ;

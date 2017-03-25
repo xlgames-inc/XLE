@@ -26,12 +26,10 @@ namespace ShaderPatcherLayer
         static enum class Type 
         {
             Procedure,
-            MaterialCBuffer,
-            InterpolatorIntoVertex,
-            InterpolatorIntoPixel,
             SystemCBuffer,
             Output,
-            Constants
+            Constants,
+			MaterialCBuffer
         };
         [DataMember] String^       FragmentArchiveName;
         [DataMember] UInt32        NodeId;
@@ -52,10 +50,11 @@ namespace ShaderPatcherLayer
     {
     public:
         [DataMember] UInt32        InputNodeID;
-        [DataMember] String^       OutputType;
         [DataMember] String^       InputParameterName;
         [DataMember] String^       InputType;
-        [DataMember] String^       Semantic;
+
+		// [DataMember] String^       OutputType;
+        // [DataMember] String^       Semantic;
     };
 
         ///////////////////////////////////////////////////////////////
@@ -145,10 +144,17 @@ namespace ShaderPatcherLayer
             List<PreviewSettings^>^ get() { if (!_previewSettings) { _previewSettings = gcnew List<PreviewSettings^>(); } return _previewSettings; }
         }
 
+		property GUILayer::DirectorySearchRules^ SearchRules 
+		{ 
+			GUILayer::DirectorySearchRules^ get() { return _searchRules; }
+			void set(GUILayer::DirectorySearchRules^ newSearchRules) { _searchRules = newSearchRules; }
+		}
+
         NodeGraph();
 
         ShaderPatcher::NodeGraph    ConvertToNative(String^ name);
         ShaderPatcher::NodeGraph    ConvertToNativePreview(UInt32 previewNodeId);
+		static NodeGraph^			ConvertFromNative(const ShaderPatcher::NodeGraph& input);
 
         static String^      GenerateShader(NodeGraph^ graph, String^ name);
         static Tuple<String^, String^>^ 
@@ -181,6 +187,7 @@ namespace ShaderPatcherLayer
         List<OutputParameterConnection^>^   _outputParameterConnections;
         List<VisualNode^>^                  _visualNodes;
         List<PreviewSettings^>^             _previewSettings;
+		GUILayer::DirectorySearchRules^		_searchRules;
     };
 
 }

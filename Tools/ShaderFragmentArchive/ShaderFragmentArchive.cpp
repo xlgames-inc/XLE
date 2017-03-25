@@ -279,8 +279,10 @@ namespace ShaderFragmentArchive
         Default = gcnew String(otherParameter->Default);
     }
 
-    ShaderFragment^   Archive::GetFragment(String^ name)
+    ShaderFragment^   Archive::GetFragment(String^ name, GUILayer::DirectorySearchRules^ searchRules)
     {
+		if (searchRules)
+			name = searchRules->ResolveFile(name);
         System::Threading::Monitor::Enter(_dictionary);
         try
         {
@@ -306,7 +308,7 @@ namespace ShaderFragmentArchive
         return nullptr;
     }
         
-    Function^   Archive::GetFunction(String^ name)
+    Function^   Archive::GetFunction(String^ name, GUILayer::DirectorySearchRules^ searchRules)
     {
         System::Threading::Monitor::Enter(_dictionary);
         try
@@ -320,7 +322,7 @@ namespace ShaderFragmentArchive
                 fileName        = name;
             }            
 
-            ShaderFragment^ fragment = GetFragment(fileName);
+            ShaderFragment^ fragment = GetFragment(fileName, searchRules);
 
                 // look for a function with the given name (case sensitive here)
             for each (Function^ f in fragment->Functions) {
@@ -335,7 +337,7 @@ namespace ShaderFragmentArchive
         return nullptr;
     }
 
-    ParameterStruct^  Archive::GetParameterStruct(String^ name)
+    ParameterStruct^  Archive::GetParameterStruct(String^ name, GUILayer::DirectorySearchRules^ searchRules)
     {
         System::Threading::Monitor::Enter(_dictionary);
         try
@@ -349,7 +351,7 @@ namespace ShaderFragmentArchive
                 fileName        = name;
             }            
 
-            ShaderFragment^ fragment = GetFragment(fileName);
+            ShaderFragment^ fragment = GetFragment(fileName, searchRules);
 
                 // look for a function with the given name (case sensitive here)
             for each (ParameterStruct^ p in fragment->ParameterStructs) {
@@ -365,7 +367,7 @@ namespace ShaderFragmentArchive
         return nullptr;
     }
 
-    Parameter^ Archive::GetParameter(String^ name)
+    Parameter^ Archive::GetParameter(String^ name, GUILayer::DirectorySearchRules^ searchRules)
     {
         System::Threading::Monitor::Enter(_dictionary);
         try
@@ -387,7 +389,7 @@ namespace ShaderFragmentArchive
                 return nullptr;
             }
 
-            ShaderFragment^ str = GetFragment(fileName);
+            ShaderFragment^ str = GetFragment(fileName, searchRules);
             for each(ParameterStruct^ ps in str->ParameterStructs) {
                 if (ps->Name == parameterStructName) {
                     for each (Parameter^ p in ps->Parameters) {

@@ -276,7 +276,7 @@ namespace NodeEditorCore
 
         private ShaderPatcherLayer.NodeGraph ConvertToShaderPatcherLayer()
         {
-            return ModelConversion.ToShaderPatcherLayer(GetGraphModel());
+            return ModelConversion.ToShaderPatcherLayer(GetGraphModel(), null);
         }
 
         private ShaderFragmentPreviewItem GetPreviewItem(object sender)

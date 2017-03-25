@@ -42,7 +42,7 @@ namespace ShaderPatcher
 		return result;
     }
 
-    static NodeGraph DoGraphSyntaxParse(StringSection<char> sourceCode)
+    NodeGraph ParseGraphSyntax(StringSection<char> sourceCode)
     {
         AntlrPtr<struct ANTLR3_INPUT_STREAM_struct>	inputStream = antlr3StringStreamNew(
             (ANTLR3_UINT8*)sourceCode.begin(), ANTLR3_ENC_8BIT, 
@@ -76,7 +76,7 @@ namespace ShaderPatcher
 
 	std::string ReadGraphSyntax(StringSection<char> input, const ::Assets::DirectorySearchRules& searchRules)
 	{
-		auto graph = DoGraphSyntaxParse(input);
+		auto graph = ParseGraphSyntax(input);
 		
 		std::string result;
 		// Find each slot implementation in the graph; trim it out, and then

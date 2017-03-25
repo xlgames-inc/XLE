@@ -46,7 +46,7 @@ namespace ShaderFragmentArchive
     public ref class Parameter
     {
     public:
-        enum class SourceType { Material, InterpolatorIntoVertex, InterpolatorIntoPixel, System, Output, Constant };
+        enum class SourceType { Material, System, Output, Constant };
         
         [CategoryAttribute("Name")]     property String^        Name;
         [CategoryAttribute("Name")]     property String^        Description;
@@ -106,10 +106,10 @@ namespace ShaderFragmentArchive
     public ref class Archive
     {
     public: 
-        ShaderFragment^      GetFragment(String^ name);
-        Function^            GetFunction(String^ name);
-        ParameterStruct^     GetParameterStruct(String^ name);
-        Parameter^           GetParameter(String^ name);
+        ShaderFragment^      GetFragment(String^ name, GUILayer::DirectorySearchRules^ searchRules);
+        Function^            GetFunction(String^ name, GUILayer::DirectorySearchRules^ searchRules);
+        ParameterStruct^     GetParameterStruct(String^ name, GUILayer::DirectorySearchRules^ searchRules);
+        Parameter^           GetParameter(String^ name, GUILayer::DirectorySearchRules^ searchRules);
 
         Archive();
     private:

@@ -2,4 +2,6 @@ ShaderLexer.*
 ShaderParser.*
 GraphSyntax*.c
 GraphSyntax*.h
+ShaderTreeWalk.c
+ShaderTreeWalk.h
 *.tokens

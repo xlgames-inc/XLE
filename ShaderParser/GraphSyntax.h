@@ -9,6 +9,8 @@
 namespace Assets { class DirectorySearchRules; }
 namespace ShaderPatcher
 {
+	class NodeGraph;
+	NodeGraph ParseGraphSyntax(StringSection<char> sourceCode);
 	std::string ReadGraphSyntax(StringSection<char> input, const ::Assets::DirectorySearchRules& searchRules);
 }
 
