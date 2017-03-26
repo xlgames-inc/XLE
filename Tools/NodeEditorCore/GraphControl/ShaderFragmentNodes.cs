@@ -36,6 +36,7 @@ namespace NodeEditorCore
         ShaderPatcherLayer.NodeGraph NodeGraph { get; }
         ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
         HyperGraph.IGraphModel ViewModel { get; set; }
+        GUILayer.DirectorySearchRules SearchRules { get; set; }
 
         uint ShaderStructureHash { get; }
         void Invalidate();

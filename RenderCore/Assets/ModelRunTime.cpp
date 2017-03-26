@@ -259,13 +259,17 @@ namespace RenderCore { namespace Assets
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 auto* matData = matScaffold.GetMaterial(i->first);
                 auto* cbLayout = sharedStateSet.GetCBLayout(i->second._shaderName);
-                auto cbData = matData ? cbLayout->BuildCBDataAsVector(matData->_constants) : std::vector<uint8>(cbLayout->_cbSize, uint8(0));
-                cbLayouts.insert(cbLayout);
+				if (cbLayout && cbLayout->_cbSize) {
+					auto cbData = matData ? cbLayout->BuildCBDataAsVector(matData->_constants) : std::vector<uint8>(cbLayout->_cbSize, uint8(0));
+					cbLayouts.insert(cbLayout);
 
-                i->second._constantBuffer = 
-                    (unsigned)InsertOrCombine(
-                        prescientMaterialConstantBuffers, 
-                        std::move(cbData));
+					i->second._constantBuffer = 
+						(unsigned)InsertOrCombine(
+							prescientMaterialConstantBuffers, 
+							std::move(cbData));
+				} else {
+					i->second._constantBuffer = ~0u;
+				}
             }
 
                 // configure the texture bind points array & material parameters box
@@ -841,11 +845,13 @@ namespace RenderCore { namespace Assets
             auto* t = _boundTextures[resourcesIndex * _texturesPerMaterial + c];
             srvs[c] = t?(&t->GetShaderResource()):nullptr;
         }
-        cbs[1] = &_constantBuffers[constantsIndex];
-        assert(cbs[1] && cbs[1]->IsGood());
-        boundUniforms.Apply(
-            *context._context, context._parserContext->GetGlobalUniformsStream(),
-            RenderCore::Metal::UniformsStream(nullptr, cbs, 2, srvs, _texturesPerMaterial));
+		if (constantsIndex != ~0u) {
+			cbs[1] = &_constantBuffers[constantsIndex];
+			assert(cbs[1] && cbs[1]->IsGood());
+			boundUniforms.Apply(
+				*context._context, context._parserContext->GetGlobalUniformsStream(),
+				RenderCore::Metal::UniformsStream(nullptr, cbs, 2, srvs, _texturesPerMaterial));
+		}
     }
 
     auto ModelRenderer::Pimpl::BuildMesh(

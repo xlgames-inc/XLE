@@ -31,10 +31,10 @@ namespace NodeEditorCore
         {
             switch (input)
             {
-                case ShaderFragmentArchive.Parameter.SourceType.Material:                   return ShaderPatcherLayer.Node.Type.MaterialCBuffer;
-                case ShaderFragmentArchive.Parameter.SourceType.System:                     return ShaderPatcherLayer.Node.Type.SystemCBuffer;
-                case ShaderFragmentArchive.Parameter.SourceType.Output:                     return ShaderPatcherLayer.Node.Type.Output;
-                case ShaderFragmentArchive.Parameter.SourceType.Constant:                   return ShaderPatcherLayer.Node.Type.Constants;
+                case ShaderFragmentArchive.Parameter.SourceType.Material:                   return ShaderPatcherLayer.Node.Type.Uniforms;
+                case ShaderFragmentArchive.Parameter.SourceType.System:                     return ShaderPatcherLayer.Node.Type.Uniforms;
+                case ShaderFragmentArchive.Parameter.SourceType.Output:                     return ShaderPatcherLayer.Node.Type.SlotOutput;
+                case ShaderFragmentArchive.Parameter.SourceType.Constant:                   return ShaderPatcherLayer.Node.Type.Uniforms;
                 default:                                                                    return ShaderPatcherLayer.Node.Type.Procedure;
             }
         }
@@ -44,10 +44,10 @@ namespace NodeEditorCore
             switch (input)
             {
                 default:
-                case ShaderPatcherLayer.Node.Type.MaterialCBuffer:          return ShaderFragmentArchive.Parameter.SourceType.Material;
-                case ShaderPatcherLayer.Node.Type.SystemCBuffer:            return ShaderFragmentArchive.Parameter.SourceType.System;
-                case ShaderPatcherLayer.Node.Type.Output:                   return ShaderFragmentArchive.Parameter.SourceType.Output;
-                case ShaderPatcherLayer.Node.Type.Constants:                return ShaderFragmentArchive.Parameter.SourceType.Constant;
+                case ShaderPatcherLayer.Node.Type.Procedure:            return ShaderFragmentArchive.Parameter.SourceType.Material;
+                case ShaderPatcherLayer.Node.Type.SlotInput:            return ShaderFragmentArchive.Parameter.SourceType.System;
+                case ShaderPatcherLayer.Node.Type.SlotOutput:           return ShaderFragmentArchive.Parameter.SourceType.Output;
+                case ShaderPatcherLayer.Node.Type.Uniforms:             return ShaderFragmentArchive.Parameter.SourceType.Material;
             }
         }
 

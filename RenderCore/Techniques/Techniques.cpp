@@ -136,7 +136,7 @@ namespace RenderCore { namespace Techniques
         ///////////////////////   T E C H N I Q U E   I N T E R F A C E   ///////////////////////////
 
     #if defined(CHECK_TECHNIQUE_HASH_CONFLICTS)
-        Technique::HashConflictTest::HashConflictTest(const ParameterBox* globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash)
+        ShaderType::TechniqueObj::HashConflictTest::HashConflictTest(const ParameterBox* globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash)
         {
             _rawHash = rawHash; _filteredHash = filteredHash; _interfaceHash = interfaceHash;
             for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
@@ -144,7 +144,7 @@ namespace RenderCore { namespace Techniques
             }
         }
 
-        Technique::HashConflictTest::HashConflictTest(const ParameterBox globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash)
+        ShaderType::TechniqueObj::HashConflictTest::HashConflictTest(const ParameterBox globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash)
         {
             _rawHash = rawHash; _filteredHash = filteredHash; _interfaceHash = interfaceHash;
             for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
@@ -152,9 +152,9 @@ namespace RenderCore { namespace Techniques
             }
         }
 
-        Technique::HashConflictTest::HashConflictTest() {}
+        ShaderType::TechniqueObj::HashConflictTest::HashConflictTest() {}
 
-        void Technique::TestHashConflict(const ParameterBox* globalState[ShaderParameters::Source::Max], const HashConflictTest& comparison) const
+        void ShaderType::TechniqueObj::TestHashConflict(const ParameterBox* globalState[ShaderParameters::Source::Max], const HashConflictTest& comparison) const
         {
                 // check to make sure the parameter names in both of these boxes is the same
                 // note -- this isn't exactly correctly. we need to filter out parameters that are not relevant to this technique
@@ -190,8 +190,8 @@ namespace RenderCore { namespace Techniques
         }
     #endif
 
-    ResolvedShader      Technique::FindVariation(   const ParameterBox* globalState[ShaderParameters::Source::Max],
-                                                    const TechniqueInterface& techniqueInterface) const
+    ResolvedShader      ShaderType::TechniqueObj::FindVariation(	const ParameterBox* globalState[ShaderParameters::Source::Max],
+																	const TechniqueInterface& techniqueInterface) const
     {
             //
             //      todo --     It would be cool if the caller passed in some kind of binding desc
@@ -232,7 +232,7 @@ namespace RenderCore { namespace Techniques
             return i->second;
         }
 
-        uint64 filteredHashValue = _baseParameters.CalculateFilteredHash(inputHash, globalState);
+        uint64 filteredHashValue = _technique._baseParameters.CalculateFilteredHash(inputHash, globalState);
         uint64 filteredHashWithInterface = filteredHashValue ^ techniqueInterface.GetHashValue();
         auto i2 = std::lower_bound(_filteredToResolved.begin(), _filteredToResolved.end(), filteredHashWithInterface, CompareFirst<uint64, ResolvedShader>());
         if (i2!=_filteredToResolved.cend() && i2->first == filteredHashWithInterface) {
@@ -270,12 +270,12 @@ namespace RenderCore { namespace Techniques
         return newResolvedShader;
     }
 
-    void        Technique::ResolveAndBind(  ResolvedShader& resolvedShader, 
-                                            const ParameterBox* globalState[ShaderParameters::Source::Max],
-                                            const TechniqueInterface& techniqueInterface) const
+    void        ShaderType::TechniqueObj::ResolveAndBind(	ResolvedShader& resolvedShader, 
+															const ParameterBox* globalState[ShaderParameters::Source::Max],
+															const TechniqueInterface& techniqueInterface) const
     {
         std::vector<std::pair<const utf8*, std::string>> defines;
-        _baseParameters.BuildStringTable(defines);
+        _technique._baseParameters.BuildStringTable(defines);
         for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
             OverrideStringTable(defines, *globalState[c]);
         }
@@ -317,16 +317,16 @@ namespace RenderCore { namespace Techniques
         std::unique_ptr<BoundUniforms> boundUniforms;
         std::unique_ptr<BoundInputLayout> boundInputLayout;
 
-        if (_geometryShaderName.empty()) {
+        if (_technique._geometryShaderName.empty()) {
             shaderProgram = std::make_unique<ShaderProgram>(
-                (_vertexShaderName + vsShaderModel).c_str(), 
-                (_pixelShaderName + psShaderModel).c_str(), 
+                (_technique._vertexShaderName + vsShaderModel).c_str(), 
+                (_technique._pixelShaderName + psShaderModel).c_str(), 
                 combinedStrings.c_str());
         } else {
             shaderProgram = std::make_unique<ShaderProgram>(
-                (_vertexShaderName + vsShaderModel).c_str(), 
-                (_geometryShaderName + gsShaderModel).c_str(), 
-                (_pixelShaderName + psShaderModel).c_str(), 
+                (_technique._vertexShaderName + vsShaderModel).c_str(), 
+                (_technique._geometryShaderName + gsShaderModel).c_str(), 
+                (_technique._pixelShaderName + psShaderModel).c_str(), 
                 combinedStrings.c_str());
         }
 
@@ -356,49 +356,6 @@ namespace RenderCore { namespace Techniques
     static const char* s_parameterBoxNames[] = 
         { "Geometry", "GlobalEnvironment", "Runtime", "Material" };
 
-    class ParameterBoxTable
-    {
-    public:
-        class Setting
-        {
-        public:
-            ParameterBox _boxes[4];
-
-            Setting();
-            Setting(Setting&& moveFrom);
-            Setting& operator=(Setting&& moveFrom);
-            Setting(
-                InputStreamFormatter<utf8>& source,
-                const ::Assets::DirectorySearchRules& searchRules,
-                std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inherited);
-        };
-        std::vector<std::pair<uint64,Setting>> _settings;
-
-        ParameterBoxTable(StringSection<::Assets::ResChar> filename);
-        ParameterBoxTable(ParameterBoxTable&& moveFrom);
-        ~ParameterBoxTable();
-        ParameterBoxTable& operator=(ParameterBoxTable&& moveFrom);
-
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
-    protected:
-        std::shared_ptr<::Assets::DependencyValidation> _depVal;
-    };
-
-    ParameterBoxTable::Setting::Setting() {}
-    ParameterBoxTable::Setting::Setting(Setting&& moveFrom)
-    {
-        for (unsigned c=0; c<dimof(_boxes); ++c) {
-            _boxes[c] = std::move(moveFrom._boxes[c]);
-        }
-    }
-    auto ParameterBoxTable::Setting::operator=(Setting&& moveFrom) -> Setting&
-    {
-        for (unsigned c=0; c<dimof(_boxes); ++c) {
-            _boxes[c] = std::move(moveFrom._boxes[c]);
-        }
-        return *this;
-    }
-
     using Formatter = InputStreamFormatter<utf8>;
 
     static bool Is(const char name[], Utility::InputStreamFormatter<utf8>::InteriorSection section)
@@ -411,10 +368,10 @@ namespace RenderCore { namespace Techniques
         return std::basic_string<Formatter::value_type>(input._start, input._end);
     }
 
-    static void LoadInheritedParameterBoxes(
-        Formatter& source, ParameterBox dst[4],
-        const ::Assets::DirectorySearchRules* searchRules,
-        std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited)
+    void TechniqueSetFile::LoadInheritedParameterBoxes(
+        Technique& dst, Formatter& source, 
+        const ::Assets::DirectorySearchRules& searchRules,
+		std::vector<::Assets::DepValPtr> inherited)
     {
             //  We will serialize in a list of 
             //  shareable settings that we can inherit from
@@ -433,34 +390,32 @@ namespace RenderCore { namespace Techniques
                 Throw(FormatException("Bad attribute in inheritted list", source.GetLocation()));
         
             auto colon = std::find(name._start, name._end, ':');
-            if (colon == name._end) 
-                Throw(FormatException("Inheritted object missing a colon", source.GetLocation()));
+            if (colon != name._end) {
+				::Assets::ResChar resolvedFile[MaxPath];
+				XlCopyNString(resolvedFile, (const ::Assets::ResChar*)name._start, colon-name._start);
+				searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), resolvedFile);
 
-            ::Assets::ResChar resolvedFile[MaxPath];
-            XlCopyNString(resolvedFile, (const ::Assets::ResChar*)name._start, colon-name._start);
-            if (searchRules) {
-                searchRules->ResolveFile(
-                    resolvedFile, dimof(resolvedFile), resolvedFile);
-            }
-
-            auto& settingsTable = ::Assets::GetAssetDep<ParameterBoxTable>(resolvedFile);
-            auto settingHash = Hash64(colon+1, name._end);
+				auto& settingsTable = ::Assets::GetAssetDep<TechniqueSetFile>(resolvedFile);
+				auto settingHash = Hash64(colon+1, name._end);
                     
-            bool foundAtLeastOne = false;
-            auto s = LowerBound(settingsTable._settings, settingHash);
-            if (s != settingsTable._settings.end() && s->first == settingHash) {
-                for (unsigned c=0; c<dimof(s_parameterBoxNames); ++c) {
-                    dst[c].MergeIn(s->second._boxes[c]);
-                    foundAtLeastOne = true;
-                }
-            }
+				auto s = LowerBound(settingsTable._settings, settingHash);
+				if (s != settingsTable._settings.end() && s->first == settingHash) {
+					dst.MergeIn(s->second);
+				} else 
+					Throw(FormatException("Inheritted object not found", source.GetLocation()));
 
-            if (!foundAtLeastOne)
-                Throw(FormatException("Inheritted object not found", source.GetLocation()));
-
-            if (inherited && std::find(inherited->begin(), inherited->end(), settingsTable.GetDependencyValidation()) == inherited->end()) {
-                inherited->push_back(settingsTable.GetDependencyValidation());
-            }
+				if (std::find(inherited.begin(), inherited.end(), settingsTable.GetDependencyValidation()) == inherited.end()) {
+					inherited.push_back(settingsTable.GetDependencyValidation());
+				}
+			} else {
+				// this setting is in the same file
+				auto settingHash = Hash64(name._start, name._end);
+				auto s = LowerBound(_settings, settingHash);
+				if (s != _settings.end() && s->first == settingHash) {
+					dst.MergeIn(s->second);
+				} else
+					Throw(FormatException("Inheritted object not found", source.GetLocation()));
+			}
         }
     }
 
@@ -494,131 +449,66 @@ namespace RenderCore { namespace Techniques
                 Throw(FormatException("Bad end element in parameter box list", source.GetLocation()));
         }
     }
-
-    ParameterBoxTable::Setting::Setting(
-        Formatter& formatter,
-        const ::Assets::DirectorySearchRules& searchRules,
-        std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inherited)
+    
+	TechniqueSetFile::TechniqueSetFile(
+		Utility::InputStreamFormatter<utf8>& formatter, 
+		const ::Assets::DirectorySearchRules& searchRules, 
+		const ::Assets::DepValPtr& depVal)
+	: _depVal(depVal)
     {
-        for (;;) {
-            auto next = formatter.PeekNext();
-            if (next == Formatter::Blob::EndElement) break;
-            if (next != Formatter::Blob::BeginElement)
-                Throw(FormatException("Unexpected blob in parameter box table setting", formatter.GetLocation()));
-
-            Formatter::InteriorSection eleName;
-            if (!formatter.TryBeginElement(eleName)) 
-                Throw(FormatException("Bad begin element", formatter.GetLocation()));
-
-            if (Is("Inherit", eleName)) {
-                LoadInheritedParameterBoxes(formatter, _boxes, &searchRules, &inherited);
-            } else if (Is("Parameters", eleName)) {
-                LoadParameterBoxes(formatter, _boxes);
-            } else break;
-
-            if (!formatter.TryEndElement()) 
-                Throw(FormatException("Bad end element", formatter.GetLocation()));
-        }
-    }
-
-    ParameterBoxTable::ParameterBoxTable(StringSection<::Assets::ResChar> filename)
-    {
-        size_t sourceFileSize = 0;
-        auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &sourceFileSize);
-
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
-        RegisterFileDependency(_depVal, filename);
-
-        if (sourceFile) {
-            auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
-            std::vector<std::shared_ptr<::Assets::DependencyValidation>> inherited;
-
-            TRY
-            {
-                Formatter formatter(MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), sourceFileSize)));
+		// todo -- register in ::Assets::Services::GetInvalidAssetMan() if we 
+		//		get a parse failure
+		std::vector<::Assets::DepValPtr> inherited;
             
-                    //  each top-level entry is a "Setting", which can contain parameter
-                    //  boxes (and possibly inherit statements and shaders)
-
-                for (;;) {
-                    bool cleanQuit = false;
-                    switch (formatter.PeekNext()) {
-                    case Formatter::Blob::BeginElement:
-                        {
-                            Formatter::InteriorSection settingName;
-                            if (!formatter.TryBeginElement(settingName)) break;
-
-                            auto hash = Hash64(settingName._start, settingName._end);
-                            auto i = LowerBound(_settings, hash);
-                            _settings.insert(i, std::make_pair(hash, Setting(formatter, searchRules, inherited)));
-
-                            if (!formatter.TryEndElement()) break;
-                        }
-                        continue;
-
-                    case Formatter::Blob::None:
-                        cleanQuit = true;
-                        break;
-
-                    default:
-                        break;
-                    }
-
-                    if (!cleanQuit)
-                        Throw(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
-                    break;
-                }
-
-                if (::Assets::Services::GetInvalidAssetMan())
-                    ::Assets::Services::GetInvalidAssetMan()->MarkValid(filename);
-            }
-            CATCH (const FormatException& e)
-            {
-                if (::Assets::Services::GetInvalidAssetMan())
-                    ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(filename, e.what());
-                Throw(::Assets::Exceptions::InvalidAsset(filename, e.what()));
-            }
-            CATCH_END
-
-            for (auto i=inherited.begin(); i!=inherited.end(); ++i) {
-                ::Assets::RegisterAssetDependency(_depVal, *i);
-            }
-        }
-    }
-
-    ParameterBoxTable::ParameterBoxTable(ParameterBoxTable&& moveFrom)
-    : _settings(std::move(moveFrom._settings))
-    , _depVal(std::move(moveFrom._depVal))
-    {}
-
-    ParameterBoxTable& ParameterBoxTable::operator=(ParameterBoxTable&& moveFrom)
-    {
-        _settings = std::move(moveFrom._settings);
-        _depVal = std::move(moveFrom._depVal);
-        return *this;
-    }
-
-    ParameterBoxTable::~ParameterBoxTable() {}
-
-    Technique::Technique(
-        Formatter& formatter, 
-        const std::string& name,
-        const ::Assets::DirectorySearchRules* searchRules,
-        std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited)
-    {
-            //
-            //      There are some parameters that will we always have an effect on the
-            //      binding. We need to make sure these are initialized with sensible
-            //      values.
-            //
-        auto& globalParam = _baseParameters._parameters[ShaderParameters::Source::GlobalEnvironment];
-        globalParam.SetParameter((const utf8*)"vs_", 50);
-        globalParam.SetParameter((const utf8*)"ps_", 50);
-
-        using ParsingString = std::basic_string<Formatter::value_type>;
+            //  each top-level entry is a "Setting", which can contain parameter
+            //  boxes (and possibly inherit statements and shaders)
 
         for (;;) {
             bool cleanQuit = false;
+            switch (formatter.PeekNext()) {
+            case Formatter::Blob::BeginElement:
+                {
+                    Formatter::InteriorSection settingName;
+                    if (!formatter.TryBeginElement(settingName)) break;
+
+					if (XlEqString(settingName, u("Inherit")) || XlEqString(settingName, u("Technique"))) {
+						formatter.SkipElement();
+					} else {
+						auto hash = Hash64(settingName._start, settingName._end);
+						auto i = LowerBound(_settings, hash);
+						_settings.insert(i, std::make_pair(hash, ParseTechnique(formatter, searchRules, inherited)));
+					}
+
+                    if (!formatter.TryEndElement()) break;
+                }
+                continue;
+
+            case Formatter::Blob::None:
+                cleanQuit = true;
+                break;
+
+            default:
+                break;
+            }
+
+            if (!cleanQuit)
+                Throw(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
+            break;
+        }
+
+        for (auto i=inherited.begin(); i!=inherited.end(); ++i) {
+            ::Assets::RegisterAssetDependency(_depVal, *i);
+        }
+    }
+
+	TechniqueSetFile::~TechniqueSetFile() {}
+
+    Technique TechniqueSetFile::ParseTechnique(Formatter& formatter, const ::Assets::DirectorySearchRules& searchRules, std::vector<::Assets::DepValPtr> inherited)
+    {
+        using ParsingString = std::basic_string<Formatter::value_type>;
+
+		Technique result;
+        for (;;) {
             switch (formatter.PeekNext())
             {
             case Formatter::Blob::BeginElement:
@@ -627,9 +517,9 @@ namespace RenderCore { namespace Techniques
                     if (!formatter.TryBeginElement(eleName)) break;
 
                     if (Is("Inherit", eleName)) {
-                        LoadInheritedParameterBoxes(formatter, _baseParameters._parameters, searchRules, inherited);
+                        LoadInheritedParameterBoxes(result, formatter, searchRules, inherited);
                     } else if (Is("Parameters", eleName)) {
-                        LoadParameterBoxes(formatter, _baseParameters._parameters);
+                        LoadParameterBoxes(formatter, result._baseParameters._parameters);
                     } else break;
 
                     if (!formatter.TryEndElement()) break;
@@ -641,33 +531,26 @@ namespace RenderCore { namespace Techniques
                     Formatter::InteriorSection name, value;
                     if (!formatter.TryAttribute(name, value)) break;
                     if (Is("VertexShader", name)) {
-                        _vertexShaderName = Conversion::Convert<decltype(_vertexShaderName)>(AsString(value));
+                        result._vertexShaderName = Conversion::Convert<decltype(result._vertexShaderName)>(AsString(value));
                     } else if (Is("PixelShader", name)) {
-                        _pixelShaderName = Conversion::Convert<decltype(_pixelShaderName)>(AsString(value));
+                        result._pixelShaderName = Conversion::Convert<decltype(result._pixelShaderName)>(AsString(value));
                     } else if (Is("GeometryShader", name)) {
-                        _geometryShaderName = Conversion::Convert<decltype(_geometryShaderName)>(AsString(value));
+                        result._geometryShaderName = Conversion::Convert<decltype(result._geometryShaderName)>(AsString(value));
                     }
                     continue;
                 }
 
             case Formatter::Blob::EndElement:
-                cleanQuit = true;
-                break;
+                return result;
 
-            default: break;
+            default:
+				Throw(FormatException("Unexpected blob while reading technique", formatter.GetLocation()));
             }
-
-            if (!cleanQuit)
-                Throw(FormatException("Unexpected blob while reading technique", formatter.GetLocation()));
-            break;
         }
-
-        _name = name;
     }
 
     void Technique::MergeIn(const Technique& source)
     {
-        if (!source._name.empty()) _name = source._name;
         if (!source._vertexShaderName.empty()) _vertexShaderName = source._vertexShaderName;
         if (!source._pixelShaderName.empty()) _pixelShaderName = source._pixelShaderName;
         if (!source._geometryShaderName.empty()) _geometryShaderName = source._geometryShaderName;
@@ -703,29 +586,17 @@ namespace RenderCore { namespace Techniques
 		ReplaceInString(_geometryShaderName, selfRef, filename);
 	}
 
-    Technique::Technique(Technique&& moveFrom)
-    :   _name(moveFrom._name)
-    ,   _baseParameters(std::move(moveFrom._baseParameters))
-    ,   _filteredToResolved(std::move(moveFrom._filteredToResolved))
-    ,   _globalToResolved(std::move(moveFrom._globalToResolved))
-    ,   _vertexShaderName(moveFrom._vertexShaderName)
-    ,   _pixelShaderName(moveFrom._pixelShaderName)
-    ,   _geometryShaderName(moveFrom._geometryShaderName)
-    {}
-
-    Technique& Technique::operator=(Technique&& moveFrom)
-    {
-        _name = moveFrom._name;
-        _baseParameters = std::move(moveFrom._baseParameters);
-        _filteredToResolved = std::move(moveFrom._filteredToResolved);
-        _globalToResolved = std::move(moveFrom._globalToResolved);
-        _vertexShaderName = moveFrom._vertexShaderName;
-        _pixelShaderName = moveFrom._pixelShaderName;
-        _geometryShaderName = moveFrom._geometryShaderName;
-        return *this;
-    }
-
-    Technique::Technique() {}
+    Technique::Technique() 
+	{
+			//
+            //      There are some parameters that will we always have an effect on the
+            //      binding. We need to make sure these are initialized with sensible
+            //      values.
+            //
+        auto& globalParam = _baseParameters._parameters[ShaderParameters::Source::GlobalEnvironment];
+        globalParam.SetParameter((const utf8*)"vs_", 50);
+        globalParam.SetParameter((const utf8*)"ps_", 50);
+	}
     Technique::~Technique() {}
 
 
@@ -737,9 +608,9 @@ namespace RenderCore { namespace Techniques
         const ParameterBox* globalState[ShaderParameters::Source::Max],
         const TechniqueInterface& techniqueInterface) const
     {
-        if (techniqueIndex >= dimof(_technique) || !_technique[techniqueIndex].IsValid())
+        if (techniqueIndex >= dimof(_techniques) || !_techniques[techniqueIndex]._technique.IsValid())
             return ResolvedShader();
-        return _technique[techniqueIndex].FindVariation(globalState, techniqueInterface);
+        return _techniques[techniqueIndex].FindVariation(globalState, techniqueInterface);
     }
 
     T1(Pair) class CompareFirstString
@@ -762,7 +633,7 @@ namespace RenderCore { namespace Techniques
             { u("Deferred"),                       unsigned(TechniqueIndex::Deferred) },
             { u("DepthOnly"),                      unsigned(TechniqueIndex::DepthOnly) },
             { u("DepthWeightedTransparency"),      unsigned(TechniqueIndex::DepthWeightedTransparency) },
-            { u("Illum"),                          unsigned(TechniqueIndex::Forward) },
+            { u("Forward"),                        unsigned(TechniqueIndex::Forward) },
             { u("OrderIndependentTransparency"),   unsigned(TechniqueIndex::OrderIndependentTransparency) },
             { u("PrepareVegetationSpawn"),         unsigned(TechniqueIndex::PrepareVegetationSpawn) },
             { u("RayTest"),                        unsigned(TechniqueIndex::RayTest) },
@@ -781,8 +652,6 @@ namespace RenderCore { namespace Techniques
 
     ShaderType::ShaderType(StringSection<::Assets::ResChar> resourceName)
     {
-        _hasEmbeddedCBLayout = false;
-
         size_t sourceFileSize = 0;
         auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(resourceName, &sourceFileSize);
 
@@ -806,18 +675,12 @@ namespace RenderCore { namespace Techniques
 
                 if (i != compoundDoc.cend())
                     configSection = i->_content;
-
-                _hasEmbeddedCBLayout = std::find_if(
-                    compoundDoc.cbegin(), compoundDoc.cend(),
-                    [](const ::Assets::TextChunk<char>& chunk)
-                    { return XlEqString(chunk._type, "CBLayout"); }) != compoundDoc.cend();
             }
 
             TRY
             {
-                ParseConfigFile(
-                    StringSection<utf8>((const utf8*)configSection.begin(), (const utf8*)configSection.end()), 
-                    searchRules, inheritedAssets);
+				Formatter formatter(MemoryMappedInputStream(configSection.begin(), configSection.end()));
+                ParseConfigFile(formatter, resourceName, searchRules, inheritedAssets);
                 if (::Assets::Services::GetInvalidAssetMan())
                     ::Assets::Services::GetInvalidAssetMan()->MarkValid(resourceName);
             }
@@ -833,8 +696,8 @@ namespace RenderCore { namespace Techniques
 				// we want to replace <.> with the name of the asset
 				// This allows the asset to reference itself (without complications
 				// for related to directories, etc)
-			for (unsigned c=0; c<dimof(_technique); ++c)
-				_technique[c].ReplaceSelfReference(resourceName);
+			for (unsigned c=0; c<dimof(_techniques); ++c)
+				_techniques[c]._technique.ReplaceSelfReference(resourceName);
 
             for (auto i=inheritedAssets.begin(); i!=inheritedAssets.end(); ++i)
                 ::Assets::RegisterAssetDependency(_validationCallback, *i);
@@ -845,11 +708,11 @@ namespace RenderCore { namespace Techniques
     {}
 
     void ShaderType::ParseConfigFile(
-        StringSection<utf8> input, 
+        Formatter& formatter, 
+		StringSection<::Assets::ResChar> containingFileName,
         const ::Assets::DirectorySearchRules& searchRules,
-        std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inheritedAssets)
+        std::vector<::Assets::DepValPtr>& inheritedAssets)
     {
-        Formatter formatter(MemoryMappedInputStream(input.begin(), input.end()));
         for (;;) {
             bool cleanQuit = false;
             switch (formatter.PeekNext()) {
@@ -879,37 +742,59 @@ namespace RenderCore { namespace Techniques
                             inheritedAssets.push_back(inheritFrom.GetDependencyValidation());
 
                             // we should merge in the content from all the inheritted's assets
-                            for (unsigned c=0; c<dimof(_technique); ++c)
-                                _technique[c].MergeIn(inheritFrom._technique[c]);
+                            for (unsigned c=0; c<dimof(_techniques); ++c)
+                                _techniques[c]._technique.MergeIn(inheritFrom._techniques[c]._technique);
+							_cbLayout = inheritFrom._cbLayout;
                         }
-                    } else {
-                        auto index = AsTechniqueIndex(eleName);
-                        if (index < dimof(_technique)) {
-                            Technique newTech(
-                                formatter, 
-                                Conversion::Convert<std::string>(AsString(eleName)),
-                                &searchRules, &inheritedAssets);
-                        
-                            // Merge this new technique definition into our existing
-                            // technique. The new technique values will override any
-                            // values already there.
-                            if (_technique[index].IsValid()) {
-                                _technique[index].MergeIn(newTech);
-                            } else {
-                                _technique[index] = std::move(newTech);
-                            }
-                        } else if (XlEqString(eleName, u("*"))) {
-							// This is applied to all techniques
-							Technique newTech(formatter, std::string(), &searchRules, &inheritedAssets);
-							for (unsigned c = 0; c < dimof(_technique); ++c)
-								_technique[c].MergeIn(newTech);
-						} else {
-                            LogWarning 
-                                << "Ignoring technique label (" << eleName.AsString().c_str() 
-                                << ") because it is unrecognised";
-                            formatter.SkipElement();
-                        }
-                    }
+                    } else if (XlEqString(eleName, u("Technique"))) {
+						// We should find a list of the actual techniques to use, as attributes
+						// The attribute name defines the how to apply the technique, and the attribute value is
+						// the name of the technique itself
+						for (;;)
+						{
+							auto next = formatter.PeekNext();
+                            if (next == Formatter::Blob::EndElement) break;
+                            if (next != Formatter::Blob::AttributeName)
+                                Throw(FormatException("Unexpected blob when serializing technique list", formatter.GetLocation()));
+
+							Formatter::InteriorSection name, value;
+                            if (!formatter.TryAttribute(name, value))
+                                Throw(FormatException("Bad attribute in technique list", formatter.GetLocation()));
+
+							if (XlEqString(name, u("CBLayout"))) {
+								_cbLayout = PredefinedCBLayout(MakeStringSection((const char*)value.begin(), (const char*)value.end()), true);
+							} else {
+								auto index = AsTechniqueIndex(name);
+								if (index != ~0) {		// (silent failure if the technique name is unknown)
+									StringSection<::Assets::ResChar> t((const char*)value.begin(), (const char*)value.end());
+									StringSection<::Assets::ResChar> containerName, settingName;
+									const auto* colon = XlFindChar(t, ':');
+									if (colon) { 
+										containerName = MakeStringSection(t.begin(), colon);
+										settingName = MakeStringSection(colon+1, t.end());
+									} else {
+										containerName = containingFileName;
+										settingName = t;
+									}
+
+									const auto& setFile = ::Assets::GetAssetDep<TechniqueSetFile>(containerName);
+									auto hash = Hash64(settingName);
+									auto i = LowerBound(setFile._settings, hash);
+									if (i != setFile._settings.end() && i->first == hash) {
+										_techniques[index]._technique = i->second;		// (don't merge in; this a replace)
+									} else 
+										Throw(FormatException("Could not resolve requested technique setting", formatter.GetLocation()));
+
+									if (std::find(inheritedAssets.begin(), inheritedAssets.end(), setFile.GetDependencyValidation()) == inheritedAssets.end()) {
+										inheritedAssets.push_back(setFile.GetDependencyValidation());
+									}
+								}
+							}
+						}
+					} else {
+						// other elements are packed in here, as well (such as the actual technique definitions)
+						formatter.SkipElement();
+					}
 
                     if (!formatter.TryEndElement()) break;
                 }

@@ -35,6 +35,26 @@
             PREFER_ANISOTROPIC=1
             TANGENT_PROCESS_IN_PS=0
             LOCAL_TO_WORLD_HAS_FLIP
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+~Forward
+    ~Parameters
+        ~Geometry
+            OUTPUT_WORLD_VIEW_VECTOR=1
+        ~GlobalEnvironment
+            SKIP_MATERIAL_DIFFUSE=0
+            SKY_PROJECTION
+            HAS_DIFFUSE_IBL
+            HAS_SPECULAR_IBL
+        ~Material
+            MAT_BLEND_FOG=1
+            MAT_SKIP_LIGHTING_SCALE=0
+            MAT_TRANSMITTED_SPECULAR=0
+            MAT_CLAMP_SPEC=0
+        ~Runtime
+            BASIC_LIGHT_COUNT=1
+            SHADOW_CASCADE_MODE=2
 ~Deferred
     ~Parameters
         ~GlobalEnvironment

@@ -36,10 +36,10 @@ namespace RenderCore { namespace Techniques
         PredefinedCBLayout(StringSection<char> source, bool);
         ~PredefinedCBLayout();
 
-        PredefinedCBLayout(const PredefinedCBLayout&) = delete;
-        PredefinedCBLayout& operator=(const PredefinedCBLayout&) = delete;
-        PredefinedCBLayout(PredefinedCBLayout&&) never_throws;
-        PredefinedCBLayout& operator=(PredefinedCBLayout&&) never_throws;
+        PredefinedCBLayout(const PredefinedCBLayout&) = default;
+        PredefinedCBLayout& operator=(const PredefinedCBLayout&) = default;
+        PredefinedCBLayout(PredefinedCBLayout&&) never_throws = default;
+        PredefinedCBLayout& operator=(PredefinedCBLayout&&) never_throws = default;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     
             { return _validationCallback; }

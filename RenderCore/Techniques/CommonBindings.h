@@ -41,7 +41,5 @@ namespace RenderCore { namespace Techniques
 
         static const auto Max = 12u;
     };
-
-    extern const ::Assets::ResChar* DefaultPredefinedCBLayout;
 }}
 

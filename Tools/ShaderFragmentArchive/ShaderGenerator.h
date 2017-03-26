@@ -26,10 +26,9 @@ namespace ShaderPatcherLayer
         static enum class Type 
         {
             Procedure,
-            SystemCBuffer,
-            Output,
-            Constants,
-			MaterialCBuffer
+			SlotInput,
+            SlotOutput,
+			Uniforms
         };
         [DataMember] String^       FragmentArchiveName;
         [DataMember] UInt32        NodeId;
@@ -106,7 +105,7 @@ namespace ShaderPatcherLayer
     };
 
         ///////////////////////////////////////////////////////////////
-    [DataContract] public ref class NodeGraph
+    public ref class NodeGraph
     {
     public:
         [DataMember] property List<Node^>^ Nodes

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "CommonBindings.h"     // for TechniqueIndex::Max
+#include "PredefinedCBLayout.h"
 #include "../Metal/Forward.h"
 #include "../Types_Forward.h"
 #include "../../Assets/AssetsCore.h"
@@ -111,7 +112,7 @@ namespace RenderCore { namespace Techniques
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
 
-        friend class Technique; // makes internal structure easier
+        friend class ShaderType; // makes internal structure easier
     };
 
     // #if defined(_DEBUG)
@@ -121,62 +122,44 @@ namespace RenderCore { namespace Techniques
     class Technique
     {
     public:
-        ResolvedShader FindVariation(  
-            const ParameterBox* globalState[ShaderParameters::Source::Max], 
-            const TechniqueInterface& techniqueInterface) const;
-
         bool IsValid() const { return !_vertexShaderName.empty(); }
         void MergeIn(const Technique& source);
 		void ReplaceSelfReference(StringSection<::Assets::ResChar> filename);
 
-        Technique(
-            Utility::InputStreamFormatter<utf8>& formatter, 
-            const std::string& name,
-            const ::Assets::DirectorySearchRules* searchRules = nullptr, 
-            std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited = nullptr);
-        Technique(Technique&& moveFrom);
-        Technique& operator=(Technique&& moveFrom);
-        Technique();
-        ~Technique();
-    protected:
-        std::string         _name;
         ShaderParameters    _baseParameters;
-        mutable std::vector<std::pair<uint64, ResolvedShader>>  _filteredToResolved;
-        mutable std::vector<std::pair<uint64, ResolvedShader>>  _globalToResolved;
         ::Assets::rstring   _vertexShaderName;
         ::Assets::rstring   _pixelShaderName;
         ::Assets::rstring   _geometryShaderName;
 
-        #if defined(CHECK_TECHNIQUE_HASH_CONFLICTS)
-            class HashConflictTest
-            {
-            public:
-                ParameterBox _globalState[ShaderParameters::Source::Max];
-                uint64 _rawHash; 
-                uint64 _filteredHash; 
-                uint64 _interfaceHash;
-
-                HashConflictTest(const ParameterBox* globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash);
-                HashConflictTest(const ParameterBox globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash);
-                HashConflictTest();
-            };
-            mutable std::vector<std::pair<uint64, HashConflictTest>>  _localToResolvedTest;
-            mutable std::vector<std::pair<uint64, HashConflictTest>>  _globalToResolvedTest;
-
-            void TestHashConflict(
-                const ParameterBox* globalState[ShaderParameters::Source::Max], 
-                const HashConflictTest& comparison) const;
-        #endif
-
-        void        ResolveAndBind( 
-            ResolvedShader& shader, 
-            const ParameterBox* globalState[ShaderParameters::Source::Max],
-            const TechniqueInterface& techniqueInterface) const;
-
-        mutable std::vector<std::unique_ptr<Metal::ShaderProgram>> _resolvedShaderPrograms;
-        mutable std::vector<std::unique_ptr<Metal::BoundUniforms>> _resolvedBoundUniforms;
-        mutable std::vector<std::unique_ptr<Metal::BoundInputLayout>> _resolvedBoundInputLayouts;
+        Technique(Technique&&) never_throws = default;
+        Technique& operator=(Technique&&) never_throws = default;
+		Technique(const Technique&) = default;
+        Technique& operator=(const Technique&) = default;
+        Technique();
+        ~Technique();
     };
+
+	class TechniqueSetFile
+	{
+	public:
+		std::vector<std::pair<uint64_t, Technique>> _settings;
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+
+		TechniqueSetFile(
+            Utility::InputStreamFormatter<utf8>& formatter, 
+			const ::Assets::DirectorySearchRules& searchRules, 
+			const ::Assets::DepValPtr& depVal);
+		~TechniqueSetFile();
+	private:
+		::Assets::DepValPtr _depVal;
+
+		Technique ParseTechnique(Utility::InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules, std::vector<::Assets::DepValPtr> inherited);
+		void LoadInheritedParameterBoxes(
+			Technique& dst,
+			Utility::InputStreamFormatter<utf8>& formatter,
+			const ::Assets::DirectorySearchRules& searchRules,
+			std::vector<::Assets::DepValPtr> inherited);
+	};
 
     class ShaderType
     {
@@ -187,17 +170,57 @@ namespace RenderCore { namespace Techniques
             const TechniqueInterface& techniqueInterface) const;
 
         auto GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _validationCallback; }
-        bool HasEmbeddedCBLayout() const { return _hasEmbeddedCBLayout; }
+		const PredefinedCBLayout& TechniqueCBLayout() const { return _cbLayout; }
 
         ShaderType(StringSection<::Assets::ResChar> resourceName);
         ~ShaderType();
     private:
-        Technique           _technique[size_t(TechniqueIndex::Max)];
-        ::Assets::DepValPtr _validationCallback;
-        bool                _hasEmbeddedCBLayout;
+		class TechniqueObj
+		{
+		public:
+			Technique _technique;
+			mutable std::vector<std::pair<uint64, ResolvedShader>>			_filteredToResolved;
+			mutable std::vector<std::pair<uint64, ResolvedShader>>			_globalToResolved;
+			mutable std::vector<std::unique_ptr<Metal::ShaderProgram>>		_resolvedShaderPrograms;
+			mutable std::vector<std::unique_ptr<Metal::BoundUniforms>>		_resolvedBoundUniforms;
+			mutable std::vector<std::unique_ptr<Metal::BoundInputLayout>>	_resolvedBoundInputLayouts;
+
+			#if defined(CHECK_TECHNIQUE_HASH_CONFLICTS)
+				class HashConflictTest
+				{
+				public:
+					ParameterBox _globalState[ShaderParameters::Source::Max];
+					uint64 _rawHash; 
+					uint64 _filteredHash; 
+					uint64 _interfaceHash;
+
+					HashConflictTest(const ParameterBox* globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash);
+					HashConflictTest(const ParameterBox globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash);
+					HashConflictTest();
+				};
+				mutable std::vector<std::pair<uint64, HashConflictTest>>  _localToResolvedTest;
+				mutable std::vector<std::pair<uint64, HashConflictTest>>  _globalToResolvedTest;
+
+				void TestHashConflict(
+					const ParameterBox* globalState[ShaderParameters::Source::Max], 
+					const HashConflictTest& comparison) const;
+			#endif
+
+			void        ResolveAndBind( 
+				ResolvedShader& shader, 
+				const ParameterBox* globalState[ShaderParameters::Source::Max],
+				const TechniqueInterface& techniqueInterface) const;
+			ResolvedShader FindVariation(  
+				const ParameterBox* globalState[ShaderParameters::Source::Max], 
+				const TechniqueInterface& techniqueInterface) const;
+		};
+        TechniqueObj			_techniques[size_t(TechniqueIndex::Max)];
+        ::Assets::DepValPtr		_validationCallback;
+		PredefinedCBLayout		_cbLayout;
 
         void ParseConfigFile(
-            StringSection<utf8> input, 
+            InputStreamFormatter<utf8>& formatter, 
+			StringSection<::Assets::ResChar> containingFileName,
             const ::Assets::DirectorySearchRules& searchRules,
             std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inheritedAssets);
     };

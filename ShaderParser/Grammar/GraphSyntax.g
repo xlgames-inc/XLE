@@ -63,7 +63,7 @@ scopedConnection : l=lconnection ':' r=rconnection -> ^(SCOPED_CONNECTION $l $r)
 
 declaration
 	:	'node' n1=Identifier '=' f=functionCall -> ^(NODE_DECL $n1 $f)
-	|	'slot' n0=Identifier '=' f0=functionPath -> ^(SLOT_DECL $n0 $f0)
+	|	'slot' n0=Identifier 'implements' signal=functionPath -> ^(SLOT_DECL $n0 $signal)
 	;
 
 connection : n=Identifier '.' l=lconnection ':' r=rconnection -> ^(CONNECTION $n $l $r);

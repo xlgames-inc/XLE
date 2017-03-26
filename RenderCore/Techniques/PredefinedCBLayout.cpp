@@ -150,20 +150,6 @@ namespace RenderCore { namespace Techniques
         return std::move(result);
     }
 
-    PredefinedCBLayout::PredefinedCBLayout() {}
-    PredefinedCBLayout::PredefinedCBLayout(PredefinedCBLayout&& moveFrom) never_throws
-    : _elements(std::move(moveFrom._elements))
-    , _defaults(std::move(moveFrom._defaults))
-    , _validationCallback(std::move(moveFrom._validationCallback))
-    {}
-
-    PredefinedCBLayout& PredefinedCBLayout::operator=(PredefinedCBLayout&& moveFrom) never_throws
-    {
-        _elements = std::move(moveFrom._elements);
-        _defaults = std::move(moveFrom._defaults);
-        _validationCallback = std::move(moveFrom._validationCallback);
-        return *this;
-    }
-
+    PredefinedCBLayout::PredefinedCBLayout() : _cbSize(0) {}
     PredefinedCBLayout::~PredefinedCBLayout() {}
 }}

@@ -24,9 +24,9 @@ options
 
 @members
 {
-	NodeId LNode_Register(const void*, const char file[]);
 	NodeId RNode_Register(const void*, const char file[]);
-	NodeId SlotParams_Register(const void*, const char file[]);
+	NodeId LSlot_Register(const void*, const char file[]);
+	NodeId RSlot_Register(const void*, const char file[]);
 	ConnectorId Connector_Register(const void*, NodeId node, const char connectorName[]);
 	ConnectorId LiteralConnector_Register(const void*, const char literal[]);
 	ConnectionId Connection_Register(const void*, ConnectorId left, ConnectorId right);
@@ -121,8 +121,8 @@ toplevel
 	| ^(SLOT_DECL n1id=identifier ^(FUNCTION_PATH f=functionPath))
 	{
 		char* s = StripAngleBrackets(f);
-		NodeId lnode = LNode_Register(ctx, s);
-		NodeId rnode = SlotParams_Register(ctx, s);
+		NodeId lnode = LSlot_Register(ctx, s);
+		NodeId rnode = RSlot_Register(ctx, s);
 		free(s);
 		Slot_Name(ctx, lnode, rnode, n1id);
 	}

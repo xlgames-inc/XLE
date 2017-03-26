@@ -243,9 +243,7 @@ namespace RenderCore { namespace Assets
         // Otherwise, we return the default
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
         auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(MakeStringSection(sn));
-        if (shaderType.HasEmbeddedCBLayout())
-            return &::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(MakeStringSection(sn));
-        return &::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(Techniques::DefaultPredefinedCBLayout);
+		return &shaderType.TechniqueCBLayout();
     }
 
     auto SharedStateSet::CaptureState(

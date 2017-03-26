@@ -274,9 +274,9 @@ namespace NodeEditorCore
             return NodeFactory.FindNodeFromId(GetGraphModel(), id);
         }
 
-        private ShaderPatcherLayer.NodeGraph ConvertToShaderPatcherLayer()
+        private ShaderPatcherLayer.NodeGraph ConvertToShaderPatcherLayer(GUILayer.DirectorySearchRules searchRules)
         {
-            return ModelConversion.ToShaderPatcherLayer(GetGraphModel(), null);
+            return ModelConversion.ToShaderPatcherLayer(GetGraphModel(), searchRules);
         }
 
         private ShaderFragmentPreviewItem GetPreviewItem(object sender)
@@ -290,7 +290,7 @@ namespace NodeEditorCore
         {
             var p = GetPreviewItem(sender);
             var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(
-                ConvertToShaderPatcherLayer(), AttachedId(sender), 
+                ConvertToShaderPatcherLayer(Document.SearchRules), AttachedId(sender), 
                 p.PreviewSettings, (Document!=null) ? Document.GraphContext.Variables : null);
 
             ControlsLibrary.BasicControls.TextWindow.Show(

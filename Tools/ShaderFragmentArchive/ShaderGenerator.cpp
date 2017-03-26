@@ -32,11 +32,10 @@ namespace ShaderPatcherLayer
     {
         switch (e) {
         default:
-        case Node::Type::Procedure:               return ShaderPatcher::Node::Type::Procedure;
-        case Node::Type::MaterialCBuffer:         return ShaderPatcher::Node::Type::MaterialCBuffer;
-        case Node::Type::SystemCBuffer:           return ShaderPatcher::Node::Type::SystemParameters;
-        case Node::Type::Output:                  return ShaderPatcher::Node::Type::Output;
-        case Node::Type::Constants:               return ShaderPatcher::Node::Type::Constants;
+        case Node::Type::Procedure:					return ShaderPatcher::Node::Type::Procedure;
+        case Node::Type::SlotInput:					return ShaderPatcher::Node::Type::SlotInput;
+        case Node::Type::SlotOutput:				return ShaderPatcher::Node::Type::SlotOutput;
+        case Node::Type::Uniforms:                  return ShaderPatcher::Node::Type::Uniforms;
         }
     }
 
@@ -117,10 +116,9 @@ namespace ShaderPatcherLayer
         switch (e) {
         default:
 		case ShaderPatcher::Node::Type::Procedure : return Node::Type::Procedure;
-		case ShaderPatcher::Node::Type::MaterialCBuffer: return Node::Type::MaterialCBuffer;
-		case ShaderPatcher::Node::Type::SystemParameters: return Node::Type::SystemCBuffer;
-		case ShaderPatcher::Node::Type::Output: return Node::Type::Output;
-		case ShaderPatcher::Node::Type::Constants: return Node::Type::Constants;
+		case ShaderPatcher::Node::Type::SlotInput: return Node::Type::SlotInput;
+		case ShaderPatcher::Node::Type::SlotOutput: return Node::Type::SlotOutput;
+		case ShaderPatcher::Node::Type::Uniforms: return Node::Type::Uniforms;
         }
     }
 

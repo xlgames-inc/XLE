@@ -27,10 +27,9 @@ namespace ShaderPatcher
             enum Enum
             {
                 Procedure,
-                SystemParameters,
-                Output,
-                Constants,           // (ie, true constants -- hard coded into the shader)
-				MaterialCBuffer,
+                SlotInput,
+                SlotOutput,
+				Uniforms
             };
         };
         

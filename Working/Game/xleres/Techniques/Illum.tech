@@ -1,29 +1,10 @@
-~Illum
-    ~Inherit; shared.tech:CommonMaterial; shared.tech:Skinnable; shared.tech:VegetationSpawn; shared.tech:System
-    ~Parameters
-        ~Geometry
-            GEO_HAS_COLOUR
-            GEO_HAS_TEXCOORD
-            GEO_HAS_TANGENT_FRAME
-            GEO_HAS_BITANGENT
-            GEO_HAS_NORMAL
-            OUTPUT_WORLD_VIEW_VECTOR=1
-        ~GlobalEnvironment
-            SKIP_MATERIAL_DIFFUSE=0
-            SKY_PROJECTION
-            HAS_DIFFUSE_IBL
-            HAS_SPECULAR_IBL
-        ~Material
-            MAT_BLEND_FOG=1
-            MAT_SKIP_LIGHTING_SCALE=0
-            MAT_TRANSMITTED_SPECULAR=0
-            MAT_CLAMP_SPEC=0
-        ~Runtime
-            BASIC_LIGHT_COUNT=1
-            SHADOW_CASCADE_MODE=2
-    VertexShader=xleres/forward/illum.vsh:main
-    PixelShader=xleres/forward/illum.psh:main
-~DepthOnly
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    ~~ "Silhouette" configuration just has the minimum support to get the correct geometry
+    ~~ silhouette (plus alpha testing)
+
+~Silhouette
     ~Inherit; shared.tech:Skinnable; shared.tech:VegetationSpawn
     ~Parameters
         ~Geometry
@@ -32,17 +13,30 @@
             GEO_HAS_NORMAL
         ~Material
             MAT_ALPHA_TEST
-            MAT_ALPHA_TEST_PREDEPTH
             RES_HAS_DiffuseTexture
             MAT_VCOLOR_IS_ANIM_PARAM
-        ~Runtime
-            STOCHASTIC_TRANS
-            STOCHASTIC_TRANS_PRIMITIVEID
-            STOCHASTIC_TRANS_OPACITY
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    ~~ "Illum" style techniques
+    ~~      -- these are techniques that are used when drawing the object into the main scene and we're drawing
+    ~~      the object in it's "main" visual look -- with all of the assigned material, texture & lighting properties
+
+~Illum
+    ~Inherit; Silhouette; shared.tech:CommonMaterial; shared.tech:System
+    ~Parameters
+        ~Geometry
+            GEO_HAS_BITANGENT
+            GEO_HAS_NORMAL
+            GEO_HAS_PER_VERTEX_AO
+
+~Forward
+    ~Inherit; Illum; shared.tech:System
     VertexShader=xleres/forward/illum.vsh:main
-    PixelShader=xleres/forward/depthonly.psh:main
+    PixelShader=xleres/forward/illum.psh:main
+
 ~Deferred
-    ~Inherit; shared.tech:CommonMaterial; shared.tech:Skinnable; shared.tech:VegetationSpawn; shared.tech:System; shared.tech:Deferred
+    ~Inherit; Illum; shared.tech:Deferred
     ~Parameters
         ~Geometry
             GEO_HAS_COLOUR
@@ -56,16 +50,53 @@
             SKIP_MATERIAL_DIFFUSE=0
     VertexShader=xleres/deferred/basic.vsh:main
     PixelShader=xleres/deferred/basic.psh:main
-~ShadowGen
-    ~Inherit; shared.tech:Skinnable; shared.tech:VegetationSpawn
+
+~DeferredFlex
+    ~Inherit; Deferred
+    VertexShader=xleres/deferred/basic.vsh:main
+    PixelShader=xleres/deferred/basic.push:main
+
+~OrderIndependentTransparency
+    ~Inherit; Illum; shared.tech:Forward
+    VertexShader=xleres/forward/illum.vsh:main
+    PixelShader=xleres/forward/transparency/illum.psh:main_oi
+
+~StochasticTransparency
+    ~Inherit; Illum; shared.tech:Forward
     ~Parameters
-        ~Geometry
-            GEO_HAS_TEXCOORD
-            GEO_HAS_COLOUR
-            GEO_HAS_NORMAL
+        ~Runtime
+            STOCHASTIC_SAMPLE_COUNT=8
+            STOCHASTIC_TRANS_PRIMITIVEID
+            STOCHASTIC_TRANS_OPACITY
+    VertexShader=xleres/forward/illum.vsh:main
+    PixelShader=xleres/forward/transparency/illum.psh:main_stochastic
+
+~DepthWeightedTransparency
+    ~Inherit; Illum; shared.tech:Forward
+    VertexShader=xleres/forward/illum.vsh:main
+    PixelShader=xleres/forward/transparency/depthweighted.sh:main_depth_weighted_oi
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    ~~ "Silhouette" related rendering
+    ~~      for example, for rendering to the shadow depths texture, or doing a pre-depth pass.
+
+~DepthOnly
+    ~Inherit; Silhouette
+    ~Parameters
         ~Material
-            MAT_ALPHA_TEST
-            MAT_VCOLOR_IS_ANIM_PARAM
+            MAT_ALPHA_TEST_PREDEPTH
+        ~Runtime
+            STOCHASTIC_TRANS
+            STOCHASTIC_TRANS_PRIMITIVEID
+            STOCHASTIC_TRANS_OPACITY
+    VertexShader=xleres/forward/illum.vsh:main
+    PixelShader=xleres/forward/depthonly.psh:main
+
+~ShadowGen
+    ~Inherit; Silhouette
+    ~Parameters
+        ~Material
             MAT_ALPHA_DITHER_SHADOWS
         ~Runtime
             FRUSTUM_FILTER=63
@@ -75,43 +106,31 @@
     VertexShader=xleres/shadowgen/depthonly.vsh:main
     GeometryShader=xleres/shadowgen/depthonly.gsh:main
     PixelShader=xleres/shadowgen/depthonly.psh:main
-~OrderIndependentTransparency
-    ~Inherit; shared.tech:CommonMaterial; shared.tech:Skinnable; shared.tech:VegetationSpawn; shared.tech:System
-    ~Parameters
-        ~Geometry
-            GEO_HAS_COLOUR
-            GEO_HAS_TEXCOORD
-            GEO_HAS_TANGENT_FRAME
-            GEO_HAS_BITANGENT
-            GEO_HAS_NORMAL
-            OUTPUT_WORLD_VIEW_VECTOR=1
-        ~Material
-            MAT_TRANSMITTED_SPECULAR=0
-            MAT_CLAMP_SPEC=0
-        ~GlobalEnvironment
-            SKIP_MATERIAL_DIFFUSE=0
-            SKY_PROJECTION
-            HAS_DIFFUSE_IBL
-            HAS_SPECULAR_IBL
-        ~Runtime
-            BASIC_LIGHT_COUNT=1
-            SHADOW_CASCADE_MODE=2
-    VertexShader=xleres/forward/illum.vsh:main
-    PixelShader=xleres/forward/transparency/illum.psh:main_oi
+
 ~RayTest
-    ~Inherit; shared.tech:Skinnable; shared.tech:VegetationSpawn
+    ~Inherit; Silhouette
     ~Parameters
         ~Geometry
-            GEO_HAS_TEXCOORD
             OUTPUT_WORLD_POSITION=1
-        ~Material
-            MAT_ALPHA_TEST
-            MAT_VCOLOR_IS_ANIM_PARAM
         ~Runtime
             INTERSECTION_TEST
     VertexShader=xleres/forward/illum.vsh:main
     GeometryShader=xleres/forward/raytest.gsh:triangles
     PixelShader=null
+
+~WriteTriangleIndex
+    ~Inherit; Silhouette
+    ~Parameters
+        ~Geometry
+            OUTPUT_WORLD_POSITION=0
+        ~Runtime
+            SHADOW_CASCADE_MODE
+    VertexShader=xleres/shadowgen/rtwritetiles.sh:vs_writetris
+    GeometryShader=xleres/shadowgen/rtwritetiles.sh:gs_writetris
+    PixelShader=null
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 ~VisNormals
     ~Parameters
         ~Geometry
@@ -124,6 +143,7 @@
     VertexShader=xleres/forward/illum.vsh:main
     GeometryShader=xleres/vis/geowires.gsh:NormalsAndTangents
     PixelShader=xleres/basic.psh:PC
+
 ~VisWireframe
     ~Parameters
         ~Geometry
@@ -132,64 +152,31 @@
     VertexShader=xleres/forward/illum.vsh:main
     GeometryShader=xleres/solidwireframe.gsh:main
     PixelShader=xleres/solidwireframe.psh:main
-~WriteTriangleIndex
-    ~Inherit; shared.tech:Skinnable; shared.tech:VegetationSpawn
-    ~Parameters
-        ~Geometry
-            OUTPUT_WORLD_POSITION=0
-        ~Runtime
-            SHADOW_CASCADE_MODE
-    VertexShader=xleres/shadowgen/rtwritetiles.sh:vs_writetris
-    GeometryShader=xleres/shadowgen/rtwritetiles.sh:gs_writetris
-    PixelShader=null
-~StochasticTransparency
-    ~Inherit; shared.tech:CommonMaterial; shared.tech:Skinnable; shared.tech:VegetationSpawn; shared.tech:System
-    ~Parameters
-        ~Geometry
-            GEO_HAS_COLOUR
-            GEO_HAS_TEXCOORD
-            GEO_HAS_TANGENT_FRAME
-            GEO_HAS_BITANGENT
-            GEO_HAS_NORMAL
-            OUTPUT_WORLD_VIEW_VECTOR=1
-        ~Material
-            MAT_TRANSMITTED_SPECULAR=0
-            MAT_CLAMP_SPEC=0
-            MAT_BLEND_FOG=1
-        ~GlobalEnvironment
-            SKIP_MATERIAL_DIFFUSE=0
-            SKY_PROJECTION
-            HAS_DIFFUSE_IBL
-            HAS_SPECULAR_IBL
-        ~Runtime
-            BASIC_LIGHT_COUNT=1
-            SHADOW_CASCADE_MODE=2
-            STOCHASTIC_SAMPLE_COUNT=8
-            STOCHASTIC_TRANS_PRIMITIVEID
-            STOCHASTIC_TRANS_OPACITY
-    VertexShader=xleres/forward/illum.vsh:main
-    PixelShader=xleres/forward/transparency/illum.psh:main_stochastic
-~DepthWeightedTransparency
-    ~Inherit; shared.tech:CommonMaterial; shared.tech:Skinnable; shared.tech:VegetationSpawn; shared.tech:System
-    ~Parameters
-        ~Geometry
-            GEO_HAS_COLOUR
-            GEO_HAS_TEXCOORD
-            GEO_HAS_TANGENT_FRAME
-            GEO_HAS_BITANGENT
-            GEO_HAS_NORMAL
-            OUTPUT_WORLD_VIEW_VECTOR=1
-        ~Material
-            MAT_TRANSMITTED_SPECULAR=0
-            MAT_CLAMP_SPEC=0
-            MAT_BLEND_FOG=1
-        ~GlobalEnvironment
-            SKIP_MATERIAL_DIFFUSE=0
-            SKY_PROJECTION
-            HAS_DIFFUSE_IBL
-            HAS_SPECULAR_IBL
-        ~Runtime
-            BASIC_LIGHT_COUNT=1
-            SHADOW_CASCADE_MODE=2
-    VertexShader=xleres/forward/illum.vsh:main
-    PixelShader=xleres/forward/transparency/depthweighted.sh:main_depth_weighted_oi
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+~Technique
+    Forward = Forward
+    Deferred = Deferred
+    OrderIndependentTransparency = OrderIndependentTransparency
+    StochasticTransparency = StochasticTransparency
+    DepthWeightedTransparency = DepthWeightedTransparency
+    DepthOnly = DepthOnly
+    ShadowGen = ShadowGen
+    RayTest = RayTest
+    WriteTriangleIndex = WriteTriangleIndex
+    VisNormals = VisNormals
+    VisWireframe = VisWireframe
+
+    CBLayout = <:(
+        float3  MaterialDiffuse = {1.f,1.f,1.f}c;
+        float   Opacity = 1
+        float3  MaterialSpecular = {1.f,1.f,1.f}c;
+        float   AlphaThreshold = .33f;
+        float   RoughnessMin = 0.5f;
+        float   RoughnessMax = 1.f;
+        float   SpecularMin = 0.1f;
+        float   SpecularMax = 1.f;
+        float   MetalMin = 0.f;
+        float   MetalMax = 1.f;
+    ):>

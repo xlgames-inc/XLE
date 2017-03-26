@@ -14,8 +14,6 @@
 
 namespace RenderCore { namespace Techniques
 {
-    const ::Assets::ResChar* DefaultPredefinedCBLayout = "xleres/techniques/BasicMaterialConstants.txt";
-
     static Techniques::TechniqueInterface MakeTechInterface(
         const InputLayout& inputLayout,
         const std::initializer_list<uint64>& objectCBs)
@@ -93,34 +91,14 @@ namespace RenderCore { namespace Techniques
         Variation result;
         result._cbLayout = nullptr;
         result._shader = techConfig.FindVariation(techniqueIndex, state, _techniqueInterface);
-        if (result._shader._shaderProgram == nullptr) return result;
-
-        // We need to know the layout the main materials constant buffer now...
-        // We could  just use the reflection interface to get the layout from there...
-        // But that's not exactly what we want.
-        // This constant buffer is defined to be the same for every shader produced by 
-        // the same technique config. And sometimes we want to know the layout before we
-        // decide on the particular technique variation we are going to use... Therefore,
-        // we must define the layout of this cb in some way that is independent from the compiled
-        // shader code...
-        if (techConfig.HasEmbeddedCBLayout()) {
-            result._cbLayout = &::Assets::GetAssetDep<PredefinedCBLayout>(techniqueConfig);
-        } else {
-            // This is the default CB layout where there isn't one explicitly referenced by the
-            // technique config file
-            result._cbLayout = &::Assets::GetAssetDep<PredefinedCBLayout>(MakeStringSection(DefaultPredefinedCBLayout));
-        }
+        result._cbLayout = &techConfig.TechniqueCBLayout();
         return result;
     }
 
     const PredefinedCBLayout& TechniqueMaterial::GetCBLayout(StringSection<::Assets::ResChar> techniqueConfigName)
     {
         auto& techConfig = ::Assets::GetAssetDep<ShaderType>(techniqueConfigName);
-        if (techConfig.HasEmbeddedCBLayout()) {
-            return ::Assets::GetAssetDep<PredefinedCBLayout>(techniqueConfigName);
-        } else {
-            return ::Assets::GetAssetDep<PredefinedCBLayout>(MakeStringSection(DefaultPredefinedCBLayout));
-        }
+        return techConfig.TechniqueCBLayout();
     }
 
 }}

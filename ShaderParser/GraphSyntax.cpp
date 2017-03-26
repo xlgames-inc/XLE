@@ -83,7 +83,7 @@ namespace ShaderPatcher
 		// build a function.
 		auto nodes = graph.GetNodes();
 		for (const auto& n:nodes) {
-			if (n.ArchiveName().find("Slot_") != std::string::npos && n.GetType() == Node::Type::Output) {
+			if (n.ArchiveName().find("Signal_") != std::string::npos && n.GetType() == Node::Type::SlotOutput) {
 				NodeGraph subGraph = graph;
 
 				auto splitName = ShaderPatcher::SplitArchiveName(n.ArchiveName());
@@ -111,16 +111,6 @@ typedef unsigned NodeId;
 typedef unsigned ConnectorId;
 typedef unsigned ConnectionId;
 
-extern "C" NodeId LNode_Register(const void* ctx, const char archiveName[])
-{
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-
-	NodeId nextId = (NodeId)ng->_graph.GetNodes().size();
-	ShaderPatcher::Node newNode(archiveName, nextId, ShaderPatcher::Node::Type::Output);
-	ng->_graph.Add(std::move(newNode));
-	return nextId;
-}
-
 extern "C" NodeId RNode_Register(const void* ctx, const char archiveName[])
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
@@ -131,12 +121,22 @@ extern "C" NodeId RNode_Register(const void* ctx, const char archiveName[])
 	return nextId;
 }
 
-extern "C" NodeId SlotParams_Register(const void* ctx, const char archiveName[])
+extern "C" NodeId LSlot_Register(const void* ctx, const char archiveName[])
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
 
 	NodeId nextId = (NodeId)ng->_graph.GetNodes().size();
-	ShaderPatcher::Node newNode(archiveName, nextId, ShaderPatcher::Node::Type::SystemParameters);
+	ShaderPatcher::Node newNode(archiveName, nextId, ShaderPatcher::Node::Type::SlotOutput);
+	ng->_graph.Add(std::move(newNode));
+	return nextId;
+}
+
+extern "C" NodeId RSlot_Register(const void* ctx, const char archiveName[])
+{
+	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+
+	NodeId nextId = (NodeId)ng->_graph.GetNodes().size();
+	ShaderPatcher::Node newNode(archiveName, nextId, ShaderPatcher::Node::Type::SlotInput);
 	ng->_graph.Add(std::move(newNode));
 	return nextId;
 }

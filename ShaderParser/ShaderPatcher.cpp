@@ -431,7 +431,7 @@ namespace ShaderPatcher
                          if (IsDownstream(node.NodeId(), trimNodesBegin, trimNodesEnd)) {
                              return false;
                          }
-                         if (node.GetType() == Node::Type::Output) {
+                         if (node.GetType() == Node::Type::SlotOutput) {
                              bool directOutput = false;
                                 //  search through to see if this node is a direct output
                                 //  node of one of the trim nodes
@@ -564,15 +564,12 @@ namespace ShaderPatcher
         return std::string();
     }
 
-    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const NodeConnection& connection)
+    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const NodeConnection& connection, FunctionInterface& interf)
     {
             //      Check to see what kind of connection it is
             //      By default, let's just assume it's a procedure.
         auto* inputNode = nodeGraph.GetNode(connection.InputNodeId());
-		if (!inputNode || inputNode->GetType() == Node::Type::SystemParameters)
-			return ExpressionString{std::string(), std::string()};
-
-        if (inputNode->GetType() == Node::Type::Procedure) {
+        if (inputNode && inputNode->GetType() == Node::Type::Procedure) {
 
                 // We will load the current type from the shader fragments, overriding what is in the
                 // the connection. The two might disagree if the shader fragment has changed since the
@@ -582,18 +579,21 @@ namespace ShaderPatcher
             if (type.empty()) type = connection.InputType()._name;
             return ExpressionString{OutputTemporaryForNode(connection.InputNodeId(), connection.InputParameterName()), type}; 
 
-        } else if (inputNode->GetType() == Node::Type::MaterialCBuffer) {
+        } else if (inputNode && inputNode->GetType() == Node::Type::Uniforms) {
 
             return ExpressionString{connection.InputParameterName(), connection.InputType()._name};
 
-        } else if (inputNode->GetType() == Node::Type::Constants) {
+        } else if (!inputNode || inputNode->GetType() == Node::Type::SlotInput) {
 
-            std::stringstream result;
-            result << "ConstantValue_" << connection.InputNodeId() << "_" << connection.InputParameterName();
-            return ExpressionString{result.str(), connection.InputType()._name};
+			FunctionInterface::Parameter param(connection.InputType()._name, connection.InputParameterName(), "", FunctionInterface::Parameter::In);
+			interf.AddFunctionParameter(param);
+			return ExpressionString{connection.InputParameterName(), connection.InputType()._name};
 
-        } else
+		} else {
+
             return ExpressionString{std::string(), std::string()};
+
+		}
     }
 
 	static std::pair<std::string, bool> StripAngleBracket(const std::string& str)
@@ -607,14 +607,14 @@ namespace ShaderPatcher
 		}
 	}
 
-    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const ConstantConnection& connection)
+    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const ConstantConnection& connection, FunctionInterface& interf)
     {
             //  we have a "constant connection" value here. We either extract the name of 
             //  the varying parameter, or we interpret this as pure text...
 		return ExpressionString{StripAngleBracket(connection.Value()).first, std::string()};
     }
 
-    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const InputParameterConnection& connection)
+    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const InputParameterConnection& connection, FunctionInterface& interf)
     {
 		auto p = StripAngleBracket(connection.InputName());
 		return p.second ? ExpressionString{p.first, std::string()} : ExpressionString{connection.InputName(), connection.InputType()._name};
@@ -628,7 +628,7 @@ namespace ShaderPatcher
     {
         auto i = FindConnection(nodeGraph.GetNodeConnections(), nodeId, signatureParam._name);
         if (i!=nodeGraph.GetNodeConnections().cend()) {
-            auto e = QueryExpression(nodeGraph, *i);
+            auto e = QueryExpression(nodeGraph, *i, interf);
 			if (!e._expression.empty()) return e;
 		}
 
@@ -642,7 +642,7 @@ namespace ShaderPatcher
 					paramToAdd._type = signatureParam._type;
 
 				interf.AddGlobalParameter(paramToAdd);
-				auto e = QueryExpression(nodeGraph, *ci);
+				auto e = QueryExpression(nodeGraph, *ci, interf);
 				if (!e._expression.empty()) return e;
 			} else {
 				return ExpressionString{ci->Value(), std::string()};
@@ -663,7 +663,7 @@ namespace ShaderPatcher
 
 			if (p.second) interf.AddFunctionParameter(paramToAdd);
 			else interf.AddGlobalParameter(paramToAdd);
-            auto e = QueryExpression(nodeGraph, *ti);
+            auto e = QueryExpression(nodeGraph, *ti, interf);
 			if (!e._expression.empty()) return e;
 		}
 
@@ -699,8 +699,8 @@ namespace ShaderPatcher
     {
         for (const auto& i:range) {
 			auto* destinationNode = graph.GetNode(i.OutputNodeId());
-            if (!destinationNode || destinationNode->GetType() == Node::Type::Output) {
-				ExpressionString expression = QueryExpression(graph, i);
+            if (!destinationNode || destinationNode->GetType() == Node::Type::SlotOutput) {
+				ExpressionString expression = QueryExpression(graph, i, interf);
             
 				// This is not connected to anything -- so we just have to add it as a
 				// unique output from the interface.
