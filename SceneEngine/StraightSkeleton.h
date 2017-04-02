@@ -31,8 +31,7 @@ namespace SceneEngine
 			unsigned	_skeletonVertexId;
 			float		_initialTime;
 			Float2		_velocity;
-
-			bool _noLongerActive;		// (collapsed out of the graph)
+			bool		_frozen;	// (collapsed out of the graph)
 		};
 
 		class Graph
@@ -54,6 +53,8 @@ namespace SceneEngine
 				unsigned _tail;		// (this is the fixed vertex)
 			};
 			std::vector<MotorcycleSegment> _motorcycleSegments;
+
+			std::vector<Float2> _boundaryPoints;
 
 			Skeleton GenerateSkeleton();
 		};
