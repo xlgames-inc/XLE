@@ -24,7 +24,7 @@
 #include "../../RenderCore/Techniques/ResourceBox.h"
 
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/GPUProfiler.h"
+#include "../../RenderCore/IAnnotator.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
@@ -37,6 +37,8 @@
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
+
+#include "../../SceneEngine/StraightSkeleton.h"
 
 #include <functional>
 
@@ -67,16 +69,16 @@ namespace Sample
         {
             auto clientRect = _window.GetRect();
 
-            _rDevice = RenderCore::CreateDevice();
+            _rDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
             _presChain = _rDevice->CreatePresentationChain(_window.GetUnderlyingHandle(), 
                     clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
 
             _assetServices = std::make_unique<::Assets::Services>(0);
-            _renderAssetServices = std::make_unique<RenderCore::Assets::Services>(_rDevice.get());
+            _renderAssetServices = std::make_unique<RenderCore::Assets::Services>(_rDevice);
 
             _window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(_presChain));
-            auto v = _rDevice->GetVersionInformation();
-            _window.SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v.first << ", " << v.second << "]");
+            // auto v = _rDevice->GetVersionInformation();
+            // _window.SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v.first << ", " << v.second << "]");
 
             _globalTechContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
         }
@@ -101,10 +103,26 @@ namespace Sample
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	static void TestStraightSkeleton()
+	{
+		using namespace SceneEngine::StraightSkeleton;
+		Float2 pts[] = {
+			Float2(-2,-1),
+			Float2( 2,-1),
+			Float2( 2, 1),
+			Float2(-2, 1)
+		};
+		auto graph = BuildGraphFromVertexLoop(MakeIteratorRange(pts));
+		auto skel = graph.GenerateSkeleton();
+		(void)skel;
+	}
+
     void ExecuteSample()
     {
         using namespace PlatformRig;
         using namespace Sample;
+
+		TestStraightSkeleton();
 
         LogInfo << "Building primary managers";
         PrimaryManagers primMan;
@@ -156,7 +174,7 @@ namespace Sample
 
                 auto frameResult = frameRig.ExecuteFrame(
                     *context.get(), primMan._presChain.get(), 
-                    g_gpuProfiler.get(), &g_cpuProfiler,
+                    &g_cpuProfiler,
                     std::bind(
                         RenderFrame, std::placeholders::_1,
                         std::ref(lightingParserContext), mainScene.get(), 
@@ -219,7 +237,7 @@ namespace Sample
 
         using namespace SceneEngine;
         if (scene) {
-            auto presChainDims = presentationChain->GetViewportContext()->_dimensions;
+            UInt2 presChainDims(presentationChain->GetDesc()->_width, presentationChain->GetDesc()->_height);
             LightingParser_ExecuteScene(
                 context, lightingParserContext, *scene, scene->GetCameraDesc(),
                 RenderingQualitySettings(
