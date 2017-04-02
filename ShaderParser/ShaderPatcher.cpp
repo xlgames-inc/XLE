@@ -25,8 +25,6 @@
 #include <regex>
 #include <map>
 
-#pragma warning(disable:4127)       // conditional expression is constant
-
 namespace ShaderPatcher 
 {
 
@@ -176,6 +174,97 @@ namespace ShaderPatcher
             [=](const Node& node) { return node.NodeId() == nodeId; }) != _nodes.end();
     }
 
+	uint32            NodeGraph::GetUniqueNodeId() const
+    {
+        uint32 largestId = 0;
+        std::for_each(_nodes.cbegin(), _nodes.cend(), [&](const Node& n) { largestId = std::max(largestId, n.NodeId()); });
+        return largestId+1;
+    }
+
+    const Node*     NodeGraph::GetNode(uint32 nodeId) const
+    {
+        auto res = std::find_if(
+            _nodes.cbegin(), _nodes.cend(),
+            [=](const Node& n) { return n.NodeId() == nodeId; });
+        if (res != _nodes.cend()) {
+            return &*res;
+        }
+        return nullptr;
+    }
+
+    void NodeGraph::Trim(uint32 previewNode)
+    {
+        Trim(&previewNode, &previewNode+1);
+    }
+
+    void NodeGraph::Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd)
+    {
+            //
+            //      Trim out all of the nodes that are upstream of
+            //      'previewNode' (except for output nodes that are
+            //      directly written by one of the trim nodes)
+            //
+            //      Simply
+            //          1.  remove all nodes, unless they are downstream
+            //              of 'previewNode'
+            //          2.  remove all connections that refer to nodes
+            //              that no longer exist
+            //
+            //      Generally, there won't be an output connection attached
+            //      to the previewNode at the end of the process. So, we
+            //      may need to create one.
+            //
+
+        _nodes.erase(
+            std::remove_if(
+                _nodes.begin(), _nodes.end(),
+                [=](const Node& node) -> bool
+                    { 
+                         if (IsDownstream(node.NodeId(), trimNodesBegin, trimNodesEnd)) {
+                             return false;
+                         }
+                         if (node.GetType() == Node::Type::SlotOutput) {
+                             bool directOutput = false;
+                                //  search through to see if this node is a direct output
+                                //  node of one of the trim nodes
+                             for (auto n=trimNodesBegin; n!=trimNodesEnd && !directOutput; ++n) {
+                                 for (auto c=_nodeConnections.cbegin(); c!=_nodeConnections.cend(); ++c) {
+                                     if (c->InputNodeId() == *n && c->OutputNodeId() == node.NodeId()) {
+                                         directOutput = true;
+                                         break;
+                                     }
+                                 }
+                             }
+                             return !directOutput;
+                         }
+                         return true;
+                    }), 
+            _nodes.end());
+
+        _nodeConnections.erase(
+            std::remove_if(
+                _nodeConnections.begin(), _nodeConnections.end(),
+                [=](const NodeConnection& connection) 
+                    { return !HasNode(connection.InputNodeId()) || !HasNode(connection.OutputNodeId()); }),
+            _nodeConnections.end());
+
+        _constantConnections.erase(
+            std::remove_if(
+                _constantConnections.begin(), _constantConnections.end(),
+                [=](const ConstantConnection& connection) 
+                    { return !HasNode(connection.OutputNodeId()); }),
+            _constantConnections.end());
+
+        _inputParameterConnections.erase(
+            std::remove_if(
+                _inputParameterConnections.begin(), _inputParameterConnections.end(),
+                [=](const InputParameterConnection& connection) 
+                    { return !HasNode(connection.OutputNodeId()); }),
+            _inputParameterConnections.end());
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     std::string LoadSourceFile(StringSection<char> sourceFileName)
     {
         TRY {
@@ -282,197 +371,6 @@ namespace ShaderPatcher
 
     static bool HasResultValue(const ShaderSourceParser::FunctionSignature& sig) { return !sig._returnType.empty() && sig._returnType != "void"; }
 
-    bool            NodeGraph::TrimForOutputs(const std::string outputs[], size_t outputCount)
-    {
-            //
-            //      We want to trim the graph so that we end up only with the parts
-            //      that output to the given output parameters.
-            //
-            //      Collect a list of nodes that output to any of the output 
-            //      connections,
-            //
-
-        std::vector<uint32> trimmingNodes;
-        auto outputsEnd = &outputs[outputCount];
-        for (auto i=GetNodeConnections().cbegin(); i!=GetNodeConnections().cend(); ++i) {
-            if (std::find(outputs, outputsEnd, i->OutputParameterName()) != outputsEnd) {
-                trimmingNodes.push_back(i->InputNodeId());
-            }
-        }
-
-        if (trimmingNodes.empty()) {
-            return false;   // nothing leads to these outputs
-        }
-
-            //  Remove duplicates in "trimming nodes"
-        trimmingNodes.erase(std::unique(trimmingNodes.begin(), trimmingNodes.end()), trimmingNodes.end());
-
-        Trim(AsPointer(trimmingNodes.begin()), AsPointer(trimmingNodes.end()));
-        return true;
-    }
-
-    uint32            NodeGraph::GetUniqueNodeId() const
-    {
-        uint32 largestId = 0;
-        std::for_each(_nodes.cbegin(), _nodes.cend(), [&](const Node& n) { largestId = std::max(largestId, n.NodeId()); });
-        return largestId+1;
-    }
-
-    const Node*     NodeGraph::GetNode(uint32 nodeId) const
-    {
-        auto res = std::find_if(
-            _nodes.cbegin(), _nodes.cend(),
-            [=](const Node& n) { return n.NodeId() == nodeId; });
-        if (res != _nodes.cend()) {
-            return &*res;
-        }
-        return nullptr;
-    }
-
-    unsigned GetDimensionality(const std::string& typeName)
-    {
-        if (typeName.empty()) {
-            return 0;
-        }
-
-        size_t length = typeName.length();
-        if (XlIsDigit(typeName[length-1])) {
-            if (length >= 3 && typeName[length-2] == 'x' && XlIsDigit(typeName[length-3])) {
-                return (typeName[length-3] - '0') * (typeName[length-1] - '0');
-            }
-
-            return typeName[length-1] - '0';
-        }
-
-        return 1;
-    }
-
-    void NodeGraph::TrimForPreview(uint32 previewNode)
-    {
-        Trim(&previewNode, &previewNode+1);
-
-               
-            //
-            //      Build a new output connection. But we the node itself can't tell us the output type.
-            //      So we have to parse the source shader file again to get the result type
-            //
-
-        auto i = std::find_if(_nodes.begin(), _nodes.end(), 
-            [=](const Node& node) { return node.NodeId() == previewNode; });
-        if (i!=_nodes.end()) {
-            AddDefaultOutputs(*i);
-        }
-    }
-
-    static bool HasConnection(const std::vector<NodeConnection>& connections, uint32 destinationId, const std::string& destinationName)
-    {
-        return
-            std::find_if(
-                connections.cbegin(), connections.cend(), 
-                [=](const NodeConnection& connection) 
-                    { return connection.InputNodeId() == destinationId && connection.InputParameterName() == destinationName; }
-            ) != connections.end();
-    }
-
-    void NodeGraph::AddDefaultOutputs()
-    {
-            // annoying redirection (because we're modifying the node array)
-        std::vector<uint32> starterNodes;
-        for (auto i=_nodes.begin(); i!=_nodes.end(); ++i)
-            starterNodes.push_back(i->NodeId());
-
-        for (auto i=starterNodes.begin(); i!=starterNodes.end(); ++i)
-            AddDefaultOutputs(*GetNode(*i));
-    }
-
-    void NodeGraph::AddDefaultOutputs(const Node& node)
-    {
-        if (node.ArchiveName().empty()) return;
-
-        const auto& sig = LoadFunctionSignature(SplitArchiveName(node.ArchiveName()), _searchRules);
-
-            //  a function can actually output many values. Each output needs it's own default
-            //  output node attached. First, look for a "return" value. Then search through
-            //  for parameters with "out" set
-        if (HasResultValue(sig) && !HasConnection(_nodeConnections, node.NodeId(), s_resultName))
-            _nodeConnections.emplace_back(NodeConnection(s_nodeId_Invalid, node.NodeId(), "result", s_resultName, sig._returnType));
-
-        for (const auto& i:sig._parameters) {
-            if (i._direction & ShaderSourceParser::FunctionSignature::Parameter::Out) {
-                if (!HasConnection(_nodeConnections, node.NodeId(), i._name))
-                    _nodeConnections.emplace_back(NodeConnection(s_nodeId_Invalid, node.NodeId(), "result", i._name, i._type));
-            }
-        }
-    }
-
-    void NodeGraph::Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd)
-    {
-            //
-            //      Trim out all of the nodes that are upstream of
-            //      'previewNode' (except for output nodes that are
-            //      directly written by one of the trim nodes)
-            //
-            //      Simply
-            //          1.  remove all nodes, unless they are downstream
-            //              of 'previewNode'
-            //          2.  remove all connections that refer to nodes
-            //              that no longer exist
-            //
-            //      Generally, there won't be an output connection attached
-            //      to the previewNode at the end of the process. So, we
-            //      may need to create one.
-            //
-
-        _nodes.erase(
-            std::remove_if(
-                _nodes.begin(), _nodes.end(),
-                [=](const Node& node) -> bool
-                    { 
-                         if (IsDownstream(node.NodeId(), trimNodesBegin, trimNodesEnd)) {
-                             return false;
-                         }
-                         if (node.GetType() == Node::Type::SlotOutput) {
-                             bool directOutput = false;
-                                //  search through to see if this node is a direct output
-                                //  node of one of the trim nodes
-                             for (auto n=trimNodesBegin; n!=trimNodesEnd && !directOutput; ++n) {
-                                 for (auto c=_nodeConnections.cbegin(); c!=_nodeConnections.cend(); ++c) {
-                                     if (c->InputNodeId() == *n && c->OutputNodeId() == node.NodeId()) {
-                                         directOutput = true;
-                                         break;
-                                     }
-                                 }
-                             }
-                             return !directOutput;
-                         }
-                         return true;
-                    }), 
-            _nodes.end());
-
-        _nodeConnections.erase(
-            std::remove_if(
-                _nodeConnections.begin(), _nodeConnections.end(),
-                [=](const NodeConnection& connection) 
-                    { return !HasNode(connection.InputNodeId()) || !HasNode(connection.OutputNodeId()); }),
-            _nodeConnections.end());
-
-        _constantConnections.erase(
-            std::remove_if(
-                _constantConnections.begin(), _constantConnections.end(),
-                [=](const ConstantConnection& connection) 
-                    { return !HasNode(connection.OutputNodeId()); }),
-            _constantConnections.end());
-
-        _inputParameterConnections.erase(
-            std::remove_if(
-                _inputParameterConnections.begin(), _inputParameterConnections.end(),
-                [=](const InputParameterConnection& connection) 
-                    { return !HasNode(connection.OutputNodeId()); }),
-            _inputParameterConnections.end());
-    }
-
-        ///////////////////////////////////////////////////////////////
-
 	static void OrderNodes(IteratorRange<uint32*> range)
 	{
 		// We need to sort the upstreams in some way that maintains a 
@@ -548,17 +446,16 @@ namespace ShaderPatcher
             result << expression._expression;
     }
 
-    static std::string TypeFromShaderFragment(const std::string& archiveName, const std::string& paramName, const ::Assets::DirectorySearchRules& searchRules)
+    static std::string TypeFromShaderFragment(const std::string& archiveName, const std::string& paramName, const ::Assets::DirectorySearchRules& searchRules, ShaderSourceParser::FunctionSignature::Parameter::Direction direction)
     {
             // Go back to the shader fragments to find the current type for the given parameter
         const auto& sig = LoadFunctionSignature(SplitArchiveName(archiveName), searchRules);
         if (paramName == s_resultName && HasResultValue(sig))
             return sig._returnType;
 
-            // find an "out" parameter with the right name
+            // find a parameter with the right direction & name
         for (const auto& p:sig._parameters)
-            if (    (p._direction & ShaderSourceParser::FunctionSignature::Parameter::Out) != 0
-                &&   p._name == paramName)
+            if ((p._direction & direction) != 0 && p._name == paramName)
                 return p._type;
 
         return std::string();
@@ -574,8 +471,7 @@ namespace ShaderPatcher
                 // We will load the current type from the shader fragments, overriding what is in the
                 // the connection. The two might disagree if the shader fragment has changed since the
                 // graph was created.
-            std::string type;
-            type = TypeFromShaderFragment(inputNode->ArchiveName(), connection.InputParameterName(), nodeGraph.GetSearchRules());
+            auto type = TypeFromShaderFragment(inputNode->ArchiveName(), connection.InputParameterName(), nodeGraph.GetSearchRules(), ShaderSourceParser::FunctionSignature::Parameter::Out);
             if (type.empty()) type = connection.InputType()._name;
             return ExpressionString{OutputTemporaryForNode(connection.InputNodeId(), connection.InputParameterName()), type}; 
 
@@ -586,6 +482,12 @@ namespace ShaderPatcher
         } else if (!inputNode || inputNode->GetType() == Node::Type::SlotInput) {
 
 			FunctionInterface::Parameter param(connection.InputType()._name, connection.InputParameterName(), "", FunctionInterface::Parameter::In);
+			if (param._type.empty() || XlEqStringI(MakeStringSection(param._type), "auto")) {
+				if (inputNode) {
+					auto type = TypeFromShaderFragment(inputNode->ArchiveName(), connection.InputParameterName(), nodeGraph.GetSearchRules(), ShaderSourceParser::FunctionSignature::Parameter::In);
+					if (!type.empty()) param._type = type;
+				}
+			}
 			interf.AddFunctionParameter(param);
 			return ExpressionString{connection.InputParameterName(), connection.InputType()._name};
 
@@ -617,7 +519,8 @@ namespace ShaderPatcher
     static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const InputParameterConnection& connection, FunctionInterface& interf)
     {
 		auto p = StripAngleBracket(connection.InputName());
-		return p.second ? ExpressionString{p.first, std::string()} : ExpressionString{connection.InputName(), connection.InputType()._name};
+		if (p.second) return ExpressionString{p.first, std::string()};
+		return ExpressionString{connection.InputName(), connection.InputType()._name};
     }
 
 	static FunctionInterface::Parameter AsInterfaceParameter(const ConstantConnection& connection)			{ return FunctionInterface::Parameter(std::string(), connection.Value(), std::string()); }
@@ -661,8 +564,8 @@ namespace ShaderPatcher
             if (paramToAdd._type.empty() || XlEqStringI(MakeStringSection(paramToAdd._type), "auto"))
 				paramToAdd._type = signatureParam._type;
 
-			if (p.second) interf.AddFunctionParameter(paramToAdd);
-			else interf.AddGlobalParameter(paramToAdd);
+			if (p.second) interf.AddGlobalParameter(paramToAdd);
+			else interf.AddFunctionParameter(paramToAdd);
             auto e = QueryExpression(nodeGraph, *ti, interf);
 			if (!e._expression.empty()) return e;
 		}
@@ -1062,7 +965,7 @@ namespace ShaderPatcher
         return std::make_pair(result.str(), interf);
     }
 
-	static std::string GenerateMaterialCBuffer(const FunctionInterface& interf)
+	std::string GenerateMaterialCBuffer(const FunctionInterface& interf)
 	{
 		std::stringstream result;
 

@@ -5,6 +5,7 @@
 #include "ShaderPatcher.h"
 #include "ShaderPatcher_Internal.h"
 #include "InterfaceSignature.h"
+#include "../RenderCore/ShaderLangUtil.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/ConfigFileContainer.h"
 #include "../Utility/StringFormat.h"
@@ -232,8 +233,9 @@ namespace ShaderPatcher
 					    }
                      }
 				} else {
-					// attempt to set values 
-					int dimensionality = GetDimensionality(p._type);
+					// attempt to set values
+					auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(p._type));
+					int dimensionality = type._arrayCount;
 					if (dimensionality == 1) {
 						return "localPosition.x * 0.5 + 0.5.x";
 					} else if (dimensionality == 2) {
@@ -426,7 +428,8 @@ namespace ShaderPatcher
                         if (!signature._name.empty()) {
                             for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
                                     // todo -- what if this is also a parameter struct?
-                                auto dim = GetDimensionality(p->_type);
+								auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(p->_type));
+								auto dim = type._arrayCount;
                                 for (unsigned c=0; c<dim; ++c) {
                                     std::stringstream str;
                                     str << i._name << "." << p->_name;
@@ -436,7 +439,8 @@ namespace ShaderPatcher
                                 }
                             }
                         } else {
-                            auto dim = GetDimensionality(i._type);
+							auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(i._type));
+							auto dim = type._arrayCount;
                             for (unsigned c=0; c<dim; ++c) {
                                 std::stringstream str;
                                 str << i._name;

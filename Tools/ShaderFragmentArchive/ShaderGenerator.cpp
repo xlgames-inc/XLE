@@ -105,7 +105,7 @@ namespace ShaderPatcherLayer
     ShaderPatcher::NodeGraph        NodeGraph::ConvertToNativePreview(UInt32 previewNodeId)
     {
         auto graph = ConvertToNative("Preview");
-        graph.TrimForPreview(previewNodeId);
+        graph.Trim(previewNodeId);
         return graph;
     }
 
@@ -222,13 +222,6 @@ namespace ShaderPatcherLayer
         try
         {
             auto nativeGraph = graph->ConvertToNative(name);
-
-                // Only when there are no explicit outputs do we attach default outputs -- 
-                // The default outputs can get in the way, because sometimes when a function
-                // output is ignored, it ends up being considered a "default" output
-            if (graph->OutputParameterConnections->Count == 0)
-                nativeGraph.AddDefaultOutputs();
-
             ShaderPatcher::FunctionInterface interf;
 			std::string shaderBody;
 			std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
@@ -288,7 +281,8 @@ namespace ShaderPatcherLayer
                 
             return gcnew Tuple<String^,String^>(
                 marshalString<E_UTF8>(
-                        ShaderPatcher::GenerateShaderHeader(nativeGraph) 
+                        ShaderPatcher::GenerateShaderHeader(nativeGraph)
+					+	ShaderPatcher::GenerateMaterialCBuffer(interf)
                     +   shaderBody 
                     +   ShaderPatcher::GenerateStructureForPreview(MakeStringSection(nativeGraph.GetName()), interf, nativeGraph.GetSearchRules(), options)),
                 marshalString<E_UTF8>(GenerateCBLayoutInt(interf)));

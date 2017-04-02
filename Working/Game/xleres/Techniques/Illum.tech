@@ -28,7 +28,11 @@
         ~Geometry
             GEO_HAS_BITANGENT
             GEO_HAS_NORMAL
+            GEO_HAS_TANGENT_FRAME
             GEO_HAS_PER_VERTEX_AO
+        ~GlobalEnvironment
+            CLASSIFY_NORMAL_MAP
+            SKIP_MATERIAL_DIFFUSE=0
 
 ~Forward
     ~Inherit; Illum; shared.tech:System
@@ -37,24 +41,13 @@
 
 ~Deferred
     ~Inherit; Illum; shared.tech:Deferred
-    ~Parameters
-        ~Geometry
-            GEO_HAS_COLOUR
-            GEO_HAS_TEXCOORD
-            GEO_HAS_TANGENT_FRAME
-            GEO_HAS_BITANGENT
-            GEO_HAS_NORMAL
-            GEO_HAS_PER_VERTEX_AO
-        ~GlobalEnvironment
-            CLASSIFY_NORMAL_MAP
-            SKIP_MATERIAL_DIFFUSE=0
     VertexShader=xleres/deferred/basic.vsh:main
     PixelShader=xleres/deferred/basic.psh:main
 
 ~DeferredFlex
     ~Inherit; Deferred
     VertexShader=xleres/deferred/basic.vsh:main
-    PixelShader=xleres/deferred/basic.push:main
+    PixelShader=xleres/deferred/flex.psh:main
 
 ~OrderIndependentTransparency
     ~Inherit; Illum; shared.tech:Forward
@@ -158,6 +151,7 @@
 ~Technique
     Forward = Forward
     Deferred = Deferred
+    Deferred, has(Signal_PBRSample) = DeferredFlex
     OrderIndependentTransparency = OrderIndependentTransparency
     StochasticTransparency = StochasticTransparency
     DepthWeightedTransparency = DepthWeightedTransparency

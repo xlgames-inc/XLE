@@ -19,7 +19,6 @@ namespace ShaderPatcher
 
 	// type traits
 	bool IsStructType(StringSection<char> typeName);
-	unsigned GetDimensionality(const std::string& typeName);
 	bool CanBeStoredInCBuffer(const StringSection<char> type);
 }
 

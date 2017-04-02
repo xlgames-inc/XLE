@@ -179,9 +179,7 @@ namespace ShaderPatcher
 		const ::Assets::DirectorySearchRules& GetSearchRules() const { return _searchRules; }
 
 		void			Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd);
-        void            TrimForPreview(uint32 previewNode);
-        bool            TrimForOutputs(const std::string outputs[], size_t outputCount);
-        void            AddDefaultOutputs();
+        void            Trim(uint32 previewNode);
 
         const Node*     GetNode(uint32 nodeId) const;
 
@@ -250,6 +248,7 @@ namespace ShaderPatcher
 
     std::string GenerateShaderHeader(const NodeGraph& graph);
     std::pair<std::string, FunctionInterface> GenerateFunction(const NodeGraph& graph);
+	std::string GenerateMaterialCBuffer(const FunctionInterface& interf);
 
     struct PreviewOptions
     {
