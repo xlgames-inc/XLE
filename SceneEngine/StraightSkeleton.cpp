@@ -9,6 +9,7 @@
 
 namespace SceneEngine { namespace StraightSkeleton 
 {
+	static const float epsilon = 1e-6f;
 	static const unsigned BoundaryVertexFlag = 1u<<31u;
 
 	enum WindingType { Left, Right, Straight };
@@ -45,26 +46,8 @@ namespace SceneEngine { namespace StraightSkeleton
 		// I've calculated this out using basic algebra -- but we may be able to get a more efficient
 		// method using vector math.
 
-#if 0
-		auto o1 = vex1-vex0;
-		auto o2 = vex2-vex1;
-		auto m1 = o1[1]/o1[0];
-		auto m2 = o2[1]/o2[0];
+		if (Equivalent(vex0, vex2, epsilon)) return Zero<Float2>();
 
-		// note that we have 2 ways to for transform gradient -> velocity (position can be either left side or right side)
-		auto v1 = 1/std::sqrt(m1*m1+1);
-		auto u1 = -m1*v1;
-		auto v2 = 1/std::sqrt(m2*m2+1);
-		auto u2 = -m2*v2;
-
-		// (now, line 1 is y-v1*t=m1(x-u1*t)
-		
-		const auto t = 1.0f;
-		auto x = t * (-u1*m1+v1+u2*m2-v2) / (m2-m1);
-		auto y = m1 * (x - u1*t) + v1*t;
-
-		return Float2(x,y);
-#endif
 		auto t0 = vex1-vex0;
 		auto t1 = vex2-vex1;
 
@@ -78,8 +61,13 @@ namespace SceneEngine { namespace StraightSkeleton
 		// Now, line1 is 0 = xa + yb - t and line2 is 0 = xc + yd - t
 
 		// we can calculate the intersection of the lines using this formula...
-		auto D = (c-a)/(b-d);
-		auto x = t / (a + b*D);
+		auto q1 = (b-d);
+		if (q1 > -epsilon && q1 < epsilon) return Zero<Float2>();
+		auto D = (c-a)/q1;
+
+		auto q2 = (a + b*D);
+		if (q2 > -epsilon && q2 < epsilon) return Zero<Float2>();
+		auto x = t / q2;
 		auto y = D*x;
 		return Float2(x, y);
 	}
@@ -121,7 +109,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			// If we wind to the right then it's a reflex vertex, and we must add a motorcycle edge
 			if (CalculateWindingType(vertices[v0], vertices[v1], vertices[v2], threshold) == WindingType::Right) {
 				auto fixedVertex = (unsigned)(result._vertices.size());
-				result._vertices.emplace_back(Vertex{vertices[v], BoundaryVertexFlag|unsigned(v), 0.0f, Zero<Float2>()});
+				result._vertices.emplace_back(Vertex{vertices[v], BoundaryVertexFlag|unsigned(v), 0.0f, Zero<Float2>(), true});
 				result._motorcycleSegments.emplace_back(Graph::MotorcycleSegment{(unsigned)v, (unsigned)fixedVertex});
 			}
 		}
@@ -129,8 +117,6 @@ namespace SceneEngine { namespace StraightSkeleton
 		result._boundaryPoints = std::vector<Float2>(vertices.begin(), vertices.end());
 		return result;
 	}
-
-	static const float epsilon = 1e-6f;
 
 	static float CalculateCollapseTime(Float2 p0, Float2 v0, Float2 p1, Float2 v1)
 	{
@@ -156,6 +142,10 @@ namespace SceneEngine { namespace StraightSkeleton
 
 	static float CalculateCollapseTime(const StraightSkeleton::Vertex& v0, const StraightSkeleton::Vertex& v1)
 	{
+		// hack -- if one side is frozen, we must collapse immediately
+		if (Equivalent(v0._velocity, Zero<Float2>(), epsilon)) return std::numeric_limits<float>::max();
+		if (Equivalent(v1._velocity, Zero<Float2>(), epsilon)) return std::numeric_limits<float>::max();
+
 		// At some point the trajectories of v0 & v1 may intersect
 		// We need to pick out a specific time on the timeline, and find both v0 and v1 at that
 		// time. This can be any time, but it may be convnient to use time 0
@@ -188,11 +178,19 @@ namespace SceneEngine { namespace StraightSkeleton
 		return v._position + v._velocity * (time - v._initialTime);
 	}
 
-	static float CalculateCollisionTime(Graph& graph, Float2 position, Float2 velocity, float initialTime, const Graph::MotorcycleSegment* cycleToSkip = nullptr, unsigned boundaryPtToSkip = ~0u)
+	struct CrashEvent
 	{
-		auto p2 = position - initialTime * velocity;
+		float _time;
+		unsigned _edgeSegment;
+	};
+
+	static CrashEvent CalculateCrashTime(
+		Graph& graph, Float2 position, Float2 velocity, float initialTime, 
+		const Graph::MotorcycleSegment* cycleToSkip = nullptr, unsigned boundaryPtToSkip = ~0u)
+	{
+		auto p2 = Float2(position - initialTime * velocity);
 		auto v2 = velocity;
-		auto bestCollisionTime = std::numeric_limits<float>::max();
+		CrashEvent bestCollisionEvent { std::numeric_limits<float>::max(), ~0u };
 
 		// Look for an intersection with _edgeSegments
 		for (const auto&e:graph._edgeSegments) {
@@ -247,16 +245,18 @@ namespace SceneEngine { namespace StraightSkeleton
 			// All 3 points should be on the same line at this point -- so we just need to check if
 			// the motorcycle is between them (or intersecting a vertex)
 			for (unsigned c=0; c<2; ++c) {
-				if (t[c] > bestCollisionTime) continue;	// don't need to check collisions that happen too late
+				if (t[c] > bestCollisionEvent._time || t[c] < 0.0f) continue;	// don't need to check collisions that happen too late
 				auto P0 = Float2(p0 + t[c]*v0);
 				auto P1 = Float2(p1 + t[c]*v1);
 				auto P2 = Float2(p2 + t[c]*v2);
 				if ((Dot(P1-P0, P2-P0) > 0.0f) && (Dot(P0-P1, P2-P1) > 0.0f)) {
 					// good collision
-					bestCollisionTime = t[c];
+					bestCollisionEvent._time = t[c];
+					bestCollisionEvent._edgeSegment = unsigned(&e - AsPointer(graph._edgeSegments.begin()));
 				} else if (Equivalent(P0, P2, epsilon) || Equivalent(P1, P2, epsilon)) {
 					// collided with vertex (or close enough)
-					bestCollisionTime = t[c];
+					bestCollisionEvent._time = t[c];
+					bestCollisionEvent._edgeSegment = unsigned(&e - AsPointer(graph._edgeSegments.begin()));
 				}
 			}
 		}
@@ -269,7 +269,10 @@ namespace SceneEngine { namespace StraightSkeleton
 			const auto& head = graph._vertices[i->_head];
 			auto p0 = Float2(head._position - head._initialTime * head._velocity);
 			auto collapseTime = CalculateCollapseTime(p0, head._velocity, p2, v2);
-			bestCollisionTime = std::min(collapseTime, bestCollisionTime);
+			if (collapseTime < bestCollisionEvent._time) {
+				bestCollisionEvent._time = collapseTime;
+				bestCollisionEvent._edgeSegment = ~0u;
+			}
 		}
 
 		// Look for an intersection with boundary edges
@@ -291,20 +294,22 @@ namespace SceneEngine { namespace StraightSkeleton
 			auto a = d0 / (d0 - d1);
 			if (a < -epsilon || a > (1.0f + epsilon)) continue;
 
-			float t = LinearInterpolate(Dot(p0-p2, v2), Dot(p1-p2, v2), a);
-			if (t < 0.f || t > bestCollisionTime) continue;
-			bestCollisionTime = t;
+			float t = (std::abs(v2[0]) > std::abs(v2[1])) ? (LinearInterpolate(p0[0], p1[0], a) - p2[0]) / v2[0] : (LinearInterpolate(p0[1], p1[1], a) - p2[1]) / v2[1];
+			if (t < 0.f || t > bestCollisionEvent._time) continue;
+			bestCollisionEvent._time = t;
+			bestCollisionEvent._edgeSegment = ~0u;
 		}
 
 		// todo -- also check segmnents written into the output skeleton...?
 
-		return bestCollisionTime;
+		return bestCollisionEvent;
 	}
 
-	Skeleton Graph::GenerateSkeleton() 
+	Skeleton Graph::GenerateSkeleton(float maxTime)
 	{
 		Skeleton result;
 		std::vector<std::pair<float, size_t>> bestCollapse;
+		std::vector<std::pair<CrashEvent, size_t>> bestMotorcycleCrash;
 		bestCollapse.reserve(8);
 
 		float lastEventTime = 0.0f;
@@ -318,7 +323,7 @@ namespace SceneEngine { namespace StraightSkeleton
 				const auto& v0 = _vertices[e->_head];
 				const auto& v1 = _vertices[e->_tail];
 				auto collapseTime = CalculateCollapseTime(v0, v1);
-				assert(collapseTime > lastEventTime);
+				assert(collapseTime >= lastEventTime);
 				if (collapseTime < (bestCollapseTime - epsilon)) {
 					bestCollapse.clear();
 					bestCollapse.push_back(std::make_pair(collapseTime, std::distance(_edgeSegments.begin(), e)));
@@ -335,18 +340,17 @@ namespace SceneEngine { namespace StraightSkeleton
 			bestCollapse.erase(
 				std::remove_if(
 					bestCollapse.begin(), bestCollapse.end(),
-					[bestCollapseTime](const std::pair<float, size_t>& e)
-					{
-						return !(e.first < bestCollapseTime + epsilon);
-					}), 
+					[bestCollapseTime](const std::pair<float, size_t>& e) { return !(e.first < bestCollapseTime + epsilon); }), 
 				bestCollapse.end());
 
 			// Also check for motorcycles colliding.
 			//		These can collide with segments in the _edgeSegments list, or 
 			//		other motorcycles, or boundary polygon edges
+			float bestMotorcycleCrashTime = std::numeric_limits<float>::max();
+			bestMotorcycleCrash.clear();
 			for (auto m=_motorcycleSegments.begin(); m!=_motorcycleSegments.end(); ++m) {
 				const auto& head = _vertices[m->_head];
-				auto collisionTime = CalculateCollisionTime(*this, head._position, head._velocity, head._initialTime, AsPointer(m), head._skeletonVertexId);
+				auto crashEvent = CalculateCrashTime(*this, head._position, head._velocity, head._initialTime, AsPointer(m), head._skeletonVertexId);
 
 				// If our best motorcycle collision happens before our best collapse, then we
 				// must do the motorcycle first, and recalculate edge collapses afterwards
@@ -354,137 +358,278 @@ namespace SceneEngine { namespace StraightSkeleton
 				// and then recalculate the motorcycle collisions afterwards (ie, even if there's
 				// a motorcycle collision at around the same time as the edge collapses, we're
 				// going to ignore it for now)
-				if (collisionTime < (bestCollapseTime - epsilon)) {
-					bestCollapse.clear();
-					bestCollapseTime = collisionTime;
-				}
-			}
-
-			if (bestCollapse.empty()) break;
-
-			// Process the "edge" events... first separate the edges into collapse groups
-			// Each collapse group collapses onto a single vertex
-			std::vector<unsigned> collapseGroups(bestCollapse.size(), ~0u);
-			struct CollapseGroupInfo { unsigned _head, _tail, _newVertex; };
-			std::vector<CollapseGroupInfo> collapseGroupInfos;
-			unsigned nextCollapseGroup = 0;
-			for (size_t c=0; c<bestCollapse.size(); ++c) {
-				if (collapseGroups[c] != ~0u) continue;
-
-				collapseGroups[c] = nextCollapseGroup;
-
-				// got back as far as possible, from tail to tail
-				auto searchingTail =_edgeSegments[bestCollapse[c].second]._tail;
-				for (;;) {
-					auto i = std::find_if(bestCollapse.begin(), bestCollapse.end(),
-						[searchingTail, this](const std::pair<float, size_t>& t)
-						{ return _edgeSegments[t.second]._head == searchingTail; });
-					if (i == bestCollapse.end()) break;
-					assert(collapseGroups[std::distance(bestCollapse.begin(), i)] == ~0u);
-					collapseGroups[std::distance(bestCollapse.begin(), i)] = nextCollapseGroup;
-					searchingTail = _edgeSegments[i->second]._tail;
-				}
-
-				// also go forward head to head
-				auto searchingHead =_edgeSegments[bestCollapse[c].second]._head;
-				for (;;) {
-					auto i = std::find_if(bestCollapse.begin(), bestCollapse.end(),
-						[searchingHead, this](const std::pair<float, size_t>& t)
-						{ return _edgeSegments[t.second]._tail == searchingHead; });
-					if (i == bestCollapse.end()) break;
-					assert(collapseGroups[std::distance(bestCollapse.begin(), i)] == ~0u);
-					collapseGroups[std::distance(bestCollapse.begin(), i)] = nextCollapseGroup;
-					searchingHead = _edgeSegments[i->second]._head;
-				}
-
-				++nextCollapseGroup;
-				collapseGroupInfos.push_back({searchingHead, searchingTail, ~0u});
-			}
-
-			std::vector<unsigned> collapseGroupNewVertex(nextCollapseGroup, ~0u);
-			for (auto collapseGroup=0u; collapseGroup<nextCollapseGroup; ++collapseGroup) {
-				Float2 collisionPt(0.0f, 0.0f);
-				unsigned contributors = 0;
-				for (size_t c=0; c<bestCollapse.size(); ++c) {
-					if (collapseGroups[c] != collapseGroup) continue;
-					const auto& seg = _edgeSegments[bestCollapse[c].second];
-					collisionPt += _vertices[seg._head]._position + (bestCollapseTime - _vertices[seg._head]._initialTime) * _vertices[seg._head]._velocity;
-					collisionPt += _vertices[seg._tail]._position + (bestCollapseTime - _vertices[seg._tail]._initialTime) * _vertices[seg._tail]._velocity;
-					contributors += 2;
-
-					// at this point they should not be frozen (but they will all be frozen later)
-					assert(!_vertices[seg._tail]._frozen);
-					assert(!_vertices[seg._head]._frozen);
-				}
-				collisionPt /= float(contributors);
-
-				// add a steiner vertex into the output
-				auto collisionVertId = AddSteinerVertex(result, Float3(collisionPt, bestCollapseTime), epsilon);
-
-				// connect up edges in the output graph
-				// Note that since we're connecting both head and tail, we'll end up doubling up each edge
-				for (size_t c=0; c<bestCollapse.size(); ++c) {
-					if (collapseGroups[c] != collapseGroup) continue;
-					const auto& seg = _edgeSegments[bestCollapse[c].second];
-					unsigned vs[] = { seg._head, seg._tail };
-					for (auto& v:vs) {
-						const auto& vert = _vertices[v];
-						if (vert._skeletonVertexId != ~0u) {
-							result._unplacedEdges.push_back({vert._skeletonVertexId, collisionVertId});
-						} else {
-							result._unplacedEdges.push_back({
-								AddSteinerVertex(result, Expand(vert._position, vert._initialTime), epsilon), 
-								collisionVertId});
-						}
+				/*if (crashEvent._time < (bestCollapseTime - epsilon))*/ {
+					if (crashEvent._time < (bestMotorcycleCrashTime - epsilon)) {
+						bestMotorcycleCrash.clear();
+						bestMotorcycleCrash.push_back(std::make_pair(crashEvent, std::distance(_motorcycleSegments.begin(), m)));
+						bestMotorcycleCrashTime = crashEvent._time;
+					} else if (crashEvent._time < (bestMotorcycleCrashTime + epsilon)) {
+						bestMotorcycleCrash.push_back(std::make_pair(crashEvent, std::distance(_motorcycleSegments.begin(), m)));
+						bestMotorcycleCrashTime = std::min(crashEvent._time, bestMotorcycleCrashTime);
 					}
-					
-					_vertices[seg._tail]._frozen = true;
-					_vertices[seg._head]._frozen = true;
 				}
-
-				// create a new vertex in the graph to connect the edges to either side of the collapse
-				auto newVertex = (unsigned)_vertices.size();
-				_vertices.push_back(Vertex{collisionPt, collisionVertId, bestCollapseTime, Float2(0.0f,0.0f), false});
-				collapseGroupInfos[collapseGroup]._newVertex = newVertex;
 			}
 
-			// Remove all of the collapsed edges (by shifting them to the end)
-			// (note, expecting bestCollapse to be sorted by "second")
-			auto r = _edgeSegments.end()-1;
-			for (auto i=bestCollapse.rbegin(); i!=bestCollapse.rend(); ++i) {
-				if (i!=bestCollapse.rbegin()) --r;
-				// Swap the ones we're going to remove to the end of the list (note that we loose ordering
-				// for the list as a whole...
-				std::swap(*r, _edgeSegments[i->second]);
+			// If we get some motorcycle crashes, we're going to ignore the collapse events
+			// and just process the motorcycle events
+			if (!bestMotorcycleCrash.empty()) {
+				if (bestMotorcycleCrashTime > maxTime) break;
+
+				bestMotorcycleCrash.erase(
+					std::remove_if(
+						bestMotorcycleCrash.begin(), bestMotorcycleCrash.end(),
+						[bestMotorcycleCrashTime](const std::pair<CrashEvent, size_t>& e) { return !(e.first._time < bestMotorcycleCrashTime + epsilon); }), 
+					bestMotorcycleCrash.end());
+
+				// we can only process a single crash event at a time currently
+				assert(bestMotorcycleCrash.size() == 1);
+				auto crashEvent = bestMotorcycleCrash[0].first;
+				const auto& motor = _motorcycleSegments[bestMotorcycleCrash[0].second];
+				assert(crashEvent._edgeSegment != ~0u);
+
+				auto& headVert = _vertices[motor._head];
+				auto crashPt = PositionAtTime(headVert, bestMotorcycleCrashTime);
+				auto crashPtSkeleton = AddSteinerVertex(result, Float3(crashPt, bestCollapseTime), epsilon);
+
+				headVert._frozen = true;
+
+				Segment* tin = nullptr, *tout = nullptr;
+				for  (size_t e=0; e<_edgeSegments.size(); ++e) {
+					if (_edgeSegments[e]._head == motor._head) {
+						assert(!tin);
+						tin = &_edgeSegments[e];
+					} else if (_edgeSegments[e]._tail == motor._head) {
+						assert(!tout);
+						tout = &_edgeSegments[e];
+					}
+				}
+				assert(tout && tin);
+
+				auto crashSegment = _edgeSegments[crashEvent._edgeSegment];
+				bool removeTout = false, removeTin = false;
+				Segment newSegment0{~0u, ~0u}, newSegment1{~0u,~0u};
+
+				// is there volume on the "tout" side?
+				if (tout->_head == crashSegment._tail) {
+					// no longer need crashSegment or tout
+					const auto& vert = _vertices[tout->_head];
+					if (vert._skeletonVertexId != ~0u) {
+						result._unplacedEdges.push_back({vert._skeletonVertexId, crashPtSkeleton});
+					} else {
+						result._unplacedEdges.push_back({
+							AddSteinerVertex(result, Expand(vert._position, vert._initialTime), epsilon), 
+							crashPtSkeleton});
+					}
+					removeTout = true;
+				} else {
+					auto newVertex = (unsigned)_vertices.size();
+					tout->_tail = newVertex;
+					newSegment0 = {newVertex, crashSegment._tail};	// (hin)
+
+					auto calcTime = bestMotorcycleCrashTime;
+					auto v0 = PositionAtTime(_vertices[crashSegment._tail], calcTime);
+					auto v1 = crashPt;
+					auto v2 = PositionAtTime(_vertices[tout->_head], calcTime);
+					_vertices.push_back(Vertex{crashPt, crashPtSkeleton, bestMotorcycleCrashTime, CalculateVertexVelocity(v0, v1, v2), false});
+
+					// newSegment1 = {motor._head, newVertex};
+					newSegment1._head = newVertex;
+				}
+
+				// is there volume on the "tin" side?
+				if (tin->_tail == crashSegment._head) {
+					// no longer need "crashSegment" or tin
+					const auto& vert = _vertices[tin->_tail];
+					if (vert._skeletonVertexId != ~0u) {
+						result._unplacedEdges.push_back({vert._skeletonVertexId, crashPtSkeleton});
+					} else {
+						result._unplacedEdges.push_back({
+							AddSteinerVertex(result, Expand(vert._position, vert._initialTime), epsilon), 
+							crashPtSkeleton});
+					}
+					removeTin = true;
+				} else {
+					auto newVertex = (unsigned)_vertices.size();
+					tin->_head = newVertex;
+					newSegment0 = {newVertex, crashSegment._head};	// (hout)
+
+					auto calcTime = bestMotorcycleCrashTime;
+					auto v0 = PositionAtTime(_vertices[tin->_tail], calcTime);
+					auto v1 = crashPt;
+					auto v2 = PositionAtTime(_vertices[crashSegment._head], calcTime);
+					_vertices.push_back(Vertex{crashPt, crashPtSkeleton, bestMotorcycleCrashTime, CalculateVertexVelocity(v0, v1, v2), false});
+
+					// newSegment1 = {motor._head, newVertex};
+					newSegment1._tail = newVertex;
+				}
+
+				_edgeSegments.erase(
+					std::remove_if(
+						_edgeSegments.begin(), _edgeSegments.end(),
+						[=](const Segment& s) { return (&s == &crashSegment) || (removeTin && &s == tin) || (removeTout && &s == tout); }),
+					_edgeSegments.end());
+
+				if (newSegment0._head != ~0u && newSegment0._tail != ~0u)
+					_edgeSegments.push_back(newSegment0);
+				if (newSegment1._head != ~0u && newSegment1._tail != ~0u)
+					_edgeSegments.push_back(newSegment1);
+
+				_motorcycleSegments.erase(_motorcycleSegments.begin() + bestMotorcycleCrash[0].second);
+
+				lastEventTime = crashEvent._time;
+			} else {
+				if (bestCollapse.empty()) break;
+				if (bestCollapseTime > maxTime) break;
+
+				// Process the "edge" events... first separate the edges into collapse groups
+				// Each collapse group collapses onto a single vertex. We will search through all
+				// of the collapse events we're processing, and separate them into discrete groups.
+				std::vector<unsigned> collapseGroups(bestCollapse.size(), ~0u);
+				struct CollapseGroupInfo { unsigned _head, _tail, _newVertex; };
+				std::vector<CollapseGroupInfo> collapseGroupInfos;
+				unsigned nextCollapseGroup = 0;
+				for (size_t c=0; c<bestCollapse.size(); ++c) {
+					if (collapseGroups[c] != ~0u) continue;
+
+					collapseGroups[c] = nextCollapseGroup;
+
+					// got back as far as possible, from tail to tail
+					auto searchingTail =_edgeSegments[bestCollapse[c].second]._tail;
+					for (;;) {
+						auto i = std::find_if(bestCollapse.begin(), bestCollapse.end(),
+							[searchingTail, this](const std::pair<float, size_t>& t)
+							{ return _edgeSegments[t.second]._head == searchingTail; });
+						if (i == bestCollapse.end()) break;
+						assert(collapseGroups[std::distance(bestCollapse.begin(), i)] == ~0u);
+						collapseGroups[std::distance(bestCollapse.begin(), i)] = nextCollapseGroup;
+						searchingTail = _edgeSegments[i->second]._tail;
+					}
+
+					// also go forward head to head
+					auto searchingHead =_edgeSegments[bestCollapse[c].second]._head;
+					for (;;) {
+						auto i = std::find_if(bestCollapse.begin(), bestCollapse.end(),
+							[searchingHead, this](const std::pair<float, size_t>& t)
+							{ return _edgeSegments[t.second]._tail == searchingHead; });
+						if (i == bestCollapse.end()) break;
+						assert(collapseGroups[std::distance(bestCollapse.begin(), i)] == ~0u);
+						collapseGroups[std::distance(bestCollapse.begin(), i)] = nextCollapseGroup;
+						searchingHead = _edgeSegments[i->second]._head;
+					}
+
+					++nextCollapseGroup;
+					collapseGroupInfos.push_back({searchingHead, searchingTail, ~0u});
+				}
+
+				// Each collapse group becomes a single new vertex. We can collate them together
+				// now, and write out some segments to the output skeleton
+				std::vector<unsigned> collapseGroupNewVertex(nextCollapseGroup, ~0u);
+				for (auto collapseGroup=0u; collapseGroup<nextCollapseGroup; ++collapseGroup) {
+					Float2 collisionPt(0.0f, 0.0f);
+					unsigned contributors = 0;
+					for (size_t c=0; c<bestCollapse.size(); ++c) {
+						if (collapseGroups[c] != collapseGroup) continue;
+						const auto& seg = _edgeSegments[bestCollapse[c].second];
+						collisionPt += _vertices[seg._head]._position + (bestCollapseTime - _vertices[seg._head]._initialTime) * _vertices[seg._head]._velocity;
+						collisionPt += _vertices[seg._tail]._position + (bestCollapseTime - _vertices[seg._tail]._initialTime) * _vertices[seg._tail]._velocity;
+						contributors += 2;
+
+						// at this point they should not be frozen (but they will all be frozen later)
+						assert(!_vertices[seg._tail]._frozen);
+						assert(!_vertices[seg._head]._frozen);
+					}
+					collisionPt /= float(contributors);
+
+					// add a steiner vertex into the output
+					auto collisionVertId = AddSteinerVertex(result, Float3(collisionPt, bestCollapseTime), epsilon);
+
+					// connect up edges in the output graph
+					// Note that since we're connecting both head and tail, we'll end up doubling up each edge
+					for (size_t c=0; c<bestCollapse.size(); ++c) {
+						if (collapseGroups[c] != collapseGroup) continue;
+						const auto& seg = _edgeSegments[bestCollapse[c].second];
+						unsigned vs[] = { seg._head, seg._tail };
+						for (auto& v:vs) {
+							const auto& vert = _vertices[v];
+							if (vert._skeletonVertexId != ~0u) {
+								result._unplacedEdges.push_back({vert._skeletonVertexId, collisionVertId});
+							} else {
+								result._unplacedEdges.push_back({
+									AddSteinerVertex(result, Expand(vert._position, vert._initialTime), epsilon), 
+									collisionVertId});
+							}
+						}
+					
+						_vertices[seg._tail]._frozen = true;
+						_vertices[seg._head]._frozen = true;
+					}
+
+					// create a new vertex in the graph to connect the edges to either side of the collapse
+					auto newVertex = (unsigned)_vertices.size();
+					_vertices.push_back(Vertex{collisionPt, collisionVertId, bestCollapseTime, Float2(0.0f,0.0f), false});
+					collapseGroupInfos[collapseGroup]._newVertex = newVertex;
+				}
+
+				// Remove all of the collapsed edges (by shifting them to the end)
+				// (note, expecting bestCollapse to be sorted by "second")
+				auto r = _edgeSegments.end()-1;
+				for (auto i=bestCollapse.rbegin(); i!=bestCollapse.rend(); ++i) {
+					if (i!=bestCollapse.rbegin()) --r;
+					// Swap the ones we're going to remove to the end of the list (note that we loose ordering
+					// for the list as a whole...
+					std::swap(*r, _edgeSegments[i->second]);
+				}
+				_edgeSegments.erase(r, _edgeSegments.end());
+
+				// For each collapse group, there should be one tail edge, and one head edge
+				// We need to find these edges in order to calculate the velocity of the point in between
+				// Let's resolve that now...
+				for (const auto& group:collapseGroupInfos) {
+					auto tail = std::find_if(_edgeSegments.begin(), _edgeSegments.end(), 
+						[&group](const Segment&seg) { return seg._head == group._tail;});
+					assert(tail != _edgeSegments.end());
+					assert(std::find_if(tail+1, _edgeSegments.end(), [&group](const Segment&seg) { return seg._head == group._tail;}) == _edgeSegments.end());
+
+					auto head = std::find_if(_edgeSegments.begin(), _edgeSegments.end(), 
+						[&group](const Segment&seg) { return seg._tail == group._head;});
+					assert(head != _edgeSegments.end());
+					assert(std::find_if(head+1, _edgeSegments.end(), [&group](const Segment&seg) { return seg._tail == group._head;}) == _edgeSegments.end());
+
+					tail->_head = group._newVertex;
+					head->_tail = group._newVertex;
+					auto calcTime = _vertices[group._newVertex]._initialTime;
+					auto v0 = PositionAtTime(_vertices[tail->_tail], calcTime);
+					auto v1 = _vertices[group._newVertex]._position;
+					auto v2 = PositionAtTime(_vertices[head->_head], calcTime);
+					_vertices[group._newVertex]._velocity = CalculateVertexVelocity(v0, v1, v2);
+
+					if (tail->_tail == head->_head)
+						_vertices[tail->_tail]._velocity = Zero<Float2>();
+				}
+			
+				lastEventTime = bestCollapseTime;
+			}
+
+#if 0
+			// if we've created any overlapping edges (ie, if the same 2 vertices are
+			// connected by two separate edges, in different directions), we can remove
+			// them an just write a line into the output result
+			auto r = _edgeSegments.end();
+			for (auto i=_edgeSegments.begin(); i!=r;) {
+				auto dupe = std::find_if(i+1, r,
+					[i](const Segment&e) { return (e._head == i->_tail) && (e._tail == i->_head);});
+				if (dupe != r) {
+					result._unplacedEdges.push_back({
+						AddSteinerVertex(result, Expand(PositionAtTime(_vertices[i->_head], lastEventTime), lastEventTime), epsilon), 
+						AddSteinerVertex(result, Expand(PositionAtTime(_vertices[i->_tail], lastEventTime), lastEventTime), epsilon)});
+					--r; std::swap(*r, *i);
+					--r; std::swap(*r, *dupe);
+				} else {
+					++i;
+				}
 			}
 			_edgeSegments.erase(r, _edgeSegments.end());
-
-			// We must remove one vertex of every collapsed edge. We'll
-			// remove the tail, and replace references to it with the head
-			//for (auto i=r; i!=_edgeSegments.end(); ++i) {
-			//	ReplaceVertex(MakeIteratorRange(AsPointer(_edgeSegments.begin()), AsPointer(r)), i->_tail, i->_head);
-			//}
-			for (const auto& group:collapseGroupInfos) {
-				auto tail = std::find_if(_edgeSegments.begin(), _edgeSegments.end(), 
-					[&group](const Segment&seg) { return seg._head == group._tail;});
-				assert(tail != _edgeSegments.end());
-				assert(std::find_if(tail+1, _edgeSegments.end(), [&group](const Segment&seg) { return seg._head == group._tail;}) == _edgeSegments.end());
-
-				auto head = std::find_if(_edgeSegments.begin(), _edgeSegments.end(), 
-					[&group](const Segment&seg) { return seg._tail == group._head;});
-				assert(head != _edgeSegments.end());
-				assert(std::find_if(head+1, _edgeSegments.end(), [&group](const Segment&seg) { return seg._tail == group._head;}) == _edgeSegments.end());
-
-				tail->_head = group._newVertex;
-				head->_tail = group._newVertex;
-				auto calcTime = _vertices[group._newVertex]._initialTime;
-				auto v0 = PositionAtTime(_vertices[tail->_tail], calcTime);
-				auto v1 = _vertices[group._newVertex]._position;
-				auto v2 = PositionAtTime(_vertices[head->_head], calcTime);
-				_vertices[group._newVertex]._velocity = CalculateVertexVelocity(v0, v1, v2);
-			}
-			
-			lastEventTime = bestCollapseTime;
+#endif
 		}
 
 		return result;

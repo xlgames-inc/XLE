@@ -106,14 +106,25 @@ namespace Sample
 	static void TestStraightSkeleton()
 	{
 		using namespace SceneEngine::StraightSkeleton;
-		Float2 pts[] = {
-			Float2(-2,-1),
-			Float2( 2,-1),
-			Float2( 2, 1),
-			Float2(-2, 1)
-		};
+		#if 0
+			Float2 pts[] = {
+				Float2(-2,-1),
+				Float2( 2,-1),
+				Float2( 2, 1),
+				Float2(-2, 1)
+			};
+		#elif 1
+			Float2 pts[] = {
+				Float2(-2,-1),
+				Float2( 3,-1),
+				Float2( 3, 3),
+				Float2( 1, 3),
+				Float2( 1, 1),
+				Float2(-2, 1)
+			};
+		#endif
 		auto graph = BuildGraphFromVertexLoop(MakeIteratorRange(pts));
-		auto skel = graph.GenerateSkeleton();
+		auto skel = graph.GenerateSkeleton(std::numeric_limits<float>::max());
 		(void)skel;
 	}
 

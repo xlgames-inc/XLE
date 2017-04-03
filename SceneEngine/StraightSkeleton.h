@@ -56,7 +56,7 @@ namespace SceneEngine
 
 			std::vector<Float2> _boundaryPoints;
 
-			Skeleton GenerateSkeleton();
+			Skeleton GenerateSkeleton(float maxTime);
 		};
 
 		Graph BuildGraphFromVertexLoop(IteratorRange<const Float2*> vertices);
