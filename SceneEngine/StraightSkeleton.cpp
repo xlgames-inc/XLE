@@ -95,7 +95,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			auto v0 = (v+vertices.size()-1)%vertices.size();
 			auto v1 = v;
 			auto v2 = (v+1)%vertices.size();
-			result._wavefrontEdges.emplace_back(Graph::Segment{(unsigned)v, (unsigned)v2});
+			result._wavefrontEdges.emplace_back(Graph::Segment{unsigned(v), unsigned(v2), ~0u, unsigned(v)});
 
 			// We must calculate the velocity for each vertex, based on which segments it belongs to...
 			auto velocity = CalculateVertexVelocity(vertices[v0], vertices[v1], vertices[v2]);
@@ -116,7 +116,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			if (CalculateWindingType(vertices[v0], vertices[v1], vertices[v2], threshold) == WindingType::Right) {
 				auto fixedVertex = (unsigned)(result._vertices.size());
 				result._vertices.emplace_back(Vertex{vertices[v], BoundaryVertexFlag|unsigned(v), 0.0f, Zero<Float2>(), true});
-				result._motorcycleSegments.emplace_back(Graph::MotorcycleSegment{(unsigned)v, (unsigned)fixedVertex});
+				result._motorcycleSegments.emplace_back(Graph::MotorcycleSegment{unsigned(v), unsigned(fixedVertex), unsigned(v0), unsigned(v1)});
 			}
 		}
 
@@ -417,7 +417,7 @@ namespace SceneEngine { namespace StraightSkeleton
 
 				auto crashSegment = _wavefrontEdges[crashEvent._edgeSegment];
 				bool removeTout = false, removeTin = false;
-				Segment newSegment0{~0u, ~0u}, newSegment1{~0u,~0u};
+				Segment newSegment0{~0u,~0u,~0u,~0u}, newSegment1{~0u,~0u,~0u,~0u};
 
 				// is there volume on the "tout" side?
 				if (tout->_head == crashSegment._tail) {

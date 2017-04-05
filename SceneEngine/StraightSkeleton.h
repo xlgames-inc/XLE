@@ -43,6 +43,7 @@ namespace SceneEngine
 			{
 			public:
 				unsigned	_head, _tail;
+				unsigned	_leftFace, _rightFace;
 			};
 			std::vector<Segment> _wavefrontEdges;
 
@@ -51,6 +52,7 @@ namespace SceneEngine
 			public:
 				unsigned _head;
 				unsigned _tail;		// (this is the fixed vertex)
+				unsigned _leftFace, _rightFace;
 			};
 			std::vector<MotorcycleSegment> _motorcycleSegments;
 
