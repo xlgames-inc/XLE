@@ -44,7 +44,7 @@ namespace SceneEngine
 			public:
 				unsigned	_head, _tail;
 			};
-			std::vector<Segment> _edgeSegments;
+			std::vector<Segment> _wavefrontEdges;
 
 			class MotorcycleSegment
 			{
@@ -57,6 +57,9 @@ namespace SceneEngine
 			std::vector<Float2> _boundaryPoints;
 
 			Skeleton GenerateSkeleton(float maxTime);
+
+		private:
+			void WriteWavefront(Skeleton& dest, float time);
 		};
 
 		Graph BuildGraphFromVertexLoop(IteratorRange<const Float2*> vertices);

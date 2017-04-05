@@ -4,6 +4,7 @@
 
 #include "StraightSkeleton.h"
 #include "../Math/Geometry.h"
+#include <stack>
 
 #pragma warning(disable:4505) // 'SceneEngine::StraightSkeleton::ReplaceVertex': unreferenced local function has been removed
 
@@ -51,6 +52,9 @@ namespace SceneEngine { namespace StraightSkeleton
 		auto t0 = vex1-vex0;
 		auto t1 = vex2-vex1;
 
+		if (Equivalent(Float2(t0), Zero<Float2>(), epsilon)) return Zero<Float2>();
+		if (Equivalent(Float2(t1), Zero<Float2>(), epsilon)) return Zero<Float2>();
+
 		// create normal pointing in direction of movement
 		auto N0 = Normalize(Float2(-t0[1], t0[0]));
 		auto N1 = Normalize(Float2(-t1[1], t1[0]));
@@ -69,6 +73,8 @@ namespace SceneEngine { namespace StraightSkeleton
 		if (q2 > -epsilon && q2 < epsilon) return Zero<Float2>();
 		auto x = t / q2;
 		auto y = D*x;
+		assert(!isnan(x) && isfinite(x) && (x==x));
+		assert(!isnan(y) && isfinite(y) && (y==y));
 		return Float2(x, y);
 	}
 
@@ -82,14 +88,14 @@ namespace SceneEngine { namespace StraightSkeleton
 		// The first and last vertices should *not* be the same vertex; there is an implied
 		// segment between the first and last.
 		Graph result;
-		result._edgeSegments.reserve(vertices.size());
+		result._wavefrontEdges.reserve(vertices.size());
 		result._vertices.reserve(vertices.size());
 		for (size_t v=0; v<vertices.size(); ++v) {
 			// Each segment of the polygon becomes an "edge segment" in the graph
 			auto v0 = (v+vertices.size()-1)%vertices.size();
 			auto v1 = v;
 			auto v2 = (v+1)%vertices.size();
-			result._edgeSegments.emplace_back(Graph::Segment{(unsigned)v, (unsigned)v2});
+			result._wavefrontEdges.emplace_back(Graph::Segment{(unsigned)v, (unsigned)v2});
 
 			// We must calculate the velocity for each vertex, based on which segments it belongs to...
 			auto velocity = CalculateVertexVelocity(vertices[v0], vertices[v1], vertices[v2]);
@@ -173,9 +179,13 @@ namespace SceneEngine { namespace StraightSkeleton
 		return result;
 	}
 
-	static Float2 PositionAtTime(Vertex& v, float time)
+	static Float2 PositionAtTime(const Vertex& v, float time)
 	{
-		return v._position + v._velocity * (time - v._initialTime);
+		auto result = v._position + v._velocity * (time - v._initialTime);
+		assert(!isnan(result[0]) && !isnan(result[1]));
+		assert(isfinite(result[0]) && isfinite(result[1]));
+		assert(result[0] == result[0] && result[1] == result[1]);
+		return result;
 	}
 
 	struct CrashEvent
@@ -192,8 +202,8 @@ namespace SceneEngine { namespace StraightSkeleton
 		auto v2 = velocity;
 		CrashEvent bestCollisionEvent { std::numeric_limits<float>::max(), ~0u };
 
-		// Look for an intersection with _edgeSegments
-		for (const auto&e:graph._edgeSegments) {
+		// Look for an intersection with _wavefrontEdges
+		for (const auto&e:graph._wavefrontEdges) {
 			const auto& head = graph._vertices[e._head];
 			const auto& tail = graph._vertices[e._tail];
 
@@ -252,11 +262,11 @@ namespace SceneEngine { namespace StraightSkeleton
 				if ((Dot(P1-P0, P2-P0) > 0.0f) && (Dot(P0-P1, P2-P1) > 0.0f)) {
 					// good collision
 					bestCollisionEvent._time = t[c];
-					bestCollisionEvent._edgeSegment = unsigned(&e - AsPointer(graph._edgeSegments.begin()));
+					bestCollisionEvent._edgeSegment = unsigned(&e - AsPointer(graph._wavefrontEdges.begin()));
 				} else if (Equivalent(P0, P2, epsilon) || Equivalent(P1, P2, epsilon)) {
 					// collided with vertex (or close enough)
 					bestCollisionEvent._time = t[c];
-					bestCollisionEvent._edgeSegment = unsigned(&e - AsPointer(graph._edgeSegments.begin()));
+					bestCollisionEvent._edgeSegment = unsigned(&e - AsPointer(graph._wavefrontEdges.begin()));
 				}
 			}
 		}
@@ -319,17 +329,17 @@ namespace SceneEngine { namespace StraightSkeleton
 			//		-- either a edge collapse or a motorcycle collision
 			float bestCollapseTime = std::numeric_limits<float>::max();
 			bestCollapse.clear();
-			for (auto e=_edgeSegments.begin(); e!=_edgeSegments.end(); ++e) {
+			for (auto e=_wavefrontEdges.begin(); e!=_wavefrontEdges.end(); ++e) {
 				const auto& v0 = _vertices[e->_head];
 				const auto& v1 = _vertices[e->_tail];
 				auto collapseTime = CalculateCollapseTime(v0, v1);
 				assert(collapseTime >= lastEventTime);
 				if (collapseTime < (bestCollapseTime - epsilon)) {
 					bestCollapse.clear();
-					bestCollapse.push_back(std::make_pair(collapseTime, std::distance(_edgeSegments.begin(), e)));
+					bestCollapse.push_back(std::make_pair(collapseTime, std::distance(_wavefrontEdges.begin(), e)));
 					bestCollapseTime = collapseTime;
 				} else if (collapseTime < (bestCollapseTime + epsilon)) {
-					bestCollapse.push_back(std::make_pair(collapseTime, std::distance(_edgeSegments.begin(), e)));
+					bestCollapse.push_back(std::make_pair(collapseTime, std::distance(_wavefrontEdges.begin(), e)));
 					bestCollapseTime = std::min(collapseTime, bestCollapseTime);
 				}
 			}
@@ -344,7 +354,7 @@ namespace SceneEngine { namespace StraightSkeleton
 				bestCollapse.end());
 
 			// Also check for motorcycles colliding.
-			//		These can collide with segments in the _edgeSegments list, or 
+			//		These can collide with segments in the _wavefrontEdges list, or 
 			//		other motorcycles, or boundary polygon edges
 			float bestMotorcycleCrashTime = std::numeric_limits<float>::max();
 			bestMotorcycleCrash.clear();
@@ -394,18 +404,18 @@ namespace SceneEngine { namespace StraightSkeleton
 				headVert._frozen = true;
 
 				Segment* tin = nullptr, *tout = nullptr;
-				for  (size_t e=0; e<_edgeSegments.size(); ++e) {
-					if (_edgeSegments[e]._head == motor._head) {
+				for  (size_t e=0; e<_wavefrontEdges.size(); ++e) {
+					if (_wavefrontEdges[e]._head == motor._head) {
 						assert(!tin);
-						tin = &_edgeSegments[e];
-					} else if (_edgeSegments[e]._tail == motor._head) {
+						tin = &_wavefrontEdges[e];
+					} else if (_wavefrontEdges[e]._tail == motor._head) {
 						assert(!tout);
-						tout = &_edgeSegments[e];
+						tout = &_wavefrontEdges[e];
 					}
 				}
 				assert(tout && tin);
 
-				auto crashSegment = _edgeSegments[crashEvent._edgeSegment];
+				auto crashSegment = _wavefrontEdges[crashEvent._edgeSegment];
 				bool removeTout = false, removeTin = false;
 				Segment newSegment0{~0u, ~0u}, newSegment1{~0u,~0u};
 
@@ -431,8 +441,6 @@ namespace SceneEngine { namespace StraightSkeleton
 					auto v1 = crashPt;
 					auto v2 = PositionAtTime(_vertices[tout->_head], calcTime);
 					_vertices.push_back(Vertex{crashPt, crashPtSkeleton, bestMotorcycleCrashTime, CalculateVertexVelocity(v0, v1, v2), false});
-
-					// newSegment1 = {motor._head, newVertex};
 					newSegment1._head = newVertex;
 				}
 
@@ -458,21 +466,23 @@ namespace SceneEngine { namespace StraightSkeleton
 					auto v1 = crashPt;
 					auto v2 = PositionAtTime(_vertices[crashSegment._head], calcTime);
 					_vertices.push_back(Vertex{crashPt, crashPtSkeleton, bestMotorcycleCrashTime, CalculateVertexVelocity(v0, v1, v2), false});
-
-					// newSegment1 = {motor._head, newVertex};
 					newSegment1._tail = newVertex;
 				}
 
-				_edgeSegments.erase(
+				_wavefrontEdges.erase(
 					std::remove_if(
-						_edgeSegments.begin(), _edgeSegments.end(),
+						_wavefrontEdges.begin(), _wavefrontEdges.end(),
 						[=](const Segment& s) { return (&s == &crashSegment) || (removeTin && &s == tin) || (removeTout && &s == tout); }),
-					_edgeSegments.end());
+					_wavefrontEdges.end());
 
 				if (newSegment0._head != ~0u && newSegment0._tail != ~0u)
-					_edgeSegments.push_back(newSegment0);
+					_wavefrontEdges.push_back(newSegment0);
 				if (newSegment1._head != ~0u && newSegment1._tail != ~0u)
-					_edgeSegments.push_back(newSegment1);
+					_wavefrontEdges.push_back(newSegment1);
+
+				// add skeleton edge from the  
+				assert(_vertices[motor._tail]._skeletonVertexId != ~0u);
+				result._unplacedEdges.push_back({_vertices[motor._tail]._skeletonVertexId, crashPtSkeleton});
 
 				_motorcycleSegments.erase(_motorcycleSegments.begin() + bestMotorcycleCrash[0].second);
 
@@ -494,27 +504,27 @@ namespace SceneEngine { namespace StraightSkeleton
 					collapseGroups[c] = nextCollapseGroup;
 
 					// got back as far as possible, from tail to tail
-					auto searchingTail =_edgeSegments[bestCollapse[c].second]._tail;
+					auto searchingTail =_wavefrontEdges[bestCollapse[c].second]._tail;
 					for (;;) {
 						auto i = std::find_if(bestCollapse.begin(), bestCollapse.end(),
 							[searchingTail, this](const std::pair<float, size_t>& t)
-							{ return _edgeSegments[t.second]._head == searchingTail; });
+							{ return _wavefrontEdges[t.second]._head == searchingTail; });
 						if (i == bestCollapse.end()) break;
 						assert(collapseGroups[std::distance(bestCollapse.begin(), i)] == ~0u);
 						collapseGroups[std::distance(bestCollapse.begin(), i)] = nextCollapseGroup;
-						searchingTail = _edgeSegments[i->second]._tail;
+						searchingTail = _wavefrontEdges[i->second]._tail;
 					}
 
 					// also go forward head to head
-					auto searchingHead =_edgeSegments[bestCollapse[c].second]._head;
+					auto searchingHead =_wavefrontEdges[bestCollapse[c].second]._head;
 					for (;;) {
 						auto i = std::find_if(bestCollapse.begin(), bestCollapse.end(),
 							[searchingHead, this](const std::pair<float, size_t>& t)
-							{ return _edgeSegments[t.second]._tail == searchingHead; });
+							{ return _wavefrontEdges[t.second]._tail == searchingHead; });
 						if (i == bestCollapse.end()) break;
 						assert(collapseGroups[std::distance(bestCollapse.begin(), i)] == ~0u);
 						collapseGroups[std::distance(bestCollapse.begin(), i)] = nextCollapseGroup;
-						searchingHead = _edgeSegments[i->second]._head;
+						searchingHead = _wavefrontEdges[i->second]._head;
 					}
 
 					++nextCollapseGroup;
@@ -529,7 +539,7 @@ namespace SceneEngine { namespace StraightSkeleton
 					unsigned contributors = 0;
 					for (size_t c=0; c<bestCollapse.size(); ++c) {
 						if (collapseGroups[c] != collapseGroup) continue;
-						const auto& seg = _edgeSegments[bestCollapse[c].second];
+						const auto& seg = _wavefrontEdges[bestCollapse[c].second];
 						collisionPt += _vertices[seg._head]._position + (bestCollapseTime - _vertices[seg._head]._initialTime) * _vertices[seg._head]._velocity;
 						collisionPt += _vertices[seg._tail]._position + (bestCollapseTime - _vertices[seg._tail]._initialTime) * _vertices[seg._tail]._velocity;
 						contributors += 2;
@@ -547,7 +557,7 @@ namespace SceneEngine { namespace StraightSkeleton
 					// Note that since we're connecting both head and tail, we'll end up doubling up each edge
 					for (size_t c=0; c<bestCollapse.size(); ++c) {
 						if (collapseGroups[c] != collapseGroup) continue;
-						const auto& seg = _edgeSegments[bestCollapse[c].second];
+						const auto& seg = _wavefrontEdges[bestCollapse[c].second];
 						unsigned vs[] = { seg._head, seg._tail };
 						for (auto& v:vs) {
 							const auto& vert = _vertices[v];
@@ -572,28 +582,28 @@ namespace SceneEngine { namespace StraightSkeleton
 
 				// Remove all of the collapsed edges (by shifting them to the end)
 				// (note, expecting bestCollapse to be sorted by "second")
-				auto r = _edgeSegments.end()-1;
+				auto r = _wavefrontEdges.end()-1;
 				for (auto i=bestCollapse.rbegin(); i!=bestCollapse.rend(); ++i) {
 					if (i!=bestCollapse.rbegin()) --r;
 					// Swap the ones we're going to remove to the end of the list (note that we loose ordering
 					// for the list as a whole...
-					std::swap(*r, _edgeSegments[i->second]);
+					std::swap(*r, _wavefrontEdges[i->second]);
 				}
-				_edgeSegments.erase(r, _edgeSegments.end());
+				_wavefrontEdges.erase(r, _wavefrontEdges.end());
 
 				// For each collapse group, there should be one tail edge, and one head edge
 				// We need to find these edges in order to calculate the velocity of the point in between
 				// Let's resolve that now...
 				for (const auto& group:collapseGroupInfos) {
-					auto tail = std::find_if(_edgeSegments.begin(), _edgeSegments.end(), 
+					auto tail = std::find_if(_wavefrontEdges.begin(), _wavefrontEdges.end(), 
 						[&group](const Segment&seg) { return seg._head == group._tail;});
-					assert(tail != _edgeSegments.end());
-					assert(std::find_if(tail+1, _edgeSegments.end(), [&group](const Segment&seg) { return seg._head == group._tail;}) == _edgeSegments.end());
+					assert(tail != _wavefrontEdges.end());
+					assert(std::find_if(tail+1, _wavefrontEdges.end(), [&group](const Segment&seg) { return seg._head == group._tail;}) == _wavefrontEdges.end());
 
-					auto head = std::find_if(_edgeSegments.begin(), _edgeSegments.end(), 
+					auto head = std::find_if(_wavefrontEdges.begin(), _wavefrontEdges.end(), 
 						[&group](const Segment&seg) { return seg._tail == group._head;});
-					assert(head != _edgeSegments.end());
-					assert(std::find_if(head+1, _edgeSegments.end(), [&group](const Segment&seg) { return seg._tail == group._head;}) == _edgeSegments.end());
+					assert(head != _wavefrontEdges.end());
+					assert(std::find_if(head+1, _wavefrontEdges.end(), [&group](const Segment&seg) { return seg._tail == group._head;}) == _wavefrontEdges.end());
 
 					tail->_head = group._newVertex;
 					head->_tail = group._newVertex;
@@ -614,8 +624,8 @@ namespace SceneEngine { namespace StraightSkeleton
 			// if we've created any overlapping edges (ie, if the same 2 vertices are
 			// connected by two separate edges, in different directions), we can remove
 			// them an just write a line into the output result
-			auto r = _edgeSegments.end();
-			for (auto i=_edgeSegments.begin(); i!=r;) {
+			auto r = _wavefrontEdges.end();
+			for (auto i=_wavefrontEdges.begin(); i!=r;) {
 				auto dupe = std::find_if(i+1, r,
 					[i](const Segment&e) { return (e._head == i->_tail) && (e._tail == i->_head);});
 				if (dupe != r) {
@@ -628,11 +638,191 @@ namespace SceneEngine { namespace StraightSkeleton
 					++i;
 				}
 			}
-			_edgeSegments.erase(r, _edgeSegments.end());
+			_wavefrontEdges.erase(r, _wavefrontEdges.end());
 #endif
 		}
 
+		WriteWavefront(result, lastEventTime);
+
 		return result;
+	}
+
+	static float ClosestPointOnLine2D(Float2 rayStart, Float2 rayEnd, Float2 testPt)
+	{
+		auto o = testPt - rayStart;
+		auto l = rayEnd - rayStart;
+		return Dot(o, l) / MagnitudeSquared(l);
+	}
+
+	static bool DoColinearLinesIntersect(Float2 AStart, Float2 AEnd, Float2 BStart, Float2 BEnd)
+	{
+		// return false if the lines share a point, but otherwise do not intersect
+		// but returns true if the lines overlap completely (even if the lines have zero length)
+		auto closestBStart = ClosestPointOnLine2D(AStart, AEnd, BStart);
+		auto closestBEnd = ClosestPointOnLine2D(AStart, AEnd, BEnd);
+		return ((closestBStart > epsilon) && (closestBStart > 1.0f-epsilon))
+			|| ((closestBEnd > epsilon) && (closestBEnd > 1.0f-epsilon))
+			|| (Equivalent(AStart, BStart, epsilon) && Equivalent(AEnd, BEnd, epsilon))
+			|| (Equivalent(AEnd, BStart, epsilon) && Equivalent(AStart, BEnd, epsilon))
+			;
+	}
+
+	void Graph::WriteWavefront(Skeleton& result, float time)
+	{
+		// Write the current wavefront to the destination skeleton. Each edge in 
+		// _wavefrontEdges comes a segment in the output
+		// However, we must check for overlapping / intersecting edges
+		//	-- these happen very frequently
+		// The best way to remove overlapping edges is just to go through the list of segments, 
+		// and for each one look for other segments that intersect
+
+		std::vector<Segment> filteredSegments;
+		std::stack<Segment> segmentsToTest;
+
+		// We need to combine overlapping points at this stage, also
+		// (2 different vertices could end up at the same location at time 'time')
+
+		for (auto i=_wavefrontEdges.begin(); i!=_wavefrontEdges.end(); ++i) {
+			auto A = PositionAtTime(_vertices[i->_head], time);
+			auto B = PositionAtTime(_vertices[i->_tail], time);
+			auto v0 = AddSteinerVertex(result, Expand(A, time), epsilon);
+			auto v1 = AddSteinerVertex(result, Expand(B, time), epsilon);
+			if (v0 != v1)
+				segmentsToTest.push(Segment{v0, v1});
+		}
+
+		while (!segmentsToTest.empty()) {
+			auto seg = segmentsToTest.top();
+			segmentsToTest.pop();
+
+			auto A = Truncate(result._steinerVertices[seg._head]);
+			auto B = Truncate(result._steinerVertices[seg._tail]);
+			bool filterOutSeg = false;
+
+			// Compare against all edges already in "filteredSegments"
+			for (auto i2=filteredSegments.begin(); i2!=filteredSegments.end();++i2) {
+
+				if (	(i2->_head == seg._head && i2->_tail == seg._tail)
+					||	(i2->_head == seg._tail && i2->_tail == seg._head)) {
+					filterOutSeg = true; break; // (overlap completely)
+				}
+
+				// If they intersect, they should be colinear, and at least one 
+				// vertex if i2 should lie on i
+				auto C = Truncate(result._steinerVertices[i2->_head]);
+				auto D = Truncate(result._steinerVertices[i2->_tail]);
+				auto closestC = ClosestPointOnLine2D(A, B, C);
+				auto closestD = ClosestPointOnLine2D(A, B, D);
+
+				bool COnLine = closestC > 0.0f && closestC < 1.0f && MagnitudeSquared(LinearInterpolate(A, B, closestC) - C) < epsilon;
+				bool DOnLine = closestD > 0.0f && closestD < 1.0f && MagnitudeSquared(LinearInterpolate(A, B, closestD) - D) < epsilon;
+				if (!COnLine && !DOnLine) { continue; }
+
+				float m0 = (B[1] - A[1]) / (B[0] - A[0]);
+				float m1 = (D[1] - C[1]) / (D[0] - C[0]);
+				if (!Equivalent(m0, m1, epsilon)) { continue; }
+
+				if (i2->_head == seg._head) {
+					if (closestD < 1.0f) {
+						seg._head = i2->_tail;
+					} else {
+						i2->_head = seg._tail;
+					}
+				} else if (i2->_head == seg._tail) {
+					if (closestD > 0.0f) {
+						seg._tail = i2->_tail;
+					} else {
+						i2->_head = seg._head;
+					}
+				} else if (i2->_tail == seg._head) {
+					if (closestC < 1.0f) {
+						seg._head = i2->_head;
+					} else {
+						i2->_tail = seg._tail;
+					}
+				} else if (i2->_tail == seg._tail) {
+					if (closestC > 0.0f) {
+						seg._tail = i2->_head;
+					} else {
+						i2->_tail = seg._head;
+					}
+				} else {
+					// The lines are colinear, and at least one point of i2 is on i
+					// We must separate these 2 segments into 3 segments.
+					// Replace i2 with something that is strictly with i2, and then schedule
+					// the remaining split parts for intersection tests.
+					Segment newSeg;
+					if (closestC < 0.0f) {
+						if (closestD > 1.0f) newSeg = {seg._tail, i2->_tail};
+						else { newSeg = {i2->_tail, seg._tail}; seg._tail = i2->_tail; }
+						i2->_tail = seg._head;
+					} else if (closestD < 0.0f) {
+						if (closestC > 1.0f) newSeg = {seg._tail, i2->_head};
+						else { newSeg = {i2->_head, seg._tail}; seg._tail = i2->_head; }
+						i2->_head = seg._head;
+					} else if (closestC < closestD) {
+						if (closestD > 1.0f) newSeg = {seg._tail, i2->_tail};
+						else { newSeg = {i2->_tail, seg._tail}; seg._tail = i2->_tail; }
+						seg._tail = i2->_head;
+					} else {
+						if (closestC > 1.0f) newSeg = {seg._tail, i2->_head};
+						else { newSeg = {i2->_head, seg._tail}; seg._tail = i2->_head; }
+						seg._tail = i2->_tail;
+					}
+
+					assert(!DoColinearLinesIntersect(
+						Truncate(result._steinerVertices[newSeg._head]),
+						Truncate(result._steinerVertices[newSeg._tail]),
+						Truncate(result._steinerVertices[seg._head]),
+						Truncate(result._steinerVertices[seg._tail])));
+					assert(!DoColinearLinesIntersect(
+						Truncate(result._steinerVertices[newSeg._head]),
+						Truncate(result._steinerVertices[newSeg._tail]),
+						Truncate(result._steinerVertices[i2->_head]),
+						Truncate(result._steinerVertices[i2->_tail])));
+					assert(!DoColinearLinesIntersect(
+						Truncate(result._steinerVertices[i2->_head]),
+						Truncate(result._steinerVertices[i2->_tail]),
+						Truncate(result._steinerVertices[seg._head]),
+						Truncate(result._steinerVertices[seg._tail])));
+					assert(newSeg._head != newSeg._tail);
+					assert(i2->_head != i2->_tail);
+					assert(seg._head != seg._tail);
+
+					// We will continue testing "seg", and we will push "newSeg" onto the stack to
+					// be tested later.
+					// i2 has also been changed; it is now shorter and no longer intersects 'seg'
+					segmentsToTest.push(newSeg);
+				}
+
+				// "seg" has changed, so we need to calculate the end points
+				A = Truncate(result._steinerVertices[seg._head]);
+				B = Truncate(result._steinerVertices[seg._tail]);
+			}
+
+			if (!filterOutSeg)
+				filteredSegments.push_back(seg);
+		}
+
+		// add all of the segments in "filteredSegments" to the skeleton
+		for (const auto&seg:filteredSegments) {
+			assert(seg._head != seg._tail);
+			result._unplacedEdges.push_back({seg._head, seg._tail});
+		}
+
+		// Also have to add the traced out path of the each vertex (but only if it doesn't already exist in the result)
+		for (const auto&seg:_wavefrontEdges) {
+			unsigned vs[] = {seg._head, seg._tail};
+			for (auto v:vs) {
+				const auto& vert = _vertices[v];
+				std::pair<unsigned, unsigned> s;
+				s.first = vert._skeletonVertexId ? vert._skeletonVertexId : AddSteinerVertex(result, Expand(vert._position, vert._initialTime), epsilon);
+				s.second = AddSteinerVertex(result, Expand(PositionAtTime(vert, time), time), epsilon); // todo -- this must be freeze time!
+				auto existing = std::find(result._unplacedEdges.begin(), result._unplacedEdges.begin(), s);
+				if (existing == result._unplacedEdges.end())
+					result._unplacedEdges.push_back(s);
+			}
+		}
 	}
 
 }}
