@@ -60,6 +60,8 @@ namespace XLEMath
 		float& distance,
 		Float3 rayStart, Float3 rayDirection, float sphereRadiusSq);
 
+    unsigned ClipTriangle(Float3 dst[], const Float3 source[], float clippingParam[]);
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
             //      I N L I N E   I M P L E M E N T A T I O N S
         ////////////////////////////////////////////////////////////////////////////////////////////////

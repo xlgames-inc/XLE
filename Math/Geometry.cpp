@@ -9,6 +9,7 @@
 #include "Transformations.h"
 #include "../Core/Prefix.h"
 #include <assert.h>
+#include <cfloat>
 
 namespace XLEMath
 {
@@ -71,7 +72,7 @@ namespace XLEMath
 		auto d2121 = Dot(p21, p21);
 
 		float denom = d2121 * d4343 - d4321 * d4321;
-		if (abs(denom) < epsilon) return false;
+        if (std::abs(denom) < epsilon) return false;
 
 		float numer = d1343 * d4321 - d1321 * d4343;
 		mua = numer / denom;
@@ -158,7 +159,6 @@ namespace XLEMath
 
         return false;
     }
-
 
     std::pair<Float3, Float3> TransformBoundingBox(const Float3x4& transformation, std::pair<Float3, Float3> boundingBox)
     {
@@ -264,7 +264,9 @@ namespace XLEMath
 		// the minimum energy
 		return Expand( kNormal, -Dot( kNormal, kOrigin ) );
 	}
-
+    
+    template auto PlaneFit(const Vector3T<float> pts[], size_t ptCount ) -> Vector4T<float>;
+    template auto PlaneFit(const Vector3T<float> & pt0, const Vector3T<float> & pt1, const Vector3T<float> & pt2 ) -> Vector4T<float>;
 
 	T1(Primitive) Vector4T<Primitive> PlaneFit(
         const Vector3T<Primitive>& pt0,
@@ -301,9 +303,65 @@ namespace XLEMath
 		*result = Expand( normal, w );
         return true;
 	}
-
-    template auto PlaneFit(const Vector3T<float> pts[], size_t ptCount ) -> Vector4T<float>;
-	template auto PlaneFit(const Vector3T<float> & pt0, const Vector3T<float> & pt1, const Vector3T<float> & pt2 ) -> Vector4T<float>;
+    
     template bool PlaneFit_Checked(Vector4T<float>* result, const Vector3T<float>& pt0, const Vector3T<float>& pt1, const Vector3T<float>& pt2);
+
+    unsigned ClipTriangle(Float3 dst[], const Float3 source[], float clippingParam[])
+    {
+        // Clip the triangle against a single plane, at the point where clippingParam[] is
+        // linearly interpolated as zero. We will keep the positive part of clippingParam[]
+        // Generates 0, 1 or 2 output triangles
+        bool c[] { clippingParam[0] < 0.0f, clippingParam[1] < 0.0f, clippingParam[2] < 0.0f };
+        unsigned mode = unsigned(c[0]) | (unsigned(c[1]) << 1) | (unsigned(c[2]) << 2);
+        Float3 A, B;
+        switch (mode)
+        {
+        case 0: dst[0] = source[0]; dst[1] = source[1]; dst[2] = source[2]; return 1;
+        case 7: return 0;
+
+        case 1: // just [0] clipped
+            A = LinearInterpolate(source[0], source[1], clippingParam[0] / (clippingParam[0] - clippingParam[1]));
+            B = LinearInterpolate(source[0], source[2], clippingParam[0] / (clippingParam[0] - clippingParam[2]));
+            dst[0] = A; dst[1] = source[1]; dst[2] = source[2];
+            dst[3] = A; dst[4] = source[2]; dst[5] = B;
+            return 2;
+
+        case 2: // just [1] clipped
+            A = LinearInterpolate(source[0], source[1], clippingParam[0] / (clippingParam[0] - clippingParam[1]));
+            B = LinearInterpolate(source[1], source[2], clippingParam[1] / (clippingParam[1] - clippingParam[2]));
+            dst[0] = source[0]; dst[1] = A; dst[2] = source[2];
+            dst[3] = source[2]; dst[4] = A; dst[5] = B;
+            return 2;
+
+        case 4: // just [2] clipped
+            A = LinearInterpolate(source[1], source[2], clippingParam[1] / (clippingParam[1] - clippingParam[2]));
+            B = LinearInterpolate(source[0], source[2], clippingParam[0] / (clippingParam[0] - clippingParam[2]));
+            dst[0] = source[0]; dst[1] = source[1]; dst[2] = B;
+            dst[3] = B; dst[4] = source[1]; dst[5] = A;
+            return 2;
+
+        case 3: // [0] & [1] clipped
+            A = LinearInterpolate(source[0], source[2], clippingParam[0] / (clippingParam[0] - clippingParam[2]));
+            B = LinearInterpolate(source[1], source[2], clippingParam[1] / (clippingParam[1] - clippingParam[2]));
+            dst[0] = A; dst[1] = B; dst[2] = source[2];
+            return 1;
+
+        case 5: // [0] & [2] clipped
+            A = LinearInterpolate(source[0], source[1], clippingParam[0] / (clippingParam[0] - clippingParam[1]));
+            B = LinearInterpolate(source[1], source[2], clippingParam[1] / (clippingParam[1] - clippingParam[2]));
+            dst[0] = A; dst[1] = source[1]; dst[2] = B;
+            return 1;
+
+        case 6: // [1] & [2] clipped
+            A = LinearInterpolate(source[0], source[1], clippingParam[0] / (clippingParam[0] - clippingParam[1]));
+            B = LinearInterpolate(source[0], source[2], clippingParam[0] / (clippingParam[0] - clippingParam[2]));
+            dst[0] = source[0]; dst[1] = A; dst[2] = B;
+            return 1;
+
+        default:
+            assert(0);
+            return 0;
+        }
+    }
 
 }
