@@ -115,7 +115,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			// If we wind to the right then it's a reflex vertex, and we must add a motorcycle edge
 			if (CalculateWindingType(vertices[v0], vertices[v1], vertices[v2], threshold) == WindingType::Right) {
 				auto fixedVertex = (unsigned)(result._vertices.size());
-				result._vertices.emplace_back(Vertex{vertices[v], BoundaryVertexFlag|unsigned(v), 0.0f, Zero<Float2>(), true});
+				result._vertices.emplace_back(Vertex{vertices[v], BoundaryVertexFlag|unsigned(v), 0.0f, Zero<Float2>()});
 				result._motorcycleSegments.emplace_back(Graph::MotorcycleSegment{unsigned(v), unsigned(fixedVertex), unsigned(v0), unsigned(v1)});
 			}
 		}
@@ -315,6 +315,30 @@ namespace SceneEngine { namespace StraightSkeleton
 		return bestCollisionEvent;
 	}
 
+	static std::pair<Graph::Segment*, Graph::Segment*> FindInAndOut(IteratorRange<Graph::Segment*> edges, unsigned pivotVertex)
+	{
+		std::pair<Graph::Segment*, Graph::Segment*> result(nullptr, nullptr);
+		for  (auto&s:edges) {
+			if (s._head == pivotVertex) {
+				assert(!result.first);
+				result.first = &s;
+			} else if (s._tail == pivotVertex) {
+				assert(!result.second);
+				result.second = &s;
+			}
+		}
+		return result;
+	}
+
+	static bool IsFrozen(const Vertex& v) { return Equivalent(v._velocity, Zero<Float2>(), 0.0f); }
+	static void FreezeInPlace(Vertex& v, float atTime)
+	{
+		v._position = PositionAtTime(v, atTime);
+		v._initialTime = atTime;
+		v._skeletonVertexId = ~0u;
+		v._velocity = Zero<Float2>();
+	}
+
 	Skeleton Graph::GenerateSkeleton(float maxTime)
 	{
 		Skeleton result;
@@ -392,97 +416,89 @@ namespace SceneEngine { namespace StraightSkeleton
 					bestMotorcycleCrash.end());
 
 				// we can only process a single crash event at a time currently
+				// only the first event in bestMotorcycleCrashwill be processed (note that
+				// this isn't necessarily the first event!)
 				assert(bestMotorcycleCrash.size() == 1);
 				auto crashEvent = bestMotorcycleCrash[0].first;
 				const auto& motor = _motorcycleSegments[bestMotorcycleCrash[0].second];
 				assert(crashEvent._edgeSegment != ~0u);
 
-				auto& headVert = _vertices[motor._head];
-				auto crashPt = PositionAtTime(headVert, bestMotorcycleCrashTime);
+				auto crashPt = PositionAtTime(_vertices[motor._head], crashEvent._time);
 				auto crashPtSkeleton = AddSteinerVertex(result, Float3(crashPt, bestCollapseTime), epsilon);
 
-				headVert._frozen = true;
-
-				Segment* tin = nullptr, *tout = nullptr;
-				for  (size_t e=0; e<_wavefrontEdges.size(); ++e) {
-					if (_wavefrontEdges[e]._head == motor._head) {
-						assert(!tin);
-						tin = &_wavefrontEdges[e];
-					} else if (_wavefrontEdges[e]._tail == motor._head) {
-						assert(!tout);
-						tout = &_wavefrontEdges[e];
-					}
-				}
-				assert(tout && tin);
-
 				auto crashSegment = _wavefrontEdges[crashEvent._edgeSegment];
-				bool removeTout = false, removeTin = false;
-				Segment newSegment0{~0u,~0u,~0u,~0u}, newSegment1{~0u,~0u,~0u,~0u};
+				_wavefrontEdges.erase(_wavefrontEdges.begin() + crashEvent._edgeSegment);
+				Segment newSegment0{ motor._head, motor._head, motor._leftFace, crashSegment._rightFace};
+				Segment newSegment1{ motor._head, motor._head, crashSegment._rightFace, motor._rightFace };
+				auto calcTime = crashEvent._time;
 
 				// is there volume on the "tout" side?
-				if (tout->_head == crashSegment._tail) {
-					// no longer need crashSegment or tout
-					const auto& vert = _vertices[tout->_head];
-					if (vert._skeletonVertexId != ~0u) {
-						result._unplacedEdges.push_back({vert._skeletonVertexId, crashPtSkeleton});
-					} else {
-						result._unplacedEdges.push_back({
-							AddSteinerVertex(result, Expand(vert._position, vert._initialTime), epsilon), 
-							crashPtSkeleton});
-					}
-					removeTout = true;
-				} else {
-					auto newVertex = (unsigned)_vertices.size();
-					tout->_tail = newVertex;
-					newSegment0 = {newVertex, crashSegment._tail};	// (hin)
+				{
+					auto* tout = FindInAndOut(MakeIteratorRange(_wavefrontEdges), motor._head).second;
+					assert(tout);
 
-					auto calcTime = bestMotorcycleCrashTime;
 					auto v0 = PositionAtTime(_vertices[crashSegment._tail], calcTime);
-					auto v1 = crashPt;
 					auto v2 = PositionAtTime(_vertices[tout->_head], calcTime);
-					_vertices.push_back(Vertex{crashPt, crashPtSkeleton, bestMotorcycleCrashTime, CalculateVertexVelocity(v0, v1, v2), false});
-					newSegment1._head = newVertex;
+					if (tout->_head == crashSegment._tail || Equivalent(v0, v2, epsilon)) {
+						// no longer need crashSegment or tout
+						result._unplacedEdges.push_back({
+							AddSteinerVertex(result, Expand((v0+v2)/2.0f, calcTime), epsilon), 
+							crashPtSkeleton});
+						// todo -- there may be a chain of collapsing that occurs now... we should follow it along...
+						// We still need to add a wavefront edge to close and the loop, and ensure we don't leave
+						// stranded edges. Without this we can easily get a single edge without anything looping
+						// it back around (or just an unclosed loop)
+						if (tout->_head != crashSegment._tail) {
+							_wavefrontEdges.push_back({tout->_head, crashSegment._tail, ~0u, ~0u});
+						}
+						_wavefrontEdges.erase(_wavefrontEdges.begin()+(tout-AsPointer(_wavefrontEdges.begin())));
+					} else {
+						auto newVertex = (unsigned)_vertices.size();
+						tout->_tail = newVertex;
+						_wavefrontEdges.push_back({newVertex, crashSegment._tail, tout->_leftFace, crashSegment._rightFace});	// (hin)
+
+						_vertices.push_back(Vertex{crashPt, crashPtSkeleton, crashEvent._time, CalculateVertexVelocity(v0, crashPt, v2)});
+						newSegment1._head = newVertex;
+					}
 				}
 
 				// is there volume on the "tin" side?
-				if (tin->_tail == crashSegment._head) {
-					// no longer need "crashSegment" or tin
-					const auto& vert = _vertices[tin->_tail];
-					if (vert._skeletonVertexId != ~0u) {
-						result._unplacedEdges.push_back({vert._skeletonVertexId, crashPtSkeleton});
-					} else {
-						result._unplacedEdges.push_back({
-							AddSteinerVertex(result, Expand(vert._position, vert._initialTime), epsilon), 
-							crashPtSkeleton});
-					}
-					removeTin = true;
-				} else {
-					auto newVertex = (unsigned)_vertices.size();
-					tin->_head = newVertex;
-					newSegment0 = {newVertex, crashSegment._head};	// (hout)
+				{
+					auto* tin = FindInAndOut(MakeIteratorRange(_wavefrontEdges), motor._head).first;
+					assert(tin);
 
-					auto calcTime = bestMotorcycleCrashTime;
 					auto v0 = PositionAtTime(_vertices[tin->_tail], calcTime);
-					auto v1 = crashPt;
 					auto v2 = PositionAtTime(_vertices[crashSegment._head], calcTime);
-					_vertices.push_back(Vertex{crashPt, crashPtSkeleton, bestMotorcycleCrashTime, CalculateVertexVelocity(v0, v1, v2), false});
-					newSegment1._tail = newVertex;
+					if (tin->_tail == crashSegment._head || Equivalent(v0, v2, epsilon)) {
+						// no longer need "crashSegment" or tin
+						result._unplacedEdges.push_back({
+							AddSteinerVertex(result, Expand((v0+v2)/2.0f, calcTime), epsilon), 
+							crashPtSkeleton});
+						// todo -- there may be a chain of collapsing that occurs now... we should follow it along...
+						// We still need to add a wavefront edge to close and the loop, and ensure we don't leave
+						// stranded edges. Without this we can easily get a single edge without anything looping
+						// it back around (or just an unclosed loop)
+						if (tin->_tail != crashSegment._head) {
+							_wavefrontEdges.push_back({crashSegment._head, tin->_tail, ~0u, ~0u});
+						}
+						_wavefrontEdges.erase(_wavefrontEdges.begin()+(tin-AsPointer(_wavefrontEdges.begin())));
+					} else {
+						auto newVertex = (unsigned)_vertices.size();
+						tin->_head = newVertex;
+						_wavefrontEdges.push_back({crashSegment._head, newVertex, tin->_leftFace, crashSegment._rightFace});	// (hout)
+
+						_vertices.push_back(Vertex{crashPt, crashPtSkeleton, crashEvent._time, CalculateVertexVelocity(v0, crashPt, v2)});
+						newSegment0._head = newVertex;
+					}
 				}
 
-				_wavefrontEdges.erase(
-					std::remove_if(
-						_wavefrontEdges.begin(), _wavefrontEdges.end(),
-						[=](const Segment& s) { return (&s == &crashSegment) || (removeTin && &s == tin) || (removeTout && &s == tout); }),
-					_wavefrontEdges.end());
-
-				if (newSegment0._head != ~0u && newSegment0._tail != ~0u)
-					_wavefrontEdges.push_back(newSegment0);
-				if (newSegment1._head != ~0u && newSegment1._tail != ~0u)
-					_wavefrontEdges.push_back(newSegment1);
+				// if (newSegment0._head != newSegment0._tail) _wavefrontEdges.push_back(newSegment0);
+				// if (newSegment1._head != newSegment1._tail) _wavefrontEdges.push_back(newSegment1);
 
 				// add skeleton edge from the  
 				assert(_vertices[motor._tail]._skeletonVertexId != ~0u);
 				result._unplacedEdges.push_back({_vertices[motor._tail]._skeletonVertexId, crashPtSkeleton});
+				FreezeInPlace(_vertices[motor._head], crashEvent._time);
 
 				_motorcycleSegments.erase(_motorcycleSegments.begin() + bestMotorcycleCrash[0].second);
 
@@ -510,6 +526,7 @@ namespace SceneEngine { namespace StraightSkeleton
 							[searchingTail, this](const std::pair<float, size_t>& t)
 							{ return _wavefrontEdges[t.second]._head == searchingTail; });
 						if (i == bestCollapse.end()) break;
+						if (collapseGroups[std::distance(bestCollapse.begin(), i)] == nextCollapseGroup) break;
 						assert(collapseGroups[std::distance(bestCollapse.begin(), i)] == ~0u);
 						collapseGroups[std::distance(bestCollapse.begin(), i)] = nextCollapseGroup;
 						searchingTail = _wavefrontEdges[i->second]._tail;
@@ -522,6 +539,7 @@ namespace SceneEngine { namespace StraightSkeleton
 							[searchingHead, this](const std::pair<float, size_t>& t)
 							{ return _wavefrontEdges[t.second]._tail == searchingHead; });
 						if (i == bestCollapse.end()) break;
+						if (collapseGroups[std::distance(bestCollapse.begin(), i)] == nextCollapseGroup) break;
 						assert(collapseGroups[std::distance(bestCollapse.begin(), i)] == ~0u);
 						collapseGroups[std::distance(bestCollapse.begin(), i)] = nextCollapseGroup;
 						searchingHead = _wavefrontEdges[i->second]._head;
@@ -545,8 +563,8 @@ namespace SceneEngine { namespace StraightSkeleton
 						contributors += 2;
 
 						// at this point they should not be frozen (but they will all be frozen later)
-						assert(!_vertices[seg._tail]._frozen);
-						assert(!_vertices[seg._head]._frozen);
+						assert(!IsFrozen(_vertices[seg._tail]));
+						assert(!IsFrozen(_vertices[seg._head]));
 					}
 					collisionPt /= float(contributors);
 
@@ -570,13 +588,13 @@ namespace SceneEngine { namespace StraightSkeleton
 							}
 						}
 					
-						_vertices[seg._tail]._frozen = true;
-						_vertices[seg._head]._frozen = true;
+						FreezeInPlace(_vertices[seg._tail], bestCollapseTime);
+						FreezeInPlace(_vertices[seg._head], bestCollapseTime);
 					}
 
 					// create a new vertex in the graph to connect the edges to either side of the collapse
 					auto newVertex = (unsigned)_vertices.size();
-					_vertices.push_back(Vertex{collisionPt, collisionVertId, bestCollapseTime, Float2(0.0f,0.0f), false});
+					_vertices.push_back(Vertex{collisionPt, collisionVertId, bestCollapseTime, Float2(0.0f,0.0f)});
 					collapseGroupInfos[collapseGroup]._newVertex = newVertex;
 				}
 
@@ -595,6 +613,8 @@ namespace SceneEngine { namespace StraightSkeleton
 				// We need to find these edges in order to calculate the velocity of the point in between
 				// Let's resolve that now...
 				for (const auto& group:collapseGroupInfos) {
+					if (group._head == group._tail) continue;	// if we remove an entire loop, let's assume that there are no external links to it
+
 					auto tail = std::find_if(_wavefrontEdges.begin(), _wavefrontEdges.end(), 
 						[&group](const Segment&seg) { return seg._head == group._tail;});
 					assert(tail != _wavefrontEdges.end());

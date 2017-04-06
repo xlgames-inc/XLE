@@ -31,7 +31,6 @@ namespace SceneEngine
 			unsigned	_skeletonVertexId;
 			float		_initialTime;
 			Float2		_velocity;
-			bool		_frozen;	// (collapsed out of the graph)
 		};
 
 		class Graph
