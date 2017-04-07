@@ -61,6 +61,7 @@ namespace SceneEngine
 
 		private:
 			void WriteWavefront(Skeleton& dest, float time);
+			void AddEdgeForVertexPath(Skeleton& dst, unsigned v, unsigned finalVertId);
 		};
 
 		Graph BuildGraphFromVertexLoop(IteratorRange<const Float2*> vertices);
