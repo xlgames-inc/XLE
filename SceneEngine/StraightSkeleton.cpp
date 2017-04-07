@@ -174,12 +174,18 @@ namespace SceneEngine { namespace StraightSkeleton
 		}
 	}
 
-	static unsigned AddSteinerVertex(Skeleton& skeleton, const Float3& vertex, float threshold)
+	static unsigned AddSteinerVertex(Skeleton& skeleton, const Float3& vertex)
 	{
 		auto existing = std::find_if(skeleton._steinerVertices.begin(), skeleton._steinerVertices.end(),
-			[vertex, threshold](const Float3& v) { return Equivalent(v, vertex, threshold); });
-		if (existing != skeleton._steinerVertices.end())
+			[vertex](const Float3& v) { return Equivalent(v, vertex, epsilon); });
+		if (existing != skeleton._steinerVertices.end()) {
 			return (unsigned)std::distance(skeleton._steinerVertices.begin(), existing);
+		}
+		#if defined(_DEBUG)
+			auto test = std::find_if(skeleton._steinerVertices.begin(), skeleton._steinerVertices.end(),
+				[vertex](const Float3& v) { return Equivalent(Truncate(v), Truncate(vertex), epsilon); });
+			assert(test == skeleton._steinerVertices.end());
+		#endif
 		auto result = (unsigned)skeleton._steinerVertices.size();
 		skeleton._steinerVertices.push_back(vertex);
 		return result;
@@ -192,6 +198,13 @@ namespace SceneEngine { namespace StraightSkeleton
 		assert(isfinite(result[0]) && isfinite(result[1]));
 		assert(result[0] == result[0] && result[1] == result[1]);
 		return result;
+	}
+
+	static Float3 ClampedPositionAtTime(const Vertex& v, float time)
+	{
+		if (Equivalent(v._velocity, Zero<Float2>(), epsilon))
+			return Expand(v._position, v._initialTime);
+		return Expand(PositionAtTime(v, time), time);
 	}
 
 	struct CrashEvent
@@ -277,6 +290,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			}
 		}
 
+#if 0
 		// Look for an intersection with other motorcycles
 		for (auto i=graph._motorcycleSegments.begin(); i!=graph._motorcycleSegments.end(); ++i) {
 			// we skip one cycle -- it's usually the one we're actually testing
@@ -317,6 +331,7 @@ namespace SceneEngine { namespace StraightSkeleton
 		}
 
 		// todo -- also check segmnents written into the output skeleton...?
+#endif
 
 		return bestCollisionEvent;
 	}
@@ -415,8 +430,10 @@ namespace SceneEngine { namespace StraightSkeleton
 			bestMotorcycleCrash.clear();
 			for (auto m=_motorcycleSegments.begin(); m!=_motorcycleSegments.end(); ++m) {
 				const auto& head = _vertices[m->_head];
+				if (Equivalent(head._velocity, Zero<Float2>(), epsilon)) continue;
 				auto crashEvent = CalculateCrashTime(*this, head._position, head._velocity, head._initialTime, AsPointer(m), head._skeletonVertexId);
 				if (crashEvent._time < 0.0f) continue;
+				assert(crashEvent._time >= lastEventTime);
 
 				// If our best motorcycle collision happens before our best collapse, then we
 				// must do the motorcycle first, and recalculate edge collapses afterwards
@@ -439,7 +456,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			// If we get some motorcycle crashes, we're going to ignore the collapse events
 			// and just process the motorcycle events
 			if (!bestMotorcycleCrash.empty()) {
-				if (bestMotorcycleCrashTime > maxTime) break;
+				if (bestMotorcycleCrashTime > maxTime) { lastEventTime = maxTime; break; }
 
 				bestMotorcycleCrash.erase(
 					std::remove_if(
@@ -456,7 +473,7 @@ namespace SceneEngine { namespace StraightSkeleton
 				assert(crashEvent._edgeSegment != ~0u);
 
 				auto crashPt = PositionAtTime(_vertices[motor._head], crashEvent._time);
-				auto crashPtSkeleton = AddSteinerVertex(result, Float3(crashPt, bestCollapseTime), epsilon);
+				auto crashPtSkeleton = AddSteinerVertex(result, Float3(crashPt, crashEvent._time));
 
 				auto crashSegment = _wavefrontEdges[crashEvent._edgeSegment];
 				Segment newSegment0{ motor._head, motor._head, motor._leftFace, crashSegment._rightFace};
@@ -468,12 +485,12 @@ namespace SceneEngine { namespace StraightSkeleton
 					auto* tout = FindInAndOut(MakeIteratorRange(_wavefrontEdges), motor._head).second;
 					assert(tout);
 
-					auto v0 = PositionAtTime(_vertices[crashSegment._tail], calcTime);
-					auto v2 = PositionAtTime(_vertices[tout->_head], calcTime);
+					auto v0 = ClampedPositionAtTime(_vertices[crashSegment._tail], calcTime);
+					auto v2 = ClampedPositionAtTime(_vertices[tout->_head], calcTime);
 					if (tout->_head == crashSegment._tail || Equivalent(v0, v2, epsilon)) {
 						// no longer need crashSegment or tout
 						assert(crashSegment._leftFace == ~0u && tout->_leftFace == ~0u);
-						auto endPt = AddSteinerVertex(result, Expand((v0+v2)/2.0f, calcTime), epsilon);
+						auto endPt = AddSteinerVertex(result, (v0+v2)/2.0f);
 						AddEdge(result, endPt, crashPtSkeleton, crashSegment._rightFace, tout->_rightFace);
 						// tout->_head & crashSegment._tail end here. We must draw the skeleton segment 
 						// tracing out their path
@@ -499,7 +516,7 @@ namespace SceneEngine { namespace StraightSkeleton
 						tout->_tail = newVertex;
 						_wavefrontEdges.push_back({newVertex, crashSegment._tail, crashSegment._leftFace, crashSegment._rightFace});	// (hin)
 
-						_vertices.push_back(Vertex{crashPt, crashPtSkeleton, crashEvent._time, CalculateVertexVelocity(v0, crashPt, v2)});
+						_vertices.push_back(Vertex{crashPt, crashPtSkeleton, crashEvent._time, CalculateVertexVelocity(Truncate(v0), crashPt, Truncate(v2))});
 						newSegment1._head = newVertex;
 					}
 				}
@@ -509,12 +526,12 @@ namespace SceneEngine { namespace StraightSkeleton
 					auto* tin = FindInAndOut(MakeIteratorRange(_wavefrontEdges), motor._head).first;
 					assert(tin);
 
-					auto v0 = PositionAtTime(_vertices[tin->_tail], calcTime);
-					auto v2 = PositionAtTime(_vertices[crashSegment._head], calcTime);
+					auto v0 = ClampedPositionAtTime(_vertices[tin->_tail], calcTime);
+					auto v2 = ClampedPositionAtTime(_vertices[crashSegment._head], calcTime);
 					if (tin->_tail == crashSegment._head || Equivalent(v0, v2, epsilon)) {
 						// no longer need "crashSegment" or tin
 						assert(crashSegment._leftFace == ~0u && tin->_leftFace == ~0u);
-						auto endPt = AddSteinerVertex(result, Expand((v0+v2)/2.0f, calcTime), epsilon);
+						auto endPt = AddSteinerVertex(result, (v0+v2)/2.0f);
 						AddEdge(result, endPt, crashPtSkeleton, tin->_rightFace, crashSegment._rightFace);
 						// tin->_tail & crashSegment._head end here. We must draw the skeleton segment 
 						// tracing out their path
@@ -539,7 +556,7 @@ namespace SceneEngine { namespace StraightSkeleton
 						tin->_head = newVertex;
 						_wavefrontEdges.push_back({crashSegment._head, newVertex, crashSegment._leftFace, crashSegment._rightFace});	// (hout)
 
-						_vertices.push_back(Vertex{crashPt, crashPtSkeleton, crashEvent._time, CalculateVertexVelocity(v0, crashPt, v2)});
+						_vertices.push_back(Vertex{crashPt, crashPtSkeleton, crashEvent._time, CalculateVertexVelocity(Truncate(v0), crashPt, Truncate(v2))});
 						newSegment0._head = newVertex;
 					}
 				}
@@ -566,7 +583,7 @@ namespace SceneEngine { namespace StraightSkeleton
 				lastEventTime = crashEvent._time;
 			} else {
 				if (bestCollapse.empty()) break;
-				if (bestCollapseTime > maxTime) break;
+				if (bestCollapseTime > maxTime) { lastEventTime = maxTime; break; }
 
 				// Process the "edge" events... first separate the edges into collapse groups
 				// Each collapse group collapses onto a single vertex. We will search through all
@@ -630,7 +647,7 @@ namespace SceneEngine { namespace StraightSkeleton
 					collisionPt /= float(contributors);
 
 					// add a steiner vertex into the output
-					auto collisionVertId = AddSteinerVertex(result, Float3(collisionPt, bestCollapseTime), epsilon);
+					auto collisionVertId = AddSteinerVertex(result, Float3(collisionPt, bestCollapseTime));
 
 					// connect up edges in the output graph
 					// Note that since we're connecting both head and tail, we'll end up doubling up each edge
@@ -693,30 +710,9 @@ namespace SceneEngine { namespace StraightSkeleton
 			
 				lastEventTime = bestCollapseTime;
 			}
-
-#if 0
-			// if we've created any overlapping edges (ie, if the same 2 vertices are
-			// connected by two separate edges, in different directions), we can remove
-			// them an just write a line into the output result
-			auto r = _wavefrontEdges.end();
-			for (auto i=_wavefrontEdges.begin(); i!=r;) {
-				auto dupe = std::find_if(i+1, r,
-					[i](const Segment&e) { return (e._head == i->_tail) && (e._tail == i->_head);});
-				if (dupe != r) {
-					result._unplacedEdges.push_back({
-						AddSteinerVertex(result, Expand(PositionAtTime(_vertices[i->_head], lastEventTime), lastEventTime), epsilon), 
-						AddSteinerVertex(result, Expand(PositionAtTime(_vertices[i->_tail], lastEventTime), lastEventTime), epsilon)});
-					--r; std::swap(*r, *i);
-					--r; std::swap(*r, *dupe);
-				} else {
-					++i;
-				}
-			}
-			_wavefrontEdges.erase(r, _wavefrontEdges.end());
-#endif
 		}
 
-		WriteWavefront(result, lastEventTime);
+		WriteWavefront(result, std::min(maxTime, lastEventTime));
 
 		return result;
 	}
@@ -757,10 +753,10 @@ namespace SceneEngine { namespace StraightSkeleton
 		// (2 different vertices could end up at the same location at time 'time')
 
 		for (auto i=_wavefrontEdges.begin(); i!=_wavefrontEdges.end(); ++i) {
-			auto A = PositionAtTime(_vertices[i->_head], time);
-			auto B = PositionAtTime(_vertices[i->_tail], time);
-			auto v0 = AddSteinerVertex(result, Expand(A, time), epsilon);
-			auto v1 = AddSteinerVertex(result, Expand(B, time), epsilon);
+			auto A = ClampedPositionAtTime(_vertices[i->_head], time);
+			auto B = ClampedPositionAtTime(_vertices[i->_tail], time);
+			auto v0 = AddSteinerVertex(result, A);
+			auto v1 = AddSteinerVertex(result, B);
 			if (v0 != v1)
 				segmentsToTest.push(Segment{v0, v1, i->_leftFace, i->_rightFace});
 		}
@@ -896,12 +892,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			unsigned vs[] = {seg._head, seg._tail};
 			for (auto v:vs) {
 				const auto& vert = _vertices[v];
-				/*std::pair<unsigned, unsigned> s;
-				s.first = vert._skeletonVertexId ? vert._skeletonVertexId : AddSteinerVertex(result, Expand(vert._position, vert._initialTime), epsilon);
-				s.second = AddSteinerVertex(result, Expand(PositionAtTime(vert, time), time), epsilon); // todo -- this must be freeze time!
-				if (s.first != s.second)
-					AddUnique(result._unplacedEdges, s);*/
-				AddEdgeForVertexPath(result, v, AddSteinerVertex(result, Expand(PositionAtTime(vert, time), time), epsilon)); // todo -- this must be freeze time!
+				AddEdgeForVertexPath(result, v, AddSteinerVertex(result, ClampedPositionAtTime(vert, time)));
 			}
 		}
 	}
@@ -923,7 +914,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			AddEdge(dst, finalVertId, vert._skeletonVertexId, leftFace, rightFace);
 		} else {
 			AddEdge(dst,
-				finalVertId, AddSteinerVertex(dst, Expand(vert._position, vert._initialTime), epsilon),
+				finalVertId, AddSteinerVertex(dst, Expand(vert._position, vert._initialTime)),
 				leftFace, rightFace);
 		}
 	}
