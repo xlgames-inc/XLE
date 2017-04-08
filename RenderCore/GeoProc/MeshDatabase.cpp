@@ -653,18 +653,18 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static std::vector<std::pair<Int3, unsigned>> BuildQuantizedCoords(
+    static std::vector<std::pair<Int4, unsigned>> BuildQuantizedCoords(
         const IVertexSourceData& sourceStream,
-        Float3 quantization, Float3 offset)
+        Float4 quantization, Float4 offset)
     {
-        std::vector<std::pair<Int3, unsigned>> result;
+        std::vector<std::pair<Int4, unsigned>> result;
         result.resize(sourceStream.GetCount());
 
         auto stride = sourceStream.GetStride();
         auto fmtBrkdn = BreakdownFormat(sourceStream.GetFormat());
 
-        Float3 precisionMin(float(INT_MIN) * quantization[0], float(INT_MIN) * quantization[1], float(INT_MIN) * quantization[2]);
-        Float3 precisionMax(float(INT_MAX) * quantization[0], float(INT_MAX) * quantization[1], float(INT_MAX) * quantization[2]);
+        Float4 precisionMin(float(INT_MIN) * quantization[0], float(INT_MIN) * quantization[1], float(INT_MIN) * quantization[2], float(INT_MIN) * quantization[3]);
+        Float4 precisionMax(float(INT_MAX) * quantization[0], float(INT_MAX) * quantization[1], float(INT_MAX) * quantization[2], float(INT_MAX) * quantization[3]);
 
         for (unsigned c=0; c<sourceStream.GetCount(); ++c) {
             const auto* sourceStart = PtrAdd(sourceStream.GetData(), c * stride);
@@ -678,9 +678,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             assert(input[0] > precisionMin[0] && input[0] < precisionMax[0]);
             assert(input[1] > precisionMin[1] && input[1] < precisionMax[1]);
             assert(input[2] > precisionMin[2] && input[2] < precisionMax[2]);
-            Int3 q( int((input[0] + offset[0]) / quantization[0]),
+			assert(input[3] > precisionMin[3] && input[3] < precisionMax[3]);
+            Int4 q( int((input[0] + offset[0]) / quantization[0]),
                     int((input[1] + offset[1]) / quantization[1]),
-                    int((input[2] + offset[2]) / quantization[2]));
+                    int((input[2] + offset[2]) / quantization[2]),
+					int((input[3] + offset[3]) / quantization[3]));
 
             result[c] = std::make_pair(q, c);
         }
@@ -689,8 +691,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     }
 
     static bool SortQuantizedSet(
-        const std::pair<Int3, unsigned>& lhs,
-        const std::pair<Int3, unsigned>& rhs)
+        const std::pair<Int4, unsigned>& lhs,
+        const std::pair<Int4, unsigned>& rhs)
     {
         if (lhs.first[0] < rhs.first[0]) return true;
         if (lhs.first[0] > rhs.first[0]) return false;
@@ -698,6 +700,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         if (lhs.first[1] > rhs.first[1]) return false;
         if (lhs.first[2] < rhs.first[2]) return true;
         if (lhs.first[2] > rhs.first[2]) return false;
+		if (lhs.first[3] < rhs.first[3]) return true;
+        if (lhs.first[3] > rhs.first[3]) return false;
             // when the quantized coordinates are equal, sort by
             // vertex index.
         return lhs.second < rhs.second; 
@@ -715,7 +719,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     static void FindVertexPairs(
         std::vector<std::pair<unsigned, unsigned>>& closeVertices,
-        std::vector<std::pair<Int3, unsigned>> & quantizedSet,
+        std::vector<std::pair<Int4, unsigned>> & quantizedSet,
         const IVertexSourceData& sourceStream, float threshold)
     {
         auto stride = sourceStream.GetStride();
@@ -741,7 +745,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                         vert1, (const float*)PtrAdd(sourceStream.GetData(), ct1->second * stride), 
                         fmtBrkdn, sourceStream.GetProcessingFlags());
 
-                    auto off = Float3(vert1[0]-vert0[0], vert1[1]-vert0[1], vert1[2]-vert0[2]);
+                    auto off = Float4(vert1[0]-vert0[0], vert1[1]-vert0[1], vert1[2]-vert0[2], vert1[3]-vert0[3]);
                     float dstSq = MagnitudeSquared(off);
 
                     if (dstSq < tsq) {
@@ -813,7 +817,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         RemoveDuplicates(
             std::vector<unsigned>& outputMapping,
             const IVertexSourceData& sourceStream,
-            const std::vector<unsigned>& originalMapping,
+            IteratorRange<const unsigned*> originalMapping,
             float threshold)
     {
             // We need to find vertices that are close together...
@@ -823,9 +827,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             // We will keep a record of all vertices that are found to be "close". Afterwards,
             // we should combine these pairs into chains of vertices. These chains get combined
             // into a single vertex, which is the one that is closest to the averaged vertex.
-        auto quant = Float3(2.f*threshold, 2.f*threshold, 2.f*threshold);
-        auto quantizedSet0 = BuildQuantizedCoords(sourceStream, quant, Zero<Float3>());
-        auto quantizedSet1 = BuildQuantizedCoords(sourceStream, quant, Float3(threshold, threshold, threshold));
+        auto quant = Float4(2.f*threshold, 2.f*threshold, 2.f*threshold, 2.f*threshold);
+        auto quantizedSet0 = BuildQuantizedCoords(sourceStream, quant, Zero<Float4>());
+        auto quantizedSet1 = BuildQuantizedCoords(sourceStream, quant, Float4(threshold, threshold, threshold, threshold));
 
             // sort our quantized vertices to make it easier to find duplicates
             // note that duplicates will be sorted with the lowest vertex index first,
@@ -904,7 +908,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             // Build the new mapping -- we need to use oldOrderingToNewOrdering,
             // which represents how the vertex ordering has changed.
         outputMapping.clear();
-        if (originalMapping.size()) {
+        if (!originalMapping.empty()) {
             outputMapping.reserve(originalMapping.size());
             std::transform(
                 originalMapping.begin(), originalMapping.end(),

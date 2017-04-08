@@ -15,12 +15,12 @@ namespace SceneEngine
 		{
 		public:
 			using VertexId = unsigned;
-			using Edge = std::pair<VertexId, VertexId>;
+			enum class EdgeType { VertexPath, Wavefront };
+			struct Edge { VertexId _head; VertexId _tail; EdgeType _type; };
 			struct Face { std::vector<Edge> _edges; };
 
 			std::vector<Float3> _steinerVertices;
 			std::vector<Face> _faces;
-
 			std::vector<Edge> _unplacedEdges;
 		};
 

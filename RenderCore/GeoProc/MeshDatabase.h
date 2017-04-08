@@ -172,7 +172,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         RemoveDuplicates(
             std::vector<unsigned>& outputMapping,
             const IVertexSourceData& sourceStream,
-            const std::vector<unsigned>& originalMapping,
+            IteratorRange<const unsigned*> originalMapping,
             float threshold);
 
 	MeshDatabase RemoveDuplicates(
