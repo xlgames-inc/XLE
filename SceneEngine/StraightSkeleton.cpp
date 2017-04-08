@@ -6,11 +6,15 @@
 #include "../Math/Geometry.h"
 #include <stack>
 
+#if defined(_DEBUG)
+	// #define EXTRA_VALIDATION
+#endif
+
 #pragma warning(disable:4505) // 'SceneEngine::StraightSkeleton::ReplaceVertex': unreferenced local function has been removed
 
 namespace SceneEngine { namespace StraightSkeleton 
 {
-	static const float epsilon = 1e-6f;
+	static const float epsilon = 1e-5f;
 	static const unsigned BoundaryVertexFlag = 1u<<31u;
 
 	enum WindingType { Left, Right, Straight };
@@ -82,6 +86,8 @@ namespace SceneEngine { namespace StraightSkeleton
 			x = (t - y*d) / c;
 		}
 
+		assert(Dot(Float2(x, y), N0+N1) > 0.0f);
+
 		assert(!isnan(x) && isfinite(x) && (x==x));
 		assert(!isnan(y) && isfinite(y) && (y==y));
 		return Float2(x, y);
@@ -143,7 +149,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			auto t = (p1[0] - p0[0]) / d0x;
 
 			auto ySep = p0[1] + t * v0[1] - p1[1] - t * v1[1];
-			if (std::abs(ySep) < epsilon) {
+			if (std::abs(ySep) < 1e-3f) {
 				// assert(std::abs(p0[0] + t * v0[0] - p1[0] - t * v1[0]) < epsilon);
 				return t;	// (todo -- we could refine with the x results?
 			}
@@ -152,7 +158,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			auto t = (p1[1] - p0[1]) / d0y;
 
 			auto xSep = p0[0] + t * v0[0] - p1[0] - t * v1[0];
-			if (std::abs(xSep) < epsilon) {
+			if (std::abs(xSep) < 1e-3f) {
 				// sassert(std::abs(p0[1] + t * v0[1] - p1[1] - t * v1[1]) < epsilon);
 				return t;	// (todo -- we could refine with the y results?
 			}
@@ -187,6 +193,10 @@ namespace SceneEngine { namespace StraightSkeleton
 	static unsigned AddSteinerVertex(Skeleton& skeleton, const Float3& vertex)
 	{
 		assert(vertex[2] != 0.0f);
+		assert(isfinite(vertex[0]) && isfinite(vertex[1]) && isfinite(vertex[2]));
+		assert(!isnan(vertex[0]) && !isnan(vertex[1]) && !isnan(vertex[2]));
+		assert(vertex[0] == vertex[0] && vertex[1] == vertex[1] && vertex[2] == vertex[2]);
+		assert(vertex[0] != std::numeric_limits<float>::max() && vertex[1] != std::numeric_limits<float>::max() && vertex[2] != std::numeric_limits<float>::max());
 		auto existing = std::find_if(skeleton._steinerVertices.begin(), skeleton._steinerVertices.end(),
 			[vertex](const Float3& v) { return Equivalent(v, vertex, epsilon); });
 		if (existing != skeleton._steinerVertices.end()) {
@@ -285,7 +295,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			// All 3 points should be on the same line at this point -- so we just need to check if
 			// the motorcycle is between them (or intersecting a vertex)
 			for (unsigned c=0; c<2; ++c) {
-				if (t[c] > bestCollisionEvent._time || t[c] < 0.0f) continue;	// don't need to check collisions that happen too late
+				if (t[c] > bestCollisionEvent._time || t[c] < std::max(head._initialTime, tail._initialTime)) continue;	// don't need to check collisions that happen too late
 				auto P0 = Float2(p0 + t[c]*v0);
 				auto P1 = Float2(p1 + t[c]*v1);
 				auto P2 = Float2(p2 + t[c]*v2);
@@ -300,49 +310,6 @@ namespace SceneEngine { namespace StraightSkeleton
 				}
 			}
 		}
-
-#if 0
-		// Look for an intersection with other motorcycles
-		for (auto i=graph._motorcycleSegments.begin(); i!=graph._motorcycleSegments.end(); ++i) {
-			// we skip one cycle -- it's usually the one we're actually testing
-			if (AsPointer(i) == cycleToSkip) continue;
-
-			const auto& head = graph._vertices[i->_head];
-			auto p0 = Float2(head._position - head._initialTime * head._velocity);
-			auto collapseTime = CalculateCollapseTime(p0, head._velocity, p2, v2);
-			if (collapseTime > 0.0f && collapseTime < bestCollisionEvent._time) {
-				bestCollisionEvent._time = collapseTime;
-				bestCollisionEvent._edgeSegment = ~0u;
-			}
-		}
-
-		// Look for an intersection with boundary edges
-		// These are easier, because the boundaries are static. We just need to see if the motorcycle is going
-		// to hit them, and when
-		auto prevPt = graph._boundaryPoints.size()-1;
-		for (size_t c=0; c<graph._boundaryPoints.size(); ++c) {
-			if ((unsigned(c)|BoundaryVertexFlag) == boundaryPtToSkip || (unsigned(prevPt)|BoundaryVertexFlag) == boundaryPtToSkip) { prevPt = c; continue; }
-			
-			auto p0 = graph._boundaryPoints[prevPt];
-			auto p1 = graph._boundaryPoints[c];
-			prevPt = c;	// (update before all of the continues below)
-
-			// If the motorcycle velocity is unit length (which it is for unweighted straight skeleton calculation),
-			// we can make this simple
-			auto crs = Float2(-v2[1], v2[0]);
-			auto d0 = Dot(p0-p2, crs);
-			auto d1 = Dot(p1-p2, crs);
-			auto a = d0 / (d0 - d1);
-			if (a < -epsilon || a > (1.0f + epsilon)) continue;
-
-			float t = (std::abs(v2[0]) > std::abs(v2[1])) ? (LinearInterpolate(p0[0], p1[0], a) - p2[0]) / v2[0] : (LinearInterpolate(p0[1], p1[1], a) - p2[1]) / v2[1];
-			if (t < 0.f || t > bestCollisionEvent._time) continue;
-			bestCollisionEvent._time = t;
-			bestCollisionEvent._edgeSegment = ~0u;
-		}
-
-		// todo -- also check segmnents written into the output skeleton...?
-#endif
 
 		return bestCollisionEvent;
 	}
@@ -411,8 +378,31 @@ namespace SceneEngine { namespace StraightSkeleton
 		bestCollapse.reserve(8);
 
 		float lastEventTime = 0.0f;
+		unsigned lastEvent = 0;
 
 		for (;;) {
+			#if defined(EXTRA_VALIDATION)
+				// validate vertex velocities
+				for (unsigned v=0; v<_vertices.size(); ++v) {
+					Segment* in, *out;
+					std::tie(in, out) = FindInAndOut(MakeIteratorRange(_wavefrontEdges), v);
+					if (in && out) {
+						auto calcTime = (_vertices[in->_tail]._initialTime + _vertices[v]._initialTime + _vertices[out->_head]._initialTime) / 3.0f;
+						auto v0 = PositionAtTime(_vertices[in->_tail], calcTime);
+						auto v1 = PositionAtTime(_vertices[v], calcTime);
+						auto v2 = PositionAtTime(_vertices[out->_head], calcTime);
+						auto expectedVelocity = CalculateVertexVelocity(v0, v1, v2);
+						assert(Equivalent(_vertices[v]._velocity, expectedVelocity, 1e-3f));
+					}
+				}
+				// every wavefront edge must have a collapse time (assuming it's vertices are not frozen)
+				for (const auto&e:_wavefrontEdges) {
+					if (IsFrozen(_vertices[e._head]) || IsFrozen(_vertices[e._tail])) continue;
+					auto collapseTime = CalculateCollapseTime(_vertices[e._head], _vertices[e._tail]);
+					assert(collapseTime != std::numeric_limits<float>::max());		//it can be negative; because some edges are expanding
+				}
+			#endif
+
 			// Find the next event to occur
 			//		-- either a edge collapse or a motorcycle collision
 			float bestCollapseTime = std::numeric_limits<float>::max();
@@ -450,6 +440,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			for (auto m=_motorcycleSegments.begin(); m!=_motorcycleSegments.end(); ++m) {
 				const auto& head = _vertices[m->_head];
 				if (Equivalent(head._velocity, Zero<Float2>(), epsilon)) continue;
+				assert(head._initialTime == 0.0f);
 				auto crashEvent = CalculateCrashTime(*this, head._position, head._velocity, head._initialTime, AsPointer(m), head._skeletonVertexId);
 				if (crashEvent._time < 0.0f) continue;
 				assert(crashEvent._time >= lastEventTime);
@@ -599,7 +590,20 @@ namespace SceneEngine { namespace StraightSkeleton
 
 				_motorcycleSegments.erase(_motorcycleSegments.begin() + bestMotorcycleCrash[0].second);
 
+				#if defined(EXTRA_VALIDATION)
+					{
+						for (auto m=_motorcycleSegments.begin(); m!=_motorcycleSegments.end(); ++m) {
+							const auto& head = _vertices[m->_head];
+							if (Equivalent(head._velocity, Zero<Float2>(), epsilon)) continue;
+							auto nextCrashEvent = CalculateCrashTime(*this, head._position, head._velocity, head._initialTime, AsPointer(m), head._skeletonVertexId);
+							if (nextCrashEvent._time < 0.0f) continue;
+							assert(nextCrashEvent._time >= crashEvent._time);
+						}
+					}
+				#endif
+
 				lastEventTime = crashEvent._time;
+				lastEvent = 1;
 			} else {
 				if (bestCollapse.empty()) break;
 				if (bestCollapseTime > maxTime) break;
@@ -655,8 +659,8 @@ namespace SceneEngine { namespace StraightSkeleton
 					for (size_t c=0; c<bestCollapse.size(); ++c) {
 						if (collapseGroups[c] != collapseGroup) continue;
 						const auto& seg = _wavefrontEdges[bestCollapse[c].second];
-						collisionPt += _vertices[seg._head]._position + (bestCollapseTime - _vertices[seg._head]._initialTime) * _vertices[seg._head]._velocity;
-						collisionPt += _vertices[seg._tail]._position + (bestCollapseTime - _vertices[seg._tail]._initialTime) * _vertices[seg._tail]._velocity;
+						collisionPt += PositionAtTime(_vertices[seg._head], bestCollapseTime);
+						collisionPt += PositionAtTime(_vertices[seg._tail], bestCollapseTime);
 						contributors += 2;
 
 						// at this point they should not be frozen (but they will all be frozen later)
@@ -664,6 +668,18 @@ namespace SceneEngine { namespace StraightSkeleton
 						assert(!IsFrozen(_vertices[seg._head]));
 					}
 					collisionPt /= float(contributors);
+
+					// Validate that our "collisionPt" is close to all of the collapsing points
+					#if defined(_DEBUG)
+						for (size_t c=0; c<bestCollapse.size(); ++c) {
+							if (collapseGroups[c] != collapseGroup) continue;
+							const auto& seg = _wavefrontEdges[bestCollapse[c].second];
+							auto one = PositionAtTime(_vertices[seg._head], bestCollapseTime);
+							auto two = PositionAtTime(_vertices[seg._tail], bestCollapseTime);
+							assert(Equivalent(one, collisionPt, 1e-3f));
+							assert(Equivalent(two, collisionPt, 1e-3f));
+						}
+					#endif
 
 					// add a steiner vertex into the output
 					auto collisionVertId = AddSteinerVertex(result, Float3(collisionPt, bestCollapseTime));
@@ -683,9 +699,8 @@ namespace SceneEngine { namespace StraightSkeleton
 					}
 
 					// create a new vertex in the graph to connect the edges to either side of the collapse
-					auto newVertex = (unsigned)_vertices.size();
+					collapseGroupInfos[collapseGroup]._newVertex = (unsigned)_vertices.size();
 					_vertices.push_back(Vertex{collisionPt, collisionVertId, bestCollapseTime, Float2(0.0f,0.0f)});
-					collapseGroupInfos[collapseGroup]._newVertex = newVertex;
 				}
 
 				// Remove all of the collapsed edges (by shifting them to the end)
@@ -705,15 +720,9 @@ namespace SceneEngine { namespace StraightSkeleton
 				for (const auto& group:collapseGroupInfos) {
 					if (group._head == group._tail) continue;	// if we remove an entire loop, let's assume that there are no external links to it
 
-					auto tail = std::find_if(_wavefrontEdges.begin(), _wavefrontEdges.end(), 
-						[&group](const Segment&seg) { return seg._head == group._tail;});
-					assert(tail != _wavefrontEdges.end());
-					assert(std::find_if(tail+1, _wavefrontEdges.end(), [&group](const Segment&seg) { return seg._head == group._tail;}) == _wavefrontEdges.end());
-
-					auto head = std::find_if(_wavefrontEdges.begin(), _wavefrontEdges.end(), 
-						[&group](const Segment&seg) { return seg._tail == group._head;});
-					assert(head != _wavefrontEdges.end());
-					assert(std::find_if(head+1, _wavefrontEdges.end(), [&group](const Segment&seg) { return seg._tail == group._head;}) == _wavefrontEdges.end());
+					auto tail = FindInAndOut(MakeIteratorRange(_wavefrontEdges), group._tail).first;
+					auto head = FindInAndOut(MakeIteratorRange(_wavefrontEdges), group._head).second;
+					assert(tail && head);
 
 					tail->_head = group._newVertex;
 					head->_tail = group._newVertex;
@@ -723,14 +732,29 @@ namespace SceneEngine { namespace StraightSkeleton
 					auto v2 = PositionAtTime(_vertices[head->_head], calcTime);
 					_vertices[group._newVertex]._velocity = CalculateVertexVelocity(v0, v1, v2);
 
-					if (tail->_tail == head->_head)
-						_vertices[tail->_tail]._velocity = Zero<Float2>();
+					#if defined(EXTRA_VALIDATION)
+						{
+							assert(CalculateCollapseTime(_vertices[tail->_tail], _vertices[group._newVertex]) >= _vertices[group._newVertex]._initialTime);
+							assert(CalculateCollapseTime(_vertices[group._newVertex], _vertices[head->_head]) >= _vertices[group._newVertex]._initialTime);
+
+							auto calcTime = (_vertices[tail->_tail]._initialTime + _vertices[group._newVertex]._initialTime + _vertices[head->_head]._initialTime) / 3.0f;
+							auto v0 = PositionAtTime(_vertices[tail->_tail], calcTime);
+							auto v1 = PositionAtTime(_vertices[group._newVertex], calcTime);
+							auto v2 = PositionAtTime(_vertices[head->_head], calcTime);
+							
+							auto validatedVelocity = CalculateVertexVelocity(v0, v1, v2);
+							assert(Equivalent(validatedVelocity, _vertices[group._newVertex]._velocity, epsilon));
+						}
+					#endif
 				}
 			
 				lastEventTime = bestCollapseTime;
+				lastEvent = 2;
 			}
 		}
 
+		if (maxTime == std::numeric_limits<float>::max())
+			maxTime = lastEventTime;
 		WriteWavefront(result, maxTime);
 
 		return result;
