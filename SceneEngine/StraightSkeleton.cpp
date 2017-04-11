@@ -12,6 +12,15 @@
 
 #pragma warning(disable:4505) // 'SceneEngine::StraightSkeleton::ReplaceVertex': unreferenced local function has been removed
 
+// We can define the handiness of 2D space as such:
+// If we wanted to rotate the X axis so that it lies on the Y axis, 
+// which is the shortest direction to rotate in? Is it clockwise, or counterclockwise?
+// "SPACE_HANDINESS_COUNTERCLOCKWISE" corresponds to a space in which +Y points up the page, and +X to the right
+// "SPACE_HANDINESS_CLOCKWISE" corresponds to a space in which +Y points down the page, and +X to the right
+#define SPACE_HANDINESS_CLOCKWISE 1
+#define SPACE_HANDINESS_COUNTERCLOCKWISE 2
+#define SPACE_HANDINESS SPACE_HANDINESS_COUNTERCLOCKWISE 
+
 namespace SceneEngine { namespace StraightSkeleton 
 {
 	static const float epsilon = 1e-5f;
@@ -24,8 +33,13 @@ namespace SceneEngine { namespace StraightSkeleton
 	WindingType CalculateWindingType(Float2 zero, Float2 one, Float2 two, float threshold)
 	{
 		float sign = (one[0] - zero[0]) * (two[1] - zero[1]) - (two[0] - zero[0]) * (one[1] - zero[1]);
-		if (sign < -threshold) return Right;
-		if (sign > threshold) return Left;
+		#if SPACE_HANDINESS == SPACE_HANDINESS_CLOCKWISE
+			if (sign > threshold) return Right;
+			if (sign < -threshold) return Left;
+		#else
+			if (sign > threshold) return Left;
+			if (sign < -threshold) return Right;
+		#endif
 		return Straight;
 	}
 
@@ -60,8 +74,13 @@ namespace SceneEngine { namespace StraightSkeleton
 		if (Equivalent(t1, Zero<Float2>(), epsilon)) return Zero<Float2>();
 
 		// create normal pointing in direction of movement
-		auto N0 = Normalize(Float2(-t0[1], t0[0]));
-		auto N1 = Normalize(Float2(-t1[1], t1[0]));
+		#if SPACE_HANDINESS == SPACE_HANDINESS_CLOCKWISE
+			auto N0 = Normalize(Float2(t0[1], -t0[0]));
+			auto N1 = Normalize(Float2(t1[1], -t1[0]));
+		#else
+			auto N0 = Normalize(Float2(-t0[1], t0[0]));
+			auto N1 = Normalize(Float2(-t1[1], t1[0]));
+		#endif
 		auto a = N0[0], b = N0[1];
 		auto c = N1[0], d = N1[1];
 		const auto t = 1.0f;		// time = 1.0f, because we're calculating the velocity
@@ -295,7 +314,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			// All 3 points should be on the same line at this point -- so we just need to check if
 			// the motorcycle is between them (or intersecting a vertex)
 			for (unsigned c=0; c<2; ++c) {
-				if (t[c] > bestCollisionEvent._time || t[c] < std::max(head._initialTime, tail._initialTime)) continue;	// don't need to check collisions that happen too late
+				if (t[c] > bestCollisionEvent._time || t[c] <= std::max(head._initialTime, tail._initialTime)) continue;	// don't need to check collisions that happen too late
 				auto P0 = Float2(p0 + t[c]*v0);
 				auto P1 = Float2(p1 + t[c]*v1);
 				auto P2 = Float2(p2 + t[c]*v2);

@@ -42,6 +42,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     void GenerateNormalsAndTangents( 
         MeshDatabase& mesh, 
         unsigned normalMapTextureCoordinateSemanticIndex,
+		float equivalenceThreshold,
         const void* rawIb, size_t indexCount, Format ibFormat)
 	{
             // testing -- remove existing tangents & normals
@@ -50,7 +51,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         // mesh.RemoveStream(mesh.FindElement("TEXBITANGENT"));
 
         auto tcElement = mesh.FindElement("TEXCOORD", normalMapTextureCoordinateSemanticIndex);
-        if (tcElement == ~0u) return;   // if there are no texture coordinates, we could generate normals, but we can't generate tangents
 
         bool hasNormals = !!(mesh.HasElement("NORMAL") & 0x1);
         bool hasTangents = !!(mesh.HasElement("TEXTANGENT") & 0x1);
@@ -89,13 +89,24 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         if (ibFormat == Format::R32_UINT) { indexStride = 4; indexMask = 0xffffffff; }
         auto* ib = (const uint32*)rawIb;
 
+		if (ibFormat == Format::Unknown) {
+			indexCount = mesh.GetUnifiedVertexCount();
+			ib = nullptr;
+		}
+
 		auto triangleCount = indexCount / 3;   // assuming index buffer is triangle-list format
 		for (size_t c=0; c<triangleCount; c++) {
-            unsigned v0 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
-            unsigned v1 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
-            unsigned v2 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
-
-            assert(v0 != v1 && v1 != v2 && v1 != v2);
+			unsigned v0, v1, v2;
+			if (ibFormat != Format::Unknown) {
+				v0 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
+				v1 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
+				v2 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
+				assert(v0 != v1 && v1 != v2 && v1 != v2);
+			} else {
+				v0 = unsigned(c*3+0);
+				v1 = unsigned(c*3+1);
+				v2 = unsigned(c*3+2);
+			}
 
 			auto p0 = mesh.GetUnifiedElement<Float3>(v0, posElement);
 			auto p1 = mesh.GetUnifiedElement<Float3>(v1, posElement);
@@ -106,57 +117,65 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				Triangle tri;
                 tri.normal = -Truncate(plane);
 
-					/*	There is one natural tangent and one natural bitangent for each triangle, on the v=0 and u=0 axes 
-						in 3 space. We'll calculate them for this triangle here and then use a composite of triangle tangents
-						for the vertex tangents below.
+				if (tcElement != ~0u) {
+						/*	There is one natural tangent and one natural bitangent for each triangle, on the v=0 and u=0 axes 
+							in 3 space. We'll calculate them for this triangle here and then use a composite of triangle tangents
+							for the vertex tangents below.
 
-						Here's a good reference:
-						http://www.terathon.com/code/tangent.html
-						from "Mathematics for 3D Game Programming and Computer Graphics, 2nd ed."
+							Here's a good reference:
+							http://www.terathon.com/code/tangent.html
+							from "Mathematics for 3D Game Programming and Computer Graphics, 2nd ed."
 
-						These equations just solve for v=0 and u=0 on the triangle surface.
-					*/
-				const auto UV0 = mesh.GetUnifiedElement<Float2>(v0, tcElement);
-				const auto UV1 = mesh.GetUnifiedElement<Float2>(v1, tcElement);
-				const auto UV2 = mesh.GetUnifiedElement<Float2>(v2, tcElement);
-				auto Q1 = p1 - p0;
-				auto Q2 = p2 - p0;
-				auto st1 = UV1 - UV0;
-				auto st2 = UV2 - UV0;
-				float rr = (st1[0] * st2[1] + st2[0] * st1[1]);
-				if (Equivalent(rr, 0.f, 1e-10f)) { tri.tangent = tri.bitangent = Zero<Float3>(); }
-				else
-				{
-					float r = 1.f / rr;
-					Float3 sAxis( (st2[1] * Q1 - st1[1] * Q2) * r );
-					Float3 tAxis( (st1[0] * Q2 - st2[0] * Q1) * r );
+							These equations just solve for v=0 and u=0 on the triangle surface.
+						*/
+					const auto UV0 = mesh.GetUnifiedElement<Float2>(v0, tcElement);
+					const auto UV1 = mesh.GetUnifiedElement<Float2>(v1, tcElement);
+					const auto UV2 = mesh.GetUnifiedElement<Float2>(v2, tcElement);
+					auto Q1 = p1 - p0;
+					auto Q2 = p2 - p0;
+					auto st1 = UV1 - UV0;
+					auto st2 = UV2 - UV0;
+					float rr = (st1[0] * st2[1] + st2[0] * st1[1]);
+					if (Equivalent(rr, 0.f, 1e-10f)) { tri.tangent = tri.bitangent = Zero<Float3>(); }
+					else
+					{
+						float r = 1.f / rr;
+						Float3 sAxis( (st2[1] * Q1 - st1[1] * Q2) * r );
+						Float3 tAxis( (st1[0] * Q2 - st2[0] * Q1) * r );
 
-                        // We may need to flip the direction of the s or t axis
-                        // check the texture coordinates to find the correct direction
-                        // for these axes...
-                    sAxis = CorrectAxisDirection(sAxis, p0, p1, p2, UV0[0], UV1[0], UV2[0]);
-                    tAxis = CorrectAxisDirection(tAxis, p0, p1, p2, UV0[1], UV1[1], UV2[1]);
+							// We may need to flip the direction of the s or t axis
+							// check the texture coordinates to find the correct direction
+							// for these axes...
+						sAxis = CorrectAxisDirection(sAxis, p0, p1, p2, UV0[0], UV1[0], UV2[0]);
+						tAxis = CorrectAxisDirection(tAxis, p0, p1, p2, UV0[1], UV1[1], UV2[1]);
 
-                    auto sMagSq = MagnitudeSquared(sAxis);
-                    auto tMagSq = MagnitudeSquared(tAxis);
+						auto sMagSq = MagnitudeSquared(sAxis);
+						auto tMagSq = MagnitudeSquared(tAxis);
                     
-                    float recipSMag, recipTMag;
-                    if (XlRSqrt_Checked(&recipSMag, sMagSq) && XlRSqrt_Checked(&recipTMag, tMagSq)) {
-                        tri.tangent = sAxis * recipSMag;
-						tri.bitangent = tAxis * recipTMag;
-                    } else {
-                        tri.tangent = tri.bitangent = Zero<Float3>();
-                    }
+						float recipSMag, recipTMag;
+						if (XlRSqrt_Checked(&recipSMag, sMagSq) && XlRSqrt_Checked(&recipTMag, tMagSq)) {
+							tri.tangent = sAxis * recipSMag;
+							tri.bitangent = tAxis * recipTMag;
+						} else {
+							tri.tangent = tri.bitangent = Zero<Float3>();
+						}
 
-                    tri.tangent = sAxis;
-                    tri.bitangent = tAxis;
+						tri.tangent = sAxis;
+						tri.bitangent = tAxis;
+					}
+
+					assert( tri.tangent[0] == tri.tangent[0] );
+				} else {
+					tri.tangent = Zero<Float3>();
+					tri.bitangent = Zero<Float3>();
 				}
-
-				assert( tri.tangent[0] == tri.tangent[0] );
 
                     // We add the influence of this triangle to all vertices
                     // each vertex should get an even balance of influences from
                     // all triangles it is part of.
+				assert(isfinite(tri.normal[0]) && !isnan(tri.normal[0]) && tri.normal[0] == tri.normal[0]);
+				assert(isfinite(tri.normal[1]) && !isnan(tri.normal[1]) && tri.normal[1] == tri.normal[1]);
+				assert(isfinite(tri.normal[2]) && !isnan(tri.normal[2]) && tri.normal[2] == tri.normal[2]);
                 normals[v0] += tri.normal; normals[v1] += tri.normal; normals[v2] += tri.normal;
                 tangents[v0] += Expand(tri.tangent, 0.f); tangents[v1] += Expand(tri.tangent, 0.f); tangents[v2] += Expand(tri.tangent, 0.f);
                 bitangents[v0] += tri.bitangent; bitangents[v1] += tri.bitangent; bitangents[v2] += tri.bitangent;
@@ -170,17 +189,20 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         if (!hasNormals) {
             for (size_t c=0; c<mesh.GetUnifiedVertexCount(); c++)
-                normals[c] = Normalize(normals[c]);
+                Normalize_Checked(&normals[c], normals[c]);		// (note -- it's possible for the normal to to Zero<Float3>() if this vertex wasn't used by the index buffer)
         
-            mesh.AddStream(
-                CreateRawDataSource(
-                    AsPointer(normals.cbegin()), AsPointer(normals.cend()),
-                    Format::R32G32B32_FLOAT),
-                std::vector<unsigned>(),
-                "NORMAL", 0);
+			auto normalsData = CreateRawDataSource(AsPointer(normals.cbegin()), AsPointer(normals.cend()), Format::R32G32B32_FLOAT);
+			if (equivalenceThreshold != 0.0f) {
+				std::vector<unsigned> unifiedMapping;
+				normalsData = RenderCore::Assets::GeoProc::RemoveDuplicates(unifiedMapping, *normalsData, IteratorRange<const unsigned*>(), equivalenceThreshold);
+				mesh.AddStream(normalsData, std::move(unifiedMapping), "NORMAL", 0);
+			} else {
+				mesh.AddStream(normalsData, std::vector<unsigned>(), "NORMAL", 0);
+			}
         }
 
-        if (!hasTangents) {
+		// if there are no texture coordinates, we can only generate normals, not tangents
+        if (tcElement != ~0u && !hasTangents) {
 
             unsigned normalsElement = mesh.FindElement("NORMAL");
 
@@ -209,11 +231,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 tangents[c] = Expand(t3, handinessValue);
             }
 
-            mesh.AddStream(
-                CreateRawDataSource(
-                    AsPointer(tangents.begin()), AsPointer(tangents.cend()), Format::R32G32B32A32_FLOAT),
-                std::vector<unsigned>(),
-                "TEXTANGENT", 0);
+			auto tangentsData = CreateRawDataSource(AsPointer(tangents.begin()), AsPointer(tangents.cend()), Format::R32G32B32A32_FLOAT);
+			if (equivalenceThreshold != 0.0f) {
+				std::vector<unsigned> unifiedMapping;
+				tangentsData = RenderCore::Assets::GeoProc::RemoveDuplicates(unifiedMapping, *tangentsData, IteratorRange<const unsigned*>(), equivalenceThreshold);
+				mesh.AddStream(tangentsData, std::move(unifiedMapping), "TEXTANGENT", 0);
+			} else {
+				mesh.AddStream(tangentsData, std::vector<unsigned>(), "TEXTANGENT", 0);
+			}
 
         }
 

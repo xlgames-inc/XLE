@@ -954,7 +954,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			for (unsigned c = 0; c < finalUnifiedVertexCount; ++c) {
 				bool isIdentical = true;
 				for (unsigned s = 0; s < inputStreams.size(); ++s) {
-					if (workingMapping[s]._unifiedToStreamElement[c] != inputStreams[s].GetVertexMap()[v]) {
+					auto mappedIndex = !inputStreams[s].GetVertexMap().empty() ? inputStreams[s].GetVertexMap()[v] : v;
+					if (workingMapping[s]._unifiedToStreamElement[c] != mappedIndex) {
 						isIdentical = false;
 						break;
 					}
@@ -970,7 +971,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			} else {
 				// if we got this far, there's no existing identical vertex
 				for (unsigned s = 0; s < inputStreams.size(); ++s)
-					workingMapping[s]._unifiedToStreamElement.push_back(inputStreams[s].GetVertexMap()[v]);
+					workingMapping[s]._unifiedToStreamElement.push_back(!inputStreams[s].GetVertexMap().empty() ? inputStreams[s].GetVertexMap()[v] : v);
 				outputMapping.push_back(finalUnifiedVertexCount);
 				++finalUnifiedVertexCount;
 			}

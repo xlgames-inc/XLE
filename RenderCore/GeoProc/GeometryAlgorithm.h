@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../RenderCore/Types_Forward.h"
+#include "../RenderCore/Format.h"
 #include "../Math/Matrix.h"
 #include "../Core/Types.h"
 
@@ -19,7 +20,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     void GenerateNormalsAndTangents( 
         RenderCore::Assets::GeoProc::MeshDatabase& mesh, 
         unsigned normalMapTextureCoordinateSemanticIndex,
-        const void* rawIb, size_t indexCount, Format ibFormat);
+		float equivalenceThreshold,
+        const void* rawIb = nullptr, size_t indexCount = 0, Format ibFormat = Format::Unknown);
 
     void Transform(
         RenderCore::Assets::GeoProc::MeshDatabase& mesh, 

@@ -64,6 +64,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         class Stream;
         IteratorRange<const Stream*> GetStreams() const     { return MakeIteratorRange(_streams); }
+		IteratorRange<Stream*> GetStreams()					{ return MakeIteratorRange(_streams); }
 
         MeshDatabase();
         MeshDatabase(MeshDatabase&& moveFrom) never_throws;
@@ -78,6 +79,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             const std::string& GetSemanticName() const          { return _semanticName; }
             const unsigned GetSemanticIndex() const             { return _semanticIndex; }
 			const std::shared_ptr<IVertexSourceData>& ShareSourceData() const { return _sourceData; }
+
+			void SetSemantic(const std::string& newName, unsigned semanticIndex) { _semanticName = newName; _semanticIndex = semanticIndex; }
 
             unsigned UnifiedToStream(unsigned input) const
             {
