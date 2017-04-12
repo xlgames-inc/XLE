@@ -9,29 +9,23 @@
 #include "Assets.h"
 #include "AssetUtils.h"
 #include "../Utility/Streams/FileUtils.h"
+#include "../Utility/IteratorUtils.h"
 
 namespace Assets 
 {
     class PendingCompileMarker; 
     class DependentFileState; 
     class DependencyValidation; 
-    class ArchiveCache;
 
-    class IntermediateAssetLocator
-    {
-    public:
-        std::shared_ptr<DependencyValidation> _dependencyValidation;
-
-        ResChar     _sourceID0[MaxPath];
-        uint64      _sourceID1;
-        std::shared_ptr<ArchiveCache> _archive;
-
-		std::shared_ptr<std::vector<uint8>> _payload;
-		std::shared_ptr<std::vector<uint8>> _errors;
-
-        IntermediateAssetLocator();
-        ~IntermediateAssetLocator();
-    };
+	class IArtifact
+	{
+	public:
+		using Blob = std::shared_ptr<std::vector<uint8>>;
+		virtual Blob	GetBlob() const = 0;
+		virtual Blob	GetErrors() const = 0;
+		virtual ::Assets::DepValPtr GetDependencyValidation() const = 0;
+		virtual ~IArtifact();
+	};
 
     /// <summary>Records the state of a resource being compiled</summary>
     /// When a resource compile operation begins, we need some generic way
@@ -50,8 +44,8 @@ namespace Assets
     class PendingCompileMarker : public PendingOperationMarker
     {
     public:
-        // this has become very much like a std::promise<IntermediateAssetLocator>!
-        const IntermediateAssetLocator& GetLocator() const;
+        // this has become very much like a std::promise<std::vector<IArtifact>>!
+		IteratorRange<const std::shared_ptr<IArtifact>*> GetArtifacts() const { return MakeIteratorRange(_artifacts); }
 
         PendingCompileMarker();
         ~PendingCompileMarker();
@@ -61,20 +55,45 @@ namespace Assets
 		PendingCompileMarker(const PendingCompileMarker&) = delete;
 		PendingCompileMarker& operator=(const PendingCompileMarker&) = delete;
 
-		void SetLocator(const IntermediateAssetLocator& locator);
-		IntermediateAssetLocator& GetLocator();
+		void AddArtifact(const std::shared_ptr<IArtifact>& artifact);
 
 	private:
-		IntermediateAssetLocator _locator;
+		std::vector<std::shared_ptr<IArtifact>> _artifacts;
     };
 
     class ICompileMarker
     {
     public:
-        virtual IntermediateAssetLocator GetExistingAsset() const = 0;
+        virtual std::shared_ptr<IArtifact> GetExistingAsset() const = 0;
         virtual std::shared_ptr<PendingCompileMarker> InvokeCompile() const = 0;
         virtual StringSection<ResChar> Initializer() const = 0;
     };
+
+	class FileArtifact : public ::Assets::IArtifact
+	{
+	public:
+		Blob	GetBlob() const;
+		Blob	GetErrors() const;
+		::Assets::DepValPtr GetDependencyValidation() const;
+		FileArtifact(const ::Assets::rstring& filename, const ::Assets::DepValPtr& depVal);
+		~FileArtifact();
+	private:
+		::Assets::rstring _filename;
+		::Assets::DepValPtr _depVal;
+	};
+
+	class BlobArtifact : public ::Assets::IArtifact
+	{
+	public:
+		Blob	GetBlob() const;
+		Blob	GetErrors() const;
+		::Assets::DepValPtr GetDependencyValidation() const;
+		BlobArtifact(const Blob& blob, const Blob& errors, const ::Assets::DepValPtr& depVal);
+		~BlobArtifact();
+	private:
+		Blob _blob, _errors;
+		::Assets::DepValPtr _depVal;
+	};
 }
 
 namespace Assets { namespace IntermediateAssets

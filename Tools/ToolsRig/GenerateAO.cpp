@@ -808,7 +808,7 @@ namespace ToolsRig
     class AOSupplementCompiler::Marker : public ::Assets::ICompileMarker
     {
     public:
-        ::Assets::IntermediateAssetLocator GetExistingAsset() const;
+        std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
         std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
@@ -828,7 +828,7 @@ namespace ToolsRig
         void MakeIntermediateName(::Assets::ResChar destination[], size_t destinationCount) const;
     };
 
-    ::Assets::IntermediateAssetLocator AOSupplementCompiler::Marker::GetExistingAsset() const
+    std::shared_ptr<::Assets::IArtifact> AOSupplementCompiler::Marker::GetExistingAsset() const
     {
         ::Assets::IntermediateAssetLocator result;
         MakeIntermediateName(result._sourceID0, dimof(result._sourceID0));

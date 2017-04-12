@@ -42,6 +42,9 @@ namespace RenderCore { namespace Assets
 
         ShaderCacheSet& GetCacheSet() { return *_shaderCacheSet; }
 
+		void AddCompileOperation(const std::shared_ptr<ShaderCompileMarker>& marker);
+		void RemoveCompileOperation(ShaderCompileMarker& marker);
+
         LocalCompiledShaderSource(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler, const DeviceDesc& devDesc);
         ~LocalCompiledShaderSource();
     protected:

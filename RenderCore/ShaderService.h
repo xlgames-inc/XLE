@@ -19,7 +19,7 @@ namespace Assets
 {
 	class DependencyValidation; class DependentFileState; 
 	class PendingCompileMarker; class ICompileMarker; 
-	class DeferredConstruction; class IntermediateAssetLocator;
+	class DeferredConstruction; class IArtifact;
 }
 
 // We need to store the shader initializer in order to get the "pending assets" type 
@@ -174,7 +174,7 @@ namespace RenderCore
 
 		CompiledShaderByteCode(const std::shared_ptr<::Assets::DeferredConstruction>&);
 		CompiledShaderByteCode(const std::shared_ptr<std::vector<uint8>>&, ShaderStage stage, const ::Assets::DepValPtr&);
-		CompiledShaderByteCode(const ::Assets::IntermediateAssetLocator&, ShaderStage stage, StringSection<::Assets::ResChar> initializer);
+		CompiledShaderByteCode(const ::Assets::IArtifact&, ShaderStage stage, StringSection<::Assets::ResChar> initializer);
 		CompiledShaderByteCode();
         ~CompiledShaderByteCode();
 

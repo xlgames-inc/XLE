@@ -57,14 +57,14 @@ namespace Assets
 	{
 		template<	typename AssetType, 
 					typename... Args,
-					typename std::enable_if<std::is_constructible<AssetType, const IntermediateAssetLocator&, Args...>::value>::type* = nullptr>
-			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IntermediateAssetLocator& locator, Args... args)
+					typename std::enable_if<std::is_constructible<AssetType, const IArtifact&, Args...>::value>::type* = nullptr>
+			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IArtifact& locator, Args... args)
 			{
 				return std::make_unique<AssetType>(locator, std::forward<Args>(args)...);
 			}
 
 		template<typename AssetType, typename std::enable_if<!Internal::AssetTraits<AssetType>::Constructor_IntermediateAssetLocator>::type* = nullptr>
-			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IntermediateAssetLocator& locator, StringSection<ResChar> initializer)
+			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IArtifact& locator, StringSection<ResChar> initializer)
 			{
 				return AutoConstructAsset<AssetType>(locator._sourceID0);
 			}

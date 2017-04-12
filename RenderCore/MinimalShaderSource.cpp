@@ -105,9 +105,8 @@ namespace RenderCore
             shaderInMemory, size, resId, definesTable);
 
 		auto result = std::make_shared<::Assets::PendingCompileMarker>();
-		result->GetLocator()._dependencyValidation = AsDepValPtr(MakeIteratorRange(deps));
-		result->GetLocator()._errors = std::move(errors);
-		result->GetLocator()._payload = std::move(payload);
+		result->AddArtifact(
+			std::make_shared<Assets::BlobArtifact>(errors, payload, AsDepValPtr(MakeIteratorRange(deps))));
 		result->SetState(success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid);
 		return std::move(result);
     }

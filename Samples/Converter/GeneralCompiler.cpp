@@ -87,7 +87,7 @@ namespace Converter
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static void BuildChunkFile(
-        BasicFile& file,
+        ::Assets::IFileInterface& file,
         IteratorRange<::Assets::NascentChunk*>& chunks,
         const ConsoleRig::LibVersionDesc& versionInfo,
         std::function<bool(const ::Assets::NascentChunk&)> predicate)
@@ -117,6 +117,37 @@ namespace Converter
                 file.Write(AsPointer(c._data.begin()), c._data.size(), 1);
     }
 
+	static void BuildChunkFile(
+        std::vector<uint8>& file,
+        IteratorRange<::Assets::NascentChunk*>& chunks,
+        const ConsoleRig::LibVersionDesc& versionInfo,
+        std::function<bool(const ::Assets::NascentChunk&)> predicate)
+    {
+        unsigned chunksForMainFile = 0;
+		for (const auto& c:chunks)
+            if (predicate(c))
+                ++chunksForMainFile;
+
+        using namespace Serialization::ChunkFile;
+        auto header = MakeChunkFileHeader(
+            chunksForMainFile, 
+            versionInfo._versionString, versionInfo._buildDateString);
+        file.insert(file.end(), (const uint8*)&header, PtrAdd((const uint8*)&header, sizeof(header)));
+
+        unsigned trackingOffset = unsigned(file.size() + sizeof(ChunkHeader) * chunksForMainFile);
+        for (const auto& c:chunks)
+            if (predicate(c)) {
+                auto hdr = c._hdr;
+                hdr._fileOffset = trackingOffset;
+                file.insert(file.end(), (const uint8*)&hdr, PtrAdd((const uint8*)&hdr, sizeof(hdr)));
+                trackingOffset += hdr._size;
+            }
+
+        for (const auto& c:chunks)
+            if (predicate(c))
+                file.insert(file.end(), c._data.begin(), c._data.end());
+    } 
+
     static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
 
     static void SerializeToFile(
@@ -132,8 +163,8 @@ namespace Converter
             // a metrics file.
 
         {
-            auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(destinationFilename, "wb");
-            BuildChunkFile(outputFile, chunks, versionInfo,
+            auto outputFile = ::Assets::MainFileSystem::OpenFileInterface(destinationFilename, "wb");
+            BuildChunkFile(*outputFile, chunks, versionInfo,
                 [](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
         }
 
@@ -146,7 +177,43 @@ namespace Converter
             }
     }
 
+	static ::Assets::IArtifact::Blob SerializeToBlob(
+		IteratorRange<::Assets::NascentChunk*> chunks,
+        const ConsoleRig::LibVersionDesc& versionInfo)
+	{
+		auto result = std::make_shared<std::vector<uint8>>();
+        BuildChunkFile(*result, chunks, versionInfo,
+            [](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
+		return result;
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class CompilerExceptionArtifact : public ::Assets::IArtifact
+	{
+	public:
+		Blob	GetBlob() const;
+		Blob	GetErrors() const;
+		::Assets::DepValPtr GetDependencyValidation() const;
+		CompilerExceptionArtifact(const ::Assets::DepValPtr& depVal);
+		~CompilerExceptionArtifact();
+	private:
+		::Assets::DepValPtr _depVal;
+	};
+
+	auto CompilerExceptionArtifact::GetBlob() const -> Blob { return nullptr; }
+	auto CompilerExceptionArtifact::GetErrors() const -> Blob  { return nullptr;  }
+	::Assets::DepValPtr CompilerExceptionArtifact::GetDependencyValidation() const { return _depVal; }
+	CompilerExceptionArtifact::CompilerExceptionArtifact(const ::Assets::DepValPtr& depVal) : _depVal(depVal) {}
+	CompilerExceptionArtifact::~CompilerExceptionArtifact() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	enum class ArtifactType
+	{
+		ArchivedFile,
+		Blob
+	};
 
     void CompilerLibrary::PerformCompile(
 		uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
@@ -160,12 +227,21 @@ namespace Converter
             ConsoleRig::LibVersionDesc libVersionDesc;
             _library.TryGetVersion(libVersionDesc);
 
+			auto depVal = std::make_shared<::Assets::DependencyValidation>();
+			::Assets::RegisterFileDependency(depVal, initializer);
+
             TRY 
             {
                 // const auto* destinationFile = compileMarker.GetLocator()._sourceID0;
 
                 auto model = (*_createCompileOpFunction)(initializer);
-						
+
+				::Assets::ResChar baseIntermediateName[MaxPath];
+				destinationStore.MakeIntermediateName(baseIntermediateName, (unsigned)dimof(baseIntermediateName), initializer);
+				XlCatString(baseIntermediateName, "-res");
+
+				ArtifactType artifactType = ArtifactType::Blob;
+
 				// look for the first target of the correct type
 				auto targetCount = model->TargetCount();
 				bool foundTarget = false;
@@ -174,30 +250,39 @@ namespace Converter
 					if (target._type == typeCode) {
 						auto chunks = model->SerializeTarget(t);
 
-						::Assets::ResChar destinationFile[MaxPath];
-						XlFormatString(destinationFile, dimof(destinationFile), "%s-%s", compileMarker.GetLocator()._sourceID0, target._name);
+						if (artifactType == ArtifactType::ArchivedFile) {
+							::Assets::ResChar destinationFile[MaxPath];
+							XlFormatString(destinationFile, dimof(destinationFile), "%s-%s", baseIntermediateName, target._name);
+							SerializeToFile(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
 
-						SerializeToFile(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
+								// write new dependencies
+							std::vector<::Assets::DependentFileState> deps;
+							deps.push_back(destinationStore.GetDependentFileState(initializer));
+							auto splitName = MakeFileNameSplitter(initializer);
+							auto artifactDepVal = destinationStore.WriteDependencies(destinationFile, splitName.DriveAndPath(), MakeIteratorRange(deps));
+
+							auto artifact = std::make_shared<::Assets::FileArtifact>(destinationFile, depVal);
+							compileMarker.AddArtifact(artifact);
+						} else if (artifactType == ArtifactType::Blob) {
+							auto blob = SerializeToBlob(MakeIteratorRange(*chunks), libVersionDesc);
+							auto artifact = std::make_shared<::Assets::BlobArtifact>(blob, ::Assets::IArtifact::Blob(), depVal);
+							compileMarker.AddArtifact(artifact);
+						} else {
+							Throw(::Exceptions::BasicLabel("Unsupported artifact type (%i)", artifactType));
+						}
+
 						foundTarget = true;
 					}
 				}
 
 				if (!foundTarget)
 					Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer.AsString().c_str()));
-
-                    // write new dependencies
-                // std::vector<::Assets::DependentFileState> deps;
-                // deps.push_back(destinationStore.GetDependentFileState(initializer));
-				// auto splitName = MakeFileNameSplitter(initializer);
-				// compileMarker.GetLocator()._dependencyValidation = destinationStore.WriteDependencies(destinationFile, splitName.DriveAndPath(), MakeIteratorRange(deps));
         
 				compileMarker.SetState(::Assets::AssetState::Ready);
 
             } CATCH(...) {
-                if (!compileMarker.GetLocator()._dependencyValidation) {
-					compileMarker.GetLocator()._dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
-                    ::Assets::RegisterFileDependency(compileMarker.GetLocator()._dependencyValidation, initializer);
-                }
+				auto artifact = std::make_shared<CompilerExceptionArtifact>(depVal);
+				compileMarker.AddArtifact(artifact);
                 throw;
             } CATCH_END
 
@@ -248,7 +333,7 @@ namespace Converter
     class GeneralCompiler::Marker : public ::Assets::ICompileMarker
     {
     public:
-        ::Assets::IntermediateAssetLocator GetExistingAsset() const;
+        std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
         std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
@@ -262,22 +347,14 @@ namespace Converter
         ::Assets::rstring _requestName;
         uint64 _typeCode;
         const ::Assets::IntermediateAssets::Store* _store;
-
-        void MakeIntermediateName(::Assets::ResChar destination[], size_t count) const;
     };
 
-    void GeneralCompiler::Marker::MakeIntermediateName(::Assets::ResChar destination[], size_t count) const
+    std::shared_ptr<::Assets::IArtifact> GeneralCompiler::Marker::GetExistingAsset() const
     {
-        _store->MakeIntermediateName(destination, (unsigned)count, _requestName.c_str());
-		XlCatString(destination, count, "-res");
-    }
-
-    ::Assets::IntermediateAssetLocator GeneralCompiler::Marker::GetExistingAsset() const
-    {
-        ::Assets::IntermediateAssetLocator result;
+        // ::Assets::IntermediateAssetLocator result;
         // MakeIntermediateName(result._sourceID0, dimof(result._sourceID0));
         // result._dependencyValidation = _store->MakeDependencyValidation(result._sourceID0);
-        return result;
+        return nullptr;
     }
 
     std::shared_ptr<::Assets::PendingCompileMarker> GeneralCompiler::Marker::InvokeCompile() const
@@ -301,7 +378,6 @@ namespace Converter
         auto backgroundOp = std::make_shared<::Assets::QueuedCompileOperation>();
         backgroundOp->SetInitializer(_requestName.c_str());
         XlCopyString(backgroundOp->_initializer0, _requestName);
-        MakeIntermediateName(backgroundOp->GetLocator()._sourceID0, dimof(backgroundOp->GetLocator()._sourceID0));
         backgroundOp->_destinationStore = _store;
         backgroundOp->_typeCode = _typeCode;
 		backgroundOp->_compilerIndex = compilerIndex;

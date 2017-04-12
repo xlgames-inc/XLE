@@ -317,7 +317,7 @@ namespace RenderCore { namespace Assets
     class ModelCompiler::Marker : public ::Assets::ICompileMarker
     {
     public:
-        ::Assets::IntermediateAssetLocator GetExistingAsset() const;
+        std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
         std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
@@ -355,7 +355,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    ::Assets::IntermediateAssetLocator ModelCompiler::Marker::GetExistingAsset() const
+    std::shared_ptr<::Assets::IArtifact> ModelCompiler::Marker::GetExistingAsset() const
     {
         ::Assets::IntermediateAssetLocator result;
         MakeIntermediateName(result._sourceID0, dimof(result._sourceID0));

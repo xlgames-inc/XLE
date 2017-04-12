@@ -41,8 +41,9 @@ namespace RenderCore { namespace Assets
     public:
         using Payload = std::shared_ptr<std::vector<uint8>>;
         using ChainFn = std::function<void(
+			const ResId& shaderPath, const ::Assets::rstring& definesTable,
             ::Assets::AssetState, const Payload& payload, const Payload& errors,
-            const ::Assets::DependentFileState*, const ::Assets::DependentFileState*)>;
+            IteratorRange<const ::Assets::DependentFileState*>)>;
 
         const Payload& Resolve(StringSection<::Assets::ResChar> initializer, const ::Assets::DepValPtr& depVal = nullptr) const;
         ::Assets::AssetState TryResolve(Payload& result, const ::Assets::DepValPtr& depVal) const;
@@ -147,7 +148,7 @@ namespace RenderCore { namespace Assets
 
 	void ShaderCompileMarker::OnFailure()
 	{
-		_chain(::Assets::AssetState::Invalid, nullptr, nullptr, nullptr, nullptr);
+		_chain(_shaderPath, _definesTable, ::Assets::AssetState::Invalid, nullptr, nullptr, IteratorRange<const ::Assets::DependentFileState*>());
 		SetState(::Assets::AssetState::Invalid);
 	}
 
@@ -179,7 +180,7 @@ namespace RenderCore { namespace Assets
 				// doesn't get broken, and a leak)
 			if (_chain) {
 				TRY {
-					_chain(result, _payload, errors, AsPointer(_deps.cbegin()), AsPointer(_deps.cend()));
+					_chain(_shaderPath, _definesTable, result, _payload, errors, MakeIteratorRange(_deps));
 				} CATCH (const std::bad_function_call& e) {
 					LogWarning 
 						<< "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")" // << std::endl 
@@ -405,10 +406,45 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
+	class ArchivedFileArtifact : public ::Assets::IArtifact
+	{
+	public:
+		Blob	GetBlob() const;
+		Blob	GetErrors() const;
+		::Assets::DepValPtr GetDependencyValidation() const;
+		ArchivedFileArtifact(
+			const std::shared_ptr<::Assets::ArchiveCache>& archive, uint64 fileID, const ::Assets::DepValPtr& depVal,
+			const Blob& blob, const Blob& errors);
+		~ArchivedFileArtifact();
+	private:
+		std::shared_ptr<::Assets::ArchiveCache> _archive;
+		uint64 _fileID;
+		::Assets::DepValPtr _depVal;
+		Blob _blob, _errors;
+	};
+
+	auto ArchivedFileArtifact::GetBlob() const -> Blob
+	{
+		if (!_blob) return _blob;
+		return _archive->TryOpenFromCache(_fileID);
+	}
+
+	auto ArchivedFileArtifact::GetErrors() const -> Blob { return _errors; }
+	::Assets::DepValPtr ArchivedFileArtifact::GetDependencyValidation() const { return _depVal; }
+
+	ArchivedFileArtifact::ArchivedFileArtifact(
+		const std::shared_ptr<::Assets::ArchiveCache>& archive, uint64 fileID, const ::Assets::DepValPtr& depVal,
+		const Blob& blob, const Blob& errors)
+	: _archive(archive), _fileID(fileID), _depVal(depVal)
+	, _blob(blob), _errors(errors) {}
+	ArchivedFileArtifact::~ArchivedFileArtifact() {}
+
+        ////////////////////////////////////////////////////////////
+
     class LocalCompiledShaderSource::Marker : public ::Assets::ICompileMarker
     {
     public:
-        ::Assets::IntermediateAssetLocator GetExistingAsset() const;
+        std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
         std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
@@ -424,39 +460,62 @@ namespace RenderCore { namespace Assets
         ::Assets::rstring _initializer;
         std::weak_ptr<LocalCompiledShaderSource> _compiler;
         const ::Assets::IntermediateAssets::Store* _store;
-
-        void GetTarget(
-            ::Assets::ResChar archiveName[], size_t archiveNameCount,
-            ::Assets::ResChar depName[], size_t depNameCount,
-            uint64& archiveId) const;
     };
 
-    void LocalCompiledShaderSource::Marker::GetTarget(
-        ::Assets::ResChar archiveName[], size_t archiveNameCount,
-        ::Assets::ResChar depName[], size_t depNameCount,
-        uint64& archiveId) const
+    static uint64 GetTarget(
+		const ShaderService::ResId& res, const ::Assets::rstring& definesTable,
+        /*out*/ ::Assets::ResChar archiveName[], size_t archiveNameCount,
+        /*out*/ ::Assets::ResChar depName[], size_t depNameCount)
     {
-        _snprintf_s(archiveName, archiveNameCount * sizeof(::Assets::ResChar), _TRUNCATE, "%s-%s", _res._filename, _res._shaderModel);
-        archiveId = HashCombine(Hash64(_res._entryPoint), Hash64(_definesTable));
+        _snprintf_s(archiveName, archiveNameCount * sizeof(::Assets::ResChar), _TRUNCATE, "%s-%s", res._filename, res._shaderModel);
+        auto archiveId = HashCombine(Hash64(res._entryPoint), Hash64(definesTable));
         _snprintf_s(depName, depNameCount * sizeof(::Assets::ResChar), _TRUNCATE, "%s-%08x%08x", archiveName, uint32(archiveId>>32ull), uint32(archiveId));
+		return archiveId;
     }
 
-    ::Assets::IntermediateAssetLocator LocalCompiledShaderSource::Marker::GetExistingAsset() const
+    std::shared_ptr<::Assets::IArtifact> LocalCompiledShaderSource::Marker::GetExistingAsset() const
     {
         auto c = _compiler.lock();
-        if (!c || CancelAllShaderCompiles) return ::Assets::IntermediateAssetLocator();
+        if (!c || CancelAllShaderCompiles) return nullptr;
 
         ::Assets::ResChar archiveName[MaxPath], depName[MaxPath];
-        uint64 archiveId;
-        GetTarget(archiveName, dimof(archiveName), depName, dimof(depName), archiveId);
+        auto archiveId = GetTarget(_res, _definesTable, archiveName, dimof(archiveName), depName, dimof(depName));
 
-        ::Assets::IntermediateAssetLocator result;
-        result._dependencyValidation = _store->MakeDependencyValidation(depName);
-        XlCopyString(result._sourceID0, archiveName);
-        result._sourceID1 = archiveId;
-        result._archive = c->_shaderCacheSet->GetArchive(archiveName, *_store);
-        return std::move(result);
+        return std::make_shared<ArchivedFileArtifact>(
+			c->_shaderCacheSet->GetArchive(archiveName, *_store), archiveId, 
+			_store->MakeDependencyValidation(depName));
     }
+
+	void LocalCompiledShaderSource::AddCompileOperation(const std::shared_ptr<ShaderCompileMarker>& marker)
+	{
+		Interlocked::Increment(&_activeCompileCount);
+        {
+                // unfortunately we need to lock this... because we search through it in
+                // a background thread
+            ScopedLock(_activeCompileOperationsLock);
+            _activeCompileOperations.push_back(marker);
+        }
+	}
+
+	void LocalCompiledShaderSource::RemoveCompileOperation(ShaderCompileMarker& marker)
+	{
+        ScopedLock(_activeCompileOperationsLock);
+        auto i = std::find_if(
+            _activeCompileOperations.begin(), _activeCompileOperations.end(), 
+            [&marker](std::shared_ptr<ShaderCompileMarker>& test) { return test.get() == &marker; });
+        if (i != _activeCompileOperations.end()) {
+            _activeCompileOperations.erase(i);
+            Interlocked::Decrement(&_activeCompileCount);
+        }
+    }
+
+	static ::Assets::DepValPtr AsDepValPtr(IteratorRange<const ::Assets::DependentFileState*> deps)
+	{
+		auto result = std::make_shared<::Assets::DependencyValidation>();
+		for (const auto& i:deps)
+			::Assets::RegisterFileDependency(result, MakeStringSection(i._filename));
+		return result;
+	}
 
     std::shared_ptr<::Assets::PendingCompileMarker> LocalCompiledShaderSource::Marker::InvokeCompile() const
     {
@@ -464,12 +523,6 @@ namespace RenderCore { namespace Assets
         if (!c || CancelAllShaderCompiles) return nullptr;
 
         auto marker = std::make_shared<::Assets::PendingCompileMarker>();
-
-        ::Assets::ResChar archiveName[MaxPath], depName[MaxPath];
-        GetTarget(
-            archiveName, dimof(archiveName), 
-            depName, dimof(depName), marker->GetLocator()._sourceID1);
-        marker->GetLocator()._archive = c->_shaderCacheSet->GetArchive(archiveName, *_store);
 
         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
                 //  When we have archive attachments enabled, we can write
@@ -488,26 +541,25 @@ namespace RenderCore { namespace Assets
 
         using Payload = ShaderCompileMarker::Payload;
 
-        ::Assets::rstring depNameAsString = depName;
         auto compileHelper = std::make_shared<ShaderCompileMarker>(c->_compiler);
-
-        Interlocked::Increment(&c->_activeCompileCount);
-        {
-                // unfortunately we need to lock this... because we search through it in
-                // a background thread
-            ScopedLock(c->_activeCompileOperationsLock);
-            c->_activeCompileOperations.push_back(compileHelper);
-        }
 
         auto tempPtr = compileHelper.get();
         auto store = _store;
         compileHelper->Enqueue(
             _res, _definesTable,
-            [marker, archiveCacheAttachment, depNameAsString, store, tempPtr, c]
-            (   ::Assets::AssetState newState, const Payload& payload, const Payload& errors,
-                const ::Assets::DependentFileState* depsBegin, const ::Assets::DependentFileState* depsEnd)
+            [marker, archiveCacheAttachment, store, tempPtr, c]
+            (   const ShaderService::ResId& resId, const std::string& definesTable,
+				::Assets::AssetState newState, const Payload& payload, const Payload& errors,
+                IteratorRange<const ::Assets::DependentFileState*> deps)
             {
-                if (newState == ::Assets::AssetState::Ready && marker->GetLocator()._archive) {
+				::Assets::ResChar archiveName[MaxPath], depName[MaxPath];
+				auto archiveId = GetTarget(
+					resId, definesTable,
+					archiveName, dimof(archiveName), 
+					depName, dimof(depName));
+				auto archive = c->_shaderCacheSet->GetArchive(archiveName, *store);
+
+                if (newState == ::Assets::AssetState::Ready && archive) {
                     assert(payload.get() && payload->size() > 0);
 
                     #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
@@ -516,11 +568,12 @@ namespace RenderCore { namespace Assets
                                 AsPointer(payload->cbegin()), payload->size());
                     #endif
 
-                    std::vector<::Assets::DependentFileState> deps(depsBegin, depsEnd);
-                    auto baseDirAsString = MakeFileNameSplitter(marker->GetLocator()._sourceID0).DriveAndPath().AsString();
+                    std::vector<::Assets::DependentFileState> depsAsVector(deps.begin(), deps.end());
+                    auto baseDirAsString = MakeFileNameSplitter(resId._filename).DriveAndPath().AsString();
+					auto depNameAsString = std::string(depName);
 
-                    marker->GetLocator()._archive->Commit(
-                        marker->GetLocator()._sourceID1, Payload(payload),
+                    archive->Commit(
+                        archiveId, Payload(payload),
                         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
                             (archiveCacheAttachment + " [" + metricsString + "]"),
                         #else
@@ -532,32 +585,22 @@ namespace RenderCore { namespace Assets
                                 // many small annoying allocations! It's much simplier if we
                                 // can just write them now -- but it causes problems if we a
                                 // crash or use End Debugging before we flush the archive
-                        [deps, depNameAsString, baseDirAsString, store]()
+                        [depsAsVector, depNameAsString, baseDirAsString, store]()
                         { store->WriteDependencies(
                             depNameAsString.c_str(), StringSection<::Assets::ResChar>(baseDirAsString), 
-                            MakeIteratorRange(deps), false); });
+                            MakeIteratorRange(depsAsVector), false); });
                     (void)archiveCacheAttachment;
                 }
 
-				marker->GetLocator()._payload = payload;
-				marker->GetLocator()._errors = errors;
-                marker->GetLocator()._dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
-                for (auto i=depsBegin; i!=depsEnd; ++i)
-                    RegisterFileDependency(marker->GetLocator()._dependencyValidation, i->_filename.c_str());
+					// Create the artifact and add it to the compile marker
+				auto depVal = AsDepValPtr(deps);
+				auto artifact = std::make_shared<::Assets::BlobArtifact>(payload, errors, depVal);
+				marker->AddArtifact(artifact);
 
                     // give the PendingCompileMarker object the same state
                 marker->SetState(newState);
 
-                {
-                    ScopedLock(c->_activeCompileOperationsLock);
-                    auto i = std::find_if(
-                        c->_activeCompileOperations.begin(), c->_activeCompileOperations.end(), 
-                        [tempPtr](std::shared_ptr<ShaderCompileMarker>& test) { return test.get() == tempPtr; });
-                    if (i != c->_activeCompileOperations.end()) {
-                        c->_activeCompileOperations.erase(i);
-                        Interlocked::Decrement(&c->_activeCompileCount);
-                    }
-                }
+                c->RemoveCompileOperation(*tempPtr);
             });
 
         return std::move(marker);

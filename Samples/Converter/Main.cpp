@@ -65,13 +65,9 @@ namespace Converter
 		const StringSection<char> inits[] = { inputFile };
 		auto marker = compilers.PrepareAsset(ConstHash64<'Worl', 'dmap', 'Geo'>::Value, inits, dimof(inits), store);
 
-		auto existingLoc = marker->GetExistingAsset();
-		if (existingLoc._dependencyValidation && existingLoc._dependencyValidation->GetValidationIndex() == 0) {
-		} else {
-			auto pendingCompile = marker->InvokeCompile();
-			auto finalState = pendingCompile->StallWhilePending();
-			(void)finalState;
-		}
+		auto pendingCompile = marker->InvokeCompile();
+		auto finalState = pendingCompile->StallWhilePending();
+		(void)finalState;
         return 0;
     }
 }

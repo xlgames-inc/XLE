@@ -55,19 +55,15 @@ namespace RenderCore
 			_validationCallback = std::make_shared<Assets::DependencyValidation>();
     }
 
-	CompiledShaderByteCode::CompiledShaderByteCode(const ::Assets::IntermediateAssetLocator& locator, ShaderStage stage, StringSection<::Assets::ResChar> initializer)
-	: _shader(locator._payload)
-	, _validationCallback(locator._dependencyValidation)
+	CompiledShaderByteCode::CompiledShaderByteCode(const ::Assets::IArtifact& locator, ShaderStage stage, StringSection<::Assets::ResChar> initializer)
+	: _shader(locator.GetBlob())
+	, _validationCallback(locator.GetDependencyValidation())
 	, _stage(stage)
 	{
 		assert(_validationCallback);
         #if defined(STORE_SHADER_INITIALIZER)
 			XlCopyString(_initializer, initializer);
         #endif
-
-		if (!_shader && locator._archive) {
-			_shader = locator._archive->TryOpenFromCache(locator._sourceID1);
-		}
 	}
 
 	CompiledShaderByteCode::CompiledShaderByteCode(const std::shared_ptr<std::vector<uint8>>& shader, ShaderStage stage, const ::Assets::DepValPtr& depVal) 

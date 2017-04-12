@@ -49,7 +49,7 @@ namespace Assets
 
 			static const bool Constructor_DeferredConstruction = std::is_constructible<AssetType, const std::shared_ptr<DeferredConstruction>&>::value;
 			static const bool Constructor_Formatter = std::is_constructible<AssetType, InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&>::value;
-			static const bool Constructor_IntermediateAssetLocator = std::is_constructible<AssetType, const IntermediateAssetLocator&, StringSection<ResChar>>::value;
+			static const bool Constructor_IntermediateAssetLocator = std::is_constructible<AssetType, const IArtifact&, StringSection<ResChar>>::value;
 			static const bool Constructor_ChunkFileContainer = std::is_constructible<AssetType, const ChunkFileContainer&>::value;
 
 			static const bool HasBeginDeferredConstruction = HasBeginDeferredConstructionHelper<AssetType>::Result;

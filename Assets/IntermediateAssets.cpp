@@ -420,22 +420,45 @@ namespace Assets { namespace IntermediateAssets
 
 namespace Assets
 {
-    IntermediateAssetLocator::IntermediateAssetLocator()
+    /*IntermediateAssetLocator::IntermediateAssetLocator()
     {
         _sourceID0[0] = '\0';
         _sourceID1 = 0;
     }
-    IntermediateAssetLocator::~IntermediateAssetLocator() {}
+    IntermediateAssetLocator::~IntermediateAssetLocator() {}*/
 
-    const IntermediateAssetLocator& PendingCompileMarker::GetLocator() const { return _locator; }
+	IArtifact::~IArtifact() {}
 
-    IntermediateAssetLocator& PendingCompileMarker::GetLocator() { return _locator; }
-
-    void PendingCompileMarker::SetLocator(const IntermediateAssetLocator& locator)
-    {
-        _locator = locator;
-    }
+	void PendingCompileMarker::AddArtifact(const std::shared_ptr<IArtifact>& artifact)
+	{
+		_artifacts.push_back(artifact);
+	}
 
 	PendingCompileMarker::PendingCompileMarker() {}
     PendingCompileMarker::~PendingCompileMarker()  {}
+
+
+	auto FileArtifact::GetBlob() const -> Blob
+	{
+		auto file = ::Assets::MainFileSystem::OpenFileInterface(MakeStringSection(_filename), "rb");
+		auto size = file->GetDesc()._size;
+		auto result = std::make_shared<std::vector<uint8>>(size);
+		file->Read(AsPointer(result->begin()), result->size());
+		return result;
+	}
+
+	auto FileArtifact::GetErrors() const -> Blob { return nullptr; }
+	::Assets::DepValPtr FileArtifact::GetDependencyValidation() const { return _depVal; }
+	FileArtifact::FileArtifact(const ::Assets::rstring& filename, const ::Assets::DepValPtr& depVal)
+	: _filename(filename), _depVal(depVal) {}
+	FileArtifact::~FileArtifact() {}
+
+
+	auto BlobArtifact::GetBlob() const -> Blob { return _blob; }
+	auto BlobArtifact::GetErrors() const -> Blob  { return _errors;  }
+	::Assets::DepValPtr BlobArtifact::GetDependencyValidation() const { return _depVal; }
+	BlobArtifact::BlobArtifact(const Blob& blob, const Blob& errors, const ::Assets::DepValPtr& depVal) 
+	: _blob(blob), _errors(errors), _depVal(depVal) {}
+	BlobArtifact::~BlobArtifact() {}
+
 }

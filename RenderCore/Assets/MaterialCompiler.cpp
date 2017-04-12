@@ -42,7 +42,7 @@ namespace RenderCore { namespace Assets
         std::vector<std::basic_string<utf8>> _configurations;
 
         RawMatConfigurations(
-            const ::Assets::IntermediateAssetLocator& locator, 
+            const ::Assets::IArtifact& locator, 
             StringSection<::Assets::ResChar> initializer);
 
         static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
@@ -58,20 +58,17 @@ namespace RenderCore { namespace Assets
         std::shared_ptr<::Assets::DependencyValidation> _validationCallback;
     };
 
-    RawMatConfigurations::RawMatConfigurations(const ::Assets::IntermediateAssetLocator& locator, StringSection<::Assets::ResChar> initializer)
+    RawMatConfigurations::RawMatConfigurations(const ::Assets::IArtifact& locator, StringSection<::Assets::ResChar> initializer)
     {
             //  Get associated "raw" material information. This is should contain the material information attached
             //  to the geometry export (eg, .dae file).
 
-        size_t sourceFileSize = 0;
-        auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(locator._sourceID0, &sourceFileSize);
-        if (!sourceFile || sourceFileSize == 0)
-            Throw(::Assets::Exceptions::InvalidAsset(
-                initializer, 
-                StringMeld<128>() << "Missing or empty file: " << locator._sourceID0));
+		auto blob = locator.GetBlob();
+        if (!blob || blob->size() == 0)
+            Throw(::Assets::Exceptions::InvalidAsset(initializer, "Missing or empty file"));
 
         InputStreamFormatter<utf8> formatter(
-            MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), sourceFileSize)));
+            MemoryMappedInputStream(AsPointer(blob->begin()), AsPointer(blob->end())));
         Document<decltype(formatter)> doc(formatter);
             
         for (auto config=doc.FirstChild(); config; config=config.NextSibling()) {
@@ -80,7 +77,7 @@ namespace RenderCore { namespace Assets
             _configurations.push_back(name.AsString());
         }
 
-        _validationCallback = locator._dependencyValidation;
+        _validationCallback = locator.GetDependencyValidation();
     }
 
 
@@ -247,7 +244,7 @@ namespace RenderCore { namespace Assets
     class MatCompilerMarker : public ::Assets::ICompileMarker
     {
     public:
-        ::Assets::IntermediateAssetLocator GetExistingAsset() const;
+        std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
         std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
@@ -271,12 +268,12 @@ namespace RenderCore { namespace Assets
             << "-" << MakeFileNameSplitter(_modelFilename).FileAndExtension().AsString() << "-resmat";
     }
 
-    ::Assets::IntermediateAssetLocator MatCompilerMarker::GetExistingAsset() const
+    std::shared_ptr<::Assets::IArtifact> MatCompilerMarker::GetExistingAsset() const
     {
-        ::Assets::IntermediateAssetLocator result;
-        GetIntermediateName(result._sourceID0, dimof(result._sourceID0));
-        result._dependencyValidation = _store->MakeDependencyValidation(result._sourceID0);
-        return result;
+		::Assets::ResChar intermediateName[MaxPath];
+        GetIntermediateName(intermediateName, dimof(intermediateName));
+        auto depVal = _store->MakeDependencyValidation(intermediateName);
+        return std::make_shared<::Assets::FileArtifact(MakeStringSection(intermediateName), depVal));
     }
 
     std::shared_ptr<::Assets::PendingCompileMarker> MatCompilerMarker::InvokeCompile() const

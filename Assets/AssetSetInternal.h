@@ -28,7 +28,7 @@
 namespace Assets
 {
 	class ICompileMarker;
-	class IntermediateAssetLocator;
+	class IArtifact;
 	class PendingCompileMarker;
 	template <typename Asset> class DivergentAsset;
 }
