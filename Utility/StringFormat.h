@@ -106,6 +106,10 @@ namespace Utility
         {
             return StringSection<CharType>((const CharType*)_buffer.begin(), (const CharType*)_buffer.end());
         }
+		std::basic_string<CharType> AsString() const
+        {
+            return std::basic_string<CharType>((const CharType*)_buffer.begin(), (const CharType*)_buffer.end());
+        }
         operator StringSection<CharType>() const { return AsStringSection(); }
 
     protected:

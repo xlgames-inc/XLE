@@ -72,7 +72,7 @@ namespace RenderCore { namespace Techniques
 
     Float4x4 Projection(const CameraDesc& sceneCamera, float viewportAspect);
 
-    ClipSpaceType::Enum GetDefaultClipSpaceType();
+    ClipSpaceType GetDefaultClipSpaceType();
 
     std::pair<Float3, Float3> BuildRayUnderCursor(
         Int2 mousePosition, CameraDesc& sceneCamera, 

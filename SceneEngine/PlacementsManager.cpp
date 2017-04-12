@@ -799,7 +799,7 @@ namespace SceneEngine
             visiblePlacements.reserve(placementCount);
             for (unsigned c=0; c<placementCount; ++c) {
                 auto& obj = objRef[c];
-                if (CullAABB_Aligned(cellToCullSpace, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second))
+                if (CullAABB_Aligned(cellToCullSpace, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second, RenderCore::Techniques::GetDefaultClipSpaceType()))
                     continue;
                 visiblePlacements.push_back(c);
             }
@@ -959,7 +959,7 @@ namespace SceneEngine
         auto& cells = cellSet._pimpl->_cells;
         const auto& worldToProj = parserContext.GetProjectionDesc()._worldToProjection;
         for (auto i=cells.begin(); i!=cells.end(); ++i) {
-            if (CullAABB_Aligned(worldToProj, i->_aabbMin, i->_aabbMax))
+            if (CullAABB_Aligned(worldToProj, i->_aabbMin, i->_aabbMax, RenderCore::Techniques::GetDefaultClipSpaceType()))
                 continue;
 
             CATCH_ASSETS_BEGIN
@@ -1048,7 +1048,7 @@ namespace SceneEngine
         const auto& worldToProj = parserContext.GetProjectionDesc()._worldToProjection;
         for (unsigned c=0; c<(unsigned)cells.size(); ++c) {
             auto& cell = cells[c];
-            if (CullAABB_Aligned(worldToProj, cell._aabbMin, cell._aabbMax))
+            if (CullAABB_Aligned(worldToProj, cell._aabbMin, cell._aabbMax, RenderCore::Techniques::GetDefaultClipSpaceType()))
                 continue;
 
             auto pcell = std::make_unique<PreCulledPlacements::Cell>();
@@ -1176,7 +1176,7 @@ namespace SceneEngine
     {
         std::vector<std::pair<Float3x4, const PlacementsQuadTree*>> result;
         for (auto i=cellSet._pimpl->_cells.begin(); i!=cellSet._pimpl->_cells.end(); ++i) {
-            if (!CullAABB(worldToClip, i->_aabbMin, i->_aabbMax)) {
+            if (!CullAABB(worldToClip, i->_aabbMin, i->_aabbMax, RenderCore::Techniques::GetDefaultClipSpaceType())) {
                 auto* tree = _pimpl->GetCachedQuadTree(i->_filenameHash);
                 result.push_back(std::make_pair(i->_cellToWorld, tree));
             }
@@ -1189,7 +1189,7 @@ namespace SceneEngine
     {
         std::vector<std::pair<Float3x4, ObjectBoundingBoxes>> result;
         for (auto i=cellSet._pimpl->_cells.begin(); i!=cellSet._pimpl->_cells.end(); ++i) {
-            if (!CullAABB(worldToClip, i->_aabbMin, i->_aabbMax)) {
+            if (!CullAABB(worldToClip, i->_aabbMin, i->_aabbMax, RenderCore::Techniques::GetDefaultClipSpaceType())) {
                 auto& placements = Assets::GetAsset<Placements>(i->_filename);
                 ObjectBoundingBoxes obb;
                 obb._boundingBox = &placements.GetObjectReferences()->_cellSpaceBoundary;
@@ -1585,7 +1585,7 @@ namespace SceneEngine
                 //  We're only doing a very rough world space bounding box vs ray test here...
                 //  Ideally, we should follow up with a more accurate test using the object loca
                 //  space bounding box
-            if (CullAABB(cellToProjection, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
+            if (CullAABB(cellToProjection, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second, RenderCore::Techniques::GetDefaultClipSpaceType())) {
                 continue;
             }
 
@@ -1598,7 +1598,7 @@ namespace SceneEngine
             if (assetState != ::Assets::AssetState::Ready)
                 continue;
 
-            if (CullAABB(Combine(AsFloat4x4(obj._localToCell), cellToProjection), localBoundingBox.first, localBoundingBox.second)) {
+            if (CullAABB(Combine(AsFloat4x4(obj._localToCell), cellToProjection), localBoundingBox.first, localBoundingBox.second, RenderCore::Techniques::GetDefaultClipSpaceType())) {
                 continue;
             }
 
@@ -1712,7 +1712,7 @@ namespace SceneEngine
         for (auto i=cellSet._pimpl->_cells.cbegin(); i!=cellSet._pimpl->_cells.cend(); ++i) {
             Float3 cellMin = i->_aabbMin - Float3(placementAssumedMaxRadius, placementAssumedMaxRadius, placementAssumedMaxRadius);
             Float3 cellMax = i->_aabbMax + Float3(placementAssumedMaxRadius, placementAssumedMaxRadius, placementAssumedMaxRadius);
-            if (CullAABB(worldToProjection, cellMin, cellMax)) {
+            if (CullAABB(worldToProjection, cellMin, cellMax, RenderCore::Techniques::GetDefaultClipSpaceType())) {
                 continue;
             }
 

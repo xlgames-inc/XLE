@@ -577,6 +577,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         auto srcFormat = BreakdownFormat(srcFmt);
 		auto dstFormatSize = BitsPerPixel(dstFmt) / 8;
 		auto srcFormatSize = BitsPerPixel(srcFmt) / 8;
+		(void)srcFormatSize;
 
             //      This could be be made more efficient with a smarter loop..
         if (srcFormat.first == ComponentType::Float32) {

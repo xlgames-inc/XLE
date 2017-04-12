@@ -389,7 +389,7 @@ namespace SceneEngine
             workingStack.pop();
             
             auto& node = _pimpl->_nodes[nodeIndex];
-            auto test = TestAABB_Aligned(cellToClipAligned, node._boundary.first, node._boundary.second);
+            auto test = TestAABB_Aligned(cellToClipAligned, node._boundary.first, node._boundary.second, RenderCore::Techniques::GetDefaultClipSpaceType());
             ++nodeAabbTestCount;
             if (test == AABBIntersection::Culled) {
                 continue;
@@ -423,7 +423,7 @@ namespace SceneEngine
 
                         const auto& boundary = *PtrAdd(objCellSpaceBoundingBoxes, (*i) * objStride);
                         ++payloadAabbTestCount;
-                        if (!CullAABB_Aligned(cellToClipAligned, boundary.first, boundary.second)) {
+                        if (!CullAABB_Aligned(cellToClipAligned, boundary.first, boundary.second, RenderCore::Techniques::GetDefaultClipSpaceType())) {
                             if ((visObjsCount+1) > visObjMaxCount) {
                                 return false;
                             }

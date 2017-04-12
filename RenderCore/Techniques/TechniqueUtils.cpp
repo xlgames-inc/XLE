@@ -43,7 +43,7 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    ClipSpaceType::Enum GetDefaultClipSpaceType()
+    ClipSpaceType GetDefaultClipSpaceType()
     {
             // (todo -- this condition could be a runtime test)
         #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)         

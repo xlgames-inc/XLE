@@ -252,7 +252,7 @@ namespace SceneEngine
                         auto boundary = trans->GetLocalBoundingBox(c);
                         auto boundaryTest = TestAABB(
                             Combine(trans->GetObject(c)._localToWorld, worldToProjection),
-                            boundary.first, boundary.second);
+                            boundary.first, boundary.second, RenderCore::Techniques::GetDefaultClipSpaceType());
                         if (boundaryTest == AABBIntersection::Culled) continue; // (could happen because earlier tests were on the world space bounding box)
 
                         auto guid = trans->GetGuid(c);
