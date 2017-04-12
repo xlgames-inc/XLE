@@ -23,7 +23,7 @@
 
 namespace SceneEngine { namespace StraightSkeleton 
 {
-	static const float epsilon = 1e-5f;
+	static const float epsilon = 1e-4f;
 	static const unsigned BoundaryVertexFlag = 1u<<31u;
 
 	enum WindingType { Left, Right, Straight };
