@@ -44,8 +44,9 @@ namespace Assets
     class PendingCompileMarker : public PendingOperationMarker
     {
     public:
-        // this has become very much like a std::promise<std::vector<IArtifact>>!
-		IteratorRange<const std::shared_ptr<IArtifact>*> GetArtifacts() const { return MakeIteratorRange(_artifacts); }
+        // this has become very much like a std::promise<std::vector<NameAndArtifact>>!
+		using NameAndArtifact = std::pair<std::string, std::shared_ptr<IArtifact>>;
+		IteratorRange<const NameAndArtifact*> GetArtifacts() const { return MakeIteratorRange(_artifacts); }
 
         PendingCompileMarker();
         ~PendingCompileMarker();
@@ -55,10 +56,10 @@ namespace Assets
 		PendingCompileMarker(const PendingCompileMarker&) = delete;
 		PendingCompileMarker& operator=(const PendingCompileMarker&) = delete;
 
-		void AddArtifact(const std::shared_ptr<IArtifact>& artifact);
+		void AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact);
 
 	private:
-		std::vector<std::shared_ptr<IArtifact>> _artifacts;
+		std::vector<NameAndArtifact> _artifacts;
     };
 
     class ICompileMarker

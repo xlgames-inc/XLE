@@ -429,9 +429,9 @@ namespace Assets
 
 	IArtifact::~IArtifact() {}
 
-	void PendingCompileMarker::AddArtifact(const std::shared_ptr<IArtifact>& artifact)
+	void PendingCompileMarker::AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact)
 	{
-		_artifacts.push_back(artifact);
+		_artifacts.push_back(std::make_pair(name, artifact));
 	}
 
 	PendingCompileMarker::PendingCompileMarker() {}

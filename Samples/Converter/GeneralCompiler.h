@@ -25,7 +25,13 @@ namespace Converter
         void StallOnPendingOperations(bool cancelAll);
 		void AddLibrarySearchDirectories(const ::Assets::DirectorySearchRules&);
 
-		GeneralCompiler();
+		enum class ArtifactType
+		{
+			ArchivedFile,
+			Blob
+		};
+
+		GeneralCompiler(ArtifactType artifactType);
         ~GeneralCompiler();
     protected:
         class Pimpl;

@@ -31,6 +31,7 @@ namespace Converter
 	{
 	public:
 		void PerformCompile(
+			GeneralCompiler::ArtifactType artifactType,
 			uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
 			::Assets::PendingCompileMarker& compileMarker,
 			const ::Assets::IntermediateAssets::Store& destinationStore);
@@ -76,10 +77,12 @@ namespace Converter
         Threading::Mutex					_threadLock;   // (used while initialising _thread for the first time)
         std::unique_ptr<::Assets::CompilationThread>	_thread;
 
+		ArtifactType						_artifactType;
+
 		void DiscoverLibraries();
 		void PerformCompile(::Assets::QueuedCompileOperation& op);
 
-		Pimpl() : _discoveryDone(false) {}
+		Pimpl() : _discoveryDone(false), _artifactType(ArtifactType::Blob) {}
 		Pimpl(const Pimpl&) = delete;
 		Pimpl& operator=(const Pimpl&) = delete;
     };
@@ -149,6 +152,7 @@ namespace Converter
     } 
 
     static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
+	static const auto ChunkType_Text = ConstHash64<'Text'>::Value;
 
     static void SerializeToFile(
 		IteratorRange<::Assets::NascentChunk*> chunks,
@@ -162,29 +166,38 @@ namespace Converter
             // the main output file from chunks that will be written to
             // a metrics file.
 
-        {
-            auto outputFile = ::Assets::MainFileSystem::OpenFileInterface(destinationFilename, "wb");
-            BuildChunkFile(*outputFile, chunks, versionInfo,
-                [](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
-        }
+		if (chunks.size() == 1 && chunks[0]._hdr._type == ChunkType_Text) {
+			auto outputFile = ::Assets::MainFileSystem::OpenFileInterface(destinationFilename, "wb");
+			outputFile->Write(AsPointer(chunks[0]._data.begin()), chunks[0]._data.size());
+		} else {
+			{
+				auto outputFile = ::Assets::MainFileSystem::OpenFileInterface(destinationFilename, "wb");
+				BuildChunkFile(*outputFile, chunks, versionInfo,
+					[](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
+			}
 
-        for (const auto& c:chunks)
-            if (c._hdr._type == ChunkType_Metrics) {
-                auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(
-                    StringMeld<MaxPath>() << destinationFilename << "-" << c._hdr._name,
-                    "wb");
-                outputFile.Write((const void*)AsPointer(c._data.cbegin()), 1, c._data.size());
-            }
+			for (const auto& c:chunks)
+				if (c._hdr._type == ChunkType_Metrics) {
+					auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(
+						StringMeld<MaxPath>() << destinationFilename << "-" << c._hdr._name,
+						"wb");
+					outputFile.Write((const void*)AsPointer(c._data.cbegin()), 1, c._data.size());
+				}
+		}
     }
 
 	static ::Assets::IArtifact::Blob SerializeToBlob(
 		IteratorRange<::Assets::NascentChunk*> chunks,
         const ConsoleRig::LibVersionDesc& versionInfo)
 	{
-		auto result = std::make_shared<std::vector<uint8>>();
-        BuildChunkFile(*result, chunks, versionInfo,
-            [](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
-		return result;
+		if (chunks.size() == 1 && chunks[0]._hdr._type == ChunkType_Text) {
+			return std::make_shared<std::vector<uint8>>(chunks[0]._data.begin(), chunks[0]._data.end());
+		} else {
+			auto result = std::make_shared<std::vector<uint8>>();
+			BuildChunkFile(*result, chunks, versionInfo,
+				[](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
+			return result;
+		}
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -209,13 +222,8 @@ namespace Converter
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	enum class ArtifactType
-	{
-		ArchivedFile,
-		Blob
-	};
-
     void CompilerLibrary::PerformCompile(
+		GeneralCompiler::ArtifactType artifactType,
 		uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
 		::Assets::PendingCompileMarker& compileMarker,
 		const ::Assets::IntermediateAssets::Store& destinationStore)
@@ -240,8 +248,6 @@ namespace Converter
 				destinationStore.MakeIntermediateName(baseIntermediateName, (unsigned)dimof(baseIntermediateName), initializer);
 				XlCatString(baseIntermediateName, "-res");
 
-				ArtifactType artifactType = ArtifactType::Blob;
-
 				// look for the first target of the correct type
 				auto targetCount = model->TargetCount();
 				bool foundTarget = false;
@@ -250,7 +256,7 @@ namespace Converter
 					if (target._type == typeCode) {
 						auto chunks = model->SerializeTarget(t);
 
-						if (artifactType == ArtifactType::ArchivedFile) {
+						if (artifactType == GeneralCompiler::ArtifactType::ArchivedFile) {
 							::Assets::ResChar destinationFile[MaxPath];
 							XlFormatString(destinationFile, dimof(destinationFile), "%s-%s", baseIntermediateName, target._name);
 							SerializeToFile(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
@@ -262,11 +268,11 @@ namespace Converter
 							auto artifactDepVal = destinationStore.WriteDependencies(destinationFile, splitName.DriveAndPath(), MakeIteratorRange(deps));
 
 							auto artifact = std::make_shared<::Assets::FileArtifact>(destinationFile, depVal);
-							compileMarker.AddArtifact(artifact);
-						} else if (artifactType == ArtifactType::Blob) {
+							compileMarker.AddArtifact(target._name, artifact);
+						} else if (artifactType == GeneralCompiler::ArtifactType::Blob) {
 							auto blob = SerializeToBlob(MakeIteratorRange(*chunks), libVersionDesc);
 							auto artifact = std::make_shared<::Assets::BlobArtifact>(blob, ::Assets::IArtifact::Blob(), depVal);
-							compileMarker.AddArtifact(artifact);
+							compileMarker.AddArtifact(target._name, artifact);
 						} else {
 							Throw(::Exceptions::BasicLabel("Unsupported artifact type (%i)", artifactType));
 						}
@@ -282,7 +288,7 @@ namespace Converter
 
             } CATCH(...) {
 				auto artifact = std::make_shared<CompilerExceptionArtifact>(depVal);
-				compileMarker.AddArtifact(artifact);
+				compileMarker.AddArtifact("Exception", artifact);
                 throw;
             } CATCH_END
 
@@ -432,9 +438,10 @@ namespace Converter
 		_pimpl->_librarySearchRules.Merge(directories);
 	}
 
-	GeneralCompiler::GeneralCompiler()
+	GeneralCompiler::GeneralCompiler(ArtifactType artifactType)
 	{ 
 		_pimpl = std::make_shared<Pimpl>(); 
+		_pimpl->_artifactType = artifactType;
 
 		// Default search path for libraries is just the process path.
 		// In some cases (eg, for unit tests where the process path points to an internal visual studio path), 
@@ -449,7 +456,7 @@ namespace Converter
 	void GeneralCompiler::Pimpl::PerformCompile(::Assets::QueuedCompileOperation& op)
 	{
 		assert(op._compilerIndex < _compilers.size());
-		_compilers[op._compilerIndex].PerformCompile(op._typeCode, op._initializer0, op, *op._destinationStore);
+		_compilers[op._compilerIndex].PerformCompile(_artifactType, op._typeCode, op._initializer0, op, *op._destinationStore);
 	}
 
 	void GeneralCompiler::Pimpl::DiscoverLibraries()

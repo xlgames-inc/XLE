@@ -18,6 +18,8 @@
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
+#include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/SystemUtils.h"
 
 #include "../../Core/WinAPI/IncludeWindows.h"
 
@@ -41,14 +43,21 @@ namespace Converter
         InputStreamFormatter<char> formatter(stream);
         Document<InputStreamFormatter<char>> doc(formatter);
 
-        auto outputFile = doc.Attribute("o").Value();
+        auto outputDirectory = doc.Attribute("o").Value().AsString();
         auto inputFile = doc.Attribute("i").Value();
 
-        if (outputFile.IsEmpty() || inputFile.IsEmpty()) {
-            LogAlwaysError << "Output file and input required on the command line";
+        if (inputFile.IsEmpty()) {
+            LogAlwaysError << "At least an input file is required on the command line (with the syntax i=<filename>)";
             LogAlwaysError << "Cmdline: " << cmdLine.AsString().c_str();
             return -1;
         }
+
+		if (outputDirectory.empty())
+			outputDirectory = MakeFileNameSplitter(inputFile).File().AsString() + ".rgns";
+
+		ConsoleRig::GlobalServices::GetCrossModule()._services.Add(
+			ConstHash64<'comp', 'iler', 'cfg'>::Value,
+			[&doc]() -> Document<InputStreamFormatter<char>>& { return doc; });
 
 		const utf8* xleResDir = u("game/xleres");
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(MakeStringSection(xleResDir)));
@@ -59,7 +68,7 @@ namespace Converter
 		auto aservices = std::make_shared<::Assets::Services>(0);
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
 		auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-		auto generalCompiler = std::make_shared<GeneralCompiler>();
+		auto generalCompiler = std::make_shared<GeneralCompiler>(GeneralCompiler::ArtifactType::Blob);
 		compilers.AddCompiler(ConstHash64<'Worl', 'dmap', 'Geo'>::Value, generalCompiler);
 
 		const StringSection<char> inits[] = { inputFile };
@@ -67,7 +76,30 @@ namespace Converter
 
 		auto pendingCompile = marker->InvokeCompile();
 		auto finalState = pendingCompile->StallWhilePending();
-		(void)finalState;
+
+		if (finalState == ::Assets::AssetState::Ready) {
+			// write out artifacts to output directory... But first, find all of the existing files.
+			auto filesToDelete = RawFS::FindFiles(outputDirectory + "/" + MakeFileNameSplitter(outputDirectory).File().AsString() + "[*]", RawFS::FindFilesFilter::File);
+			
+			RawFS::CreateDirectoryRecursive(outputDirectory);
+			for (const auto&a:pendingCompile->GetArtifacts()) {
+				auto outputName = outputDirectory + "/" + MakeFileNameSplitter(outputDirectory).File().AsString() + "[" + a.first + "]";
+				auto file = ::Assets::MainFileSystem::OpenFileInterface(MakeStringSection(outputName), "wb");
+				file->Write(AsPointer(a.second->GetBlob()->begin()), a.second->GetBlob()->size());
+
+				auto i = std::find_if(filesToDelete.begin(), filesToDelete.end(),
+					[a](const std::string& compare) { 
+						return XlEqStringI(MakeFileNameSplitter(MakeStringSection(compare)).FileAndExtension(), MakeStringSection(a.first)); 
+					});
+				if (i!=filesToDelete.end())
+					filesToDelete.erase(i);
+			}
+
+			// Delete any files that were there originally, but haven't been overwritten
+			for (const auto&f:filesToDelete)
+				XlDeleteFile((const utf8*)f.c_str());
+		}
+		
         return 0;
     }
 }
