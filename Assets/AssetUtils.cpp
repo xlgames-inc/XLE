@@ -520,8 +520,14 @@ namespace Assets
             // there is no semaphore, so we must poll
             // note -- we should start a progress bar here...
         volatile AssetState* state = const_cast<AssetState*>(&_state);
-        while (*state == AssetState::Pending)
-            Threading::YieldTimeSlice();
+		uint32 waitCount = 0u;
+        while (*state == AssetState::Pending) {
+			float sleepValue = float(waitCount);
+			sleepValue -= 64.f;
+			sleepValue /= 16.f;
+            ++waitCount;
+			Threading::Sleep(uint32(std::min(100.0f, std::max(0.0f, sleepValue))));
+		}
 
         return *state;
     }
