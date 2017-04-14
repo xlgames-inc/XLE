@@ -18,6 +18,7 @@
 #include <regex>
 #include <sstream>
 
+#define HAS_XLE_MATH
 #if defined(HAS_XLE_MATH)
     #include "../Math/Vector.h"
     #include "../Math/Matrix.h"
