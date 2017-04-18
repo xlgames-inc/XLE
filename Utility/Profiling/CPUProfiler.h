@@ -114,7 +114,7 @@ namespace Utility
         uint32 _workingId;
         uint32 _idAtEventsStart[s_bufferCount];
 
-        #if defined(_DEBUG)
+        #if !defined(NDEBUG)
             uint32 _threadId;
             uint32 _aeStack[s_maxStackDepth];
             uint32 _aeStackI;
@@ -141,7 +141,7 @@ namespace Utility
         _events[0].push_back(~(1ull << 63ull) & time);
         _events[0].push_back(uint64(eventLiteral));     // should be ok for 32 or 64bit modes (but not 128bit+)!
         auto result = _workingId++;
-        #if defined(_DEBUG)
+        #if !defined(NDEBUG)
             assert(_aeStackI < dimof(_aeStack));
             _aeStack[_aeStackI++] = result;
         #endif
@@ -157,7 +157,7 @@ namespace Utility
         #else
             time = GetPerformanceCounter();
         #endif
-        #if defined(_DEBUG)
+        #if !defined(NDEBUG)
             assert(_aeStackI > 0);
             assert(_aeStack[_aeStackI-1] == eventId);   // verify that this is the right event we're removing
             --_aeStackI;

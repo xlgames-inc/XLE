@@ -81,6 +81,9 @@ namespace Utility
             template<> TypeDesc TypeOf<UInt2>()         { return TypeDesc(TypeCat::UInt32, 2, TypeHint::Vector); }
             template<> TypeDesc TypeOf<UInt3>()         { return TypeDesc(TypeCat::UInt32, 3, TypeHint::Vector); }
             template<> TypeDesc TypeOf<UInt4>()         { return TypeDesc(TypeCat::UInt32, 4, TypeHint::Vector); }
+            template<> TypeDesc TypeOf<Int2>()          { return TypeDesc(TypeCat::Int32, 2, TypeHint::Vector); }
+            template<> TypeDesc TypeOf<Int3>()          { return TypeDesc(TypeCat::Int32, 3, TypeHint::Vector); }
+            template<> TypeDesc TypeOf<Int4>()          { return TypeDesc(TypeCat::Int32, 4, TypeHint::Vector); }
         #endif
         template<> TypeDesc TypeOf<const char*>()   { return TypeDesc(TypeCat::UInt8, (uint16)~uint16(0), TypeHint::String); }
         template<> TypeDesc TypeOf<const utf8*>()   { return TypeDesc(TypeCat::UInt8, (uint16)~uint16(0), TypeHint::String); }
@@ -551,6 +554,9 @@ namespace Utility
             template std::pair<bool, UInt2> Parse(const char[]);
             template std::pair<bool, UInt3> Parse(const char[]);
             template std::pair<bool, UInt4> Parse(const char[]);
+            template std::pair<bool, Int2> Parse(const char[]);
+            template std::pair<bool, Int3> Parse(const char[]);
+            template std::pair<bool, Int4> Parse(const char[]);
         #endif
 
         template std::pair<bool, bool> Parse(const utf8*, const utf8*);
@@ -567,6 +573,9 @@ namespace Utility
             template std::pair<bool, UInt2> Parse(const utf8*, const utf8*);
             template std::pair<bool, UInt3> Parse(const utf8*, const utf8*);
             template std::pair<bool, UInt4> Parse(const utf8*, const utf8*);
+            template std::pair<bool, Int2> Parse(const utf8*, const utf8*);
+            template std::pair<bool, Int3> Parse(const utf8*, const utf8*);
+            template std::pair<bool, Int4> Parse(const utf8*, const utf8*);
         #endif
 
     }

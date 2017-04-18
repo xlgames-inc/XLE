@@ -59,6 +59,13 @@ namespace Utility
             return std::lower_bound(v.cbegin(), v.cend(), compareToFirst, CompareFirst<First, Second>());
         }
 
+    template <typename First, typename Second, typename Allocator>
+        static typename std::vector<std::pair<First, Second>, Allocator>::iterator UpperBound(
+            std::vector<std::pair<First, Second>, Allocator>&v, First compareToFirst)
+        {
+            return std::upper_bound(v.begin(), v.end(), compareToFirst, CompareFirst<First, Second>());
+        }
+
 	template<typename FirstType, typename SecondType>
 		std::pair<typename std::vector<std::pair<FirstType, SecondType> >::iterator, typename std::vector<std::pair<FirstType, SecondType> >::iterator>
 			EqualRange(std::vector<std::pair<FirstType, SecondType> >& vector, FirstType searchKey)

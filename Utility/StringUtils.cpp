@@ -396,18 +396,6 @@ int      XlComparePrefixI    (const utf8* x, const utf8* y, size_t size)
         wcsncpy_s((wchar_t*)dst, count, (const wchar_t*)src, length);
     }
 
-	#if 0
-		void XlCopyString(utf16* dst, size_t count, const utf16* src)
-		{
-			wcscpy_s((wchar_t*)dst, count, (const wchar_t*)src);
-		}
-
-		void XlCopyNString(utf16* dst, size_t count, const utf16*src, size_t length)
-		{
-			wcsncpy_s((wchar_t*)dst, count, (const wchar_t*)src, length);
-		}
-	#endif
-
     void XlCatString(ucs2* dst, size_t size, const ucs2* src)
     {
         wcscat_s((wchar_t*)dst, size, (const wchar_t*)src);

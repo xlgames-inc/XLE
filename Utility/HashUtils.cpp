@@ -7,8 +7,10 @@
 #include "MemoryUtils.h"
 #include "PtrUtils.h"
 #include "StringUtils.h"
+#include "../Core/SelectConfiguration.h"
 #include "../Foreign/Hash/MurmurHash2.h"
 #include "../Foreign/Hash/MurmurHash3.h"
+#include <assert.h>
 
 namespace Utility
 {
@@ -26,11 +28,31 @@ namespace Utility
                 //      "MurmurHash64A" is optimised for 64 bit processors; 
                 //      "MurmurHash64B" is for 32 bit processors.
                 //
-        #if TARGET_64BIT
-            return MurmurHash64A(begin, int(size_t(end)-size_t(begin)), seed);
-        #else
-            return MurmurHash64B(begin, size_t(end)-size_t(begin), seed);
+        const bool crossPlatformHash = true;
+        auto sizeInBytes = size_t(end)-size_t(begin);
+
+        #if PLATFORMOS_TARGET == PLATFORMOS_ANDROID
+            // We must ensure that we're only performing aligned reads
+            static uint64_t fixedBuffer[256/sizeof(uint64_t)] __attribute__((aligned(16)));
+            std::unique_ptr<uint64_t[], PODAlignedDeletor> variableBuffer;
+            if (size_t(begin) & 0x7) {
+                if (sizeInBytes <= sizeof(fixedBuffer)) {
+                    std::memcpy(fixedBuffer, begin, sizeInBytes);
+                    begin = fixedBuffer;
+                } else {
+                    variableBuffer.reset((uint64_t*)XlMemAlign(sizeInBytes, sizeof(uint64_t)));
+                    std::memcpy(variableBuffer.get(), begin, sizeInBytes);
+                    begin = variableBuffer.get();
+                }
+            }
+            assert((size_t(begin) & 0x7) == 0);
         #endif
+
+        if (TARGET_64BIT || crossPlatformHash) {
+            return MurmurHash64A(begin, int(sizeInBytes), seed);
+        } else {
+            return MurmurHash64B(begin, int(sizeInBytes), seed);
+        }
     }
 
     uint64 Hash64(const char str[], uint64 seed)

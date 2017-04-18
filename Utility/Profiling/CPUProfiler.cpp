@@ -274,7 +274,7 @@ namespace Utility
             _idAtEventsStart[c] = _workingId;
         }
 
-        #if defined(_DEBUG)
+        #if !defined(NDEBUG)
             _threadId = XlGetCurrentThreadId();
             XlZeroMemory(_aeStack);
             _aeStackI = 0;
