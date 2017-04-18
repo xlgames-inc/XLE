@@ -42,10 +42,14 @@
 		8F707BB31EA6C78400DEC600 /* PredefinedCBLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BB01EA6C78400DEC600 /* PredefinedCBLayout.cpp */; };
 		8F707BB41EA6C78400DEC600 /* PredefinedCBLayout.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707BB11EA6C78400DEC600 /* PredefinedCBLayout.h */; };
 		8F707BB51EA6C78400DEC600 /* RenderStateResolver.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707BB21EA6C78400DEC600 /* RenderStateResolver.h */; };
+		8F707BE51EA6CB0A00DEC600 /* MurmurHash2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BE11EA6CB0A00DEC600 /* MurmurHash2.cpp */; };
+		8F707BE61EA6CB0A00DEC600 /* MurmurHash2.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707BE21EA6CB0A00DEC600 /* MurmurHash2.h */; };
+		8F707BE71EA6CB0A00DEC600 /* MurmurHash3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BE31EA6CB0A00DEC600 /* MurmurHash3.cpp */; };
+		8F707BE81EA6CB0A00DEC600 /* MurmurHash3.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707BE41EA6CB0A00DEC600 /* MurmurHash3.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		8F707B5B1EA6C41F00DEC600 /* libXLESubset.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libXLESubset.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F707B5B1EA6C41F00DEC600 /* libXLESubsetMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libXLESubsetMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F707B631EA6C45300DEC600 /* Core.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
 		8F707B641EA6C45300DEC600 /* CoreDebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
 		8F707B651EA6C45300DEC600 /* CoreRelease.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
@@ -85,6 +89,10 @@
 		8F707BB01EA6C78400DEC600 /* PredefinedCBLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = PredefinedCBLayout.cpp; path = ../../RenderCore/Techniques/PredefinedCBLayout.cpp; sourceTree = "<group>"; };
 		8F707BB11EA6C78400DEC600 /* PredefinedCBLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PredefinedCBLayout.h; path = ../../RenderCore/Techniques/PredefinedCBLayout.h; sourceTree = "<group>"; };
 		8F707BB21EA6C78400DEC600 /* RenderStateResolver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RenderStateResolver.h; path = ../../RenderCore/Techniques/RenderStateResolver.h; sourceTree = "<group>"; };
+		8F707BE11EA6CB0A00DEC600 /* MurmurHash2.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MurmurHash2.cpp; sourceTree = "<group>"; };
+		8F707BE21EA6CB0A00DEC600 /* MurmurHash2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MurmurHash2.h; sourceTree = "<group>"; };
+		8F707BE31EA6CB0A00DEC600 /* MurmurHash3.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MurmurHash3.cpp; sourceTree = "<group>"; };
+		8F707BE41EA6CB0A00DEC600 /* MurmurHash3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MurmurHash3.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,6 +109,7 @@
 		8F707B521EA6C41F00DEC600 = {
 			isa = PBXGroup;
 			children = (
+				8F707BDE1EA6CAB200DEC600 /* Foreign */,
 				8F707B621EA6C44300DEC600 /* Config */,
 				8F707B671EA6C4A900DEC600 /* PlatformRig */,
 				8F707B5C1EA6C41F00DEC600 /* Products */,
@@ -113,7 +122,7 @@
 		8F707B5C1EA6C41F00DEC600 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				8F707B5B1EA6C41F00DEC600 /* libXLESubset.a */,
+				8F707B5B1EA6C41F00DEC600 /* libXLESubsetMac.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -232,6 +241,26 @@
 			name = Techniques;
 			sourceTree = "<group>";
 		};
+		8F707BDE1EA6CAB200DEC600 /* Foreign */ = {
+			isa = PBXGroup;
+			children = (
+				8F707BDF1EA6CB0A00DEC600 /* Hash */,
+			);
+			name = Foreign;
+			sourceTree = "<group>";
+		};
+		8F707BDF1EA6CB0A00DEC600 /* Hash */ = {
+			isa = PBXGroup;
+			children = (
+				8F707BE11EA6CB0A00DEC600 /* MurmurHash2.cpp */,
+				8F707BE21EA6CB0A00DEC600 /* MurmurHash2.h */,
+				8F707BE31EA6CB0A00DEC600 /* MurmurHash3.cpp */,
+				8F707BE41EA6CB0A00DEC600 /* MurmurHash3.h */,
+			);
+			name = Hash;
+			path = ../../Foreign/Hash;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -240,6 +269,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F707B9A1EA6C74C00DEC600 /* Format.h in Headers */,
+				8F707BE61EA6CB0A00DEC600 /* MurmurHash2.h in Headers */,
 				8F707B751EA6C59100DEC600 /* IOverlayContext_Forward.h in Headers */,
 				8F707BA21EA6C74C00DEC600 /* Types_Forward.h in Headers */,
 				8F707B841EA6C5D500DEC600 /* FiniteResourceHeap.h in Headers */,
@@ -247,6 +277,7 @@
 				8F707BAF1EA6C76800DEC600 /* DXGIFormatValues.h in Headers */,
 				8F707B821EA6C5D500DEC600 /* DualContour.h in Headers */,
 				8F707BAB1EA6C75C00DEC600 /* RawMaterial.h in Headers */,
+				8F707BE81EA6CB0A00DEC600 /* MurmurHash3.h in Headers */,
 				8F707BA31EA6C74C00DEC600 /* Types.h in Headers */,
 				8F707BA11EA6C74C00DEC600 /* ShaderLangUtil.h in Headers */,
 				8F707B741EA6C59100DEC600 /* DebuggingDisplay.h in Headers */,
@@ -266,9 +297,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		8F707B5A1EA6C41F00DEC600 /* XLESubset */ = {
+		8F707B5A1EA6C41F00DEC600 /* XLESubsetMac */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 8F707B5F1EA6C41F00DEC600 /* Build configuration list for PBXNativeTarget "XLESubset" */;
+			buildConfigurationList = 8F707B5F1EA6C41F00DEC600 /* Build configuration list for PBXNativeTarget "XLESubsetMac" */;
 			buildPhases = (
 				8F707B571EA6C41F00DEC600 /* Sources */,
 				8F707B581EA6C41F00DEC600 /* Frameworks */,
@@ -278,9 +309,9 @@
 			);
 			dependencies = (
 			);
-			name = XLESubset;
+			name = XLESubsetMac;
 			productName = XLESubset;
-			productReference = 8F707B5B1EA6C41F00DEC600 /* libXLESubset.a */;
+			productReference = 8F707B5B1EA6C41F00DEC600 /* libXLESubsetMac.a */;
 			productType = "com.apple.product-type.library.static";
 		};
 /* End PBXNativeTarget section */
@@ -310,7 +341,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				8F707B5A1EA6C41F00DEC600 /* XLESubset */,
+				8F707B5A1EA6C41F00DEC600 /* XLESubsetMac */,
 			);
 		};
 /* End PBXProject section */
@@ -330,10 +361,12 @@
 				8F707B871EA6C5D500DEC600 /* GenericQuadTree.cpp in Sources */,
 				8F707B761EA6C59100DEC600 /* IOverlayContext.cpp in Sources */,
 				8F707BA81EA6C75C00DEC600 /* Material.cpp in Sources */,
+				8F707BE51EA6CB0A00DEC600 /* MurmurHash2.cpp in Sources */,
 				8F707B9B1EA6C74C00DEC600 /* RenderUtils.cpp in Sources */,
 				8F707BAA1EA6C75C00DEC600 /* RawMaterial.cpp in Sources */,
 				8F707BA01EA6C74C00DEC600 /* ShaderLangUtil.cpp in Sources */,
 				8F707B9E1EA6C74C00DEC600 /* ResourceUtils.cpp in Sources */,
+				8F707BE71EA6CB0A00DEC600 /* MurmurHash3.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -382,7 +415,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		8F707B5F1EA6C41F00DEC600 /* Build configuration list for PBXNativeTarget "XLESubset" */ = {
+		8F707B5F1EA6C41F00DEC600 /* Build configuration list for PBXNativeTarget "XLESubsetMac" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				8F707B601EA6C41F00DEC600 /* Debug */,

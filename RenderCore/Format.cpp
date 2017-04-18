@@ -161,7 +161,9 @@ namespace RenderCore
 
     unsigned    GetComponentPrecision(Format format)
     {
-        return BitsPerPixel(format) / GetComponentCount(GetComponents(format));
+        auto componentCount = GetComponentCount(GetComponents(format));
+        auto bpp = BitsPerPixel(format);
+        return componentCount ? bpp / componentCount : bpp;
     }
 
     unsigned    GetDecompressedComponentPrecision(Format format)

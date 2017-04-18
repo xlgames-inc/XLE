@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8F707BDD1EA6CAA400DEC600 /* System_Apple.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */; };
+		8F707BEA1EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BE91EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp */; };
+		8F707BEC1EA6CB6F00DEC600 /* FileUtils_stdio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */; };
 		8FD85D571EA688D1009BD9B0 /* ArithmeticUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D041EA688D1009BD9B0 /* ArithmeticUtils.cpp */; };
 		8FD85D581EA688D1009BD9B0 /* ArithmeticUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D051EA688D1009BD9B0 /* ArithmeticUtils.h */; };
 		8FD85D591EA688D1009BD9B0 /* BitHeap.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D061EA688D1009BD9B0 /* BitHeap.h */; };
@@ -81,6 +84,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = System_Apple.cpp; sourceTree = "<group>"; };
+		8F707BE91EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileSystemMonitor_Stubs.cpp; sourceTree = "<group>"; };
+		8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileUtils_stdio.cpp; sourceTree = "<group>"; };
 		8FD85CF81EA6872D009BD9B0 /* libUtilityMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libUtilityMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8FD85D001EA68787009BD9B0 /* Core.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
 		8FD85D011EA68787009BD9B0 /* CoreDebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
@@ -170,9 +176,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		8F707BDB1EA6CAA400DEC600 /* Apple */ = {
+			isa = PBXGroup;
+			children = (
+				8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */,
+			);
+			name = Apple;
+			path = ../Apple;
+			sourceTree = "<group>";
+		};
 		8FD85CEF1EA6872D009BD9B0 = {
 			isa = PBXGroup;
 			children = (
+				8F707BDB1EA6CAA400DEC600 /* Apple */,
 				8FD85CFF1EA68777009BD9B0 /* Config */,
 				8FD85D0B1EA688D1009BD9B0 /* Detail */,
 				8FD85D1A1EA688D1009BD9B0 /* Meta */,
@@ -278,7 +294,9 @@
 				8FD85D2D1EA688D1009BD9B0 /* Data.h */,
 				8FD85D2E1EA688D1009BD9B0 /* DataSerialize.cpp */,
 				8FD85D2F1EA688D1009BD9B0 /* DataSerialize.h */,
+				8F707BE91EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp */,
 				8FD85D301EA688D1009BD9B0 /* FileSystemMonitor.h */,
+				8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */,
 				8FD85D311EA688D1009BD9B0 /* FileUtils.cpp */,
 				8FD85D321EA688D1009BD9B0 /* FileUtils.h */,
 				8FD85D331EA688D1009BD9B0 /* PathUtils.cpp */,
@@ -432,7 +450,9 @@
 				8FD85D931EA688D1009BD9B0 /* StringUtils.cpp in Sources */,
 				8FD85D861EA688D1009BD9B0 /* StreamDOM.cpp in Sources */,
 				8FD85D9F1EA688D1009BD9B0 /* UTFUtils.cpp in Sources */,
+				8F707BEC1EA6CB6F00DEC600 /* FileUtils_stdio.cpp in Sources */,
 				8FD85D571EA688D1009BD9B0 /* ArithmeticUtils.cpp in Sources */,
+				8F707BDD1EA6CAA400DEC600 /* System_Apple.cpp in Sources */,
 				8FD85D621EA688D1009BD9B0 /* FunctionUtils.cpp in Sources */,
 				8FD85D921EA688D1009BD9B0 /* StringFormatTime.cpp in Sources */,
 				8FD85D771EA688D1009BD9B0 /* CPUProfiler.cpp in Sources */,
@@ -441,6 +461,7 @@
 				8FD85D741EA688D1009BD9B0 /* ParameterBox.cpp in Sources */,
 				8FD85D841EA688D1009BD9B0 /* Stream.cpp in Sources */,
 				8FD85D7A1EA688D1009BD9B0 /* Data.cpp in Sources */,
+				8F707BEA1EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp in Sources */,
 				8FD85D881EA688D1009BD9B0 /* StreamFormatter.cpp in Sources */,
 				8FD85D5C1EA688D1009BD9B0 /* Conversion.cpp in Sources */,
 				8FD85D5A1EA688D1009BD9B0 /* BitUtils.cpp in Sources */,
