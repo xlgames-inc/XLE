@@ -124,12 +124,12 @@ namespace XLEMath
 
     RectanglePacker::~RectanglePacker() {}
 
-    RectanglePacker::RectanglePacker(RectanglePacker&& moveFrom)
+    RectanglePacker::RectanglePacker(RectanglePacker&& moveFrom) never_throws
     : _nodes(std::move(moveFrom._nodes))
     , _totalSize(moveFrom._totalSize)
     {}
      
-    RectanglePacker& RectanglePacker::operator=(RectanglePacker&& moveFrom)
+    RectanglePacker& RectanglePacker::operator=(RectanglePacker&& moveFrom) never_throws
     {
         _nodes = std::move(moveFrom._nodes);
         _totalSize = moveFrom._totalSize;

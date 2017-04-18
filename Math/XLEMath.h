@@ -11,6 +11,7 @@
 #include <tuple>
 #include <cmath>
 #include <assert.h>
+#include <algorithm>        // (for std::min/std::max)
 
 #define MATHLIBRARY_CML         2
 #define MATHLIBRARY_ACTIVE      MATHLIBRARY_CML

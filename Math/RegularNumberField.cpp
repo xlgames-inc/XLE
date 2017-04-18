@@ -871,11 +871,12 @@ namespace XLEMath
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
     template<typename Field>
         unsigned InstantiateField()
         {
             using SampleFn = typename Field::ValueType(Field::*)(typename Field::FloatCoord)const;
-            SampleFn fns[] = {
+            SampleFn fns[14] = {
                 &Field::Sample<0>,
                 &Field::Sample<RNFSample::ClampX|RNFSample::ClampY|RNFSample::ClampZ>,
                 &Field::Sample<RNFSample::WrapX |RNFSample::ClampY|RNFSample::ClampZ>,
@@ -902,6 +903,7 @@ namespace XLEMath
         InstantiateField<ScalarField3D<Eigen::VectorXf>>(),
         InstantiateField<VectorField3DSeparate<Eigen::VectorXf>>()
     };
+#endif
 
     template class ScalarField2D<Eigen::VectorXf>;
     template class VectorField2DSeparate<Eigen::VectorXf>;

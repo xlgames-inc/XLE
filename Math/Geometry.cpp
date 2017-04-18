@@ -5,7 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Geometry.h"
-#include "EigenVector.h"
+#define HAS_EIGEN_LIBRARY
+#if defined(HAS_EIGEN_LIBRARY)
+    #include "EigenVector.h"
+#endif
 #include "Transformations.h"
 #include "../Core/Prefix.h"
 #include <assert.h>
@@ -193,6 +196,7 @@ namespace XLEMath
         return std::make_pair(mins, maxs);
     }
 
+#if defined(HAS_EIGEN_LIBRARY)
     T1(PrimitiveType)
 		Vector4T<PrimitiveType> PlaneFit(const Vector3T<PrimitiveType> pts[], size_t ptCount)
 	{
@@ -267,6 +271,7 @@ namespace XLEMath
     
     template auto PlaneFit(const Vector3T<float> pts[], size_t ptCount ) -> Vector4T<float>;
     template auto PlaneFit(const Vector3T<float> & pt0, const Vector3T<float> & pt1, const Vector3T<float> & pt2 ) -> Vector4T<float>;
+#endif
 
 	T1(Primitive) Vector4T<Primitive> PlaneFit(
         const Vector3T<Primitive>& pt0,
@@ -312,7 +317,7 @@ namespace XLEMath
         // linearly interpolated as zero. We will keep the positive part of clippingParam[]
         // Generates 0, 1 or 2 output triangles
         bool c[] { clippingParam[0] < 0.0f, clippingParam[1] < 0.0f, clippingParam[2] < 0.0f };
-        unsigned mode = unsigned(c[0]) | (unsigned(c[1]) << 1) | (unsigned(c[2]) << 2);
+        unsigned mode = c[0] | (c[1] << 1) | (c[2] << 2);
         Float3 A, B;
         switch (mode)
         {

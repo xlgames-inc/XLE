@@ -9,7 +9,7 @@
 #include "RegularNumberField.h"
 #include "./Math.h"
 #include "Vector.h"
-#include "../ConsoleRig/Log.h"
+// #include "../ConsoleRig/Log.h"
 #include "../Utility/PtrUtils.h"
 #include <vector>
 #include <assert.h>
@@ -946,8 +946,8 @@ namespace XLEMath
                 //  it's transpose
                 //
 
-            int bands2D[] = { -int(width), -1, 1, width, 0 };
-            int bands3D[] = { -int(width*height), -int(width), -1, 1, width, width*height, 0 };
+            int bands2D[] = { -int(width), -1, 1, int(width), 0 };
+            int bands3D[] = { -int(width*height), -int(width), -1, 1, int(width), int(width*height), 0 };
             unsigned bandCount; int* bands;
             if (mat._dimensionality == 2) {
                 bandCount = dimof(bands2D);
@@ -1070,8 +1070,8 @@ namespace XLEMath
                 //  it's transpose
                 //
 
-            int bands2D[] = { -int(width), -1, 1, width, 0 };
-            int bands3D[] = { -int(width*height), -int(width), -1, 1, width, width*height, 0 };
+            int bands2D[] = { -int(width), -1, 1, int(width), 0 };
+            int bands3D[] = { -int(width*height), -int(width), -1, 1, int(width), int(width*height), 0 };
             unsigned bandCount; int* bands;
             if (mat._dimensionality == 2) {
                 bandCount = dimof(bands2D);
@@ -1226,8 +1226,8 @@ namespace XLEMath
             //  it's transpose
             //
 
-        int bands2D[] = { -int(width), -1, 1, width, 0 };
-        int bands3D[] = { -int(width*height), -int(width), -1, 1, width, width*height, 0 };
+        int bands2D[] = { -int(width), -1, 1, int(width), 0 };
+        int bands3D[] = { -int(width*height), -int(width), -1, 1, int(width), int(width*height), 0 };
         unsigned bandCount; int* bands;
         if (mat._dimensionality == 2) {
             bandCount = dimof(bands2D);
@@ -1305,7 +1305,7 @@ namespace XLEMath
         _pimpl->_tempBuffer = VectorX(N);
         _pimpl->_tempBuffer.fill(0.f);
 
-        #if defined(_DEBUG)
+        #if 0 // defined(_DEBUG)
             {
                 const auto diffusion = 0.1f;
                 const auto a0 = 1.f + 6.f * diffusion;

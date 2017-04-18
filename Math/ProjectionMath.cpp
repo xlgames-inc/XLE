@@ -534,7 +534,7 @@ namespace XLEMath
             result(2,3) =  -(f*n) / (f-n);
         } else {
                 //  This is the OpenGL view of clip space
-                //      -1<w/z<1
+                //      -1<z/w<1
             result(2,2) =        (f+n) / (f-n);
             result(2,3) =  -(-2.f*f*n) / (f-n);
         }

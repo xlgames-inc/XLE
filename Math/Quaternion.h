@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Math.h"
+#include "XLEMath.h"
 
 #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
     #pragma warning(push)

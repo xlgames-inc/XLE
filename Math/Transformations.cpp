@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Transformations.h"
+#include "Matrix.h"
 #include "EigenVector.h"
 #include <assert.h>
 
@@ -611,7 +612,7 @@ namespace XLEMath
     }
 
         ////////////////////////////////////////////////////////////////
-
+    
     static Float3x3 SqRootSymmetric(const Float3x3& usq)
     {
         // Find the squareroot of the input matrix
@@ -643,10 +644,10 @@ namespace XLEMath
     template<typename DestType> DestType Convert(const Float3x3& input);
 
     template<> 
-        static Float3x3 Convert(const Float3x3& input) { return input; }
+        Float3x3 Convert(const Float3x3& input) { return input; }
 
     template<> 
-        static Quaternion Convert(const Float3x3& input)
+        Quaternion Convert(const Float3x3& input)
         {
             Quaternion result;
             cml::quaternion_rotation_matrix(result, input);
@@ -918,19 +919,6 @@ namespace XLEMath
             0.f, 0.f, 0.f, 1.f);
     }
 
-    Float3x4    MakeFloat3x4(
-        float e00, float e10, float e20, float e30,
-        float e01, float e11, float e21, float e31,
-        float e02, float e12, float e22, float e32)
-    {
-        float arrayForm[3][4] = {
-            { e00, e10, e20, e30 },
-            { e01, e11, e21, e31 },
-            { e02, e12, e22, e32 }
-        };
-        return Float3x4(arrayForm);
-    }
-    
     Float3x4    AsFloat3x4(const Float3& translation)
     {
         return MakeFloat3x4(

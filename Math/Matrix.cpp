@@ -68,6 +68,18 @@ namespace XLEMath
             a[12], a[13], a[14], a[15]);
     }
 
+    Float3x4 MakeFloat3x4(
+        float m00, float m01, float m02, float m03,
+        float m10, float m11, float m12, float m13,
+        float m20, float m21, float m22, float m23)
+    {
+        Float3x4 result;
+        result(0,0) = m00; result(0,1) = m01; result(0,2) = m02; result(0,3) = m03;
+        result(1,0) = m10; result(1,1) = m11; result(1,2) = m12; result(1,3) = m13;
+        result(2,0) = m20; result(2,1) = m21; result(2,2) = m22; result(2,3) = m23;
+        return result;
+    }
+
     // Float3x3 matrix multiplication:
     //      result(0,0) = lhs(0,0) * rhs(0,0) + lhs(0,1) * rhs(1,0) + lhs(0,2) * rhs(2,0)
     //      result(1,0) = lhs(1,0) * rhs(0,0) + lhs(1,1) * rhs(1,0) + lhs(1,2) * rhs(2,0)

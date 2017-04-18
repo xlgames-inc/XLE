@@ -7,6 +7,7 @@
 #pragma once
 
 #include "PoissonSolver.h"
+#include "RegularNumberField.h"
 #include "Vector.h"
 #include <functional>
 
