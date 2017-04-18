@@ -72,6 +72,8 @@
         #define FEATURE_EXCEPTIONS    0
     #endif
 
+    #define COMPILER_DEFAULT_IMPLICIT_OPERATORS 1
+
 #elif COMPILER_ACTIVE == COMPILER_TYPE_MSVC
 
     #if defined(_CPPRTTI)
@@ -100,6 +102,7 @@
 #define PLATFORMOS_WINDOWS      1
 #define PLATFORMOS_ANDROID      2
 #define PLATFORMOS_OSX          3
+#define PLATFORMOS_IOS          4
 
 #if defined(__ANDROID__)
 
@@ -111,9 +114,22 @@
     #define PLATFORMOS_ACTIVE   PLATFORMOS_WINDOWS
     #define PLATFORMOS_TARGET   PLATFORMOS_WINDOWS
 
+#elif __APPLE__
+
+    #include "TargetConditionals.h"
+    #if TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE
+        #define PLATFORMOS_ACTIVE   PLATFORMOS_IOS
+        #define PLATFORMOS_TARGET   PLATFORMOS_IOS
+    #elif TARGET_OS_MAC
+        #define PLATFORMOS_ACTIVE   PLATFORMOS_OSX
+        #define PLATFORMOS_TARGET   PLATFORMOS_OSX
+    #else
+        #error "Unknown Apple platform"
+    #endif
+
 #else
 
-    #pragma error("Cannot determine platform OS. Platform unsupported!")
+    #error "Cannot determine platform OS. Platform unsupported!"
 
 #endif
 

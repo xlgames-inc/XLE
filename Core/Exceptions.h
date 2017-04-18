@@ -14,7 +14,7 @@
     #include <stdlib.h>     // (for exit)
 #endif
 #include <stdarg.h>
-#include <stdio.h>      // note -- could be avoided if we moved the constructor for BasicLabel into .cpp file
+#include <cstdio>      // note -- could be avoided if we moved the constructor for BasicLabel into .cpp file
 
 #if FEATURE_EXCEPTIONS
     #include <type_traits>  // for std::is_base_of, used by exceptions
@@ -64,13 +64,13 @@ namespace Exceptions
     {
         va_list args;
         va_start(args, format);
-        _vsnprintf_s(_buffer, _TRUNCATE, format, args);
+        std::vsnprintf(_buffer, dimof(_buffer), format, args);
         va_end(args);
     }
 
     inline BasicLabel::BasicLabel(const char format[], va_list args) never_throws
     {
-        _vsnprintf_s(_buffer, _TRUNCATE, format, args);
+        std::vsnprintf(_buffer, dimof(_buffer), format, args);
     }
 #pragma warning(pop)
 
@@ -88,6 +88,12 @@ namespace Exceptions
     inline BasicLabel::~BasicLabel() {}
 }
 
+#if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
+    #define NO_RETURN __declspec(noreturn)
+#else
+    #define NO_RETURN
+#endif
+
 namespace Utility
 {
     #if defined(__INTELLISENSE__)
@@ -102,15 +108,15 @@ namespace Utility
             }
 
             template <class E, typename std::enable_if<std::is_base_of<::Exceptions::BasicLabel, E>::value>::type* = nullptr>
-                inline __declspec(noreturn) void Throw(const E& e)
+                inline NO_RETURN void Throw(const E& e)
             {
                 auto* callback = GlobalOnThrowCallback();
                 if (callback) (*callback)(e);
-                throw e; 
+                throw e;
             }
 
             template <class E, typename std::enable_if<!std::is_base_of<::Exceptions::BasicLabel, E>::value>::type* = nullptr>
-                inline __declspec(noreturn) void Throw(const E& e)
+                inline NO_RETURN void Throw(const E& e)
             {
                 throw e;
             }

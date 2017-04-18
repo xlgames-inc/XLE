@@ -9,6 +9,7 @@
 #include "../../Core/Exceptions.h"
 #include <memory>
 #include <vector>
+#include <cstdint>
 
 namespace Utility
 {
@@ -126,6 +127,12 @@ namespace Utility
 	#pragma push_macro("new")
 	#undef new
 
+    #if INTPTR_MAX == INT32_MAX
+        #define DummyBuffer(c) unsigned _buffer_##c
+    #else
+        #define DummyBuffer(c)
+    #endif
+
 	template<typename Element>
 		class SerializableVector
 	{
@@ -238,7 +245,7 @@ namespace Utility
 			}
 			// note -- assuming move operators never throw! If we get an exception during
 			// a move operator, we cannot reverse this operation.
-			for (auto i=_end; i>&_begin[idx+cnt-1]; --i) *(i) = std::move(*(i-cnt));
+			for (auto i=_end+cnt-1; i>&_begin[idx+cnt-1]; --i) *(i) = std::move(*(i-cnt));
 			auto c = idx;
 			for (auto i=first; i!=last; ++i, ++c)
 				_begin[c] = *i;
@@ -289,8 +296,11 @@ namespace Utility
 
 	private:
 		Element* _begin;
+        DummyBuffer(0);
 		Element* _end;
+        DummyBuffer(1);
 		Element* _capacity;
+        DummyBuffer(2);
 
 		void Expand(size_type requiredSize)
 		{

@@ -102,10 +102,12 @@ namespace Utility
 			StringSection(const std::basic_string<CharType, CT, A>& str) : _start(AsPointer(str.cbegin())), _end(AsPointer(str.cend())) {}
     };
 
-    template<typename CharType>
-        inline StringSection<CharType> MakeStringSection(const CharType* start, const CharType* end)
+    template<typename Iterator>
+        inline auto MakeStringSection(Iterator start, Iterator end)
+            -> StringSection<typename std::decay<decltype(*AsPointer(std::declval<Iterator>()))>::type>
         {
-            return StringSection<CharType>(start, end);
+            using CharType = typename std::decay<decltype(*AsPointer(std::declval<Iterator>()))>::type;
+            return StringSection<CharType>(AsPointer(start), AsPointer(end));
         }
 
     template<typename CharType>
@@ -118,22 +120,6 @@ namespace Utility
         inline StringSection<CharType> MakeStringSection(const std::basic_string<CharType, CT, A>& str)
         {
             return StringSection<CharType>(AsPointer(str.cbegin()), AsPointer(str.cend()));
-        }
-
-    template<typename CharType, typename CT, typename A>
-        inline StringSection<CharType> MakeStringSection(
-            const typename std::basic_string<CharType, CT, A>::const_iterator& begin,
-            const typename std::basic_string<CharType, CT, A>::const_iterator& end)
-        {
-            return StringSection<CharType>(AsPointer(begin), AsPointer(end));
-        }
-
-    template<typename CharType, typename CT, typename A>
-        inline StringSection<CharType> MakeStringSection(
-            const typename std::basic_string<CharType, CT, A>::iterator& begin,
-            const typename std::basic_string<CharType, CT, A>::iterator& end)
-        {
-            return StringSection<CharType>(AsPointer(begin), AsPointer(end));
         }
 
         ////////////   S T R I N G   C O M P A R I S O N S   ////////////

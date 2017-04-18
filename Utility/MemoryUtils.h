@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../Core/Types.h"
+#include "../Core/SelectConfiguration.h"
 #include "Detail/API.h"
 #include <string>
 #include <assert.h>
@@ -52,8 +53,8 @@ namespace Utility
         inline void* XlMemAlign(size_t size, size_t alignment)
         {
             void* result = nullptr;
-            int errorNumber = posix_memalign(&result, size, alignment);
-            assert(!errorNumber);
+            int errorNumber = posix_memalign(&result, alignment, size);
+            assert(!errorNumber); (void)errorNumber;
             return result;
             // return memalign(size, alignment);
         }
@@ -180,7 +181,7 @@ namespace Utility
     {
         auto result = std::make_unique<uint8[]>(sizeof(Type));
         XlCopyMemory(result.get(), &input, sizeof(Type));
-        return std::move(result);
+        return result;
     }
 
 }

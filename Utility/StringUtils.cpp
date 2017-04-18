@@ -432,7 +432,40 @@ int      XlComparePrefixI    (const utf8* x, const utf8* y, size_t size)
     {
         return _wcsicmp((const wchar_t*)x, (const wchar_t*)y);
     }
-
+    
+#else
+    
+    void XlCopyString(wchar_t* dst, size_t size, const wchar_t* src) { assert(0); }
+    
+    void XlCopyNString(wchar_t* dst, size_t count, const wchar_t*src, size_t length) { assert(0); }
+    
+    void XlCopyString(ucs2* dst, size_t count, const ucs2* src) { assert(0); }
+    
+    void XlCopyNString(ucs2* dst, size_t count, const ucs2*src, size_t length) { assert(0); }
+    
+    void XlCatString(ucs2* dst, size_t size, const ucs2* src) { assert(0); }
+    
+    void XlCatNString(ucs2* dst, size_t size, const ucs2* src, size_t length) { assert(0); }
+    
+    size_t XlStringLen(const ucs2* str)
+    {
+        assert(0);
+        return 0;
+    }
+    
+    size_t XlCompareString(const ucs2* x, const ucs2* y)
+    {
+        assert(0);
+        return 0;
+    }
+    
+    size_t XlCompareStringI(const ucs2* x, const ucs2* y)
+    {
+        assert(0);
+        return 0;
+    }
+    
+    
 #endif
 
 
@@ -965,7 +998,7 @@ bool XlSafeAtoi(const char* str, int* n)
                 return false;
             }
         }
-        if (result > MAX_INT32 || result < MIN_INT32) {
+        if (result > std::numeric_limits<int>::max() || result < std::numeric_limits<int>::min()) {
             return false;
         }
         if (!end || *end != '\0') {
@@ -989,7 +1022,7 @@ bool XlSafeAtoi64(const char* str, int64* n)
         char* end = const_cast<char*>(XlStringEnd(str));
         *n = strtoll(str, &end, 10);
     #endif
-    if (*n == MAX_INT64 || *n == MIN_INT64) {
+    if (*n == std::numeric_limits<int64>::max() || *n == std::numeric_limits<int64>::min()) {
         if (errno == ERANGE) {
             return false;
         }

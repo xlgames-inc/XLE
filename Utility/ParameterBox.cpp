@@ -856,7 +856,6 @@ namespace Utility
     template std::pair<bool, float> ParameterBox::GetParameter(ParameterName name) const;
 
 
-    /*
     template void ParameterBox::SetParameter(const utf8 name[], Float2 value);
     template std::pair<bool, Float2> ParameterBox::GetParameter(ParameterName name) const;
     
@@ -885,7 +884,17 @@ namespace Utility
 
     template void ParameterBox::SetParameter(const utf8 name[], UInt4 value);
     template std::pair<bool, UInt4> ParameterBox::GetParameter(ParameterName name) const;
-    */
+    
+    
+    template void ParameterBox::SetParameter(const utf8 name[], Int2 value);
+    template std::pair<bool, Int2> ParameterBox::GetParameter(ParameterName name) const;
+    
+    template void ParameterBox::SetParameter(const utf8 name[], Int3 value);
+    template std::pair<bool, Int3> ParameterBox::GetParameter(ParameterName name) const;
+    
+    template void ParameterBox::SetParameter(const utf8 name[], Int4 value);
+    template std::pair<bool, Int4> ParameterBox::GetParameter(ParameterName name) const;
+    
     
     template std::basic_string<char> ParameterBox::GetString(ParameterName name) const;
     template std::basic_string<utf8> ParameterBox::GetString(ParameterName name) const;

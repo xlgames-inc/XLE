@@ -9,6 +9,7 @@
 #include "ThreadLibrary.h"
 #include "../../Core/Prefix.h"
 #include "../../Core/Types.h"
+#include "../../Core/SelectConfiguration.h"
 
 // Currently we have a problem including <thread> into C++/CLR files
 // This makes it difficult to use the standard library functions for things like CurrentThreadId()
@@ -71,7 +72,7 @@
 
 #if (THREAD_LIBRARY == THREAD_LIBRARY_TINYTHREAD) || (THREAD_LIBRARY == THREAD_LIBRARY_STDCPP)
 
-    #if 1 // __APPLE__
+    #if (PLATFORMOS_TARGET == PLATFORMOS_IOS) || (PLATFORMOS_TARGET == PLATFORMOS_OSX) || (PLATFORMOS_TARGET == PLATFORMOS_ANDROID)
 
         #include <atomic>
 

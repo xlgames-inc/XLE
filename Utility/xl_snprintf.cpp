@@ -924,7 +924,7 @@ int xl_sprintf(char *buf, const char *fmt, ...)
     return n;
 }
 
-int xl_vsnprintf(char* buf, int count, const char* fmt, va_list& args)
+int xl_vsnprintf(char* buf, int count, const char* fmt, va_list args)
 {
     int len;
     unsigned long num;

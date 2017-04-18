@@ -22,7 +22,7 @@ namespace Utility
 
     XL_UTILITY_API int xl_sprintf(char *buf, const char *fmt, ...);
     XL_UTILITY_API int xl_vsprintf(char *buf, const char *fmt, va_list args);
-    XL_UTILITY_API int xl_vsnprintf(char* buf, int size, const char* format, va_list& args);
+    XL_UTILITY_API int xl_vsnprintf(char* buf, int size, const char* format, va_list args);
 
     inline int xl_snprintf(char* buf, int count, const char* fmt, ...)
     {
