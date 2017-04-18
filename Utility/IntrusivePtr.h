@@ -90,29 +90,29 @@ namespace Utility
 
             // utilities and operators
         void swap(intrusive_ptr& b) never_throws;
-        template<typename T>
-            friend T* ReleaseOwnership(intrusive_ptr<T>& ptr);
+        template<typename T2>
+            friend T2* ReleaseOwnership(intrusive_ptr<T2>& ptr);
 
-        template<typename T, typename U>
-            friend bool operator==(const intrusive_ptr<T>& lhs, const intrusive_ptr<U>& rhs) never_throws;
+        template<typename T2, typename U>
+            friend bool operator==(const intrusive_ptr<T2>& lhs, const intrusive_ptr<U>& rhs) never_throws;
 
-        template<typename T, typename U>
-            friend bool operator!=(const intrusive_ptr<T>& lhs, const intrusive_ptr<U>& rhs) never_throws;
+        template<typename T2, typename U>
+            friend bool operator!=(const intrusive_ptr<T2>& lhs, const intrusive_ptr<U>& rhs) never_throws;
 
-        template<typename T>
-            friend bool operator==(const intrusive_ptr<T>& a, T* b) never_throws;
+        template<typename T2>
+            friend bool operator==(const intrusive_ptr<T2>& a, T2* b) never_throws;
 
-        template<typename T>
-            friend bool operator!=(const intrusive_ptr<T>& a, T* b) never_throws;
+        template<typename T2>
+            friend bool operator!=(const intrusive_ptr<T2>& a, T2* b) never_throws;
 
-        template<typename T>
-            friend bool operator==(T* a, const intrusive_ptr<T>& b) never_throws;
+        template<typename T2>
+            friend bool operator==(T2* a, const intrusive_ptr<T2>& b) never_throws;
 
-        template<typename T>
-            friend bool operator!=(T* a, const intrusive_ptr<T>& b) never_throws;
+        template<typename T2>
+            friend bool operator!=(T2* a, const intrusive_ptr<T2>& b) never_throws;
 
-        template<typename T, typename U>
-            friend bool operator<(const intrusive_ptr<T>& a, const intrusive_ptr<U>& b) never_throws;
+        template<typename T2, typename U>
+            friend bool operator<(const intrusive_ptr<T2>& a, const intrusive_ptr<U>& b) never_throws;
 
     private:
         T* _ptr;

@@ -7,12 +7,18 @@
 #include "PredefinedCBLayout.h"
 #include "../RenderUtils.h"
 #include "../ShaderLangUtil.h"
-#include "../../Assets/ConfigFileContainer.h"
+#if defined(HAS_XLE_FULLASSETS)
+    #include "../../Assets/ConfigFileContainer.h"
+#endif
 #include "../../Assets/IFileSystem.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../Assets/DepVal.h"
+#if defined(HAS_XLE_CONSOLE_RIG)
+    #include "../../ConsoleRig/Log.h"
+#endif
 #include "../../Utility/BitUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/StringUtils.h"
+#include "../../Utility/MemoryUtils.h"
 #include <regex>
 
 namespace RenderCore { namespace Techniques
@@ -26,16 +32,18 @@ namespace RenderCore { namespace Techniques
         auto file = ::Assets::TryLoadFileAsMemoryBlock(initializer, &size);
         StringSection<char> configSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
 
-        // if it's a compound document, we're only going to extra the cb layout part
-        auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
-        if (!compoundDoc.empty()) {
-            auto i = std::find_if(
-                compoundDoc.cbegin(), compoundDoc.cend(),
-                [](const ::Assets::TextChunk<char>& chunk)
-                { return XlEqString(chunk._type, "CBLayout"); });
-            if (i != compoundDoc.cend())
-                configSection = i->_content;
-        }
+        #if defined(HAS_XLE_FULLASSETS)
+            // if it's a compound document, we're only going to extra the cb layout part
+            auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
+            if (!compoundDoc.empty()) {
+                auto i = std::find_if(
+                    compoundDoc.cbegin(), compoundDoc.cend(),
+                    [](const ::Assets::TextChunk<char>& chunk)
+                    { return XlEqString(chunk._type, "CBLayout"); });
+                if (i != compoundDoc.cend())
+                    configSection = i->_content;
+            }
+        #endif
 
         Parse(configSection);
 
@@ -78,7 +86,9 @@ namespace RenderCore { namespace Techniques
 
                 auto size = e._type.GetSize();
                 if (!size) {
-                    LogWarning << "Problem parsing type in PredefinedCBLayout. Type size is 0: " << std::string(lineStart, iterator);
+                    #if defined(HAS_XLE_CONSOLE_RIG)
+                        LogWarning << "Problem parsing type in PredefinedCBLayout. Type size is 0: " << std::string(lineStart, iterator);
+                    #endif
                     continue;
                 }
 
@@ -108,14 +118,18 @@ namespace RenderCore { namespace Techniques
                         if (castSuccess) {
                             _defaults.SetParameter(name.c_str(), buffer1, e._type);
                         } else {
-                            LogWarning << "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: " << std::string(lineStart, iterator);
+                            #if defined(HAS_XLE_CONSOLE_RIG)
+                                LogWarning << "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: " << std::string(lineStart, iterator);
+                            #endif
                         }
                     } else {
                         _defaults.SetParameter(name.c_str(), buffer0, defaultType);
                     }
                 }
             } else {
-                LogWarning << "Failed to parse line in PredefinedCBLayout: " << std::string(lineStart, iterator);
+                #if defined(HAS_XLE_CONSOLE_RIG)
+                    LogWarning << "Failed to parse line in PredefinedCBLayout: " << std::string(lineStart, iterator);
+                #endif
             }
         }
 
@@ -145,11 +159,32 @@ namespace RenderCore { namespace Techniques
     SharedPkt PredefinedCBLayout::BuildCBDataAsPkt(const ParameterBox& parameters) const
     {
         SharedPkt result = MakeSharedPktSize(_cbSize);
-        XlSetMemory(result.begin(), 0, _cbSize);
+        std::memset(result.begin(), 0, _cbSize);
         WriteBuffer(result.begin(), parameters);
         return std::move(result);
     }
+    
+    uint64_t PredefinedCBLayout::CalculateHash() const
+    {
+        return HashCombine(Hash64(AsPointer(_elements.begin()), AsPointer(_elements.end())), _defaults.GetHash());
+    }
 
-    PredefinedCBLayout::PredefinedCBLayout() : _cbSize(0) {}
+    PredefinedCBLayout::PredefinedCBLayout() {}
+    PredefinedCBLayout::PredefinedCBLayout(PredefinedCBLayout&& moveFrom) never_throws
+    : _elements(std::move(moveFrom._elements))
+    , _defaults(std::move(moveFrom._defaults))
+    , _cbSize(moveFrom._cbSize)
+    , _validationCallback(std::move(moveFrom._validationCallback))
+    {}
+
+    PredefinedCBLayout& PredefinedCBLayout::operator=(PredefinedCBLayout&& moveFrom) never_throws
+    {
+        _elements = std::move(moveFrom._elements);
+        _defaults = std::move(moveFrom._defaults);
+        _cbSize = moveFrom._cbSize;
+        _validationCallback = std::move(moveFrom._validationCallback);
+        return *this;
+    }
+    
     PredefinedCBLayout::~PredefinedCBLayout() {}
 }}

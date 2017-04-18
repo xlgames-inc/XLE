@@ -7,8 +7,6 @@
 #pragma once
 
 #include "IOverlayContext.h"
-#include "../RenderCore/IThreadContext_Forward.h"
-#include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Utility/UTFUtils.h"
@@ -327,11 +325,8 @@ namespace RenderOverlays { namespace DebuggingDisplay
     {
     public:
         bool        OnInputEvent(const InputSnapshot& evnt);
-        void        Render(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::NamedResources* namedRes = nullptr,
-            const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
-
+        void        Render(IOverlayContext& overlayContext, const Rect& viewport);
+        
         enum Type { InPanel, SystemDisplay };
         void        Register(std::shared_ptr<IWidget> widget, const char name[], Type type = InPanel);
 

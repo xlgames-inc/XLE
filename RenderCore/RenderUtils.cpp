@@ -9,7 +9,6 @@
 #include "Types.h"
 #include "Format.h"
 
-#define HAS_XLE_CONSOLE_RIG
 #if defined(HAS_XLE_CONSOLE_RIG)
     #include "../ConsoleRig/GlobalServices.h"
 #endif
@@ -41,7 +40,9 @@ namespace RenderCore
     SharedPkt::SharedPkt(const SharedPkt& cloneFrom)
     : Allocation(cloneFrom), _size(cloneFrom._size)
     {
-        GetHeap().AddRef(*this);
+        if (_allocation != nullptr) {
+            GetHeap().AddRef(*this);
+        }
     }
 
     SharedPkt::~SharedPkt()
@@ -217,9 +218,25 @@ namespace RenderCore
 
 	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements) 
 	{
+        // note -- following alignment rules suggested by Apple in OpenGL ES guide
+        //          each element should be aligned to a multiple of 4 bytes (or a multiple of
+        //          it's component size, whichever is larger).
+        //          Note that this must affect the entire vertex stride, because we want the
+        //
+        if (elements.empty()) return 0;
 		unsigned result = 0;
-        for (auto i=elements.begin(); i<elements.end(); ++i)
-            result += BitsPerPixel(i->_nativeFormat);
+        unsigned largestComponentPrecision = 0;
+        unsigned basicAlignment = 32;   // (ie, 4 bytes in # of bits)
+        for (auto i=elements.begin(); i<elements.end(); ++i) {
+            auto componentPrecision = GetComponentPrecision(i->_nativeFormat);
+            assert((result % componentPrecision) == 0);
+            largestComponentPrecision = std::max(largestComponentPrecision, componentPrecision);
+            auto size = BitsPerPixel(i->_nativeFormat);
+            result += size;
+            if ((size % basicAlignment) != 0)
+                result += basicAlignment - (size % basicAlignment);   // add padding required by basic alignment restriction
+        }
+        assert(!largestComponentPrecision || (result % largestComponentPrecision) == 0);      // ensure second and subsequent vertices will be aligned
         return result / 8;
 	}
 

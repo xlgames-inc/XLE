@@ -5,11 +5,15 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DebuggingDisplay.h"
+/*
 #include "OverlayContext.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Techniques/ResourceBox.h"       // for FindCachedBox
-#include "../ConsoleRig/Console.h"
+*/
+#if defined(HAS_XLE_CONSOLE_RIG)
+    #include "../ConsoleRig/Console.h"
+#endif
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Utility/PtrUtils.h"
@@ -19,7 +23,9 @@
 #include <stdarg.h>
 #include <assert.h>
 
-#include "../ConsoleRig/IncludeLUA.h"
+#if defined(HAS_XLE_CONSOLE_RIG)
+    #include "../ConsoleRig/IncludeLUA.h"
+#endif
 
 #pragma warning(disable:4244)   // conversion from 'int' to 'float', possible loss of data
 
@@ -388,22 +394,24 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
     Coord DrawText(IOverlayContext* context, const Rect& rect, TextStyle* textStyle, ColorB colour, const char text[])
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, TextAlignment::Left, text, nullptr);
+        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, TextAlignment::Left, text);
     }
 
     Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, const char text[])
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, TextAlignment::Left, text, nullptr);
+        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, TextAlignment::Left, text);
     }
 
     Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[])
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, alignment, text, nullptr);
+        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, alignment, text);
     }
 
     Coord DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], va_list args)
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, alignment, text, args);
+        char buffer[4096];
+        vsnprintf(buffer, dimof(buffer), text, args);
+        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, alignment, buffer);
     }
 
     Coord DrawFormatText(IOverlayContext* context, const Rect & rect, TextStyle* textStyle, ColorB colour, const char text[], ...)
@@ -462,7 +470,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
         if (valuesCount) {
                 // find the max and min values in our data set...
-            float maxValue = -MAX_FLOAT32, minValue = MAX_FLOAT32;
+            float maxValue = -std::numeric_limits<float>::max(), minValue = std::numeric_limits<float>::max();
             unsigned peakIndex = 0;
             for (unsigned c=0; c<valuesCount; ++c) {
                 maxValue = std::max(values[c], maxValue);
@@ -571,6 +579,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         context->DrawLines(ProjectionMode::P2D, AsPointer(pixelCoords.begin()), lineCount*2, lineColours);
     }
 
+#if defined(HAS_XLE_FONTS)
     class TableFontBox
     {
     public:
@@ -668,6 +677,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             }
         }
     }
+#endif
 
     ///////////////////////////////////////////////////////////////////////////////////
     static void SetQuadPts(Float3 destination[], const Float3& A, const Float3& B, const Float3& C, const Float3& D)
@@ -709,7 +719,13 @@ namespace RenderOverlays { namespace DebuggingDisplay
     HexahedronCorners HexahedronCorners::FromFrustumCorners(const Float4x4& worldToProjection)
     {
         HexahedronCorners result;
-        CalculateAbsFrustumCorners(result._worldSpacePts, worldToProjection, RenderCore::Techniques::GetDefaultClipSpaceType());
+        CalculateAbsFrustumCorners(result._worldSpacePts, worldToProjection,
+                                   #if defined(HAS_XLE_RENDER_TECHNIQUES)
+                                        RenderCore::Techniques::GetDefaultClipSpaceType()
+                                   #else
+                                        ClipSpaceType::StraddlingZero
+                                   #endif
+                                   );
             // note -- we can swap 0 & 1 or 2 & 3 (depending on if we want inside or outside faces)
         std::swap(result._worldSpacePts[0], result._worldSpacePts[1]);
         std::swap(result._worldSpacePts[4+0], result._worldSpacePts[4+1]);
@@ -1025,29 +1041,13 @@ namespace RenderOverlays { namespace DebuggingDisplay
         return false;
     }
 
-    void DebugScreensSystem::Render(
-        RenderCore::IThreadContext& context, 
-        RenderCore::Techniques::NamedResources* namedRes,
-        const RenderCore::Techniques::ProjectionDesc& projDesc)
+    void DebugScreensSystem::Render(IOverlayContext& overlayContext, const Rect& viewport)
     {
         _currentInteractables = Interactables();
         
-        auto maxCoords = context.GetStateDesc()._viewportDimensions;
-        Rect    rect(Coord2(0,0), Coord2(maxCoords[0], maxCoords[1]));
-        Layout  completeLayout(rect);
+        Layout completeLayout(viewport);
         
-			//	awkward method for allocating a ImmediateOverlayContext that is aligned
-			//	on the heap... This needs to be aligned for the projection matrices
-			//	within the object.
-			//	\todo -- We need a better solution for dealing with aligned matrices!
-		auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>(
-			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
-		#pragma push_macro("new")
-		#undef new
-			new(overlayContext.get()) ImmediateOverlayContext(context, namedRes, projDesc);
-		#pragma pop_macro("new")
-
-        overlayContext->CaptureState();
+        overlayContext.CaptureState();
 
         TRY {
 
@@ -1073,13 +1073,13 @@ namespace RenderOverlays { namespace DebuggingDisplay
                     }
                     if (IsGood(widgetRect)) {
                         Layout widgetLayout(widgetRect);
-                        _widgets[i->_widgetIndex]._widget->Render(*overlayContext, widgetLayout, _currentInteractables, _currentInterfaceState);
+                        _widgets[i->_widgetIndex]._widget->Render(overlayContext, widgetLayout, _currentInteractables, _currentInterfaceState);
 
                             //  if we don't have any system widgets registered, we 
                             //  get some basic default gui elements...
                         if (_systemWidgets.empty()) {
                             RenderPanelControls(
-                                overlayContext.get(), std::distance(_panels.begin(), i), 
+                                &overlayContext, (unsigned)std::distance(_panels.begin(), i),
                                 _widgets[i->_widgetIndex]._name, widgetLayout, _panels.size()!=1, _currentInteractables, _currentInterfaceState);
                         }
                     }
@@ -1090,16 +1090,15 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
                 // render the system widgets last (they will render over the top of anything else that is visible)
             for (auto i=_systemWidgets.cbegin(); i!=_systemWidgets.cend(); ++i) {
-                Layout systemLayout(rect);
-                i->_widget->Render(*overlayContext, systemLayout, _currentInteractables, _currentInterfaceState);
+                Layout systemLayout(viewport);
+                i->_widget->Render(overlayContext, systemLayout, _currentInteractables, _currentInterfaceState);
             }
 
         } CATCH(const std::exception&) {
             // suppress exception
         } CATCH_END
 
-        overlayContext->ReleaseState();
-        overlayContext.reset();
+        overlayContext.ReleaseState();
 
         //      Redo the current interface state, in case any of the interactables have moved during the render...
         _currentInterfaceState = _currentInteractables.BuildInterfaceState(_currentMouse, _currentMouseHeld);
@@ -1215,7 +1214,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     ///////////////////////////////////////////////////////////////////////////////////
     InterfaceState::InterfaceState()
     {
-        _mousePosition = Coord2(-MAX_FLOAT32, -MAX_FLOAT32);
+        _mousePosition = Coord2(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
         _mouseButtonsHeld = 0;
     }
 

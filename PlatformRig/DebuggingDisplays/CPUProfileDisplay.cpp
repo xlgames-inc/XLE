@@ -5,8 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CPUProfileDisplay.h"
-#include "../../RenderOverlays/Font.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
+#if defined(HAS_XLE_FONTS)
+    #include "../../RenderOverlays/Font.h"
+    #include "../../RenderCore/Techniques/ResourceBox.h"
+#endif
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/StringUtils.h"
@@ -74,6 +76,7 @@ namespace PlatformRig { namespace Overlays
         }
     };
 
+#if defined(HAS_XLE_FONTS)
     class DrawProfilerResources
     {
     public:
@@ -89,6 +92,7 @@ namespace PlatformRig { namespace Overlays
             _rightFont = RenderOverlays::GetX2Font("PoiretOne", 24);
         }
     };
+#endif
 
     static void DrawProfilerBar(
         const ProfilerTableSettings& settings,
@@ -121,10 +125,13 @@ namespace PlatformRig { namespace Overlays
         IOverlayContext* context, Layout& layout, 
         Interactables&interactables, InterfaceState& interfaceState)
     {
+        
             //  The resolved events are arranged as a tree. We just want
             //  to traverse in depth-first order, and display as a tree
 
-        DrawRectangle(context, layout.GetMaximumSize(), settings._bkColor);
+        // DrawRectangle(context, layout.GetMaximumSize(), settings._bkColor);
+        
+        if (resolvedEvents.empty()) return;
 
             // (this stack is limited to depth HierarchicalCPUProfiler::s_maxStackDepth)
         static std::stack<std::pair<unsigned, unsigned>> items;
@@ -139,10 +146,14 @@ namespace PlatformRig { namespace Overlays
         Float3 dividingLines[256];
         Float3* divingLinesIterator = dividingLines;
 
+#if defined(HAS_XLE_FONTS)
         auto& res = RenderCore::Techniques::FindCachedBox<DrawProfilerResources>(DrawProfilerResources::Desc());
         TextStyle leftStyle(*res._leftFont); leftStyle._options.shadow = 0;
         TextStyle middleStyle(*res._middleFont); middleStyle._options.outline = 1; middleStyle._options.shadow = 0;
         TextStyle rightStyle(*res._rightFont);
+#else
+        TextStyle leftStyle, middleStyle, rightStyle;
+#endif
 
         while (!items.empty()) {
             unsigned treeDepth = items.top().second;
@@ -184,13 +195,12 @@ namespace PlatformRig { namespace Overlays
 
             context->DrawText(
                 std::make_tuple(AsPixelCoords(leftPart._topLeft), AsPixelCoords(Coord2(leftPart._bottomRight - Coord2(treeDepth * 16, 0)))),
-                &leftStyle, settings._leftColor, TextAlignment::Right, evnt._label, nullptr);
+                &leftStyle, settings._leftColor, TextAlignment::Right, evnt._label);
 
             context->DrawText(
                 std::make_tuple(AsPixelCoords(middlePart._topLeft), AsPixelCoords(middlePart._bottomRight)),
                 &middleStyle, settings._middleColor, TextAlignment::Center, 
-                StringMeld<32>() << std::setprecision(settings._precision) << AsMilliseconds(evnt._inclusiveTime),
-                nullptr);
+                StringMeld<32>() << std::setprecision(settings._precision) << AsMilliseconds(evnt._inclusiveTime));
 
             StringMeld<64> workingBuffer;
             static const auto exclusiveThreshold = MillisecondsAsTimerValue(0.05f);
@@ -208,7 +218,7 @@ namespace PlatformRig { namespace Overlays
             context->DrawText(
                 std::make_tuple(AsPixelCoords(rightPart._topLeft), AsPixelCoords(rightPart._bottomRight)),
                 &rightStyle, settings._rightColor, TextAlignment::Left, 
-                workingBuffer, nullptr);
+                workingBuffer);
 
             if ((divingLinesIterator+2) <= &dividingLines[dimof(dividingLines)]) {
                 *divingLinesIterator++ = AsPixelCoords(Coord2(totalElement._topLeft[0], totalElement._bottomRight[1] + layout._paddingBetweenAllocations/2));

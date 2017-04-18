@@ -174,6 +174,12 @@ namespace RenderCore { namespace Techniques
         _forwardBlendDst = Blend(0); // Metal::Blend::Zero;
         _forwardBlendOp = BlendOp(0); // Metal::BlendOp::NoBlending;
     }
-
+    
+    inline uint64 RenderStateSet::GetHash() const
+    {
+        static_assert(sizeof(*this) == sizeof(uint64), "expecting StateSet to be 64 bits long");
+        return *(const uint64*)this;
+    }
+    
 }}
 

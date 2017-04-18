@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <dxgiformat.h>         // maintain format number compatibility with DXGI whenever possible (note that dxgiformat.h is very simple and has no dependencies!)
+#include "Metal/Detail/DXGIFormatValues.h"         // maintain format number compatibility with DXGI whenever possible
 
 namespace Utility { namespace ImpliedTyping { class TypeDesc; } }
 

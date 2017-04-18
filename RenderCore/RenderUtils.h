@@ -140,6 +140,8 @@ namespace RenderCore
             ;
     }
 
+    SharedPkt MakeSharedPktSize(size_t size);
+    SharedPkt MakeSharedPkt(const void* begin, const void* end);
 }
 
 

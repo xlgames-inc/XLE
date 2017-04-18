@@ -44,7 +44,7 @@ namespace SceneEngine
 
         ////////////////////////////////////////////////////////
 
-    DualContourMesh     DualContourMesh_Build(  unsigned samplingGridDimensions, 
+    DualContourMesh     DualContourMesh_Build(  UInt3 samplingGridDimensions,
                                                 const IVolumeDensityFunction& fn);
 
         ////////////////////////////////////////////////////////

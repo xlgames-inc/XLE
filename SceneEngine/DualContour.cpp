@@ -9,6 +9,7 @@
 #include "../Math/Transformations.h"
 #include "../Math/Geometry.h"
 #include "../Utility/PtrUtils.h"
+#include <cfloat>
 
 #pragma warning(disable:4714)
 #pragma push_macro("new")
@@ -278,7 +279,8 @@ namespace SceneEngine
             if (useTranspose) {
                 auto AhatTranspose = Ahat.transpose();
                 Eigen::JacobiSVD<Eigen::Matrix<float, 3, 3>> svd(AhatTranspose * Ahat, Eigen::ComputeFullU | Eigen::ComputeFullV);
-                svd.solve(AhatTranspose * Bhat - AhatTranspose * Ahat * massPointVec).evalTo(x);
+                //svd.solve(AhatTranspose * Bhat - AhatTranspose * Ahat * massPointVec).evalTo(x);
+                x = svd.solve(AhatTranspose * Bhat - AhatTranspose * Ahat * massPointVec).eval();
             } else {
                     //  note that if we know the mass point when we're calculating Ahat, we can probably
                     //  just take into account the mass point then. However, if we're using a marching
@@ -287,7 +289,8 @@ namespace SceneEngine
                     //  after AHat has been fully built. But we can compensate during the solution, 
                     //  as so ---
                 Eigen::JacobiSVD<Eigen::Matrix<float, 3, 3>> svd(Ahat, Eigen::ComputeFullU | Eigen::ComputeFullV);
-                svd.solve(Bhat - Ahat * massPointVec).evalTo(x);
+                // svd.solve(Bhat - Ahat * massPointVec).evalTo(x);
+                x = svd.solve(Bhat - Ahat * massPointVec).eval();
             }
 
             auto result = Float3(x(0, 0) + massPoint[0], x(1, 0) + massPoint[1], x(2, 0) + massPoint[2]);
@@ -457,7 +460,7 @@ namespace SceneEngine
         mesh._quads.push_back(q);
     }
 
-    DualContourMesh     DualContourMesh_Build(  unsigned samplingGridDimensions, 
+    DualContourMesh     DualContourMesh_Build(  UInt3 samplingGridDimensions,
                                                 const IVolumeDensityFunction& fn)
     {
             //  Build a mesh of triangles from the given input function
@@ -475,7 +478,7 @@ namespace SceneEngine
             //  simplification.
         auto boundary = fn.GetBoundary();
         auto gridElements = std::make_unique<GridElement[]>(
-            samplingGridDimensions*samplingGridDimensions*samplingGridDimensions);
+            samplingGridDimensions[0]*samplingGridDimensions[1]*samplingGridDimensions[2]);
 
             //  For each grid element, let's fill it in with the values from the
             //  density function. Note that we could reduce the work here slightly
@@ -495,31 +498,31 @@ namespace SceneEngine
             //  GetDensity() function.
 
         Float3x4 gridToSampleSpace = Zero<Float3x4>();
-        gridToSampleSpace(0,0) = (boundary.second[0] - boundary.first[0]) / float(samplingGridDimensions);
-        gridToSampleSpace(1,1) = (boundary.second[1] - boundary.first[1]) / float(samplingGridDimensions);
-        gridToSampleSpace(2,2) = (boundary.second[2] - boundary.first[2]) / float(samplingGridDimensions);
+        gridToSampleSpace(0,0) = (boundary.second[0] - boundary.first[0]) / float(samplingGridDimensions[0]);
+        gridToSampleSpace(1,1) = (boundary.second[1] - boundary.first[1]) / float(samplingGridDimensions[1]);
+        gridToSampleSpace(2,2) = (boundary.second[2] - boundary.first[2]) / float(samplingGridDimensions[2]);
         gridToSampleSpace(0,3) = boundary.first[0];
         gridToSampleSpace(1,3) = boundary.first[1];
         gridToSampleSpace(2,3) = boundary.first[2];
         
         auto densityResults = std::make_unique<float[]>(
-            (samplingGridDimensions+1)*(samplingGridDimensions+1)*(samplingGridDimensions+1));
-        for (int z=0; z<int(samplingGridDimensions+1); ++z)
-            for (int y=0; y<int(samplingGridDimensions+1); ++y)
-                for (int x=0; x<int(samplingGridDimensions+1); ++x) {
+            (samplingGridDimensions[0]+1)*(samplingGridDimensions[1]+1)*(samplingGridDimensions[2]+1));
+        for (int z=0; z<int(samplingGridDimensions[2]+1); ++z)
+            for (int y=0; y<int(samplingGridDimensions[1]+1); ++y)
+                for (int x=0; x<int(samplingGridDimensions[0]+1); ++x) {
                     Float3 p0 = TransformPoint(gridToSampleSpace, Float3(float(x), float(y), float(z)));
-                    densityResults[(z * (samplingGridDimensions+1) + y) * (samplingGridDimensions+1) + x] = fn.GetDensity(p0);
+                    densityResults[(z * (samplingGridDimensions[1]+1) + y) * (samplingGridDimensions[0]+1) + x] = fn.GetDensity(p0);
                 }
 
             // note --  The order of the cell offsets here is important, because it 
             //          determines the order of the vertices in the quad.
-        Int3 cellOffsetsX[] = { Int3(0, 0, 0), Int3(0, -1, 0), Int3(0, 0, -1), Int3(0, -1, -1) };
-        Int3 cellOffsetsY[] = { Int3(0, 0, 0), Int3(0, 0, -1), Int3(-1, 0, 0), Int3(-1, 0, -1) };
-        Int3 cellOffsetsZ[] = { Int3(0, 0, 0), Int3(-1, 0, 0), Int3(0, -1, 0), Int3(-1, -1, 0) };
+        Int3 cellOffsetsX[] = { Int3(0, 0, 0), Int3( 0, -1,  0), Int3( 0,  0, -1), Int3( 0, -1, -1) };
+        Int3 cellOffsetsY[] = { Int3(0, 0, 0), Int3( 0,  0, -1), Int3(-1,  0,  0), Int3(-1,  0, -1) };
+        Int3 cellOffsetsZ[] = { Int3(0, 0, 0), Int3(-1,  0,  0), Int3( 0, -1,  0), Int3(-1, -1,  0) };
 
-        for (int z=0; z<int(samplingGridDimensions); ++z) {
-            for (int y=0; y<int(samplingGridDimensions); ++y) {
-                for (int x=0; x<int(samplingGridDimensions); ++x) {
+        for (int z=0; z<int(samplingGridDimensions[2]); ++z) {
+            for (int y=0; y<int(samplingGridDimensions[1]); ++y) {
+                for (int x=0; x<int(samplingGridDimensions[0]); ++x) {
 
                         //  For each grid element, we're going to test 3 edges.
                         //  we'll add the effect of those edges to adjacent grids
@@ -528,15 +531,15 @@ namespace SceneEngine
                         //  of the sampling area will never be tested. We'll assume 
                         //  that the function doesn't go through these boundary edges.
 
-                    Float3 p0 = TransformPoint(gridToSampleSpace, Float3(float(x), float(y), float(z)));
-                    Float3 p1 = TransformPoint(gridToSampleSpace, Float3(float(x+1), float(y), float(z)));
-                    Float3 p2 = TransformPoint(gridToSampleSpace, Float3(float(x), float(y+1), float(z)));
-                    Float3 p3 = TransformPoint(gridToSampleSpace, Float3(float(x), float(y), float(z+1)));
+                    Float3 p0 = TransformPoint(gridToSampleSpace, Float3(float(x  ), float(y  ), float(z  )));
+                    Float3 p1 = TransformPoint(gridToSampleSpace, Float3(float(x+1), float(y  ), float(z  )));
+                    Float3 p2 = TransformPoint(gridToSampleSpace, Float3(float(x  ), float(y+1), float(z  )));
+                    Float3 p3 = TransformPoint(gridToSampleSpace, Float3(float(x  ), float(y  ), float(z+1)));
 
-                    float d0 = densityResults[(z * (samplingGridDimensions+1) + y) * (samplingGridDimensions+1) + x];
-                    float d1 = densityResults[(z * (samplingGridDimensions+1) + y) * (samplingGridDimensions+1) + x + 1];
-                    float d2 = densityResults[(z * (samplingGridDimensions+1) + y + 1) * (samplingGridDimensions+1) + x];
-                    float d3 = densityResults[((z + 1) * (samplingGridDimensions+1) + y) * (samplingGridDimensions+1) + x];
+                    float d0 = densityResults[(z * (samplingGridDimensions[1]+1) + y) * (samplingGridDimensions[0]+1) + x];
+                    float d1 = densityResults[(z * (samplingGridDimensions[1]+1) + y) * (samplingGridDimensions[0]+1) + x + 1];
+                    float d2 = densityResults[(z * (samplingGridDimensions[1]+1) + y + 1) * (samplingGridDimensions[0]+1) + x];
+                    float d3 = densityResults[((z + 1) * (samplingGridDimensions[1]+1) + y) * (samplingGridDimensions[0]+1) + x];
 
                         //  Look for edges that contain intersections with the surface, and then merge 
                         //  those edge into all of the grid cells that contain them.
@@ -549,12 +552,12 @@ namespace SceneEngine
                             Int3 g(x + cellOffsetsX[c][0], y + cellOffsetsX[c][1], z + cellOffsetsX[c][2]);
                             if (g[0] >= 0 && g[1] >= 0 && g[2] >= 0) {
                                 const auto cellCenter = Float3(
-                                    LinearInterpolate(boundary.first[0], boundary.second[0], (float(g[0]) + .5f) / float(samplingGridDimensions)),
-                                    LinearInterpolate(boundary.first[1], boundary.second[1], (float(g[1]) + .5f) / float(samplingGridDimensions)),
-                                    LinearInterpolate(boundary.first[2], boundary.second[2], (float(g[2]) + .5f) / float(samplingGridDimensions)));
+                                    LinearInterpolate(boundary.first[0], boundary.second[0], (float(g[0]) + .5f) / float(samplingGridDimensions[0])),
+                                    LinearInterpolate(boundary.first[1], boundary.second[1], (float(g[1]) + .5f) / float(samplingGridDimensions[1])),
+                                    LinearInterpolate(boundary.first[2], boundary.second[2], (float(g[2]) + .5f) / float(samplingGridDimensions[2])));
 
                                 MergeInEdgeIntersection(
-                                    gridElements[(g[2] * samplingGridDimensions + g[1]) * samplingGridDimensions + g[0]],
+                                    gridElements[(g[2] * samplingGridDimensions[1] + g[1]) * samplingGridDimensions[0] + g[0]],
                                     intersection, cellCenter);
                             }
                         }
@@ -566,12 +569,12 @@ namespace SceneEngine
                             Int3 g(x + cellOffsetsY[c][0], y + cellOffsetsY[c][1], z + cellOffsetsY[c][2]);
                             if (g[0] >= 0 && g[1] >= 0 && g[2] >= 0) {
                                 const auto cellCenter = Float3(
-                                    LinearInterpolate(boundary.first[0], boundary.second[0], (float(g[0]) + .5f) / float(samplingGridDimensions)),
-                                    LinearInterpolate(boundary.first[1], boundary.second[1], (float(g[1]) + .5f) / float(samplingGridDimensions)),
-                                    LinearInterpolate(boundary.first[2], boundary.second[2], (float(g[2]) + .5f) / float(samplingGridDimensions)));
+                                    LinearInterpolate(boundary.first[0], boundary.second[0], (float(g[0]) + .5f) / float(samplingGridDimensions[0])),
+                                    LinearInterpolate(boundary.first[1], boundary.second[1], (float(g[1]) + .5f) / float(samplingGridDimensions[1])),
+                                    LinearInterpolate(boundary.first[2], boundary.second[2], (float(g[2]) + .5f) / float(samplingGridDimensions[2])));
 
                                 MergeInEdgeIntersection(
-                                    gridElements[(g[2] * samplingGridDimensions + g[1]) * samplingGridDimensions + g[0]],
+                                    gridElements[(g[2] * samplingGridDimensions[1] + g[1]) * samplingGridDimensions[0] + g[0]],
                                     intersection, cellCenter);
                             }
                         }
@@ -583,12 +586,12 @@ namespace SceneEngine
                             Int3 g(x + cellOffsetsZ[c][0], y + cellOffsetsZ[c][1], z + cellOffsetsZ[c][2]);
                             if (g[0] >= 0 && g[1] >= 0 && g[2] >= 0) {
                                 const auto cellCenter = Float3(
-                                    LinearInterpolate(boundary.first[0], boundary.second[0], (float(g[0]) + .5f) / float(samplingGridDimensions)),
-                                    LinearInterpolate(boundary.first[1], boundary.second[1], (float(g[1]) + .5f) / float(samplingGridDimensions)),
-                                    LinearInterpolate(boundary.first[2], boundary.second[2], (float(g[2]) + .5f) / float(samplingGridDimensions)));
+                                    LinearInterpolate(boundary.first[0], boundary.second[0], (float(g[0]) + .5f) / float(samplingGridDimensions[0])),
+                                    LinearInterpolate(boundary.first[1], boundary.second[1], (float(g[1]) + .5f) / float(samplingGridDimensions[1])),
+                                    LinearInterpolate(boundary.first[2], boundary.second[2], (float(g[2]) + .5f) / float(samplingGridDimensions[2])));
 
                                 MergeInEdgeIntersection(
-                                    gridElements[(g[2] * samplingGridDimensions + g[1]) * samplingGridDimensions + g[0]],
+                                    gridElements[(g[2] * samplingGridDimensions[1] + g[1]) * samplingGridDimensions[0] + g[0]],
                                     intersection, cellCenter);
                             }
                         }
@@ -604,17 +607,17 @@ namespace SceneEngine
             //  typically each vertex will be used in multiple quads.
 
         const auto cellSize = Float3(
-            (boundary.second[0] - boundary.first[0]) / float(samplingGridDimensions),
-            (boundary.second[1] - boundary.first[1]) / float(samplingGridDimensions),
-            (boundary.second[2] - boundary.first[2]) / float(samplingGridDimensions));
+            (boundary.second[0] - boundary.first[0]) / float(samplingGridDimensions[0]),
+            (boundary.second[1] - boundary.first[1]) / float(samplingGridDimensions[1]),
+            (boundary.second[2] - boundary.first[2]) / float(samplingGridDimensions[2]));
 
         std::vector<DualContourMesh::Vertex> vertices;
         auto vertexIndices = std::make_unique<unsigned[]>(
-            samplingGridDimensions*samplingGridDimensions*samplingGridDimensions);
-        for (int z=0; z<int(samplingGridDimensions); ++z) {
-            for (int y=0; y<int(samplingGridDimensions); ++y) {
-                for (int x=0; x<int(samplingGridDimensions); ++x) {
-                    auto index = (z * samplingGridDimensions + y) * samplingGridDimensions + x;
+            samplingGridDimensions[0]*samplingGridDimensions[1]*samplingGridDimensions[2]);
+        for (int z=0; z<int(samplingGridDimensions[2]); ++z) {
+            for (int y=0; y<int(samplingGridDimensions[1]); ++y) {
+                for (int x=0; x<int(samplingGridDimensions[0]); ++x) {
+                    auto index = (z * samplingGridDimensions[1] + y) * samplingGridDimensions[0] + x;
                     const auto& g = gridElements[index];
                     if (!g._massPointCount) {
                         vertexIndices[index] = 0xffffffff;
@@ -622,9 +625,9 @@ namespace SceneEngine
                     }
 
                     const auto cellCenter = Float3(
-                        LinearInterpolate(boundary.first[0], boundary.second[0], (float(x) + .5f) / float(samplingGridDimensions)),
-                        LinearInterpolate(boundary.first[1], boundary.second[1], (float(y) + .5f) / float(samplingGridDimensions)),
-                        LinearInterpolate(boundary.first[2], boundary.second[2], (float(z) + .5f) / float(samplingGridDimensions)));
+                        LinearInterpolate(boundary.first[0], boundary.second[0], (float(x) + .5f) / float(samplingGridDimensions[0])),
+                        LinearInterpolate(boundary.first[1], boundary.second[1], (float(y) + .5f) / float(samplingGridDimensions[1])),
+                        LinearInterpolate(boundary.first[2], boundary.second[2], (float(z) + .5f) / float(samplingGridDimensions[2])));
                     auto pt = CalculateCellPoint(g, cellSize) + cellCenter;
 
                         //  We need the normal at this location, also.
@@ -646,14 +649,14 @@ namespace SceneEngine
         DualContourMesh mesh;
         mesh._vertices = std::move(vertices);
 
-        for (int z=1; z<int(samplingGridDimensions); ++z) {
-            for (int y=1; y<int(samplingGridDimensions); ++y) {
-                for (int x=1; x<int(samplingGridDimensions); ++x) {
+        for (int z=1; z<int(samplingGridDimensions[2]); ++z) {
+            for (int y=1; y<int(samplingGridDimensions[1]); ++y) {
+                for (int x=1; x<int(samplingGridDimensions[0]); ++x) {
 
-                    float d0 = densityResults[(z * (samplingGridDimensions+1) + y) * (samplingGridDimensions+1) + x];
-                    float d1 = densityResults[(z * (samplingGridDimensions+1) + y) * (samplingGridDimensions+1) + x + 1];
-                    float d2 = densityResults[(z * (samplingGridDimensions+1) + y + 1) * (samplingGridDimensions+1) + x];
-                    float d3 = densityResults[((z + 1) * (samplingGridDimensions+1) + y) * (samplingGridDimensions+1) + x];
+                    float d0 = densityResults[(z * (samplingGridDimensions[1]+1) + y) * (samplingGridDimensions[0]+1) + x];
+                    float d1 = densityResults[(z * (samplingGridDimensions[1]+1) + y) * (samplingGridDimensions[0]+1) + x + 1];
+                    float d2 = densityResults[(z * (samplingGridDimensions[1]+1) + y + 1) * (samplingGridDimensions[0]+1) + x];
+                    float d3 = densityResults[((z + 1) * (samplingGridDimensions[1]+1) + y) * (samplingGridDimensions[0]+1) + x];
 
                         //  If the edge has a intersection point. We want to create a 
                         //  quad by joining together all of the cells that use this edge.
@@ -661,7 +664,7 @@ namespace SceneEngine
                         DualContourMesh::Quad q;
                         for (unsigned c=0; c<4; ++c) {
                             Int3 g(x + cellOffsetsX[c][0], y + cellOffsetsX[c][1], z + cellOffsetsX[c][2]);
-                            auto index = (g[2] * samplingGridDimensions + g[1]) * samplingGridDimensions + g[0];
+                            auto index = (g[2] * samplingGridDimensions[1] + g[1]) * samplingGridDimensions[0] + g[0];
                             q._verts[c] = vertexIndices[index];
                             assert(q._verts[c] < mesh._vertices.size());
                         }
@@ -672,7 +675,7 @@ namespace SceneEngine
                         DualContourMesh::Quad q;
                         for (unsigned c=0; c<4; ++c) {
                             Int3 g(x + cellOffsetsY[c][0], y + cellOffsetsY[c][1], z + cellOffsetsY[c][2]);
-                            auto index = (g[2] * samplingGridDimensions + g[1]) * samplingGridDimensions + g[0];
+                            auto index = (g[2] * samplingGridDimensions[1] + g[1]) * samplingGridDimensions[0] + g[0];
                             q._verts[c] = vertexIndices[index];
                             assert(q._verts[c] < mesh._vertices.size());
                         }
@@ -683,7 +686,7 @@ namespace SceneEngine
                         DualContourMesh::Quad q;
                         for (unsigned c=0; c<4; ++c) {
                             Int3 g(x + cellOffsetsZ[c][0], y + cellOffsetsZ[c][1], z + cellOffsetsZ[c][2]);
-                            auto index = (g[2] * samplingGridDimensions + g[1]) * samplingGridDimensions + g[0];
+                            auto index = (g[2] * samplingGridDimensions[1] + g[1]) * samplingGridDimensions[0] + g[0];
                             q._verts[c] = vertexIndices[index];
                             assert(q._verts[c] < mesh._vertices.size());
                         }

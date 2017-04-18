@@ -20,7 +20,6 @@ namespace RenderCore { namespace Techniques
         class Element
         {
         public:
-            // std::basic_string<utf8> _name;
             ParameterBox::ParameterNameHash _hash;
             ImpliedTyping::TypeDesc _type;
             unsigned _offset;
@@ -30,16 +29,17 @@ namespace RenderCore { namespace Techniques
 
         std::vector<uint8> BuildCBDataAsVector(const ParameterBox& parameters) const;
         SharedPkt BuildCBDataAsPkt(const ParameterBox& parameters) const;
+        uint64_t CalculateHash() const;
 
         PredefinedCBLayout();
         PredefinedCBLayout(StringSection<::Assets::ResChar> initializer);
         PredefinedCBLayout(StringSection<char> source, bool);
         ~PredefinedCBLayout();
-
-        PredefinedCBLayout(const PredefinedCBLayout&) = default;
-        PredefinedCBLayout& operator=(const PredefinedCBLayout&) = default;
-        PredefinedCBLayout(PredefinedCBLayout&&) never_throws = default;
-        PredefinedCBLayout& operator=(PredefinedCBLayout&&) never_throws = default;
+        
+        PredefinedCBLayout(const PredefinedCBLayout&) = delete;
+        PredefinedCBLayout& operator=(const PredefinedCBLayout&) = delete;
+        PredefinedCBLayout(PredefinedCBLayout&&) never_throws;
+        PredefinedCBLayout& operator=(PredefinedCBLayout&&) never_throws;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     
             { return _validationCallback; }

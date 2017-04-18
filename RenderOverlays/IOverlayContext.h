@@ -7,17 +7,23 @@
 #pragma once
 
 #include "IOverlayContext_Forward.h"
-#include "../RenderCore/IThreadContext.h"
-#include "../RenderCore/Metal/Forward.h"        // for RenderCore::Metal::UniformsStream
+#if defined(HAS_XLE_RENDERCORE_METAL)
+    #include "../RenderCore/IThreadContext.h"
+    #include "../RenderCore/Metal/Forward.h"        // for RenderCore::Metal::UniformsStream
+#endif
 #include "../Core/Types.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
+#include "../Utility/StringUtils.h"
 
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class NamedResources; } }
 
 namespace RenderOverlays
 {
-    class TextStyle;
+    class TextStyle
+    {
+    public:
+    };
 
     class ColorB
     {
@@ -113,13 +119,13 @@ namespace RenderOverlays
             ColorB color0, ColorB color1,
             const Float2& minTex0, const Float2& maxTex0, 
             const Float2& minTex1, const Float2& maxTex1,
-            const std::string& pixelShader = std::string()) = 0;
+            StringSection<char> pixelShader = StringSection<char>()) = 0;
 
         virtual void    DrawQuad(
             ProjectionMode::Enum proj, 
             const Float3& mins, const Float3& maxs, 
             ColorB color,
-            const std::string& pixelShader = std::string()) = 0;
+            StringSection<char> pixelShader = StringSection<char>()) = 0;
 
         virtual void    DrawTexturedQuad(
             ProjectionMode::Enum proj, 
@@ -130,19 +136,21 @@ namespace RenderOverlays
 
         virtual float   DrawText(
             const std::tuple<Float3, Float3>& quad,
-            TextStyle* textStyle, ColorB col, TextAlignment::Enum alignment, const char text[], va_list args) = 0;
+            TextStyle* textStyle, ColorB col, TextAlignment::Enum alignment, StringSection<char>text) = 0;
 
-        virtual float   StringWidth     (float scale, TextStyle* textStyle, const char text[], va_list args) = 0;
+        virtual float   StringWidth     (float scale, TextStyle* textStyle, StringSection<char> text) = 0;
         virtual float   TextHeight      (TextStyle* textStyle = nullptr) = 0;
 
         virtual void    CaptureState    () = 0;
         virtual void    ReleaseState    () = 0;
         virtual void    SetState        (const OverlayState& state) = 0;
 
+#if defined(HAS_XLE_RENDERCORE_METAL)
         virtual RenderCore::Techniques::ProjectionDesc      GetProjectionDesc() const = 0;
         virtual const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const = 0;
         virtual RenderCore::IThreadContext*                 GetDeviceContext() = 0;
         virtual RenderCore::Techniques::NamedResources*     GetNamedResources() const = 0;
+#endif
 
         virtual ~IOverlayContext();
     };

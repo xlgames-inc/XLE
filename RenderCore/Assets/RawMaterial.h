@@ -7,9 +7,12 @@
 #include "../Techniques/RenderStateResolver.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/AssetUtils.h"
-#include "../../Assets/DivergentAsset.h"
 #include "../../Utility/ParameterBox.h"
 #include <memory>
+
+#if defined(HAS_XLE_FULLASSETS)
+    #include "../../Assets/DivergentAsset.h"
+#endif
 
 namespace Assets 
 { 
@@ -69,7 +72,9 @@ namespace RenderCore { namespace Assets
 			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 
         static const RawMaterial& GetAsset(StringSection<::Assets::ResChar> initializer);
-        static const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>& GetDivergentAsset(StringSection<::Assets::ResChar> initializer);
+        #if defined(HAS_XLE_DIVERGENTASSET)
+            static const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>& GetDivergentAsset(StringSection<::Assets::ResChar> initializer);
+        #endif
 		static std::unique_ptr<RawMaterial> CreateNew(StringSection<::Assets::ResChar> initialiser);
 
     private:
