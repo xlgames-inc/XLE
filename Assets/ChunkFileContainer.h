@@ -9,6 +9,7 @@
 #include "AssetsCore.h"
 #include "ChunkFile.h"
 #include "../Utility/IteratorUtils.h"
+#include "../Utility/MemoryUtils.h"
 
 namespace Assets
 {
@@ -34,7 +35,7 @@ namespace Assets
     {
     public:
         Serialization::ChunkFile::SizeType  _offset;
-        std::unique_ptr<uint8[]> _buffer;
+        std::unique_ptr<uint8[], PODAlignedDeletor> _buffer;
         size_t _size;
 
         AssetChunkResult() : _offset(0), _size(0) {}

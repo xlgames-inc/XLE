@@ -5,6 +5,10 @@
 #pragma once
 
 #include "AssetsCore.h"
+#include "AssetSetInternal.h"
+#include "AssetUtils.h"
+#include "DeferredConstruction.h"
+#include "ConfigFileContainer.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
 #include <assert.h>
@@ -21,6 +25,7 @@ namespace Assets
 	class DeferredConstruction;
 	class DirectorySearchRules;
 	class ChunkFileContainer;
+    class IArtifact;
 
 	namespace Internal
 	{
@@ -60,12 +65,14 @@ namespace Assets
 
 		const ConfigFileContainer<InputStreamFormatter<utf8>>& GetConfigFileContainer(StringSection<ResChar> identifier);
 		const ChunkFileContainer& GetChunkFileContainer(StringSection<ResChar> identifier);
+
+        template <typename... Params> uint64 BuildHash(Params... initialisers);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template<typename AssetType, typename std::enable_if<Internal::AssetTraits<AssetType>::Constructor_Formatter>::type* = nullptr>
-		static std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
+		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
 		// First parameter should be the section of the input file to read (or just use the root of the file if it doesn't exist)
 		const char* p = XlFindChar(initializer, ':');
@@ -89,7 +96,7 @@ namespace Assets
 	}
 	
 	template<typename AssetType, typename... Params, typename std::enable_if<Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer>::type* = nullptr>
-		static std::unique_ptr<AssetType> AutoConstructAsset(const ResChar initializer[])
+		std::unique_ptr<AssetType> AutoConstructAsset(const ResChar initializer[])
 	{
 		const auto& container = Internal::GetChunkFileContainer(initializer);
 		return std::make_unique<AssetType>(container);
@@ -102,13 +109,13 @@ namespace Assets
 	}
 
 	template<typename AssetType, typename... Params, typename std::enable_if<std::is_constructible<AssetType, Params...>::value>::type* = nullptr>
-		static std::unique_ptr<AssetType> AutoConstructAssetDefault(Params... initialisers) { return std::make_unique<AssetType>(std::forward<Params>(initialisers)...); }
+		std::unique_ptr<AssetType> AutoConstructAssetDefault(Params... initialisers) { return std::make_unique<AssetType>(std::forward<Params>(initialisers)...); }
 
 	template<typename AssetType, typename... Params, typename std::enable_if<!std::is_constructible<AssetType, Params...>::value && std::is_constructible<AssetType>::value>::type* = nullptr>
-		static std::unique_ptr<AssetType> AutoConstructAssetDefault(Params... initialisers) { return std::make_unique<AssetType>(); }
+		std::unique_ptr<AssetType> AutoConstructAssetDefault(Params... initialisers) { return std::make_unique<AssetType>(); }
 
 	template<typename AssetType, typename... Params, typename std::enable_if<!std::is_constructible<AssetType, Params...>::value && !std::is_constructible<AssetType>::value>::type* = nullptr>
-		static std::unique_ptr<AssetType> AutoConstructAssetDefault(Params... initialisers) { return nullptr; }
+		std::unique_ptr<AssetType> AutoConstructAssetDefault(Params... initialisers) { return nullptr; }
 
 	template<
         typename AssetType, typename... Params, 
@@ -176,5 +183,6 @@ namespace Assets
 	{
 		return AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
 	}
+
 }
 

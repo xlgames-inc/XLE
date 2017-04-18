@@ -9,6 +9,7 @@
 #include "AssetSetInternal.h"
 #include "AssetsCore.h"
 #include "AssetTraits.h"
+#include "AssetSetInternal.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Core/Types.h"
@@ -20,6 +21,8 @@
 #if defined(ASSETS_STORE_DIVERGENT)
 	#include "DivergentAsset.h"
 #endif
+
+namespace Assets { class ICompileMarker; }
 
 namespace Assets { namespace Internal
 {
@@ -56,12 +59,19 @@ namespace Assets { namespace Internal
     template<> struct CheckDependancy<1>   { template <typename Resource> static bool NeedsRefresh(const Resource* resource)   { return !resource || (resource->GetDependencyValidation()->GetValidationIndex()!=0); } };
     template<> struct CheckDependancy<0>   { template <typename Resource> static bool NeedsRefresh(const Resource* resource)   { return !resource; } };
 
-    template <int BoBackgroundCompile> struct ConstructAsset {};
+    template <int BoBackgroundCompile> struct ConstructAsset;
 
+	template <typename... Params> uint64 BuildHash(Params... initialisers);
+	template <typename... Params> std::basic_string<ResChar> AsString(Params... initialisers);
+    std::basic_string<ResChar> AsString();
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+    template <int BoBackgroundCompile> struct ConstructAsset {};
+    template<typename AssetType> using Ptr = std::unique_ptr<AssetType>;
     template<> struct ConstructAsset<0>
     { 
         template<typename AssetType, typename... Params> 
-			static typename Ptr<AssetType> Create(Params... initialisers)
+			static Ptr<AssetType> Create(Params... initialisers)
 		{
 			return AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
 		}
@@ -70,22 +80,19 @@ namespace Assets { namespace Internal
     template<> struct ConstructAsset<1>
     {
 		template<typename AssetType, typename... Params> 
-			static typename Ptr<AssetType> Create(Params... initialisers)
+			static Ptr<AssetType> Create(Params... initialisers)
 		{
 			return AutoConstructAssetDeferred<AssetType>(std::forward<Params>(initialisers)...);
 		}
     };
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	template <typename... Params> uint64 BuildHash(Params... initialisers);
-	template <typename... Params> std::basic_string<ResChar> AsString(Params... initialisers);
-    std::basic_string<ResChar> AsString();
-
-    #pragma managed(push, off)
-    //  Can work for the moment because upstream assets aren't handled.
+    // #pragma managed(push, off)
+    //  Can't work for the moment because upstream assets aren't handled.
     // template<typename AssetType, typename std::enable_if<AssetTraits<AssetType>::HasGetAssetState>::type* = nullptr>
     //     inline bool ReadyForReplacement(const AssetType& asset) { return asset.GetAssetState() != AssetState::Pending; }
-    inline bool ReadyForReplacement(...) { return true; /* can't query, must do immediate replacement */ }
-    #pragma managed(pop)
+    // inline bool ReadyForReplacement(...) { return true; /* can't query, must do immediate replacement */ }
+    // #pragma managed(pop)
 
 	template<bool DoCheckDependancy, bool DoBackgroundCompile, typename AssetType, typename... Params>
 		const AssetType& GetAsset(AssetSetPtr<AssetType>& assetSet, Params... initialisers)
@@ -127,11 +134,11 @@ namespace Assets { namespace Internal
                         //  locked for awhile. Or, even worse, we could try for a recursive lock on the same
                         //  asset set.
                     cnt._pendingReplacement.reset();
-                    cnt._pendingReplacement = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(std::forward<Params>(initialisers)...);
+                    cnt._pendingReplacement = ConstructAsset<DoBackgroundCompile>::template Create<AssetType>(std::forward<Params>(initialisers)...);
                 }
 
                 // note that this will sometimes replace a "valid" asset with an "invalid" one
-                if (!cnt._active || (cnt._pendingReplacement && ReadyForReplacement(*cnt._pendingReplacement)))
+                if (!cnt._active || (cnt._pendingReplacement /*&& ReadyForReplacement(*cnt._pendingReplacement)*/))
                     cnt._active = std::move(cnt._pendingReplacement);
 
                 return *cnt._active;
@@ -141,7 +148,7 @@ namespace Assets { namespace Internal
                 auto name = AsString(initialisers...);  // (have to do this before constructor (incase constructor does std::move operations)
             #endif
 
-            auto newAsset = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(std::forward<Params>(initialisers)...);
+            auto newAsset = ConstructAsset<DoBackgroundCompile>::template Create<AssetType>(std::forward<Params>(initialisers)...);
             #if defined(ASSETS_STORE_NAMES)
                     // This is extra functionality designed for debugging and profiling
                     // attach a name to this hash value, so we can query the contents
@@ -256,7 +263,7 @@ namespace Assets { namespace Internal
                         LogAssetName(index, ni->second.c_str());
                     } else {
                         char buffer[256];
-                        _snprintf_s(buffer, _TRUNCATE, "Unnamed asset with hash (0x%08x%08x)", 
+                        std::snprintf(buffer, dimof(buffer), "Unnamed asset with hash (0x%08x%08x)",
                             uint32(i->first>>32), uint32(i->first));
                         LogAssetName(index, buffer);
                     }
@@ -266,7 +273,7 @@ namespace Assets { namespace Internal
                 unsigned index = 0;
                 for (;i != _assets.cend(); ++i, ++index) {
                     char buffer[256];
-                    _snprintf_s(buffer, _TRUNCATE, "Unnamed asset with hash (0x%08x%08x)", 
+                    std::snprintf(buffer, dimof(buffer), "Unnamed asset with hash (0x%08x%08x)",
                         uint32(i->first>>32), uint32(i->first));
                     LogAssetName(index, buffer);
                 }

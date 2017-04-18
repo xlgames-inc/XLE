@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ChunkFile.h"
-#include "Assets.h"
+#include "AssetsCore.h"
 #include "IFileSystem.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/Stream.h"
@@ -186,7 +186,7 @@ namespace Serialization { namespace ChunkFile
         
     }
 
-    template SimpleChunkFileWriter;
+    template class Internal::SimpleChunkFileWriterT<BasicFile>;
 
 }}
 

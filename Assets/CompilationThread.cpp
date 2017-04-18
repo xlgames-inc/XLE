@@ -5,7 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CompilationThread.h"
-#include "../ConsoleRig/Log.h"
+#if defined(XLE_HAS_CONSOLE_RIG)
+    #include "../ConsoleRig/Log.h"
+#endif
 
 namespace Assets 
 {
@@ -48,9 +50,11 @@ namespace Assets
                 }
                 CATCH (const std::exception& e)
                 {
-                    LogWarning << "Got exception while in asset compilation thread" << std::endl;
-                    LogWarning << "Asset: " << o->Initializer() << std::endl;
-                    LogWarning << "    " << e.what() << std::endl;
+                    #if defined(XLE_HAS_CONSOLE_RIG)
+                        LogWarning << "Got exception while in asset compilation thread" << std::endl;
+                        LogWarning << "Asset: " << o->Initializer() << std::endl;
+                        LogWarning << "    " << e.what() << std::endl;
+                    #endif
                     _queue.pop();
                 }
                 CATCH_END
@@ -60,7 +64,7 @@ namespace Assets
                     // trashing while processing delayed items. Note
                     // that if any new request comes in during this Sleep,
                     // then we won't handle that request in a prompt manner.
-                Sleep(1);
+                Threading::Sleep(1);
                 auto o = op->lock();
                 TRY
                 {
@@ -78,9 +82,11 @@ namespace Assets
                 }
                 CATCH (const std::exception& e)
                 {
-                    LogWarning << "Got exception while in asset compilation thread" << std::endl;
-                    LogWarning << "Asset: " << o->Initializer() << std::endl;
-                    LogWarning << "    " << e.what() << std::endl;
+                    #if defined(XLE_HAS_CONSOLE_RIG)
+                        LogWarning << "Got exception while in asset compilation thread" << std::endl;
+                        LogWarning << "Asset: " << o->Initializer() << std::endl;
+                        LogWarning << "    " << e.what() << std::endl;
+                    #endif
                     _delayedQueue.pop();
                 }
                 CATCH_END

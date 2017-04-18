@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ChunkFile.h"
+#include "BlockSerializer.h"
 #include "../Core/Prefix.h"
 #include <vector>
 #include <memory>

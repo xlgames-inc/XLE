@@ -6,8 +6,9 @@
 
 #pragma once
 
-#include "Assets.h"
 #include "AssetUtils.h"
+#include "AssetsCore.h"
+#include "DepVal.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/IteratorUtils.h"
 

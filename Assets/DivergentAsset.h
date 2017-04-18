@@ -7,6 +7,7 @@
 #pragma once
 
 #include "AssetSetInternal.h"
+#include "DepVal.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Core/Types.h"
 #include <memory>
@@ -106,7 +107,7 @@ namespace Assets
         // using std::shared_ptr::shared_ptr;       // (not compiling in C++/CLI?)
 
         TransactionPtr(std::shared_ptr<Transaction> ptr) : std::shared_ptr<Transaction>(std::move(ptr)) {}
-        ~TransactionPtr() { if (get()) get()->Commit(); }
+        ~TransactionPtr() { if (std::shared_ptr<Transaction>::get()) std::shared_ptr<Transaction>::get()->Commit(); }
     };
 
 	template <typename Asset>

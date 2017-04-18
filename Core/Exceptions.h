@@ -89,9 +89,11 @@ namespace Exceptions
 }
 
 #if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
-    #define NO_RETURN __declspec(noreturn)
+    #define NO_RETURN_PREFIX __declspec(noreturn)
+    #define NO_RETURN_POSTFIX
 #else
-    #define NO_RETURN
+    #define NO_RETURN_PREFIX
+    #define NO_RETURN_POSTFIX __attribute((noreturn))
 #endif
 
 namespace Utility
@@ -108,7 +110,10 @@ namespace Utility
             }
 
             template <class E, typename std::enable_if<std::is_base_of<::Exceptions::BasicLabel, E>::value>::type* = nullptr>
-                inline NO_RETURN void Throw(const E& e)
+                inline NO_RETURN_PREFIX void Throw(const E& e) NO_RETURN_POSTFIX;
+
+            template <class E, typename std::enable_if<std::is_base_of<::Exceptions::BasicLabel, E>::value>::type*>
+                inline NO_RETURN_PREFIX void Throw(const E& e)
             {
                 auto* callback = GlobalOnThrowCallback();
                 if (callback) (*callback)(e);
@@ -116,7 +121,10 @@ namespace Utility
             }
 
             template <class E, typename std::enable_if<!std::is_base_of<::Exceptions::BasicLabel, E>::value>::type* = nullptr>
-                inline NO_RETURN void Throw(const E& e)
+                NO_RETURN_PREFIX void Throw(const E& e) NO_RETURN_POSTFIX;
+
+            template <class E, typename std::enable_if<!std::is_base_of<::Exceptions::BasicLabel, E>::value>::type*>
+                inline NO_RETURN_PREFIX void Throw(const E& e)
             {
                 throw e;
             }

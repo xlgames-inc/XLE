@@ -12,7 +12,9 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/Threading/Mutex.h"
-#include "../ConsoleRig/Log.h"
+#if defined(XLE_HAS_CONSOLE_RIG)
+    #include "../ConsoleRig/Log.h"
+#endif
 
 namespace std 
 {
@@ -27,13 +29,17 @@ namespace Assets
     {
         void LogHeader(unsigned count, const char typeName[])
         {
-            LogInfo << "------------------------------------------------------------------------------------------";
-            LogInfo << "    Asset set for type (" << typeName << ") with (" <<  count << ") items";
+            #if defined(XLE_HAS_CONSOLE_RIG)
+                LogInfo << "------------------------------------------------------------------------------------------";
+                LogInfo << "    Asset set for type (" << typeName << ") with (" <<  count << ") items";
+            #endif
         }
 
         void LogAssetName(unsigned index, const char name[])
         {
-            LogInfo << "    [" << index << "] " << name;
+            #if defined(XLE_HAS_CONSOLE_RIG)
+                LogInfo << "    [" << index << "] " << name;
+            #endif
         }
 
         void InsertAssetName(   std::vector<std::pair<uint64, std::string>>& assetNames, 

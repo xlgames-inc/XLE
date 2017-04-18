@@ -7,7 +7,6 @@
 #pragma once
 
 #include "AssetsCore.h"
-#include "Assets.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
 

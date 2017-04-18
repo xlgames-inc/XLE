@@ -11,7 +11,9 @@
 
 #include "CompileAndAsyncManager.h"     // for ~PendingCompileMarker -- remove
 
-#include "../ConsoleRig/Log.h"
+#if defined(XLE_HAS_CONSOLE_RIG)
+    #include "../ConsoleRig/Log.h"
+#endif
 #include "../Assets/AssetUtils.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/Data.h"
@@ -23,8 +25,11 @@
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/ExceptionLogging.h"
+#include "../Utility/MemoryUtils.h"
 
-#include "../Core/WinAPI/IncludeWindows.h"
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+    #include "../Core/WinAPI/IncludeWindows.h"
+#endif
 #include <memory>
 
 namespace Assets { namespace IntermediateAssets
@@ -67,7 +72,7 @@ namespace Assets { namespace IntermediateAssets
             const ResChar* f = depFileName, *b = baseDirectory;
             while (ConvChar(*f) == ConvChar(*b) && *f != '\0') { ++f; ++b; }
             while (ConvChar(*f) == '/') { ++f; }
-            _snprintf_s(destination, sizeof(ResChar)*DestCount, _TRUNCATE, "%s/.deps/%s", baseDirectory, f);
+            std::snprintf(destination, dimof(destination), "%s/.deps/%s", baseDirectory, f);
         }
 
     class RetainedFileRecord : public DependencyValidation
@@ -184,19 +189,25 @@ namespace Assets { namespace IntermediateAssets
                 RegisterAssetDependency(validation, record);
 
                 if (record->_state._status == DependentFileState::Status::Shadowed) {
-                    LogInfo << "Asset (" << intermediateFileName << ") is invalidated because dependency (" << depName << ") is marked shadowed";
+                    #if defined(XLE_HAS_CONSOLE_RIG)
+                        LogInfo << "Asset (" << intermediateFileName << ") is invalidated because dependency (" << depName << ") is marked shadowed";
+                    #endif
                     return nullptr;
                 }
 
                 if (!record->_state._timeMarker) {
-                    LogInfo
-                        << "Asset (" << intermediateFileName 
-                        << ") is invalidated because of missing dependency (" << depName << ")";
+                    #if defined(XLE_HAS_CONSOLE_RIG)
+                        LogInfo
+                            << "Asset (" << intermediateFileName 
+                            << ") is invalidated because of missing dependency (" << depName << ")";
+                    #endif
                     return nullptr;
                 } else if (record->_state._timeMarker != ((uint64(dateHigh) << 32ull) | uint64(dateLow))) {
-                    LogInfo
-                        << "Asset (" << intermediateFileName 
-                        << ") is invalidated because of file data on dependency (" << depName << ")";
+                    #if defined(XLE_HAS_CONSOLE_RIG)
+                        LogInfo
+                            << "Asset (" << intermediateFileName 
+                            << ") is invalidated because of file data on dependency (" << depName << ")";
+                    #endif
                     return nullptr;
                 }
             }
@@ -266,6 +277,8 @@ namespace Assets { namespace IntermediateAssets
             //  that matches the version string.
 
 		ResChar buffer[MaxPath];
+
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 
 		if (!universal) {
 			_snprintf_s(buffer, _TRUNCATE, "%s/%s_*", baseDirectory, configString);
@@ -349,6 +362,9 @@ namespace Assets { namespace IntermediateAssets
 			_snprintf_s(buffer, _TRUNCATE, "%s/u", baseDirectory);
 			_baseDirectory = buffer;
 		}
+#else
+        assert(0);
+#endif
     }
 
     Store::~Store() 

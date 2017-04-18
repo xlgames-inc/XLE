@@ -299,12 +299,20 @@ using namespace Utility;
 
 #else
 
+    #include <thread>
+
             //// Other / unsupported ////
     namespace Utility { namespace Threading {
-        inline void YieldTimeSlice()            {}
-        inline void Pause()                     {}
-        inline void Sleep(uint32 milliseconds)  {}
-        inline unsigned CurrentThreadId()       { return 0; }
+        inline void YieldTimeSlice()			{ std::this_thread::yield(); }
+        inline void Sleep(uint32 milliseconds)	{ std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds)); }
+        using ThreadId = std::thread::id;
+        inline ThreadId CurrentThreadId()		{ return std::this_thread::get_id(); }
+
+        #if (COMPILER_ACTIVE == COMPILER_TYPE_GCC) || (COMPILER_ACTIVE == COMPILER_TYPE_CLANG)
+            inline void Pause() { __builtin_ia32_pause(); }
+        #else
+            inline void Pause() { assert(0); }
+        #endif
     }}
 
 #endif

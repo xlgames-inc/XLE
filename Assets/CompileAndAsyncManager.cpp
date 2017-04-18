@@ -6,7 +6,9 @@
 
 #include "CompileAndAsyncManager.h"
 #include "IntermediateAssets.h"
-#include "../ConsoleRig/Log.h"
+#if defined(HAS_XLE_CONSOLE_RIG)
+    #include "../ConsoleRig/Log.h"
+#endif
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/StringUtils.h"
@@ -57,7 +59,9 @@ namespace Assets
                         auto result = (*i)->Update();
                         remove = result == IPollingAsyncProcess::Result::Finish;
                     } CATCH(const std::exception& e) {
-                        LogWarning << "Got exception during polling process update: " << e.what();
+                        #if defined(HAS_XLE_CONSOLE_RIG)
+                            LogWarning << "Got exception during polling process update: " << e.what();
+                        #endif
                         remove = true;
                     } CATCH_END
 

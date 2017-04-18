@@ -2,14 +2,25 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#pragma once
+
 #include "AssetsCore.h"
+// #include "Assets.h"
+// #include "AssetsInternal.h"
 #include "IntermediateAssets.h"
 #include "../Utility/FunctionUtils.h"
+#include "../Utility/Streams/FileUtils.h"
 #include <memory>
 
 namespace Assets
 {
 	class PendingOperationMarker;
+    class ICompileMarker;
+    namespace Internal
+    {
+        template <typename AssetType> class AssetTraits;
+        std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
+    }
 
 	class DeferredConstruction
 	{
@@ -66,7 +77,9 @@ namespace Assets
 		template<typename AssetType, typename std::enable_if<!Internal::AssetTraits<AssetType>::Constructor_IntermediateAssetLocator>::type* = nullptr>
 			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IArtifact& locator, StringSection<ResChar> initializer)
 			{
-				return AutoConstructAsset<AssetType>(locator._sourceID0);
+				/*return AutoConstructAsset<AssetType>(locator._sourceID0);*/
+                assert(false);
+                return nullptr;
 			}
 	}
 
@@ -85,7 +98,7 @@ namespace Assets
 		// Attempt to load the existing asset immediate. If we get an unsupported version error, we will attempt a recompile
 
 		auto existingLoc = marker->GetExistingAsset();
-		if (existingLoc._dependencyValidation && existingLoc._dependencyValidation->GetValidationIndex()==0) {
+		if (existingLoc->GetDependencyValidation() && existingLoc->GetDependencyValidation()->GetValidationIndex()==0) {
 
 			std::unique_ptr<AssetType> asset = nullptr;
 			// Attempt recompile if we catch InvalidAsset or a FormatError with UnsupportedVersion or an IOException with FileNotFound
@@ -104,7 +117,7 @@ namespace Assets
 				// (awkward shared_ptr wrapper required here to get around difficulties moving variables into lambdas and move-only std::function<> objects
 				std::shared_ptr<std::unique_ptr<AssetType>> wrapper = std::make_shared<std::unique_ptr<AssetType>>(std::move(asset));
 				std::function<std::unique_ptr<AssetType>()> constructorCallback([wrapper]() -> std::unique_ptr<AssetType> { return std::move(*wrapper.get()); });
-				return std::make_shared<DeferredConstruction>(nullptr, existingLoc._dependencyValidation, std::move(constructorCallback));
+				return std::make_shared<DeferredConstruction>(nullptr, existingLoc->GetDependencyValidation(), std::move(constructorCallback));
 			}
 
 			// If we didn't get a valid asset, we will fall through and attempt recompile...
@@ -121,9 +134,10 @@ namespace Assets
 				if (state == AssetState::Invalid)
 					Throw(Exceptions::InvalidAsset(init0.c_str(), "Failure during compilation operation"));
 				assert(state == AssetState::Ready);
-				return Internal::ConstructFromIntermediateAssetLocator<AssetType>(pendingCompile->GetLocator(), MakeStringSection(init0));
+				return Internal::ConstructFromIntermediateAssetLocator<AssetType>(*pendingCompile->GetArtifacts()[0].second, MakeStringSection(init0));
 			});
-		return std::make_shared<DeferredConstruction>(pendingCompile, pendingCompile->GetLocator()._dependencyValidation, std::move(constructorCallback));
+        assert(0);      // todo - need to set the dependncy validation to something reasonable -- 
+		return std::make_shared<DeferredConstruction>(pendingCompile, nullptr, std::move(constructorCallback));
 	}
 }
 

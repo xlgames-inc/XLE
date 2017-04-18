@@ -4,7 +4,6 @@
 
 #include "DeferredConstruction.h"
 #include "AssetUtils.h"
-#include "../ConsoleRig/Log.h"
 
 namespace Assets
 {

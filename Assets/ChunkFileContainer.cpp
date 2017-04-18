@@ -6,11 +6,11 @@
 
 #include "ChunkFileContainer.h"
 #include "BlockSerializer.h"
-#include "IntermediateAssets.h"
+#include "DepVal.h"
+// #include "IntermediateAssets.h"
 #include "IFileSystem.h"
 #include "../Utility/StringFormat.h"
 #include "../Core/Exceptions.h"
-#include "../ConsoleRig/Log.h"
 
 namespace Assets
 {
@@ -54,7 +54,8 @@ namespace Assets
             chunkResult._size = i->_size;
 
             if (r._dataType != AssetChunkRequest::DataType::DontLoad) {
-                chunkResult._buffer = std::make_unique<uint8[]>(i->_size);
+                uint8* mem = (uint8*)XlMemAlign(i->_size, sizeof(uint64_t));
+                chunkResult._buffer = std::unique_ptr<uint8[], PODAlignedDeletor>(mem);
                 file->Seek(i->_fileOffset);
                 file->Read(chunkResult._buffer.get(), i->_size);
 

@@ -34,11 +34,10 @@ namespace Assets
 		Formatter formatter(MemoryMappedInputStream(_fileData.get(), PtrAdd(_fileData.get(), _fileSize)));
 
 		while (!gotConfig) {
-			using Blob = Formatter::Blob;
 			switch (formatter.PeekNext()) {
-			case Blob::BeginElement:
+			case Formatter::Blob::BeginElement:
 				{
-					Formatter::InteriorSection eleName;
+					typename Formatter::InteriorSection eleName;
 					if (!formatter.TryBeginElement(eleName))
 						Throw(Utility::FormatException("Poorly formed begin element in config file", formatter.GetLocation()));
 
@@ -54,9 +53,9 @@ namespace Assets
 					continue;
 				}
 
-			case Blob::AttributeName:
+			case Formatter::Blob::AttributeName:
 				{
-					Formatter::InteriorSection name, value;
+					typename Formatter::InteriorSection name, value;
 					formatter.TryAttribute(name, value);
 					continue;
 				}

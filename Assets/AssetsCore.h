@@ -23,6 +23,8 @@ namespace Assets
     class DependencyValidation;
     using DepValPtr = std::shared_ptr<DependencyValidation>;
 
+    template<typename Type> uint64_t GetCompileProcessType() { return Type::CompileProcessType; }
+
     /// <summary>Exceptions related to rendering</summary>
     namespace Exceptions
     {
@@ -37,7 +39,7 @@ namespace Assets
             ResChar _initializer[512];
         };
 
-        /// <summaryAn asset can't be loaded</summary>
+        /// <summary>An asset can't be loaded</summary>
         /// This exception means a asset failed during loading, and can
         /// never be loaded. It might mean that the resource is corrupted on
         /// disk, or maybe using an unsupported file format (or bad version).

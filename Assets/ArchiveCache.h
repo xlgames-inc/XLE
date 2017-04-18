@@ -12,6 +12,7 @@
 
 #include <memory>
 #include <vector>
+#include <string>
 
 #define ARCHIVE_CACHE_ATTACHED_STRINGS
 

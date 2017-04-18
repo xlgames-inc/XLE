@@ -13,8 +13,6 @@
 
 namespace Assets
 {
-    Services* Services::s_instance = nullptr;
-
     Services::Services(Flags::BitField flags)
     {
         _assetSets = std::make_unique<AssetSetManager>();
@@ -29,6 +27,7 @@ namespace Assets
         _asyncMan.reset();
     }
 
+    // Services* Services::s_instance = nullptr;
     // Services* CrossModuleSingleton<Services>::s_instance = nullptr;
 }
 

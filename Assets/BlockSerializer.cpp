@@ -35,8 +35,7 @@ namespace Serialization
         } else if (specialBuffer == SpecialBuffer::VertexBuffer || specialBuffer == SpecialBuffer::IndexBuffer) {
             assert(0);
         } else if (specialBuffer == SpecialBuffer::Vector) {
-            // _memory.insert(_memory.end(), sizeof(std::vector<unsigned, BlockSerializerAllocator<unsigned>>), 0);
-			_memory.insert(_memory.end(), 3 * sizeof(size_t), 0);
+            _memory.insert(_memory.end(), sizeof(SerializableVector<unsigned>), 0);
         } else if (specialBuffer == SpecialBuffer::UniquePtr) {
             _memory.insert(_memory.end(), sizeof(std::unique_ptr<void, BlockSerializerDeleter<void>>), 0);
         } else if (specialBuffer == SpecialBuffer::Unknown) {
@@ -46,16 +45,16 @@ namespace Serialization
 
     void    NascentBlockSerializer::SerializeSpecialBuffer( 
                     SpecialBuffer::Enum specialBuffer, 
-                    const void* begin, const void* end)
+                    IteratorRange<const void*> range)
     {
         InternalPointer newPointer;
         newPointer._pointerOffset    = _memory.size();
         newPointer._subBlockOffset   = _trailingSubBlocks.size();
-        newPointer._subBlockSize     = ptrdiff_t(end) - ptrdiff_t(begin);
+        newPointer._subBlockSize     = ptrdiff_t(range.end()) - ptrdiff_t(range.begin());
         newPointer._specialBuffer    = specialBuffer;
         _internalPointers.push_back(newPointer);
 
-        std::copy((const uint8*)begin, (const uint8*)end, std::back_inserter(_trailingSubBlocks));
+        std::copy((const uint8*)range.begin(), (const uint8*)range.end(), std::back_inserter(_trailingSubBlocks));
 
             //
             //      =<>=    Write blank space for this special buffer   =<>=
@@ -157,9 +156,9 @@ namespace Serialization
         PushBackRaw_SubBlock(AsPointer(subBlock._trailingSubBlocks.begin()), subBlock._trailingSubBlocks.size());
     }
 
-    void NascentBlockSerializer::SerializeRawSubBlock(const void* begin, const void* end, SpecialBuffer::Enum specialBuffer)
+    void NascentBlockSerializer::SerializeRawSubBlock(IteratorRange<const void*> range, SpecialBuffer::Enum specialBuffer)
     {
-        auto size = size_t(end) - size_t(begin);
+        auto size = size_t(range.end()) - size_t(range.begin());
 
         InternalPointer ptr;
         ptr._pointerOffset   = _memory.size();
@@ -169,19 +168,19 @@ namespace Serialization
         RegisterInternalPointer(ptr);
 
         PushBackPlaceholder(specialBuffer);
-        PushBackRaw_SubBlock(begin, size);
+        PushBackRaw_SubBlock(range.begin(), range.size());
     }
 
     void NascentBlockSerializer::SerializeValue(const std::string& value)
     {
-        SerializeSpecialBuffer(SpecialBuffer::String, AsPointer(value.begin()), AsPointer(value.end()));
+        SerializeSpecialBuffer(SpecialBuffer::String, MakeIteratorRange(value));
     }
 
     class Header
     {
     public:
-        size_t  _rawMemorySize;
-        size_t  _internalPointerCount;
+        uint64_t  _rawMemorySize;
+        uint64_t  _internalPointerCount;
     };
     
     size_t      NascentBlockSerializer::Size() const
@@ -230,6 +229,12 @@ namespace Serialization
 
     #undef new
 
+    static void SetPtr(void* dst, uint64_t value)
+    {
+        ((uint32*)dst)[0] = (uint32)value;
+        ((uint32*)dst)[1] = (uint32)(value >> 32ull);
+    }
+
     void        Block_Initialize(void* block, const void* base)
     {
         if (!base) { base = block; }
@@ -241,70 +246,19 @@ namespace Serialization
         for (unsigned c=0; c<h._internalPointerCount; ++c) {
             const NascentBlockSerializer::InternalPointer& ptr = ptrTable[c];
             if (ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::Unknown) {
-                *(size_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset) = 
-                    ptr._subBlockOffset + size_t(base) + sizeof(Header);
-            } else if ( ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::VertexBuffer
-                ||      ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::IndexBuffer) {
-                assert(0);
-            } else if (ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::String) {
-                new(PtrAdd(block, sizeof(Header)+ptr._pointerOffset)) std::string(
-                    (const char*)(ptr._subBlockOffset + size_t(base) + sizeof(Header)),
-                    ptr._subBlockSize);
+                SetPtr(PtrAdd(block, sizeof(Header)+ptr._pointerOffset),
+                       ptr._subBlockOffset + size_t(base) + sizeof(Header));
             } else if (ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::Vector) {
-
-				#if 0
-					size_t* o = (size_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset);
-					#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER >= 1900)
-						// This is the flag in the BlockSerializerAllocator in the vector
-						// It's a bit of an awkward hack... but one it's one of those hacks
-						//		-- once it's working, it works well.
-						// In VS2015, it changed position with in vector object. Actually the
-						// new position might be less ideal, because it's before the more
-						// commonly accessed begin/end pointers.
-						*(size_t*)o = 1; o = PtrAdd(o, sizeof(size_t));
-					#endif
-
-					auto* containerPtr = o;
-					(void)containerPtr;
-
-					#if (STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL != 0)
-							//  in debug, to produce a valid vector, we need to add one of these proxy
-							//  objects. it requires some extra memory management; but fortunately it's
-							//  just debug builds!
-							//  Note that this requires that the caller correctly call the destructors
-							//  on the returned objects to make sure the vector destructor deletes this
-							//  object!
-						auto proxy = std::make_unique<std::_Container_proxy>();
-						proxy->_Mycont = (std::_Container_base12*)containerPtr;
-						*o++ = size_t(proxy.release());
-					#endif
-
-					o[0] = (ptr._subBlockOffset + size_t(base) + sizeof(Header));
-					o[1] = (ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header));
-					o[2] = (ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header));
-
-					#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER < 1900)
-						*(unsigned*)(&o[3]) = 1;
-					#endif
-				#else
-					size_t* o = (size_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset);
-					o[0] = ptr._subBlockOffset + size_t(base) + sizeof(Header);
-					o[1] = ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header);
-					o[2] = 0;
-				#endif
-
-            } else if (ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::UniquePtr) {
-                size_t* o = (size_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset);
-				#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER >= 1900)
-					// As in the vector case above, the arrangement of unique ptrs can changed in recent
-					// versions of visual studio. The solution is getting a bit awkward now, it might be
-					// better to consider and alternative approach...
-					*(unsigned*)(&o[0]) = 1; 
-					*PtrAdd(o, sizeof(size_t)) = (ptr._subBlockOffset + size_t(base) + sizeof(Header));					
-				#else
-					o[0] = (ptr._subBlockOffset + size_t(base) + sizeof(Header));
-					*(unsigned*)(&o[1]) = 1;
-				#endif
+                uint64_t* o = (uint64_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset);
+                SetPtr(&o[0], ptr._subBlockOffset + size_t(base) + sizeof(Header));
+                SetPtr(&o[1], ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header));
+                SetPtr(&o[2], 0);
+            } else if (     ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::UniquePtr
+                       ||   ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::VertexBuffer
+                       ||   ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::IndexBuffer
+                       ||   ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::String) {
+                // these are deprecated types -- they need a stronger cross-platform implementation to work reliably
+                assert(false);
             }
         }
     }

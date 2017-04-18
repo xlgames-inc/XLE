@@ -8,7 +8,9 @@
 
 #include "AssetSetManager.h"
 #include "AssetsCore.h"
-#include "AssetTraits.h"
+#include "../Utility/Threading/Mutex.h"
+#include "../Utility/IteratorUtils.h"
+#include "../Core/SelectConfiguration.h"
 #include <vector>
 #include <assert.h>
 
@@ -16,7 +18,7 @@
 #define ASSETS_STORE_DIVERGENT		// divergent assets are intended for tools (not in-game). But we can't selectively disable this feature
 #define ASSETS_MULTITHREADED        // allow GetAsset, GetAssetComp (and variants) to be used from multiple threads
 
-#if defined(ASSETS_MULTITHREADED)
+#if defined(ASSETS_MULTITHREADED) && (COMPILER_ACTIVE == COMPILER_TYPE_MSVC)
 	// note --  there is an unfortunate complication here.
 	//          .net code can't include the <mutex> header...
 	//          So we have to push all code that interacts with
@@ -30,12 +32,15 @@ namespace Assets
 	class ICompileMarker;
 	class IArtifact;
 	class PendingCompileMarker;
+    class DeferredConstruction;
 	template <typename Asset> class DivergentAsset;
 }
 
 namespace Assets { namespace Internal 
 {
     AssetSetManager& GetAssetSetManager();
+
+    template <typename AssetType> class AssetTraits;
 
     template <typename AssetType>
         class AssetSet : public IAssetSet
