@@ -1,0 +1,281 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		8F044B891EA695E40074D6A4 /* EigenVector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B711EA695E40074D6A4 /* EigenVector.cpp */; };
+		8F044B8A1EA695E40074D6A4 /* EigenVector.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B721EA695E40074D6A4 /* EigenVector.h */; };
+		8F044B8B1EA695E40074D6A4 /* Geometry.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B731EA695E40074D6A4 /* Geometry.cpp */; };
+		8F044B8C1EA695E40074D6A4 /* Geometry.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B741EA695E40074D6A4 /* Geometry.h */; };
+		8F044B8D1EA695E40074D6A4 /* Interpolation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B751EA695E40074D6A4 /* Interpolation.cpp */; };
+		8F044B8E1EA695E40074D6A4 /* Interpolation.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B761EA695E40074D6A4 /* Interpolation.h */; };
+		8F044B901EA695E40074D6A4 /* Matrix.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B781EA695E40074D6A4 /* Matrix.cpp */; };
+		8F044B911EA695E40074D6A4 /* Matrix.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B791EA695E40074D6A4 /* Matrix.h */; };
+		8F044B921EA695E40074D6A4 /* Noise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B7A1EA695E40074D6A4 /* Noise.cpp */; };
+		8F044B931EA695E40074D6A4 /* Noise.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B7B1EA695E40074D6A4 /* Noise.h */; };
+		8F044B941EA695E40074D6A4 /* PoissonSolver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B7C1EA695E40074D6A4 /* PoissonSolver.cpp */; };
+		8F044B951EA695E40074D6A4 /* PoissonSolver.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B7D1EA695E40074D6A4 /* PoissonSolver.h */; };
+		8F044B961EA695E40074D6A4 /* PoissonSolverDetail.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B7E1EA695E40074D6A4 /* PoissonSolverDetail.h */; };
+		8F044B971EA695E40074D6A4 /* ProjectionMath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B7F1EA695E40074D6A4 /* ProjectionMath.cpp */; };
+		8F044B981EA695E40074D6A4 /* ProjectionMath.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B801EA695E40074D6A4 /* ProjectionMath.h */; };
+		8F044B991EA695E40074D6A4 /* Quaternion.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B811EA695E40074D6A4 /* Quaternion.h */; };
+		8F044B9A1EA695E40074D6A4 /* RectanglePacking.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B821EA695E40074D6A4 /* RectanglePacking.cpp */; };
+		8F044B9B1EA695E40074D6A4 /* RectanglePacking.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B831EA695E40074D6A4 /* RectanglePacking.h */; };
+		8F044B9C1EA695E40074D6A4 /* RegularNumberField.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B841EA695E40074D6A4 /* RegularNumberField.cpp */; };
+		8F044B9D1EA695E40074D6A4 /* RegularNumberField.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B851EA695E40074D6A4 /* RegularNumberField.h */; };
+		8F044B9E1EA695E40074D6A4 /* Transformations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B861EA695E40074D6A4 /* Transformations.cpp */; };
+		8F044B9F1EA695E40074D6A4 /* Transformations.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B871EA695E40074D6A4 /* Transformations.h */; };
+		8F044BA01EA695E40074D6A4 /* Vector.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B881EA695E40074D6A4 /* Vector.h */; };
+		8F044BA71EA696EC0074D6A4 /* XLEMath.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044BA61EA696EC0074D6A4 /* XLEMath.h */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		8F044B6A1EA695590074D6A4 /* libMathMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMathMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F044B711EA695E40074D6A4 /* EigenVector.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = EigenVector.cpp; path = ../EigenVector.cpp; sourceTree = "<group>"; };
+		8F044B721EA695E40074D6A4 /* EigenVector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = EigenVector.h; path = ../EigenVector.h; sourceTree = "<group>"; };
+		8F044B731EA695E40074D6A4 /* Geometry.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Geometry.cpp; path = ../Geometry.cpp; sourceTree = "<group>"; };
+		8F044B741EA695E40074D6A4 /* Geometry.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Geometry.h; path = ../Geometry.h; sourceTree = "<group>"; };
+		8F044B751EA695E40074D6A4 /* Interpolation.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Interpolation.cpp; path = ../Interpolation.cpp; sourceTree = "<group>"; };
+		8F044B761EA695E40074D6A4 /* Interpolation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Interpolation.h; path = ../Interpolation.h; sourceTree = "<group>"; };
+		8F044B781EA695E40074D6A4 /* Matrix.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Matrix.cpp; path = ../Matrix.cpp; sourceTree = "<group>"; };
+		8F044B791EA695E40074D6A4 /* Matrix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Matrix.h; path = ../Matrix.h; sourceTree = "<group>"; };
+		8F044B7A1EA695E40074D6A4 /* Noise.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Noise.cpp; path = ../Noise.cpp; sourceTree = "<group>"; };
+		8F044B7B1EA695E40074D6A4 /* Noise.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Noise.h; path = ../Noise.h; sourceTree = "<group>"; };
+		8F044B7C1EA695E40074D6A4 /* PoissonSolver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = PoissonSolver.cpp; path = ../PoissonSolver.cpp; sourceTree = "<group>"; };
+		8F044B7D1EA695E40074D6A4 /* PoissonSolver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PoissonSolver.h; path = ../PoissonSolver.h; sourceTree = "<group>"; };
+		8F044B7E1EA695E40074D6A4 /* PoissonSolverDetail.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PoissonSolverDetail.h; path = ../PoissonSolverDetail.h; sourceTree = "<group>"; };
+		8F044B7F1EA695E40074D6A4 /* ProjectionMath.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ProjectionMath.cpp; path = ../ProjectionMath.cpp; sourceTree = "<group>"; };
+		8F044B801EA695E40074D6A4 /* ProjectionMath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ProjectionMath.h; path = ../ProjectionMath.h; sourceTree = "<group>"; };
+		8F044B811EA695E40074D6A4 /* Quaternion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Quaternion.h; path = ../Quaternion.h; sourceTree = "<group>"; };
+		8F044B821EA695E40074D6A4 /* RectanglePacking.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RectanglePacking.cpp; path = ../RectanglePacking.cpp; sourceTree = "<group>"; };
+		8F044B831EA695E40074D6A4 /* RectanglePacking.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RectanglePacking.h; path = ../RectanglePacking.h; sourceTree = "<group>"; };
+		8F044B841EA695E40074D6A4 /* RegularNumberField.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RegularNumberField.cpp; path = ../RegularNumberField.cpp; sourceTree = "<group>"; };
+		8F044B851EA695E40074D6A4 /* RegularNumberField.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RegularNumberField.h; path = ../RegularNumberField.h; sourceTree = "<group>"; };
+		8F044B861EA695E40074D6A4 /* Transformations.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Transformations.cpp; path = ../Transformations.cpp; sourceTree = "<group>"; };
+		8F044B871EA695E40074D6A4 /* Transformations.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Transformations.h; path = ../Transformations.h; sourceTree = "<group>"; };
+		8F044B881EA695E40074D6A4 /* Vector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Vector.h; path = ../Vector.h; sourceTree = "<group>"; };
+		8F044BA21EA6961E0074D6A4 /* Core.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
+		8F044BA31EA6961E0074D6A4 /* CoreDebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
+		8F044BA41EA6961E0074D6A4 /* CoreRelease.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
+		8F044BA51EA6961E0074D6A4 /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
+		8F044BA61EA696EC0074D6A4 /* XLEMath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = XLEMath.h; path = ../XLEMath.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8F044B671EA695590074D6A4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		8F044B611EA695590074D6A4 = {
+			isa = PBXGroup;
+			children = (
+				8F044BA11EA6960E0074D6A4 /* Config */,
+				8F044B6B1EA695590074D6A4 /* Products */,
+				8F044B711EA695E40074D6A4 /* EigenVector.cpp */,
+				8F044B721EA695E40074D6A4 /* EigenVector.h */,
+				8F044B731EA695E40074D6A4 /* Geometry.cpp */,
+				8F044B741EA695E40074D6A4 /* Geometry.h */,
+				8F044B751EA695E40074D6A4 /* Interpolation.cpp */,
+				8F044B761EA695E40074D6A4 /* Interpolation.h */,
+				8F044B781EA695E40074D6A4 /* Matrix.cpp */,
+				8F044B791EA695E40074D6A4 /* Matrix.h */,
+				8F044B7A1EA695E40074D6A4 /* Noise.cpp */,
+				8F044B7B1EA695E40074D6A4 /* Noise.h */,
+				8F044B7C1EA695E40074D6A4 /* PoissonSolver.cpp */,
+				8F044B7D1EA695E40074D6A4 /* PoissonSolver.h */,
+				8F044B7E1EA695E40074D6A4 /* PoissonSolverDetail.h */,
+				8F044B7F1EA695E40074D6A4 /* ProjectionMath.cpp */,
+				8F044B801EA695E40074D6A4 /* ProjectionMath.h */,
+				8F044B811EA695E40074D6A4 /* Quaternion.h */,
+				8F044B821EA695E40074D6A4 /* RectanglePacking.cpp */,
+				8F044B831EA695E40074D6A4 /* RectanglePacking.h */,
+				8F044B841EA695E40074D6A4 /* RegularNumberField.cpp */,
+				8F044B851EA695E40074D6A4 /* RegularNumberField.h */,
+				8F044B861EA695E40074D6A4 /* Transformations.cpp */,
+				8F044B871EA695E40074D6A4 /* Transformations.h */,
+				8F044B881EA695E40074D6A4 /* Vector.h */,
+				8F044BA61EA696EC0074D6A4 /* XLEMath.h */,
+			);
+			sourceTree = "<group>";
+		};
+		8F044B6B1EA695590074D6A4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F044B6A1EA695590074D6A4 /* libMathMac.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F044BA11EA6960E0074D6A4 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				8F044BA21EA6961E0074D6A4 /* Core.xcconfig */,
+				8F044BA31EA6961E0074D6A4 /* CoreDebug.xcconfig */,
+				8F044BA41EA6961E0074D6A4 /* CoreRelease.xcconfig */,
+				8F044BA51EA6961E0074D6A4 /* CoreWarnings.xcconfig */,
+			);
+			name = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		8F044B681EA695590074D6A4 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F044B9F1EA695E40074D6A4 /* Transformations.h in Headers */,
+				8F044B8E1EA695E40074D6A4 /* Interpolation.h in Headers */,
+				8F044B911EA695E40074D6A4 /* Matrix.h in Headers */,
+				8F044BA01EA695E40074D6A4 /* Vector.h in Headers */,
+				8F044B951EA695E40074D6A4 /* PoissonSolver.h in Headers */,
+				8F044B8C1EA695E40074D6A4 /* Geometry.h in Headers */,
+				8F044BA71EA696EC0074D6A4 /* XLEMath.h in Headers */,
+				8F044B981EA695E40074D6A4 /* ProjectionMath.h in Headers */,
+				8F044B961EA695E40074D6A4 /* PoissonSolverDetail.h in Headers */,
+				8F044B931EA695E40074D6A4 /* Noise.h in Headers */,
+				8F044B9B1EA695E40074D6A4 /* RectanglePacking.h in Headers */,
+				8F044B9D1EA695E40074D6A4 /* RegularNumberField.h in Headers */,
+				8F044B991EA695E40074D6A4 /* Quaternion.h in Headers */,
+				8F044B8A1EA695E40074D6A4 /* EigenVector.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		8F044B691EA695590074D6A4 /* MathMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8F044B6E1EA695590074D6A4 /* Build configuration list for PBXNativeTarget "MathMac" */;
+			buildPhases = (
+				8F044B661EA695590074D6A4 /* Sources */,
+				8F044B671EA695590074D6A4 /* Frameworks */,
+				8F044B681EA695590074D6A4 /* Headers */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MathMac;
+			productName = Math;
+			productReference = 8F044B6A1EA695590074D6A4 /* libMathMac.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8F044B621EA695590074D6A4 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0820;
+				ORGANIZATIONNAME = XLE;
+				TargetAttributes = {
+					8F044B691EA695590074D6A4 = {
+						CreatedOnToolsVersion = 8.2.1;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 8F044B651EA695590074D6A4 /* Build configuration list for PBXProject "Math" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 8F044B611EA695590074D6A4;
+			productRefGroup = 8F044B6B1EA695590074D6A4 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8F044B691EA695590074D6A4 /* MathMac */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8F044B661EA695590074D6A4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F044B941EA695E40074D6A4 /* PoissonSolver.cpp in Sources */,
+				8F044B901EA695E40074D6A4 /* Matrix.cpp in Sources */,
+				8F044B9E1EA695E40074D6A4 /* Transformations.cpp in Sources */,
+				8F044B8D1EA695E40074D6A4 /* Interpolation.cpp in Sources */,
+				8F044B9C1EA695E40074D6A4 /* RegularNumberField.cpp in Sources */,
+				8F044B971EA695E40074D6A4 /* ProjectionMath.cpp in Sources */,
+				8F044B891EA695E40074D6A4 /* EigenVector.cpp in Sources */,
+				8F044B921EA695E40074D6A4 /* Noise.cpp in Sources */,
+				8F044B8B1EA695E40074D6A4 /* Geometry.cpp in Sources */,
+				8F044B9A1EA695E40074D6A4 /* RectanglePacking.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		8F044B6C1EA695590074D6A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8F044BA31EA6961E0074D6A4 /* CoreDebug.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		8F044B6D1EA695590074D6A4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8F044BA41EA6961E0074D6A4 /* CoreRelease.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		8F044B6F1EA695590074D6A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		8F044B701EA695590074D6A4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8F044B651EA695590074D6A4 /* Build configuration list for PBXProject "Math" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F044B6C1EA695590074D6A4 /* Debug */,
+				8F044B6D1EA695590074D6A4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8F044B6E1EA695590074D6A4 /* Build configuration list for PBXNativeTarget "MathMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F044B6F1EA695590074D6A4 /* Debug */,
+				8F044B701EA695590074D6A4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 8F044B621EA695590074D6A4 /* Project object */;
+}
