@@ -110,8 +110,8 @@ namespace SceneEngine
             planarMinMax.second[0] += s_maxCellCreep * _desc._cellSize;
             planarMinMax.second[1] += s_maxCellCreep * _desc._cellSize;
 
-            auto resultMin = Int2((int)std::floor(planarMinMax.first[0]) / _desc._cellSize, (int)std::floor(planarMinMax.first[1]) / _desc._cellSize);
-            auto resultMax = Int2((int)std::ceil(planarMinMax.second[0]) / _desc._cellSize, (int)std::ceil(planarMinMax.second[1]) / _desc._cellSize);
+            auto resultMin = Int2(int(std::floor(planarMinMax.first[0]) / _desc._cellSize), int(std::floor(planarMinMax.first[1]) / _desc._cellSize));
+            auto resultMax = Int2(int(std::ceil(planarMinMax.second[0]) / _desc._cellSize), int(std::ceil(planarMinMax.second[1]) / _desc._cellSize));
             return std::make_pair(
                 Int2(std::max(resultMin[0], _desc._minCell[0]), std::max(resultMin[1], _desc._minCell[1])),
                 Int2(std::min(resultMax[0], _desc._maxCell[0]), std::min(resultMax[1], _desc._maxCell[1])));

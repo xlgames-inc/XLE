@@ -572,6 +572,7 @@ namespace Assets
             #if defined(XLE_HAS_CONSOLE_RIG)
                 LogWarning << "Suppressing exception in ArchiveCache::~ArchiveCache: " << e.what();
             #endif
+			(void)e;
         } CATCH (...) {
             #if defined(XLE_HAS_CONSOLE_RIG)
                 LogWarning << "Suppressing unknown exception in ArchiveCache::~ArchiveCache.";

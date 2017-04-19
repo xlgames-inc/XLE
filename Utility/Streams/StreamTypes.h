@@ -50,14 +50,9 @@ namespace Utility
         virtual void Flush();
 
     private:
-        template <typename C> static unsigned StrTest(decltype(&C::str)*);
-        template <typename C> static char StrTest(...);
         template <typename C> static unsigned IsFullTest(decltype(&C::IsFull)*);
         template <typename C> static char IsFullTest(...);
 
-        // template<typename U, void (U::*)(typename U::char_type*, size_t) const> struct FunctionSignature {};
-        // template <typename C> static unsigned ConstructorTest(FunctionSignature<C, &C::C>*);
-        // template <typename C> static char ConstructorTest(...);
     public:
 
             //  If the "BufferType" type has a method called str(), then we
@@ -67,12 +62,12 @@ namespace Utility
         
         template<
             typename Buffer = BufferType,
-            typename std::enable_if<(sizeof(StrTest<Buffer>(0)) > 1)>::type* = nullptr>
-        auto AsString() const -> decltype(((Buffer*)nullptr)->str()) { return _buffer.str(); }
+            typename Result = decltype(((Buffer*)nullptr)->str())>
+        auto AsString() const -> Result { return _buffer.str(); }
 
         template<
             typename Buffer = BufferType,
-            typename std::enable_if<(sizeof(IsFullTest<Buffer>(0)) > 1)>::type* = nullptr>
+            typename std::enable_if<(sizeof(decltype(IsFullTest<Buffer>(0))) > 1)>::type* = nullptr>
         bool IsFull() const { return _buffer.IsFull(); }
 
         const BufferType& GetBuffer() const { return _buffer; }
@@ -82,9 +77,6 @@ namespace Utility
         StreamBuf();
         ~StreamBuf();
 
-        /*template<
-            typename Buffer = BufferType,
-            typename std::enable_if<(sizeof(ConstructorTest<Buffer>(0)) > 1)>::type* = nullptr>*/
         template<typename std::enable_if<std::is_constructible<BufferType, CharType*, size_t>::value>::type* = nullptr>
             StreamBuf(CharType* buffer, size_t bufferCharCount)
             : _buffer(buffer, bufferCharCount) {}

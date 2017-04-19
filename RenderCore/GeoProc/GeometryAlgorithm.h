@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include "../RenderCore/Types_Forward.h"
-#include "../RenderCore/Format.h"
-#include "../Math/Matrix.h"
-#include "../Core/Types.h"
+#include "../Types_Forward.h"
+#include "../Format.h"
+#include "../../Math/Matrix.h"
+#include "../../Core/Types.h"
 
 namespace RenderCore { namespace Assets { namespace GeoProc { class MeshDatabase; }}}
 namespace RenderCore { namespace Assets { class VertexElement; }}

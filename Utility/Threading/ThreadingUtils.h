@@ -78,16 +78,19 @@
 
         namespace Utility { namespace Interlocked
         {
-            typedef std::atomic<int32> Value;
-            typedef std::atomic<int64> Value64;
+            using Value = std::atomic<int32>;
+            using Value64 = std::atomic<int64>;
+			template<typename Type> using Pointer = std::atomic<Type*>;
 
             force_inline int32 Exchange(Value volatile* target, int32 newValue)                                             { return std::atomic_exchange(target, newValue); }
             force_inline int32 CompareExchange(Value volatile* target, int32 newValue, int32 comparisonValue)               { auto prev = std::atomic_load(target); return std::atomic_compare_exchange_strong(target, &comparisonValue, newValue) ? comparisonValue : prev; }
-            force_inline int32 Load(Value volatile* target)                   { return std::atomic_load(target); }
+            force_inline int32 Load(Value volatile* target)						{ return std::atomic_load(target); }
+			force_inline void Store(Value volatile* target, int32 value)		{ std::atomic_store(target, value); }
             
             force_inline int64 Exchange64(Value64 volatile* target, int64 newValue)                                       { return std::atomic_exchange(target, newValue); }
             force_inline int64 CompareExchange64(Value64 volatile* target, int64 newValue, int64 comparisonValue)         { auto prev = std::atomic_load(target); return std::atomic_compare_exchange_strong(target, &comparisonValue, newValue) ? comparisonValue : prev; }
             force_inline int64 Load64(Value64 volatile const* target)         { return std::atomic_load(target); }
+			force_inline void Store(Value64 volatile* target, int64 value)		{ std::atomic_store(target, value); }
             
             force_inline int32 Increment(Value volatile* target)              { return std::atomic_fetch_add(target, 1); }
             force_inline int32 Decrement(Value volatile* target)              { return std::atomic_fetch_add(target, -1); }
@@ -96,6 +99,7 @@
             T1(Type) force_inline Type* ExchangePointer(std::atomic<Type*>* target, Type* newValue)                                 { return std::atomic_exchange(target, newValue); }
             T1(Type) force_inline Type* CompareExchangePointer(std::atomic<Type*>* target, Type* newValue, Type* comparisonValue)   { auto prev = std::atomic_load(target); return std::atomic_compare_exchange_strong(target, &comparisonValue, newValue) ? comparisonValue : prev; }
             T1(Type) force_inline Type* LoadPointer(std::atomic<Type*> volatile const* target)                                      { return std::atomic_load(target); }
+			T1(Type) force_inline void StorePointer(std::atomic<Type*> volatile const* target, Type* value)		{ std::atomic_store(target, value); }
         }}
 
     #else
@@ -110,16 +114,20 @@
         {
             typedef long Value;
             typedef int64 Value64;
+			template<typename Type> using Pointer = Type* volatile;
 
             force_inline Value Exchange(Value volatile* target, Value newValue)           { return _InterlockedExchange(target, newValue); }
+			force_inline void Store(Value volatile* target, Value newValue)           { Exchange(target, newValue); }
 
             inline Value CompareExchange(Value volatile* target, Value newValue, Value comparisonValue)                     { return _InterlockedCompareExchange(target, newValue, comparisonValue); }
             force_inline Value64 CompareExchange64(Value64 volatile* target, Value64 newValue, Value64 comparisonValue)     { return _InterlockedCompareExchange64(target, newValue, comparisonValue); }
 
             #if defined(EXCHANGE64_INTRINSIC)
                 force_inline Value64 Exchange64(Value64 volatile* target, Value64 newValue)   { return _InterlockedExchange64(target, newValue); }
-                force_inline void* ExchangePointer(void* volatile* target, void* newValue)    { return _InterlockedExchangePointer(target, newValue); }
-                force_inline void* CompareExchangePointer(void* volatile* target, void* newValue, void* comparisonValue)      { return _InterlockedCompareExchangePointer(target, newValue, comparisonValue); }
+				force_inline void Store(Value64 volatile* target, Value64 newValue)   { Exchange64(target, newValue); }
+                T1(Type) force_inline Type* ExchangePointer(Type* volatile* target, Type* newValue)    { return (Type*)_InterlockedExchangePointer((void*volatile*)target, newValue); }
+				T1(Type) force_inline void StorePointer(Type* volatile* target, Type* newValue)    { ExchangePointer(target, newValue); }
+                T1(Type) force_inline Type* CompareExchangePointer(Type* volatile* target, Type* newValue, Type* comparisonValue)      { return (Type*)_InterlockedCompareExchangePointer((void*volatile*)target, newValue, comparisonValue); }
             #else
                 force_inline Value64 Exchange64(Value64 volatile* target, Value64 newValue)   
                 {
@@ -158,7 +166,7 @@
 
             force_inline Value Load(Value volatile* target)                   { return *target; }
             force_inline Value64 Load64(Value64 volatile const* target)       { return *target; }
-            force_inline void* LoadPointer(void* volatile const* target)      { return *target; }
+            T1(Type) force_inline Type* LoadPointer(Type* volatile const* target)      { return *target; }
         }}
 
     #endif

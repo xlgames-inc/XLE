@@ -91,7 +91,6 @@
     <ClInclude Include="..\EigenVector.h" />
     <ClInclude Include="..\Geometry.h" />
     <ClInclude Include="..\Interpolation.h" />
-    <ClInclude Include="..\Math.h" />
     <ClInclude Include="..\Matrix.h" />
     <ClInclude Include="..\Noise.h" />
     <ClInclude Include="..\PoissonSolver.h" />
@@ -102,6 +101,7 @@
     <ClInclude Include="..\RegularNumberField.h" />
     <ClInclude Include="..\Transformations.h" />
     <ClInclude Include="..\Vector.h" />
+    <ClInclude Include="..\XLEMath.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\EigenVector.cpp" />

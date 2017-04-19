@@ -11,6 +11,7 @@
 #include "Mutex.h"
 #include <queue>
 #include <assert.h>
+#include <atomic>
 
 namespace Utility
 {
@@ -80,8 +81,8 @@ namespace LockFree
             //      Our true capacity is Count-1, and the entry before the
             //      _popPtr is always empty.
         Type* _popPtr;
-        std::atomic<Type*> _pushPtr;
-        std::atomic<Type*> _pushAllocatePtr;
+        Interlocked::Pointer<Type> _pushPtr;
+        Interlocked::Pointer<Type> _pushAllocatePtr;
 
         FixedSizeQueue(const FixedSizeQueue<Type,Count>&);
         const FixedSizeQueue<Type,Count>& operator=(const FixedSizeQueue<Type,Count>&);
@@ -102,8 +103,8 @@ namespace LockFree
             Interlocked::ExchangePointer(&_pushAllocatePtr, (Type*)_buffer);
 
             #if defined(_DEBUG)
-                void* test0 = Interlocked::LoadPointer((std::atomic<void*> volatile const*)&_pushPtr);
-                void* test1 = Interlocked::LoadPointer((std::atomic<void*> volatile const*)&_pushAllocatePtr);
+                void* test0 = Interlocked::LoadPointer(&_pushPtr);
+                void* test1 = Interlocked::LoadPointer(&_pushAllocatePtr);
                 assert(test0 == _buffer && test1 == _buffer);
             #endif
 

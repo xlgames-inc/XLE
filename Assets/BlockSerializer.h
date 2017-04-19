@@ -208,18 +208,14 @@ namespace Serialization
         void    NascentBlockSerializer::SerializeRaw(const std::vector<Type, Allocator>& vector)
     {
             // serialize the vector using just a raw copy of the contents
-        SerializeRawSubBlock(
-            AsPointer(vector.cbegin()), AsPointer(vector.cend()),
-            Serialization::NascentBlockSerializer::SpecialBuffer::Vector);
+        SerializeRawSubBlock(MakeIteratorRange(vector), Serialization::NascentBlockSerializer::SpecialBuffer::Vector);
     }
 
 	template<typename Type>
         void    NascentBlockSerializer::SerializeRaw(const SerializableVector<Type>& vector)
     {
             // serialize the vector using just a raw copy of the contents
-        SerializeRawSubBlock(
-            AsPointer(vector.cbegin()), AsPointer(vector.cend()),
-            Serialization::NascentBlockSerializer::SpecialBuffer::Vector);
+        SerializeRawSubBlock(MakeIteratorRange(vector), Serialization::NascentBlockSerializer::SpecialBuffer::Vector);
     }
 
     template<typename Type>

@@ -26,8 +26,5 @@ namespace Assets
         _assetSets.reset();
         _asyncMan.reset();
     }
-
-    // Services* Services::s_instance = nullptr;
-    // Services* CrossModuleSingleton<Services>::s_instance = nullptr;
 }
 

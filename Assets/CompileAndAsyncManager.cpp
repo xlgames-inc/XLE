@@ -63,6 +63,7 @@ namespace Assets
                             LogWarning << "Got exception during polling process update: " << e.what();
                         #endif
                         remove = true;
+						(void)e;
                     } CATCH_END
 
                             // remove if necessary...

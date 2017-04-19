@@ -317,7 +317,7 @@ namespace XLEMath
         // linearly interpolated as zero. We will keep the positive part of clippingParam[]
         // Generates 0, 1 or 2 output triangles
         bool c[] { clippingParam[0] < 0.0f, clippingParam[1] < 0.0f, clippingParam[2] < 0.0f };
-        unsigned mode = c[0] | (c[1] << 1) | (c[2] << 2);
+        unsigned mode = unsigned(c[0]) | (unsigned(c[1]) << 1) | (unsigned(c[2]) << 2);
         Float3 A, B;
         switch (mode)
         {

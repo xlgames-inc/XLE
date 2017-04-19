@@ -304,7 +304,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			auto a = (v1[0]-v0[0])*(v2[1]-v0[1]) - (v2[0]-v0[0])*(v1[1]-v0[1]);
 
 			// x = (-b +/- sqrt(b*b - 4*a*c)) / 2*a
-			auto Q = sqrt(b*b - 4*a*c);
+			auto Q = std::sqrt(b*b - 4.0f*a*c);
 			float t[] = {
 				(-b + Q) / (2.0f*a),
 				(-b - Q) / (2.0f*a)

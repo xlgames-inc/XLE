@@ -85,6 +85,9 @@ namespace Assets
         assert(s_instance==this);
         s_instance = nullptr;
     }
+
+    template<typename Type>
+        Type* CrossModuleSingleton<Type>::s_instance = nullptr;
 }
 
 

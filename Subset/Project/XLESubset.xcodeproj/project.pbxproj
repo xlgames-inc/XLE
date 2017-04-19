@@ -46,6 +46,14 @@
 		8F707BE61EA6CB0A00DEC600 /* MurmurHash2.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707BE21EA6CB0A00DEC600 /* MurmurHash2.h */; };
 		8F707BE71EA6CB0A00DEC600 /* MurmurHash3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BE31EA6CB0A00DEC600 /* MurmurHash3.cpp */; };
 		8F707BE81EA6CB0A00DEC600 /* MurmurHash3.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707BE41EA6CB0A00DEC600 /* MurmurHash3.h */; };
+		8F707C641EA6D24200DEC600 /* StraightSkeleton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707C621EA6D24200DEC600 /* StraightSkeleton.cpp */; };
+		8F707C651EA6D24200DEC600 /* StraightSkeleton.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707C631EA6D24200DEC600 /* StraightSkeleton.h */; };
+		8F707C7D1EA6D25700DEC600 /* GeometryAlgorithm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707C671EA6D25700DEC600 /* GeometryAlgorithm.cpp */; };
+		8F707C7E1EA6D25700DEC600 /* GeometryAlgorithm.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707C681EA6D25700DEC600 /* GeometryAlgorithm.h */; };
+		8F707C7F1EA6D25700DEC600 /* GeoProcUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707C691EA6D25700DEC600 /* GeoProcUtil.cpp */; };
+		8F707C801EA6D25700DEC600 /* GeoProcUtil.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707C6A1EA6D25700DEC600 /* GeoProcUtil.h */; };
+		8F707C811EA6D25700DEC600 /* MeshDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707C6B1EA6D25700DEC600 /* MeshDatabase.cpp */; };
+		8F707C821EA6D25700DEC600 /* MeshDatabase.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707C6C1EA6D25700DEC600 /* MeshDatabase.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -93,6 +101,14 @@
 		8F707BE21EA6CB0A00DEC600 /* MurmurHash2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MurmurHash2.h; sourceTree = "<group>"; };
 		8F707BE31EA6CB0A00DEC600 /* MurmurHash3.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MurmurHash3.cpp; sourceTree = "<group>"; };
 		8F707BE41EA6CB0A00DEC600 /* MurmurHash3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MurmurHash3.h; sourceTree = "<group>"; };
+		8F707C621EA6D24200DEC600 /* StraightSkeleton.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = StraightSkeleton.cpp; path = ../../SceneEngine/StraightSkeleton.cpp; sourceTree = "<group>"; };
+		8F707C631EA6D24200DEC600 /* StraightSkeleton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = StraightSkeleton.h; path = ../../SceneEngine/StraightSkeleton.h; sourceTree = "<group>"; };
+		8F707C671EA6D25700DEC600 /* GeometryAlgorithm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GeometryAlgorithm.cpp; sourceTree = "<group>"; };
+		8F707C681EA6D25700DEC600 /* GeometryAlgorithm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GeometryAlgorithm.h; sourceTree = "<group>"; };
+		8F707C691EA6D25700DEC600 /* GeoProcUtil.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GeoProcUtil.cpp; sourceTree = "<group>"; };
+		8F707C6A1EA6D25700DEC600 /* GeoProcUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GeoProcUtil.h; sourceTree = "<group>"; };
+		8F707C6B1EA6D25700DEC600 /* MeshDatabase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MeshDatabase.cpp; sourceTree = "<group>"; };
+		8F707C6C1EA6D25700DEC600 /* MeshDatabase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MeshDatabase.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -178,6 +194,8 @@
 				8F707B7E1EA6C5D500DEC600 /* GenericGridPartitioning.h */,
 				8F707B7F1EA6C5D500DEC600 /* GenericQuadTree.cpp */,
 				8F707B801EA6C5D500DEC600 /* GenericQuadTree.h */,
+				8F707C621EA6D24200DEC600 /* StraightSkeleton.cpp */,
+				8F707C631EA6D24200DEC600 /* StraightSkeleton.h */,
 			);
 			name = SceneEngine;
 			sourceTree = "<group>";
@@ -185,6 +203,7 @@
 		8F707B891EA6C70E00DEC600 /* RenderCore */ = {
 			isa = PBXGroup;
 			children = (
+				8F707C661EA6D25700DEC600 /* GeoProc */,
 				8F707B8A1EA6C71800DEC600 /* Assets */,
 				8F707B8B1EA6C72100DEC600 /* Metal */,
 				8F707B8D1EA6C72D00DEC600 /* Techniques */,
@@ -261,6 +280,20 @@
 			path = ../../Foreign/Hash;
 			sourceTree = "<group>";
 		};
+		8F707C661EA6D25700DEC600 /* GeoProc */ = {
+			isa = PBXGroup;
+			children = (
+				8F707C671EA6D25700DEC600 /* GeometryAlgorithm.cpp */,
+				8F707C681EA6D25700DEC600 /* GeometryAlgorithm.h */,
+				8F707C691EA6D25700DEC600 /* GeoProcUtil.cpp */,
+				8F707C6A1EA6D25700DEC600 /* GeoProcUtil.h */,
+				8F707C6B1EA6D25700DEC600 /* MeshDatabase.cpp */,
+				8F707C6C1EA6D25700DEC600 /* MeshDatabase.h */,
+			);
+			name = GeoProc;
+			path = ../../RenderCore/GeoProc;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -268,7 +301,9 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8F707C7E1EA6D25700DEC600 /* GeometryAlgorithm.h in Headers */,
 				8F707B9A1EA6C74C00DEC600 /* Format.h in Headers */,
+				8F707C821EA6D25700DEC600 /* MeshDatabase.h in Headers */,
 				8F707BE61EA6CB0A00DEC600 /* MurmurHash2.h in Headers */,
 				8F707B751EA6C59100DEC600 /* IOverlayContext_Forward.h in Headers */,
 				8F707BA21EA6C74C00DEC600 /* Types_Forward.h in Headers */,
@@ -279,11 +314,13 @@
 				8F707BAB1EA6C75C00DEC600 /* RawMaterial.h in Headers */,
 				8F707BE81EA6CB0A00DEC600 /* MurmurHash3.h in Headers */,
 				8F707BA31EA6C74C00DEC600 /* Types.h in Headers */,
+				8F707C651EA6D24200DEC600 /* StraightSkeleton.h in Headers */,
 				8F707BA11EA6C74C00DEC600 /* ShaderLangUtil.h in Headers */,
 				8F707B741EA6C59100DEC600 /* DebuggingDisplay.h in Headers */,
 				8F707BB41EA6C78400DEC600 /* PredefinedCBLayout.h in Headers */,
 				8F707BB51EA6C78400DEC600 /* RenderStateResolver.h in Headers */,
 				8F707B9C1EA6C74C00DEC600 /* RenderUtils.h in Headers */,
+				8F707C801EA6D25700DEC600 /* GeoProcUtil.h in Headers */,
 				8F707B9D1EA6C74C00DEC600 /* ResourceDesc.h in Headers */,
 				8F707B6C1EA6C4BE00DEC600 /* CPUProfileDisplay.h in Headers */,
 				8F707BAE1EA6C76800DEC600 /* DXGICompatibleFormats.h in Headers */,
@@ -352,17 +389,21 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F707B811EA6C5D500DEC600 /* DualContour.cpp in Sources */,
+				8F707C7F1EA6D25700DEC600 /* GeoProcUtil.cpp in Sources */,
 				8F707B851EA6C5D500DEC600 /* GenericGridPartitioning.cpp in Sources */,
 				8F707B6B1EA6C4BE00DEC600 /* CPUProfileDisplay.cpp in Sources */,
 				8F707B831EA6C5D500DEC600 /* FiniteResourceHeap.cpp in Sources */,
 				8F707BB31EA6C78400DEC600 /* PredefinedCBLayout.cpp in Sources */,
 				8F707B991EA6C74C00DEC600 /* Format.cpp in Sources */,
+				8F707C811EA6D25700DEC600 /* MeshDatabase.cpp in Sources */,
+				8F707C641EA6D24200DEC600 /* StraightSkeleton.cpp in Sources */,
 				8F707B731EA6C59100DEC600 /* DebuggingDisplay.cpp in Sources */,
 				8F707B871EA6C5D500DEC600 /* GenericQuadTree.cpp in Sources */,
 				8F707B761EA6C59100DEC600 /* IOverlayContext.cpp in Sources */,
 				8F707BA81EA6C75C00DEC600 /* Material.cpp in Sources */,
 				8F707BE51EA6CB0A00DEC600 /* MurmurHash2.cpp in Sources */,
 				8F707B9B1EA6C74C00DEC600 /* RenderUtils.cpp in Sources */,
+				8F707C7D1EA6D25700DEC600 /* GeometryAlgorithm.cpp in Sources */,
 				8F707BAA1EA6C75C00DEC600 /* RawMaterial.cpp in Sources */,
 				8F707BA01EA6C74C00DEC600 /* ShaderLangUtil.cpp in Sources */,
 				8F707B9E1EA6C74C00DEC600 /* ResourceUtils.cpp in Sources */,

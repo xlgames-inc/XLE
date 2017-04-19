@@ -9,7 +9,7 @@
 #include "../Types.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
-#include "../../Math/Math.h"
+#include "../../Math/XLEMath.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/IteratorUtils.h"
@@ -17,6 +17,7 @@
 #include "../../Foreign/half-1.9.2/include/half.hpp"
 #include <iterator>
 #include <queue>
+#include <cfloat>
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
@@ -26,6 +27,273 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     static std::pair<ComponentType, unsigned> BreakdownFormat(Format fmt);
     static unsigned short AsFloat16(float input);
     static float AsFloat32(unsigned short f16input);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static inline void GetVertDataF32(
+        float* dst, 
+        const float* src, unsigned srcComponentCount,
+        ProcessingFlags::BitField processingFlags)
+    {
+            // In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
+        dst[0] = (srcComponentCount > 0) ? src[0] : 0.f;
+        dst[1] = (srcComponentCount > 1) ? src[1] : 0.f;
+        dst[2] = (srcComponentCount > 2) ? src[2] : 0.f;
+        dst[3] = (srcComponentCount > 3) ? src[3] : 1.f;
+        if (processingFlags & ProcessingFlags::Renormalize) {
+            float scale;
+            if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
+                dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
+        }
+
+        if (processingFlags & ProcessingFlags::TexCoordFlip) {
+            dst[1] = 1.0f - dst[1];
+        } else if (processingFlags & ProcessingFlags::BitangentFlip) {
+            dst[0] = -dst[0];
+            dst[1] = -dst[1];
+            dst[2] = -dst[2];
+        } else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
+            dst[3] = -dst[3];
+        }
+    }
+
+    static inline void GetVertDataF16(
+        float* dst, 
+        const uint16* src, unsigned srcComponentCount,
+        ProcessingFlags::BitField processingFlags)
+    {
+            // In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
+        dst[0] = (srcComponentCount > 0) ? AsFloat32(src[0]) : 0.f;
+        dst[1] = (srcComponentCount > 1) ? AsFloat32(src[1]) : 0.f;
+        dst[2] = (srcComponentCount > 2) ? AsFloat32(src[2]) : 0.f;
+        dst[3] = (srcComponentCount > 3) ? AsFloat32(src[3]) : 1.f;
+        if (processingFlags & ProcessingFlags::Renormalize) {
+            float scale;
+            if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
+                dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
+        }
+
+        if (processingFlags & ProcessingFlags::TexCoordFlip) {
+            dst[1] = 1.0f - dst[1];
+        } else if (processingFlags & ProcessingFlags::BitangentFlip) {
+            dst[0] = -dst[0];
+            dst[1] = -dst[1];
+            dst[2] = -dst[2];
+        } else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
+            dst[3] = -dst[3];
+        }
+    }
+
+	static inline float UNorm16AsFloat32(uint16 value)	{ return value / float(0xffff); }
+	static inline float SNorm16AsFloat32(int16 value)	{ return value / float(0x7fff); }
+
+	static inline void GetVertDataUNorm16(
+		float* dst,
+		const uint16* src, unsigned srcComponentCount,
+		ProcessingFlags::BitField processingFlags)
+	{
+		// In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
+		dst[0] = (srcComponentCount > 0) ? UNorm16AsFloat32(src[0]) : 0.f;
+		dst[1] = (srcComponentCount > 1) ? UNorm16AsFloat32(src[1]) : 0.f;
+		dst[2] = (srcComponentCount > 2) ? UNorm16AsFloat32(src[2]) : 0.f;
+		dst[3] = (srcComponentCount > 3) ? UNorm16AsFloat32(src[3]) : 1.f;
+		if (processingFlags & ProcessingFlags::Renormalize) {
+			float scale;
+			if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
+				dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
+		}
+
+		if (processingFlags & ProcessingFlags::TexCoordFlip) {
+			dst[1] = 1.0f - dst[1];
+		}
+		else if (processingFlags & ProcessingFlags::BitangentFlip) {
+			dst[0] = -dst[0];
+			dst[1] = -dst[1];
+			dst[2] = -dst[2];
+		}
+		else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
+			dst[3] = -dst[3];
+		}
+	}
+
+	static inline void GetVertDataSNorm16(
+		float* dst,
+		const int16* src, unsigned srcComponentCount,
+		ProcessingFlags::BitField processingFlags)
+	{
+		// In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
+		dst[0] = (srcComponentCount > 0) ? SNorm16AsFloat32(src[0]) : 0.f;
+		dst[1] = (srcComponentCount > 1) ? SNorm16AsFloat32(src[1]) : 0.f;
+		dst[2] = (srcComponentCount > 2) ? SNorm16AsFloat32(src[2]) : 0.f;
+		dst[3] = (srcComponentCount > 3) ? SNorm16AsFloat32(src[3]) : 1.f;
+		if (processingFlags & ProcessingFlags::Renormalize) {
+			float scale;
+			if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
+				dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
+		}
+
+		if (processingFlags & ProcessingFlags::TexCoordFlip) {
+			dst[1] = 1.0f - dst[1];
+		}
+		else if (processingFlags & ProcessingFlags::BitangentFlip) {
+			dst[0] = -dst[0];
+			dst[1] = -dst[1];
+			dst[2] = -dst[2];
+		}
+		else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
+			dst[3] = -dst[3];
+		}
+	}
+
+    static inline void GetVertData(
+        float* dst, 
+        const void* src, std::pair<ComponentType, unsigned> fmt,
+        ProcessingFlags::BitField processingFlags)
+    {
+        switch (fmt.first) {
+        case ComponentType::Float32:
+            GetVertDataF32(dst, (const float*)src, fmt.second, processingFlags);
+            break;
+        case ComponentType::Float16:
+            GetVertDataF16(dst, (const uint16*)src, fmt.second, processingFlags);
+            break;
+		case ComponentType::UNorm16:
+			GetVertDataUNorm16(dst, (const uint16*)src, fmt.second, processingFlags);
+			break;
+		case ComponentType::SNorm16:
+			GetVertDataSNorm16(dst, (const int16*)src, fmt.second, processingFlags);
+			break;
+        default:
+            assert(0);
+            break;
+        }
+    }
+
+    template<> Float3 GetVertex(const IVertexSourceData& sourceData, size_t index)
+    {
+        auto stride = sourceData.GetStride();
+        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
+
+        float input[4];
+        GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
+        return Float3(input[0], input[1], input[2]);
+    }
+
+    template<> Float2 GetVertex(const IVertexSourceData& sourceData, size_t index)
+    {
+        auto stride = sourceData.GetStride();
+        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
+
+        float input[4];
+        GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
+        return Float2(input[0], input[1]);
+    }
+
+    template<> Float4 GetVertex(const IVertexSourceData& sourceData, size_t index)
+    {
+        auto stride = sourceData.GetStride();
+        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
+
+        float input[4];
+        GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
+        return Float4(input[0], input[1], input[2], input[3]);
+    }
+
+    template<> float GetVertex(const IVertexSourceData& sourceData, size_t index)
+    {
+        auto stride = sourceData.GetStride();
+        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
+
+        float input[4];
+        GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
+        return input[0];
+    }
+
+    void CopyVertexData(
+        const void* dst, Format dstFmt, size_t dstStride, size_t dstDataSize,
+        const void* src, Format srcFmt, size_t srcStride, size_t srcDataSize,
+        unsigned count, 
+        std::vector<unsigned> mapping,
+        ProcessingFlags::BitField processingFlags)
+    {
+        auto dstFormat = BreakdownFormat(dstFmt);
+        auto srcFormat = BreakdownFormat(srcFmt);
+		auto dstFormatSize = BitsPerPixel(dstFmt) / 8;
+		auto srcFormatSize = BitsPerPixel(srcFmt) / 8;
+		(void)srcFormatSize;
+
+            //      This could be be made more efficient with a smarter loop..
+        if (srcFormat.first == ComponentType::Float32) {
+
+            if (dstFormat.first == ComponentType::Float32) {  ////////////////////////////////////////////////
+
+                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+
+                    float input[4];
+                    GetVertDataF32(input, (const float*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        assert(&((float*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
+                        ((float*)dst)[c] = input[c];
+                    }
+                }
+
+            } else if (dstFormat.first == ComponentType::Float16) {  ////////////////////////////////////////////////
+
+                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+
+                    float input[4];
+                    GetVertDataF32(input, (const float*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        assert(&((unsigned short*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
+                        ((unsigned short*)dst)[c] = AsFloat16(input[c]);
+                    }
+                }
+
+            } else if (dstFormat.first == ComponentType::UNorm8) {  ////////////////////////////////////////////////
+
+                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+
+                    float input[4];
+                    GetVertDataF32(input, (const float*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        assert(&((unsigned char*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
+                        ((unsigned char*)dst)[c] = (unsigned char)Clamp(((float*)input)[c]*255.f, 0.f, 255.f);
+                    }
+                }
+
+            } else {
+                Throw(FormatError("Error while copying vertex data. Unexpected format for destination parameter."));
+            }
+        } else if (srcFormat.first == dstFormat.first &&  srcFormat.second == dstFormat.second) {
+
+                // simple copy of uint8 data
+            for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                assert(srcIndex * srcStride + srcFormatSize <= srcDataSize);
+
+                auto* srcV = (uint8*)PtrAdd(src, srcIndex * srcStride);
+                for (unsigned c=0; c<dstFormatSize; ++c) {
+                    assert(&((uint8*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
+                    ((uint8*)dst)[c] = srcV[c];
+                }
+            }
+
+        } else {
+            Throw(FormatError("Error while copying vertex data. Format not supported."));
+        }
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -382,274 +650,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             Format srcFormat)
     {
         return std::make_shared<RawVertexSourceDataAdapter>(std::move(data), count, stride, srcFormat);
-    }
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    static inline void GetVertDataF32(
-        float* dst, 
-        const float* src, unsigned srcComponentCount,
-        ProcessingFlags::BitField processingFlags)
-    {
-            // In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
-        dst[0] = (srcComponentCount > 0) ? src[0] : 0.f;
-        dst[1] = (srcComponentCount > 1) ? src[1] : 0.f;
-        dst[2] = (srcComponentCount > 2) ? src[2] : 0.f;
-        dst[3] = (srcComponentCount > 3) ? src[3] : 1.f;
-        if (processingFlags & ProcessingFlags::Renormalize) {
-            float scale;
-            if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
-                dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
-        }
-
-        if (processingFlags & ProcessingFlags::TexCoordFlip) {
-            dst[1] = 1.0f - dst[1];
-        } else if (processingFlags & ProcessingFlags::BitangentFlip) {
-            dst[0] = -dst[0];
-            dst[1] = -dst[1];
-            dst[2] = -dst[2];
-        } else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
-            dst[3] = -dst[3];
-        }
-    }
-
-    static inline void GetVertDataF16(
-        float* dst, 
-        const uint16* src, unsigned srcComponentCount,
-        ProcessingFlags::BitField processingFlags)
-    {
-            // In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
-        dst[0] = (srcComponentCount > 0) ? AsFloat32(src[0]) : 0.f;
-        dst[1] = (srcComponentCount > 1) ? AsFloat32(src[1]) : 0.f;
-        dst[2] = (srcComponentCount > 2) ? AsFloat32(src[2]) : 0.f;
-        dst[3] = (srcComponentCount > 3) ? AsFloat32(src[3]) : 1.f;
-        if (processingFlags & ProcessingFlags::Renormalize) {
-            float scale;
-            if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
-                dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
-        }
-
-        if (processingFlags & ProcessingFlags::TexCoordFlip) {
-            dst[1] = 1.0f - dst[1];
-        } else if (processingFlags & ProcessingFlags::BitangentFlip) {
-            dst[0] = -dst[0];
-            dst[1] = -dst[1];
-            dst[2] = -dst[2];
-        } else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
-            dst[3] = -dst[3];
-        }
-    }
-
-	static inline float UNorm16AsFloat32(uint16 value)	{ return value / float(0xffff); }
-	static inline float SNorm16AsFloat32(int16 value)	{ return value / float(0x7fff); }
-
-	static inline void GetVertDataUNorm16(
-		float* dst,
-		const uint16* src, unsigned srcComponentCount,
-		ProcessingFlags::BitField processingFlags)
-	{
-		// In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
-		dst[0] = (srcComponentCount > 0) ? UNorm16AsFloat32(src[0]) : 0.f;
-		dst[1] = (srcComponentCount > 1) ? UNorm16AsFloat32(src[1]) : 0.f;
-		dst[2] = (srcComponentCount > 2) ? UNorm16AsFloat32(src[2]) : 0.f;
-		dst[3] = (srcComponentCount > 3) ? UNorm16AsFloat32(src[3]) : 1.f;
-		if (processingFlags & ProcessingFlags::Renormalize) {
-			float scale;
-			if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
-				dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
-		}
-
-		if (processingFlags & ProcessingFlags::TexCoordFlip) {
-			dst[1] = 1.0f - dst[1];
-		}
-		else if (processingFlags & ProcessingFlags::BitangentFlip) {
-			dst[0] = -dst[0];
-			dst[1] = -dst[1];
-			dst[2] = -dst[2];
-		}
-		else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
-			dst[3] = -dst[3];
-		}
-	}
-
-	static inline void GetVertDataSNorm16(
-		float* dst,
-		const int16* src, unsigned srcComponentCount,
-		ProcessingFlags::BitField processingFlags)
-	{
-		// In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
-		dst[0] = (srcComponentCount > 0) ? SNorm16AsFloat32(src[0]) : 0.f;
-		dst[1] = (srcComponentCount > 1) ? SNorm16AsFloat32(src[1]) : 0.f;
-		dst[2] = (srcComponentCount > 2) ? SNorm16AsFloat32(src[2]) : 0.f;
-		dst[3] = (srcComponentCount > 3) ? SNorm16AsFloat32(src[3]) : 1.f;
-		if (processingFlags & ProcessingFlags::Renormalize) {
-			float scale;
-			if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
-				dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
-		}
-
-		if (processingFlags & ProcessingFlags::TexCoordFlip) {
-			dst[1] = 1.0f - dst[1];
-		}
-		else if (processingFlags & ProcessingFlags::BitangentFlip) {
-			dst[0] = -dst[0];
-			dst[1] = -dst[1];
-			dst[2] = -dst[2];
-		}
-		else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
-			dst[3] = -dst[3];
-		}
-	}
-
-    static inline void GetVertData(
-        float* dst, 
-        const void* src, std::pair<ComponentType, unsigned> fmt,
-        ProcessingFlags::BitField processingFlags)
-    {
-        switch (fmt.first) {
-        case ComponentType::Float32:
-            GetVertDataF32(dst, (const float*)src, fmt.second, processingFlags);
-            break;
-        case ComponentType::Float16:
-            GetVertDataF16(dst, (const uint16*)src, fmt.second, processingFlags);
-            break;
-		case ComponentType::UNorm16:
-			GetVertDataUNorm16(dst, (const uint16*)src, fmt.second, processingFlags);
-			break;
-		case ComponentType::SNorm16:
-			GetVertDataSNorm16(dst, (const int16*)src, fmt.second, processingFlags);
-			break;
-        default:
-            assert(0);
-            break;
-        }
-    }
-
-    template<> Float3 GetVertex(const IVertexSourceData& sourceData, size_t index)
-    {
-        auto stride = sourceData.GetStride();
-        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
-
-        float input[4];
-        GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
-        return Float3(input[0], input[1], input[2]);
-    }
-
-    template<> Float2 GetVertex(const IVertexSourceData& sourceData, size_t index)
-    {
-        auto stride = sourceData.GetStride();
-        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
-
-        float input[4];
-        GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
-        return Float2(input[0], input[1]);
-    }
-
-    template<> Float4 GetVertex(const IVertexSourceData& sourceData, size_t index)
-    {
-        auto stride = sourceData.GetStride();
-        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
-
-        float input[4];
-        GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
-        return Float4(input[0], input[1], input[2], input[3]);
-    }
-
-    template<> float GetVertex(const IVertexSourceData& sourceData, size_t index)
-    {
-        auto stride = sourceData.GetStride();
-        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
-
-        float input[4];
-        GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
-        return input[0];
-    }
-
-    void CopyVertexData(
-        const void* dst, Format dstFmt, size_t dstStride, size_t dstDataSize,
-        const void* src, Format srcFmt, size_t srcStride, size_t srcDataSize,
-        unsigned count, 
-        std::vector<unsigned> mapping,
-        ProcessingFlags::BitField processingFlags)
-    {
-        auto dstFormat = BreakdownFormat(dstFmt);
-        auto srcFormat = BreakdownFormat(srcFmt);
-		auto dstFormatSize = BitsPerPixel(dstFmt) / 8;
-		auto srcFormatSize = BitsPerPixel(srcFmt) / 8;
-		(void)srcFormatSize;
-
-            //      This could be be made more efficient with a smarter loop..
-        if (srcFormat.first == ComponentType::Float32) {
-
-            if (dstFormat.first == ComponentType::Float32) {  ////////////////////////////////////////////////
-
-                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
-                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
-                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
-                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
-
-                    float input[4];
-                    GetVertDataF32(input, (const float*)srcV, srcFormat.second, processingFlags);
-
-                    for (unsigned c=0; c<dstFormat.second; ++c) {
-                        assert(&((float*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
-                        ((float*)dst)[c] = input[c];
-                    }
-                }
-
-            } else if (dstFormat.first == ComponentType::Float16) {  ////////////////////////////////////////////////
-
-                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
-                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
-                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
-                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
-
-                    float input[4];
-                    GetVertDataF32(input, (const float*)srcV, srcFormat.second, processingFlags);
-
-                    for (unsigned c=0; c<dstFormat.second; ++c) {
-                        assert(&((unsigned short*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
-                        ((unsigned short*)dst)[c] = AsFloat16(input[c]);
-                    }
-                }
-
-            } else if (dstFormat.first == ComponentType::UNorm8) {  ////////////////////////////////////////////////
-
-                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
-                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
-                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
-                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
-
-                    float input[4];
-                    GetVertDataF32(input, (const float*)srcV, srcFormat.second, processingFlags);
-
-                    for (unsigned c=0; c<dstFormat.second; ++c) {
-                        assert(&((unsigned char*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
-                        ((unsigned char*)dst)[c] = (unsigned char)Clamp(((float*)input)[c]*255.f, 0.f, 255.f);
-                    }
-                }
-
-            } else {
-                Throw(FormatError("Error while copying vertex data. Unexpected format for destination parameter."));
-            }
-        } else if (srcFormat.first == dstFormat.first &&  srcFormat.second == dstFormat.second) {
-
-                // simple copy of uint8 data
-            for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
-                auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
-                assert(srcIndex * srcStride + srcFormatSize <= srcDataSize);
-
-                auto* srcV = (uint8*)PtrAdd(src, srcIndex * srcStride);
-                for (unsigned c=0; c<dstFormatSize; ++c) {
-                    assert(&((uint8*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
-                    ((uint8*)dst)[c] = srcV[c];
-                }
-            }
-
-        } else {
-            Throw(FormatError("Error while copying vertex data. Format not supported."));
-        }
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

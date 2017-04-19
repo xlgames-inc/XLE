@@ -48,7 +48,7 @@ namespace Utility
             assert((size_t(begin) & 0x7) == 0);
         #endif
 
-        if (TARGET_64BIT || crossPlatformHash) {
+        if (constant_expression<TARGET_64BIT || crossPlatformHash>::result()) {
             return MurmurHash64A(begin, int(sizeInBytes), seed);
         } else {
             return MurmurHash64B(begin, int(sizeInBytes), seed);

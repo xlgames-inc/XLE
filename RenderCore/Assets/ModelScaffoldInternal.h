@@ -196,13 +196,13 @@ namespace RenderCore { namespace Assets
 		XlZeroMemory(_semanticName);
 	}
 
-	inline VertexElement::VertexElement(const VertexElement& ele)
+	inline VertexElement::VertexElement(const VertexElement& ele) never_throws
 	{
 		_nativeFormat = ele._nativeFormat; _alignedByteOffset = ele._alignedByteOffset; _semanticIndex = ele._semanticIndex;
 		XlCopyMemory(_semanticName, ele._semanticName, sizeof(_semanticName));
 	}
 
-	inline VertexElement& VertexElement::operator=(const VertexElement& ele)
+	inline VertexElement& VertexElement::operator=(const VertexElement& ele) never_throws
 	{
 		_nativeFormat = ele._nativeFormat; _alignedByteOffset = ele._alignedByteOffset; _semanticIndex = ele._semanticIndex;
 		XlCopyMemory(_semanticName, ele._semanticName, sizeof(_semanticName));

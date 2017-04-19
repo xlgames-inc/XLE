@@ -56,6 +56,7 @@ namespace Assets
                         LogWarning << "    " << e.what() << std::endl;
                     #endif
                     _queue.pop();
+					(void)e;
                 }
                 CATCH_END
             } else if (_delayedQueue.try_front(op)) {
@@ -88,6 +89,7 @@ namespace Assets
                         LogWarning << "    " << e.what() << std::endl;
                     #endif
                     _delayedQueue.pop();
+					(void)e;
                 }
                 CATCH_END
             } else {

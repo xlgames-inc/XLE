@@ -45,7 +45,7 @@ namespace Utility
         unsigned result = _allocationStatus.AllocateNoExpand();
         if (result != ~unsigned(0x0)) {
                 // initialize reference count to 1 on allocate, always
-            std::atomic_store(&_refCounts[result], 1);
+            Interlocked::Store(&_refCounts[result], 1);
         }
         return result;
     }
@@ -56,7 +56,7 @@ namespace Utility
         _allocationStatus.Reserve(blockCount);
         _refCounts = std::make_unique<Interlocked::Value[]>(blockCount);
         for (unsigned c=0; c<blockCount; ++c) {
-            std::atomic_store(&_refCounts[c], 0);
+            Interlocked::Store(&_refCounts[c], 0);
         }
         _pageMemory.resize(blockCount * blockSize, 0xac);
     }
