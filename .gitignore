@@ -85,3 +85,5 @@ project.xcworkspace/
 **/*.approj/configuration.json
 **/*.approj/assets/
 **/*.approj/targets/
+
+build
