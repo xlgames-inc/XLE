@@ -21,18 +21,55 @@
 #define SPACE_HANDINESS_COUNTERCLOCKWISE 2
 #define SPACE_HANDINESS SPACE_HANDINESS_COUNTERCLOCKWISE 
 
-namespace SceneEngine { namespace StraightSkeleton 
+namespace XLEMath
 {
 	static const float epsilon = 1e-4f;
 	static const unsigned BoundaryVertexFlag = 1u<<31u;
 
-	enum WindingType { Left, Right, Straight };
-	WindingType CalculateWindingType(Float2 zero, Float2 one, Float2 two, float threshold);
+	class Vertex
+	{
+	public:
+		Float2		_position;
+		unsigned	_skeletonVertexId;
+		float		_initialTime;
+		Float2		_velocity;
+	};
 
-	// float sign (fPoint p1, fPoint p2, fPoint p3)
+	class Graph
+	{
+	public:
+		std::vector<Vertex> _vertices;
+
+		class Segment
+		{
+		public:
+			unsigned	_head, _tail;
+			unsigned	_leftFace, _rightFace;
+		};
+		std::vector<Segment> _wavefrontEdges;
+
+		class MotorcycleSegment
+		{
+		public:
+			unsigned _head;
+			unsigned _tail;		// (this is the fixed vertex)
+			unsigned _leftFace, _rightFace;
+		};
+		std::vector<MotorcycleSegment> _motorcycleSegments;
+
+		std::vector<Float2> _boundaryPoints;
+
+		StraightSkeleton CalculateSkeleton(float maxTime);
+
+	private:
+		void WriteWavefront(StraightSkeleton& dest, float time);
+		void AddEdgeForVertexPath(StraightSkeleton& dst, unsigned v, unsigned finalVertId);
+	};
+
+	enum WindingType { Left, Right, Straight };
 	WindingType CalculateWindingType(Float2 zero, Float2 one, Float2 two, float threshold)
 	{
-		float sign = (one[0] - zero[0]) * (two[1] - zero[1]) - (two[0] - zero[0]) * (one[1] - zero[1]);
+		auto sign = (one[0] - zero[0]) * (two[1] - zero[1]) - (two[0] - zero[0]) * (one[1] - zero[1]);
 		#if SPACE_HANDINESS == SPACE_HANDINESS_CLOCKWISE
 			if (sign > threshold) return Right;
 			if (sign < -threshold) return Left;
@@ -186,7 +223,7 @@ namespace SceneEngine { namespace StraightSkeleton
 		return std::numeric_limits<float>::max();
 	}
 
-	static float CalculateCollapseTime(const StraightSkeleton::Vertex& v0, const StraightSkeleton::Vertex& v1)
+	static float CalculateCollapseTime(const Vertex& v0, const Vertex& v1)
 	{
 		// hack -- if one side is frozen, we must collapse immediately
 		if (Equivalent(v0._velocity, Zero<Float2>(), epsilon)) return std::numeric_limits<float>::max();
@@ -209,7 +246,7 @@ namespace SceneEngine { namespace StraightSkeleton
 		}
 	}
 
-	static unsigned AddSteinerVertex(Skeleton& skeleton, const Float3& vertex)
+	static unsigned AddSteinerVertex(StraightSkeleton& skeleton, const Float3& vertex)
 	{
 		assert(vertex[2] != 0.0f);
 		assert(isfinite(vertex[0]) && isfinite(vertex[1]) && isfinite(vertex[2]));
@@ -358,10 +395,10 @@ namespace SceneEngine { namespace StraightSkeleton
 		v._velocity = Zero<Float2>();
 	}
 
-	static void AddUnique(std::vector<Skeleton::Edge>& dst, const Skeleton::Edge& edge)
+	static void AddUnique(std::vector<StraightSkeleton::Edge>& dst, const StraightSkeleton::Edge& edge)
 	{
 		auto existing = std::find_if(dst.begin(), dst.end(), 
-			[&edge](const Skeleton::Edge&e) { return e._head == edge._head && e._tail == edge._tail; });
+			[&edge](const StraightSkeleton::Edge&e) { return e._head == edge._head && e._tail == edge._tail; });
 
 		if (existing == dst.end()) {
 			dst.push_back(edge);
@@ -370,7 +407,7 @@ namespace SceneEngine { namespace StraightSkeleton
 		}
 	}
 
-	static void AddEdge(Skeleton& dest, unsigned headVertex, unsigned tailVertex, unsigned leftEdge, unsigned rightEdge, Skeleton::EdgeType type)
+	static void AddEdge(StraightSkeleton& dest, unsigned headVertex, unsigned tailVertex, unsigned leftEdge, unsigned rightEdge, StraightSkeleton::EdgeType type)
 	{
 		if (headVertex == tailVertex) return;
 
@@ -387,9 +424,9 @@ namespace SceneEngine { namespace StraightSkeleton
 		}
 	}
 
-	Skeleton Graph::GenerateSkeleton(float maxTime)
+	StraightSkeleton Graph::CalculateSkeleton(float maxTime)
 	{
-		Skeleton result;
+		StraightSkeleton result;
 		result._faces.resize(_boundaryPoints.size());
 
 		std::vector<std::pair<float, size_t>> bestCollapse;
@@ -520,7 +557,7 @@ namespace SceneEngine { namespace StraightSkeleton
 						// no longer need crashSegment or tout
 						assert(crashSegment._leftFace == ~0u && tout->_leftFace == ~0u);
 						auto endPt = AddSteinerVertex(result, (v0+v2)/2.0f);
-						AddEdge(result, endPt, crashPtSkeleton, crashSegment._rightFace, tout->_rightFace, Skeleton::EdgeType::VertexPath);
+						AddEdge(result, endPt, crashPtSkeleton, crashSegment._rightFace, tout->_rightFace, StraightSkeleton::EdgeType::VertexPath);
 						// tout->_head & crashSegment._tail end here. We must draw the skeleton segment 
 						// tracing out their path
 						AddEdgeForVertexPath(result, tout->_head, endPt);
@@ -561,7 +598,7 @@ namespace SceneEngine { namespace StraightSkeleton
 						// no longer need "crashSegment" or tin
 						assert(crashSegment._leftFace == ~0u && tin->_leftFace == ~0u);
 						auto endPt = AddSteinerVertex(result, (v0+v2)/2.0f);
-						AddEdge(result, endPt, crashPtSkeleton, tin->_rightFace, crashSegment._rightFace, Skeleton::EdgeType::VertexPath);
+						AddEdge(result, endPt, crashPtSkeleton, tin->_rightFace, crashSegment._rightFace, StraightSkeleton::EdgeType::VertexPath);
 						// tin->_tail & crashSegment._head end here. We must draw the skeleton segment 
 						// tracing out their path
 						AddEdgeForVertexPath(result, tin->_tail, endPt);
@@ -604,7 +641,7 @@ namespace SceneEngine { namespace StraightSkeleton
 				assert(_vertices[motor._tail]._skeletonVertexId != ~0u);
 				AddEdge(result, 
 						crashPtSkeleton, _vertices[motor._tail]._skeletonVertexId,
-						motor._leftFace, motor._rightFace, Skeleton::EdgeType::VertexPath);
+						motor._leftFace, motor._rightFace, StraightSkeleton::EdgeType::VertexPath);
 				FreezeInPlace(_vertices[motor._head], crashEvent._time);
 
 				_motorcycleSegments.erase(_motorcycleSegments.begin() + bestMotorcycleCrash[0].second);
@@ -799,7 +836,7 @@ namespace SceneEngine { namespace StraightSkeleton
 			;
 	}
 
-	void Graph::WriteWavefront(Skeleton& result, float time)
+	void Graph::WriteWavefront(StraightSkeleton& result, float time)
 	{
 		// Write the current wavefront to the destination skeleton. Each edge in 
 		// _wavefrontEdges comes a segment in the output
@@ -946,7 +983,7 @@ namespace SceneEngine { namespace StraightSkeleton
 		// add all of the segments in "filteredSegments" to the skeleton
 		for (const auto&seg:filteredSegments) {
 			assert(seg._head != seg._tail);
-			AddEdge(result, seg._head, seg._tail, seg._leftFace, seg._rightFace, Skeleton::EdgeType::Wavefront);
+			AddEdge(result, seg._head, seg._tail, seg._leftFace, seg._rightFace, StraightSkeleton::EdgeType::Wavefront);
 		}
 
 		// Also have to add the traced out path of the each vertex (but only if it doesn't already exist in the result)
@@ -959,7 +996,7 @@ namespace SceneEngine { namespace StraightSkeleton
 		}
 	}
 
-	void Graph::AddEdgeForVertexPath(Skeleton& dst, unsigned v, unsigned finalVertId)
+	void Graph::AddEdgeForVertexPath(StraightSkeleton& dst, unsigned v, unsigned finalVertId)
 	{
 		const Vertex& vert = _vertices[v];
 		auto inAndOut = FindInAndOut(MakeIteratorRange(_wavefrontEdges), v);
@@ -969,15 +1006,74 @@ namespace SceneEngine { namespace StraightSkeleton
 		if (vert._skeletonVertexId != ~0u) {
 			if (vert._skeletonVertexId&BoundaryVertexFlag) {
 				auto q = vert._skeletonVertexId&(~BoundaryVertexFlag);
-				AddEdge(dst, finalVertId, vert._skeletonVertexId, unsigned((q+_boundaryPoints.size()-1) % _boundaryPoints.size()), q, Skeleton::EdgeType::VertexPath);
+				AddEdge(dst, finalVertId, vert._skeletonVertexId, unsigned((q+_boundaryPoints.size()-1) % _boundaryPoints.size()), q, StraightSkeleton::EdgeType::VertexPath);
 			}
-			AddEdge(dst, finalVertId, vert._skeletonVertexId, leftFace, rightFace, Skeleton::EdgeType::VertexPath);
+			AddEdge(dst, finalVertId, vert._skeletonVertexId, leftFace, rightFace, StraightSkeleton::EdgeType::VertexPath);
 		} else {
 			AddEdge(dst,
 				finalVertId, AddSteinerVertex(dst, Expand(vert._position, vert._initialTime)),
-				leftFace, rightFace, Skeleton::EdgeType::VertexPath);
+				leftFace, rightFace, StraightSkeleton::EdgeType::VertexPath);
 		}
 	}
 
 
-}}
+	StraightSkeleton CalculateStraightSkeleton(IteratorRange<const Float2*> vertices, float maxInset)
+	{
+		auto graph = BuildGraphFromVertexLoop(vertices);
+		return graph.CalculateSkeleton(maxInset);
+	}
+
+	std::vector<std::vector<unsigned>> AsVertexLoopsOrdered(
+		IteratorRange<const std::pair<unsigned, unsigned>*> segments)
+	{
+		// From a line segment soup, generate vertex loops. This requires searching
+		// for segments that join end-to-end, and following them around until we
+		// make a loop.
+		// Let's assume for the moment there are no 3-or-more way junctions (this would
+		// require using some extra math to determine which is the correct path)
+		std::vector<std::pair<unsigned, unsigned>> pool(segments.begin(), segments.end());
+		std::vector<std::vector<unsigned>> result;
+		while (!pool.empty()) {
+			std::vector<unsigned> workingLoop;
+			{
+				auto i = pool.end()-1;
+				workingLoop.push_back(i->first);
+				workingLoop.push_back(i->second);
+				pool.erase(i);
+			}
+			for (;;) {
+				assert(!pool.empty());	// if we hit this, we have open segments
+				auto searching = *(workingLoop.end()-1);
+				auto hit = pool.end(); 
+				for (auto i=pool.begin(); i!=pool.end(); ++i) {
+					if (i->first == searching /*|| i->second == searching*/) {
+						assert(hit == pool.end());
+						hit = i;
+					}
+				}
+				assert(hit != pool.end());
+				auto newVert = hit->second; // (hit->first == searching) ? hit->second : hit->first;
+				pool.erase(hit);
+				if (std::find(workingLoop.begin(), workingLoop.end(), newVert) != workingLoop.end())
+					break;	// closed the loop
+				workingLoop.push_back(newVert);
+			}
+			result.push_back(std::move(workingLoop));
+		}
+
+		return result;
+	}
+
+	std::vector<std::vector<unsigned>> StraightSkeleton::WavefrontAsVertexLoops()
+	{
+		std::vector<std::pair<unsigned, unsigned>> segmentSoup;
+		for (auto&f:_faces)
+			for (auto&e:f._edges)
+				if (e._type == EdgeType::Wavefront)
+					segmentSoup.push_back({e._head, e._tail});
+		// We shouldn't need the edges in _unplacedEdges, so long as each edge has been correctly
+		// assigned to it's source face
+		return AsVertexLoopsOrdered(MakeIteratorRange(segmentSoup));
+	}
+
+}
