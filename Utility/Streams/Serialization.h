@@ -180,6 +180,17 @@ namespace Utility
 			++_end;
 		}
 
+		template<typename... ConstructorArgs>
+			void emplace_back(ConstructorArgs&&... args)
+			{
+				assert(OwnsHeapBlock());
+				if ((_end+1) > _capacity) {
+					Expand(size()+1);
+				}
+				new(_end) Element(std::forward<ConstructorArgs>(args)...);
+				++_end;
+			}
+
 		iterator erase(const_iterator pos) 
 		{
 			assert(pos >= _begin && pos < _end);
@@ -275,6 +286,14 @@ namespace Utility
 		bool OwnsHeapBlock() const { return !(_capacity == nullptr && _begin != nullptr); }
 
 		SerializableVector() : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
+		
+		template< class InputIt >
+			SerializableVector(InputIt begin, InputIt end)
+			: SerializableVector()
+		{
+			insert(this->end(), begin, end);
+		}
+
 		~SerializableVector()
 		{
 			for (auto i=_begin; i!=_end; ++i) i->~Element();

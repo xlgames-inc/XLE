@@ -55,6 +55,12 @@ namespace XLEMath
                 return cml::vector<Type, cml::fixed<3>>(input[0], input[1], extra);
             }
 
+        template <typename Type>
+            cml::vector<Type, cml::fixed<4>>        Expand(const cml::vector<Type, cml::fixed<2>>& input, const cml::vector<Type, cml::fixed<2>>& extra)
+            {
+                return cml::vector<Type, cml::fixed<4>>(input[0], input[1], extra[0], extra[1]);
+            }
+
         template <typename Type, size_t N>
             cml::vector<Type, cml::fixed<N-1>>      Truncate(const cml::vector<Type, cml::fixed<N>>& input);
 

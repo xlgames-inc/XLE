@@ -88,8 +88,8 @@ namespace Converter
 				file->Write(AsPointer(a.second->GetBlob()->begin()), a.second->GetBlob()->size());
 
 				auto i = std::find_if(filesToDelete.begin(), filesToDelete.end(),
-					[a](const std::string& compare) { 
-						return XlEqStringI(MakeFileNameSplitter(MakeStringSection(compare)).FileAndExtension(), MakeStringSection(a.first)); 
+					[outputName](const std::string& compare) { 
+						return XlEqStringI(MakeFileNameSplitter(MakeStringSection(compare)).FileAndExtension(), MakeFileNameSplitter(MakeStringSection(outputName)).FileAndExtension()); 
 					});
 				if (i!=filesToDelete.end())
 					filesToDelete.erase(i);
@@ -118,3 +118,25 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         return -1;
     } CATCH_END
 }
+
+int main(int argc, char* argv[])
+{
+    ConsoleRig::StartupConfig cfg("converter");
+    cfg._setWorkingDir = false;
+    ConsoleRig::GlobalServices services(cfg);
+
+	std::string cmdLine;
+	for (int c=1; c<argc; ++c) {
+		if (c != 1) cmdLine += " ";
+		cmdLine += argv[c];
+	}
+
+    TRY {
+        return Converter::Execute(MakeStringSection(cmdLine));
+    } CATCH (const std::exception& e) {
+        LogAlwaysError << "Hit top level exception. Aborting program!";
+        LogAlwaysError << e.what();
+        return -1;
+    } CATCH_END
+}
+
