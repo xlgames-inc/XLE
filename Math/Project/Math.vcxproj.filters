@@ -11,6 +11,7 @@
     <ClCompile Include="..\PoissonSolver.cpp" />
     <ClCompile Include="..\RegularNumberField.cpp" />
     <ClCompile Include="..\RectanglePacking.cpp" />
+    <ClCompile Include="..\StraightSkeleton.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EigenVector.h" />
@@ -27,5 +28,6 @@
     <ClInclude Include="..\RegularNumberField.h" />
     <ClInclude Include="..\RectanglePacking.h" />
     <ClInclude Include="..\XLEMath.h" />
+    <ClInclude Include="..\StraightSkeleton.h" />
   </ItemGroup>
 </Project>

@@ -99,6 +99,7 @@
     <ClInclude Include="..\Quaternion.h" />
     <ClInclude Include="..\RectanglePacking.h" />
     <ClInclude Include="..\RegularNumberField.h" />
+    <ClInclude Include="..\StraightSkeleton.h" />
     <ClInclude Include="..\Transformations.h" />
     <ClInclude Include="..\Vector.h" />
     <ClInclude Include="..\XLEMath.h" />
@@ -113,6 +114,7 @@
     <ClCompile Include="..\ProjectionMath.cpp" />
     <ClCompile Include="..\RectanglePacking.cpp" />
     <ClCompile Include="..\RegularNumberField.cpp" />
+    <ClCompile Include="..\StraightSkeleton.cpp" />
     <ClCompile Include="..\Transformations.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

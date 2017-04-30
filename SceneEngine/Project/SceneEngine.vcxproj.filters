@@ -155,7 +155,6 @@
     <ClCompile Include="..\DepthWeightedTransparency.cpp">
       <Filter>Lighting And Processing</Filter>
     </ClCompile>
-    <ClCompile Include="..\StraightSkeleton.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -330,7 +329,6 @@
     <ClInclude Include="..\DepthWeightedTransparency.h">
       <Filter>Lighting And Processing</Filter>
     </ClInclude>
-    <ClInclude Include="..\StraightSkeleton.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">
