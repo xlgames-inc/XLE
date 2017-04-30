@@ -23,22 +23,25 @@
 
 namespace XLEMath
 {
-	static const float epsilon = 1e-4f;
+	// static const float epsilon = 1e-4f;
+	T1(Primitive) static constexpr Primitive GetEpsilon();
+	template<> static constexpr float GetEpsilon<float>() { return 1e-4f; }
+	template<> static constexpr double GetEpsilon<double>() { return 1e-8; }
 	static const unsigned BoundaryVertexFlag = 1u<<31u;
 
-	class Vertex
+	T1(Primitive) class Vertex
 	{
 	public:
-		Float2		_position;
-		unsigned	_skeletonVertexId;
-		float		_initialTime;
-		Float2		_velocity;
+		Vector2T<Primitive>	_position;
+		unsigned			_skeletonVertexId;
+		Primitive			_initialTime;
+		Vector2T<Primitive>	_velocity;
 	};
 
-	class Graph
+	T1(Primitive) class Graph
 	{
 	public:
-		std::vector<Vertex> _vertices;
+		std::vector<Vertex<Primitive>> _vertices;
 
 		class Segment
 		{
@@ -57,17 +60,17 @@ namespace XLEMath
 		};
 		std::vector<MotorcycleSegment> _motorcycleSegments;
 
-		std::vector<Float2> _boundaryPoints;
+		std::vector<Vector2T<Primitive>> _boundaryPoints;
 
-		StraightSkeleton CalculateSkeleton(float maxTime);
+		StraightSkeleton<Primitive> CalculateSkeleton(Primitive maxTime);
 
 	private:
-		void WriteWavefront(StraightSkeleton& dest, float time);
-		void AddEdgeForVertexPath(StraightSkeleton& dst, unsigned v, unsigned finalVertId);
+		void WriteWavefront(StraightSkeleton<Primitive>& dest, Primitive time);
+		void AddEdgeForVertexPath(StraightSkeleton<Primitive>& dst, unsigned v, unsigned finalVertId);
 	};
 
 	enum WindingType { Left, Right, Straight };
-	WindingType CalculateWindingType(Float2 zero, Float2 one, Float2 two, float threshold)
+	T1(Primitive) WindingType CalculateWindingType(Vector2T<Primitive> zero, Vector2T<Primitive> one, Vector2T<Primitive> two, Primitive threshold)
 	{
 		auto sign = (one[0] - zero[0]) * (two[1] - zero[1]) - (two[0] - zero[0]) * (one[1] - zero[1]);
 		#if SPACE_HANDINESS == SPACE_HANDINESS_CLOCKWISE
@@ -80,7 +83,7 @@ namespace XLEMath
 		return Straight;
 	}
 
-	static Float2 CalculateVertexVelocity(Float2 vex0, Float2 vex1, Float2 vex2)
+	T1(Primitive) static Vector2T<Primitive> CalculateVertexVelocity(Vector2T<Primitive> vex0, Vector2T<Primitive> vex1, Vector2T<Primitive> vex2)
 	{
 		// Calculate the velocity of vertex v1, assuming segments vex0->vex1 && vex1->vex2
 		// are moving at a constant velocity inwards.
@@ -102,63 +105,63 @@ namespace XLEMath
 		// I've calculated this out using basic algebra -- but we may be able to get a more efficient
 		// method using vector math.
 
-		if (Equivalent(vex0, vex2, epsilon)) return Zero<Float2>();
+		if (Equivalent(vex0, vex2, GetEpsilon<Primitive>())) return Zero<Vector2T<Primitive>>();
 
-		auto t0 = Float2(vex1-vex0);
-		auto t1 = Float2(vex2-vex1);
+		auto t0 = Vector2T<Primitive>(vex1-vex0);
+		auto t1 = Vector2T<Primitive>(vex2-vex1);
 
-		if (Equivalent(t0, Zero<Float2>(), epsilon)) return Zero<Float2>();
-		if (Equivalent(t1, Zero<Float2>(), epsilon)) return Zero<Float2>();
+		if (Equivalent(t0, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>())) return Zero<Vector2T<Primitive>>();
+		if (Equivalent(t1, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>())) return Zero<Vector2T<Primitive>>();
 
 		// create normal pointing in direction of movement
 		#if SPACE_HANDINESS == SPACE_HANDINESS_CLOCKWISE
-			auto N0 = Normalize(Float2(t0[1], -t0[0]));
-			auto N1 = Normalize(Float2(t1[1], -t1[0]));
+			auto N0 = Normalize(Vector2T<Primitive>(t0[1], -t0[0]));
+			auto N1 = Normalize(Vector2T<Primitive>(t1[1], -t1[0]));
 		#else
-			auto N0 = Normalize(Float2(-t0[1], t0[0]));
-			auto N1 = Normalize(Float2(-t1[1], t1[0]));
+			auto N0 = Normalize(Vector2T<Primitive>(-t0[1], t0[0]));
+			auto N1 = Normalize(Vector2T<Primitive>(-t1[1], t1[0]));
 		#endif
 		auto a = N0[0], b = N0[1];
 		auto c = N1[0], d = N1[1];
-		const auto t = 1.0f;		// time = 1.0f, because we're calculating the velocity
+		const auto t = Primitive(1);		// time = 1.0f, because we're calculating the velocity
 
 		// Now, line1 is 0 = xa + yb - t and line2 is 0 = xc + yd - t
 
 		// we can calculate the intersection of the lines using this formula...
-		float B0 = 0.0f, B1 = 0.0f;
-		if (d<-epsilon || d>epsilon) B0 = a - b*c/d;
-		if (c<-epsilon || c>epsilon) B1 = b - a*d/c;
+		auto B0 = Primitive(0), B1 = Primitive(0);
+		if (d<-GetEpsilon<Primitive>() || d>GetEpsilon<Primitive>()) B0 = a - b*c/d;
+		if (c<-GetEpsilon<Primitive>() || c>GetEpsilon<Primitive>()) B1 = b - a*d/c;
 
-		float x, y;
+		Primitive x, y;
 		if (std::abs(B0) > std::abs(B1)) {
-			if (B0 > -epsilon && B0 < epsilon) return Zero<Float2>();
-			auto A = 1.0f - b/d;
+			if (B0 > -GetEpsilon<Primitive>() && B0 < GetEpsilon<Primitive>()) return Zero<Vector2T<Primitive>>();
+			auto A = Primitive(1) - b/d;
 			x = t * A / B0;
 			y = (t - x*c) / d;
 		} else {
-			if (B1 > -epsilon && B1 < epsilon) return Zero<Float2>();
-			auto A = 1.0f - a/c;
+			if (B1 > -GetEpsilon<Primitive>() && B1 < GetEpsilon<Primitive>()) return Zero<Vector2T<Primitive>>();
+			auto A = Primitive(1) - a/c;
 			y = t * A / B1;
 			x = (t - y*d) / c;
 		}
 
-		assert(Dot(Float2(x, y), N0+N1) > 0.0f);
+		assert(Dot(Vector2T<Primitive>(x, y), N0+N1) > Primitive(0));
 
 		assert(!isnan(x) && isfinite(x) && (x==x));
 		assert(!isnan(y) && isfinite(y) && (y==y));
-		return Float2(x, y);
+		return Vector2T<Primitive>(x, y);
 	}
 
-	Graph BuildGraphFromVertexLoop(IteratorRange<const Float2*> vertices)
+	T1(Primitive) Graph<Primitive> BuildGraphFromVertexLoop(IteratorRange<const Vector2T<Primitive>*> vertices)
 	{
 		assert(vertices.size() >= 2);
-		const float threshold = 1e-6f;
+		const auto threshold = Primitive(1e-6f);
 
 		// Construct the starting point for the straight skeleton calculations
 		// We're expecting the input vertices to be a closed loop, in counter-clockwise order
 		// The first and last vertices should *not* be the same vertex; there is an implied
 		// segment between the first and last.
-		Graph result;
+		Graph<Primitive> result;
 		result._wavefrontEdges.reserve(vertices.size());
 		result._vertices.reserve(vertices.size());
 		for (size_t v=0; v<vertices.size(); ++v) {
@@ -166,12 +169,12 @@ namespace XLEMath
 			auto v0 = (v+vertices.size()-1)%vertices.size();
 			auto v1 = v;
 			auto v2 = (v+1)%vertices.size();
-			result._wavefrontEdges.emplace_back(Graph::Segment{unsigned(v2), unsigned(v), ~0u, unsigned(v)});
+			result._wavefrontEdges.emplace_back(Graph<Primitive>::Segment{unsigned(v2), unsigned(v), ~0u, unsigned(v)});
 
 			// We must calculate the velocity for each vertex, based on which segments it belongs to...
 			auto velocity = CalculateVertexVelocity(vertices[v0], vertices[v1], vertices[v2]);
-			assert(!Equivalent(velocity, Zero<Float2>(), epsilon));
-			result._vertices.emplace_back(Vertex{vertices[v], BoundaryVertexFlag|unsigned(v), 0.0f, velocity});
+			assert(!Equivalent(velocity, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>()));
+			result._vertices.emplace_back(Vertex<Primitive>{vertices[v], BoundaryVertexFlag|unsigned(v), Primitive(0), velocity});
 		}
 
 		// Each reflex vertex in the graph must result in a "motocycle segment".
@@ -187,58 +190,58 @@ namespace XLEMath
 			// If we wind to the right then it's a reflex vertex, and we must add a motorcycle edge
 			if (CalculateWindingType(vertices[v0], vertices[v1], vertices[v2], threshold) == WindingType::Right) {
 				auto fixedVertex = (unsigned)(result._vertices.size());
-				result._vertices.emplace_back(Vertex{vertices[v], BoundaryVertexFlag|unsigned(v), 0.0f, Zero<Float2>()});
-				result._motorcycleSegments.emplace_back(Graph::MotorcycleSegment{unsigned(v), unsigned(fixedVertex), unsigned(v0), unsigned(v1)});
+				result._vertices.emplace_back(Vertex<Primitive>{vertices[v], BoundaryVertexFlag|unsigned(v), Primitive(0), Zero<Vector2T<Primitive>>()});
+				result._motorcycleSegments.emplace_back(Graph<Primitive>::MotorcycleSegment{unsigned(v), unsigned(fixedVertex), unsigned(v0), unsigned(v1)});
 			}
 		}
 
-		result._boundaryPoints = std::vector<Float2>(vertices.begin(), vertices.end());
+		result._boundaryPoints = std::vector<Vector2T<Primitive>>(vertices.begin(), vertices.end());
 		return result;
 	}
 
-	static float CalculateCollapseTime(Float2 p0, Float2 v0, Float2 p1, Float2 v1)
+	T1(Primitive) static Primitive CalculateCollapseTime(Vector2T<Primitive> p0, Vector2T<Primitive> v0, Vector2T<Primitive> p1, Vector2T<Primitive> v1)
 	{
 		auto d0x = v0[0] - v1[0];
 		auto d0y = v0[1] - v1[1];
 		if (std::abs(d0x) > std::abs(d0y)) {
-			if (std::abs(d0x) < epsilon) return std::numeric_limits<float>::max();
+			if (std::abs(d0x) < GetEpsilon<Primitive>()) return std::numeric_limits<Primitive>::max();
 			auto t = (p1[0] - p0[0]) / d0x;
 
 			auto ySep = p0[1] + t * v0[1] - p1[1] - t * v1[1];
 			if (std::abs(ySep) < 1e-3f) {
-				// assert(std::abs(p0[0] + t * v0[0] - p1[0] - t * v1[0]) < epsilon);
+				// assert(std::abs(p0[0] + t * v0[0] - p1[0] - t * v1[0]) < GetEpsilon<Primitive>());
 				return t;	// (todo -- we could refine with the x results?
 			}
 		} else {
-			if (std::abs(d0y) < epsilon) return std::numeric_limits<float>::max();
+			if (std::abs(d0y) < GetEpsilon<Primitive>()) return std::numeric_limits<Primitive>::max();
 			auto t = (p1[1] - p0[1]) / d0y;
 
 			auto xSep = p0[0] + t * v0[0] - p1[0] - t * v1[0];
 			if (std::abs(xSep) < 1e-3f) {
-				// sassert(std::abs(p0[1] + t * v0[1] - p1[1] - t * v1[1]) < epsilon);
+				// sassert(std::abs(p0[1] + t * v0[1] - p1[1] - t * v1[1]) < GetEpsilon<Primitive>());
 				return t;	// (todo -- we could refine with the y results?
 			}
 		}
 
-		return std::numeric_limits<float>::max();
+		return std::numeric_limits<Primitive>::max();
 	}
 
-	static float CalculateCollapseTime(const Vertex& v0, const Vertex& v1)
+	T1(Primitive) static Primitive CalculateCollapseTime(const Vertex<Primitive>& v0, const Vertex<Primitive>& v1)
 	{
 		// hack -- if one side is frozen, we must collapse immediately
-		if (Equivalent(v0._velocity, Zero<Float2>(), epsilon)) return std::numeric_limits<float>::max();
-		if (Equivalent(v1._velocity, Zero<Float2>(), epsilon)) return std::numeric_limits<float>::max();
+		if (Equivalent(v0._velocity, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>())) return std::numeric_limits<Primitive>::max();
+		if (Equivalent(v1._velocity, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>())) return std::numeric_limits<Primitive>::max();
 
 		// At some point the trajectories of v0 & v1 may intersect
 		// We need to pick out a specific time on the timeline, and find both v0 and v1 at that
 		// time. 
-		float calcTime = std::min(v0._initialTime, v1._initialTime);
-		auto p0 = Float2(v0._position + (calcTime-v0._initialTime) * v0._velocity);
-		auto p1 = Float2(v1._position + (calcTime-v1._initialTime) * v1._velocity);
+		auto calcTime = std::min(v0._initialTime, v1._initialTime);
+		auto p0 = Vector2T<Primitive>(v0._position + (calcTime-v0._initialTime) * v0._velocity);
+		auto p1 = Vector2T<Primitive>(v1._position + (calcTime-v1._initialTime) * v1._velocity);
 		return calcTime + CalculateCollapseTime(p0, v0._velocity, p1, v1._velocity);
 	}
 
-	static void ReplaceVertex(IteratorRange<Graph::Segment*> segs, unsigned oldVertex, unsigned newVertex)
+	T1(Primitive) static void ReplaceVertex(IteratorRange<const typename Graph<Primitive>::Segment*> segs, unsigned oldVertex, unsigned newVertex)
 	{
 		for (auto& s:segs) {
 			if (s._head == oldVertex) s._head = newVertex;
@@ -246,21 +249,21 @@ namespace XLEMath
 		}
 	}
 
-	static unsigned AddSteinerVertex(StraightSkeleton& skeleton, const Float3& vertex)
+	T1(Primitive) static unsigned AddSteinerVertex(StraightSkeleton<Primitive>& skeleton, const Vector3T<Primitive>& vertex)
 	{
-		assert(vertex[2] != 0.0f);
+		assert(vertex[2] != Primitive(0));
 		assert(isfinite(vertex[0]) && isfinite(vertex[1]) && isfinite(vertex[2]));
 		assert(!isnan(vertex[0]) && !isnan(vertex[1]) && !isnan(vertex[2]));
 		assert(vertex[0] == vertex[0] && vertex[1] == vertex[1] && vertex[2] == vertex[2]);
-		assert(vertex[0] != std::numeric_limits<float>::max() && vertex[1] != std::numeric_limits<float>::max() && vertex[2] != std::numeric_limits<float>::max());
+		assert(vertex[0] != std::numeric_limits<Primitive>::max() && vertex[1] != std::numeric_limits<Primitive>::max() && vertex[2] != std::numeric_limits<Primitive>::max());
 		auto existing = std::find_if(skeleton._steinerVertices.begin(), skeleton._steinerVertices.end(),
-			[vertex](const Float3& v) { return Equivalent(v, vertex, epsilon); });
+			[vertex](const Vector3T<Primitive>& v) { return Equivalent(v, vertex, GetEpsilon<Primitive>()); });
 		if (existing != skeleton._steinerVertices.end()) {
 			return (unsigned)std::distance(skeleton._steinerVertices.begin(), existing);
 		}
 		#if defined(_DEBUG)
 			auto test = std::find_if(skeleton._steinerVertices.begin(), skeleton._steinerVertices.end(),
-				[vertex](const Float3& v) { return Equivalent(Truncate(v), Truncate(vertex), epsilon); });
+				[vertex](const Vector3T<Primitive>& v) { return Equivalent(Truncate(v), Truncate(vertex), GetEpsilon<Primitive>()); });
 			assert(test == skeleton._steinerVertices.end());
 		#endif
 		auto result = (unsigned)skeleton._steinerVertices.size();
@@ -268,7 +271,7 @@ namespace XLEMath
 		return result;
 	}
 
-	static Float2 PositionAtTime(const Vertex& v, float time)
+	T1(Primitive) static Vector2T<Primitive> PositionAtTime(const Vertex<Primitive>& v, Primitive time)
 	{
 		auto result = v._position + v._velocity * (time - v._initialTime);
 		assert(!isnan(result[0]) && !isnan(result[1]));
@@ -277,26 +280,24 @@ namespace XLEMath
 		return result;
 	}
 
-	static Float3 ClampedPositionAtTime(const Vertex& v, float time)
+	T1(Primitive) static Vector3T<Primitive> ClampedPositionAtTime(const Vertex<Primitive>& v, Primitive time)
 	{
-		if (Equivalent(v._velocity, Zero<Float2>(), epsilon))
+		if (Equivalent(v._velocity, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>()))
 			return Expand(v._position, v._initialTime);
 		return Expand(PositionAtTime(v, time), time);
 	}
 
-	struct CrashEvent
+	T1(Primitive) struct CrashEvent
 	{
-		float _time;
+		Primitive _time;
 		unsigned _edgeSegment;
 	};
 
-	static CrashEvent CalculateCrashTime(
-		Graph& graph, Float2 position, Float2 velocity, float initialTime, 
-		const Graph::MotorcycleSegment* cycleToSkip = nullptr, unsigned boundaryPtToSkip = ~0u)
+	T1(Primitive) static CrashEvent<Primitive> CalculateCrashTime(const Graph<Primitive>& graph, Vertex<Primitive> v)
 	{
-		auto p2 = Float2(position - initialTime * velocity);
-		auto v2 = velocity;
-		CrashEvent bestCollisionEvent { std::numeric_limits<float>::max(), ~0u };
+		auto p2 = PositionAtTime(v, Primitive(0));
+		auto v2 = v._velocity;
+		CrashEvent<Primitive> bestCollisionEvent { std::numeric_limits<Primitive>::max(), ~0u };
 
 		// Look for an intersection with _wavefrontEdges
 		for (const auto&e:graph._wavefrontEdges) {
@@ -308,8 +309,8 @@ namespace XLEMath
 			// If there is a collision, the triangle area will be zero at that point.
 			// So we can search for a time when the triangle area is zero, and check to see
 			// if a collision has actually occurred at that time.
-			auto p0 = Float2(head._position - head._initialTime * head._velocity);
-			auto p1 = Float2(tail._position - tail._initialTime * tail._velocity);
+			auto p0 = Vector2T<Primitive>(head._position - head._initialTime * head._velocity);
+			auto p1 = Vector2T<Primitive>(tail._position - tail._initialTime * tail._velocity);
 			auto v0 = head._velocity;
 			auto v1 = tail._velocity;
 
@@ -341,10 +342,10 @@ namespace XLEMath
 			auto a = (v1[0]-v0[0])*(v2[1]-v0[1]) - (v2[0]-v0[0])*(v1[1]-v0[1]);
 
 			// x = (-b +/- sqrt(b*b - 4*a*c)) / 2*a
-			auto Q = std::sqrt(b*b - 4.0f*a*c);
-			float t[] = {
-				(-b + Q) / (2.0f*a),
-				(-b - Q) / (2.0f*a)
+			auto Q = std::sqrt(b*b - Primitive(4)*a*c);
+			decltype(Q) t[] = {
+				(-b + Q) / (Primitive(2)*a),
+				(-b - Q) / (Primitive(2)*a)
 			};
 
 			// Is there is a viable collision at either t0 or t1?
@@ -352,14 +353,14 @@ namespace XLEMath
 			// the motorcycle is between them (or intersecting a vertex)
 			for (unsigned c=0; c<2; ++c) {
 				if (t[c] > bestCollisionEvent._time || t[c] <= std::max(head._initialTime, tail._initialTime)) continue;	// don't need to check collisions that happen too late
-				auto P0 = Float2(p0 + t[c]*v0);
-				auto P1 = Float2(p1 + t[c]*v1);
-				auto P2 = Float2(p2 + t[c]*v2);
-				if ((Dot(P1-P0, P2-P0) > 0.0f) && (Dot(P0-P1, P2-P1) > 0.0f)) {
+				auto P0 = Vector2T<Primitive>(p0 + t[c]*v0);
+				auto P1 = Vector2T<Primitive>(p1 + t[c]*v1);
+				auto P2 = Vector2T<Primitive>(p2 + t[c]*v2);
+				if ((Dot(P1-P0, P2-P0) > Primitive(0)) && (Dot(P0-P1, P2-P1) > Primitive(0))) {
 					// good collision
 					bestCollisionEvent._time = t[c];
 					bestCollisionEvent._edgeSegment = unsigned(&e - AsPointer(graph._wavefrontEdges.begin()));
-				} else if (Equivalent(P0, P2, epsilon) || Equivalent(P1, P2, epsilon)) {
+				} else if (Equivalent(P0, P2, GetEpsilon<Primitive>()) || Equivalent(P1, P2, GetEpsilon<Primitive>())) {
 					// collided with vertex (or close enough)
 					bestCollisionEvent._time = t[c];
 					bestCollisionEvent._edgeSegment = unsigned(&e - AsPointer(graph._wavefrontEdges.begin()));
@@ -370,9 +371,10 @@ namespace XLEMath
 		return bestCollisionEvent;
 	}
 
-	static std::pair<Graph::Segment*, Graph::Segment*> FindInAndOut(IteratorRange<Graph::Segment*> edges, unsigned pivotVertex)
+	T1(Primitive) static auto FindInAndOut(IteratorRange<typename Graph<Primitive>::Segment*> edges, unsigned pivotVertex)
+		-> std::pair<typename Graph<Primitive>::Segment*, typename Graph<Primitive>::Segment*>
 	{
-		std::pair<Graph::Segment*, Graph::Segment*> result(nullptr, nullptr);
+		std::pair<typename Graph<Primitive>::Segment*, typename Graph<Primitive>::Segment*> result(nullptr, nullptr);
 		for  (auto&s:edges) {
 			if (s._head == pivotVertex) {
 				assert(!result.first);
@@ -385,20 +387,20 @@ namespace XLEMath
 		return result;
 	}
 
-	static bool IsFrozen(const Vertex& v) { return Equivalent(v._velocity, Zero<Float2>(), 0.0f); }
-	static void FreezeInPlace(Vertex& v, float atTime)
+	T1(Primitive) static bool IsFrozen(const Vertex<Primitive>& v) { return Equivalent(v._velocity, Zero<Vector2T<Primitive>>(), Primitive(0)); }
+	T1(Primitive) static void FreezeInPlace(Vertex<Primitive>& v, Primitive atTime)
 	{
-		assert(atTime != 0.0f);
+		assert(atTime != Primitive(0));
 		v._position = PositionAtTime(v, atTime);
 		v._initialTime = atTime;
 		v._skeletonVertexId = ~0u;
-		v._velocity = Zero<Float2>();
+		v._velocity = Zero<Vector2T<Primitive>>();
 	}
 
-	static void AddUnique(std::vector<StraightSkeleton::Edge>& dst, const StraightSkeleton::Edge& edge)
+	T1(EdgeType) static void AddUnique(std::vector<EdgeType>& dst, const EdgeType& edge)
 	{
 		auto existing = std::find_if(dst.begin(), dst.end(), 
-			[&edge](const StraightSkeleton::Edge&e) { return e._head == edge._head && e._tail == edge._tail; });
+			[&edge](const EdgeType&e) { return e._head == edge._head && e._tail == edge._tail; });
 
 		if (existing == dst.end()) {
 			dst.push_back(edge);
@@ -407,7 +409,7 @@ namespace XLEMath
 		}
 	}
 
-	static void AddEdge(StraightSkeleton& dest, unsigned headVertex, unsigned tailVertex, unsigned leftEdge, unsigned rightEdge, StraightSkeleton::EdgeType type)
+	T1(Primitive) static void AddEdge(StraightSkeleton<Primitive>& dest, unsigned headVertex, unsigned tailVertex, unsigned leftEdge, unsigned rightEdge, typename StraightSkeleton<Primitive>::EdgeType type)
 	{
 		if (headVertex == tailVertex) return;
 
@@ -424,16 +426,16 @@ namespace XLEMath
 		}
 	}
 
-	StraightSkeleton Graph::CalculateSkeleton(float maxTime)
+	T1(Primitive) StraightSkeleton<Primitive> Graph<Primitive>::CalculateSkeleton(Primitive maxTime)
 	{
-		StraightSkeleton result;
+		StraightSkeleton<Primitive> result;
 		result._faces.resize(_boundaryPoints.size());
 
-		std::vector<std::pair<float, size_t>> bestCollapse;
-		std::vector<std::pair<CrashEvent, size_t>> bestMotorcycleCrash;
+		std::vector<std::pair<Primitive, size_t>> bestCollapse;
+		std::vector<std::pair<CrashEvent<Primitive>, size_t>> bestMotorcycleCrash;
 		bestCollapse.reserve(8);
 
-		float lastEventTime = 0.0f;
+		Primitive lastEventTime = Primitive(0);
 		unsigned lastEvent = 0;
 
 		for (;;) {
@@ -441,9 +443,9 @@ namespace XLEMath
 				// validate vertex velocities
 				for (unsigned v=0; v<_vertices.size(); ++v) {
 					Segment* in, *out;
-					std::tie(in, out) = FindInAndOut(MakeIteratorRange(_wavefrontEdges), v);
+					std::tie(in, out) = FindInAndOut<Primitive>(MakeIteratorRange(_wavefrontEdges), v);
 					if (in && out) {
-						auto calcTime = (_vertices[in->_tail]._initialTime + _vertices[v]._initialTime + _vertices[out->_head]._initialTime) / 3.0f;
+						auto calcTime = (_vertices[in->_tail]._initialTime + _vertices[v]._initialTime + _vertices[out->_head]._initialTime) / Primitive(3);
 						auto v0 = PositionAtTime(_vertices[in->_tail], calcTime);
 						auto v1 = PositionAtTime(_vertices[v], calcTime);
 						auto v2 = PositionAtTime(_vertices[out->_head], calcTime);
@@ -455,50 +457,50 @@ namespace XLEMath
 				for (const auto&e:_wavefrontEdges) {
 					if (IsFrozen(_vertices[e._head]) || IsFrozen(_vertices[e._tail])) continue;
 					auto collapseTime = CalculateCollapseTime(_vertices[e._head], _vertices[e._tail]);
-					assert(collapseTime != std::numeric_limits<float>::max());		//it can be negative; because some edges are expanding
+					assert(collapseTime != std::numeric_limits<Primitive>::max());		//it can be negative; because some edges are expanding
 				}
 			#endif
 
 			// Find the next event to occur
 			//		-- either a edge collapse or a motorcycle collision
-			float bestCollapseTime = std::numeric_limits<float>::max();
+			auto bestCollapseTime = std::numeric_limits<Primitive>::max();
 			bestCollapse.clear();
 			for (auto e=_wavefrontEdges.begin(); e!=_wavefrontEdges.end(); ++e) {
 				const auto& v0 = _vertices[e->_head];
 				const auto& v1 = _vertices[e->_tail];
 				auto collapseTime = CalculateCollapseTime(v0, v1);
-				if (collapseTime < 0.0f) continue;
+				if (collapseTime < Primitive(0)) continue;
 				assert(collapseTime >= lastEventTime);
-				if (collapseTime < (bestCollapseTime - epsilon)) {
+				if (collapseTime < (bestCollapseTime - GetEpsilon<Primitive>())) {
 					bestCollapse.clear();
 					bestCollapse.push_back(std::make_pair(collapseTime, std::distance(_wavefrontEdges.begin(), e)));
 					bestCollapseTime = collapseTime;
-				} else if (collapseTime < (bestCollapseTime + epsilon)) {
+				} else if (collapseTime < (bestCollapseTime + GetEpsilon<Primitive>())) {
 					bestCollapse.push_back(std::make_pair(collapseTime, std::distance(_wavefrontEdges.begin(), e)));
 					bestCollapseTime = std::min(collapseTime, bestCollapseTime);
 				}
 			}
 
 			// Always ensure that every entry in "bestCollapse" is within
-			// "epsilon" of bestCollapseTime -- this can become untrue if there
+			// "GetEpsilon<Primitive>()" of bestCollapseTime -- this can become untrue if there
 			// are chains of events with very small gaps in between them
 			bestCollapse.erase(
 				std::remove_if(
 					bestCollapse.begin(), bestCollapse.end(),
-					[bestCollapseTime](const std::pair<float, size_t>& e) { return !(e.first < bestCollapseTime + epsilon); }), 
+					[bestCollapseTime](const std::pair<Primitive, size_t>& e) { return !(e.first < bestCollapseTime + GetEpsilon<Primitive>()); }), 
 				bestCollapse.end());
 
 			// Also check for motorcycles colliding.
 			//		These can collide with segments in the _wavefrontEdges list, or 
 			//		other motorcycles, or boundary polygon edges
-			float bestMotorcycleCrashTime = std::numeric_limits<float>::max();
+			auto bestMotorcycleCrashTime = std::numeric_limits<Primitive>::max();
 			bestMotorcycleCrash.clear();
 			for (auto m=_motorcycleSegments.begin(); m!=_motorcycleSegments.end(); ++m) {
 				const auto& head = _vertices[m->_head];
-				if (Equivalent(head._velocity, Zero<Float2>(), epsilon)) continue;
-				assert(head._initialTime == 0.0f);
-				auto crashEvent = CalculateCrashTime(*this, head._position, head._velocity, head._initialTime, AsPointer(m), head._skeletonVertexId);
-				if (crashEvent._time < 0.0f) continue;
+				if (Equivalent(head._velocity, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>())) continue;
+				assert(head._initialTime == Primitive(0));
+				auto crashEvent = CalculateCrashTime(*this, head);
+				if (crashEvent._time < Primitive(0)) continue;
 				assert(crashEvent._time >= lastEventTime);
 
 				// If our best motorcycle collision happens before our best collapse, then we
@@ -507,12 +509,12 @@ namespace XLEMath
 				// and then recalculate the motorcycle collisions afterwards (ie, even if there's
 				// a motorcycle collision at around the same time as the edge collapses, we're
 				// going to ignore it for now)
-				if (crashEvent._time < (bestCollapseTime + epsilon)) {
-					if (crashEvent._time < (bestMotorcycleCrashTime - epsilon)) {
+				if (crashEvent._time < (bestCollapseTime + GetEpsilon<Primitive>())) {
+					if (crashEvent._time < (bestMotorcycleCrashTime - GetEpsilon<Primitive>())) {
 						bestMotorcycleCrash.clear();
 						bestMotorcycleCrash.push_back(std::make_pair(crashEvent, std::distance(_motorcycleSegments.begin(), m)));
 						bestMotorcycleCrashTime = crashEvent._time;
-					} else if (crashEvent._time < (bestMotorcycleCrashTime + epsilon)) {
+					} else if (crashEvent._time < (bestMotorcycleCrashTime + GetEpsilon<Primitive>())) {
 						bestMotorcycleCrash.push_back(std::make_pair(crashEvent, std::distance(_motorcycleSegments.begin(), m)));
 						bestMotorcycleCrashTime = std::min(crashEvent._time, bestMotorcycleCrashTime);
 					}
@@ -527,7 +529,7 @@ namespace XLEMath
 				bestMotorcycleCrash.erase(
 					std::remove_if(
 						bestMotorcycleCrash.begin(), bestMotorcycleCrash.end(),
-						[bestMotorcycleCrashTime](const std::pair<CrashEvent, size_t>& e) { return !(e.first._time < bestMotorcycleCrashTime + epsilon); }), 
+						[bestMotorcycleCrashTime](const std::pair<CrashEvent<Primitive>, size_t>& e) { return !(e.first._time < bestMotorcycleCrashTime + GetEpsilon<Primitive>()); }), 
 					bestMotorcycleCrash.end());
 
 				// we can only process a single crash event at a time currently
@@ -539,7 +541,7 @@ namespace XLEMath
 				assert(crashEvent._edgeSegment != ~0u);
 
 				auto crashPt = PositionAtTime(_vertices[motor._head], crashEvent._time);
-				auto crashPtSkeleton = AddSteinerVertex(result, Float3(crashPt, crashEvent._time));
+				auto crashPtSkeleton = AddSteinerVertex(result, Vector3T<Primitive>(crashPt, crashEvent._time));
 
 				auto crashSegment = _wavefrontEdges[crashEvent._edgeSegment];
 				Segment newSegment0{ motor._head, motor._head, motor._leftFace, crashSegment._rightFace};
@@ -548,16 +550,16 @@ namespace XLEMath
 
 				// is there volume on the "tout" side?
 				{
-					auto* tout = FindInAndOut(MakeIteratorRange(_wavefrontEdges), motor._head).second;
+					auto* tout = FindInAndOut<Primitive>(MakeIteratorRange(_wavefrontEdges), motor._head).second;
 					assert(tout);
 
 					auto v0 = ClampedPositionAtTime(_vertices[crashSegment._tail], calcTime);
 					auto v2 = ClampedPositionAtTime(_vertices[tout->_head], calcTime);
-					if (tout->_head == crashSegment._tail || Equivalent(v0, v2, epsilon)) {
+					if (tout->_head == crashSegment._tail || Equivalent(v0, v2, GetEpsilon<Primitive>())) {
 						// no longer need crashSegment or tout
 						assert(crashSegment._leftFace == ~0u && tout->_leftFace == ~0u);
-						auto endPt = AddSteinerVertex(result, (v0+v2)/2.0f);
-						AddEdge(result, endPt, crashPtSkeleton, crashSegment._rightFace, tout->_rightFace, StraightSkeleton::EdgeType::VertexPath);
+						auto endPt = AddSteinerVertex<Primitive>(result, (v0+v2)/Primitive(2));
+						AddEdge(result, endPt, crashPtSkeleton, crashSegment._rightFace, tout->_rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
 						// tout->_head & crashSegment._tail end here. We must draw the skeleton segment 
 						// tracing out their path
 						AddEdgeForVertexPath(result, tout->_head, endPt);
@@ -582,23 +584,23 @@ namespace XLEMath
 						tout->_tail = newVertex;
 						_wavefrontEdges.push_back({newVertex, crashSegment._tail, crashSegment._leftFace, crashSegment._rightFace});	// (hin)
 
-						_vertices.push_back(Vertex{crashPt, crashPtSkeleton, crashEvent._time, CalculateVertexVelocity(Truncate(v0), crashPt, Truncate(v2))});
+						_vertices.push_back(Vertex<Primitive>{crashPt, crashPtSkeleton, crashEvent._time, CalculateVertexVelocity(Truncate(v0), crashPt, Truncate(v2))});
 						newSegment1._head = newVertex;
 					}
 				}
 
 				// is there volume on the "tin" side?
 				{
-					auto* tin = FindInAndOut(MakeIteratorRange(_wavefrontEdges), motor._head).first;
+					auto* tin = FindInAndOut<Primitive>(MakeIteratorRange(_wavefrontEdges), motor._head).first;
 					assert(tin);
 
 					auto v0 = ClampedPositionAtTime(_vertices[tin->_tail], calcTime);
 					auto v2 = ClampedPositionAtTime(_vertices[crashSegment._head], calcTime);
-					if (tin->_tail == crashSegment._head || Equivalent(v0, v2, epsilon)) {
+					if (tin->_tail == crashSegment._head || Equivalent(v0, v2, GetEpsilon<Primitive>())) {
 						// no longer need "crashSegment" or tin
 						assert(crashSegment._leftFace == ~0u && tin->_leftFace == ~0u);
-						auto endPt = AddSteinerVertex(result, (v0+v2)/2.0f);
-						AddEdge(result, endPt, crashPtSkeleton, tin->_rightFace, crashSegment._rightFace, StraightSkeleton::EdgeType::VertexPath);
+						auto endPt = AddSteinerVertex<Primitive>(result, (v0+v2)/Primitive(2));
+						AddEdge(result, endPt, crashPtSkeleton, tin->_rightFace, crashSegment._rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
 						// tin->_tail & crashSegment._head end here. We must draw the skeleton segment 
 						// tracing out their path
 						AddEdgeForVertexPath(result, tin->_tail, endPt);
@@ -622,7 +624,7 @@ namespace XLEMath
 						tin->_head = newVertex;
 						_wavefrontEdges.push_back({crashSegment._head, newVertex, crashSegment._leftFace, crashSegment._rightFace});	// (hout)
 
-						_vertices.push_back(Vertex{crashPt, crashPtSkeleton, crashEvent._time, CalculateVertexVelocity(Truncate(v0), crashPt, Truncate(v2))});
+						_vertices.push_back(Vertex<Primitive>{crashPt, crashPtSkeleton, crashEvent._time, CalculateVertexVelocity(Truncate(v0), crashPt, Truncate(v2))});
 						newSegment0._head = newVertex;
 					}
 				}
@@ -641,7 +643,7 @@ namespace XLEMath
 				assert(_vertices[motor._tail]._skeletonVertexId != ~0u);
 				AddEdge(result, 
 						crashPtSkeleton, _vertices[motor._tail]._skeletonVertexId,
-						motor._leftFace, motor._rightFace, StraightSkeleton::EdgeType::VertexPath);
+						motor._leftFace, motor._rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
 				FreezeInPlace(_vertices[motor._head], crashEvent._time);
 
 				_motorcycleSegments.erase(_motorcycleSegments.begin() + bestMotorcycleCrash[0].second);
@@ -650,9 +652,9 @@ namespace XLEMath
 					{
 						for (auto m=_motorcycleSegments.begin(); m!=_motorcycleSegments.end(); ++m) {
 							const auto& head = _vertices[m->_head];
-							if (Equivalent(head._velocity, Zero<Float2>(), epsilon)) continue;
+							if (Equivalent(head._velocity, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>())) continue;
 							auto nextCrashEvent = CalculateCrashTime(*this, head._position, head._velocity, head._initialTime, AsPointer(m), head._skeletonVertexId);
-							if (nextCrashEvent._time < 0.0f) continue;
+							if (nextCrashEvent._time < Primitive(0)) continue;
 							assert(nextCrashEvent._time >= crashEvent._time);
 						}
 					}
@@ -680,7 +682,7 @@ namespace XLEMath
 					auto searchingTail =_wavefrontEdges[bestCollapse[c].second]._tail;
 					for (;;) {
 						auto i = std::find_if(bestCollapse.begin(), bestCollapse.end(),
-							[searchingTail, this](const std::pair<float, size_t>& t)
+							[searchingTail, this](const std::pair<Primitive, size_t>& t)
 							{ return _wavefrontEdges[t.second]._head == searchingTail; });
 						if (i == bestCollapse.end()) break;
 						if (collapseGroups[std::distance(bestCollapse.begin(), i)] == nextCollapseGroup) break;
@@ -693,7 +695,7 @@ namespace XLEMath
 					auto searchingHead =_wavefrontEdges[bestCollapse[c].second]._head;
 					for (;;) {
 						auto i = std::find_if(bestCollapse.begin(), bestCollapse.end(),
-							[searchingHead, this](const std::pair<float, size_t>& t)
+							[searchingHead, this](const std::pair<Primitive, size_t>& t)
 							{ return _wavefrontEdges[t.second]._tail == searchingHead; });
 						if (i == bestCollapse.end()) break;
 						if (collapseGroups[std::distance(bestCollapse.begin(), i)] == nextCollapseGroup) break;
@@ -710,7 +712,7 @@ namespace XLEMath
 				// now, and write out some segments to the output skeleton
 				std::vector<unsigned> collapseGroupNewVertex(nextCollapseGroup, ~0u);
 				for (auto collapseGroup=0u; collapseGroup<nextCollapseGroup; ++collapseGroup) {
-					Float2 collisionPt(0.0f, 0.0f);
+					Vector2T<Primitive> collisionPt(Primitive(0), Primitive(0));
 					unsigned contributors = 0;
 					for (size_t c=0; c<bestCollapse.size(); ++c) {
 						if (collapseGroups[c] != collapseGroup) continue;
@@ -723,7 +725,7 @@ namespace XLEMath
 						assert(!IsFrozen(_vertices[seg._tail]));
 						assert(!IsFrozen(_vertices[seg._head]));
 					}
-					collisionPt /= float(contributors);
+					collisionPt /= Primitive(contributors);
 
 					// Validate that our "collisionPt" is close to all of the collapsing points
 					#if defined(_DEBUG)
@@ -732,13 +734,13 @@ namespace XLEMath
 							const auto& seg = _wavefrontEdges[bestCollapse[c].second];
 							auto one = PositionAtTime(_vertices[seg._head], bestCollapseTime);
 							auto two = PositionAtTime(_vertices[seg._tail], bestCollapseTime);
-							assert(Equivalent(one, collisionPt, 1e-3f));
-							assert(Equivalent(two, collisionPt, 1e-3f));
+							assert(Equivalent(one, collisionPt, Primitive(1e-3f)));
+							assert(Equivalent(two, collisionPt, Primitive(1e-3f)));
 						}
 					#endif
 
 					// add a steiner vertex into the output
-					auto collisionVertId = AddSteinerVertex(result, Float3(collisionPt, bestCollapseTime));
+					auto collisionVertId = AddSteinerVertex(result, Expand(collisionPt, bestCollapseTime));
 
 					// connect up edges in the output graph
 					// Note that since we're connecting both head and tail, we'll end up doubling up each edge
@@ -746,9 +748,8 @@ namespace XLEMath
 						if (collapseGroups[c] != collapseGroup) continue;
 						const auto& seg = _wavefrontEdges[bestCollapse[c].second];
 						unsigned vs[] = { seg._head, seg._tail };
-						for (auto& v:vs) {
+						for (auto& v:vs)
 							AddEdgeForVertexPath(result, v, collisionVertId);
-						}
 					
 						FreezeInPlace(_vertices[seg._tail], bestCollapseTime);
 						FreezeInPlace(_vertices[seg._head], bestCollapseTime);
@@ -756,7 +757,7 @@ namespace XLEMath
 
 					// create a new vertex in the graph to connect the edges to either side of the collapse
 					collapseGroupInfos[collapseGroup]._newVertex = (unsigned)_vertices.size();
-					_vertices.push_back(Vertex{collisionPt, collisionVertId, bestCollapseTime, Float2(0.0f,0.0f)});
+					_vertices.push_back(Vertex<Primitive>{collisionPt, collisionVertId, bestCollapseTime, Zero<Vector2T<Primitive>>()});
 				}
 
 				// Remove all of the collapsed edges (by shifting them to the end)
@@ -776,8 +777,8 @@ namespace XLEMath
 				for (const auto& group:collapseGroupInfos) {
 					if (group._head == group._tail) continue;	// if we remove an entire loop, let's assume that there are no external links to it
 
-					auto tail = FindInAndOut(MakeIteratorRange(_wavefrontEdges), group._tail).first;
-					auto head = FindInAndOut(MakeIteratorRange(_wavefrontEdges), group._head).second;
+					auto tail = FindInAndOut<Primitive>(MakeIteratorRange(_wavefrontEdges), group._tail).first;
+					auto head = FindInAndOut<Primitive>(MakeIteratorRange(_wavefrontEdges), group._head).second;
 					assert(tail && head);
 
 					tail->_head = group._newVertex;
@@ -793,13 +794,13 @@ namespace XLEMath
 							assert(CalculateCollapseTime(_vertices[tail->_tail], _vertices[group._newVertex]) >= _vertices[group._newVertex]._initialTime);
 							assert(CalculateCollapseTime(_vertices[group._newVertex], _vertices[head->_head]) >= _vertices[group._newVertex]._initialTime);
 
-							auto calcTime = (_vertices[tail->_tail]._initialTime + _vertices[group._newVertex]._initialTime + _vertices[head->_head]._initialTime) / 3.0f;
+							auto calcTime = (_vertices[tail->_tail]._initialTime + _vertices[group._newVertex]._initialTime + _vertices[head->_head]._initialTime) / Primitive(3);
 							auto v0 = PositionAtTime(_vertices[tail->_tail], calcTime);
 							auto v1 = PositionAtTime(_vertices[group._newVertex], calcTime);
 							auto v2 = PositionAtTime(_vertices[head->_head], calcTime);
 							
 							auto validatedVelocity = CalculateVertexVelocity(v0, v1, v2);
-							assert(Equivalent(validatedVelocity, _vertices[group._newVertex]._velocity, epsilon));
+							assert(Equivalent(validatedVelocity, _vertices[group._newVertex]._velocity, GetEpsilon<Primitive>()));
 						}
 					#endif
 				}
@@ -809,34 +810,34 @@ namespace XLEMath
 			}
 		}
 
-		if (maxTime == std::numeric_limits<float>::max())
+		if (maxTime == std::numeric_limits<Primitive>::max())
 			maxTime = lastEventTime;
 		WriteWavefront(result, maxTime);
 
 		return result;
 	}
 
-	static float ClosestPointOnLine2D(Float2 rayStart, Float2 rayEnd, Float2 testPt)
+	T1(Primitive) static Primitive ClosestPointOnLine2D(Vector2T<Primitive> rayStart, Vector2T<Primitive> rayEnd, Vector2T<Primitive> testPt)
 	{
 		auto o = testPt - rayStart;
 		auto l = rayEnd - rayStart;
 		return Dot(o, l) / MagnitudeSquared(l);
 	}
 
-	static bool DoColinearLinesIntersect(Float2 AStart, Float2 AEnd, Float2 BStart, Float2 BEnd)
+	T1(Primitive) static bool DoColinearLinesIntersect(Vector2T<Primitive> AStart, Vector2T<Primitive> AEnd, Vector2T<Primitive> BStart, Vector2T<Primitive> BEnd)
 	{
 		// return false if the lines share a point, but otherwise do not intersect
 		// but returns true if the lines overlap completely (even if the lines have zero length)
 		auto closestBStart = ClosestPointOnLine2D(AStart, AEnd, BStart);
 		auto closestBEnd = ClosestPointOnLine2D(AStart, AEnd, BEnd);
-		return ((closestBStart > epsilon) && (closestBStart > 1.0f-epsilon))
-			|| ((closestBEnd > epsilon) && (closestBEnd > 1.0f-epsilon))
-			|| (Equivalent(AStart, BStart, epsilon) && Equivalent(AEnd, BEnd, epsilon))
-			|| (Equivalent(AEnd, BStart, epsilon) && Equivalent(AStart, BEnd, epsilon))
+		return ((closestBStart > GetEpsilon<Primitive>()) && (closestBStart > Primitive(1)-GetEpsilon<Primitive>()))
+			|| ((closestBEnd > GetEpsilon<Primitive>()) && (closestBEnd > Primitive(1)-GetEpsilon<Primitive>()))
+			|| (Equivalent(AStart, BStart, GetEpsilon<Primitive>()) && Equivalent(AEnd, BEnd, GetEpsilon<Primitive>()))
+			|| (Equivalent(AEnd, BStart, GetEpsilon<Primitive>()) && Equivalent(AStart, BEnd, GetEpsilon<Primitive>()))
 			;
 	}
 
-	void Graph::WriteWavefront(StraightSkeleton& result, float time)
+	T1(Primitive) void Graph<Primitive>::WriteWavefront(StraightSkeleton<Primitive>& result, Primitive time)
 	{
 		// Write the current wavefront to the destination skeleton. Each edge in 
 		// _wavefrontEdges comes a segment in the output
@@ -890,34 +891,34 @@ namespace XLEMath
 				auto closestC = ClosestPointOnLine2D(A, B, C);
 				auto closestD = ClosestPointOnLine2D(A, B, D);
 
-				bool COnLine = closestC > 0.0f && closestC < 1.0f && MagnitudeSquared(LinearInterpolate(A, B, closestC) - C) < epsilon;
-				bool DOnLine = closestD > 0.0f && closestD < 1.0f && MagnitudeSquared(LinearInterpolate(A, B, closestD) - D) < epsilon;
+				bool COnLine = closestC > Primitive(0) && closestC < Primitive(1) && MagnitudeSquared(LinearInterpolate(A, B, closestC) - C) < GetEpsilon<Primitive>();
+				bool DOnLine = closestD > Primitive(0) && closestD < Primitive(1) && MagnitudeSquared(LinearInterpolate(A, B, closestD) - D) < GetEpsilon<Primitive>();
 				if (!COnLine && !DOnLine) { continue; }
 
-				float m0 = (B[1] - A[1]) / (B[0] - A[0]);
-				float m1 = (D[1] - C[1]) / (D[0] - C[0]);
-				if (!Equivalent(m0, m1, epsilon)) { continue; }
+				auto m0 = (B[1] - A[1]) / (B[0] - A[0]);
+				auto m1 = (D[1] - C[1]) / (D[0] - C[0]);
+				if (!Equivalent(m0, m1, GetEpsilon<Primitive>())) { continue; }
 
 				if (i2->_head == seg._head) {
-					if (closestD < 1.0f) {
+					if (closestD < Primitive(1)) {
 						seg._head = i2->_tail;
 					} else {
 						i2->_head = seg._tail;
 					}
 				} else if (i2->_head == seg._tail) {
-					if (closestD > 0.0f) {
+					if (closestD > Primitive(0)) {
 						seg._tail = i2->_tail;
 					} else {
 						i2->_head = seg._head;
 					}
 				} else if (i2->_tail == seg._head) {
-					if (closestC < 1.0f) {
+					if (closestC < Primitive(1)) {
 						seg._head = i2->_head;
 					} else {
 						i2->_tail = seg._tail;
 					}
 				} else if (i2->_tail == seg._tail) {
-					if (closestC > 0.0f) {
+					if (closestC > Primitive(0)) {
 						seg._tail = i2->_head;
 					} else {
 						i2->_tail = seg._head;
@@ -928,20 +929,20 @@ namespace XLEMath
 					// Replace i2 with something that is strictly with i2, and then schedule
 					// the remaining split parts for intersection tests.
 					Segment newSeg;
-					if (closestC < 0.0f) {
-						if (closestD > 1.0f) newSeg = {seg._tail, i2->_tail};
+					if (closestC < Primitive(0)) {
+						if (closestD > Primitive(1)) newSeg = {seg._tail, i2->_tail};
 						else { newSeg = {i2->_tail, seg._tail}; seg._tail = i2->_tail; }
 						i2->_tail = seg._head;
-					} else if (closestD < 0.0f) {
-						if (closestC > 1.0f) newSeg = {seg._tail, i2->_head};
+					} else if (closestD < Primitive(0)) {
+						if (closestC > Primitive(1)) newSeg = {seg._tail, i2->_head};
 						else { newSeg = {i2->_head, seg._tail}; seg._tail = i2->_head; }
 						i2->_head = seg._head;
 					} else if (closestC < closestD) {
-						if (closestD > 1.0f) newSeg = {seg._tail, i2->_tail};
+						if (closestD > Primitive(1)) newSeg = {seg._tail, i2->_tail};
 						else { newSeg = {i2->_tail, seg._tail}; seg._tail = i2->_tail; }
 						seg._tail = i2->_head;
 					} else {
-						if (closestC > 1.0f) newSeg = {seg._tail, i2->_head};
+						if (closestC > Primitive(1)) newSeg = {seg._tail, i2->_head};
 						else { newSeg = {i2->_head, seg._tail}; seg._tail = i2->_head; }
 						seg._tail = i2->_tail;
 					}
@@ -983,7 +984,7 @@ namespace XLEMath
 		// add all of the segments in "filteredSegments" to the skeleton
 		for (const auto&seg:filteredSegments) {
 			assert(seg._head != seg._tail);
-			AddEdge(result, seg._head, seg._tail, seg._leftFace, seg._rightFace, StraightSkeleton::EdgeType::Wavefront);
+			AddEdge(result, seg._head, seg._tail, seg._leftFace, seg._rightFace, StraightSkeleton<Primitive>::EdgeType::Wavefront);
 		}
 
 		// Also have to add the traced out path of the each vertex (but only if it doesn't already exist in the result)
@@ -996,28 +997,28 @@ namespace XLEMath
 		}
 	}
 
-	void Graph::AddEdgeForVertexPath(StraightSkeleton& dst, unsigned v, unsigned finalVertId)
+	T1(Primitive) void Graph<Primitive>::AddEdgeForVertexPath(StraightSkeleton<Primitive>& dst, unsigned v, unsigned finalVertId)
 	{
-		const Vertex& vert = _vertices[v];
-		auto inAndOut = FindInAndOut(MakeIteratorRange(_wavefrontEdges), v);
+		const auto& vert = _vertices[v];
+		auto inAndOut = FindInAndOut<Primitive>(MakeIteratorRange(_wavefrontEdges), v);
 		unsigned leftFace = ~0u, rightFace = ~0u;
 		if (inAndOut.first) leftFace = inAndOut.first->_rightFace;
 		if (inAndOut.second) rightFace = inAndOut.second->_rightFace;
 		if (vert._skeletonVertexId != ~0u) {
 			if (vert._skeletonVertexId&BoundaryVertexFlag) {
 				auto q = vert._skeletonVertexId&(~BoundaryVertexFlag);
-				AddEdge(dst, finalVertId, vert._skeletonVertexId, unsigned((q+_boundaryPoints.size()-1) % _boundaryPoints.size()), q, StraightSkeleton::EdgeType::VertexPath);
+				AddEdge(dst, finalVertId, vert._skeletonVertexId, unsigned((q+_boundaryPoints.size()-1) % _boundaryPoints.size()), q, StraightSkeleton<Primitive>::EdgeType::VertexPath);
 			}
-			AddEdge(dst, finalVertId, vert._skeletonVertexId, leftFace, rightFace, StraightSkeleton::EdgeType::VertexPath);
+			AddEdge(dst, finalVertId, vert._skeletonVertexId, leftFace, rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
 		} else {
 			AddEdge(dst,
 				finalVertId, AddSteinerVertex(dst, Expand(vert._position, vert._initialTime)),
-				leftFace, rightFace, StraightSkeleton::EdgeType::VertexPath);
+				leftFace, rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
 		}
 	}
 
 
-	StraightSkeleton CalculateStraightSkeleton(IteratorRange<const Float2*> vertices, float maxInset)
+	T1(Primitive) StraightSkeleton<Primitive> CalculateStraightSkeleton(IteratorRange<const Vector2T<Primitive>*> vertices, Primitive maxInset)
 	{
 		auto graph = BuildGraphFromVertexLoop(vertices);
 		return graph.CalculateSkeleton(maxInset);
@@ -1064,7 +1065,7 @@ namespace XLEMath
 		return result;
 	}
 
-	std::vector<std::vector<unsigned>> StraightSkeleton::WavefrontAsVertexLoops()
+	T1(Primitive) std::vector<std::vector<unsigned>> StraightSkeleton<Primitive>::WavefrontAsVertexLoops()
 	{
 		std::vector<std::pair<unsigned, unsigned>> segmentSoup;
 		for (auto&f:_faces)
@@ -1075,5 +1076,10 @@ namespace XLEMath
 		// assigned to it's source face
 		return AsVertexLoopsOrdered(MakeIteratorRange(segmentSoup));
 	}
+
+	template StraightSkeleton<float> CalculateStraightSkeleton<float>(IteratorRange<const Vector2T<float>*> vertices, float maxInset);
+	template StraightSkeleton<double> CalculateStraightSkeleton<double>(IteratorRange<const Vector2T<double>*> vertices, double maxInset);
+	template class StraightSkeleton<float>;
+	template class StraightSkeleton<double>;
 
 }

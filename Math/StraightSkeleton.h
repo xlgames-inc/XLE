@@ -11,7 +11,7 @@
 
 namespace XLEMath
 {
-	class StraightSkeleton
+	T1(Primitive) class StraightSkeleton
 	{
 	public:
 		using VertexId = unsigned;
@@ -19,14 +19,14 @@ namespace XLEMath
 		struct Edge { VertexId _head; VertexId _tail; EdgeType _type; };
 		struct Face { std::vector<Edge> _edges; };
 
-		std::vector<Float3> _steinerVertices;
+		std::vector<Vector3T<Primitive>> _steinerVertices;
 		std::vector<Face> _faces;
 		std::vector<Edge> _unplacedEdges;
 
 		std::vector<std::vector<unsigned>> WavefrontAsVertexLoops();
 	};
 
-	StraightSkeleton CalculateStraightSkeleton(
-		IteratorRange<const Float2*> vertices, 
-		float maxInset = std::numeric_limits<float>::max());
+	T1(Primitive) StraightSkeleton<Primitive> CalculateStraightSkeleton(
+		IteratorRange<const Vector2T<Primitive>*> vertices, 
+		Primitive maxInset = std::numeric_limits<Primitive>::max());
 }
