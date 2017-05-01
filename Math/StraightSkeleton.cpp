@@ -5,6 +5,7 @@
 #include "StraightSkeleton.h"
 #include "../Math/Geometry.h"
 #include <stack>
+#include <cmath>
 
 #if defined(_DEBUG)
 	// #define EXTRA_VALIDATION
@@ -27,6 +28,7 @@ namespace XLEMath
 	T1(Primitive) static constexpr Primitive GetEpsilon();
 	template<> static constexpr float GetEpsilon<float>() { return 1e-4f; }
 	template<> static constexpr double GetEpsilon<double>() { return 1e-8; }
+	template<> static constexpr int GetEpsilon<int>() { return 1; }
 	static const unsigned BoundaryVertexFlag = 1u<<31u;
 
 	T1(Primitive) class Vertex
@@ -147,8 +149,7 @@ namespace XLEMath
 
 		assert(Dot(Vector2T<Primitive>(x, y), N0+N1) > Primitive(0));
 
-		assert(!isnan(x) && isfinite(x) && (x==x));
-		assert(!isnan(y) && isfinite(y) && (y==y));
+		assert(IsFiniteNumber(x) && IsFiniteNumber(y));
 		return Vector2T<Primitive>(x, y);
 	}
 
@@ -252,9 +253,7 @@ namespace XLEMath
 	T1(Primitive) static unsigned AddSteinerVertex(StraightSkeleton<Primitive>& skeleton, const Vector3T<Primitive>& vertex)
 	{
 		assert(vertex[2] != Primitive(0));
-		assert(isfinite(vertex[0]) && isfinite(vertex[1]) && isfinite(vertex[2]));
-		assert(!isnan(vertex[0]) && !isnan(vertex[1]) && !isnan(vertex[2]));
-		assert(vertex[0] == vertex[0] && vertex[1] == vertex[1] && vertex[2] == vertex[2]);
+		assert(IsFiniteNumber(vertex[0]) && IsFiniteNumber(vertex[1]) && IsFiniteNumber(vertex[2]));
 		assert(vertex[0] != std::numeric_limits<Primitive>::max() && vertex[1] != std::numeric_limits<Primitive>::max() && vertex[2] != std::numeric_limits<Primitive>::max());
 		auto existing = std::find_if(skeleton._steinerVertices.begin(), skeleton._steinerVertices.end(),
 			[vertex](const Vector3T<Primitive>& v) { return Equivalent(v, vertex, GetEpsilon<Primitive>()); });
@@ -271,12 +270,19 @@ namespace XLEMath
 		return result;
 	}
 
+	template<typename T, typename std::enable_if<std::is_floating_point<T>::value>::type* = nullptr>
+		bool IsFiniteNumber(T value)
+		{
+			auto type = std::fpclassify(value);
+			return ((type == FP_NORMAL) || (type == FP_SUBNORMAL) || (type == FP_ZERO)) && (value == value);
+		}
+	template<typename T, typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+		bool IsFiniteNumber(T) { return true; }
+
 	T1(Primitive) static Vector2T<Primitive> PositionAtTime(const Vertex<Primitive>& v, Primitive time)
 	{
 		auto result = v._position + v._velocity * (time - v._initialTime);
-		assert(!isnan(result[0]) && !isnan(result[1]));
-		assert(isfinite(result[0]) && isfinite(result[1]));
-		assert(result[0] == result[0] && result[1] == result[1]);
+		assert(IsFiniteNumber(result[0]) && IsFiniteNumber(result[1]));
 		return result;
 	}
 
@@ -295,8 +301,6 @@ namespace XLEMath
 
 	T1(Primitive) static CrashEvent<Primitive> CalculateCrashTime(const Graph<Primitive>& graph, Vertex<Primitive> v)
 	{
-		auto p2 = PositionAtTime(v, Primitive(0));
-		auto v2 = v._velocity;
 		CrashEvent<Primitive> bestCollisionEvent { std::numeric_limits<Primitive>::max(), ~0u };
 
 		// Look for an intersection with _wavefrontEdges
@@ -309,10 +313,14 @@ namespace XLEMath
 			// If there is a collision, the triangle area will be zero at that point.
 			// So we can search for a time when the triangle area is zero, and check to see
 			// if a collision has actually occurred at that time.
-			auto p0 = Vector2T<Primitive>(head._position - head._initialTime * head._velocity);
-			auto p1 = Vector2T<Primitive>(tail._position - tail._initialTime * tail._velocity);
+			const auto calcTime = std::max(std::max(head._initialTime, tail._initialTime), v._initialTime);
+			auto p0 = PositionAtTime(head, calcTime);
+			auto p1 = PositionAtTime(tail, calcTime);
 			auto v0 = head._velocity;
 			auto v1 = tail._velocity;
+
+			auto p2 = PositionAtTime(v, calcTime);
+			auto v2 = v._velocity;
 
 			// 2 * signed triangle area = 
 			//		(p1[0]-p0[0]) * (p2[1]-p0[1]) - (p2[0]-p0[0]) * (p1[1]-p0[1])
@@ -337,32 +345,38 @@ namespace XLEMath
 			// b = (p1[0]-p0[0])*(v2[1]-v0[1]) + (v1[0]-v0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(v1[1]-v0[1]) - (v2[0]-v0[0])*(p1[1]-p0[1])
 			// a = (v1[0]-v0[0])*(v2[1]-v0[1]) - (v2[0]-v0[0])*(v1[1]-v0[1])
 
+			auto a = (v1[0]-v0[0])*(v2[1]-v0[1]) - (v2[0]-v0[0])*(v1[1]-v0[1]);
+			if (Equivalent(a, Primitive(0), GetEpsilon<Primitive>())) continue;
+			
 			auto c = (p1[0]-p0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(p1[1]-p0[1]);
 			auto b = (p1[0]-p0[0])*(v2[1]-v0[1]) + (v1[0]-v0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(v1[1]-v0[1]) - (v2[0]-v0[0])*(p1[1]-p0[1]);
-			auto a = (v1[0]-v0[0])*(v2[1]-v0[1]) - (v2[0]-v0[0])*(v1[1]-v0[1]);
-
+			
 			// x = (-b +/- sqrt(b*b - 4*a*c)) / 2*a
-			auto Q = std::sqrt(b*b - Primitive(4)*a*c);
-			decltype(Q) t[] = {
-				(-b + Q) / (Primitive(2)*a),
-				(-b - Q) / (Primitive(2)*a)
+			auto K = b*b - Primitive(4)*a*c;
+			if (K < Primitive(0)) continue;
+
+			using PromoteType = decltype(std::sqrt(std::declval<Primitive>()));
+			auto Q = std::sqrt(PromoteType(K));
+			Primitive ts[] = {
+				calcTime + Primitive((-b + Q) / (PromoteType(2)*a)),
+				calcTime + Primitive((-b - Q) / (PromoteType(2)*a))
 			};
 
 			// Is there is a viable collision at either t0 or t1?
 			// All 3 points should be on the same line at this point -- so we just need to check if
 			// the motorcycle is between them (or intersecting a vertex)
-			for (unsigned c=0; c<2; ++c) {
-				if (t[c] > bestCollisionEvent._time || t[c] <= std::max(head._initialTime, tail._initialTime)) continue;	// don't need to check collisions that happen too late
-				auto P0 = Vector2T<Primitive>(p0 + t[c]*v0);
-				auto P1 = Vector2T<Primitive>(p1 + t[c]*v1);
-				auto P2 = Vector2T<Primitive>(p2 + t[c]*v2);
+			for (auto t:ts) {
+				if (t > bestCollisionEvent._time || t <= std::max(head._initialTime, tail._initialTime)) continue;	// don't need to check collisions that happen too late
+				auto P0 = PositionAtTime(head, t);
+				auto P1 = PositionAtTime(tail, t);
+				auto P2 = PositionAtTime(v, t);
 				if ((Dot(P1-P0, P2-P0) > Primitive(0)) && (Dot(P0-P1, P2-P1) > Primitive(0))) {
 					// good collision
-					bestCollisionEvent._time = t[c];
+					bestCollisionEvent._time = t;
 					bestCollisionEvent._edgeSegment = unsigned(&e - AsPointer(graph._wavefrontEdges.begin()));
 				} else if (Equivalent(P0, P2, GetEpsilon<Primitive>()) || Equivalent(P1, P2, GetEpsilon<Primitive>())) {
 					// collided with vertex (or close enough)
-					bestCollisionEvent._time = t[c];
+					bestCollisionEvent._time = t;
 					bestCollisionEvent._edgeSegment = unsigned(&e - AsPointer(graph._wavefrontEdges.begin()));
 				}
 			}
@@ -1079,7 +1093,9 @@ namespace XLEMath
 
 	template StraightSkeleton<float> CalculateStraightSkeleton<float>(IteratorRange<const Vector2T<float>*> vertices, float maxInset);
 	template StraightSkeleton<double> CalculateStraightSkeleton<double>(IteratorRange<const Vector2T<double>*> vertices, double maxInset);
+	template StraightSkeleton<int32_t> CalculateStraightSkeleton<int32_t>(IteratorRange<const Vector2T<int32_t>*> vertices, int32_t maxInset);
 	template class StraightSkeleton<float>;
 	template class StraightSkeleton<double>;
+	template class StraightSkeleton<int32_t>;
 
 }
