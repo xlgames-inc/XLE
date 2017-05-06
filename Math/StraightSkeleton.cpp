@@ -6,6 +6,7 @@
 #include "../Math/Geometry.h"
 #include <stack>
 #include <cmath>
+#include <random>	// (for validation testing)
 
 #if defined(_DEBUG)
 	// #define EXTRA_VALIDATION
@@ -38,45 +39,9 @@ namespace XLEMath
         return result;
     }
 
-	T1(Primitive) class Vertex
-	{
-	public:
-		Vector2T<Primitive>	_position;
-		unsigned			_skeletonVertexId;
-		Primitive			_initialTime;
-		Vector2T<Primitive>	_velocity;
-	};
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	T1(Primitive) class Graph
-	{
-	public:
-		std::vector<Vertex<Primitive>> _vertices;
-
-		class Segment
-		{
-		public:
-			unsigned	_head, _tail;
-			unsigned	_leftFace, _rightFace;
-		};
-		std::vector<Segment> _wavefrontEdges;
-
-		class MotorcycleSegment
-		{
-		public:
-			unsigned _head;
-			unsigned _tail;		// (this is the fixed vertex)
-			unsigned _leftFace, _rightFace;
-		};
-		std::vector<MotorcycleSegment> _motorcycleSegments;
-
-		std::vector<Vector2T<Primitive>> _boundaryPoints;
-
-		StraightSkeleton<Primitive> CalculateSkeleton(Primitive maxTime);
-
-	private:
-		void WriteWavefront(StraightSkeleton<Primitive>& dest, Primitive time);
-		void AddEdgeForVertexPath(StraightSkeleton<Primitive>& dst, unsigned v, unsigned finalVertId);
-	};
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	enum WindingType { Left, Right, Straight };
 	T1(Primitive) WindingType CalculateWindingType(Vector2T<Primitive> zero, Vector2T<Primitive> one, Vector2T<Primitive> two, Primitive threshold)
@@ -281,52 +246,18 @@ namespace XLEMath
 		return CalculateVertexVelocity_LineIntersection(vex0, vex1, vex2, Primitive(static_velocityVectorScale));
 	}
 
-	T1(Primitive) Graph<Primitive> BuildGraphFromVertexLoop(IteratorRange<const Vector2T<Primitive>*> vertices)
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	T1(Primitive) class Vertex
 	{
-		assert(vertices.size() >= 2);
-		const auto threshold = Primitive(1e-6f);
-
-		// Construct the starting point for the straight skeleton calculations
-		// We're expecting the input vertices to be a closed loop, in counter-clockwise order
-		// The first and last vertices should *not* be the same vertex; there is an implied
-		// segment between the first and last.
-		Graph<Primitive> result;
-		result._wavefrontEdges.reserve(vertices.size());
-		result._vertices.reserve(vertices.size());
-		for (size_t v=0; v<vertices.size(); ++v) {
-			// Each segment of the polygon becomes an "edge segment" in the graph
-			auto v0 = (v+vertices.size()-1)%vertices.size();
-			auto v1 = v;
-			auto v2 = (v+1)%vertices.size();
-			result._wavefrontEdges.emplace_back(Graph<Primitive>::Segment{unsigned(v2), unsigned(v), ~0u, unsigned(v)});
-
-			// We must calculate the velocity for each vertex, based on which segments it belongs to...
-			auto velocity = CalculateVertexVelocity(vertices[v0], vertices[v1], vertices[v2]);
-			assert(!Equivalent(velocity, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>()));
-			result._vertices.emplace_back(Vertex<Primitive>{vertices[v], BoundaryVertexFlag|unsigned(v), Primitive(0), velocity});
-		}
-
-		// Each reflex vertex in the graph must result in a "motocycle segment".
-		// We already know the velocity of the head of the motorcycle; and it has a fixed tail that
-		// stays at the original position
-		for (size_t v=0; v<vertices.size(); ++v) {
-			auto v0 = (v+vertices.size()-1)%vertices.size();
-			auto v1 = v;
-			auto v2 = (v+1)%vertices.size();
-
-			// Since we're expecting counter-clockwise inputs, if "v1" is a convex vertex, we should
-			// wind around to the left when going v0->v1->v2
-			// If we wind to the right then it's a reflex vertex, and we must add a motorcycle edge
-			if (CalculateWindingType(vertices[v0], vertices[v1], vertices[v2], threshold) == WindingType::Right) {
-				auto fixedVertex = (unsigned)(result._vertices.size());
-				result._vertices.emplace_back(Vertex<Primitive>{vertices[v], BoundaryVertexFlag|unsigned(v), Primitive(0), Zero<Vector2T<Primitive>>()});
-				result._motorcycleSegments.emplace_back(Graph<Primitive>::MotorcycleSegment{unsigned(v), unsigned(fixedVertex), unsigned(v0), unsigned(v1)});
-			}
-		}
-
-		result._boundaryPoints = std::vector<Vector2T<Primitive>>(vertices.begin(), vertices.end());
-		return result;
-	}
+	public:
+		Vector2T<Primitive>	_position;
+		Vector2T<Primitive>	_velocity;
+		Primitive			_initialTime;
+		unsigned			_skeletonVertexId;
+	};
 
 	T1(T) auto IsFiniteNumber(T value) -> typename std::enable_if<std::is_floating_point<T>::value, bool>::type
 	{
@@ -448,6 +379,186 @@ namespace XLEMath
 		auto p0 = PositionAtTime(v0, calcTime);
 		auto p1 = PositionAtTime(v1, calcTime);
 		return calcTime + CalculateCollapseTime(p0, v0._velocity, p1, v1._velocity);
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	T1(Primitive) std::pair<Vector2T<Primitive>, Vector2T<Primitive>> AdvanceEdge(
+		std::pair<Vector2T<Primitive>, Vector2T<Primitive>> input, Primitive time )
+	{
+		auto t0 = Vector2T<Primitive>(input.second-input.first);
+		auto movement = SetMagnitude(EdgeTangentToMovementDir(t0), time);
+		return { input.first + movement, input.second + movement };
+	}
+
+	T1(Primitive) Primitive TestTriangle(Vector2T<Primitive> v[3])
+	{
+		using VelocityType = decltype(CalculateVertexVelocity(v[0], v[1], v[2]));
+		VelocityType velocities[] = 
+		{
+			CalculateVertexVelocity(v[2], v[0], v[1]),
+			CalculateVertexVelocity(v[0], v[1], v[2]),
+			CalculateVertexVelocity(v[1], v[2], v[0])
+		};
+
+		Primitive collapses[] = 
+		{
+			CalculateCollapseTime<Primitive>({v[0], velocities[0]}, {v[1], velocities[1]}),
+			CalculateCollapseTime<Primitive>({v[1], velocities[1]}, {v[2], velocities[2]}),
+			CalculateCollapseTime<Primitive>({v[2], velocities[2]}, {v[0], velocities[0]})
+		};
+
+		// Find the earliest collapse, and calculate the accuracy
+		unsigned edgeToCollapse = 0; 
+		if (collapses[0] < collapses[1]) {
+			if (collapses[0] < collapses[2]) {
+				edgeToCollapse = 0;
+			} else {
+				edgeToCollapse = 2;
+			}
+		} else if (collapses[1] < collapses[2]) {
+			edgeToCollapse = 1;
+		} else {
+			edgeToCollapse = 2;
+		}
+
+		// Advance forward to time "collapses[edgeToCollapse]" and look
+		// at the difference in position of pts edgeToCollapse & (edgeToCollapse+1)%3
+		auto zero = edgeToCollapse, one = (edgeToCollapse+1)%3, m1 = (edgeToCollapse+2)%3;
+		auto zeroA = PositionAtTime<Primitive>({v[zero], velocities[zero]}, collapses[edgeToCollapse]);
+		auto oneA = PositionAtTime<Primitive>({v[one], velocities[one]}, collapses[edgeToCollapse]);
+
+		// Accurately move forward edges m1 -> zero & one -> m1
+		// The intersection point of these 2 edges should be the intersection point
+		auto e0 = AdvanceEdge({v[m1], v[zero]}, collapses[edgeToCollapse]);
+		auto e1 = AdvanceEdge({v[one], v[m1]}, collapses[edgeToCollapse]);
+		auto intr = LineIntersection(e0, e1);
+
+		auto d0 = zeroA - intr;
+		auto d1 = oneA - intr;
+		return std::max(MagnitudeSquared(d0), MagnitudeSquared(d1));
+	}
+
+	void TestSSAccuracy()
+	{
+		std::stringstream str;
+		// generate random triangles, and 
+		std::mt19937 rng;
+		const unsigned tests = 10000;
+		const Vector2T<double> mins{-10, -10};
+		const Vector2T<double> maxs{ 10,  10};
+		double iScale = /*INT32_MAX*/0xffff / (maxs[0] - mins[0]) / 2.0;
+		for (unsigned c=0; c<tests; ++c) {
+			Vector2T<double> d[3];
+			Vector2T<float> f[3];
+			Vector2T<int64_t> i[3];
+			for (unsigned q=0; q<3; ++q) {
+				d[q][0] = std::uniform_real_distribution<double>(mins[0], maxs[0])(rng);
+				d[q][1] = std::uniform_real_distribution<double>(mins[1], maxs[1])(rng);
+				f[q][0] = (float)d[q][0];
+				f[q][1] = (float)d[q][1];
+				i[q][0] = int64_t(d[q][0] * iScale);
+				i[q][1] = int64_t(d[q][1] * iScale);
+			}
+
+			auto dq = TestTriangle(d);
+			auto fq = TestTriangle(f);
+			auto iq = TestTriangle(i);
+
+			str << "dq: " << dq
+				<< ", fq: " << fq
+				<< ", iq: " << double(iq) / iScale
+				<< std::endl
+				;
+		}
+
+		auto result = str.str();
+		printf("%s", result.c_str());
+		(void)result;
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	T1(Primitive) class Graph
+	{
+	public:
+		std::vector<Vertex<Primitive>> _vertices;
+
+		class Segment
+		{
+		public:
+			unsigned	_head, _tail;
+			unsigned	_leftFace, _rightFace;
+		};
+		std::vector<Segment> _wavefrontEdges;
+
+		class MotorcycleSegment
+		{
+		public:
+			unsigned _head;
+			unsigned _tail;		// (this is the fixed vertex)
+			unsigned _leftFace, _rightFace;
+		};
+		std::vector<MotorcycleSegment> _motorcycleSegments;
+
+		std::vector<Vector2T<Primitive>> _boundaryPoints;
+
+		StraightSkeleton<Primitive> CalculateSkeleton(Primitive maxTime);
+
+	private:
+		void WriteWavefront(StraightSkeleton<Primitive>& dest, Primitive time);
+		void AddEdgeForVertexPath(StraightSkeleton<Primitive>& dst, unsigned v, unsigned finalVertId);
+	};
+
+	T1(Primitive) Graph<Primitive> BuildGraphFromVertexLoop(IteratorRange<const Vector2T<Primitive>*> vertices)
+	{
+		assert(vertices.size() >= 2);
+		const auto threshold = Primitive(1e-6f);
+
+		// Construct the starting point for the straight skeleton calculations
+		// We're expecting the input vertices to be a closed loop, in counter-clockwise order
+		// The first and last vertices should *not* be the same vertex; there is an implied
+		// segment between the first and last.
+		Graph<Primitive> result;
+		result._wavefrontEdges.reserve(vertices.size());
+		result._vertices.reserve(vertices.size());
+		for (size_t v=0; v<vertices.size(); ++v) {
+			// Each segment of the polygon becomes an "edge segment" in the graph
+			auto v0 = (v+vertices.size()-1)%vertices.size();
+			auto v1 = v;
+			auto v2 = (v+1)%vertices.size();
+			result._wavefrontEdges.emplace_back(Graph<Primitive>::Segment{unsigned(v2), unsigned(v), ~0u, unsigned(v)});
+
+			// We must calculate the velocity for each vertex, based on which segments it belongs to...
+			auto velocity = CalculateVertexVelocity(vertices[v0], vertices[v1], vertices[v2]);
+			assert(!Equivalent(velocity, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>()));
+			result._vertices.emplace_back(Vertex<Primitive>{vertices[v], velocity, Primitive(0), BoundaryVertexFlag|unsigned(v)});
+		}
+
+		// Each reflex vertex in the graph must result in a "motocycle segment".
+		// We already know the velocity of the head of the motorcycle; and it has a fixed tail that
+		// stays at the original position
+		for (size_t v=0; v<vertices.size(); ++v) {
+			auto v0 = (v+vertices.size()-1)%vertices.size();
+			auto v1 = v;
+			auto v2 = (v+1)%vertices.size();
+
+			// Since we're expecting counter-clockwise inputs, if "v1" is a convex vertex, we should
+			// wind around to the left when going v0->v1->v2
+			// If we wind to the right then it's a reflex vertex, and we must add a motorcycle edge
+			if (CalculateWindingType(vertices[v0], vertices[v1], vertices[v2], threshold) == WindingType::Right) {
+				auto fixedVertex = (unsigned)(result._vertices.size());
+				result._vertices.emplace_back(Vertex<Primitive>{vertices[v], Zero<Vector2T<Primitive>>(), Primitive(0), BoundaryVertexFlag|unsigned(v)});
+				result._motorcycleSegments.emplace_back(Graph<Primitive>::MotorcycleSegment{unsigned(v), unsigned(fixedVertex), unsigned(v0), unsigned(v1)});
+			}
+		}
+
+		result._boundaryPoints = std::vector<Vector2T<Primitive>>(vertices.begin(), vertices.end());
+		return result;
 	}
 
 	T1(Primitive) static void ReplaceVertex(IteratorRange<const typename Graph<Primitive>::Segment*> segs, unsigned oldVertex, unsigned newVertex)
@@ -783,7 +894,7 @@ namespace XLEMath
 						tout->_tail = newVertex;
 						_wavefrontEdges.push_back({newVertex, crashSegment._tail, crashSegment._leftFace, crashSegment._rightFace});	// (hin)
 
-						_vertices.push_back(Vertex<Primitive>{crashPt, crashPtSkeleton, crashEvent._time, CalculateVertexVelocity(Truncate(v0), crashPt, Truncate(v2))});
+						_vertices.push_back(Vertex<Primitive>{crashPt, CalculateVertexVelocity(Truncate(v0), crashPt, Truncate(v2)), crashEvent._time, crashPtSkeleton});
 						newSegment1._head = newVertex;
 					}
 				}
@@ -823,7 +934,7 @@ namespace XLEMath
 						tin->_head = newVertex;
 						_wavefrontEdges.push_back({crashSegment._head, newVertex, crashSegment._leftFace, crashSegment._rightFace});	// (hout)
 
-						_vertices.push_back(Vertex<Primitive>{crashPt, crashPtSkeleton, crashEvent._time, CalculateVertexVelocity(Truncate(v0), crashPt, Truncate(v2))});
+						_vertices.push_back(Vertex<Primitive>{crashPt, CalculateVertexVelocity(Truncate(v0), crashPt, Truncate(v2)), crashEvent._time, crashPtSkeleton});
 						newSegment0._head = newVertex;
 					}
 				}
@@ -956,7 +1067,7 @@ namespace XLEMath
 
 					// create a new vertex in the graph to connect the edges to either side of the collapse
 					collapseGroupInfos[collapseGroup]._newVertex = (unsigned)_vertices.size();
-					_vertices.push_back(Vertex<Primitive>{collisionPt, collisionVertId, bestCollapseTime, Zero<Vector2T<Primitive>>()});
+					_vertices.push_back(Vertex<Primitive>{collisionPt, Zero<Vector2T<Primitive>>(), bestCollapseTime, collisionVertId});
 				}
 
 				// Remove all of the collapsed edges (by shifting them to the end)
