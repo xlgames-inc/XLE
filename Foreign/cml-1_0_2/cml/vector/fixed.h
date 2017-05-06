@@ -91,7 +91,15 @@ class vector< Element, fixed<Size> >
 
     /** Normalize the vector. */
     vector_type& normalize() {
-        return (*this /= length());
+        // return (*this /= length());
+        //  DavidJ -- NOTE -- improved implementation for int vectors (but note that 
+        //     std::sqrt returns a double when the argument is an integral, meaning
+        //     that much of the remaining math will occur at double precision...)
+        auto length = std::sqrt(length_squared());
+        for (size_t i = 0; i < this->size(); ++i) {
+          (*this)[i] = (value_type)((*this)[i] / length);
+        }
+        return *this;
     }
 
     /** Set this vector to [0]. */
