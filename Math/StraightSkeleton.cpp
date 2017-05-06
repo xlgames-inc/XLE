@@ -39,6 +39,12 @@ namespace XLEMath
         return result;
     }
 
+	template<> inline const Vector3T<int64_t>& Zero<Vector3T<int64_t>>()
+    {
+        static Vector3T<int64_t> result(0ll, 0ll, 0ll);
+        return result;
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -153,6 +159,7 @@ namespace XLEMath
 
 	T1(Primitive) struct PromoteIntegral { using Value = Primitive; };
 	template<> struct PromoteIntegral<int> { using Value = int64_t; };
+	template<> struct PromoteIntegral<int64_t> { using Value = double; };
 
 	T1(Primitive) Vector2T<Primitive> LineIntersection(
 		std::pair<Vector2T<Primitive>, Vector2T<Primitive>> zero,
@@ -179,18 +186,19 @@ namespace XLEMath
 		// For some primitive types we should promote to higher precision
 		//			types here (eg, we will get int32_t overflows if we don't promote here)
 
-		PromoteIntegral<Primitive>::Value Ax = zero.first[0], Ay = zero.first[1];
-		PromoteIntegral<Primitive>::Value Bx = zero.second[0], By = zero.second[1];
-		PromoteIntegral<Primitive>::Value Cx = one.first[0], Cy = one.first[1];
-		PromoteIntegral<Primitive>::Value Dx = one.second[0], Dy = one.second[1];
+		using WorkingPrim = PromoteIntegral<Primitive>::Value;
+		auto Ax = (WorkingPrim)zero.first[0], Ay = (WorkingPrim)zero.first[1];
+		auto Bx = (WorkingPrim)zero.second[0], By = (WorkingPrim)zero.second[1];
+		auto Cx = (WorkingPrim)one.first[0], Cy = (WorkingPrim)one.first[1];
+		auto Dx = (WorkingPrim)one.second[0], Dy = (WorkingPrim)one.second[1];
 		
 		auto u = By-Ay, v = Ax-Bx, i = Ay*Bx-Ax*By;
 		auto s = Dy-Cy, t = Cx-Dx, j = Cy*Dx-Cx*Dy;
 
 		auto d = s*v - t*u;
 		if (!d) return Vector2T<Primitive>(std::numeric_limits<Primitive>::max(), std::numeric_limits<Primitive>::max());
-		// return { Primitive((i*t - j*v) / d), Primitive((j*u - i*s) / d) 
-		return { Primitive(i*t/d - j*v/d), Primitive(j*u/d - i*s/d) };
+		return { Primitive((i*t - j*v) / d), Primitive((j*u - i*s) / d) };
+		// return { Primitive(i*t/d - j*v/d), Primitive(j*u/d - i*s/d) };
 	}
 
 	T1(Primitive) Vector2T<Primitive> CalculateVertexVelocity_LineIntersection(Vector2T<Primitive> vex0, Vector2T<Primitive> vex1, Vector2T<Primitive> vex2, Primitive movementTime)
@@ -235,7 +243,7 @@ namespace XLEMath
 		return lineIntersection;
 	}
 
-	static const int static_velocityVectorScale = 0x7fff;
+	static const int static_velocityVectorScale = INT32_MAX; // 0x7fff;
 
 	T1(Primitive) auto CalculateVertexVelocity(Vector2T<Primitive> vex0, Vector2T<Primitive> vex1, Vector2T<Primitive> vex2)
 		-> typename std::enable_if<std::is_integral<Primitive>::value, Vector2T<Primitive>>::type
@@ -325,8 +333,10 @@ namespace XLEMath
 		// Attempt to find the collapse time for these 2 vertices
 		// Since we're doing this with integer coordinates, we should try to pick a method that will work well at limited
 		// precision
+		// There another way to do this... Effectively we want to find where 3 moving edges intersect in time.
+		// We can do that algebraically
 		auto intr = LineIntersection<Primitive>({Zero<Vector2T<Primitive>>(), v0}, {p1-p0, p1-p0+v1});
-		using PromotedType = typename PromoteIntegral<Primitive>::Value;
+		using PromotedType = Primitive; // typename PromoteIntegral<Primitive>::Value;
 		auto t0 = std::numeric_limits<PromotedType>::max();
 		auto scale = VelocityVectorScale<Primitive>::Value;
 		if (std::abs(v0[0]) > std::abs(v0[1]))	t0 = PromotedType(intr[0]) * PromotedType(scale) / PromotedType(v0[0]);
@@ -381,6 +391,87 @@ namespace XLEMath
 		return calcTime + CalculateCollapseTime(p0, v0._velocity, p1, v1._velocity);
 	}
 
+	T1(Primitive) static Vector3T<Primitive> CalculateTriangleCollapse(Vector2T<Primitive> p0, Vector2T<Primitive> p1, Vector2T<Primitive> p2)
+	{
+		Matrix3x3T<Primitive> M;
+		Vector3T<Primitive> res;
+		Vector2T<Primitive> As[] = { p0, p1, p2 };
+		Vector2T<Primitive> Bs[] = { p1, p2, p0 };
+		for (unsigned c=0; c<3; ++c) {
+			auto mag = (Primitive)std::hypot(Bs[c][0] - As[c][0], Bs[c][1] - As[c][1]);
+			auto Nx = Primitive((As[c][1] - Bs[c][1]) * VelocityVectorScale<Primitive>::Value / mag);
+			auto Ny = Primitive((Bs[c][0] - As[c][0]) * VelocityVectorScale<Primitive>::Value / mag);
+			M(c, 0) = Nx;
+			M(c, 1) = Ny;
+			M(c, 2) = -Nx*Nx-Ny*Ny;
+			res[c]  = As[c][0] * Nx + As[c][1] * Ny;
+		}
+		return cml::inverse(M) * res;
+	}
+
+	T1(Primitive) static Vector3T<Primitive> CalculateTriangleCollapse_Offset(Vector2T<Primitive> p0, Vector2T<Primitive> p1, Vector2T<Primitive> p2)
+	{
+		Matrix3x3T<Primitive> M;
+		Vector3T<Primitive> res;
+		Vector2T<Primitive> As[] = { Zero<Vector2T<Primitive>>(), p1 - p0, p2 - p0 };
+		Vector2T<Primitive> Bs[] = { p1 - p0, p2 - p0, Zero<Vector2T<Primitive>>() };
+		for (unsigned c=0; c<3; ++c) {
+			auto mag = (Primitive)std::hypot(Bs[c][0] - As[c][0], Bs[c][1] - As[c][1]);
+			auto Nx = Primitive((As[c][1] - Bs[c][1]) * VelocityVectorScale<Primitive>::Value / mag);
+			auto Ny = Primitive((Bs[c][0] - As[c][0]) * VelocityVectorScale<Primitive>::Value / mag);
+			M(c, 0) = Nx;
+			M(c, 1) = Ny;
+			M(c, 2) = -Nx*Nx-Ny*Ny;
+			res[c]  = As[c][0] * Nx + As[c][1] * Ny;
+		}
+		auto result = cml::inverse(M) * res;
+		result[0] += p0[0];
+		result[1] += p0[1];
+		return result;
+	}
+
+	T1(Primitive) static Primitive CalculateTriangleCollapse_Area_Internal(
+		Vector2T<Primitive> p0, Vector2T<Primitive> p1, Vector2T<Primitive> p2,
+		Vector2T<Primitive> v0, Vector2T<Primitive> v1, Vector2T<Primitive> v2)
+	{
+		auto a = (v1[0]-v0[0])*(v2[1]-v0[1]) - (v2[0]-v0[0])*(v1[1]-v0[1]);
+		if (Equivalent(a, Primitive(0), GetEpsilon<Primitive>())) return std::numeric_limits<Primitive>::max();
+			
+		auto c = (p1[0]-p0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(p1[1]-p0[1]);
+		auto b = (p1[0]-p0[0])*(v2[1]-v0[1]) + (v1[0]-v0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(v1[1]-v0[1]) - (v2[0]-v0[0])*(p1[1]-p0[1]);
+			
+		// x = (-b +/- sqrt(b*b - 4*a*c)) / 2*a
+		auto K = b*b - Primitive(4)*a*c;
+		if (K < Primitive(0)) return std::numeric_limits<Primitive>::max();
+
+		auto Q = std::sqrt(K);
+		Primitive ts[] = {
+			Primitive((-b + Q) / (decltype(Q)(2)*a)),
+			Primitive((-b - Q) / (decltype(Q)(2)*a))
+		};
+		if (ts[0] > 0.0f && ts[0] < ts[1]) return ts[0];
+		return ts[1];
+	}
+
+	T1(Primitive) static Primitive CalculateTriangleCollapse_Area(
+		Vector2T<Primitive> p0, Vector2T<Primitive> p1, Vector2T<Primitive> p2,
+		Vector2T<Primitive> v0, Vector2T<Primitive> v1, Vector2T<Primitive> v2)
+	{
+		auto test = CalculateTriangleCollapse_Area_Internal(p0, p1, p2, v0, v1, v2);
+		if (test != std::numeric_limits<Primitive>::max())
+			return test;
+
+		test = CalculateTriangleCollapse_Area_Internal(p1, p2, p0, v1, v2, v0);
+		if (test != std::numeric_limits<Primitive>::max())
+			return test;
+
+		test = CalculateTriangleCollapse_Area_Internal(p2, p0, p1, v2, v0, v1);
+		if (test != std::numeric_limits<Primitive>::max())
+			return test;
+
+		return std::numeric_limits<Primitive>::max();
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -393,21 +484,21 @@ namespace XLEMath
 		return { input.first + movement, input.second + movement };
 	}
 
-	T1(Primitive) Primitive TestTriangle(Vector2T<Primitive> v[3])
+	T1(Primitive) Primitive TestTriangle(Vector2T<Primitive> p[3])
 	{
-		using VelocityType = decltype(CalculateVertexVelocity(v[0], v[1], v[2]));
+		using VelocityType = decltype(CalculateVertexVelocity(p[0], p[1], p[2]));
 		VelocityType velocities[] = 
 		{
-			CalculateVertexVelocity(v[2], v[0], v[1]),
-			CalculateVertexVelocity(v[0], v[1], v[2]),
-			CalculateVertexVelocity(v[1], v[2], v[0])
+			CalculateVertexVelocity(p[2], p[0], p[1]),
+			CalculateVertexVelocity(p[0], p[1], p[2]),
+			CalculateVertexVelocity(p[1], p[2], p[0])
 		};
 
 		Primitive collapses[] = 
 		{
-			CalculateCollapseTime<Primitive>({v[0], velocities[0]}, {v[1], velocities[1]}),
-			CalculateCollapseTime<Primitive>({v[1], velocities[1]}, {v[2], velocities[2]}),
-			CalculateCollapseTime<Primitive>({v[2], velocities[2]}, {v[0], velocities[0]})
+			CalculateCollapseTime<Primitive>({p[0], velocities[0]}, {p[1], velocities[1]}),
+			CalculateCollapseTime<Primitive>({p[1], velocities[1]}, {p[2], velocities[2]}),
+			CalculateCollapseTime<Primitive>({p[2], velocities[2]}, {p[0], velocities[0]})
 		};
 
 		// Find the earliest collapse, and calculate the accuracy
@@ -424,17 +515,26 @@ namespace XLEMath
 			edgeToCollapse = 2;
 		}
 
+		auto triCollapse = CalculateTriangleCollapse(p[0], p[1], p[2]);
+		auto collapseTest = collapses[edgeToCollapse];
+		auto collapseTest1 = triCollapse[2];
+		auto collapseTest2 = CalculateTriangleCollapse_Area(p[0], p[1], p[2], velocities[0], velocities[1], velocities[2]);
+		auto collapseTest3 = CalculateTriangleCollapse_Offset(p[0], p[1], p[2]);
+		(void)collapseTest, collapseTest1, collapseTest2, collapseTest3;
+
 		// Advance forward to time "collapses[edgeToCollapse]" and look
 		// at the difference in position of pts edgeToCollapse & (edgeToCollapse+1)%3
 		auto zero = edgeToCollapse, one = (edgeToCollapse+1)%3, m1 = (edgeToCollapse+2)%3;
-		auto zeroA = PositionAtTime<Primitive>({v[zero], velocities[zero]}, collapses[edgeToCollapse]);
-		auto oneA = PositionAtTime<Primitive>({v[one], velocities[one]}, collapses[edgeToCollapse]);
+		auto zeroA = PositionAtTime<Primitive>({p[zero], velocities[zero]}, collapses[edgeToCollapse]);
+		auto oneA = PositionAtTime<Primitive>({p[one], velocities[one]}, collapses[edgeToCollapse]);
 
 		// Accurately move forward edges m1 -> zero & one -> m1
 		// The intersection point of these 2 edges should be the intersection point
-		auto e0 = AdvanceEdge({v[m1], v[zero]}, collapses[edgeToCollapse]);
-		auto e1 = AdvanceEdge({v[one], v[m1]}, collapses[edgeToCollapse]);
+		auto e0 = AdvanceEdge({p[m1], p[zero]}, collapses[edgeToCollapse]);
+		auto e1 = AdvanceEdge({p[one], p[m1]}, collapses[edgeToCollapse]);
 		auto intr = LineIntersection(e0, e1);
+
+		auto intr2 = Truncate(triCollapse);
 
 		auto d0 = zeroA - intr;
 		auto d1 = oneA - intr;
@@ -449,7 +549,7 @@ namespace XLEMath
 		const unsigned tests = 10000;
 		const Vector2T<double> mins{-10, -10};
 		const Vector2T<double> maxs{ 10,  10};
-		double iScale = /*INT32_MAX*/0xffff / (maxs[0] - mins[0]) / 2.0;
+		double iScale = (INT64_MAX >> 8) / (maxs[0] - mins[0]) / 2.0;
 		for (unsigned c=0; c<tests; ++c) {
 			Vector2T<double> d[3];
 			Vector2T<float> f[3];
@@ -651,11 +751,10 @@ namespace XLEMath
 			auto K = b*b - Primitive(4)*a*c;
 			if (K < Primitive(0)) continue;
 
-			using PromoteType = decltype(std::sqrt(std::declval<Primitive>()));
-			auto Q = std::sqrt(PromoteType(K));
+			auto Q = std::sqrt(K);
 			Primitive ts[] = {
-				calcTime + Primitive((-b + Q) / (PromoteType(2)*a)),
-				calcTime + Primitive((-b - Q) / (PromoteType(2)*a))
+				calcTime + Primitive((-b + Q) / (decltype(Q)(2)*a)),
+				calcTime + Primitive((-b - Q) / (decltype(Q)(2)*a))
 			};
 
 			// Is there is a viable collision at either t0 or t1?
