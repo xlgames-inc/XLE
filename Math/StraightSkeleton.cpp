@@ -809,14 +809,14 @@ namespace XLEMath
 	}
 
 	T1(Primitive) static bool IsFrozen(const Vertex<Primitive>& v) { return Equivalent(v._velocity, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>()); }
-	T1(Primitive) static void FreezeInPlace(Vertex<Primitive>& v, Primitive atTime)
+	/*T1(Primitive) static void FreezeInPlace(Vertex<Primitive>& v, Primitive atTime)
 	{
 		assert(atTime != Primitive(0));
 		v._position = PositionAtTime(v, atTime);
 		v._initialTime = atTime;
 		v._skeletonVertexId = ~0u;
 		v._velocity = Zero<Vector2T<Primitive>>();
-	}
+	}*/
 
 	T1(EdgeType) static void AddUnique(std::vector<EdgeType>& dst, const EdgeType& edge)
 	{
@@ -838,12 +838,16 @@ namespace XLEMath
 		if (rightEdge != ~0u) {
 			AddUnique(dest._faces[rightEdge]._edges, {headVertex, tailVertex, type});
 		} else {
-			AddUnique(dest._unplacedEdges, {headVertex, tailVertex, type});
+			// AddUnique(dest._unplacedEdges, {headVertex, tailVertex, type});
 		}
 		if (leftEdge != ~0u) {
 			AddUnique(dest._faces[leftEdge]._edges, {tailVertex, headVertex, type});
 		} else {
-			AddUnique(dest._unplacedEdges, {tailVertex, headVertex, type});
+			// AddUnique(dest._unplacedEdges, {tailVertex, headVertex, type});
+		}
+
+		if (rightEdge == ~0u && leftEdge == ~0u) {
+			AddUnique(dest._unplacedEdges, {headVertex, tailVertex, type});
 		}
 	}
 
@@ -870,7 +874,7 @@ namespace XLEMath
 
 	private:
 		void WriteWavefront(StraightSkeleton<Primitive>& dest, const WavefrontLoop& loop, Primitive time);
-		void AddEdgeForVertexPath(StraightSkeleton<Primitive>& dst, unsigned v, unsigned finalVertId);
+		void AddEdgeForVertexPath(StraightSkeleton<Primitive>& dst, const WavefrontLoop& loop, unsigned v, unsigned finalVertId);
 		void ValidateState();
 
 		void ProcessMotorcycleCrashes(
@@ -938,7 +942,7 @@ namespace XLEMath
 					continue;
 				}
 
-				if (true) {
+				if (false) {
 					loop._lastEventTime += (bestMotorcycleCrashTime - loop._lastEventTime) / Primitive(2);
 					completedLoops.emplace_back(std::move(loop));
 					_loops.erase(_loops.begin());
@@ -1122,6 +1126,21 @@ namespace XLEMath
 		return result;
 	}
 
+	static auto FindInAndOut(IteratorRange<const WavefrontEdge*> edges, unsigned pivotVertex) -> std::pair<const WavefrontEdge*, const WavefrontEdge*>
+	{
+		std::pair<const WavefrontEdge*, const WavefrontEdge*> result(nullptr, nullptr);
+		for  (auto&s:edges) {
+			if (s._head == pivotVertex) {
+				assert(!result.first);
+				result.first = &s;
+			} else if (s._tail == pivotVertex) {
+				assert(!result.second);
+				result.second = &s;
+			}
+		}
+		return result;
+	}
+
 	static void ReplaceVertex(IteratorRange<WavefrontEdge*> segs, unsigned oldVertex, unsigned newVertex)
 	{
 		for (auto& s:segs) {
@@ -1183,6 +1202,13 @@ namespace XLEMath
 			auto crashEvent = crashI->first;
 			auto motorHead = crashI->second;
 
+			#if defined(_DEBUG)
+				auto alreadyProcessed = std::find_if(
+					crashes.begin(), crashI,
+					[motorHead](const std::pair<CrashEvent<Primitive>, unsigned>& e) { return e.second == motorHead; });
+				assert(alreadyProcessed == crashI);
+			#endif
+
 			// The motorcycleSegment should be part of one of our working loops
 			//  -- but we don't know which one. We have to find it; both the crash
 			// segment and the motorcycle should be part of the same loop
@@ -1231,8 +1257,6 @@ namespace XLEMath
 					outSide._edges.push_back(*i);
 				}
 
-				auto v0i = crashSegment->_tail;
-				auto v2i = tout->_head;
 				// Note that we can end up with colinear vertices here in two cases. When there are
 				// colinear vertices, we can't calculate the vertex velocity values accurately 
 				//   1) we might produce a fully collapsed 2-edge loop
@@ -1241,9 +1265,8 @@ namespace XLEMath
 				// crashes have been processed, it will be.
 				auto newVertex = (unsigned)_vertices.size();
 				_vertices.push_back(Vertex<Primitive>{crashPt, Zero<Vector2T<Primitive>>(), crashEvent._time, crashPtSkeleton});
-
-				outSide._edges.push_back({newVertex, v0i, crashSegment->_leftFace, crashSegment->_rightFace});	// (hin)
-				outSide._edges.push_back({v2i, newVertex, tout->_leftFace, tout->_rightFace});					// tout
+				outSide._edges.push_back({newVertex, crashSegment->_tail, crashSegment->_leftFace, crashSegment->_rightFace});	// (hin)
+				outSide._edges.push_back({tout->_head, newVertex, tout->_leftFace, tout->_rightFace});					// tout
 			}
 
 			{
@@ -1263,13 +1286,10 @@ namespace XLEMath
 
 				auto tin = i;
 
-				auto v0i = tin->_tail;
-				auto v2i = crashSegment->_head;
 				auto newVertex = (unsigned)_vertices.size();
 				_vertices.push_back(Vertex<Primitive>{crashPt, Zero<Vector2T<Primitive>>(), crashEvent._time, crashPtSkeleton});
-
-				inSide._edges.push_back({newVertex, v0i, tin->_leftFace, tin->_rightFace});
-				inSide._edges.push_back({v2i, newVertex, crashSegment->_leftFace, crashSegment->_rightFace});
+				inSide._edges.push_back({newVertex, tin->_tail, tin->_leftFace, tin->_rightFace});
+				inSide._edges.push_back({crashSegment->_head, newVertex, crashSegment->_leftFace, crashSegment->_rightFace});
 			}
 
 			// add skeleton edge for vertex path along the motor cycle path  
@@ -1277,14 +1297,14 @@ namespace XLEMath
 			AddEdge(result, 
 					crashPtSkeleton, _vertices[motor->_head]._skeletonVertexId,
 					motor->_leftFace, motor->_rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
-			FreezeInPlace(_vertices[motorHead], crashEvent._time);
+			// FreezeInPlace(_vertices[motorHead], crashPt, crashEvent._time);
 
-			// We don't have to add more edges from the 2 new vertices to the crash point. Since we registered both new
-			// vertices with "crashPtSkeleton", we will automatically get this edge filled in when the vertex reaches the end
-			// of it's path.
+			// We don't have to add more edges from the 2 new vertices to the crash point. Since 
+			// we registered both new vertices with "crashPtSkeleton", we will automatically get 
+			// this edge filled in when the vertex reaches the end of it's path.
 
-			// Move the motorcycles from "loop" to "inSide" or "outSide" depending on which loop they are now
-			// a part of.
+			// Move the motorcycles from "loop" to "inSide" or "outSide" depending on which loop 
+			// they are now a part of.
 			for (const auto&m:loop->_motorcycleSegments) {
 				if (&m == motor) continue;		// (skip this one, it's just been processed)
 
@@ -1311,8 +1331,6 @@ namespace XLEMath
 			// crash events involves this vertex, we have rename it to either the new vertex on the
 			// inSide, or on the outSide
 			for (auto i=crashI+1; i!=crashes.end(); ++i) {
-				if (i->first._collisionEdgeHead != motorHead && i->first._collisionEdgeTail != motorHead) continue;
-
 				auto inSideI = std::find_if(inSide._motorcycleSegments.begin(), inSide._motorcycleSegments.end(),
 					[i](const MotorcycleSegment& s){ return s._head == i->second;});
 				bool isInSide = inSideI != inSide._motorcycleSegments.end();
@@ -1324,7 +1342,15 @@ namespace XLEMath
 				
 				auto replacementIdx = unsigned(isInSide?(_vertices.size()-1):(_vertices.size()-2));
 				if (i->first._collisionEdgeHead == motorHead) i->first._collisionEdgeHead = replacementIdx;
-				else i->first._collisionEdgeTail = replacementIdx;
+				else if (i->first._collisionEdgeTail == motorHead) i->first._collisionEdgeTail = replacementIdx;
+
+				if (isInSide) {
+					if (i->first._collisionEdgeHead == crashSegment->_tail) i->first._collisionEdgeHead = replacementIdx;
+					else if (i->first._collisionEdgeTail == crashSegment->_tail) i->first._collisionEdgeTail = replacementIdx;
+				} else {
+					if (i->first._collisionEdgeHead == crashSegment->_head) i->first._collisionEdgeHead = replacementIdx;
+					else if (i->first._collisionEdgeTail == crashSegment->_head) i->first._collisionEdgeTail = replacementIdx;
+				}
 			}
 
 			// Overwrite "loop" with outSide, and append inSide to the list of wavefront loops
@@ -1335,13 +1361,8 @@ namespace XLEMath
 		// The "velocity" value for newly created vertices will not have been updated yet; we needed
 		// to wait until all crash events were processed before we did. But 
 		for (auto&loop:workingLoops) {
-			if (loop._edges.size() <= 2) {
-				for (const auto&e:loop._edges) {
-					FreezeInPlace(_vertices[e._head], loop._lastEventTime);
-					FreezeInPlace(_vertices[e._tail], loop._lastEventTime);
-				}
+			if (loop._edges.size() <= 2)
 				continue;
-			}
 			auto prevEdge = loop._edges.end()-1;
 			for (auto edge=loop._edges.begin(); edge!=loop._edges.end(); ++edge) {
 				assert(prevEdge->_head == edge->_tail);
@@ -1458,8 +1479,8 @@ namespace XLEMath
 				if (collapseGroups[c] != collapseGroup) continue;
 				const auto& seg = loop._edges[collapses[c]._edge];
 				for (auto v:{ seg._head, seg._tail }) {
-					AddEdgeForVertexPath(result, v, collapseVertId);
-					FreezeInPlace(_vertices[v], bestCollapseTime);
+					AddEdgeForVertexPath(result, loop, v, collapseVertId);
+					// FreezeInPlace(_vertices[v], collapses[c]._collapsePt, collapses[c]._collapseTime);
 				}
 			}
 
@@ -1469,8 +1490,9 @@ namespace XLEMath
 		}
 
 		// Remove all of the collapsed edges
-		// (note, expecting bestCollapse to be sorted by "second")
+		// (note, expecting bestCollapse to be sorted by "_edge")
 		for (auto i=collapses.size()-1;;--i) {
+			if (i!=collapses.size()-1) { assert(collapses[i]._edge < collapses[i+1]._edge); }
 			loop._edges.erase(loop._edges.begin() + collapses[i]._edge);
 			if (i == 0) break;
 		}
@@ -1489,11 +1511,11 @@ namespace XLEMath
 
 			tail->_head = group._newVertex;
 			head->_tail = group._newVertex;
-			auto calcTime = _vertices[group._newVertex]._initialTime;
+			/*auto calcTime = _vertices[group._newVertex]._initialTime;
 			auto v0 = PositionAtTime(_vertices[tail->_tail], calcTime);
 			auto v1 = _vertices[group._newVertex]._position;
 			auto v2 = PositionAtTime(_vertices[head->_head], calcTime);
-			_vertices[group._newVertex]._velocity = CalculateVertexVelocity(v0, v1, v2);
+			_vertices[group._newVertex]._velocity = CalculateVertexVelocity(v0, v1, v2);*/
 
 			#if defined(EXTRA_VALIDATION)
 				{
@@ -1511,9 +1533,11 @@ namespace XLEMath
 			#endif
 		}
 
-		// We must recalculate the velocities for vertices with zero velocity. In some cases, velocities from new
-		// vertices calculated in motorcycle crash events can't be calculated until an edge collapse event is
-		// processed. In those cases, the velocity is temporarily zero; pending the collapse event.
+		// We must recalculate the velocities for vertices with zero velocity. Typically this will just
+		// involve calculating the velocities for the new vertices created in this collapse operation.
+		// But in some cases, velocities from new vertices calculated in motorcycle crash events can't be 
+		// calculated until an edge collapse event is processed. In those cases, the velocity is 
+		// temporarily zero; pending the collapse event.
 		if (loop._edges.size() > 2) {
 			auto prevEdge=loop._edges.end()-1;
 			for (auto edge=loop._edges.begin(); edge!=loop._edges.end(); ++edge) {
@@ -1524,7 +1548,8 @@ namespace XLEMath
 				if (Equivalent(v1._velocity, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>())) {
 					// We must calculate the velocity at the max initial time -- (this should always be the crash time)
 					auto calcTime = std::max(std::max(v0._initialTime, v1._initialTime), v2._initialTime);
-					assert(Equivalent(calcTime, loop._lastEventTime, GetEpsilon<Primitive>()));
+					assert(Equivalent(calcTime, loop._lastEventTime, GetEpsilon<Primitive>())
+						|| Equivalent(calcTime, bestCollapseTime, GetEpsilon<Primitive>()));
 					// Multiple adjacent vertices with zero velocity is a problem, because it means we can't calculate 
 					// positions for them at times that agree
 					assert(!Equivalent(v0._velocity, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>()) 
@@ -1583,13 +1608,15 @@ namespace XLEMath
 			auto v0 = AddSteinerVertex(result, A);
 			auto v1 = AddSteinerVertex(result, B);
 			if (v0 != v1)
-				segmentsToTest.push(WavefrontEdge{v0, v1, i->_leftFace, i->_rightFace});
+				// segmentsToTest.push(WavefrontEdge{v0, v1, i->_leftFace, i->_rightFace});
+				filteredSegments.push_back(WavefrontEdge{v0, v1, i->_leftFace, i->_rightFace});
 
 			// Also have to add the traced out path of the each vertex (but only if it doesn't already exist in the result)
-			AddEdgeForVertexPath(result, i->_head, v0);
-			AddEdgeForVertexPath(result, i->_tail, v1);
+			AddEdgeForVertexPath(result, loop, i->_head, v0);
+			AddEdgeForVertexPath(result, loop, i->_tail, v1);
 		}
 
+#if 0
 		while (!segmentsToTest.empty()) {
 			auto seg = segmentsToTest.top();
 			segmentsToTest.pop();
@@ -1709,6 +1736,7 @@ namespace XLEMath
 			if (!filterOutSeg)
 				filteredSegments.push_back(seg);
 		}
+#endif
 
 		// add all of the segments in "filteredSegments" to the skeleton
 		for (const auto&seg:filteredSegments) {
@@ -1717,30 +1745,25 @@ namespace XLEMath
 		}
 	}
 
-	T1(Primitive) void Graph<Primitive>::AddEdgeForVertexPath(StraightSkeleton<Primitive>& dst, unsigned v, unsigned finalVertId)
+	T1(Primitive) void Graph<Primitive>::AddEdgeForVertexPath(StraightSkeleton<Primitive>& dst, const WavefrontLoop& loop, unsigned v, unsigned finalVertId)
 	{
 		const auto& vert = _vertices[v];
+		unsigned originVertex = vert._skeletonVertexId;
+		if (originVertex == ~0u)
+			originVertex = AddSteinerVertex(dst, Expand(vert._position, vert._initialTime));
+
+		auto inAndOut = FindInAndOut(MakeIteratorRange(loop._edges), v);
 		unsigned leftFace = ~0u, rightFace = ~0u;
+		if (inAndOut.first) leftFace = inAndOut.first->_rightFace;
+		if (inAndOut.second) rightFace = inAndOut.second->_rightFace;
 
-		for (auto&l:_loops) {
-			auto inAndOut = FindInAndOut(MakeIteratorRange(l._edges), v);
-			if (inAndOut.first) leftFace = inAndOut.first->_rightFace;
-			if (inAndOut.second) rightFace = inAndOut.second->_rightFace;
-		}
+		AddEdge(dst, finalVertId, originVertex, leftFace, rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
 
-		if (vert._skeletonVertexId != ~0u) {
-			if (vert._skeletonVertexId&BoundaryVertexFlag) {
-				auto q = vert._skeletonVertexId&(~BoundaryVertexFlag);
-				AddEdge(dst, finalVertId, vert._skeletonVertexId, unsigned((q+_boundaryPointCount-1) % _boundaryPointCount), q, StraightSkeleton<Primitive>::EdgeType::VertexPath);
-			}
-			AddEdge(dst, finalVertId, vert._skeletonVertexId, leftFace, rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
-		} else {
-			AddEdge(dst,
-				finalVertId, AddSteinerVertex(dst, Expand(vert._position, vert._initialTime)),
-				leftFace, rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
+		if ((vert._skeletonVertexId != ~0u) && (vert._skeletonVertexId&BoundaryVertexFlag)) {
+			auto q = vert._skeletonVertexId&(~BoundaryVertexFlag);
+			AddEdge(dst, finalVertId, originVertex, unsigned((q+_boundaryPointCount-1) % _boundaryPointCount), q, StraightSkeleton<Primitive>::EdgeType::VertexPath);
 		}
 	}
-
 
 	T1(Primitive) StraightSkeleton<Primitive> CalculateStraightSkeleton(IteratorRange<const Vector2T<Primitive>*> vertices, Primitive maxInset)
 	{
@@ -1748,8 +1771,7 @@ namespace XLEMath
 		return graph.CalculateSkeleton(maxInset);
 	}
 
-	std::vector<std::vector<unsigned>> AsVertexLoopsOrdered(
-		IteratorRange<const std::pair<unsigned, unsigned>*> segments)
+	std::vector<std::vector<unsigned>> AsVertexLoopsOrdered(IteratorRange<const std::pair<unsigned, unsigned>*> segments)
 	{
 		// From a line segment soup, generate vertex loops. This requires searching
 		// for segments that join end-to-end, and following them around until we
