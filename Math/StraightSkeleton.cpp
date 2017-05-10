@@ -566,6 +566,7 @@ namespace XLEMath
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 	T1(Primitive) std::pair<Vector2T<Primitive>, Vector2T<Primitive>> AdvanceEdge(
 		std::pair<Vector2T<Primitive>, Vector2T<Primitive>> input, Primitive time )
 	{
@@ -634,7 +635,6 @@ namespace XLEMath
 
 	void TestSSAccuracy()
 	{
-#if 0
 		std::stringstream str;
 		// generate random triangles, and 
 		std::mt19937 rng;
@@ -684,8 +684,8 @@ namespace XLEMath
 		auto result = str.str();
 		printf("%s", result.c_str());
 		(void)result;
-#endif
 	}
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -809,14 +809,6 @@ namespace XLEMath
 	}
 
 	T1(Primitive) static bool IsFrozen(const Vertex<Primitive>& v) { return Equivalent(v._velocity, Zero<Vector2T<Primitive>>(), GetEpsilon<Primitive>()); }
-	/*T1(Primitive) static void FreezeInPlace(Vertex<Primitive>& v, Primitive atTime)
-	{
-		assert(atTime != Primitive(0));
-		v._position = PositionAtTime(v, atTime);
-		v._initialTime = atTime;
-		v._skeletonVertexId = ~0u;
-		v._velocity = Zero<Vector2T<Primitive>>();
-	}*/
 
 	T1(EdgeType) static void AddUnique(std::vector<EdgeType>& dst, const EdgeType& edge)
 	{
@@ -834,21 +826,13 @@ namespace XLEMath
 	{
 		if (headVertex == tailVertex) return;
 
-		// todo -- edge ordering may be flipped here....?
-		if (rightEdge != ~0u) {
+		if (rightEdge != ~0u)
 			AddUnique(dest._faces[rightEdge]._edges, {headVertex, tailVertex, type});
-		} else {
-			// AddUnique(dest._unplacedEdges, {headVertex, tailVertex, type});
-		}
-		if (leftEdge != ~0u) {
+		if (leftEdge != ~0u)
 			AddUnique(dest._faces[leftEdge]._edges, {tailVertex, headVertex, type});
-		} else {
-			// AddUnique(dest._unplacedEdges, {tailVertex, headVertex, type});
-		}
 
-		if (rightEdge == ~0u && leftEdge == ~0u) {
+		if (rightEdge == ~0u && leftEdge == ~0u)
 			AddUnique(dest._unplacedEdges, {headVertex, tailVertex, type});
-		}
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -942,13 +926,6 @@ namespace XLEMath
 					continue;
 				}
 
-				if (false) {
-					loop._lastEventTime += (bestMotorcycleCrashTime - loop._lastEventTime) / Primitive(2);
-					completedLoops.emplace_back(std::move(loop));
-					_loops.erase(_loops.begin());
-					continue;
-				}
-
 				ProcessMotorcycleCrashes(loop, MakeIteratorRange(bestMotorcycleCrash), result);
 				lastEvent = 1;
 			} else {
@@ -986,17 +963,11 @@ namespace XLEMath
 			const auto& v0 = _vertices[seg1._tail];
 			const auto& v1 = _vertices[seg1._head];
 			const auto& v2 = _vertices[seg2._head];
-			#if 1	// (this path uses the new, more accurate path for calculating the collapse time for an edge)
-				const auto calcTime = std::max(std::max(std::max(vm1._initialTime, v0._initialTime), v1._initialTime), v2._initialTime);
-				auto collapse = CalculateEdgeCollapse_Offset(PositionAtTime(vm1, calcTime), PositionAtTime(v0, calcTime), PositionAtTime(v1, calcTime), PositionAtTime(v2, calcTime));
-				if (collapse[2] < Primitive(0)) continue;
-				assert(!IsFrozen(v0) && !IsFrozen(v1));
-				auto collapseTime = collapse[2] + calcTime;
-			#else
-				auto collapseTime = CalculateCollapseTime(v0, v1);
-				if (collapseTime < Primitive(0) || collapseTime == std::numeric_limits<Primitive>::max()) continue;
-				auto collapse = Expand(PositionAtTime(v0, collapseTime), collapseTime);
-			#endif
+			const auto calcTime = std::max(std::max(std::max(vm1._initialTime, v0._initialTime), v1._initialTime), v2._initialTime);
+			auto collapse = CalculateEdgeCollapse_Offset(PositionAtTime(vm1, calcTime), PositionAtTime(v0, calcTime), PositionAtTime(v1, calcTime), PositionAtTime(v2, calcTime));
+			if (collapse[2] < Primitive(0)) continue;
+			assert(!IsFrozen(v0) && !IsFrozen(v1));
+			auto collapseTime = collapse[2] + calcTime;
 			assert(collapseTime >= loop._lastEventTime);
 			if (collapseTime < (bestCollapseTime - GetEpsilon<Primitive>())) {
 				bestCollapse.clear();
@@ -1190,10 +1161,6 @@ namespace XLEMath
 		IteratorRange<const std::pair<CrashEvent<Primitive>, unsigned>*> crashesInit,
 		StraightSkeleton<Primitive>& result)
 	{
-		#if defined(EXTRA_VALIDATION)
-			WavefrontLoop inputLoop = initialLoop;
-		#endif
-
 		std::vector<std::pair<CrashEvent<Primitive>, unsigned>> crashes(crashesInit.begin(), crashesInit.end());
 		std::vector<WavefrontLoop> workingLoops;
 		workingLoops.emplace_back(std::move(initialLoop));
@@ -1297,7 +1264,6 @@ namespace XLEMath
 			AddEdge(result, 
 					crashPtSkeleton, _vertices[motor->_head]._skeletonVertexId,
 					motor->_leftFace, motor->_rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
-			// FreezeInPlace(_vertices[motorHead], crashPt, crashEvent._time);
 
 			// We don't have to add more edges from the 2 new vertices to the crash point. Since 
 			// we registered both new vertices with "crashPtSkeleton", we will automatically get 
@@ -1478,10 +1444,8 @@ namespace XLEMath
 			for (size_t c=0; c<collapses.size(); ++c) {
 				if (collapseGroups[c] != collapseGroup) continue;
 				const auto& seg = loop._edges[collapses[c]._edge];
-				for (auto v:{ seg._head, seg._tail }) {
+				for (auto v:{ seg._head, seg._tail })
 					AddEdgeForVertexPath(result, loop, v, collapseVertId);
-					// FreezeInPlace(_vertices[v], collapses[c]._collapsePt, collapses[c]._collapseTime);
-				}
 			}
 
 			// create a new vertex in the graph to connect the edges to either side of the collapse
@@ -1505,17 +1469,13 @@ namespace XLEMath
 		for (const auto& group:collapseGroupInfos) {
 			if (group._head == group._tail) continue;	// if we remove an entire loop, let's assume that there are no external links to it
 
+			// reassign the edges on either side of the collapse group to
+			// point to the new vertex
 			auto tail = FindInAndOut(MakeIteratorRange(loop._edges), group._tail).first;
 			auto head = FindInAndOut(MakeIteratorRange(loop._edges), group._head).second;
 			assert(tail && head);
-
 			tail->_head = group._newVertex;
 			head->_tail = group._newVertex;
-			/*auto calcTime = _vertices[group._newVertex]._initialTime;
-			auto v0 = PositionAtTime(_vertices[tail->_tail], calcTime);
-			auto v1 = _vertices[group._newVertex]._position;
-			auto v2 = PositionAtTime(_vertices[head->_head], calcTime);
-			_vertices[group._newVertex]._velocity = CalculateVertexVelocity(v0, v1, v2);*/
 
 			#if defined(EXTRA_VALIDATION)
 				{
@@ -1608,15 +1568,13 @@ namespace XLEMath
 			auto v0 = AddSteinerVertex(result, A);
 			auto v1 = AddSteinerVertex(result, B);
 			if (v0 != v1)
-				// segmentsToTest.push(WavefrontEdge{v0, v1, i->_leftFace, i->_rightFace});
-				filteredSegments.push_back(WavefrontEdge{v0, v1, i->_leftFace, i->_rightFace});
+				segmentsToTest.push(WavefrontEdge{v0, v1, i->_leftFace, i->_rightFace});
 
 			// Also have to add the traced out path of the each vertex (but only if it doesn't already exist in the result)
 			AddEdgeForVertexPath(result, loop, i->_head, v0);
 			AddEdgeForVertexPath(result, loop, i->_tail, v1);
 		}
 
-#if 0
 		while (!segmentsToTest.empty()) {
 			auto seg = segmentsToTest.top();
 			segmentsToTest.pop();
@@ -1736,7 +1694,6 @@ namespace XLEMath
 			if (!filterOutSeg)
 				filteredSegments.push_back(seg);
 		}
-#endif
 
 		// add all of the segments in "filteredSegments" to the skeleton
 		for (const auto&seg:filteredSegments) {
@@ -1825,11 +1782,7 @@ namespace XLEMath
 
 	template StraightSkeleton<float> CalculateStraightSkeleton<float>(IteratorRange<const Vector2T<float>*> vertices, float maxInset);
 	template StraightSkeleton<double> CalculateStraightSkeleton<double>(IteratorRange<const Vector2T<double>*> vertices, double maxInset);
-	template StraightSkeleton<int32_t> CalculateStraightSkeleton<int32_t>(IteratorRange<const Vector2T<int32_t>*> vertices, int32_t maxInset);
-	template StraightSkeleton<int64_t> CalculateStraightSkeleton<int64_t>(IteratorRange<const Vector2T<int64_t>*> vertices, int64_t maxInset);
 	template class StraightSkeleton<float>;
 	template class StraightSkeleton<double>;
-	template class StraightSkeleton<int32_t>;
-	template class StraightSkeleton<int64_t>;
 
 }
