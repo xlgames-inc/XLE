@@ -514,7 +514,7 @@ namespace XLEMath
 			return Vector3T<Primitive>(std::numeric_limits<Primitive>::max(), std::numeric_limits<Primitive>::max(), Primitive(-1));
 
 		auto result = M * res;
-		assert(IsFiniteNumber(result[0]) && IsFiniteNumber(result[0]));
+		assert(IsFiniteNumber(result[0]) && IsFiniteNumber(result[1]) && IsFiniteNumber(result[2]));
 		result[0] += p0[0];
 		result[1] += p0[1];
 		return result;
@@ -711,8 +711,159 @@ namespace XLEMath
 		return result;
 	}
 
+	T1(Primitive) static bool BuildCrashEvent_OldMethod(
+		Vector3T<Primitive>& pointAndTime,
+		Vertex<Primitive> edgeHead, Vertex<Primitive> edgeTail,
+		Vertex<Primitive> motorcycle)
+	{
+		// Attempt to find a crash event between the given motor cycle and the given edge.
+		// Since the edge segments are moving, the solution is a little complex
+		// We can create a triangle between head, tail & the motorcycle head
+		// If there is a collision, the triangle area will be zero at that point.
+		// So we can search for a time when the triangle area is zero, and check to see
+		// if a collision has actually occurred at that time.
+		const auto calcTime = std::max(std::max(edgeHead._initialTime, edgeTail._initialTime), motorcycle._initialTime);
+		auto p0 = PositionAtTime(edgeHead, calcTime);
+		auto p1 = PositionAtTime(edgeTail, calcTime);
+		auto v0 = edgeHead._velocity;
+		auto v1 = edgeTail._velocity;
+
+		auto p2 = PositionAtTime(motorcycle, calcTime);
+		auto v2 = motorcycle._velocity;
+
+		// 2 * signed triangle area = 
+		//		(p1[0]-p0[0]) * (p2[1]-p0[1]) - (p2[0]-p0[0]) * (p1[1]-p0[1])
+		//
+		// A =	(p1[0]+t*v1[0]-p0[0]-t*v0[0]) * (p2[1]+t*v2[1]-p0[1]-t*v0[1])
+		// B =  (p2[0]+t*v2[0]-p0[0]-t*v0[0]) * (p1[1]+t*v1[1]-p0[1]-t*v0[1]);
+		//
+		// A =   (p1[0]-p0[0]) * (p2[1]+t*v2[1]-p0[1]-t*v0[1])
+		//	 + t*(v1[0]-v0[0]) * (p2[1]+t*v2[1]-p0[1]-t*v0[1])
+		//
+		// A =   (p1[0]-p0[0]) * (p2[1]-p0[1]+t*(v2[1]-v0[1]))
+		//	 + t*(v1[0]-v0[0]) * (p2[1]-p0[1]+t*(v2[1]-v0[1]))
+		//
+		// A =   (p1[0]-p0[0])*(p2[1]-p0[1]) + t*(p1[0]-p0[0])*(v2[1]-v0[1])
+		//	 + t*(v1[0]-v0[0])*(p2[1]-p0[1]) + t*t*(v1[0]-v0[0])*(v2[1]-v0[1])
+		//
+		// B =   (p2[0]-p0[0])*(p1[1]-p0[1]) + t*(p2[0]-p0[0])*(v1[1]-v0[1])
+		//	 + t*(v2[0]-v0[0])*(p1[1]-p0[1]) + t*t*(v2[0]-v0[0])*(v1[1]-v0[1])
+		//
+		// 0 = t*t*a + t*b + c
+		// c = (p1[0]-p0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(p1[1]-p0[1])
+		// b = (p1[0]-p0[0])*(v2[1]-v0[1]) + (v1[0]-v0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(v1[1]-v0[1]) - (v2[0]-v0[0])*(p1[1]-p0[1])
+		// a = (v1[0]-v0[0])*(v2[1]-v0[1]) - (v2[0]-v0[0])*(v1[1]-v0[1])
+
+		auto a = (v1[0]-v0[0])*(v2[1]-v0[1]) - (v2[0]-v0[0])*(v1[1]-v0[1]);
+		if (Equivalent(a, Primitive(0), GetEpsilon<Primitive>())) return false;
+			
+		auto c = (p1[0]-p0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(p1[1]-p0[1]);
+		auto b = (p1[0]-p0[0])*(v2[1]-v0[1]) + (v1[0]-v0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(v1[1]-v0[1]) - (v2[0]-v0[0])*(p1[1]-p0[1]);
+			
+		// x = (-b +/- sqrt(b*b - 4*a*c)) / 2*a
+		auto K = b*b - Primitive(4)*a*c;
+		if (K < Primitive(0)) return false;
+
+		auto Q = std::sqrt(K);
+		Primitive ts[] = {
+			calcTime + Primitive((-b + Q) / (decltype(Q)(2)*a)),
+			calcTime + Primitive((-b - Q) / (decltype(Q)(2)*a))
+		};
+
+		// Is there is a viable collision at either t0 or t1?
+		// All 3 points should be on the same line at this point -- so we just need to check if
+		// the motorcycle is between them (or intersecting a vertex)
+		for (auto t:ts) {
+			if (t <= std::max(edgeHead._initialTime, edgeTail._initialTime)) continue;	// don't need to check collisions that happen too late
+			auto P0 = PositionAtTime(edgeHead, t);
+			auto P1 = PositionAtTime(edgeTail, t);
+			auto P2 = PositionAtTime(motorcycle, t);
+			if ((Dot(P1-P0, P2-P0) > Primitive(0)) && (Dot(P0-P1, P2-P1) > Primitive(0))) {
+				// good collision
+				pointAndTime = Expand(P2, t);
+				return true;
+			} else if (Equivalent(P0, P2, GetEpsilon<Primitive>()) || Equivalent(P1, P2, GetEpsilon<Primitive>())) {
+				// collided with vertex (or close enough)
+				pointAndTime = Expand(P2, t);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	T1(Primitive) static bool FindCrashEvent(
+		Vector3T<Primitive>& crash, 
+		Vector2T<Primitive> edgeHead, Vector2T<Primitive> edgeTail, Vector2T<Primitive> motorVelocity)
+	{
+		// Look for a crash event involving this motorcycle & the given segment
+		// Here, we assume that the motorcycle starts at the origin (ie, caller should
+		// redefine the coordinate system to suit that requirement)
+
+		auto mag = (Primitive)std::hypot(edgeHead[0] - edgeTail[0], edgeHead[1] - edgeTail[1]);
+		assert(IsFiniteNumber(mag));
+		if (Equivalent(mag, Primitive(0), GetEpsilon<Primitive>()))
+			return false;
+
+		Matrix3x3T<Primitive> M;
+		Vector3T<Primitive> res;
+
+		// first row tests for intersection with the edge segment (as it's moving along its normal)
+		auto Nx = Primitive((edgeTail[1] - edgeHead[1]) * VelocityVectorScale<Primitive>::Value / mag);
+		auto Ny = Primitive((edgeHead[0] - edgeTail[0]) * VelocityVectorScale<Primitive>::Value / mag);
+		M(0, 0) = Nx;
+		M(0, 1) = Ny;
+		M(0, 2) = -Nx*Nx-Ny*Ny;
+		res[0]  = edgeTail[0] * Nx + edgeTail[1] * Ny;
+
+		// second row tests x component of motorcycle
+		// x - t * motorVelocity[0] = 0
+		M(1, 0) = Primitive(1);
+		M(1, 1) = Primitive(0);
+		M(1, 2) = -motorVelocity[0];
+		res[1]  = Primitive(0);
+
+		// third row tests y component of motorcycle
+		// y - t * motorVelocity[1] = 0
+		M(2, 0) = Primitive(0);
+		M(2, 1) = Primitive(1);
+		M(2, 2) = -motorVelocity[1];
+		res[2]  = Primitive(0);
+
+		if (!InvertInplaceSafe(M, GetEpsilon<Primitive>()))
+			return false;
+
+		crash = M * res;
+		assert(IsFiniteNumber(crash[0]) && IsFiniteNumber(crash[1]) && IsFiniteNumber(crash[2]));
+		return true;
+	}
+
+	T1(Primitive) static bool BuildCrashEvent_Simultaneous(
+		Vector3T<Primitive>& pointAndTime,
+		Vertex<Primitive> edgeHead, Vertex<Primitive> edgeTail,
+		Vertex<Primitive> motorcycle)
+	{
+		const auto calcTime = std::max(std::max(edgeHead._initialTime, edgeTail._initialTime), motorcycle._initialTime);
+		auto p0 = PositionAtTime(edgeHead, calcTime);
+		auto p1 = PositionAtTime(edgeTail, calcTime);
+		auto p2 = PositionAtTime(motorcycle, calcTime);
+		auto res = FindCrashEvent<Primitive>(pointAndTime, p0-p2, p1-p2, motorcycle._velocity);
+		if (!res || pointAndTime[2] < Primitive(0)) return false;
+
+		pointAndTime += Expand(p2, calcTime);
+
+		// We have to test to ensure that the intersection point is actually lying within
+		// the edge segment (we only know currently that it is colinear)
+		p0 = PositionAtTime(edgeHead, pointAndTime[2]);
+		p1 = PositionAtTime(edgeTail, pointAndTime[2]);
+		p2 = Truncate(pointAndTime);
+		return ((Dot(p1-p0, p2-p0) > Primitive(0)) && (Dot(p0-p1, p2-p1) > Primitive(0)))
+			|| (Equivalent(p0, p2, GetEpsilon<Primitive>()) || Equivalent(p1, p2, GetEpsilon<Primitive>()));
+	}
+
 	T1(Primitive) struct CrashEvent
 	{
+		Vector2T<Primitive> _crashPt;
 		Primitive _time;
 		unsigned _collisionEdgeHead;
 		unsigned _collisionEdgeTail;
@@ -723,85 +874,25 @@ namespace XLEMath
 		IteratorRange<const WavefrontEdge*> segments,
 		IteratorRange<const Vertex<Primitive>*> vertices)
 	{
-		CrashEvent<Primitive> bestCollisionEvent { std::numeric_limits<Primitive>::max(), ~0u };
+		CrashEvent<Primitive> bestCollisionEvent { Zero<Vector2T<Primitive>>(), std::numeric_limits<Primitive>::max(), ~0u, ~0u };
 
 		// Look for an intersection with _wavefrontEdges
 		for (const auto&e:segments) {
 			const auto& head = vertices[e._head];
 			const auto& tail = vertices[e._tail];
 
-			// Since the edge segments are moving, the solution is a little complex
-			// We can create a triangle between head, tail & the motorcycle head
-			// If there is a collision, the triangle area will be zero at that point.
-			// So we can search for a time when the triangle area is zero, and check to see
-			// if a collision has actually occurred at that time.
-			const auto calcTime = std::max(std::max(head._initialTime, tail._initialTime), v._initialTime);
-			auto p0 = PositionAtTime(head, calcTime);
-			auto p1 = PositionAtTime(tail, calcTime);
-			auto v0 = head._velocity;
-			auto v1 = tail._velocity;
+			Vector3T<Primitive> pointAndTime;
+			auto resB = BuildCrashEvent_Simultaneous(pointAndTime, head, tail, v);
 
-			auto p2 = PositionAtTime(v, calcTime);
-			auto v2 = v._velocity;
+			/*Vector3T<Primitive> compare;
+			auto resA = BuildCrashEvent_OldMethod(compare, head, tail, v);
+			(void)resA, compare;*/
 
-			// 2 * signed triangle area = 
-			//		(p1[0]-p0[0]) * (p2[1]-p0[1]) - (p2[0]-p0[0]) * (p1[1]-p0[1])
-			//
-			// A =	(p1[0]+t*v1[0]-p0[0]-t*v0[0]) * (p2[1]+t*v2[1]-p0[1]-t*v0[1])
-			// B =  (p2[0]+t*v2[0]-p0[0]-t*v0[0]) * (p1[1]+t*v1[1]-p0[1]-t*v0[1]);
-			//
-			// A =   (p1[0]-p0[0]) * (p2[1]+t*v2[1]-p0[1]-t*v0[1])
-			//	 + t*(v1[0]-v0[0]) * (p2[1]+t*v2[1]-p0[1]-t*v0[1])
-			//
-			// A =   (p1[0]-p0[0]) * (p2[1]-p0[1]+t*(v2[1]-v0[1]))
-			//	 + t*(v1[0]-v0[0]) * (p2[1]-p0[1]+t*(v2[1]-v0[1]))
-			//
-			// A =   (p1[0]-p0[0])*(p2[1]-p0[1]) + t*(p1[0]-p0[0])*(v2[1]-v0[1])
-			//	 + t*(v1[0]-v0[0])*(p2[1]-p0[1]) + t*t*(v1[0]-v0[0])*(v2[1]-v0[1])
-			//
-			// B =   (p2[0]-p0[0])*(p1[1]-p0[1]) + t*(p2[0]-p0[0])*(v1[1]-v0[1])
-			//	 + t*(v2[0]-v0[0])*(p1[1]-p0[1]) + t*t*(v2[0]-v0[0])*(v1[1]-v0[1])
-			//
-			// 0 = t*t*a + t*b + c
-			// c = (p1[0]-p0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(p1[1]-p0[1])
-			// b = (p1[0]-p0[0])*(v2[1]-v0[1]) + (v1[0]-v0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(v1[1]-v0[1]) - (v2[0]-v0[0])*(p1[1]-p0[1])
-			// a = (v1[0]-v0[0])*(v2[1]-v0[1]) - (v2[0]-v0[0])*(v1[1]-v0[1])
-
-			auto a = (v1[0]-v0[0])*(v2[1]-v0[1]) - (v2[0]-v0[0])*(v1[1]-v0[1]);
-			if (Equivalent(a, Primitive(0), GetEpsilon<Primitive>())) continue;
-			
-			auto c = (p1[0]-p0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(p1[1]-p0[1]);
-			auto b = (p1[0]-p0[0])*(v2[1]-v0[1]) + (v1[0]-v0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(v1[1]-v0[1]) - (v2[0]-v0[0])*(p1[1]-p0[1]);
-			
-			// x = (-b +/- sqrt(b*b - 4*a*c)) / 2*a
-			auto K = b*b - Primitive(4)*a*c;
-			if (K < Primitive(0)) continue;
-
-			auto Q = std::sqrt(K);
-			Primitive ts[] = {
-				calcTime + Primitive((-b + Q) / (decltype(Q)(2)*a)),
-				calcTime + Primitive((-b - Q) / (decltype(Q)(2)*a))
-			};
-
-			// Is there is a viable collision at either t0 or t1?
-			// All 3 points should be on the same line at this point -- so we just need to check if
-			// the motorcycle is between them (or intersecting a vertex)
-			for (auto t:ts) {
-				if (t > bestCollisionEvent._time || t <= std::max(head._initialTime, tail._initialTime)) continue;	// don't need to check collisions that happen too late
-				auto P0 = PositionAtTime(head, t);
-				auto P1 = PositionAtTime(tail, t);
-				auto P2 = PositionAtTime(v, t);
-				if ((Dot(P1-P0, P2-P0) > Primitive(0)) && (Dot(P0-P1, P2-P1) > Primitive(0))) {
-					// good collision
-					bestCollisionEvent._time = t;
-					bestCollisionEvent._collisionEdgeHead = e._head;
-					bestCollisionEvent._collisionEdgeTail = e._tail;
-				} else if (Equivalent(P0, P2, GetEpsilon<Primitive>()) || Equivalent(P1, P2, GetEpsilon<Primitive>())) {
-					// collided with vertex (or close enough)
-					bestCollisionEvent._time = t;
-					bestCollisionEvent._collisionEdgeHead = e._head;
-					bestCollisionEvent._collisionEdgeTail = e._tail;
-				}
+			if (resB && pointAndTime[2] < bestCollisionEvent._time) {
+				bestCollisionEvent._crashPt = Truncate(pointAndTime);
+				bestCollisionEvent._time = pointAndTime[2];
+				bestCollisionEvent._collisionEdgeHead = e._head;
+				bestCollisionEvent._collisionEdgeTail = e._tail;
 			}
 		}
 
@@ -1157,7 +1248,7 @@ namespace XLEMath
 	}
 
 	T1(Primitive) void Graph<Primitive>::ProcessMotorcycleCrashes(
-		WavefrontLoop& initialLoop,		// (this is the loop that contains the edge we crashed into)
+		WavefrontLoop& initialLoop,
 		IteratorRange<const std::pair<CrashEvent<Primitive>, unsigned>*> crashesInit,
 		StraightSkeleton<Primitive>& result)
 	{
@@ -1191,14 +1282,20 @@ namespace XLEMath
 			}
 			assert(motor != nullptr);
 
-			auto crashPt = PositionAtTime(_vertices[motorHead], crashEvent._time);
-			auto crashPtSkeleton = AddSteinerVertex(result, Vector3T<Primitive>(crashPt, crashEvent._time));
+			auto crashPtSkeleton = AddSteinerVertex(result, Vector3T<Primitive>(crashEvent._crashPt, crashEvent._time));
+
+			// Since we're removing "motor.head" from the simulation, we have to add a skeleton edge 
+			// for vertex path along the motor cycle path  
+			assert(_vertices[motor->_head]._skeletonVertexId != ~0u);
+			AddEdge(result, 
+					crashPtSkeleton, _vertices[motor->_head]._skeletonVertexId,
+					motor->_leftFace, motor->_rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
 
 			auto crashSegment = std::find_if(loop->_edges.begin(), loop->_edges.end(),
 				[crashEvent](const WavefrontEdge& e) { return e._head == crashEvent._collisionEdgeHead && e._tail == crashEvent._collisionEdgeTail; });
 			assert(crashSegment != loop->_edges.end());
-			WavefrontEdge newSegment0{ motorHead, motorHead, motor->_leftFace, crashSegment->_rightFace };
-			WavefrontEdge newSegment1{ motorHead, motorHead, crashSegment->_rightFace, motor->_rightFace };
+			// WavefrontEdge newSegment0{ motorHead, motorHead, motor->_leftFace, crashSegment->_rightFace };
+			// WavefrontEdge newSegment1{ motorHead, motorHead, crashSegment->_rightFace, motor->_rightFace };
 
 			// We need to build 2 new WavefrontLoops -- one for the "tout" side and one for the "tin" side
 			// In some cases, one side or the other than can be completely collapsed. But we're still going to
@@ -1231,7 +1328,7 @@ namespace XLEMath
 				// In the second case, the loop is not fully collapsed yet; but after the remaining
 				// crashes have been processed, it will be.
 				auto newVertex = (unsigned)_vertices.size();
-				_vertices.push_back(Vertex<Primitive>{crashPt, Zero<Vector2T<Primitive>>(), crashEvent._time, crashPtSkeleton});
+				_vertices.push_back(Vertex<Primitive>{crashEvent._crashPt, Zero<Vector2T<Primitive>>(), crashEvent._time, crashPtSkeleton});
 				outSide._edges.push_back({newVertex, crashSegment->_tail, crashSegment->_leftFace, crashSegment->_rightFace});	// (hin)
 				outSide._edges.push_back({tout->_head, newVertex, tout->_leftFace, tout->_rightFace});					// tout
 			}
@@ -1254,16 +1351,10 @@ namespace XLEMath
 				auto tin = i;
 
 				auto newVertex = (unsigned)_vertices.size();
-				_vertices.push_back(Vertex<Primitive>{crashPt, Zero<Vector2T<Primitive>>(), crashEvent._time, crashPtSkeleton});
+				_vertices.push_back(Vertex<Primitive>{crashEvent._crashPt, Zero<Vector2T<Primitive>>(), crashEvent._time, crashPtSkeleton});
 				inSide._edges.push_back({newVertex, tin->_tail, tin->_leftFace, tin->_rightFace});
 				inSide._edges.push_back({crashSegment->_head, newVertex, crashSegment->_leftFace, crashSegment->_rightFace});
 			}
-
-			// add skeleton edge for vertex path along the motor cycle path  
-			assert(_vertices[motor->_head]._skeletonVertexId != ~0u);
-			AddEdge(result, 
-					crashPtSkeleton, _vertices[motor->_head]._skeletonVertexId,
-					motor->_leftFace, motor->_rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
 
 			// We don't have to add more edges from the 2 new vertices to the crash point. Since 
 			// we registered both new vertices with "crashPtSkeleton", we will automatically get 
