@@ -46,8 +46,6 @@
 		8F707BE61EA6CB0A00DEC600 /* MurmurHash2.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707BE21EA6CB0A00DEC600 /* MurmurHash2.h */; };
 		8F707BE71EA6CB0A00DEC600 /* MurmurHash3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BE31EA6CB0A00DEC600 /* MurmurHash3.cpp */; };
 		8F707BE81EA6CB0A00DEC600 /* MurmurHash3.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707BE41EA6CB0A00DEC600 /* MurmurHash3.h */; };
-		8F707C641EA6D24200DEC600 /* StraightSkeleton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707C621EA6D24200DEC600 /* StraightSkeleton.cpp */; };
-		8F707C651EA6D24200DEC600 /* StraightSkeleton.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707C631EA6D24200DEC600 /* StraightSkeleton.h */; };
 		8F707C7D1EA6D25700DEC600 /* GeometryAlgorithm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707C671EA6D25700DEC600 /* GeometryAlgorithm.cpp */; };
 		8F707C7E1EA6D25700DEC600 /* GeometryAlgorithm.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707C681EA6D25700DEC600 /* GeometryAlgorithm.h */; };
 		8F707C7F1EA6D25700DEC600 /* GeoProcUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707C691EA6D25700DEC600 /* GeoProcUtil.cpp */; };
@@ -101,8 +99,6 @@
 		8F707BE21EA6CB0A00DEC600 /* MurmurHash2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MurmurHash2.h; sourceTree = "<group>"; };
 		8F707BE31EA6CB0A00DEC600 /* MurmurHash3.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MurmurHash3.cpp; sourceTree = "<group>"; };
 		8F707BE41EA6CB0A00DEC600 /* MurmurHash3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MurmurHash3.h; sourceTree = "<group>"; };
-		8F707C621EA6D24200DEC600 /* StraightSkeleton.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = StraightSkeleton.cpp; path = ../../SceneEngine/StraightSkeleton.cpp; sourceTree = "<group>"; };
-		8F707C631EA6D24200DEC600 /* StraightSkeleton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = StraightSkeleton.h; path = ../../SceneEngine/StraightSkeleton.h; sourceTree = "<group>"; };
 		8F707C671EA6D25700DEC600 /* GeometryAlgorithm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GeometryAlgorithm.cpp; sourceTree = "<group>"; };
 		8F707C681EA6D25700DEC600 /* GeometryAlgorithm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GeometryAlgorithm.h; sourceTree = "<group>"; };
 		8F707C691EA6D25700DEC600 /* GeoProcUtil.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GeoProcUtil.cpp; sourceTree = "<group>"; };
@@ -194,8 +190,6 @@
 				8F707B7E1EA6C5D500DEC600 /* GenericGridPartitioning.h */,
 				8F707B7F1EA6C5D500DEC600 /* GenericQuadTree.cpp */,
 				8F707B801EA6C5D500DEC600 /* GenericQuadTree.h */,
-				8F707C621EA6D24200DEC600 /* StraightSkeleton.cpp */,
-				8F707C631EA6D24200DEC600 /* StraightSkeleton.h */,
 			);
 			name = SceneEngine;
 			sourceTree = "<group>";
@@ -314,7 +308,6 @@
 				8F707BAB1EA6C75C00DEC600 /* RawMaterial.h in Headers */,
 				8F707BE81EA6CB0A00DEC600 /* MurmurHash3.h in Headers */,
 				8F707BA31EA6C74C00DEC600 /* Types.h in Headers */,
-				8F707C651EA6D24200DEC600 /* StraightSkeleton.h in Headers */,
 				8F707BA11EA6C74C00DEC600 /* ShaderLangUtil.h in Headers */,
 				8F707B741EA6C59100DEC600 /* DebuggingDisplay.h in Headers */,
 				8F707BB41EA6C78400DEC600 /* PredefinedCBLayout.h in Headers */,
@@ -396,7 +389,6 @@
 				8F707BB31EA6C78400DEC600 /* PredefinedCBLayout.cpp in Sources */,
 				8F707B991EA6C74C00DEC600 /* Format.cpp in Sources */,
 				8F707C811EA6D25700DEC600 /* MeshDatabase.cpp in Sources */,
-				8F707C641EA6D24200DEC600 /* StraightSkeleton.cpp in Sources */,
 				8F707B731EA6C59100DEC600 /* DebuggingDisplay.cpp in Sources */,
 				8F707B871EA6C5D500DEC600 /* GenericQuadTree.cpp in Sources */,
 				8F707B761EA6C59100DEC600 /* IOverlayContext.cpp in Sources */,

@@ -26,8 +26,8 @@
 namespace XLEMath
 {
 	T1(Primitive) static constexpr Primitive GetEpsilon();
-	template<> static constexpr float GetEpsilon<float>() { return 1e-4f; }
-	template<> static constexpr double GetEpsilon<double>() { return 1e-8; }
+	template<> constexpr float GetEpsilon<float>() { return 1e-4f; }
+	template<> constexpr double GetEpsilon<double>() { return 1e-8; }
 	static const unsigned BoundaryVertexFlag = 1u<<31u;
 
 	template<> inline const Vector2T<int64_t>& Zero<Vector2T<int64_t>>()
@@ -41,6 +41,14 @@ namespace XLEMath
         static Vector3T<int64_t> result(0ll, 0ll, 0ll);
         return result;
     }
+
+    T1(T) auto IsFiniteNumber(T value) -> typename std::enable_if<std::is_floating_point<T>::value, bool>::type
+    {
+        auto type = std::fpclassify(value);
+        return ((type == FP_NORMAL) || (type == FP_SUBNORMAL) || (type == FP_ZERO)) && (value == value);
+    }
+
+    T1(T) auto IsFiniteNumber(T) -> typename std::enable_if<!std::is_floating_point<T>::value, bool>::type { return true; }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -183,7 +191,7 @@ namespace XLEMath
 		// For some primitive types we should promote to higher precision
 		//			types here (eg, we will get int32_t overflows if we don't promote here)
 
-		using WorkingPrim = PromoteIntegral<Primitive>::Value;
+		using WorkingPrim = typename PromoteIntegral<Primitive>::Value;
 		auto Ax = (WorkingPrim)zero.first[0], Ay = (WorkingPrim)zero.first[1];
 		auto Bx = (WorkingPrim)zero.second[0], By = (WorkingPrim)zero.second[1];
 		auto Cx = (WorkingPrim)one.first[0], Cy = (WorkingPrim)one.first[1];
@@ -280,14 +288,6 @@ namespace XLEMath
 		unsigned _tail;		// (this is the fixed vertex)
 		unsigned _leftFace, _rightFace;
 	};
-
-	T1(T) auto IsFiniteNumber(T value) -> typename std::enable_if<std::is_floating_point<T>::value, bool>::type
-	{
-		auto type = std::fpclassify(value);
-		return ((type == FP_NORMAL) || (type == FP_SUBNORMAL) || (type == FP_ZERO)) && (value == value);
-	}
-
-	T1(T) auto IsFiniteNumber(T) -> typename std::enable_if<!std::is_floating_point<T>::value, bool>::type { return true; }
 
 	T1(Primitive) auto PositionAtTime(const Vertex<Primitive>& v, Primitive time)
 		-> typename std::enable_if<!std::is_integral<Primitive>::value, Vector2T<Primitive>>::type
@@ -918,7 +918,27 @@ namespace XLEMath
 			|| (Equivalent(p0, p2, GetEpsilon<Primitive>()) || Equivalent(p1, p2, GetEpsilon<Primitive>()));
 	}
 
-	T1(Primitive) struct CrashEvent
+    static auto FindInAndOut(IteratorRange<WavefrontEdge*> edges, unsigned pivotVertex) -> std::pair<WavefrontEdge*, WavefrontEdge*>
+    {
+        std::pair<WavefrontEdge*, WavefrontEdge*> result(nullptr, nullptr);
+        for  (auto&s:edges) {
+            if (s._head == pivotVertex) { assert(!result.first); result.first = &s; }
+            else if (s._tail == pivotVertex) { assert(!result.second); result.second = &s; }
+        }
+        return result;
+    }
+
+    static auto FindInAndOut(IteratorRange<const WavefrontEdge*> edges, unsigned pivotVertex) -> std::pair<const WavefrontEdge*, const WavefrontEdge*>
+    {
+        std::pair<const WavefrontEdge*, const WavefrontEdge*> result(nullptr, nullptr);
+        for  (auto&s:edges) {
+            if (s._head == pivotVertex) { assert(!result.first); result.first = &s; }
+            else if (s._tail == pivotVertex) { assert(!result.second); result.second = &s; }
+        }
+        return result;
+    }
+    
+    T1(Primitive) struct CrashEvent
 	{
 		Vector2T<Primitive> _crashPt;
 		Primitive _time;
@@ -1193,7 +1213,7 @@ namespace XLEMath
 		// The first and last vertices should *not* be the same vertex; there is an implied
 		// segment between the first and last.
 		Graph<Primitive> result;
-		Graph<Primitive>::WavefrontLoop loop;
+		typename Graph<Primitive>::WavefrontLoop loop;
 		loop._edges.reserve(vertices.size());
 		result._vertices.reserve(vertices.size());
 		for (size_t v=0; v<vertices.size(); ++v) {
@@ -1235,26 +1255,6 @@ namespace XLEMath
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	static auto FindInAndOut(IteratorRange<WavefrontEdge*> edges, unsigned pivotVertex) -> std::pair<WavefrontEdge*, WavefrontEdge*>
-	{
-		std::pair<WavefrontEdge*, WavefrontEdge*> result(nullptr, nullptr);
-		for  (auto&s:edges) {
-			if (s._head == pivotVertex) { assert(!result.first); result.first = &s; } 
-			else if (s._tail == pivotVertex) { assert(!result.second); result.second = &s; }
-		}
-		return result;
-	}
-
-	static auto FindInAndOut(IteratorRange<const WavefrontEdge*> edges, unsigned pivotVertex) -> std::pair<const WavefrontEdge*, const WavefrontEdge*>
-	{
-		std::pair<const WavefrontEdge*, const WavefrontEdge*> result(nullptr, nullptr);
-		for  (auto&s:edges) {
-			if (s._head == pivotVertex) { assert(!result.first); result.first = &s; } 
-			else if (s._tail == pivotVertex) { assert(!result.second); result.second = &s; }
-		}
-		return result;
-	}
 
 	static void ReplaceVertex(IteratorRange<WavefrontEdge*> segs, unsigned oldVertex, unsigned newVertex)
 	{
@@ -1324,7 +1324,7 @@ namespace XLEMath
 			//  -- but we don't know which one. We have to find it; both the crash
 			// segment and the motorcycle should be part of the same loop
 			MotorcycleSegment* motor = nullptr;
-			std::vector<WavefrontLoop>::iterator loop;
+			typename std::vector<WavefrontLoop>::iterator loop;
 			for (loop=workingLoops.begin(); loop!=workingLoops.end(); ++loop) {
 				auto i = std::find_if(loop->_motorcycleSegments.begin(), loop->_motorcycleSegments.end(),
 					[motorHead](const MotorcycleSegment& seg){ return seg._head == motorHead; });
