@@ -1086,7 +1086,6 @@ namespace XLEMath
 			//		-- either a edge collapse or a motorcycle collision
 			bestCollapse.clear();
 			auto bestCollapseTime = FindCollapses(bestCollapse, loop);
-			assert(!bestCollapse.empty());
 
 			// Also check for motorcycles colliding.
 			//		These can collide with segments in the _wavefrontEdges list, or 
@@ -1094,11 +1093,17 @@ namespace XLEMath
 			bestMotorcycleCrash.clear();
 			auto bestMotorcycleCrashTime = FindMotorcycleCrashes(bestMotorcycleCrash, loop, bestCollapseTime);
 
+            // If we do not find any more events, the remaining wavefronts will expand infinitely
+            // This case isn't perfectly handled currently, we'll just complete the loop here.
+            if (bestCollapse.empty() && bestMotorcycleCrash.empty()) {
+                completedLoops.emplace_back(std::move(loop));
+				_loops.erase(_loops.begin());
+                continue;
+            }
+
 			auto nextEvent = (!bestMotorcycleCrash.empty()) ? bestMotorcycleCrashTime : bestCollapseTime;
-			// bestCollapse should never be empty -- but added check for safety, to ensure that
-			// at least one event occurs each iteration of the loop
-			if (nextEvent > maxTime || bestCollapse.empty()) {
-				if (!bestCollapse.empty()) loop._lastEventTime = maxTime;
+			if (nextEvent >= maxTime) {
+				loop._lastEventTime = maxTime;
 				completedLoops.emplace_back(std::move(loop));
 				_loops.erase(_loops.begin());
 				continue;
