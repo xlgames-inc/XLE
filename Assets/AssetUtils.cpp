@@ -8,7 +8,7 @@
 #include "CompilerLibrary.h"
 #include "DepVal.h"
 #include "IFileSystem.h"
-#if defined(XLE_HAS_CONSOLE_RIG)
+#if defined(HAS_XLE_CONSOLE_RIG)
     #include "../ConsoleRig/Log.h"
 #endif
 #include "../Utility/StringUtils.h"
@@ -449,7 +449,7 @@ namespace Assets
 
         bool InvalidAsset::CustomReport() const
         {
-            #if defined(XLE_HAS_CONSOLE_RIG)
+            #if defined(HAS_XLE_CONSOLE_RIG)
                 LogAlwaysError << "Invalid asset (" << Initializer() << "):" << what();
             #endif
             return true;

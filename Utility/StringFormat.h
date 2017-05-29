@@ -119,40 +119,36 @@ namespace Utility
         StringMeld& operator=(const StringMeld&);
     };
 
-    namespace Operators
-    {
-        template<typename Type, int Count, typename CharType> 
-            const StringMeld<Count, CharType>& operator<<(const StringMeld<Count, CharType>& meld, const Type& type)
-            {
-                meld._stream << type;
-                return meld;
-            }
+    template<typename Type, int Count, typename CharType>
+        const StringMeld<Count, CharType>& operator<<(const StringMeld<Count, CharType>& meld, const Type& type)
+        {
+            meld._stream << type;
+            return meld;
+        }
 
-		template<int Count, typename CharType>
-			const StringMeld<Count, CharType>& operator<<(const StringMeld<Count, CharType>& meld, const std::basic_string<CharType>& str)
-			{
-				// Awkward, but necessary hack!
-				// Visual Studio standard libraries only provide implementations of std::basic_ostream (etc) for
-				// built-in character types (eg, char, wchar_t). It seems that even char16_t and char32_t run into problems.
-				// Furthermore, when using DLL linking of the CRT, we can't even provide our own implementation of the
-				// missing parts (due to dll linking declarations within the template classes).
-				// We can use custom std::basic_ostream for some things (like piping in a string), but more complex operations
-				// tend to introduce problems.
-				// However, we can seek to get around this by using only the built-in char types (called the "demoted" char types)
-				// with the streams, and doing a rough cast of the inputs here.
-				meld._stream << *reinterpret_cast<const std::basic_string<typename Internal::DemoteCharType<CharType>::Value>*>(&str);
-				return meld;
-			}
+    template<int Count, typename CharType>
+        const StringMeld<Count, CharType>& operator<<(const StringMeld<Count, CharType>& meld, const std::basic_string<CharType>& str)
+        {
+            // Awkward, but necessary hack!
+            // Visual Studio standard libraries only provide implementations of std::basic_ostream (etc) for
+            // built-in character types (eg, char, wchar_t). It seems that even char16_t and char32_t run into problems.
+            // Furthermore, when using DLL linking of the CRT, we can't even provide our own implementation of the
+            // missing parts (due to dll linking declarations within the template classes).
+            // We can use custom std::basic_ostream for some things (like piping in a string), but more complex operations
+            // tend to introduce problems.
+            // However, we can seek to get around this by using only the built-in char types (called the "demoted" char types)
+            // with the streams, and doing a rough cast of the inputs here.
+            meld._stream << *reinterpret_cast<const std::basic_string<typename Internal::DemoteCharType<CharType>::Value>*>(&str);
+            return meld;
+        }
 
-		template<int Count, typename CharType>
-			const StringMeld<Count, CharType>& operator<<(const StringMeld<Count, CharType>& meld, StringSection<CharType> section)
-			{
-				using Demoted = typename Internal::DemoteCharType<CharType>::Value;
-				meld._stream.write((const Demoted*)section.begin(), section.size());
-				return meld;
-			}
-    }
-    using namespace Operators;
+    template<int Count, typename CharType>
+        const StringMeld<Count, CharType>& operator<<(const StringMeld<Count, CharType>& meld, StringSection<CharType> section)
+        {
+            using Demoted = typename Internal::DemoteCharType<CharType>::Value;
+            meld._stream.write((const Demoted*)section.begin(), section.size());
+            return meld;
+        }
 
     namespace Internal
     {

@@ -44,6 +44,38 @@ namespace Utility
         {
             EnqueueInternal(std::bind(std::forward<Fn>(fn), std::forward<Args>(args)...));
         }
+
+    class ThreadPool
+    {
+    public:
+        template<class Fn, class... Args>
+            void Enqueue(Fn&& fn, Args&&... args);
+
+        ThreadPool(unsigned threadCount);
+        ~ThreadPool();
+
+        ThreadPool(const ThreadPool&) = delete;
+        ThreadPool& operator=(const ThreadPool&) = delete;
+        ThreadPool(ThreadPool&&) = delete;
+        ThreadPool& operator=(ThreadPool&&) = delete;
+    private:
+        std::vector<std::thread> _workerThreads;
+
+        Threading::Conditional _pendingTaskVariable;
+        Threading::Mutex _pendingTaskLock;
+        typedef std::function<void()> PendingTask;
+        LockFree::FixedSizeQueue<PendingTask, 256> _pendingTasks;
+
+        volatile bool _workerQuit;
+
+        void EnqueueInternal(PendingTask&& task);
+    };
+
+    template<class Fn, class... Args>
+        void ThreadPool::Enqueue(Fn&& fn, Args&&... args)
+        {
+            EnqueueInternal(std::bind(std::forward<Fn>(fn), std::forward<Args>(args)...));
+        }
 }
 
 using namespace Utility;

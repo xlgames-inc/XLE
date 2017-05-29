@@ -470,6 +470,7 @@ namespace Utility
         void ClassAccessors::Add(
             const utf8 name[],
             GetFn&& getter, SetFn&& setter,
+            const ImpliedTyping::TypeDesc& naturalType,
             size_t fixedArrayLength)
         {
             auto g = MakeFunction(std::move(getter));
@@ -482,6 +483,7 @@ namespace Utility
 
             auto& p = PropertyForId(id);
             p._name = name;
+            p._naturalType = naturalType;
             p._fixedArrayLength = fixedArrayLength;
 
                 // Generate casting functions

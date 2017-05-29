@@ -13,7 +13,7 @@
 
 // Currently we have a problem including <thread> into C++/CLR files
 // This makes it difficult to use the standard library functions for things like CurrentThreadId()
-#if defined(USE_STANDARD_THREAD_UTILS)
+#if THREAD_LIBRARY == THREAD_LIBRARY_STDCPP
 	#include <thread>
 #endif
 
@@ -269,58 +269,54 @@ namespace Utility
 
 using namespace Utility;
 
+#if THREAD_LIBRARY != THREAD_LIBRARY_STDCPP
 
+        /////////////////////////////////////////////////////////////////////////////
+                    //// Win32/64 API ////
+    #if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
 
-    /////////////////////////////////////////////////////////////////////////////
-                //// Win32/64 API ////
-#if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
+        #if !defined(WINAPI)
+            #define WINAPI      __stdcall
+        #endif
+        #if !defined(WINBASEAPI)
+            #define DECLSPEC_IMPORT __declspec(dllimport)
+            #define WINBASEAPI DECLSPEC_IMPORT
+        #endif
+        extern "C" WINBASEAPI int WINAPI   SwitchToThread();
+        extern "C" WINBASEAPI void WINAPI  Sleep(unsigned long milliseconds);
+        extern "C" WINBASEAPI unsigned long WINAPI GetCurrentThreadId();
+        extern "C" void         _mm_pause(void);
+        #pragma intrinsic(_mm_pause)
 
-    #if !defined(WINAPI)
-        #define WINAPI      __stdcall
+        namespace Utility { namespace Threading {
+
+            inline void YieldTimeSlice()            { SwitchToThread(); }
+            inline void Sleep(uint32 milliseconds)	{ ::Sleep(milliseconds); }
+            using ThreadId = unsigned;
+            inline unsigned CurrentThreadId()		{ return ::GetCurrentThreadId(); }
+            inline void Pause() { _mm_pause(); }
+        }}
+
+    #else
+
+                //// Other / unsupported ////
+        namespace Utility { namespace Threading {
+            inline void YieldTimeSlice()            {}
+            inline void Pause()                     {}
+            inline void Sleep(uint32 milliseconds)  {}
+            inline unsigned CurrentThreadId()       { return 0; }
+        }}
+
     #endif
-    #if !defined(WINBASEAPI)
-        #define DECLSPEC_IMPORT __declspec(dllimport)
-        #define WINBASEAPI DECLSPEC_IMPORT
-    #endif
-    extern "C" WINBASEAPI int WINAPI   SwitchToThread();
-    extern "C" WINBASEAPI void WINAPI  Sleep(unsigned long milliseconds);
-    extern "C" WINBASEAPI unsigned long WINAPI GetCurrentThreadId();
-    extern "C" void         _mm_pause(void);
-    #pragma intrinsic(_mm_pause)
-
-    namespace Utility { namespace Threading {
-
-		#if !defined(USE_STANDARD_THREAD_UTILS)
-			inline void YieldTimeSlice()            { SwitchToThread(); }
-			inline void Sleep(uint32 milliseconds)	{ ::Sleep(milliseconds); }
-			using ThreadId = unsigned;
-			inline unsigned CurrentThreadId()		{ return ::GetCurrentThreadId(); }
-		#else
-			inline void YieldTimeSlice()			{ std::this_thread::yield(); }
-			inline void Sleep(uint32 milliseconds)	{ std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds)); }
-			using ThreadId = std::thread::id;
-			inline ThreadId CurrentThreadId()		{ return std::this_thread::get_id(); }
-		#endif
-        
-		inline void Pause() { _mm_pause(); }
-    }}
 
 #else
 
-    #include <thread>
-
-            //// Other / unsupported ////
     namespace Utility { namespace Threading {
         inline void YieldTimeSlice()			{ std::this_thread::yield(); }
         inline void Sleep(uint32 milliseconds)	{ std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds)); }
         using ThreadId = std::thread::id;
         inline ThreadId CurrentThreadId()		{ return std::this_thread::get_id(); }
-
-        #if (COMPILER_ACTIVE == COMPILER_TYPE_GCC) || (COMPILER_ACTIVE == COMPILER_TYPE_CLANG)
-            inline void Pause() { __builtin_ia32_pause(); }
-        #else
-            inline void Pause() { assert(0); }
-        #endif
+        inline void Pause()                     { std::this_thread::yield(); }
     }}
 
 #endif

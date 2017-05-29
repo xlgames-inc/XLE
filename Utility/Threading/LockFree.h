@@ -127,13 +127,13 @@ namespace LockFree
         {
                 //  In a tight loop, use Interlocked::CompareExchangePointer to do a 
                 //  interlocked add
-            void* originalPushAllocatePtr = Interlocked::LoadPointer(&_pushAllocatePtr), *newPushAllocatePtr;
+            Type* originalPushAllocatePtr = Interlocked::LoadPointer(&_pushAllocatePtr), *newPushAllocatePtr;
             for (;;) {
-                void* comparisonValue = originalPushAllocatePtr;
-                void* popPtr = _popPtr;
+                auto* comparisonValue = originalPushAllocatePtr;
+                auto* popPtr = _popPtr;
                 newPushAllocatePtr = PtrAdd(comparisonValue, sizeof(Type));
-                if (newPushAllocatePtr >= PtrAdd(_buffer, sizeof(Type)*Count)) {
-                    newPushAllocatePtr = _buffer; // wrap around. _pushPtr should always point to a valid position
+                if (newPushAllocatePtr >= PtrAdd((Type*)_buffer, sizeof(Type)*Count)) {
+                    newPushAllocatePtr = (Type*)_buffer; // wrap around. _pushPtr should always point to a valid position
                 }
 
                     //  This comparison is safe, because popPtr only moves in one direction (so we 
@@ -158,7 +158,7 @@ namespace LockFree
                 //          we increase _pushPtr in the same order than we increased _pushAllocatePtr). But that
                 //          means we may need to stall this thread waiting for another thread to increase _pushPtr
             for (;;) {
-                void* originPushPtr = Interlocked::CompareExchangePointer(&_pushPtr, newPushAllocatePtr, originalPushAllocatePtr);
+                auto* originPushPtr = Interlocked::CompareExchangePointer(&_pushPtr, newPushAllocatePtr, originalPushAllocatePtr);
                 if (originPushPtr == originalPushAllocatePtr) {
                     break;
                 }

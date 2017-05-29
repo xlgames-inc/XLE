@@ -17,7 +17,7 @@ namespace Utility
 {
     namespace ImpliedTyping
     {
-        enum class TypeCat : uint8 { Void, Bool, Int8, UInt8, Int16, UInt16, Int32, UInt32, Float };
+        enum class TypeCat : uint8 { Void, Bool, Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64, Float, Double };
         enum class TypeHint : uint8 { None, Vector, Matrix, Color, String };
         class TypeDesc
         {
@@ -172,6 +172,8 @@ namespace Utility
 
             const void*         ValueTableEnd() const;
 
+            std::string         ValueAsString(bool strongTyping = false) const;
+
             void operator++();
 
         private:
@@ -305,6 +307,12 @@ namespace Utility
     inline auto   ParameterBox::Iterator::HashName() const -> ParameterNameHash
     {
         return _box->_hashNames[_index];
+    }
+
+    inline std::string   ParameterBox::Iterator::ValueAsString(bool strongTyping) const
+    {
+        const auto* value = RawValue();
+        return ImpliedTyping::AsString(value, ptrdiff_t(ValueTableEnd()) - ptrdiff_t(RawValue()), Type(), strongTyping);
     }
 
     inline void ParameterBox::Iterator::operator++()

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "Math/Vector.h"
-#include "Math/Matrix.h"
-#include "Assets/AssetsCore.h"
-#include "Utility/PtrUtils.h"
-#include "Utility/StringUtils.h"
-#include "Utility/MemoryUtils.h"
-#include "Core/Types.h"
+#include "../Math/Vector.h"
+#include "../Math/Matrix.h"
+#include "../Assets/AssetsCore.h"
+#include "../Utility/PtrUtils.h"
+#include "../Utility/StringUtils.h"
+#include "../Utility/MemoryUtils.h"
+#include "../Core/Types.h"
 #include <utility>
 #include <memory>
 

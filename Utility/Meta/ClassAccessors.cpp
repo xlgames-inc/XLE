@@ -76,8 +76,18 @@ namespace Utility
             // note -- array form not supported
         }
 
-        return true;
+        return false;
     }
+
+    bool ClassAccessors::TryGetNaturalType(ImpliedTyping::TypeDesc& result, uint64 id) const
+    {
+        auto i = LowerBound(_properties, id);
+        if (i!=_properties.end() && i->first == id) {
+            result = i->second._naturalType;
+            return true;
+        }
+		return false;
+	}
 
     std::pair<void*, const ClassAccessors*> ClassAccessors::TryCreateChild(
         void* dst, uint64 childListId) const

@@ -150,7 +150,7 @@ namespace SceneEngine
             assert(xmax - xmin >= 1);
             float fractLeft = std::ceil(min[d]) - min[d];
             float fractRight = max[d] - std::floor(max[d]);
-            assert(fractLeft > 0.f && fractLeft < 1.f && fractRight > 0.f && fractRight < 1.f);
+            assert(fractLeft >= 0.f && fractLeft <= 1.f && fractRight >= 0.f && fractRight <= 1.f);
 
             switch (xmax - xmin) {
             case 1:

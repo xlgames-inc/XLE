@@ -90,6 +90,7 @@ namespace Utility
             CastFromArrayFn             _castFromArray;
             CastToFn                    _castTo;
             CastToArrayFn               _castToArray;
+            ImpliedTyping::TypeDesc     _naturalType;
             size_t                      _fixedArrayLength;
         };
 
@@ -138,9 +139,11 @@ namespace Utility
             void* dst, uint64 id, size_t arrayIndex,
             const void* src, ImpliedTyping::TypeDesc srcType,
             bool stringForm = false) const;
+
+        bool TryGetNaturalType(ImpliedTyping::TypeDesc& result, uint64 id) const;
         
         template<typename Type>
-            bool TryOpaqueSet(
+            bool TrySet(
                 Type& dst, uint64 id,
                 const void* src, ImpliedTyping::TypeDesc srcType,
                 bool stringForm = false) const;
@@ -160,7 +163,7 @@ namespace Utility
                 ////   I N I T I A L I Z A T I O N   I N T E R F A C E   ////
 
         template<typename GetFn, typename SetFn>
-            void Add(const utf8 name[], GetFn&& getter, SetFn&& setter, size_t fixedArrayLength = 1);
+            void Add(const utf8 name[], GetFn&& getter, SetFn&& setter, const ImpliedTyping::TypeDesc& naturalType = ImpliedTyping::TypeCat::Void, size_t fixedArrayLength = 1);
 
         template<typename ChildType, typename CreateFn, typename GetCountFn, typename GetByIndexFn, typename GetByKeyFn>
             void AddChildList(const utf8 name[], CreateFn&&, GetCountFn&&, GetByIndexFn&&, GetByKeyFn&&);
@@ -185,7 +188,7 @@ namespace Utility
 
 
     template<typename Type>
-        bool ClassAccessors::TryOpaqueSet(
+        bool ClassAccessors::TrySet(
             Type& dst,
             uint64 id, const void* src,
             ImpliedTyping::TypeDesc srcType, bool stringForm) const

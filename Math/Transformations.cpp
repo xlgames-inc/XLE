@@ -840,6 +840,17 @@ namespace XLEMath
         return result;
     }
 
+    Float4x4    AsFloat4x4(const UniformScaleYRotTranslation& input)
+    {
+        float sinTheta, cosTheta;
+        std::tie(sinTheta, cosTheta) = XlSinCos(input._yRotation);
+        return MakeFloat4x4(
+            input._scale * cosTheta, 0.0f, input._scale * sinTheta, input._translation[0],
+            0.0f, input._scale, 0.0f, input._translation[1],
+            input._scale * -sinTheta, 0.0f, input._scale * cosTheta, input._translation[2],
+            0.0f, 0.0f, 0.0f, 1.0f);
+    }
+
     template<> Float4x4   AsFloat4x4(const ScaleRotationTranslationQ& input)
     {
             //

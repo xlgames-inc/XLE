@@ -109,9 +109,16 @@ namespace XLEMath
     class ScaleTranslation
     {
     public:
-        Float3  _scale;
-        Float3  _translation;
-        ScaleTranslation(const Float3& scale, const Float3& translation) : _scale(scale), _translation(translation) {}
+        Float3  _scale = Float3(1.f, 1.f, 1.0f);
+        Float3  _translation = Float3(0.f, 0.f, 0.f);
+    };
+
+    class UniformScaleYRotTranslation
+    {
+    public:
+        float _scale = 1.0f;
+        float _yRotation = 0.f;
+        Float3 _translation = Float3(0.f, 0.f, 0.f);
     };
         
         //
@@ -234,6 +241,7 @@ namespace XLEMath
     Float4x4    AsFloat4x4(const RotationZ& input);
     Float4x4    AsFloat4x4(const ArbitraryRotation& input);
     Float4x4    AsFloat4x4(const ArbitraryScale& input);
+    Float4x4    AsFloat4x4(const UniformScaleYRotTranslation& input);
 
     Float4x4    AsFloat4x4(const Float3& translation);
     Float3x4    AsFloat3x4(const Float3& translation);

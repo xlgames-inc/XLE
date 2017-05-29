@@ -100,5 +100,69 @@ namespace Utility
         XlCloseSyncObject(_events[0]);
         XlCloseSyncObject(_events[1]);
     }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ThreadPool::EnqueueInternal(PendingTask&& task)
+    {
+        _pendingTasks.push_overflow(std::forward<PendingTask>(task));
+        _pendingTaskVariable.notify_one();
+    }
+
+    ThreadPool::ThreadPool(unsigned threadCount)
+    {
+        _workerQuit = false;
+
+        for (unsigned i = 0; i<threadCount; ++i)
+            _workerThreads.emplace_back(
+                [this]
+                {
+                    for (;;) {
+                        std::function<void()> task;
+
+                        {
+                                // note that _pendingTasks is safe for multiple pushing threads,
+                                // but not safe for multiple popping threads. So we have to
+                                // lock to prevent more than one thread from attempt to pop
+                                // from it at the same time.
+                            std::unique_lock<decltype(this->_pendingTaskLock)> autoLock(this->_pendingTaskLock);
+                            if (this->_workerQuit) break;
+
+                            std::function<void()>*t = nullptr;
+                            if (!_pendingTasks.try_front(t)) {
+                                this->_pendingTaskVariable.wait(autoLock);
+                                if (this->_workerQuit) break;
+                                if (!_pendingTasks.try_front(t))
+                                    continue;
+                            }
+
+                            task = std::move(*t);
+                            _pendingTasks.pop();
+                        }
+
+                        TRY
+                        {
+                            task();
+                        } CATCH(const std::exception& e) {
+                            #if defined(HAS_XLE_CONSOLE_RIG)
+                                LogAlwaysError << "Suppressing exception in thread pool thread: " << e.what();
+                            #endif
+                            (void)e;
+                        } CATCH(...) {
+                            #if defined(HAS_XLE_CONSOLE_RIG)
+                                LogAlwaysError << "Suppressing unknown exception in thread pool thread.";
+                            #endif
+                        } CATCH_END
+                    }
+                }
+            );
+    }
+
+    ThreadPool::~ThreadPool()
+    {
+        _workerQuit = true;
+        _pendingTaskVariable.notify_all();
+        for (auto&t : _workerThreads) t.join();
+    }
 }
 

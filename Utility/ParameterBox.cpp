@@ -43,7 +43,12 @@ namespace Utility
 
             case TypeCat::Int32:
             case TypeCat::UInt32:
-            case TypeCat::Float: return sizeof(unsigned)*unsigned(_arrayCount);
+            case TypeCat::Float: return sizeof(uint32)*unsigned(_arrayCount);
+
+            case TypeCat::Int64:
+            case TypeCat::UInt64:
+            case TypeCat::Double: return sizeof(uint64)*unsigned(_arrayCount);
+
             case TypeCat::Void:
             default: return 0;
             }
@@ -62,6 +67,8 @@ namespace Utility
         , _arrayCount(arrayCount)
         {}
 
+        template<> TypeDesc TypeOf<uint64>()        { return TypeDesc(TypeCat::UInt64); }
+        template<> TypeDesc TypeOf<int64>()         { return TypeDesc(TypeCat::Int64); }
         template<> TypeDesc TypeOf<uint32>()        { return TypeDesc(TypeCat::UInt32); }
         template<> TypeDesc TypeOf<int32>()         { return TypeDesc(TypeCat::Int32); }
         template<> TypeDesc TypeOf<uint16>()        { return TypeDesc(TypeCat::UInt16); }
@@ -70,6 +77,7 @@ namespace Utility
         template<> TypeDesc TypeOf<int8>()          { return TypeDesc(TypeCat::Int8); }
         template<> TypeDesc TypeOf<bool>()          { return TypeDesc(TypeCat::Bool); }
         template<> TypeDesc TypeOf<float>()         { return TypeDesc(TypeCat::Float); }
+        template<> TypeDesc TypeOf<double>()        { return TypeDesc(TypeCat::Double); }
         template<> TypeDesc TypeOf<void>()          { return TypeDesc(TypeCat::Void); }
         #if defined(HAS_XLE_MATH)
             template<> TypeDesc TypeOf<Float2>()        { return TypeDesc(TypeCat::Float, 2, TypeHint::Vector); }
@@ -115,7 +123,10 @@ namespace Utility
                         case TypeCat::UInt16: *(bool*)dest = !!*(uint16*)src; return true;
                         case TypeCat::Int32: *(bool*)dest = !!*(int32*)src; return true;
                         case TypeCat::UInt32: *(bool*)dest = !!*(uint32*)src; return true;
+                        case TypeCat::Int64: *(bool*)dest = !!*(int64*)src; return true;
+                        case TypeCat::UInt64: *(bool*)dest = !!*(uint64*)src; return true;
                         case TypeCat::Float: *(bool*)dest = !!*(float*)src; return true;
+                        case TypeCat::Double: *(bool*)dest = !!*(double*)src; return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -131,7 +142,10 @@ namespace Utility
                         case TypeCat::UInt16: *(int8*)dest = int8(*(uint16*)src); return true;
                         case TypeCat::Int32: *(int8*)dest = int8(*(int32*)src); return true;
                         case TypeCat::UInt32: *(int8*)dest = int8(*(uint32*)src); return true;
+                        case TypeCat::Int64: *(int8*)dest = int8(*(int64*)src); return true;
+                        case TypeCat::UInt64: *(int8*)dest = int8(*(uint64*)src); return true;
                         case TypeCat::Float: *(int8*)dest = int8(*(float*)src); return true;
+                        case TypeCat::Double: *(int8*)dest = int8(*(double*)src); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -147,7 +161,10 @@ namespace Utility
                         case TypeCat::UInt16: *(uint8*)dest = uint8(*(uint16*)src); return true;
                         case TypeCat::Int32: *(uint8*)dest = uint8(*(int32*)src); return true;
                         case TypeCat::UInt32: *(uint8*)dest = uint8(*(uint32*)src); return true;
+                        case TypeCat::Int64: *(uint8*)dest = uint8(*(int64*)src); return true;
+                        case TypeCat::UInt64: *(uint8*)dest = uint8(*(uint64*)src); return true;
                         case TypeCat::Float: *(uint8*)dest = uint8(*(float*)src); return true;
+                        case TypeCat::Double: *(uint8*)dest = uint8(*(double*)src); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -163,7 +180,10 @@ namespace Utility
                         case TypeCat::UInt16: *(int16*)dest = int16(*(uint16*)src); return true;
                         case TypeCat::Int32: *(int16*)dest = int16(*(int32*)src); return true;
                         case TypeCat::UInt32: *(int16*)dest = int16(*(uint32*)src); return true;
+                        case TypeCat::Int64: *(int16*)dest = int16(*(int64*)src); return true;
+                        case TypeCat::UInt64: *(int16*)dest = int16(*(uint64*)src); return true;
                         case TypeCat::Float: *(int16*)dest = int16(*(float*)src); return true;
+                        case TypeCat::Double: *(int16*)dest = int16(*(double*)src); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -179,7 +199,10 @@ namespace Utility
                         case TypeCat::UInt16: *(uint16*)dest = uint16(*(uint16*)src); return true;
                         case TypeCat::Int32: *(uint16*)dest = uint16(*(int32*)src); return true;
                         case TypeCat::UInt32: *(uint16*)dest = uint16(*(uint32*)src); return true;
+                        case TypeCat::Int64: *(uint16*)dest = uint16(*(int64*)src); return true;
+                        case TypeCat::UInt64: *(uint16*)dest = uint16(*(uint64*)src); return true;
                         case TypeCat::Float: *(uint16*)dest = uint16(*(float*)src); return true;
+                        case TypeCat::Double: *(uint16*)dest = uint16(*(double*)src); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -195,7 +218,10 @@ namespace Utility
                         case TypeCat::UInt16: *(int32*)dest = int32(*(uint16*)src); return true;
                         case TypeCat::Int32: *(int32*)dest = *(int32*)src; return true;
                         case TypeCat::UInt32: *(int32*)dest = int32(*(uint32*)src); return true;
+                        case TypeCat::Int64: *(int32*)dest = int32(*(int64*)src); return true;
+                        case TypeCat::UInt64: *(int32*)dest = int32(*(uint64*)src); return true;
                         case TypeCat::Float: *(int32*)dest = int32(*(float*)src); return true;
+                        case TypeCat::Double: *(int32*)dest = int32(*(double*)src); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -211,7 +237,48 @@ namespace Utility
                         case TypeCat::UInt16: *(uint32*)dest = uint32(*(uint16*)src); return true;
                         case TypeCat::Int32: *(uint32*)dest = uint32(*(int32*)src); return true;
                         case TypeCat::UInt32: *(uint32*)dest = *(uint32*)src; return true;
+                        case TypeCat::Int64: *(uint32*)dest = uint32(*(int64*)src); return true;
+                        case TypeCat::UInt64: *(uint32*)dest = uint32(*(uint64*)src); return true;
                         case TypeCat::Float: *(uint32*)dest = uint32(*(float*)src); return true;
+                        case TypeCat::Double: *(uint32*)dest = uint32(*(double*)src); return true;
+                        case TypeCat::Void: break;
+                        }
+                    }
+                    break;
+
+                case TypeCat::Int64:
+                    {
+                        switch (srcType._type) {
+                        case TypeCat::Bool: *(int64*)dest = int64(*(bool*)src); return true;
+                        case TypeCat::Int8: *(int64*)dest = int64(*(int8*)src); return true;
+                        case TypeCat::UInt8: *(int64*)dest = int64(*(uint8*)src); return true;
+                        case TypeCat::Int16: *(int64*)dest = int64(*(int16*)src); return true;
+                        case TypeCat::UInt16: *(int64*)dest = int64(*(uint16*)src); return true;
+                        case TypeCat::Int32: *(int64*)dest = int64(*(int32*)src); return true;
+                        case TypeCat::UInt32: *(int64*)dest = int64(*(uint32*)src); return true;
+                        case TypeCat::Int64: *(int64*)dest = int64(*(int64*)src); return true;
+                        case TypeCat::UInt64: *(int64*)dest = int64(*(uint64*)src); return true;
+                        case TypeCat::Float: *(int64*)dest = int64(*(float*)src); return true;
+                        case TypeCat::Double: *(int64*)dest = int64(*(double*)src); return true;
+                        case TypeCat::Void: break;
+                        }
+                    }
+                    break;
+
+                case TypeCat::UInt64:
+                    {
+                        switch (srcType._type) {
+                        case TypeCat::Bool: *(uint64*)dest = uint64(*(bool*)src); return true;
+                        case TypeCat::Int8: *(uint64*)dest = uint64(*(int8*)src); return true;
+                        case TypeCat::UInt8: *(uint64*)dest = uint64(*(uint8*)src); return true;
+                        case TypeCat::Int16: *(uint64*)dest = uint64(*(int16*)src); return true;
+                        case TypeCat::UInt16: *(uint64*)dest = uint64(*(uint16*)src); return true;
+                        case TypeCat::Int32: *(uint64*)dest = uint64(*(int32*)src); return true;
+                        case TypeCat::UInt32: *(uint64*)dest = uint64(*(uint32*)src); return true;
+                        case TypeCat::Int64: *(uint64*)dest = uint64(*(int64*)src); return true;
+                        case TypeCat::UInt64: *(uint64*)dest = uint64(*(uint64*)src); return true;
+                        case TypeCat::Float: *(uint64*)dest = uint64(*(float*)src); return true;
+                        case TypeCat::Double: *(uint64*)dest = uint64(*(double*)src); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -227,7 +294,29 @@ namespace Utility
                         case TypeCat::UInt16: *(float*)dest = float(*(uint16*)src); return true;
                         case TypeCat::Int32: *(float*)dest = float(*(int32*)src); return true;
                         case TypeCat::UInt32: *(float*)dest = float(*(uint32*)src); return true;
-                        case TypeCat::Float: *(float*)dest = *(float*)src; return true;
+                        case TypeCat::Int64: *(float*)dest = float(*(int64*)src); return true;
+                        case TypeCat::UInt64: *(float*)dest = float(*(uint64*)src); return true;
+                        case TypeCat::Float: *(float*)dest = float(*(float*)src); return true;
+                        case TypeCat::Double: *(float*)dest = float(*(double*)src); return true;
+                        case TypeCat::Void: break;
+                        }
+                    }
+                    break;
+
+                case TypeCat::Double:
+                    {
+                        switch (srcType._type) {
+                        case TypeCat::Bool: *(double*)dest = double(*(bool*)src); return true;
+                        case TypeCat::Int8: *(double*)dest = double(*(int8*)src); return true;
+                        case TypeCat::UInt8: *(double*)dest = double(*(uint8*)src); return true;
+                        case TypeCat::Int16: *(double*)dest = double(*(int16*)src); return true;
+                        case TypeCat::UInt16: *(double*)dest = double(*(uint16*)src); return true;
+                        case TypeCat::Int32: *(double*)dest = double(*(int32*)src); return true;
+                        case TypeCat::UInt32: *(double*)dest = double(*(uint32*)src); return true;
+                        case TypeCat::Int64: *(double*)dest = double(*(int64*)src); return true;
+                        case TypeCat::UInt64: *(double*)dest = double(*(uint64*)src); return true;
+                        case TypeCat::Float: *(double*)dest = double(*(float*)src); return true;
+                        case TypeCat::Double: *(double*)dest = double(*(double*)src); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -304,73 +393,95 @@ namespace Utility
             std::match_results<const CharType*> cm; 
 
             static std::basic_regex<CharType> unsignedPattern(
-                (const CharType*)R"(^\+?(([\d]+)|(0x[\da-fA-F]+))(u|U|(u8)|(u16)|(u32)|(U8)|(U16)|(U32))?$)");
+                (const CharType*)R"(^\+?(([\d]+)|(0x[\da-fA-F]+))(u|U|(u8)|(u16)|(u32)|(u64)|(U8)|(U16)|(U32)|(U64))?$)");
             if (std::regex_match(expressionBegin, expressionEnd, unsignedPattern)) {
-                assert(destSize >= sizeof(unsigned));
-
                 unsigned precision = 32;
                 if (cm.size() >= 4 && cm[4].length() > 1)
                     precision = XlAtoUI32(&cm[2].str()[1]);
 
-                uint32 value;
+                uint64 value;
                 auto len = expressionEnd - expressionBegin;
                 if (len > 2 && (expressionBegin[0] == '0' && expressionBegin[1] == 'x')) {
                         // hex form
-                    value = XlAtoUI32(&expressionBegin[2], nullptr, 16);
+                    value = XlAtoUI64(&expressionBegin[2], nullptr, 16);
                 } else {
-                    value = XlAtoUI32(expressionBegin);
+                    value = XlAtoUI64(expressionBegin);
                 }
 
                 if (precision == 8) {
+                    assert(destSize >= sizeof(uint8));
                     *(uint8*)dest = (uint8)value;
                     return TypeDesc(TypeCat::UInt8);
                 } else if (precision == 16) {
+                    assert(destSize >= sizeof(uint16));
                     *(uint16*)dest = (uint16)value;
                     return TypeDesc(TypeCat::UInt16);
                 } else if (precision == 32) {
+                    assert(destSize >= sizeof(uint32));
                     *(uint32*)dest = (uint32)value;
                     return TypeDesc(TypeCat::UInt32);
+                } else if (precision == 64) {
+                    assert(destSize >= sizeof(uint64));
+                    *(uint64*)dest = (uint64)value;
+                    return TypeDesc(TypeCat::UInt64);
                 }
 
                 assert(0);
             }
 
-            static std::basic_regex<CharType> signedPattern((const CharType*)R"(^[-\+]?(([\d]+)|(0x[\da-fA-F]+))(i|I|(i8)|(i16)|(i32)|(I8)|(I16)|(I32))?$)");
+            static std::basic_regex<CharType> signedPattern((const CharType*)R"(^[-\+]?(([\d]+)|(0x[\da-fA-F]+))(i|I|(i8)|(i16)|(i32)|(i64)|(I8)|(I16)|(I32)|(I64))?$)");
             if (std::regex_match(expressionBegin, expressionEnd, cm, signedPattern)) {
-                assert(destSize >= sizeof(unsigned));
-
                 unsigned precision = 32;
                 if (cm.size() >= 4 && cm[4].length() > 1)
                     precision = XlAtoUI32(&cm[2].str()[1]);
 
-                int32 value;
+                int64 value;
                 auto len = expressionEnd - expressionBegin;
                 if (len > 2 && (expressionBegin[0] == '0' && expressionBegin[1] == 'x')) {
                         // hex form
-                    value = XlAtoI32(&expressionBegin[2], nullptr, 16);
+                    value = XlAtoI64(&expressionBegin[2], nullptr, 16);
                 } else {
-                    value = XlAtoI32(expressionBegin);
+                    value = XlAtoI64(expressionBegin);
                 }
 
                 if (precision == 8) {
+                    assert(destSize >= sizeof(int8));
                     *(int8*)dest = (int8)value;
                     return TypeDesc(TypeCat::Int8);
                 } else if (precision == 16) {
+                    assert(destSize >= sizeof(int16));
                     *(int16*)dest = (int16)value;
                     return TypeDesc(TypeCat::Int16);
                 } else if (precision == 32) {
+                    assert(destSize >= sizeof(int32));
                     *(int32*)dest = (int32)value;
                     return TypeDesc(TypeCat::Int32);
+                } else if (precision == 64) {
+                    assert(destSize >= sizeof(int64));
+                    *(int64*)dest = (int64)value;
+                    return TypeDesc(TypeCat::Int64);
                 }
 
                 assert(0);
             }
 
-            static std::basic_regex<CharType> floatPattern((const CharType*)R"(^[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?(f|F|(f32)|(F32))?$)");
+            static std::basic_regex<CharType> floatPattern((const CharType*)R"(^[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?(f|F|(f32)|(F32)|(f64)|(F64))?$)");
             if (std::regex_match(expressionBegin, expressionEnd, floatPattern)) {
-                assert(destSize >= sizeof(float));
-                *(float*)dest = XlAtoF32(expressionBegin);
-                return TypeDesc(TypeCat::Float);
+                bool doublePrecision = false;
+                if (cm.size() >= 4 && cm[4].length() > 1) {
+                    auto precision = XlAtoUI32(&cm[2].str()[1]);
+                    doublePrecision = precision == 64;
+                }
+
+                if (doublePrecision) {
+                    assert(destSize >= sizeof(double));
+                    *(double*)dest = XlAtoF64(expressionBegin);
+                    return TypeDesc(TypeCat::Double);
+                } else {
+                    assert(destSize >= sizeof(float));
+                    *(float*)dest = XlAtoF32(expressionBegin);
+                    return TypeDesc(TypeCat::Float);
+                }
             }
 
             {
@@ -505,7 +616,10 @@ namespace Utility
                     case TypeCat::UInt16:   result << *(uint16*)data << "u16"; break;
                     case TypeCat::Int32:    result << *(int32*)data << "i"; break;
                     case TypeCat::UInt32:   result << *(uint32*)data << "u"; break;
+                    case TypeCat::Int64:    result << *(int64*)data << "i64"; break;
+                    case TypeCat::UInt64:   result << *(uint64*)data << "u64"; break;
                     case TypeCat::Float:    result << *(float*)data << "f"; break;
+                    case TypeCat::Double:   result << *(double*)data << "f64"; break;
                     case TypeCat::Void:     result << ""; break;
                     default:                result << "<<error>>"; break;
                     }
@@ -518,7 +632,10 @@ namespace Utility
                     case TypeCat::UInt16:   result << *(uint16*)data; break;
                     case TypeCat::Int32:    result << *(int32*)data; break;
                     case TypeCat::UInt32:   result << *(uint32*)data; break;
+                    case TypeCat::Int64:    result << *(int64*)data; break;
+                    case TypeCat::UInt64:   result << *(uint64*)data; break;
                     case TypeCat::Float:    result << *(float*)data; break;
+                    case TypeCat::Double:   result << *(double*)data; break;
                     case TypeCat::Void:     result << ""; break;
                     default:                result << "<<error>>"; break;
                     }
@@ -543,7 +660,10 @@ namespace Utility
         template std::pair<bool, bool> Parse(const char[]);
         template std::pair<bool, unsigned> Parse(const char[]);
         template std::pair<bool, signed> Parse(const char[]);
+        template std::pair<bool, uint64> Parse(const char[]);
+        template std::pair<bool, int64> Parse(const char[]);
         template std::pair<bool, float> Parse(const char[]);
+	template std::pair<bool, double> Parse(const char[]);
         #if defined(HAS_XLE_MATH)
             template std::pair<bool, Float2> Parse(const char[]);
             template std::pair<bool, Float3> Parse(const char[]);
@@ -562,7 +682,10 @@ namespace Utility
         template std::pair<bool, bool> Parse(const utf8*, const utf8*);
         template std::pair<bool, unsigned> Parse(const utf8*, const utf8*);
         template std::pair<bool, signed> Parse(const utf8*, const utf8*);
+        template std::pair<bool, uint64> Parse(const utf8*, const utf8*);
+        template std::pair<bool, int64> Parse(const utf8*, const utf8*);
         template std::pair<bool, float> Parse(const utf8*, const utf8*);
+	template std::pair<bool, double> Parse(const utf8*, const utf8*);
         #if defined(HAS_XLE_MATH)
             template std::pair<bool, Float2> Parse(const utf8*, const utf8*);
             template std::pair<bool, Float3> Parse(const utf8*, const utf8*);
@@ -858,11 +981,20 @@ namespace Utility
     template void ParameterBox::SetParameter(const utf8 name[], int32 value);
     template std::pair<bool, int32> ParameterBox::GetParameter(ParameterName name) const;
 
+    template void ParameterBox::SetParameter(const utf8 name[], uint64 value);
+    template std::pair<bool, uint64> ParameterBox::GetParameter(ParameterName name) const;
+
+    template void ParameterBox::SetParameter(const utf8 name[], int64 value);
+    template std::pair<bool, int64> ParameterBox::GetParameter(ParameterName name) const;
+
     template void ParameterBox::SetParameter(const utf8 name[], bool value);
     template std::pair<bool, bool> ParameterBox::GetParameter(ParameterName name) const;
 
     template void ParameterBox::SetParameter(const utf8 name[], float value);
     template std::pair<bool, float> ParameterBox::GetParameter(ParameterName name) const;
+
+    template void ParameterBox::SetParameter(const utf8 name[], double value);
+    template std::pair<bool, double> ParameterBox::GetParameter(ParameterName name) const;
 
 
     template void ParameterBox::SetParameter(const utf8 name[], Float2 value);

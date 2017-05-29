@@ -73,6 +73,13 @@ namespace Utility
 			return std::equal_range(vector.begin(), vector.end(), searchKey, CompareFirst<FirstType, SecondType>());
 		}
 
+    template<typename FirstType, typename SecondType>
+        std::pair<typename std::vector<std::pair<FirstType, SecondType> >::const_iterator, typename std::vector<std::pair<FirstType, SecondType> >::const_iterator>
+            EqualRange(const std::vector<std::pair<FirstType, SecondType> >& vector, FirstType searchKey)
+        {
+            return std::equal_range(vector.cbegin(), vector.cend(), searchKey, CompareFirst<FirstType, SecondType>());
+        }
+
     template <typename Vector, typename Pred>
         typename Vector::iterator FindIf(Vector& v, Pred&& predicate)
         {
