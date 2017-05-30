@@ -25,6 +25,13 @@ namespace Utility
         mach_timebase_info(&tbInfo);
         return tbInfo.denom * 1000000000 / tbInfo.numer;
     }
+
+    XlHandle XlCreateEvent(bool manualReset) { return 0; }
+    bool XlResetEvent(XlHandle event) { return false; }
+    bool XlSetEvent(XlHandle event) { return false; }
+    bool XlCloseSyncObject(XlHandle object) { return false; }
+    uint32 XlWaitForSyncObject(XlHandle object, uint32 waitTime) { return 0; }
+    uint32 XlWaitForMultipleSyncObjects(uint32 waitCount, XlHandle waitObjects[], bool waitAll, uint32 waitTime, bool alterable) { return 0; }
 }
 
 #else

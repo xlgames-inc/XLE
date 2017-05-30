@@ -10,6 +10,35 @@
 		8F707BDD1EA6CAA400DEC600 /* System_Apple.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */; };
 		8F707BEA1EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BE91EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp */; };
 		8F707BEC1EA6CB6F00DEC600 /* FileUtils_stdio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */; };
+		8FA3F7B91EDD17DE003EF623 /* System_Apple.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */; };
+		8FA3F7BA1EDD17DE003EF623 /* AccessorSerialize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D1B1EA688D1009BD9B0 /* AccessorSerialize.cpp */; };
+		8FA3F7BB1EDD17DE003EF623 /* ClassAccessors.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D1D1EA688D1009BD9B0 /* ClassAccessors.cpp */; };
+		8FA3F7BC1EDD17DE003EF623 /* CPUProfiler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D281EA688D1009BD9B0 /* CPUProfiler.cpp */; };
+		8FA3F7BD1EDD17DE003EF623 /* Data.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D2C1EA688D1009BD9B0 /* Data.cpp */; };
+		8FA3F7BE1EDD17DE003EF623 /* DataSerialize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D2E1EA688D1009BD9B0 /* DataSerialize.cpp */; };
+		8FA3F7BF1EDD17DE003EF623 /* FileSystemMonitor_Stubs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BE91EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp */; };
+		8FA3F7C01EDD17DE003EF623 /* FileUtils_stdio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */; };
+		8FA3F7C11EDD17DE003EF623 /* FileUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D311EA688D1009BD9B0 /* FileUtils.cpp */; };
+		8FA3F7C21EDD17DE003EF623 /* PathUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D331EA688D1009BD9B0 /* PathUtils.cpp */; };
+		8FA3F7C31EDD17DE003EF623 /* Stream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D361EA688D1009BD9B0 /* Stream.cpp */; };
+		8FA3F7C41EDD17DE003EF623 /* StreamDOM.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D381EA688D1009BD9B0 /* StreamDOM.cpp */; };
+		8FA3F7C51EDD17DE003EF623 /* StreamFormatter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D3A1EA688D1009BD9B0 /* StreamFormatter.cpp */; };
+		8FA3F7C61EDD17DE003EF623 /* XmlStreamFormatter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D401EA688D1009BD9B0 /* XmlStreamFormatter.cpp */; };
+		8FA3F7C71EDD17DE003EF623 /* CompletionThreadPool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D4A1EA688D1009BD9B0 /* CompletionThreadPool.cpp */; };
+		8FA3F7C81EDD17DE003EF623 /* ArithmeticUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D041EA688D1009BD9B0 /* ArithmeticUtils.cpp */; };
+		8FA3F7C91EDD17DE003EF623 /* BitUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D071EA688D1009BD9B0 /* BitUtils.cpp */; };
+		8FA3F7CA1EDD17DE003EF623 /* Conversion.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D091EA688D1009BD9B0 /* Conversion.cpp */; };
+		8FA3F7CB1EDD17DE003EF623 /* FunctionUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D101EA688D1009BD9B0 /* FunctionUtils.cpp */; };
+		8FA3F7CC1EDD17DE003EF623 /* HashUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D141EA688D1009BD9B0 /* HashUtils.cpp */; };
+		8FA3F7CD1EDD17DE003EF623 /* HeapUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D151EA688D1009BD9B0 /* HeapUtils.cpp */; };
+		8FA3F7CE1EDD17DE003EF623 /* MiniHeap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D201EA688D1009BD9B0 /* MiniHeap.cpp */; };
+		8FA3F7CF1EDD17DE003EF623 /* MiscImplementation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D221EA688D1009BD9B0 /* MiscImplementation.cpp */; };
+		8FA3F7D01EDD17DE003EF623 /* ParameterBox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D241EA688D1009BD9B0 /* ParameterBox.cpp */; };
+		8FA3F7D11EDD17DE003EF623 /* StringFormat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D431EA688D1009BD9B0 /* StringFormat.cpp */; };
+		8FA3F7D21EDD17DE003EF623 /* StringFormatTime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D451EA688D1009BD9B0 /* StringFormatTime.cpp */; };
+		8FA3F7D31EDD17DE003EF623 /* StringUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D461EA688D1009BD9B0 /* StringUtils.cpp */; };
+		8FA3F7D41EDD17DE003EF623 /* UTFUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D541EA688D1009BD9B0 /* UTFUtils.cpp */; };
+		8FA3F7D51EDD17DE003EF623 /* xl_snprintf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D561EA688D1009BD9B0 /* xl_snprintf.cpp */; };
 		8FD85D571EA688D1009BD9B0 /* ArithmeticUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D041EA688D1009BD9B0 /* ArithmeticUtils.cpp */; };
 		8FD85D581EA688D1009BD9B0 /* ArithmeticUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D051EA688D1009BD9B0 /* ArithmeticUtils.h */; };
 		8FD85D591EA688D1009BD9B0 /* BitHeap.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D061EA688D1009BD9B0 /* BitHeap.h */; };
@@ -83,10 +112,23 @@
 		8FD85DA11EA688D1009BD9B0 /* xl_snprintf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D561EA688D1009BD9B0 /* xl_snprintf.cpp */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		8FA3F7AE1EDD178B003EF623 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "include/$(PRODUCT_NAME)";
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = System_Apple.cpp; sourceTree = "<group>"; };
 		8F707BE91EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileSystemMonitor_Stubs.cpp; sourceTree = "<group>"; };
 		8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileUtils_stdio.cpp; sourceTree = "<group>"; };
+		8FA3F7B01EDD178B003EF623 /* libUtilityIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libUtilityIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8FD85CF81EA6872D009BD9B0 /* libUtilityMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libUtilityMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8FD85D001EA68787009BD9B0 /* Core.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
 		8FD85D011EA68787009BD9B0 /* CoreDebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
@@ -166,6 +208,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		8FA3F7AD1EDD178B003EF623 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8FD85CF51EA6872D009BD9B0 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -240,6 +289,7 @@
 			isa = PBXGroup;
 			children = (
 				8FD85CF81EA6872D009BD9B0 /* libUtilityMac.a */,
+				8FA3F7B01EDD178B003EF623 /* libUtilityIOS.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -389,6 +439,23 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		8FA3F7AF1EDD178B003EF623 /* UtilityIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8FA3F7B81EDD178B003EF623 /* Build configuration list for PBXNativeTarget "UtilityIOS" */;
+			buildPhases = (
+				8FA3F7AC1EDD178B003EF623 /* Sources */,
+				8FA3F7AD1EDD178B003EF623 /* Frameworks */,
+				8FA3F7AE1EDD178B003EF623 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = UtilityIOS;
+			productName = UtilityIOS;
+			productReference = 8FA3F7B01EDD178B003EF623 /* libUtilityIOS.a */;
+			productType = "com.apple.product-type.library.static";
+		};
 		8FD85CF71EA6872D009BD9B0 /* UtilityMac */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8FD85CFC1EA6872D009BD9B0 /* Build configuration list for PBXNativeTarget "UtilityMac" */;
@@ -415,6 +482,10 @@
 				LastUpgradeCheck = 0820;
 				ORGANIZATIONNAME = XLE;
 				TargetAttributes = {
+					8FA3F7AF1EDD178B003EF623 = {
+						CreatedOnToolsVersion = 8.2.1;
+						ProvisioningStyle = Automatic;
+					};
 					8FD85CF71EA6872D009BD9B0 = {
 						CreatedOnToolsVersion = 8.2.1;
 						ProvisioningStyle = Automatic;
@@ -434,11 +505,48 @@
 			projectRoot = "";
 			targets = (
 				8FD85CF71EA6872D009BD9B0 /* UtilityMac */,
+				8FA3F7AF1EDD178B003EF623 /* UtilityIOS */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
+		8FA3F7AC1EDD178B003EF623 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8FA3F7B91EDD17DE003EF623 /* System_Apple.cpp in Sources */,
+				8FA3F7BA1EDD17DE003EF623 /* AccessorSerialize.cpp in Sources */,
+				8FA3F7BB1EDD17DE003EF623 /* ClassAccessors.cpp in Sources */,
+				8FA3F7BC1EDD17DE003EF623 /* CPUProfiler.cpp in Sources */,
+				8FA3F7BD1EDD17DE003EF623 /* Data.cpp in Sources */,
+				8FA3F7BE1EDD17DE003EF623 /* DataSerialize.cpp in Sources */,
+				8FA3F7BF1EDD17DE003EF623 /* FileSystemMonitor_Stubs.cpp in Sources */,
+				8FA3F7C01EDD17DE003EF623 /* FileUtils_stdio.cpp in Sources */,
+				8FA3F7C11EDD17DE003EF623 /* FileUtils.cpp in Sources */,
+				8FA3F7C21EDD17DE003EF623 /* PathUtils.cpp in Sources */,
+				8FA3F7C31EDD17DE003EF623 /* Stream.cpp in Sources */,
+				8FA3F7C41EDD17DE003EF623 /* StreamDOM.cpp in Sources */,
+				8FA3F7C51EDD17DE003EF623 /* StreamFormatter.cpp in Sources */,
+				8FA3F7C61EDD17DE003EF623 /* XmlStreamFormatter.cpp in Sources */,
+				8FA3F7C71EDD17DE003EF623 /* CompletionThreadPool.cpp in Sources */,
+				8FA3F7C81EDD17DE003EF623 /* ArithmeticUtils.cpp in Sources */,
+				8FA3F7C91EDD17DE003EF623 /* BitUtils.cpp in Sources */,
+				8FA3F7CA1EDD17DE003EF623 /* Conversion.cpp in Sources */,
+				8FA3F7CB1EDD17DE003EF623 /* FunctionUtils.cpp in Sources */,
+				8FA3F7CC1EDD17DE003EF623 /* HashUtils.cpp in Sources */,
+				8FA3F7CD1EDD17DE003EF623 /* HeapUtils.cpp in Sources */,
+				8FA3F7CE1EDD17DE003EF623 /* MiniHeap.cpp in Sources */,
+				8FA3F7CF1EDD17DE003EF623 /* MiscImplementation.cpp in Sources */,
+				8FA3F7D01EDD17DE003EF623 /* ParameterBox.cpp in Sources */,
+				8FA3F7D11EDD17DE003EF623 /* StringFormat.cpp in Sources */,
+				8FA3F7D21EDD17DE003EF623 /* StringFormatTime.cpp in Sources */,
+				8FA3F7D31EDD17DE003EF623 /* StringUtils.cpp in Sources */,
+				8FA3F7D41EDD17DE003EF623 /* UTFUtils.cpp in Sources */,
+				8FA3F7D51EDD17DE003EF623 /* xl_snprintf.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8FD85CF41EA6872D009BD9B0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -478,6 +586,22 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		8FA3F7B61EDD178B003EF623 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = UtilityIOS;
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		8FA3F7B71EDD178B003EF623 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = UtilityIOS;
+				SDKROOT = iphoneos;
+			};
+			name = Release;
+		};
 		8FD85CFA1EA6872D009BD9B0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8FD85D011EA68787009BD9B0 /* CoreDebug.xcconfig */;
@@ -511,6 +635,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		8FA3F7B81EDD178B003EF623 /* Build configuration list for PBXNativeTarget "UtilityIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8FA3F7B61EDD178B003EF623 /* Debug */,
+				8FA3F7B71EDD178B003EF623 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		8FD85CF31EA6872D009BD9B0 /* Build configuration list for PBXProject "Utility" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

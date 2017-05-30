@@ -31,9 +31,32 @@
 		8F044B9F1EA695E40074D6A4 /* Transformations.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B871EA695E40074D6A4 /* Transformations.h */; };
 		8F044BA01EA695E40074D6A4 /* Vector.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044B881EA695E40074D6A4 /* Vector.h */; };
 		8F044BA71EA696EC0074D6A4 /* XLEMath.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044BA61EA696EC0074D6A4 /* XLEMath.h */; };
+		8FA3F7E31EDD1850003EF623 /* EigenVector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B711EA695E40074D6A4 /* EigenVector.cpp */; };
+		8FA3F7E41EDD1850003EF623 /* Geometry.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B731EA695E40074D6A4 /* Geometry.cpp */; };
+		8FA3F7E51EDD1850003EF623 /* Interpolation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B751EA695E40074D6A4 /* Interpolation.cpp */; };
+		8FA3F7E61EDD1850003EF623 /* Matrix.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B781EA695E40074D6A4 /* Matrix.cpp */; };
+		8FA3F7E71EDD1850003EF623 /* Noise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B7A1EA695E40074D6A4 /* Noise.cpp */; };
+		8FA3F7E81EDD1850003EF623 /* PoissonSolver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B7C1EA695E40074D6A4 /* PoissonSolver.cpp */; };
+		8FA3F7E91EDD1850003EF623 /* ProjectionMath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B7F1EA695E40074D6A4 /* ProjectionMath.cpp */; };
+		8FA3F7EA1EDD1850003EF623 /* RectanglePacking.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B821EA695E40074D6A4 /* RectanglePacking.cpp */; };
+		8FA3F7EB1EDD1850003EF623 /* RegularNumberField.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B841EA695E40074D6A4 /* RegularNumberField.cpp */; };
+		8FA3F7EC1EDD1850003EF623 /* StraightSkeleton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BE47E60B1EC50E7600259EFE /* StraightSkeleton.cpp */; };
+		8FA3F7ED1EDD1850003EF623 /* Transformations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044B861EA695E40074D6A4 /* Transformations.cpp */; };
 		BE47E60D1EC50E7600259EFE /* StraightSkeleton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BE47E60B1EC50E7600259EFE /* StraightSkeleton.cpp */; };
 		BE47E60E1EC50E7600259EFE /* StraightSkeleton.h in Headers */ = {isa = PBXBuildFile; fileRef = BE47E60C1EC50E7600259EFE /* StraightSkeleton.h */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8FA3F7D81EDD17F1003EF623 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "include/$(PRODUCT_NAME)";
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		8F044B6A1EA695590074D6A4 /* libMathMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMathMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -65,12 +88,20 @@
 		8F044BA41EA6961E0074D6A4 /* CoreRelease.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
 		8F044BA51EA6961E0074D6A4 /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
 		8F044BA61EA696EC0074D6A4 /* XLEMath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = XLEMath.h; path = ../XLEMath.h; sourceTree = "<group>"; };
+		8FA3F7DA1EDD17F1003EF623 /* libMathIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMathIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		BE47E60B1EC50E7600259EFE /* StraightSkeleton.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = StraightSkeleton.cpp; path = ../StraightSkeleton.cpp; sourceTree = "<group>"; };
 		BE47E60C1EC50E7600259EFE /* StraightSkeleton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = StraightSkeleton.h; path = ../StraightSkeleton.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		8F044B671EA695590074D6A4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8FA3F7D71EDD17F1003EF623 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -118,6 +149,7 @@
 			isa = PBXGroup;
 			children = (
 				8F044B6A1EA695590074D6A4 /* libMathMac.a */,
+				8FA3F7DA1EDD17F1003EF623 /* libMathIOS.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -178,6 +210,23 @@
 			productReference = 8F044B6A1EA695590074D6A4 /* libMathMac.a */;
 			productType = "com.apple.product-type.library.static";
 		};
+		8FA3F7D91EDD17F1003EF623 /* MathIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8FA3F7E21EDD17F1003EF623 /* Build configuration list for PBXNativeTarget "MathIOS" */;
+			buildPhases = (
+				8FA3F7D61EDD17F1003EF623 /* Sources */,
+				8FA3F7D71EDD17F1003EF623 /* Frameworks */,
+				8FA3F7D81EDD17F1003EF623 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MathIOS;
+			productName = MathIOS;
+			productReference = 8FA3F7DA1EDD17F1003EF623 /* libMathIOS.a */;
+			productType = "com.apple.product-type.library.static";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -188,6 +237,10 @@
 				ORGANIZATIONNAME = XLE;
 				TargetAttributes = {
 					8F044B691EA695590074D6A4 = {
+						CreatedOnToolsVersion = 8.2.1;
+						ProvisioningStyle = Automatic;
+					};
+					8FA3F7D91EDD17F1003EF623 = {
 						CreatedOnToolsVersion = 8.2.1;
 						ProvisioningStyle = Automatic;
 					};
@@ -206,6 +259,7 @@
 			projectRoot = "";
 			targets = (
 				8F044B691EA695590074D6A4 /* MathMac */,
+				8FA3F7D91EDD17F1003EF623 /* MathIOS */,
 			);
 		};
 /* End PBXProject section */
@@ -226,6 +280,24 @@
 				8F044B921EA695E40074D6A4 /* Noise.cpp in Sources */,
 				8F044B8B1EA695E40074D6A4 /* Geometry.cpp in Sources */,
 				8F044B9A1EA695E40074D6A4 /* RectanglePacking.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8FA3F7D61EDD17F1003EF623 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8FA3F7E31EDD1850003EF623 /* EigenVector.cpp in Sources */,
+				8FA3F7E41EDD1850003EF623 /* Geometry.cpp in Sources */,
+				8FA3F7E51EDD1850003EF623 /* Interpolation.cpp in Sources */,
+				8FA3F7E61EDD1850003EF623 /* Matrix.cpp in Sources */,
+				8FA3F7E71EDD1850003EF623 /* Noise.cpp in Sources */,
+				8FA3F7E81EDD1850003EF623 /* PoissonSolver.cpp in Sources */,
+				8FA3F7E91EDD1850003EF623 /* ProjectionMath.cpp in Sources */,
+				8FA3F7EA1EDD1850003EF623 /* RectanglePacking.cpp in Sources */,
+				8FA3F7EB1EDD1850003EF623 /* RegularNumberField.cpp in Sources */,
+				8FA3F7EC1EDD1850003EF623 /* StraightSkeleton.cpp in Sources */,
+				8FA3F7ED1EDD1850003EF623 /* Transformations.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -262,6 +334,22 @@
 			};
 			name = Release;
 		};
+		8FA3F7E01EDD17F1003EF623 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = MathIOS;
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		8FA3F7E11EDD17F1003EF623 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = MathIOS;
+				SDKROOT = iphoneos;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -279,6 +367,15 @@
 			buildConfigurations = (
 				8F044B6F1EA695590074D6A4 /* Debug */,
 				8F044B701EA695590074D6A4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8FA3F7E21EDD17F1003EF623 /* Build configuration list for PBXNativeTarget "MathIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8FA3F7E01EDD17F1003EF623 /* Debug */,
+				8FA3F7E11EDD17F1003EF623 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
