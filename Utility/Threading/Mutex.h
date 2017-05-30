@@ -54,7 +54,7 @@
     {
         using Mutex = std::mutex;
         using RecursiveMutex = std::recursive_mutex;
-        using ReadWriteMutex = std::shared_timed_mutex;
+        // using ReadWriteMutex = std::shared_timed_mutex;
         using Conditional = std::condition_variable;
     }}
     using namespace Utility;

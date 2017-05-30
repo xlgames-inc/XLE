@@ -10,9 +10,6 @@
 #include <limits>
 #include <cstdint>
 
-#undef MAX
-#undef MIN
-
     //
     //      Common types; uniform names syntax  
     //
