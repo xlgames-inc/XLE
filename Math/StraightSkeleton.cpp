@@ -1592,11 +1592,20 @@ namespace XLEMath
 			for (size_t c=0; c<collapses.size(); ++c) {
 				if (collapseGroups[c] != collapseGroup) continue;
 				const auto& seg = loop._edges[collapses[c]._edge];
-				for (auto v:{ seg._head, seg._tail })
+				for (auto v:{ seg._head, seg._tail }) {
 					AddEdgeForVertexPath(result, loop, v, collapseVertId);
+
+					// Also remove any motorcycles associated with these vertices (since they will be removed
+					// from active loops, the motorcycle is no longer valid)
+					auto m = std::find_if(loop._motorcycleSegments.begin(), loop._motorcycleSegments.end(),
+						[v](const MotorcycleSegment& seg) { return seg._head == v; });
+					if (m != loop._motorcycleSegments.end())
+						loop._motorcycleSegments.erase(m);
+				}
 			}
 
 			// create a new vertex in the graph to connect the edges to either side of the collapse
+			// todo -- should this new vertex ever have a motorcycle?
 			collapseGroupInfos[collapseGroup]._newVertex = (unsigned)_vertices.size();
 			_vertices.push_back(Vertex<Primitive>{collisionPt, Zero<Vector2T<Primitive>>(), bestCollapseTime, collapseVertId});
 		}
