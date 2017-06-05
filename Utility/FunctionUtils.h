@@ -30,7 +30,7 @@ namespace Utility
     // For generic types that are functors, delegate to its 'operator()'
     template <typename T>
     struct FunctionTraits
-      : public FunctionTraits<decltype(&T::operator())>
+      : public FunctionTraits<decltype(&std::remove_reference<T>::type::operator())>
     {};
 
     template<>
