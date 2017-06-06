@@ -1093,10 +1093,13 @@ namespace XLEMath
 			bestMotorcycleCrash.clear();
 			auto bestMotorcycleCrashTime = FindMotorcycleCrashes(bestMotorcycleCrash, loop, bestCollapseTime);
 
-            // If we do not find any more events, the remaining wavefronts will expand infinitely
-            // This case isn't perfectly handled currently, we'll just complete the loop here.
+            // If we do not find any more events, the remaining wavefronts will expand infinitely.
+            // This case isn't perfectly handled currently, we'll just complete the loop here if
+            // it has started.  If it has not started, skip it.
             if (bestCollapse.empty() && bestMotorcycleCrash.empty()) {
-                completedLoops.emplace_back(std::move(loop));
+                if (loop._lastEventTime != Primitive(0)) {
+                    completedLoops.emplace_back(std::move(loop));
+                }
 				_loops.erase(_loops.begin());
                 continue;
             }
@@ -1695,7 +1698,7 @@ namespace XLEMath
 
 	T1(Primitive) static bool DoColinearLinesIntersect(Vector2T<Primitive> AStart, Vector2T<Primitive> AEnd, Vector2T<Primitive> BStart, Vector2T<Primitive> BEnd)
 	{
-		// return false if the lines share a point, but otherwise do not intersect
+		// return false if the lines share a point, but otherwise do not intersect.
 		// but returns true if the lines overlap completely (even if the lines have zero length)
 		auto closestBStart = ClosestPointOnLine2D(AStart, AEnd, BStart);
 		auto closestBEnd = ClosestPointOnLine2D(AStart, AEnd, BEnd);
@@ -1758,7 +1761,7 @@ namespace XLEMath
 				}
 
 				// If they intersect, they should be colinear, and at least one 
-				// vertex if i2 should lie on i
+				// vertex in i2 should lie on i
 				auto C = Truncate(result._steinerVertices[i2->_head]);
 				auto D = Truncate(result._steinerVertices[i2->_tail]);
 				auto closestC = ClosestPointOnLine2D(A, B, C);
@@ -1799,7 +1802,7 @@ namespace XLEMath
 				} else {
 					// The lines are colinear, and at least one point of i2 is on i
 					// We must separate these 2 segments into 3 segments.
-					// Replace i2 with something that is strictly with i2, and then schedule
+					// Replace i2 with something that is strictly within i2, and then schedule
 					// the remaining split parts for intersection tests.
 					WavefrontEdge newSeg;
 					if (closestC < Primitive(0)) {
@@ -1854,7 +1857,7 @@ namespace XLEMath
 				filteredSegments.push_back(seg);
 		}
 
-		// add all of the segments in "filteredSegments" to the skeleton
+		// Add all of the segments in "filteredSegments" to the skeleton
 		for (const auto&seg:filteredSegments) {
 			assert(seg._head != seg._tail);
 			AddEdge(result, seg._head, seg._tail, seg._leftFace, seg._rightFace, StraightSkeleton<Primitive>::EdgeType::Wavefront);
