@@ -6,8 +6,8 @@ namespace SceneEngine
         void FiniteResourceHeap<Key>::ProcessRequests(IteratorRange<RequestResult*> results,
                                                       IteratorRange<const Key*> requests) {
 
-            std::vector<unsigned> missingRequests;  // todo -- avoid allocations here
-            missingRequests.reserve(requests.size());
+            unsigned missingRequests[requests.size()];
+            unsigned missingRequestsCount = 0;
 
             unsigned frozenCount = 0;
             for (unsigned c=0; c<requests.size(); ++c) {
@@ -21,13 +21,13 @@ namespace SceneEngine
                     _lruQueue.BringToFront(results[c]._index);
                     ++frozenCount;
                 } else {
-                    missingRequests.push_back(c);
+                    missingRequests[missingRequestsCount++] = c;
                 }
             }
             
-            auto maxEvict = _blockStates.size() - frozenCount;
+            auto maxEvict = unsigned(_blockStates.size()) - frozenCount;
             unsigned c=0;
-            for (; c<std::min(missingRequests.size(), maxEvict); ++c) {
+            for (; c<std::min(missingRequestsCount, maxEvict); ++c) {
                 auto oldest = _lruQueue.GetOldestValue();
                 if (_blockStates[oldest]._state == Block::State::Transfer)
                     break;  // hit something still transferring. We can't evict while transferring
@@ -41,7 +41,7 @@ namespace SceneEngine
                 _lruQueue.BringToFront(oldest);
             }
             
-            for (; c<missingRequests.size(); ++c) {
+            for (; c<missingRequestsCount; ++c) {
                 results[missingRequests[c]]._result = RequestResult::Result::Overflow;
                 results[missingRequests[c]]._index = ~0u;
                 results[missingRequests[c]]._previousKey = _dummyKey;
