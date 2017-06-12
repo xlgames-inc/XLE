@@ -33,7 +33,44 @@ namespace Conversion
     template<> int64 Convert(const char input[])    { return XlAtoI64(input); }
     template<> uint64 Convert(const char input[])   { return XlAtoUI64(input); }
 
-    template<> bool Convert(const char input[])
+    // todo -- these could be implemented more effectively, particularly with C++17's std::from_string
+    //          (or just by custom coding the appropriate
+    template<> float Convert(StringSection<> input)
+    {
+        char buffer[32];
+        XlCopyString(buffer, input);
+        return Convert<float>(buffer);
+    }
+
+    template<> uint32 Convert(StringSection<> input)
+    {
+        char buffer[32];
+        XlCopyString(buffer, input);
+        return Convert<uint32>(buffer);
+    }
+
+    template<> int32 Convert(StringSection<> input)
+    {
+        char buffer[32];
+        XlCopyString(buffer, input);
+        return Convert<int32>(buffer);
+    }
+
+    template<> int64 Convert(StringSection<> input)
+    {
+        char buffer[32];
+        XlCopyString(buffer, input);
+        return Convert<int64>(buffer);
+    }
+
+    template<> uint64 Convert(StringSection<> input)
+    {
+        char buffer[32];
+        XlCopyString(buffer, input);
+        return Convert<uint64>(buffer);
+    }
+
+    template<> bool Convert(StringSection<> input)
     {
         if (    !XlCompareStringI(input, "true")
             ||  !XlCompareStringI(input, "yes")
@@ -41,11 +78,13 @@ namespace Conversion
             ||  !XlCompareStringI(input, "y")) {
             return true;
         }
-        int asInt = 0;
-        if (XlSafeAtoi(input, &asInt)) {
-            return !!asInt;
-        }
-        return false;
+        auto asInt = Conversion::Convert<int>(input);
+        return !!asInt;
+    }
+
+    template<> bool Convert(const char input[])
+    {
+        return Convert<bool>(MakeStringSection(input));
     }
 
     template<> float Convert(const std::basic_string<utf8>& input)      { return Convert<float>((const char*)input.c_str()); }
@@ -54,6 +93,13 @@ namespace Conversion
     template<> int64 Convert(const std::basic_string<utf8>& input)      { return Convert<int64>((const char*)input.c_str()); }
     template<> uint64 Convert(const std::basic_string<utf8>& input)     { return Convert<uint64>((const char*)input.c_str()); }
     template<> bool Convert(const std::basic_string<utf8>& input)       { return Convert<bool>((const char*)input.c_str()); }
+
+    template<> float Convert(StringSection<utf8> input)      { return Convert<float>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
+    template<> uint32 Convert(StringSection<utf8> input)     { return Convert<uint32>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
+    template<> int32 Convert(StringSection<utf8> input)      { return Convert<int32>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
+    template<> int64 Convert(StringSection<utf8> input)      { return Convert<int64>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
+    template<> uint64 Convert(StringSection<utf8> input)     { return Convert<uint64>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
+    template<> bool Convert(StringSection<utf8> input)       { return Convert<bool>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
