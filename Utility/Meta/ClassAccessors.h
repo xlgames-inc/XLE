@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../UTFUtils.h"
 #include "../FunctionUtils.h"
 #include "../ParameterBox.h"        // only needed for TrySet
 #include <string>
@@ -85,7 +84,7 @@ namespace Utility
             using CastToFn          = std::function<bool(const void*, void*, size_t, ImpliedTyping::TypeDesc, bool)>;
             using CastToArrayFn     = std::function<bool(const void*, size_t, void*, size_t, ImpliedTyping::TypeDesc, bool)>;
 
-            std::basic_string<utf8>     _name;
+            std::string                 _name;
             CastFromFn                  _castFrom;
             CastFromArrayFn             _castFromArray;
             CastToFn                    _castTo;
@@ -102,7 +101,7 @@ namespace Utility
             using GetByIndexFn  = std::function<const void*(const void*,size_t)>;
             using GetByKeyFn    = std::function<const void*(const void*,uint64)>;
 
-            std::basic_string<utf8>     _name;
+            std::string                 _name;
             const ClassAccessors*       _childProps;
             CreateFn                    _createFn;
             GetCountFn                  _getCount;
@@ -163,10 +162,10 @@ namespace Utility
                 ////   I N I T I A L I Z A T I O N   I N T E R F A C E   ////
 
         template<typename GetFn, typename SetFn>
-            void Add(const utf8 name[], GetFn&& getter, SetFn&& setter, const ImpliedTyping::TypeDesc& naturalType = ImpliedTyping::TypeCat::Void, size_t fixedArrayLength = 1);
+            void Add(const char name[], GetFn&& getter, SetFn&& setter, const ImpliedTyping::TypeDesc& naturalType = ImpliedTyping::TypeCat::Void, size_t fixedArrayLength = 1);
 
         template<typename ChildType, typename CreateFn, typename GetCountFn, typename GetByIndexFn, typename GetByKeyFn>
-            void AddChildList(const utf8 name[], CreateFn&&, GetCountFn&&, GetByIndexFn&&, GetByKeyFn&&);
+            void AddChildList(const char name[], CreateFn&&, GetCountFn&&, GetByIndexFn&&, GetByKeyFn&&);
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -185,7 +184,6 @@ namespace Utility
 
         friend Internal::ClassAccessorsHelper;
     };
-
 
     template<typename Type>
         bool ClassAccessors::TrySet(

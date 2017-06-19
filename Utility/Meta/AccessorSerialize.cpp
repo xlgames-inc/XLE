@@ -118,7 +118,7 @@ namespace Utility
                     ImpliedTyping::TypeDesc(charTypeCat, dimof(buffer)), true);
 
                 formatter.WriteAttribute(
-                    AsPointer(p._name.cbegin()), AsPointer(p._name.cend()), 
+                    (const utf8*)AsPointer(p._name.cbegin()), (const utf8*)AsPointer(p._name.cend()),
                     buffer, XlStringEnd(buffer));
             }
 

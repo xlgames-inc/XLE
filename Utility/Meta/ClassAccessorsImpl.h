@@ -116,7 +116,7 @@ namespace Utility
             }                                                                                                                               \
             /**/
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
         template<typename Obj, typename PtrToMember> struct PtrToMemberTarget 
         {
@@ -468,7 +468,7 @@ namespace Utility
 
     template<typename GetFn, typename SetFn>
         void ClassAccessors::Add(
-            const utf8 name[],
+            const char name[],
             GetFn&& getter, SetFn&& setter,
             const ImpliedTyping::TypeDesc& naturalType,
             size_t fixedArrayLength)
@@ -497,7 +497,7 @@ namespace Utility
 
     template<typename ChildType, typename CreateFn, typename GetCountFn, typename GetByIndexFn, typename GetByKeyFn>
         void ClassAccessors::AddChildList(
-            const utf8 name[], 
+            const char name[],
             CreateFn&& createFn, GetCountFn&& getCountFn, GetByIndexFn&& getByIndexFn, GetByKeyFn&& getByKeyFn)
         {
             auto id = Hash64((const char*)name);
