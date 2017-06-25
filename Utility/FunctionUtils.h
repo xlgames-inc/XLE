@@ -37,24 +37,30 @@ namespace Utility
         struct FunctionTraits<std::nullptr_t> {};
  
     // for pointers to member function
-    template <typename ClassType, typename ReturnType, typename... Args>
-    struct FunctionTraits<ReturnType(ClassType::*)(Args...) const> {
+    template <typename ClassType, typename ReturnType_, typename... Args>
+    struct FunctionTraits<ReturnType_(ClassType::*)(Args...) const> {
       enum { arity = sizeof...(Args) };
-      typedef std::function<ReturnType (Args...)> f_type;
+      using ArgumentTuple = std::tuple<Args...>;
+      using ReturnType = ReturnType_;
+      typedef std::function<ReturnType_ (Args...)> f_type;
     };
  
     // for pointers to member function
-    template <typename ClassType, typename ReturnType, typename... Args>
-    struct FunctionTraits<ReturnType(ClassType::*)(Args...) > {
+    template <typename ClassType, typename ReturnType_, typename... Args>
+    struct FunctionTraits<ReturnType_(ClassType::*)(Args...) > {
       enum { arity = sizeof...(Args) };
-      typedef std::function<ReturnType (Args...)> f_type;
+      using ArgumentTuple = std::tuple<Args...>;
+      using ReturnType = ReturnType_;
+      typedef std::function<ReturnType_ (Args...)> f_type;
     };
  
     // for function pointers
-    template <typename ReturnType, typename... Args>
-    struct FunctionTraits<ReturnType (*)(Args...)>  {
+    template <typename ReturnType_, typename... Args>
+    struct FunctionTraits<ReturnType_ (*)(Args...)>  {
       enum { arity = sizeof...(Args) };
-      typedef std::function<ReturnType (Args...)> f_type;
+      using ArgumentTuple = std::tuple<Args...>;
+      using ReturnType = ReturnType_;
+      typedef std::function<ReturnType_ (Args...)> f_type;
     };
  
     template <typename L> 
