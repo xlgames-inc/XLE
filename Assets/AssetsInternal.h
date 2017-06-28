@@ -62,7 +62,6 @@ namespace Assets { namespace Internal
     template <int BoBackgroundCompile> struct ConstructAsset;
 
 	template <typename... Params> uint64 BuildHash(Params... initialisers);
-	template <typename... Params> std::basic_string<ResChar> AsString(Params... initialisers);
     std::basic_string<ResChar> AsString();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

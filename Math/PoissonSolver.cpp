@@ -123,7 +123,7 @@ namespace XLEMath
 
     protected:
         VectorX _r, _d, _q;
-        unsigned _N;
+        unsigned _NValue;
     };
 
     template<typename Mat>
@@ -148,14 +148,14 @@ namespace XLEMath
         //                 auto i = (qz*dims[1]+qy)*dims[0]+qx;                \
         //     /**/
         const auto N = GetN(A);
-        assert(N == _N);
+        assert(N == _NValue);
         #define FOR_EACH_CELL                   \
             for (unsigned i=0; i<N; ++i) {      \
             /**/
         #define FOR_EACH_CELL_END }
 
         auto rAsField = AsScalarField1D(_r);
-        Multiply(rAsField, A, x, _N);
+        Multiply(rAsField, A, x, _NValue);
         for (unsigned c=0; c<b._count; ++c) {
             _r[c] =  b[c] - _r[c];
             _d[c] = _r[c];
@@ -169,7 +169,7 @@ namespace XLEMath
         if (XlAbs(rho) > rhoThreshold) {
             for (; k<maxIterations; ++k) {
             
-                Multiply(_q, A, _d, _N);
+                Multiply(_q, A, _d, _NValue);
                 auto dDotQ = 0.f; // _d.dot(_q);
                 FOR_EACH_CELL
                     dDotQ += _d[i] * _q[i];
@@ -213,7 +213,7 @@ namespace XLEMath
     Solver_PlainCG::Solver_PlainCG(unsigned N)
     : _r(N), _d(N), _q(N)
     {
-        _N = N;
+        _NValue = N;
     }
 
     Solver_PlainCG::~Solver_PlainCG() {}
@@ -232,7 +232,7 @@ namespace XLEMath
     protected:
         VectorX _r, _d, _q;
         VectorX _s;
-        unsigned _N;
+        unsigned _NValue;
     };
 
     template<typename Mat, typename PreCon>
@@ -251,18 +251,18 @@ namespace XLEMath
         const auto maxIterations = 13u;
 
         auto rAsField = AsScalarField1D(_r);
-        Multiply(rAsField, A, x, _N);    // r = AMat * x
+        Multiply(rAsField, A, x, _NValue);    // r = AMat * x
         for (unsigned c=0; c<b._count; ++c)
             _r[c] = b[c] - _r[c];
             
-        SolveLowerTriangular(_d, precon, _r, _N);
+        SolveLowerTriangular(_d, precon, _r, _NValue);
             
         // #if defined(_DEBUG)
         //     {
         //             // testing "SolveLowerTriangular"
-        //         VectorX t(_N);
-        //         Multiply(t, precon, _d, _N);
-        //         for (unsigned c=0; c<_N; ++c) {
+        //         VectorX t(_NValue);
+        //         Multiply(t, precon, _d, _NValue);
+        //         for (unsigned c=0; c<_NValue; ++c) {
         //             auto z = t(c), y = _r(c);
         //             assert(Equivalent(z, y, 1e-1f));
         //         }
@@ -278,7 +278,7 @@ namespace XLEMath
         //                 auto i = (qz*dims[1]+qy)*dims[0]+qx;                \
         //     /**/
         const auto N = GetN(A);
-        assert(N == _N);
+        assert(N == _NValue);
         #define FOR_EACH_CELL                           \
             for (unsigned i=0; i<N; ++i) {              \
             /**/
@@ -303,7 +303,7 @@ namespace XLEMath
                     // simplified, because the vectors already have only one
                     // element per cell.
             
-                Multiply(_q, A, _d, _N);
+                Multiply(_q, A, _d, _NValue);
                 auto dDotQ = 0.f; // _d.dot(_q);
                 FOR_EACH_CELL
                     dDotQ += _d[i] * _q[i];
@@ -316,7 +316,7 @@ namespace XLEMath
                     _r[i] -= alpha * _q[i];
                 FOR_EACH_CELL_END
             
-                SolveLowerTriangular(_s, precon, _r, _N);
+                SolveLowerTriangular(_s, precon, _r, _NValue);
                 auto rhoOld = rho;
                 rho = 0.f; // _r.dot(_s);
                 FOR_EACH_CELL
@@ -343,7 +343,7 @@ namespace XLEMath
     Solver_PreconCG::Solver_PreconCG(unsigned N)
     : _r(N), _d(N), _q(N), _s(N)
     {
-        _N = N;
+        _NValue = N;
     }
 
     Solver_PreconCG::~Solver_PreconCG() {}
@@ -363,7 +363,7 @@ namespace XLEMath
         std::vector<VectorX> _subResidual;
         std::vector<VectorX> _subB;
         std::vector<UInt3> _subDims;
-        unsigned _N;
+        unsigned _NValue;
         unsigned _dimensionality;
     };
 
@@ -593,7 +593,7 @@ namespace XLEMath
     Solver_Multigrid::Solver_Multigrid(UInt3 dims, unsigned dimensionality, unsigned levels)
     {
         _dimensionality = dimensionality;
-        _N = dims[0]*dims[1]*dims[2];
+        _NValue = dims[0]*dims[1]*dims[2];
         for (unsigned c=0; c<levels; c++) {
             dims[0] = (unsigned)std::max(1, ((int(dims[0])-2) >> 1)) + 2u;
             dims[1] = (unsigned)std::max(1, ((int(dims[1])-2) >> 1)) + 2u;

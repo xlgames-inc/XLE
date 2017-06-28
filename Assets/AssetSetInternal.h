@@ -14,7 +14,7 @@
 #include <vector>
 #include <assert.h>
 
-#define ASSETS_STORE_NAMES
+// #define ASSETS_STORE_NAMES       // DavidJ -- HACK -- the Assets::Internal::AsString() function doesn't compile correctly on some compilers, so this is disabled
 #define ASSETS_STORE_DIVERGENT		// divergent assets are intended for tools (not in-game). But we can't selectively disable this feature
 #define ASSETS_MULTITHREADED        // allow GetAsset, GetAssetComp (and variants) to be used from multiple threads
 

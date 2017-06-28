@@ -54,6 +54,9 @@ namespace Utility
         {
             return false;
         }
+
+        void CreateDirectoryRecursive(StringSection<char> path) {}
+        void CreateDirectoryRecursive(StringSection<utf8> path) {}
     }
     
 }
