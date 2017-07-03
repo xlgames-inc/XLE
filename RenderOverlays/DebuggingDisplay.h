@@ -207,9 +207,9 @@ namespace RenderOverlays { namespace DebuggingDisplay
     void        DrawRectangle(IOverlayContext* context, const Rect& rect, float depth, ColorB colour);
     void        DrawRectangleOutline(IOverlayContext* context, const Rect& rect, float depth = 0.f, ColorB colour = ColorB(0xff000000));
 
-    Coord       DrawText(IOverlayContext* context, const Rect& rect, TextStyle* textStyle, ColorB colour, const char text[]);
-    Coord       DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, const char text[]);
-    Coord       DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[]);
+    Coord       DrawText(IOverlayContext* context, const Rect& rect, TextStyle* textStyle, ColorB colour, StringSection<> text);
+    Coord       DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, StringSection<> text);
+    Coord       DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, StringSection<> text);
     Coord       DrawFormatText(IOverlayContext* context, const Rect& rect, TextStyle* textStyle, ColorB colour, const char text[], ...);
     Coord       DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, const char text[], ...);
     Coord       DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], ...);

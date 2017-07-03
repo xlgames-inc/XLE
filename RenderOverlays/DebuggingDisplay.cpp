@@ -392,17 +392,17 @@ namespace RenderOverlays { namespace DebuggingDisplay
         context->DrawLines(ProjectionMode::P2D, lines, dimof(lines), colour);
     }
 
-    Coord DrawText(IOverlayContext* context, const Rect& rect, TextStyle* textStyle, ColorB colour, const char text[])
+    Coord DrawText(IOverlayContext* context, const Rect& rect, TextStyle* textStyle, ColorB colour, StringSection<> text)
     {
         return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, TextAlignment::Left, text);
     }
 
-    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, const char text[])
+    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, StringSection<> text)
     {
         return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, TextAlignment::Left, text);
     }
 
-    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[])
+    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, StringSection<> text)
     {
         return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, alignment, text);
     }

@@ -10,6 +10,8 @@
 
 namespace Assets
 {
+    typedef char ResChar;
+
     /// <summary>Handles resource invalidation events</summary>
     /// Utility class used for detecting resource invalidation events (for example, if
     /// a shader source file changes on disk). 

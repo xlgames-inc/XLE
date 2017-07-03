@@ -108,7 +108,7 @@ namespace Utility
         FormatException(const char message[], StreamLocation location);
     };
 
-    template<typename CharType>
+    template<typename CharType=char>
         class XL_UTILITY_API InputStreamFormatter
     {
     public:
