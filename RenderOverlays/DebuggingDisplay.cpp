@@ -22,6 +22,7 @@
 #include "../Utility/StringFormat.h"
 #include <stdarg.h>
 #include <assert.h>
+#include <string.h>
 
 #if defined(HAS_XLE_CONSOLE_RIG)
     #include "../ConsoleRig/IncludeLUA.h"
@@ -1115,6 +1116,19 @@ namespace RenderOverlays { namespace DebuggingDisplay
             _widgets.push_back(wAndN); 
         } else if (type == SystemDisplay) {
             _systemWidgets.push_back(wAndN);
+        }
+    }
+    
+    void DebugScreensSystem::Unregister(const char name[])
+    {
+        auto it = _widgets.begin();
+        for (; it != _widgets.end(); ++it) {
+            if (strcmp(it->_name.c_str(), name) == 0) {
+                break;
+            }
+        }
+        if (it != _widgets.end()) {
+            _widgets.erase(it);
         }
     }
 

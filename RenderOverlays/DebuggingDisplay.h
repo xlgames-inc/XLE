@@ -329,6 +329,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         
         enum Type { InPanel, SystemDisplay };
         void        Register(std::shared_ptr<IWidget> widget, const char name[], Type type = InPanel);
+        void        Unregister(const char name[]);
 
         void        SwitchToScreen(unsigned panelIndex, const char name[]);
         bool        SwitchToScreen(unsigned panelIndex, uint64 hashCode);
