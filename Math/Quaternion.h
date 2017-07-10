@@ -27,6 +27,17 @@ namespace XLEMath
     Quaternion SphericalInterpolate(const Quaternion& lhs, const Quaternion& rhs, float alpha);
 
 
+    template<typename BasicType>
+        inline bool Equivalent(
+            cml::quaternion< BasicType, cml::fixed<>, cml::scalar_first, cml::positive_cross > lhs,
+            cml::quaternion< BasicType, cml::fixed<>, cml::scalar_first, cml::positive_cross > rhs, BasicType tolerance)
+        {
+            return Equivalent(lhs[0], rhs[0], tolerance)
+                && Equivalent(lhs[1], rhs[1], tolerance)
+                && Equivalent(lhs[2], rhs[2], tolerance)
+                && Equivalent(lhs[3], rhs[3], tolerance)
+                ;
+        }
 
             ////   I M P L E M E N T A T I O N S   /////
 
