@@ -105,6 +105,10 @@ namespace XLEMath
 
     private:
         std::vector<Rectangle> _freeRectangles;
+        std::vector<std::pair<unsigned, unsigned>> _freeRectsByWidth;
+        std::vector<std::pair<unsigned, unsigned>> _freeRectsByHeight;
+
+        void RebuildFreeRects();
     };
 }
 

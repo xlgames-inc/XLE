@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RectanglePacking.h"
+#include "../Utility/IteratorUtils.h"
 
 namespace XLEMath
 {
@@ -198,7 +199,7 @@ namespace XLEMath
         auto best1 = _freeRectangles.end();
         int best1Score = INT_MAX;
 
-        UInt2 flippedDims(dims[1], dims[0]);
+        /*UInt2 flippedDims(dims[1], dims[0]);
         for (auto i=_freeRectangles.begin(); i!=_freeRectangles.end(); ++i) {
             auto score0 = Score(*i, dims);
             if (score0 >= 0 && score0 < best0Score) {
@@ -210,6 +211,23 @@ namespace XLEMath
             if (score1 >= 0 && score1 < best1Score) {
                 best1Score = score1;
                 best1 = i;
+            }
+        }*/
+        auto wi = std::lower_bound(_freeRectsByWidth.begin(), _freeRectsByWidth.end(), dims[0], CompareFirst<unsigned, unsigned>());
+        for (; wi != _freeRectsByWidth.end(); ++wi) {
+            auto score0 = Score(_freeRectangles[wi->second], dims);
+            if (score0 >= 0 && score0 < best0Score) {
+                best0Score = score0;
+                best0 = _freeRectangles.begin() + wi->second;
+            }
+        }
+
+        auto hi = std::lower_bound(_freeRectsByHeight.begin(), _freeRectsByHeight.end(), dims[1], CompareFirst<unsigned, unsigned>());
+        for (; hi != _freeRectsByHeight.end(); ++hi) {
+            auto score0 = Score(_freeRectangles[hi->second], dims);
+            if (score0 >= 0 && score0 < best0Score) {
+                best0Score = score0;
+                best0 = _freeRectangles.begin() + hi->second;
             }
         }
 
@@ -228,11 +246,11 @@ namespace XLEMath
             result.first = best0->first;
             result.second = result.first + dims;
             assert(Contains(*best0, result));
-        } else {
+        } /*else {
             result.first = best1->first;
             result.second = result.first + flippedDims;
             assert(Contains(*best1, result));
-        }
+        }*/
 
             // Go through every free rectangle and split every rectangle that
             // intersects with the one we just cut out. We will build the
@@ -302,6 +320,8 @@ namespace XLEMath
                 assert(!Intersects(result, *i));
         #endif
 
+        RebuildFreeRects();
+
         return result;
     }
 
@@ -366,7 +386,26 @@ namespace XLEMath
                     // unexpanded rects should not contain any other rects
                 _freeRectangles.push_back(iRect);
             }
+
+            RebuildFreeRects();
         }
+    }
+
+    void RectanglePacker_MaxRects::RebuildFreeRects()
+    {
+        _freeRectsByWidth.clear();
+        _freeRectsByHeight.clear();
+
+        _freeRectsByWidth.reserve(_freeRectangles.size());
+        for (unsigned c=0; c<_freeRectangles.size(); ++c)
+            _freeRectsByWidth.push_back({_freeRectangles[c].second[0] - _freeRectangles[c].first[0], c});
+
+        _freeRectsByHeight.reserve(_freeRectangles.size());
+        for (unsigned c=0; c<_freeRectangles.size(); ++c)
+            _freeRectsByHeight.push_back({_freeRectangles[c].second[1] - _freeRectangles[c].first[1], c});
+
+        std::sort(_freeRectsByWidth.begin(), _freeRectsByWidth.end(), CompareFirst<unsigned, unsigned>());
+        std::sort(_freeRectsByHeight.begin(), _freeRectsByHeight.end(), CompareFirst<unsigned, unsigned>());
     }
 
     std::pair<UInt2, UInt2> RectanglePacker_MaxRects::LargestFreeBlock() const
