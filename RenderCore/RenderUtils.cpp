@@ -216,7 +216,7 @@ namespace RenderCore
         return ~0u;
     }
 
-	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements) 
+	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements, bool enforceAlignment)
 	{
         // note -- following alignment rules suggested by Apple in OpenGL ES guide
         //          each element should be aligned to a multiple of 4 bytes (or a multiple of
@@ -236,7 +236,9 @@ namespace RenderCore
             if ((size % basicAlignment) != 0)
                 result += basicAlignment - (size % basicAlignment);   // add padding required by basic alignment restriction
         }
-        assert(!largestComponentPrecision || (result % largestComponentPrecision) == 0);      // ensure second and subsequent vertices will be aligned
+        if (enforceAlignment) {
+            assert(!largestComponentPrecision || (result % largestComponentPrecision) == 0);      // ensure second and subsequent vertices will be aligned
+        }
         return result / 8;
 	}
 

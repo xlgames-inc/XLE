@@ -99,7 +99,7 @@ namespace RenderCore
     } attribute_packed;
 #pragma pack(pop)
 
-	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements);
+	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements, bool enforceAlignment=true);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
