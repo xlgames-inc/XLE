@@ -8,9 +8,11 @@
 #pragma warning(disable:4267)       //  warning C4267: 'initializing' : conversion from 'size_t' to 'int', possible loss of data
 
 #include "ProjectionMath.h"
+#include "Geometry.h"
 #include "../Core/Prefix.h"
 #include "../Core/SelectConfiguration.h"
 #include <assert.h>
+#include <cfloat>
 
 #if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
     #include <intrin.h>
@@ -715,5 +717,32 @@ namespace XLEMath
             cameraPosition + nearClip * direction,
             cameraPosition + (farBias * farClip) * direction);
     }
-}
 
+    std::pair<Float2, Float2> GetPlanarMinMax(const Float4x4& worldToClip, const Float4& plane, ClipSpaceType clipSpaceType)
+    {
+        Float3 cameraAbsFrustumCorners[8];
+        CalculateAbsFrustumCorners(cameraAbsFrustumCorners, worldToClip, clipSpaceType);
+
+        const std::pair<unsigned, unsigned> edges[] =
+        {
+            std::make_pair(0, 1), std::make_pair(1, 3), std::make_pair(3, 2), std::make_pair(2, 0),
+            std::make_pair(4, 5), std::make_pair(5, 7), std::make_pair(7, 6), std::make_pair(6, 4),
+            std::make_pair(0, 4), std::make_pair(1, 5), std::make_pair(2, 6), std::make_pair(3, 7)
+        };
+
+        Float2 minIntersection(FLT_MAX, FLT_MAX), maxIntersection(-FLT_MAX, -FLT_MAX);
+        float intersectionPts[dimof(edges)];
+        for (unsigned c=0; c<dimof(edges); ++c) {
+            intersectionPts[c] = RayVsPlane(cameraAbsFrustumCorners[edges[c].first], cameraAbsFrustumCorners[edges[c].second], plane);
+            if (intersectionPts[c] >= 0.f && intersectionPts[c] <= 1.f) {
+                auto intr = LinearInterpolate(cameraAbsFrustumCorners[edges[c].first], cameraAbsFrustumCorners[edges[c].second], intersectionPts[c]);
+                minIntersection[0] = std::min(minIntersection[0], intr[0]);
+                minIntersection[1] = std::min(minIntersection[1], intr[2]);
+                maxIntersection[0] = std::max(maxIntersection[0], intr[0]);
+                maxIntersection[1] = std::max(maxIntersection[1], intr[2]);
+            }
+        }
+
+        return std::make_pair(minIntersection, maxIntersection);
+    }
+}
