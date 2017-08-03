@@ -48,7 +48,7 @@ namespace Serialization { namespace ChunkFile
             _fileOffset = 0;        // (not yet decided)
             _size = size;
         }
-    };
+    }__attribute__((packed, aligned(1)));
 
     static const unsigned MagicHeader = uint32('X') | (uint32('L') << 8) | (uint32('E') << 16) | (uint32('~') << 24);
     static const unsigned ChunkFileVersion = 0;
@@ -61,7 +61,7 @@ namespace Serialization { namespace ChunkFile
         char        _buildVersion[64];
         char        _buildDate[64];
         unsigned    _chunkCount;
-    };
+    }__attribute__((packed, aligned(1)));
 
     ChunkFileHeader MakeChunkFileHeader(unsigned chunkCount, const char buildVersionString[], const char buildDateString[]);
     std::vector<ChunkHeader> LoadChunkTable(::Assets::IFileInterface& file);
