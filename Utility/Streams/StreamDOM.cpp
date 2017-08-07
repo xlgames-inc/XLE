@@ -267,7 +267,8 @@ namespace Utility
     template<typename Formatter>
         unsigned DocElementHelper<Formatter>::FindAttribute(StringSection<value_type> name) const
     {
-        assert(_index != ~0u);
+        if (_index == ~0u) return ~0u;
+        
         auto& ele = _doc->_elements[_index];
         for (unsigned a=ele._firstAttribute; a!=~0u;) {
             const auto& attrib = _doc->_attributes[a];
