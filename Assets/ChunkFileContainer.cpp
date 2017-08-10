@@ -7,7 +7,6 @@
 #include "ChunkFileContainer.h"
 #include "BlockSerializer.h"
 #include "DepVal.h"
-// #include "IntermediateAssets.h"
 #include "IFileSystem.h"
 #include "../Utility/StringFormat.h"
 #include "../Core/Exceptions.h"
@@ -18,7 +17,13 @@ namespace Assets
         IteratorRange<const AssetChunkRequest*> requests) const
     {
 		auto file = MainFileSystem::OpenFileInterface(_filename.c_str(), "rb");
-        auto chunks = Serialization::ChunkFile::LoadChunkTable(*file);
+        return ResolveRequests(*file, requests);
+    }
+
+    std::vector<AssetChunkResult> ChunkFileContainer::ResolveRequests(
+        IFileInterface& file, IteratorRange<const AssetChunkRequest*> requests) const
+    {
+        auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
         
         std::vector<AssetChunkResult> result;
         result.reserve(requests.size());
@@ -56,8 +61,8 @@ namespace Assets
             if (r._dataType != AssetChunkRequest::DataType::DontLoad) {
                 uint8* mem = (uint8*)XlMemAlign(i->_size, sizeof(uint64_t));
                 chunkResult._buffer = std::unique_ptr<uint8[], PODAlignedDeletor>(mem);
-                file->Seek(i->_fileOffset);
-                file->Read(chunkResult._buffer.get(), i->_size);
+                file.Seek(i->_fileOffset);
+                file.Read(chunkResult._buffer.get(), i->_size);
 
                 // initialize with the block serializer (if requested)
                 if (r._dataType == AssetChunkRequest::DataType::BlockSerializer)
@@ -67,7 +72,7 @@ namespace Assets
             result.emplace_back(std::move(chunkResult));
         }
 
-        return std::move(result);
+        return result;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

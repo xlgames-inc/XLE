@@ -64,6 +64,7 @@ namespace Assets
 		const DepValPtr& GetDependencyValidation() const	{ return _validationCallback; }
 
 		std::vector<AssetChunkResult> ResolveRequests(IteratorRange<const AssetChunkRequest*> requests) const;
+        std::vector<AssetChunkResult> ResolveRequests(IFileInterface& file, IteratorRange<const AssetChunkRequest*> requests) const;
 
 		ChunkFileContainer(StringSection<ResChar> assetTypeName);
         ~ChunkFileContainer();
