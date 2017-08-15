@@ -242,6 +242,8 @@ namespace XLEMath
     Float4x4    AsFloat4x4(const ArbitraryRotation& input);
     Float4x4    AsFloat4x4(const ArbitraryScale& input);
     Float4x4    AsFloat4x4(const UniformScaleYRotTranslation& input);
+    Float4x4    AsFloat4x4(const ScaleRotationTranslationQ& input);
+    Float4x4    AsFloat4x4(const ScaleRotationTranslationM& input);
 
     Float4x4    AsFloat4x4(const Float3& translation);
     Float3x4    AsFloat3x4(const Float3& translation);

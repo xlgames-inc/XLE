@@ -851,7 +851,7 @@ namespace XLEMath
             0.0f, 0.0f, 0.0f, 1.0f);
     }
 
-    template<> Float4x4   AsFloat4x4(const ScaleRotationTranslationQ& input)
+    Float4x4   AsFloat4x4(const ScaleRotationTranslationQ& input)
     {
             //
             //          Convert from our separate rotation/scale/translation representation to
@@ -866,7 +866,7 @@ namespace XLEMath
             0.f, 0.f, 0.f, 1.f);
     }
 
-    template<> Float4x4   AsFloat4x4(const ScaleRotationTranslationM& input)
+    Float4x4   AsFloat4x4(const ScaleRotationTranslationM& input)
     {
         const Float3x3& rotationPart = input._rotation;
         const Float3& s = input._scale;
