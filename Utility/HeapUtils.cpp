@@ -26,6 +26,10 @@ namespace Utility
             return;
         }
         assert(_oldestBlock != ~unsigned(0x0));
+
+        #if defined(_DEBUG)
+            auto count = QueueDepth();
+        #endif
         
             // remove this item from it's old place in the queue
         auto oldLinks = _lruQueue[linearAddress];
@@ -52,6 +56,58 @@ namespace Utility
         _lruQueue[linearAddress].first = ~unsigned(0x0);
         _lruQueue[linearAddress].second = _newestBlock;
         _newestBlock = linearAddress;
+
+        #if defined(_DEBUG)
+            auto newQueueDepth = count;
+            assert(newQueueDepth == count || newQueueDepth == (count+1));
+        #endif
+    }
+
+    void    LRUQueue::SendToBack(unsigned linearAddress)
+    {
+        assert(linearAddress < _lruQueue.size());
+
+        if (_newestBlock == ~unsigned(0x0)) {
+            assert(_oldestBlock == ~unsigned(0x0));
+            _oldestBlock = _newestBlock = linearAddress;
+            return;
+        }
+        assert(_oldestBlock != ~unsigned(0x0));
+
+        #if defined(_DEBUG)
+            auto count = QueueDepth();
+        #endif
+        
+            // remove this item from it's old place in the queue
+		auto oldLinks = _lruQueue[linearAddress];
+        if (oldLinks.second != ~unsigned(0x0)) {
+            _lruQueue[oldLinks.second].first = oldLinks.first;
+            assert(linearAddress != _oldestBlock);
+        } else {
+            // no next means this may be the oldest. Nothing to change
+            if (linearAddress == _oldestBlock)
+                return;
+        }
+
+        if (oldLinks.first != ~unsigned(0x0)) {
+            _lruQueue[oldLinks.first].second = oldLinks.second;
+            assert(_newestBlock != linearAddress);
+        } else {
+            // no prev means this may be the newest. Nothing to change
+            if (_newestBlock == linearAddress)
+                _newestBlock = oldLinks.second;
+        }
+
+        assert(_lruQueue[_oldestBlock].second == ~unsigned(0x0));
+        _lruQueue[_oldestBlock].second = linearAddress;
+        _lruQueue[linearAddress].first = _oldestBlock;
+        _lruQueue[linearAddress].second = ~unsigned(0x0);
+        _oldestBlock = linearAddress;
+
+        #if defined(_DEBUG)
+            auto newQueueDepth = count;
+            assert(newQueueDepth == count || newQueueDepth == (count+1));
+        #endif
     }
 
     void LRUQueue::DisconnectOldest()
@@ -77,6 +133,22 @@ namespace Utility
 
             _lruQueue[blockToRemove] = std::make_pair(~unsigned(0x0), ~unsigned(0x0));
         }
+    }
+
+    unsigned LRUQueue::QueueDepth() const
+    {
+        if (_newestBlock == ~unsigned(0x0)) {
+            assert(_oldestBlock == ~unsigned(0x0));
+            return 0;
+        }
+
+        unsigned count = 1;
+        unsigned idx = _lruQueue[_oldestBlock].first;
+        while (idx != ~0x0u) {
+            ++count;
+            idx = _lruQueue[idx].first;
+        }
+        return count;
     }
 
     LRUQueue::LRUQueue(unsigned maxValues)

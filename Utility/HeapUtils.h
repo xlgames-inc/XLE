@@ -22,7 +22,9 @@ namespace Utility
     public:
         unsigned GetOldestValue() const;
         void BringToFront(unsigned value);
+        void SendToBack(unsigned linearAddress);
         void DisconnectOldest();
+        unsigned QueueDepth() const;
 
         LRUQueue(unsigned maxValues);
         LRUQueue();

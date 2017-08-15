@@ -52,6 +52,7 @@ namespace SceneEngine
         void FiniteResourceHeap<Key>::CancelTransfer(unsigned idx) {
             assert(_blockStates[idx]._state == Block::State::Transfer);
             _blockStates[idx]._state = Block::State::Empty;
+            _lruQueue.SendToBack(idx);
         }
     
     template<typename Key>
@@ -64,6 +65,7 @@ namespace SceneEngine
         void FiniteResourceHeap<Key>::Evict(unsigned idx) {
             assert(_blockStates[idx]._state == Block::State::Occupied);
             _blockStates[idx]._state = Block::State::Empty;
+            _lruQueue.SendToBack(idx);
         }
     
     template<typename Key>
