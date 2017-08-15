@@ -158,12 +158,6 @@ namespace Utility
             template<typename OtherIterator>
                 IteratorRange(const std::pair<OtherIterator, OtherIterator>& copyFrom)
                     : std::pair<Iterator, Iterator>(copyFrom) {}
-
-            IteratorRange(const std::initializer_list<typename std::decay<decltype(*std::declval<Iterator>())>::type>& copyFrom)
-                : std::pair<Iterator, Iterator>(copyFrom.begin(), copyFrom.end()) {}
-
-            template<typename OtherIterator>
-                operator IteratorRange<OtherIterator>() const { return IteratorRange<OtherIterator>(cbegin(), cend()); }
         };
 
 	template<>
