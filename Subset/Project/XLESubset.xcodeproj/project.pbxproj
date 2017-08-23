@@ -527,6 +527,7 @@
 		8FA3F7381EDD14E4003EF623 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				INSTALL_PATH = "";
 				PRODUCT_NAME = XLESubsetIOS;
 				SDKROOT = iphoneos;
 			};
@@ -535,6 +536,7 @@
 		8FA3F7391EDD14E4003EF623 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				INSTALL_PATH = "";
 				PRODUCT_NAME = XLESubsetIOS;
 				SDKROOT = iphoneos;
 			};

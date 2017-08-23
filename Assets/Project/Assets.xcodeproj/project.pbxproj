@@ -409,6 +409,7 @@
 		8F044BB61EA6B0890074D6A4 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				INSTALL_PATH = "";
 				PRODUCT_NAME = AssetsMac;
 			};
 			name = Debug;
@@ -416,6 +417,7 @@
 		8F044BB71EA6B0890074D6A4 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				INSTALL_PATH = "";
 				PRODUCT_NAME = AssetsMac;
 			};
 			name = Release;
@@ -425,6 +427,7 @@
 			buildSettings = {
 				PRODUCT_NAME = AssetsIOS;
 				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
 			};
 			name = Debug;
 		};
@@ -433,6 +436,7 @@
 			buildSettings = {
 				PRODUCT_NAME = AssetsIOS;
 				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
 			};
 			name = Release;
 		};
