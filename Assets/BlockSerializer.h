@@ -83,7 +83,11 @@ namespace Serialization
             uint64_t                _pointerOffset;
             uint64_t                _subBlockOffset;
             uint64_t                _subBlockSize;
-            SpecialBuffer::Enum     _specialBuffer;
+            #ifndef APPORTABLE
+                uint64_t                _specialBuffer;     // (this is SpecialBuffer::Enum. Made uint64_t to make alignment consistant across all platforms)
+            #else
+                SpecialBuffer::Enum     _specialBuffer;
+            #endif
         };
 
         static const size_t PtrFlagBit  = size_t(1)<<(size_t(sizeof(size_t)*8-1));
