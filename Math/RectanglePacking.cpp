@@ -341,26 +341,34 @@ namespace XLEMath
             for (auto i=_freeRectangles.begin(); i!=_freeRectangles.end(); ++i) {
                 if (i->second[0] == xRect.first[0]) {
                         // i is on the left of xRect. If the full edge is shared, then expand...
-                    if (i->first[1] <= xRect.first[1] && i->second[1] >= xRect.second[1])
+                    if (i->first[1] <= xRect.first[1] && i->second[1] >= xRect.second[1]) {
                         xRect.first[0] = i->first[0];
+                        xExpand = true;
+                    }
                 }
 
                 if (i->first[0] == xRect.second[0]) {
                         // i is on the right of xRect. If the full edge is shared, then expand...
-                    if (i->first[1] <= xRect.first[1] && i->second[1] >= xRect.second[1])
+                    if (i->first[1] <= xRect.first[1] && i->second[1] >= xRect.second[1]) {
                         xRect.second[0] = i->second[0];
+                        xExpand = true;
+                    }
                 }
 
                 if (i->second[1] == yRect.first[1]) {
                         // i is on the top of yRect. If the full edge is shared, then expand...
-                    if (i->first[0] <= yRect.first[0] && i->second[0] >= yRect.second[0])
-                        xRect.first[1] = i->first[1];
+                    if (i->first[0] <= yRect.first[0] && i->second[0] >= yRect.second[0]) {
+                        yRect.first[1] = i->first[1];
+                        yExpand = true;
+                    }
                 }
 
                 if (i->first[1] == yRect.second[1]) {
                         // i is on the bottom of yRect. If the full edge is shared, then expand...
-                    if (i->first[0] <= yRect.first[0] && i->second[0] >= yRect.second[0])
-                        xRect.second[1] = i->second[1];
+                    if (i->first[0] <= yRect.first[0] && i->second[0] >= yRect.second[0]) {
+                        yRect.second[1] = i->second[1];
+                        yExpand = true;
+                    }
                 }
             }
 
