@@ -589,6 +589,7 @@
 		8FA3F7B61EDD178B003EF623 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				INSTALL_PATH = "";
 				PRODUCT_NAME = UtilityIOS;
 				SDKROOT = iphoneos;
 			};
@@ -597,6 +598,7 @@
 		8FA3F7B71EDD178B003EF623 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				INSTALL_PATH = "";
 				PRODUCT_NAME = UtilityIOS;
 				SDKROOT = iphoneos;
 			};
@@ -620,6 +622,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				EXECUTABLE_PREFIX = lib;
+				INSTALL_PATH = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -628,6 +631,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				EXECUTABLE_PREFIX = lib;
+				INSTALL_PATH = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

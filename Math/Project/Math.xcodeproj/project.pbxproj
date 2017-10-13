@@ -337,6 +337,7 @@
 		8FA3F7E01EDD17F1003EF623 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				INSTALL_PATH = "";
 				PRODUCT_NAME = MathIOS;
 				SDKROOT = iphoneos;
 			};
@@ -345,6 +346,7 @@
 		8FA3F7E11EDD17F1003EF623 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				INSTALL_PATH = "";
 				PRODUCT_NAME = MathIOS;
 				SDKROOT = iphoneos;
 			};
