@@ -89,6 +89,7 @@ namespace Utility
 
     static const uint64 DefaultSeed32 = 0xB0F57EE3;
     XL_UTILITY_API uint32 Hash32(const void* begin, const void* end, uint32 seed = DefaultSeed32);
+    XL_UTILITY_API uint32 Hash32(const std::string& str, uint32 seed = DefaultSeed32);
 
     XL_UTILITY_API uint64 Hash64(const char str[], uint64 seed = DefaultSeed64);
     XL_UTILITY_API uint64 Hash64(const std::string& str, uint64 seed = DefaultSeed64);

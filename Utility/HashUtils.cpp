@@ -76,6 +76,11 @@ namespace Utility
         MurmurHash3_x86_32(begin, int(size_t(end)-size_t(begin)), seed, &temp);
         return temp;
     }
+    
+    uint32 Hash32(const std::string& str, uint32 seed)
+    {
+        return Hash32(AsPointer(str.begin()), AsPointer(str.end()), seed);
+    }
 
     uint32 IntegerHash32(uint32 key)
     {
