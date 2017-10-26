@@ -13,22 +13,6 @@
 
 namespace Utility
 {
-
-    void HierarchicalCPUProfiler::EndFrame()
-    {
-        assert(XlGetCurrentThreadId() == _threadId);
-        assert(_aeStackI==0);
-        static_assert(s_bufferCount > 1, "Expecting at least 2 buffers");
-        std::swap(_events[0], _events[1]);  // (actually only the first 2 would be used)
-        std::swap(_idAtEventsStart[0], _idAtEventsStart[1]);
-
-        _idAtEventsStart[0] = _workingId;
-
-            // erase without deleting memory
-        _events[0].erase(_events[0].begin(), _events[0].end());
-        assert(_aeStackI == 0);
-    }
-
     struct ParentAndChildLink
     {
         const uint64* _parent;
@@ -63,7 +47,7 @@ namespace Utility
         bool operator()(const ParentAndChildLink& lhs, const ParentAndChildLink& rhs) { return lhs._parent < rhs._parent; }
     };
 
-    static HierarchicalCPUProfiler::ResolvedEvent BlankEvent(const char label[])
+    static IHierarchicalProfiler::ResolvedEvent BlankEvent(const char label[])
     {
         HierarchicalCPUProfiler::ResolvedEvent evnt;
         evnt._label = label;
@@ -73,23 +57,24 @@ namespace Utility
         evnt._sibling = HierarchicalCPUProfiler::ResolvedEvent::s_id_Invalid;
         return evnt;
     }
-    
-    auto HierarchicalCPUProfiler::CalculateResolvedEvents() const -> std::vector<ResolvedEvent>
+
+    auto IHierarchicalProfiler::CalculateResolvedEvents(RawEventData rawEvents) -> std::vector<ResolvedEvent>
     {
             //  First, we need to rearrange the call stack in a
             //  breath-first hierarchy order (sortable by label)
-            //  This requires iterating through the entire list of events. 
+            //  This requires iterating through the entire list of events.
             //  Once it's in breath-first order, it should become
             //  much easier to do the next few operations.
         std::vector<ParentAndChildLink> parentsAndChildren;
-        parentsAndChildren.reserve(_events[1].size()/2);    // Approximation of events count
+        IteratorRange<const uint64_t*> events((const uint64_t*)rawEvents.begin(), (const uint64_t*)rawEvents.end());
+        parentsAndChildren.reserve(events.size()/2);    // Approximation of events count
 
-        unsigned workingStack[s_maxStackDepth];
+        unsigned workingStack[32];
         unsigned _workingStackDepth = 0;
-        auto workingId = _idAtEventsStart[1];
+        auto i=events.cbegin();
+        auto workingId = *i++;
 
-        auto i=_events[1].cbegin();
-        for (; i!=_events[1].cend(); ++i) {
+        for (; i!=events.cend(); ++i) {
             uint64 time = *i;
             if (time & (1ull << 63ull)) {
 
@@ -131,7 +116,7 @@ namespace Utility
                 }
                 link._child = AsPointer(i);
                 link._label = (const char*)*(i+1);
-                link._id = workingId++;
+                link._id = (unsigned)workingId++;
                 link._resolvedChildrenTime = link._resolvedInclusiveTime = 0;
                 ++i;
 
@@ -187,21 +172,21 @@ namespace Utility
             PreResolveEvent queuedEvent;
             queuedEvent._parentOutput = outputId;
             queuedEvent._parentLinkSearch = root->_child;
-            
+
             finalResolveQueue.push(queuedEvent);
             lastRootEventOutputId = outputId;
         }
 
-            //  While we have children in our "finalResolveQueue", we need to go 
+            //  While we have children in our "finalResolveQueue", we need to go
             //  through and turn them into ResolveEvents.
             //
-            //  During this phase, we also need to do mergers. When we encounter 
-            //  multiple siblings with the same label, they must be merged into 
+            //  During this phase, we also need to do mergers. When we encounter
+            //  multiple siblings with the same label, they must be merged into
             //  a single ResolvedEvent.
             //
             //  We must also merge children of events in the same way. The entire
             //  hierarchy of the merge labels will be collapsed together, and where
-            //  identical labels occur at the same tree depth, they get merged to 
+            //  identical labels occur at the same tree depth, they get merged to
             //  become a single event.
         while (!finalResolveQueue.empty()) {
             const auto w = finalResolveQueue.front();
@@ -232,7 +217,7 @@ namespace Utility
                 }
 
                 if (existingChildIterator == ResolvedEvent::s_id_Invalid) {
-                        //  It doesn't exist. Create a new event, and attach it to the last sibling 
+                        //  It doesn't exist. Create a new event, and attach it to the last sibling
                         //  of the parent
                     ResolvedEvent newEvent = BlankEvent(mergedChildStart->_label);
                     existingChildIterator = (ResolvedEvent::Id)result.size();
@@ -266,6 +251,59 @@ namespace Utility
         return result;
     }
 
+    auto    IHierarchicalProfiler::AddEventListener(const EventListener& callback) -> ListenerId
+    {
+        ScopedLock(_listenersMutex);
+        auto id = _nextListenerId++;
+        _listeners.push_back(std::make_pair(id, callback));
+        return id;
+    }
+
+    void    IHierarchicalProfiler::RemoveEventListener(ListenerId id)
+    {
+        ScopedLock(_listenersMutex);
+        auto i = std::find_if(_listeners.begin(), _listeners.end(),
+            [id](const std::pair<unsigned, EventListener>& p) { return p.first == id; });
+        if (i != _listeners.end())
+            _listeners.erase(i);
+    }
+
+    void    IHierarchicalProfiler::Publish(RawEventData rawData)
+    {
+        ScopedLock(_listenersMutex);
+        for (const auto&listener:_listeners)
+            listener.second(rawData);
+    }
+
+    IHierarchicalProfiler::IHierarchicalProfiler()
+    {
+        _nextListenerId = 1;
+    }
+
+    IHierarchicalProfiler::~IHierarchicalProfiler()
+    {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void HierarchicalCPUProfiler::EndFrame()
+    {
+        assert(XlGetCurrentThreadId() == _threadId);
+        assert(_aeStackI==0);
+        static_assert(s_bufferCount > 1, "Expecting at least 2 buffers");
+
+        std::swap(_events[0], _events[1]);  // (actually only the first 2 would be used)
+        std::swap(_idAtEventsStart[0], _idAtEventsStart[1]);
+        _idAtEventsStart[0] = _workingId;
+
+            // erase without deleting memory
+        _events[0].erase(_events[0].begin(), _events[0].end());
+        _events[0].push_back(_idAtEventsStart[0]);
+        assert(_aeStackI == 0);
+
+        // publish the results to the listeners
+        Publish(MakeIteratorRange(_events[1]));
+    }
+
     HierarchicalCPUProfiler::HierarchicalCPUProfiler()
     {
         _workingId = 0;
@@ -273,6 +311,8 @@ namespace Utility
             _events[c].reserve(16 * 1024);
             _idAtEventsStart[c] = _workingId;
         }
+
+        _events[0].push_back(_idAtEventsStart[0]);
 
         #if !defined(NDEBUG)
             _threadId = XlGetCurrentThreadId();

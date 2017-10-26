@@ -8,11 +8,11 @@
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
 
-namespace Utility { class HierarchicalCPUProfiler; }
+namespace Utility { class IHierarchicalProfiler; }
 
 namespace PlatformRig { namespace Overlays
 {
-    class CPUProfileDisplay : public RenderOverlays::DebuggingDisplay::IWidget ///////////////////////////////////////////////////////////
+    class HierarchicalProfilerDisplay : public RenderOverlays::DebuggingDisplay::IWidget ///////////////////////////////////////////////////////////
     {
     public:
         typedef RenderOverlays::IOverlayContext IOverlayContext;
@@ -23,12 +23,12 @@ namespace PlatformRig { namespace Overlays
 
         void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
-        
-        CPUProfileDisplay(HierarchicalCPUProfiler* profiler);
-        ~CPUProfileDisplay();
+
+        HierarchicalProfilerDisplay(IHierarchicalProfiler* profiler);
+        ~HierarchicalProfilerDisplay();
     private:
-        HierarchicalCPUProfiler* _profiler;
-        std::vector<uint64> _toggledItems;
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
     };
 }}
 

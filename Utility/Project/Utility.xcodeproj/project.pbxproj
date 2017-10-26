@@ -10,6 +10,9 @@
 		8F707BDD1EA6CAA400DEC600 /* System_Apple.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */; };
 		8F707BEA1EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BE91EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp */; };
 		8F707BEC1EA6CB6F00DEC600 /* FileUtils_stdio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */; };
+		8F90567E1FA2749D0020DDB5 /* SuppressionProfiler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F90567C1FA2749D0020DDB5 /* SuppressionProfiler.cpp */; };
+		8F90567F1FA2749D0020DDB5 /* SuppressionProfiler.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F90567D1FA2749D0020DDB5 /* SuppressionProfiler.h */; };
+		8FA1D31A1FA275E0006E539E /* SuppressionProfiler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F90567C1FA2749D0020DDB5 /* SuppressionProfiler.cpp */; };
 		8FA3F7B91EDD17DE003EF623 /* System_Apple.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */; };
 		8FA3F7BA1EDD17DE003EF623 /* AccessorSerialize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D1B1EA688D1009BD9B0 /* AccessorSerialize.cpp */; };
 		8FA3F7BB1EDD17DE003EF623 /* ClassAccessors.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D1D1EA688D1009BD9B0 /* ClassAccessors.cpp */; };
@@ -128,6 +131,8 @@
 		8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = System_Apple.cpp; sourceTree = "<group>"; };
 		8F707BE91EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileSystemMonitor_Stubs.cpp; sourceTree = "<group>"; };
 		8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileUtils_stdio.cpp; sourceTree = "<group>"; };
+		8F90567C1FA2749D0020DDB5 /* SuppressionProfiler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SuppressionProfiler.cpp; sourceTree = "<group>"; };
+		8F90567D1FA2749D0020DDB5 /* SuppressionProfiler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SuppressionProfiler.h; sourceTree = "<group>"; };
 		8FA3F7B01EDD178B003EF623 /* libUtilityIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libUtilityIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8FD85CF81EA6872D009BD9B0 /* libUtilityMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libUtilityMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8FD85D001EA68787009BD9B0 /* Core.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
@@ -332,6 +337,8 @@
 			children = (
 				8FD85D281EA688D1009BD9B0 /* CPUProfiler.cpp */,
 				8FD85D291EA688D1009BD9B0 /* CPUProfiler.h */,
+				8F90567C1FA2749D0020DDB5 /* SuppressionProfiler.cpp */,
+				8F90567D1FA2749D0020DDB5 /* SuppressionProfiler.h */,
 			);
 			name = Profiling;
 			path = ../Profiling;
@@ -394,6 +401,7 @@
 				8FD85D831EA688D1009BD9B0 /* Serialization.h in Headers */,
 				8FD85D8A1EA688D1009BD9B0 /* StreamTypes.h in Headers */,
 				8FD85D761EA688D1009BD9B0 /* ParameterPackUtils.h in Headers */,
+				8F90567F1FA2749D0020DDB5 /* SuppressionProfiler.h in Headers */,
 				8FD85D601EA688D1009BD9B0 /* ExceptionLogging.h in Headers */,
 				8FD85DA01EA688D1009BD9B0 /* UTFUtils.h in Headers */,
 				8FD85D591EA688D1009BD9B0 /* BitHeap.h in Headers */,
@@ -532,6 +540,7 @@
 				8FA3F7C71EDD17DE003EF623 /* CompletionThreadPool.cpp in Sources */,
 				8FA3F7C81EDD17DE003EF623 /* ArithmeticUtils.cpp in Sources */,
 				8FA3F7C91EDD17DE003EF623 /* BitUtils.cpp in Sources */,
+				8FA1D31A1FA275E0006E539E /* SuppressionProfiler.cpp in Sources */,
 				8FA3F7CA1EDD17DE003EF623 /* Conversion.cpp in Sources */,
 				8FA3F7CB1EDD17DE003EF623 /* FunctionUtils.cpp in Sources */,
 				8FA3F7CC1EDD17DE003EF623 /* HashUtils.cpp in Sources */,
@@ -568,6 +577,7 @@
 				8FD85D701EA688D1009BD9B0 /* MiniHeap.cpp in Sources */,
 				8FD85D741EA688D1009BD9B0 /* ParameterBox.cpp in Sources */,
 				8FD85D841EA688D1009BD9B0 /* Stream.cpp in Sources */,
+				8F90567E1FA2749D0020DDB5 /* SuppressionProfiler.cpp in Sources */,
 				8FD85D7A1EA688D1009BD9B0 /* Data.cpp in Sources */,
 				8F707BEA1EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp in Sources */,
 				8FD85D881EA688D1009BD9B0 /* StreamFormatter.cpp in Sources */,

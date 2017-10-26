@@ -7,6 +7,8 @@
 #pragma once
 
 #include "../TimeUtils.h"
+#include "../IteratorUtils.h"
+#include "../Threading/Mutex.h"
 #include "../../Core/Types.h"
 #include <vector>
 #include <assert.h>
@@ -18,12 +20,49 @@
 
 namespace Utility
 {
+    class IHierarchicalProfiler
+    {
+    public:
+        using RawEventData = IteratorRange<const void*>;
+        using EventListener = std::function<void(RawEventData)>;
+        using ListenerId = unsigned;
+        ListenerId      AddEventListener(const EventListener& callback);
+        void            RemoveEventListener(ListenerId id);
+
+        using EventId = unsigned;
+
+        class ResolvedEvent
+        {
+        public:
+            const char* _label;
+            uint64      _inclusiveTime;
+            uint64      _exclusiveTime;
+            unsigned    _eventCount;
+
+            typedef unsigned Id;
+            static const unsigned s_id_Invalid = ~Id(0x0);
+            Id          _firstChild;
+            Id          _sibling;
+        };
+
+        static std::vector<ResolvedEvent> CalculateResolvedEvents(RawEventData);
+
+        IHierarchicalProfiler();
+        ~IHierarchicalProfiler();
+    protected:
+        void Publish(RawEventData);
+
+        Threading::Mutex _listenersMutex;
+        std::vector<std::pair<ListenerId, EventListener>> _listeners;
+        ListenerId _nextListenerId;
+    };
+
     /// <summary>Hierarchical CPU call Profiler</summary>
     /// This is a light weight profiler that can give a reasonably
-    /// accurate profile of CPU events. 
+    /// accurate profile of CPU events.
     ///
     /// Profiling occurs by registering begin and end events associated
-    /// with labels. When interpret these hierarchically, like a call 
+    /// with labels. When interpret these hierarchically, like a call
     /// stack. We expect socks & shoes type behaviour for these events
     /// (ie, first on, last off).
     ///
@@ -43,22 +82,22 @@ namespace Utility
     ///     \endcode</code>
     ///
     /// Above, the string literal ("RenderFrame") will evaluate to the same pointer
-    /// where ever it appears in the code. So we can compare those pointer when 
+    /// where ever it appears in the code. So we can compare those pointer when
     /// we want to check events for equivalence.
     ///
-    /// Above, EndEvent() could be implemented to take a return code from BeginEvent, 
+    /// Above, EndEvent() could be implemented to take a return code from BeginEvent,
     /// or it could use the same literal. Using the same literal might be slightly
-    /// more efficient. However, I've decided to use an id -- this enables use to 
+    /// more efficient. However, I've decided to use an id -- this enables use to
     /// query the cost of a specific event. Querying by a string label would give
-    /// use the cost of every event using the same label. But the id allows us to 
+    /// use the cost of every event using the same label. But the id allows us to
     /// target a specific instance.
     ///
-    /// The profiler will minimize it's cost during profiling, even if that means that 
-    /// interpreting the results afterwards is a little more expensive. 
+    /// The profiler will minimize it's cost during profiling, even if that means that
+    /// interpreting the results afterwards is a little more expensive.
     ///
     /// This has 2 advantages:
     /// <list>
-    ///   <item> We want to avoid distorting the profile while 
+    ///   <item> We want to avoid distorting the profile while
     ///     we're profiling. If the profiler itself changes the
     ///     cost of functions, the results won't be perfectly
     ///     accurate. Similarly, if the performance of the CPU
@@ -66,13 +105,13 @@ namespace Utility
     ///     So we want to avoid this at all costs!
     ///   <item> We can profile many items. Sometimes we want to
     ///     create a profile label in the middle of a loop, or some
-    ///     frequently called function. This is only possible if the 
+    ///     frequently called function. This is only possible if the
     ///     profiler overhead is really low. So we need to limit the
     ///     overhead to the absolute minimum.
     /// </list>
     ///
     /// The overhead is small enough that enabling/disabling profiling
-    /// with a condition is too expensive. So profiling can only be 
+    /// with a condition is too expensive. So profiling can only be
     /// disabled at compile time.
     ///
     /// This is intended to be used on a single thread. When profiling
@@ -80,35 +119,17 @@ namespace Utility
     ///
     /// I've written variations of this class so many times! But this
     /// one is open-source. It's forever!
-    class HierarchicalCPUProfiler
+    class HierarchicalCPUProfiler : public IHierarchicalProfiler
     {
     public:
-        typedef unsigned EventId;
-
         EventId     BeginEvent(const char eventLiteral[]);
         void        EndEvent(EventId eventId);
         void        EndFrame();
-
-        class ResolvedEvent
-        {
-        public:
-            const char* _label;
-            uint64      _inclusiveTime;
-            uint64      _exclusiveTime;
-            unsigned    _eventCount;
-
-            typedef unsigned Id;
-            static const unsigned s_id_Invalid = ~Id(0x0);
-            Id          _firstChild;
-            Id          _sibling;
-        };
-        std::vector<ResolvedEvent> CalculateResolvedEvents() const;
 
         HierarchicalCPUProfiler();
         ~HierarchicalCPUProfiler();
     private:
         static const unsigned s_bufferCount = 2;
-        static const unsigned s_maxStackDepth = 16;
         std::vector<uint64> _events[s_bufferCount];
 
         uint32 _workingId;
@@ -116,11 +137,12 @@ namespace Utility
 
         #if !defined(NDEBUG)
             uint32 _threadId;
+            static const unsigned s_maxStackDepth = 16;
             uint32 _aeStack[s_maxStackDepth];
             uint32 _aeStackI;
         #endif
     };
-    
+
     uint32 XlGetCurrentThreadId();
 
     inline unsigned HierarchicalCPUProfiler::BeginEvent(const char eventLiteral[])
@@ -167,7 +189,7 @@ namespace Utility
 
     /// <summary>Begin and end a profiler event</summary>
     /// Begin a CPU profiler event, and then end it after this object
-    /// leaves scope. Use this to manage CPU profiler events in a 
+    /// leaves scope. Use this to manage CPU profiler events in a
     /// RAII-friendly way.
     class CPUProfileEvent
     {
