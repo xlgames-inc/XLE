@@ -96,9 +96,34 @@ namespace Utility
         }
 
         SuppressionProfileEvent()
+        : _profiler(nullptr), _id(~0u)
+        {
+        }
+
+        ~SuppressionProfileEvent()
         {
             if (IsActive())
                 _profiler->EndEvent(_id);
+        }
+
+        SuppressionProfileEvent(SuppressionProfileEvent&& moveFrom) never_throws
+        {
+            _profiler = moveFrom._profiler;
+            _id = moveFrom._id;
+            moveFrom._profiler = nullptr;
+            moveFrom._id = ~0u;
+        }
+
+        SuppressionProfileEvent& operator=(SuppressionProfileEvent&& moveFrom) never_throws
+        {
+            if (IsActive())
+                _profiler->EndEvent(_id);
+
+            _profiler = moveFrom._profiler;
+            _id = moveFrom._id;
+            moveFrom._profiler = nullptr;
+            moveFrom._id = ~0u;
+            return *this;
         }
 
     private:

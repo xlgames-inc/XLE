@@ -202,9 +202,31 @@ namespace Utility
             _id = _profiler->BeginEvent(label);
         }
 
+        CPUProfileEvent() : _id(~0u) {}
+
         ~CPUProfileEvent()
         {
-            _profiler->EndEvent(_id);
+            if (_id != ~0u)
+                _profiler->EndEvent(_id);
+        }
+
+        CPUProfileEvent(CPUProfileEvent&& moveFrom) never_throws
+        : _profiler(moveFrom._profiler), _id(moveFrom._id)
+        {
+            moveFrom._profiler = nullptr;
+            moveFrom._id = ~0u;
+        }
+
+        CPUProfileEvent& operator=(CPUProfileEvent&& moveFrom) never_throws
+        {
+            if (_id != ~0u)
+                _profiler->EndEvent(_id);
+
+            _profiler = moveFrom._profiler;
+            _id = moveFrom._id;
+            moveFrom._profiler = nullptr;
+            moveFrom._id = ~0u;
+            return *this;
         }
 
     private:
