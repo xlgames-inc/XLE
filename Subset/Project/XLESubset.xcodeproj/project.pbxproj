@@ -52,6 +52,9 @@
 		8F707C801EA6D25700DEC600 /* GeoProcUtil.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707C6A1EA6D25700DEC600 /* GeoProcUtil.h */; };
 		8F707C811EA6D25700DEC600 /* MeshDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707C6B1EA6D25700DEC600 /* MeshDatabase.cpp */; };
 		8F707C821EA6D25700DEC600 /* MeshDatabase.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707C6C1EA6D25700DEC600 /* MeshDatabase.h */; };
+		8F88060A1FA3F62200AB9E4F /* HistoricalProfilerDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F8806081FA3F62100AB9E4F /* HistoricalProfilerDisplay.cpp */; };
+		8F88060B1FA3F62200AB9E4F /* HistoricalProfilerDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F8806081FA3F62100AB9E4F /* HistoricalProfilerDisplay.cpp */; };
+		8F88060C1FA3F62200AB9E4F /* HistoricalProfilerDisplay.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F8806091FA3F62200AB9E4F /* HistoricalProfilerDisplay.h */; };
 		8FA3F73B1EDD157B003EF623 /* MurmurHash2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BE11EA6CB0A00DEC600 /* MurmurHash2.cpp */; };
 		8FA3F73D1EDD157B003EF623 /* MurmurHash3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BE31EA6CB0A00DEC600 /* MurmurHash3.cpp */; };
 		8FA3F73F1EDD157B003EF623 /* CPUProfileDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B691EA6C4BE00DEC600 /* CPUProfileDisplay.cpp */; };
@@ -136,6 +139,8 @@
 		8F707C6A1EA6D25700DEC600 /* GeoProcUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GeoProcUtil.h; sourceTree = "<group>"; };
 		8F707C6B1EA6D25700DEC600 /* MeshDatabase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MeshDatabase.cpp; sourceTree = "<group>"; };
 		8F707C6C1EA6D25700DEC600 /* MeshDatabase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MeshDatabase.h; sourceTree = "<group>"; };
+		8F8806081FA3F62100AB9E4F /* HistoricalProfilerDisplay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = HistoricalProfilerDisplay.cpp; path = ../../PlatformRig/DebuggingDisplays/HistoricalProfilerDisplay.cpp; sourceTree = "<group>"; };
+		8F8806091FA3F62200AB9E4F /* HistoricalProfilerDisplay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HistoricalProfilerDisplay.h; path = ../../PlatformRig/DebuggingDisplays/HistoricalProfilerDisplay.h; sourceTree = "<group>"; };
 		8FA3F7321EDD14E4003EF623 /* libXLESubsetIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libXLESubsetIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -201,6 +206,8 @@
 		8F707B681EA6C4AF00DEC600 /* DebuggingDisplays */ = {
 			isa = PBXGroup;
 			children = (
+				8F8806081FA3F62100AB9E4F /* HistoricalProfilerDisplay.cpp */,
+				8F8806091FA3F62200AB9E4F /* HistoricalProfilerDisplay.h */,
 				8F707B691EA6C4BE00DEC600 /* CPUProfileDisplay.cpp */,
 				8F707B6A1EA6C4BE00DEC600 /* CPUProfileDisplay.h */,
 			);
@@ -361,6 +368,7 @@
 				8F707B9F1EA6C74C00DEC600 /* ResourceUtils.h in Headers */,
 				8F707B881EA6C5D500DEC600 /* GenericQuadTree.h in Headers */,
 				8F707BA91EA6C75C00DEC600 /* Material.h in Headers */,
+				8F88060C1FA3F62200AB9E4F /* HistoricalProfilerDisplay.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -448,6 +456,7 @@
 				8F707B851EA6C5D500DEC600 /* GenericGridPartitioning.cpp in Sources */,
 				8F707B6B1EA6C4BE00DEC600 /* CPUProfileDisplay.cpp in Sources */,
 				8F707B831EA6C5D500DEC600 /* FiniteResourceHeap.cpp in Sources */,
+				8F88060A1FA3F62200AB9E4F /* HistoricalProfilerDisplay.cpp in Sources */,
 				8F707BB31EA6C78400DEC600 /* PredefinedCBLayout.cpp in Sources */,
 				8F707B991EA6C74C00DEC600 /* Format.cpp in Sources */,
 				8F707C811EA6D25700DEC600 /* MeshDatabase.cpp in Sources */,
@@ -474,6 +483,7 @@
 				8FA3F73F1EDD157B003EF623 /* CPUProfileDisplay.cpp in Sources */,
 				8FA3F7411EDD157B003EF623 /* GeometryAlgorithm.cpp in Sources */,
 				8FA3F7431EDD157B003EF623 /* GeoProcUtil.cpp in Sources */,
+				8F88060B1FA3F62200AB9E4F /* HistoricalProfilerDisplay.cpp in Sources */,
 				8FA3F7451EDD157B003EF623 /* MeshDatabase.cpp in Sources */,
 				8FA3F7471EDD157B003EF623 /* Material.cpp in Sources */,
 				8FA3F7491EDD157B003EF623 /* RawMaterial.cpp in Sources */,
