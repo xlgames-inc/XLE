@@ -4,10 +4,6 @@
     <NsightTegraProjectRevisionNumber>4</NsightTegraProjectRevisionNumber>
   </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug-OpenGL|Tegra-Android">
-      <Configuration>Debug-OpenGL</Configuration>
-      <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug-OpenGL|Win32">
       <Configuration>Debug-OpenGL</Configuration>
       <Platform>Win32</Platform>
@@ -16,10 +12,6 @@
       <Configuration>Debug-OpenGL</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Profile-OpenGL|Tegra-Android">
-      <Configuration>Profile-OpenGL</Configuration>
-      <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Profile-OpenGL|Win32">
       <Configuration>Profile-OpenGL</Configuration>
       <Platform>Win32</Platform>
@@ -27,10 +19,6 @@
     <ProjectConfiguration Include="Profile-OpenGL|x64">
       <Configuration>Profile-OpenGL</Configuration>
       <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release-OpenGL|Tegra-Android">
-      <Configuration>Release-OpenGL</Configuration>
-      <Platform>Tegra-Android</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release-OpenGL|Win32">
       <Configuration>Release-OpenGL</Configuration>
@@ -48,21 +36,6 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'">android-18</AndroidAPILevel>
-    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'">android-18</AndroidAPILevel>
-    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'">android-18</AndroidAPILevel>
-    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'">x86-4.8</PlatformToolset>
-    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'">x86-4.8</PlatformToolset>
-    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'">x86-4.8</PlatformToolset>
-    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'">android-17</AndroidMinAPI>
-    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'">android-17</AndroidTargetAPI>
-    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'" />
-    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'">android-17</AndroidMinAPI>
-    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'">android-17</AndroidTargetAPI>
-    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'" />
-    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'">android-17</AndroidMinAPI>
-    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'">android-17</AndroidTargetAPI>
-    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'" />
   </PropertyGroup>
   <Import Project="..\..\Solutions\Main.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -90,21 +63,6 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'">
-    <ClCompile>
-      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'">
-    <ClCompile>
-      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'">
-    <ClCompile>
-      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-  </ItemDefinitionGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Foreign\Project\Foreign.vcxproj">
       <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
