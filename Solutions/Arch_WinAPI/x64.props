@@ -3,7 +3,8 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Label="Configuration">
-    <PlatformToolset Condition="$(MSBuildToolsVersion) &gt;= 14">v140</PlatformToolset>
+    <PlatformToolset Condition="$(MSBuildToolsVersion) &gt;= 15">v141</PlatformToolset>
+    <PlatformToolset Condition="$(MSBuildToolsVersion) &gt;= 14 And $(MSBuildToolsVersion) &lt; 15">v140</PlatformToolset>
     <PlatformToolset Condition="$(MSBuildToolsVersion) &lt; 14">v120</PlatformToolset>
   </PropertyGroup>
   <ItemDefinitionGroup>
