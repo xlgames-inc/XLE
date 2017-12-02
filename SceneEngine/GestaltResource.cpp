@@ -39,7 +39,7 @@ namespace SceneEngine
             static Format SpecializeFormat(Format fmt) { return fmt; }
 
         template<>
-            static Format SpecializeFormat<Metal::ShaderResourceView>(Format fmt)
+            Format SpecializeFormat<Metal::ShaderResourceView>(Format fmt)
             { 
                 if (    fmt >= Format::R24G8_TYPELESS
                     &&  fmt <= Format::X24_TYPELESS_G8_UINT) {
@@ -52,7 +52,7 @@ namespace SceneEngine
             }
 
         template<>
-            static Format SpecializeFormat<Metal::DepthStencilView>(Format fmt)
+            Format SpecializeFormat<Metal::DepthStencilView>(Format fmt)
             { 
                 if (    fmt >= Format::R24G8_TYPELESS
                     &&  fmt <= Format::X24_TYPELESS_G8_UINT) {

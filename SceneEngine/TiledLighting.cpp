@@ -253,14 +253,14 @@ namespace SceneEngine
                 const unsigned TileWidth = 16, TileHeight = 16;
                 struct LightCulling
                 {
-                    int         _lightCount;
-                    int         _groupCounts[2];
+					unsigned	_lightCount;
+					unsigned    _groupCounts[2];
                     unsigned    _dummy0;
                     Float4x4    _worldToView;
                     Float2      _fov;
                     int         _dummy1[2];
                 } lightCulling = { 
-                    tileLightCount, { (width + TileWidth - 1) / TileWidth, (height + TileHeight + 1) / TileHeight }, 0,
+                    tileLightCount, { (width + TileWidth - 1) / TileWidth, (height + TileHeight + 1) / TileHeight }, 0u,
                     worldToView, 
                     fov, { 0, 0 }
                 };

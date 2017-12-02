@@ -35,7 +35,7 @@ namespace SceneEngine
                     bool useNormals,
                     RenderCore::Format normalsResolveFormat)
             {
-                std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
+                std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), '\0');
                 _width = width;
                 _height = height;
                 _destinationFormat = destinationFormat;

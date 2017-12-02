@@ -207,9 +207,9 @@ namespace SceneEngine
 
         if (parserContext._stringHelpers->_pendingAssets[0]) {
             UCS4Buffer<64> text("Pending assets:");
-            Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
+            Float2 alignedPosition2 = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
             style.Draw(
-                context, alignedPosition[0], alignedPosition[1], text, -1,
+                context, alignedPosition2[0], alignedPosition2[1], text, -1,
                 0.f, 1.f, 0.f, 0.f, 0xffff7f7f, UI_TEXT_STATE_NORMAL, true, nullptr);
             textPosition[1] += lineHeight;
 
@@ -231,9 +231,9 @@ namespace SceneEngine
 
         if (parserContext._stringHelpers->_invalidAssets[0]) {
             UCS4Buffer<64> text("Invalid assets:");
-            Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
+            Float2 alignedPosition2 = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
             style.Draw(
-                context, alignedPosition[0], alignedPosition[1], text, -1,
+                context, alignedPosition2[0], alignedPosition2[1], text, -1,
                 0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
             textPosition[1] += lineHeight;
 

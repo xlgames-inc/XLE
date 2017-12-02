@@ -254,18 +254,18 @@ namespace SceneEngine { namespace StraightSkeleton
 			// Is there is a viable collision at either t0 or t1?
 			// All 3 points should be on the same line at this point -- so we just need to check if
 			// the motorcycle is between them (or intersecting a vertex)
-			for (unsigned c=0; c<2; ++c) {
-				if (t[c] > bestCollisionEvent._time || t[c] < 0.0f) continue;	// don't need to check collisions that happen too late
-				auto P0 = Float2(p0 + t[c]*v0);
-				auto P1 = Float2(p1 + t[c]*v1);
-				auto P2 = Float2(p2 + t[c]*v2);
+			for (unsigned q=0; q<2; ++q) {
+				if (t[q] > bestCollisionEvent._time || t[q] < 0.0f) continue;	// don't need to check collisions that happen too late
+				auto P0 = Float2(p0 + t[q]*v0);
+				auto P1 = Float2(p1 + t[q]*v1);
+				auto P2 = Float2(p2 + t[q]*v2);
 				if ((Dot(P1-P0, P2-P0) > 0.0f) && (Dot(P0-P1, P2-P1) > 0.0f)) {
 					// good collision
-					bestCollisionEvent._time = t[c];
+					bestCollisionEvent._time = t[q];
 					bestCollisionEvent._edgeSegment = unsigned(&e - AsPointer(graph._wavefrontEdges.begin()));
 				} else if (Equivalent(P0, P2, epsilon) || Equivalent(P1, P2, epsilon)) {
 					// collided with vertex (or close enough)
-					bestCollisionEvent._time = t[c];
+					bestCollisionEvent._time = t[q];
 					bestCollisionEvent._edgeSegment = unsigned(&e - AsPointer(graph._wavefrontEdges.begin()));
 				}
 			}

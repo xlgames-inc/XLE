@@ -35,7 +35,7 @@ namespace Serialization { namespace ChunkFile
         {
             _type = TypeIdentifier_Unknown;
             _chunkVersion = 0;
-            std::fill(_name, &_name[dimof(_name)], 0);
+            std::fill(_name, &_name[dimof(_name)], '\0');
             _fileOffset = _size = 0;
         }
 

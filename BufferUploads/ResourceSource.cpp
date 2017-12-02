@@ -1076,7 +1076,7 @@ namespace BufferUploads
     {
         ScopedLock(_flushDelayedReleasesLock);
 
-        const uint32 currentThread = XlGetCurrentThreadId();
+        const auto currentThread = XlGetCurrentThreadId();
         if (!duringDestructor) {
             assert(!_flushThread || _flushThread == currentThread);         // we should only be flushing from one thread
             _flushThread = currentThread;

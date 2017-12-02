@@ -62,15 +62,15 @@ namespace Utility
         bool HasDoubleAttribute(const char* path, double* out) const;
         bool HasStrAttribute(const char* path, const char** out) const;
 
-        void GetAttribute(const char* name, bool& value)    const { value = BoolAttribute(name); }
-        void GetAttribute(const char* name, int& value)     const { value = IntAttribute(name); }
-        void GetAttribute(const char* name, int16& value)   const { value = (int16)IntAttribute(name); }
-        void GetAttribute(const char* name, uint8& value)   const { value = (uint8)IntAttribute(name); }
-        void GetAttribute(const char* name, uint16& value)  const { value = (uint16)IntAttribute(name); }
-        void GetAttribute(const char* name, uint32& value)  const { value = (uint32)IntAttribute(name); }
-        void GetAttribute(const char* name, long& value)    const { value = IntAttribute(name); }
-        void GetAttribute(const char* name, float& value)   const { value = FloatAttribute(name); }
-        void GetAttribute(const char* name, double& value)  const { value = DoubleAttribute(name); }
+        void GetAttribute(const char* name, bool& valuep)    const { valuep = BoolAttribute(name); }
+        void GetAttribute(const char* name, int& valuep)     const { valuep = IntAttribute(name); }
+        void GetAttribute(const char* name, int16& valuep)   const { valuep = (int16)IntAttribute(name); }
+        void GetAttribute(const char* name, uint8& valuep)   const { valuep = (uint8)IntAttribute(name); }
+        void GetAttribute(const char* name, uint16& valuep)  const { valuep = (uint16)IntAttribute(name); }
+        void GetAttribute(const char* name, uint32& valuep)  const { valuep = (uint32)IntAttribute(name); }
+        void GetAttribute(const char* name, long& valuep)    const { valuep = IntAttribute(name); }
+        void GetAttribute(const char* name, float& valuep)   const { valuep = FloatAttribute(name); }
+        void GetAttribute(const char* name, double& valuep)  const { valuep = DoubleAttribute(name); }
 
         void SetAttribute(const char* name, Data* value);
         void SetAttribute(const char* name, bool value);

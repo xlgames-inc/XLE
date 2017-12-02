@@ -34,6 +34,8 @@
 
 #include <ctype.h>
 
+#pragma warning(disable:4456)		// declaration of 'v' hides previous local declaration
+
 static void
 _TIFFprintAsciiBounded(FILE* fd, const char* cp, int max_chars);
 

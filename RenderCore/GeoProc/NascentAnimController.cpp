@@ -253,9 +253,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             skeletonBindingVertices = std::make_unique<uint8[]>(destinationWeightVertexStride*unifiedVertexCount);
             XlSetMemory(skeletonBindingVertices.get(), 0, destinationWeightVertexStride*unifiedVertexCount);
 
-            for (auto i=newUnifiedVertexIndexToPositionIndex.begin(); i!=newUnifiedVertexIndexToPositionIndex.end(); ++i) {
-                const size_t destinationVertexIndex = i-newUnifiedVertexIndexToPositionIndex.begin();
-                unsigned sourceVertexPositionIndex = *i;
+            for (auto i2=newUnifiedVertexIndexToPositionIndex.begin(); i2!=newUnifiedVertexIndexToPositionIndex.end(); ++i2) {
+                const size_t destinationVertexIndex = i2-newUnifiedVertexIndexToPositionIndex.begin();
+                unsigned sourceVertexPositionIndex = *i2;
                                 
                     //
                     //      We actually need to find the source position vertex from one of the buckets.

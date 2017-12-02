@@ -115,13 +115,13 @@ namespace Utility
         uint32 _idAtEventsStart[s_bufferCount];
 
         #if defined(_DEBUG)
-            uint32 _threadId;
+            size_t _threadId;
             uint32 _aeStack[s_maxStackDepth];
             uint32 _aeStackI;
         #endif
     };
     
-    uint32 XlGetCurrentThreadId();
+    size_t XlGetCurrentThreadId();
 
     inline unsigned HierarchicalCPUProfiler::BeginEvent(const char eventLiteral[])
     {

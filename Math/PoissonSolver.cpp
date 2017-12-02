@@ -946,8 +946,8 @@ namespace XLEMath
                 //  it's transpose
                 //
 
-            int bands2D[] = { -int(width), -1, 1, width, 0 };
-            int bands3D[] = { -int(width*height), -int(width), -1, 1, width, width*height, 0 };
+            int bands2D[] = { -int(width), -1, 1, int(width), 0 };
+            int bands3D[] = { -int(width*height), -int(width), -1, 1, int(width), int(width*height), 0 };
             unsigned bandCount; int* bands;
             if (mat._dimensionality == 2) {
                 bandCount = dimof(bands2D);
@@ -1070,8 +1070,8 @@ namespace XLEMath
                 //  it's transpose
                 //
 
-            int bands2D[] = { -int(width), -1, 1, width, 0 };
-            int bands3D[] = { -int(width*height), -int(width), -1, 1, width, width*height, 0 };
+            int bands2D[] = { -int(width), -1, 1, int(width), 0 };
+            int bands3D[] = { -int(width*height), -int(width), -1, 1, int(width), int(width*height), 0 };
             unsigned bandCount; int* bands;
             if (mat._dimensionality == 2) {
                 bandCount = dimof(bands2D);
@@ -1226,8 +1226,8 @@ namespace XLEMath
             //  it's transpose
             //
 
-        int bands2D[] = { -int(width), -1, 1, width, 0 };
-        int bands3D[] = { -int(width*height), -int(width), -1, 1, width, width*height, 0 };
+        int bands2D[] = { -int(width), -1, 1, int(width), 0 };
+        int bands3D[] = { -int(width*height), -int(width), -1, 1, int(width), int(width*height), 0 };
         unsigned bandCount; int* bands;
         if (mat._dimensionality == 2) {
             bandCount = dimof(bands2D);

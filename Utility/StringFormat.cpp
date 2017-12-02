@@ -181,9 +181,9 @@ template<typename T>
             ++fmt;
             continue;
         }
-        int len = (int)(fmt - start);
-        stream->Write(start, len * sizeof(T));
-        nchars += len;
+        int len2 = (int)(fmt - start);
+        stream->Write(start, len2 * sizeof(T));
+        nchars += len2;
         ++fmt;
         if (*fmt == '%') {
             start = fmt;

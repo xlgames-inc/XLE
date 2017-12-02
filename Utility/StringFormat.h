@@ -65,7 +65,7 @@ namespace Utility
             FixedMemoryBuffer(size_t charSize)
             {
                 this->setp((CharType*)_buffer, (CharType*)PtrAdd(_buffer, sizeof(_buffer) - charSize));
-                std::fill_n(_buffer, dimof(_buffer), 0);
+                std::fill_n(_buffer, dimof(_buffer), '\0');
             }
 
             const void* begin() const { return pbase(); }

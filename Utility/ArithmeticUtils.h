@@ -11,6 +11,7 @@
 #include "Detail/API.h"
 #include <vector>
 #include <assert.h>
+#include <intrin.h>
 
 namespace Utility
 {

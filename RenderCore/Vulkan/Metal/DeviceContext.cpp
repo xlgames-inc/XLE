@@ -322,7 +322,7 @@ namespace RenderCore { namespace Metal_Vulkan
             // todo -- get this right for non-integer coords
         VkRect2D scissor = {
             {int(viewport.TopLeftX), int(viewport.TopLeftY)},
-            {int(viewport.Width), int(viewport.Height)},
+            {unsigned(viewport.Width), unsigned(viewport.Height)},
         };
         vkCmdSetScissor(
 			_commandList.get(),
@@ -899,12 +899,12 @@ namespace RenderCore { namespace Metal_Vulkan
     };
 
     template<typename BindingInfo> static BindingInfo*& InfoPtr(VkWriteDescriptorSet& writeDesc);
-    template<> static VkDescriptorImageInfo*& InfoPtr(VkWriteDescriptorSet& writeDesc)
+    template<> VkDescriptorImageInfo*& InfoPtr(VkWriteDescriptorSet& writeDesc)
     {
         return *const_cast<VkDescriptorImageInfo**>(&writeDesc.pImageInfo);
     }
 
-    template<> static VkDescriptorBufferInfo*& InfoPtr(VkWriteDescriptorSet& writeDesc)
+    template<> VkDescriptorBufferInfo*& InfoPtr(VkWriteDescriptorSet& writeDesc)
     {
         return *const_cast<VkDescriptorBufferInfo**>(&writeDesc.pBufferInfo);
     }

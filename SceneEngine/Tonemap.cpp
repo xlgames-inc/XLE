@@ -213,7 +213,7 @@ namespace SceneEngine
                 NativeFormat bloomBufferFormat, 
                 unsigned sampleCount, bool useMSAASamplers)
             {
-                std::fill((byte*)this, (byte*)PtrAdd(this, sizeof(*this)), 0);
+                std::fill((byte*)this, (byte*)PtrAdd(this, sizeof(*this)), '\0');
                 _width = width;
                 _height = height;
                 _bloomBufferFormat = bloomBufferFormat;
@@ -364,21 +364,21 @@ namespace SceneEngine
             static unsigned frameIndex = 0; ++frameIndex;
             struct LuminanceConstants
             {
-                int     _frameIndex;
-                int     _totalSampleCount;
-                float   _elapsedTime;
-                int     _buffer;
-                UInt2   _inputTextureDims;
-                Float2  _initialSampleSizeRatio;
+				unsigned    _frameIndex;
+				unsigned    _totalSampleCount;
+                float		_elapsedTime;
+                unsigned    _buffer;
+                UInt2		_inputTextureDims;
+                Float2		_initialSampleSizeRatio;
             } luminanceConstants = 
             {
-                frameIndex, resources._firstStepWidth*resources._firstStepHeight, 1.0f/60.f, 0,
+                frameIndex, resources._firstStepWidth*resources._firstStepHeight, 1.0f/60.f, 0u,
                 sourceDims,
                 Float2(float(sourceDims[0]) / float(resources._firstStepWidth), float(sourceDims[1]) / float(resources._firstStepHeight))
             };
 
-            Metal::ConstantBufferPacket cbs[] = { AsConstants(settings), MakeSharedPkt(luminanceConstants) };
-            resources._boundUniforms.Apply(context, Metal::UniformsStream(), Metal::UniformsStream(cbs));
+            Metal::ConstantBufferPacket cbs2[] = { AsConstants(settings), MakeSharedPkt(luminanceConstants) };
+            resources._boundUniforms.Apply(context, Metal::UniformsStream(), Metal::UniformsStream(cbs2));
 
             assert(!resources._luminanceBuffers.empty());
 

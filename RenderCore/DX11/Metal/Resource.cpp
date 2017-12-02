@@ -333,21 +333,21 @@ namespace RenderCore { namespace Metal_DX11
 
 	ResourceDesc ExtractDesc(UnderlyingResourcePtr res)
     {
-        if (intrusive_ptr<ID3D::Texture2D> texture = QueryInterfaceCast<ID3D::Texture2D>(res.get())) {
+        if (intrusive_ptr<ID3D::Texture2D> texture2D = QueryInterfaceCast<ID3D::Texture2D>(res.get())) {
             D3D11_TEXTURE2D_DESC d3dDesc;
-            texture->GetDesc(&d3dDesc);
+            texture2D->GetDesc(&d3dDesc);
             return AsGenericDesc(d3dDesc);
         } else if (intrusive_ptr<ID3D::Buffer> buffer = QueryInterfaceCast<ID3D::Buffer>(res.get())) {
             D3D11_BUFFER_DESC d3dDesc;
             buffer->GetDesc(&d3dDesc);
             return AsGenericDesc(d3dDesc);
-        } else if (intrusive_ptr<ID3D::Texture1D> texture = QueryInterfaceCast<ID3D::Texture1D>(res.get())) {
+        } else if (intrusive_ptr<ID3D::Texture1D> texture1D = QueryInterfaceCast<ID3D::Texture1D>(res.get())) {
             D3D11_TEXTURE1D_DESC d3dDesc;
-            texture->GetDesc(&d3dDesc);
+            texture1D->GetDesc(&d3dDesc);
             return AsGenericDesc(d3dDesc);
-        } else if (intrusive_ptr<ID3D::Texture3D> texture = QueryInterfaceCast<ID3D::Texture3D>(res.get())) {
+        } else if (intrusive_ptr<ID3D::Texture3D> texture3D = QueryInterfaceCast<ID3D::Texture3D>(res.get())) {
             D3D11_TEXTURE3D_DESC d3dDesc;
-            texture->GetDesc(&d3dDesc);
+            texture3D->GetDesc(&d3dDesc);
             return AsGenericDesc(d3dDesc);
         }
 		ResourceDesc desc = {};

@@ -513,7 +513,7 @@ TIFFSetFileName(TIFF* tif, const char *name)
 /*
  * Return open file's I/O descriptor.
  */
-int
+thandle_t
 TIFFFileno(TIFF* tif)
 {
 	return (tif->tif_fd);
@@ -522,10 +522,10 @@ TIFFFileno(TIFF* tif)
 /*
  * Set open file's I/O descriptor, and return previous value.
  */
-int
-TIFFSetFileno(TIFF* tif, int fd)
+thandle_t
+TIFFSetFileno(TIFF* tif, thandle_t fd)
 {
-        int old_fd = tif->tif_fd;
+	thandle_t old_fd = tif->tif_fd;
 	tif->tif_fd = fd;
 	return old_fd;
 }

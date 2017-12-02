@@ -202,7 +202,7 @@ namespace ToolsRig
     {
         std::fill(
             (ShadowSample*)dst, ((ShadowSample*)dst) + count,
-            ShadowSample(0xffff, 0xffff));
+            ShadowSample(0xffffui16, 0xffffui16));
     }
 
     const char* AngleBasedShadowsOperator::GetName() const
@@ -228,7 +228,7 @@ namespace ToolsRig
     void AOOperator::FillDefault(void* dst, unsigned count) const
     {
         auto* d = (AoSample*)dst;
-        std::fill(d, d + count, ~AoSample(0));
+        std::fill(d, d + count, (AoSample)~0);
     }
 
     void AOOperator::Calculate(

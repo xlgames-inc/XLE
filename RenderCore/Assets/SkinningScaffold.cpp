@@ -104,15 +104,15 @@ namespace RenderCore { namespace Assets
             } else if (driver._samplerType == AnimSamplerType::Float1) {
                 if (driver._curveId < curvesCount) {
                     const RawAnimationCurve& curve = curves[driver._curveId];
-                    float result = curve.Calculate<float>(animState._time);
+                    float curveresult = curve.Calculate<float>(animState._time);
                     if (p._type == AnimSamplerType::Float1) {
-                        float1s[p._index] = result;
+                        float1s[p._index] = curveresult;
                     } else if (p._type == AnimSamplerType::Float3) {
                         assert(driver._samplerOffset < 3);
-                        float3s[p._index][driver._samplerOffset] = result;
+                        float3s[p._index][driver._samplerOffset] = curveresult;
                     } else if (p._type == AnimSamplerType::Float4) {
                         assert(driver._samplerOffset < 4);
-                        float4s[p._index][driver._samplerOffset] = result;
+                        float4s[p._index][driver._samplerOffset] = curveresult;
                     }
                 }
             }

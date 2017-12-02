@@ -197,7 +197,7 @@ template<typename BufferType>
 {
     BufferType::char_type buffer[4];
     auto count = Conversion::Convert(buffer, ch);
-    if (count < 0) _buffer.sputc((BufferType::char_type)"?");
+    if (count < 0) _buffer.sputc((BufferType::char_type)'?');
     for (int c=0; c<count; ++c) _buffer.sputc(buffer[c]);
 }
 
@@ -206,7 +206,7 @@ template<typename BufferType>
 {
     BufferType::char_type buffer[4];
     auto count = Conversion::Convert(buffer, ch);
-    if (count < 0) _buffer.sputc((BufferType::char_type)"?");
+    if (count < 0) _buffer.sputc((BufferType::char_type)'?');
     for (int c=0; c<count; ++c) _buffer.sputc(buffer[c]);
 }
 
@@ -215,7 +215,7 @@ template<typename BufferType>
 {
     BufferType::char_type buffer[4];
     auto count = Conversion::Convert(buffer, ch);
-    if (count < 0) _buffer.sputc((BufferType::char_type)"?");
+    if (count < 0) _buffer.sputc((BufferType::char_type)'?');
     for (int c=0; c<count; ++c) _buffer.sputc(buffer[c]);
 }
 

@@ -464,7 +464,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         #if defined(_DEBUG)
                     //  fill in some dummy values
-            std::fill((uint8*)destinationBuffer, (uint8*)PtrAdd(destinationBuffer, vertexCount*destinationVertexStride), 0xaf);
+            std::fill((uint8*)destinationBuffer, (uint8*)PtrAdd(destinationBuffer, vertexCount*destinationVertexStride), (uint8)0xaf);
         #endif
 
             ////////////////     copy each vertex (slowly) piece by piece       ////////////////

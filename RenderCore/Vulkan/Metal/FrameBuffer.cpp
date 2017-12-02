@@ -424,8 +424,8 @@ namespace RenderCore { namespace Metal_Vulkan
                 if (a != SubpassDesc::Unused) {
                     auto attachmentIndex = FindIndex(attachments, a);
                     assert(attachmentIndex < attachmentDesc.size());
-                    auto layout = AsShaderReadLayout(*Find(attachmentResources, attachments[attachmentIndex]._resourceName));
-                    attachReferences.push_back(VkAttachmentReference{attachmentIndex, layout});
+                    auto layout2 = AsShaderReadLayout(*Find(attachmentResources, attachments[attachmentIndex]._resourceName));
+                    attachReferences.push_back(VkAttachmentReference{attachmentIndex, layout2});
                 } else {
                     attachReferences.push_back(VkAttachmentReference{VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_UNDEFINED});
                 }
@@ -438,8 +438,8 @@ namespace RenderCore { namespace Metal_Vulkan
                 if (a != SubpassDesc::Unused) {
                     auto attachmentIndex = FindIndex(attachments, a);
                     assert(attachmentIndex < attachmentDesc.size());
-                    auto layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;        // basically should be VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL, I guess?
-                    attachReferences.push_back(VkAttachmentReference{attachmentIndex, layout});
+                    auto layout2 = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;        // basically should be VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL, I guess?
+                    attachReferences.push_back(VkAttachmentReference{attachmentIndex, layout2});
                 } else {
                     attachReferences.push_back(VkAttachmentReference{VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_UNDEFINED});
                 }

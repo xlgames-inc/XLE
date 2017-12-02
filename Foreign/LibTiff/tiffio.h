@@ -369,8 +369,8 @@ extern uint64 TIFFVTileSize64(TIFF* tif, uint32 nrows);
 extern tmsize_t TIFFVTileSize(TIFF* tif, uint32 nrows);
 extern uint32 TIFFDefaultStripSize(TIFF* tif, uint32 request);
 extern void TIFFDefaultTileSize(TIFF*, uint32*, uint32*);
-extern int TIFFFileno(TIFF*);
-extern int TIFFSetFileno(TIFF*, int);
+extern thandle_t TIFFFileno(TIFF*);
+extern thandle_t TIFFSetFileno(TIFF*, thandle_t);
 extern thandle_t TIFFClientdata(TIFF*);
 extern thandle_t TIFFSetClientdata(TIFF*, thandle_t);
 extern int TIFFGetMode(TIFF*);
@@ -438,7 +438,7 @@ extern TIFF* TIFFOpen(const char*, const char*);
 # ifdef __WIN32__
 extern TIFF* TIFFOpenW(const wchar_t*, const char*);
 # endif /* __WIN32__ */
-extern TIFF* TIFFFdOpen(int, const char*, const char*);
+extern TIFF* TIFFFdOpen(thandle_t, const char*, const char*);
 extern TIFF* TIFFClientOpen(const char*, const char*,
 	    thandle_t,
 	    TIFFReadWriteProc, TIFFReadWriteProc,

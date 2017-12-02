@@ -173,7 +173,7 @@ namespace PlatformRig
 
         uint64 startTime = GetPerformanceCounter();
         if (_pimpl->_frameLimiter) {
-            CPUProfileEvent_Conditional pEvnt("FrameLimiter", cpuProfiler);
+            CPUProfileEvent_Conditional pEvnt2("FrameLimiter", cpuProfiler);
             while (startTime < _pimpl->_prevFrameStartTime + _pimpl->_frameLimiter) {
                 Threading::YieldTimeSlice();
                 startTime = GetPerformanceCounter();
@@ -223,7 +223,7 @@ namespace PlatformRig
         }
 
         {
-            CPUProfileEvent_Conditional pEvnt("Present", cpuProfiler);
+            CPUProfileEvent_Conditional pEvnt2("Present", cpuProfiler);
             context.Present(*presChain);
         }
 

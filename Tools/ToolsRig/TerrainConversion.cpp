@@ -416,7 +416,7 @@ namespace ToolsRig
             auto oldWarningHandler = TIFFSetWarningHandler(&TIFFWarningHandler);
             auto oldErrorHandler = TIFFSetErrorHandler(&TIFFErrorHandler);
             s_tiffWarningVector = &result._warnings;
-            auto autoClose = MakeAutoClose([oldWarningHandler, oldErrorHandler]() 
+            auto autoClose2 = MakeAutoClose([oldWarningHandler, oldErrorHandler]() 
                 {
                     TIFFSetWarningHandler(oldWarningHandler);
                     TIFFSetErrorHandler(oldErrorHandler);
@@ -538,7 +538,7 @@ namespace ToolsRig
         auto oldWarningHandler = TIFFSetWarningHandler(&TIFFWarningHandler);
         auto oldErrorHandler = TIFFSetErrorHandler(&TIFFErrorHandler);
         s_tiffWarningVector = nullptr;
-        auto autoClose = MakeAutoClose([oldWarningHandler, oldErrorHandler]() 
+        auto autoClose2 = MakeAutoClose([oldWarningHandler, oldErrorHandler]() 
             {
                 TIFFSetWarningHandler(oldWarningHandler);
                 TIFFSetErrorHandler(oldErrorHandler);

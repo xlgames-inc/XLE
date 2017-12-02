@@ -200,7 +200,7 @@ _tiffUnmapProc(thandle_t fd, void* base, toff_t size)
  * string, which forces the file to be opened unmapped.
  */
 TIFF*
-TIFFFdOpen(int ifd, const char* name, const char* mode)
+TIFFFdOpen(thandle_t ifd, const char* name, const char* mode)
 {
 	TIFF* tif;
 	int fSuppressMap;
@@ -259,7 +259,7 @@ TIFFOpen(const char* name, const char* mode)
 		return ((TIFF *)0);
 	}
 
-	tif = TIFFFdOpen((int)fd, name, mode);
+	tif = TIFFFdOpen(fd, name, mode);
 	if(!tif)
 		CloseHandle(fd);
 	return tif;
@@ -314,7 +314,7 @@ TIFFOpenW(const wchar_t* name, const char* mode)
 				    NULL, NULL);
 	}
 
-	tif = TIFFFdOpen((int)fd,
+	tif = TIFFFdOpen(fd,
 			 (mbname != NULL) ? mbname : "<unknown>", mode);
 	if(!tif)
 		CloseHandle(fd);

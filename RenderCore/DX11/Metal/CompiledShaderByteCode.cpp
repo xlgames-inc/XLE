@@ -191,9 +191,9 @@ namespace RenderCore { namespace Metal_DX11
     {
         size_t size = 0;
         utf8 path[MaxPath], buffer[MaxPath];
-        for (auto i=_searchDirectories.cbegin(); i!=_searchDirectories.cend(); ++i) {
-            XlCopyString(buffer, MakeStringSection(*i));
-            if (!i->empty()) XlCatString(buffer, u("/"));
+        for (auto i2=_searchDirectories.cbegin(); i2!=_searchDirectories.cend(); ++i2) {
+            XlCopyString(buffer, MakeStringSection(*i2));
+            if (!i2->empty()) XlCatString(buffer, u("/"));
             XlCatString(buffer, (const utf8*)pFileName);
             SplitPath<utf8>(buffer).Simplify().Rebuild(path);
 
@@ -743,9 +743,9 @@ namespace RenderCore { namespace Metal_DX11
 
         std::vector<intrusive_ptr<ID3D11ModuleInstance>> instances;
         instances.reserve(_modules.size());
-        for (auto& i:_modules) {
+        for (auto& i2:_modules) {
             ID3D11ModuleInstance* rawInstance = nullptr;
-            hresult = i.second.GetUnderlying()->CreateInstance("", &rawInstance);
+            hresult = i2.second.GetUnderlying()->CreateInstance("", &rawInstance);
             intrusive_ptr<ID3D11ModuleInstance> instance = moveptr(rawInstance);
             if (!SUCCEEDED(hresult)) {
                 errors = MakeBlob("Failure while creating a module instance from a module while linking");
@@ -757,16 +757,16 @@ namespace RenderCore { namespace Metal_DX11
             // seems we get link errors below.
             // We can setup a default binding by just binding to the original slots -- 
             {
-                auto* reflection = i.second.GetReflection();
+                auto* reflection = i2.second.GetReflection();
 
-                auto refFns = std::equal_range(_referencedFunctions.cbegin(), _referencedFunctions.cend(), i.first, StringCompareFirst<Section, Section>());
+                auto refFns = std::equal_range(_referencedFunctions.cbegin(), _referencedFunctions.cend(), i2.first, StringCompareFirst<Section, Section>());
                 if (refFns.first == refFns.second) continue;
 
                 D3D11_LIBRARY_DESC libDesc;
                 reflection->GetDesc(&libDesc);
 
-                for (unsigned c=0; c<libDesc.FunctionCount; ++c) {
-                    auto* fn = reflection->GetFunctionByIndex(c);
+                for (unsigned c2=0; c2<libDesc.FunctionCount; ++c2) {
+                    auto* fn = reflection->GetFunctionByIndex(c2);
 
                     D3D11_FUNCTION_DESC desc;
                     fn->GetDesc(&desc);
@@ -1008,8 +1008,8 @@ namespace RenderCore { namespace Metal_DX11
                     Throw(FormatException(buffer.get(), startLoc));
                 }
 
-                auto i = LowerBoundT(_nodes, variableName);
-                if (i != _nodes.end() && XlEqString(i->first, variableName))
+                auto i2 = LowerBoundT(_nodes, variableName);
+                if (i2 != _nodes.end() && XlEqString(i2->first, variableName))
                     Throw(FormatException("Attempting to reassign node that is already assigned. Check for naming conflicts.", startLoc));
 
                 // we can use the parameter names to create aliases...
@@ -1021,7 +1021,7 @@ namespace RenderCore { namespace Metal_DX11
                     _aliases.insert(i, std::make_pair(params[c]._name, target));
                 }
 
-                _nodes.insert(i, std::make_pair(variableName, std::move(linkingNode)));
+                _nodes.insert(i2, std::make_pair(variableName, std::move(linkingNode)));
             }
             break;
 
@@ -1092,7 +1092,7 @@ namespace RenderCore { namespace Metal_DX11
         unsigned index = 0;
         for (; param != std::cregex_iterator(); ++param) {
             auto resolvedParam = ResolveParameter(Section(param->begin()->first, param->begin()->second), loc);
-            auto hresult = _graph->PassValue(resolvedParam.first.get(), resolvedParam.second, linkingNode.get(), index++);
+            hresult = _graph->PassValue(resolvedParam.first.get(), resolvedParam.second, linkingNode.get(), index++);
             if (!SUCCEEDED(hresult)) {
                 auto e = GetLastError(*_graph);
                 Throw(FormatException(StringMeld<1024>() << "D3D failure in PassValue statement (" << (const char*)e->GetBufferPointer() << ")", loc));

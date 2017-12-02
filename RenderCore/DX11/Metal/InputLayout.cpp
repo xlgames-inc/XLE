@@ -196,9 +196,9 @@ namespace RenderCore { namespace Metal_DX11
             auto hresult = _stageBindings[s]._reflection->GetDesc(&shaderDesc);
 
 			if (SUCCEEDED(hresult)) {
-				for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
+				for (unsigned c2=0; c2<shaderDesc.BoundResources; ++c2) {
 					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
-					HRESULT hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c, &bindingDesc);
+					hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c2, &bindingDesc);
 					if (SUCCEEDED(hresult)) {
 						const uint64 hash = Hash64(bindingDesc.Name, XlStringEnd(bindingDesc.Name));
 						if (hash == hashName) {
@@ -493,7 +493,7 @@ namespace RenderCore { namespace Metal_DX11
 				bool gotBinding = false;
 				for (unsigned c=0; c<shaderDesc.BoundResources && !gotBinding; ++c) {
 					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
-					HRESULT hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c, &bindingDesc);
+					hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c, &bindingDesc);
 					if (SUCCEEDED(hresult)) {
 						const uint64 hash = Hash64(bindingDesc.Name, XlStringEnd(bindingDesc.Name));
 						if (hash == hashName) {
@@ -666,7 +666,7 @@ namespace RenderCore { namespace Metal_DX11
 				    auto cb = _stageBindings[s]._reflection->GetConstantBufferByIndex(c);
 				    if (cb) {
                         D3D11_SHADER_BUFFER_DESC cbDesc;
-                        auto hresult = cb->GetDesc(&cbDesc);
+                        hresult = cb->GetDesc(&cbDesc);
                         if (SUCCEEDED(hresult)) {
                             for (unsigned q=0; q<cbDesc.Variables; ++q) {
                                 auto var = cb->GetVariableByIndex(q);

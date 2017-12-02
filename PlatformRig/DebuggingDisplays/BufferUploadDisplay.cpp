@@ -363,7 +363,7 @@ namespace PlatformRig { namespace Overlays
             // DrawRectangleOutline(context, section._maximumSize);
             DrawRoundedRectangle(context, section._maximumSize, ColorB(180,200,255,128), ColorB(255,255,255,128));
 
-            size_t valuesCount = FillValuesBuffer(_graphsMode, c, valuesBuffer, dimof(valuesBuffer));
+            size_t valuesCount2 = FillValuesBuffer(_graphsMode, c, valuesBuffer, dimof(valuesBuffer));
 
             if (graphCount == UploadDataType::Max) {
                 context->DrawText(
@@ -377,15 +377,15 @@ namespace PlatformRig { namespace Overlays
                     GraphTabs::Names[_graphsMode], nullptr);
             }
 
-			if (valuesCount > 0) {
-				float mostRecentValue = valuesBuffer[dimof(valuesBuffer) - valuesCount];
+			if (valuesCount2 > 0) {
+				float mostRecentValue = valuesBuffer[dimof(valuesBuffer) - valuesCount2];
 				context->DrawText(AsPixelCoords(historyRect), nullptr, ColorB(0xffffffffu), 
                     TextAlignment::Top,
                     XlDynFormatString("%6.3f", mostRecentValue).c_str(), nullptr);
 			}
 
             DrawHistoryGraph(
-                context, historyRect, &valuesBuffer[dimof(valuesBuffer)-valuesCount], (unsigned)valuesCount, (unsigned)dimof(valuesBuffer), 
+                context, historyRect, &valuesBuffer[dimof(valuesBuffer)-valuesCount2], (unsigned)valuesCount2, (unsigned)dimof(valuesBuffer), 
                 _graphMinValueHistory, _graphMaxValueHistory);
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

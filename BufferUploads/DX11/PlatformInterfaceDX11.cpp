@@ -44,9 +44,9 @@
                 if (isFullUpdate) {
                     intrusive_ptr<ID3D::Texture2D> texture = Metal::QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource));
                     if (texture) {
-                        D3D11_TEXTURE2D_DESC desc;
-                        texture->GetDesc(&desc);
-                        assert(desc.Usage == D3D11_USAGE_DEFAULT);
+                        D3D11_TEXTURE2D_DESC tdesc;
+                        texture->GetDesc(&tdesc);
+                        assert(tdesc.Usage == D3D11_USAGE_DEFAULT);
                     }
                 }
             #endif
@@ -66,7 +66,7 @@
 
                     } else {
 
-                        D3D11_BOX d3dBox = {box._left, box._top, 0, box._right, box._bottom, 1};
+                        D3D11_BOX d3dBox = {(UINT)box._left, (UINT)box._top, 0u, (UINT)box._right, (UINT)box._bottom, 1u};
                         const void* pAdjustedSrcData = srd._data;
 
                         #if DX_VERSION >= DX_VERSION_11_1
@@ -162,9 +162,9 @@
                     {
                         intrusive_ptr<ID3D::Buffer> buffer = Metal::QueryInterfaceCast<ID3D::Buffer>(ResPtr(resource));
                         if (buffer) {
-                            D3D11_BUFFER_DESC desc;
-                            buffer->GetDesc(&desc);
-                            assert(desc.Usage == D3D11_USAGE_DEFAULT);
+                            D3D11_BUFFER_DESC tdesc;
+                            buffer->GetDesc(&tdesc);
+                            assert(tdesc.Usage == D3D11_USAGE_DEFAULT);
                         }
                     }
                 #endif

@@ -376,23 +376,23 @@ namespace Assets
 
                 // try to open an existing file -- but if there are any errors, we can just discard the
                 // old contents
-                std::unique_ptr<IFileInterface> debugFile;
-                if (MainFileSystem::TryOpen(debugFile, debugFilename, "rb") == MainFileSystem::IOReason::Success) {
-                    auto chunkTable = LoadChunkTable(*debugFile);
+                std::unique_ptr<IFileInterface> debugFile2;
+                if (MainFileSystem::TryOpen(debugFile2, debugFilename, "rb") == MainFileSystem::IOReason::Success) {
+                    auto chunkTable = LoadChunkTable(*debugFile2);
                     auto chunk = FindChunk(debugFilename, chunkTable, ChunkType_ArchiveAttachments, 0);
 
                     AttachedStringChunk hdr;
-                    debugFile->Seek(chunk._fileOffset);
-                    debugFile->Read(&hdr, sizeof(hdr), 1);
+                    debugFile2->Seek(chunk._fileOffset);
+                    debugFile2->Read(&hdr, sizeof(hdr), 1);
 
                     std::vector<AttachedStringChunk::Block> attachedBlocks;
                     attachedStrings.resize(hdr._blockCount);
-                    debugFile->Read(AsPointer(attachedBlocks.begin()), sizeof(AttachedStringChunk::Block), hdr._blockCount);
-                    auto startPt = debugFile->TellP();
+                    debugFile2->Read(AsPointer(attachedBlocks.begin()), sizeof(AttachedStringChunk::Block), hdr._blockCount);
+                    auto startPt = debugFile2->TellP();
                     for (auto b=attachedBlocks.cbegin(); b!=attachedBlocks.cend(); ++b) {
-                        debugFile->Seek(startPt + b->_start);
+                        debugFile2->Seek(startPt + b->_start);
                         std::string t; t.resize(b->_size);
-                        debugFile->Read(AsPointer(t.begin()), 1, b->_size);
+                        debugFile2->Read(AsPointer(t.begin()), 1, b->_size);
                         attachedStrings.push_back(std::make_pair(b->_id, t));
                     }
                 }

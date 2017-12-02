@@ -32,6 +32,8 @@
  */
 #include "tiffiop.h"
 
+#pragma warning(disable:4456)		// declaration of 'v' hides previous local declaration
+
 /*
  * These are used in the backwards compatibility code...
  */

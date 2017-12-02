@@ -643,10 +643,10 @@ namespace XLEMath
     template<typename DestType> DestType Convert(const Float3x3& input);
 
     template<> 
-        static Float3x3 Convert(const Float3x3& input) { return input; }
+        Float3x3 Convert(const Float3x3& input) { return input; }
 
     template<> 
-        static Quaternion Convert(const Float3x3& input)
+        Quaternion Convert(const Float3x3& input)
         {
             Quaternion result;
             cml::quaternion_rotation_matrix(result, input);

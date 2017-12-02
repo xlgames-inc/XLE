@@ -98,7 +98,7 @@ ModuleId GetCurrentModuleId()
 
 
 //////////////////////////////////////////////////////////////////////////
-uint32 XlGetCurrentThreadId()
+size_t XlGetCurrentThreadId()
 {
     return GetCurrentThreadId();
 }
@@ -106,7 +106,7 @@ uint32 XlGetCurrentThreadId()
 bool XlIsCriticalSectionLocked(void* cs) 
 {
     CRITICAL_SECTION* csPtr = reinterpret_cast<CRITICAL_SECTION*>(cs);
-    return csPtr->RecursionCount > 0 && (DWORD)csPtr->OwningThread == XlGetCurrentThreadId();
+    return csPtr->RecursionCount > 0 && csPtr->OwningThread == (HANDLE)XlGetCurrentThreadId();
 }
 
 static uint32 FromWinWaitResult(uint32 winResult)

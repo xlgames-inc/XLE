@@ -277,7 +277,7 @@ namespace SceneEngine
     void LightingParser_ResolveGBuffer(
         Metal::DeviceContext& metalContext, LightingParserContext& parserContext, IMainTargets& mainTargets)
     {
-        Metal::GPUAnnotation anno(metalContext, "ResolveGBuffer");
+        Metal::GPUAnnotation anno2(metalContext, "ResolveGBuffer");
 
         const bool doSampleFrequencyOptimisation = Tweakable("SampleFrequencyOptimisation", true);
 
