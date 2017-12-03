@@ -122,18 +122,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class NascentSkeletonInterface::Joint
+	class NascentSkeletonInterface::CompareJointName
 	{
 	public:
-		std::string     _name;
-
-		class CompareName
-		{
-		public:
-			bool operator()(const Joint& lhs, const Joint& rhs) { return lhs._name < rhs._name; }
-			bool operator()(const Joint& lhs, const std::string& rhs) { return lhs._name < rhs; }
-			bool operator()(const std::string& lhs, const Joint& rhs) { return lhs < rhs._name; }
-		};
+		bool operator()(const Joint& lhs, const Joint& rhs) { return lhs._name < rhs._name; }
+		bool operator()(const Joint& lhs, const std::string& rhs) { return lhs._name < rhs; }
+		bool operator()(const std::string& lhs, const Joint& rhs) { return lhs < rhs._name; }
 	};
 
 	static const char* AsString(AnimSamplerType value)
@@ -375,7 +369,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		auto nameAsString = name.AsString();
         auto insertionPoint = std::lower_bound(
             _jointTags.begin(), _jointTags.end(), 
-			nameAsString, Joint::CompareName());
+			nameAsString, CompareJointName());
         if (insertionPoint != _jointTags.end() && insertionPoint->_name==nameAsString)
             return false;
 

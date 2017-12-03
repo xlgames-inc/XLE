@@ -70,11 +70,15 @@ namespace ShaderSourceParser { namespace AntlrHelper
     };
 
     pANTLR3_BASE_TREE       GetChild(pANTLR3_BASE_TREE node, ANTLR3_UINT32 childIndex);
+	unsigned				GetChildCount(pANTLR3_BASE_TREE node);
     pANTLR3_COMMON_TOKEN    GetToken(pANTLR3_BASE_TREE node);
     ANTLR3_UINT32           GetType(pANTLR3_COMMON_TOKEN token);
 
     template<typename CharType>
         std::basic_string<CharType> AsString(ANTLR3_STRING* antlrString);
+
+	void Description(std::ostream& str, pANTLR3_COMMON_TOKEN token);
+	void StructureDescription(std::ostream& str, pANTLR3_BASE_TREE node, unsigned indent=0);
 
 	class ExceptionSet
 	{

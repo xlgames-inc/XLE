@@ -15,6 +15,8 @@
 #include <unordered_map>
 #include <stack>
 
+#include <iostream>
+
 
 namespace ShaderPatcher
 {
@@ -30,7 +32,8 @@ namespace ShaderPatcher
 		std::vector<std::string> _literalConnectors;
 		std::unordered_map<std::string, uint32_t> _nodeNameMapping;
 		std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> _slotNameMapping;
-		std::stack<uint32_t> _activeNodes;
+		std::stack<uint32_t> _activeRNodes;
+		std::stack<uint32_t> _activeLNodes;
 	};
 
 	static pANTLR3_BASE_TREE BuildAST(struct GraphSyntaxParser_Ctx_struct& parser)
@@ -58,6 +61,8 @@ namespace ShaderPatcher
 		if (!psr) Throw(::Exceptions::BasicLabel("Out of memory trying to allocate parser\n"));
 
 		auto* ast = BuildAST(*psr);
+
+		StructureDescription(std::cout, ast);
 
 		AntlrPtr<struct ANTLR3_COMMON_TREE_NODE_STREAM_struct> nodes = antlr3CommonTreeNodeStreamNewTree(ast, ANTLR3_SIZE_HINT);
 		AntlrPtr<struct GraphSyntaxEval_Ctx_struct> evalTree = GraphSyntaxEvalNew(nodes);
@@ -89,8 +94,8 @@ namespace ShaderPatcher
 				auto splitName = ShaderPatcher::SplitArchiveName(n.ArchiveName());
 				subGraph.SetName(std::get<1>(splitName) + "_impl");
 				subGraph.SetSearchRules(searchRules);
-				auto ni = n.NodeId();
-				subGraph.Trim(&ni, &ni+1);
+				// auto ni = n.NodeId();
+				// subGraph.Trim(&ni, &ni+1);
 
 				std::string slotImplementation;
 				FunctionInterface generatedInterface;
@@ -116,7 +121,7 @@ extern "C" NodeId RNode_Register(const void* ctx, const char archiveName[])
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
 
 	NodeId nextId = (NodeId)ng->_graph.GetNodes().size();
-	ShaderPatcher::Node newNode(archiveName, nextId, ShaderPatcher::Node::Type::Procedure);
+	ShaderPatcher::Node newNode(archiveName?archiveName:"", nextId, ShaderPatcher::Node::Type::Procedure);
 	ng->_graph.Add(std::move(newNode));
 	return nextId;
 }
@@ -222,23 +227,43 @@ extern "C" NodeId RNode_Find(const void* ctx, const char name[])
 	return ~0u;
 }
 
-extern "C" void Node_Push(const void* ctx, NodeId id)
+extern "C" void RNode_Push(const void* ctx, NodeId id)
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	ng->_activeNodes.push(id);
+	ng->_activeRNodes.push(id);
 }
 
-extern "C" void Node_Pop(const void* ctx)
+extern "C" void RNode_Pop(const void* ctx)
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	ng->_activeNodes.pop();
+	ng->_activeRNodes.pop();
 }
 
-extern "C" NodeId Node_GetActive(const void* ctx)
+extern "C" NodeId RNode_GetActive(const void* ctx)
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	if (ng->_activeNodes.empty())
+	if (ng->_activeRNodes.empty())
 		return ~0u;
-	return ng->_activeNodes.top();
+	return ng->_activeRNodes.top();
+}
+
+extern "C" void LNode_Push(const void* ctx, NodeId id)
+{
+	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	ng->_activeLNodes.push(id);
+}
+
+extern "C" void LNode_Pop(const void* ctx)
+{
+	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	ng->_activeLNodes.pop();
+}
+
+extern "C" NodeId LNode_GetActive(const void* ctx)
+{
+	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	if (ng->_activeLNodes.empty())
+		return ~0u;
+	return ng->_activeLNodes.top();
 }
 

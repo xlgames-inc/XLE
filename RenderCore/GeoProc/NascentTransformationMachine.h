@@ -97,8 +97,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		std::vector<std::pair<AnimationParameterHashName, std::string>>  _dehashTable;
 
-		class Joint;
+		class Joint
+		{
+		public:
+			std::string     _name;
+		};
 		std::vector<Joint> _jointTags;
+
+		class CompareJointName;
 
 		unsigned _lastReturnedOutputMatrixMarker;
 
