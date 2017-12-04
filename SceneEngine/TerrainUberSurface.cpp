@@ -555,7 +555,7 @@ namespace SceneEngine
 
         unsigned lineSize = width*type.GetSize();
         auto lineOfSamples = std::make_unique<uint8[]>(lineSize);
-        std::fill(lineOfSamples.get(), &lineOfSamples[lineSize], 0);
+        std::fill(lineOfSamples.get(), &lineOfSamples[lineSize], 0ui8);
         for (int y=0; y<int(height); ++y) {
             outputFile.Write(lineOfSamples.get(), 1, lineSize);
         }

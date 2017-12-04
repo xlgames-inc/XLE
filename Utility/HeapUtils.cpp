@@ -519,10 +519,10 @@ namespace Utility
 
         std::vector<std::pair<Marker, Marker> > allocatedBlocks;
         allocatedBlocks.reserve(_markers.size()/2);
-        typename std::vector<Marker>::const_iterator i = _markers.begin()+1;
-        for (; (i+1)<_markers.end();i+=2) {
-            Marker start = *i;
-            Marker end   = *(i+1);
+        typename std::vector<Marker>::const_iterator i2 = _markers.begin()+1;
+        for (; (i2+1)<_markers.end();i2+=2) {
+            Marker start = *i2;
+            Marker end   = *(i2+1);
             assert(start < end);
             allocatedBlocks.push_back(std::make_pair(start, end));
         }

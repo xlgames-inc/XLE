@@ -187,7 +187,7 @@ namespace SceneEngine
     namespace Internal
     {
         template <typename Type> inline Type DummyValue() { return Type(0); }
-        template <> inline ShadowSample DummyValue() { return ShadowSample(0, 0); }
+        template <> inline ShadowSample DummyValue() { return ShadowSample(0ui16, 0ui16); }
     }
 
     template <typename Type>

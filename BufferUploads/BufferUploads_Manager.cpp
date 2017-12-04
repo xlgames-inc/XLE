@@ -1978,9 +1978,9 @@ namespace BufferUploads
                     //      things will complete first
                     //
 
-                std::pair<bool,bool> t = ProcessQueueSet(_queueSet_FramePriority[_framePriority_WritingQueueSet], stepMask, context, budgetUnderConstruction);
-                nothingFoundInQueues  &= t.first;
-                atLeastOneRealAction  |= t.second;
+                std::pair<bool,bool> t2 = ProcessQueueSet(_queueSet_FramePriority[_framePriority_WritingQueueSet], stepMask, context, budgetUnderConstruction);
+                nothingFoundInQueues  &= t2.first;
+                atLeastOneRealAction  |= t2.second;
                 if (atLeastOneRealAction) {
                     fromFramePriorityQueueSet = _framePriority_WritingQueueSet;
                 }

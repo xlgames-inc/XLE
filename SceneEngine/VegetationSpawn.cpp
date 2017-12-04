@@ -759,7 +759,7 @@ namespace SceneEngine
             // copy the "structure count" from the UAV into the indirect args buffer
         metalContext.GetUnderlying()->CopyStructureCount(
             _indirectArgsBuffer.GetUnderlying(), 
-            unsigned(&((DrawIndexedInstancedIndirectArgs*)nullptr)->InstanceCount), 
+            (unsigned)(size_t)&((DrawIndexedInstancedIndirectArgs*)nullptr)->InstanceCount, 
             src.GetUnderlying());
     }
 

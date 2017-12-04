@@ -260,7 +260,7 @@ namespace BufferUploads
         std::shared_ptr<ResourcesPool<BufferDesc>>      _stagingBufferPool;
         std::shared_ptr<ResourcesPool<BufferDesc>>      _pooledGeometryBuffers;
         std::shared_ptr<BatchedResources>   _batchedIndexBuffers;
-        uint32                              _flushThread;
+        size_t                              _flushThread;
         unsigned                            _frameID;
         Threading::Mutex                    _flushDelayedReleasesLock;
 		RenderCore::IDevice*                _underlyingDevice;

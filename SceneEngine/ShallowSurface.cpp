@@ -288,7 +288,7 @@ namespace SceneEngine
                     b = settings._simGridDims,
                     c = (settings._simGridDims*vbWidth),
                     d = (settings._simGridDims*vbWidth)+settings._simGridDims;
-            unsigned short ibData[] = 
+            unsigned short ibData2[] = 
             {
                 (uint16)a,
                 (uint16)b,
@@ -297,7 +297,7 @@ namespace SceneEngine
                 (uint16)b,
                 (uint16)d
             };
-            _pimpl->_unsimDefaultIB = Metal::IndexBuffer(ibData, sizeof(ibData));
+            _pimpl->_unsimDefaultIB = Metal::IndexBuffer(ibData2, sizeof(ibData2));
         }
     }
 

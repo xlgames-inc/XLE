@@ -299,7 +299,7 @@ namespace SceneEngine
         template<typename Element> float AsScalar(Element in)                       { return float(in); }
         template<typename Element> void Zero(Element& dst)                          { dst = Element(0); }
 
-        template<typename A, typename B> std::pair<A, B> Add(std::pair<A, B> lhs, std::pair<A, B> rhs)      { return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second); }
+        template<typename A, typename B> std::pair<A, B> Add(std::pair<A, B> lhs, std::pair<A, B> rhs)      { return std::make_pair(A(lhs.first + rhs.first), B(lhs.second + rhs.second)); }
         template<typename A, typename B> std::pair<A, B> Divide(std::pair<A, B> lhs, unsigned rhs)          { return std::make_pair(A(lhs.first / rhs), B(lhs.second / rhs)); }
         template<typename A, typename B> float AsScalar(std::pair<A, B> in)         { return float(in.first); }
         template<typename A, typename B> void Zero(std::pair<A, B>& dst)            { dst = std::pair<A, B>(A(0), B(0)); }
@@ -378,7 +378,7 @@ namespace SceneEngine
             }
 
         template<>
-            static unsigned CalculateGradientFlag<float>(
+            unsigned CalculateGradientFlag<float>(
                 TerrainUberSurfaceGeneric& surface, UInt2 coord, 
                 const GradientFlagsSettings& settings)
             {
@@ -437,7 +437,7 @@ namespace SceneEngine
             auto sampledValues = std::make_unique<Element[]>(dimensionsInElements*dimensionsInElements);
             XlSetMemory(sampledValues.get(), 0, dimensionsInElements*dimensionsInElements*sizeof(Element));
 
-            unsigned kw = 1<<downsample;
+            unsigned kw2 = 1<<downsample;
             for (unsigned y=0; y<dimensionsInElements; ++y)
                 for (unsigned x=0; x<dimensionsInElements; ++x) {
 
@@ -457,12 +457,12 @@ namespace SceneEngine
                     Element k; 
                     Zero(k);
                     if (constant_expression<downsampleMethod == DownsampleMethod::Average>::result()) {
-                        for (unsigned ky=0; ky<kw; ++ky)
-                            for (unsigned kx=0; kx<kw; ++kx)
-                                k = Add(k, GetValue<Element>(surface, UInt2(startx + kw*x + kx, starty + kw*y + ky)));
-                        k = Divide(k, kw*kw);
+                        for (unsigned ky=0; ky<kw2; ++ky)
+                            for (unsigned kx=0; kx<kw2; ++kx)
+                                k = Add(k, GetValue<Element>(surface, UInt2(startx + kw2*x + kx, starty + kw2*y + ky)));
+                        k = Divide(k, kw2*kw2);
                     } else if (constant_expression<downsampleMethod == DownsampleMethod::Corner>::result()) {
-                        k = GetValue<Element>(surface, UInt2(startx + kw*x, starty + kw*y));
+                        k = GetValue<Element>(surface, UInt2(startx + kw2*x, starty + kw2*y));
                     }
 
                     minValue = std::min(minValue, AsScalar(k));

@@ -185,8 +185,8 @@ namespace PlatformRig { namespace Overlays
         static const InteractableId sectionToolsId = InteractableId_Make("GPUProfilerSectionTools");
 
         unsigned sectionHeight = 96;
-        for (unsigned c=0; c<dimof(_sections); ++c) {
-            Section& section = _sections[smoothedSectionCosts[c].second];
+        for (unsigned c2=0; c2<dimof(_sections); ++c2) {
+            Section& section = _sections[smoothedSectionCosts[c2].second];
             if (section._id && !(section._flags & Section::Flag_Hide)) {
                 //  Main outline for the section...
                 Rect sectionRect = layout.AllocateFullWidth( sectionHeight );
@@ -212,13 +212,13 @@ namespace PlatformRig { namespace Overlays
                         Coord2(labelRect._bottomRight[0], LinearInterpolate(labelRect._topLeft[1], labelRect._bottomRight[1], 0.667f)) );
 
                     float recentCost = section._durationHistory[section._durationHistoryLength-1];
-                    float smoothedCost = smoothedSectionCosts[c].first;
+                    float smoothedCost = smoothedSectionCosts[c2].first;
                     DrawFormatText(&context, durationRect, nullptr, ColorB(0xffffffffu), "%.2fms (%.2fms)", smoothedCost, recentCost);
 
                     Rect varianceRect( 
                         Coord2(labelRect._topLeft[0], durationRect._bottomRight[1]),
                         Coord2(labelRect._bottomRight[0], labelRect._bottomRight[1]) );
-                    DrawFormatText(&context, varianceRect, nullptr, ColorB(0xffffffffu), "%.2fms variance", sectionVariances[c]);
+                    DrawFormatText(&context, varianceRect, nullptr, ColorB(0xffffffffu), "%.2fms variance", sectionVariances[c2]);
                 }
 
                 //  Then draw the graph in the main part of the widget
@@ -226,13 +226,13 @@ namespace PlatformRig { namespace Overlays
 
                 //  Interactables
                 {
-                    const unsigned sectionIndex = smoothedSectionCosts[c].second;
+                    const unsigned sectionIndex = smoothedSectionCosts[c2].second;
                     Rect mouseOverRect(sectionRect._topLeft, Coord2(LinearInterpolate(labelRect._topLeft[0], labelRect._bottomRight[0], .12f), sectionRect._bottomRight[1]));
                     mouseOverRect._topLeft[0] += 4; mouseOverRect._topLeft[1] += 4;
                     mouseOverRect._bottomRight[0] -= 4; mouseOverRect._bottomRight[1] -= 4;
                     interactables.Register(Interactables::Widget(mouseOverRect, sectionToolsId+sectionIndex));
 
-                    if (interfaceState.HasMouseOver(sectionToolsId+smoothedSectionCosts[c].second)) {
+                    if (interfaceState.HasMouseOver(sectionToolsId+smoothedSectionCosts[c2].second)) {
                         const char* buttonNames[] = {"P", "H", "R"};
                         static const InteractableId baseButtonIds[] = { InteractableId_Make("GPUProfiler_Pause"), InteractableId_Make("GPUProfiler_Hide"), InteractableId_Make("GPUProfiler_Reset") };
                         const unsigned buffer = 4, buttonSpacing = 2;

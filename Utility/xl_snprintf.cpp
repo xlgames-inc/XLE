@@ -308,7 +308,7 @@ char *iaddr(char *str, unsigned char *addr, int size, int precision, int type)
 void cfltcvt(double value, char *buffer, char fmt, int precision)
 {
     int decpt, sign, exp, pos;
-    char *digits = NULL;
+    char *valuedigits = NULL;
     char cvtbuf[CVTBUFSIZE];
     int capexp = 0;
     int magnitude;
@@ -321,7 +321,7 @@ void cfltcvt(double value, char *buffer, char fmt, int precision)
 
     if (fmt == 'g')
     {
-        digits = ecvtbuf(value, precision, &decpt, &sign, cvtbuf);
+        valuedigits = ecvtbuf(value, precision, &decpt, &sign, cvtbuf);
         magnitude = decpt - 1;
         if (magnitude < -4  ||  magnitude > precision - 1)
         {
@@ -337,12 +337,12 @@ void cfltcvt(double value, char *buffer, char fmt, int precision)
 
     if (fmt == 'e')
     {
-        digits = ecvtbuf(value, precision + 1, &decpt, &sign, cvtbuf);
+        valuedigits = ecvtbuf(value, precision + 1, &decpt, &sign, cvtbuf);
 
         if (sign) *buffer++ = '-';
-        *buffer++ = *digits;
+        *buffer++ = *valuedigits;
         if (precision > 0) *buffer++ = '.';
-        memcpy(buffer, digits + 1, precision);
+        memcpy(buffer, valuedigits + 1, precision);
         buffer += precision;
         *buffer++ = capexp ? 'E' : 'e';
 
@@ -373,24 +373,24 @@ void cfltcvt(double value, char *buffer, char fmt, int precision)
     }
     else if (fmt == 'f')
     {
-        digits = fcvtbuf(value, precision, &decpt, &sign, cvtbuf);
+        valuedigits = fcvtbuf(value, precision, &decpt, &sign, cvtbuf);
         if (sign) *buffer++ = '-';
-        if (*digits)
+        if (*valuedigits)
         {
             if (decpt <= 0)
             {
                 *buffer++ = '0';
                 *buffer++ = '.';
                 for (pos = 0; pos < -decpt; pos++) *buffer++ = '0';
-                while (*digits) *buffer++ = *digits++;
+                while (*valuedigits) *buffer++ = *valuedigits++;
             }
             else
             {
                 pos = 0;
-                while (*digits)
+                while (*valuedigits)
                 {
                     if (pos++ == decpt) *buffer++ = '.';
-                    *buffer++ = *digits++;
+                    *buffer++ = *valuedigits++;
                 }
             }
         }
@@ -822,7 +822,7 @@ repeat:
                 field_width = 2 * sizeof(void *);
                 flags |= ZEROPAD;
             }
-            str = number(str, (unsigned long) va_arg(args, void *), 16, field_width, precision, flags);
+            str = number(str, (long)(size_t)va_arg(args, void *), 16, field_width, precision, flags);
             continue;
 
         case 'n':
@@ -1034,7 +1034,7 @@ repeat:
                 field_width = 2 * sizeof(void *);
                 flags |= ZEROPAD;
             }
-            s = number(numbuf, (unsigned long) va_arg(args, void *), 16, field_width, precision, flags);
+            s = number(numbuf, (long)(size_t)va_arg(args, void *), 16, field_width, precision, flags);
             *s = '\0';
             stream.Write((const utf8*)numbuf);
             continue;

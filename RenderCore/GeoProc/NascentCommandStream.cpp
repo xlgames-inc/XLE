@@ -82,12 +82,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     bool    NascentAnimationSet::HasAnimationDriver(const std::string&  parameterName) const
     {
-        auto i = std::find( _parameterInterfaceDefinition.cbegin(), 
+        auto i2 = std::find(_parameterInterfaceDefinition.cbegin(), 
                             _parameterInterfaceDefinition.cend(), parameterName);
-        if (i==_parameterInterfaceDefinition.end()) 
+        if (i2==_parameterInterfaceDefinition.end()) 
             return false;
 
-        auto parameterIndex = (unsigned)std::distance(_parameterInterfaceDefinition.cbegin(), i);
+        auto parameterIndex = (unsigned)std::distance(_parameterInterfaceDefinition.cbegin(), i2);
 
         for (auto i=_animationDrivers.begin(); i!=_animationDrivers.end(); ++i) {
             if (i->_parameterIndex == parameterIndex)
@@ -122,18 +122,18 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 minTime = std::min(minTime, curveStart);
                 maxTime = std::max(maxTime, curveEnd);
 
-                const std::string& name = animation._parameterInterfaceDefinition[i->_parameterIndex];
+                const std::string& pname = animation._parameterInterfaceDefinition[i->_parameterIndex];
                 destinationCurves.push_back(Assets::RawAnimationCurve(*animCurve));
                 AddAnimationDriver(
-                    name, unsigned(destinationCurves.size()-1), 
+                    pname, unsigned(destinationCurves.size()-1), 
                     i->_samplerType, i->_samplerOffset);
             }
         }
 
         for (auto i=animation._constantDrivers.cbegin(); i!=animation._constantDrivers.end(); ++i) {
-            const std::string& name = animation._parameterInterfaceDefinition[i->_parameterIndex];
+            const std::string& pname = animation._parameterInterfaceDefinition[i->_parameterIndex];
             AddConstantDriver(
-				name, PtrAdd(AsPointer(animation._constantData.begin()), i->_dataOffset), 
+				pname, PtrAdd(AsPointer(animation._constantData.begin()), i->_dataOffset), 
 				BitsPerPixel(i->_format), i->_format,
 				i->_samplerType, i->_samplerOffset);
         }

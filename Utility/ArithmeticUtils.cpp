@@ -100,14 +100,14 @@ namespace Utility
 
         if (c == 0) {return;}
 
-        int b = c >> 3;
+        int b2 = c >> 3;
         c &= 7;
 
-        for (int i = nbytes - 1; i >= b; i--) {
-            k[i] = k[i - b];
+        for (int i = nbytes - 1; i >= b2; i--) {
+            k[i] = k[i - b2];
         }
 
-        for (int i = b - 1; i >= 0; i--) {
+        for (int i = b2 - 1; i >= 0; i--) {
             k[i] = 0;
         }
 
@@ -134,14 +134,14 @@ namespace Utility
 
         //----------
 
-        int b = c / 32;
+        int b2 = c / 32;
         c &= (32 - 1);
 
-        for (int i = ndwords - 1; i >= b; i--) {
-            k[i] = k[i - b];
+        for (int i = ndwords - 1; i >= b2; i--) {
+            k[i] = k[i - b2];
         }
 
-        for (int i = b - 1; i >= 0; i--) {
+        for (int i = b2 - 1; i >= 0; i--) {
             k[i] = 0;
         }
 
@@ -172,14 +172,14 @@ namespace Utility
 
         if (c == 0) {return;}
 
-        int b = c >> 3;
+        int b2 = c >> 3;
         c &= 7;
 
-        for (int i = 0; i < nbytes - b; i++) {
-            k[i] = k[i + b];
+        for (int i = 0; i < nbytes - b2; i++) {
+            k[i] = k[i + b2];
         }
 
-        for (int i = nbytes - b; i < nbytes; i++) {
+        for (int i = nbytes - b2; i < nbytes; i++) {
             k[i] = 0;
         }
 
@@ -206,14 +206,14 @@ namespace Utility
 
         if (c == 0) {return;}
 
-        int b = c / 32;
+        int b2 = c / 32;
         c &= (32 - 1);
 
-        for (int i = 0; i < ndwords - b; i++) {
-            k[i] = k[i + b];
+        for (int i = 0; i < ndwords - b2; i++) {
+            k[i] = k[i + b2];
         }
 
-        for (int i = ndwords - b; i < ndwords; i++) {
+        for (int i = ndwords - b2; i < ndwords; i++) {
             k[i] = 0;
         }
 
@@ -252,10 +252,10 @@ namespace Utility
 
         //----------
 
-        int b = c / 8;
+        int b2 = c / 8;
         c &= (8 - 1);
 
-        for (int j = 0; j < b; j++) {
+        for (int j = 0; j < b2; j++) {
             uint8 t = k[nbytes - 1];
 
             for (int i = nbytes - 1; i > 0; i--) {
@@ -290,10 +290,10 @@ namespace Utility
 
         //----------
 
-        int b = c / 32;
+        int b2 = c / 32;
         c &= (32 - 1);
 
-        for (int j = 0; j < b; j++) {
+        for (int j = 0; j < b2; j++) {
             uint32 t = k[ndwords - 1];
 
             for (int i = ndwords - 1; i > 0; i--) {
@@ -340,10 +340,10 @@ namespace Utility
 
         //----------
 
-        int b = c / 8;
+        int b2 = c / 8;
         c &= (8 - 1);
 
-        for (int j = 0; j < b; j++) {
+        for (int j = 0; j < b2; j++) {
             uint8 t = k[0];
 
             for (int i = 0; i < nbytes - 1; i++) {
@@ -380,10 +380,10 @@ namespace Utility
 
         //----------
 
-        int b = c / 32;
+        int b2 = c / 32;
         c &= (32 - 1);
 
-        for (int j = 0; j < b; j++) {
+        for (int j = 0; j < b2; j++) {
             uint32 t = k[0];
 
             for (int i = 0; i < ndwords - 1; i++) {

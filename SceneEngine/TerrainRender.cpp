@@ -146,7 +146,7 @@ namespace SceneEngine
                     bool drawWireframe, unsigned strataCount,
                     TerrainCoverageId visLayer)
             {
-                std::fill((uint8*)this, (uint8*)PtrAdd(this, sizeof(*this)), 0);
+                std::fill((uint8*)this, (uint8*)PtrAdd(this, sizeof(*this)), 0ui8);
                 _mode = mode;
                 _doExtraSmoothing = doExtraSmoothing;
                 _noisyTerrain = noisyTerrain;
@@ -413,9 +413,9 @@ namespace SceneEngine
                 // if it's been invalidated on disk, reload
             bool invalidation = false;
             if (i->second->_sourceCell) {
-                const auto& cell = *i->second;
-                invalidation |= (cell._sourceCell->GetDependencyValidation()->GetValidationIndex()!=0);
-                for (auto q=cell._coverage.cbegin(); q!=cell._coverage.cend(); ++q)
+                const auto& cell2 = *i->second;
+                invalidation |= (cell2._sourceCell->GetDependencyValidation()->GetValidationIndex()!=0);
+                for (auto q=cell2._coverage.cbegin(); q!=cell2._coverage.cend(); ++q)
                     invalidation |= (q->_source->GetDependencyValidation()->GetValidationIndex()!=0);
             }
             if (invalidation) {
@@ -548,12 +548,12 @@ namespace SceneEngine
             if (_pendingUploads.size() >= totalActiveUploadLimit) break;
 
             auto& cellRenderInfo = *i->_cell;
-            unsigned n = i->_absNodeIndex;
+            unsigned n2 = i->_absNodeIndex;
             if (i->_flags & Flags::NeedsHeightMapUpload) {
                 auto& sourceCell = *cellRenderInfo._sourceCell;
-                auto& sourceNode = *sourceCell._nodes[n];
+                auto& sourceNode = *sourceCell._nodes[n2];
 
-                auto& heightTile = cellRenderInfo._heightTiles[n];
+                auto& heightTile = cellRenderInfo._heightTiles[n2];
 				#if defined(TERRAIN_ENABLE_EDITING)
 					heightTile._heightScale = sourceNode._localToCell(2,2);
 					heightTile._heightOffset = sourceNode._localToCell(2,3);
@@ -563,7 +563,7 @@ namespace SceneEngine
                     unsigned(sourceNode._heightMapFileOffset), unsigned(sourceNode._heightMapFileSize));
                 ++uploadsThisFrame;
 
-                _pendingUploads.push_back(UploadPair(&cellRenderInfo, n));
+                _pendingUploads.push_back(UploadPair(&cellRenderInfo, n2));
             }
             
             if (i->_flags & Flags::NeedsCoverageUploadMask) {
@@ -581,7 +581,7 @@ namespace SceneEngine
                     }
                 }
 				if (anyCoverageUploads)
-					_pendingUploads.push_back(UploadPair(&cellRenderInfo, n | (1u << 31u)));
+					_pendingUploads.push_back(UploadPair(&cellRenderInfo, n2 | (1u << 31u)));
             }
         }
     }
@@ -984,11 +984,11 @@ namespace SceneEngine
         const unsigned startLod = Tweakable("TerrainMinLOD", 1);
         const unsigned maxLod = unsigned(sourceCell._nodeFields.size()-1);      // sometimes the coverage doesn't have all of the LODs. In these cases, we have to clamp the LOD number (for both heights and coverage...!)
         const float screenSpaceEdgeThreshold = Tweakable("TerrainEdgeThreshold", 384.f);
-        auto& field = sourceCell._nodeFields[startLod];
+        auto& field2 = sourceCell._nodeFields[startLod];
 
             // DavidJ -- HACK -- making this "static" to try to avoid extra memory allocations
         static std::stack<std::pair<unsigned, unsigned>> pendingNodes;
-        for (unsigned n=0; n<field._nodeEnd - field._nodeBegin; ++n)
+        for (unsigned n=0; n<field2._nodeEnd - field2._nodeBegin; ++n)
             pendingNodes.push(std::make_pair(startLod, n));
 
         const auto compressedHeightMask = CompressedHeightMask(terrainContext._encodedGradientFlags);

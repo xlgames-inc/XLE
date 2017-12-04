@@ -700,13 +700,13 @@ namespace SceneEngine
         char shaderDefines[256]; 
         BuildShaderDefines(shaderDefines, _gridDimension, context._surfaceHeightsProvider, context._borderMode, _lookupTableSRV.IsGood());
 
-        auto& cshader = ::Assets::GetAssetDep<Metal::ComputeShader>(
+        auto& initcshader = ::Assets::GetAssetDep<Metal::ComputeShader>(
             usePipeModel?"xleres/Ocean/InitSimGrid.csh:InitPipeModel:cs_*":"xleres/Ocean/InitSimGrid.csh:main:cs_*", shaderDefines);
 
         auto materialConstants = Internal::BuildOceanMaterialConstants(*context._oceanSettings, context._gridPhysicalDimension);
         Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
         metalContext.BindCS(MakeResourceList(globalOceanMaterialConstantBuffer));
-        metalContext.Bind(cshader);
+        metalContext.Bind(initcshader);
         if (context._surfaceHeightsProvider)
             metalContext.BindCS(MakeResourceList(context._surfaceHeightsProvider->GetSRV()));
 

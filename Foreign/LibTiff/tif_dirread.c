@@ -41,6 +41,8 @@
 
 #include "tiffiop.h"
 
+#pragma warning(disable:4456)		// declaration of 'v' hides previous local declaration
+
 #define IGNORE 0          /* tag placeholder used below */
 #define FAILED_FII    ((uint32) -1)
 

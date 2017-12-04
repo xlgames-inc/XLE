@@ -570,9 +570,9 @@ namespace SceneEngine
             }
         } else {
             auto cells = _placementsManager->GetRenderer()->GetObjectBoundingBoxes(*_cells, context.GetProjectionDesc()._worldToProjection);
-            for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
-                auto cellToWorld = c->first;
-                auto objs = c->second;
+            for (auto cell=cells.cbegin(); cell!=cells.cend(); ++cell) {
+                auto cellToWorld = cell->first;
+                auto objs = cell->second;
 
                 for (unsigned c=0; c<objs._count; ++c) {
                     auto& boundary = *PtrAdd(objs._boundingBox, c*objs._stride);

@@ -90,8 +90,9 @@ namespace Assets { namespace Internal
     //  Can't work for the moment because upstream assets aren't handled.
     // template<typename AssetType, typename std::enable_if<AssetTraits<AssetType>::HasGetAssetState>::type* = nullptr>
     //     inline bool ReadyForReplacement(const AssetType& asset) { return asset.GetAssetState() != AssetState::Pending; }
-    // inline bool ReadyForReplacement(...) { return true; /* can't query, must do immediate replacement */ }
-    // #pragma managed(pop)
+	template<typename AssetType>
+		inline bool ReadyForReplacement(const AssetType& asset) { return true; }
+    #pragma managed(pop)
 
 	template<bool DoCheckDependancy, bool DoBackgroundCompile, typename AssetType, typename... Params>
 		const AssetType& GetAsset(AssetSetPtr<AssetType>& assetSet, Params... initialisers)

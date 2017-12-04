@@ -4,10 +4,6 @@
     <NsightTegraProjectRevisionNumber>4</NsightTegraProjectRevisionNumber>
   </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|Tegra-Android">
-      <Configuration>Debug</Configuration>
-      <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
@@ -16,10 +12,6 @@
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Profile|Tegra-Android">
-      <Configuration>Profile</Configuration>
-      <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Profile|Win32">
       <Configuration>Profile</Configuration>
       <Platform>Win32</Platform>
@@ -27,10 +19,6 @@
     <ProjectConfiguration Include="Profile|x64">
       <Configuration>Profile</Configuration>
       <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Tegra-Android">
-      <Configuration>Release</Configuration>
-      <Platform>Tegra-Android</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
@@ -46,27 +34,6 @@
     <RootNamespace>EntityInterface</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
-    <AndroidAPILevel>android-18</AndroidAPILevel>
-    <PlatformToolset>x86-4.8</PlatformToolset>
-    <AndroidMinAPI>android-17</AndroidMinAPI>
-    <AndroidTargetAPI>android-17</AndroidTargetAPI>
-    <AndroidMaxAPI />
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
-    <AndroidAPILevel>android-18</AndroidAPILevel>
-    <PlatformToolset>x86-4.8</PlatformToolset>
-    <AndroidMinAPI>android-17</AndroidMinAPI>
-    <AndroidTargetAPI>android-17</AndroidTargetAPI>
-    <AndroidMaxAPI />
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
-    <AndroidAPILevel>android-18</AndroidAPILevel>
-    <PlatformToolset>x86-4.8</PlatformToolset>
-    <AndroidMinAPI>android-17</AndroidMinAPI>
-    <AndroidTargetAPI>android-17</AndroidTargetAPI>
-    <AndroidMaxAPI />
-  </PropertyGroup>
   <PropertyGroup Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>

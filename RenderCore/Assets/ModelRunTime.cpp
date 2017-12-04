@@ -353,10 +353,10 @@ namespace RenderCore { namespace Assets
             boundTextures.resize(textureSetCount * texturesPerMaterial, nullptr);
             DEBUG_ONLY(boundTextureNames.resize(textureSetCount * texturesPerMaterial));
 
-            for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
-                unsigned textureSetIndex = i->second._texturesIndex;
+            for (auto mi=materialResources.begin(); mi!=materialResources.end(); ++mi) {
+                unsigned textureSetIndex = mi->second._texturesIndex;
         
-                auto* matData = matScaffold.GetMaterial(i->first);
+                auto* matData = matScaffold.GetMaterial(mi->first);
                 if (!matData) { continue; }
 
                 for (auto param=matData->_bindings.Begin(); !param.IsEnd(); ++param) {
@@ -887,18 +887,18 @@ namespace RenderCore { namespace Assets
 
             // Also set up vertex data from the supplements
             // (supplemental vertex data gets uploaded into the same vertex buffer)
-        unsigned s=0;
-        for (; s<supplements.size(); ++s) {
-            const auto& vb = *supplements[s];
-            result._vbOffsets[1+s] = workingBuffers.AllocateVB(vb._size);
-            result._vertexStrides[1+s] = vb._ia._vertexStride;
+        unsigned s2=0;
+        for (; s2<supplements.size(); ++s2) {
+            const auto& vb = *supplements[s2];
+            result._vbOffsets[1+s2] = workingBuffers.AllocateVB(vb._size);
+            result._vertexStrides[1+s2] = vb._ia._vertexStride;
             ++result._vertexStreamCount;
             workingBuffers._vbUploads.push_back(
-                PendingGeoUpload { vb._offset, vb._size, s, result._vbOffsets[1+s] });
+                PendingGeoUpload { vb._offset, vb._size, s2, result._vbOffsets[1+s2] });
         }
-        for (; s<MaxVertexStreams-1; ++s) {
-            result._vbOffsets[1+s] = 0;
-            result._vertexStrides[1+s] = 0;
+        for (; s2<MaxVertexStreams-1; ++s2) {
+            result._vbOffsets[1+s2] = 0;
+            result._vertexStrides[1+s2] = 0;
         }
 
             // Build vertex input layout desc

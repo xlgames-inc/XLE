@@ -21,10 +21,10 @@ namespace PlatformRig { namespace Overlays
         IOverlayContext& context, Layout& layout, Interactables& interactables, 
         InterfaceState& interfaceState)
     {
-        auto m = _manager.lock();
-        if (!m) return;
+        auto man = _manager.lock();
+        if (!man) return;
 
-        const auto metrics = m->GetMetrics();
+        const auto metrics = man->GetMetrics();
 
         Layout statsArea = layout.AllocateFullHeight(300);
         Rect textureArea = layout.AllocateFullHeightFraction(1.f);
@@ -88,7 +88,7 @@ namespace PlatformRig { namespace Overlays
             auto threadContext = context.GetDeviceContext();
             auto metalContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
             RenderCore::Metal::RenderTargetView rtv(*metalContext);
-            auto srv = m->GetAtlasResource(visibleLayer);
+            auto srv = man->GetAtlasResource(visibleLayer);
             auto desc = RenderCore::Metal::ExtractDesc(srv);
             metalContext->Bind(RenderCore::Techniques::CommonResources()._blendOneSrcAlpha);
             SceneEngine::ShaderBasedCopy(
@@ -104,7 +104,7 @@ namespace PlatformRig { namespace Overlays
                 // Draw rectangles showing the "heat-map" for the sprites
                 // This is how long it's been since this sprite has been used
             for (unsigned sprite=0; sprite<metrics._maxSpriteCount; ++sprite) {
-                auto sm = m->GetSpriteMetrics(sprite);
+                auto sm = man->GetSpriteMetrics(sprite);
                 for (unsigned m=0; m<dimof(sm._mipMaps); ++m) {
                     if (sm._mipMaps[m].second[0] > sm._mipMaps[m].first[0]) {
                         const auto& r = sm._mipMaps[m];

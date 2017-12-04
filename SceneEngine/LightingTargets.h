@@ -63,7 +63,7 @@ namespace SceneEngine
             {
                     //  we have to "memset" this -- because padding adds
                     //  random values in profile mode
-                std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
+                std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), '\0');
                 _gbufferType = gbufferType;
                 _msaaSampleCount = msaaSampleCount;
                 _msaaSamplers = msaaSamplers;
@@ -181,7 +181,7 @@ namespace SceneEngine
             {
                     //  we have to "memset" this -- because padding adds random values in 
                     //  profile mode
-                std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
+                std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), '\0');
                 _gbufferType = gbufferType;
                 _msaaSampleCount = msaaSampleCount;
                 _msaaSamplers = msaaSamplers;

@@ -428,9 +428,9 @@ namespace RenderCore { namespace Assets
         // could just upgrade them all into 4x4 matrices and merge them all.
 
         for (auto i=cmdStream.begin(); i!=cmdStream.end();) {
-            auto type = AsMergeType(TransformStackCommand(*i));
+            auto cmdType = AsMergeType(TransformStackCommand(*i));
             auto next = i + 1 + CommandSize(TransformStackCommand(*i));
-            if (type == MergeType::StaticTransform) {
+            if (cmdType == MergeType::StaticTransform) {
                     // Search forward & find influences
                 std::vector<size_t> influences; signed finalIdentLevel = 0;
                 FindDownstreamInfluences(

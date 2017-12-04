@@ -402,7 +402,7 @@ namespace SceneEngine
         Metal::ViewportDesc mainViewportDesc(context);
                             
         auto cursorPos = GetCursorPos();
-        unsigned globalConstants[4] = { unsigned(mainViewportDesc.Width), unsigned(mainViewportDesc.Height), cursorPos[0], cursorPos[1] };
+        unsigned globalConstants[4] = { unsigned(mainViewportDesc.Width), unsigned(mainViewportDesc.Height), unsigned(cursorPos[0]), unsigned(cursorPos[1]) };
         Metal::ConstantBuffer globalConstantsBuffer(globalConstants, sizeof(globalConstants));
 
         auto& projDesc = parserContext.GetProjectionDesc();

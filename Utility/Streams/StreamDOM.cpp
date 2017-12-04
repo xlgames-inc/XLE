@@ -218,10 +218,10 @@ namespace Utility
         auto DocElementHelper<Formatter>::Element(const value_type name[]) const -> DocElementHelper<Formatter>
     {
         if (_index == ~0u) return DocElementHelper<Formatter>();
-        auto& ele = _doc->_elements[_index];
+        auto& ele2 = _doc->_elements[_index];
 
         auto expectedNameLen = (ptrdiff_t)XlStringLen(name);
-        for (unsigned e=ele._firstChild; e!=~0u;) {
+        for (unsigned e=ele2._firstChild; e!=~0u;) {
             const auto& ele = _doc->_elements[e];
             auto nameLen = ele._name._end - ele._name._start;
             if (nameLen == expectedNameLen && !XlComparePrefix(ele._name._start, name, nameLen))

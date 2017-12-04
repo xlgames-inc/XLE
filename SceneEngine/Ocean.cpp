@@ -107,7 +107,7 @@ namespace SceneEngine
 
     SimplePatchBox::Desc::Desc(unsigned width, unsigned height, bool flipAlternate) 
     {
-        std::fill((char*)this, (char*)PtrAdd(this, sizeof(*this)), 0);
+        std::fill((char*)this, (char*)PtrAdd(this, sizeof(*this)), '\0');
         _width = width; _height = height; _flipAlternate = flipAlternate; 
     }
 

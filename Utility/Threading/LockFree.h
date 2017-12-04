@@ -31,7 +31,7 @@ bool XlSetEvent(XlHandle event);
 bool XlCloseSyncObject(XlHandle object);
 uint32 XlWaitForSyncObject(XlHandle object, uint32 waitTime);
 uint32 XlWaitForMultipleSyncObjects(uint32 waitCount, XlHandle waitObjects[], bool waitAll, uint32 waitTime, bool alterable);
-uint32 XlGetCurrentThreadId();
+size_t XlGetCurrentThreadId();
 
 static const XlHandle XlHandle_Invalid = XlHandle(~size_t(0x0));
 

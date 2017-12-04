@@ -303,10 +303,10 @@ void Data::SetAttribute(const char* name, const char* v)
     SetAttribute(name, new Data(v));
 }
 
-void Data::SetAttribute(const char* name, int64 value)
+void Data::SetAttribute(const char* name, int64 valued)
 {
     char buf[32];
-    XlFormatString(buf, dimof(buf), "%lld", value);
+    XlFormatString(buf, dimof(buf), "%lld", valued);
     SetAttribute(name, new Data(buf));
 }
 
@@ -1459,8 +1459,8 @@ void Data::SaveToOutputStream(OutputStream& f, bool includeComment) const
     if (preComment && includeComment) {
         PrintComment(f, 0, preComment);
     }
-    foreachData(child, this) {
-        PrettyPrint(f, 0, child, includeComment);
+    foreachData(childq, this) {
+        PrettyPrint(f, 0, childq, includeComment);
     }
     if (postComment && includeComment) {
         PrintComment(f, 0, postComment);

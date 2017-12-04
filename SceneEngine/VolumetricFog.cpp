@@ -568,12 +568,12 @@ namespace SceneEngine
                 rendererCfg._skipShadowFrustums, rendererCfg._gridDimensions[2],
                 GetShadowFilterMode(), GetShadowFilterStdDev());
 
-            RenderCore::Metal::ConstantBufferPacket constantBufferPackets[2];
-            constantBufferPackets[0] = MakeVolFogConstants(cfg, rendererCfg);
+            RenderCore::Metal::ConstantBufferPacket constantBufferPackets2[2];
+            constantBufferPackets2[0] = MakeVolFogConstants(cfg, rendererCfg);
 
             const unsigned blurredShadowSize = rendererCfg._blurredShadowSize;
             const unsigned blurDownsample = rendererCfg._shadowDownsample;
-            int downsampleScaleFactor = 
+            unsigned downsampleScaleFactor = 
                 unsigned(shadowFrustum._resolveParameters._shadowTextureSize) / (blurredShadowSize*blurDownsample);
             const auto gridDims = rendererCfg._gridDimensions;
 
@@ -590,15 +590,15 @@ namespace SceneEngine
 
             ///////////////////////////////////////////////////////////////////////////////////////
 
-            int c=0; 
+            unsigned c=0; 
             for (auto i=fogRes._shadowMapRTVs.begin(); i!=fogRes._shadowMapRTVs.end(); ++i, ++c) {
-                struct WorkingSlice { int _workingSlice; unsigned downsampleFactor; unsigned dummy[2]; }
-                    globalsBuffer = { c + rendererCfg._skipShadowFrustums, downsampleScaleFactor, { 0,0 } };
-                constantBufferPackets[1] = MakeSharedPkt(globalsBuffer);
+                struct WorkingSlice { unsigned _workingSlice; unsigned downsampleFactor; unsigned dummy[2]; }
+                    globalsBuffer = { c + rendererCfg._skipShadowFrustums, downsampleScaleFactor, { 0u,0u } };
+                constantBufferPackets2[1] = MakeSharedPkt(globalsBuffer);
 
                 fogShaders._buildExponentialShadowMapBinding.Apply(
                     *context, lightingParserContext.GetGlobalUniformsStream(),
-                    Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
+                    Metal::UniformsStream(constantBufferPackets2, nullptr, dimof(constantBufferPackets2)));
 
                 context->Bind(MakeResourceList(*i), nullptr);
                 context->Draw(4);
@@ -608,7 +608,7 @@ namespace SceneEngine
                 c = 0;
                 auto i2 = fogRes._shadowMapTempRTVs.begin();
                 for (auto i=fogRes._shadowMapRTVs.begin(); i!=fogRes._shadowMapRTVs.end(); ++i, ++c, ++i2) {
-                    struct WorkingSlice { int _workingSlice; unsigned dummy[3]; } globalsBuffer = { c, {0,0,0} };
+                    struct WorkingSlice { unsigned _workingSlice; unsigned dummy[3]; } globalsBuffer = { c, {0u,0u,0u} };
                     Metal::ConstantBufferPacket constantBufferPackets[2];
                     constantBufferPackets[0] = MakeSharedPkt(globalsBuffer);
                     const Metal::ConstantBuffer* prebuiltConstantBuffers[2] = { nullptr, nullptr };
@@ -656,7 +656,7 @@ namespace SceneEngine
 
             fogShaders._injectLightBinding.Apply(
                 *context, lightingParserContext.GetGlobalUniformsStream(),
-                Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
+                Metal::UniformsStream(constantBufferPackets2, nullptr, dimof(constantBufferPackets2)));
             context->Bind(*fogShaders._injectLight);
             context->Dispatch(gridDims[0]/10, gridDims[1]/10, gridDims[2]/8);
 
@@ -666,7 +666,7 @@ namespace SceneEngine
             context->BindCS(MakeResourceList(3, fogRes._inscatterShadowingValuesSRV, fogRes._densityValuesSRV, fogRes._inscatterPointLightsValuesSRV));
             fogShaders._propagateLightBinding.Apply(
                 *context, lightingParserContext.GetGlobalUniformsStream(),
-                Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
+                Metal::UniformsStream(constantBufferPackets2, nullptr, dimof(constantBufferPackets2)));
             context->Bind(*fogShaders._propagateLight);
             context->Dispatch(gridDims[0]/10, gridDims[1]/10, 1);
 

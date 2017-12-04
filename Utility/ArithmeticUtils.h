@@ -12,6 +12,10 @@
 #include <vector>
 #include <assert.h>
 
+#if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
+    #include <intrin.h>
+#endif
+
 namespace Utility
 {
 

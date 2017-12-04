@@ -116,7 +116,7 @@ namespace SceneEngine
                 RainSpawnConstants rainSpawnConstaints = 
                 {
                     boxCentrePts[b], 0.f,
-                    Float3(8.1f, 0.1f, -12.f), rainDropCountWidth,
+                    Float3(8.1f, 0.1f, -12.f), (unsigned)rainDropCountWidth,
                     rainBoxXYWidth, rainBoxVerticalHeight,
                     0.f, 0.f
                 };

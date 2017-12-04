@@ -1358,7 +1358,7 @@ public:
     /// @param str String to convert
     /// @return Uppercase string
     static inline std::string& toUpper(std::string& str) {
-        std::transform(str.begin(), str.end(), str.begin(), ::toupper);
+		std::transform(str.begin(), str.end(), str.begin(), [](char c) { return (char)::toupper(c); });
         return str;
     }
 

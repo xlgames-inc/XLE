@@ -131,12 +131,12 @@ namespace SceneEngine
 
             auto& sourceCell = *i->second->_sourceCell;
             const unsigned startLod = 0;
-            auto& field = sourceCell._nodeFields[startLod];
+            auto& field2 = sourceCell._nodeFields[startLod];
             Float2 cellSpaceSearchMin = (cellCoordMin - Float2(cellIndex));
             Float2 cellSpaceSearchMax = (cellCoordMax - Float2(cellIndex));
 
             std::stack<std::pair<unsigned, unsigned>> pendingNodes;
-            for (unsigned n=0; n<field._nodeEnd - field._nodeBegin; ++n)
+            for (unsigned n=0; n<field2._nodeEnd - field2._nodeBegin; ++n)
                 pendingNodes.push(std::make_pair(startLod, n));
 
             const unsigned compressedHeightMask = 

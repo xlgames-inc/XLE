@@ -587,10 +587,10 @@ namespace SceneEngine
             screenSpaceMax[1] = std::max(screenSpaceMax[1], d[1]);
         }
 
-        Float2 c(.5f * (screenSpaceMax[0] + screenSpaceMin[0]), .5f * (screenSpaceMax[1] + screenSpaceMin[1]));
+        Float2 a(.5f * (screenSpaceMax[0] + screenSpaceMin[0]), .5f * (screenSpaceMax[1] + screenSpaceMin[1]));
         Float4x4 adjustmentMatrix(
-            2.f / (screenSpaceMax[0] - screenSpaceMin[0]), 0.f, 0.f, (2.f * c[0]) / (screenSpaceMax[0] - screenSpaceMin[0]),
-            0.f, 2.f / (screenSpaceMax[1] - screenSpaceMin[1]), 0.f, (2.f * c[1]) / (screenSpaceMax[1] - screenSpaceMin[1]),
+            2.f / (screenSpaceMax[0] - screenSpaceMin[0]), 0.f, 0.f, (2.f * a[0]) / (screenSpaceMax[0] - screenSpaceMin[0]),
+            0.f, 2.f / (screenSpaceMax[1] - screenSpaceMin[1]), 0.f, (2.f * a[1]) / (screenSpaceMax[1] - screenSpaceMin[1]),
             0.f, 0.f, 1.f, 0.f,
             0.f, 0.f, 0.f, 1.f);
 

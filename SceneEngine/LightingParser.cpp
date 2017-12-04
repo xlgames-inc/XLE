@@ -637,7 +637,7 @@ namespace SceneEngine
             unsigned            _gbufferMode;
             Desc(const TextureSamples& samples, bool precisionTargets, unsigned gbufferMode) 
             {
-                std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
+                std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), '\0');
                 _samples = samples;
                 _precisionTargets = precisionTargets;
                 _gbufferMode = gbufferMode;

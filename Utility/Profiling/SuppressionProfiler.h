@@ -48,7 +48,7 @@ namespace Utility
         #endif
     };
     
-    uint32 XlGetCurrentThreadId();
+    size_t XlGetCurrentThreadId();
 
     inline unsigned SuppressionProfiler::BeginEvent(const char eventLiteral[])
     {

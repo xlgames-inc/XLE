@@ -285,7 +285,7 @@ namespace RenderCore { namespace ImplDX11
         
         if (multithreadingOk) {
             ID3D::DeviceContext* defContextTemp = nullptr;
-            auto hresult = _underlying->CreateDeferredContext(0, &defContextTemp);
+            hresult = _underlying->CreateDeferredContext(0, &defContextTemp);
             if (SUCCEEDED(hresult) && defContextTemp) {
                 intrusive_ptr<ID3D::DeviceContext> defContext(moveptr(defContextTemp));
                 return std::make_unique<ThreadContextDX11>(std::move(defContext), shared_from_this());
