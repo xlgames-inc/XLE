@@ -369,4 +369,22 @@ namespace XLEMath
         }
     }
 
+    int TriangleSign(Float2 p1, Float2 p2, Float2 p3) {
+        float w = (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1]);
+        const static float EPSILON = 0.00001f;
+        if (w > EPSILON) {
+            return 1;
+        } else if (w < -EPSILON) {
+            return -1;
+        }
+        return 0;
+    }
+
+    bool PointInTriangle(Float2 pt, Float2 v0, Float2 v1, Float2 v2) {
+        bool b1 = TriangleSign(pt, v0, v1) == -1;
+        bool b2 = TriangleSign(pt, v1, v2) == -1;
+        bool b3 = TriangleSign(pt, v2, v0) == -1;
+        
+        return ((b1 == b2) && (b2 == b3));
+    }
 }

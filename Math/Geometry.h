@@ -61,6 +61,10 @@ namespace XLEMath
 		Float3 rayStart, Float3 rayDirection, float sphereRadiusSq);
 
     unsigned ClipTriangle(Float3 dst[], const Float3 source[], float clippingParam[]);
+    
+    
+    int TriangleSign(Float2 p1, Float2 p2, Float2 p3);
+    bool PointInTriangle(Float2 pt, Float2 v0, Float2 v1, Float2 v2);
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
             //      I N L I N E   I M P L E M E N T A T I O N S

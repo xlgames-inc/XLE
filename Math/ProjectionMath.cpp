@@ -11,6 +11,7 @@
 #include "Geometry.h"
 #include "../Core/Prefix.h"
 #include "../Core/SelectConfiguration.h"
+#include "../Utility/IteratorUtils.h"
 #include <assert.h>
 #include <cfloat>
 
@@ -744,5 +745,190 @@ namespace XLEMath
         }
 
         return std::make_pair(minIntersection, maxIntersection);
+    }
+    
+    static bool IntersectsWhenProjects(const IteratorRange<const Float3*> obj1, const IteratorRange<const Float3*> obj2, const Float3 &axis) {
+        if (MagnitudeSquared(axis) < 0.00001f) {
+            return true;
+        }
+        
+        float min1 = FLT_MAX;
+        float max1 = -FLT_MAX;
+        for (const Float3 &p : obj1) {
+            float dist = Dot(p, axis);
+            min1 = std::min(min1, dist);
+            max1 = std::max(max1, dist);
+        }
+        
+        float min2 = FLT_MAX;
+        float max2 = -FLT_MAX;
+        for (const Float3 &p : obj2) {
+            float dist = Dot(p, axis);
+            min2 = std::min(min2, dist);
+            max2 = std::max(max2, dist);
+        }
+        
+        return (min1 < max2 && min1 > min2) ||
+        (max1 < max2 && max1 > min2) ||
+        (min2 < max1 && min2 > min1) ||
+        (max2 < max1 && max2 > min1);
+    }
+    
+    // This check is based on the Separating Axis Theorem
+    static bool SeparatingAxisTheoremCheck(const std::pair<IteratorRange<const unsigned *>, IteratorRange<const Float3*>> &geometry,
+                                           const Float4x4 &projectionMatrix,
+                                           ClipSpaceType clipSpaceType) {
+        // Convert frustum to world space
+        Float3 frustumCorners[8];
+        CalculateAbsFrustumCorners(frustumCorners, projectionMatrix, clipSpaceType);
+        
+        Int3 faceTriangles[6] = {
+            {0, 1, 2},
+            {4, 6, 5},
+            {0, 4, 1},
+            {2, 3, 6},
+            {1, 5, 3},
+            {0, 2, 4}
+        };
+        
+        Int2 frustumEdgeIndexes[12] = {
+            {0, 1},
+            {0, 2},
+            {0, 4},
+            {1, 3},
+            {1, 5},
+            {2, 3},
+            {2, 6},
+            {3, 7},
+            {4, 5},
+            {4, 6},
+            {5, 7},
+            {6, 7}
+        };
+        
+        Float3 frustumNormals[6];
+        for (unsigned planeIdx = 0; planeIdx < 6; ++planeIdx) {
+            Float3 faceTriangle[3] = {frustumCorners[faceTriangles[planeIdx][0]], frustumCorners[faceTriangles[planeIdx][1]], frustumCorners[faceTriangles[planeIdx][2]]};
+            frustumNormals[planeIdx] = Normalize(Cross(faceTriangle[1] - faceTriangle[0], faceTriangle[2] - faceTriangle[0]));
+        }
+        
+        Float3 frustumEdges[12];
+        for (unsigned edgeIdx = 0; edgeIdx < 12; ++edgeIdx) {
+            frustumEdges[edgeIdx] = frustumCorners[frustumEdgeIndexes[edgeIdx][1]] - frustumCorners[frustumEdgeIndexes[edgeIdx][0]];
+        }
+        
+        auto &indexes = geometry.first;
+        auto &vertexes = geometry.second;
+        for (unsigned triangleIdx = 0; triangleIdx < indexes.size(); triangleIdx += 3) {
+            bool intersects = true;
+            Float3 triangle[3];
+            for (unsigned vertexIdx = 0; vertexIdx < 3; ++vertexIdx) {
+                triangle[vertexIdx] = vertexes[indexes[triangleIdx + vertexIdx]];
+            }
+            
+            if (MagnitudeSquared(triangle[0] - triangle[1]) < 0.00001f ||
+                MagnitudeSquared(triangle[0] - triangle[2]) < 0.00001f ||
+                MagnitudeSquared(triangle[1] - triangle[2]) < 0.00001f) {
+                continue;
+            }
+            
+            for (Float3 axis : frustumNormals) {
+                if (!IntersectsWhenProjects(MakeIteratorRange(frustumCorners), MakeIteratorRange(triangle), axis)) {
+                    intersects = false;
+                    break;
+                }
+            }
+            
+            if (!intersects) {
+                continue;
+            }
+            
+            Float3 triangleNormal = Normalize(Cross(triangle[1] - triangle[0], triangle[2] - triangle[0]));
+            if (!IntersectsWhenProjects(MakeIteratorRange(frustumCorners), MakeIteratorRange(triangle), triangleNormal)) {
+                intersects = false;
+                continue;
+            }
+            
+            
+            for (unsigned triEdgeIdx = 0; triEdgeIdx < 3; ++triEdgeIdx) {
+                unsigned endIdx = (triEdgeIdx + 1) % 3;
+                Float3 edge = triangle[endIdx] - triangle[triEdgeIdx];
+                for (unsigned frustumEdgeIdx = 0; frustumEdgeIdx < 12; ++frustumEdgeIdx) {
+                    Float3 axis = Normalize(Cross(frustumEdges[frustumEdgeIdx], edge));
+                    if (!IntersectsWhenProjects(MakeIteratorRange(frustumCorners), MakeIteratorRange(triangle), axis)) {
+                        intersects = false;
+                        break;
+                    }
+                }
+                if (!intersects) {
+                    break;
+                }
+            }
+            
+            if (!intersects) {
+                continue;
+            }
+            
+            return true;
+        }
+        return false;
+    }
+    
+    bool TestTriangleList(const std::pair<IteratorRange<const unsigned *>, IteratorRange<const Float3*>> &geometry,
+                          const Float4x4 &projectionMatrix,
+                          ClipSpaceType clipSpaceType) {
+        assert(clipSpaceType == ClipSpaceType::Positive || clipSpaceType == ClipSpaceType::StraddlingZero);
+        bool allAbove = true;
+        bool allBelow = true;
+        bool allLeft = true;
+        bool allRight = true;
+        bool allNear = true;
+        bool allFar = true;
+        
+        unsigned minIdx = INT_MAX;
+        unsigned maxIdx = 0;
+        
+        for (unsigned idx : geometry.first) {
+            minIdx = idx < minIdx ? idx : minIdx;
+            maxIdx = idx > maxIdx ? idx : maxIdx;
+        }
+        
+        for (unsigned idx = minIdx; idx <= maxIdx; ++idx) {
+            const Float3 &vertex = geometry.second[idx];
+            Float4 projected = XYZProj(projectionMatrix, vertex);
+            bool left = projected[0] < -projected[3];
+            bool right = projected[0] > projected[3];
+            bool below = projected[1] < -projected[3];
+            bool above = projected[1] > projected[3];
+            bool far = projected[2] > projected[3];
+            
+            bool near = true;
+            if (clipSpaceType == ClipSpaceType::Positive) {
+                near = projected[2] < 0.f;
+            } else if (clipSpaceType == ClipSpaceType::StraddlingZero) {
+                near = projected[2] < -projected[3];
+            }
+            
+            if (!left && !right &&
+                !above && !below &&
+                !near && !far) {
+                return true;
+            }
+            
+            allAbove &= above;
+            allBelow &= below;
+            allLeft &= left;
+            allRight &= right;
+            allNear &= near;
+            allFar &= far;
+        }
+        
+        if (allAbove || allBelow ||
+            allLeft || allRight ||
+            allNear || allFar) {
+            return false;
+        }
+        
+        return SeparatingAxisTheoremCheck(geometry, projectionMatrix, clipSpaceType);
     }
 }

@@ -8,6 +8,7 @@
 
 #include "Vector.h"
 #include "Matrix.h"
+#include "../Utility/IteratorUtils.h"
 
 namespace XLEMath
 {
@@ -48,6 +49,20 @@ namespace XLEMath
 
     Float4 ExtractMinimalProjection(const Float4x4& projectionMatrix);
     bool IsOrthogonalProjection(const Float4x4& projectionMatrix);
+    
+    /**
+     * Tests whether any triangle in geometry is at least partially visible given the projectionMatrix
+     * geometry: A pair of lists. The first is a list of indexes for the triangles.
+     *           There should an index for each vertex in each triangle, collated.
+     *           The second list is a list of vertexes, one for each index in the first list.
+     * projectionMatrix: The projection to clip space
+     * clipSpaceType: The type of clip space the projection matrix is in
+     *
+     * returns: True iff any triangle is at least partially visible
+     **/
+    bool TestTriangleList(const std::pair<IteratorRange<const unsigned *>, IteratorRange<const Float3*>> &geometry,
+                          const Float4x4 &projectionMatrix,
+                          ClipSpaceType clipSpaceType);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //   B U I L D I N G   P R O J E C T I O N   M A T R I C E S
