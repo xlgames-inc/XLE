@@ -116,7 +116,7 @@ namespace RenderCore
 
         static ResId MakeResId(
             StringSection<::Assets::ResChar> initializer, 
-            ILowLevelCompiler& compiler);
+            const ILowLevelCompiler* compiler = nullptr);
 
         static ShaderService& GetInstance() { assert(s_instance); return *s_instance; }
         static void SetInstance(ShaderService*);

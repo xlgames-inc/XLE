@@ -13,7 +13,7 @@
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include "ShaderResource.h"
 #include "../../IDevice_Forward.h"
-#include <GLES2/gl2.h>
+#include "IncludeGLES.h"
 
 typedef void*       EGLDisplay;
 typedef void*       EGLContext;
@@ -45,12 +45,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         };
     }
 
-    class CommandList : public RefCountedObject
+    class CommandList
     {
     public:
     };
 
-    class DeviceContext : public RefCountedObject
+    class DeviceContext
     {
     public:
         template<int Count> void Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset);
@@ -80,6 +80,11 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         EGL::Context        GetUnderlying() { return _underlyingContext; }
 
+        static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
+
+        DeviceContext();
+        DeviceContext(const DeviceContext&) = delete;
+        DeviceContext& operator=(const DeviceContext&) = delete;
         ~DeviceContext();
     private:
         unsigned            _nativeTopology;
@@ -94,13 +99,17 @@ namespace RenderCore { namespace Metal_OpenGLES
         friend class DeviceOpenGLES;
     };
 
-    class ObjectFactory : public RefCountedObject
+    class ObjectFactory
     {
     public:
         ObjectFactory();
         ObjectFactory(IDevice* device);
         ObjectFactory(const OpenGL::Resource& resource);
     };
+
+    ObjectFactory& GetObjectFactory(IDevice& device);
+    ObjectFactory& GetObjectFactory(DeviceContext&);
+    ObjectFactory& GetObjectFactory();
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 

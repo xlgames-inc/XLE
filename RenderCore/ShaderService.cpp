@@ -10,7 +10,9 @@
 #include "../Assets/IntermediateAssets.h"
 #include "../Assets/ArchiveCache.h"
 #include "../Assets/DeferredConstruction.h"
-#include "../ConsoleRig/Log.h"
+/*#if defined(HAS_XLE_CONSOLE_RIG)
+    #include "../ConsoleRig/Log.h"
+#endif*/
 #include "../Utility/StringUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/Streams/PathUtils.h"
@@ -101,15 +103,15 @@ namespace RenderCore
 			initializers, dimof(initializers));
 		if (!marker) return nullptr;
 
-		auto existingLoc = marker->GetExistingAsset();
-		auto i = strrchr(existingLoc._sourceID0, '-');
-		auto stage = i ? AsShaderStage(i+1) : ShaderStage::Null;
+		auto existingAsset = marker->GetExistingAsset();
+        auto stage = ShaderService::MakeResId(initializer).AsShaderStage();
 
-		if (existingLoc._dependencyValidation && existingLoc._dependencyValidation->GetValidationIndex()==0) {
+        auto existingDepVal = existingAsset->GetDependencyValidation();
+		if (existingDepVal && existingDepVal->GetValidationIndex()==0) {
 
 			std::unique_ptr<CompiledShaderByteCode> asset = nullptr;
 			TRY {
-				asset = ::Assets::Internal::ConstructFromIntermediateAssetLocator<CompiledShaderByteCode>(existingLoc, stage, initializer);
+				asset = ::Assets::Internal::ConstructFromIntermediateAssetLocator<CompiledShaderByteCode>(*existingAsset, stage, initializer);
 			} CATCH (const ::Assets::Exceptions::InvalidAsset&) {
 			} CATCH (const ::Assets::Exceptions::FormatError& e) {
 				if (e.GetReason() != ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
@@ -124,7 +126,7 @@ namespace RenderCore
 				std::function<std::unique_ptr<CompiledShaderByteCode>()> constructorCallback(
 					[wrapper]() -> std::unique_ptr<CompiledShaderByteCode> { return std::move(*wrapper.get()); });
 				auto result = std::make_shared<::Assets::DeferredConstruction>(
-					nullptr, existingLoc._dependencyValidation, std::move(constructorCallback));
+					nullptr, existingDepVal, std::move(constructorCallback));
 				result->GetVariants().Add(ConstHash64<'Shad','erSt','age'>::Value, [stage](){ return stage; });
 				return result;
 			}
@@ -140,11 +142,14 @@ namespace RenderCore
 				if (state == ::Assets::AssetState::Invalid)
 					Throw(::Assets::Exceptions::InvalidAsset(init0.c_str(), "Failure during compilation operation"));
 				assert(state == ::Assets::AssetState::Ready);
+                auto artifacts = pendingCompile->GetArtifacts();
+                assert(artifacts.size() == 1);
 				return ::Assets::Internal::ConstructFromIntermediateAssetLocator<CompiledShaderByteCode>(
-					pendingCompile->GetLocator(), stage, MakeStringSection(init0));
+					*artifacts[0].second, stage, MakeStringSection(init0));
 			});
+        assert(0);      // todo - need to set the dependncy validation to something reasonable --
 		auto result = std::make_shared<::Assets::DeferredConstruction>(
-			pendingCompile, pendingCompile->GetLocator()._dependencyValidation, std::move(constructorCallback));
+			pendingCompile, nullptr, std::move(constructorCallback));
 		result->GetVariants().Add(ConstHash64<'Shad','erSt','age'>::Value, [stage](){ return stage; });
 		return result;
     }
@@ -318,7 +323,7 @@ namespace RenderCore
 
     auto ShaderService::MakeResId(
         StringSection<::Assets::ResChar> initializer,
-        ILowLevelCompiler& compiler) -> ResId
+        const ILowLevelCompiler* compiler) -> ResId
     {
         ResId shaderId;
 
@@ -349,7 +354,8 @@ namespace RenderCore
             //  we have to do the "AdaptShaderModel" shader model here to convert
             //  the default shader model string (etc, "vs_*) to a resolved shader model
             //  this is because we want the archive name to be correct
-        compiler.AdaptShaderModel(shaderId._shaderModel, dimof(shaderId._shaderModel), shaderId._shaderModel);
+        if (compiler)
+            compiler->AdaptShaderModel(shaderId._shaderModel, dimof(shaderId._shaderModel), shaderId._shaderModel);
 
         return std::move(shaderId);
     }

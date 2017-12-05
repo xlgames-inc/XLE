@@ -10,6 +10,7 @@
 #include "../Assets/AssetUtils.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/IteratorUtils.h"
 
 namespace RenderCore
 {
@@ -105,8 +106,8 @@ namespace RenderCore
             shaderInMemory, size, resId, definesTable);
 
 		auto result = std::make_shared<::Assets::PendingCompileMarker>();
-		result->AddArtifact(
-			std::make_shared<Assets::BlobArtifact>(errors, payload, AsDepValPtr(MakeIteratorRange(deps))));
+        auto depVal = AsDepValPtr(MakeIteratorRange(deps));
+		result->AddArtifact("main", std::make_shared<Assets::BlobArtifact>(errors, payload, std::move(depVal)));
 		result->SetState(success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid);
 		return std::move(result);
     }
@@ -116,7 +117,7 @@ namespace RenderCore
 		StringSection<::Assets::ResChar> definesTable) const
         -> std::shared_ptr<::Assets::PendingCompileMarker>
     {
-        auto resId = ShaderService::MakeResId(resource, *_compiler);
+        auto resId = ShaderService::MakeResId(resource, _compiler.get());
 
         size_t fileSize = 0;
         auto fileData = ::Assets::TryLoadFileAsMemoryBlock(resId._filename, &fileSize);

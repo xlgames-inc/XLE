@@ -1,0 +1,456 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 48;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		8F2D1AF31FD61B080028A531 /* FrameBufferDesc.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AD21FD61B040028A531 /* FrameBufferDesc.h */; };
+		8F2D1AF41FD61B080028A531 /* Init.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AD31FD61B040028A531 /* Init.cpp */; };
+		8F2D1AF51FD61B080028A531 /* Init.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AD31FD61B040028A531 /* Init.cpp */; };
+		8F2D1AF61FD61B080028A531 /* IThreadContext_Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AD41FD61B040028A531 /* IThreadContext_Forward.h */; };
+		8F2D1AF71FD61B080028A531 /* Documentation.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AD51FD61B050028A531 /* Documentation.h */; };
+		8F2D1AF81FD61B080028A531 /* ResourceList.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AD61FD61B050028A531 /* ResourceList.h */; };
+		8F2D1AF91FD61B080028A531 /* IDevice.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AD71FD61B050028A531 /* IDevice.h */; };
+		8F2D1AFA1FD61B080028A531 /* ShaderService.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AD81FD61B050028A531 /* ShaderService.cpp */; };
+		8F2D1AFB1FD61B080028A531 /* ShaderService.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AD81FD61B050028A531 /* ShaderService.cpp */; };
+		8F2D1AFC1FD61B080028A531 /* ResourceUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AD91FD61B050028A531 /* ResourceUtils.cpp */; };
+		8F2D1AFD1FD61B080028A531 /* ResourceUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AD91FD61B050028A531 /* ResourceUtils.cpp */; };
+		8F2D1AFE1FD61B080028A531 /* ResourceUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1ADA1FD61B050028A531 /* ResourceUtils.h */; };
+		8F2D1AFF1FD61B080028A531 /* IDevice_Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1ADB1FD61B050028A531 /* IDevice_Forward.h */; };
+		8F2D1B001FD61B080028A531 /* MinimalShaderSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1ADC1FD61B050028A531 /* MinimalShaderSource.cpp */; };
+		8F2D1B011FD61B080028A531 /* MinimalShaderSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1ADC1FD61B050028A531 /* MinimalShaderSource.cpp */; };
+		8F2D1B021FD61B080028A531 /* IAnnotator_Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1ADD1FD61B050028A531 /* IAnnotator_Forward.h */; };
+		8F2D1B031FD61B080028A531 /* RenderUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */; };
+		8F2D1B041FD61B080028A531 /* RenderUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */; };
+		8F2D1B051FD61B080028A531 /* FlexUtil.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1ADF1FD61B060028A531 /* FlexUtil.h */; };
+		8F2D1B061FD61B080028A531 /* FlexBegin.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE01FD61B060028A531 /* FlexBegin.h */; };
+		8F2D1B071FD61B080028A531 /* Annotator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE11FD61B060028A531 /* Annotator.cpp */; };
+		8F2D1B081FD61B080028A531 /* Annotator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE11FD61B060028A531 /* Annotator.cpp */; };
+		8F2D1B091FD61B080028A531 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE21FD61B060028A531 /* Format.cpp */; };
+		8F2D1B0A1FD61B080028A531 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE21FD61B060028A531 /* Format.cpp */; };
+		8F2D1B0B1FD61B080028A531 /* IAnnotator.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE31FD61B060028A531 /* IAnnotator.h */; };
+		8F2D1B0C1FD61B080028A531 /* FlexEnd.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE41FD61B060028A531 /* FlexEnd.h */; };
+		8F2D1B0D1FD61B080028A531 /* ShaderService.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE51FD61B060028A531 /* ShaderService.h */; };
+		8F2D1B0E1FD61B080028A531 /* ShaderLangUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE61FD61B060028A531 /* ShaderLangUtil.cpp */; };
+		8F2D1B0F1FD61B080028A531 /* ShaderLangUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE61FD61B060028A531 /* ShaderLangUtil.cpp */; };
+		8F2D1B101FD61B080028A531 /* ShaderLangUtil.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE71FD61B070028A531 /* ShaderLangUtil.h */; };
+		8F2D1B111FD61B080028A531 /* Format.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE81FD61B070028A531 /* Format.h */; };
+		8F2D1B121FD61B080028A531 /* ResourceDesc.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE91FD61B070028A531 /* ResourceDesc.h */; };
+		8F2D1B131FD61B080028A531 /* IThreadContext.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AEA1FD61B070028A531 /* IThreadContext.h */; };
+		8F2D1B141FD61B080028A531 /* Types.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AEB1FD61B070028A531 /* Types.h */; };
+		8F2D1B171FD61B080028A531 /* FlexForward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AED1FD61B080028A531 /* FlexForward.h */; };
+		8F2D1B181FD61B080028A531 /* FrameBufferDesc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AEE1FD61B080028A531 /* FrameBufferDesc.cpp */; };
+		8F2D1B191FD61B080028A531 /* FrameBufferDesc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AEE1FD61B080028A531 /* FrameBufferDesc.cpp */; };
+		8F2D1B1A1FD61B080028A531 /* Types_Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AEF1FD61B080028A531 /* Types_Forward.h */; };
+		8F2D1B1B1FD61B080028A531 /* RenderUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AF01FD61B080028A531 /* RenderUtils.h */; };
+		8F2D1B1C1FD61B080028A531 /* MinimalShaderSource.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AF11FD61B080028A531 /* MinimalShaderSource.h */; };
+		8F2D1B1D1FD61B080028A531 /* Init.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AF21FD61B080028A531 /* Init.h */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8F2D1AB11FD619910028A531 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "include/$(PRODUCT_NAME)";
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		8F2D1AB31FD619910028A531 /* libRenderCoreIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libRenderCoreIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F2D1AC61FD619FC0028A531 /* CoreRelease.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
+		8F2D1AC71FD619FC0028A531 /* Core.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
+		8F2D1AC81FD619FC0028A531 /* CoreDebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
+		8F2D1AC91FD619FC0028A531 /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
+		8F2D1ACE1FD61A920028A531 /* libRenderCoreMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libRenderCoreMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F2D1AD21FD61B040028A531 /* FrameBufferDesc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FrameBufferDesc.h; path = ../FrameBufferDesc.h; sourceTree = "<group>"; };
+		8F2D1AD31FD61B040028A531 /* Init.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Init.cpp; path = ../Init.cpp; sourceTree = "<group>"; };
+		8F2D1AD41FD61B040028A531 /* IThreadContext_Forward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IThreadContext_Forward.h; path = ../IThreadContext_Forward.h; sourceTree = "<group>"; };
+		8F2D1AD51FD61B050028A531 /* Documentation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Documentation.h; path = ../Documentation.h; sourceTree = "<group>"; };
+		8F2D1AD61FD61B050028A531 /* ResourceList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ResourceList.h; path = ../ResourceList.h; sourceTree = "<group>"; };
+		8F2D1AD71FD61B050028A531 /* IDevice.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IDevice.h; path = ../IDevice.h; sourceTree = "<group>"; };
+		8F2D1AD81FD61B050028A531 /* ShaderService.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ShaderService.cpp; path = ../ShaderService.cpp; sourceTree = "<group>"; };
+		8F2D1AD91FD61B050028A531 /* ResourceUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ResourceUtils.cpp; path = ../ResourceUtils.cpp; sourceTree = "<group>"; };
+		8F2D1ADA1FD61B050028A531 /* ResourceUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ResourceUtils.h; path = ../ResourceUtils.h; sourceTree = "<group>"; };
+		8F2D1ADB1FD61B050028A531 /* IDevice_Forward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IDevice_Forward.h; path = ../IDevice_Forward.h; sourceTree = "<group>"; };
+		8F2D1ADC1FD61B050028A531 /* MinimalShaderSource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MinimalShaderSource.cpp; path = ../MinimalShaderSource.cpp; sourceTree = "<group>"; };
+		8F2D1ADD1FD61B050028A531 /* IAnnotator_Forward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IAnnotator_Forward.h; path = ../IAnnotator_Forward.h; sourceTree = "<group>"; };
+		8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RenderUtils.cpp; path = ../RenderUtils.cpp; sourceTree = "<group>"; };
+		8F2D1ADF1FD61B060028A531 /* FlexUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FlexUtil.h; path = ../FlexUtil.h; sourceTree = "<group>"; };
+		8F2D1AE01FD61B060028A531 /* FlexBegin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FlexBegin.h; path = ../FlexBegin.h; sourceTree = "<group>"; };
+		8F2D1AE11FD61B060028A531 /* Annotator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Annotator.cpp; path = ../Annotator.cpp; sourceTree = "<group>"; };
+		8F2D1AE21FD61B060028A531 /* Format.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Format.cpp; path = ../Format.cpp; sourceTree = "<group>"; };
+		8F2D1AE31FD61B060028A531 /* IAnnotator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IAnnotator.h; path = ../IAnnotator.h; sourceTree = "<group>"; };
+		8F2D1AE41FD61B060028A531 /* FlexEnd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FlexEnd.h; path = ../FlexEnd.h; sourceTree = "<group>"; };
+		8F2D1AE51FD61B060028A531 /* ShaderService.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ShaderService.h; path = ../ShaderService.h; sourceTree = "<group>"; };
+		8F2D1AE61FD61B060028A531 /* ShaderLangUtil.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ShaderLangUtil.cpp; path = ../ShaderLangUtil.cpp; sourceTree = "<group>"; };
+		8F2D1AE71FD61B070028A531 /* ShaderLangUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ShaderLangUtil.h; path = ../ShaderLangUtil.h; sourceTree = "<group>"; };
+		8F2D1AE81FD61B070028A531 /* Format.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Format.h; path = ../Format.h; sourceTree = "<group>"; };
+		8F2D1AE91FD61B070028A531 /* ResourceDesc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ResourceDesc.h; path = ../ResourceDesc.h; sourceTree = "<group>"; };
+		8F2D1AEA1FD61B070028A531 /* IThreadContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IThreadContext.h; path = ../IThreadContext.h; sourceTree = "<group>"; };
+		8F2D1AEB1FD61B070028A531 /* Types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Types.h; path = ../Types.h; sourceTree = "<group>"; };
+		8F2D1AED1FD61B080028A531 /* FlexForward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FlexForward.h; path = ../FlexForward.h; sourceTree = "<group>"; };
+		8F2D1AEE1FD61B080028A531 /* FrameBufferDesc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = FrameBufferDesc.cpp; path = ../FrameBufferDesc.cpp; sourceTree = "<group>"; };
+		8F2D1AEF1FD61B080028A531 /* Types_Forward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Types_Forward.h; path = ../Types_Forward.h; sourceTree = "<group>"; };
+		8F2D1AF01FD61B080028A531 /* RenderUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RenderUtils.h; path = ../RenderUtils.h; sourceTree = "<group>"; };
+		8F2D1AF11FD61B080028A531 /* MinimalShaderSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MinimalShaderSource.h; path = ../MinimalShaderSource.h; sourceTree = "<group>"; };
+		8F2D1AF21FD61B080028A531 /* Init.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Init.h; path = ../Init.h; sourceTree = "<group>"; };
+		8F2D1B1F1FD61C6E0028A531 /* Buffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Buffer.h; sourceTree = "<group>"; };
+		8F2D1B211FD61C6E0028A531 /* DXGICompatibleFormats.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DXGICompatibleFormats.h; sourceTree = "<group>"; };
+		8F2D1B221FD61C6E0028A531 /* DXGIFormatValues.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DXGIFormatValues.h; sourceTree = "<group>"; };
+		8F2D1B231FD61C6E0028A531 /* DeviceContext.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DeviceContext.h; sourceTree = "<group>"; };
+		8F2D1B241FD61C6E0028A531 /* DeviceContextImpl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DeviceContextImpl.h; sourceTree = "<group>"; };
+		8F2D1B251FD61C6E0028A531 /* Forward.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Forward.h; sourceTree = "<group>"; };
+		8F2D1B261FD61C6E0028A531 /* FrameBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FrameBuffer.h; sourceTree = "<group>"; };
+		8F2D1B271FD61C6E0028A531 /* InputLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = InputLayout.h; sourceTree = "<group>"; };
+		8F2D1B281FD61C6E0028A531 /* Metal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Metal.h; sourceTree = "<group>"; };
+		8F2D1B291FD61C6E0028A531 /* ObjectFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ObjectFactory.h; sourceTree = "<group>"; };
+		8F2D1B2A1FD61C6E0028A531 /* QueryPool.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QueryPool.h; sourceTree = "<group>"; };
+		8F2D1B2B1FD61C6E0028A531 /* Resource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Resource.h; sourceTree = "<group>"; };
+		8F2D1B2C1FD61C6E0028A531 /* Shader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Shader.h; sourceTree = "<group>"; };
+		8F2D1B2D1FD61C6E0028A531 /* State.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = State.h; sourceTree = "<group>"; };
+		8F2D1B2E1FD61C6E0028A531 /* TextureView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TextureView.h; sourceTree = "<group>"; };
+		8F2D1B2F1FD61C6E0028A531 /* Types.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Types.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8F2D1AB01FD619910028A531 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8F2D1ACB1FD61A920028A531 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		8F2D1AAA1FD619910028A531 = {
+			isa = PBXGroup;
+			children = (
+				8F2D1AE11FD61B060028A531 /* Annotator.cpp */,
+				8F2D1AC51FD619E60028A531 /* Config */,
+				8F2D1AD51FD61B050028A531 /* Documentation.h */,
+				8F2D1AE01FD61B060028A531 /* FlexBegin.h */,
+				8F2D1AE41FD61B060028A531 /* FlexEnd.h */,
+				8F2D1AED1FD61B080028A531 /* FlexForward.h */,
+				8F2D1ADF1FD61B060028A531 /* FlexUtil.h */,
+				8F2D1AE21FD61B060028A531 /* Format.cpp */,
+				8F2D1AE81FD61B070028A531 /* Format.h */,
+				8F2D1AEE1FD61B080028A531 /* FrameBufferDesc.cpp */,
+				8F2D1AD21FD61B040028A531 /* FrameBufferDesc.h */,
+				8F2D1ADD1FD61B050028A531 /* IAnnotator_Forward.h */,
+				8F2D1AE31FD61B060028A531 /* IAnnotator.h */,
+				8F2D1ADB1FD61B050028A531 /* IDevice_Forward.h */,
+				8F2D1AD71FD61B050028A531 /* IDevice.h */,
+				8F2D1AD31FD61B040028A531 /* Init.cpp */,
+				8F2D1AF21FD61B080028A531 /* Init.h */,
+				8F2D1AD41FD61B040028A531 /* IThreadContext_Forward.h */,
+				8F2D1AEA1FD61B070028A531 /* IThreadContext.h */,
+				8F2D1B1E1FD61C6E0028A531 /* Metal */,
+				8F2D1ADC1FD61B050028A531 /* MinimalShaderSource.cpp */,
+				8F2D1AF11FD61B080028A531 /* MinimalShaderSource.h */,
+				8F2D1AB41FD619910028A531 /* Products */,
+				8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */,
+				8F2D1AF01FD61B080028A531 /* RenderUtils.h */,
+				8F2D1AE91FD61B070028A531 /* ResourceDesc.h */,
+				8F2D1AD61FD61B050028A531 /* ResourceList.h */,
+				8F2D1AD91FD61B050028A531 /* ResourceUtils.cpp */,
+				8F2D1ADA1FD61B050028A531 /* ResourceUtils.h */,
+				8F2D1AE61FD61B060028A531 /* ShaderLangUtil.cpp */,
+				8F2D1AE71FD61B070028A531 /* ShaderLangUtil.h */,
+				8F2D1AD81FD61B050028A531 /* ShaderService.cpp */,
+				8F2D1AE51FD61B060028A531 /* ShaderService.h */,
+				8F2D1AEF1FD61B080028A531 /* Types_Forward.h */,
+				8F2D1AEB1FD61B070028A531 /* Types.h */,
+			);
+			sourceTree = "<group>";
+		};
+		8F2D1AB41FD619910028A531 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F2D1AB31FD619910028A531 /* libRenderCoreIOS.a */,
+				8F2D1ACE1FD61A920028A531 /* libRenderCoreMac.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F2D1AC51FD619E60028A531 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				8F2D1AC71FD619FC0028A531 /* Core.xcconfig */,
+				8F2D1AC81FD619FC0028A531 /* CoreDebug.xcconfig */,
+				8F2D1AC61FD619FC0028A531 /* CoreRelease.xcconfig */,
+				8F2D1AC91FD619FC0028A531 /* CoreWarnings.xcconfig */,
+			);
+			name = Config;
+			sourceTree = "<group>";
+		};
+		8F2D1B1E1FD61C6E0028A531 /* Metal */ = {
+			isa = PBXGroup;
+			children = (
+				8F2D1B1F1FD61C6E0028A531 /* Buffer.h */,
+				8F2D1B201FD61C6E0028A531 /* Detail */,
+				8F2D1B231FD61C6E0028A531 /* DeviceContext.h */,
+				8F2D1B241FD61C6E0028A531 /* DeviceContextImpl.h */,
+				8F2D1B251FD61C6E0028A531 /* Forward.h */,
+				8F2D1B261FD61C6E0028A531 /* FrameBuffer.h */,
+				8F2D1B271FD61C6E0028A531 /* InputLayout.h */,
+				8F2D1B281FD61C6E0028A531 /* Metal.h */,
+				8F2D1B291FD61C6E0028A531 /* ObjectFactory.h */,
+				8F2D1B2A1FD61C6E0028A531 /* QueryPool.h */,
+				8F2D1B2B1FD61C6E0028A531 /* Resource.h */,
+				8F2D1B2C1FD61C6E0028A531 /* Shader.h */,
+				8F2D1B2D1FD61C6E0028A531 /* State.h */,
+				8F2D1B2E1FD61C6E0028A531 /* TextureView.h */,
+				8F2D1B2F1FD61C6E0028A531 /* Types.h */,
+			);
+			name = Metal;
+			path = ../Metal;
+			sourceTree = "<group>";
+		};
+		8F2D1B201FD61C6E0028A531 /* Detail */ = {
+			isa = PBXGroup;
+			children = (
+				8F2D1B211FD61C6E0028A531 /* DXGICompatibleFormats.h */,
+				8F2D1B221FD61C6E0028A531 /* DXGIFormatValues.h */,
+			);
+			path = Detail;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		8F2D1ACC1FD61A920028A531 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F2D1B141FD61B080028A531 /* Types.h in Headers */,
+				8F2D1AF81FD61B080028A531 /* ResourceList.h in Headers */,
+				8F2D1B1C1FD61B080028A531 /* MinimalShaderSource.h in Headers */,
+				8F2D1B1B1FD61B080028A531 /* RenderUtils.h in Headers */,
+				8F2D1B0C1FD61B080028A531 /* FlexEnd.h in Headers */,
+				8F2D1B0D1FD61B080028A531 /* ShaderService.h in Headers */,
+				8F2D1AF61FD61B080028A531 /* IThreadContext_Forward.h in Headers */,
+				8F2D1AF71FD61B080028A531 /* Documentation.h in Headers */,
+				8F2D1AF91FD61B080028A531 /* IDevice.h in Headers */,
+				8F2D1B111FD61B080028A531 /* Format.h in Headers */,
+				8F2D1AFE1FD61B080028A531 /* ResourceUtils.h in Headers */,
+				8F2D1B101FD61B080028A531 /* ShaderLangUtil.h in Headers */,
+				8F2D1B061FD61B080028A531 /* FlexBegin.h in Headers */,
+				8F2D1B171FD61B080028A531 /* FlexForward.h in Headers */,
+				8F2D1B0B1FD61B080028A531 /* IAnnotator.h in Headers */,
+				8F2D1B121FD61B080028A531 /* ResourceDesc.h in Headers */,
+				8F2D1B1A1FD61B080028A531 /* Types_Forward.h in Headers */,
+				8F2D1B021FD61B080028A531 /* IAnnotator_Forward.h in Headers */,
+				8F2D1AFF1FD61B080028A531 /* IDevice_Forward.h in Headers */,
+				8F2D1AF31FD61B080028A531 /* FrameBufferDesc.h in Headers */,
+				8F2D1B051FD61B080028A531 /* FlexUtil.h in Headers */,
+				8F2D1B131FD61B080028A531 /* IThreadContext.h in Headers */,
+				8F2D1B1D1FD61B080028A531 /* Init.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		8F2D1AB21FD619910028A531 /* RenderCoreIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8F2D1ABC1FD619910028A531 /* Build configuration list for PBXNativeTarget "RenderCoreIOS" */;
+			buildPhases = (
+				8F2D1AAF1FD619910028A531 /* Sources */,
+				8F2D1AB01FD619910028A531 /* Frameworks */,
+				8F2D1AB11FD619910028A531 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RenderCoreIOS;
+			productName = RenderCore;
+			productReference = 8F2D1AB31FD619910028A531 /* libRenderCoreIOS.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		8F2D1ACD1FD61A920028A531 /* RenderCoreMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8F2D1ACF1FD61A920028A531 /* Build configuration list for PBXNativeTarget "RenderCoreMac" */;
+			buildPhases = (
+				8F2D1ACA1FD61A920028A531 /* Sources */,
+				8F2D1ACB1FD61A920028A531 /* Frameworks */,
+				8F2D1ACC1FD61A920028A531 /* Headers */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RenderCoreMac;
+			productName = RenderCoreOSX;
+			productReference = 8F2D1ACE1FD61A920028A531 /* libRenderCoreMac.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8F2D1AAB1FD619910028A531 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0910;
+				ORGANIZATIONNAME = XLE;
+				TargetAttributes = {
+					8F2D1AB21FD619910028A531 = {
+						CreatedOnToolsVersion = 9.1;
+						ProvisioningStyle = Automatic;
+					};
+					8F2D1ACD1FD61A920028A531 = {
+						CreatedOnToolsVersion = 9.1;
+					};
+				};
+			};
+			buildConfigurationList = 8F2D1AAE1FD619910028A531 /* Build configuration list for PBXProject "RenderCore" */;
+			compatibilityVersion = "Xcode 8.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 8F2D1AAA1FD619910028A531;
+			productRefGroup = 8F2D1AB41FD619910028A531 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8F2D1ACD1FD61A920028A531 /* RenderCoreMac */,
+				8F2D1AB21FD619910028A531 /* RenderCoreIOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8F2D1AAF1FD619910028A531 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F2D1B191FD61B080028A531 /* FrameBufferDesc.cpp in Sources */,
+				8F2D1B081FD61B080028A531 /* Annotator.cpp in Sources */,
+				8F2D1AFD1FD61B080028A531 /* ResourceUtils.cpp in Sources */,
+				8F2D1B0F1FD61B080028A531 /* ShaderLangUtil.cpp in Sources */,
+				8F2D1AFB1FD61B080028A531 /* ShaderService.cpp in Sources */,
+				8F2D1AF51FD61B080028A531 /* Init.cpp in Sources */,
+				8F2D1B011FD61B080028A531 /* MinimalShaderSource.cpp in Sources */,
+				8F2D1B041FD61B080028A531 /* RenderUtils.cpp in Sources */,
+				8F2D1B0A1FD61B080028A531 /* Format.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8F2D1ACA1FD61A920028A531 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F2D1B181FD61B080028A531 /* FrameBufferDesc.cpp in Sources */,
+				8F2D1B071FD61B080028A531 /* Annotator.cpp in Sources */,
+				8F2D1AFC1FD61B080028A531 /* ResourceUtils.cpp in Sources */,
+				8F2D1B0E1FD61B080028A531 /* ShaderLangUtil.cpp in Sources */,
+				8F2D1AFA1FD61B080028A531 /* ShaderService.cpp in Sources */,
+				8F2D1AF41FD61B080028A531 /* Init.cpp in Sources */,
+				8F2D1B001FD61B080028A531 /* MinimalShaderSource.cpp in Sources */,
+				8F2D1B031FD61B080028A531 /* RenderUtils.cpp in Sources */,
+				8F2D1B091FD61B080028A531 /* Format.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		8F2D1ABA1FD619910028A531 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		8F2D1ABB1FD619910028A531 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		8F2D1ABD1FD619910028A531 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8F2D1AC81FD619FC0028A531 /* CoreDebug.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		8F2D1ABE1FD619910028A531 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8F2D1AC61FD619FC0028A531 /* CoreRelease.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		8F2D1AD01FD61A920028A531 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INSTALL_PATH = "";
+				PRODUCT_NAME = RenderCoreMac;
+			};
+			name = Debug;
+		};
+		8F2D1AD11FD61A920028A531 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INSTALL_PATH = "";
+				PRODUCT_NAME = RenderCoreMac;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8F2D1AAE1FD619910028A531 /* Build configuration list for PBXProject "RenderCore" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F2D1ABA1FD619910028A531 /* Debug */,
+				8F2D1ABB1FD619910028A531 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8F2D1ABC1FD619910028A531 /* Build configuration list for PBXNativeTarget "RenderCoreIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F2D1ABD1FD619910028A531 /* Debug */,
+				8F2D1ABE1FD619910028A531 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8F2D1ACF1FD61A920028A531 /* Build configuration list for PBXNativeTarget "RenderCoreMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F2D1AD01FD61A920028A531 /* Debug */,
+				8F2D1AD11FD61A920028A531 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 8F2D1AAB1FD619910028A531 /* Project object */;
+}
