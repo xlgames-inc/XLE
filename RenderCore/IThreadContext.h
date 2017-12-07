@@ -18,9 +18,6 @@
     #define render_dll_export
 #endif
 
-struct _GUID;
-typedef struct _GUID GUID;
-
 namespace RenderCore
 {
     class ThreadContextStateDesc
@@ -99,7 +96,7 @@ namespace RenderCore
 		/// </example>
 		IMETHOD void			Present(IPresentationChain& presentationChain) IPURE;
 
-        IMETHOD virtual void*   QueryInterface(const GUID& guid) IPURE;
+        IMETHOD virtual void*   QueryInterface(size_t guid) IPURE;
         IMETHOD bool            IsImmediate() const IPURE;
         IMETHOD auto			GetDevice() const -> std::shared_ptr<IDevice> IPURE;
 		IMETHOD void			InvalidateCachedState() const IPURE;

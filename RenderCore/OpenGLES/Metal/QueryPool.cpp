@@ -21,9 +21,9 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     auto QueryPool::GetFrameResults(DeviceContext& context, FrameId id) -> FrameResults
     {
-        return FrameResults { false, false, nullptr, nullptr, nullptr };
+        return FrameResults { false, false, nullptr, nullptr, 0ull };
     }
 
-    QueryPool::QueryPool(ObjectFactory& factory);
-    QueryPool::~QueryPool();
-}
+    QueryPool::QueryPool(ObjectFactory& factory) {}
+    QueryPool::~QueryPool() {}
+}}

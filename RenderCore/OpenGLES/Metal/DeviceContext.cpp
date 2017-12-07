@@ -9,9 +9,18 @@
 #include "Shader.h"
 #include "InputLayout.h"
 #include "Buffer.h"
+#include "../../IThreadContext.h"
 
-#include <GLES2/gl2.h>
-#include <EGL/egl.h>            // (brings in windows.h on Win32)
+#include "IncludeGLES.h"
+#include <assert.h>
+
+#define COMPOSITOR_EGL      1
+#define COMPOSITOR_EAGL     2
+#define COMPOSITOR COMPOSITOR_EAGL
+
+#if COMPOSITOR == COMPOSITOR_EGL
+    #include <EGL/egl.h>            // (brings in windows.h on Win32)
+#endif
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
@@ -20,7 +29,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             // (it seems that index formats are always 16 bit for OpenGLES?)
         assert(indexFormat == NativeFormat::R16_UINT);
         assert(offset == 0);    // (not supported currently... But we could safe it up for the draw call)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (GLuint)ib.GetUnderlying());
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib.GetUnderlying()->AsRawGLHandle());
     }
 
     void DeviceContext::Bind(const BoundInputLayout& inputLayout)
@@ -35,7 +44,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DeviceContext::Bind(const ShaderProgram& shaderProgram)
     {
-        glUseProgram((GLuint)shaderProgram.GetUnderlying());
+        glUseProgram(shaderProgram.GetUnderlying()->AsRawGLHandle());
     }
 
     void DeviceContext::Bind(const RasterizerState& rasterizer)
@@ -66,6 +75,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         glDrawArrays(GLenum(_nativeTopology), startIndexLocation, indexCount);
     }
 
+#if 0
     DeviceContext::DeviceContext(EGLDisplay display, EGLContext underlyingContext)
     :       _display(display)
     ,       _underlyingContext(underlyingContext)
@@ -75,10 +85,15 @@ namespace RenderCore { namespace Metal_OpenGLES
             //      use the immediate context)
         _nativeTopology = GL_TRIANGLES;
     }
+#endif
+
+    DeviceContext::DeviceContext() {}
 
     DeviceContext::~DeviceContext()
     {
-        eglDestroyContext(_display, _underlyingContext);
+        #if COMPOSITOR == COMPOSITOR_EGL
+            eglDestroyContext(_display, _underlyingContext);
+        #endif
     }
 
     void                            DeviceContext::BeginCommandList()
@@ -87,7 +102,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             //      Bind this context to the current thread, so we can
             //      start using it.
             //
-        eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, _underlyingContext);
+        #if COMPOSITOR == COMPOSITOR_EGL
+            eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, _underlyingContext);
+        #endif
     }
 
     intrusive_ptr<CommandList>         DeviceContext::ResolveCommandList()
@@ -100,6 +117,16 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     }
 
+    std::shared_ptr<DeviceContext> DeviceContext::Get(IThreadContext& threadContext)
+    {
+        auto tc = (IThreadContextOpenGLES*)threadContext.QueryInterface(typeid(IThreadContextOpenGLES).hash_code());
+        if (tc) {
+            return tc->GetUnderlying();
+        }
+        return nullptr;
+    }
+
+#if 0
     intrusive_ptr<DeviceContext>        DeviceContext::GetImmediateContext(IDevice* device)
     {
         if (device) {
@@ -123,9 +150,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
         return intrusive_ptr<DeviceContext>();
     }
+#endif
 
-    ObjectFactory::ObjectFactory() {}
-    ObjectFactory::ObjectFactory(IDevice* device) {}
-    ObjectFactory::ObjectFactory(const OpenGL::Resource& resource) {}
 }}
 

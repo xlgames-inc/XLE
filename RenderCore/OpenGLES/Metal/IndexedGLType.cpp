@@ -7,12 +7,12 @@
 #include "IndexedGLType.h"
 #include "../../../Utility/StringFormat.h"
 #include "../IDeviceOpenGLES.h"
-#include <GLES2/gl2.h>
+#include "IncludeGLES.h"
 #include <assert.h>
 #include <map>
 
-#if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
-    extern "C" dll_import void __stdcall OutputDebugStringA(const char*);
+#if defined(XLE_HAS_CONSOLE_RIG)
+    #include "../../../ConsoleRig/Log.h"
 #endif
 
 namespace RenderCore { namespace Metal_OpenGLES
@@ -27,51 +27,52 @@ namespace RenderCore { namespace Metal_OpenGLES
         switch (type) {
         case ShaderType::VertexShader:      return GL_VERTEX_SHADER;
         default:
+            assert(0);  // (only VertexShader & FragmentShader supported so far)
         case ShaderType::FragmentShader:    return GL_FRAGMENT_SHADER;
         }
     }
 
-    intrusive_ptr<GlObject<GlObject_Type::Shader> >             CreateShader(ShaderType::Enum type)
+    intrusive_ptr<GlObject<GlObject_Type::Shader> >             ObjectFactory::CreateShader(ShaderType::Enum type)
     {
-        auto obj =  (GlObject<GlObject_Type::Shader>*)glCreateShader(AsGLShaderType(type));
+        auto obj =  (GlObject<GlObject_Type::Shader>*)(size_t)glCreateShader(AsGLShaderType(type));
         return intrusive_ptr<GlObject<GlObject_Type::Shader>>(obj);
     }
 
-    intrusive_ptr<GlObject<GlObject_Type::ShaderProgram> >      CreateShaderProgram()
+    intrusive_ptr<GlObject<GlObject_Type::ShaderProgram> >      ObjectFactory::CreateShaderProgram()
     {
-        auto temp = (GlObject<GlObject_Type::ShaderProgram>*)glCreateProgram();
+        auto temp = (GlObject<GlObject_Type::ShaderProgram>*)(size_t)glCreateProgram();
         return intrusive_ptr<GlObject<GlObject_Type::ShaderProgram> >(temp);
     }
 
-    intrusive_ptr<GlObject<GlObject_Type::Texture> >            CreateTexture()
+    intrusive_ptr<GlObject<GlObject_Type::Texture> >            ObjectFactory::CreateTexture()
     {
         RawGLHandle result = RawGLHandle_Invalid;
         glGenTextures(1, &result);
-        auto temp = (GlObject<GlObject_Type::Texture>*)result;
+        auto temp = (GlObject<GlObject_Type::Texture>*)(size_t)result;
         return intrusive_ptr<GlObject<GlObject_Type::Texture> >(temp);
     }
 
-    intrusive_ptr<GlObject<GlObject_Type::RenderBuffer> >       CreateRenderBuffer()
+    intrusive_ptr<GlObject<GlObject_Type::RenderBuffer> >       ObjectFactory::CreateRenderBuffer()
     {
         RawGLHandle result = RawGLHandle_Invalid;
         glGenRenderbuffers(1, &result);
-        auto temp = (GlObject<GlObject_Type::RenderBuffer>*)result;
+        auto temp = (GlObject<GlObject_Type::RenderBuffer>*)(size_t)result;
         return intrusive_ptr<GlObject<GlObject_Type::RenderBuffer> >(temp);
     }
 
-    intrusive_ptr<GlObject<GlObject_Type::FrameBuffer> >        CreateFrameBuffer()
+    intrusive_ptr<GlObject<GlObject_Type::FrameBuffer> >        ObjectFactory::CreateFrameBuffer()
     {
         RawGLHandle result = RawGLHandle_Invalid;
         glGenFramebuffers(1, &result);
-        auto temp = (GlObject<GlObject_Type::FrameBuffer>*)result;
+        auto temp = (GlObject<GlObject_Type::FrameBuffer>*)(size_t)result;
         return intrusive_ptr<GlObject<GlObject_Type::FrameBuffer> >(temp);
     }
 
-    intrusive_ptr<GlObject<GlObject_Type::Buffer> >             CreateBuffer()
+    intrusive_ptr<GlObject<GlObject_Type::Buffer> >             ObjectFactory::CreateBuffer()
     {
         RawGLHandle result = RawGLHandle_Invalid;
         glGenBuffers(1, &result);
-        auto temp = (GlObject<GlObject_Type::Buffer>*)result;
+        auto temp = (GlObject<GlObject_Type::Buffer>*)(size_t)result;
         return intrusive_ptr<GlObject<GlObject_Type::Buffer> >(temp);
     }
 
@@ -136,15 +137,17 @@ namespace RenderCore { namespace Metal_OpenGLES
     template<int Type>
         signed      GlObject<Type>::AddRef() const never_throws
     {
-        return IndexedGLType_AddRef(RawGLHandle(this));
+        auto& objectFactory = GetObjectFactory();
+        return objectFactory.IndexedGLType_AddRef(AsRawGLHandle());
     }
 
     template<int Type>
         signed      GlObject<Type>::Release() const never_throws
     {
-        signed result = IndexedGLType_Release(RawGLHandle(this));
+        auto& objectFactory = GetObjectFactory();
+        signed result = objectFactory.IndexedGLType_Release(AsRawGLHandle());
         if (result == 0) {
-            Detail::Destroy<Type>(RawGLHandle(this));
+            Detail::Destroy<Type>(AsRawGLHandle());
         }
         return result;
     }
@@ -160,84 +163,82 @@ namespace RenderCore { namespace Metal_OpenGLES
         Release();
     }
 
-    #if COMPILER_ACTIVE == COMPILER_TYPE_MSVC        // no explicit instantiation in GCC?
-        template GlObject<GlObject_Type::Shader>;
-        template GlObject<GlObject_Type::ShaderProgram>;
-        template GlObject<GlObject_Type::Texture>;
-        template GlObject<GlObject_Type::RenderBuffer>;
-        template GlObject<GlObject_Type::FrameBuffer>;
-        template GlObject<GlObject_Type::Buffer>;
-        template GlObject<GlObject_Type::Resource>;
-    #endif
+    template class GlObject<GlObject_Type::Shader>;
+    template class GlObject<GlObject_Type::ShaderProgram>;
+    template class GlObject<GlObject_Type::Texture>;
+    template class GlObject<GlObject_Type::RenderBuffer>;
+    template class GlObject<GlObject_Type::FrameBuffer>;
+    template class GlObject<GlObject_Type::Buffer>;
+    template class GlObject<GlObject_Type::Resource>;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template<> template<> GlObject<GlObject_Type::Texture>*             GlObject<GlObject_Type::Resource>::ResourceCast()
+    template<> template<> GlObject<GlObject_Type::Texture>*             GlObject<GlObject_Type::Resource>::ResourceCast() never_throws
     {
-        if (glIsTexture(RawGLHandle(this))) {
+        if (glIsTexture(AsRawGLHandle())) {
             return (GlObject<GlObject_Type::Texture>*)(this);
         } else {
             return (GlObject<GlObject_Type::Texture>*)RawGLHandle_Invalid;
         }
     }
 
-    template<> template<> GlObject<GlObject_Type::RenderBuffer>*        GlObject<GlObject_Type::Resource>::ResourceCast()
+    template<> template<> GlObject<GlObject_Type::RenderBuffer>*        GlObject<GlObject_Type::Resource>::ResourceCast() never_throws
     {
-        if (glIsRenderbuffer(RawGLHandle(this))) {
+        if (glIsRenderbuffer(AsRawGLHandle())) {
             return (GlObject<GlObject_Type::RenderBuffer>*)(this);
         } else {
             return (GlObject<GlObject_Type::RenderBuffer>*)RawGLHandle_Invalid;
         }
     }
 
-    template<> template<> GlObject<GlObject_Type::FrameBuffer>*         GlObject<GlObject_Type::Resource>::ResourceCast()
+    template<> template<> GlObject<GlObject_Type::FrameBuffer>*         GlObject<GlObject_Type::Resource>::ResourceCast() never_throws
     {
-        if (glIsFramebuffer(RawGLHandle(this))) {
+        if (glIsFramebuffer(AsRawGLHandle())) {
             return (GlObject<GlObject_Type::FrameBuffer>*)(this);
         } else {
             return (GlObject<GlObject_Type::FrameBuffer>*)RawGLHandle_Invalid;
         }
     }
 
-    template<> template<> GlObject<GlObject_Type::Buffer>*              GlObject<GlObject_Type::Resource>::ResourceCast()
+    template<> template<> GlObject<GlObject_Type::Buffer>*              GlObject<GlObject_Type::Resource>::ResourceCast() never_throws
     {
-        if (glIsBuffer(RawGLHandle(this))) {
+        if (glIsBuffer(AsRawGLHandle())) {
             return (GlObject<GlObject_Type::Buffer>*)(this);
         } else {
             return (GlObject<GlObject_Type::Buffer>*)RawGLHandle_Invalid;
         }
     }
 
-    template<> template<> const GlObject<GlObject_Type::Texture>*       GlObject<GlObject_Type::Resource>::ResourceCast() const
+    template<> template<> const GlObject<GlObject_Type::Texture>*       GlObject<GlObject_Type::Resource>::ResourceCast() const never_throws
     {
-        if (glIsTexture(RawGLHandle(this))) {
+        if (glIsTexture(AsRawGLHandle())) {
             return (GlObject<GlObject_Type::Texture>*)(this);
         } else {
             return (GlObject<GlObject_Type::Texture>*)RawGLHandle_Invalid;
         }
     }
 
-    template<> template<> const GlObject<GlObject_Type::RenderBuffer>*    GlObject<GlObject_Type::Resource>::ResourceCast() const
+    template<> template<> const GlObject<GlObject_Type::RenderBuffer>*    GlObject<GlObject_Type::Resource>::ResourceCast() const never_throws
     {
-        if (glIsRenderbuffer(RawGLHandle(this))) {
+        if (glIsRenderbuffer(AsRawGLHandle())) {
             return (GlObject<GlObject_Type::RenderBuffer>*)(this);
         } else {
             return (GlObject<GlObject_Type::RenderBuffer>*)RawGLHandle_Invalid;
         }
     }
 
-    template<> template<> const GlObject<GlObject_Type::FrameBuffer>*     GlObject<GlObject_Type::Resource>::ResourceCast() const
+    template<> template<> const GlObject<GlObject_Type::FrameBuffer>*     GlObject<GlObject_Type::Resource>::ResourceCast() const never_throws
     {
-        if (glIsFramebuffer(RawGLHandle(this))) {
+        if (glIsFramebuffer(AsRawGLHandle())) {
             return (GlObject<GlObject_Type::FrameBuffer>*)(this);
         } else {
             return (GlObject<GlObject_Type::FrameBuffer>*)RawGLHandle_Invalid;
         }
     }
 
-    template<> template<> const GlObject<GlObject_Type::Buffer>*          GlObject<GlObject_Type::Resource>::ResourceCast() const
+    template<> template<> const GlObject<GlObject_Type::Buffer>*          GlObject<GlObject_Type::Resource>::ResourceCast() const never_throws
     {
-        if (glIsBuffer(RawGLHandle(this))) {
+        if (glIsBuffer(AsRawGLHandle())) {
             return (GlObject<GlObject_Type::Buffer>*)(this);
         } else {
             return (GlObject<GlObject_Type::Buffer>*)RawGLHandle_Invalid;
@@ -249,55 +250,61 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    signed IndexedGLType_AddRef(unsigned object) never_throws
+    static ObjectFactory* s_objectFactory_instance = nullptr;
+
+    signed ObjectFactory::IndexedGLType_AddRef(unsigned object) never_throws
     {
-        GlobalResources& globalResources = GetGlobalResources();
             //  not thread safe!
-        auto i = globalResources._refCountTable.find(object);
-        if (i==globalResources._refCountTable.end()) {
-            globalResources._refCountTable.insert(std::make_pair(object, 1));
+        auto i = _refCountTable.find(object);
+        if (i==_refCountTable.end()) {
+            _refCountTable.insert(std::make_pair(object, 1));
             return 1;
         }
         return ++i->second;
     }
 
-    signed IndexedGLType_Release(unsigned object) never_throws
+    signed ObjectFactory::IndexedGLType_Release(unsigned object) never_throws
     {
-        GlobalResources& globalResources = GetGlobalResources();
             //  not thread safe!
-        auto i = globalResources._refCountTable.find(object);
-        if (i==globalResources._refCountTable.end()) {
+        auto i = _refCountTable.find(object);
+        if (i==_refCountTable.end()) {
             assert(0);
             return -1;
         }
         signed result = --i->second;
         if (!result) {
-            globalResources._refCountTable.erase(i);
+            _refCountTable.erase(i);
         }
         return result;
     }
 
-    #if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
-        static void OutputString(const char string[])
-        {
-            OutputDebugStringA(string);
-        }
-    #else
-        static void OutputString(const char string[])
-        {
-            printf("%s", string);
-        }
-    #endif
-
-    void ReportLeaks()
+    void ObjectFactory::ReportLeaks()
     {
-        GlobalResources& globalResources = GetGlobalResources();
-        OutputString(XlDynFormatString("[OpenGL Leaks] %i objects remain\n", globalResources._refCountTable.size()).c_str());
-        auto count=0u;
-        for (std::map<unsigned, signed>::const_iterator i=globalResources._refCountTable.cbegin(); i!=globalResources._refCountTable.cend(); ++i, ++count) {
-            OutputString(XlDynFormatString("  [%i] Object (%i) has (%i) refs\n", count, i->first, i->second).c_str());
-        }
+        #if defined(XLE_HAS_CONSOLE_RIG)
+            LogWarning << "[OpenGL Leaks] " << globalResources._refCountTable.size() << " objects remain" << std::endl;
+            auto count=0u;
+            for (std::map<unsigned, signed>::const_iterator i=_refCountTable.cbegin(); i!=_refCountTable.cend(); ++i, ++count) {
+                LogWarning << "  [" << count << "] Object (" << i->first << ") has (" << i->second << ") refs" << std::endl;
+            }
+        #else
+            assert(0);
+        #endif
     }
+
+    ObjectFactory::ObjectFactory(IDevice& device)
+    {
+        assert(s_objectFactory_instance == nullptr);
+        s_objectFactory_instance = this;
+    }
+    ObjectFactory::~ObjectFactory()
+    {
+        assert(s_objectFactory_instance == this);
+        s_objectFactory_instance = nullptr;
+    }
+
+    ObjectFactory& GetObjectFactory(IDevice& device) { assert(s_objectFactory_instance); return *s_objectFactory_instance; }
+    ObjectFactory& GetObjectFactory(DeviceContext&) { assert(s_objectFactory_instance); return *s_objectFactory_instance; }
+    ObjectFactory& GetObjectFactory() { assert(s_objectFactory_instance); return *s_objectFactory_instance; }
 
 }}
 

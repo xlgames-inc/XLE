@@ -10,7 +10,7 @@
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/StringFormat.h"
 #include "../../../Utility/PtrUtils.h"
-#include <GLES2/gl2.h>
+#include "IncludeGLES.h"
 
 #if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
     extern "C" dll_import void __stdcall OutputDebugStringA(const char lpOutputString[]);
@@ -68,7 +68,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             char buffer[64];
             XlCopyString(buffer, elements[c]._semanticName.c_str());
             XlCatString(buffer, dimof(buffer), char('0' + elements[c]._semanticIndex));
-            GLint attribute = glGetAttribLocation((GLuint)programIndex, buffer);
+            GLint attribute = glGetAttribLocation(programIndex->AsRawGLHandle(), buffer);
 
             const unsigned elementSize      = BitsPerPixel(elements[c]._nativeFormat) / 8;
             const unsigned elementStart     = (elements[c]._alignedByteOffset != ~unsigned(0x0)) ? elements[c]._alignedByteOffset : lastElementEnd;
@@ -78,7 +78,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 //  one
                 //
             if (attribute == -1 && elements[c]._semanticIndex == 0) {
-                attribute = glGetAttribLocation((GLuint)programIndex, elements[c]._semanticName.c_str());
+                attribute = glGetAttribLocation(programIndex->AsRawGLHandle(), elements[c]._semanticName.c_str());
             }
 
             if (attribute < 0 || attribute >= maxVertexAttributes) {
@@ -171,7 +171,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (unsigned c=0; c<elementCount; ++c) {
             Binding newBinding;
             newBinding._cbSlot       = slot;
-            newBinding._shaderLoc    = glGetUniformLocation((GLuint)_shader.get(), elements[c]._name);
+            newBinding._shaderLoc    = glGetUniformLocation(_shader->AsRawGLHandle(), elements[c]._name);
             newBinding._cbOffset     = elements[c]._offset;
 
             if (elements[c]._format == NativeFormat::Matrix4x4) {

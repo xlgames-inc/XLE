@@ -1,0 +1,387 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 48;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		8F212B4A1FD75FBF00599B22 /* IDeviceOpenGLES.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F212B471FD75FBF00599B22 /* IDeviceOpenGLES.h */; };
+		8F212B4B1FD75FBF00599B22 /* Device_EGL.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F212B481FD75FBF00599B22 /* Device_EGL.h */; };
+		8F212B571FD7851200599B22 /* Device_EAGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F212B4E1FD7640E00599B22 /* Device_EAGL.mm */; };
+		8F212B581FD7851200599B22 /* Device_EAGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F212B4E1FD7640E00599B22 /* Device_EAGL.mm */; };
+		8F2D1B731FD629380028A531 /* QueryPool.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B5E1FD629360028A531 /* QueryPool.h */; };
+		8F2D1B741FD629380028A531 /* Types.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B5F1FD629360028A531 /* Types.h */; };
+		8F2D1B751FD629380028A531 /* Buffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B601FD629360028A531 /* Buffer.cpp */; };
+		8F2D1B761FD629380028A531 /* Buffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B601FD629360028A531 /* Buffer.cpp */; };
+		8F2D1B771FD629380028A531 /* InputLayout.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B611FD629360028A531 /* InputLayout.h */; };
+		8F2D1B781FD629380028A531 /* Buffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B621FD629360028A531 /* Buffer.h */; };
+		8F2D1B791FD629380028A531 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B631FD629360028A531 /* Format.cpp */; };
+		8F2D1B7A1FD629380028A531 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B631FD629360028A531 /* Format.cpp */; };
+		8F2D1B7B1FD629380028A531 /* Shader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B641FD629370028A531 /* Shader.cpp */; };
+		8F2D1B7C1FD629380028A531 /* Shader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B641FD629370028A531 /* Shader.cpp */; };
+		8F2D1B7D1FD629380028A531 /* Resource.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B651FD629370028A531 /* Resource.h */; };
+		8F2D1B7E1FD629380028A531 /* InputLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B661FD629370028A531 /* InputLayout.cpp */; };
+		8F2D1B7F1FD629380028A531 /* InputLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B661FD629370028A531 /* InputLayout.cpp */; };
+		8F2D1B801FD629380028A531 /* DeviceContext.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B671FD629370028A531 /* DeviceContext.h */; };
+		8F2D1B811FD629380028A531 /* State.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B681FD629370028A531 /* State.cpp */; };
+		8F2D1B821FD629380028A531 /* State.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B681FD629370028A531 /* State.cpp */; };
+		8F2D1B831FD629380028A531 /* State.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B691FD629370028A531 /* State.h */; };
+		8F2D1B841FD629380028A531 /* DeviceContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B6A1FD629370028A531 /* DeviceContext.cpp */; };
+		8F2D1B851FD629380028A531 /* DeviceContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B6A1FD629370028A531 /* DeviceContext.cpp */; };
+		8F2D1B861FD629380028A531 /* QueryPool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B6B1FD629370028A531 /* QueryPool.cpp */; };
+		8F2D1B871FD629380028A531 /* QueryPool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B6B1FD629370028A531 /* QueryPool.cpp */; };
+		8F2D1B881FD629380028A531 /* ShaderResource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B6C1FD629370028A531 /* ShaderResource.cpp */; };
+		8F2D1B891FD629380028A531 /* ShaderResource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B6C1FD629370028A531 /* ShaderResource.cpp */; };
+		8F2D1B8A1FD629380028A531 /* Format.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B6D1FD629370028A531 /* Format.h */; };
+		8F2D1B8B1FD629380028A531 /* Shader.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B6E1FD629370028A531 /* Shader.h */; };
+		8F2D1B8C1FD629380028A531 /* IndexedGLType.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B6F1FD629380028A531 /* IndexedGLType.cpp */; };
+		8F2D1B8D1FD629380028A531 /* IndexedGLType.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B6F1FD629380028A531 /* IndexedGLType.cpp */; };
+		8F2D1B8E1FD629380028A531 /* IncludeGLES.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B701FD629380028A531 /* IncludeGLES.h */; };
+		8F2D1B8F1FD629380028A531 /* IndexedGLType.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B711FD629380028A531 /* IndexedGLType.h */; };
+		8F2D1B901FD629380028A531 /* ShaderResource.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B721FD629380028A531 /* ShaderResource.h */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8F2D1B3D1FD628270028A531 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "include/$(PRODUCT_NAME)";
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		8F212B471FD75FBF00599B22 /* IDeviceOpenGLES.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IDeviceOpenGLES.h; path = ../OpenGLES/IDeviceOpenGLES.h; sourceTree = "<group>"; };
+		8F212B481FD75FBF00599B22 /* Device_EGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Device_EGL.h; path = ../OpenGLES/Device_EGL.h; sourceTree = "<group>"; };
+		8F212B4E1FD7640E00599B22 /* Device_EAGL.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Device_EAGL.mm; path = ../OpenGLES/Device_EAGL.mm; sourceTree = "<group>"; };
+		8F212B511FD7651D00599B22 /* Device_EAGL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Device_EAGL.h; path = ../OpenGLES/Device_EAGL.h; sourceTree = "<group>"; };
+		8F2D1B3F1FD628270028A531 /* libRenderCoreOGLESIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libRenderCoreOGLESIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F2D1B521FD628830028A531 /* CoreRelease.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
+		8F2D1B531FD628830028A531 /* Core.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
+		8F2D1B541FD628830028A531 /* CoreDebug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
+		8F2D1B551FD628840028A531 /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
+		8F2D1B5A1FD628E10028A531 /* libRenderCoreOGLESMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libRenderCoreOGLESMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F2D1B5E1FD629360028A531 /* QueryPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = QueryPool.h; path = ../OpenGLES/Metal/QueryPool.h; sourceTree = "<group>"; };
+		8F2D1B5F1FD629360028A531 /* Types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Types.h; path = ../OpenGLES/Metal/Types.h; sourceTree = "<group>"; };
+		8F2D1B601FD629360028A531 /* Buffer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Buffer.cpp; path = ../OpenGLES/Metal/Buffer.cpp; sourceTree = "<group>"; };
+		8F2D1B611FD629360028A531 /* InputLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = InputLayout.h; path = ../OpenGLES/Metal/InputLayout.h; sourceTree = "<group>"; };
+		8F2D1B621FD629360028A531 /* Buffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Buffer.h; path = ../OpenGLES/Metal/Buffer.h; sourceTree = "<group>"; };
+		8F2D1B631FD629360028A531 /* Format.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Format.cpp; path = ../OpenGLES/Metal/Format.cpp; sourceTree = "<group>"; };
+		8F2D1B641FD629370028A531 /* Shader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Shader.cpp; path = ../OpenGLES/Metal/Shader.cpp; sourceTree = "<group>"; };
+		8F2D1B651FD629370028A531 /* Resource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Resource.h; path = ../OpenGLES/Metal/Resource.h; sourceTree = "<group>"; };
+		8F2D1B661FD629370028A531 /* InputLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = InputLayout.cpp; path = ../OpenGLES/Metal/InputLayout.cpp; sourceTree = "<group>"; };
+		8F2D1B671FD629370028A531 /* DeviceContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DeviceContext.h; path = ../OpenGLES/Metal/DeviceContext.h; sourceTree = "<group>"; };
+		8F2D1B681FD629370028A531 /* State.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = State.cpp; path = ../OpenGLES/Metal/State.cpp; sourceTree = "<group>"; };
+		8F2D1B691FD629370028A531 /* State.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = State.h; path = ../OpenGLES/Metal/State.h; sourceTree = "<group>"; };
+		8F2D1B6A1FD629370028A531 /* DeviceContext.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DeviceContext.cpp; path = ../OpenGLES/Metal/DeviceContext.cpp; sourceTree = "<group>"; };
+		8F2D1B6B1FD629370028A531 /* QueryPool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = QueryPool.cpp; path = ../OpenGLES/Metal/QueryPool.cpp; sourceTree = "<group>"; };
+		8F2D1B6C1FD629370028A531 /* ShaderResource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ShaderResource.cpp; path = ../OpenGLES/Metal/ShaderResource.cpp; sourceTree = "<group>"; };
+		8F2D1B6D1FD629370028A531 /* Format.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Format.h; path = ../OpenGLES/Metal/Format.h; sourceTree = "<group>"; };
+		8F2D1B6E1FD629370028A531 /* Shader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Shader.h; path = ../OpenGLES/Metal/Shader.h; sourceTree = "<group>"; };
+		8F2D1B6F1FD629380028A531 /* IndexedGLType.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = IndexedGLType.cpp; path = ../OpenGLES/Metal/IndexedGLType.cpp; sourceTree = "<group>"; };
+		8F2D1B701FD629380028A531 /* IncludeGLES.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IncludeGLES.h; path = ../OpenGLES/Metal/IncludeGLES.h; sourceTree = "<group>"; };
+		8F2D1B711FD629380028A531 /* IndexedGLType.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IndexedGLType.h; path = ../OpenGLES/Metal/IndexedGLType.h; sourceTree = "<group>"; };
+		8F2D1B721FD629380028A531 /* ShaderResource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ShaderResource.h; path = ../OpenGLES/Metal/ShaderResource.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8F2D1B3C1FD628270028A531 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8F2D1B571FD628E10028A531 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		8F212B461FD75FA600599B22 /* Metal */ = {
+			isa = PBXGroup;
+			children = (
+				8F2D1B601FD629360028A531 /* Buffer.cpp */,
+				8F2D1B621FD629360028A531 /* Buffer.h */,
+				8F2D1B6A1FD629370028A531 /* DeviceContext.cpp */,
+				8F2D1B671FD629370028A531 /* DeviceContext.h */,
+				8F2D1B631FD629360028A531 /* Format.cpp */,
+				8F2D1B6D1FD629370028A531 /* Format.h */,
+				8F2D1B701FD629380028A531 /* IncludeGLES.h */,
+				8F2D1B6F1FD629380028A531 /* IndexedGLType.cpp */,
+				8F2D1B711FD629380028A531 /* IndexedGLType.h */,
+				8F2D1B661FD629370028A531 /* InputLayout.cpp */,
+				8F2D1B611FD629360028A531 /* InputLayout.h */,
+				8F2D1B6B1FD629370028A531 /* QueryPool.cpp */,
+				8F2D1B5E1FD629360028A531 /* QueryPool.h */,
+				8F2D1B651FD629370028A531 /* Resource.h */,
+				8F2D1B641FD629370028A531 /* Shader.cpp */,
+				8F2D1B6E1FD629370028A531 /* Shader.h */,
+				8F2D1B6C1FD629370028A531 /* ShaderResource.cpp */,
+				8F2D1B721FD629380028A531 /* ShaderResource.h */,
+				8F2D1B681FD629370028A531 /* State.cpp */,
+				8F2D1B691FD629370028A531 /* State.h */,
+				8F2D1B5F1FD629360028A531 /* Types.h */,
+			);
+			name = Metal;
+			sourceTree = "<group>";
+		};
+		8F2D1B361FD628270028A531 = {
+			isa = PBXGroup;
+			children = (
+				8F2D1B511FD628780028A531 /* Config */,
+				8F212B511FD7651D00599B22 /* Device_EAGL.h */,
+				8F212B4E1FD7640E00599B22 /* Device_EAGL.mm */,
+				8F212B481FD75FBF00599B22 /* Device_EGL.h */,
+				8F212B471FD75FBF00599B22 /* IDeviceOpenGLES.h */,
+				8F212B461FD75FA600599B22 /* Metal */,
+				8F2D1B401FD628270028A531 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		8F2D1B401FD628270028A531 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F2D1B3F1FD628270028A531 /* libRenderCoreOGLESIOS.a */,
+				8F2D1B5A1FD628E10028A531 /* libRenderCoreOGLESMac.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F2D1B511FD628780028A531 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				8F2D1B531FD628830028A531 /* Core.xcconfig */,
+				8F2D1B541FD628830028A531 /* CoreDebug.xcconfig */,
+				8F2D1B521FD628830028A531 /* CoreRelease.xcconfig */,
+				8F2D1B551FD628840028A531 /* CoreWarnings.xcconfig */,
+			);
+			name = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		8F2D1B581FD628E10028A531 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F2D1B8B1FD629380028A531 /* Shader.h in Headers */,
+				8F212B4A1FD75FBF00599B22 /* IDeviceOpenGLES.h in Headers */,
+				8F2D1B901FD629380028A531 /* ShaderResource.h in Headers */,
+				8F2D1B781FD629380028A531 /* Buffer.h in Headers */,
+				8F2D1B8F1FD629380028A531 /* IndexedGLType.h in Headers */,
+				8F2D1B8E1FD629380028A531 /* IncludeGLES.h in Headers */,
+				8F2D1B741FD629380028A531 /* Types.h in Headers */,
+				8F2D1B801FD629380028A531 /* DeviceContext.h in Headers */,
+				8F212B4B1FD75FBF00599B22 /* Device_EGL.h in Headers */,
+				8F2D1B831FD629380028A531 /* State.h in Headers */,
+				8F2D1B7D1FD629380028A531 /* Resource.h in Headers */,
+				8F2D1B771FD629380028A531 /* InputLayout.h in Headers */,
+				8F2D1B731FD629380028A531 /* QueryPool.h in Headers */,
+				8F2D1B8A1FD629380028A531 /* Format.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		8F2D1B3E1FD628270028A531 /* RenderCoreOGLESIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8F2D1B481FD628270028A531 /* Build configuration list for PBXNativeTarget "RenderCoreOGLESIOS" */;
+			buildPhases = (
+				8F2D1B3B1FD628270028A531 /* Sources */,
+				8F2D1B3C1FD628270028A531 /* Frameworks */,
+				8F2D1B3D1FD628270028A531 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RenderCoreOGLESIOS;
+			productName = RenderCoreOpenGLES;
+			productReference = 8F2D1B3F1FD628270028A531 /* libRenderCoreOGLESIOS.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		8F2D1B591FD628E10028A531 /* RenderCoreOGLESMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8F2D1B5B1FD628E10028A531 /* Build configuration list for PBXNativeTarget "RenderCoreOGLESMac" */;
+			buildPhases = (
+				8F2D1B561FD628E10028A531 /* Sources */,
+				8F2D1B571FD628E10028A531 /* Frameworks */,
+				8F2D1B581FD628E10028A531 /* Headers */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RenderCoreOGLESMac;
+			productName = RenderCoreOGLESMac;
+			productReference = 8F2D1B5A1FD628E10028A531 /* libRenderCoreOGLESMac.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8F2D1B371FD628270028A531 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0910;
+				ORGANIZATIONNAME = XLE;
+				TargetAttributes = {
+					8F2D1B3E1FD628270028A531 = {
+						CreatedOnToolsVersion = 9.1;
+						ProvisioningStyle = Automatic;
+					};
+					8F2D1B591FD628E10028A531 = {
+						CreatedOnToolsVersion = 9.1;
+					};
+				};
+			};
+			buildConfigurationList = 8F2D1B3A1FD628270028A531 /* Build configuration list for PBXProject "RenderCore_OpenGLES" */;
+			compatibilityVersion = "Xcode 8.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 8F2D1B361FD628270028A531;
+			productRefGroup = 8F2D1B401FD628270028A531 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8F2D1B591FD628E10028A531 /* RenderCoreOGLESMac */,
+				8F2D1B3E1FD628270028A531 /* RenderCoreOGLESIOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8F2D1B3B1FD628270028A531 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F212B571FD7851200599B22 /* Device_EAGL.mm in Sources */,
+				8F2D1B7A1FD629380028A531 /* Format.cpp in Sources */,
+				8F2D1B7C1FD629380028A531 /* Shader.cpp in Sources */,
+				8F2D1B891FD629380028A531 /* ShaderResource.cpp in Sources */,
+				8F2D1B8D1FD629380028A531 /* IndexedGLType.cpp in Sources */,
+				8F2D1B821FD629380028A531 /* State.cpp in Sources */,
+				8F2D1B7F1FD629380028A531 /* InputLayout.cpp in Sources */,
+				8F2D1B761FD629380028A531 /* Buffer.cpp in Sources */,
+				8F2D1B851FD629380028A531 /* DeviceContext.cpp in Sources */,
+				8F2D1B871FD629380028A531 /* QueryPool.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8F2D1B561FD628E10028A531 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F212B581FD7851200599B22 /* Device_EAGL.mm in Sources */,
+				8F2D1B791FD629380028A531 /* Format.cpp in Sources */,
+				8F2D1B7B1FD629380028A531 /* Shader.cpp in Sources */,
+				8F2D1B881FD629380028A531 /* ShaderResource.cpp in Sources */,
+				8F2D1B8C1FD629380028A531 /* IndexedGLType.cpp in Sources */,
+				8F2D1B811FD629380028A531 /* State.cpp in Sources */,
+				8F2D1B7E1FD629380028A531 /* InputLayout.cpp in Sources */,
+				8F2D1B751FD629380028A531 /* Buffer.cpp in Sources */,
+				8F2D1B841FD629380028A531 /* DeviceContext.cpp in Sources */,
+				8F2D1B861FD629380028A531 /* QueryPool.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		8F2D1B461FD628270028A531 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		8F2D1B471FD628270028A531 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		8F2D1B491FD628270028A531 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8F2D1B541FD628830028A531 /* CoreDebug.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		8F2D1B4A1FD628270028A531 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8F2D1B521FD628830028A531 /* CoreRelease.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		8F2D1B5C1FD628E10028A531 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INSTALL_PATH = "";
+				PRODUCT_NAME = RenderCoreOGLESMac;
+			};
+			name = Debug;
+		};
+		8F2D1B5D1FD628E10028A531 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INSTALL_PATH = "";
+				PRODUCT_NAME = RenderCoreOGLESMac;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8F2D1B3A1FD628270028A531 /* Build configuration list for PBXProject "RenderCore_OpenGLES" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F2D1B461FD628270028A531 /* Debug */,
+				8F2D1B471FD628270028A531 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8F2D1B481FD628270028A531 /* Build configuration list for PBXNativeTarget "RenderCoreOGLESIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F2D1B491FD628270028A531 /* Debug */,
+				8F2D1B4A1FD628270028A531 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8F2D1B5B1FD628E10028A531 /* Build configuration list for PBXNativeTarget "RenderCoreOGLESMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F2D1B5C1FD628E10028A531 /* Debug */,
+				8F2D1B5D1FD628E10028A531 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 8F2D1B371FD628270028A531 /* Project object */;
+}

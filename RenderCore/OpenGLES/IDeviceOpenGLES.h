@@ -10,19 +10,7 @@
 #include "../../Utility/IntrusivePtr.h"
 
 #define FLEX_USE_VTABLE_DeviceOpenGLES FLEX_USE_VTABLE_Device
-
-typedef void *EGLDisplay;
-typedef void *EGLConfig;
-typedef void *EGLContext;
-typedef void *EGLSurface;
-
-namespace EGL
-{
-    typedef EGLDisplay      Display;
-    typedef EGLConfig       Config;
-    typedef EGLContext      Context;
-    typedef EGLSurface      Surface;
-}
+#define FLEX_USE_VTABLE_ThreadContextOpenGLES FLEX_USE_VTABLE_Device
 
 namespace RenderCore
 {
@@ -32,21 +20,19 @@ namespace RenderCore
 
 #define FLEX_INTERFACE DeviceOpenGLES
 /*-----------------*/ #include "../FlexBegin.h" /*-----------------*/
-    
+
         /// <summary>IDevice extension for OpenGLES</summary>
         /// Use IDevice::QueryInterface for query for this type from a
         /// plain IDevice.
-        class /*__declspec( uuid("{01B66C67-7553-4F26-8A21-A4E0756C4738}") )*/ ICLASSNAME(DeviceOpenGLES)
+        class ICLASSNAME(DeviceOpenGLES)
         {
         public:
-            IMETHOD EGL::Display                                GetUnderlyingDisplay()  IPURE;
-            IMETHOD intrusive_ptr<Metal_OpenGLES::DeviceContext>   CreateDeferredContext() IPURE;
-            IMETHOD intrusive_ptr<Metal_OpenGLES::DeviceContext>   GetImmediateContext()   IPURE;
+            IMETHOD Metal_OpenGLES::DeviceContext * GetImmediateDeviceContext()   IPURE;
             IDESTRUCTOR
         };
 
-        #if !defined(FLEX_CONTEXT_DeviceOPENGLES)
-            #define FLEX_CONTEXT_DeviceOPENGLES     FLEX_CONTEXT_INTERFACE
+        #if !defined(FLEX_CONTEXT_DeviceOpenGLES)
+            #define FLEX_CONTEXT_DeviceOpenGLES     FLEX_CONTEXT_INTERFACE
         #endif
 
         #if defined(DOXYGEN)
@@ -55,9 +41,28 @@ namespace RenderCore
 
 /*-----------------*/ #include "../FlexEnd.h" /*-----------------*/
 
-    #if FLEX_CONTEXT_DeviceOpenGLES != FLEX_CONTEXT_CONCRETE
-        namespace Metal_OpenGLES { class GlobalResources; }
-        Metal_OpenGLES::GlobalResources&        GetGlobalResources();
-    #endif
+    ////////////////////////////////////////////////////////////////////////////////
+
+#define FLEX_INTERFACE ThreadContextOpenGLES
+/*-----------------*/ #include "../FlexBegin.h" /*-----------------*/
+
+        class ICLASSNAME(ThreadContextOpenGLES)
+        {
+        public:
+            IMETHOD std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetUnderlying() IPURE;
+            IDESTRUCTOR
+        };
+
+        #if !defined(FLEX_CONTEXT_ThreadContextOpenGLES)
+            #define FLEX_CONTEXT_ThreadContextOpenGLES     FLEX_CONTEXT_INTERFACE
+        #endif
+
+        #if defined(DOXYGEN)
+            typedef IThreadContextOpenGLES Base_ThreadContextOpenGLES;
+        #endif
+
+/*-----------------*/ #include "../FlexEnd.h" /*-----------------*/
+
+    ////////////////////////////////////////////////////////////////////////////////
 
 }

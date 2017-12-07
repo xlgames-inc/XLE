@@ -13,24 +13,6 @@
 namespace RenderCore { namespace Metal_OpenGLES
 {
         ////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    class CompiledShaderByteCode : noncopyable
-    {
-    public:
-            //
-            //          Resource interface
-            //
-        CompiledShaderByteCode(const ::Assets::ResChar initializer[]);
-        ~CompiledShaderByteCode();
-
-        typedef OpenGL::Shader*    UnderlyingType;
-        UnderlyingType                  GetUnderlying() const { return _underlying.get(); }
-        
-    private:
-        intrusive_ptr<OpenGL::Shader>            _underlying;
-    };
-    
-        ////////////////////////////////////////////////////////////////////////////////////////////////
 
     class ShaderProgram : noncopyable
     {

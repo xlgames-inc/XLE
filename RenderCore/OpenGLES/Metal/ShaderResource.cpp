@@ -6,13 +6,13 @@
 
 #include "ShaderResource.h"
 #include "../../RenderUtils.h"
-#include <GLES2/gl2.h>
+#include "IncludeGLES.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
     ShaderResourceView::ShaderResourceView(OpenGL::Texture* underlyingTexture)
     {
-        if (glIsTexture((GLuint)underlyingTexture)) {
+        if (glIsTexture(underlyingTexture->AsRawGLHandle())) {
             _underlyingTexture = underlyingTexture;
         } else {
             Throw(Exceptions::GenericFailure("Binding non-texture to resource"));
@@ -21,7 +21,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     ShaderResourceView::ShaderResourceView(OpenGL::Resource* underlyingTexture)
     {
-        if (glIsTexture((GLuint)underlyingTexture)) {
+        if (glIsTexture(underlyingTexture->AsRawGLHandle())) {
             _underlyingTexture = underlyingTexture->As<GlObject_Type::Texture>();
         } else {
             Throw(Exceptions::GenericFailure("Binding non-texture to resource"));

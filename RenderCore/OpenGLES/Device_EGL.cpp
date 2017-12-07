@@ -1,79 +1,19 @@
-﻿// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Device.h"
+#include "Metal/DeviceContext.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Core/Exceptions.h"
-#include "Metal/DeviceContext.h"
 #include <type_traits>
 #include <iostream>
 #include <assert.h>
-
-#include <GLES2/gl2.h>
-#include <EGL/egl.h>            // (brings in windows.h on Win32)
-#include <EGL/eglext.h>
-
-/*
-
-    Key interface difficulties
-      ~-~-~-~-~-~-~-~-~-~-~-~
-
-        -- SamplerStates
-        -- Vertex attribute binding (perhaps DX9/DX11)
-        -- multiple vertex buffers
-        -- Shader constants
-        -- Shader attribute queries (opengl program binding)
-        -- Create unsupported operations easily through the interface (bind multiple vertex buffers, etc)
-        -- ordering of bind input layout / bind vertex buffer
-            (OpenGL works best binding both at the same time; DX11 can work in either order)
-        -- opengl better for rendering without a vertex buffer
-        -- glUniform for samplers -- redirection of samplers
-
-*/
+#include "IncludeGLES.h"
 
 namespace RenderCore
 {
-    //////////////////////////////////////////////////////////////////////////////////////////////////
-
-    template <typename Ptr, typename Destructor>
-        class DestructorPointer
-    {
-    public:
-        DestructorPointer(Ptr ptr, Destructor dstr) never_throws : _ptr(ptr), _dstr(dstr) {}
-        DestructorPointer(DestructorPointer<Ptr, Destructor>&& moveFrom)
-        : _ptr(moveFrom._ptr), _dstr(moveFrom._destr)
-        {
-            moveFrom._ptr = nullptr;
-        }
-        ~DestructorPointer()
-        {
-            if (_ptr) {
-                _dstr(_ptr);
-            }
-        }
-
-        operator    Ptr() const never_throws        { return _ptr; }
-        Ptr         get() const never_throws        { return _ptr; }
-        Ptr         release() never_throws          { Ptr result = _ptr; _ptr = nullptr; return result; }
-
-        DestructorPointer<Ptr, Destructor>  operator=(DestructorPointer<Ptr, Destructor>&& moveFrom)
-        {
-            if (_ptr) {
-                _dstr(_ptr);
-            }
-            _ptr = moveFrom._ptr; moveFrom._ptr = nullptr;
-            _dstr = moveFrom._dstr;
-        }
-
-    private:
-        Ptr _ptr;
-        Destructor _dstr;
-    };
-
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
     Device::Device()

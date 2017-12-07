@@ -8,19 +8,19 @@
 
 #include "../../../Core/Exceptions.h"
 #include "../../../Utility/IntrusivePtr.h"
-#include <map>
+#include <unordered_map>
+
+namespace RenderCore { class IDevice; }
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    typedef unsigned        RawGLHandle;
-    static const unsigned   RawGLHandle_Invalid = 0;
+    using RawGLHandle = uint32_t;
+    static const RawGLHandle   RawGLHandle_Invalid = 0;
 
     namespace GlObject_Type { enum Enum { Shader, ShaderProgram, Texture, RenderBuffer, FrameBuffer, Buffer, Resource }; }
     namespace ShaderType    { enum Enum { VertexShader, FragmentShader }; }
-
-    void                    ReportLeaks();
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -33,12 +33,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         template <int OtherType> GlObject<OtherType>*       As() never_throws;
         template <int OtherType> const GlObject<OtherType>* As() const never_throws;
 
-        friend intrusive_ptr<GlObject<GlObject_Type::Shader> >         CreateShader(ShaderType::Enum type);
-        friend intrusive_ptr<GlObject<GlObject_Type::ShaderProgram> >  CreateShaderProgram();
-        friend intrusive_ptr<GlObject<GlObject_Type::Texture> >        CreateTexture();
-        friend intrusive_ptr<GlObject<GlObject_Type::RenderBuffer> >   CreateRenderBuffer();
-        friend intrusive_ptr<GlObject<GlObject_Type::FrameBuffer> >    CreateFrameBuffer();
-        friend intrusive_ptr<GlObject<GlObject_Type::Buffer> >         CreateBuffer();
+        RawGLHandle AsRawGLHandle() const never_throws;
 
     private:
         GlObject();
@@ -63,12 +58,34 @@ namespace OpenGL
     
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    intrusive_ptr<OpenGL::Shader>              CreateShader(ShaderType::Enum type);
-    intrusive_ptr<OpenGL::ShaderProgram>       CreateShaderProgram();
-    intrusive_ptr<OpenGL::Buffer>              CreateBuffer();
-    intrusive_ptr<OpenGL::Texture>             CreateTexture();
-    intrusive_ptr<OpenGL::RenderBuffer>        CreateRenderBuffer();
-    intrusive_ptr<OpenGL::FrameBuffer>         CreateFrameBuffer();
+    class ObjectFactory
+    {
+    public:
+        intrusive_ptr<GlObject<GlObject_Type::Shader> >         CreateShader(ShaderType::Enum type);
+        intrusive_ptr<GlObject<GlObject_Type::ShaderProgram> >  CreateShaderProgram();
+        intrusive_ptr<GlObject<GlObject_Type::Texture> >        CreateTexture();
+        intrusive_ptr<GlObject<GlObject_Type::RenderBuffer> >   CreateRenderBuffer();
+        intrusive_ptr<GlObject<GlObject_Type::FrameBuffer> >    CreateFrameBuffer();
+        intrusive_ptr<GlObject<GlObject_Type::Buffer> >         CreateBuffer();
+
+        signed  IndexedGLType_AddRef(RawGLHandle object) never_throws;
+        signed  IndexedGLType_Release(RawGLHandle object) never_throws;
+        void    ReportLeaks();
+
+        ObjectFactory(IDevice& device);
+        ~ObjectFactory();
+
+        ObjectFactory& operator=(const ObjectFactory&) = delete;
+        ObjectFactory(const ObjectFactory&) = delete;
+    private:
+        std::unordered_map<RawGLHandle, signed> _refCountTable;
+    };
+
+    class DeviceContext;
+
+    ObjectFactory& GetObjectFactory(IDevice& device);
+    ObjectFactory& GetObjectFactory(DeviceContext&);
+    ObjectFactory& GetObjectFactory();
 
     #pragma warning(push)
     #pragma warning(disable: 4127)      // conditional expression is constant
@@ -115,9 +132,10 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     #pragma warning(pop)
 
-    class GlobalResources
+
+    template <int Type>
+        inline RawGLHandle GlObject<Type>::AsRawGLHandle() const never_throws
     {
-    public:
-        std::map<unsigned, signed> _refCountTable;
-    };
+        return (RawGLHandle)(size_t)this;
+    }
 }}

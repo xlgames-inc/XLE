@@ -19,9 +19,6 @@
     #define render_dll_export
 #endif
 
-struct _GUID;
-typedef struct _GUID GUID;
-
 namespace RenderCore
 {
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,20 +154,18 @@ namespace RenderCore
             /// Example:
             ///     <code>\code
             ///     RenderCore::IDeviceDX11* dx11Device = 
-            ///          (RenderCore::IDeviceDX11*)device->QueryInterface(__uuidof(RenderCore::IDeviceDX11));
+            ///          (RenderCore::IDeviceDX11*)device->QueryInterface(typeid(RenderCore::IDeviceDX11).hash_code());
             ///     if (dx11Device) {
             ///         ...
             ///     }
             ///     \endcode</code>
             /// </example>
             ///
-            /// <param name="guid">A large random value that is unique to the interface. On the visual studio compiler, use
-            /// the __uuidof() extension to get the correct guid for a class. For example, To query for the "IDeviceDX11"
-            /// interface, use __uuid(RenderCore::IDeviceDX11).</param>
+            /// <param name="guid">Unique identifier of the type in question, using the built-in C++ type hash code.</param>
             /// <returns>Returns nullptr if the interface isn't supported</returns>
             /// <seealso cref="RenderCore::IDeviceDX11"/>
             /// <seealso cref="RenderCore::IDeviceOpenGLES"/>
-            IMETHOD virtual void*       QueryInterface(const GUID& guid) IPURE;
+            IMETHOD virtual void*       QueryInterface(size_t guid) IPURE;
 
             IMETHOD std::shared_ptr<IThreadContext>     GetImmediateContext() IPURE;
             IMETHOD std::unique_ptr<IThreadContext>     CreateDeferredContext() IPURE;

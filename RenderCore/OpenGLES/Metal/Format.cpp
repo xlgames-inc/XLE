@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Format.h"
-#include <GLES2/gl2.h>
+#include "IncludeGLES.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {

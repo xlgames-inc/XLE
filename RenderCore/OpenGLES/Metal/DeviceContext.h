@@ -15,8 +15,8 @@
 #include "../../IDevice_Forward.h"
 #include "IncludeGLES.h"
 
-typedef void*       EGLDisplay;
-typedef void*       EGLContext;
+// typedef void*       EGLDisplay;
+// typedef void*       EGLContext;
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
@@ -45,10 +45,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         };
     }
 
-    class CommandList
+    class CommandList : public RefCountedObject, noncopyable
     {
     public:
     };
+
+    using CommandListPtr = intrusive_ptr<CommandList>;
 
     class DeviceContext
     {
@@ -69,16 +71,16 @@ namespace RenderCore { namespace Metal_OpenGLES
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
 
-        void                            BeginCommandList();
-        intrusive_ptr<CommandList>      ResolveCommandList();
-        void                            CommitCommandList(CommandList& commandList);
+        void            BeginCommandList();
+        CommandListPtr  ResolveCommandList();
+        void            CommitCommandList(CommandList& commandList);
 
-        static intrusive_ptr<DeviceContext> GetImmediateContext(IDevice* device);
-        static intrusive_ptr<DeviceContext> CreateDeferredContext(IDevice* device);
+        // static intrusive_ptr<DeviceContext> GetImmediateContext(IDevice* device);
+        // static intrusive_ptr<DeviceContext> CreateDeferredContext(IDevice* device);
 
         static void PrepareForDestruction(IDevice* device);
 
-        EGL::Context        GetUnderlying() { return _underlyingContext; }
+        // EGL::Context        GetUnderlying() { return _underlyingContext; }
 
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
 
@@ -88,28 +90,16 @@ namespace RenderCore { namespace Metal_OpenGLES
         ~DeviceContext();
     private:
         unsigned            _nativeTopology;
-        EGL::Display        _display;
-        EGL::Context        _underlyingContext;
+        // EGL::Display        _display;
+        // EGL::Context        _underlyingContext;
         BoundInputLayout    _savedInputLayout;
         unsigned            _savedVertexBufferStride;
 
-        DeviceContext(EGLDisplay display, EGLContext underlyingContext);
+        // DeviceContext(EGLDisplay display, EGLContext underlyingContext);
 
         friend class Device;
         friend class DeviceOpenGLES;
     };
-
-    class ObjectFactory
-    {
-    public:
-        ObjectFactory();
-        ObjectFactory(IDevice* device);
-        ObjectFactory(const OpenGL::Resource& resource);
-    };
-
-    ObjectFactory& GetObjectFactory(IDevice& device);
-    ObjectFactory& GetObjectFactory(DeviceContext&);
-    ObjectFactory& GetObjectFactory();
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
