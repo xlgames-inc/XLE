@@ -8,7 +8,10 @@
 
 #include "../../../Assets/AssetsCore.h"
 #include "../../../Utility/Mixins.h"
+#include "../../ShaderService.h"
 #include "IndexedGLType.h"
+
+namespace RenderCore { class CompiledShaderByteCode; class IDevice; }
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
@@ -17,18 +20,22 @@ namespace RenderCore { namespace Metal_OpenGLES
     class ShaderProgram : noncopyable
     {
     public:
-        ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
-                        const ::Assets::ResChar fragmentShaderInitializer[]);
-        ~ShaderProgram();
-        
-        typedef OpenGL::ShaderProgram*    UnderlyingType;
-        UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
+        typedef OpenGL::ShaderProgram*  UnderlyingType;
+        UnderlyingType                  GetUnderlying() const { return _underlying.get(); }
 
+        const ::Assets::DepValPtr&      GetDependencyValidation() { return _depVal; }
+
+        ShaderProgram(  const CompiledShaderByteCode& vs,
+                        const CompiledShaderByteCode& fs);
+        ~ShaderProgram();
     private:
-        intrusive_ptr<OpenGL::ShaderProgram>     _underlying;
+        intrusive_ptr<OpenGL::ShaderProgram>    _underlying;
+        ::Assets::DepValPtr                     _depVal;
     };
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
 
 //     class VertexShader : noncopyable
 //     {

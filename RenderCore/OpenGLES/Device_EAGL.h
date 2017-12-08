@@ -13,6 +13,8 @@
 
 @class EAGLContext;
 
+namespace RenderCore { namespace Metal_OpenGLES { class ObjectFactory; }}
+
 namespace RenderCore { namespace ImplOpenGLES
 {
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,6 +84,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     protected:
         std::shared_ptr<ThreadContextOpenGLES> _immediateContext;
+        std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
     };
 
     class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES

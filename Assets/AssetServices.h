@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../ConsoleRig/GlobalServices.h"
 #include <memory>
 #include <assert.h>
 
@@ -17,7 +16,7 @@ namespace Assets
     class InvalidAssetManager;
 
     template<typename Type>
-        class CrossModuleSingleton
+        class AttachableSingleton
     {
     public:
         static Type& GetInstance() { assert(s_instance); return *s_instance; }
@@ -25,13 +24,13 @@ namespace Assets
         void AttachCurrentModule();
         void DetachCurrentModule();
 
-        CrossModuleSingleton();
-        ~CrossModuleSingleton();
+        AttachableSingleton();
+        ~AttachableSingleton();
     protected:
         static Type* s_instance;
     };
 
-    class Services : public CrossModuleSingleton<Services>
+    class Services : public AttachableSingleton<Services>
     {
     public:
         static AssetSetManager& GetAssetSets() { return *GetInstance()._assetSets; }
@@ -44,8 +43,8 @@ namespace Assets
             typedef unsigned BitField;
         };
 
-        void AttachCurrentModule() { CrossModuleSingleton<Services>::AttachCurrentModule(); }
-        void DetachCurrentModule() { CrossModuleSingleton<Services>::DetachCurrentModule(); }
+        void AttachCurrentModule() { AttachableSingleton<Services>::AttachCurrentModule(); }
+        void DetachCurrentModule() { AttachableSingleton<Services>::DetachCurrentModule(); }
 
         Services(Flags::BitField flags=0);
         ~Services();
@@ -58,36 +57,36 @@ namespace Assets
         std::unique_ptr<InvalidAssetManager> _invalidAssetMan;
     };
 
-    template<typename Type>
-        CrossModuleSingleton<Type>::CrossModuleSingleton() 
-    {
-        assert(s_instance == nullptr); 
-        ConsoleRig::GlobalServices::GetCrossModule().Publish(*(Type*)this);
-    }
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Type>
-        CrossModuleSingleton<Type>::~CrossModuleSingleton() 
+        AttachableSingleton<Type>::AttachableSingleton()
     {
-        ConsoleRig::GlobalServices::GetCrossModule().Withhold(*(Type*)this);
         assert(s_instance == nullptr); 
     }
 
     template<typename Type>
-        void CrossModuleSingleton<Type>::AttachCurrentModule()
+        AttachableSingleton<Type>::~AttachableSingleton()
+    {
+        assert(s_instance == nullptr);
+    }
+
+    template<typename Type>
+        void AttachableSingleton<Type>::AttachCurrentModule()
     {
         assert(s_instance==nullptr);
         s_instance = (Type*)this;
     }
 
     template<typename Type>
-        void CrossModuleSingleton<Type>::DetachCurrentModule()
+        void AttachableSingleton<Type>::DetachCurrentModule()
     {
         assert(s_instance==this);
         s_instance = nullptr;
     }
 
     template<typename Type>
-        Type* CrossModuleSingleton<Type>::s_instance = nullptr;
+        Type* AttachableSingleton<Type>::s_instance = nullptr;
 }
 
 

@@ -1,6 +1,7 @@
 
 #include "Device_EAGL.h"
 #include "Metal/DeviceContext.h"
+#include "Metal/IndexedGLType.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Core/Exceptions.h"
@@ -54,6 +55,7 @@ namespace RenderCore { namespace ImplOpenGLES
     Device::Device()
     {
         _immediateContext = std::make_shared<ThreadContextOpenGLES>();
+        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(*this);
     }
 
     Device::~Device()
@@ -77,7 +79,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     DeviceDesc Device::GetDesc()
     {
-        return DeviceDesc { "OpenGLES-EAGL", 0, 0 };
+        return DeviceDesc { "OpenGLES-EAGL", "", "" };
     }
 
     std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()

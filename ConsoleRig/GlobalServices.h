@@ -15,16 +15,14 @@ namespace Utility { class CompletionThreadPool; }
 namespace ConsoleRig
 {
     template<typename Obj>
-        class Attachable;
-
-    template<typename Obj>
         class AttachRef
     {
     public:
         void Detach();
         Obj& Get();
-        operator bool() { return _isAttached; }
+        operator bool() { return _attachedService != nullptr; }
 
+        AttachRef(Obj&);
         AttachRef();
         AttachRef(AttachRef&& moveFrom);
         AttachRef& operator=(AttachRef&& moveFrom);
@@ -33,33 +31,12 @@ namespace ConsoleRig
         AttachRef(const AttachRef&) = delete;
         AttachRef& operator=(const AttachRef&) = delete;
     protected:
-        AttachRef(Attachable<Obj>&);
-        bool _isAttached;
-        Attachable<Obj>* _attachedServices;
-        friend class Attachable<Obj>;
-    };
-    
-    template<typename Obj>
-        class Attachable
-    {
-    public:
-        AttachRef<Obj> Attach();
-        
-        Attachable(Obj& obj);
-        ~Attachable();
-
-        Attachable(const Attachable&) = delete;
-        Attachable& operator=(const Attachable&) = delete;
-    protected:
-        signed _attachReferenceCount;
-        AttachRef<Obj> _mainAttachReference;
-        Obj* _object;
-        friend class AttachRef<Obj>;
+        Obj* _attachedService;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class CrossModule
+    class CrossModule : public std::enable_shared_from_this<CrossModule>
     {
     public:
         VariantFunctions _services;
@@ -67,28 +44,10 @@ namespace ConsoleRig
         template<typename Object> auto Attach() -> AttachRef<Object>;
         template<typename Object> void Publish(Object& obj);
         template<typename Object> void Withhold(Object& obj);
+
+        template<typename Object, typename... Args>
+            std::shared_ptr<Object> CreateAndPublish(Args... a);
     };
-
-    template<typename Object>
-        auto CrossModule::Attach() -> AttachRef<Object>
-    {
-        return _services.Call<Attachable<Object>*>(typeid(Object).hash_code())->Attach();
-    }
-
-    template<typename Object> 
-        void CrossModule::Publish(Object& obj)
-    {
-        auto attachable = std::make_shared<Attachable<Object>>(obj);
-        _services.Add(
-            typeid(Object).hash_code(), 
-            [attachable]() -> Attachable<Object>* { return attachable.get(); });
-    }
-
-    template<typename Object> 
-        void CrossModule::Withhold(Object& obj)
-    {
-        _services.Remove(typeid(Object).hash_code());
-    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -109,12 +68,10 @@ namespace ConsoleRig
     class GlobalServices
     {
     public:
-        static CrossModule& GetCrossModule() { return s_instance->_crossModule; }
+        static CrossModule& GetCrossModule() { return *s_instance->_crossModule; }
         static CompletionThreadPool& GetShortTaskThreadPool() { return *s_instance->_shortTaskPool; }
         static CompletionThreadPool& GetLongTaskThreadPool() { return *s_instance->_longTaskPool; }
         static GlobalServices& GetInstance() { return *s_instance; }
-
-        AttachRef<GlobalServices> Attach();
 
         GlobalServices(const StartupConfig& cfg = StartupConfig());
         ~GlobalServices();
@@ -126,7 +83,7 @@ namespace ConsoleRig
         void DetachCurrentModule();
     protected:
         static GlobalServices* s_instance;
-        CrossModule _crossModule;
+        std::shared_ptr<CrossModule> _crossModule;
 
         std::unique_ptr<CompletionThreadPool> _shortTaskPool;
         std::unique_ptr<CompletionThreadPool> _longTaskPool;

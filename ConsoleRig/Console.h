@@ -54,7 +54,7 @@ namespace ConsoleRig
 
     // template <typename Type> class ConsoleVariable;
 
-    template <typename Type> class ConsoleVariable : noncopyable
+    template <typename Type> class ConsoleVariable
     {
     public:
         ConsoleVariable(const std::string& name, Type& attachedValue, const char cvarNamespace[] = nullptr);

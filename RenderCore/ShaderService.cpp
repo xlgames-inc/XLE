@@ -147,7 +147,9 @@ namespace RenderCore
 				return ::Assets::Internal::ConstructFromIntermediateAssetLocator<CompiledShaderByteCode>(
 					*artifacts[0].second, stage, MakeStringSection(init0));
 			});
-        assert(0);      // todo - need to set the dependncy validation to something reasonable --
+        #if defined(TEMP_HACK)
+            assert(0);      // todo - need to set the dependency validation to something reasonable --
+        #endif
 		auto result = std::make_shared<::Assets::DeferredConstruction>(
 			pendingCompile, nullptr, std::move(constructorCallback));
 		result->GetVariants().Add(ConstHash64<'Shad','erSt','age'>::Value, [stage](){ return stage; });

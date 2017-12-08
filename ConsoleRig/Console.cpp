@@ -626,7 +626,7 @@ namespace ConsoleRig
                 T*t = (T*)lua_touserdata(L, lua_upvalueindex(1));
 
                 assert (lua_isuserdata (L, lua_upvalueindex (2)));
-                MemFn fp = static_cast<MemFn>(lua_touserdata(L, lua_upvalueindex (2)));
+                MemFn fp = reinterpret_cast<MemFn>(lua_touserdata(L, lua_upvalueindex (2)));
 
                 assert (fp != 0);
                 ArgList<Params> args (L);
@@ -664,7 +664,7 @@ namespace ConsoleRig
         rawgetfield (L, -1, "__propget");
         assert (lua_istable (L, -1));
         lua_pushlightuserdata(L, this);
-        lua_pushlightuserdata(L, get);
+        lua_pushlightuserdata(L, (void*)get);
         lua_pushcclosure(L, &Detail::ConsoleVariable_CallFunction<Type, decltype(get)>::Call, 2);
         rawsetfield(L, -2, name.c_str());
         lua_pop(L, 1);
@@ -673,7 +673,7 @@ namespace ConsoleRig
         rawgetfield(L, -1, "__propset");
         assert(lua_istable(L, -1));
         lua_pushlightuserdata(L, this);
-        lua_pushlightuserdata(L, set);
+        lua_pushlightuserdata(L, (void*)set);
         lua_pushcclosure(L, &Detail::ConsoleVariable_CallFunction<Type, decltype(set)>::Call, 2);
         rawsetfield(L, -2, name.c_str());
         lua_pop(L, 1);

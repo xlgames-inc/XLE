@@ -1,0 +1,319 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 48;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		8FA52DCA1FD9D48A0039B229 /* IncludeLUA.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DBC1FD9D4890039B229 /* IncludeLUA.h */; };
+		8FA52DCB1FD9D48A0039B229 /* GlobalServices.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DBD1FD9D4890039B229 /* GlobalServices.h */; };
+		8FA52DCF1FD9D48A0039B229 /* OutputStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA52DC01FD9D48A0039B229 /* OutputStream.cpp */; };
+		8FA52DD01FD9D48A0039B229 /* OutputStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA52DC01FD9D48A0039B229 /* OutputStream.cpp */; };
+		8FA52DD31FD9D48A0039B229 /* GlobalServices.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA52DC21FD9D48A0039B229 /* GlobalServices.cpp */; };
+		8FA52DD41FD9D48A0039B229 /* GlobalServices.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA52DC21FD9D48A0039B229 /* GlobalServices.cpp */; };
+		8FA52DD61FD9D48A0039B229 /* OutputStream.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DC41FD9D48A0039B229 /* OutputStream.h */; };
+		8FA52DD81FD9D48A0039B229 /* AttachableInternal.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DC61FD9D48A0039B229 /* AttachableInternal.h */; };
+		8FA52DDB1FD9D48A0039B229 /* IProgress.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DC81FD9D48A0039B229 /* IProgress.h */; };
+		8FA52DE51FD9DC580039B229 /* Console.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA52DE31FD9DC580039B229 /* Console.cpp */; };
+		8FA52DE61FD9DC580039B229 /* Console.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA52DE31FD9DC580039B229 /* Console.cpp */; };
+		8FA52DE71FD9DC580039B229 /* Console.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DE41FD9DC580039B229 /* Console.h */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8FA52D841FD9D3900039B229 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "include/$(PRODUCT_NAME)";
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		8FA52D861FD9D3900039B229 /* libConsoleRigIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libConsoleRigIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		8FA52DB01FD9D3CA0039B229 /* CoreRelease.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
+		8FA52DB11FD9D3CB0039B229 /* Core.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
+		8FA52DB21FD9D3CB0039B229 /* CoreDebug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
+		8FA52DB31FD9D3CB0039B229 /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
+		8FA52DB81FD9D42E0039B229 /* libConsoleRigMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libConsoleRigMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		8FA52DBC1FD9D4890039B229 /* IncludeLUA.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IncludeLUA.h; path = ../IncludeLUA.h; sourceTree = "<group>"; };
+		8FA52DBD1FD9D4890039B229 /* GlobalServices.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GlobalServices.h; path = ../GlobalServices.h; sourceTree = "<group>"; };
+		8FA52DC01FD9D48A0039B229 /* OutputStream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = OutputStream.cpp; path = ../OutputStream.cpp; sourceTree = "<group>"; };
+		8FA52DC21FD9D48A0039B229 /* GlobalServices.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = GlobalServices.cpp; path = ../GlobalServices.cpp; sourceTree = "<group>"; };
+		8FA52DC41FD9D48A0039B229 /* OutputStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OutputStream.h; path = ../OutputStream.h; sourceTree = "<group>"; };
+		8FA52DC61FD9D48A0039B229 /* AttachableInternal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AttachableInternal.h; path = ../AttachableInternal.h; sourceTree = "<group>"; };
+		8FA52DC81FD9D48A0039B229 /* IProgress.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IProgress.h; path = ../IProgress.h; sourceTree = "<group>"; };
+		8FA52DE31FD9DC580039B229 /* Console.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Console.cpp; path = ../Console.cpp; sourceTree = "<group>"; };
+		8FA52DE41FD9DC580039B229 /* Console.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Console.h; path = ../Console.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8FA52D831FD9D3900039B229 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8FA52DB51FD9D42E0039B229 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		8FA52D7D1FD9D3900039B229 = {
+			isa = PBXGroup;
+			children = (
+				8FA52DC61FD9D48A0039B229 /* AttachableInternal.h */,
+				8FA52DAF1FD9D3C10039B229 /* Config */,
+				8FA52DE31FD9DC580039B229 /* Console.cpp */,
+				8FA52DE41FD9DC580039B229 /* Console.h */,
+				8FA52DC21FD9D48A0039B229 /* GlobalServices.cpp */,
+				8FA52DBD1FD9D4890039B229 /* GlobalServices.h */,
+				8FA52DBC1FD9D4890039B229 /* IncludeLUA.h */,
+				8FA52DC81FD9D48A0039B229 /* IProgress.h */,
+				8FA52DC01FD9D48A0039B229 /* OutputStream.cpp */,
+				8FA52DC41FD9D48A0039B229 /* OutputStream.h */,
+				8FA52D871FD9D3900039B229 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		8FA52D871FD9D3900039B229 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8FA52D861FD9D3900039B229 /* libConsoleRigIOS.a */,
+				8FA52DB81FD9D42E0039B229 /* libConsoleRigMac.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8FA52DAF1FD9D3C10039B229 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				8FA52DB11FD9D3CB0039B229 /* Core.xcconfig */,
+				8FA52DB21FD9D3CB0039B229 /* CoreDebug.xcconfig */,
+				8FA52DB01FD9D3CA0039B229 /* CoreRelease.xcconfig */,
+				8FA52DB31FD9D3CB0039B229 /* CoreWarnings.xcconfig */,
+			);
+			name = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		8FA52DB61FD9D42E0039B229 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8FA52DD81FD9D48A0039B229 /* AttachableInternal.h in Headers */,
+				8FA52DCA1FD9D48A0039B229 /* IncludeLUA.h in Headers */,
+				8FA52DCB1FD9D48A0039B229 /* GlobalServices.h in Headers */,
+				8FA52DD61FD9D48A0039B229 /* OutputStream.h in Headers */,
+				8FA52DE71FD9DC580039B229 /* Console.h in Headers */,
+				8FA52DDB1FD9D48A0039B229 /* IProgress.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		8FA52D851FD9D3900039B229 /* ConsoleRigIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8FA52D8F1FD9D3900039B229 /* Build configuration list for PBXNativeTarget "ConsoleRigIOS" */;
+			buildPhases = (
+				8FA52D821FD9D3900039B229 /* Sources */,
+				8FA52D831FD9D3900039B229 /* Frameworks */,
+				8FA52D841FD9D3900039B229 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ConsoleRigIOS;
+			productName = ConsoleRig;
+			productReference = 8FA52D861FD9D3900039B229 /* libConsoleRigIOS.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		8FA52DB71FD9D42E0039B229 /* ConsoleRigMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8FA52DB91FD9D42E0039B229 /* Build configuration list for PBXNativeTarget "ConsoleRigMac" */;
+			buildPhases = (
+				8FA52DB41FD9D42E0039B229 /* Sources */,
+				8FA52DB51FD9D42E0039B229 /* Frameworks */,
+				8FA52DB61FD9D42E0039B229 /* Headers */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ConsoleRigMac;
+			productName = ConsoleRigMac;
+			productReference = 8FA52DB81FD9D42E0039B229 /* libConsoleRigMac.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8FA52D7E1FD9D3900039B229 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0910;
+				ORGANIZATIONNAME = XLE;
+				TargetAttributes = {
+					8FA52D851FD9D3900039B229 = {
+						CreatedOnToolsVersion = 9.1;
+						ProvisioningStyle = Automatic;
+					};
+					8FA52DB71FD9D42E0039B229 = {
+						CreatedOnToolsVersion = 9.1;
+					};
+				};
+			};
+			buildConfigurationList = 8FA52D811FD9D3900039B229 /* Build configuration list for PBXProject "ConsoleRig" */;
+			compatibilityVersion = "Xcode 8.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 8FA52D7D1FD9D3900039B229;
+			productRefGroup = 8FA52D871FD9D3900039B229 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8FA52DB71FD9D42E0039B229 /* ConsoleRigMac */,
+				8FA52D851FD9D3900039B229 /* ConsoleRigIOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8FA52D821FD9D3900039B229 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8FA52DE61FD9DC580039B229 /* Console.cpp in Sources */,
+				8FA52DD41FD9D48A0039B229 /* GlobalServices.cpp in Sources */,
+				8FA52DD01FD9D48A0039B229 /* OutputStream.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8FA52DB41FD9D42E0039B229 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8FA52DE51FD9DC580039B229 /* Console.cpp in Sources */,
+				8FA52DD31FD9D48A0039B229 /* GlobalServices.cpp in Sources */,
+				8FA52DCF1FD9D48A0039B229 /* OutputStream.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		8FA52D8D1FD9D3900039B229 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		8FA52D8E1FD9D3900039B229 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		8FA52D901FD9D3900039B229 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8FA52DB21FD9D3CB0039B229 /* CoreDebug.xcconfig */;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../..",
+					"$(PROJECT_DIR)/../../Foreign/cml-1_0_2",
+					"$(PROJECT_DIR)/../../Foreign/eigen",
+					"$(PROJECT_DIR)/../../Foreign/Lua/src",
+					"$(PROJECT_DIR)/../../Foreign/LuaBridge/Source/LuaBridge",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		8FA52D911FD9D3900039B229 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8FA52DB01FD9D3CA0039B229 /* CoreRelease.xcconfig */;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../..",
+					"$(PROJECT_DIR)/../../Foreign/cml-1_0_2",
+					"$(PROJECT_DIR)/../../Foreign/eigen",
+					"$(PROJECT_DIR)/../../Foreign/Lua/src",
+					"$(PROJECT_DIR)/../../Foreign/LuaBridge/Source/LuaBridge",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		8FA52DBA1FD9D42E0039B229 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INSTALL_PATH = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		8FA52DBB1FD9D42E0039B229 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INSTALL_PATH = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8FA52D811FD9D3900039B229 /* Build configuration list for PBXProject "ConsoleRig" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8FA52D8D1FD9D3900039B229 /* Debug */,
+				8FA52D8E1FD9D3900039B229 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8FA52D8F1FD9D3900039B229 /* Build configuration list for PBXNativeTarget "ConsoleRigIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8FA52D901FD9D3900039B229 /* Debug */,
+				8FA52D911FD9D3900039B229 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8FA52DB91FD9D42E0039B229 /* Build configuration list for PBXNativeTarget "ConsoleRigMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8FA52DBA1FD9D42E0039B229 /* Debug */,
+				8FA52DBB1FD9D42E0039B229 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 8FA52D7E1FD9D3900039B229 /* Project object */;
+}

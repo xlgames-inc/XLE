@@ -127,7 +127,8 @@ namespace ConsoleRig
 			mountingTree = serv.Call<std::shared_ptr<::Assets::MountingTree>>(typeid(::Assets::MountingTree).hash_code());
 		}
 
-		std::shared_ptr<::Assets::IFileSystem> defaultFileSystem;
+		#if defined(TEMP_HACK)
+        std::shared_ptr<::Assets::IFileSystem> defaultFileSystem;
 		if (!serv.Has<std::shared_ptr<::Assets::IFileSystem>()>(Fn_DefaultFileSystem)) {
 			defaultFileSystem = ::Assets::CreateFileSystem_OS();
 			serv.Add(Fn_DefaultFileSystem, [defaultFileSystem]() { return defaultFileSystem; });
@@ -136,6 +137,7 @@ namespace ConsoleRig
 		}
 
 		::Assets::MainFileSystem::Init(mountingTree, defaultFileSystem);
+        #endif
     }
 
     static void MainRig_Detach()
@@ -162,20 +164,23 @@ namespace ConsoleRig
         _shortTaskPool = std::make_unique<CompletionThreadPool>(cfg._shortTaskThreadPoolCount);
         _longTaskPool = std::make_unique<CompletionThreadPool>(cfg._longTaskThreadPoolCount);
 
-        MainRig_Startup(cfg, _crossModule._services);
-        _crossModule.Publish(*this);
+        _crossModule = std::make_shared<CrossModule>();
+        MainRig_Startup(cfg, _crossModule->_services);
+        _crossModule->Publish(*this);
+        AttachCurrentModule();
 
             // add "nsight" marker to global services when "-nsight" is on
             // the command line. This is an easy way to record a global (&cross-dll)
             // state to use the nsight configuration when the given flag is set.
         const auto* cmdLine = XlGetCommandLine();
         if (cmdLine && XlFindString(cmdLine, "-nsight"))
-            _crossModule._services.Add(Hash64("nsight"), []() { return true; });
+            _crossModule->_services.Add(Hash64("nsight"), []() { return true; });
     }
 
     GlobalServices::~GlobalServices() 
     {
-        _crossModule.Withhold(*this);
+        _crossModule->Withhold(*this);
+        DetachCurrentModule();
     }
 
     void GlobalServices::AttachCurrentModule()
@@ -192,12 +197,11 @@ namespace ConsoleRig
         s_instance = nullptr;
     }
 
-    AttachRef<GlobalServices> GlobalServices::Attach()
-    {
-        return _crossModule.Attach<GlobalServices>();
-    }
-
 
     IStep::~IStep() {}
     IProgress::~IProgress() {}
+
+
+    void Logging_Startup(const char configFile[], const char logFileName[]) {}
+    void Logging_Shutdown() {}
 }

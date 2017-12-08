@@ -363,7 +363,9 @@ namespace Assets { namespace IntermediateAssets
 			_baseDirectory = buffer;
 		}
 #else
-        assert(0);
+        #if defined(TEMP_HACK)
+            assert(0);
+        #endif
 #endif
     }
 

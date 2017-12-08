@@ -9,8 +9,10 @@
 #include "../../RenderUtils.h"
 #include "../../Types.h"
 #include "../../../Assets/Assets.h"
+#include "../../../Assets/DepVal.h"
 #include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Utility/StringUtils.h"
+#include "../../../Utility/MemoryUtils.h"
 #include "IncludeGLES.h"
 
 #if defined(XLE_HAS_CONSOLE_RIG)
@@ -45,6 +47,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         static std::unordered_map<uint64_t, intrusive_ptr<OpenGL::Shader>> s_compiledShaders;
     };
+
+    std::unordered_map<uint64_t, intrusive_ptr<OpenGL::Shader>> OGLESShaderCompiler::s_compiledShaders;
 
     void OGLESShaderCompiler::AdaptShaderModel(
         ResChar destination[],
@@ -109,13 +113,14 @@ namespace RenderCore { namespace Metal_OpenGLES
     OGLESShaderCompiler::~OGLESShaderCompiler()
     {}
 
-    ShaderProgram::ShaderProgram(   const ::Assets::ResChar vertexShaderInitializer[],
-                                    const ::Assets::ResChar fragmentShaderInitializer[])
+    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
     {
-            // Note -- an exception in the second will trash the first unnecessarily.
-        auto& vertexShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer);
-        auto& fragmentShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer);
+        return std::make_shared<OGLESShaderCompiler>();
+    }
 
+    ShaderProgram::ShaderProgram(   const CompiledShaderByteCode& vertexShader,
+                                    const CompiledShaderByteCode& fragmentShader)
+    {
         auto vsByteCode = vertexShader.GetByteCode();
         auto fsByteCode = fragmentShader.GetByteCode();
 
@@ -148,6 +153,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
 
         _underlying = std::move(newProgramIndex);
+
+        _depVal = std::make_shared<Assets::DependencyValidation>();
+        Assets::RegisterAssetDependency(_depVal, vertexShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_depVal, fragmentShader.GetDependencyValidation());
     }
 
     ShaderProgram::~ShaderProgram()

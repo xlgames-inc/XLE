@@ -17,26 +17,36 @@
 #include "../../Assets/AsyncLoadOperation.h"
 #include "../../Assets/IFileSystem.h"
 
-#include "../../../ConsoleRig/Log.h"
-#include "../../../ConsoleRig/GlobalServices.h"
-#include "../../../Utility/Streams/PathUtils.h"
-#include "../../../Utility/Streams/FileUtils.h"
-#include "../../../Utility/Threading/CompletionThreadPool.h"
-#include "../../../Utility/StringFormat.h"
+#if defined(XLE_HAS_CONSOLE_RIG)
+    #include "../../ConsoleRig/Log.h"
+#endif
+#include "../../ConsoleRig/GlobalServices.h"
+#include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/Threading/CompletionThreadPool.h"
+#include "../../Utility/StringFormat.h"
 
 #include <functional>
 #include <deque>
 #include <regex>
+#include <sstream>
 
 namespace RenderCore { namespace Assets 
 {
-    static const bool CompileInBackground = true;
+    #if defined(TEMP_HACK)
+        static const bool CompileInBackground = true;
+    #else
+        static const bool CompileInBackground = false;
+    #endif
     using ::Assets::ResChar;
     using ResId = ShaderService::ResId;
 
         ////////////////////////////////////////////////////////////
 
-    class ShaderCompileMarker : public ::Assets::PendingCompileMarker, public ::Assets::AsyncLoadOperation
+    class ShaderCompileMarker : public ::Assets::PendingCompileMarker
+        #if defined(TEMP_HACK)
+            , public ::Assets::AsyncLoadOperation
+        #endif
     {
     public:
         using Payload = std::shared_ptr<std::vector<uint8>>;
@@ -101,10 +111,13 @@ namespace RenderCore { namespace Assets
                 // invoke a background load and compile...
                 // note that Enqueue can't be called from a constructor, because it
                 // calls shared_from_this()
+            assert(0);
+            /*
             AsyncLoadOperation::Enqueue(
 				std::static_pointer_cast<ShaderCompileMarker>(shared_from_this()),
                 _shaderPath._filename,
                 ConsoleRig::GlobalServices::GetLongTaskThreadPool());
+            */
 
         } else {
 
@@ -182,9 +195,11 @@ namespace RenderCore { namespace Assets
 				TRY {
 					_chain(_shaderPath, _definesTable, result, _payload, errors, MakeIteratorRange(_deps));
 				} CATCH (const std::bad_function_call& e) {
-					LogWarning 
-						<< "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")" // << std::endl 
-						<< "This may prevent the shader from being flushed to disk in it's compiled form. But the shader should still be useable";
+					#if defined(XLE_HAS_CONSOLE_RIG)
+                        LogWarning
+                            << "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")" // << std::endl
+                            << "This may prevent the shader from being flushed to disk in it's compiled form. But the shader should still be useable";
+                    #endif
 				} CATCH_END
 			}
 
@@ -281,6 +296,7 @@ namespace RenderCore { namespace Assets
 
     void ShaderCacheSet::LogStats(const ::Assets::IntermediateAssets::Store& intermediateStore)
     {
+#if defined(XLE_HAS_CONSOLE_RIG)
             // log statistics information for all shaders in all archive caches
         uint64 totalShaderSize = 0; // in bytes
         uint64 totalAllocationSpace = 0;
@@ -393,6 +409,7 @@ namespace RenderCore { namespace Assets
             LogInfo << "Wasted part: " << 100.f * (1.0f - float(totalShaderSize) / float(totalAllocationSpace)) << "%";
         }
         LogInfo << "------------------------------------------------------------------------------------------";
+#endif
     }
 
     ShaderCacheSet::ShaderCacheSet(const DeviceDesc& devDesc)
@@ -467,9 +484,9 @@ namespace RenderCore { namespace Assets
         /*out*/ ::Assets::ResChar archiveName[], size_t archiveNameCount,
         /*out*/ ::Assets::ResChar depName[], size_t depNameCount)
     {
-        _snprintf_s(archiveName, archiveNameCount * sizeof(::Assets::ResChar), _TRUNCATE, "%s-%s", res._filename, res._shaderModel);
+        snprintf(archiveName, archiveNameCount * sizeof(::Assets::ResChar), "%s-%s", res._filename, res._shaderModel);
         auto archiveId = HashCombine(Hash64(res._entryPoint), Hash64(definesTable));
-        _snprintf_s(depName, depNameCount * sizeof(::Assets::ResChar), _TRUNCATE, "%s-%08x%08x", archiveName, uint32(archiveId>>32ull), uint32(archiveId));
+        snprintf(depName, depNameCount * sizeof(::Assets::ResChar), "%s-%08x%08x", archiveName, uint32(archiveId>>32ull), uint32(archiveId));
 		return archiveId;
     }
 
@@ -483,7 +500,8 @@ namespace RenderCore { namespace Assets
 
         return std::make_shared<ArchivedFileArtifact>(
 			c->_shaderCacheSet->GetArchive(archiveName, *_store), archiveId, 
-			_store->MakeDependencyValidation(depName));
+			_store->MakeDependencyValidation(depName),
+            nullptr, nullptr);
     }
 
 	void LocalCompiledShaderSource::AddCompileOperation(const std::shared_ptr<ShaderCompileMarker>& marker)
@@ -595,7 +613,7 @@ namespace RenderCore { namespace Assets
 					// Create the artifact and add it to the compile marker
 				auto depVal = AsDepValPtr(deps);
 				auto artifact = std::make_shared<::Assets::BlobArtifact>(payload, errors, depVal);
-				marker->AddArtifact(artifact);
+				marker->AddArtifact("main", artifact);
 
                     // give the PendingCompileMarker object the same state
                 marker->SetState(newState);
@@ -655,7 +673,7 @@ namespace RenderCore { namespace Assets
             return nullptr; // can't start a new compile now. Probably we're shutting down
         }
 
-        auto shaderId = ShaderService::MakeResId(initializers[0], *_compiler);
+        auto shaderId = ShaderService::MakeResId(initializers[0], _compiler.get());
 		StringSection<ResChar> definesTable = (initializerCount > 1)?initializers[1]:StringSection<ResChar>();
 
             // for a "null" shader, we must return nullptr
@@ -670,7 +688,7 @@ namespace RenderCore { namespace Assets
         StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
     {
         auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler);
-        auto resId = ShaderService::MakeResId(resource, *_compiler);
+        auto resId = ShaderService::MakeResId(resource, _compiler.get());
         compileHelper->Enqueue(resId, definesTable.AsString(), nullptr);
         return compileHelper;
     }
@@ -709,7 +727,9 @@ namespace RenderCore { namespace Assets
     LocalCompiledShaderSource::~LocalCompiledShaderSource()
     {
         if (Interlocked::Load(&_activeCompileCount) != 0) {
-            LogWarning << "Shader compile operations still pending while attempt to shutdown LocalCompiledShaderSource! Stalling until finished";
+            #if defined(XLE_HAS_CONSOLE_RIG)
+                LogWarning << "Shader compile operations still pending while attempt to shutdown LocalCompiledShaderSource! Stalling until finished";
+            #endif
             StallOnPendingOperations(true);
         }
     }

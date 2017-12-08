@@ -9,6 +9,7 @@
 #include "../ShaderService.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
+#include "../../Utility/Threading/Mutex.h"
 #include <vector>
 #include <memory>
 #include <mutex>
