@@ -72,7 +72,7 @@ namespace RenderCore { namespace Assets
             StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
             StringSection<char> shaderModel, StringSection<ResChar> definesTable);
 
-        ShaderCompileMarker(std::shared_ptr<ShaderService::ILowLevelCompiler>);
+        ShaderCompileMarker(std::shared_ptr<ShaderService::ILowLevelCompiler>, std::shared_ptr<ISourceCodePreprocessor> preprocessor);
         ~ShaderCompileMarker();
 
         ShaderCompileMarker(ShaderCompileMarker&) = delete;
@@ -86,6 +86,7 @@ namespace RenderCore { namespace Assets
         std::vector<::Assets::DependentFileState> _deps;
         ::Assets::rstring _definesTable;
         std::shared_ptr<ShaderService::ILowLevelCompiler> _compiler;
+        std::shared_ptr<ISourceCodePreprocessor> _preprocessor;
 
         ChainFn _chain;
         ResId _shaderPath;
@@ -122,13 +123,23 @@ namespace RenderCore { namespace Assets
         } else {
 
                 // push file load & compile into this (foreground) thread
-            size_t fileSize = 0;
-            auto fileData = ::Assets::TryLoadFileAsMemoryBlock(_shaderPath._filename, &fileSize);
-            if (fileData.get() && fileSize) {
-                Complete(fileData.get(), fileSize);
-			} else {
-				OnFailure();
-			}
+            if (_preprocessor) {
+                auto preprocessedOutput = _preprocessor->RunPreprocessor(_shaderPath._filename);
+                if (!preprocessedOutput._processedSource.empty()) {
+                    static_assert(sizeof(decltype(preprocessedOutput._processedSource)::value_type) == 1, "Expecting single byte character for size calculation");
+                    Complete(preprocessedOutput._processedSource.data(), preprocessedOutput._processedSource.size());
+                } else {
+                    OnFailure();
+                }
+            } else {
+                size_t fileSize = 0;
+                auto fileData = ::Assets::TryLoadFileAsMemoryBlock(_shaderPath._filename, &fileSize);
+                if (fileData.get() && fileSize) {
+                    Complete(fileData.get(), fileSize);
+                } else {
+                    OnFailure();
+                }
+            }
 
         }
     }
@@ -153,8 +164,10 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    ShaderCompileMarker::ShaderCompileMarker(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler)
-    : _compiler(compiler) {}
+    ShaderCompileMarker::ShaderCompileMarker(
+        std::shared_ptr<ShaderService::ILowLevelCompiler> compiler,
+        std::shared_ptr<ISourceCodePreprocessor> preprocessor)
+    : _compiler(compiler), _preprocessor(preprocessor) {}
     ShaderCompileMarker::~ShaderCompileMarker() {}
 
     static bool CancelAllShaderCompiles = false;
@@ -559,7 +572,7 @@ namespace RenderCore { namespace Assets
 
         using Payload = ShaderCompileMarker::Payload;
 
-        auto compileHelper = std::make_shared<ShaderCompileMarker>(c->_compiler);
+        auto compileHelper = std::make_shared<ShaderCompileMarker>(c->_compiler, c->_preprocessor);
 
         auto tempPtr = compileHelper.get();
         auto store = _store;
@@ -687,7 +700,7 @@ namespace RenderCore { namespace Assets
         StringSection<ResChar> resource, 
         StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
     {
-        auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler);
+        auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
         auto resId = ShaderService::MakeResId(resource, _compiler.get());
         compileHelper->Enqueue(resId, definesTable.AsString(), nullptr);
         return compileHelper;
@@ -697,7 +710,7 @@ namespace RenderCore { namespace Assets
         StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
         StringSection<char> shaderModel, StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
     {
-        auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler);
+        auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
         compileHelper->Enqueue(shaderInMemory, entryPoint, shaderModel, definesTable); 
         return compileHelper;
     }
@@ -716,8 +729,10 @@ namespace RenderCore { namespace Assets
 
     LocalCompiledShaderSource::LocalCompiledShaderSource(
         std::shared_ptr<ShaderService::ILowLevelCompiler> compiler,
+        std::shared_ptr<ISourceCodePreprocessor> preprocessor,
         const DeviceDesc& devDesc)
     : _compiler(std::move(compiler))
+    , _preprocessor(std::move(preprocessor))
     {
         CancelAllShaderCompiles = false;
         _shaderCacheSet = std::make_unique<ShaderCacheSet>(devDesc);

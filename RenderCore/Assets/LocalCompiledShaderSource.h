@@ -21,6 +21,25 @@ namespace RenderCore { namespace Assets
     class ShaderCacheSet;
     class ShaderCompileMarker;
 
+    class ISourceCodePreprocessor
+    {
+    public:
+        struct SourceCodeWithRemapping
+        {
+        public:
+            struct LineMarker
+            {
+                std::string _sourceName;
+                unsigned _sourceLine;
+                unsigned _processedSourceLine;
+            };
+            std::string _processedSource;
+            std::vector<LineMarker> _lineMarkers;
+        };
+
+        virtual SourceCodeWithRemapping RunPreprocessor(const char filename[]) = 0;
+    };
+
     class LocalCompiledShaderSource 
         : public ::Assets::IntermediateAssets::IAssetCompiler
         , public ShaderService::IShaderSource
@@ -46,7 +65,10 @@ namespace RenderCore { namespace Assets
 		void AddCompileOperation(const std::shared_ptr<ShaderCompileMarker>& marker);
 		void RemoveCompileOperation(ShaderCompileMarker& marker);
 
-        LocalCompiledShaderSource(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler, const DeviceDesc& devDesc);
+        LocalCompiledShaderSource(
+            std::shared_ptr<ShaderService::ILowLevelCompiler> compiler,
+            std::shared_ptr<ISourceCodePreprocessor> preprocessor,
+            const DeviceDesc& devDesc);
         ~LocalCompiledShaderSource();
     protected:
         std::unique_ptr<ShaderCacheSet> _shaderCacheSet;
@@ -54,6 +76,7 @@ namespace RenderCore { namespace Assets
         mutable Interlocked::Value _activeCompileCount;
         Threading::Mutex _activeCompileOperationsLock;
         std::shared_ptr<ShaderService::ILowLevelCompiler> _compiler;
+        std::shared_ptr<ISourceCodePreprocessor> _preprocessor;
 
         class Marker;
     };
