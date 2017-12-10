@@ -7,7 +7,7 @@
 #include "PoissonSolver.h"
 #include "PoissonSolverDetail.h"
 #include "RegularNumberField.h"
-#include "./Math.h"
+#include "XLEMath.h"
 #include "Vector.h"
 // #include "../ConsoleRig/Log.h"
 #include "../Utility/PtrUtils.h"
@@ -176,7 +176,7 @@ namespace XLEMath
                 FOR_EACH_CELL_END
 
                 auto alpha = rho / dDotQ;
-                assert(isfinite(alpha) && !isnan(alpha));
+                assert(std::isfinite(alpha) && !std::isnan(alpha));
                 FOR_EACH_CELL
                      x[i] += alpha * _d[i];
                         // _r should be an estimate the of the current error
@@ -193,7 +193,7 @@ namespace XLEMath
 
                 if (XlAbs(rho) < rhoThreshold) break;
                 auto beta = rho / rhoOld;
-                assert(isfinite(beta) && !isnan(beta));
+                assert(std::isfinite(beta) && !std::isnan(beta));
             
                     // we can skip the border for the following...
                     // (but that requires different cases for 2D/3D)
@@ -310,7 +310,7 @@ namespace XLEMath
                 FOR_EACH_CELL_END
 
                 auto alpha = rho / dDotQ;
-                assert(isfinite(alpha) && !isnan(alpha));
+                assert(std::isfinite(alpha) && !std::isnan(alpha));
                 FOR_EACH_CELL
                      x[i] += alpha * _d[i];
                     _r[i] -= alpha * _q[i];
@@ -326,7 +326,7 @@ namespace XLEMath
                 // assert(rho < rhoOld);
 
                 auto beta = rho / rhoOld;
-                assert(isfinite(beta) && !isnan(beta));
+                assert(std::isfinite(beta) && !std::isnan(beta));
             
                 FOR_EACH_CELL
                     _d[i] = _s[i] + beta * _d[i];

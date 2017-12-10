@@ -732,12 +732,12 @@ namespace ConsoleRig
     }
 
 
-    template ConsoleVariable<int>;
-    template ConsoleVariable<float>;
-    template ConsoleVariable<std::string>;
-    template ConsoleVariable<bool>;
-    template ConsoleVariable<Float3>;
-    template ConsoleVariable<Float4>;
+    template class ConsoleVariable<int>;
+    template class ConsoleVariable<float>;
+    template class ConsoleVariable<std::string>;
+    template class ConsoleVariable<bool>;
+    template class ConsoleVariable<Float3>;
+    template class ConsoleVariable<Float4>;
 
 
 

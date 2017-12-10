@@ -4,6 +4,10 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "../Core/SelectConfiguration.h"
+
+#if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
+
 namespace RenderCore
 {
 
@@ -41,3 +45,4 @@ __declspec(allocate(".ver$f")) static char BuildDateString_End[] = ">VERSION_DAT
 
 }
 
+#endif

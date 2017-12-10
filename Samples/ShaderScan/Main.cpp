@@ -11,7 +11,6 @@
 #include "Assets/ConfigFileContainer.h"
 #include "Assets/AssetUtils.h"
 #include "Assets/AssetServices.h"
-#include "Core/WinAPI/IncludeWindows.h"
 #include "ConsoleRig/GlobalServices.h"
 #include "ConsoleRig/Log.h"
 #include "Utility/StringUtils.h"
@@ -19,6 +18,7 @@
 #include "Utility/Streams/StreamDOM.h"
 #include "Utility/Streams/FileUtils.h"
 #include "Utility/ParameterBox.h"
+#include <iostream>
 
 namespace ShaderScan
 {

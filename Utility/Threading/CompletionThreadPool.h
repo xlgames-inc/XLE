@@ -10,6 +10,7 @@
 #include "LockFree.h"
 #include <vector>
 #include <thread>
+#include <functional>
 
 namespace Utility
 {

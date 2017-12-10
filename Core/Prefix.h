@@ -38,6 +38,7 @@
 #endif
 
 #pragma warning(disable:4481)   //  warning C4481: nonstandard extension used: override specifier 'override'
+#pragma clang diagnostic ignored "-Wmultichar" // multi character constant warning when using ConstHash64 object
 
 #if !defined(dimof)
     #define dimof(x) (sizeof(x)/sizeof(*x))

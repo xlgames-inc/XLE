@@ -103,6 +103,7 @@
 #define PLATFORMOS_ANDROID      2
 #define PLATFORMOS_OSX          3
 #define PLATFORMOS_IOS          4
+#define PLATFORMOS_LINUX        5
 
 #if defined(__ANDROID__)
 
@@ -126,6 +127,11 @@
     #else
         #error "Unknown Apple platform"
     #endif
+
+#elif __linux__
+
+    #define PLATFORMOS_ACTIVE   PLATFORMOS_LINUX
+    #define PLATFORMOS_TARGET   PLATFORMOS_LINUX
 
 #else
 

@@ -6,6 +6,7 @@
 
 #include "RectanglePacking.h"
 #include "../Utility/IteratorUtils.h"
+#include <limits>
 
 namespace XLEMath
 {
@@ -195,9 +196,9 @@ namespace XLEMath
             //      determine which free rectangle is ideal.
 
         auto best0 = _freeRectangles.end();
-        int best0Score = INT_MAX;
+        auto best0Score = std::numeric_limits<int>::max();
         auto best1 = _freeRectangles.end();
-        int best1Score = INT_MAX;
+        auto best1Score = std::numeric_limits<int>::max();
 
         /*UInt2 flippedDims(dims[1], dims[0]);
         for (auto i=_freeRectangles.begin(); i!=_freeRectangles.end(); ++i) {
@@ -234,7 +235,7 @@ namespace XLEMath
         const bool allowFlipped = false;
         if (constant_expression<!allowFlipped>::result()) {
             best1 = _freeRectangles.end();
-            best1Score = INT_MAX;
+            best1Score = std::numeric_limits<int>::max();
         }
 
         if (best0 == _freeRectangles.end() && best1 == _freeRectangles.end())

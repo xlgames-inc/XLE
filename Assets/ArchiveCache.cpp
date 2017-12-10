@@ -287,7 +287,7 @@ namespace Assets
                         // we need to allocate a new block
                     auto newBlockSize = (unsigned)i->_data->size();
                     
-                    #if defined(_DEBUG)
+                    #if !defined(NDEBUG)
                         auto originalHeapSize = spanningHeap.CalculateHeapSize();
                         auto originalAllocatedSize = spanningHeap.CalculateAllocatedSpace();
                     #endif
@@ -301,7 +301,7 @@ namespace Assets
                     assert(spanningHeap.CalculateHeapSize() >= originalHeapSize);
 
                         // make sure we're not overlapping another block (just to make sure the allocators are working)
-                    #if defined(_DEBUG)
+                    #if !defined(NDEBUG)
                         for (auto b=blocks.cbegin(); b!=blocks.cend(); ++b) {
                             assert((b->_start + b->_size) <= originalHeapSize);
                             assert(

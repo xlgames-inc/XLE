@@ -284,7 +284,7 @@ namespace ConsoleRig
     {
         auto storage = el::Helpers::storage();
         if (storage) {
-            std::string guid = StringMeld<64>() << _guid;
+            std::string guid = (StringMeld<64>() << _guid).AsString();
             auto* helper = storage->logDispatchCallback<Internal::LogHelper>(guid);
             if (!helper) {
                 storage->installLogDispatchCallback<Internal::LogHelper>(guid);
@@ -329,7 +329,7 @@ namespace LogUtilMethods
         char buffer[LogStringMaxLength];
         va_list args;
         va_start(args, format);
-        _vsnprintf_s(buffer, _TRUNCATE, format, args);
+        snprintf(buffer, dimof(buffer), format, args);
         va_end(args);
 
         LogVerbose(level) << buffer;
@@ -340,7 +340,7 @@ namespace LogUtilMethods
         char buffer[LogStringMaxLength];
         va_list args;
         va_start(args, format);
-        _vsnprintf_s(buffer, _TRUNCATE, format, args);
+        snprintf(buffer, dimof(buffer), format, args);
         va_end(args);
 
         LogInfo << buffer;
@@ -351,7 +351,7 @@ namespace LogUtilMethods
         char buffer[LogStringMaxLength];
         va_list args;
         va_start(args, format);
-        _vsnprintf_s(buffer, _TRUNCATE, format, args);
+        snprintf(buffer, dimof(buffer), format, args);
         va_end(args);
 
         LogWarning << buffer;
@@ -362,7 +362,7 @@ namespace LogUtilMethods
         char buffer[LogStringMaxLength];
         va_list args;
         va_start(args, format);
-        _vsnprintf_s(buffer, _TRUNCATE, format, args);
+        snprintf(buffer, dimof(buffer), format, args);
         va_end(args);
 
         LogAlwaysVerbose(level) << buffer;
@@ -373,7 +373,7 @@ namespace LogUtilMethods
         char buffer[LogStringMaxLength];
         va_list args;
         va_start(args, format);
-        _vsnprintf_s(buffer, _TRUNCATE, format, args);
+        snprintf(buffer, dimof(buffer), format, args);
         va_end(args);
 
         LogAlwaysInfo << buffer;
@@ -384,7 +384,7 @@ namespace LogUtilMethods
         char buffer[LogStringMaxLength];
         va_list args;
         va_start(args, format);
-        _vsnprintf_s(buffer, _TRUNCATE, format, args);
+        snprintf(buffer, dimof(buffer), format, args);
         va_end(args);
 
         LogAlwaysWarning << buffer;
@@ -395,7 +395,7 @@ namespace LogUtilMethods
         char buffer[LogStringMaxLength];
         va_list args;
         va_start(args, format);
-        _vsnprintf_s(buffer, _TRUNCATE, format, args);
+        snprintf(buffer, dimof(buffer), format, args);
         va_end(args);
 
         LogAlwaysError << buffer;
@@ -406,13 +406,15 @@ namespace LogUtilMethods
         char buffer[LogStringMaxLength];
         va_list args;
         va_start(args, format);
-        _vsnprintf_s(buffer, _TRUNCATE, format, args);
+        snprintf(buffer, dimof(buffer), format, args);
         va_end(args);
 
         LogAlwaysFatal << buffer;
     }
 }
 
+
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 
 #include "../Core/WinAPI/IncludeWindows.h"
 
@@ -446,3 +448,5 @@ namespace el { namespace base { namespace utils
     }
 #endif // _ELPP_OS_WINDOWS
 }}}
+
+#endif

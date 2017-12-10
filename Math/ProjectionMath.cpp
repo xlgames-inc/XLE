@@ -14,6 +14,7 @@
 #include "../Utility/IteratorUtils.h"
 #include <assert.h>
 #include <cfloat>
+#include <limits>
 
 #if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
     #include <intrin.h>
@@ -885,7 +886,7 @@ namespace XLEMath
         bool allNear = true;
         bool allFar = true;
         
-        unsigned minIdx = INT_MAX;
+        unsigned minIdx = std::numeric_limits<unsigned>::max();
         unsigned maxIdx = 0;
         
         for (unsigned idx : geometry.first) {

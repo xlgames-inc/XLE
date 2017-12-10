@@ -9,6 +9,8 @@
 #include "../Utility/ParameterBox.h"
 #include "../Utility/StringUtils.h"
 
+#pragma clang diagnostic ignored "-Wswitch"
+
 namespace RenderCore
 {
 

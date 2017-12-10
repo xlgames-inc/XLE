@@ -9,7 +9,8 @@
 #include "Detail/API.h"
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
-#include <stdarg.h>
+#include <cstdarg>
+#include <cstddef>
 
 namespace Utility
 {
