@@ -80,6 +80,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         static void PrepareForDestruction(IDevice* device);
 
+        unsigned FeatureLevel() const { return 300u; }
+
         // EGL::Context        GetUnderlying() { return _underlyingContext; }
 
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);

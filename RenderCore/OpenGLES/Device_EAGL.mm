@@ -137,7 +137,8 @@ namespace RenderCore { namespace ImplOpenGLES
 
     const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const
     {
-        return nullptr;
+        static std::shared_ptr<PresentationChainDesc> dummy;
+        return dummy;
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
