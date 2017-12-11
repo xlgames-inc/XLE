@@ -8,20 +8,20 @@ set_target_properties(ShaderScan PROPERTIES VS_USER_PROPS "${CMAKE_SOURCE_DIR}/M
 include_directories(${XLE_DIR})
 
 if (MSVC)
-    # The CMake Visual Studio generator has a hack that disables the LinkLibraryDependencies setting in 
+    # The CMake Visual Studio generator has a hack that disables the LinkLibraryDependencies setting in
     # the output project (see cmGlobalVisualStudio8Generator::NeedLinkLibraryDependencies) unless there are
     # external project dependencies. It's frustrating because we absolutely need that on. To get around the
-    # problem, we'll link in a dummy external project that just contains nothing. This causes cmake to 
+    # problem, we'll link in a dummy external project that just contains nothing. This causes cmake to
     # enable the LinkLibraryDependencies flag, and hopefully has no other side effects.
     include_external_msproject(generator_dummy ${CMAKE_SOURCE_DIR}/generator_dummy.vcxproj)
     add_dependencies(generator_dummy)
 endif (MSVC)
 
 add_dependencies(ShaderScan Math Utility Assets ConsoleRig RenderCore ForeignMisc)
-target_link_libraries(ShaderScan Math Utility Assets ConsoleRig RenderCore ForeignMisc)
+target_link_libraries(ShaderScan Math Utility Assets ConsoleRig RenderCore ForeignMisc pthread)
 
-# Foreign Common 
+# Foreign Common
 include_directories(${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR}/cml-1_0_2 ${FOREIGN_DIR})
 
-target_compile_options(ShaderScan PUBLIC -std=c++14 -fapple-pragma-pack -fexceptions -frtti)
+target_compile_options(ShaderScan PUBLIC -std=c++14 -fapple-pragma-pack -fexceptions -frtti -ffunction-sections -fdata-sections)
 set_property(TARGET ShaderScan APPEND PROPERTY COMPILE_DEFINITIONS $<$<CONFIG:Debug>:_DEBUG>)

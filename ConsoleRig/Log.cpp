@@ -449,4 +449,13 @@ namespace el { namespace base { namespace utils
 #endif // _ELPP_OS_WINDOWS
 }}}
 
+#elif PLATFORMOS_TARGET == PLATFORMOS_LINUX
+
+namespace el { namespace base { namespace utils
+{
+    void DateTime::gettimeofday(struct timeval *tv) {
+      ::gettimeofday((struct ::timeval*)tv, nullptr);
+    }
+}}}
+
 #endif

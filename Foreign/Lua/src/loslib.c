@@ -120,7 +120,7 @@ static int os_execute (lua_State *L) {
     return 1;
   }
 #else
-  return 0;
+  return luaL_error(L, "disabled due to platform dependencies");
 #endif
 }
 
@@ -139,6 +139,7 @@ static int os_rename (lua_State *L) {
 
 
 static int os_tmpname (lua_State *L) {
+#if defined(TEMP_HACK)
   char buff[LUA_TMPNAMBUFSIZE];
   int err;
   lua_tmpnam(buff, err);
@@ -146,6 +147,9 @@ static int os_tmpname (lua_State *L) {
     return luaL_error(L, "unable to generate a unique filename");
   lua_pushstring(L, buff);
   return 1;
+#else
+  return luaL_error(L, "disabled due to unsafe use of tmpnam");
+#endif
 }
 
 
@@ -357,4 +361,3 @@ LUAMOD_API int luaopen_os (lua_State *L) {
   luaL_newlib(L, syslib);
   return 1;
 }
-
