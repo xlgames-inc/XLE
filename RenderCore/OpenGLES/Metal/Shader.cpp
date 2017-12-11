@@ -19,6 +19,8 @@
     #include "../../../ConsoleRig/Log.h"
 #endif
 
+#include <iostream>
+
 namespace RenderCore { namespace Metal_OpenGLES
 {
     using ::Assets::ResChar;
@@ -78,9 +80,35 @@ namespace RenderCore { namespace Metal_OpenGLES
             return false;
         }
 
-        const GLchar* shaderSourcePointer = (const GLchar*)sourceCode;
-        GLint shaderSourceLength = (GLint)sourceCodeLength;
-        glShaderSource  (newShader->AsRawGLHandle(), 1, &shaderSourcePointer, &shaderSourceLength);
+        std::stringstream definesPreamble;
+        {
+            auto p = definesTable.begin();
+            while (p != definesTable.end()) {
+                while (p != definesTable.end() && std::isspace(*p)) ++p;
+
+                auto definition = std::find(p, definesTable.end(), '=');
+                auto defineEnd = std::find(p, definesTable.end(), ';');
+
+                auto endOfName = std::min(defineEnd, definition);
+                while ((endOfName-1) > p && std::isspace(*(endOfName-1))) ++endOfName;
+
+                if (definition < defineEnd) {
+                    auto e = definition+1;
+                    while (e < defineEnd && std::isspace(*e)) ++e;
+                    definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << " " << MakeStringSection(e, defineEnd).AsString() << std::endl;
+                } else {
+                    definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << std::endl;
+                }
+
+                p = (defineEnd == definesTable.end()) ? defineEnd : (defineEnd+1);
+            }
+        }
+        auto definesPreambleStr = definesPreamble.str();
+
+        const GLchar* shaderSourcePointers[2] { definesPreambleStr.data(), (const GLchar*)sourceCode };
+        GLint shaderSourceLengths[2] = { (GLint)definesPreambleStr.size(), (GLint)sourceCodeLength };
+
+        glShaderSource  (newShader->AsRawGLHandle(), dimof(shaderSourcePointers), shaderSourcePointers, shaderSourceLengths);
         glCompileShader (newShader->AsRawGLHandle());
 
         GLint compileStatus = 0;
@@ -92,17 +120,29 @@ namespace RenderCore { namespace Metal_OpenGLES
                 if ( infoLen > 1 ) {
                     errors = std::make_shared<std::vector<uint8>>(infoLen);
                     glGetShaderInfoLog(newShader->AsRawGLHandle(), infoLen, nullptr, (GLchar*)errors->data());
+
+                    std::cout << "Failure in shader:" << std::endl << shaderSourcePointers[1] << std::endl;
+                    std::cout << "Errors:" << std::endl << (const char*)errors->data();
                 }
             #endif
 
             return false;
         }
 
-        uint64_t hashCode = Hash64(shaderSourcePointer, PtrAdd(shaderSourcePointer, shaderSourceLength));
+        uint64_t hashCode = HashCombine(
+            Hash64(shaderSourcePointers[0], PtrAdd(shaderSourcePointers[0], shaderSourceLengths[0])),
+            Hash64(shaderSourcePointers[1], PtrAdd(shaderSourcePointers[1], shaderSourceLengths[1])));
         s_compiledShaders.emplace(std::make_pair(hashCode, std::move(newShader)));
 
-        payload = std::make_shared<std::vector<uint8>>(sizeof(uint64_t));
-        *(uint64_t*)payload->data() = hashCode;
+        struct OutputBlob
+        {
+            ShaderService::ShaderHeader _hdr;
+            uint64_t _hashCode;
+        };
+        payload = std::make_shared<std::vector<uint8>>(sizeof(OutputBlob));
+        OutputBlob& output = *(OutputBlob*)payload->data();
+        output._hdr = ShaderService::ShaderHeader { ShaderService::ShaderHeader::Version, false };
+        output._hashCode = hashCode;
         return true;
     }
 
