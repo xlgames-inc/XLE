@@ -10,6 +10,8 @@
 #include "../../../Utility/IntrusivePtr.h"
 #include <unordered_map>
 
+typedef uint32_t GLenum;
+
 namespace RenderCore { class IDevice; }
 
 namespace RenderCore { namespace Metal_OpenGLES

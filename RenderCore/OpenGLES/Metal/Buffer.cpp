@@ -5,29 +5,89 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Buffer.h"
+#include "DeviceContext.h"
 #include "../../../Utility/PtrUtils.h"
-#include "IncludeGLES.h"
 #include <assert.h>
+
+#include "IncludeGLES.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    VertexBuffer::VertexBuffer(const void* data, size_t byteCount)
+    void Buffer::Update(DeviceContext& context, const void* data, size_t dataSize, size_t writeOffset, UpdateFlags::BitField flags)
     {
-        _underlying = GetObjectFactory().CreateBuffer();
-        glBindBuffer(GL_ARRAY_BUFFER, _underlying->AsRawGLHandle());
-        glBufferData(GL_ARRAY_BUFFER, byteCount, data, GL_STATIC_DRAW);
+        auto bindTarget = AsBufferTarget(GetDesc()._bindFlags);
+        glBindBuffer(bindTarget, GetBuffer()->AsRawGLHandle());
+
+        if (    flags & UpdateFlags::UnsynchronizedWrite
+            &&  context.FeatureLevel() >= 300) {
+
+            auto glFlags = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
+            if (flags & UpdateFlags::UnsynchronizedWrite)
+                glFlags |= GL_MAP_UNSYNCHRONIZED_BIT;
+            void* mappedData = glMapBufferRange(GL_ARRAY_BUFFER, writeOffset, dataSize, glFlags);
+            std::memcpy(mappedData, data, dataSize);
+            glUnmapBuffer(GL_ARRAY_BUFFER);
+        } else {
+            glBufferSubData(GL_ARRAY_BUFFER, 0, dataSize, data);
+        }
+
+        // glBindBuffer(GL_ARRAY_BUFFER, _underlying->AsRawGLHandle());
     }
+
+    Buffer::Buffer( ObjectFactory& factory, const ResourceDesc& desc,
+                    const void* initData, size_t initDataSize)
+    : Resource(factory, desc, SubResourceInitData { initData, initDataSize, {0u, 0u, 0u} })
+    {}
+
+    Buffer::Buffer(const intrusive_ptr<OpenGL::Buffer>& underlying)
+    {
+        _underlyingBuffer = underlying;
+    }
+
+    Buffer::Buffer() {}
+    Buffer::~Buffer() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static ResourceDesc BuildDesc(BindFlag::BitField bindingFlags, size_t byteCount, bool immutable=true)
+    {
+        return CreateDesc(
+            bindingFlags | (immutable ? 0 : BindFlag::TransferDst),
+            immutable ? 0 : CPUAccess::Write,
+            GPUAccess::Read,
+            LinearBufferDesc::Create(unsigned(byteCount)),
+            "buf");
+    }
+
+    VertexBuffer::VertexBuffer(ObjectFactory& factory, const void* data, size_t byteCount)
+    : Buffer(factory, BuildDesc(BindFlag::VertexBuffer, byteCount, data != nullptr), data, byteCount)
+    {}
+
+    VertexBuffer::VertexBuffer(const void* data, size_t byteCount)
+    : VertexBuffer(GetObjectFactory(), data, byteCount)
+    {}
+
+    VertexBuffer::VertexBuffer(const intrusive_ptr<OpenGL::Buffer>& underlying)
+    : Buffer(underlying)
+    {}
 
     VertexBuffer::~VertexBuffer() {}
 
+    IndexBuffer::IndexBuffer(ObjectFactory& factory, const void* data, size_t byteCount)
+    : Buffer(factory, BuildDesc(BindFlag::IndexBuffer, byteCount, data != nullptr), data, byteCount)
+    {}
+
     IndexBuffer::IndexBuffer(const void* data, size_t byteCount)
-    {
-        _underlying = GetObjectFactory().CreateBuffer();
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _underlying->AsRawGLHandle());
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, byteCount, data, GL_STATIC_DRAW);
-    }
+    : IndexBuffer(GetObjectFactory(), data, byteCount)
+    {}
+
+    IndexBuffer::IndexBuffer(const intrusive_ptr<OpenGL::Buffer>& underlying)
+    : Buffer(underlying)
+    {}
 
     IndexBuffer::~IndexBuffer() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     ConstantBuffer::ConstantBuffer(const void* data, size_t byteCount)
     {

@@ -15,6 +15,8 @@
     #include "../../../ConsoleRig/Log.h"
 #endif
 
+#include "../../../../CoreServices/GLWrappers.h"
+
 namespace RenderCore { namespace Metal_OpenGLES
 {
     signed  IndexedGLType_AddRef(RawGLHandle object) never_throws;
@@ -121,13 +123,13 @@ namespace RenderCore { namespace Metal_OpenGLES
                 //      Just check the type and 
                 //
             if (glIsTexture(object)) {
-                glDeleteTextures(1, &object);
+                (*GetGLWrappers()->DeleteTextures)(1, &object);
             } else if (glIsBuffer(object)) {
-                glDeleteBuffers(1, &object);
+                (*GetGLWrappers()->DeleteBuffers)(1, &object);
             } else if (glIsFramebuffer(object)) {
                 glDeleteFramebuffers(1, &object);
             } else if (glIsRenderbuffer(object)) {
-                glDeleteRenderbuffers(1, &object);
+                (*GetGLWrappers()->DeleteRenderbuffers)(1, &object);
             }
         }
     }
