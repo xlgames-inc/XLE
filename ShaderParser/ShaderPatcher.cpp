@@ -10,6 +10,8 @@
 #include "ParameterSignature.h"
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../Assets/IFileSystem.h"
+#include "../Assets/DepVal.h"
+#include "../Assets/Assets.h"
 #include "../Core/Exceptions.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/StringUtils.h"
@@ -25,7 +27,7 @@
 #include <regex>
 #include <map>
 
-namespace ShaderPatcher 
+namespace ShaderPatcher
 {
 
     static const std::string s_resultName = "result";
@@ -59,7 +61,7 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    NodeConnection::NodeConnection( uint32 outputNodeId, uint32 inputNodeId, 
+    NodeConnection::NodeConnection( uint32 outputNodeId, uint32 inputNodeId,
                                     const std::string& outputParameterName,
                                     const std::string& inputParameterName, const Type& inputType)
     :       NodeBaseConnection(outputNodeId, outputParameterName)
@@ -68,14 +70,14 @@ namespace ShaderPatcher
     ,       _inputType(inputType)
     {}
 
-    NodeConnection::NodeConnection(NodeConnection&& moveFrom)
+    NodeConnection::NodeConnection(NodeConnection&& moveFrom) never_throws
     :       NodeBaseConnection(std::move(moveFrom))
     ,       _inputNodeId(moveFrom._inputNodeId)
     ,       _inputParameterName(moveFrom._inputParameterName)
     ,       _inputType(moveFrom._inputType)
     {}
 
-    NodeConnection& NodeConnection::operator=(NodeConnection&& moveFrom)
+    NodeConnection& NodeConnection::operator=(NodeConnection&& moveFrom) never_throws
     {
         NodeBaseConnection::operator=(std::move(moveFrom));
         _inputNodeId = moveFrom._inputNodeId;
@@ -90,11 +92,11 @@ namespace ShaderPatcher
     :   NodeBaseConnection(outputNodeId, outputParameterName)
     ,   _value(value) {}
 
-    ConstantConnection::ConstantConnection(ConstantConnection&& moveFrom)
+    ConstantConnection::ConstantConnection(ConstantConnection&& moveFrom) never_throws
     :   NodeBaseConnection(std::move(moveFrom))
     ,   _value(moveFrom._value) {}
 
-    ConstantConnection& ConstantConnection::operator=(ConstantConnection&& moveFrom)
+    ConstantConnection& ConstantConnection::operator=(ConstantConnection&& moveFrom) never_throws
     {
         NodeBaseConnection::operator=(std::move(moveFrom));
         _value = moveFrom._value;
@@ -107,11 +109,11 @@ namespace ShaderPatcher
     :   NodeBaseConnection(outputNodeId, outputParameterName)
     ,   _type(type), _name(name), _semantic(semantic), _default(defaultValue) {}
 
-    InputParameterConnection::InputParameterConnection(InputParameterConnection&& moveFrom)
+    InputParameterConnection::InputParameterConnection(InputParameterConnection&& moveFrom) never_throws
     :   NodeBaseConnection(std::move(moveFrom))
     ,   _type(std::move(moveFrom._type)), _name(std::move(moveFrom._name)), _semantic(std::move(moveFrom._semantic)), _default(std::move(moveFrom._default)) {}
 
-    InputParameterConnection& InputParameterConnection::operator=(InputParameterConnection&& moveFrom)
+    InputParameterConnection& InputParameterConnection::operator=(InputParameterConnection&& moveFrom) never_throws
     {
         NodeBaseConnection::operator=(std::move(moveFrom));
         _type = std::move(moveFrom._type);
@@ -137,7 +139,7 @@ namespace ShaderPatcher
         if (startNode == searchingForNode) {
             return true;
         }
-            
+
         for (auto i=_nodeConnections.cbegin(); i!=_nodeConnections.cend(); ++i) {
             if (i->OutputNodeId() == startNode) {
                 if (IsUpstream(i->InputNodeId(), searchingForNode)) {
@@ -150,7 +152,7 @@ namespace ShaderPatcher
     }
 
     bool NodeGraph::IsDownstream(
-        uint32 startNode, 
+        uint32 startNode,
         const uint32* searchingForNodesStart, const uint32* searchingForNodesEnd)
     {
         if (std::find(searchingForNodesStart, searchingForNodesEnd, startNode) != searchingForNodesEnd) {
@@ -170,7 +172,7 @@ namespace ShaderPatcher
 
     bool            NodeGraph::HasNode(uint32 nodeId)
     {
-        return std::find_if(_nodes.begin(), _nodes.end(), 
+        return std::find_if(_nodes.begin(), _nodes.end(),
             [=](const Node& node) { return node.NodeId() == nodeId; }) != _nodes.end();
     }
 
@@ -219,7 +221,7 @@ namespace ShaderPatcher
             std::remove_if(
                 _nodes.begin(), _nodes.end(),
                 [=](const Node& node) -> bool
-                    { 
+                    {
                          if (IsDownstream(node.NodeId(), trimNodesBegin, trimNodesEnd)) {
                              return false;
                          }
@@ -238,27 +240,27 @@ namespace ShaderPatcher
                              return !directOutput;
                          }
                          return true;
-                    }), 
+                    }),
             _nodes.end());
 
         _nodeConnections.erase(
             std::remove_if(
                 _nodeConnections.begin(), _nodeConnections.end(),
-                [=](const NodeConnection& connection) 
+                [=](const NodeConnection& connection)
                     { return !HasNode(connection.InputNodeId()) || !HasNode(connection.OutputNodeId()); }),
             _nodeConnections.end());
 
         _constantConnections.erase(
             std::remove_if(
                 _constantConnections.begin(), _constantConnections.end(),
-                [=](const ConstantConnection& connection) 
+                [=](const ConstantConnection& connection)
                     { return !HasNode(connection.OutputNodeId()); }),
             _constantConnections.end());
 
         _inputParameterConnections.erase(
             std::remove_if(
                 _inputParameterConnections.begin(), _inputParameterConnections.end(),
-                [=](const InputParameterConnection& connection) 
+                [=](const InputParameterConnection& connection)
                     { return !HasNode(connection.OutputNodeId()); }),
             _inputParameterConnections.end());
     }
@@ -283,7 +285,7 @@ namespace ShaderPatcher
             return std::string();
         } CATCH_END
     }
-    
+
     std::tuple<std::string, std::string> SplitArchiveName(const std::string& archiveName)
     {
         std::string::size_type pos = archiveName.find_first_of(':');
@@ -310,7 +312,7 @@ namespace ShaderPatcher
 	auto ShaderFragment::GetFunction(const char fnName[]) const -> const ShaderSourceParser::FunctionSignature*
 	{
 		auto i = std::find_if(
-			_sig._functions.cbegin(), _sig._functions.cend(), 
+			_sig._functions.cbegin(), _sig._functions.cend(),
             [fnName](const ShaderSourceParser::FunctionSignature& signature) { return XlEqString(signature._name, fnName); });
         if (i!=_sig._functions.cend())
 			return AsPointer(i);
@@ -320,7 +322,7 @@ namespace ShaderPatcher
 	auto ShaderFragment::GetParameterStruct(const char structName[]) const -> const ShaderSourceParser::ParameterStructSignature*
 	{
 		auto i = std::find_if(
-			_sig._parameterStructs.cbegin(), _sig._parameterStructs.cend(), 
+			_sig._parameterStructs.cbegin(), _sig._parameterStructs.cend(),
             [structName](const ShaderSourceParser::ParameterStructSignature& signature) { return XlEqString(signature._name, structName); });
         if (i!=_sig._parameterStructs.cend())
 			return AsPointer(i);
@@ -373,7 +375,7 @@ namespace ShaderPatcher
 
 	static void OrderNodes(IteratorRange<uint32*> range)
 	{
-		// We need to sort the upstreams in some way that maintains a 
+		// We need to sort the upstreams in some way that maintains a
 		// consistant ordering. The simplied way is just to use node id.
 		// However we may sometimes want to set priorities for nodes.
 		// For example, nodes that can "discard" pixels should be priortized
@@ -381,10 +383,10 @@ namespace ShaderPatcher
 		std::sort(range.begin(), range.end());
 	}
 
-    static bool SortNodesFunction(  
+    static bool SortNodesFunction(
         uint32                  node,
-        std::vector<uint32>&    presorted, 
-        std::vector<uint32>&    sorted, 
+        std::vector<uint32>&    presorted,
+        std::vector<uint32>&    sorted,
         std::vector<uint32>&    marks,
         const NodeGraph&        graph)
     {
@@ -419,9 +421,9 @@ namespace ShaderPatcher
         return buffer;
     }
 
-    static std::string OutputTemporaryForNode(uint32 nodeId, const std::string& outputName)        
-    { 
-        return std::string("Output_") + AsString(nodeId) + "_" + outputName; 
+    static std::string OutputTemporaryForNode(uint32 nodeId, const std::string& outputName)
+    {
+        return std::string("Output_") + AsString(nodeId) + "_" + outputName;
     }
 
     template<typename Connection>
@@ -430,9 +432,9 @@ namespace ShaderPatcher
             uint32 nodeId, const std::string& parameterName)
     {
         return std::find_if(
-            connections.cbegin(), connections.cend(), 
+            connections.cbegin(), connections.cend(),
             [nodeId, &parameterName](const NodeBaseConnection& connection)
-            { return    connection.OutputNodeId() == nodeId && 
+            { return    connection.OutputNodeId() == nodeId &&
                         connection.OutputParameterName() == parameterName; } );
     }
 
@@ -442,7 +444,7 @@ namespace ShaderPatcher
     {
         if (!expression._type.empty() && !dstType.empty() && expression._type != dstType && !XlEqStringI(dstType, "auto") && !XlEqStringI(expression._type, "auto")) {
             result << "Cast_" << expression._type << "_to_" << dstType << "(" << expression._expression << ")";
-        } else 
+        } else
             result << expression._expression;
     }
 
@@ -473,7 +475,7 @@ namespace ShaderPatcher
                 // graph was created.
             auto type = TypeFromShaderFragment(inputNode->ArchiveName(), connection.InputParameterName(), nodeGraph.GetSearchRules(), ShaderSourceParser::FunctionSignature::Parameter::Out);
             if (type.empty()) type = connection.InputType()._name;
-            return ExpressionString{OutputTemporaryForNode(connection.InputNodeId(), connection.InputParameterName()), type}; 
+            return ExpressionString{OutputTemporaryForNode(connection.InputNodeId(), connection.InputParameterName()), type};
 
         } else if (inputNode && inputNode->GetType() == Node::Type::Uniforms) {
 
@@ -511,7 +513,7 @@ namespace ShaderPatcher
 
     static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const ConstantConnection& connection, FunctionInterface& interf)
     {
-            //  we have a "constant connection" value here. We either extract the name of 
+            //  we have a "constant connection" value here. We either extract the name of
             //  the varying parameter, or we interpret this as pure text...
 		return ExpressionString{StripAngleBracket(connection.Value()).first, std::string()};
     }
@@ -555,7 +557,7 @@ namespace ShaderPatcher
         auto ti = FindConnection(nodeGraph.GetInputParameterConnections(), nodeId, signatureParam._name);
         if (ti!=nodeGraph.GetInputParameterConnections().cend()) {
 				// We can choose to make this either a global parameter or a function input parameter
-                // 1) If there is a semantic, or the name is in angle brackets, it will be an input parameter. 
+                // 1) If there is a semantic, or the name is in angle brackets, it will be an input parameter.
                 // 2) Otherwise, it's a global parameter.
 			auto p = StripAngleBracket(ti->InputName());
 
@@ -604,7 +606,7 @@ namespace ShaderPatcher
 			auto* destinationNode = graph.GetNode(i.OutputNodeId());
             if (!destinationNode || destinationNode->GetType() == Node::Type::SlotOutput) {
 				ExpressionString expression = QueryExpression(graph, i, interf);
-            
+
 				// This is not connected to anything -- so we just have to add it as a
 				// unique output from the interface.
 				auto param = AsInterfaceParameter(i);
@@ -636,7 +638,7 @@ namespace ShaderPatcher
             //      Parse the fragment again, to get the correct function
             //      signature at this time.
             //
-            //      It's possible that the function signature has changed 
+            //      It's possible that the function signature has changed
             //      since the node graph was generated. In this case, we
             //      have to try to adapt to match the node graph as closely
             //      as possible. This might require:
@@ -647,7 +649,7 @@ namespace ShaderPatcher
             //      \todo --    avoid parsing the same shader file twice (parse
             //                  when writing the #include statements to the file)
             //
-        
+
 
         auto functionName = std::get<1>(splitName);
         const auto& sig = LoadFunctionSignature(splitName, nodeGraph.GetSearchRules());
@@ -702,7 +704,7 @@ namespace ShaderPatcher
 
             /*
 
-                We need to create a directed acyclic graph from the nodes in 'graph' 
+                We need to create a directed acyclic graph from the nodes in 'graph'
                     -- and then we need to do a topological sort.
 
                 This will tell us the order in which to call each function
@@ -720,7 +722,7 @@ namespace ShaderPatcher
                                 insert m into S
                     if graph has edges then
                         return error (graph has at least one cycle)
-                    else 
+                    else
                         return L (a topologically sorted order)
 
                 Depth first sort:
@@ -728,7 +730,7 @@ namespace ShaderPatcher
                     L <- Empty list that will contain the sorted nodes
                     while there are unmarked nodes do
                         select an unmarked node n
-                        visit(n) 
+                        visit(n)
                     function visit(node n)
                         if n has a temporary mark then stop (not a DAG)
                         if n is not marked (i.e. has not been visited yet) then
@@ -763,7 +765,7 @@ namespace ShaderPatcher
         }
 
             //
-            //      Now the function calls can be ordered by walking through the 
+            //      Now the function calls can be ordered by walking through the
             //      directed graph.
             //
 
@@ -774,7 +776,7 @@ namespace ShaderPatcher
 		FunctionInterface interf;
 
         for (auto i=sortedNodes.cbegin(); i!=sortedNodes.cend(); ++i) {
-            auto i2 = std::find_if( graph.GetNodes().cbegin(), 
+            auto i2 = std::find_if( graph.GetNodes().cbegin(),
                                     graph.GetNodes().cend(), [i](const Node& n) { return n.NodeId() == *i; } );
             if (i2 != graph.GetNodes().cend()) {
                 if (i2->GetType() == Node::Type::Procedure) {
@@ -792,7 +794,7 @@ namespace ShaderPatcher
 
     std::string GenerateShaderHeader(const NodeGraph& graph)
     {
-            //  
+            //
             //      Generate shader source code for the given input
             //      node graph.
             //
@@ -823,10 +825,10 @@ namespace ShaderPatcher
 
                 //
                 //      We have two options -- copy the contents of the fragment shader
-                //      into the new shader... 
-                // 
+                //      into the new shader...
+                //
                 //      Or just add a reference with #include "".
-                //      Using an include makes it easier to adapt when the fragment 
+                //      Using an include makes it easier to adapt when the fragment
                 //      changes. But it extra dependencies for the output (and the potential
                 //      for missing includes)
                 //
@@ -865,12 +867,12 @@ namespace ShaderPatcher
         // prefixes is a global resource (like a texture, etc). This
         // should provide some flexibility with new DX12 types, and perhaps
         // allow for manipulating custom "interface" types...?
-        // 
+        //
         // However, that isn't going to work well with struct types (which
         // can be contained with cbuffers and be passed to functions like
         // scalars)
         //
-        // const char* scalarTypePrefixes[] = 
+        // const char* scalarTypePrefixes[] =
         // {
         //     "bool", "int", "uint", "half", "float", "double"
         // };
@@ -878,18 +880,18 @@ namespace ShaderPatcher
         // Note that we only check the prefix -- to catch variations on
         // texture and RWTexture (and <> arguments like Texture2D<float4>)
 
-        const char* resourceTypePrefixes[] = 
+        const char* resourceTypePrefixes[] =
         {
-            "cbuffer", "tbuffer", 
-            "StructuredBuffer", "Buffer", "ByteAddressBuffer", "AppendStructuredBuffer", 
-            "RWBuffer", "RWByteAddressBuffer", "RWStructuredBuffer", 
-                        
+            "cbuffer", "tbuffer",
+            "StructuredBuffer", "Buffer", "ByteAddressBuffer", "AppendStructuredBuffer",
+            "RWBuffer", "RWByteAddressBuffer", "RWStructuredBuffer",
+
             "sampler", // SamplerState, SamplerComparisonState
             "RWTexture", // RWTexture1D, RWTexture1DArray, RWTexture2D, RWTexture2DArray, RWTexture3D
             "texture", // Texture1D, Texture1DArray, Texture2D, Texture2DArray, Texture2DMS, Texture2DMSArray, Texture3D, TextureCube, TextureCubeArray
 
             // special .fx file types:
-            // "BlendState", "DepthStencilState", "DepthStencilView", "RasterizerState", "RenderTargetView", 
+            // "BlendState", "DepthStencilState", "DepthStencilView", "RasterizerState", "RenderTargetView",
         };
         // note -- some really special function signature-only: InputPatch, OutputPatch, LineStream, TriangleStream, PointStream
 
@@ -909,7 +911,7 @@ namespace ShaderPatcher
         const FunctionInterface::Parameter& param)
     {
 	    // Look for another parameter with the same name...
-	    auto existing = std::find_if(dst.begin(), dst.end(), 
+	    auto existing = std::find_if(dst.begin(), dst.end(),
 		    [&param](const FunctionInterface::Parameter& p) { return p._name == param._name; });
 	    if (existing != dst.end()) {
 		    // If we have 2 parameters with the same name, we're going to expect they
@@ -939,11 +941,11 @@ namespace ShaderPatcher
 
         std::stringstream mainFunctionDeclParameters;
 
-			//  
+			//
             //      Our graph function is always a "void" function, and all of the output
             //      parameters are just function parameters with the "out" keyword. This is
             //      convenient for writing out generated functions
-            //      We don't want to put the "node id" in the name -- because node ids can 
+            //      We don't want to put the "node id" in the name -- because node ids can
             //      change from time to time, and that would invalidate any other shaders calling
             //      this function. But ideally we need some way to guarantee uniqueness.
             //
@@ -978,10 +980,10 @@ namespace ShaderPatcher
         for(auto i:interf.GetGlobalParameters()) {
             if (!CanBeStoredInCBuffer(MakeStringSection(i._type))) {
                 result << i._type << " " << i._name << ";" << std::endl;
-            } else 
+            } else
                 hasMaterialConstants = true;
         }
-        
+
         if (hasMaterialConstants) {
                 // in XLE, the cbuffer name "BasicMaterialConstants" is reserved for this purpose.
                 // But it is not assigned to a fixed cbuffer register.
@@ -1038,7 +1040,7 @@ namespace ShaderPatcher
 
 		result << GenerateSignature(slotSignature) << std::endl;
 		result << "{" << std::endl;
-		
+
 		// make temporaries for all outputs
 		for (auto& p:generatedFunctionSignature.GetFunctionParameters()) {
 			if (p._direction == FunctionInterface::Parameter::Out) {
@@ -1125,4 +1127,3 @@ namespace ShaderPatcher
 		return result.str();
 	}
 }
-

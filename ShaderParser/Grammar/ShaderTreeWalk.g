@@ -1,6 +1,6 @@
 tree grammar ShaderTreeWalk;
 
-options 
+options
 {
 	tokenVocab = Shader;
 	ASTLabelType = pANTLR3_BASE_TREE;
@@ -16,6 +16,11 @@ options
 	typedef unsigned ParameterStructId;
 }
 
+@includes
+{
+	#include <stdint.h>
+}
+
 @context
 {
 	const void* _userData;
@@ -23,8 +28,8 @@ options
 
 @members
 {
-	struct FormalArg 
-	{ 
+	struct FormalArg
+	{
 		StringId _name, _type, _semantic;
 		unsigned _directionFlags;
 	};
@@ -70,10 +75,10 @@ typeName returns [StringId str = ~0u]
 subscript : ^(SUBSCRIPT .*) ;
 
 formalArg returns [struct FormalArg result = (struct FormalArg){~0u, ~0u, ~0u, 0}]
-	: ^(FORMAL_ARG 
+	: ^(FORMAL_ARG
 			n=identifier { result._name = n; }
 			t=typeName { result._type = t; }
-			subscript* 
+			subscript*
 			(s=semantic { result._semantic = s; })?
 			d=direction { result._directionFlags = d; }
 		)
@@ -85,11 +90,11 @@ function returns [struct Function result = (struct Function){~0u, ~0u, ~0u, UINT
 	: ^(FUNCTION
 			name=Identifier { result._name = String_Register(ctx, name); }
 			ret=typeName { result._returnType = ret; }
-			(a=formalArg 
-			{ 
-				unsigned idx = FormalArg_Register(ctx, a); 
-				result._firstArg = (idx < result._firstArg) ? idx : result._firstArg; 
-				result._lastArg = (idx > result._lastArg) ? idx : result._lastArg; 
+			(a=formalArg
+			{
+				unsigned idx = FormalArg_Register(ctx, a);
+				result._firstArg = (idx < result._firstArg) ? idx : result._firstArg;
+				result._lastArg = (idx > result._lastArg) ? idx : result._lastArg;
 			})*
 			(retSemantic=semantic { result._returnSemantic = retSemantic; })?
 			(^(BLOCK { result._hasImplementation = 1; } statement*))?
@@ -97,7 +102,7 @@ function returns [struct Function result = (struct Function){~0u, ~0u, ~0u, UINT
 	;
 
 parameterStruct returns [struct ParameterStruct result = (struct ParameterStruct){~0u, UINT_MAX, 0}]
-	: ^((STRUCT | CBUFFER) 
+	: ^((STRUCT | CBUFFER)
 			n=identifier { result._name = n; }
 			(^(VARIABLE t=typeName
 				(
@@ -112,9 +117,8 @@ parameterStruct returns [struct ParameterStruct result = (struct ParameterStruct
 		)
 	;
 
-toplevel 
+toplevel
 	: p=parameterStruct { ParameterStruct_Register(ctx, &p); }
 	| f=function { Function_Register(ctx, &f); }
 	;
 entrypoint : toplevel* ;
-
