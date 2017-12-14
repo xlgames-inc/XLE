@@ -19,6 +19,7 @@ namespace Utility
     {
         enum class TypeCat : uint8 { Void, Bool, Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64, Float, Double };
         enum class TypeHint : uint8 { None, Vector, Matrix, Color, String };
+        enum class CastType : uint8 { Narrowing, Equal, Widening};
         class TypeDesc
         {
         public:
@@ -75,6 +76,8 @@ namespace Utility
         bool Cast(
             void* dest, size_t destSize, TypeDesc destType,
             const void* src, TypeDesc srcType);
+        
+        CastType CastType(TypeCat testType, TypeCat againstType);
 
         std::string AsString(const void* data, size_t dataSize, const TypeDesc&, bool strongTyping = false);
 
