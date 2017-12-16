@@ -6,66 +6,24 @@
 
 #pragma once
 
-// #include <dxgiformat.h>         // maintain format number compatibility with DXGI whenever possible (note that dxgiformat.h is very simple and has no dependencies!)
+#include "../../Format.h"
+#include "../../Types.h"
+#include <utility>
+#include "IncludeGLES.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    namespace NativeFormat
-    {
-        enum Enum
-        {
-            Unknown = 0,
+    unsigned    AsGLComponents(FormatComponents components);
+    unsigned    AsGLCompressionType(FormatCompressionType compressionType);
+    unsigned    AsGLComponentWidths(Format format);
+    unsigned    AsGLVertexComponentType(Format format);
 
-            #undef _EXP
-            #define _EXP(X, Y, Z, U)    X##_##Y, // = DXGI_FORMAT_##X##_##Y,
-                #include "../../Metal/Detail/DXGICompatibleFormats.h"
-            #undef _EXP
-
-            Matrix4x4,
-            Matrix3x4
-        };
-    }
-
-    namespace FormatCompressionType
-    {
-        enum Enum
-        {
-            None, BlockCompression
-        };
-    }
-
-    namespace FormatComponents
-    {
-        enum Enum
-        {
-            Unknown,
-            Alpha, 
-            Luminance, LuminanceAlpha,
-            RGB, RGBAlpha,
-            RG, Depth, RGBE
-        };
-    }
-
-    namespace FormatComponentType
-    {
-        enum Enum
-        {
-            Typeless,
-            Float, UInt, SInt,
-            UNorm, SNorm, UNorm_SRGB,
-            Exponential,
-            UnsignedFloat16, SignedFloat16
-        };
-    }
-
-    FormatCompressionType::Enum     GetCompressionType(NativeFormat::Enum format);
-    FormatComponents::Enum          GetComponents(NativeFormat::Enum format);
-    FormatComponentType::Enum       GetComponentType(NativeFormat::Enum format);
-    unsigned                        BitsPerPixel(NativeFormat::Enum format);
-
-    unsigned                        AsGLComponents(FormatComponents::Enum components);
-    unsigned                        AsGLCompressionType(FormatCompressionType::Enum compressionType);
-    unsigned                        AsGLComponentWidths(NativeFormat::Enum format);
-    unsigned                        AsGLVertexComponentType(NativeFormat::Enum format);
+    std::tuple<GLint, GLenum, bool> AsVertexAttributePointer(Format fmt);
+    RenderCore::Format VertexAttributePointerAsFormat(GLint size, GLenum type, bool normalized);
+    std::pair<GLenum, GLenum> AsTexelFormatType(Format fmt);
+    ImpliedTyping::TypeDesc GLUniformTypeAsTypeDesc(GLenum glType);
+    RenderCore::Format SizedInternalFormatAsRenderCoreFormat(GLenum sizedInternalFormat);
+    GLenum AsGLTopology(RenderCore::Topology topology);
+    GLenum AsGLBlend(RenderCore::Blend input);
 }}
 

@@ -6,33 +6,21 @@
 
 #include "InputLayout.h"
 #include "Shader.h"
+#include "ShaderIntrospection.h"
 #include "Format.h"
+#include "../../Types.h"
+#include "../../Format.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/StringFormat.h"
 #include "../../../Utility/PtrUtils.h"
 #include "IncludeGLES.h"
 
-#if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
-    extern "C" dll_import void __stdcall OutputDebugStringA(const char lpOutputString[]);
+#if defined(XLE_HAS_CONSOLE_RIG)
+    #include "../../../ConsoleRig/Log.h"
 #endif
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    static unsigned     ComponentCount      (FormatComponents::Enum components)     
-    { 
-        switch (components) {
-        default:
-        case FormatComponents::Alpha:
-        case FormatComponents::Luminance:
-        case FormatComponents::Depth:             return 1;
-        case FormatComponents::LuminanceAlpha:
-        case FormatComponents::RG:                return 2;
-        case FormatComponents::RGB:               return 3;
-        case FormatComponents::RGBAlpha:
-        case FormatComponents::RGBE:              return 4;
-        }
-    }
-
     BoundInputLayout::BoundInputLayout(const InputLayout& layout, const ShaderProgram& program)
     {
             //
@@ -84,15 +72,15 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (attribute < 0 || attribute >= maxVertexAttributes) {
                     //  Binding failure! Write a warning, but ignore it. The binding is 
                     //  still valid even if one or more attributes fail
-                #if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
-                    OutputDebugStringA(XlDynFormatString("Warning -- failure during vertex attribute binding. Attribute (%s) cannot be found in the program. Ignoring.\n", buffer).c_str());
+                #if defined(XLE_HAS_CONSOLE_RIG)
+                    LogWarning << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the program. Ignoring" << std::endl;
                 #endif
             } else {
                     // (easier with C++11 {} initializer and emplace_back)
-                const FormatComponentType::Enum componentType = GetComponentType(elements[c]._nativeFormat);
+                const auto componentType = GetComponentType(elements[c]._nativeFormat);
                 Binding b = {
                     unsigned(attribute), 
-                    ComponentCount(GetComponents(elements[c]._nativeFormat)), AsGLVertexComponentType(elements[c]._nativeFormat), 
+                    GetComponentCount(GetComponents(elements[c]._nativeFormat)), AsGLVertexComponentType(elements[c]._nativeFormat),
                     (componentType == FormatComponentType::UNorm) || (componentType == FormatComponentType::SNorm) || (componentType == FormatComponentType::UNorm_SRGB),
                     unsigned(vertexStride),
                     elementStart
@@ -139,30 +127,44 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    namespace GlobalInputLayouts
-    {
-        namespace Detail
-        {
-            InputElementDesc P2CT_Elements[] = 
-            {
-                InputElementDesc( "POSITION",   0, NativeFormat::R32G32_FLOAT   ),
-                InputElementDesc( "COLOR",      0, NativeFormat::R8G8B8A8_UNORM ),
-                InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT   )
-            };
-        }
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        InputLayout P2CT = std::make_pair(Detail::P2CT_Elements, dimof(Detail::P2CT_Elements));
+    bool BoundUniforms::BindConstantBuffer(
+        uint64 hashName, unsigned slot, unsigned uniformsStream,
+        IteratorRange<const MiniInputElementDesc*> elements)
+    {
+        assert(uniformsStream < dimof(_streamCBs));
+        if (_streamCBs[uniformsStream].size() < (slot+1))
+            _streamCBs[uniformsStream].resize(slot+1);
+        _streamCBs[uniformsStream][slot] = _introspection.MakeBinding(hashName, elements);
+        return true;
     }
 
+    void BoundUniforms::Apply(
+        DeviceContext& context,
+        const UniformsStream& stream0, const UniformsStream& stream1) const
+    {
+        const UniformsStream* inputStreams[] = { &stream0, &stream1 };
+        for (unsigned str=0; str<2; ++str) {
+            for (unsigned c=0; c<inputStreams[str]->_packetCount; ++c) {
+                const auto& pkt = inputStreams[str]->_packets[c];
+                if (!_streamCBs[str][c]._commands.empty() && pkt.size() != 0) {
+                    Bind(context, _streamCBs[str][c], MakeIteratorRange(pkt.begin(), pkt.end()));
+                }
+            }
+        }
+    }
 
     BoundUniforms::BoundUniforms(ShaderProgram& shader)
-    : _shader(shader.GetUnderlying())
-    {
-    }
+    : _introspection(shader)
+    {}
 
     BoundUniforms::~BoundUniforms() {}
 
-    void BoundUniforms::BindConstantBuffer(const char name[], unsigned slot, const ConstantBufferLayoutElement elements[], size_t elementCount)
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+    void BindConstantBuffer(const char name[], unsigned slot, const ConstantBufferLayoutElement elements[], size_t elementCount)
     {
             //
             //      For each element, find the binding location within the shader
@@ -216,6 +218,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         }
     }
+#endif
 
 }}
 
