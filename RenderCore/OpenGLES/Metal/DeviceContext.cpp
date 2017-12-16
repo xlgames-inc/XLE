@@ -24,10 +24,10 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    void DeviceContext::Bind(const IndexBuffer& ib, NativeFormat::Enum indexFormat, unsigned offset)
+    void DeviceContext::Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset)
     {
             // (it seems that index formats are always 16 bit for OpenGLES?)
-        assert(indexFormat == NativeFormat::R16_UINT);
+        assert(indexFormat == Format::R16_UINT);
         assert(offset == 0);    // (not supported currently... But we could safe it up for the draw call)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib.GetUnderlying()->AsRawGLHandle());
     }
@@ -37,7 +37,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         _savedInputLayout = inputLayout;
     }
 
-    void DeviceContext::Bind(Topology::Enum topology)
+    void DeviceContext::Bind(Topology topology)
     {
         _nativeTopology = unsigned(topology);
     }

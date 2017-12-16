@@ -93,6 +93,9 @@ namespace RenderCore
         static MiniHeap& GetHeap();
     };
 
+    SharedPkt MakeSharedPktSize(size_t size);
+    SharedPkt MakeSharedPkt(const void* begin, const void* end);
+
     template<typename T> SharedPkt MakeSharedPkt(const T& input)
     {
         return MakeSharedPkt(&input, PtrAdd(&input, sizeof(T)));
@@ -139,9 +142,6 @@ namespace RenderCore
             |   ((input & 0x000000ff) << 16)
             ;
     }
-
-    SharedPkt MakeSharedPktSize(size_t size);
-    SharedPkt MakeSharedPkt(const void* begin, const void* end);
 }
 
 

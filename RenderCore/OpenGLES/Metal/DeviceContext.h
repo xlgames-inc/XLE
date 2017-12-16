@@ -31,20 +31,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     class BlendState;
     class DepthStencilState;
 
-    namespace Topology
-    {
-        enum Enum
-        {
-            PointList       = 0,    // GL_POINTS,
-            LineList        = 1,    // GL_LINES,
-            // LineLoop        = 2,    // GL_LINE_LOOP,  (not in D3D)
-            LineStrip       = 3,    // GL_LINE_STRIP,
-            TriangleList    = 4,    // GL_TRIANGLES 
-            TriangleStrip   = 5,    // GL_TRIANGLE_STRIP,
-            // TriangleFan     = 6     // GL_TRIANGLE_FAN,  (not in D3D)
-        };
-    }
-
     class CommandList : public RefCountedObject, noncopyable
     {
     public:
@@ -60,9 +46,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         template<int Count> void BindPS(const ResourceList<SamplerState, Count>& samplerStates);
         template<int Count> void BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
         
-        void Bind(const IndexBuffer& ib, NativeFormat::Enum indexFormat, unsigned offset=0);
+        void Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset=0);
         void Bind(const BoundInputLayout& inputLayout);
-        void Bind(Topology::Enum topology);
+        void Bind(Topology topology);
         void Bind(const ShaderProgram& shaderProgram);
         void Bind(const RasterizerState& rasterizer);
         void Bind(const BlendState& blender);
