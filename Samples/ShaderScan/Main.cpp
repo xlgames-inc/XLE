@@ -66,7 +66,7 @@ namespace ShaderScan
 			[](const ::Assets::TextChunk<char>& chunk) { return XlEqString(chunk._type, "GraphSyntax"); });
 		if (i!=compoundDoc.end()) {
 			auto str = ShaderPatcher::ReadGraphSyntax(i->_content, ::Assets::DefaultDirectorySearchRules(filename));
-			LogWarning << "Output: " << str;
+			LogWarning << "Output: " << str << std::endl;
 		}
 	}
 }
@@ -90,8 +90,8 @@ int main(int argc, char *argv[])
         }
         ShaderScan::Execute(MakeStringSection(cmdLine));
     } CATCH (const std::exception& e) {
-        LogAlwaysError << "Hit top level exception. Aborting program!";
-        LogAlwaysError << e.what();
+        LogAlwaysError << "Hit top level exception. Aborting program!" << std::endl;
+        LogAlwaysError << e.what() << std::endl;
     } CATCH_END
 
     return 0;

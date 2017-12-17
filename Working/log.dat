@@ -1,0 +1,18 @@
+~Default
+    Template=[{file}:{line}]:
+
+~Error
+    Template=[{file}:{line}] ERROR:
+    OutputToConsole=true
+
+~Warning
+    Template=[{file}:{line}] WARNING:
+    OutputToConsole=true
+
+~Debug
+    Template=[{file}:{line}] DEBUG:
+    OutputToConsole=true
+
+~Verbose
+    Template=[{file}:{line}] VERBOSE:
+    OutputToConsole=true

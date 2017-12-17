@@ -165,7 +165,7 @@ namespace ConsoleRig
             assert(stackSizeEnd2 == stackSizeStart2);
         }
 
-        return std::move(result);
+        return result;
     }
 
     std::vector<std::string>    Console::AutoComplete(const std::string& input)

@@ -11,14 +11,6 @@
 
 namespace ConsoleRig
 {
-    /// <summary>Initialise the logging system</summary>
-    /// Provide a filename for an optional configuration file.
-    /// The configuration file should be defined in the format defined by the 
-    /// "easylogging++" library.
-    /// Logging_Shutdown() is optional, but helps shutdown cleanly
-    void Logging_Startup(const char configFile[] = nullptr, const char logFileName[] = nullptr);
-    void Logging_Shutdown();
-
     enum class LogLevel
     {
         Fatal,

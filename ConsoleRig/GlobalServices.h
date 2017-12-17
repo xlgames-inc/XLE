@@ -65,6 +65,8 @@ namespace ConsoleRig
         StartupConfig(const char applicationName[]);
     };
 
+    class LogCentralConfiguration;
+
     class GlobalServices
     {
     public:
@@ -84,6 +86,7 @@ namespace ConsoleRig
     protected:
         static GlobalServices* s_instance;
         std::shared_ptr<CrossModule> _crossModule;
+        std::shared_ptr<LogCentralConfiguration> _logCfg;
 
         std::unique_ptr<CompletionThreadPool> _shortTaskPool;
         std::unique_ptr<CompletionThreadPool> _longTaskPool;

@@ -6,7 +6,7 @@
 
 #include "GlobalServices.h"
 #include "AttachableInternal.h"
-#include "LogStartup.h"
+#include "Log.h"
 #include "Console.h"
 #include "IProgress.h"
 #include "../Assets/IFileSystem.h"
@@ -103,10 +103,6 @@ namespace ConsoleRig
     {
         auto& serv = GlobalServices::GetCrossModule()._services;
 
-        Logging_Startup(
-            serv.Call<std::string>(Fn_LogCfg).c_str(), 
-            StringMeld<MaxPath>() << "int/log_" << serv.Call<std::string>(Fn_GetAppName) << ".txt");
-
         if (!serv.Has<ModuleId()>(Fn_ConsoleMainModule)) {
             auto console = std::make_shared<Console>();
             auto currentModule = GetCurrentModuleId();
@@ -150,8 +146,6 @@ namespace ConsoleRig
         } else {
             Console::SetInstance(nullptr);
         }
-
-        Logging_Shutdown();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -168,6 +162,10 @@ namespace ConsoleRig
         _crossModule->Publish(*this);
         AttachCurrentModule();
 
+        _logCfg = std::make_shared<LogCentralConfiguration>();
+        _crossModule->Publish(*_logCfg);
+        _logCfg->AttachCurrentModule();
+
             // add "nsight" marker to global services when "-nsight" is on
             // the command line. This is an easy way to record a global (&cross-dll)
             // state to use the nsight configuration when the given flag is set.
@@ -178,6 +176,7 @@ namespace ConsoleRig
 
     GlobalServices::~GlobalServices() 
     {
+        _crossModule->Withhold(*_logCfg);
         _crossModule->Withhold(*this);
         assert(s_instance == nullptr);  // (should already have been detached in the Withhold() call)
     }
@@ -199,8 +198,4 @@ namespace ConsoleRig
 
     IStep::~IStep() {}
     IProgress::~IProgress() {}
-
-
-    void Logging_Startup(const char configFile[], const char logFileName[]) {}
-    void Logging_Shutdown() {}
 }

@@ -23,5 +23,6 @@ target_link_libraries(ShaderScan Utility Math Assets ConsoleRig RenderCore Shade
 # Foreign Common
 include_directories(${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR}/cml-1_0_2 ${FOREIGN_DIR})
 
-target_compile_options(ShaderScan PUBLIC -std=c++14 -fapple-pragma-pack -fexceptions -frtti -ffunction-sections -fdata-sections)
+target_compile_options(ShaderScan PRIVATE -std=c++14 -fapple-pragma-pack -fexceptions -frtti -ffunction-sections -fdata-sections -fcxx-exceptions)
+target_compile_options(ShaderScan PRIVATE -O0)
 set_property(TARGET ShaderScan APPEND PROPERTY COMPILE_DEFINITIONS $<$<CONFIG:Debug>:_DEBUG>)
