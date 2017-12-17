@@ -29,6 +29,11 @@ namespace ShaderSourceParser { namespace AntlrHelper
         return pANTLR3_BASE_TREE(node->getChild(node, childIndex));
     }
 
+	unsigned GetChildCount(pANTLR3_BASE_TREE node)
+	{
+		return node->getChildCount(node);
+	}
+
     pANTLR3_COMMON_TOKEN GetToken(pANTLR3_BASE_TREE node)
     {
         return node->getToken(node);
@@ -47,6 +52,33 @@ namespace ShaderSourceParser { namespace AntlrHelper
         tempString->factory->destroy(tempString->factory, tempString);
         return Conversion::Convert<std::basic_string<CharType>>(result);
     }
+
+	void Description(std::ostream& str, pANTLR3_COMMON_TOKEN token)
+	{
+		ANTLR3_STRING* strng = token->toString(token);
+		str << AsString<char>(strng);
+		strng->factory->destroy(strng->factory, strng);
+	}
+
+	void StructureDescription(std::ostream& str, pANTLR3_BASE_TREE node, unsigned indent)
+	{
+		auto indentBuffer = std::make_unique<char[]>(indent+1);
+		std::fill(indentBuffer.get(), &indentBuffer[indent], ' ');
+		indentBuffer[indent] = '\0';
+
+		str << indentBuffer.get();
+		auto* token = GetToken(node);
+		if (token) {
+			Description(str, token);
+		} else {
+			str << "<<no token>>";
+		}
+		str << std::endl;
+
+		auto childCount = GetChildCount(node);
+		for (unsigned c=0; c<childCount; ++c)
+			StructureDescription(str, GetChild(node, c), indent+4);
+	}
 
 	void __cdecl ExceptionSet::HandleException(
         ExceptionSet* pimpl,

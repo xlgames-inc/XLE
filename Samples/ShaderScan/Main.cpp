@@ -11,6 +11,7 @@
 #include "Assets/ConfigFileContainer.h"
 #include "Assets/AssetUtils.h"
 #include "Assets/AssetServices.h"
+#include "Core/WinAPI/IncludeWindows.h"
 #include "ConsoleRig/GlobalServices.h"
 #include "ConsoleRig/Log.h"
 #include "Utility/StringUtils.h"
@@ -18,7 +19,6 @@
 #include "Utility/Streams/StreamDOM.h"
 #include "Utility/Streams/FileUtils.h"
 #include "Utility/ParameterBox.h"
-#include <iostream>
 
 namespace ShaderScan
 {
@@ -44,7 +44,7 @@ namespace ShaderScan
                 // catch the list of errors, and report each one...
             auto errors = e.GetErrors();
             for (auto i:errors) {
-                std::cerr
+                std::cerr 
                     << "\"" << inputFile.AsString().c_str() << "\""
                     << ":(" << i._lineStart << ":" << i._charStart << ")("
                     << i._lineEnd << ":" << i._charEnd << "):error:"
@@ -57,7 +57,9 @@ namespace ShaderScan
 
 	static void TestGraphSyntax()
 	{
-		const auto* filename = "Game/xleres/System/SlotPrototype.sh";
+		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
+
+		const auto* filename = "xleres/System/SlotPrototype.sh";
 		size_t inputFileSize;
         auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(filename, &inputFileSize);
 
@@ -66,7 +68,7 @@ namespace ShaderScan
 			[](const ::Assets::TextChunk<char>& chunk) { return XlEqString(chunk._type, "GraphSyntax"); });
 		if (i!=compoundDoc.end()) {
 			auto str = ShaderPatcher::ReadGraphSyntax(i->_content, ::Assets::DefaultDirectorySearchRules(filename));
-			LogWarning << "Output: " << str << std::endl;
+			LogWarning << "Output: " << str;
 		}
 	}
 }
@@ -90,9 +92,10 @@ int main(int argc, char *argv[])
         }
         ShaderScan::Execute(MakeStringSection(cmdLine));
     } CATCH (const std::exception& e) {
-        LogAlwaysError << "Hit top level exception. Aborting program!" << std::endl;
-        LogAlwaysError << e.what() << std::endl;
+        LogAlwaysError << "Hit top level exception. Aborting program!";
+        LogAlwaysError << e.what();
     } CATCH_END
 
     return 0;
 }
+

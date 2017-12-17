@@ -15,6 +15,8 @@ options
 
 	// #pragma warning(disable:4244)
 	// void CustomDisplayRecognitionError(void * recognizer, void * tokenNames);
+
+	typedef struct IdentifierAndScopeTag IdentifierAndScope;
 }
 
 @context
@@ -24,9 +26,15 @@ options
 
 @members
 {
-	NodeId RNode_Register(const void*, const char file[]);
-	NodeId LSlot_Register(const void*, const char file[]);
-	NodeId RSlot_Register(const void*, const char file[]);
+	struct IdentifierAndScopeTag
+	{
+		const char* _scope;
+		const char* _identifier;
+	};
+
+	NodeId RNode_Register(const void*, struct IdentifierAndScopeTag identifierAndScope);
+	NodeId LSlot_Register(const void*, struct IdentifierAndScopeTag identifierAndScope);
+	NodeId RSlot_Register(const void*, struct IdentifierAndScopeTag identifierAndScope);
 	ConnectorId Connector_Register(const void*, NodeId node, const char connectorName[]);
 	ConnectorId LiteralConnector_Register(const void*, const char literal[]);
 	ConnectionId Connection_Register(const void*, ConnectorId left, ConnectorId right);
@@ -35,9 +43,16 @@ options
 	void Slot_Name(const void*, NodeId, NodeId, const char name[]);
 	NodeId RNode_Find(const void*, const char name[]);
 	NodeId LNode_Find(const void*, const char name[]);
-	void Node_Push(const void*, NodeId);
-	void Node_Pop(const void*);
-	NodeId Node_GetActive(const void*);
+
+	void RNode_Push(const void*, NodeId);
+	void RNode_Pop(const void*);
+	NodeId RNode_GetActive(const void*);
+
+	void LNode_Push(const void*, NodeId);
+	void LNode_Pop(const void*);
+	NodeId LNode_GetActive(const void*);
+
+	void Import_Register(const void*, const char alias[], const char import[]);
 
 	char* StripAngleBrackets(const char* input)
 	{
@@ -70,12 +85,16 @@ options
 //------------------------------------------------------------------------------------------------
 
 identifier returns [const char* str = NULL] : Identifier { str = (const char*)$Identifier.text->chars; };
-functionPath returns [const char* str = NULL] : FileSpecLiteral { str = (const char*)$FileSpecLiteral.text->chars; };
+functionPath returns [IdentifierAndScope res] 
+	: ^(FUNCTION_PATH importSrc=identifier ident=identifier) { res._scope = importSrc; res._identifier = ident; }
+	| ^(FUNCTION_PATH ident=identifier) { res._scope = NULL; res._identifier = ident; }
+	;
+stringLiteral returns [const char* str = NULL] : StringLiteral { str = (const char*)$StringLiteral.text->chars; };
 
 rnode returns [NodeId node = ~0u]
-	: ^(FUNCTION_CALL ^(FUNCTION_PATH f=functionPath) { char* s = StripAngleBrackets(f); $node = RNode_Register(ctx, s); free(s); Node_Push(ctx, $node); } scopedConnection*)
+	: ^(FUNCTION_CALL f=functionPath { $node = RNode_Register(ctx, f); RNode_Push(ctx, $node); } scopedConnection*)
 	{
-		Node_Pop(ctx);
+		RNode_Pop(ctx);
 	}
 	| nid=identifier { $node = RNode_Find(ctx, nid); }
 	;
@@ -87,7 +106,7 @@ lnode returns [NodeId node = ~0u]
 scopedConnection returns [ConnectionId connection = ~0u]
 	: ^(SCOPED_CONNECTION l=identifier r=rconnection)
 	{
-		ConnectorId left = Connector_Register(ctx, Node_GetActive(ctx), l);
+		ConnectorId left = Connector_Register(ctx, RNode_GetActive(ctx), l);
 		$connection = Connection_Register(ctx, left, r);
 	}
 	;
@@ -98,12 +117,21 @@ connection returns [ConnectionId connection = ~0u]
 		ConnectorId left = Connector_Register(ctx, n, l);
 		$connection = Connection_Register(ctx, left, r);
 	}
+	| ^(RETURN_CONNECTION r=rconnection)
+	{
+		ConnectorId left = Connector_Register(ctx, LNode_GetActive(ctx), "result");
+		$connection = Connection_Register(ctx, left, r);
+	}
 	;
 
 rconnection returns [ConnectorId connector = ~0u]
 	: ^((RCONNECTION_UNIQUE|RCONNECTION_REF) n0=rnode c0=identifier)
 	{
 		connector = Connector_Register(ctx, n0, c0);
+	}
+	| ^((RCONNECTION_IDENTIFIER) c0=identifier)
+	{
+		connector = Connector_Register(ctx, LNode_GetActive(ctx), c0);
 	}
 	| ^(LITERAL StringLiteral)
 	{
@@ -113,22 +141,34 @@ rconnection returns [ConnectorId connector = ~0u]
 	}
 	;
 
-toplevel
-	: ^(NODE_DECL nid=identifier n=rnode)
+graphStatement
+	: connection
+	| ^(NODE_DECL nid=identifier n=rnode)
 	{
 		Node_Name(ctx, n, nid);
 	}
-	| ^(SLOT_DECL n1id=identifier ^(FUNCTION_PATH f=functionPath))
-	{
-		char* s = StripAngleBrackets(f);
-		NodeId lnode = LSlot_Register(ctx, s);
-		NodeId rnode = RSlot_Register(ctx, s);
-		free(s);
-		Slot_Name(ctx, lnode, rnode, n1id);
+	;
+
+graphSignature returns [const char* name = NULL]
+	: ^(GRAPH_SIGNATURE n=identifier returnType=identifier (^(PARAMETER_DECLARATION pname=identifier ptype=identifier))*) { $name = n; }
+	;
+
+toplevel
+	: 
+	^(IMPORT alias=identifier source=stringLiteral) 
+	{ 
+		char* stripped = StripQuotesBrackets(source);
+		Import_Register(ctx, alias, stripped); 
+		free(stripped);
 	}
-	| connection
-	| ^(EXPORT Identifier)
+	| ^(GRAPH_DECLARATION 
+		name=graphSignature { NodeId n = LSlot_Register(ctx, (struct IdentifierAndScopeTag){0, name}); Node_Name(ctx, n, name); LNode_Push(ctx, n); } 
+		graphStatement*
+		{ LNode_Pop(ctx); }
+	)
 	;
 
 entrypoint : toplevel* ;
 	
+
+

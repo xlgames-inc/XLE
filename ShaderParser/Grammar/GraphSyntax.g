@@ -11,17 +11,24 @@ tokens
 	TOPLEVEL;
 
 	NODE_DECL;
-	SLOT_DECL;
+	// SLOT_DECL;
 
 	FUNCTION_PATH;
 	FUNCTION_CALL;
+
+	PARAMETER_DECLARATION;
+	GRAPH_SIGNATURE;
+	GRAPH_DECLARATION;
 
 	CONNECTION;
 	SCOPED_CONNECTION;
 	RCONNECTION_UNIQUE;
 	RCONNECTION_REF;
+	RCONNECTION_IDENTIFIER;
+	RETURN_CONNECTION;
 
-	EXPORT;
+	// EXPORT;
+	IMPORT;
 
 	LITERAL;
 }
@@ -50,7 +57,11 @@ tokens
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-functionPath : f=FileSpecLiteral -> ^(FUNCTION_PATH $f);
+// functionPath : f=FileSpecLiteral -> ^(FUNCTION_PATH $f);
+functionPath 
+	: i=Identifier '::' f=Identifier -> ^(FUNCTION_PATH $i $f)
+	| f=Identifier -> ^(FUNCTION_PATH $f)
+	;
 functionCall : f=functionPath '(' (scopedConnection (',' scopedConnection)*)? ')' -> ^(FUNCTION_CALL $f scopedConnection*);
 
 lconnection : n=Identifier -> $n;
@@ -58,20 +69,43 @@ rconnection
 	: f=functionCall '.' n0=Identifier -> ^(RCONNECTION_UNIQUE $f $n0)
 	| frag=Identifier '.' n1=Identifier -> ^(RCONNECTION_REF $frag $n1)
 	| c=StringLiteral -> ^(LITERAL $c)
+	| ident=Identifier -> ^(RCONNECTION_IDENTIFIER $ident)
 	;
 scopedConnection : l=lconnection ':' r=rconnection -> ^(SCOPED_CONNECTION $l $r);
 
 declaration
 	:	'node' n1=Identifier '=' f=functionCall -> ^(NODE_DECL $n1 $f)
-	|	'slot' n0=Identifier 'implements' signal=functionPath -> ^(SLOT_DECL $n0 $signal)
+//	|	'slot' n0=Identifier 'implements' signal=functionPath -> ^(SLOT_DECL $n0 $signal)
 	;
 
-connection : n=Identifier '.' l=lconnection ':' r=rconnection -> ^(CONNECTION $n $l $r);
+connection 
+	: n=Identifier '.' l=lconnection ':' r=rconnection -> ^(CONNECTION $n $l $r)
+	| 'return' r=rconnection -> ^(RETURN_CONNECTION $r)
+	;
 
-toplevel
+graphStatement
 	:	declaration ';' -> declaration
 	|	connection ';' -> connection
-	|	'export' n=Identifier ';' -> ^(EXPORT $n)
+	;
+
+implementsQualifier
+	: 'implements' functionPath
+	;
+
+parameterDeclaration
+	: type=Identifier name=Identifier implementsQualifier? -> ^(PARAMETER_DECLARATION $name $type)
+	;
+
+graphSignature
+	: returnType=Identifier name=Identifier '(' (parameters += parameterDeclaration (',' parameters += parameterDeclaration)*)? ')' implementsQualifier?
+		-> ^(GRAPH_SIGNATURE $name $returnType $parameters*)
+	;
+
+toplevel
+	:	/*'export' n=Identifier ';' -> ^(EXPORT $n)
+	|	*/ 'import' name=Identifier '=' source=StringLiteral ';' -> ^(IMPORT $name $source)
+	|	sig=graphSignature '{' statements += graphStatement* '}'
+			-> ^(GRAPH_DECLARATION $sig $statements*)
 	;
 
 entrypoint
@@ -108,7 +142,7 @@ StringLiteral
 	:  '"' ( EscapeSequence | ~('\\'|'"') )* '"'
 	;
 
-FileSpecLiteral : '<' (~'>')* '>';
+// FileSpecLiteral : '<' (~'>')* '>';
 
 fragment Letter
 	:  '\u0024' |
