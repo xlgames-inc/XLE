@@ -83,7 +83,7 @@ namespace Assets
             for (const auto& i:_pimpl->_assets)
                 result.push_back(i.second);
         }
-        return std::move(result);
+        return result;
     }
 
     bool InvalidAssetManager::HasInvalidAssets() const

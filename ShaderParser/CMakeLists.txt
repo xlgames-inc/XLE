@@ -20,3 +20,5 @@ add_custom_command(
 BasicLibrary(ShaderParser "${Src};${Headers};${GeneratedGrammarFiles}")
 
 include_directories(${FOREIGN_DIR} ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4/include ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4 ${CMAKE_CURRENT_BINARY_DIR})
+
+target_compile_options(ShaderParser PRIVATE -Wno-parentheses-equality -Wno-incompatible-pointer-types-discards-qualifiers)

@@ -91,7 +91,7 @@ namespace Serialization { namespace ChunkFile
         auto rawMemoryBlock = std::make_unique<uint8[]>(scaffoldChunk._size);
         file->Seek(scaffoldChunk._fileOffset);
         file->Read(rawMemoryBlock.get(), 1, scaffoldChunk._size);
-        return std::move(rawMemoryBlock);
+        return rawMemoryBlock;
     }
 
 

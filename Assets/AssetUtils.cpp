@@ -363,7 +363,7 @@ namespace Assets
 			result.insert(result.end(), partialRes.begin(), partialRes.end());
 		}
 		
-		return std::move(result);
+		return result;
 	}
 
     DirectorySearchRules::DirectorySearchRules()

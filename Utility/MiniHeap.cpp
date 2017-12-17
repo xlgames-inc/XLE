@@ -18,7 +18,7 @@ namespace Utility
         class HeapCorruption : public std::exception 
         {
         public:
-            virtual const char* what() never_throws { return "Heap corruption"; }
+            virtual const char* what() const never_throws { return "Heap corruption"; }
         };
     }
 

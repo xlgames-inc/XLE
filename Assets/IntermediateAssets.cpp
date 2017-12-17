@@ -124,7 +124,7 @@ namespace Assets { namespace IntermediateAssets
 				return i->second;		
 
             RetainedRecords.insert(i, std::make_pair(hash, newRecord));
-            return std::move(newRecord);
+            return newRecord;
         }
     }
 

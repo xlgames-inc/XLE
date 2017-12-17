@@ -109,7 +109,7 @@ namespace RenderCore
         auto depVal = AsDepValPtr(MakeIteratorRange(deps));
 		result->AddArtifact("main", std::make_shared<Assets::BlobArtifact>(errors, payload, std::move(depVal)));
 		result->SetState(success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid);
-		return std::move(result);
+		return result;
     }
 
     auto MinimalShaderSource::CompileFromFile(

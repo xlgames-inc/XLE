@@ -321,10 +321,10 @@ namespace Utility
     }
 
     inline ParameterBox::Iterator::Iterator(const ParameterBox& box, size_t index)
-    : _box(&box), _index(index)
+    : _index(index), _box(&box)
     {}
 
-    inline ParameterBox::Iterator::Iterator() : _box(nullptr), _index(0) {}
+    inline ParameterBox::Iterator::Iterator() : _index(0), _box(nullptr) {}
 
     using StringTable = std::vector<std::pair<const utf8*, std::string>>;
     void    BuildStringTable(StringTable& defines, const ParameterBox& box);

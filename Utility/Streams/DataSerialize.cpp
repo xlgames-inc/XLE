@@ -16,7 +16,7 @@ namespace Utility
         for (auto i=table.cbegin(); i!=table.cend(); ++i) {
             result->SetAttribute((const char*)i->first, i->second.c_str());
         }
-        return std::move(result);
+        return result;
     }
 }
 

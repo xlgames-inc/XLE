@@ -695,7 +695,7 @@ namespace ShaderPatcher
             result << warnings.str();
         }
 
-        return std::move(result);
+        return result;
     }
 
     static std::pair<std::string, FunctionInterface> GenerateMainFunctionBody(const NodeGraph& graph)

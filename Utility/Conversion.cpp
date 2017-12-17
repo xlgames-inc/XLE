@@ -110,7 +110,7 @@ namespace Conversion
         utf8_2_ucs2(
             AsPointer(input.begin()), input.size(),
             AsPointer(result.begin()), result.size());
-        return std::move(result);
+        return result;
     }
 
     template<> std::basic_string<ucs4> Convert(const std::basic_string<utf8>& input)
@@ -120,7 +120,7 @@ namespace Conversion
         utf8_2_ucs4(
             AsPointer(input.begin()), input.size(),
             AsPointer(result.begin()), result.size());
-        return std::move(result);
+        return result;
     }
 
     template<> std::basic_string<utf8> Convert(const std::basic_string<ucs2>& input)
@@ -130,7 +130,7 @@ namespace Conversion
         ucs2_2_utf8(
             AsPointer(input.begin()), input.size(),
             AsPointer(result.begin()), result.size());
-        return std::move(result);
+        return result;
     }
 
     template<> std::basic_string<ucs4> Convert(const std::basic_string<ucs2>& input)
@@ -140,7 +140,7 @@ namespace Conversion
         ucs2_2_ucs4(
             AsPointer(input.begin()), input.size(),
             AsPointer(result.begin()), result.size());
-        return std::move(result);
+        return result;
     }
 
     template<> std::basic_string<char> Convert(const std::basic_string<ucs2>& input)
@@ -150,7 +150,7 @@ namespace Conversion
         ucs2_2_utf8(
             AsPointer(input.begin()), input.size(),
             (utf8*)AsPointer(result.begin()), result.size());
-        return std::move(result);
+        return result;
     }
 
     template<> std::basic_string<utf8> Convert(const std::basic_string<ucs4>& input)
@@ -160,7 +160,7 @@ namespace Conversion
         ucs4_2_utf8(
             AsPointer(input.begin()), input.size(),
             AsPointer(result.begin()), result.size());
-        return std::move(result);
+        return result;
     }
 
     template<> std::basic_string<ucs2> Convert(const std::basic_string<ucs4>& input)
@@ -170,7 +170,7 @@ namespace Conversion
         ucs4_2_ucs2(
             AsPointer(input.begin()), input.size(),
             AsPointer(result.begin()), result.size());
-        return std::move(result);
+        return result;
     }
 
     template<> std::basic_string<char> Convert(const std::basic_string<ucs4>& input)
@@ -180,7 +180,7 @@ namespace Conversion
         ucs4_2_utf8(
             AsPointer(input.begin()), input.size(),
             (utf8*)AsPointer(result.begin()), result.size());
-        return std::move(result);
+        return result;
     }
 
     template<> std::basic_string<wchar_t> Convert(const std::basic_string<ucs4>& input)
@@ -190,7 +190,7 @@ namespace Conversion
         ucs4_2_ucs2(
             AsPointer(input.begin()), input.size(),
             (ucs2*)AsPointer(result.begin()), result.size());
-        return std::move(result);
+        return result;
     }
 
     template<> std::basic_string<char> Convert(const std::basic_string<utf8>& input)
@@ -212,7 +212,7 @@ namespace Conversion
 		utf8_2_ucs2(
 			AsPointer(input.begin()), input.Length(),
 			AsPointer(result.begin()), result.size());
-		return std::move(result);
+		return result;
 	}
 
 	template<> std::basic_string<ucs4> Convert(StringSection<utf8> input)
@@ -222,7 +222,7 @@ namespace Conversion
 		utf8_2_ucs4(
 			AsPointer(input.begin()), input.Length(),
 			AsPointer(result.begin()), result.size());
-		return std::move(result);
+		return result;
 	}
 
 	template<> std::basic_string<utf8> Convert(StringSection<ucs2> input)
@@ -232,7 +232,7 @@ namespace Conversion
 		ucs2_2_utf8(
 			AsPointer(input.begin()), input.Length(),
 			AsPointer(result.begin()), result.size());
-		return std::move(result);
+		return result;
 	}
 
 	template<> std::basic_string<ucs4> Convert(StringSection<ucs2> input)
@@ -242,7 +242,7 @@ namespace Conversion
 		ucs2_2_ucs4(
 			AsPointer(input.begin()), input.Length(),
 			AsPointer(result.begin()), result.size());
-		return std::move(result);
+		return result;
 	}
 
 	template<> std::basic_string<char> Convert(StringSection<ucs2> input)
@@ -252,7 +252,7 @@ namespace Conversion
 		ucs2_2_utf8(
 			AsPointer(input.begin()), input.Length(),
 			(utf8*)AsPointer(result.begin()), result.size());
-		return std::move(result);
+		return result;
 	}
 
 	template<> std::basic_string<utf8> Convert(StringSection<ucs4> input)
@@ -262,7 +262,7 @@ namespace Conversion
 		ucs4_2_utf8(
 			AsPointer(input.begin()), input.Length(),
 			AsPointer(result.begin()), result.size());
-		return std::move(result);
+		return result;
 	}
 
 	template<> std::basic_string<ucs2> Convert(StringSection<ucs4> input)
@@ -272,7 +272,7 @@ namespace Conversion
 		ucs4_2_ucs2(
 			AsPointer(input.begin()), input.Length(),
 			AsPointer(result.begin()), result.size());
-		return std::move(result);
+		return result;
 	}
 
 	template<> std::basic_string<char> Convert(StringSection<ucs4> input)
@@ -282,7 +282,7 @@ namespace Conversion
 		ucs4_2_utf8(
 			AsPointer(input.begin()), input.Length(),
 			(utf8*)AsPointer(result.begin()), result.size());
-		return std::move(result);
+		return result;
 	}
 
 	template<> std::basic_string<wchar_t> Convert(StringSection<ucs4> input)
@@ -292,7 +292,7 @@ namespace Conversion
 		ucs4_2_ucs2(
 			AsPointer(input.begin()), input.Length(),
 			(ucs2*)AsPointer(result.begin()), result.size());
-		return std::move(result);
+		return result;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

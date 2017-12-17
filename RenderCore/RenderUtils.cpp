@@ -67,7 +67,7 @@ namespace RenderCore
         if (pkt.begin()) {
             XlCopyMemory(pkt.begin(), begin, size);
         }
-        return std::move(pkt);
+        return pkt;
     }
 
     MiniHeap& SharedPkt::GetHeap()

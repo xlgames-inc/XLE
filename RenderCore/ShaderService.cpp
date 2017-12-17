@@ -359,7 +359,7 @@ namespace RenderCore
         if (compiler)
             compiler->AdaptShaderModel(shaderId._shaderModel, dimof(shaderId._shaderModel), shaderId._shaderModel);
 
-        return std::move(shaderId);
+        return shaderId;
     }
 
     auto ShaderService::CompileFromFile(
