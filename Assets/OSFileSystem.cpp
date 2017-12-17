@@ -14,8 +14,6 @@
 #include <sstream>
 #include <vector>
 
-#include "../Core/WinAPI/IncludeWindows.h"
-
 namespace Assets
 {
 	using IOReason = Utility::Exceptions::IOException::Reason;
@@ -42,8 +40,8 @@ namespace Assets
 
 		File_OS(File_OS&& moveFrom) never_throws = default;
 		File_OS& operator=(File_OS&& moveFrom) never_throws = default;
-		File_OS(const File_OS& copyFrom) never_throws = default;
-		File_OS& operator=(const File_OS& copyFrom) never_throws = default;
+		File_OS(const File_OS& copyFrom) = default;
+		File_OS& operator=(const File_OS& copyFrom) = default;
 	private:
 		RawFS::BasicFile _file;
 		std::basic_string<utf8> _fn;
@@ -217,48 +215,34 @@ namespace Assets
 		return IOReason::Complex;
 	}
 
-	#pragma warning(push)
-	#pragma warning(disable:4701) // potentially uninitialized local variable 'attribs' used
-
-	static uint64 AsUInt64(FILETIME ft) { return (uint64(ft.dwHighDateTime) << 32ull) | uint64(ft.dwLowDateTime); }
-
 	FileDesc FileSystem_OS::TryGetDesc(const Marker& marker)
 	{
 		// Given the filename in the "marker", try to find some basic information about the file.
-		// In this version, we're not going to open the file. We'll just use GetFileAttributes
+		// In this version, we're not going to open the file. We'll just query the information from 
+		// the filesystem directory table.
 		
-		WIN32_FILE_ATTRIBUTE_DATA attribs;
-		BOOL result = false;
-
 		auto type = *(uint16*)AsPointer(marker.cbegin());
 		if (type == 1) {
-			result = GetFileAttributesExA(
-				(const char*)PtrAdd(AsPointer(marker.begin()), 2), 
-				GetFileExInfoStandard,
-				&attribs);
-
-			if (!result)
-				return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+			std::basic_string<utf8> str((const utf8*)PtrAdd(AsPointer(marker.begin()), 2));
+			auto attrib = RawFS::TryGetFileAttributes(str.c_str());
+			if (!attrib)
+				return FileDesc { std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 
 			return FileDesc
 				{
-					std::basic_string<utf8>((const utf8*)PtrAdd(AsPointer(marker.begin()), 2)), FileDesc::State::Normal,
-					AsUInt64(attribs.ftLastWriteTime), uint64(attribs.nFileSizeHigh) << 32 | uint64(attribs.nFileSizeLow)
+					str, FileDesc::State::Normal,
+					attrib.value()._lastWriteTime, attrib.value()._size
 				};
 		} else if (type == 2) {
-			result = GetFileAttributesExW(
-				(const wchar_t*)PtrAdd(AsPointer(marker.begin()), 2),
-				GetFileExInfoStandard,
-				&attribs);
-
-			if (!result)
-				return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+			std::basic_string<ucs2> str((const ucs2*)PtrAdd(AsPointer(marker.begin()), 2));
+			auto attrib = RawFS::TryGetFileAttributes(str.c_str());
+			if (!attrib)
+				return FileDesc { std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 
 			return FileDesc
 				{
-					Conversion::Convert<std::basic_string<utf8>>(std::basic_string<ucs2>((const ucs2*)PtrAdd(AsPointer(marker.begin()), 2))), 
-					FileDesc::State::Normal,
-					AsUInt64(attribs.ftLastWriteTime), uint64(attribs.nFileSizeHigh) << 32 | uint64(attribs.nFileSizeLow)
+					Conversion::Convert<std::basic_string<utf8>>(str), FileDesc::State::Normal,
+					attrib.value()._lastWriteTime, attrib.value()._size
 				};
 		} 
 

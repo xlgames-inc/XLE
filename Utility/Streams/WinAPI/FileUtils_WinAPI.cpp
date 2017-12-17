@@ -456,20 +456,31 @@ namespace Utility
 			CreateDirectoryRecursive_Int(filename);
 		}
 
-		uint64 GetFileModificationTime(const char filename[])
+		static uint64 AsUInt64(FILETIME ft) { return (uint64(ft.dwHighDateTime) << 32ull) | uint64(ft.dwLowDateTime); }
+
+		static FileAttributes AsFileAttributes(const WIN32_FILE_ATTRIBUTE_DATA& fileData)
 		{
-			WIN32_FILE_ATTRIBUTE_DATA attribData;
-			auto result = GetFileAttributesEx(filename, GetFileExInfoStandard, &attribData);
-			if (!result) return 0ull;
-			return (uint64(attribData.ftLastWriteTime.dwHighDateTime) << 32ull) | uint64(attribData.ftLastWriteTime.dwLowDateTime);
+			return { uint64(attribs.nFileSizeHigh) << 32 | uint64(attribs.nFileSizeLow), AsUInt64(attribs.ftCreationTime), AsUInt64(attribs.ftLastWriteTime), AsUInt64(attribs.ftLastAccessTime) };
 		}
 
-		uint64 GetFileSize(const char filename[])
+		std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[])
 		{
-			WIN32_FILE_ATTRIBUTE_DATA attribData;
-			auto result = GetFileAttributesEx(filename, GetFileExInfoStandard, &attribData);
-			if (!result) return 0ull;
-			return (uint64(attribData.nFileSizeHigh) << 32ull) | uint64(attribData.nFileSizeLow);
+			WIN32_FILE_ATTRIBUTE_DATA attribs;
+			auto result = GetFileAttributesExA(
+				(const char*)filename, 
+				GetFileExInfoStandard,
+				&attribs);
+			return (result) ? AsFileAttributes(attribs) : {};
+		}
+
+		std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[])
+		{
+			WIN32_FILE_ATTRIBUTE_DATA attribs;
+			auto result = GetFileAttributesExW(
+				(const wchar_t*)filename, 
+				GetFileExInfoStandard,
+				&attribs);
+			return (result) ? AsFileAttributes(attribs) : {};
 		}
 
 		std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter)

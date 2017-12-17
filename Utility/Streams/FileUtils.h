@@ -10,12 +10,14 @@
 #include "../../Core/Exceptions.h"
 #include "../../Core/Types.h"
 #include "../StringUtils.h" // for StringSection
-#include "../Mixins.h"
 #include <memory>       // for std::unique_ptr
 
 #include <vector>
 #include <string>
 #include <functional>
+#include <experimental/optional>
+
+namespace std { template <typename T> using optional = experimental::optional<T>; }
 
 namespace Utility 
 {
@@ -136,9 +138,17 @@ namespace Utility
 			MemoryMappedFile();
 		};
 
+		class FileAttributes
+		{
+		public:
+			uint64_t _size;
+			uint64_t _lastWriteTime;
+			uint64_t _lastAccessTime;
+		};
+
 		XL_UTILITY_API bool DoesFileExist(const char filename[]);
-		XL_UTILITY_API uint64 GetFileModificationTime(const char filename[]);
-		XL_UTILITY_API uint64 GetFileSize(const char filename[]);
+		XL_UTILITY_API std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[]);
+		XL_UTILITY_API std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[]);
 		XL_UTILITY_API bool DoesDirectoryExist(const char filename[]);
 		XL_UTILITY_API void CreateDirectoryRecursive(const StringSection<char> filename);
 		XL_UTILITY_API void CreateDirectoryRecursive(const StringSection<utf8> filename);

@@ -44,7 +44,7 @@ namespace ShaderScan
                 // catch the list of errors, and report each one...
             auto errors = e.GetErrors();
             for (auto i:errors) {
-                std::cerr 
+                std::cerr
                     << "\"" << inputFile.AsString().c_str() << "\""
                     << ":(" << i._lineStart << ":" << i._charStart << ")("
                     << i._lineEnd << ":" << i._charEnd << "):error:"
@@ -57,7 +57,7 @@ namespace ShaderScan
 
 	static void TestGraphSyntax()
 	{
-		const auto* filename = "game/xleres/System/SlotPrototype.sh";
+		const auto* filename = "Game/xleres/System/SlotPrototype.sh";
 		size_t inputFileSize;
         auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(filename, &inputFileSize);
 
@@ -96,4 +96,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-

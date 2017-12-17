@@ -3,7 +3,7 @@ file(GLOB Src "*.cpp")
 file(GLOB Headers "*.h")
 file(GLOB StreamsSrc "Streams/*.cpp")
 file(GLOB ThreadingSrc "Threading/*.cpp")
-file(GLOB LinuxSrc "Linux/*.cpp")
+file(GLOB LinuxSrc "Linux/*.cpp" "Streams/Linux/*.cpp")
 
 BasicLibrary(Utility "${Src};${Headers};${StreamsSrc};${ThreadingSrc};${LinuxSrc}")
 

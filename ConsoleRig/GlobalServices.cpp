@@ -22,6 +22,7 @@
 #include "../Utility/Conversion.h"
 #include <assert.h>
 #include <random>
+#include <typeinfo>
 
 namespace ConsoleRig
 {
@@ -127,7 +128,6 @@ namespace ConsoleRig
 			mountingTree = serv.Call<std::shared_ptr<::Assets::MountingTree>>(typeid(::Assets::MountingTree).hash_code());
 		}
 
-		#if defined(TEMP_HACK)
         std::shared_ptr<::Assets::IFileSystem> defaultFileSystem;
 		if (!serv.Has<std::shared_ptr<::Assets::IFileSystem>()>(Fn_DefaultFileSystem)) {
 			defaultFileSystem = ::Assets::CreateFileSystem_OS();
@@ -137,7 +137,6 @@ namespace ConsoleRig
 		}
 
 		::Assets::MainFileSystem::Init(mountingTree, defaultFileSystem);
-        #endif
     }
 
     static void MainRig_Detach()
@@ -180,7 +179,7 @@ namespace ConsoleRig
     GlobalServices::~GlobalServices() 
     {
         _crossModule->Withhold(*this);
-        DetachCurrentModule();
+        assert(s_instance == nullptr);  // (should already have been detached in the Withhold() call)
     }
 
     void GlobalServices::AttachCurrentModule()

@@ -369,6 +369,7 @@ typedef	int	SOCKET;
 
 # if defined(_AIX) || __GNUC__ > 3 
 
+   #include <sys/socket.h>
    typedef  socklen_t   ANTLR3_SALENT;
 
 # else
