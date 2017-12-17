@@ -26,9 +26,15 @@ options
 
 @members
 {
-	NodeId RNode_Register(const void*, const char file[]);
-	NodeId LSlot_Register(const void*, const char file[]);
-	NodeId RSlot_Register(const void*, const char file[]);
+	struct IdentifierAndScopeTag
+	{
+		const char* _scope;
+		const char* _identifier;
+	};
+
+	NodeId RNode_Register(const void*, struct IdentifierAndScopeTag identifierAndScope);
+	NodeId LSlot_Register(const void*, struct IdentifierAndScopeTag identifierAndScope);
+	NodeId RSlot_Register(const void*, struct IdentifierAndScopeTag identifierAndScope);
 	ConnectorId Connector_Register(const void*, NodeId node, const char connectorName[]);
 	ConnectorId LiteralConnector_Register(const void*, const char literal[]);
 	ConnectionId Connection_Register(const void*, ConnectorId left, ConnectorId right);
@@ -45,6 +51,8 @@ options
 	void LNode_Push(const void*, NodeId);
 	void LNode_Pop(const void*);
 	NodeId LNode_GetActive(const void*);
+
+	void Import_Register(const void*, const char alias[], const char import[]);
 
 	char* StripAngleBrackets(const char* input)
 	{
@@ -67,12 +75,6 @@ options
 		if (len && result[len-1] == '"') result[len-1] = '\0';
 		return result;
 	}
-
-	struct IdentifierAndScopeTag
-	{
-		const char* _scope;
-		const char* _identifier;
-	};
 }
 
 /*@apifuncs
@@ -90,7 +92,7 @@ functionPath returns [IdentifierAndScope res]
 stringLiteral returns [const char* str = NULL] : StringLiteral { str = (const char*)$StringLiteral.text->chars; };
 
 rnode returns [NodeId node = ~0u]
-	: ^(FUNCTION_CALL f=functionPath { $node = RNode_Register(ctx, f._identifier); RNode_Push(ctx, $node); } scopedConnection*)
+	: ^(FUNCTION_CALL f=functionPath { $node = RNode_Register(ctx, f); RNode_Push(ctx, $node); } scopedConnection*)
 	{
 		RNode_Pop(ctx);
 	}
@@ -153,25 +155,20 @@ graphSignature returns [const char* name = NULL]
 
 toplevel
 	: 
-	/*| ^(SLOT_DECL n1id=identifier f=functionPath)
-	{
-		//char* s = StripAngleBrackets(f);
-		NodeId lnode = LSlot_Register(ctx, f._identifier);
-		NodeId rnode = RSlot_Register(ctx, f._identifier);
-		//free(s);
-		Slot_Name(ctx, lnode, rnode, n1id);
+	^(IMPORT alias=identifier source=stringLiteral) 
+	{ 
+		char* stripped = StripQuotesBrackets(source);
+		Import_Register(ctx, alias, stripped); 
+		free(stripped);
 	}
-	|*/ 
-	
-	^(IMPORT name=identifier source=stringLiteral) { /*Import_Register(name, source);*/ }
 	| ^(GRAPH_DECLARATION 
-		name=graphSignature { NodeId n = LSlot_Register(ctx, name); Node_Name(ctx, n, name); LNode_Push(ctx, n); } 
+		name=graphSignature { NodeId n = LSlot_Register(ctx, (struct IdentifierAndScopeTag){0, name}); Node_Name(ctx, n, name); LNode_Push(ctx, n); } 
 		graphStatement*
 		{ LNode_Pop(ctx); }
 	)
-
-	//| ^(EXPORT Identifier)
 	;
 
 entrypoint : toplevel* ;
 	
+
+

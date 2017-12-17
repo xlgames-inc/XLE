@@ -11,6 +11,9 @@
 #include "Assets/ConfigFileContainer.h"
 #include "Assets/AssetUtils.h"
 #include "Assets/AssetServices.h"
+#include "Assets/IFileSystem.h"
+#include "Assets/OSFileSystem.h"
+#include "Assets/MountingTree.h"
 #include "Core/WinAPI/IncludeWindows.h"
 #include "ConsoleRig/GlobalServices.h"
 #include "ConsoleRig/Log.h"
@@ -57,7 +60,9 @@ namespace ShaderScan
 
 	static void TestGraphSyntax()
 	{
-		const auto* filename = "game/xleres/System/SlotPrototype.sh";
+		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
+
+		const auto* filename = "xleres/System/SlotPrototype.sh";
 		size_t inputFileSize;
         auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(filename, &inputFileSize);
 

@@ -17,6 +17,15 @@
 
 #include <iostream>
 
+typedef unsigned NodeId;
+typedef unsigned ConnectorId;
+typedef unsigned ConnectionId;
+
+typedef struct IdentifierAndScopeTag
+{
+	const char* _scope;
+	const char* _identifier;
+} IdentifierAndScope;
 
 namespace ShaderPatcher
 {
@@ -34,6 +43,8 @@ namespace ShaderPatcher
 		std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> _slotNameMapping;
 		std::stack<uint32_t> _activeRNodes;
 		std::stack<uint32_t> _activeLNodes;
+
+		std::unordered_map<std::string, std::string> _imports; 
 	};
 
 	static pANTLR3_BASE_TREE BuildAST(struct GraphSyntaxParser_Ctx_struct& parser)
@@ -110,38 +121,45 @@ namespace ShaderPatcher
 		return result;
 	}
 
+	static std::string MakeArchiveName(const WorkingNodeGraph& graph, const IdentifierAndScope& identifierAndScope)
+	{
+		if (identifierAndScope._scope) {
+			auto i = graph._imports.find(identifierAndScope._scope);
+			if (i != graph._imports.end())
+				return i->second + ":" + identifierAndScope._identifier;
+			return std::string(identifierAndScope._scope) + ":" + identifierAndScope._identifier;
+		}
+		return identifierAndScope._identifier;
+	}
+
 }
 
-typedef unsigned NodeId;
-typedef unsigned ConnectorId;
-typedef unsigned ConnectionId;
-
-extern "C" NodeId RNode_Register(const void* ctx, const char archiveName[])
+extern "C" NodeId RNode_Register(const void* ctx, IdentifierAndScope identifierAndScope)
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
 
 	NodeId nextId = (NodeId)ng->_graph.GetNodes().size();
-	ShaderPatcher::Node newNode(archiveName?archiveName:"", nextId, ShaderPatcher::Node::Type::Procedure);
+	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(*ng, identifierAndScope), nextId, ShaderPatcher::Node::Type::Procedure);
 	ng->_graph.Add(std::move(newNode));
 	return nextId;
 }
 
-extern "C" NodeId LSlot_Register(const void* ctx, const char archiveName[])
+extern "C" NodeId LSlot_Register(const void* ctx, IdentifierAndScope identifierAndScope)
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
 
 	NodeId nextId = (NodeId)ng->_graph.GetNodes().size();
-	ShaderPatcher::Node newNode(archiveName, nextId, ShaderPatcher::Node::Type::SlotOutput);
+	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(*ng, identifierAndScope), nextId, ShaderPatcher::Node::Type::SlotOutput);
 	ng->_graph.Add(std::move(newNode));
 	return nextId;
 }
 
-extern "C" NodeId RSlot_Register(const void* ctx, const char archiveName[])
+extern "C" NodeId RSlot_Register(const void* ctx, IdentifierAndScope identifierAndScope)
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
 
 	NodeId nextId = (NodeId)ng->_graph.GetNodes().size();
-	ShaderPatcher::Node newNode(archiveName, nextId, ShaderPatcher::Node::Type::SlotInput);
+	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(*ng, identifierAndScope), nextId, ShaderPatcher::Node::Type::SlotInput);
 	ng->_graph.Add(std::move(newNode));
 	return nextId;
 }
@@ -267,3 +285,9 @@ extern "C" NodeId LNode_GetActive(const void* ctx)
 	return ng->_activeLNodes.top();
 }
 
+extern "C" void Import_Register(const void* ctx, const char alias[], const char import[])
+{
+	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	assert(ng->_imports.find(alias) == ng->_imports.end());
+	ng->_imports.insert(std::make_pair(alias, import));
+}

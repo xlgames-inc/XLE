@@ -1,13 +1,29 @@
 // CompoundDocument:1
 
+float2 Graph_TexCoordFn(float4 i);
+
+float2 TexCoordFn(float4 i) { return position.xy; } 
+
+// float4 Signal_SomeSignal(float4 position, float2 texCoord, float3 normal);
+
 /* <<Chunk:GraphSyntax:SlotPrototype>>--(
 
-slot s0 implements <SlotPrototype2.sh:Signal_SomeSignal>;
-node n0 = <SlotPrototype2.sh:MakeParam1>(o : <SlotPrototype2.sh:MakeParam>().result, t : "<two>");
-s0.result : <SlotPrototype2.sh:SomeFunction>(
-	position : s0.position, texCoord : n0.result, normal : s0.normal
-	).result;
+import SP = "xleres/System/SlotPrototype2.sh";
 
-export s0;
+auto s0(float4 position, float2 texCoord, float3 normal, graph tcGenerator implements Graph_TexCoordFn)
+{
+	node n0 = SP::MakeParam1(o : SP::MakeParam().result, t : "<two>");
+	node t0 = tcGenerator(i: position);
+	return SP::SomeFunction(
+		position : position, 
+		texCoord : t0.result, 
+		normal : n0.result
+		).result;
+}
+
+auto Signal_main(float4 position, float2 texCoord, float3 normal) implements SP::Signal_SomeSignal
+{
+	return s0(position:position, texCoord:texCoord, normal:normal, txGenerator:TexCoordFn).result;
+}
 
 )-- */
