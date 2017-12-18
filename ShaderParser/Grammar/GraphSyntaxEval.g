@@ -44,7 +44,6 @@ options
 	ConnectionId Connection_Register(const void*, ConnectorId left, ConnectorId right);
 
 	void Node_Name(const void*, NodeId, const char name[]);
-	void Slot_Name(const void*, NodeId, NodeId, const char name[]);
 	NodeId RNode_Find(const void*, const char name[]);
 	NodeId Graph_Find(const void*, const char name[]);
 
@@ -53,8 +52,8 @@ options
 	void GraphSignature_AddParameter(const void*, GraphSignatureId, const char name[], const char type[]);
 
 	typedef unsigned ObjTypeId;
-	static const unsigned ObjType_Node = 0;
-	static const unsigned ObjType_Graph = 1;
+	static const unsigned ObjType_Graph = 0;
+	static const unsigned ObjType_Node = 1;
 	static const unsigned ObjType_GraphSignature = 2;
 
 	void Walk_Push(const void*, ObjTypeId objType, unsigned obj);
@@ -133,7 +132,7 @@ connection returns [ConnectionId connection = ~0u]
 	}
 	| ^(RETURN_CONNECTION r=rconnection)
 	{
-		ConnectorId left = Connector_Register(ctx, Walk_GetActive(ctx, ObjType_Graph), "result");
+		ConnectorId left = Connector_Register(ctx, ~0u, "result");
 		$connection = Connection_Register(ctx, left, r);
 	}
 	;
@@ -145,7 +144,7 @@ rconnection returns [ConnectorId connector = ~0u]
 	}
 	| ^((RCONNECTION_IDENTIFIER) c0=identifier)
 	{
-		connector = Connector_Register(ctx, Walk_GetActive(ctx, ObjType_Graph), c0);
+		connector = Connector_Register(ctx, ~0u, c0);
 	}
 	| ^(LITERAL StringLiteral)
 	{
@@ -169,15 +168,14 @@ graphSignature returns [GraphSignatureAndName graphSig = (GraphSignatureAndName)
 			$graphSig._sigId = GraphSignature_Register(ctx);
 		}
 		n=identifier returnType=identifier 
-		(
-			(^(PARAMETER_DECLARATION pname=identifier ptype=identifier)) 
-			{
-				GraphSignature_AddParameter(ctx,$graphSig._sigId, pname, ptype); 
-			})*
-		) 
+		((^(PARAMETER_DECLARATION pname=identifier ptype=identifier)) 
+		{
+			GraphSignature_AddParameter(ctx,$graphSig._sigId, pname, ptype); 
+		})*)
+
 		{
 			$graphSig._name = n;
-			GraphSignature_ReturnType(ctx, $graphSig._sigId, n); 
+			GraphSignature_ReturnType(ctx, $graphSig._sigId, returnType); 
 		}
 	;
 

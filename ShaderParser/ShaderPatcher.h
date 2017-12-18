@@ -137,7 +137,9 @@ namespace ShaderPatcher
     class InputParameterConnection : public NodeBaseConnection
     {
     public:
-        InputParameterConnection(uint32 outputNodeId, const std::string& outputParameterName, const Type& type, const std::string& name, const std::string& semantic, const std::string& defaultValue);
+        InputParameterConnection(
+            uint32 outputNodeId, const std::string& outputParameterName, 
+            const Type& type, const std::string& name, const std::string& semantic, const std::string& defaultValue);
         InputParameterConnection(InputParameterConnection&& moveFrom) never_throws;
         InputParameterConnection& operator=(InputParameterConnection&& moveFrom) never_throws;
 
@@ -173,8 +175,6 @@ namespace ShaderPatcher
         void Add(ConstantConnection&&);
         void Add(InputParameterConnection&&);
 
-        std::string     GetName() const                 { return _name; }
-        void            SetName(std::string newName)    { _name = newName; }
 		void			SetSearchRules(const ::Assets::DirectorySearchRules& rules) { _searchRules = rules; }
 		const ::Assets::DirectorySearchRules& GetSearchRules() const { return _searchRules; }
 
@@ -183,7 +183,7 @@ namespace ShaderPatcher
 
         const Node*     GetNode(uint32 nodeId) const;
 
-        explicit NodeGraph(const std::string& name = std::string());
+        NodeGraph();
         ~NodeGraph();
 
 		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
@@ -198,7 +198,6 @@ namespace ShaderPatcher
         std::vector<NodeConnection> _nodeConnections;
         std::vector<ConstantConnection> _constantConnections;
         std::vector<InputParameterConnection> _inputParameterConnections;
-        std::string _name;
 
 		::Assets::DirectorySearchRules _searchRules;
 
@@ -211,44 +210,44 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    class FunctionInterface
+    enum class ParameterDirection { In, Out };
+    class NodeGraphSignature
     {
     public:
 		class Parameter
 		{
 		public:
-			enum Direction { In, Out };
-			std::string _type, _name, _archiveName, _semantic, _default;
-			Direction _direction;
+			std::string _type, _name, _semantic, _default;
+			ParameterDirection _direction;
 			Parameter(
 				const std::string& type, const std::string& name, 
-				const std::string& archiveName, 
-				Direction direction = In,
+				ParameterDirection direction = ParameterDirection::In,
 				const std::string& semantic = std::string(), const std::string& defaultValue = std::string())
-				: _type(type), _name(name), _archiveName(archiveName), _direction(direction), _semantic(semantic), _default(defaultValue) {}
+				: _type(type), _name(name), _direction(direction), _semantic(semantic), _default(defaultValue) {}
 			Parameter() {}
 		};
 
-        auto GetFunctionParameters() const -> IteratorRange<const Parameter*>	{ return MakeIteratorRange(_functionParameters); }
-        auto GetGlobalParameters() const -> IteratorRange<const Parameter*>		{ return MakeIteratorRange(_globalParameters); }
-		const std::string& GetName() const { return _name; }
-        bool IsCBufferGlobal(unsigned c) const;
+        // Returns the list of parameters taken as input through the function call mechanism
+        auto GetParameters() const -> IteratorRange<const Parameter*>	{ return MakeIteratorRange(_functionParameters); }
+        void AddParameter(const Parameter& param);
 
-		void AddFunctionParameter(const Parameter& param);
-		void AddGlobalParameter(const Parameter& param);
-		void SetName(const std::string& newName) { _name = newName; }
-
-        FunctionInterface();
-        ~FunctionInterface();
+        // Returns the list of parameters that are accesses as global scope variables (or captured from a containing scope)
+        // In other words, these aren't explicitly passed to the function, but the function needs to interact with them, anyway
+        auto GetCapturedParameters() const -> IteratorRange<const Parameter*>		{ return MakeIteratorRange(_capturedParameters); }
+        void AddCapturedParameter(const Parameter& param);
+		
+        NodeGraphSignature();
+        ~NodeGraphSignature();
     private:
         std::vector<Parameter> _functionParameters;
-        std::vector<Parameter> _globalParameters;
-		std::string _name;
+        std::vector<Parameter> _capturedParameters;
     };
 
+    NodeGraphSignature AsNodeGraphSignature(const ShaderSourceParser::FunctionSignature& sig);
+
     std::string GenerateShaderHeader(const NodeGraph& graph);
-    std::pair<std::string, FunctionInterface> GenerateFunction(const NodeGraph& graph);
-	std::string GenerateMaterialCBuffer(const FunctionInterface& interf);
+    std::pair<std::string, NodeGraphSignature> GenerateFunction(const NodeGraph& graph, const char name[]);
+	std::string GenerateMaterialCBuffer(const NodeGraphSignature& interf);
 
     struct PreviewOptions
     {
@@ -262,12 +261,12 @@ namespace ShaderPatcher
 
     std::string GenerateStructureForPreview(
         StringSection<char> graphName, 
-        const FunctionInterface& interf, 
+        const NodeGraphSignature& interf, 
 		const ::Assets::DirectorySearchRules& searchRules,
         const PreviewOptions& previewOptions = { PreviewOptions::Type::Object, std::string(), PreviewOptions::VariableRestrictions() });
 
-	std::string GenerateStructureForTechniqueConfig(const FunctionInterface& interf, const char graphName[]);
+	std::string GenerateStructureForTechniqueConfig(const NodeGraphSignature& interf, const char graphName[]);
 
-	std::string GenerateScaffoldFunction(const ShaderSourceParser::FunctionSignature& slotSignature, const FunctionInterface& generatedFunctionSignature);
+	std::string GenerateScaffoldFunction(const NodeGraphSignature& outputSignature, const NodeGraphSignature& generatedFunctionSignature, const char name[]);
 }
 

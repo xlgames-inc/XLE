@@ -32,30 +32,30 @@ namespace ShaderPatcher
 {
 	using namespace ShaderSourceParser::AntlrHelper;
 
-	class WorkingNodeGraph
+	class WorkingGraphSyntaxFile
 	{
 	public:
-		NodeGraph _graph;
-
-		struct Connector { uint32_t nodeId; std::string _name; };
-		std::vector<Connector> _connectors;
-		std::vector<std::string> _literalConnectors;
-		std::unordered_map<std::string, uint32_t> _nodeNameMapping;
-		std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> _slotNameMapping;
-
-		/*class GraphSignature
+		class Graph
 		{
 		public:
-			struct Parameter { std::string _name, _type };
-			std::vector<Parameter> _parameters;
-			std::string _returnType;
-		}*/
-		std::vector<FunctionInterface> _graphSigs;
+			std::string 		_name;
+			NodeGraph 			_graph;
+			NodeGraphSignature 	_signature;
+
+			struct Connector { uint32_t nodeId; std::string _name; };
+			std::vector<Connector> _connectors;
+			std::vector<std::string> _literalConnectors;
+			std::unordered_map<std::string, uint32_t> _nodeNameMapping;
+			std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> _slotNameMapping;
+		};
+
+		std::vector<NodeGraphSignature> _pendingSignatures;
 
 		using ActiveStack = std::stack<uint32_t>;
 		std::unordered_map<unsigned, ActiveStack> _stacks;
 
 		std::unordered_map<std::string, std::string> _imports; 
+		std::vector<Graph> _graphs;
 	};
 
 	static pANTLR3_BASE_TREE BuildAST(struct GraphSyntaxParser_Ctx_struct& parser)
@@ -67,7 +67,7 @@ namespace ShaderPatcher
 		return result;
     }
 
-    NodeGraph ParseGraphSyntax(StringSection<char> sourceCode)
+    std::vector<GraphSyntaxFile::SubGraph> ParseGraphSyntax(StringSection<char> sourceCode)
     {
         AntlrPtr<struct ANTLR3_INPUT_STREAM_struct>	inputStream = antlr3StringStreamNew(
             (ANTLR3_UINT8*)sourceCode.begin(), ANTLR3_ENC_8BIT, 
@@ -90,49 +90,45 @@ namespace ShaderPatcher
 		AntlrPtr<struct GraphSyntaxEval_Ctx_struct> evalTree = GraphSyntaxEvalNew(nodes);
 
 		ExceptionContext exceptionContext;
-		WorkingNodeGraph ng;
+		WorkingGraphSyntaxFile ng;
 		evalTree->_userData = &ng;
 		evalTree->entrypoint(evalTree);
 		if (!exceptionContext._exceptions._errors.empty())
 			Throw(ShaderSourceParser::Exceptions::ParsingFailure(MakeIteratorRange(exceptionContext._exceptions._errors)));
 		
-		return std::move(ng._graph);
+		std::vector<GraphSyntaxFile::SubGraph> result;
+		result.reserve(ng._graphs.size());
+		for (auto& f:ng._graphs)
+			result.emplace_back(GraphSyntaxFile::SubGraph{f._name, std::move(f._graph), std::move(f._signature)});
+		return result;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	std::string ReadGraphSyntax(StringSection<char> input, const ::Assets::DirectorySearchRules& searchRules)
 	{
-		auto graph = ParseGraphSyntax(input);
-		
+		auto subGraphs = ParseGraphSyntax(input);
+
 		std::string result;
 		// Find each slot implementation in the graph; trim it out, and then
 		// build a function.
-		auto nodes = graph.GetNodes();
-		for (const auto& n:nodes) {
-			if (n.ArchiveName().find("Signal_") != std::string::npos && n.GetType() == Node::Type::SlotOutput) {
-				NodeGraph subGraph = graph;
+		
+		for (auto& g:subGraphs) {
+			auto graph = g._graph;	// (copy here)
+			graph.SetSearchRules(searchRules);
 
-				auto splitName = ShaderPatcher::SplitArchiveName(n.ArchiveName());
-				subGraph.SetName(std::get<1>(splitName) + "_impl");
-				subGraph.SetSearchRules(searchRules);
-				// auto ni = n.NodeId();
-				// subGraph.Trim(&ni, &ni+1);
+			std::string slotImplementation;
+			NodeGraphSignature generatedInterface;
+			std::tie(slotImplementation, generatedInterface) = GenerateFunction(graph, g._name.c_str());
+			result += slotImplementation;
 
-				std::string slotImplementation;
-				FunctionInterface generatedInterface;
-				std::tie(slotImplementation, generatedInterface) = GenerateFunction(subGraph);
-				result += slotImplementation;
-
-				const auto& slotSig = ShaderPatcher::LoadFunctionSignature(splitName, searchRules);
-				result += GenerateScaffoldFunction(slotSig, generatedInterface);
-			}
+			result += GenerateScaffoldFunction(g._signature, generatedInterface, g._name.c_str());
 		}
 
 		return result;
 	}
 
-	static std::string MakeArchiveName(const WorkingNodeGraph& graph, const IdentifierAndScope& identifierAndScope)
+	static std::string MakeArchiveName(const WorkingGraphSyntaxFile& graph, const IdentifierAndScope& identifierAndScope)
 	{
 		if (identifierAndScope._scope) {
 			auto i = graph._imports.find(identifierAndScope._scope);
@@ -143,82 +139,111 @@ namespace ShaderPatcher
 		return identifierAndScope._identifier;
 	}
 
-}
+	WorkingGraphSyntaxFile& GetFileContext(const void* ctx) { return *(WorkingGraphSyntaxFile*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData; }
+	WorkingGraphSyntaxFile::Graph& GetGraphContext(const void* ctx) 
+	{
+		auto& file = GetFileContext(ctx);
+		assert(!file._stacks[0].empty());
+		unsigned topGraph = file._stacks[0].top();
+		return file._graphs[topGraph];
+	}
 
-extern "C" NodeId RNode_Register(const void* ctx, IdentifierAndScope identifierAndScope)
-{
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-
-	NodeId nextId = (NodeId)ng->_graph.GetNodes().size();
-	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(*ng, identifierAndScope), nextId, ShaderPatcher::Node::Type::Procedure);
-	ng->_graph.Add(std::move(newNode));
-	return nextId;
 }
 
 extern "C" NodeId Graph_Register(const void* ctx, const char name[], GraphSignatureId signatureId)
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	auto& f = ShaderPatcher::GetFileContext(ctx);
 
-	// ng->_graphSignatureBindings.push_back({nextId, signatureId});
+	assert(signatureId < f._pendingSignatures.size());
+	const auto& sig = f._pendingSignatures[signatureId];
+	
+	NodeId nextGraph = (NodeId)f._graphs.size();
+	f._graphs.push_back({std::string(name), {}, sig});
+	return nextGraph;
+}
 
-	NodeId nextId = (NodeId)ng->_graph.GetNodes().size();
-	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(*ng, {NULL, name}), nextId, ShaderPatcher::Node::Type::SlotOutput);
-	ng->_graph.Add(std::move(newNode));
+extern "C" NodeId RNode_Register(const void* ctx, IdentifierAndScope identifierAndScope)
+{
+	auto& ng = ShaderPatcher::GetGraphContext(ctx);
+
+	NodeId nextId = (NodeId)ng._graph.GetNodes().size();
+	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(ShaderPatcher::GetFileContext(ctx), identifierAndScope), nextId, ShaderPatcher::Node::Type::Procedure);
+	ng._graph.Add(std::move(newNode));
 	return nextId;
 }
 
 extern "C" NodeId RSlot_Register(const void* ctx, IdentifierAndScope identifierAndScope)
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	auto& ng = ShaderPatcher::GetGraphContext(ctx);
 
-	NodeId nextId = (NodeId)ng->_graph.GetNodes().size();
-	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(*ng, identifierAndScope), nextId, ShaderPatcher::Node::Type::SlotInput);
-	ng->_graph.Add(std::move(newNode));
+	NodeId nextId = (NodeId)ng._graph.GetNodes().size();
+	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(ShaderPatcher::GetFileContext(ctx), identifierAndScope), nextId, ShaderPatcher::Node::Type::SlotInput);
+	ng._graph.Add(std::move(newNode));
 	return nextId;
 }
 
 extern "C" ConnectorId Connector_Register(const void* ctx, NodeId node, const char connectorName[])
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	auto& ng = ShaderPatcher::GetGraphContext(ctx);
 	
-	ConnectorId nextId = (ConnectorId)ng->_connectors.size();
-	ng->_connectors.push_back({node, connectorName});
+	ConnectorId nextId = (ConnectorId)ng._connectors.size();
+	ng._connectors.push_back({node, connectorName});
 	return nextId;
 }
 
 extern "C" ConnectorId LiteralConnector_Register(const void* ctx, const char literal[])
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	auto& ng = ShaderPatcher::GetGraphContext(ctx);
 	
-	ConnectorId nextId = 0xf0000000u | (ConnectorId)ng->_literalConnectors.size();
-	ng->_literalConnectors.push_back(literal);
+	ConnectorId nextId = 0xf0000000u | (ConnectorId)ng._literalConnectors.size();
+	ng._literalConnectors.push_back(literal);
 	return nextId;
 }
 
 extern "C" ConnectionId Connection_Register(const void* ctx, ConnectorId left, ConnectorId right)
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	auto& ng = ShaderPatcher::GetGraphContext(ctx);
 	
-	if (left >= ng->_connectors.size())
+	if (left >= ng._connectors.size())
 		return ~0u;
 
 	if (right & 0xf0000000u) {
-		if ((right & ~0xf0000000u) >= ng->_literalConnectors.size())
+		if ((right & ~0xf0000000u) >= ng._literalConnectors.size())
 			return ~0u;
 
 		ShaderPatcher::ConstantConnection connection(
-			ng->_connectors[left].nodeId, ng->_connectors[left]._name,
-			ng->_literalConnectors[right & ~0xf0000000u]);
-		ng->_graph.Add(std::move(connection));
+			ng._connectors[left].nodeId, ng._connectors[left]._name,
+			ng._literalConnectors[right & ~0xf0000000u]);
+		ng._graph.Add(std::move(connection));
 	} else {
-		if (right >= ng->_connectors.size())
+		if (right >= ng._connectors.size())
 			return ~0u;
 
-		ShaderPatcher::NodeConnection connection(
-			ng->_connectors[left].nodeId, ng->_connectors[right].nodeId,
-			ng->_connectors[left]._name, ng->_connectors[right]._name,
-			std::string());
-		ng->_graph.Add(std::move(connection));
+		if (ng._connectors[right].nodeId == ~0u) {
+			auto paramName = ng._connectors[right]._name;
+
+			auto i = std::find_if(
+				ng._signature.GetParameters().begin(),
+				ng._signature.GetParameters().end(),
+				[paramName](const ShaderPatcher::NodeGraphSignature::Parameter& p) { return p._name == paramName; });
+			if (i != ng._signature.GetParameters().end()) {
+				ShaderPatcher::InputParameterConnection connection(
+					ng._connectors[left].nodeId, ng._connectors[left]._name,
+					i->_type, i->_name, i->_semantic, i->_default);
+				ng._graph.Add(std::move(connection));
+			} else {
+				ShaderPatcher::InputParameterConnection connection(
+					ng._connectors[left].nodeId, ng._connectors[left]._name,
+					std::string(), std::string(), std::string(), std::string());
+				ng._graph.Add(std::move(connection));
+			}
+		} else {
+			ShaderPatcher::NodeConnection connection(
+				ng._connectors[left].nodeId, ng._connectors[right].nodeId,
+				ng._connectors[left]._name, ng._connectors[right]._name,
+				std::string());
+			ng._graph.Add(std::move(connection));
+		}
 	}
 
 	return ~0u;
@@ -226,83 +251,76 @@ extern "C" ConnectionId Connection_Register(const void* ctx, ConnectorId left, C
 
 extern "C" void Node_Name(const void* ctx, NodeId id, const char name[])
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	ng->_nodeNameMapping.insert({name, id});
-}
-
-extern "C" void Slot_Name(const void* ctx, NodeId lnode, NodeId rnode, const char name[])
-{
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	ng->_slotNameMapping.insert({name, {lnode, rnode}});
+	auto& ng = ShaderPatcher::GetGraphContext(ctx);
+	ng._nodeNameMapping.insert({name, id});
 }
 
 extern "C" NodeId Graph_Find(const void* ctx, const char name[])
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	auto& ng = ShaderPatcher::GetGraphContext(ctx);
 	std::string n(name);
-	auto i = ng->_nodeNameMapping.find(n);
-	if (i != ng->_nodeNameMapping.end()) return i->second;
-	auto si = ng->_slotNameMapping.find(n);
-	if (si != ng->_slotNameMapping.end()) return si->second.first;
+	auto i = ng._nodeNameMapping.find(n);
+	if (i != ng._nodeNameMapping.end()) return i->second;
+	auto si = ng._slotNameMapping.find(n);
+	if (si != ng._slotNameMapping.end()) return si->second.first;
 	return ~0u;
 }
 
 extern "C" NodeId RNode_Find(const void* ctx, const char name[])
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	auto& ng = ShaderPatcher::GetGraphContext(ctx);
 	std::string n(name);
-	auto i = ng->_nodeNameMapping.find(n);
-	if (i != ng->_nodeNameMapping.end()) return i->second;
-	auto si = ng->_slotNameMapping.find(n);
-	if (si != ng->_slotNameMapping.end()) return si->second.second;
+	auto i = ng._nodeNameMapping.find(n);
+	if (i != ng._nodeNameMapping.end()) return i->second;
+	auto si = ng._slotNameMapping.find(n);
+	if (si != ng._slotNameMapping.end()) return si->second.second;
 	return ~0u;
 }
 
 extern "C" GraphSignatureId GraphSignature_Register(const void* ctx)
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	auto nextId = (unsigned)ng->_graphSigs.size();
-	ng->_graphSigs.push_back({});
+	auto& f = ShaderPatcher::GetFileContext(ctx);
+	auto nextId = (unsigned)f._pendingSignatures.size();
+	f._pendingSignatures.push_back({});
 	return nextId;
 }
 
 extern "C" void GraphSignature_ReturnType(const void* ctx, GraphSignatureId sigId, const char returnType[])
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	// ng->_graphSigs[sigId]._returnType = returnType;
-	ng->_graphSigs[sigId].AddFunctionParameter({returnType, "result", std::string(), ShaderPatcher::FunctionInterface::Parameter::Out});
+	auto& f = ShaderPatcher::GetFileContext(ctx);
+	f._pendingSignatures[sigId].AddParameter({returnType, "result", ShaderPatcher::ParameterDirection::Out});
 }
 
 extern "C" void GraphSignature_AddParameter(const void* ctx, GraphSignatureId sigId, const char name[], const char type[])
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	// ng->_graphSigs[sigId]._parameters.push_back({name, type});
-	ng->_graphSigs[sigId].AddFunctionParameter({type, name, std::string()});
+	auto& f = ShaderPatcher::GetFileContext(ctx);
+	f._pendingSignatures[sigId].AddParameter({type, name});
 }
 
 extern "C" void Walk_Push(const void* ctx, unsigned objType, unsigned id)
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	ng->_stacks[objType].push(id);
+	auto& f = ShaderPatcher::GetFileContext(ctx);
+	f._stacks[objType].push(id);
 }
 
 extern "C" void Walk_Pop(const void* ctx, unsigned objType)
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	ng->_stacks[objType].pop();
+	auto& f = ShaderPatcher::GetFileContext(ctx);
+	assert(!f._stacks[objType].empty());
+	f._stacks[objType].pop();
 }
 
 extern "C" NodeId Walk_GetActive(const void* ctx, unsigned objType)
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	if (ng->_stacks[objType].empty())
+	auto& f = ShaderPatcher::GetFileContext(ctx);
+	if (f._stacks[objType].empty())
 		return ~0u;
-	return ng->_stacks[objType].top();
+	return f._stacks[objType].top();
 }
 
 extern "C" void Import_Register(const void* ctx, const char alias[], const char import[])
 {
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	assert(ng->_imports.find(alias) == ng->_imports.end());
-	ng->_imports.insert(std::make_pair(alias, import));
+	auto& f = ShaderPatcher::GetFileContext(ctx);
+	assert(f._imports.find(alias) == f._imports.end());
+	f._imports.insert(std::make_pair(alias, import));
 }

@@ -4,13 +4,24 @@
 
 #pragma once
 
+#include "ShaderPatcher.h"
 #include "../Utility/StringUtils.h"
 
 namespace Assets { class DirectorySearchRules; }
 namespace ShaderPatcher
 {
-	class NodeGraph;
-	NodeGraph ParseGraphSyntax(StringSection<char> sourceCode);
+	class GraphSyntaxFile
+	{
+	public:
+		class SubGraph
+		{
+		public:
+			std::string _name;
+			NodeGraph _graph;
+			NodeGraphSignature _signature;
+		};
+	};
+	std::vector<GraphSyntaxFile::SubGraph> ParseGraphSyntax(StringSection<char> sourceCode);
 	std::string ReadGraphSyntax(StringSection<char> input, const ::Assets::DirectorySearchRules& searchRules);
 }
 
