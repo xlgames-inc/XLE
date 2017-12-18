@@ -20,6 +20,7 @@
 typedef unsigned NodeId;
 typedef unsigned ConnectorId;
 typedef unsigned ConnectionId;
+typedef unsigned GraphSignatureId;
 
 typedef struct IdentifierAndScopeTag
 {
@@ -41,8 +42,18 @@ namespace ShaderPatcher
 		std::vector<std::string> _literalConnectors;
 		std::unordered_map<std::string, uint32_t> _nodeNameMapping;
 		std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> _slotNameMapping;
-		std::stack<uint32_t> _activeRNodes;
-		std::stack<uint32_t> _activeLNodes;
+
+		/*class GraphSignature
+		{
+		public:
+			struct Parameter { std::string _name, _type };
+			std::vector<Parameter> _parameters;
+			std::string _returnType;
+		}*/
+		std::vector<FunctionInterface> _graphSigs;
+
+		using ActiveStack = std::stack<uint32_t>;
+		std::unordered_map<unsigned, ActiveStack> _stacks;
 
 		std::unordered_map<std::string, std::string> _imports; 
 	};
@@ -144,12 +155,14 @@ extern "C" NodeId RNode_Register(const void* ctx, IdentifierAndScope identifierA
 	return nextId;
 }
 
-extern "C" NodeId LSlot_Register(const void* ctx, IdentifierAndScope identifierAndScope)
+extern "C" NodeId Graph_Register(const void* ctx, const char name[], GraphSignatureId signatureId)
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
 
+	// ng->_graphSignatureBindings.push_back({nextId, signatureId});
+
 	NodeId nextId = (NodeId)ng->_graph.GetNodes().size();
-	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(*ng, identifierAndScope), nextId, ShaderPatcher::Node::Type::SlotOutput);
+	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(*ng, {NULL, name}), nextId, ShaderPatcher::Node::Type::SlotOutput);
 	ng->_graph.Add(std::move(newNode));
 	return nextId;
 }
@@ -223,7 +236,7 @@ extern "C" void Slot_Name(const void* ctx, NodeId lnode, NodeId rnode, const cha
 	ng->_slotNameMapping.insert({name, {lnode, rnode}});
 }
 
-extern "C" NodeId LNode_Find(const void* ctx, const char name[])
+extern "C" NodeId Graph_Find(const void* ctx, const char name[])
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
 	std::string n(name);
@@ -245,44 +258,46 @@ extern "C" NodeId RNode_Find(const void* ctx, const char name[])
 	return ~0u;
 }
 
-extern "C" void RNode_Push(const void* ctx, NodeId id)
+extern "C" GraphSignatureId GraphSignature_Register(const void* ctx)
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	ng->_activeRNodes.push(id);
+	auto nextId = (unsigned)ng->_graphSigs.size();
+	ng->_graphSigs.push_back({});
+	return nextId;
 }
 
-extern "C" void RNode_Pop(const void* ctx)
+extern "C" void GraphSignature_ReturnType(const void* ctx, GraphSignatureId sigId, const char returnType[])
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	ng->_activeRNodes.pop();
+	// ng->_graphSigs[sigId]._returnType = returnType;
+	ng->_graphSigs[sigId].AddFunctionParameter({returnType, "result", std::string(), ShaderPatcher::FunctionInterface::Parameter::Out});
 }
 
-extern "C" NodeId RNode_GetActive(const void* ctx)
+extern "C" void GraphSignature_AddParameter(const void* ctx, GraphSignatureId sigId, const char name[], const char type[])
 {
 	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	if (ng->_activeRNodes.empty())
+	// ng->_graphSigs[sigId]._parameters.push_back({name, type});
+	ng->_graphSigs[sigId].AddFunctionParameter({type, name, std::string()});
+}
+
+extern "C" void Walk_Push(const void* ctx, unsigned objType, unsigned id)
+{
+	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	ng->_stacks[objType].push(id);
+}
+
+extern "C" void Walk_Pop(const void* ctx, unsigned objType)
+{
+	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	ng->_stacks[objType].pop();
+}
+
+extern "C" NodeId Walk_GetActive(const void* ctx, unsigned objType)
+{
+	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
+	if (ng->_stacks[objType].empty())
 		return ~0u;
-	return ng->_activeRNodes.top();
-}
-
-extern "C" void LNode_Push(const void* ctx, NodeId id)
-{
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	ng->_activeLNodes.push(id);
-}
-
-extern "C" void LNode_Pop(const void* ctx)
-{
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	ng->_activeLNodes.pop();
-}
-
-extern "C" NodeId LNode_GetActive(const void* ctx)
-{
-	auto* ng = (ShaderPatcher::WorkingNodeGraph*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData;
-	if (ng->_activeLNodes.empty())
-		return ~0u;
-	return ng->_activeLNodes.top();
+	return ng->_stacks[objType].top();
 }
 
 extern "C" void Import_Register(const void* ctx, const char alias[], const char import[])

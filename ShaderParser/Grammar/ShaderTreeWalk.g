@@ -9,6 +9,8 @@ options
 
 @header
 {
+	#pragma GCC diagnostic ignored "-Wtypedef-redefinition"
+	
 	typedef unsigned StringId;
 	typedef unsigned FormalArgId;
 	typedef unsigned VariableId;
