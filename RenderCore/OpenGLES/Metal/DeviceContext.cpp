@@ -39,7 +39,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DeviceContext::Bind(Topology topology)
     {
-        _nativeTopology = unsigned(topology);
+        _nativeTopology = AsGLTopology(topology);
     }
 
     void DeviceContext::Bind(const ShaderProgram& shaderProgram)

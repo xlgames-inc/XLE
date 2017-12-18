@@ -67,7 +67,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 continue;
             }
 
-            auto location = glGetAttribLocation(glProgram, nameBuffer);
+            auto location = glGetUniformLocation(glProgram, nameBuffer);
 
             ////////////////////////////////////////////////
             auto fullName = MakeStringSection(nameBuffer);

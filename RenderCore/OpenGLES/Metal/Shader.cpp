@@ -105,8 +105,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
         auto definesPreambleStr = definesPreamble.str();
 
-        const GLchar* shaderSourcePointers[2] { definesPreambleStr.data(), (const GLchar*)sourceCode };
-        GLint shaderSourceLengths[2] = { (GLint)definesPreambleStr.size(), (GLint)sourceCodeLength };
+        bool isFragmentShader = shaderPath._shaderModel[0] == 'p';
+        const GLchar* versionDecl = isFragmentShader ? "#version 300 es\n#define FRAGMENT_SHADER 1\n" : "#version 300 es\n";
+        const GLchar* shaderSourcePointers[3] { versionDecl, definesPreambleStr.data(), (const GLchar*)sourceCode };
+        GLint shaderSourceLengths[3] = { (GLint)std::strlen(versionDecl), (GLint)definesPreambleStr.size(), (GLint)sourceCodeLength };
 
         glShaderSource  (newShader->AsRawGLHandle(), dimof(shaderSourcePointers), shaderSourcePointers, shaderSourceLengths);
         glCompileShader (newShader->AsRawGLHandle());
@@ -121,7 +123,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     errors = std::make_shared<std::vector<uint8>>(infoLen);
                     glGetShaderInfoLog(newShader->AsRawGLHandle(), infoLen, nullptr, (GLchar*)errors->data());
 
-                    std::cout << "Failure in shader:" << std::endl << shaderSourcePointers[1] << std::endl;
+                    std::cout << "Failure in shader:" << std::endl << versionDecl << definesPreambleStr << (const GLchar*)sourceCode << std::endl;
                     std::cout << "Errors:" << std::endl << (const char*)errors->data();
                 }
             #endif
