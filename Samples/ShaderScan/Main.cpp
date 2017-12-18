@@ -11,14 +11,17 @@
 #include "Assets/ConfigFileContainer.h"
 #include "Assets/AssetUtils.h"
 #include "Assets/AssetServices.h"
-#include "Core/WinAPI/IncludeWindows.h"
+#include "Assets/OSFileSystem.h"
+#include "Assets/MountingTree.h"
 #include "ConsoleRig/GlobalServices.h"
 #include "ConsoleRig/Log.h"
+#include "ConsoleRig/AttachableInternal.h"
 #include "Utility/StringUtils.h"
 #include "Utility/Streams/StreamFormatter.h"
 #include "Utility/Streams/StreamDOM.h"
 #include "Utility/Streams/FileUtils.h"
 #include "Utility/ParameterBox.h"
+#include <iostream>
 
 namespace ShaderScan
 {
@@ -81,6 +84,8 @@ int main(int argc, char *argv[])
     ConsoleRig::GlobalServices services(cfg);
 
 	::Assets::Services assetServices;
+    ConsoleRig::GlobalServices::GetCrossModule().Publish(assetServices);
+    assetServices.AttachCurrentModule();
 
     TRY {
 		ShaderScan::TestGraphSyntax();
@@ -95,6 +100,8 @@ int main(int argc, char *argv[])
         LogAlwaysError << "Hit top level exception. Aborting program!";
         LogAlwaysError << e.what();
     } CATCH_END
+
+    ConsoleRig::GlobalServices::GetCrossModule().Withhold(assetServices);
 
     return 0;
 }
