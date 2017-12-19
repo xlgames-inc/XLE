@@ -19,11 +19,15 @@ namespace RenderCore { namespace Metal_OpenGLES
     unsigned    AsGLVertexComponentType(Format format);
 
     std::tuple<GLint, GLenum, bool> AsVertexAttributePointer(Format fmt);
-    RenderCore::Format VertexAttributePointerAsFormat(GLint size, GLenum type, bool normalized);
+    Format VertexAttributePointerAsFormat(GLint size, GLenum type, bool normalized);
     std::pair<GLenum, GLenum> AsTexelFormatType(Format fmt);
     ImpliedTyping::TypeDesc GLUniformTypeAsTypeDesc(GLenum glType);
-    RenderCore::Format SizedInternalFormatAsRenderCoreFormat(GLenum sizedInternalFormat);
-    GLenum AsGLTopology(RenderCore::Topology topology);
-    GLenum AsGLBlend(RenderCore::Blend input);
+    Format SizedInternalFormatAsRenderCoreFormat(GLenum sizedInternalFormat);
+    GLenum AsGLenum(Topology topology);
+    GLenum AsGLenum(Blend input);
+    GLenum AsGLenum(CullMode cullMode);
+    GLenum AsGLenum(FaceWinding faceWinding);
+    GLenum AsGLenum(CompareOp compare);
+    GLenum AsGLenum(StencilOp stencilOp);
 }}
 

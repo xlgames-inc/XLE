@@ -39,7 +39,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DeviceContext::Bind(Topology topology)
     {
-        _nativeTopology = AsGLTopology(topology);
+        _nativeTopology = AsGLenum(topology);
     }
 
     void DeviceContext::Bind(const ShaderProgram& shaderProgram)
@@ -47,19 +47,74 @@ namespace RenderCore { namespace Metal_OpenGLES
         glUseProgram(shaderProgram.GetUnderlying()->AsRawGLHandle());
     }
 
-    void DeviceContext::Bind(const RasterizerState& rasterizer)
-    {
-        rasterizer.Apply();
-    }
-
     void DeviceContext::Bind(const BlendState& blender)
     {
         blender.Apply();
     }
 
-    void DeviceContext::Bind(const DepthStencilState& depthStencil)
+    static void SetUnmanagedStates()
     {
-        depthStencil.Apply();
+        // The following render states are not managed by RenderCore, but we can use this function
+        // to set them all to rational defaults. In many cases, this may be just the same as the
+        // default; but it's still useful incase some other system is setting them, and we want to
+        // reset to something that won't interfere with our rendering.
+
+        // RasterizationDesc unmanaged states
+        glLineWidth(1.f);
+        glPolygonOffset(0.f, 0.f);
+        glDisable(GL_POLYGON_OFFSET_FILL);
+        glDisable(GL_SCISSOR_TEST);
+        glDisable(GL_DITHER);       // (not supported in D3D11)
+    }
+
+    void DeviceContext::Bind(const RasterizationDesc& desc)
+    {
+        if (desc._cullMode != CullMode::None) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(AsGLenum(desc._cullMode));
+        } else {
+            glDisable(GL_CULL_FACE);
+        }
+        glFrontFace(AsGLenum(desc._frontFaceWinding));
+    }
+
+    void DeviceContext::Bind(const DepthStencilDesc& desc)
+    {
+        glDepthFunc(AsGLenum(desc._depthTest));
+        glDepthMask(desc._depthWrite ? GL_TRUE : GL_FALSE);
+
+        if (desc._depthTest != CompareOp::Always) {
+            glEnable(GL_DEPTH_TEST);
+        } else {
+            glDisable(GL_DEPTH_TEST);
+        }
+
+        if (desc._stencilEnable) {
+            glStencilFuncSeparate(
+                GL_FRONT,
+                AsGLenum(desc._frontFaceStencil._comparisonOp),
+                desc._stencilReference,
+                desc._stencilWriteMask);
+            glStencilOpSeparate(
+                GL_FRONT,
+                AsGLenum(desc._frontFaceStencil._failOp),
+                AsGLenum(desc._frontFaceStencil._depthFailOp),
+                AsGLenum(desc._frontFaceStencil._passOp));
+            glStencilFuncSeparate(
+                GL_BACK,
+                AsGLenum(desc._backFaceStencil._comparisonOp),
+                desc._stencilReference,
+                desc._stencilWriteMask);
+            glStencilOpSeparate(
+                GL_BACK,
+                AsGLenum(desc._backFaceStencil._failOp),
+                AsGLenum(desc._backFaceStencil._depthFailOp),
+                AsGLenum(desc._backFaceStencil._passOp));
+            glStencilMaskSeparate(GL_FRONT_AND_BACK, desc._stencilReadMask);
+            glEnable(GL_STENCIL_TEST);
+        } else {
+            glDisable(GL_STENCIL_TEST);
+        }
     }
 
     void DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)

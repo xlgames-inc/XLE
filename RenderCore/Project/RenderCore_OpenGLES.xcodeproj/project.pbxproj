@@ -45,6 +45,7 @@
 		8F8167081FDF4B4200284B80 /* Resource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F8167041FDF32BE00284B80 /* Resource.cpp */; };
 		8F81670B1FDF65CA00284B80 /* ShaderIntrospection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F81670A1FDF65CA00284B80 /* ShaderIntrospection.cpp */; };
 		8F81670C1FDF65CA00284B80 /* ShaderIntrospection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F81670A1FDF65CA00284B80 /* ShaderIntrospection.cpp */; };
+		8F860C961FE8AAA700B77C9F /* Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F860C951FE8AAA700B77C9F /* Forward.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -94,6 +95,7 @@
 		8F8167041FDF32BE00284B80 /* Resource.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Resource.cpp; path = ../OpenGLES/Metal/Resource.cpp; sourceTree = "<group>"; };
 		8F8167091FDF612100284B80 /* ShaderIntrospection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ShaderIntrospection.h; path = ../OpenGLES/Metal/ShaderIntrospection.h; sourceTree = "<group>"; };
 		8F81670A1FDF65CA00284B80 /* ShaderIntrospection.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ShaderIntrospection.cpp; path = ../OpenGLES/Metal/ShaderIntrospection.cpp; sourceTree = "<group>"; };
+		8F860C951FE8AAA700B77C9F /* Forward.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Forward.h; path = ../OpenGLES/Metal/Forward.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -141,6 +143,7 @@
 				8F2D1B681FD629370028A531 /* State.cpp */,
 				8F2D1B691FD629370028A531 /* State.h */,
 				8F2D1B5F1FD629360028A531 /* Types.h */,
+				8F860C951FE8AAA700B77C9F /* Forward.h */,
 			);
 			name = Metal;
 			sourceTree = "<group>";
@@ -186,6 +189,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F2D1B8B1FD629380028A531 /* Shader.h in Headers */,
+				8F860C961FE8AAA700B77C9F /* Forward.h in Headers */,
 				8F212B4A1FD75FBF00599B22 /* IDeviceOpenGLES.h in Headers */,
 				8F2D1B901FD629380028A531 /* ShaderResource.h in Headers */,
 				8F2D1B781FD629380028A531 /* Buffer.h in Headers */,

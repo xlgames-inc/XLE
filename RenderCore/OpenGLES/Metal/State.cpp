@@ -24,19 +24,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    RasterizerState::RasterizerState() {}
-    void RasterizerState::Apply() const never_throws
-    {
-        glCullFace(GL_BACK);
-        glEnable(GL_CULL_FACE);
-        glFrontFace(GL_CCW);
-        glLineWidth(1.f);
-        glPolygonOffset(0.f, 0.f);
-        glDisable(GL_POLYGON_OFFSET_FILL);
-        glDisable(GL_SCISSOR_TEST);
-        glDisable(GL_DITHER);       // (not supported in D3D11)
-    }
-
     BlendState::BlendState() {}
     void BlendState::Apply() const never_throws
     {
@@ -48,21 +35,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
         glDisable(GL_SAMPLE_COVERAGE);
         glSampleCoverage(1.f, GL_FALSE);
-    }
-
-    DepthStencilState::DepthStencilState() {}
-    void DepthStencilState::Apply() const never_throws
-    {
-        glDepthFunc(GL_LEQUAL);
-        glEnable(GL_DEPTH_TEST);
-        glDisable(GL_STENCIL_TEST);
-        glDepthMask(GL_TRUE);
-        glStencilFuncSeparate(GL_FRONT, GL_ALWAYS, 0, ~GLuint(0x0));
-        glStencilFuncSeparate(GL_BACK, GL_ALWAYS, 0, ~GLuint(0x0));
-        glStencilMaskSeparate(GL_FRONT, ~GLuint(0x0));
-        glStencilMaskSeparate(GL_BACK, ~GLuint(0x0));
-        glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_KEEP);
-        glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
     }
 
     ViewportDesc::ViewportDesc(DeviceContext& viewport)

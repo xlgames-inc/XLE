@@ -27,9 +27,10 @@ namespace RenderCore { namespace Metal_OpenGLES
     class ConstantBuffer;
     class BoundInputLayout;
     class ShaderProgram;
-    class RasterizerState;
     class BlendState;
-    class DepthStencilState;
+
+    class RasterizationDesc;
+    class DepthStencilDesc;
 
     class CommandList : public RefCountedObject, noncopyable
     {
@@ -50,9 +51,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         void Bind(const BoundInputLayout& inputLayout);
         void Bind(Topology topology);
         void Bind(const ShaderProgram& shaderProgram);
-        void Bind(const RasterizerState& rasterizer);
         void Bind(const BlendState& blender);
-        void Bind(const DepthStencilState& depthStencil);
+
+        void Bind(const RasterizationDesc& rasterizer);
+        void Bind(const DepthStencilDesc& depthStencil);
 
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);

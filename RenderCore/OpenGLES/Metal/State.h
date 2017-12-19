@@ -6,13 +6,51 @@
 
 #pragma once
 
+#include "../../Types.h"
 #include "../../../Core/Exceptions.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
     class DeviceContext;
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// Equivalent to MTLStencilDescriptor or D3D12_DEPTH_STENCILOP_DESC or VkStencilOpState
+    /// Note that OpenGLES2 & Vulkan allow for separate readmask/writemask/reference values per
+    /// face, but DX & Metal do not.
+    class StencilDesc
+    {
+    public:
+        StencilOp       _passOp = StencilOp::Keep;        ///< pass stencil & depth tests
+        StencilOp       _failOp = StencilOp::Keep;        ///< fail stencil test
+        StencilOp       _depthFailOp = StencilOp::Keep;   ///< pass stencil but fail depth tests
+        CompareOp       _comparisonOp = CompareOp::Always;
+    };
+
+    /// Equivalent to MTLDepthStencilDescriptor or D3D12_DEPTH_STENCIL_DESC or VkPipelineDepthStencilStateCreateInfo
+    class DepthStencilDesc
+    {
+    public:
+        CompareOp       _depthTest = CompareOp::LessEqual;
+        bool            _depthWrite = true;
+        bool            _stencilEnable = false;
+        uint8_t         _stencilReadMask = 0x0;
+        uint8_t         _stencilWriteMask = 0x0;
+        uint8_t         _stencilReference = 0x0;
+        StencilDesc     _frontFaceStencil;
+        StencilDesc     _backFaceStencil;
+    };
+
+    /// Similar to VkPipelineRasterizationStateCreateInfo or D3D12_RASTERIZER_DESC
+    /// (Metal just has separate function calls)
+    class RasterizationDesc
+    {
+    public:
+        CullMode        _cullMode = CullMode::Back;
+        FaceWinding     _frontFaceWinding = FaceWinding::CCW;
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class SamplerState
     {
@@ -24,17 +62,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         UnderlyingType GetUnderlying() const never_throws { return *this; }
     };
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class RasterizerState
-    {
-    public:
-        RasterizerState();
-        void Apply() const never_throws;
-    };
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
     class BlendState
     {
     public:
@@ -42,16 +69,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         void Apply() const never_throws;
     };
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class DepthStencilState
-    {
-    public:
-        DepthStencilState();
-        void Apply() const never_throws;
-    };
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class ViewportDesc
     {

@@ -147,6 +147,12 @@ namespace RenderCore
         Border = 4  // D3D11_TEXTURE_ADDRESS_BORDER
     };
 
+    enum class FaceWinding
+    {
+        CCW = 0,    // Front faces are counter clockwise
+        CW = 1      // Front faces are clockwise
+    };
+
     /// <summary>Texture filtering modes</summary>
     ///
     ///     These are used when sampling a texture at a floating
@@ -163,7 +169,7 @@ namespace RenderCore
         ComparisonBilinear = 0x94   // D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT
     };
 
-    enum class Comparison
+    enum class CompareOp
     {
         Never = 1,          // D3D11_COMPARISON_NEVER
         Less = 2,           // D3D11_COMPARISON_LESS
@@ -246,7 +252,9 @@ namespace RenderCore
 
 	enum class StencilOp
 	{
+        Keep = 1,           // D3D11_STENCIL_OP_KEEP
 		DontWrite = 1,      // D3D11_STENCIL_OP_KEEP
+
 		Zero = 2,           // D3D11_STENCIL_OP_ZERO
 		Replace = 3,        // D3D11_STENCIL_OP_REPLACE
 		IncreaseSat = 4,    // D3D11_STENCIL_OP_INCR_SAT

@@ -381,106 +381,163 @@ namespace RenderCore { namespace Metal_OpenGLES
         return ImpliedTyping::TypeDesc();
     }
 
-    RenderCore::Format SizedInternalFormatAsRenderCoreFormat(GLenum sizedInternalFormat)
+    Format SizedInternalFormatAsRenderCoreFormat(GLenum sizedInternalFormat)
     {
         switch (sizedInternalFormat) {
-        case GL_R8: return RenderCore::Format::R8_UNORM;
-        case GL_R8_SNORM: return RenderCore::Format::R8_SNORM;
-        case GL_R16F: return RenderCore::Format::R16_FLOAT;
-        case GL_R32F: return RenderCore::Format::R32_FLOAT;
+        case GL_R8: return Format::R8_UNORM;
+        case GL_R8_SNORM: return Format::R8_SNORM;
+        case GL_R16F: return Format::R16_FLOAT;
+        case GL_R32F: return Format::R32_FLOAT;
 
-        case GL_R8UI: return RenderCore::Format::R8_UINT;
-        case GL_R8I: return RenderCore::Format::R8_SINT;
-        case GL_R16UI: return RenderCore::Format::R16_UINT;
-        case GL_R16I: return RenderCore::Format::R16_SINT;
-        case GL_R32UI: return RenderCore::Format::R32_UINT;
-        case GL_R32I: return RenderCore::Format::R32_SINT;
+        case GL_R8UI: return Format::R8_UINT;
+        case GL_R8I: return Format::R8_SINT;
+        case GL_R16UI: return Format::R16_UINT;
+        case GL_R16I: return Format::R16_SINT;
+        case GL_R32UI: return Format::R32_UINT;
+        case GL_R32I: return Format::R32_SINT;
 
-        case GL_RG8: return RenderCore::Format::R8G8_UNORM;
-        case GL_RG8_SNORM: return RenderCore::Format::R8G8_SNORM;
-        case GL_RG16F: return RenderCore::Format::R16G16_FLOAT;
-        case GL_RG32F: return RenderCore::Format::R32G32_FLOAT;
-        case GL_RG8UI: return RenderCore::Format::R8G8_UINT;
-        case GL_RG8I: return RenderCore::Format::R8G8_SINT;
-        case GL_RG16UI: return RenderCore::Format::R16G16_UINT;
-        case GL_RG16I: return RenderCore::Format::R16G16_SINT;
-        case GL_RG32UI: return RenderCore::Format::R32G32_UINT;
-        case GL_RG32I: return RenderCore::Format::R32G32_SINT;
+        case GL_RG8: return Format::R8G8_UNORM;
+        case GL_RG8_SNORM: return Format::R8G8_SNORM;
+        case GL_RG16F: return Format::R16G16_FLOAT;
+        case GL_RG32F: return Format::R32G32_FLOAT;
+        case GL_RG8UI: return Format::R8G8_UINT;
+        case GL_RG8I: return Format::R8G8_SINT;
+        case GL_RG16UI: return Format::R16G16_UINT;
+        case GL_RG16I: return Format::R16G16_SINT;
+        case GL_RG32UI: return Format::R32G32_UINT;
+        case GL_RG32I: return Format::R32G32_SINT;
 
-        // case GL_RGB8: return RenderCore::Format::R8G8B8_UNORM;
-        // case GL_SRGB8: return RenderCore::Format::R8G8B8_UNORM_SRGB;
-        // case GL_RGB565: return RenderCore::Format::R5G6B5_UNORM;
-        // case GL_RGB8_SNORM: return RenderCore::Format::R8G8B8_SNORM;
-        case GL_R11F_G11F_B10F: return RenderCore::Format::R11G11B10_FLOAT;
-        // case GL_RGB9_E5: return RenderCore::Format::R9G9B9E5_SHAREDEXP;
-        // case GL_RGB16F: return RenderCore::Format::R16G16B16_FLOAT;
-        case GL_RGB32F: return RenderCore::Format::R32G32B32_FLOAT;
-        // case GL_RGB8UI: return RenderCore::Format::R8G8B8_UINT;
-        // case GL_RGB8I: return RenderCore::Format::R8G8B8_SINT;
-        // case GL_RGB16UI: return RenderCore::Format::R16G16B16_UINT;
-        // case GL_RGB16I: return RenderCore::Format::R16G16B16_SINT;
-        case GL_RGB32UI: return RenderCore::Format::R32G32B32_UINT;
-        case GL_RGB32I: return RenderCore::Format::R32G32B32_SINT;
+        // case GL_RGB8: return Format::R8G8B8_UNORM;
+        // case GL_SRGB8: return Format::R8G8B8_UNORM_SRGB;
+        // case GL_RGB565: return Format::R5G6B5_UNORM;
+        // case GL_RGB8_SNORM: return Format::R8G8B8_SNORM;
+        case GL_R11F_G11F_B10F: return Format::R11G11B10_FLOAT;
+        // case GL_RGB9_E5: return Format::R9G9B9E5_SHAREDEXP;
+        // case GL_RGB16F: return Format::R16G16B16_FLOAT;
+        case GL_RGB32F: return Format::R32G32B32_FLOAT;
+        // case GL_RGB8UI: return Format::R8G8B8_UINT;
+        // case GL_RGB8I: return Format::R8G8B8_SINT;
+        // case GL_RGB16UI: return Format::R16G16B16_UINT;
+        // case GL_RGB16I: return Format::R16G16B16_SINT;
+        case GL_RGB32UI: return Format::R32G32B32_UINT;
+        case GL_RGB32I: return Format::R32G32B32_SINT;
 
-        case GL_RGBA8: return RenderCore::Format::R8G8B8A8_UNORM;
-        case GL_SRGB8_ALPHA8: return RenderCore::Format::R8G8B8A8_UNORM_SRGB;
-        case GL_RGBA8_SNORM: return RenderCore::Format::R8G8B8A8_SNORM;
-        case GL_RGB5_A1: return RenderCore::Format::B5G5R5A1_UNORM;
-        // case GL_RGBA4: return RenderCore::Format::R4G4B4A4_UNORM;
-        case GL_RGB10_A2: return RenderCore::Format::R10G10B10A2_UNORM;
-        case GL_RGBA16F: return RenderCore::Format::R16G16B16A16_FLOAT;
-        case GL_RGBA32F: return RenderCore::Format::R32G32B32A32_FLOAT;
-        case GL_RGBA8UI: return RenderCore::Format::R8G8B8A8_UINT;
-        case GL_RGBA8I: return RenderCore::Format::R8G8B8A8_SINT;
-        case GL_RGB10_A2UI: return RenderCore::Format::R10G10B10A2_UINT;
-        case GL_RGBA16UI: return RenderCore::Format::R16G16B16A16_UINT;
-        case GL_RGBA16I: return RenderCore::Format::R16G16B16A16_SINT;
-        case GL_RGBA32I: return RenderCore::Format::R32G32B32A32_SINT;
-        case GL_RGBA32UI: return RenderCore::Format::R32G32B32A32_UINT;
+        case GL_RGBA8: return Format::R8G8B8A8_UNORM;
+        case GL_SRGB8_ALPHA8: return Format::R8G8B8A8_UNORM_SRGB;
+        case GL_RGBA8_SNORM: return Format::R8G8B8A8_SNORM;
+        case GL_RGB5_A1: return Format::B5G5R5A1_UNORM;
+        // case GL_RGBA4: return Format::R4G4B4A4_UNORM;
+        case GL_RGB10_A2: return Format::R10G10B10A2_UNORM;
+        case GL_RGBA16F: return Format::R16G16B16A16_FLOAT;
+        case GL_RGBA32F: return Format::R32G32B32A32_FLOAT;
+        case GL_RGBA8UI: return Format::R8G8B8A8_UINT;
+        case GL_RGBA8I: return Format::R8G8B8A8_SINT;
+        case GL_RGB10_A2UI: return Format::R10G10B10A2_UINT;
+        case GL_RGBA16UI: return Format::R16G16B16A16_UINT;
+        case GL_RGBA16I: return Format::R16G16B16A16_SINT;
+        case GL_RGBA32I: return Format::R32G32B32A32_SINT;
+        case GL_RGBA32UI: return Format::R32G32B32A32_UINT;
 
-        case GL_DEPTH_COMPONENT16: return RenderCore::Format::D16_UNORM;
-        // case GL_DEPTH_COMPONENT24: return RenderCore::Format::R24_UNORM_X8_TYPELESS;
-        case GL_DEPTH_COMPONENT32F: return RenderCore::Format::D32_FLOAT;
-        case GL_DEPTH24_STENCIL8: return RenderCore::Format::D24_UNORM_S8_UINT;
-        case GL_DEPTH32F_STENCIL8: return RenderCore::Format::D32_SFLOAT_S8_UINT;
+        case GL_DEPTH_COMPONENT16: return Format::D16_UNORM;
+        // case GL_DEPTH_COMPONENT24: return Format::R24_UNORM_X8_TYPELESS;
+        case GL_DEPTH_COMPONENT32F: return Format::D32_FLOAT;
+        case GL_DEPTH24_STENCIL8: return Format::D24_UNORM_S8_UINT;
+        case GL_DEPTH32F_STENCIL8: return Format::D32_SFLOAT_S8_UINT;
 
-        default: return RenderCore::Format::Unknown;
+        default: return Format::Unknown;
         }
     }
 
-    GLenum AsGLTopology(RenderCore::Topology topology)
+    GLenum AsGLenum(RenderCore::Topology topology)
     {
         // GL_LINE_LOOP, GL_TRIANGLE_FAN not accessible
         switch (topology)
         {
-        case RenderCore::Topology::PointList: return GL_POINTS;
-        case RenderCore::Topology::LineList: return GL_LINES;
-        case RenderCore::Topology::LineStrip: return GL_LINE_STRIP;
-        case RenderCore::Topology::TriangleList: return GL_TRIANGLES;
-        case RenderCore::Topology::TriangleStrip: return GL_TRIANGLE_STRIP;
+        case Topology::PointList: return GL_POINTS;
+        case Topology::LineList: return GL_LINES;
+        case Topology::LineStrip: return GL_LINE_STRIP;
+        case Topology::TriangleList: return GL_TRIANGLES;
+        case Topology::TriangleStrip: return GL_TRIANGLE_STRIP;
         default: return GL_ZERO;
         }
     }
 
-    GLenum AsGLBlend(RenderCore::Blend input)
+    GLenum AsGLenum(Blend input)
     {
         switch (input)
         {
-        case RenderCore::Blend::Zero: return GL_ZERO;
-        case RenderCore::Blend::One: return GL_ONE;
+        case Blend::Zero: return GL_ZERO;
+        case Blend::One: return GL_ONE;
 
-        case RenderCore::Blend::SrcColor: return GL_SRC_COLOR;
-        case RenderCore::Blend::InvSrcColor: return GL_ONE_MINUS_SRC_COLOR;
-        case RenderCore::Blend::DestColor: return GL_DST_COLOR;
-        case RenderCore::Blend::InvDestColor: return GL_ONE_MINUS_DST_COLOR;
+        case Blend::SrcColor: return GL_SRC_COLOR;
+        case Blend::InvSrcColor: return GL_ONE_MINUS_SRC_COLOR;
+        case Blend::DestColor: return GL_DST_COLOR;
+        case Blend::InvDestColor: return GL_ONE_MINUS_DST_COLOR;
 
-        case RenderCore::Blend::SrcAlpha: return GL_SRC_ALPHA;
-        case RenderCore::Blend::InvSrcAlpha: return GL_ONE_MINUS_SRC_ALPHA;
-        case RenderCore::Blend::DestAlpha: return GL_DST_ALPHA;
-        case RenderCore::Blend::InvDestAlpha: return GL_ONE_MINUS_DST_ALPHA;
+        case Blend::SrcAlpha: return GL_SRC_ALPHA;
+        case Blend::InvSrcAlpha: return GL_ONE_MINUS_SRC_ALPHA;
+        case Blend::DestAlpha: return GL_DST_ALPHA;
+        case Blend::InvDestAlpha: return GL_ONE_MINUS_DST_ALPHA;
+
+        default: return GL_ZERO;
+        }
+    }
+
+    GLenum AsGLenum(CullMode cullMode)
+    {
+        // GL_FRONT_AND_BACK can't be returned from this function (because doesn't seem useful)
+        switch (cullMode) {
+        case CullMode::Front: return GL_FRONT;
+        case CullMode::Back: return GL_BACK;
+
+        case CullMode::None:
+        default:
+            assert(0);
+            return GL_BACK;
+        }
+    }
+
+    GLenum AsGLenum(FaceWinding faceWinding)
+    {
+        switch (faceWinding) {
+        case FaceWinding::CCW: return GL_CCW;
+        case FaceWinding::CW: return GL_CW;
+        default:
+            assert(0);
+            return GL_CCW;
+        }
+    }
+
+    GLenum AsGLenum(CompareOp compare)
+    {
+        switch (compare) {
+        case CompareOp::Never: return GL_NEVER;
+        case CompareOp::Less: return GL_LESS;
+        case CompareOp::Equal: return GL_EQUAL;
+        case CompareOp::LessEqual: return GL_LEQUAL;
+        case CompareOp::Greater: return GL_GREATER;
+        case CompareOp::NotEqual: return GL_NOTEQUAL;
+        case CompareOp::GreaterEqual: return GL_GEQUAL;
+        case CompareOp::Always: return GL_ALWAYS;
 
         default:
-        return GL_ZERO;
+            assert(0);
+            return GL_ALWAYS;
+        }
+    }
+
+    GLenum AsGLenum(StencilOp stencilOp)
+    {
+        switch (stencilOp) {
+        case StencilOp::Keep: return GL_KEEP;
+        case StencilOp::Zero: return GL_ZERO;
+        case StencilOp::Replace: return GL_REPLACE;
+        case StencilOp::IncreaseSat: return GL_INCR;
+        case StencilOp::DecreaseSat: return GL_DECR;
+        case StencilOp::Invert: return GL_INVERT;
+        case StencilOp::Increase: return GL_INCR_WRAP;
+        case StencilOp::Decrease: return GL_DECR_WRAP;
+        default: return GL_KEEP;
         }
     }
 

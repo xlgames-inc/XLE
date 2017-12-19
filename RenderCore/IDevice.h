@@ -19,6 +19,9 @@
     #define render_dll_export
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wduplicate-decl-specifier"
+
 namespace RenderCore
 {
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,3 +194,7 @@ namespace RenderCore
 
 ////////////////////////////////////////////////////////////////////////////////
 }
+
+#pragma GCC diagnostic pop
+
+
