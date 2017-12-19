@@ -20,15 +20,15 @@ namespace Assets
 
         void ResolveFile(
             ResChar destination[], unsigned destinationCount, 
-            const ResChar baseName[]) const;
+            StringSection<ResChar> baseName) const;
         void ResolveDirectory(
             ResChar destination[], unsigned destinationCount, 
-            const ResChar baseName[]) const;
+            StringSection<ResChar> baseName) const;
         bool HasDirectory(StringSection<ResChar> dir);
 		std::vector<std::basic_string<ResChar>> FindFiles(StringSection<char> wildcardSearch) const;
 
         template<int Count>
-            void ResolveFile(ResChar (&destination)[Count], const ResChar baseName[]) const
+            void ResolveFile(ResChar (&destination)[Count], StringSection<ResChar> baseName) const
                 { ResolveFile(destination, Count, baseName); }
 
         void Merge(const DirectorySearchRules& mergeFrom);

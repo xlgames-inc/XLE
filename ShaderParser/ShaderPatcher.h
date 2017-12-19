@@ -12,8 +12,6 @@
 #include <string>
 #include <vector>
 
-namespace ShaderSourceParser { class FunctionSignature; }
-
 namespace ShaderPatcher 
 {
 
@@ -159,7 +157,7 @@ namespace ShaderPatcher
         std::string     _semantic;
         std::string     _default;
     };
-
+   
         ///////////////////////////////////////////////////////////////
 
     class NodeGraph
@@ -174,9 +172,6 @@ namespace ShaderPatcher
         void Add(NodeConnection&&);
         void Add(ConstantConnection&&);
         void Add(InputParameterConnection&&);
-
-		void			SetSearchRules(const ::Assets::DirectorySearchRules& rules) { _searchRules = rules; }
-		const ::Assets::DirectorySearchRules& GetSearchRules() const { return _searchRules; }
 
 		void			Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd);
         void            Trim(uint32 previewNode);
@@ -198,8 +193,6 @@ namespace ShaderPatcher
         std::vector<NodeConnection> _nodeConnections;
         std::vector<ConstantConnection> _constantConnections;
         std::vector<InputParameterConnection> _inputParameterConnections;
-
-		::Assets::DirectorySearchRules _searchRules;
 
         bool        IsUpstream(uint32 startNode, uint32 searchingForNode);
         bool        IsDownstream(uint32 startNode, const uint32* searchingForNodesStart, const uint32* searchingForNodesEnd);
@@ -243,10 +236,20 @@ namespace ShaderPatcher
         std::vector<Parameter> _capturedParameters;
     };
 
-    NodeGraphSignature AsNodeGraphSignature(const ShaderSourceParser::FunctionSignature& sig);
+    class ISignatureProvider
+    {
+    public:
+        struct Result 
+        {
+            std::string _name;
+            const NodeGraphSignature* _signature;
+        };
+        virtual Result FindSignature(StringSection<> name) = 0;
+        virtual ~ISignatureProvider();
+    };
 
     std::string GenerateShaderHeader(const NodeGraph& graph);
-    std::pair<std::string, NodeGraphSignature> GenerateFunction(const NodeGraph& graph, const char name[]);
+    std::pair<std::string, NodeGraphSignature> GenerateFunction(const NodeGraph& graph, const char name[], ISignatureProvider& sigProvider);
 	std::string GenerateMaterialCBuffer(const NodeGraphSignature& interf);
 
     struct PreviewOptions

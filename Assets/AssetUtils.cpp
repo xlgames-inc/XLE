@@ -242,7 +242,7 @@ namespace Assets
 		return RawFS::FindFiles(searchPath.AsString(), filter);
 	}
 
-    void DirectorySearchRules::ResolveFile(ResChar destination[], unsigned destinationCount, const ResChar baseName[]) const
+    void DirectorySearchRules::ResolveFile(ResChar destination[], unsigned destinationCount, StringSection<ResChar> baseName) const
     {
         ResChar tempBuffer[MaxPath];
 
@@ -265,8 +265,9 @@ namespace Assets
                 // We want to support the case were destination == baseName
                 // But that cases requires another temporary buffer, because we
                 // don't want to trash "baseName" while searching for matches
-            ResChar* workingBuffer = (baseName!=destination) ? destination : tempBuffer;
-            unsigned workingBufferSize = (baseName!=destination) ? destinationCount : unsigned(dimof(tempBuffer));
+            bool baseNameOverlapsDestination = !(baseName.end() <= destination || baseName.begin() >= &destination[destinationCount]);
+            ResChar* workingBuffer = (!baseNameOverlapsDestination) ? destination : tempBuffer;
+            unsigned workingBufferSize = (!baseNameOverlapsDestination) ? destinationCount : unsigned(dimof(tempBuffer));
 
             for (unsigned c=0; c<_startPointCount; ++c) {
                 XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], 
@@ -291,14 +292,14 @@ namespace Assets
             }
         }
 
-        if (baseName != destination)
+        if (baseName.begin() != destination)
             XlCopyString(destination, destinationCount, baseName);
         SplitPath<ResChar>(destination).Simplify().Rebuild(destination, destinationCount);
     }
 
     void DirectorySearchRules::ResolveDirectory(
             ResChar destination[], unsigned destinationCount, 
-            const ResChar baseName[]) const
+            StringSection<ResChar> baseName) const
     {
             //  We have a problem with basic paths (like '../')
             //  These will match for most directories -- which means that
@@ -313,14 +314,13 @@ namespace Assets
                 b = AsPointer(_bufferOverflow.begin());
             }
 
-            const auto* baseEnd = XlStringEnd(baseName);
-            
             ResChar tempBuffer[MaxPath];
-            ResChar* workingBuffer = (baseName!=destination) ? destination : tempBuffer;
-            unsigned workingBufferSize = (baseName!=destination) ? destinationCount : unsigned(dimof(tempBuffer));
+            bool baseNameOverlapsDestination = !(baseName.end() <= destination || baseName.begin() >= &destination[destinationCount]);
+            ResChar* workingBuffer = (!baseNameOverlapsDestination) ? destination : tempBuffer;
+            unsigned workingBufferSize = (!baseNameOverlapsDestination) ? destinationCount : unsigned(dimof(tempBuffer));
 
             for (unsigned c=0; c<_startPointCount; ++c) {
-                XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName, baseEnd);
+                XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName.begin(), baseName.end());
                 if (RawFS::DoesDirectoryExist(workingBuffer)) {
                     if (workingBuffer != destination)
                         XlCopyString(destination, destinationCount, workingBuffer);
@@ -329,7 +329,7 @@ namespace Assets
             }
         }
 
-        if (baseName != destination)
+        if (baseName.begin() != destination)
             XlCopyString(destination, destinationCount, baseName);
     }
 

@@ -405,15 +405,19 @@ namespace Utility
 
 	namespace RawFS
 	{
-		bool DoesFileExist(const char filename[])
+		bool DoesFileExist(StringSection<char> filename)
 		{
-			DWORD dwAttrib = GetFileAttributes(filename);
+			char buffer[MAX_PATH];
+			XLCopyString(buffer, filename);	// copy to get the null terminator
+			DWORD dwAttrib = GetFileAttributes(buffer);
 			return dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
 		}
 
-		bool DoesDirectoryExist(const char filename[])
+		bool DoesDirectoryExist(StringSection<char> filename)
 		{
-			DWORD dwAttrib = GetFileAttributes(filename);
+			char buffer[MAX_PATH];
+			XLCopyString(buffer, filename);	// copy to get the null terminator
+			DWORD dwAttrib = GetFileAttributes(buffer);
 			return (dwAttrib != INVALID_FILE_ATTRIBUTES) && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
 		}
 
@@ -441,17 +445,17 @@ namespace Utility
 			}
 		}
 
-		void CreateDirectoryRecursive(const StringSection<char> filename)
+		void CreateDirectoryRecursive(StringSection<char> filename)
 		{
 			CreateDirectoryRecursive_Int(filename);
 		}
 
-		void CreateDirectoryRecursive(const StringSection<utf8> filename)
+		void CreateDirectoryRecursive(StringSection<utf8> filename)
 		{
 			CreateDirectoryRecursive_Int(filename);
 		}
 
-		void CreateDirectoryRecursive(const StringSection<utf16> filename)
+		void CreateDirectoryRecursive(StringSection<utf16> filename)
 		{
 			CreateDirectoryRecursive_Int(filename);
 		}

@@ -97,8 +97,8 @@ int main(int argc, char *argv[])
         }
         ShaderScan::Execute(MakeStringSection(cmdLine));
     } CATCH (const std::exception& e) {
-        LogAlwaysError << "Hit top level exception. Aborting program!";
-        LogAlwaysError << e.what();
+        LogAlwaysError << "Hit top level exception. Aborting program!" << std::endl;
+        LogAlwaysError << e.what() << std::endl;
     } CATCH_END
 
     ConsoleRig::GlobalServices::GetCrossModule().Withhold(assetServices);

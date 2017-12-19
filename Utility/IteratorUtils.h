@@ -108,6 +108,7 @@ namespace Utility
             SearchI searchStart, SearchI searchEnd,
             CompareI compareBegin, CompareI compareEnd)
         {
+            if (searchStart == searchEnd) return searchEnd;
             auto i = searchEnd-1;
             while (i >= searchStart) {
                 if (std::find(compareBegin, compareEnd, *i) != compareEnd)
@@ -122,6 +123,7 @@ namespace Utility
             SearchI searchStart, SearchI searchEnd,
             CompareI compare)
         {
+            if (searchStart == searchEnd) return searchEnd;
             auto i = searchEnd-1;
             while (i >= searchStart) {
                 if (*i == compare)

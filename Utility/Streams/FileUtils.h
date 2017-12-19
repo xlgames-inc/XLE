@@ -146,13 +146,15 @@ namespace Utility
 			uint64_t _lastAccessTime;
 		};
 
-		XL_UTILITY_API bool DoesFileExist(const char filename[]);
+		XL_UTILITY_API bool DoesFileExist(StringSection<char> filename);
+		XL_UTILITY_API bool DoesDirectoryExist(StringSection<char> filename);
+
 		XL_UTILITY_API std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[]);
 		XL_UTILITY_API std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[]);
-		XL_UTILITY_API bool DoesDirectoryExist(const char filename[]);
-		XL_UTILITY_API void CreateDirectoryRecursive(const StringSection<char> filename);
-		XL_UTILITY_API void CreateDirectoryRecursive(const StringSection<utf8> filename);
-		XL_UTILITY_API void CreateDirectoryRecursive(const StringSection<utf16> filename);
+		
+		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<char> filename);
+		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<utf8> filename);
+		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<utf16> filename);
 
 		std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(const char sourceFileName[], size_t* sizeResult);
 

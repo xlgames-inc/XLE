@@ -7,6 +7,7 @@
 #include "GraphSyntax.h"
 #include "ShaderPatcher.h"
 #include "ShaderPatcher_Internal.h"
+#include "SignatureProvider.h"
 #include "AntlrHelper.h"
 #include "Grammar/GraphSyntaxLexer.h"
 #include "Grammar/GraphSyntaxParser.h"
@@ -112,14 +113,13 @@ namespace ShaderPatcher
 		std::string result;
 		// Find each slot implementation in the graph; trim it out, and then
 		// build a function.
+
+		auto sigProvider = std::make_unique<BasicSignatureProvider>(searchRules);
 		
 		for (auto& g:subGraphs) {
-			auto graph = g._graph;	// (copy here)
-			graph.SetSearchRules(searchRules);
-
 			std::string slotImplementation;
 			NodeGraphSignature generatedInterface;
-			std::tie(slotImplementation, generatedInterface) = GenerateFunction(graph, g._name.c_str());
+			std::tie(slotImplementation, generatedInterface) = GenerateFunction(g._graph, g._name.c_str(), *sigProvider);
 			result += slotImplementation;
 
 			result += GenerateScaffoldFunction(g._signature, generatedInterface, g._name.c_str());
