@@ -160,6 +160,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         return std::make_shared<OGLESShaderCompiler>();
     }
 
+    static uint32_t g_nextShaderProgramGUID = 0;
+
     ShaderProgram::ShaderProgram(   const CompiledShaderByteCode& vertexShader,
                                     const CompiledShaderByteCode& fragmentShader)
     {
@@ -199,6 +201,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         _depVal = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_depVal, vertexShader.GetDependencyValidation());
         Assets::RegisterAssetDependency(_depVal, fragmentShader.GetDependencyValidation());
+
+        _guid = g_nextShaderProgramGUID++;
     }
 
     ShaderProgram::~ShaderProgram()

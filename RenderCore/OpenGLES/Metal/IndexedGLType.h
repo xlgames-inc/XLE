@@ -49,13 +49,13 @@ namespace RenderCore { namespace Metal_OpenGLES
 
 namespace OpenGL
 {
-    typedef RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::Shader>             Shader;
-    typedef RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::ShaderProgram>      ShaderProgram;
-    typedef RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::Buffer>             Buffer;
-    typedef RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::Texture>            Texture;
-    typedef RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::RenderBuffer>       RenderBuffer;
-    typedef RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::FrameBuffer>        FrameBuffer;
-    typedef RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::Resource>           Resource;
+    using Shader        = RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::Shader>;
+    using ShaderProgram = RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::ShaderProgram>;
+    using Buffer        = RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::Buffer>;
+    using Texture       = RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::Texture>;
+    using RenderBuffer  = RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::RenderBuffer>;
+    using FrameBuffer   = RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::FrameBuffer>;
+    using Resource      = RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::Resource>;
 }
     
 namespace RenderCore { namespace Metal_OpenGLES

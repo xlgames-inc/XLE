@@ -15,57 +15,21 @@ namespace RenderCore { class CompiledShaderByteCode; class IDevice; }
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class ShaderProgram : noncopyable
+    class ShaderProgram
     {
     public:
-        typedef OpenGL::ShaderProgram*  UnderlyingType;
-        UnderlyingType                  GetUnderlying() const { return _underlying.get(); }
+        using UnderlyingType = OpenGL::ShaderProgram*;
+        UnderlyingType GetUnderlying() const { return _underlying.get(); }
+        const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
+        uint32_t GetGUID() const { return _guid; }
 
-        const ::Assets::DepValPtr&      GetDependencyValidation() { return _depVal; }
-
-        ShaderProgram(  const CompiledShaderByteCode& vs,
-                        const CompiledShaderByteCode& fs);
+        ShaderProgram(const CompiledShaderByteCode& vs, const CompiledShaderByteCode& fs);
         ~ShaderProgram();
     private:
         intrusive_ptr<OpenGL::ShaderProgram>    _underlying;
         ::Assets::DepValPtr                     _depVal;
+        uint32_t                                _guid;
     };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
     std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
-
-//     class VertexShader : noncopyable
-//     {
-//     public:
-//             //
-//             //          Resource interface
-//             //
-//         VertexShader(const ResChar initializer[]);
-// 
-//         typedef ID3D::VertexShader  UnderlyingType;
-//         UnderlyingType*             GetUnderlying() const { return _underlying.get(); }
-//         
-//     private:
-//         intrusive_ptr<UnderlyingType>      _underlying;
-//     };
-// 
-//         ////////////////////////////////////////////////////////////////////////////////////////////////
-// 
-//     class PixelShader : noncopyable
-//     {
-//     public:
-//             //
-//             //          Resource interface
-//             //
-//         PixelShader(const ResChar initializer[]);
-// 
-//         typedef ID3D::PixelShader   UnderlyingType;
-//         UnderlyingType*             GetUnderlying() const { return _underlying.get(); }
-//         
-//     private:
-//         intrusive_ptr<UnderlyingType>      _underlying;
-//     };
 }}

@@ -25,6 +25,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         BoundInputLayout() {}
         BoundInputLayout(const InputLayout& layout, const ShaderProgram& program);
+        BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& program);
 
         BoundInputLayout(const BoundInputLayout&& moveFrom);
         BoundInputLayout& operator=(const BoundInputLayout& copyFrom);

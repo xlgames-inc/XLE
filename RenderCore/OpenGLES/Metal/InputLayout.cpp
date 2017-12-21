@@ -76,19 +76,63 @@ namespace RenderCore { namespace Metal_OpenGLES
                     LogWarning << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the program. Ignoring" << std::endl;
                 #endif
             } else {
-                    // (easier with C++11 {} initializer and emplace_back)
                 const auto componentType = GetComponentType(elements[c]._nativeFormat);
-                Binding b = {
-                    unsigned(attribute), 
-                    GetComponentCount(GetComponents(elements[c]._nativeFormat)), AsGLVertexComponentType(elements[c]._nativeFormat),
-                    (componentType == FormatComponentType::UNorm) || (componentType == FormatComponentType::SNorm) || (componentType == FormatComponentType::UNorm_SRGB),
-                    unsigned(vertexStride),
-                    elementStart
-                    };
-                _bindings.push_back(b);
+                _bindings.push_back({
+                        unsigned(attribute),
+                        GetComponentCount(GetComponents(elements[c]._nativeFormat)), AsGLVertexComponentType(elements[c]._nativeFormat),
+                        (componentType == FormatComponentType::UNorm) || (componentType == FormatComponentType::SNorm) || (componentType == FormatComponentType::UNorm_SRGB),
+                        unsigned(vertexStride),
+                        elementStart
+                    });
             }
 
             lastElementEnd = elementStart + elementSize;
+        }
+    }
+
+    BoundInputLayout::BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& program)
+    {
+        _bindings.reserve(layout.size());
+
+        auto vertexStride = CalculateVertexStride(layout, false);
+        auto programHandle = program.GetUnderlying()->AsRawGLHandle();
+
+        int activeAttributeCount = 0, activeAttributeMaxLength = 0;
+        glGetProgramiv(programHandle, GL_ACTIVE_ATTRIBUTES, &activeAttributeCount);
+        glGetProgramiv(programHandle, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &activeAttributeMaxLength);
+
+        GLchar buffer[activeAttributeMaxLength];
+
+        for (int a=0; a<activeAttributeCount; ++a) {
+            GLint size; GLenum type;
+            GLsizei nameLen;
+            glGetActiveAttrib(programHandle, a, activeAttributeMaxLength, &nameLen, &size, &type, buffer);
+            if (!nameLen) continue;
+
+            auto semanticIdx = nameLen;
+            while (std::isdigit(buffer[semanticIdx-1])) --semanticIdx;
+            uint64_t hash = Hash64(buffer, &buffer[semanticIdx]);
+            hash += std::atoi(&buffer[semanticIdx]);
+            auto i = std::find_if(layout.begin(), layout.end(), [hash](const MiniInputElementDesc&l) { return l._semanticHash == hash; });
+            if (i == layout.end()) {
+                #if defined(XLE_HAS_CONSOLE_RIG)
+                    LogWarning << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the input binding. Ignoring" << std::endl;
+                #endif
+                continue;
+            }
+
+            const auto elementStart = CalculateVertexStride(MakeIteratorRange(layout.begin(), i), false);
+            auto fmt = VertexAttributePointerAsFormat(size, type, true);
+            assert(fmt == i->_nativeFormat);
+
+            const auto componentType = GetComponentType(i->_nativeFormat);
+            _bindings.push_back({
+                    unsigned(a),
+                    GetComponentCount(GetComponents(i->_nativeFormat)), AsGLVertexComponentType(i->_nativeFormat),
+                    (componentType == FormatComponentType::UNorm) || (componentType == FormatComponentType::SNorm) || (componentType == FormatComponentType::UNorm_SRGB),
+                    unsigned(vertexStride),
+                    elementStart
+                });
         }
     }
 
