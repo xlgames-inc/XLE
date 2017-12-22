@@ -74,8 +74,11 @@ namespace ShaderSourceParser { namespace AntlrHelper
     pANTLR3_COMMON_TOKEN    GetToken(pANTLR3_BASE_TREE node);
     ANTLR3_UINT32           GetType(pANTLR3_COMMON_TOKEN token);
 
-    template<typename CharType>
+    template<typename CharType=char>
         std::basic_string<CharType> AsString(ANTLR3_STRING* antlrString);
+
+    template<typename CharType=char>
+        std::basic_string<CharType> AsString(pANTLR3_COMMON_TOKEN token);
 
 	void Description(std::ostream& str, pANTLR3_COMMON_TOKEN token);
 	void StructureDescription(std::ostream& str, pANTLR3_BASE_TREE node, unsigned indent=0);

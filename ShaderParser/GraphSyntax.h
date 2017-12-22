@@ -6,6 +6,9 @@
 
 #include "ShaderPatcher.h"
 #include "../Utility/StringUtils.h"
+#include <vector>
+#include <string>
+#include <unordered_map>
 
 namespace Assets { class DirectorySearchRules; }
 namespace ShaderPatcher
@@ -16,12 +19,15 @@ namespace ShaderPatcher
 		class SubGraph
 		{
 		public:
-			std::string _name;
-			NodeGraph _graph;
-			NodeGraphSignature _signature;
+			std::string 		_name;
+			NodeGraphSignature 	_signature;
+			NodeGraph 			_graph;
 		};
+
+		std::vector<SubGraph> _subGraphs;
+		std::unordered_map<std::string, std::string> _imports;
 	};
-	std::vector<GraphSyntaxFile::SubGraph> ParseGraphSyntax(StringSection<char> sourceCode);
-	std::string ReadGraphSyntax(StringSection<char> input, const ::Assets::DirectorySearchRules& searchRules);
+	GraphSyntaxFile ParseGraphSyntax(StringSection<char> sourceCode);
+	std::string 	ReadGraphSyntax(StringSection<char> input, const ::Assets::DirectorySearchRules& searchRules);
 }
 

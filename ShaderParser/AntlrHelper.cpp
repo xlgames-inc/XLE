@@ -53,6 +53,16 @@ namespace ShaderSourceParser { namespace AntlrHelper
         return Conversion::Convert<std::basic_string<CharType>>(result);
     }
 
+    template<typename CharType>
+        std::basic_string<CharType> AsString(pANTLR3_COMMON_TOKEN token)
+    {
+        ANTLR3_STRING* str = (token->getText)(token);  // (str seems to be retained in the factory...?)
+        return AsString(str);
+    }
+
+    template std::basic_string<char> AsString(ANTLR3_STRING* antlrString);
+    template std::basic_string<char> AsString(ANTLR3_COMMON_TOKEN* token);
+        
 	void Description(std::ostream& str, pANTLR3_COMMON_TOKEN token)
 	{
 		ANTLR3_STRING* strng = token->toString(token);

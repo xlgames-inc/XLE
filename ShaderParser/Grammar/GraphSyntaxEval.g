@@ -32,13 +32,13 @@ options
 {
 	struct IdentifierAndScopeTag
 	{
-		const char* _scope;
-		const char* _identifier;
+		pANTLR3_COMMON_TOKEN _scope;
+		pANTLR3_COMMON_TOKEN _identifier;
 	};
 
-	NodeId RNode_Register(const void*, struct IdentifierAndScopeTag identifierAndScope);
+	NodeId RNode_Register(const void*, IdentifierAndScope identifierAndScope);
+	NodeId RSlot_Register(const void*, IdentifierAndScope identifierAndScope);
 	NodeId Graph_Register(const void*, const char name[], GraphSignatureId signature);
-	NodeId RSlot_Register(const void*, struct IdentifierAndScopeTag identifierAndScope);
 	ConnectorId Connector_Register(const void*, NodeId node, const char connectorName[]);
 	ConnectorId LiteralConnector_Register(const void*, const char literal[]);
 	ConnectionId Connection_Register(const void*, ConnectorId left, ConnectorId right);
@@ -98,9 +98,10 @@ options
 //------------------------------------------------------------------------------------------------
 
 identifier returns [const char* str = NULL] : Identifier { str = (const char*)$Identifier.text->chars; };
+identifierToken returns [pANTLR3_COMMON_TOKEN str = NULL] : Identifier { str = (*$Identifier->getToken)($Identifier); };
 functionPath returns [IdentifierAndScope res = (IdentifierAndScope){NULL, NULL}] 
-	: ^(FUNCTION_PATH importSrc=identifier ident=identifier) { res._scope = importSrc; res._identifier = ident; }
-	| ^(FUNCTION_PATH ident=identifier) { res._scope = NULL; res._identifier = ident; }
+	: ^(FUNCTION_PATH importSrc=identifierToken ident=identifierToken) { res._scope = importSrc; res._identifier = ident; }
+	| ^(FUNCTION_PATH ident=identifierToken) { res._scope = NULL; res._identifier = ident; }
 	;
 stringLiteral returns [const char* str = NULL] : StringLiteral { str = (const char*)$StringLiteral.text->chars; };
 

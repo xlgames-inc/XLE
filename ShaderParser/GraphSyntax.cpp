@@ -25,8 +25,8 @@ typedef unsigned GraphSignatureId;
 
 typedef struct IdentifierAndScopeTag
 {
-	const char* _scope;
-	const char* _identifier;
+	pANTLR3_COMMON_TOKEN _scope;
+	pANTLR3_COMMON_TOKEN _identifier;
 } IdentifierAndScope;
 
 namespace ShaderPatcher
@@ -68,7 +68,7 @@ namespace ShaderPatcher
 		return result;
     }
 
-    std::vector<GraphSyntaxFile::SubGraph> ParseGraphSyntax(StringSection<char> sourceCode)
+    GraphSyntaxFile ParseGraphSyntax(StringSection<char> sourceCode)
     {
         AntlrPtr<struct ANTLR3_INPUT_STREAM_struct>	inputStream = antlr3StringStreamNew(
             (ANTLR3_UINT8*)sourceCode.begin(), ANTLR3_ENC_8BIT, 
@@ -97,26 +97,83 @@ namespace ShaderPatcher
 		if (!exceptionContext._exceptions._errors.empty())
 			Throw(ShaderSourceParser::Exceptions::ParsingFailure(MakeIteratorRange(exceptionContext._exceptions._errors)));
 		
-		std::vector<GraphSyntaxFile::SubGraph> result;
-		result.reserve(ng._graphs.size());
+		GraphSyntaxFile result;
+		result._subGraphs.reserve(ng._graphs.size());
+		result._imports = ng._imports;
 		for (auto& f:ng._graphs)
-			result.emplace_back(GraphSyntaxFile::SubGraph{f._name, std::move(f._graph), std::move(f._signature)});
+			result._subGraphs.emplace_back(GraphSyntaxFile::SubGraph{f._name, std::move(f._signature), std::move(f._graph)});
 		return result;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class GraphSyntaxSignatureProvider : public BasicSignatureProvider
+    {
+    public:
+        Result FindSignature(StringSection<> name);
+
+        GraphSyntaxSignatureProvider(
+			const GraphSyntaxFile& parsedGraphFile,
+			const ::Assets::DirectorySearchRules& searchRules);
+        ~GraphSyntaxSignatureProvider();
+    protected:
+		const GraphSyntaxFile* _parsedGraphFile;
+    };
+
+	auto GraphSyntaxSignatureProvider::FindSignature(StringSection<> name) -> Result
+	{
+		// Interpret the given string to find a function signature that matches it
+		// First, check to see if it's scoped as an imported function
+		auto *scopingOperator = name.begin() + 1;
+		while (scopingOperator < name.end()) {
+			if (*(scopingOperator-1) == ':' && *scopingOperator == ':')
+				break;
+			++scopingOperator;
+		}
+		if (scopingOperator < name.end()) {
+			auto import = MakeStringSection(name.begin(), scopingOperator-1).AsString();
+			auto functionName = MakeStringSection(scopingOperator+1, name.end());
+
+			auto importedName = _parsedGraphFile->_imports.find(import);
+			if (importedName != _parsedGraphFile->_imports.end())
+				return BasicSignatureProvider::FindSignature(importedName->second + ":" + functionName.AsString());
+			return BasicSignatureProvider::FindSignature(import + ":" + functionName.AsString());
+		}
+
+		// Look for the function within the parsed graph syntax file
+		auto i = std::find_if(
+			_parsedGraphFile->_subGraphs.begin(),
+			_parsedGraphFile->_subGraphs.end(),
+			[name](const GraphSyntaxFile::SubGraph& g) { return XlEqString(name, g._name); });
+		if (i != _parsedGraphFile->_subGraphs.end()) {
+			return { i->_name, &i->_signature };
+		}
+
+		// Just fallback to default behaviour
+		return BasicSignatureProvider::FindSignature(name);
+	}
+
+	GraphSyntaxSignatureProvider::GraphSyntaxSignatureProvider(
+		const GraphSyntaxFile& parsedGraphFile,
+		const ::Assets::DirectorySearchRules& searchRules)
+	: BasicSignatureProvider(searchRules)
+	, _parsedGraphFile(&parsedGraphFile)
+	{}
+
+	GraphSyntaxSignatureProvider::~GraphSyntaxSignatureProvider()
+	{}
+
 	std::string ReadGraphSyntax(StringSection<char> input, const ::Assets::DirectorySearchRules& searchRules)
 	{
-		auto subGraphs = ParseGraphSyntax(input);
+		auto parsedGraph = ParseGraphSyntax(input);
 
 		std::string result;
 		// Find each slot implementation in the graph; trim it out, and then
 		// build a function.
 
-		auto sigProvider = std::make_unique<BasicSignatureProvider>(searchRules);
+		auto sigProvider = std::make_unique<GraphSyntaxSignatureProvider>(parsedGraph, searchRules);
 		
-		for (auto& g:subGraphs) {
+		for (auto& g:parsedGraph._subGraphs) {
 			std::string slotImplementation;
 			NodeGraphSignature generatedInterface;
 			std::tie(slotImplementation, generatedInterface) = GenerateFunction(g._graph, g._name.c_str(), *sigProvider);
@@ -128,15 +185,11 @@ namespace ShaderPatcher
 		return result;
 	}
 
-	static std::string MakeArchiveName(const WorkingGraphSyntaxFile& graph, const IdentifierAndScope& identifierAndScope)
+	static std::string MakeArchiveName(const IdentifierAndScope& identifierAndScope)
 	{
-		if (identifierAndScope._scope) {
-			auto i = graph._imports.find(identifierAndScope._scope);
-			if (i != graph._imports.end())
-				return i->second + ":" + identifierAndScope._identifier;
-			return std::string(identifierAndScope._scope) + ":" + identifierAndScope._identifier;
-		}
-		return identifierAndScope._identifier;
+		if (identifierAndScope._scope)
+			return ShaderSourceParser::AntlrHelper::AsString<>(identifierAndScope._scope) + "::" + ShaderSourceParser::AntlrHelper::AsString<>(identifierAndScope._identifier);
+		return ShaderSourceParser::AntlrHelper::AsString<>(identifierAndScope._identifier);
 	}
 
 	WorkingGraphSyntaxFile& GetFileContext(const void* ctx) { return *(WorkingGraphSyntaxFile*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData; }
@@ -167,7 +220,7 @@ extern "C" NodeId RNode_Register(const void* ctx, IdentifierAndScope identifierA
 	auto& ng = ShaderPatcher::GetGraphContext(ctx);
 
 	NodeId nextId = (NodeId)ng._graph.GetNodes().size();
-	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(ShaderPatcher::GetFileContext(ctx), identifierAndScope), nextId, ShaderPatcher::Node::Type::Procedure);
+	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(identifierAndScope), nextId, ShaderPatcher::Node::Type::Procedure);
 	ng._graph.Add(std::move(newNode));
 	return nextId;
 }
@@ -177,7 +230,7 @@ extern "C" NodeId RSlot_Register(const void* ctx, IdentifierAndScope identifierA
 	auto& ng = ShaderPatcher::GetGraphContext(ctx);
 
 	NodeId nextId = (NodeId)ng._graph.GetNodes().size();
-	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(ShaderPatcher::GetFileContext(ctx), identifierAndScope), nextId, ShaderPatcher::Node::Type::SlotInput);
+	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(identifierAndScope), nextId, ShaderPatcher::Node::Type::SlotInput);
 	ng._graph.Add(std::move(newNode));
 	return nextId;
 }
