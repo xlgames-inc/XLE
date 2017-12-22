@@ -29,7 +29,7 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    Node::Node(const std::string& archiveName, uint32 nodeId, Type::Enum type)
+    Node::Node(const std::string& archiveName, uint32 nodeId, Type type)
     : _archiveName(archiveName)
     , _nodeId(nodeId)
     , _type(type)

@@ -17,8 +17,10 @@
 #include <stack>
 
 #include <iostream>
+#include <sstream>
 
 typedef unsigned NodeId;
+typedef unsigned GraphId;
 typedef unsigned ConnectorId;
 typedef unsigned ConnectionId;
 typedef unsigned GraphSignatureId;
@@ -47,7 +49,6 @@ namespace ShaderPatcher
 			std::vector<Connector> _connectors;
 			std::vector<std::string> _literalConnectors;
 			std::unordered_map<std::string, uint32_t> _nodeNameMapping;
-			std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> _slotNameMapping;
 		};
 
 		std::vector<NodeGraphSignature> _pendingSignatures;
@@ -203,34 +204,24 @@ namespace ShaderPatcher
 
 }
 
-extern "C" NodeId Graph_Register(const void* ctx, const char name[], GraphSignatureId signatureId)
+extern "C" GraphId Graph_Register(const void* ctx, const char name[], GraphSignatureId signatureId)
 {
 	auto& f = ShaderPatcher::GetFileContext(ctx);
 
 	assert(signatureId < f._pendingSignatures.size());
 	const auto& sig = f._pendingSignatures[signatureId];
 	
-	NodeId nextGraph = (NodeId)f._graphs.size();
+	GraphId nextGraph = (GraphId)f._graphs.size();
 	f._graphs.push_back({std::string(name), {}, sig});
 	return nextGraph;
 }
 
-extern "C" NodeId RNode_Register(const void* ctx, IdentifierAndScope identifierAndScope)
+extern "C" NodeId Node_Register(const void* ctx, IdentifierAndScope identifierAndScope)
 {
 	auto& ng = ShaderPatcher::GetGraphContext(ctx);
 
 	NodeId nextId = (NodeId)ng._graph.GetNodes().size();
 	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(identifierAndScope), nextId, ShaderPatcher::Node::Type::Procedure);
-	ng._graph.Add(std::move(newNode));
-	return nextId;
-}
-
-extern "C" NodeId RSlot_Register(const void* ctx, IdentifierAndScope identifierAndScope)
-{
-	auto& ng = ShaderPatcher::GetGraphContext(ctx);
-
-	NodeId nextId = (NodeId)ng._graph.GetNodes().size();
-	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(identifierAndScope), nextId, ShaderPatcher::Node::Type::SlotInput);
 	ng._graph.Add(std::move(newNode));
 	return nextId;
 }
@@ -308,25 +299,12 @@ extern "C" void Node_Name(const void* ctx, NodeId id, const char name[])
 	ng._nodeNameMapping.insert({name, id});
 }
 
-extern "C" NodeId Graph_Find(const void* ctx, const char name[])
+extern "C" NodeId Node_Find(const void* ctx, const char name[])
 {
 	auto& ng = ShaderPatcher::GetGraphContext(ctx);
 	std::string n(name);
 	auto i = ng._nodeNameMapping.find(n);
 	if (i != ng._nodeNameMapping.end()) return i->second;
-	auto si = ng._slotNameMapping.find(n);
-	if (si != ng._slotNameMapping.end()) return si->second.first;
-	return ~0u;
-}
-
-extern "C" NodeId RNode_Find(const void* ctx, const char name[])
-{
-	auto& ng = ShaderPatcher::GetGraphContext(ctx);
-	std::string n(name);
-	auto i = ng._nodeNameMapping.find(n);
-	if (i != ng._nodeNameMapping.end()) return i->second;
-	auto si = ng._slotNameMapping.find(n);
-	if (si != ng._slotNameMapping.end()) return si->second.second;
 	return ~0u;
 }
 
@@ -348,6 +326,14 @@ extern "C" void GraphSignature_AddParameter(const void* ctx, GraphSignatureId si
 {
 	auto& f = ShaderPatcher::GetFileContext(ctx);
 	f._pendingSignatures[sigId].AddParameter({type, name});
+}
+
+extern "C" void GraphSignature_AddGraphParameter(const void* ctx, GraphSignatureId sigId, const char name[], IdentifierAndScope prototype)
+{
+	auto& f = ShaderPatcher::GetFileContext(ctx);
+	std::stringstream str;
+	str << "graph<" << ShaderPatcher::MakeArchiveName(prototype) << ">";
+	f._pendingSignatures[sigId].AddParameter({str.str(), name});
 }
 
 extern "C" void Walk_Push(const void* ctx, unsigned objType, unsigned id)

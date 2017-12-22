@@ -20,18 +20,15 @@ namespace ShaderPatcher
     class Node
     {
     public:
-        struct Type
+        enum class Type
         {
-            enum Enum
-            {
-                Procedure,
-                SlotInput,
-                SlotOutput,
-				Uniforms
-            };
+            Procedure,
+            SlotInput,
+            SlotOutput,
+            Uniforms
         };
-        
-        Node(const std::string& archiveName, uint32 nodeId, Type::Enum type);
+
+        Node(const std::string& archiveName, uint32 nodeId, Type type);
 
 		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
 			Node(Node&& moveFrom) never_throws = default;
@@ -42,12 +39,12 @@ namespace ShaderPatcher
 
         const std::string&  ArchiveName() const         { return _archiveName; }
         uint32              NodeId() const              { return _nodeId; }
-        Type::Enum          GetType() const             { return _type; }
+        Type                GetType() const             { return _type; }
         
     private:
         std::string     _archiveName;
         uint32          _nodeId;
-        Type::Enum      _type;
+        Type            _type;
     };
 
         ///////////////////////////////////////////////////////////////

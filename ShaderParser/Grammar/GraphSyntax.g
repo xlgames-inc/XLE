@@ -18,7 +18,7 @@ tokens
 
 	PARAMETER_DECLARATION;
 	GRAPH_SIGNATURE;
-	GRAPH_DECLARATION;
+	GRAPH_DEFINITION;
 
 	CONNECTION;
 	SCOPED_CONNECTION;
@@ -27,7 +27,8 @@ tokens
 	RCONNECTION_IDENTIFIER;
 	RETURN_CONNECTION;
 
-	// EXPORT;
+	GRAPH_TYPE;
+
 	IMPORT;
 
 	LITERAL;
@@ -57,7 +58,6 @@ tokens
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-// functionPath : f=FileSpecLiteral -> ^(FUNCTION_PATH $f);
 functionPath 
 	: i=Identifier '::' f=Identifier -> ^(FUNCTION_PATH $i $f)
 	| f=Identifier -> ^(FUNCTION_PATH $f)
@@ -72,6 +72,11 @@ rconnection
 	| ident=Identifier -> ^(RCONNECTION_IDENTIFIER $ident)
 	;
 scopedConnection : l=lconnection ':' r=rconnection -> ^(SCOPED_CONNECTION $l $r);
+
+typeName
+	: Identifier
+	| 'graph' '<' functionPath '>' -> ^(GRAPH_TYPE functionPath)
+	;
 
 declaration
 	:	'node' n1=Identifier '=' f=functionCall -> ^(NODE_DECL $n1 $f)
@@ -93,7 +98,7 @@ implementsQualifier
 	;
 
 parameterDeclaration
-	: type=Identifier name=Identifier implementsQualifier? -> ^(PARAMETER_DECLARATION $name $type)
+	: type=typeName name=Identifier implementsQualifier? -> ^(PARAMETER_DECLARATION $name $type)
 	;
 
 graphSignature
@@ -102,10 +107,9 @@ graphSignature
 	;
 
 toplevel
-	:	/*'export' n=Identifier ';' -> ^(EXPORT $n)
-	|	*/ 'import' name=Identifier '=' source=StringLiteral ';' -> ^(IMPORT $name $source)
+	:	'import' name=Identifier '=' source=StringLiteral ';' -> ^(IMPORT $name $source)
 	|	sig=graphSignature '{' statements += graphStatement* '}'
-			-> ^(GRAPH_DECLARATION $sig $statements*)
+			-> ^(GRAPH_DEFINITION $sig $statements*)
 	;
 
 entrypoint
@@ -141,8 +145,6 @@ fragment UnicodeEscape
 StringLiteral
 	:  '"' ( EscapeSequence | ~('\\'|'"') )* '"'
 	;
-
-// FileSpecLiteral : '<' (~'>')* '>';
 
 fragment Letter
 	:  '\u0024' |

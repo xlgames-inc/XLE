@@ -12,6 +12,7 @@ options
 	#pragma GCC diagnostic ignored "-Wtypedef-redefinition"
 
 	typedef unsigned NodeId;
+	typedef unsigned GraphId;
 	typedef unsigned ConnectorId;
 	typedef unsigned ConnectionId;
 	typedef unsigned GraphSignatureId;
@@ -36,29 +37,29 @@ options
 		pANTLR3_COMMON_TOKEN _identifier;
 	};
 
-	NodeId RNode_Register(const void*, IdentifierAndScope identifierAndScope);
-	NodeId RSlot_Register(const void*, IdentifierAndScope identifierAndScope);
-	NodeId Graph_Register(const void*, const char name[], GraphSignatureId signature);
+	NodeId Node_Register(const void*, IdentifierAndScope identifierAndScope);
 	ConnectorId Connector_Register(const void*, NodeId node, const char connectorName[]);
 	ConnectorId LiteralConnector_Register(const void*, const char literal[]);
 	ConnectionId Connection_Register(const void*, ConnectorId left, ConnectorId right);
 
-	void Node_Name(const void*, NodeId, const char name[]);
-	NodeId RNode_Find(const void*, const char name[]);
-	NodeId Graph_Find(const void*, const char name[]);
+	void Node_Name(const void*, GraphId, const char name[]);
+	NodeId Node_Find(const void*, const char name[]);
+
+	GraphId Graph_Register(const void*, const char name[], GraphSignatureId signature);
 
 	GraphSignatureId GraphSignature_Register(const void*);
 	void GraphSignature_ReturnType(const void*, GraphSignatureId, const char returnType[]);
 	void GraphSignature_AddParameter(const void*, GraphSignatureId, const char name[], const char type[]);
+	void GraphSignature_AddGraphParameter(const void*, GraphSignatureId, const char name[], IdentifierAndScope prototype);
 
 	typedef unsigned ObjTypeId;
 	static const unsigned ObjType_Graph = 0;
-	static const unsigned ObjType_Node = 1;
-	static const unsigned ObjType_GraphSignature = 2;
+	// static const unsigned ObjType_Node = 1;
+	// static const unsigned ObjType_GraphSignature = 2;
 
 	void Walk_Push(const void*, ObjTypeId objType, unsigned obj);
 	void Walk_Pop(const void*, ObjTypeId objType);
-	unsigned Walk_GetActive(const void*, ObjTypeId objType);
+	// unsigned Walk_GetActive(const void*, ObjTypeId objType);
 
 	void Import_Register(const void*, const char alias[], const char import[]);
 
@@ -106,61 +107,63 @@ functionPath returns [IdentifierAndScope res = (IdentifierAndScope){NULL, NULL}]
 stringLiteral returns [const char* str = NULL] : StringLiteral { str = (const char*)$StringLiteral.text->chars; };
 
 rnode returns [NodeId node = ~0u]
-	: ^(FUNCTION_CALL f=functionPath { $node = RNode_Register(ctx, f); Walk_Push(ctx, ObjType_Node, $node); } scopedConnection*)
-	{
-		Walk_Pop(ctx, ObjType_Node);
-	}
-	| nid=identifier { $node = RNode_Find(ctx, nid); }
+	: ^(FUNCTION_CALL f=functionPath { $node = Node_Register(ctx, f); } scopedConnection[$node]*)
+	| nid=identifier { $node = Node_Find(ctx, nid); }
 	;
 
 lnode returns [NodeId node = ~0u]
-	: nid=identifier { $node = Graph_Find(ctx, nid); }
+	: nid=identifier { $node = Node_Find(ctx, nid); }
 	;
 
-scopedConnection returns [ConnectionId connection = ~0u]
+scopedConnection[NodeId rnode] returns [ConnectionId connection = ~0u]
 	: ^(SCOPED_CONNECTION l=identifier r=rconnection)
-	{
-		ConnectorId left = Connector_Register(ctx, Walk_GetActive(ctx, ObjType_Node), l);
-		$connection = Connection_Register(ctx, left, r);
-	}
+		{
+			ConnectorId left = Connector_Register(ctx, $rnode, l);
+			$connection = Connection_Register(ctx, left, r);
+		}
 	;
 
 connection returns [ConnectionId connection = ~0u]
 	: ^(CONNECTION n=lnode l=identifier r=rconnection)
-	{
-		ConnectorId left = Connector_Register(ctx, n, l);
-		$connection = Connection_Register(ctx, left, r);
-	}
+		{
+			ConnectorId left = Connector_Register(ctx, n, l);
+			$connection = Connection_Register(ctx, left, r);
+		}
 	| ^(RETURN_CONNECTION r=rconnection)
-	{
-		ConnectorId left = Connector_Register(ctx, ~0u, "result");
-		$connection = Connection_Register(ctx, left, r);
-	}
+		{
+			ConnectorId left = Connector_Register(ctx, ~0u, "result");
+			$connection = Connection_Register(ctx, left, r);
+		}
 	;
 
 rconnection returns [ConnectorId connector = ~0u]
 	: ^((RCONNECTION_UNIQUE|RCONNECTION_REF) n0=rnode c0=identifier)
-	{
-		connector = Connector_Register(ctx, n0, c0);
-	}
+		{
+			connector = Connector_Register(ctx, n0, c0);
+		}
 	| ^((RCONNECTION_IDENTIFIER) c0=identifier)
-	{
-		connector = Connector_Register(ctx, ~0u, c0);
-	}
+		{
+			connector = Connector_Register(ctx, ~0u, c0);
+		}
 	| ^(LITERAL StringLiteral)
-	{
-		char* s = StripQuotesBrackets((const char*)$StringLiteral.text->chars);
-		connector = LiteralConnector_Register(ctx, s);
-		free(s);
-	}
+		{
+			char* s = StripQuotesBrackets((const char*)$StringLiteral.text->chars);
+			connector = LiteralConnector_Register(ctx, s);
+			free(s);
+		}
 	;
 
-graphStatement
+graphStatement[NodeId containingGraph]
 	: connection
 	| ^(NODE_DECL nid=identifier n=rnode)
-	{
-		Node_Name(ctx, n, nid);
-	}
+		{
+			Node_Name(ctx, n, nid);
+		}
+	;
+
+graphParameter[GraphSignatureId sigId]
+	: ^(PARAMETER_DECLARATION pname=identifier ptype=identifier) 						{ GraphSignature_AddParameter(ctx, $sigId, pname, ptype); }
+	| ^(PARAMETER_DECLARATION pname=identifier ^(GRAPH_TYPE prototype=functionPath))	{ GraphSignature_AddGraphParameter(ctx, $sigId, pname, prototype);  }
 	;
 
 graphSignature returns [GraphSignatureAndName graphSig = (GraphSignatureAndName){~0u, NULL}]
@@ -169,36 +172,35 @@ graphSignature returns [GraphSignatureAndName graphSig = (GraphSignatureAndName)
 			$graphSig._sigId = GraphSignature_Register(ctx);
 		}
 		n=identifier returnType=identifier 
-		((^(PARAMETER_DECLARATION pname=identifier ptype=identifier)) 
-		{
-			GraphSignature_AddParameter(ctx,$graphSig._sigId, pname, ptype); 
-		})*)
-
 		{
 			$graphSig._name = n;
 			GraphSignature_ReturnType(ctx, $graphSig._sigId, returnType); 
 		}
-	;
+		
+		graphParameter[$graphSig._sigId]*
+	);
 
-toplevel
-	: 
-	^(IMPORT alias=identifier source=stringLiteral) 
-	{ 
-		char* stripped = StripQuotesBrackets(source);
-		Import_Register(ctx, alias, stripped); 
-		free(stripped);
-	}
-	| ^(GRAPH_DECLARATION
+graphDefinition returns [GraphId result = ~0u;]
+	: ^(GRAPH_DEFINITION
 		sig=graphSignature 
 		{ 
-			NodeId n = Graph_Register(ctx, sig._name, sig._sigId); 
-			Walk_Push(ctx, ObjType_Graph, n); 
+			$result = Graph_Register(ctx, sig._name, sig._sigId); 
+			Walk_Push(ctx, ObjType_Graph, $result);
 		}
 
-		graphStatement*
+		graphStatement[$result]*
 
 		{ Walk_Pop(ctx, ObjType_Graph); }
-	)
+	);
+
+toplevel
+	: ^(IMPORT alias=identifier source=stringLiteral) 
+		{ 
+			char* stripped = StripQuotesBrackets(source);
+			Import_Register(ctx, alias, stripped); 
+			free(stripped);
+		}
+	| graphDefinition 
 	;
 
 entrypoint : toplevel* ;
