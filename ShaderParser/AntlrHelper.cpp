@@ -181,7 +181,14 @@ namespace ShaderSourceParser
 
         const char* ParsingFailure::what() const never_throws
         {
-            return "Parsing failure";
+            if (_cachedStr.empty()) {
+                std::stringstream str;
+                str << "Parsing Failure" << std::endl;
+                for (const auto&e:_errors)
+                    str << "(" << e._lineStart << ":" << e._charStart << ") " << e._message << std::endl;
+                _cachedStr = str.str();
+            }
+            return _cachedStr.c_str();
         }
     }
 }

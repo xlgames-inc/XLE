@@ -86,7 +86,7 @@ formalArg returns [struct FormalArg result = (struct FormalArg){~0u, ~0u, ~0u, 0
 		)
 	;
 
-statement : .;
+statement : .;		// this generates warnings because we want to skip an entire tree
 
 function returns [struct Function result = (struct Function){~0u, ~0u, ~0u, UINT_MAX, 0, 0}]
 	: ^(FUNCTION

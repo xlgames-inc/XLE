@@ -85,6 +85,7 @@ namespace ShaderPatcher
 		if (!psr) Throw(::Exceptions::BasicLabel("Out of memory trying to allocate parser\n"));
 
 		auto* ast = BuildAST(*psr);
+		if (!ast) Throw(::Exceptions::BasicLabel("Could not build AST from graph syntax input"));
 
 		StructureDescription(std::cout, ast);
 
@@ -241,6 +242,15 @@ extern "C" ConnectorId LiteralConnector_Register(const void* ctx, const char lit
 	
 	ConnectorId nextId = 0xf0000000u | (ConnectorId)ng._literalConnectors.size();
 	ng._literalConnectors.push_back(literal);
+	return nextId;
+}
+
+extern "C" ConnectorId IdentifierConnector_Register(const void* ctx, IdentifierAndScope identifierAndScope)
+{
+	auto& ng = ShaderPatcher::GetGraphContext(ctx);
+
+	ConnectorId nextId = 0xf0000000u | (ConnectorId)ng._literalConnectors.size();
+	ng._literalConnectors.push_back(ShaderPatcher::MakeArchiveName(identifierAndScope));
 	return nextId;
 }
 

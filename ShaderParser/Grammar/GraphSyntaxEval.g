@@ -40,6 +40,7 @@ options
 	NodeId Node_Register(const void*, IdentifierAndScope identifierAndScope);
 	ConnectorId Connector_Register(const void*, NodeId node, const char connectorName[]);
 	ConnectorId LiteralConnector_Register(const void*, const char literal[]);
+	ConnectorId IdentifierConnector_Register(const void*, IdentifierAndScope identifierAndScope);
 	ConnectionId Connection_Register(const void*, ConnectorId left, ConnectorId right);
 
 	void Node_Name(const void*, GraphId, const char name[]);
@@ -107,7 +108,7 @@ functionPath returns [IdentifierAndScope res = (IdentifierAndScope){NULL, NULL}]
 stringLiteral returns [const char* str = NULL] : StringLiteral { str = (const char*)$StringLiteral.text->chars; };
 
 rnode returns [NodeId node = ~0u]
-	: ^(FUNCTION_CALL f=functionPath { $node = Node_Register(ctx, f); } scopedConnection[$node]*)
+	: ^(FUNCTION_CALL f=functionPath { $node = Node_Register(ctx, f); } functionCallConnection[$node]*)
 	| nid=identifier { $node = Node_Find(ctx, nid); }
 	;
 
@@ -115,8 +116,8 @@ lnode returns [NodeId node = ~0u]
 	: nid=identifier { $node = Node_Find(ctx, nid); }
 	;
 
-scopedConnection[NodeId rnode] returns [ConnectionId connection = ~0u]
-	: ^(SCOPED_CONNECTION l=identifier r=rconnection)
+functionCallConnection[NodeId rnode] returns [ConnectionId connection = ~0u]
+	: ^(FUNCTION_CALL_CONNECTION l=identifier r=rconnection)
 		{
 			ConnectorId left = Connector_Register(ctx, $rnode, l);
 			$connection = Connection_Register(ctx, left, r);
@@ -137,13 +138,17 @@ connection returns [ConnectionId connection = ~0u]
 	;
 
 rconnection returns [ConnectorId connector = ~0u]
-	: ^((RCONNECTION_UNIQUE|RCONNECTION_REF) n0=rnode c0=identifier)
+	: ^((RCONNECTION_INLINE_FUNCTION_CALL|RCONNECTION_REF) n0=rnode c0=identifier)
 		{
 			connector = Connector_Register(ctx, n0, c0);
 		}
-	| ^((RCONNECTION_IDENTIFIER) c0=identifier)
+	| ^((RCONNECTION_FUNCTION_PATH) ^(FUNCTION_PATH importSrc=identifierToken ident0=identifierToken))
 		{
-			connector = Connector_Register(ctx, ~0u, c0);
+			connector = IdentifierConnector_Register(ctx, (IdentifierAndScope){importSrc, ident0});
+		}
+	| ^((RCONNECTION_FUNCTION_PATH) ^(FUNCTION_PATH ident1=identifier))
+		{
+			connector = Connector_Register(ctx, ~0u, ident1);
 		}
 	| ^(LITERAL StringLiteral)
 		{

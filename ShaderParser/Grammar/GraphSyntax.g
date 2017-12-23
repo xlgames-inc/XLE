@@ -21,10 +21,10 @@ tokens
 	GRAPH_DEFINITION;
 
 	CONNECTION;
-	SCOPED_CONNECTION;
-	RCONNECTION_UNIQUE;
-	RCONNECTION_REF;
-	RCONNECTION_IDENTIFIER;
+	FUNCTION_CALL_CONNECTION;			// this is a connection expressed in function call syntax; eg -- graph(lhs:rhs)
+	RCONNECTION_INLINE_FUNCTION_CALL;	// this is a rconnection which involves an inline function call; eg -- graph(lhs:graph2().result)
+	RCONNECTION_REF;					// this is a reference to a node and connector
+	RCONNECTION_FUNCTION_PATH;
 	RETURN_CONNECTION;
 
 	GRAPH_TYPE;
@@ -62,16 +62,16 @@ functionPath
 	: i=Identifier '::' f=Identifier -> ^(FUNCTION_PATH $i $f)
 	| f=Identifier -> ^(FUNCTION_PATH $f)
 	;
-functionCall : f=functionPath '(' (scopedConnection (',' scopedConnection)*)? ')' -> ^(FUNCTION_CALL $f scopedConnection*);
+functionCall : f=functionPath '(' (functionCallConnection (',' functionCallConnection)*)? ')' -> ^(FUNCTION_CALL $f functionCallConnection*);
 
 lconnection : n=Identifier -> $n;
 rconnection
-	: f=functionCall '.' n0=Identifier -> ^(RCONNECTION_UNIQUE $f $n0)
+	: f=functionCall '.' n0=Identifier -> ^(RCONNECTION_INLINE_FUNCTION_CALL $f $n0)
 	| frag=Identifier '.' n1=Identifier -> ^(RCONNECTION_REF $frag $n1)
 	| c=StringLiteral -> ^(LITERAL $c)
-	| ident=Identifier -> ^(RCONNECTION_IDENTIFIER $ident)
+	| ident=functionPath -> ^(RCONNECTION_FUNCTION_PATH $ident)
 	;
-scopedConnection : l=lconnection ':' r=rconnection -> ^(SCOPED_CONNECTION $l $r);
+functionCallConnection : l=lconnection ':' r=rconnection -> ^(FUNCTION_CALL_CONNECTION $l $r);
 
 typeName
 	: Identifier
@@ -80,7 +80,6 @@ typeName
 
 declaration
 	:	'node' n1=Identifier '=' f=functionCall -> ^(NODE_DECL $n1 $f)
-//	|	'slot' n0=Identifier 'implements' signal=functionPath -> ^(SLOT_DECL $n0 $signal)
 	;
 
 connection 
@@ -89,8 +88,8 @@ connection
 	;
 
 graphStatement
-	:	declaration ';' -> declaration
-	|	connection ';' -> connection
+	:	declaration ';'? -> declaration
+	|	connection ';'? -> connection
 	;
 
 implementsQualifier
@@ -107,13 +106,13 @@ graphSignature
 	;
 
 toplevel
-	:	'import' name=Identifier '=' source=StringLiteral ';' -> ^(IMPORT $name $source)
+	:	'import' name=Identifier '=' source=StringLiteral -> ^(IMPORT $name $source)
 	|	sig=graphSignature '{' statements += graphStatement* '}'
 			-> ^(GRAPH_DEFINITION $sig $statements*)
 	;
 
 entrypoint
-	:	toplevels+=toplevel* -> $toplevels*
+	:	(toplevels+=toplevel ';'?)* -> $toplevels*
 	;
 
 //------------------------------------------------------------------------------

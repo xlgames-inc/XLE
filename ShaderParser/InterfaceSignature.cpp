@@ -14,6 +14,7 @@
 #include "../Utility/Streams/Stream.h"
 #include <assert.h>
 #include <vector>
+// #include <iostream>
 
 struct SSPFormalArg 
 { 
@@ -77,6 +78,8 @@ namespace ShaderSourceParser
 
 		auto* ast = BuildAST(*psr);
 		if (!ast) Throw(::Exceptions::BasicLabel("Could not build AST from shader fragment input"));
+
+		// StructureDescription(std::cout, ast);
 
 		auto* strTree = ast->toStringTree(ast);
 

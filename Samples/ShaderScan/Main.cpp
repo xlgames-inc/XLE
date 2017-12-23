@@ -65,14 +65,9 @@ namespace ShaderScan
 		const auto* filename = "xleres/System/SlotPrototype.sh";
 		size_t inputFileSize;
         auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(filename, &inputFileSize);
-
-		auto compoundDoc = ::Assets::ReadCompoundTextDocument<char>(MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize)));
-		auto i = std::find_if(compoundDoc.begin(), compoundDoc.end(),
-			[](const ::Assets::TextChunk<char>& chunk) { return XlEqString(chunk._type, "GraphSyntax"); });
-		if (i!=compoundDoc.end()) {
-			auto str = ShaderPatcher::ReadGraphSyntax(i->_content, ::Assets::DefaultDirectorySearchRules(filename));
-			LogWarning << "Output: " << str;
-		}
+        auto inputStr = MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize));
+        auto str = ShaderPatcher::ReadGraphSyntax(inputStr, ::Assets::DefaultDirectorySearchRules(filename));
+        Log(Verbose) << "--- Output --- " << std::endl << str;
 	}
 }
 

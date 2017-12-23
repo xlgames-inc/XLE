@@ -572,9 +572,13 @@ namespace ShaderPatcher
             result << "\t" << functionName << "( ";
         }
 
+        bool pendingComma = false;
         for (auto p=sig.GetParameters().cbegin(); p!=sig.GetParameters().cend(); ++p) {
-            if (p != sig.GetParameters().cbegin())
-                result << ", ";
+            if (p->_direction == ParameterDirection::Out && p->_name == s_resultName)
+                continue;
+
+            if (pendingComma) result << ", ";
+            pendingComma = true;
 
                 // note -- problem here for in/out parameters
             if (p->_direction == ParameterDirection::Out) {
@@ -929,6 +933,7 @@ namespace ShaderPatcher
 		std::stringstream result;
 		result << GenerateMaterialCBuffer(generatedFunctionSignature);
 
+        result << "/////// Scaffold function for: " << name << " ///////" << std::endl;
 		result << GenerateSignature(slotSignature, name) << std::endl;
 		result << "{" << std::endl;
 
@@ -941,10 +946,10 @@ namespace ShaderPatcher
 
 		std::stringstream paramStream;
 		for (const auto& p:generatedFunctionSignature.GetParameters()) {
-			MaybeComma(paramStream);
+            MaybeComma(paramStream);
 
 			if (p._direction == ParameterDirection::Out) {
-				paramStream << "temp_" << p._name;
+                paramStream << "temp_" << p._name;
 				continue;
 			}
 

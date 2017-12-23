@@ -30,6 +30,7 @@ namespace ShaderSourceParser
             ~ParsingFailure();
         private:
             std::vector<Error> _errors;
+            mutable std::string _cachedStr;
         };
     }
 }
