@@ -15,9 +15,13 @@
 #include <vector>
 #include <string>
 #include <functional>
-#include <experimental/optional>
 
-namespace std { template <typename T> using optional = experimental::optional<T>; }
+#if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
+	#include <optional>
+#else
+	#include <experimental/optional>
+	namespace std { template <typename T> using optional = experimental::optional<T>; }
+#endif
 
 namespace Utility 
 {

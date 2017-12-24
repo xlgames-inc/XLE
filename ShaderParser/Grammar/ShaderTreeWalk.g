@@ -9,6 +9,7 @@ options
 
 @header
 {
+	#pragma warning(disable:4068)	// unknown pragma
 	#pragma GCC diagnostic ignored "-Wtypedef-redefinition"
 	
 	typedef unsigned StringId;

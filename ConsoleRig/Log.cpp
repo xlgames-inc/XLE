@@ -47,7 +47,7 @@ namespace ConsoleRig
     {
         if (std::basic_streambuf<CharType, CharTraits>::traits_type::not_eof(ch)) {
             if (_cfg._enabledSinks & MessageTargetConfiguration::Sink::Console) {
-                _chain->sputc(ch);
+                _chain->sputc((CharType)ch);
                 _sourceLocationPrimed |= std::basic_streambuf<CharType, CharTraits>::traits_type::eq_int_type(ch, (int_type)'\n');
                 static_assert(0!=std::basic_streambuf<CharType, CharTraits>::traits_type::eof(), "Expecting char traits EOF character to be something other than 0");
                 return 0;   // (anything other than traits_type::eof() signifies success)

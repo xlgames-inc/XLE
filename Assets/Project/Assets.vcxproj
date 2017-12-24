@@ -76,7 +76,7 @@
     <ClCompile Include="..\AssetSetManager.cpp" />
     <ClCompile Include="..\AssetTraits.cpp" />
     <ClCompile Include="..\AssetUtils.cpp" />
-    <ClCompile Include="..\AsyncLoadOperation.cpp" />
+    <ClCompile Include="..\AsyncLoadOperation_WinAPI.cpp" />
     <ClCompile Include="..\BlockSerializer.cpp" />
     <ClCompile Include="..\ChunkFile.cpp" />
     <ClCompile Include="..\ChunkFileContainer.cpp" />
@@ -91,7 +91,7 @@
     <ClCompile Include="..\MainFileSystem.cpp" />
     <ClCompile Include="..\MountingTree.cpp" />
     <ClCompile Include="..\NascentChunkArray.cpp" />
-    <ClCompile Include="..\OSFileSystem_WinAPI.cpp" />
+    <ClCompile Include="..\OSFileSystem.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

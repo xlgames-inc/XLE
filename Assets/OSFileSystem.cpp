@@ -249,8 +249,6 @@ namespace Assets
 		return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 	}
 
-	#pragma warning(pop)
-
 	FileSystem_OS::FileSystem_OS(StringSection<utf8> root)
 	{
 		if (!root.IsEmpty()) {

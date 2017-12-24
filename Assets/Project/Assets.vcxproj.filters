@@ -39,23 +39,16 @@
     <ClCompile Include="..\AssetServices.cpp" />
     <ClCompile Include="..\AssetSetManager.cpp" />
     <ClCompile Include="..\InvalidAssetManager.cpp" />
-    <ClCompile Include="..\AsyncLoadOperation.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
     <ClCompile Include="..\NascentChunkArray.cpp" />
     <ClCompile Include="..\MountingTree.cpp" />
     <ClCompile Include="..\MainFileSystem.cpp" />
-    <ClCompile Include="..\OSFileSystem_WinAPI.cpp">
-      <Filter>WinAPI</Filter>
-    </ClCompile>
     <ClCompile Include="..\AssetTraits.cpp" />
     <ClCompile Include="..\DeferredConstruction.cpp" />
     <ClCompile Include="..\ChunkFileContainer.cpp" />
     <ClCompile Include="..\CompilationThread.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="WinAPI">
-      <UniqueIdentifier>{05b881a3-726f-4192-ac6a-76cd7d5d96d7}</UniqueIdentifier>
-    </Filter>
+    <ClCompile Include="..\AsyncLoadOperation_WinAPI.cpp" />
+    <ClCompile Include="..\OSFileSystem.cpp" />
   </ItemGroup>
 </Project>

@@ -9,6 +9,7 @@ options
 
 @header
 {
+	#pragma warning(disable:4068)	// unknown pragma
 	#pragma GCC diagnostic ignored "-Wtypedef-redefinition"
 
 	typedef unsigned NodeId;
@@ -144,7 +145,10 @@ rconnection returns [ConnectorId connector = ~0u]
 		}
 	| ^((RCONNECTION_FUNCTION_PATH) ^(FUNCTION_PATH importSrc=identifierToken ident0=identifierToken))
 		{
-			connector = IdentifierConnector_Register(ctx, (IdentifierAndScope){importSrc, ident0});
+			IdentifierAndScope i;
+			i._scope = importSrc;
+			i._identifier = ident0;
+			connector = IdentifierConnector_Register(ctx, i);
 		}
 	| ^((RCONNECTION_FUNCTION_PATH) ^(FUNCTION_PATH ident1=identifier))
 		{

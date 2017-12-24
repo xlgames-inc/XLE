@@ -163,7 +163,7 @@ namespace RenderCore { namespace ImplVulkan
     class ThreadContextVulkan : public ThreadContext, public Base_ThreadContextVulkan
     {
     public:
-        virtual void*   QueryInterface(const GUID& guid);
+        virtual void*   QueryInterface(size_t guid);
         const std::shared_ptr<Metal_Vulkan::DeviceContext>& GetMetalContext();
 
 		ThreadContextVulkan(
@@ -218,7 +218,7 @@ namespace RenderCore { namespace ImplVulkan
     class DeviceVulkan : public Device, public Base_DeviceVulkan
     {
     public:
-        virtual void*   QueryInterface(const GUID& guid);
+        virtual void*   QueryInterface(size_t guid);
 		VkInstance	    GetVulkanInstance();
 		VkDevice	    GetUnderlyingDevice();
         VkQueue         GetRenderingQueue();

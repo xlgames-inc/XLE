@@ -15,7 +15,7 @@
 #include <regex>
 #include <tuple>
 
-#include "plustasche/template.hpp"
+#include "plustache/template.hpp"
 
 namespace ShaderPatcher
 {

@@ -110,7 +110,7 @@ namespace RenderCore { namespace ImplVulkan
         static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback( VkFlags msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject, size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg, void *pUserData )
         {
 	        (void)msgFlags; (void)objType; (void)srcObject; (void)location; (void)pUserData; (void)msgCode;
-            LogInfo << pLayerPrefix << ": " << pMsg;
+            Log(Verbose) << pLayerPrefix << ": " << pMsg;
 	        return false;
         }
     
@@ -287,7 +287,7 @@ namespace RenderCore { namespace ImplVulkan
 					if (!supportsPresent) continue;
 				}
 
-				LogInfo 
+				Log(Verbose)
 					<< "Selecting physical device (" << props.deviceName 
 					<< "). API Version: (" << props.apiVersion 
 					<< "). Driver version: (" << props.driverVersion 
@@ -742,16 +742,16 @@ namespace RenderCore { namespace ImplVulkan
     #if !FLEX_USE_VTABLE_Device && !DOXYGEN
         namespace Detail
         {
-            void* Ignore_Device::QueryInterface(const GUID& guid)
+            void* Ignore_Device::QueryInterface(size_t guid)
             {
                 return nullptr;
             }
         }
     #endif
 
-    void*                   DeviceVulkan::QueryInterface(const GUID& guid)
+    void*                   DeviceVulkan::QueryInterface(size_t guid)
     {
-        if (guid == __uuidof(Base_DeviceVulkan)) {
+        if (guid == typeid(Base_DeviceVulkan).hash_code()) {
             return (IDeviceVulkan*)this;
         }
         return nullptr;
@@ -1044,7 +1044,7 @@ namespace RenderCore { namespace ImplVulkan
 	#if !FLEX_USE_VTABLE_ThreadContext && !DOXYGEN
 		namespace Detail
 		{
-			void* Ignore_ThreadContext::QueryInterface(const GUID& guid)
+			void* Ignore_ThreadContext::QueryInterface(size_t guid)
 			{
 				return nullptr;
 			}
@@ -1213,9 +1213,9 @@ namespace RenderCore { namespace ImplVulkan
         ++_frameId;
     }
 
-    void*   ThreadContextVulkan::QueryInterface(const GUID& guid)
+    void*   ThreadContextVulkan::QueryInterface(size_t guid)
     {
-        if (guid == __uuidof(Base_ThreadContextVulkan)) { return (IThreadContextVulkan*)this; }
+        if (guid == typeid(Base_ThreadContextVulkan).hash_code()) { return (IThreadContextVulkan*)this; }
         return nullptr;
     }
 

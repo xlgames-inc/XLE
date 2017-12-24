@@ -48,7 +48,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemGroup>
-    <ClCompile Include="..\AttachableLibrary.cpp" />
+    <ClCompile Include="..\AttachableLibrary_WinAPI.cpp" />
     <ClCompile Include="..\Console.cpp" />
     <ClCompile Include="..\GlobalServices.cpp" />
     <ClCompile Include="..\Log.cpp" />

@@ -795,6 +795,9 @@ namespace ShaderPatcher
 
     std::string GenerateShaderHeader(const NodeGraph& graph)
     {
+		assert(0);	// todo -- use new DependencyTable functionality for this
+		return std::string();
+#if 0
             //
             //      Generate shader source code for the given input
             //      node graph.
@@ -851,6 +854,7 @@ namespace ShaderPatcher
 
         result << std::endl << std::endl;
         return result.str();
+#endif
     }
 
     bool IsStructType(StringSection<char> typeName)

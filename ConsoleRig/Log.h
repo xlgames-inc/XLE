@@ -160,7 +160,11 @@ namespace ConsoleRig
     }
 
 #if defined(CONSOLERIG_ENABLE_LOG)
-    #define MakeSourceLocation (::ConsoleRig::SourceLocation {::ConsoleRig::Internal::JustFilename(__FILE__), __LINE__, __PRETTY_FUNCTION__})
+	#if defined(__PRETTY_FUNCTION__)
+		#define MakeSourceLocation (::ConsoleRig::SourceLocation {::ConsoleRig::Internal::JustFilename(__FILE__), __LINE__, __PRETTY_FUNCTION__})
+	#else
+		#define MakeSourceLocation (::ConsoleRig::SourceLocation {::ConsoleRig::Internal::JustFilename(__FILE__), __LINE__, __FUNCTION__})
+	#endif
     #define Log(X) ::std::basic_ostream<typename std::remove_reference<decltype(X)>::type::char_type, typename std::remove_reference<decltype(X)>::type::traits_type>(&X) << MakeSourceLocation
 #else
     #define Log(X) if (true) {} else *((std::ostream*)nullptr)

@@ -17,6 +17,7 @@
 #include "Metal/ObjectFactory.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/LogUtil.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/WinAPI/WinAPIWrapper.h"
@@ -272,8 +273,9 @@ namespace RenderCore { namespace ImplDX11
             D3D11_FEATURE_THREADING, &threadingSupport, sizeof(threadingSupport) );
         uint32 driverCreateFlags = _underlying->GetCreationFlags();
         if (SUCCEEDED(hresult)) {
-            LogInfoF(
-                "D3D Multithreading support: concurrent creates: (%i), command lists: (%i), driver single threaded: (%i)", 
+            LogLine(
+				Verbose,
+                "D3D Multithreading support: concurrent creates: {}, command lists: {}, driver single threaded: {}", 
                  threadingSupport.DriverConcurrentCreates, threadingSupport.DriverCommandLists,
                  (driverCreateFlags&D3D11_CREATE_DEVICE_SINGLETHREADED)?1:0);
         }
@@ -347,16 +349,16 @@ namespace RenderCore { namespace ImplDX11
     #if !FLEX_USE_VTABLE_Device && !DOXYGEN
         namespace Detail
         {
-            void* Ignore_Device::QueryInterface(const GUID& guid)
+            void* Ignore_Device::QueryInterface(size_t guid)
             {
                 return nullptr;
             }
         }
     #endif
 
-    void*                   DeviceDX11::QueryInterface(const GUID& guid)
+    void*                   DeviceDX11::QueryInterface(size_t guid)
     {
-        if (guid == __uuidof(Base_DeviceDX11)) {
+        if (guid == typeid(Base_DeviceDX11).hash_code()) {
             return (IDeviceDX11*)this;
         }
         return nullptr;
@@ -563,16 +565,16 @@ namespace RenderCore { namespace ImplDX11
     #if !FLEX_USE_VTABLE_ThreadContext && !DOXYGEN
 		namespace Detail
 		{
-			void* Ignore_ThreadContext::QueryInterface(const GUID& guid)
+			void* Ignore_ThreadContext::QueryInterface(size_t guid)
 			{
 				return nullptr;
 			}
 		}
 	#endif
 
-    void*   ThreadContextDX11::QueryInterface(const GUID& guid)
+    void*   ThreadContextDX11::QueryInterface(size_t guid)
     {
-        if (guid == __uuidof(Base_ThreadContextDX11)) { return (IThreadContextDX11*)this; }
+        if (guid == typeid(Base_ThreadContextDX11).hash_code()) { return (IThreadContextDX11*)this; }
         return nullptr;
     }
 

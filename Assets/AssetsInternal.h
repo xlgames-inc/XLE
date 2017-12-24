@@ -92,7 +92,7 @@ namespace Assets { namespace Internal
     //     inline bool ReadyForReplacement(const AssetType& asset) { return asset.GetAssetState() != AssetState::Pending; }
 	template<typename AssetType>
 		inline bool ReadyForReplacement(const AssetType& asset) { return true; }
-    #pragma managed(pop)
+    // #pragma managed(pop)
 
 	template<bool DoCheckDependancy, bool DoBackgroundCompile, typename AssetType, typename... Params>
 		const AssetType& GetAsset(AssetSetPtr<AssetType>& assetSet, Params... initialisers)

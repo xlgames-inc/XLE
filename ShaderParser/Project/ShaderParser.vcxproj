@@ -108,6 +108,7 @@
     <ClCompile Include="..\InterfaceSignature.cpp" />
     <ClCompile Include="..\ParameterSignature.cpp" />
     <ClCompile Include="..\ShaderPatcher.cpp" />
+    <ClCompile Include="..\SignatureProvider.cpp" />
     <ClCompile Include="..\StructureForPreview.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -124,6 +125,7 @@
     <ClInclude Include="..\ParameterSignature.h" />
     <ClInclude Include="..\ShaderPatcher.h" />
     <ClInclude Include="..\ShaderPatcher_Internal.h" />
+    <ClInclude Include="..\SignatureProvider.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Foreign\Antlr-3.4\libantlr3c-3.4\C.vcxproj">

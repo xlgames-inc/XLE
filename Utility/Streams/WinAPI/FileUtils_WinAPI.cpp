@@ -408,7 +408,7 @@ namespace Utility
 		bool DoesFileExist(StringSection<char> filename)
 		{
 			char buffer[MAX_PATH];
-			XLCopyString(buffer, filename);	// copy to get the null terminator
+			XlCopyString(buffer, filename);	// copy to get the null terminator
 			DWORD dwAttrib = GetFileAttributes(buffer);
 			return dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
 		}
@@ -416,7 +416,7 @@ namespace Utility
 		bool DoesDirectoryExist(StringSection<char> filename)
 		{
 			char buffer[MAX_PATH];
-			XLCopyString(buffer, filename);	// copy to get the null terminator
+			XlCopyString(buffer, filename);	// copy to get the null terminator
 			DWORD dwAttrib = GetFileAttributes(buffer);
 			return (dwAttrib != INVALID_FILE_ATTRIBUTES) && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
 		}
@@ -462,9 +462,9 @@ namespace Utility
 
 		static uint64 AsUInt64(FILETIME ft) { return (uint64(ft.dwHighDateTime) << 32ull) | uint64(ft.dwLowDateTime); }
 
-		static FileAttributes AsFileAttributes(const WIN32_FILE_ATTRIBUTE_DATA& fileData)
+		static FileAttributes AsFileAttributes(const WIN32_FILE_ATTRIBUTE_DATA& attribs)
 		{
-			return { uint64(attribs.nFileSizeHigh) << 32 | uint64(attribs.nFileSizeLow), AsUInt64(attribs.ftCreationTime), AsUInt64(attribs.ftLastWriteTime), AsUInt64(attribs.ftLastAccessTime) };
+			return { uint64(attribs.nFileSizeHigh) << 32 | uint64(attribs.nFileSizeLow), AsUInt64(attribs.ftLastWriteTime), AsUInt64(attribs.ftLastAccessTime) };
 		}
 
 		std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[])
@@ -474,7 +474,7 @@ namespace Utility
 				(const char*)filename, 
 				GetFileExInfoStandard,
 				&attribs);
-			return (result) ? AsFileAttributes(attribs) : {};
+			return (result) ? AsFileAttributes(attribs) : FileAttributes{};
 		}
 
 		std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[])
@@ -484,7 +484,7 @@ namespace Utility
 				(const wchar_t*)filename, 
 				GetFileExInfoStandard,
 				&attribs);
-			return (result) ? AsFileAttributes(attribs) : {};
+			return (result) ? AsFileAttributes(attribs) : FileAttributes{};
 		}
 
 		std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter)
@@ -564,7 +564,7 @@ namespace Utility
 
 		Exceptions::IOException::Reason MemoryMappedFile::TryOpen(
 			const utf8 filename[], uint64 size, const char openMode[], 
-			FileShareMode::BitField shareMode)
+			FileShareMode::BitField shareMode) never_throws
 		{
 			assert(_begin == nullptr && _end == nullptr && !_closeFn);
 
@@ -612,7 +612,7 @@ namespace Utility
 
 		Exceptions::IOException::Reason MemoryMappedFile::TryOpen(
 			const utf16 filename[], uint64 size, const char openMode[],
-			FileShareMode::BitField shareMode)
+			FileShareMode::BitField shareMode) never_throws
 		{
 			assert(_begin == nullptr && _end == nullptr && !_closeFn);
 
