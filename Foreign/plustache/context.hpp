@@ -7,7 +7,7 @@
 #define PLUSTACHE_CONTEXT_H
 
 #include <iostream>
-#include "plustache_types.hpp"
+#include <plustache/plustache_types.hpp>
 
 namespace Plustache {
 	class Context {

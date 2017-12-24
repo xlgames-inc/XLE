@@ -69,6 +69,7 @@
     <ClCompile>
       <TreatWarningAsError>false</TreatWarningAsError>
       <DisableSpecificWarnings>4100;4244;4996;4706;4127;4267;4018;4702;4324;4310;4701;4703</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>../;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
@@ -159,8 +160,8 @@
     <ClCompile Include="..\Lua\src\lutf8lib.c" />
     <ClCompile Include="..\Lua\src\lvm.c" />
     <ClCompile Include="..\Lua\src\lzio.c" />
-    <ClCompile Include="..\plustasche\context.cpp" />
-    <ClCompile Include="..\plustasche\template.cpp" />
+    <ClCompile Include="..\plustache\context.cpp" />
+    <ClCompile Include="..\plustache\template.cpp" />
     <ClCompile Include="..\StackWalker\StackWalker.cpp" />
     <ClCompile Include="..\StamSimpleFluid\solver.c" />
     <ClCompile Include="..\TinyThreadPP\source\tinythread.cpp">
@@ -215,9 +216,9 @@
     <ClInclude Include="..\Lua\src\lundump.h" />
     <ClInclude Include="..\Lua\src\lvm.h" />
     <ClInclude Include="..\Lua\src\lzio.h" />
-    <ClInclude Include="..\plustasche\context.hpp" />
-    <ClInclude Include="..\plustasche\plustache_types.hpp" />
-    <ClInclude Include="..\plustasche\template.hpp" />
+    <ClInclude Include="..\plustache\context.hpp" />
+    <ClInclude Include="..\plustache\plustache_types.hpp" />
+    <ClInclude Include="..\plustache\template.hpp" />
     <ClInclude Include="..\StackWalker\StackWalker.h" />
     <ClInclude Include="..\TinyThreadPP\source\fast_mutex.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>

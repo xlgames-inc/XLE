@@ -3,6 +3,11 @@
  * @brief header file for plustache template
  * @author Daniel Schauenberg <d@unwiredcouch.com>
  */
+
+ ////////////////////////////////////////////////////////////////////////////////////
+ // DavidJ -- note -- this file has been modified to remove references to boost
+ ////////////////////////////////////////////////////////////////////////////////////
+
 #ifndef PLUSTACHE_TEMPLATE_H
 #define PLUSTACHE_TEMPLATE_H
 #include <iostream>
@@ -10,8 +15,8 @@
 #include <streambuf>
 #include <regex>
 
-#include "plustache_types.hpp"
-#include "context.hpp"
+#include <plustache/plustache_types.hpp>
+#include <plustache/context.hpp>
 
 namespace Plustache {
     class template_t {
@@ -31,8 +36,8 @@ namespace Plustache {
         std::string ctag;
         /* regex */
         std::regex tag;
-        std::regex section;
-        std::regex escape_chars;
+		std::regex section;
+		std::regex escape_chars;
         /* lut for HTML escape chars */
         std::map<std::string, std::string> escape_lut;
         /* render and helper methods */
@@ -46,7 +51,6 @@ namespace Plustache {
                               const std::string& closetag);
         void compile_data();
         std::string get_template(const std::string& tmpl);
-        void update_tags();
     };
 } // namespace Plustache
 #endif

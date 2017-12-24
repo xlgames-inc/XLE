@@ -4,10 +4,8 @@
  * @author Daniel Schauenberg <d@unwiredcouch.com>
  */
 
-#include "context.hpp"
-#include "plustache_types.hpp"
-
-#pragma warning(disable:4503)
+#include <plustache/context.hpp>
+#include <plustache/plustache_types.hpp>
 
 using namespace Plustache;
 
