@@ -381,14 +381,14 @@ namespace RenderCore { namespace Assets
 	, _depVal(deferredConstruction->GetDependencyValidation())
     {}
 
-    SkeletonScaffold::SkeletonScaffold(SkeletonScaffold&& moveFrom)
+    SkeletonScaffold::SkeletonScaffold(SkeletonScaffold&& moveFrom) never_throws
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
 	, _deferredConstructor(std::move(moveFrom._deferredConstructor))
 	, _filename(std::move(moveFrom._filename))
 	, _depVal(std::move(moveFrom._depVal))
     {}
 
-    SkeletonScaffold& SkeletonScaffold::operator=(SkeletonScaffold&& moveFrom)
+    SkeletonScaffold& SkeletonScaffold::operator=(SkeletonScaffold&& moveFrom) never_throws
     {
 		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);

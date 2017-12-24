@@ -214,10 +214,10 @@ namespace PlatformRig
         {
             if (Tweakable("FrameRigStats", false) && (_pimpl->_frameRenderCount % 64) == (64-1)) {
                 auto f = _pimpl->_frameRate.GetPerformanceStats();
-                LogInfo << "Ave FPS: " << 1000.f / std::get<0>(f);
+                Log(Verbose) << "Ave FPS: " << 1000.f / std::get<0>(f);
                     // todo -- we should get a rolling average of these values
                 if (_pimpl->_prevFrameAllocationCount._allocationCount) {
-                    LogInfo << "(" << _pimpl->_prevFrameAllocationCount._freeCount << ") frees and (" << _pimpl->_prevFrameAllocationCount._allocationCount << ") allocs during frame. Ave alloc: (" << _pimpl->_prevFrameAllocationCount._allocationsSize / _pimpl->_prevFrameAllocationCount._allocationCount << ").";
+					Log(Verbose) << "(" << _pimpl->_prevFrameAllocationCount._freeCount << ") frees and (" << _pimpl->_prevFrameAllocationCount._allocationCount << ") allocs during frame. Ave alloc: (" << _pimpl->_prevFrameAllocationCount._allocationsSize / _pimpl->_prevFrameAllocationCount._allocationCount << ").";
                 }
             }
         }
@@ -244,7 +244,7 @@ namespace PlatformRig
         }
 
         if (renderRes._hasPendingResources) {
-            Sleep(16);  // slow down while we're building pending resources
+            ::Threading::Sleep(16);  // slow down while we're building pending resources
         } else {
             Threading::YieldTimeSlice();    // this might be too extreme. We risk not getting execution back for a long while
         }
@@ -287,7 +287,7 @@ namespace PlatformRig
 
         _pimpl->_mainOverlaySys->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem));
 
-        LogInfo << "---- Beginning FrameRig ------------------------------------------------------------------";
+		Log(Verbose) << "---- Beginning FrameRig ------------------------------------------------------------------";
         auto accAlloc = AccumulatedAllocations::GetInstance();
         if (accAlloc) {
             auto acc = accAlloc->GetAndClear();

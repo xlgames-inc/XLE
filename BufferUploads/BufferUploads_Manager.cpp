@@ -317,7 +317,7 @@ namespace BufferUploads
         _arrayIndex = copyFrom._arrayIndex;
     }
 
-    AssemblyLine::DataUploadStep::DataUploadStep(DataUploadStep&& moveFrom)
+    AssemblyLine::DataUploadStep::DataUploadStep(DataUploadStep&& moveFrom) never_throws
     {
         _id = moveFrom._id;
         _rawData = std::move(moveFrom._rawData);

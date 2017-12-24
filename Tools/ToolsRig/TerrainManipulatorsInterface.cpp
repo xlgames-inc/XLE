@@ -48,7 +48,8 @@ namespace ToolsRig
 
     void    ManipulatorsInterface::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
     {
-        if (auto a = GetActiveManipulator())
+		auto a = GetActiveManipulator();
+        if (a)
             a->Render(context, parserContext);
     }
 

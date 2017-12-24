@@ -12,6 +12,7 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/AssetTraits.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include <map>

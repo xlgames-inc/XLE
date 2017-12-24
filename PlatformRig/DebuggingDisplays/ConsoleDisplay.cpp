@@ -67,21 +67,21 @@ namespace PlatformRig { namespace Overlays
             if (firstPart) {
                 ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, firstPart);
                 buffer[firstPart] = '\0';
-                caretOffset = (Coord)context.StringWidth(1.f, nullptr, buffer, nullptr);
+                caretOffset = (Coord)context.StringWidth(1.f, nullptr, buffer);
             }
 
             firstPart = std::min(_selectionStart, dimof(buffer)-1);
             if (firstPart) {
                 ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, firstPart);
                 buffer[firstPart] = '\0';
-                selStart = (Coord)context.StringWidth(1.f, nullptr, buffer, nullptr);
+                selStart = (Coord)context.StringWidth(1.f, nullptr, buffer);
             }
 
             firstPart = std::min(_selectionEnd, dimof(buffer)-1);
             if (firstPart) {
                 ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, firstPart);
                 buffer[firstPart] = '\0';
-                selEnd = (Coord)context.StringWidth(1.f, nullptr, buffer, nullptr);
+                selEnd = (Coord)context.StringWidth(1.f, nullptr, buffer);
             }
 
             if (selStart != selEnd) {

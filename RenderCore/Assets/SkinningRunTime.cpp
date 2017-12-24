@@ -577,7 +577,7 @@ namespace RenderCore { namespace Assets
     bool ModelRenderer::CanDoPrepareAnimation(IThreadContext& context)
     {
 		#if GFXAPI_ACTIVE == GFXAPI_DX11
-            auto* contextD3D = (IThreadContextDX11*)context.QueryInterface(__uuidof(IThreadContextDX11));
+            auto* contextD3D = (IThreadContextDX11*)context.QueryInterface(typeid(IThreadContextDX11).hash_code());
             if (contextD3D) {
 			    auto featureLevel = contextD3D->GetUnderlyingDevice()->GetFeatureLevel();
 			    return (featureLevel >= D3D_FEATURE_LEVEL_10_0);

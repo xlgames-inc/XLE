@@ -15,6 +15,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../Assets/AssetUtils.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"

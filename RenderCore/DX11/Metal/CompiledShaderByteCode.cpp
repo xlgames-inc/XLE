@@ -14,6 +14,7 @@
 #include "../../../Assets/InvalidAssetManager.h"
 #include "../../../Assets/ConfigFileContainer.h"
 #include "../../../Assets/AssetServices.h"
+#include "../../../Assets/Assets.h"
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/Threading/Mutex.h"
 #include "../../../Utility/StringUtils.h"
@@ -22,10 +23,11 @@
 #include "../../../Utility/Streams/StreamFormatter.h"
 #include "../../../Utility/Conversion.h"
 #include "../../../ConsoleRig/Log.h"
-#include "../../../Foreign/plustasche/template.hpp"
+#include "../../../Foreign/plustache/template.hpp"
 
 #include <regex> // used for parsing parameter definition
 #include <set>
+#include <sstream>
 
 #include "../../../Utility/WinAPI/WinAPIWrapper.h"
 #include "IncludeDX11.h"

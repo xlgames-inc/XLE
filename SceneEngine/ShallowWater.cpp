@@ -25,6 +25,7 @@
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
 
+#include "../Assets/Assets.h"
 #include "../Math/ProjectionMath.h"
 #include "../Math/Transformations.h"
 #include "../ConsoleRig/Console.h"

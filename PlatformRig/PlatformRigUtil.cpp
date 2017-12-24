@@ -194,7 +194,7 @@ namespace PlatformRig
     static void CalculateCameraFrustumCornersDirection(
         Float3 result[4],
         const RenderCore::Techniques::ProjectionDesc& projDesc,
-        ClipSpaceType::Enum clipSpaceType)
+        ClipSpaceType clipSpaceType)
     {
         // For the given camera, calculate 4 vectors that represent the
         // the direction from the camera position to the frustum corners

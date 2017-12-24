@@ -232,7 +232,7 @@ namespace PlatformRig { namespace Overlays
                 DrawTextOptions(false, true));
             context->DrawText(
                 AsPixelCoords(rect), &style, text, 
-                TextAlignment::Center, g.first, nullptr);
+                TextAlignment::Center, g.first);
 
             interactables.Register(Interactables::Widget(rect, hash));
         }
@@ -369,19 +369,19 @@ namespace PlatformRig { namespace Overlays
                 context->DrawText(
                     AsPixelCoords(labelRect), nullptr, ColorB(0xffffffffu), 
                     TextAlignment::Left,
-                    StringMeld<256>() << GraphTabs::Names[_graphsMode] << " (" << AsString(UploadDataType::Enum(c)) << ")", nullptr);
+                    StringMeld<256>() << GraphTabs::Names[_graphsMode] << " (" << AsString(UploadDataType::Enum(c)) << ")");
             } else {
                 context->DrawText(
                     AsPixelCoords(labelRect), nullptr, ColorB(0xffffffffu), 
                     TextAlignment::Left,
-                    GraphTabs::Names[_graphsMode], nullptr);
+                    GraphTabs::Names[_graphsMode]);
             }
 
 			if (valuesCount2 > 0) {
 				float mostRecentValue = valuesBuffer[dimof(valuesBuffer) - valuesCount2];
 				context->DrawText(AsPixelCoords(historyRect), nullptr, ColorB(0xffffffffu), 
                     TextAlignment::Top,
-                    XlDynFormatString("%6.3f", mostRecentValue).c_str(), nullptr);
+                    XlDynFormatString("%6.3f", mostRecentValue).c_str());
 			}
 
             DrawHistoryGraph(

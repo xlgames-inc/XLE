@@ -41,7 +41,7 @@ namespace RenderCore { namespace Assets
     void DelayedDrawCallSet::Filter(const Predicate& predicate)
     {
         for (unsigned c=0; c<dimof(_entries); ++c)
-            _entries[c].erase(std::remove_if(_entries[c].begin(), _entries[c].end(), std::not1(predicate)), _entries[c].end());
+            _entries[c].erase(std::remove_if(_entries[c].begin(), _entries[c].end(), std::not_fn(predicate)), _entries[c].end());
     }
 
 }}

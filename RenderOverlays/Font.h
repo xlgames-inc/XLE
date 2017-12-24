@@ -140,6 +140,7 @@ namespace RenderOverlays
         UI_TEXT_STATE_INACTIVE_REVERSE, 
     };
 
+#if 0
     class TextStyle
     {
     public:
@@ -161,6 +162,7 @@ namespace RenderOverlays
         float       SetStringEllipis(const ucs4* inText, ucs4* outText, size_t outTextSize, float width);
         float       CharWidth(ucs4 ch, ucs4 prev);
     };
+#endif
 
 }
 

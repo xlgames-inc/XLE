@@ -283,6 +283,21 @@ namespace Utility
 			}
 		}
 
+		template<typename Initializer>
+			void resize(size_type newSize, const Initializer& initializer)
+		{
+			if (newSize <= size()) {
+				for (auto i = _begin + newSize; i != _end; ++i) i->~Element();
+				_end = _begin + newSize;
+			}
+			else {
+				reserve(newSize);
+				for (; _end != _begin + newSize; ++_end) {
+					new(_end) Element(initializer);		// (note, we can't do perfect forwarding here, because of course we're going to be using it mutliple times)
+				}
+			}
+		}
+
 		bool OwnsHeapBlock() const { return !(_capacity == nullptr && _begin != nullptr); }
 
 		SerializableVector() : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}

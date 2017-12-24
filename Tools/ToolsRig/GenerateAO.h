@@ -12,6 +12,7 @@
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/CompilerHelper.h"
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Utility/MemoryUtils.h"
 #include <memory>
 
 namespace RenderCore { namespace Assets 

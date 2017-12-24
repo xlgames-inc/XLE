@@ -17,6 +17,7 @@
 #include "../../Assets/CompilerHelper.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/DeferredConstruction.h"
+#include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Streams/FileUtils.h"

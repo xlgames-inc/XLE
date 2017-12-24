@@ -103,7 +103,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
 
         if (soInitializers._outputBufferCount != 0)
-            Throw(Exceptions::BasicLabel("Unimplemented"));
+            Throw(::Exceptions::BasicLabel("Unimplemented"));
 
         const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
         assert(compiledShader.GetStage() == ShaderStage::Geometry);
@@ -114,7 +114,7 @@ namespace RenderCore { namespace Metal_Vulkan
     GeometryShader::GeometryShader(const CompiledShaderByteCode& compiledShader, const StreamOutputInitializers& soInitializers)
     {
         if (soInitializers._outputBufferCount != 0)
-            Throw(Exceptions::BasicLabel("Unimplemented"));
+            Throw(::Exceptions::BasicLabel("Unimplemented"));
 
         assert(compiledShader.GetStage() == ShaderStage::Geometry);
         auto byteCode = compiledShader.GetByteCode();

@@ -262,7 +262,7 @@ namespace RenderCore { namespace Assets
 			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 
     private:
-        std::unique_ptr<uint8[]>    _rawMemoryBlock;
+        std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
         unsigned                    _largeBlocksOffset;
 
 		std::shared_ptr<::Assets::DeferredConstruction> _deferredConstructor;
@@ -322,7 +322,7 @@ namespace RenderCore { namespace Assets
 			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 
     private:
-        std::unique_ptr<uint8[]>    _rawMemoryBlock;
+        std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
         
 		std::shared_ptr<::Assets::DeferredConstruction> _deferredConstructor;
 		::Assets::rstring			_filename;

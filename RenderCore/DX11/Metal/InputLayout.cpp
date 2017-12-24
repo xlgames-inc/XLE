@@ -133,13 +133,13 @@ namespace RenderCore { namespace Metal_DX11
         return *this;
     }
 
-    BoundUniforms::BoundUniforms(BoundUniforms&& moveFrom)
+    BoundUniforms::BoundUniforms(BoundUniforms&& moveFrom) never_throws
     {
         for (unsigned s=0; s<dimof(_stageBindings); ++s)
             _stageBindings[s] = std::move(moveFrom._stageBindings[s]);
     }
 
-    BoundUniforms& BoundUniforms::operator=(BoundUniforms&& moveFrom)
+    BoundUniforms& BoundUniforms::operator=(BoundUniforms&& moveFrom) never_throws
     {
         for (unsigned s=0; s<dimof(_stageBindings); ++s)
             _stageBindings[s] = std::move(moveFrom._stageBindings[s]);

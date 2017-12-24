@@ -59,9 +59,9 @@ namespace EntityInterface
 
             for (auto i=_objects.begin(); i!=_objects.end(); ++i)
                 if (i->_id == obj._parent && i->_doc == obj._doc) {
-                    auto type = GetObjectType(i->_type);
-                    if (type) 
-                        InvokeOnChange(*type, *i, newChangeType);
+                    auto type2 = GetObjectType(i->_type);
+                    if (type2) 
+                        InvokeOnChange(*type2, *i, newChangeType);
                 }
         }
     }

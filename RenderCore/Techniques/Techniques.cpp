@@ -16,6 +16,8 @@
 #include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/Assets.h"
+#include "../../Assets/DepVal.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../ConsoleRig/Log.h"

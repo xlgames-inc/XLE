@@ -19,7 +19,7 @@ namespace RenderCore { namespace Metal_Vulkan
 {
     static VkDevice ExtractUnderlyingDevice(IDevice& idev)
     {
-        auto* vulkanDevice = (RenderCore::IDeviceVulkan*)idev.QueryInterface(__uuidof(RenderCore::IDeviceVulkan));
+        auto* vulkanDevice = (RenderCore::IDeviceVulkan*)idev.QueryInterface(typeid(RenderCore::IDeviceVulkan).hash_code());
 		return vulkanDevice ? vulkanDevice->GetUnderlyingDevice() : nullptr;
     }
 
@@ -888,7 +888,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _pitches = moveFrom._pitches;
 	}
 
-	ResourceMap& ResourceMap::operator=(ResourceMap&& moveFrom)
+	ResourceMap& ResourceMap::operator=(ResourceMap&& moveFrom) never_throws
 	{
 		TryUnmap();
 		_data = moveFrom._data; moveFrom._data = nullptr;

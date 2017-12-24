@@ -59,11 +59,11 @@ namespace RenderCore { namespace Assets
     }
 
     GeoInputAssembly::GeoInputAssembly() { _vertexStride = 0; }
-    GeoInputAssembly::GeoInputAssembly(GeoInputAssembly&& moveFrom)
+    GeoInputAssembly::GeoInputAssembly(GeoInputAssembly&& moveFrom) never_throws
     :   _elements(std::move(moveFrom._elements))
     ,   _vertexStride(moveFrom._vertexStride)
     {}
-    GeoInputAssembly& GeoInputAssembly::operator=(GeoInputAssembly&& moveFrom)
+    GeoInputAssembly& GeoInputAssembly::operator=(GeoInputAssembly&& moveFrom) never_throws
     {
         _elements = std::move(moveFrom._elements);
         _vertexStride = moveFrom._vertexStride;
@@ -283,7 +283,7 @@ namespace RenderCore { namespace Assets
 	, _largeBlocksOffset(0u)
 	{}
 
-    ModelSupplementScaffold::ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom)
+    ModelSupplementScaffold::ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom) never_throws
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
     , _largeBlocksOffset(moveFrom._largeBlocksOffset)
 	, _deferredConstructor(std::move(moveFrom._deferredConstructor))
@@ -291,7 +291,7 @@ namespace RenderCore { namespace Assets
 	, _depVal(moveFrom._depVal)
     {}
 
-    ModelSupplementScaffold& ModelSupplementScaffold::operator=(ModelSupplementScaffold&& moveFrom)
+    ModelSupplementScaffold& ModelSupplementScaffold::operator=(ModelSupplementScaffold&& moveFrom) never_throws
     {
 		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);

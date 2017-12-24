@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#if 0
+
 #include "Font.h"
 #include "FontRendering.h"
 #include "../RenderCore/RenderUtils.h"
@@ -612,4 +614,6 @@ TextStyle::~TextStyle()
 }
 
 }
+
+#endif
 

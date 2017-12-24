@@ -8,6 +8,7 @@
 
 // Legacy naming -- 
 #define LogWarning Log(Warning)
+#define LogInfo Log(Verbose)
 #define LogAlwaysError Log(Error)
 
 #if defined(_DEBUG)

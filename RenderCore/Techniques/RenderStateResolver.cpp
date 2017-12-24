@@ -12,12 +12,6 @@
 
 namespace RenderCore { namespace Techniques
 {
-    uint64 RenderStateSet::GetHash() const
-    {
-        static_assert(sizeof(*this) == sizeof(uint64), "expecting StateSet to be 64 bits long");
-        return *(const uint64*)this;
-    }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     IStateSetResolver::~IStateSetResolver() {}

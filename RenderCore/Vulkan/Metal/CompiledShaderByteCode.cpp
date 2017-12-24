@@ -521,7 +521,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto result = HLSLToSPIRVCompiler::s_instance.lock();
         if (result) return std::move(result);
 
-        auto* vulkanDevice = (IDeviceVulkan*)device.QueryInterface(__uuidof(IDeviceVulkan));
+        auto* vulkanDevice = (IDeviceVulkan*)device.QueryInterface(typeid(IDeviceVulkan).hash_code());
         if (!vulkanDevice) return nullptr;
         
         auto hlslCompiler = Metal_DX11::CreateVulkanPrecompiler();

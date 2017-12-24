@@ -15,6 +15,7 @@
 #include "../RenderOverlays/IOverlayContext.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../ConsoleRig/Console.h"
 
 namespace SceneEngine
