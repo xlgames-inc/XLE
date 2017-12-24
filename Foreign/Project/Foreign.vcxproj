@@ -84,6 +84,10 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\fmt\format.cc" />
+    <ClCompile Include="..\fmt\ostream.cc" />
+    <ClCompile Include="..\fmt\posix.cc" />
+    <ClCompile Include="..\fmt\printf.cc" />
     <ClCompile Include="..\Hash\MurmurHash2.cpp" />
     <ClCompile Include="..\Hash\MurmurHash3.cpp" />
     <ClCompile Include="..\LibTiff\mkg3states.c" />
@@ -175,6 +179,13 @@
     <ClCompile Include="..\tinyxml2-master\tinyxml2.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\fmt\container.h" />
+    <ClInclude Include="..\fmt\format.h" />
+    <ClInclude Include="..\fmt\ostream.h" />
+    <ClInclude Include="..\fmt\posix.h" />
+    <ClInclude Include="..\fmt\printf.h" />
+    <ClInclude Include="..\fmt\string.h" />
+    <ClInclude Include="..\fmt\time.h" />
     <ClInclude Include="..\Hash\MurmurHash2.h" />
     <ClInclude Include="..\Hash\MurmurHash3.h" />
     <ClInclude Include="..\LibTiff\t4.h" />
@@ -237,6 +248,12 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\tinyxml2-master\tinyxml2.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\fmt\ChangeLog.rst" />
+    <None Include="..\fmt\CONTRIBUTING.rst" />
+    <None Include="..\fmt\LICENSE.rst" />
+    <None Include="..\fmt\README.rst" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
