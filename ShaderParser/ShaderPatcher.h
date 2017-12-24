@@ -11,6 +11,7 @@
 #include "../Core/Types.h"
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace ShaderPatcher 
 {
@@ -207,14 +208,9 @@ namespace ShaderPatcher
 		class Parameter
 		{
 		public:
-			std::string _type, _name, _semantic, _default;
-			ParameterDirection _direction;
-			Parameter(
-				const std::string& type, const std::string& name, 
-				ParameterDirection direction = ParameterDirection::In,
-				const std::string& semantic = std::string(), const std::string& defaultValue = std::string())
-				: _type(type), _name(name), _direction(direction), _semantic(semantic), _default(defaultValue) {}
-			Parameter() {}
+			std::string _type, _name;
+			ParameterDirection _direction = ParameterDirection::In;
+            std::string _semantic, _default;
 		};
 
         // Returns the list of parameters taken as input through the function call mechanism
@@ -225,12 +221,22 @@ namespace ShaderPatcher
         // In other words, these aren't explicitly passed to the function, but the function needs to interact with them, anyway
         auto GetCapturedParameters() const -> IteratorRange<const Parameter*>		{ return MakeIteratorRange(_capturedParameters); }
         void AddCapturedParameter(const Parameter& param);
+
+        class TemplateParameter
+        {
+        public:
+            std::string _name;
+            std::string _restriction;
+        };
+        auto GetTemplateParameters() const -> IteratorRange<const TemplateParameter*>   { return MakeIteratorRange(_templateParameters); }
+        void AddTemplateParameter(const TemplateParameter& param);
 		
         NodeGraphSignature();
         ~NodeGraphSignature();
     private:
         std::vector<Parameter> _functionParameters;
         std::vector<Parameter> _capturedParameters;
+        std::vector<TemplateParameter> _templateParameters;
     };
 
     class ISignatureProvider
@@ -245,8 +251,38 @@ namespace ShaderPatcher
         virtual ~ISignatureProvider();
     };
 
+        ///////////////////////////////////////////////////////////////
+
+    class InstantiationParameters
+    {
+    public:
+        std::unordered_map<std::string, std::string> _parameterBindings;
+        uint64_t CalculateHash() const;
+    };
+
+    class DependencyTable
+    {
+    public:
+        struct Dependency { std::string _archiveName; InstantiationParameters _parameters; };
+        std::vector<Dependency> _dependencies;
+    };
+
+        ///////////////////////////////////////////////////////////////
+
     std::string GenerateShaderHeader(const NodeGraph& graph);
-    std::pair<std::string, NodeGraphSignature> GenerateFunction(const NodeGraph& graph, const char name[], ISignatureProvider& sigProvider);
+
+    struct GeneratedFunction
+    {
+    public:
+        std::string _text;
+        NodeGraphSignature _signature;
+        DependencyTable _dependencies;
+    };
+    GeneratedFunction GenerateFunction(
+        const NodeGraph& graph, const char name[], 
+        const InstantiationParameters& instantiationParameters,
+        ISignatureProvider& sigProvider);
+
 	std::string GenerateMaterialCBuffer(const NodeGraphSignature& interf);
 
     struct PreviewOptions

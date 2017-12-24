@@ -11,7 +11,7 @@ auto s0(float4 position, float2 texCoord, float3 normal, graph<SP::Prototype_Tex
 		).result;
 }
 
-auto Signal_main(float4 position, float2 texCoord, float3 normal) implements SP::Prototype_SomeSignal
+auto main(float4 position, float2 texCoord, float3 normal) implements SP::Prototype_SomeSignal
 {
 	return s0(position:position, texCoord:texCoord, normal:normal, tcGenerator:SP::TexCoordFn).result;
 	

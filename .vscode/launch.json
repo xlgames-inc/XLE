@@ -13,7 +13,7 @@
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/Working",
             "environment": [],
-            "externalConsole": true,
+            "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
                 {
@@ -22,6 +22,14 @@
                     "ignoreFailures": true
                 }
             ]
-        }
+        },
+        {
+            "name": "(lldb) Launch",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceRoot}/CMakeBuild/Samples/ShaderScan/ShaderScan",
+            "args": ["-arg1", "-arg2"],
+            "cwd": "${workspaceFolder}/Working"
+        }        
     ]
 }

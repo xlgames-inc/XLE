@@ -103,7 +103,7 @@ namespace ShaderPatcher
 		result._subGraphs.reserve(ng._graphs.size());
 		result._imports = ng._imports;
 		for (auto& f:ng._graphs)
-			result._subGraphs.emplace_back(GraphSyntaxFile::SubGraph{f._name, std::move(f._signature), std::move(f._graph)});
+			result._subGraphs.emplace(std::make_pair(f._name, GraphSyntaxFile::SubGraph{std::move(f._signature), std::move(f._graph)}));
 		return result;
     }
 
@@ -143,13 +143,9 @@ namespace ShaderPatcher
 		}
 
 		// Look for the function within the parsed graph syntax file
-		auto i = std::find_if(
-			_parsedGraphFile->_subGraphs.begin(),
-			_parsedGraphFile->_subGraphs.end(),
-			[name](const GraphSyntaxFile::SubGraph& g) { return XlEqString(name, g._name); });
-		if (i != _parsedGraphFile->_subGraphs.end()) {
-			return { i->_name, &i->_signature };
-		}
+		auto i = _parsedGraphFile->_subGraphs.find(name.AsString());
+		if (i != _parsedGraphFile->_subGraphs.end())
+			return { i->first, &i->second._signature };
 
 		// Just fallback to default behaviour
 		return BasicSignatureProvider::FindSignature(name);
@@ -165,27 +161,14 @@ namespace ShaderPatcher
 	GraphSyntaxSignatureProvider::~GraphSyntaxSignatureProvider()
 	{}
 
-	std::string ReadGraphSyntax(StringSection<char> input, const ::Assets::DirectorySearchRules& searchRules)
+	std::shared_ptr<ISignatureProvider> MakeGraphSyntaxSignatureProvider(
+		const GraphSyntaxFile& parsedGraphFile,
+		const ::Assets::DirectorySearchRules& searchRules)
 	{
-		auto parsedGraph = ParseGraphSyntax(input);
-
-		std::string result;
-		// Find each slot implementation in the graph; trim it out, and then
-		// build a function.
-
-		auto sigProvider = std::make_unique<GraphSyntaxSignatureProvider>(parsedGraph, searchRules);
-		
-		for (auto& g:parsedGraph._subGraphs) {
-			std::string slotImplementation;
-			NodeGraphSignature generatedInterface;
-			std::tie(slotImplementation, generatedInterface) = GenerateFunction(g._graph, g._name.c_str(), *sigProvider);
-			result += slotImplementation;
-
-			result += GenerateScaffoldFunction(g._signature, generatedInterface, g._name.c_str());
-		}
-
-		return result;
+		return std::make_shared<GraphSyntaxSignatureProvider>(parsedGraphFile, searchRules);
 	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	static std::string MakeArchiveName(const IdentifierAndScope& identifierAndScope)
 	{
@@ -222,7 +205,21 @@ extern "C" NodeId Node_Register(const void* ctx, IdentifierAndScope identifierAn
 	auto& ng = ShaderPatcher::GetGraphContext(ctx);
 
 	NodeId nextId = (NodeId)ng._graph.GetNodes().size();
-	ShaderPatcher::Node newNode(ShaderPatcher::MakeArchiveName(identifierAndScope), nextId, ShaderPatcher::Node::Type::Procedure);
+
+	auto archiveName = ShaderPatcher::MakeArchiveName(identifierAndScope);
+	if (identifierAndScope._scope == nullptr) {
+		// Check to see if this is a templated parameter. If so, we need to mark the node name with the
+		// restrictions from the signature.
+		auto i = std::find_if(
+			ng._signature.GetTemplateParameters().begin(),
+			ng._signature.GetTemplateParameters().end(),
+			[archiveName](const ShaderPatcher::NodeGraphSignature::TemplateParameter& param) { return param._name == archiveName; });
+		if (i != ng._signature.GetTemplateParameters().end()) {
+			archiveName += "<" + i->_restriction + ">";
+		}
+	}
+
+	ShaderPatcher::Node newNode(archiveName, nextId, ShaderPatcher::Node::Type::Procedure);
 	ng._graph.Add(std::move(newNode));
 	return nextId;
 }
@@ -341,9 +338,7 @@ extern "C" void GraphSignature_AddParameter(const void* ctx, GraphSignatureId si
 extern "C" void GraphSignature_AddGraphParameter(const void* ctx, GraphSignatureId sigId, const char name[], IdentifierAndScope prototype)
 {
 	auto& f = ShaderPatcher::GetFileContext(ctx);
-	std::stringstream str;
-	str << "graph<" << ShaderPatcher::MakeArchiveName(prototype) << ">";
-	f._pendingSignatures[sigId].AddParameter({str.str(), name});
+	f._pendingSignatures[sigId].AddTemplateParameter({name, ShaderPatcher::MakeArchiveName(prototype)});
 }
 
 extern "C" void Walk_Push(const void* ctx, unsigned objType, unsigned id)

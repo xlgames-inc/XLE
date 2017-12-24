@@ -22,6 +22,8 @@
 #include "Utility/Streams/FileUtils.h"
 #include "Utility/ParameterBox.h"
 #include <iostream>
+#include <sstream>
+#include <stack>
 
 namespace ShaderScan
 {
@@ -58,6 +60,12 @@ namespace ShaderScan
         } CATCH_END
     }
 
+    static std::string MakeGraphName(const std::string& baseName, uint64_t instantiationHash = 0)
+    {
+        if (!instantiationHash) return baseName;
+        return baseName + "_" + std::to_string(instantiationHash);
+    }
+
 	static void TestGraphSyntax()
 	{
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
@@ -66,8 +74,55 @@ namespace ShaderScan
 		size_t inputFileSize;
         auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(filename, &inputFileSize);
         auto inputStr = MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize));
-        auto str = ShaderPatcher::ReadGraphSyntax(inputStr, ::Assets::DefaultDirectorySearchRules(filename));
-        Log(Verbose) << "--- Output --- " << std::endl << str;
+        // auto str = ShaderPatcher::ReadGraphSyntax(inputStr, );
+        // Log(Verbose) << "--- Output ---\n" << str;
+
+        std::string entryPoint = "main";
+
+        auto graphSyntax = ShaderPatcher::ParseGraphSyntax(inputStr);
+        auto main = graphSyntax._subGraphs.find(entryPoint);
+        if (main == graphSyntax._subGraphs.end())
+            Throw(::Exceptions::BasicLabel("Couldn't find entry point (%s) in input", entryPoint.c_str()));
+
+        auto sigProvider = ShaderPatcher::MakeGraphSyntaxSignatureProvider(graphSyntax, ::Assets::DefaultDirectorySearchRules(filename));
+
+        auto mainInstantiation = 
+            ShaderPatcher::GenerateFunction(
+                main->second._graph, (MakeGraphName(entryPoint) + "_impl").c_str(), ShaderPatcher::InstantiationParameters {}, *sigProvider);
+
+        std::vector<std::string> fragments;
+        fragments.push_back(ShaderPatcher::GenerateScaffoldFunction(main->second._signature, mainInstantiation._signature, MakeGraphName(entryPoint).c_str()));
+        fragments.push_back(mainInstantiation._text);
+
+        std::stack<ShaderPatcher::GeneratedFunction> instantiations;
+        instantiations.emplace(std::move(mainInstantiation));
+        while (!instantiations.empty()) {
+            auto inst = std::move(instantiations.top());
+            instantiations.pop();
+
+            for (const auto&dep:inst._dependencies._dependencies) {
+                if (dep._archiveName.find(':') != std::string::npos) continue;      // exclude functions included from other files
+
+                auto fn = graphSyntax._subGraphs.find(dep._archiveName);
+                if (fn == graphSyntax._subGraphs.end())
+                    Throw(::Exceptions::BasicLabel("Couldn't find function (%s) in input", dep._archiveName.c_str()));
+
+                auto finalGraphName = MakeGraphName(fn->first, dep._parameters.CalculateHash());
+                auto instFn = ShaderPatcher::GenerateFunction(
+                    fn->second._graph, 
+                    (finalGraphName + "_impl").c_str(), 
+                    dep._parameters, *sigProvider);
+
+                fragments.push_back(ShaderPatcher::GenerateScaffoldFunction(fn->second._signature, instFn._signature, finalGraphName.c_str()));
+                fragments.push_back(instFn._text);
+                
+                instantiations.emplace(std::move(instFn));
+            }
+        }
+
+        Log(Verbose) << "--- Output ---" << std::endl;
+        for (auto frag=fragments.rbegin(); frag!=fragments.rend(); ++frag)
+            Log(Verbose) << *frag << std::endl;
 	}
 }
 

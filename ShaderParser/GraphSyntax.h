@@ -19,15 +19,18 @@ namespace ShaderPatcher
 		class SubGraph
 		{
 		public:
-			std::string 		_name;
 			NodeGraphSignature 	_signature;
 			NodeGraph 			_graph;
 		};
 
-		std::vector<SubGraph> _subGraphs;
+		std::unordered_map<std::string, SubGraph> _subGraphs;
 		std::unordered_map<std::string, std::string> _imports;
 	};
 	GraphSyntaxFile ParseGraphSyntax(StringSection<char> sourceCode);
-	std::string 	ReadGraphSyntax(StringSection<char> input, const ::Assets::DirectorySearchRules& searchRules);
+
+	class ISignatureProvider;
+	std::shared_ptr<ISignatureProvider> MakeGraphSyntaxSignatureProvider(
+		const GraphSyntaxFile& parsedGraphFile,
+		const ::Assets::DirectorySearchRules& searchRules);
 }
 

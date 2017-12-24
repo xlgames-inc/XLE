@@ -130,10 +130,10 @@ namespace ShaderPatcher
             default: assert(0); // in/out not supported
             }
 
-            result.AddParameter(NodeGraphSignature::Parameter(p._type, p._name, dir, p._semantic));
+            result.AddParameter(NodeGraphSignature::Parameter{p._type, p._name, dir, p._semantic});
         }
         if (!sig._returnType.empty())
-            result.AddParameter(NodeGraphSignature::Parameter(sig._returnType, "result", ParameterDirection::Out, sig._returnSemantic));
+            result.AddParameter(NodeGraphSignature::Parameter{sig._returnType, "result", ParameterDirection::Out, sig._returnSemantic});
         return result;
     }
 
