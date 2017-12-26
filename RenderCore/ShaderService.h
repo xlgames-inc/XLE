@@ -8,6 +8,7 @@
 
 #include "../Assets/AssetsCore.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
 #include <memory>
@@ -21,10 +22,6 @@ namespace Assets
 	class CompileFuture; class ICompileMarker; 
 	class DeferredConstruction; class IArtifact;
 }
-
-// We need to store the shader initializer in order to get the "pending assets" type 
-// messages while shaders are compiling. But it shouldn't be required in the normal game run-time.
-#define STORE_SHADER_INITIALIZER
 
 namespace RenderCore
 {
@@ -60,8 +57,9 @@ namespace RenderCore
         class ShaderHeader
         {
         public:
-            static const auto Version = 0u;
+            static const auto Version = 1u;
             unsigned _version;
+			char _shaderModel[8];
             unsigned _dynamicLinkageEnabled;
         };
 
@@ -162,19 +160,12 @@ namespace RenderCore
     class CompiledShaderByteCode
     {
     public:
-        std::pair<const void*, size_t>  GetByteCode() const;
-        ::Assets::AssetState            TryGetByteCode(void const*& byteCode, size_t& size);
-        ::Assets::AssetState            StallWhilePending() const;
-        ::Assets::AssetState            TryResolve() const;
+        IteratorRange<const void*>  GetByteCode() const;
         
-        ShaderStage		GetStage() const                { return _stage; }
+		ShaderStage		GetStage() const;
         bool            DynamicLinkingEnabled() const;
 
-        std::shared_ptr<std::vector<uint8>> GetErrors() const;
-
-		CompiledShaderByteCode(const std::shared_ptr<::Assets::DeferredConstruction>&);
-		CompiledShaderByteCode(const std::shared_ptr<std::vector<uint8>>&, ShaderStage stage, const ::Assets::DepValPtr&);
-		CompiledShaderByteCode(const ::Assets::IArtifact&, ShaderStage stage, StringSection<::Assets::ResChar> initializer);
+		CompiledShaderByteCode(const std::shared_ptr<std::vector<uint8>>&, const ::Assets::DepValPtr&);
 		CompiledShaderByteCode();
         ~CompiledShaderByteCode();
 
@@ -192,24 +183,13 @@ namespace RenderCore
         CompiledShaderByteCode(CompiledShaderByteCode&&);
         CompiledShaderByteCode& operator=(CompiledShaderByteCode&&);
 
-        auto        GetDependencyValidation() const -> const std::shared_ptr<::Assets::DependencyValidation>& { return _validationCallback; }
-        const char* Initializer() const;
+        auto        GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _depVal; }
 
         static const uint64 CompileProcessType;
 
     private:
-        mutable std::shared_ptr<std::vector<uint8>>			_shader;
-
-		std::shared_ptr<::Assets::DeferredConstruction>		_deferredConstructor;
-		std::shared_ptr<::Assets::DependencyValidation>		_validationCallback;
-		ShaderStage											_stage;
-
-        #if defined(STORE_SHADER_INITIALIZER)
-            char _initializer[512];
-        #endif
-
-		void Resolve() const;
-		// void ResolveFromCompileMarker() const;
+        std::shared_ptr<std::vector<uint8>>		_shader;
+		Assets::DepValPtr						_depVal;
     };
 }
 

@@ -26,18 +26,24 @@ namespace Assets
 	class ChunkFileContainer;
     class IArtifact;
 
+	using Blob = std::shared_ptr<std::vector<uint8>>;
+
 	namespace Internal
 	{
 		template <typename AssetType>
 			class AssetTraits
 		{
 		private:
-			template<typename T> struct HasBeginDeferredConstructionHelper
+			struct HasCompileProcessTypeHelper
 			{
-				template<typename U, std::shared_ptr<DeferredConstruction> (*)(const StringSection<ResChar>[], unsigned)> struct FunctionSignature {};
-				template<typename U> static std::true_type Test1(FunctionSignature<U, &U::BeginDeferredConstruction>*);
-				template<typename U> static std::false_type Test1(...);
-				static const bool Result = decltype(Test1<T>(0))::value;
+				template <typename C, C> struct Check;
+
+				struct FakeBase { static const uint64_t CompileProcessType; };
+				struct TestSubject : public FakeBase, public T {};
+
+				// This would SFINAE because if C really has `one`, it would be ambiguous
+				template <typename C> static std::false_type Test(Check<int FakeBase::*, &C::CompileProcessType> *);
+				template <typename> static std::true_type Test(...);
 			};
 
 		public:
@@ -47,7 +53,7 @@ namespace Assets
 			static const bool Constructor_Formatter = std::is_constructible<AssetType, InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&>::value;
 			static const bool Constructor_ChunkFileContainer = std::is_constructible<AssetType, const ChunkFileContainer&>::value;
 
-			static const bool HasBeginDeferredConstruction = HasBeginDeferredConstructionHelper<AssetType>::Result;
+			static const bool HasCompileProcessType = decltype(HasCompileProcessTypeHelper::Test<AssetType>(nullptr))::value;
 		};
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -60,7 +66,10 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	template<typename AssetType, typename std::enable_if<Internal::AssetTraits<AssetType>::Constructor_Formatter>::type* = nullptr>
+
+	#define ENABLE_IF(X) typename std::enable_if<X>::type* = nullptr
+
+	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_Formatter)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
 		// First parameter should be the section of the input file to read (or just use the root of the file if it doesn't exist)
@@ -84,18 +93,20 @@ namespace Assets
 		}
 	}
 	
-	template<typename AssetType, typename... Params, typename std::enable_if<Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer>::type* = nullptr>
+	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer)>
 		std::unique_ptr<AssetType> AutoConstructAsset(const ResChar initializer[])
 	{
 		const auto& container = Internal::GetChunkFileContainer(initializer);
 		return std::make_unique<AssetType>(container);
 	}
 
-	template<typename AssetType, typename... Params, typename std::enable_if<!Internal::AssetTraits<AssetType>::Constructor_Formatter && !Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer>::type* = nullptr>
+	template<typename AssetType, typename... Params, typename std::enable_if<std::is_constructible<AssetType, Params...>::value>::type* = nullptr>
 		static std::unique_ptr<AssetType> AutoConstructAsset(Params... initialisers)
 	{
 		return std::make_unique<AssetType>(std::forward<Params>(initialisers)...);
 	}
+
+	#undef ENABLE_IF
 
 }
 
