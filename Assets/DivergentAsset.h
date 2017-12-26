@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "AssetSetInternal.h"
 #include "DepVal.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Core/Types.h"
@@ -123,13 +122,14 @@ namespace Assets
         TransactionPtr<DivergentTransaction<Asset>> Transaction_Begin(const char name[]);
 
 		DivergentAsset(
-            const Internal::AssetSet<Asset>& assetSet, 
-            uint64 assetId, const AssetIdentifier& identifer);
+			const std::shared_ptr<Asset>& pristineCopy,
+            uint64 assetId, uint64 typeCode, 
+			const AssetIdentifier& identifer);
 		~DivergentAsset();
 	protected:
-		const Internal::AssetSet<Asset>*	_assetSet;
+		std::shared_ptr<Asset>				_pristineCopy;
 		std::shared_ptr<Asset>				_workingCopy;
-        uint64								_assetId;
+        uint64								_assetId, _typeCode;
         std::shared_ptr<AssetIdentifier>	_identifier;
 
         std::shared_ptr<DivergentTransaction<Asset>> _lastTransaction;
@@ -212,15 +212,7 @@ namespace Assets
 	template<typename Asset>
 		const Asset& DivergentAsset<Asset>::GetPristineCopy() const
 	{
-		Internal::AssetSetPtr<Asset> lock(*const_cast<Internal::AssetSet<Asset>*>(_assetSet));
-		auto i = LowerBound(lock->_assets, _assetId);
-		if (i != lock->_assets.end() && i->first == _assetId)
-			return *i->second._active;
-
-		// If we get here, we are in trouble. For every divergent asset, there should be an asset
-		// in the asset store with the same id. If we don't find it, we have no means to return a valid
-		// asset.
-		Throw(std::logic_error("Could not retrieve pristine version of divergent asset from the asset store"));
+		return *_pristineCopy;
 	}
 
 	template<typename Asset>
@@ -254,7 +246,7 @@ namespace Assets
 
         if (!_lastTransaction) {
             _lastTransaction = std::make_shared<DivergentTransaction<Asset>>(
-                name, _assetId, _assetSet->GetTypeCode(), _identifier, _workingCopy, undoQueue);
+                name, _assetId, _typeCode, _identifier, _workingCopy, undoQueue);
         }
         return TransactionPtr<DivergentTransaction<Asset>>(_lastTransaction);
 	}
@@ -273,12 +265,14 @@ namespace Assets
 
 	template<typename Asset>
 		DivergentAsset<Asset>::DivergentAsset(
-			const Internal::AssetSet<Asset>& assetSet,
-            uint64 assetId, const AssetIdentifier& identifer)
+			const std::shared_ptr<Asset>& pristineCopy,
+			uint64 assetId, uint64 typeCode,
+            const AssetIdentifier& identifer)
 	: DivergentAssetBase(std::weak_ptr<UndoQueue>())
-    , _assetId(assetId)
+	, _pristineCopy(pristineCopy)
+	, _assetId(assetId)
+	, _typeCode(typeCode)
     , _identifier(std::make_shared<AssetIdentifier>(identifer))
-	, _assetSet(&assetSet)
 	{
 	}
 

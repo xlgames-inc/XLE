@@ -33,7 +33,7 @@ namespace Converter
 		void PerformCompile(
 			GeneralCompiler::ArtifactType artifactType,
 			uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
-			::Assets::PendingCompileMarker& compileMarker,
+			::Assets::CompileFuture& compileMarker,
 			const ::Assets::IntermediateAssets::Store& destinationStore);
 		void AttachLibrary();
 
@@ -225,7 +225,7 @@ namespace Converter
     void CompilerLibrary::PerformCompile(
 		GeneralCompiler::ArtifactType artifactType,
 		uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
-		::Assets::PendingCompileMarker& compileMarker,
+		::Assets::CompileFuture& compileMarker,
 		const ::Assets::IntermediateAssets::Store& destinationStore)
     {
         TRY
@@ -340,7 +340,7 @@ namespace Converter
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
+        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
@@ -363,7 +363,7 @@ namespace Converter
         return nullptr;
     }
 
-    std::shared_ptr<::Assets::PendingCompileMarker> GeneralCompiler::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::CompileFuture> GeneralCompiler::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;

@@ -9,7 +9,7 @@
 #include "IntermediateAssets.h"
 #include "IFileSystem.h"
 
-#include "CompileAndAsyncManager.h"     // for ~PendingCompileMarker -- remove
+#include "CompileAndAsyncManager.h"     // for ~CompileFuture -- remove
 
 #if defined(XLE_HAS_CONSOLE_RIG)
     #include "../ConsoleRig/Log.h"
@@ -447,13 +447,13 @@ namespace Assets
 
 	IArtifact::~IArtifact() {}
 
-	void PendingCompileMarker::AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact)
+	void CompileFuture::AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact)
 	{
 		_artifacts.push_back(std::make_pair(name, artifact));
 	}
 
-	PendingCompileMarker::PendingCompileMarker() {}
-    PendingCompileMarker::~PendingCompileMarker()  {}
+	CompileFuture::CompileFuture() {}
+    CompileFuture::~CompileFuture()  {}
 
 
 	auto FileArtifact::GetBlob() const -> Blob

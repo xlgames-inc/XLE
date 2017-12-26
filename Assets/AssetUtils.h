@@ -69,40 +69,6 @@ namespace Assets
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// <summary>Records the status of asynchronous operation, very much like a std::promise<AssetState></summary>
-	class IAsyncMarker
-	{
-	public:
-		virtual AssetState		GetAssetState() const = 0;
-		virtual AssetState		StallWhilePending() const =0;
-		virtual ~IAsyncMarker();
-	};
-
-    class PendingOperationMarker : public IAsyncMarker, public std::enable_shared_from_this<PendingOperationMarker>
-    {
-    public:
-        AssetState		GetAssetState() const { return _state; }
-        AssetState		StallWhilePending() const;
-        const char*     Initializer() const;  // "initializer" interface only provided in debug builds, and only intended for debugging
-
-        PendingOperationMarker(AssetState state = AssetState::Pending);
-        ~PendingOperationMarker();
-
-		PendingOperationMarker(PendingOperationMarker&&) = delete;
-		PendingOperationMarker& operator=(PendingOperationMarker&&) = delete;
-		PendingOperationMarker(const PendingOperationMarker&) = delete;
-		PendingOperationMarker& operator=(const PendingOperationMarker&) = delete;
-
-		void	SetState(AssetState newState);
-		void	SetInitializer(const ResChar initializer[]);
-
-	private:
-		AssetState _state;
-		DEBUG_ONLY(ResChar _initializer[MaxPath];)
-    };
-
-		////////////////////////////////////////////////////////////////////////////////////////////////
-
     /// <summary>Container for a asset filename in string format<summary>
     /// Just a simple generalisation of a path and file name in char array form.
     /// Avoids scattering references to ResChar and MaxPath about

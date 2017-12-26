@@ -12,7 +12,7 @@
 
 namespace Assets
 {
-    class PendingCompileMarker;
+    class CompileFuture;
 
     /// <summary>Utilities helpful when implementing asset compilers</summary>
     class CompilerHelper

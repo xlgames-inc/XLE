@@ -18,7 +18,7 @@
 namespace Assets
 {
 	class DependencyValidation; class DependentFileState; 
-	class PendingCompileMarker; class ICompileMarker; 
+	class CompileFuture; class ICompileMarker; 
 	class DeferredConstruction; class IArtifact;
 }
 
@@ -68,11 +68,11 @@ namespace RenderCore
         class IShaderSource
         {
         public:
-            virtual std::shared_ptr<::Assets::PendingCompileMarker> CompileFromFile(
+            virtual std::shared_ptr<::Assets::CompileFuture> CompileFromFile(
                 StringSection<::Assets::ResChar> resId, 
                 StringSection<::Assets::ResChar> definesTable) const = 0;
             
-            virtual std::shared_ptr<::Assets::PendingCompileMarker> CompileFromMemory(
+            virtual std::shared_ptr<::Assets::CompileFuture> CompileFromMemory(
                 StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 				StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const = 0;
 
@@ -103,11 +103,11 @@ namespace RenderCore
             virtual ~ILowLevelCompiler();
         };
 
-        std::shared_ptr<::Assets::PendingCompileMarker> CompileFromFile(
+        std::shared_ptr<::Assets::CompileFuture> CompileFromFile(
             StringSection<::Assets::ResChar> resId, 
             StringSection<::Assets::ResChar> definesTable) const;
 
-        std::shared_ptr<::Assets::PendingCompileMarker> CompileFromMemory(
+        std::shared_ptr<::Assets::CompileFuture> CompileFromMemory(
             StringSection<char> shaderInMemory, 
             StringSection<char> entryPoint, StringSection<char> shaderModel, 
             StringSection<::Assets::ResChar> definesTable) const;

@@ -17,7 +17,7 @@
 
 namespace Assets
 {
-    class PendingCompileMarker;
+    class CompileFuture;
 
     /// <summary>Container file with with one child that is initialized via InputStreamFormatter</summary>
     ///

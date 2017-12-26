@@ -6,15 +6,15 @@
 
 #pragma once
 
-#include "AssetUtils.h"
 #include "AssetsCore.h"
+#include "AssetFuture.h"
 #include "DepVal.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/IteratorUtils.h"
 
 namespace Assets 
 {
-    class PendingCompileMarker; 
+    class CompileFuture; 
     class DependentFileState; 
     class DependencyValidation; 
 
@@ -42,20 +42,20 @@ namespace Assets
     /// Other times, objects are stored in a "ArchiveCache" object. For example,
     /// shader compiles are typically combined together into archives of a few
     /// different configurations. So a pointer to an optional ArchiveCache is provided.
-    class PendingCompileMarker : public PendingOperationMarker
+    class CompileFuture : public GenericFuture
     {
     public:
         // this has become very much like a std::promise<std::vector<NameAndArtifact>>!
 		using NameAndArtifact = std::pair<std::string, std::shared_ptr<IArtifact>>;
 		IteratorRange<const NameAndArtifact*> GetArtifacts() const { return MakeIteratorRange(_artifacts); }
 
-        PendingCompileMarker();
-        ~PendingCompileMarker();
+        CompileFuture();
+        ~CompileFuture();
 
-		PendingCompileMarker(PendingCompileMarker&&) = delete;
-		PendingCompileMarker& operator=(PendingCompileMarker&&) = delete;
-		PendingCompileMarker(const PendingCompileMarker&) = delete;
-		PendingCompileMarker& operator=(const PendingCompileMarker&) = delete;
+		CompileFuture(CompileFuture&&) = delete;
+		CompileFuture& operator=(CompileFuture&&) = delete;
+		CompileFuture(const CompileFuture&) = delete;
+		CompileFuture& operator=(const CompileFuture&) = delete;
 
 		void AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact);
 
@@ -67,7 +67,7 @@ namespace Assets
     {
     public:
         virtual std::shared_ptr<IArtifact> GetExistingAsset() const = 0;
-        virtual std::shared_ptr<PendingCompileMarker> InvokeCompile() const = 0;
+        virtual std::shared_ptr<CompileFuture> InvokeCompile() const = 0;
         virtual StringSection<ResChar> Initializer() const = 0;
     };
 

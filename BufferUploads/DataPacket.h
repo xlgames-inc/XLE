@@ -8,7 +8,7 @@
 
 #include "IBufferUploads.h"
 #include "../RenderCore/Types.h"
-#include "../Assets/AssetUtils.h"                   // for ::Assets::PendingOperationMarker
+#include "../Assets/AssetUtils.h"                   // for ::Assets::GenericFuture
 #include "../Utility/Threading/ThreadingUtils.h"    // for RefCountedObject
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"                 // for StringSection
@@ -37,7 +37,7 @@ namespace BufferUploads
         virtual size_t          GetDataSize     (SubResourceId subRes = {}) const = 0;
         virtual TexturePitches  GetPitches      (SubResourceId subRes = {}) const = 0;
 
-        class Marker : public ::Assets::PendingOperationMarker
+        class Marker : public ::Assets::GenericFuture
         {
         public:
             BufferDesc  _desc;

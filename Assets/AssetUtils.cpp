@@ -6,6 +6,7 @@
 
 #include "AssetUtils.h"
 #include "CompilerLibrary.h"
+#include "AssetFuture.h"
 #include "DepVal.h"
 #include "IFileSystem.h"
 #if defined(HAS_XLE_CONSOLE_RIG)
@@ -491,15 +492,15 @@ namespace Assets
     }
 
 
-    PendingOperationMarker::PendingOperationMarker(AssetState state) 
+    GenericFuture::GenericFuture(AssetState state) 
     : _state(state)
     {
         DEBUG_ONLY(_initializer[0] = '\0');
     }
 
-    PendingOperationMarker::~PendingOperationMarker() {}
+    GenericFuture::~GenericFuture() {}
 
-    const char* PendingOperationMarker::Initializer() const
+    const char* GenericFuture::Initializer() const
     {
         #if defined(_DEBUG)
             return _initializer;
@@ -508,17 +509,17 @@ namespace Assets
         #endif
     }
 
-    void PendingOperationMarker::SetInitializer(const char initializer[])
+    void GenericFuture::SetInitializer(const char initializer[])
     {
         DEBUG_ONLY(XlCopyString(_initializer, initializer));
     }
 
-    void PendingOperationMarker::SetState(AssetState newState)
+    void GenericFuture::SetState(AssetState newState)
     {
         _state = newState;
     }
 
-    AssetState PendingOperationMarker::StallWhilePending() const
+    AssetState GenericFuture::StallWhilePending() const
     {
             // Stall until the _state variable changes
             // in another thread.

@@ -35,7 +35,7 @@ namespace RenderCore { namespace Assets
 	public:
 		void PerformCompile(
 			uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
-			::Assets::PendingCompileMarker& compileMarker,
+			::Assets::CompileFuture& compileMarker,
 			const ::Assets::IntermediateAssets::Store& destinationStore);
 		void AttachLibrary();
 
@@ -163,7 +163,7 @@ namespace RenderCore { namespace Assets
 
     void CompilerLibrary::PerformCompile(
 		uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
-		::Assets::PendingCompileMarker& compileMarker,
+		::Assets::CompileFuture& compileMarker,
 		const ::Assets::IntermediateAssets::Store& destinationStore)
     {
         TRY
@@ -318,7 +318,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
+        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
@@ -365,7 +365,7 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    std::shared_ptr<::Assets::PendingCompileMarker> ModelCompiler::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::CompileFuture> ModelCompiler::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;

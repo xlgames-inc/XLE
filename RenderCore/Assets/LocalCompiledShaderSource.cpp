@@ -43,7 +43,7 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    class ShaderCompileMarker : public ::Assets::PendingCompileMarker
+    class ShaderCompileMarker : public ::Assets::CompileFuture
         #if defined(TEMP_HACK)
             , public ::Assets::AsyncLoadOperation
         #endif
@@ -261,7 +261,7 @@ namespace RenderCore { namespace Assets
 
     ::Assets::AssetState ShaderCompileMarker::StallWhilePending() const
     {
-        return ::Assets::PendingOperationMarker::StallWhilePending();
+        return ::Assets::GenericFuture::StallWhilePending();
     }
 
         ////////////////////////////////////////////////////////////
@@ -475,7 +475,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
+        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
@@ -548,12 +548,12 @@ namespace RenderCore { namespace Assets
 		return result;
 	}
 
-    std::shared_ptr<::Assets::PendingCompileMarker> LocalCompiledShaderSource::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::CompileFuture> LocalCompiledShaderSource::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c || CancelAllShaderCompiles) return nullptr;
 
-        auto marker = std::make_shared<::Assets::PendingCompileMarker>();
+        auto marker = std::make_shared<::Assets::CompileFuture>();
 
         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
                 //  When we have archive attachments enabled, we can write
@@ -628,7 +628,7 @@ namespace RenderCore { namespace Assets
 				auto artifact = std::make_shared<::Assets::BlobArtifact>(payload, errors, depVal);
 				marker->AddArtifact("main", artifact);
 
-                    // give the PendingCompileMarker object the same state
+                    // give the CompileFuture object the same state
                 marker->SetState(newState);
 
                 c->RemoveCompileOperation(*tempPtr);
@@ -698,7 +698,7 @@ namespace RenderCore { namespace Assets
 
     auto LocalCompiledShaderSource::CompileFromFile(
         StringSection<ResChar> resource, 
-        StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
+        StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
     {
         auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
         auto resId = ShaderService::MakeResId(resource, _compiler.get());
@@ -708,7 +708,7 @@ namespace RenderCore { namespace Assets
             
     auto LocalCompiledShaderSource::CompileFromMemory(
         StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
-        StringSection<char> shaderModel, StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
+        StringSection<char> shaderModel, StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
     {
         auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
         compileHelper->Enqueue(shaderInMemory, entryPoint, shaderModel, definesTable); 

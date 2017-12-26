@@ -13,7 +13,7 @@
 
 namespace Assets
 {
-    class PendingCompileMarker;
+    class CompileFuture;
     class DependencyValidation;
     class ICompileMarker;
 

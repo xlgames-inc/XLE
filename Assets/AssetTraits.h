@@ -4,11 +4,10 @@
 
 #pragma once
 
-#include "AssetsCore.h"
-#include "AssetSetInternal.h"
-#include "AssetUtils.h"
-#include "DeferredConstruction.h"
-#include "ConfigFileContainer.h"
+#include "AssetsCore.h"		// (for ResChar)
+// #include "AssetSetInternal.h"
+// #include "AssetUtils.h"
+// #include "ConfigFileContainer.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
 #include <assert.h>
@@ -33,14 +32,6 @@ namespace Assets
 			class AssetTraits
 		{
 		private:
-			template<typename T> struct HasGetAssetStateHelper
-			{
-				template<typename U, AssetState (U::*)() const> struct FunctionSignature {};
-				template<typename U> static std::true_type Test1(FunctionSignature<U, &U::GetAssetState>*);
-				template<typename U> static std::false_type Test1(...);
-				static const bool Result = decltype(Test1<T>(0))::value;
-			};
-
 			template<typename T> struct HasBeginDeferredConstructionHelper
 			{
 				template<typename U, std::shared_ptr<DeferredConstruction> (*)(const StringSection<ResChar>[], unsigned)> struct FunctionSignature {};
@@ -57,7 +48,6 @@ namespace Assets
 			static const bool Constructor_ChunkFileContainer = std::is_constructible<AssetType, const ChunkFileContainer&>::value;
 
 			static const bool HasBeginDeferredConstruction = HasBeginDeferredConstructionHelper<AssetType>::Result;
-			static const bool HasGetAssetState = HasGetAssetStateHelper<AssetType>::Result;
 		};
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,82 +95,6 @@ namespace Assets
 		static std::unique_ptr<AssetType> AutoConstructAsset(Params... initialisers)
 	{
 		return std::make_unique<AssetType>(std::forward<Params>(initialisers)...);
-	}
-
-	template<typename AssetType, typename... Params, typename std::enable_if<std::is_constructible<AssetType, Params...>::value>::type* = nullptr>
-		std::unique_ptr<AssetType> AutoConstructAssetDefault(Params... initialisers) { return std::make_unique<AssetType>(std::forward<Params>(initialisers)...); }
-
-	template<typename AssetType, typename... Params, typename std::enable_if<!std::is_constructible<AssetType, Params...>::value && std::is_constructible<AssetType>::value>::type* = nullptr>
-		std::unique_ptr<AssetType> AutoConstructAssetDefault(Params... initialisers) { return std::make_unique<AssetType>(); }
-
-	template<typename AssetType, typename... Params, typename std::enable_if<!std::is_constructible<AssetType, Params...>::value && !std::is_constructible<AssetType>::value>::type* = nullptr>
-		std::unique_ptr<AssetType> AutoConstructAssetDefault(Params... initialisers) { return nullptr; }
-
-	template<
-        typename AssetType, typename... Params, 
-        typename std::enable_if<Internal::AssetTraits<AssetType>::Constructor_DeferredConstruction && Internal::AssetTraits<AssetType>::HasBeginDeferredConstruction>::type* = nullptr>
-        typename std::unique_ptr<AssetType> AutoConstructAssetDeferred(Params... initialisers)
-    {
-		auto hash = Internal::BuildHash(initialisers...);
-		std::shared_ptr<DeferredConstruction> deferredConstruction;
-		{
-			auto assetSet = Internal::GetAssetSet<AssetType>();
-			auto i = LowerBound(assetSet->_deferredConstructions, hash);
-			if (i == assetSet->_deferredConstructions.end() || i->first != hash) {
-				StringSection<ResChar> inits[] = { initialisers... };
-				deferredConstruction = AssetType::BeginDeferredConstruction(inits, dimof(inits));
-				i = assetSet->_deferredConstructions.insert(i, std::make_pair(hash, deferredConstruction));
-			} else {
-				deferredConstruction = i->second;
-			}
-		}
-
-		if (!deferredConstruction) {
-			return AutoConstructAssetDefault<AssetType>(std::forward<Params>(initialisers)...);
-		}
-
-		return std::make_unique<AssetType>(deferredConstruction);
-    }
-
-	template<
-        typename AssetType, typename... Params, 
-        typename std::enable_if<!Internal::AssetTraits<AssetType>::Constructor_DeferredConstruction && Internal::AssetTraits<AssetType>::HasBeginDeferredConstruction>::type* = nullptr>
-        typename std::unique_ptr<AssetType> AutoConstructAssetDeferred(Params... initialisers)
-    {
-		auto hash = Internal::BuildHash(initialisers...);
-		std::shared_ptr<DeferredConstruction> deferredConstruction;
-		{
-			auto assetSet = Internal::GetAssetSet<AssetType>();
-			auto i = LowerBound(assetSet->_deferredConstructions, hash);
-			if (i == assetSet->_deferredConstructions.end() || i->first != hash) {
-				StringSection<ResChar> inits[] = { initialisers... };
-				deferredConstruction = AssetType::BeginDeferredConstruction(inits, dimof(inits));
-				i = assetSet->_deferredConstructions.insert(i, std::make_pair(hash, deferredConstruction));
-			} else {
-				deferredConstruction = i->second;
-			}
-		}
-
-		if (!deferredConstruction) {
-			return AutoConstructAssetDefault<AssetType>(std::forward<Params>(initialisers)...);
-		}
-
-		auto state = deferredConstruction->GetAssetState();
-		const auto initializer = std::get<0>(std::tuple<Params...>(initialisers...));
-		if (state == AssetState::Pending)
-			Throw(Exceptions::PendingAsset(initializer, "Pending deferred construction"));
-		if (state == AssetState::Invalid)
-			Throw(Exceptions::PendingAsset(initializer, "Invalid during deferred construction"));
-		assert(state == AssetState::Ready);
-		return deferredConstruction->PerformConstructor<AssetType>();
-    }
-
-	template<
-		typename AssetType, typename... Params, 
-		typename std::enable_if<!Internal::AssetTraits<AssetType>::HasBeginDeferredConstruction>::type* = nullptr>
-		typename std::unique_ptr<AssetType> AutoConstructAssetDeferred(Params... initialisers)
-	{
-		return AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
 	}
 
 }

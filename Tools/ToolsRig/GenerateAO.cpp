@@ -809,7 +809,7 @@ namespace ToolsRig
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
+        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
@@ -836,7 +836,7 @@ namespace ToolsRig
         return result;
     }
 
-    std::shared_ptr<::Assets::PendingCompileMarker> AOSupplementCompiler::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::CompileFuture> AOSupplementCompiler::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;

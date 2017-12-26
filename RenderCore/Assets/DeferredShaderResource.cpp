@@ -35,7 +35,7 @@ namespace RenderCore { namespace Assets
 
     enum class SourceColorSpace { SRGB, Linear, Unspecified };
 
-    class MetadataLoadMarker : public ::Assets::PendingOperationMarker, public ::Assets::AsyncLoadOperation
+    class MetadataLoadMarker : public ::Assets::GenericFuture, public ::Assets::AsyncLoadOperation
     {
     public:
         SourceColorSpace _colorSpace;

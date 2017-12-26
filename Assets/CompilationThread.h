@@ -15,7 +15,7 @@
 
 namespace Assets 
 {
-    class QueuedCompileOperation : public ::Assets::PendingCompileMarker
+    class QueuedCompileOperation : public ::Assets::CompileFuture
     {
     public:
         uint64 _typeCode;

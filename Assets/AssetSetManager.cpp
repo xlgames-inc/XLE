@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "AssetSetManager.h"
+#include "AssetHeap.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/IteratorUtils.h"
@@ -14,35 +15,13 @@
 
 namespace Assets
 {
-
-    IAssetSet::~IAssetSet() {}
-
-    class AssetSetManager::Pimpl
-    {
-    public:
-        std::vector<std::pair<size_t, std::unique_ptr<IAssetSet>>> _sets;
-        Threading::ThreadId _boundThreadId;
-        Threading::Mutex _lock;
-    };
-
-    IAssetSet* AssetSetManager::GetSetForTypeCode(size_t typeCode)
-    {
-        auto i = LowerBound(_pimpl->_sets, typeCode);
-        if (i != _pimpl->_sets.end() && i->first == typeCode)
-            return i->second.get();
-        return nullptr;
-    }
-
-    void AssetSetManager::Add(size_t typeCode, std::unique_ptr<IAssetSet>&& set)
-    {
-        auto i = LowerBound(_pimpl->_sets, typeCode);
-        assert(i == _pimpl->_sets.end() || i->first != typeCode);
-        _pimpl->_sets.insert(
-            i,
-            std::make_pair(
-                typeCode,
-                std::forward<std::unique_ptr<IAssetSet>>(set)));
-    }
+	class AssetSetManager::Pimpl
+	{
+	public:
+		std::vector<std::pair<size_t, std::unique_ptr<IDefaultAssetHeap>>> _sets;
+		Threading::ThreadId _boundThreadId;
+		Threading::Mutex _lock;
+	};
 
     void AssetSetManager::Clear()
     {
@@ -68,7 +47,7 @@ namespace Assets
         return unsigned(_pimpl->_sets.size());
     }
 
-    const IAssetSet* AssetSetManager::GetAssetSet(unsigned index)
+    const IDefaultAssetHeap* AssetSetManager::GetAssetSet(unsigned index)
     {
         return _pimpl->_sets[index].second.get();
     }
@@ -92,5 +71,9 @@ namespace Assets
 
     AssetSetManager::~AssetSetManager()
     {}
+
+
+
+	IDefaultAssetHeap::~IDefaultAssetHeap() {}
 
 }

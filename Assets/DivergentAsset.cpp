@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DivergentAsset.h"
+
 #include "CompileAndAsyncManager.h"
 #include "IntermediateAssets.h"
 #include "AssetServices.h"

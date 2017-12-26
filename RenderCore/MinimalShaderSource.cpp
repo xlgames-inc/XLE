@@ -24,7 +24,7 @@ namespace RenderCore
 	}
 
 #if 0
-	class MinimalShaderSource::PendingMarker : public ::Assets::PendingCompileMarker
+	class MinimalShaderSource::PendingMarker : public ::Assets::CompileFuture
 	{
 	public:
 		using Payload = std::shared_ptr<std::vector<uint8>>;
@@ -95,7 +95,7 @@ namespace RenderCore
     auto MinimalShaderSource::Compile(
         const void* shaderInMemory, size_t size,
         const ShaderService::ResId& resId,
-		StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
+		StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
     {
         using Payload = std::shared_ptr<std::vector<uint8>>;
         Payload payload, errors;
@@ -105,7 +105,7 @@ namespace RenderCore
             payload, errors, deps,
             shaderInMemory, size, resId, definesTable);
 
-		auto result = std::make_shared<::Assets::PendingCompileMarker>();
+		auto result = std::make_shared<::Assets::CompileFuture>();
         auto depVal = AsDepValPtr(MakeIteratorRange(deps));
 		result->AddArtifact("main", std::make_shared<Assets::BlobArtifact>(errors, payload, std::move(depVal)));
 		result->SetState(success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid);
@@ -115,7 +115,7 @@ namespace RenderCore
     auto MinimalShaderSource::CompileFromFile(
 		StringSection<::Assets::ResChar> resource, 
 		StringSection<::Assets::ResChar> definesTable) const
-        -> std::shared_ptr<::Assets::PendingCompileMarker>
+        -> std::shared_ptr<::Assets::CompileFuture>
     {
         auto resId = ShaderService::MakeResId(resource, _compiler.get());
 
@@ -127,7 +127,7 @@ namespace RenderCore
     auto MinimalShaderSource::CompileFromMemory(
 		StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 		StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const
-        -> std::shared_ptr<::Assets::PendingCompileMarker>
+        -> std::shared_ptr<::Assets::CompileFuture>
     {
         return Compile(
             shaderInMemory.begin(), shaderInMemory.size(),

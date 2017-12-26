@@ -11,7 +11,7 @@
 #include "../../Core/Types.h"
 #include <memory>
 
-namespace Assets { class DependencyValidation; class PendingCompileMarker; }
+namespace Assets { class DependencyValidation; class CompileFuture; }
 
 namespace RenderCore { namespace Assets
 {

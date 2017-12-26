@@ -246,7 +246,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
+        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         MatCompilerMarker(
@@ -277,7 +277,7 @@ namespace RenderCore { namespace Assets
         return std::make_shared<::Assets::FileArtifact(MakeStringSection(intermediateName), depVal));
     }
 
-    std::shared_ptr<::Assets::PendingCompileMarker> MatCompilerMarker::InvokeCompile() const
+    std::shared_ptr<::Assets::CompileFuture> MatCompilerMarker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;

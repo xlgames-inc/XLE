@@ -57,7 +57,7 @@ namespace RenderCore { namespace Assets
     {
         static std::shared_ptr<ModelScaffold> CreateModelScaffold(StringSection<::Assets::ResChar> filename)
         {
-            return ::Assets::AutoConstructAssetDeferred<ModelScaffold>(filename);
+            return ::Assets::AutoConstructAsset<ModelScaffold>(filename);
         }
 
         static std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(
@@ -75,7 +75,7 @@ namespace RenderCore { namespace Assets
                 model = temp;
             }
 
-            return ::Assets::AutoConstructAssetDeferred<MaterialScaffold>(material, model);
+            return ::Assets::AutoConstructAsset<MaterialScaffold>(material, model);
         }
     }
 
@@ -118,7 +118,7 @@ namespace RenderCore { namespace Assets
             StringSection<::Assets::ResChar> modelFilename,
             StringSection<::Assets::ResChar> materialFilename)
         {
-            return ::Assets::AutoConstructAssetDeferred<ModelSupplementScaffold>(
+            return ::Assets::AutoConstructAsset<ModelSupplementScaffold>(
 				MakeStringSection((const ::Assets::ResChar*)&compilerHash, (const ::Assets::ResChar*)PtrAdd(&compilerHash, sizeof(compilerHash))),
 				modelFilename, materialFilename);
         }
