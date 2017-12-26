@@ -70,7 +70,15 @@ namespace Assets
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// <summary>Records the status of asynchronous operation, very much like a std::promise<AssetState></summary>
-    class PendingOperationMarker : public std::enable_shared_from_this<PendingOperationMarker>
+	class IAsyncMarker
+	{
+	public:
+		virtual AssetState		GetAssetState() const = 0;
+		virtual AssetState		StallWhilePending() const =0;
+		virtual ~IAsyncMarker();
+	};
+
+    class PendingOperationMarker : public IAsyncMarker, public std::enable_shared_from_this<PendingOperationMarker>
     {
     public:
         AssetState		GetAssetState() const { return _state; }

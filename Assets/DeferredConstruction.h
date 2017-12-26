@@ -64,24 +64,13 @@ namespace Assets
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
-	namespace Internal 
-	{
-		template<	typename AssetType, 
-					typename... Args,
-					typename std::enable_if<std::is_constructible<AssetType, const IArtifact&, Args...>::value>::type* = nullptr>
-			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IArtifact& locator, Args... args)
-			{
-				return std::make_unique<AssetType>(locator, std::forward<Args>(args)...);
-			}
-
-		template<typename AssetType, typename std::enable_if<!Internal::AssetTraits<AssetType>::Constructor_IntermediateAssetLocator>::type* = nullptr>
-			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IArtifact& locator, StringSection<ResChar> initializer)
-			{
-				/*return AutoConstructAsset<AssetType>(locator._sourceID0);*/
-                assert(false);
-                return nullptr;
-			}
-	}
+	template<	typename AssetType, 
+				typename... Args,
+				typename std::enable_if<std::is_constructible<AssetType, const IArtifact&, Args...>::value>::type* = nullptr>
+		std::unique_ptr<AssetType> AutoConstructAsset(const IArtifact& locator, Args... args)
+		{
+			return std::make_unique<AssetType>(locator, std::forward<Args>(args)...);
+		}
 
 	template<typename AssetType>
 		static std::shared_ptr<DeferredConstruction> DefaultBeginDeferredConstruction(
@@ -103,7 +92,7 @@ namespace Assets
 			std::unique_ptr<AssetType> asset = nullptr;
 			// Attempt recompile if we catch InvalidAsset or a FormatError with UnsupportedVersion or an IOException with FileNotFound
 			TRY {
-				asset = Internal::ConstructFromIntermediateAssetLocator<AssetType>(existingLoc, MakeStringSection(init0));
+				asset = AutoConstructAsset<AssetType>(*existingLoc, MakeStringSection(init0));
 			} CATCH (const Exceptions::InvalidAsset&) {
 			} CATCH (const Exceptions::FormatError& e) {
 				if (e.GetReason() != ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
@@ -134,7 +123,7 @@ namespace Assets
 				if (state == AssetState::Invalid)
 					Throw(Exceptions::InvalidAsset(init0.c_str(), "Failure during compilation operation"));
 				assert(state == AssetState::Ready);
-				return Internal::ConstructFromIntermediateAssetLocator<AssetType>(*pendingCompile->GetArtifacts()[0].second, MakeStringSection(init0));
+				return AutoConstructAsset<AssetType>(*pendingCompile->GetArtifacts()[0].second, MakeStringSection(init0));
 			});
         assert(0);      // todo - need to set the dependncy validation to something reasonable -- 
 		return std::make_shared<DeferredConstruction>(pendingCompile, nullptr, std::move(constructorCallback));

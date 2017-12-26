@@ -24,6 +24,45 @@
 
 namespace Assets { class ICompileMarker; }
 
+namespace Assets 
+{
+    namespace Internal
+    {
+        template <typename Object>
+			inline void StreamCommaSeparated(std::basic_stringstream<ResChar>& result, const Object& obj)
+		{
+			result << ", " << obj;
+		}
+
+		template <typename P0, typename... Params>
+			std::basic_string<ResChar> AsString(P0 p0, Params... initialisers)
+		{
+			std::basic_stringstream<ResChar> result;
+            result << p0;
+			int dummy[] = { 0, (StreamCommaSeparated(result, initialisers), 0)... };
+			(void)dummy;
+			return result.str();
+		}
+
+		template <typename... Params>
+			uint64 BuildHash(Params... initialisers)
+        { 
+                //  Note Hash64 is a relatively expensive hash function
+                //      ... we might get away with using a simpler/quicker hash function
+                //  Note that if we move over to variadic template initialisers, it
+                //  might not be as easy to build the hash value (because they would
+                //  allow some initialisers to be different types -- not just strings).
+                //  If we want to support any type as initialisers, we need to either
+                //  define some rules for hashing arbitrary objects, or think of a better way
+                //  to build the hash.
+            uint64 result = DefaultSeed64;
+			int dummy[] = { 0, (result = Hash64(initialisers, result), 0)... };
+			(void)dummy;
+            return result;
+        }
+    }
+}
+
 namespace Assets { namespace Internal
 {
 

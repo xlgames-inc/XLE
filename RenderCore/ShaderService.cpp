@@ -111,7 +111,7 @@ namespace RenderCore
 
 			std::unique_ptr<CompiledShaderByteCode> asset = nullptr;
 			TRY {
-				asset = ::Assets::Internal::ConstructFromIntermediateAssetLocator<CompiledShaderByteCode>(*existingAsset, stage, initializer);
+				asset = ::Assets::AutoConstructAsset<CompiledShaderByteCode>(*existingAsset, stage, initializer);
 			} CATCH (const ::Assets::Exceptions::InvalidAsset&) {
 			} CATCH (const ::Assets::Exceptions::FormatError& e) {
 				if (e.GetReason() != ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
@@ -144,7 +144,7 @@ namespace RenderCore
 				assert(state == ::Assets::AssetState::Ready);
                 auto artifacts = pendingCompile->GetArtifacts();
                 assert(artifacts.size() == 1);
-				return ::Assets::Internal::ConstructFromIntermediateAssetLocator<CompiledShaderByteCode>(
+				return ::Assets::AutoConstructAsset<CompiledShaderByteCode>(
 					*artifacts[0].second, stage, MakeStringSection(init0));
 			});
         #if defined(TEMP_HACK)

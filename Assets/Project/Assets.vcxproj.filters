@@ -27,6 +27,7 @@
     <ClInclude Include="..\DeferredConstruction.h" />
     <ClInclude Include="..\ChunkFileContainer.h" />
     <ClInclude Include="..\CompilationThread.h" />
+    <ClInclude Include="..\AssetHeap.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />
