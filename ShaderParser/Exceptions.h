@@ -24,7 +24,7 @@ namespace ShaderSourceParser
         {
         public:
             IteratorRange<const Error*> GetErrors() const { return MakeIteratorRange(_errors); }
-            const char* what() const;
+            const char* what() const noexcept;
 
             ParsingFailure(IteratorRange<Error*> errors) never_throws;
             ~ParsingFailure();

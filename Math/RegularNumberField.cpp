@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RegularNumberField.h"
+#include <cmath>
 
 #pragma warning(disable:4714)
 #pragma push_macro("new")
@@ -745,7 +746,7 @@ namespace XLEMath
     {
         assert(coord[0] < _dims[0] && coord[1] < _dims[1]);
         (*_u)[coord[1] * _dims[0] + coord[0]] = value;
-        assert(isfinite(value) && !isnan(value));
+        assert(std::isfinite(value) && !std::isnan(value));
     }
 
     template<typename Store>
@@ -780,8 +781,8 @@ namespace XLEMath
         assert(coord[0] < _dims[0] && coord[1] < _dims[1]);
         (*_u)[coord[1] * _dims[0] + coord[0]] = value[0];
         (*_v)[coord[1] * _dims[0] + coord[0]] = value[1];
-        assert(isfinite(value[0]) && !isnan(value[0]));
-        assert(isfinite(value[1]) && !isnan(value[1]));
+        assert(std::isfinite(value[0]) && !std::isnan(value[0]));
+        assert(std::isfinite(value[1]) && !std::isnan(value[1]));
     }
 
     template<typename Store>
@@ -813,7 +814,7 @@ namespace XLEMath
     {
         assert(coord[0] < _dims[0] && coord[1] < _dims[1]);
         (*_u)[(coord[2] * _dims[1] + coord[1]) * _dims[0] + coord[0]] = value;
-        assert(isfinite(value) && !isnan(value));
+        assert(std::isfinite(value) && !std::isnan(value));
     }
 
     template<typename Store>
@@ -850,8 +851,8 @@ namespace XLEMath
         (*_u)[(coord[2] * _dims[1] + coord[1]) * _dims[0] + coord[0]] = value[0];
         (*_v)[(coord[2] * _dims[1] + coord[1]) * _dims[0] + coord[0]] = value[1];
         (*_w)[(coord[2] * _dims[1] + coord[1]) * _dims[0] + coord[0]] = value[2];
-        assert(isfinite(value[0]) && !isnan(value[0]));
-        assert(isfinite(value[1]) && !isnan(value[1]));
+        assert(std::isfinite(value[0]) && !std::isnan(value[0]));
+        assert(std::isfinite(value[1]) && !std::isnan(value[1]));
     }
 
     template<typename Store>

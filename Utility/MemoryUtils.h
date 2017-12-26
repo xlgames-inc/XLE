@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <memory>
+#include <cstring>
 
 namespace Utility
 {
