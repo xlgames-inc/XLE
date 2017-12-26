@@ -10,6 +10,7 @@
 #include "../Core/Exceptions.h"
 #include "../Utility/Mixins.h"
 #include <vector>
+#include <string>
 
 namespace ShaderSourceParser
 {

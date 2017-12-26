@@ -8,6 +8,8 @@
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/ConfigFileContainer.h"
+#include "../Assets/DepVal.h"
+#include "../Assets/Assets.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Conversion.h"
 #include <regex>
@@ -56,12 +58,12 @@ namespace ShaderPatcher
 		return Conversion::Convert<std::string>(::Assets::GetAssetDep<TemplateItem>(str.AsStringSection())._item);
     }
 
-	struct VaryingParamsFlags 
+	struct VaryingParamsFlags
     {
         enum Enum { WritesVSOutput = 1<<0 };
         using BitField = unsigned;
     };
-    
+
     class ParameterMachine
     {
     public:
@@ -81,14 +83,14 @@ namespace ShaderPatcher
     {
         std::string searchName = "BuildInterpolator_" + param._semantic;
         auto i = std::find_if(
-            _systemHeader._functions.cbegin(), 
+            _systemHeader._functions.cbegin(),
             _systemHeader._functions.cend(),
             [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
 
         if (i == _systemHeader._functions.cend()) {
             searchName = "BuildInterpolator_" + param._name;
             i = std::find_if(
-                _systemHeader._functions.cbegin(), 
+                _systemHeader._functions.cbegin(),
                 _systemHeader._functions.cend(),
                 [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
         }
@@ -96,7 +98,7 @@ namespace ShaderPatcher
         if (i == _systemHeader._functions.cend()) {
             searchName = "BuildInterpolator_" + param._type;
             i = std::find_if(
-                _systemHeader._functions.cbegin(), 
+                _systemHeader._functions.cbegin(),
                 _systemHeader._functions.cend(),
                 [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
         }
@@ -215,7 +217,7 @@ namespace ShaderPatcher
 
 					// Look for a "restriction" applied to this variable.
 				auto r = std::find_if(
-					_previewOptions->_variableRestrictions.cbegin(), _previewOptions->_variableRestrictions.cend(), 
+					_previewOptions->_variableRestrictions.cbegin(), _previewOptions->_variableRestrictions.cend(),
 					[&p](const std::pair<std::string, std::string>& v) { return XlEqStringI(v.first, p._name); });
 				if (r != _previewOptions->_variableRestrictions.cend()) {
                      if (XlBeginsWith(MakeStringSection(r->second), MakeStringSection("Function:"))) {
@@ -285,7 +287,7 @@ namespace ShaderPatcher
     ParameterGenerator::~ParameterGenerator() {}
 
     std::string         GenerateStructureForPreview(
-        const StringSection<char> graphName, const FunctionInterface& interf, 
+        const StringSection<char> graphName, const FunctionInterface& interf,
 		const ::Assets::DirectorySearchRules& searchRules,
         const PreviewOptions& previewOptions)
     {
@@ -300,7 +302,7 @@ namespace ShaderPatcher
             //
             //      We must then look at the inputs, and try to determine which
             //      inputs (if any) should vary over the surface of the preview.
-            //  
+            //
             //      For example, if our preview is a basic 2d or 1d preview, then
             //      the x and y axes will represent some kind of varying parameter.
             //      But for a 3d preview window, there are no varying parameters
@@ -325,7 +327,7 @@ namespace ShaderPatcher
             result << "#define SHADER_NODE_EDITOR_CHART 1" << std::endl;
         result << "#include \"xleres/System/BuildInterpolators.h\"" << std::endl;
 
-            //  
+            //
             //      First write the "varying" parameters
             //      The varying parameters are always written in the vertex shader and
             //      read by the pixel shader. They will "vary" over the geometry that
@@ -367,7 +369,7 @@ namespace ShaderPatcher
             //      later.
             //
         std::stringstream varyingInitialization;
-        
+
         for (unsigned index=0; index<mainParams.Count(); ++index) {
             auto initString = mainParams.VSInitExpression(index);
             if (initString.empty()) continue;
@@ -389,7 +391,7 @@ namespace ShaderPatcher
                 parametersToMainFunctionCall += ", ";
             parametersToMainFunctionCall += mainParams.PSExpression(index, "input.geo", "input.varyingParameters");
         }
-            
+
             //  Also pass each output as a parameter to the main function
         for (const auto& i:interf.GetFunctionParameters()) {
 			if (i._direction == FunctionInterface::Parameter::Out) {
@@ -465,7 +467,7 @@ namespace ShaderPatcher
         }
 
         // Render the vs_main template
-        result << preprocessor.render(GetPreviewTemplate("vs_main"), 
+        result << preprocessor.render(GetPreviewTemplate("vs_main"),
             PlustacheTypes::ObjectType
             {
                 {"InitGeo", ToPlustache(mainParams.VSOutputMember().empty())},
@@ -499,7 +501,7 @@ namespace ShaderPatcher
 			MaybeComma(forwardMainParameters);
 			forwardMainParameters << p._name;
 		}
-		
+
 		Plustache::Context context;
 		context.add("MainFunctionParameterSignature", mainFunctionParameterSignature.str());
 		context.add("ForwardMainParameters", forwardMainParameters.str());
@@ -515,4 +517,3 @@ namespace ShaderPatcher
 		return result.str();
 	}
 }
-

@@ -66,7 +66,7 @@ namespace ShaderSourceParser { namespace AntlrHelper
         using CharType = decltype(error._message)::value_type;
         ANTLR3_COMMON_TOKEN* token = (ANTLR3_COMMON_TOKEN*)exc->token;
         std::string text;
-		if (token) 
+		if (token)
 			text = AsString<CharType>(token->getText(token));
 
         error._lineStart = error._lineEnd = exc->line;
@@ -118,7 +118,7 @@ namespace ShaderSourceParser { namespace AntlrHelper
 		g_ShaderParserExceptionHandlerUserData = &_exceptions;
         g_ShaderParserExceptionHandler = (ExceptionHandler*)&ExceptionSet::HandleException;
 	}
-	
+
 	ExceptionContext::~ExceptionContext()
 	{
 		g_ShaderParserExceptionHandler = _previousExceptionHandler;
@@ -137,7 +137,7 @@ namespace ShaderSourceParser
         {}
         ParsingFailure::~ParsingFailure() {}
 
-        const char* ParsingFailure::what() const
+        const char* ParsingFailure::what() const never_throws
         {
             return "Parsing failure";
         }
