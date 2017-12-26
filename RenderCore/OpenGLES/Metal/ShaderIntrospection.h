@@ -30,7 +30,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         SetUniformCommandGroup MakeBinding(HashType uniformStructName, IteratorRange<const MiniInputElementDesc*> inputElements);
 
-        ShaderIntrospection(ShaderProgram& shader);
+        ShaderIntrospection(const ShaderProgram& shader);
         ~ShaderIntrospection();
     private:
         class Struct
@@ -43,6 +43,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                 int         _location;
                 GLenum      _type;
                 int         _count;
+
+                DEBUG_ONLY(std::string _name;)
             };
 
             std::vector<Uniform> _uniforms;

@@ -87,25 +87,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         friend class BoundUniforms;
     };
 
-#if 0
-    class ConstantBufferLayout
-    {
-    public:
-        using HashType = ParameterBox::ParameterNameHash;
-        class Element
-        {
-        public:
-            HashType        _nameHash;
-            Format          _format;
-            unsigned        _offset;
-            unsigned        _arrayCount;
-        };
-
-        std::vector<Element> _elements;
-        size_t _size;
-    };
-#endif
-
     class BoundUniforms
     {
     public:
@@ -117,29 +98,12 @@ namespace RenderCore { namespace Metal_OpenGLES
             DeviceContext& context,
             const UniformsStream& stream0, const UniformsStream& stream1 = {}) const;
 
-        BoundUniforms(ShaderProgram& shader);
+        BoundUniforms(const ShaderProgram& shader);
         ~BoundUniforms();
     private:
         ShaderIntrospection _introspection;
         std::vector<SetUniformCommandGroup> _streamCBs[2];
     };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /*
-    inline InputElementDesc::InputElementDesc() {}
-    inline InputElementDesc::InputElementDesc(  const std::string& name, unsigned semanticIndex, 
-                                                NativeFormat::Enum nativeFormat, unsigned inputSlot, 
-                                                unsigned alignedByteOffset, 
-                                                InputClassification::Enum inputSlotClass,
-                                                unsigned instanceDataStepRate)
-    {
-        _semanticName = name; _semanticIndex = semanticIndex;
-        _nativeFormat = nativeFormat; _inputSlot = inputSlot;
-        _alignedByteOffset = alignedByteOffset; _inputSlotClass = inputSlotClass;
-        _instanceDataStepRate = instanceDataStepRate;
-    }
-    */
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

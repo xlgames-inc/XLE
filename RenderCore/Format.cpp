@@ -533,6 +533,9 @@ namespace RenderCore
 		case Format::R16_FLOAT: return TypeDesc(TypeCat::UInt16, 1);
 		case Format::R16G16_FLOAT: return TypeDesc(TypeCat::UInt16, 2);
 		case Format::R16G16B16A16_FLOAT: return TypeDesc(TypeCat::UInt16, 4);
+
+        case Format::Matrix4x4: return TypeDesc(TypeCat::Float, 16, TypeHint::Matrix);
+        case Format::Matrix3x4: return TypeDesc(TypeCat::Float, 12, TypeHint::Matrix);
 		}
 		return TypeCat::Void;
 	}

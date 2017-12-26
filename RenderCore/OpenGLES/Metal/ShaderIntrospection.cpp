@@ -30,6 +30,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     auto offset = RenderCore::CalculateVertexStride({inputElements.begin(), b}, false);
                     result._commands.push_back({i._location, i._type, (unsigned)i._count, offset });
                 } else {
+                    assert(0);
                     /*#if DEBUG
                         if (limitFrequency(ObjCHashCombine((size_t)i._bindingName, (size_t)"UniformTypeMsg"), 1)) {
                             NSLog(@"[limited] warning -- binding shader struct to predefined layout failed because of type mismatch");
@@ -42,7 +43,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         return result;
     }
 
-    ShaderIntrospection::ShaderIntrospection(ShaderProgram& program)
+    ShaderIntrospection::ShaderIntrospection(const ShaderProgram& program)
     {
         // Iterate through the shader interface and pull out the information that's interesting
         // to us.
@@ -86,6 +87,10 @@ namespace RenderCore { namespace Metal_OpenGLES
                     Struct::Uniform {
                         Hash64(MakeStringSection(firstDot+1, fullName.end())),
                         location, type, size
+
+                        #if defined(_DEBUG)
+                            , fullName.AsString()
+                        #endif
                     });
             } else {
                 // for global uniform, add into dummy struct at "0"
@@ -97,6 +102,10 @@ namespace RenderCore { namespace Metal_OpenGLES
                     Struct::Uniform {
                         Hash64(MakeStringSection(firstDot+1, fullName.end())),
                         location, type, size
+
+                        #if defined(_DEBUG)
+                            , fullName.AsString()
+                        #endif
                     });
             }
         }

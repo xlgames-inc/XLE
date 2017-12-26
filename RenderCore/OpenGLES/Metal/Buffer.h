@@ -33,6 +33,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         const UnderlyingType &      GetUnderlying() const { return GetBuffer(); }
         bool                        IsGood() const { return _underlyingBuffer.get() != nullptr; }
 
+        std::vector<uint8_t> Readback();
+
         Buffer();
         Buffer( ObjectFactory& factory, const ResourceDesc& desc,
                 const void* initData = nullptr, size_t initDataSize = 0);

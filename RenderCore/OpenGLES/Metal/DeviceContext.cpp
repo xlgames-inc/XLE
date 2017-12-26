@@ -26,10 +26,12 @@ namespace RenderCore { namespace Metal_OpenGLES
 {
     void DeviceContext::Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset)
     {
-            // (it seems that index formats are always 16 bit for OpenGLES?)
-        assert(indexFormat == Format::R16_UINT);
         assert(offset == 0);    // (not supported currently... But we could safe it up for the draw call)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib.GetUnderlying()->AsRawGLHandle());
+
+        // Note that Format::R32_UINT is only supported on OGLES3.0+
+        assert(indexFormat == Format::R32_UINT || indexFormat == Format::R16_UINT || indexFormat == Format::R8_UINT);
+        _indicesFormat = indexFormat;
     }
 
     void DeviceContext::Bind(const BoundInputLayout& inputLayout)
@@ -123,11 +125,26 @@ namespace RenderCore { namespace Metal_OpenGLES
         glDrawArrays(GLenum(_nativeTopology), startVertexLocation, vertexCount);
     }
 
+    static GLenum AsGLIndexBufferType(Format idxFormat)
+    {
+        GLenum glFormat = GL_UNSIGNED_SHORT;
+        switch (idxFormat) {
+        case Format::R8_UINT: glFormat = GL_UNSIGNED_BYTE; break;
+        case Format::R16_UINT: glFormat = GL_UNSIGNED_SHORT; break;
+        case Format::R32_UINT: glFormat = GL_UNSIGNED_INT; break;
+        default: assert(0);
+        }
+        return glFormat;
+    }
+
     void DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
         _savedInputLayout.Apply(0, _savedVertexBufferStride);
-        glDrawArrays(GLenum(_nativeTopology), startIndexLocation, indexCount);
+        glDrawElements(
+            GLenum(_nativeTopology), GLsizei(indexCount),
+            AsGLIndexBufferType(_indicesFormat),
+            (const void*)(size_t)(BitsPerPixel(_indicesFormat) * startIndexLocation / 8));
     }
 
 #if 0
@@ -142,7 +159,11 @@ namespace RenderCore { namespace Metal_OpenGLES
     }
 #endif
 
-    DeviceContext::DeviceContext() {}
+    DeviceContext::DeviceContext()
+    {
+        _indicesFormat = Format::R16_UINT;
+        _nativeTopology = GL_TRIANGLES;
+    }
 
     DeviceContext::~DeviceContext()
     {

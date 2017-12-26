@@ -80,6 +80,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         ~DeviceContext();
     private:
         unsigned            _nativeTopology;
+        Format              _indicesFormat;
         // EGL::Display        _display;
         // EGL::Context        _underlyingContext;
         BoundInputLayout    _savedInputLayout;
@@ -101,7 +102,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         static_assert(Count <= 1, "Cannot bind more than one vertex buffer in OpenGLES 2.0");
 
         if (Count == 1) {
-            glBindBuffer(GL_ARRAY_BUFFER, (GLuint)VBs._buffers[0]);
+            glBindBuffer(GL_ARRAY_BUFFER, VBs._buffers[0]->AsRawGLHandle());
             _savedVertexBufferStride = stride;
         }
     }
@@ -112,7 +113,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         for (int c=0; c<Count; ++c) {
             glActiveTexture(GL_TEXTURE0 + c + shaderResources._startingPoint);
-            glBindTexture(GL_TEXTURE_2D, (GLuint)shaderResources._buffers[c]);
+            glBindTexture(GL_TEXTURE_2D, shaderResources._buffers[c]->AsRawGLHandle());
         }
     }
 

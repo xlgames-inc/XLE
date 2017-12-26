@@ -122,8 +122,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
 
             const auto elementStart = CalculateVertexStride(MakeIteratorRange(layout.begin(), i), false);
-            auto fmt = VertexAttributePointerAsFormat(size, type, true);
-            assert(fmt == i->_nativeFormat);
+            // auto fmt = VertexAttributePointerAsFormat(size, type, true);
+            // assert(fmt == i->_nativeFormat);
 
             const auto componentType = GetComponentType(i->_nativeFormat);
             _bindings.push_back({
@@ -199,7 +199,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    BoundUniforms::BoundUniforms(ShaderProgram& shader)
+    BoundUniforms::BoundUniforms(const ShaderProgram& shader)
     : _introspection(shader)
     {}
 

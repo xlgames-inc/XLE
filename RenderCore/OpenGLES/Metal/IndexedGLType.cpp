@@ -96,12 +96,12 @@ namespace RenderCore { namespace Metal_OpenGLES
     
         template<> void Destroy<GlObject_Type::Texture>(RawGLHandle object)
         { 
-            glDeleteTextures(1, &object);
+            (*GetGLWrappers()->DeleteTextures)(1, &object);
         }
     
         template<> void Destroy<GlObject_Type::RenderBuffer>(RawGLHandle object)
         { 
-            glDeleteRenderbuffers(1, &object);
+            (*GetGLWrappers()->DeleteRenderbuffers)(1, &object);
         }
 
         template<> void Destroy<GlObject_Type::FrameBuffer>(RawGLHandle object)
@@ -111,7 +111,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     
         template<> void Destroy<GlObject_Type::Buffer>(RawGLHandle object)
         { 
-            glDeleteBuffers(1, (GLuint*)&object); 
+            (*GetGLWrappers()->DeleteBuffers)(1, (GLuint*)&object);
         }
 
         template<> void Destroy<GlObject_Type::Resource>(RawGLHandle object)

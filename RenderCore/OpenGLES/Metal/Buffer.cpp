@@ -24,14 +24,28 @@ namespace RenderCore { namespace Metal_OpenGLES
             auto glFlags = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
             if (flags & UpdateFlags::UnsynchronizedWrite)
                 glFlags |= GL_MAP_UNSYNCHRONIZED_BIT;
-            void* mappedData = glMapBufferRange(GL_ARRAY_BUFFER, writeOffset, dataSize, glFlags);
+            void* mappedData = glMapBufferRange(bindTarget, writeOffset, dataSize, glFlags);
             std::memcpy(mappedData, data, dataSize);
-            glUnmapBuffer(GL_ARRAY_BUFFER);
+            glUnmapBuffer(bindTarget);
         } else {
-            glBufferSubData(GL_ARRAY_BUFFER, 0, dataSize, data);
+            glBufferSubData(bindTarget, 0, dataSize, data);
         }
+    }
 
-        // glBindBuffer(GL_ARRAY_BUFFER, _underlying->AsRawGLHandle());
+    std::vector<uint8_t> Buffer::Readback()
+    {
+        auto bindTarget = GetDesc()._type != ResourceDesc::Type::Unknown ? AsBufferTarget(GetDesc()._bindFlags) : GL_ARRAY_BUFFER;
+        glBindBuffer(bindTarget, GetBuffer()->AsRawGLHandle());
+
+        GLint bufferSize = 0;
+        glGetBufferParameteriv(bindTarget, GL_BUFFER_SIZE, &bufferSize);
+
+        void* mappedData = glMapBufferRange(bindTarget, 0, bufferSize, GL_MAP_READ_BIT);
+        std::vector<uint8_t> result(bufferSize);
+        std::memcpy(result.data(), mappedData, bufferSize);
+        glUnmapBuffer(bindTarget);
+
+        return result;
     }
 
     Buffer::Buffer( ObjectFactory& factory, const ResourceDesc& desc,
