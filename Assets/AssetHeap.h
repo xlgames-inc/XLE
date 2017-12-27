@@ -81,7 +81,7 @@ namespace Assets
 	{
 		auto stringInitializer = Internal::AsString(initialisers...);	// (used for tracking/debugging purposes)
 		auto future = std::make_shared<AssetFuture<AssetType>>(stringInitializer);
-		AutoConstructToFuture<AssetType>(future, std::forward<Params>(initialisers)...);
+		AutoConstructToFuture<AssetType>(*future, std::forward<Params>(initialisers)...);
 		return future;
 	}
 

@@ -43,24 +43,19 @@ namespace Assets
 	template<
 		typename AssetType, typename... Params, 
 		typename std::enable_if<Internal::HasDirectAutoConstructAsset<AssetType, Params...>::Result>::type* = nullptr>
-		void AutoConstructToFuture(const std::shared_ptr<AssetFuture<AssetType>>& future, Params... initialisers)
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
 	{
 		TRY{
-			auto asset = AutoConstructAsset<AssetType>(initialisers...);
-			future->SetAsset(std::move(asset),{}, asset ? AssetState::Ready : AssetState::Invalid);
+			auto asset = AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
+			future.SetAsset(std::move(asset), {}, asset ? AssetState::Ready : AssetState::Invalid);
 		} CATCH(const std::exception& e) {
-			future->SetAsset(nullptr, AsBlob(e), AssetState::Invalid);
+			future.SetAsset(nullptr, AsBlob(e), AssetState::Invalid);
 		} CATCH_END
-	}
-
-	inline void OnFrameBarrier(const std::function<bool()>& fn) 
-	{
-		assert(0);
 	}
 
 	template<typename AssetType>
 		static void DefaultCompilerConstruction(
-			std::shared_ptr<AssetFuture<AssetType>> future,
+			AssetFuture<AssetType>& future,
 			const StringSection<ResChar> initializers[], unsigned initializerCount,
 			uint64 compileTypeCode = GetCompileProcessType<AssetType>())
 	{
@@ -82,19 +77,15 @@ namespace Assets
 		}
 
 		auto pendingCompile = marker->InvokeCompile();
-		std::weak_ptr<AssetFuture<AssetType>> weakPtrToFuture = future;
 		// We must poll the compile operation every frame, and construct the asset when it is ready. Note that we're
 		// still going to end up constructing the asset in the main thread.
-		OnFrameBarrier(
-			[pendingCompile, weakPtrToFuture]() -> bool {
+		future.SetPollingFunction(
+			[pendingCompile](AssetFuture<AssetType>& thatFuture) -> bool {
 				auto state = pendingCompile->GetAssetState();
 				if (state == AssetState::Pending) return true;
 
-				auto thatFuture = weakPtrToFuture.lock();
-				if (!thatFuture) return false;
-					
 				if (state == AssetState::Invalid) {
-					thatFuture->SetAsset(nullptr, {}, AssetState::Invalid);
+					thatFuture.SetAsset(nullptr, {}, AssetState::Invalid);
 					return false;
 				}
 
@@ -102,8 +93,7 @@ namespace Assets
 				auto& artifact = *pendingCompile->GetArtifacts()[0].second;
 				AutoConstructToFuture(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation());
 				return false;
-			}
-		);
+			});
 	}
 
 	template<
@@ -111,7 +101,7 @@ namespace Assets
 		typename std::enable_if<
 			Internal::AssetTraits<AssetType>::HasCompileProcessType && !Internal::HasDirectAutoConstructAsset<AssetType, Params...>::Result
 			>::type* = nullptr>
-		void AutoConstructToFuture(const std::shared_ptr<AssetFuture<AssetType>>& future, Params... initialisers)
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
 	{
 		StringSection<ResChar> inits[] = { initialisers... };
 		DefaultCompilerConstruction<AssetType>(future, inits, dimof(inits));

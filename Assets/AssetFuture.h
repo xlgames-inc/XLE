@@ -2,6 +2,7 @@
 
 #include "AssetsCore.h"
 #include "../Utility/Threading/Mutex.h"
+#include "../Utility/Threading/ThreadingUtils.h"		// (for Threading::YieldTimeSlice() below)
 #include <memory>
 #include <string>
 
@@ -40,6 +41,8 @@ namespace Assets
 		AssetFuture& operator=(AssetFuture&&) never_throws = default;
 
 		void SetAsset(std::unique_ptr<AssetType>&&, const std::string& msg, AssetState state);
+		void SetPollingFunction(std::function<bool(AssetFuture<AssetType>&)>&&);
+		
 	private:
 		mutable Threading::Mutex		_lock;
 		mutable Threading::Conditional	_conditional;
@@ -51,6 +54,8 @@ namespace Assets
 		AssetPtr<AssetType> _pending;
 		AssetState			_pendingState;
 		std::string			_pendingActualizationMsg;
+
+		std::function<bool(AssetFuture<AssetType>&)> _pollingFunction;
 
 		std::string			_initializer;	// stored for debugging purposes
 	};
@@ -114,7 +119,14 @@ namespace Assets
 	{
 			// lock & swap the asset into the front buffer. We only do this during the "frame barrier" phase, to
 			// prevent assets from changing in the middle of a single frame.
-		ScopedLock(_lock);
+		std::unique_lock<decltype(_lock)> lock(_lock);
+		if (_pollingFunction) {
+			auto pollingFunction = std::move(that->_pollingFunction);
+			lock = {};
+			bool pollingResult = pollingFunction(*this);
+			lock = std::unique_lock<decltype(_lock)>(_lock);
+			if (pollingResult) _pollingFunction = std::move(pollingFunction);
+		}
 		if (_state == AssetState::Pending && _pendingState != AssetState::Pending) {
 			_actualized = std::move(_pending);
 			_actualizationMsg = std::move(_pendingActualizationMsg);
@@ -136,6 +148,29 @@ namespace Assets
 	{
 		auto* that = const_cast<AssetFuture<AssetType>*>(this);	// hack to defeat the "const" on this method
 		std::unique_lock<decltype(that->_lock)> lock(that->_lock);
+
+		// If we have polling function assigned, we have to poll waiting for
+		// it to be completed. Threading is a little complicated here, because
+		// the pollingFunction is expected to lock our mutex, and it is not
+		// recursive.
+		// We also don't particularly want the polling function to be called 
+		// from multiple threads at the same time. So, let's take ownership of
+		// the polling function, and unlock the future while the polling function
+		// is working. This will often result in 3 locks on the same mutex in
+		// quick succession from this same thread sometimes.
+		if (that->_pollingFunction) {
+			auto pollingFunction = std::move(that->_pollingFunction);
+			lock = {};
+
+			for (;;) {
+				bool pollingResult = pollingFunction(*that);
+				if (!pollingResult) break;
+				Threading::YieldTimeSlice();
+			}
+			
+			lock = std::unique_lock<decltype(that->_lock)>(that->_lock);
+		}
+
 		for (;;) {
 			if (that->_state != AssetState::Pending) return that->_state;
 			if (that->_pendingState != AssetState::Pending) {
@@ -165,6 +200,14 @@ namespace Assets
 			_pendingActualizationMsg = msg;
 		}
 		_conditional.notify_all();
+	}
+
+	template<typename AssetType>
+		void AssetFuture<AssetType>::SetPollingFunction(std::function<bool(AssetFuture<AssetType>&)>&& newFunction)
+	{
+		ScopedLock(_lock);
+		assert(!_pollingFunction);
+		_pollingFunction = std::move(newFunction);
 	}
 
 	template<typename AssetType>

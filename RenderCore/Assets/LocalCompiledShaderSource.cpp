@@ -456,7 +456,7 @@ namespace RenderCore { namespace Assets
 
 	auto ArchivedFileArtifact::GetBlob() const -> Blob
 	{
-		if (!_blob) return _blob;
+		if (_blob) return _blob;
 		return _archive->TryOpenFromCache(_fileID);
 	}
 
