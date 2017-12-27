@@ -10,22 +10,16 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    ShaderResourceView::ShaderResourceView(OpenGL::Texture* underlyingTexture)
+    ShaderResourceView::ShaderResourceView()
     {
-        if (glIsTexture(underlyingTexture->AsRawGLHandle())) {
+    }
+
+    ShaderResourceView::ShaderResourceView(const intrusive_ptr<OpenGL::Texture>& underlyingTexture)
+    {
+        if (!glIsTexture(underlyingTexture->AsRawGLHandle())) {
+            Throw(Exceptions::GenericFailure("Binding non-texture to shader resource view"));
+        } else {
             _underlyingTexture = underlyingTexture;
-        } else {
-            Throw(Exceptions::GenericFailure("Binding non-texture to resource"));
         }
     }
-
-    ShaderResourceView::ShaderResourceView(OpenGL::Resource* underlyingTexture)
-    {
-        if (glIsTexture(underlyingTexture->AsRawGLHandle())) {
-            _underlyingTexture = underlyingTexture->As<GlObject_Type::Texture>();
-        } else {
-            Throw(Exceptions::GenericFailure("Binding non-texture to resource"));
-        }
-    }
-
 }}

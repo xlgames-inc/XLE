@@ -60,7 +60,10 @@ namespace RenderCore { namespace Metal_OpenGLES
             const UniformsStreamInterface& interface2 = {});
         ~BoundUniforms();
     private:
-        std::vector<SetUniformCommandGroup> _streamCBs[3];
+        struct CB { unsigned _stream, _slot; SetUniformCommandGroup _commandGroup; };
+        std::vector<CB> _cbs;
+        struct SRV { unsigned _stream, _slot; unsigned _uniformLocation, _textureUnit; };
+        std::vector<SRV> _srvs;
     };
 
 }}

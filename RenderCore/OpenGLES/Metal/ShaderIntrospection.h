@@ -28,7 +28,8 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         using HashType = uint64; // ParameterBox::ParameterNameHash;
 
-        SetUniformCommandGroup MakeBinding(HashType uniformStructName, IteratorRange<const MiniInputElementDesc*> inputElements);
+        SetUniformCommandGroup  MakeBinding(HashType uniformStructName, IteratorRange<const MiniInputElementDesc*> inputElements);
+        unsigned                FindUniform(HashType uniformName) const;
 
         ShaderIntrospection(const ShaderProgram& shader);
         ~ShaderIntrospection();

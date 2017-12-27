@@ -43,6 +43,19 @@ namespace RenderCore { namespace Metal_OpenGLES
         return result;
     }
 
+    unsigned ShaderIntrospection::FindUniform(HashType uniformName) const
+    {
+        auto globals = LowerBound(_structs, 0ull);
+        if (globals == _structs.end() || globals->first != 0) return ~0u;
+
+        auto i = std::find_if(
+            globals->second._uniforms.begin(), globals->second._uniforms.end(),
+            [uniformName](const Struct::Uniform& u) { return u._bindingName == uniformName; });
+        if (i == globals->second._uniforms.end()) return ~0u;
+
+        return (unsigned)i->_location;
+    }
+
     ShaderIntrospection::ShaderIntrospection(const ShaderProgram& program)
     {
         // Iterate through the shader interface and pull out the information that's interesting
@@ -100,7 +113,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 i->second._uniforms.emplace_back(
                     Struct::Uniform {
-                        Hash64(MakeStringSection(firstDot+1, fullName.end())),
+                        Hash64(fullName),
                         location, type, size
 
                         #if defined(_DEBUG)

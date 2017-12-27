@@ -92,7 +92,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     template<typename Type>
         intrusive_ptr<Type> MakeTrackingPointer(unsigned inputHandle)
         {
-            return {(OpenGL::Buffer*)(size_t)inputHandle};
+            return {(Type*)(size_t)inputHandle};
         }
 
     #pragma warning(push)

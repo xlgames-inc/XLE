@@ -6,24 +6,21 @@
 
 #pragma once
 
+#include "Resource.h"
 #include "IndexedGLType.h"
 #include "../../../Core/Exceptions.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    class ShaderResourceView
+    class ShaderResourceView : public Resource
     {
     public:
-        // ShaderResourceView(const Resource& resource);
-        ShaderResourceView(OpenGL::Resource* underlyingTexture);
-        ShaderResourceView(OpenGL::Texture* underlyingTexture);
-        
-        typedef OpenGL::Resource*     UnderlyingResource;
-        typedef OpenGL::Texture*      UnderlyingType;
-        OpenGL::Texture*              GetUnderlying() const { return _underlyingTexture.get(); }
-    private:
-        intrusive_ptr<OpenGL::Texture>   _underlyingTexture;
+        using UnderlyingType = intrusive_ptr<OpenGL::Texture>;
+        const UnderlyingType &      GetUnderlying() const { return GetTexture(); }
+        bool                        IsGood() const { return _underlyingTexture.get() != nullptr; }
+
+        ShaderResourceView();
+        ShaderResourceView(const intrusive_ptr<OpenGL::Texture>& underlyingTexture);
     };
 
 }}
-

@@ -8,6 +8,7 @@
 #include "Shader.h"
 #include "ShaderIntrospection.h"
 #include "Format.h"
+#include "ShaderResource.h"
 #include "../../Types.h"
 #include "../../Format.h"
 #include "../../../Utility/StringUtils.h"
@@ -161,13 +162,22 @@ namespace RenderCore { namespace Metal_OpenGLES
         const UniformsStream& stream0, const UniformsStream& stream1, const UniformsStream& stream2) const
     {
         const UniformsStream* inputStreams[] = { &stream0, &stream1, &stream2 };
-        for (unsigned str=0; str<2; ++str) {
-            for (unsigned c=0; c<inputStreams[str]->_constantBuffers.size(); ++c) {
-                const auto& pkt = inputStreams[str]->_constantBuffers[c]._packet;
-                if (!_streamCBs[str][c]._commands.empty() && pkt.size() != 0) {
-                    Bind(context, _streamCBs[str][c], MakeIteratorRange(pkt.begin(), pkt.end()));
-                }
-            }
+        for (const auto&cb:_cbs) {
+            assert(cb._stream < dimof(inputStreams));
+            assert(cb._slot < inputStreams[cb._stream]->_constantBuffers.size());
+            const auto& pkt = inputStreams[cb._stream]->_constantBuffers[cb._slot]._packet;
+            if (!cb._commandGroup._commands.empty() && pkt.size() != 0)
+                Bind(context, cb._commandGroup, MakeIteratorRange(pkt.begin(), pkt.end()));
+        }
+        for (const auto&srv:_srvs) {
+            assert(srv._stream < dimof(inputStreams));
+            assert(srv._slot < inputStreams[srv._stream]->_resources.size());
+            const auto& res = *inputStreams[srv._stream]->_resources[srv._slot];
+            glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
+            // todo -- support different binding types (3D, cube, array, etc)
+            glBindTexture(GL_TEXTURE_2D, res.GetUnderlying()->AsRawGLHandle());
+            // todo -- support array uniforms
+            glUniform1i(srv._uniformLocation, srv._textureUnit);
         }
     }
 
@@ -180,24 +190,31 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         auto introspection = ShaderIntrospection(shader);
 
+        unsigned textureUnitAccumulator = 0;
+
         const UniformsStreamInterface* inputInterface[] = { &interface0, &interface1, &interface2 };
-        size_t streamCount = std::min(dimof(_streamCBs), dimof(inputInterface));
-        for (size_t s=0; s<streamCount; ++s) {
+        auto streamCount = (unsigned)dimof(inputInterface);
+        for (unsigned s=0; s<streamCount; ++s) {
             const UniformsStreamInterface& interf = *inputInterface[s];
             for (unsigned b=0; b<interf._cbBindings.size(); ++b) {
                 const auto& binding = interf._cbBindings[b];
-                auto slot = binding.first;
-                if (_streamCBs[s].size() < (slot+1))
-                    _streamCBs[s].resize(slot+1);
+                auto cmdGroup = introspection.MakeBinding(binding.second._hashName, MakeIteratorRange(binding.second._elements));
+                _cbs.emplace_back(CB{s, binding.first, std::move(cmdGroup)});
+            }
 
-                _streamCBs[s][slot] = introspection.MakeBinding(
-                    binding.second._hashName, MakeIteratorRange(binding.second._elements));
+            for (unsigned b=0; b<interf._srvBindings.size(); ++b) {
+                const auto& binding = interf._srvBindings[b];
+                auto uniformLocation = introspection.FindUniform(binding.second);
+                if (uniformLocation != ~0u) {
+                    // assign a texture unit for this binding
+                    auto textureUnit = textureUnitAccumulator++;
+                    _srvs.emplace_back(SRV{s, binding.first, uniformLocation, textureUnit});
+                }
             }
         }
     }
 
     BoundUniforms::~BoundUniforms() {}
-
 
     IPipelineLayout::~IPipelineLayout() {}
 
