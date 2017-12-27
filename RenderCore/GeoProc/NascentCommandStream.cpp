@@ -189,11 +189,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     void NascentAnimationSet::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        serializer.SerializeSubBlock(AsPointer(_animationDrivers.begin()), AsPointer(_animationDrivers.end()));
+        serializer.SerializeSubBlock(MakeIteratorRange(_animationDrivers));
         serializer.SerializeValue(_animationDrivers.size());
-        serializer.SerializeSubBlock(AsPointer(_constantDrivers.begin()), AsPointer(_constantDrivers.end()));
+        serializer.SerializeSubBlock(MakeIteratorRange(_constantDrivers));
         serializer.SerializeValue(_constantDrivers.size());
-        serializer.SerializeSubBlock(AsPointer(_constantData.begin()), AsPointer(_constantData.end()));
+        serializer.SerializeSubBlock(MakeIteratorRange(_constantData));
 
             //      List of animations...
 
@@ -207,7 +207,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             o._beginTime = i._startTime; o._endTime = i._endTime;
         }
         std::sort(outputAnimations.get(), &outputAnimations[_animations.size()], CompareAnimationName());
-        serializer.SerializeSubBlock(outputAnimations.get(), &outputAnimations[_animations.size()]);
+        serializer.SerializeSubBlock(MakeIteratorRange((const AnimationDesc*)outputAnimations.get(), (const AnimationDesc*)&outputAnimations[_animations.size()]));
         serializer.SerializeValue(_animations.size());
 
             //      Output interface...
@@ -218,7 +218,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             ConsoleRig::DebuggerOnlyWarning("  [%i] %s\n", c, _parameterInterfaceDefinition[c].c_str());
             parameterNameHashes[c] = Hash64(AsPointer(_parameterInterfaceDefinition[c].begin()), AsPointer(_parameterInterfaceDefinition[c].end()));
         }
-        serializer.SerializeSubBlock(parameterNameHashes.get(), &parameterNameHashes[_parameterInterfaceDefinition.size()]);
+        serializer.SerializeSubBlock(MakeIteratorRange((const AnimationDesc*)parameterNameHashes.get(), (const AnimationDesc*)&parameterNameHashes[_parameterInterfaceDefinition.size()]));
         serializer.SerializeValue(_parameterInterfaceDefinition.size());
     }
 
@@ -296,7 +296,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     {
         ::Serialize(serializer, _id);
         ::Serialize(serializer, _localToWorldId);
-        serializer.SerializeSubBlock(AsPointer(_materials.begin()), AsPointer(_materials.end()));
+        serializer.SerializeSubBlock(MakeIteratorRange(_materials));
         ::Serialize(serializer, _materials.size());
         ::Serialize(serializer, _levelOfDetail);
     }
@@ -305,16 +305,16 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     {
         ::Serialize(serializer, _id);
         ::Serialize(serializer, _localToWorldId);
-        serializer.SerializeSubBlock(AsPointer(_materials.begin()), AsPointer(_materials.end()));
+        serializer.SerializeSubBlock(MakeIteratorRange(_materials));
         ::Serialize(serializer, _materials.size());
         ::Serialize(serializer, _levelOfDetail);
     }
 
     void NascentModelCommandStream::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        serializer.SerializeSubBlock(AsPointer(_geometryInstances.begin()), AsPointer(_geometryInstances.end()));
+        serializer.SerializeSubBlock(MakeIteratorRange(_geometryInstances));
         serializer.SerializeValue(_geometryInstances.size());
-        serializer.SerializeSubBlock(AsPointer(_skinControllerInstances.begin()), AsPointer(_skinControllerInstances.end()));
+        serializer.SerializeSubBlock(MakeIteratorRange(_skinControllerInstances));
         serializer.SerializeValue(_skinControllerInstances.size());
             
             //
@@ -322,7 +322,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //      run-time input interface definition...
             //
         ConsoleRig::DebuggerOnlyWarning("Command stream input interface:\n");
-        serializer.SerializeSubBlock(AsPointer(_inputInterface.cbegin()), AsPointer(_inputInterface.cend()));
+        serializer.SerializeSubBlock(MakeIteratorRange(_inputInterface));
         serializer.SerializeValue(_inputInterface.size());
     }
 

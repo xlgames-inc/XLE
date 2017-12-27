@@ -11,6 +11,8 @@
 #include "../../Core/Types.h"
 #include <memory>
 
+namespace Assets { class DirectorySearchRules; }
+
 namespace RenderCore { namespace Assets 
 {
 

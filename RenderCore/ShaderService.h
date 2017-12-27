@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../Assets/AssetsCore.h"
+#include "../Assets/DepVal.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Core/Prefix.h"
@@ -189,7 +190,7 @@ namespace RenderCore
 
     private:
         std::shared_ptr<std::vector<uint8>>		_shader;
-		Assets::DepValPtr						_depVal;
+		::Assets::DepValPtr						_depVal;
     };
 }
 

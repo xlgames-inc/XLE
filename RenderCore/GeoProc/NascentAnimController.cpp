@@ -15,7 +15,7 @@
 #include "../Types.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../ConsoleRig/Log.h"
-#include "../../ConsoleRig/LogUtils.h"
+#include "../../ConsoleRig/LogUtil.h"
 #include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/MemoryUtils.h"
@@ -435,7 +435,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             RenderCore::Assets::VertexData 
                 { _preskinningIA, unsigned(vbOffset2), unsigned(vbSize2) });
 
-        outputSerializer.SerializeSubBlock(_inverseBindMatrices.begin(), _inverseBindMatrices.end());
+        outputSerializer.SerializeSubBlock(MakeIteratorRange(_inverseBindMatrices));
         outputSerializer.SerializeValue(_inverseBindMatrices.size());
 
         DynamicArray<Float4x4> inverseBindByBindShape = DynamicArray<Float4x4>::Copy(_inverseBindMatrices);
@@ -444,14 +444,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 _bindShapeMatrix,
                 inverseBindByBindShape[c]);
         }
-        outputSerializer.SerializeSubBlock(inverseBindByBindShape.begin(), inverseBindByBindShape.end());
+        outputSerializer.SerializeSubBlock(MakeIteratorRange(inverseBindByBindShape.cbegin(), inverseBindByBindShape.cend()));
         outputSerializer.SerializeValue(inverseBindByBindShape.size());
-        outputSerializer.SerializeSubBlock(_jointMatrices.begin(), _jointMatrices.end());
+        outputSerializer.SerializeSubBlock(MakeIteratorRange(_jointMatrices));
         outputSerializer.SerializeValue(_jointMatrices.size());
         
         ::Serialize(outputSerializer, _bindShapeMatrix);
 
-        outputSerializer.SerializeSubBlock(AsPointer(_preskinningDrawCalls.cbegin()), AsPointer(_preskinningDrawCalls.cend()));
+        outputSerializer.SerializeSubBlock(MakeIteratorRange(_preskinningDrawCalls));
         outputSerializer.SerializeValue(_preskinningDrawCalls.size());
 
         ::Serialize(outputSerializer, _localBoundingBox.first);

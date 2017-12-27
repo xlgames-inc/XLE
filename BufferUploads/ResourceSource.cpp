@@ -162,7 +162,7 @@ namespace BufferUploads
                                 new ReusableResourceDestructionHelper(_desc));
                         #endif
                     } else {
-                        LogAlwaysWarningF("Warning -- failed when creating a resource in PoolOfLikeResources::AllocateResource");
+                        Log(Warning) << "Warning -- failed when creating a resource in PoolOfLikeResources::AllocateResource" << std::endl;
                     }
                     Interlocked::Add(&_totalRealSize, realSize);
                     Interlocked::Add(&_totalCreateSize, RenderCore::ByteCount(_desc));

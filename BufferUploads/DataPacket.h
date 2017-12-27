@@ -8,7 +8,7 @@
 
 #include "IBufferUploads.h"
 #include "../RenderCore/Types.h"
-#include "../Assets/AssetUtils.h"                   // for ::Assets::GenericFuture
+#include "../Assets/AssetFuture.h"                  // for ::Assets::GenericFuture
 #include "../Utility/Threading/ThreadingUtils.h"    // for RefCountedObject
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"                 // for StringSection

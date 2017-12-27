@@ -315,16 +315,28 @@ namespace Utility
 			if (OwnsHeapBlock()) delete (uint8_t*)_begin;
 		}
 
-		SerializableVector(SerializableVector&& moveFrom) : _begin(moveFrom._begin), _end(moveFrom._end), _capacity(moveFrom._capacity) 
+		SerializableVector(SerializableVector&& moveFrom) never_throws : _begin(moveFrom._begin), _end(moveFrom._end), _capacity(moveFrom._capacity) 
 		{
 			moveFrom._begin = moveFrom._end = moveFrom._capacity = nullptr;
 		}
 
-		SerializableVector& operator=(SerializableVector&& moveFrom)
+		SerializableVector& operator=(SerializableVector&& moveFrom) never_throws
 		{
 			SerializableVector temp(std::move(*this));
 			_begin = moveFrom._begin; _end = moveFrom._end; _capacity = moveFrom._capacity;
 			moveFrom._begin = moveFrom._end = moveFrom._capacity = nullptr;
+			return *this;
+		}
+
+		SerializableVector(const SerializableVector& copyFrom)
+		{
+			insert(this->end(), copyFrom.begin(), copyFrom.end());
+		}
+
+		SerializableVector& operator=(const SerializableVector& copyFrom)
+		{
+			SerializableVector newVec(copyFrom);
+			*this = std::move(newVec);
 			return *this;
 		}
 

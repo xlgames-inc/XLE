@@ -6,16 +6,8 @@
 
 #include "ShaderService.h"
 #include "Types.h"	// For PS_DefShaderModel
-#include "../Assets/Assets.h"
-// #include "../Assets/IntermediateAssets.h"
-// #include "../Assets/ArchiveCache.h"
-// #include "../Assets/DeferredConstruction.h"
-/*#if defined(HAS_XLE_CONSOLE_RIG)
-    #include "../ConsoleRig/Log.h"
-#endif*/
-#include "../Utility/StringUtils.h"
-#include "../Utility/PtrUtils.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/MemoryUtils.h"
 #include <assert.h>
 
 namespace RenderCore

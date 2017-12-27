@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define _SILENCE_CXX17_NEGATORS_DEPRECATION_WARNING		// silence warning due to removed functions in C++17 (from Eigen library)
+
 #include "RegularNumberField.h"
 #include <cmath>
 
