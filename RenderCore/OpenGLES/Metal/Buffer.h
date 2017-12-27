@@ -49,7 +49,9 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         VertexBuffer(const void* data, size_t byteCount);
         VertexBuffer(ObjectFactory& factory, const void* data, size_t byteCount);
+        VertexBuffer(ObjectFactory& factory, const ResourceDesc& desc);
         VertexBuffer(const intrusive_ptr<OpenGL::Buffer>& underlying);
+        VertexBuffer();
         ~VertexBuffer();
     };
 
@@ -60,7 +62,9 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         IndexBuffer(const void* data, size_t byteCount);
         IndexBuffer(ObjectFactory& factory, const void* data, size_t byteCount);
+        IndexBuffer(ObjectFactory& factory, const ResourceDesc& desc);
         IndexBuffer(const intrusive_ptr<OpenGL::Buffer>& underlying);
+        IndexBuffer();
         ~IndexBuffer();
     };
 

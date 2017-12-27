@@ -81,9 +81,14 @@ namespace RenderCore { namespace Metal_OpenGLES
     : VertexBuffer(GetObjectFactory(), data, byteCount)
     {}
 
+    VertexBuffer::VertexBuffer(ObjectFactory& factory, const ResourceDesc& desc) : Buffer(factory, desc)
+    {}
+
     VertexBuffer::VertexBuffer(const intrusive_ptr<OpenGL::Buffer>& underlying)
     : Buffer(underlying)
     {}
+
+    VertexBuffer::VertexBuffer() {}
 
     VertexBuffer::~VertexBuffer() {}
 
@@ -95,9 +100,14 @@ namespace RenderCore { namespace Metal_OpenGLES
     : IndexBuffer(GetObjectFactory(), data, byteCount)
     {}
 
+    IndexBuffer::IndexBuffer(ObjectFactory& factory, const ResourceDesc& desc) : Buffer(factory, desc)
+    {}
+
     IndexBuffer::IndexBuffer(const intrusive_ptr<OpenGL::Buffer>& underlying)
     : Buffer(underlying)
     {}
+
+    IndexBuffer::IndexBuffer() {}
 
     IndexBuffer::~IndexBuffer() {}
 

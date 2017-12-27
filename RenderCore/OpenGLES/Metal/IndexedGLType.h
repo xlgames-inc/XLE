@@ -89,6 +89,12 @@ namespace RenderCore { namespace Metal_OpenGLES
     ObjectFactory& GetObjectFactory(DeviceContext&);
     ObjectFactory& GetObjectFactory();
 
+    template<typename Type>
+        intrusive_ptr<Type> MakeTrackingPointer(unsigned inputHandle)
+        {
+            return {(OpenGL::Buffer*)(size_t)inputHandle};
+        }
+
     #pragma warning(push)
     #pragma warning(disable: 4127)      // conditional expression is constant
 
