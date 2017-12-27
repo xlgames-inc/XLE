@@ -7,12 +7,12 @@
 #pragma once
 
 #include "InputLayout.h"
-#include "../../ResourceList.h"
 #include "IndexedGLType.h"
-#include "../IDeviceOpenGLES.h"
-#include "../../../Utility/Threading/ThreadingUtils.h"
 #include "ShaderResource.h"
+#include "../IDeviceOpenGLES.h"
 #include "../../IDevice_Forward.h"
+#include "../../ResourceList.h"
+#include "../../../Utility/Threading/ThreadingUtils.h"
 #include "IncludeGLES.h"
 
 // typedef void*       EGLDisplay;
@@ -32,9 +32,12 @@ namespace RenderCore { namespace Metal_OpenGLES
     class RasterizationDesc;
     class DepthStencilDesc;
 
-    class CommandList : public RefCountedObject, noncopyable
+    class CommandList : public RefCountedObject
     {
     public:
+        CommandList() {}
+        CommandList(const CommandList&) = delete;
+        CommandList& operator=(const CommandList&) = delete;
     };
 
     using CommandListPtr = intrusive_ptr<CommandList>;

@@ -6,15 +6,10 @@
 
 #pragma once
 
-#include "Format.h"
-#include "Shader.h"
-#include "ShaderIntrospection.h"
-#include "../../RenderUtils.h"
-#include "../../../Core/Exceptions.h"
-#include "../../../Core/Types.h"
-#include <algorithm>
+#include "ShaderIntrospection.h"            // (for SetUniformCommandGroup)
+#include "../../UniformsStream.h"
+#include "../../../Utility/IteratorUtils.h"
 #include <vector>
-#include <memory>
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
@@ -23,16 +18,11 @@ namespace RenderCore { namespace Metal_OpenGLES
     class BoundInputLayout
     {
     public:
-        BoundInputLayout() {}
-        BoundInputLayout(const InputLayout& layout, const ShaderProgram& program);
-        BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& program);
-
-        BoundInputLayout(const BoundInputLayout&& moveFrom);
-        BoundInputLayout& operator=(const BoundInputLayout& copyFrom);
-        BoundInputLayout& operator=(const BoundInputLayout&& moveFrom);
-
         void Apply(const void* vertexBufferStart, unsigned vertexStride) const never_throws;
 
+        BoundInputLayout() {}
+        BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program);
+        BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& program);
     private:
         class Binding
         {
@@ -44,153 +34,34 @@ namespace RenderCore { namespace Metal_OpenGLES
             unsigned    _stride;
             unsigned    _offset;
         };
-        std::vector<Binding>        _bindings;
+        std::vector<Binding> _bindings;
     };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class DeviceContext;
-    using ConstantBufferPacket = SharedPkt;
-    class ConstantBuffer;
-    class ShaderResourceView;
-
-    class UniformsStream
+    class IPipelineLayout
     {
     public:
-        UniformsStream();
-        UniformsStream( const ConstantBufferPacket packets[], const ConstantBuffer* prebuiltBuffers[], size_t packetCount,
-                        const ShaderResourceView* resources[] = nullptr, size_t resourceCount = 0);
-
-        template <int Count0>
-            UniformsStream( ConstantBufferPacket (&packets)[Count0]);
-        template <int Count0, int Count1>
-            UniformsStream( ConstantBufferPacket (&packets)[Count0],
-                            const ConstantBuffer* (&prebuiltBuffers)[Count1]);
-        template <int Count0, int Count1>
-            UniformsStream( ConstantBufferPacket (&packets)[Count0],
-                            const ShaderResourceView* (&resources)[Count1]);
-        template <int Count0, int Count1, int Count2>
-            UniformsStream( ConstantBufferPacket (&packets)[Count0],
-                            const ConstantBuffer* (&prebuiltBuffers)[Count1],
-                            const ShaderResourceView* (&resources)[Count2]);
-
-        UniformsStream(
-            std::initializer_list<const ConstantBufferPacket> cbs,
-            std::initializer_list<const ShaderResourceView*> srvs);
-    protected:
-        const ConstantBufferPacket*     _packets;
-        const ConstantBuffer*const*     _prebuiltBuffers;
-        size_t                          _packetCount;
-        const ShaderResourceView*const* _resources;
-        size_t                          _resourceCount;
-
-        friend class BoundUniforms;
+        virtual ~IPipelineLayout();
     };
 
     class BoundUniforms
     {
     public:
-        bool BindConstantBuffer(
-            uint64 hashName, unsigned slot, unsigned uniformsStream,
-            IteratorRange<const MiniInputElementDesc*> elements = {});
-
         void Apply(
             DeviceContext& context,
-            const UniformsStream& stream0, const UniformsStream& stream1 = {}) const;
+            const UniformsStream& stream0, 
+            const UniformsStream& stream1 = {},
+            const UniformsStream& stream2 = {}) const;
 
-        BoundUniforms(const ShaderProgram& shader);
+        BoundUniforms(
+            const ShaderProgram& shader,
+            const IPipelineLayout& pipelineLayout,
+            const UniformsStreamInterface& interface0 = {},
+            const UniformsStreamInterface& interface1 = {},
+            const UniformsStreamInterface& interface2 = {});
         ~BoundUniforms();
     private:
-        ShaderIntrospection _introspection;
-        std::vector<SetUniformCommandGroup> _streamCBs[2];
+        std::vector<SetUniformCommandGroup> _streamCBs[3];
     };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    inline UniformsStream::UniformsStream()
-    {
-        _packets = nullptr;
-        _prebuiltBuffers = nullptr;
-        _packetCount = 0;
-        _resources = nullptr;
-        _resourceCount = 0;
-    }
-
-    inline UniformsStream::UniformsStream(
-        const ConstantBufferPacket packets[], const ConstantBuffer* prebuiltBuffers[], size_t packetCount,
-        const ShaderResourceView* resources[], size_t resourceCount)
-    {
-        _packets = packets;
-        _prebuiltBuffers = prebuiltBuffers;
-        _packetCount = packetCount;
-        _resources = resources;
-        _resourceCount = resourceCount;
-    }
-
-    template <int Count0>
-        UniformsStream::UniformsStream(ConstantBufferPacket (&packets)[Count0])
-        {
-            _packets = packets;
-            _prebuiltBuffers = nullptr;
-            _packetCount = Count0;
-            _resources = nullptr;
-            _resourceCount = 0;
-        }
-
-    template <int Count0, int Count1>
-        UniformsStream::UniformsStream( ConstantBufferPacket (&packets)[Count0],
-                                        const ConstantBuffer* (&prebuildBuffers)[Count1])
-        {
-            static_assert(Count0 == Count1, "Expecting equal length arrays in UniformsStream constructor");
-            _packets = packets;
-            _prebuiltBuffers = prebuildBuffers;
-            _packetCount = Count0;
-            _resources = nullptr;
-            _resourceCount = 0;
-        }
-
-    template <int Count0, int Count1>
-        UniformsStream::UniformsStream( ConstantBufferPacket (&packets)[Count0],
-                                        const ShaderResourceView* (&resources)[Count1])
-        {
-            _packets = packets;
-            _prebuiltBuffers = nullptr;
-            _packetCount = Count0;
-            _resources = resources;
-            _resourceCount = Count1;
-        }
-
-    template <int Count0, int Count1, int Count2>
-        UniformsStream::UniformsStream( ConstantBufferPacket (&packets)[Count0],
-                                        const ConstantBuffer* (&prebuiltBuffers)[Count1],
-                                        const ShaderResourceView* (&resources)[Count2])
-        {
-            static_assert(Count0 == Count1, "Expecting equal length arrays in UniformsStream constructor");
-            _packets = packets;
-            _prebuiltBuffers = prebuiltBuffers;
-            _packetCount = Count0;
-            _resources = resources;
-            _resourceCount = Count2;
-        }
-
-    inline UniformsStream::UniformsStream(
-        std::initializer_list<const ConstantBufferPacket> cbs,
-        std::initializer_list<const ShaderResourceView*> srvs)
-    {
-            // note -- this is really dangerous!
-            //      we're taking pointers into the initializer_lists. This is fine
-            //      if the lifetime of UniformsStream is longer than the initializer_list
-            //      (which is common in many use cases of this class).
-            //      But there is no protection to make sure that the memory here is valid
-            //      when it is used!
-            // Use at own risk!
-        _packets = cbs.begin();
-        _prebuiltBuffers = nullptr;
-        _packetCount = cbs.size();
-        _resources = srvs.begin();
-        _resourceCount = srvs.size();
-    }
-
 
 }}
 

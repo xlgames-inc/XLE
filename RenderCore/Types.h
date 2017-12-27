@@ -50,7 +50,7 @@ namespace RenderCore
                             unsigned instanceDataStepRate = 0);
     };
 
-	using InputLayout = std::pair<const InputElementDesc*, size_t>;
+	using InputLayout = IteratorRange<const InputElementDesc*>;
 
     unsigned CalculateVertexStride(IteratorRange<const InputElementDesc*> elements, unsigned slot);
     unsigned HasElement(IteratorRange<const InputElementDesc*> elements, const char elementSemantic[]);

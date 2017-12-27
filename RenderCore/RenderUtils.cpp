@@ -169,15 +169,15 @@ namespace RenderCore
             };
         }
 
-        InputLayout P2CT = std::make_pair(Detail::P2CT_Elements, dimof(Detail::P2CT_Elements));
-        InputLayout P2C = std::make_pair(Detail::P2C_Elements, dimof(Detail::P2C_Elements));
-        InputLayout PCT = std::make_pair(Detail::PCT_Elements, dimof(Detail::PCT_Elements));
-        InputLayout P = std::make_pair(Detail::P_Elements, dimof(Detail::P_Elements));
-        InputLayout PC = std::make_pair(Detail::PC_Elements, dimof(Detail::PC_Elements));
-        InputLayout PT = std::make_pair(Detail::PT_Elements, dimof(Detail::PT_Elements));
-        InputLayout PN = std::make_pair(Detail::PN_Elements, dimof(Detail::PN_Elements));
-        InputLayout PNT = std::make_pair(Detail::PNT_Elements, dimof(Detail::PNT_Elements));
-        InputLayout PNTT = std::make_pair(Detail::PNTT_Elements, dimof(Detail::PNTT_Elements));
+        InputLayout P2CT = MakeIteratorRange(Detail::P2CT_Elements);
+        InputLayout P2C = MakeIteratorRange(Detail::P2C_Elements);
+        InputLayout PCT = MakeIteratorRange(Detail::PCT_Elements);
+        InputLayout P = MakeIteratorRange(Detail::P_Elements);
+        InputLayout PC = MakeIteratorRange(Detail::PC_Elements);
+        InputLayout PT = MakeIteratorRange(Detail::PT_Elements);
+        InputLayout PN = MakeIteratorRange(Detail::PN_Elements);
+        InputLayout PNT = MakeIteratorRange(Detail::PNT_Elements);
+        InputLayout PNTT = MakeIteratorRange(Detail::PNTT_Elements);
     }
 
     unsigned CalculateVertexStride(IteratorRange<const InputElementDesc*> range, unsigned slot)

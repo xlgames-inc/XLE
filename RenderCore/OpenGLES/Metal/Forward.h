@@ -9,7 +9,6 @@ namespace RenderCore { namespace Metal_OpenGLES {
     class IndexBuffer;
     class ConstantBuffer;
     class BoundInputLayout;
-    class UniformsStream;
     class BoundUniforms;
     class Resource;
     class ShaderProgram;

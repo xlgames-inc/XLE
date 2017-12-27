@@ -9,6 +9,7 @@
 #include "PtrUtils.h"       // for AsPointer
 #include <vector>
 #include <algorithm>
+#include <type_traits>      // (for is_constructible)
 
 // support for missing "std::size" in earlier versions of visual studio STL
 #if !((STL_ACTIVE == STL_MSVC) && (_MSC_VER > 1800))
@@ -155,7 +156,10 @@ namespace Utility
             IteratorRange() : std::pair<Iterator, Iterator>((Iterator)nullptr, (Iterator)nullptr) {}
             IteratorRange(Iterator f, Iterator s) : std::pair<Iterator, Iterator>(f, s) {}
 
-            template<typename OtherIterator>
+            template<   typename OtherIterator,
+                        typename std::enable_if<
+                            std::is_constructible<std::pair<Iterator, Iterator>, const std::pair<OtherIterator, OtherIterator>&>::value
+                        >::type* = nullptr>
                 IteratorRange(const std::pair<OtherIterator, OtherIterator>& copyFrom)
                     : std::pair<Iterator, Iterator>(copyFrom) {}
         };
@@ -205,6 +209,10 @@ namespace Utility
 
 #pragma warning(push)
 #pragma warning(disable:4789)       // buffer '' of size 12 bytes will be overrun; 4 bytes will be written starting at offset 12
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"     // array index 3 is past the end of the array (which contains 2 elements)
+
     /// We can initialize from anything that looks like a collection of unsigned values
     /// This is a simple way to get casting from XLEMath::UInt2 (etc) types without
     /// having to include XLEMath headers from here.
@@ -247,6 +255,7 @@ namespace Utility
                 for (; c<Count; ++c) _values[c] = 0;
             }
     };
+#pragma GCC diagnostic pop
 #pragma warning(pop)
 
 	template <typename Iterator>

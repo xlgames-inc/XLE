@@ -21,7 +21,7 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    BoundInputLayout::BoundInputLayout(const InputLayout& layout, const ShaderProgram& program)
+    BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program)
     {
             //
             //      For each entry in "layout", we need to compare it's name
@@ -30,8 +30,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             //      When we find a match, write the details into a binding object.
             //      The binding object will be used to call glVertexAttribPointer.
             //
-        const InputElementDesc* elements = layout.first;
-        size_t elementsCount = layout.second;
+        const InputElementDesc* elements = layout.begin();
+        size_t elementsCount = layout.size();
         _bindings.reserve(elementsCount);
 
         size_t vertexStride = 0;
@@ -136,23 +136,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    BoundInputLayout::BoundInputLayout(const BoundInputLayout&& moveFrom)
-    :   _bindings(std::move(moveFrom._bindings))
-    {
-    }
-
-    BoundInputLayout& BoundInputLayout::operator=(const BoundInputLayout&& moveFrom)
-    {
-        _bindings = std::move(moveFrom._bindings);
-        return *this;
-    }
-
-    BoundInputLayout& BoundInputLayout::operator=(const BoundInputLayout& copyFrom)
-    {
-        _bindings = copyFrom._bindings;
-        return *this;
-    }
-
     void BoundInputLayout::Apply(const void* vertexBufferStart, unsigned vertexStride) const never_throws
     {
         int maxVertexAttributes;
@@ -173,25 +156,14 @@ namespace RenderCore { namespace Metal_OpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    bool BoundUniforms::BindConstantBuffer(
-        uint64 hashName, unsigned slot, unsigned uniformsStream,
-        IteratorRange<const MiniInputElementDesc*> elements)
-    {
-        assert(uniformsStream < dimof(_streamCBs));
-        if (_streamCBs[uniformsStream].size() < (slot+1))
-            _streamCBs[uniformsStream].resize(slot+1);
-        _streamCBs[uniformsStream][slot] = _introspection.MakeBinding(hashName, elements);
-        return true;
-    }
-
     void BoundUniforms::Apply(
         DeviceContext& context,
-        const UniformsStream& stream0, const UniformsStream& stream1) const
+        const UniformsStream& stream0, const UniformsStream& stream1, const UniformsStream& stream2) const
     {
-        const UniformsStream* inputStreams[] = { &stream0, &stream1 };
+        const UniformsStream* inputStreams[] = { &stream0, &stream1, &stream2 };
         for (unsigned str=0; str<2; ++str) {
-            for (unsigned c=0; c<inputStreams[str]->_packetCount; ++c) {
-                const auto& pkt = inputStreams[str]->_packets[c];
+            for (unsigned c=0; c<inputStreams[str]->_constantBuffers.size(); ++c) {
+                const auto& pkt = inputStreams[str]->_constantBuffers[c]._packet;
                 if (!_streamCBs[str][c]._commands.empty() && pkt.size() != 0) {
                     Bind(context, _streamCBs[str][c], MakeIteratorRange(pkt.begin(), pkt.end()));
                 }
@@ -199,70 +171,35 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    BoundUniforms::BoundUniforms(const ShaderProgram& shader)
-    : _introspection(shader)
-    {}
+    BoundUniforms::BoundUniforms(
+        const ShaderProgram& shader,
+        const IPipelineLayout& pipelineLayout,
+        const UniformsStreamInterface& interface0,
+        const UniformsStreamInterface& interface1,
+        const UniformsStreamInterface& interface2)
+    {
+        auto introspection = ShaderIntrospection(shader);
+
+        const UniformsStreamInterface* inputInterface[] = { &interface0, &interface1, &interface2 };
+        size_t streamCount = std::min(dimof(_streamCBs), dimof(inputInterface));
+        for (size_t s=0; s<streamCount; ++s) {
+            const UniformsStreamInterface& interf = *inputInterface[s];
+            for (unsigned b=0; b<interf._cbBindings.size(); ++b) {
+                const auto& binding = interf._cbBindings[b];
+                auto slot = binding.first;
+                if (_streamCBs[s].size() < (slot+1))
+                    _streamCBs[s].resize(slot+1);
+
+                _streamCBs[s][slot] = introspection.MakeBinding(
+                    binding.second._hashName, MakeIteratorRange(binding.second._elements));
+            }
+        }
+    }
 
     BoundUniforms::~BoundUniforms() {}
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-    void BindConstantBuffer(const char name[], unsigned slot, const ConstantBufferLayoutElement elements[], size_t elementCount)
-    {
-            //
-            //      For each element, find the binding location within the shader
-            //
-        _bindings.reserve(_bindings.size() + elementCount);
-        for (unsigned c=0; c<elementCount; ++c) {
-            Binding newBinding;
-            newBinding._cbSlot       = slot;
-            newBinding._shaderLoc    = glGetUniformLocation(_shader->AsRawGLHandle(), elements[c]._name);
-            newBinding._cbOffset     = elements[c]._offset;
-
-            if (elements[c]._format == NativeFormat::Matrix4x4) {
-                newBinding._setterType   = 8;
-            } else if (elements[c]._format == NativeFormat::Matrix3x4) {
-                newBinding._setterType   = 9;
-            } else {
-                const unsigned componentCount = ComponentCount(GetComponents(elements[c]._format));
-                newBinding._setterType   = componentCount - 1 + ((GetComponentType(elements[c]._format) == FormatComponentType::Float) ? 4 : 0);
-            }
-            _bindings.push_back(newBinding);
-        }
-    }
-
-    void BoundUniforms::Apply(const DeviceContext&, std::shared_ptr<std::vector<uint8>> packets[], size_t packetCount)
-    {
-            //
-            //      We've already calculating the binding rules.
-            //      Only thing to do now is to send the data from inside the constant buffers to
-            //      the uniform registers. Note that the shader must be already bound!
-            //
-        for (std::vector<Binding>::iterator i=_bindings.begin(); i!=_bindings.end(); ++i) {
-            if (i->_cbSlot < packetCount) {
-                const void* packetStart = AsPointer(packets[i->_cbSlot]->begin());
-                switch (i->_setterType) {
-                case 0: glUniform1i(i->_shaderLoc, *(GLint*)PtrAdd(packetStart, i->_cbOffset)); break;
-                case 1: glUniform2i(i->_shaderLoc, *(GLint*)PtrAdd(packetStart, i->_cbOffset), *(GLint*)PtrAdd(packetStart, i->_cbOffset+4)); break;
-                case 2: glUniform3i(i->_shaderLoc, *(GLint*)PtrAdd(packetStart, i->_cbOffset), *(GLint*)PtrAdd(packetStart, i->_cbOffset+4), *(GLint*)PtrAdd(packetStart, i->_cbOffset+8)); break;
-                case 3: glUniform4i(i->_shaderLoc, *(GLint*)PtrAdd(packetStart, i->_cbOffset), *(GLint*)PtrAdd(packetStart, i->_cbOffset+4), *(GLint*)PtrAdd(packetStart, i->_cbOffset+8), *(GLint*)PtrAdd(packetStart, i->_cbOffset+12)); break;
-                case 4: glUniform1f(i->_shaderLoc, *(GLfloat*)PtrAdd(packetStart, i->_cbOffset)); break;
-                case 5: glUniform2f(i->_shaderLoc, *(GLfloat*)PtrAdd(packetStart, i->_cbOffset), *(GLfloat*)PtrAdd(packetStart, i->_cbOffset+4)); break;
-                case 6: glUniform3f(i->_shaderLoc, *(GLfloat*)PtrAdd(packetStart, i->_cbOffset), *(GLfloat*)PtrAdd(packetStart, i->_cbOffset+4), *(GLfloat*)PtrAdd(packetStart, i->_cbOffset+8)); break;
-                case 7: glUniform4f(i->_shaderLoc, *(GLfloat*)PtrAdd(packetStart, i->_cbOffset), *(GLfloat*)PtrAdd(packetStart, i->_cbOffset+4), *(GLfloat*)PtrAdd(packetStart, i->_cbOffset+8), *(GLfloat*)PtrAdd(packetStart, i->_cbOffset+12)); break;
-
-                case 8: glUniformMatrix4fv(i->_shaderLoc, 1, GL_FALSE, (GLfloat*)PtrAdd(packetStart, i->_cbOffset));
-                        break;
-
-                case 9: // glUniformMatrix3fv(i->_shaderLoc, 1, GL_FALSE, (GLfloat*)PtrAdd(packetStart, i->_cbOffset));
-                        glUniform4fv(i->_shaderLoc, 3, (GLfloat*)PtrAdd(packetStart, i->_cbOffset));
-                        break;
-                }
-            }
-        }
-    }
-#endif
+    IPipelineLayout::~IPipelineLayout() {}
 
 }}
 

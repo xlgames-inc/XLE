@@ -9,6 +9,7 @@
 #include "Shader.h"
 #include "InputLayout.h"
 #include "Buffer.h"
+#include "Format.h"
 #include "../../IThreadContext.h"
 
 #include "IncludeGLES.h"

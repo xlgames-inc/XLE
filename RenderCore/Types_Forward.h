@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Utility/IteratorUtils.h"
 #include <memory>
 
 // Extremely awkwardly, CLR doesn't work correctly when forward declarating 
@@ -23,7 +24,7 @@ namespace RenderCore
 	using ResourcePtr = std::shared_ptr<Resource>;
 
     class InputElementDesc;
-	using InputLayout = std::pair<const InputElementDesc*, size_t>;
+	using InputLayout = IteratorRange<const InputElementDesc*>;
 
 	enum class Topology;
 	enum class AddressMode;
