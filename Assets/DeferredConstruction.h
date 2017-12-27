@@ -21,15 +21,41 @@ namespace Assets
 
 	#define ENABLE_IF(X) typename std::enable_if<X>::type* = nullptr
 
-	template<typename AssetType, typename... Params, ENABLE_IF(!Internal::AssetTraits<AssetType>::HasCompileProcessType)>
-		void AutoConstructToFuture(const std::shared_ptr<AssetFuture<AssetType>>& future, Params... initializers)
+	namespace Internal
 	{
-		TRY {
-			auto asset = AutoConstructAsset<AssetType>(initializers...);
-			future->SetAsset(std::move(asset), {}, asset ? AssetState::Ready : AssetState::Invalid);
+		template<typename T, typename... Params>
+			struct HasDirectAutoConstructAsset
+		{
+			template <class, class> class SubstFailure;
+			template<typename A, typename... P> static std::true_type Test(SubstFailure<A, decltype((std::unique_ptr<A>(*)(P...))&Assets::AutoConstructAsset<A>)>*);
+			template<typename A, typename... P> static std::false_type Test(...);
+			static const bool Result = decltype(Test<T, Params...>(0))::value;
+		};
+	}
+	
+	// If we can construct an AssetType directly from the given parameters, then enable an implementation of
+	// AutoConstructToFuture to do exactly that.
+	// The compile operation version can work for any given initializer arguments, but the direct construction
+	// version will only work when the arguments match one of the asset type's constructors. So, we need to avoid 
+	// ambiguities between these implementations when they overlap.
+	// To achieve this, we either need to use namespace tricks, or to use SFINAE to disable the implementation 
+	// we don't need.
+	template<
+		typename AssetType, typename... Params, 
+		typename std::enable_if<Internal::HasDirectAutoConstructAsset<AssetType, Params...>::Result>::type* = nullptr>
+		void AutoConstructToFuture(const std::shared_ptr<AssetFuture<AssetType>>& future, Params... initialisers)
+	{
+		TRY{
+			auto asset = AutoConstructAsset<AssetType>(initialisers...);
+			future->SetAsset(std::move(asset),{}, asset ? AssetState::Ready : AssetState::Invalid);
 		} CATCH(const std::exception& e) {
 			future->SetAsset(nullptr, AsBlob(e), AssetState::Invalid);
 		} CATCH_END
+	}
+
+	inline void OnFrameBarrier(const std::function<bool()>& fn) 
+	{
+		assert(0);
 	}
 
 	template<typename AssetType>
@@ -78,11 +104,13 @@ namespace Assets
 				return false;
 			}
 		);
-
-		return result;
 	}
 
-	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasCompileProcessType)>
+	template<
+		typename AssetType, typename... Params, 
+		typename std::enable_if<
+			Internal::AssetTraits<AssetType>::HasCompileProcessType && !Internal::HasDirectAutoConstructAsset<AssetType, Params...>::Result
+			>::type* = nullptr>
 		void AutoConstructToFuture(const std::shared_ptr<AssetFuture<AssetType>>& future, Params... initialisers)
 	{
 		StringSection<ResChar> inits[] = { initialisers... };

@@ -213,6 +213,7 @@ namespace RenderCore { namespace Assets
                             << "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")" // << std::endl
                             << "This may prevent the shader from being flushed to disk in it's compiled form. But the shader should still be useable";
                     #endif
+					(void)e;
 				} CATCH_END
 			}
 

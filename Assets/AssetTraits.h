@@ -36,14 +36,18 @@ namespace Assets
 		private:
 			struct HasCompileProcessTypeHelper
 			{
+				struct FakeBase { static const uint64_t CompileProcessType; };
+				struct TestSubject : public FakeBase, public AssetType {};
+
 				template <typename C, C> struct Check;
 
-				struct FakeBase { static const uint64_t CompileProcessType; };
-				struct TestSubject : public FakeBase, public T {};
-
-				// This would SFINAE because if C really has `one`, it would be ambiguous
-				template <typename C> static std::false_type Test(Check<int FakeBase::*, &C::CompileProcessType> *);
+				// This technique is based on an implementation from StackOverflow. Here, taking the address
+				// of the static member variable in TestSubject would be ambiguous, iff CompileProcessType 
+				// is actually a member of AssetType (otherwise, the member in FakeBase is found)
+				template <typename C> static std::false_type Test(Check<const uint64_t*, &C::CompileProcessType> *);
 				template <typename> static std::true_type Test(...);
+
+				static const bool value = decltype(Test<TestSubject>(0))::value;
 			};
 
 		public:
@@ -53,7 +57,7 @@ namespace Assets
 			static const bool Constructor_Formatter = std::is_constructible<AssetType, InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&>::value;
 			static const bool Constructor_ChunkFileContainer = std::is_constructible<AssetType, const ChunkFileContainer&>::value;
 
-			static const bool HasCompileProcessType = decltype(HasCompileProcessTypeHelper::Test<AssetType>(nullptr))::value;
+			static const bool HasCompileProcessType = HasCompileProcessTypeHelper::value;
 		};
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////

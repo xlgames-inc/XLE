@@ -23,6 +23,25 @@ namespace Assets
 		Threading::Mutex _lock;
 	};
 
+	IDefaultAssetHeap * AssetSetManager::GetSetForTypeCode(size_t typeCode)
+	{
+		auto i = LowerBound(_pimpl->_sets, typeCode);
+		if (i != _pimpl->_sets.end() && i->first == typeCode)
+		return i->second.get();
+		return nullptr;
+	}
+
+	void AssetSetManager::Add(size_t typeCode, std::unique_ptr<IDefaultAssetHeap>&& set)
+	{
+		auto i = LowerBound(_pimpl->_sets, typeCode);
+		assert(i == _pimpl->_sets.end() || i->first != typeCode);
+		_pimpl->_sets.insert(
+			i,
+			std::make_pair(
+				typeCode,
+				std::forward<std::unique_ptr<IDefaultAssetHeap>>(set)));
+	}
+
     void AssetSetManager::Clear()
     {
         for (auto i=_pimpl->_sets.begin(); i!=_pimpl->_sets.end(); ++i) {

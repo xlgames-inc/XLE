@@ -568,21 +568,22 @@ namespace RenderCore { namespace Metal_DX11
         //      Also, there is a potential chance that the source shader code could change twice in rapid succession, which
         //      could cause the CompilerShaderByteCode object to be destroyed while we still have a pointer to it. Actually,
         //      this case of one compiled asset being dependent on another compile asset introduces a lot of complications!
-        auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(initializer, defines);
-        auto state = byteCode.StallWhilePending();
+        auto future = ::Assets::MakeAsset<CompiledShaderByteCode>(initializer, defines);
+        auto state = future->StallWhilePending();
         if (state != ::Assets::AssetState::Ready)
             Throw(::Assets::Exceptions::InvalidAsset(initializer, "Shader compile failure while building function linking module"));
-        auto code = byteCode.GetByteCode();
+		auto byteCode = future->Actualize();
+        auto code = byteCode->GetByteCode();
 
         ID3D11Module* rawModule = nullptr;
         auto compiler = D3DShaderCompiler::GetInstance(); 
-        auto hresult = compiler->D3DLoadModule_Wrapper(code.first, code.second, &rawModule);
+        auto hresult = compiler->D3DLoadModule_Wrapper(code.begin(), code.size(), &rawModule);
         _module = moveptr(rawModule);
         if (!SUCCEEDED(hresult))
             Throw(::Assets::Exceptions::InvalidAsset(initializer, "Failure while creating shader module from compiled shader byte code"));
 
         ID3D11LibraryReflection* reflectionRaw = nullptr;
-        compiler->D3DReflectLibrary_Wrapper(code.first, code.second, IID_ID3D11LibraryReflection, (void**)&reflectionRaw);
+        compiler->D3DReflectLibrary_Wrapper(code.begin(), code.size(), IID_ID3D11LibraryReflection, (void**)&reflectionRaw);
         _reflection = moveptr(reflectionRaw);
     }
 
@@ -1421,7 +1422,7 @@ namespace RenderCore { namespace Metal_DX11
             return E_NOINTERFACE;
         }
 
-        LogAlwaysInfo << "Performing D3D shader compile on: " << (pSourceName ? pSourceName : "<<unnamed>>") << ":" << (pEntrypoint?pEntrypoint:"<<unknown entry point>>") << "(" << (pTarget?pTarget:"<<unknown shader model>>") << ")";
+        Log(Verbose) << "Performing D3D shader compile on: " << (pSourceName ? pSourceName : "<<unnamed>>") << ":" << (pEntrypoint?pEntrypoint:"<<unknown entry point>>") << "(" << (pTarget?pTarget:"<<unknown shader model>>") << ")";
 
         typedef HRESULT WINAPI D3DCompile_Fn(
             LPCVOID, SIZE_T, LPCSTR,
@@ -1624,10 +1625,10 @@ namespace RenderCore { namespace Metal_DX11
         auto byteCode = shaderCode.GetByteCode();
 
         ID3D::ShaderReflection* reflectionTemp = nullptr;
-        HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.first, byteCode.second, s_shaderReflectionInterfaceGuid, (void**)&reflectionTemp);
+        HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.begin(), byteCode.size(), s_shaderReflectionInterfaceGuid, (void**)&reflectionTemp);
         if (!SUCCEEDED(hresult) || !reflectionTemp)
             Throw(::Assets::Exceptions::InvalidAsset(
-                shaderCode.Initializer(), "Error while invoking low-level shader reflection"));
+                ""/*shaderCode.Initializer()*/, "Error while invoking low-level shader reflection"));
         return moveptr(reflectionTemp);
     }
 

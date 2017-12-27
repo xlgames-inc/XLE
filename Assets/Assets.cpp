@@ -75,11 +75,6 @@ namespace Assets
         void LockMutex(Threading::RecursiveMutex& mutex) { mutex.lock(); }
         void UnlockMutex(Threading::RecursiveMutex& mutex) { mutex.unlock(); }
 
-        AssetSetManager& GetAssetSetManager()
-        {
-            return Services::GetAssetSets();
-        }
-
         std::shared_ptr<ICompileMarker> BeginCompileOperation(
 			uint64_t typeCode, const StringSection<ResChar> initializers[],
             unsigned initializerCount)
@@ -88,6 +83,10 @@ namespace Assets
             auto& store = Services::GetAsyncMan().GetIntermediateStore();
             return compilers.PrepareAsset(typeCode, initializers, initializerCount, store);
         }
-
     }
+
+	AssetSetManager& GetAssetSetManager()
+	{
+		return Services::GetAssetSets();
+	}
 }

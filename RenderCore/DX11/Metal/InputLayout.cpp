@@ -76,7 +76,7 @@ namespace RenderCore { namespace Metal_DX11
 
         return GetObjectFactory().CreateInputLayout(
             nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.second), 
-            byteCode.first, byteCode.second);
+            byteCode.begin(), byteCode.size());
     }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

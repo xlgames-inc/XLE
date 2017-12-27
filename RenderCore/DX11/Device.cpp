@@ -19,6 +19,7 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/LogUtil.h"
 #include "../../ConsoleRig/GlobalServices.h"
+#include "../../ConsoleRig/AttachableInternal.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../Utility/MemoryUtils.h"
@@ -144,6 +145,7 @@ namespace RenderCore { namespace ImplDX11
         // Metal_DX11::ObjectFactory::PrepareDevice(*underlying);
         _mainFactory = std::make_unique<Metal_DX11::ObjectFactory>(*underlying);
         ConsoleRig::GlobalServices::GetCrossModule().Publish(*_mainFactory);
+		_mainFactory->AttachCurrentModule();
 
             //  Once we know there can be no more exceptions thrown, we can commit
             //  locals to the members.
