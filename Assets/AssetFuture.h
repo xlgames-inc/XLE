@@ -5,6 +5,7 @@
 #include "../Utility/Threading/ThreadingUtils.h"		// (for Threading::YieldTimeSlice() below)
 #include <memory>
 #include <string>
+#include <assert.h>
 
 namespace Assets
 {
@@ -27,7 +28,10 @@ namespace Assets
 	{
 	public:
 		const AssetPtr<AssetType>& Actualize() const;
+		const AssetPtr<AssetType>& TryActualize() const;
+
 		void			OnFrameBarrier();
+		bool			IsOutOfDate() const;
 		
 		AssetState		GetAssetState() const;
 		AssetState		StallWhilePending() const;
@@ -61,7 +65,7 @@ namespace Assets
 	};
 
 	template<typename AssetType>
-		using AssetFuturePtr = std::shared_ptr<AssetFuture<AssetType>>;
+		using FuturePtr = std::shared_ptr<AssetFuture<AssetType>>;
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -115,6 +119,16 @@ namespace Assets
 	}
 
 	template<typename AssetType>
+		const AssetPtr<AssetType>& AssetFuture<AssetType>::TryActualize() const
+	{
+		auto state = _state;
+		if (state == AssetState::Ready)
+			return _actualized;
+		static AssetPtr<AssetType> dummy;
+		return dummy;
+	}
+
+	template<typename AssetType>
 		void AssetFuture<AssetType>::OnFrameBarrier() 
 	{
 			// lock & swap the asset into the front buffer. We only do this during the "frame barrier" phase, to
@@ -135,6 +149,13 @@ namespace Assets
 			// we should also consider a cache flush here to ensure the CPU commits in the correct order
 			_state = _pendingState;
 		}
+	}
+
+	template<typename AssetType>
+		bool			AssetFuture<AssetType>::IsOutOfDate() const
+	{
+		auto a = TryActualize();
+		return a && a->GetDependencyValidation()->GetValidationIndex() > 0;
 	}
 
 	template<typename AssetType>

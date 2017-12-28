@@ -342,7 +342,7 @@ namespace RenderCore { namespace Assets
             _store->MakeIntermediateName(
                 destination, (unsigned)count, MakeFileNameSplitter(_requestName).AllExceptParameters());
         } else {
-            _store->MakeIntermediateName(destination, (unsigned)count, _requestName.c_str());
+            _store->MakeIntermediateName(destination, (unsigned)count, MakeStringSection(_requestName));
         }
 
         switch (_typeCode) {

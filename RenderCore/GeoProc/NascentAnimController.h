@@ -123,7 +123,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         NascentObjectGuid   _source;
 
         UnboundMorphController();
-        UnboundMorphController(UnboundMorphController&& moveFrom);
+        UnboundMorphController(UnboundMorphController&& moveFrom) never_throws;
         UnboundMorphController& operator=(UnboundMorphController&& moveFrom) never_throws;
     private:
         UnboundMorphController& operator=(const UnboundMorphController& copyFrom);

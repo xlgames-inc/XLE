@@ -25,9 +25,9 @@ namespace RenderCore { namespace Assets
         class Model
         {
         public:
-            ModelRenderer*  _renderer;
+			ModelRenderer*  _renderer;
             SharedStateSet* _sharedStateSet;
-            ModelScaffold*  _model;
+			ModelScaffold*  _model;
             std::pair<Float3, Float3> _boundingBox;
             uint64          _hashedModelName;
             uint64          _hashedMaterialName;
@@ -43,10 +43,10 @@ namespace RenderCore { namespace Assets
         class Scaffolds
         {
         public:
-            ModelScaffold*      _model;
-            MaterialScaffold*   _material;
-            uint64              _hashedModelName;
-            uint64              _hashedMaterialName;
+			ModelScaffold*      _model = nullptr;
+			MaterialScaffold*   _material = nullptr;
+            uint64              _hashedModelName = 0;
+            uint64              _hashedMaterialName = 0;
         };
 
         class Config

@@ -522,7 +522,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 
     UnboundSkinController::Bucket::Bucket() { _weightCount = 0; _vertexBufferSize = 0; }
-    UnboundSkinController::Bucket::Bucket(Bucket&& moveFrom)
+    UnboundSkinController::Bucket::Bucket(Bucket&& moveFrom) never_throws
     :       _vertexInputLayout(std::move(moveFrom._vertexInputLayout))
     ,       _weightCount(moveFrom._weightCount)
     ,       _vertexBufferData(std::move(moveFrom._vertexBufferData))
@@ -590,7 +590,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     :       _source(std::move(moveFrom._source))
     {}
 
-    UnboundMorphController& UnboundMorphController::operator=(UnboundMorphController&& moveFrom)
+    UnboundMorphController& UnboundMorphController::operator=(UnboundMorphController&& moveFrom) never_throws
     {
         _source = std::move(moveFrom._source);
         return *this;

@@ -107,7 +107,7 @@ namespace RenderCore { namespace Assets
         const char* skinningVertexShaderSourcePN0   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:PN0:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:PN0:" VS_DefShaderModel);
         const char* geometryShaderSourcePN          = "xleres/animation/skinning.gsh:PN:" GS_DefShaderModel;
 
-        const bool hasNormals = !!HasElement(AsPointer(skinningOutputLayout.cbegin()), AsPointer(skinningOutputLayout.cend()), "NORMAL");
+        const bool hasNormals = !!HasElement(MakeIteratorRange(skinningOutputLayout), "NORMAL");
 
             //  outputs from skinning are always float3's currently. So, we can get the vertex stride
             //  just from the outputs count

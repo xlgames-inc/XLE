@@ -84,29 +84,18 @@ namespace RenderCore { namespace Assets
         const char*                     GetMaterialName(MaterialGuid guid) const;
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
-		const ::Assets::rstring&		Filename() const { return _filename; }
-		::Assets::AssetState			TryResolve() const;
-		::Assets::AssetState			StallWhilePending() const;
 
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
 
         MaterialScaffold(const ::Assets::ChunkFileContainer& chunkFile);
-		MaterialScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
         MaterialScaffold(MaterialScaffold&& moveFrom) never_throws;
         MaterialScaffold& operator=(MaterialScaffold&& moveFrom) never_throws;
         ~MaterialScaffold();
 
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
     protected:
-        std::unique_ptr<uint8[]> _rawMemoryBlock;
-
-		std::shared_ptr<::Assets::DeferredConstruction> _deferredConstructor;
-		::Assets::rstring			_filename;
-		::Assets::DepValPtr			_depVal;
-        
-        const MaterialImmutableData*   TryImmutableData() const;
-		void Resolve() const;
+        std::unique_ptr<uint8[], PODAlignedDeletor>	_rawMemoryBlock;
+		::Assets::DepValPtr _depVal;
+		::Assets::rstring _filename;
     };
 
     uint64 MakeMaterialGuid(StringSection<utf8> name);

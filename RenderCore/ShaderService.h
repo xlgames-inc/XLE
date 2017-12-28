@@ -170,16 +170,7 @@ namespace RenderCore
 		CompiledShaderByteCode();
         ~CompiledShaderByteCode();
 
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			StringSection<::Assets::ResChar> initializer, 
-			StringSection<::Assets::ResChar> definesTable=StringSection<::Assets::ResChar>());
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
-			StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable=StringSection<::Assets::ResChar>());
-
-        CompiledShaderByteCode(const CompiledShaderByteCode&) = delete;
+		CompiledShaderByteCode(const CompiledShaderByteCode&) = delete;
         CompiledShaderByteCode& operator=(const CompiledShaderByteCode&) = delete;
         CompiledShaderByteCode(CompiledShaderByteCode&&);
         CompiledShaderByteCode& operator=(CompiledShaderByteCode&&);

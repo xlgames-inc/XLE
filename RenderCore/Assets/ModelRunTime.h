@@ -78,36 +78,24 @@ namespace RenderCore { namespace Assets
         unsigned                        LargeBlocksOffset() const;
         const ModelCommandStream&       CommandStream() const;
         const ModelImmutableData&       ImmutableData() const;
-        const SkeletonMachine&    EmbeddedSkeleton() const;
+        const SkeletonMachine&			EmbeddedSkeleton() const;
         std::pair<Float3, Float3>       GetStaticBoundingBox(unsigned lodIndex = 0) const;
         unsigned                        GetMaxLOD() const;
 
-		const ::Assets::rstring&		Filename() const				{ return _filename; }
 		const ::Assets::DepValPtr&		GetDependencyValidation() const	{ return _depVal; }
-		::Assets::AssetState			TryResolve() const;
-		::Assets::AssetState			StallWhilePending() const;
 
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
 
         ModelScaffold(const ::Assets::ChunkFileContainer& chunkFile);
-        ModelScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
         ModelScaffold(ModelScaffold&& moveFrom) never_throws;
         ModelScaffold& operator=(ModelScaffold&& moveFrom) never_throws;
         ~ModelScaffold();
 
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
-
     private:
-        std::unique_ptr<uint8[]>    _rawMemoryBlock;
+        std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
         unsigned                    _largeBlocksOffset;
-
-		std::shared_ptr<::Assets::DeferredConstruction> _deferredConstructor;
-		::Assets::rstring			_filename;
 		::Assets::DepValPtr			_depVal;
-
-        const ModelImmutableData*   TryImmutableData() const;
-		void Resolve() const;
+		::Assets::rstring			_filename;
     };
     
     class PreparedAnimation;
@@ -249,28 +237,20 @@ namespace RenderCore { namespace Assets
     public:
         unsigned LargeBlocksOffset() const;
         const ModelSupplementImmutableData& ImmutableData() const;
-		const ::Assets::rstring&		Filename() const				{ return _filename; }
 		const ::Assets::DepValPtr&		GetDependencyValidation() const	{ return _depVal; }
 
         ModelSupplementScaffold(const ::Assets::ChunkFileContainer& chunkFile);
-		ModelSupplementScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
         ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom) never_throws;
         ModelSupplementScaffold& operator=(ModelSupplementScaffold&& moveFrom) never_throws;
         ~ModelSupplementScaffold();
 
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
+		static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
 
     private:
         std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
         unsigned                    _largeBlocksOffset;
-
-		std::shared_ptr<::Assets::DeferredConstruction> _deferredConstructor;
-		::Assets::rstring			_filename;
 		::Assets::DepValPtr			_depVal;
-
-		const ModelSupplementImmutableData*   TryImmutableData() const;
-		void Resolve() const;
+		::Assets::rstring			_filename;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -305,31 +285,19 @@ namespace RenderCore { namespace Assets
     {
     public:
         const SkeletonMachine&		GetTransformationMachine() const;
-		const ::Assets::rstring&	Filename() const				{ return _filename; }
 		const ::Assets::DepValPtr&	GetDependencyValidation() const { return _depVal; }
-
-		::Assets::AssetState		StallWhilePending() const;
 
         static const auto CompileProcessType = ConstHash64<'Skel', 'eton'>::Value;
 
         SkeletonScaffold(const ::Assets::ChunkFileContainer& chunkFile);
-		SkeletonScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
         SkeletonScaffold(SkeletonScaffold&& moveFrom) never_throws;
         SkeletonScaffold& operator=(SkeletonScaffold&& moveFrom) never_throws;
         ~SkeletonScaffold();
 
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
-
     private:
         std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
-        
-		std::shared_ptr<::Assets::DeferredConstruction> _deferredConstructor;
-		::Assets::rstring			_filename;
 		::Assets::DepValPtr			_depVal;
-
-		const SkeletonMachine*		TryImmutableData() const;
-		void Resolve() const;
+		::Assets::rstring			_filename;
     };
 
     /// <summary>Structural data for animation</summary>
@@ -343,31 +311,19 @@ namespace RenderCore { namespace Assets
     {
     public:
         const AnimationImmutableData&   ImmutableData() const;
-		const ::Assets::rstring&		Filename() const				{ return _filename; }
 		const ::Assets::DepValPtr&		GetDependencyValidation() const	{ return _depVal; }
-
-		::Assets::AssetState AnimationSetScaffold::StallWhilePending() const;
 
         static const auto CompileProcessType = ConstHash64<'Anim', 'Set'>::Value;
 
         AnimationSetScaffold(const ::Assets::ChunkFileContainer& chunkFile);
-		AnimationSetScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
         AnimationSetScaffold(AnimationSetScaffold&& moveFrom) never_throws;
         AnimationSetScaffold& operator=(AnimationSetScaffold&& moveFrom) never_throws;
         ~AnimationSetScaffold();
 
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
-
     private:
-        std::unique_ptr<uint8[]>    _rawMemoryBlock;
-
-		std::shared_ptr<::Assets::DeferredConstruction> _deferredConstructor;
-		::Assets::rstring			_filename;
+        std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
 		::Assets::DepValPtr			_depVal;
-
-		const AnimationImmutableData*   TryImmutableData() const;
-		void Resolve() const;
+		::Assets::rstring			_filename;
     };
 
     /// <summary>Bind together a model, animation set and skeleton for rendering</summary>

@@ -861,7 +861,7 @@ namespace ToolsRig
 
     void AOSupplementCompiler::Marker::MakeIntermediateName(::Assets::ResChar destination[], size_t destinationCount) const
     {
-        _store->MakeIntermediateName(destination, (unsigned)destinationCount, _modelFilename.c_str());
+        _store->MakeIntermediateName(destination, (unsigned)destinationCount, MakeStringSection(_modelFilename));
         StringMeldAppend(destination, &destination[destinationCount])
             << "-" << MakeFileNameSplitter(_materialFilename).File().AsString() << "-ao";
     }

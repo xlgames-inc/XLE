@@ -29,6 +29,6 @@ namespace Assets
 
 	template<typename AssetType, typename... Params>
 		const AssetType& GetAssetComp(Params... initialisers) { return Actualize<AssetType>(std::forward<Params>(initialisers)...); }
-		
+
 }
 

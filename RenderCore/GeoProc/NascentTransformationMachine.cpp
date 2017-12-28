@@ -29,7 +29,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     template <>
         void    NascentSkeletonMachine::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
     {
-        outputSerializer.SerializeSubBlock(AsPointer(_commandStream.begin()), AsPointer(_commandStream.end()));
+        outputSerializer.SerializeSubBlock(MakeIteratorRange(_commandStream));
         outputSerializer.SerializeValue(_commandStream.size());
         outputSerializer.SerializeValue(_outputMatrixCount);
 	}
@@ -200,14 +200,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				}
 			}
 		}
-		outputSerializer.SerializeSubBlock(AsPointer(runTimeInputInterface.begin()), AsPointer(runTimeInputInterface.end()));
+		outputSerializer.SerializeSubBlock(MakeIteratorRange(runTimeInputInterface));
 		outputSerializer.SerializeValue(runTimeInputInterface.size());
 
 		//
 		//      Now, output interface...
 		//
 		std::vector<uint64> jointHashNames= GetOutputInterface();
-		outputSerializer.SerializeSubBlock(AsPointer(jointHashNames.cbegin()), AsPointer(jointHashNames.cend()));
+		outputSerializer.SerializeSubBlock(MakeIteratorRange(jointHashNames));
 		outputSerializer.SerializeValue(jointHashNames.size());
 	}
 

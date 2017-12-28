@@ -66,13 +66,24 @@ namespace Assets { namespace IntermediateAssets
     }
 
     template <int DestCount>
-        static void MakeDepFileName(ResChar (&destination)[DestCount], const ResChar baseDirectory[], const ResChar depFileName[])
+        static void MakeDepFileName(ResChar (&destination)[DestCount], StringSection<ResChar> baseDirectory, StringSection<ResChar> depFileName)
         {
                 //  if the prefix of "baseDirectory" and "intermediateFileName" match, we should skip over that
-            const ResChar* f = depFileName, *b = baseDirectory;
-            while (ConvChar(*f) == ConvChar(*b) && *f != '\0') { ++f; ++b; }
-            while (ConvChar(*f) == '/') { ++f; }
-            std::snprintf(destination, dimof(destination), "%s/.deps/%s", baseDirectory, f);
+            const ResChar* f = depFileName.begin(), *b = baseDirectory.begin();
+
+            while (f != depFileName.end() && b != baseDirectory.end() && ConvChar(*f) == ConvChar(*b)) { ++f; ++b; }
+            while (f != depFileName.end() && ConvChar(*f) == '/') { ++f; }
+
+			static_assert(DestCount > 0);
+			auto* dend = &destination[DestCount-1];
+			auto* d = destination;
+			auto* s = baseDirectory.begin();
+			while (d != dend && s != baseDirectory.end()) *d++ = *s++;
+			s = "/.deps/";
+			while (d != dend && *s != '\0') *d++ = *s++;
+			s = f;
+			while (d != dend && s != depFileName.end()) *d++ = *s++;
+			*dend = '\0';
         }
 
     class RetainedFileRecord : public DependencyValidation
@@ -149,7 +160,7 @@ namespace Assets { namespace IntermediateAssets
         record->OnChange();
     }
 
-    std::shared_ptr<DependencyValidation> Store::MakeDependencyValidation(const ResChar intermediateFileName[]) const
+    std::shared_ptr<DependencyValidation> Store::MakeDependencyValidation(StringSection<ResChar> intermediateFileName) const
     {
             //  When we process a file, we write a little text file to the
             //  ".deps" directory. This contains a list of dependency files, and
@@ -159,7 +170,7 @@ namespace Assets { namespace IntermediateAssets
             //  must be recompiled.
 
         ResChar buffer[MaxPath];
-        MakeDepFileName(buffer, _baseDirectory.c_str(), intermediateFileName);
+        MakeDepFileName(buffer, MakeStringSection(_baseDirectory), intermediateFileName);
         if (MainFileSystem::TryGetDesc(buffer)._state != FileDesc::State::Normal) return nullptr;
 
         Data data;
@@ -217,7 +228,7 @@ namespace Assets { namespace IntermediateAssets
     }
 
     std::shared_ptr<DependencyValidation> Store::WriteDependencies(
-        const ResChar intermediateFileName[], 
+        StringSection<ResChar> intermediateFileName, 
         StringSection<ResChar> baseDir,
         IteratorRange<const DependentFileState*> deps,
         bool makeDepValidation) const

@@ -32,10 +32,10 @@ namespace Serialization
         
         template<typename Type> void    SerializeSubBlock(const Type* type);
         template<typename Type, typename std::enable_if< !std::is_pod<Type>::value >::type* = nullptr>
-            void    SerializeSubBlock(IteratorRange<const Type*> range, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
+            void    SerializeSubBlock(IteratorRange<Type*> range, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
 
         template<typename Type, typename std::enable_if< std::is_pod<Type>::value >::type* = nullptr>
-            void    SerializeSubBlock(IteratorRange<const Type*> range, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
+            void    SerializeSubBlock(IteratorRange<Type*> range, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
 
         void    SerializeSubBlock(NascentBlockSerializer& subBlock, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
         void    SerializeRawSubBlock(IteratorRange<const void*> range, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
@@ -187,7 +187,7 @@ namespace Serialization
         ////////////////////////////////////////////////////
 
     template<typename Type, typename std::enable_if< !std::is_pod<Type>::value >::type*>
-        void    NascentBlockSerializer::SerializeSubBlock(IteratorRange<const Type*> range, SpecialBuffer::Enum specialBuffer)
+        void    NascentBlockSerializer::SerializeSubBlock(IteratorRange<Type*> range, SpecialBuffer::Enum specialBuffer)
     {
         NascentBlockSerializer temporaryBlock;
         for (const auto& i:range) ::Serialize(temporaryBlock, i);
@@ -195,7 +195,7 @@ namespace Serialization
     }
 
     template<typename Type, typename std::enable_if< std::is_pod<Type>::value >::type*>
-        void    NascentBlockSerializer::SerializeSubBlock(IteratorRange<const Type*> range, SpecialBuffer::Enum specialBuffer)
+        void    NascentBlockSerializer::SerializeSubBlock(IteratorRange<Type*> range, SpecialBuffer::Enum specialBuffer)
     {
         SerializeRawSubBlock(IteratorRange<const void*>((const void*)range.begin(), (const void*)range.end()), specialBuffer);
     }

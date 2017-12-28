@@ -131,9 +131,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			// run-time types
 		{
 			auto defaultPoseData = CalculateDefaultPoseData(skeleton.GetSkeletonMachine(), skeleton.GetInterface(), skeleton.GetDefaultParameters(), cmdStream, geoObjects);
-			serializer.SerializeSubBlock(
-				AsPointer(defaultPoseData._defaultTransforms.cbegin()), 
-				AsPointer(defaultPoseData._defaultTransforms.cend()));
+			serializer.SerializeSubBlock(MakeIteratorRange(defaultPoseData._defaultTransforms));
 			serializer.SerializeValue(size_t(defaultPoseData._defaultTransforms.size()));
 			::Serialize(serializer, defaultPoseData._boundingBox.first);
 			::Serialize(serializer, defaultPoseData._boundingBox.second);
@@ -200,7 +198,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		Serialization::NascentBlockSerializer serializer;
 
 		::Serialize(serializer, animationSet);
-		serializer.SerializeSubBlock(curves.begin(), curves.end());
+		serializer.SerializeSubBlock(curves);
 		serializer.SerializeValue(curves.size());
 
 		auto block = ::Assets::AsVector(serializer);

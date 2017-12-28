@@ -108,10 +108,10 @@ namespace Assets { namespace IntermediateAssets
         using DepVal = std::shared_ptr<DependencyValidation>;
 
         DepVal MakeDependencyValidation(
-            const ResChar intermediateFileName[]) const;
+            StringSection<ResChar> intermediateFileName) const;
 
         DepVal WriteDependencies(
-            const ResChar intermediateFileName[], 
+            StringSection<ResChar> intermediateFileName, 
             StringSection<ResChar> baseDir, 
             IteratorRange<const DependentFileState*> deps,
             bool makeDepValidation = true) const;

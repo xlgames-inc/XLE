@@ -30,7 +30,7 @@ namespace Assets
 	{
 	public:
 		template<typename... Params>
-			AssetFuturePtr<AssetType> Get(Params...);
+			FuturePtr<AssetType> Get(Params...);
 
 		void            Clear();
 		void            LogReport() const;
@@ -45,10 +45,10 @@ namespace Assets
 		DefaultAssetHeap& operator=(const DefaultAssetHeap&) = delete;
 	private:
 		Threading::Mutex _lock;
-		std::vector<std::pair<uint64_t, AssetFuturePtr<AssetType>>> _assets;
+		std::vector<std::pair<uint64_t, FuturePtr<AssetType>>> _assets;
 
 		template<typename... Params>
-			AssetFuturePtr<AssetType> MakeFuture(Params...);
+			FuturePtr<AssetType> MakeFuture(Params...);
 	};
 
 	template<typename AssetType>
@@ -60,7 +60,7 @@ namespace Assets
 
 	template<typename AssetType>
 		template<typename... Params>
-			auto DefaultAssetHeap<AssetType>::Get(Params... initialisers) -> AssetFuturePtr<AssetType>
+			auto DefaultAssetHeap<AssetType>::Get(Params... initialisers) -> FuturePtr<AssetType>
 	{
 		auto hash = Internal::BuildHash(initialisers...);
 
@@ -77,7 +77,7 @@ namespace Assets
 
 	template<typename AssetType>
 		template<typename... Params>
-			auto DefaultAssetHeap<AssetType>::MakeFuture(Params... initialisers) -> AssetFuturePtr<AssetType>
+			auto DefaultAssetHeap<AssetType>::MakeFuture(Params... initialisers) -> FuturePtr<AssetType>
 	{
 		auto stringInitializer = Internal::AsString(initialisers...);	// (used for tracking/debugging purposes)
 		auto future = std::make_shared<AssetFuture<AssetType>>(stringInitializer);

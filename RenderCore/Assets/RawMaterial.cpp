@@ -464,9 +464,9 @@ namespace RenderCore { namespace Assets
         if (existing == deps.cend())
             deps.push_back(depState);
     }
-#endif
 
-    static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
+	static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
+#endif
     
     auto RawMaterial::GetAsset(StringSection<::Assets::ResChar> initializer) -> const RawMaterial& 
     {

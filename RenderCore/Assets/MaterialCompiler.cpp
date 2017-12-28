@@ -7,6 +7,7 @@
 #include "MaterialCompiler.h"
 #include "ModelImmutableData.h"     // for MaterialImmutableData
 #include "Material.h"
+#include "RawMaterial.h"
 #include "../../Assets/CompilationThread.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/BlockSerializer.h"
@@ -42,31 +43,26 @@ namespace RenderCore { namespace Assets
     public:
         std::vector<std::basic_string<utf8>> _configurations;
 
-        RawMatConfigurations(
-            const ::Assets::IArtifact& locator, 
-            StringSection<::Assets::ResChar> initializer);
+		RawMatConfigurations(
+			const std::shared_ptr<std::vector<uint8>>& locator,
+			const ::Assets::DepValPtr& depVal);
 
         static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
 
         auto GetDependencyValidation() const -> const std::shared_ptr<::Assets::DependencyValidation>& { return _validationCallback; }
-
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
-		{
-			return ::Assets::DefaultBeginDeferredConstruction<RawMatConfigurations>(initializers, initializerCount);
-		}
     protected:
         std::shared_ptr<::Assets::DependencyValidation> _validationCallback;
     };
 
-    RawMatConfigurations::RawMatConfigurations(const ::Assets::IArtifact& locator, StringSection<::Assets::ResChar> initializer)
+    RawMatConfigurations::RawMatConfigurations(
+		const std::shared_ptr<std::vector<uint8>>& blob,
+		const ::Assets::DepValPtr& depVal)
     {
             //  Get associated "raw" material information. This is should contain the material information attached
             //  to the geometry export (eg, .dae file).
 
-		auto blob = locator.GetBlob();
         if (!blob || blob->size() == 0)
-            Throw(::Assets::Exceptions::InvalidAsset(initializer, "Missing or empty file"));
+            Throw(::Exceptions::BasicLabel("Missing or empty file"));
 
         InputStreamFormatter<utf8> formatter(
             MemoryMappedInputStream(AsPointer(blob->begin()), AsPointer(blob->end())));
@@ -78,7 +74,7 @@ namespace RenderCore { namespace Assets
             _configurations.push_back(name.AsString());
         }
 
-        _validationCallback = locator.GetDependencyValidation();
+        _validationCallback = depVal;
     }
 
 
@@ -211,15 +207,14 @@ namespace RenderCore { namespace Assets
         return ::Assets::CompilerHelper::CompileResult { std::move(deps), std::string() };
     }
 
-    static void DoCompileMaterialScaffold(::Assets::QueuedCompileOperation& op)
+    static void DoCompileMaterialScaffold(::Assets::QueuedCompileOperation& op, StringSection<::Assets::ResChar> destination)
     {
         TRY
         {
-            auto compileResult = CompileMaterialScaffold(op._initializer0, op._initializer1, op.GetLocator()._sourceID0);
-            op.GetLocator()._dependencyValidation = op._destinationStore->WriteDependencies(
-                op.GetLocator()._sourceID0, MakeStringSection(compileResult._baseDir), 
+            auto compileResult = CompileMaterialScaffold(op._initializer0, op._initializer1, destination);
+            op._destinationStore->WriteDependencies(
+				destination, MakeStringSection(compileResult._baseDir),
                 MakeIteratorRange(compileResult._dependencies));
-            assert(op.GetLocator()._dependencyValidation);
 
             op.SetState(::Assets::AssetState::Ready);
         } CATCH(const ::Assets::Exceptions::PendingAsset&) {
@@ -264,7 +259,7 @@ namespace RenderCore { namespace Assets
 
     void MatCompilerMarker::GetIntermediateName(::Assets::ResChar destination[], size_t destinationCount) const
     {
-        _store->MakeIntermediateName(destination, (unsigned)destinationCount, _materialFilename.c_str());
+        _store->MakeIntermediateName(destination, (unsigned)destinationCount, MakeStringSection(_materialFilename));
         StringMeldAppend(destination, &destination[destinationCount])
             << "-" << MakeFileNameSplitter(_modelFilename).FileAndExtension().AsString() << "-resmat";
     }
@@ -274,7 +269,7 @@ namespace RenderCore { namespace Assets
 		::Assets::ResChar intermediateName[MaxPath];
         GetIntermediateName(intermediateName, dimof(intermediateName));
         auto depVal = _store->MakeDependencyValidation(intermediateName);
-        return std::make_shared<::Assets::FileArtifact(MakeStringSection(intermediateName), depVal));
+        return std::make_shared<::Assets::FileArtifact>(intermediateName, depVal);
     }
 
     std::shared_ptr<::Assets::CompileFuture> MatCompilerMarker::InvokeCompile() const
@@ -291,13 +286,22 @@ namespace RenderCore { namespace Assets
         XlCopyString(backgroundOp->_initializer0, _materialFilename);
         XlCopyString(backgroundOp->_initializer1, _modelFilename);
         backgroundOp->_destinationStore = _store;
-        GetIntermediateName(backgroundOp->GetLocator()._sourceID0, dimof(backgroundOp->GetLocator()._sourceID0));
 
 		{
 			ScopedLock(c->_pimpl->_threadLock);
-			if (!c->_pimpl->_thread)
+			if (!c->_pimpl->_thread) {
+				auto store = _store;
+				::Assets::rstring materialFilename = _materialFilename;
+				::Assets::rstring modelFilename = _modelFilename;
 				c->_pimpl->_thread = std::make_unique<CompilationThread>(
-					[](QueuedCompileOperation& op) { DoCompileMaterialScaffold(op); });
+					[store, materialFilename, modelFilename](QueuedCompileOperation& op) {
+						::Assets::ResChar intermediateName[MaxPath];
+						store->MakeIntermediateName(intermediateName, dimof(intermediateName), MakeStringSection(materialFilename));
+						StringMeldAppend(intermediateName, &intermediateName[dimof(intermediateName)])
+							<< "-" << MakeFileNameSplitter(modelFilename).FileAndExtension().AsString() << "-resmat";
+						DoCompileMaterialScaffold(op, MakeStringSection(intermediateName));
+					});
+			}
 		}
 		c->_pimpl->_thread->Push(backgroundOp);
 
@@ -349,73 +353,13 @@ namespace RenderCore { namespace Assets
 
     const MaterialImmutableData& MaterialScaffold::ImmutableData() const
     {
-        Resolve(); 
         return *(const MaterialImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
-    }
-
-	void MaterialScaffold::Resolve() const
-	{
-		if (_deferredConstructor) {
-			auto state = _deferredConstructor->GetAssetState();
-			if (state == ::Assets::AssetState::Pending)
-				Throw(::Assets::Exceptions::PendingAsset(MakeStringSection(_filename), "Pending deferred construction"));
-
-			auto* mutableThis = const_cast<MaterialScaffold*>(this);
-			auto constructor = std::move(mutableThis->_deferredConstructor);
-			assert(!mutableThis->_deferredConstructor);
-			if (state == ::Assets::AssetState::Ready) {
-				*mutableThis = std::move(*constructor->PerformConstructor<MaterialScaffold>());
-			} else {
-				assert(state == ::Assets::AssetState::Invalid);
-			}
-		}
-		if (!_rawMemoryBlock)
-			Throw(::Assets::Exceptions::InvalidAsset(MakeStringSection(_filename), "Missing data"));
-	}
-	
-	::Assets::AssetState MaterialScaffold::TryResolve() const
-	{
-		if (_deferredConstructor) {
-			auto state = _deferredConstructor->GetAssetState();
-			if (state == ::Assets::AssetState::Pending)
-				return state;
-
-			auto* mutableThis = const_cast<MaterialScaffold*>(this);
-			auto constructor = std::move(mutableThis->_deferredConstructor);
-			assert(!mutableThis->_deferredConstructor);
-			if (state == ::Assets::AssetState::Ready) {
-				*mutableThis = std::move(*constructor->PerformConstructor<MaterialScaffold>());
-			} // (else fall through);
-		}
-
-		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
-	}
-
-	::Assets::AssetState MaterialScaffold::StallWhilePending() const
-	{
-		if (_deferredConstructor) {
-			auto state = _deferredConstructor->StallWhilePending();
-			auto* mutableThis = const_cast<MaterialScaffold*>(this);
-			auto constructor = std::move(mutableThis->_deferredConstructor);
-			assert(!mutableThis->_deferredConstructor);
-			if (state == ::Assets::AssetState::Ready) {
-				*mutableThis = std::move(*constructor->PerformConstructor<MaterialScaffold>());
-			} // (else fall through);
-		}
-
-		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
-	}
-
-    const MaterialImmutableData*   MaterialScaffold::TryImmutableData() const
-    {
-        if (!_rawMemoryBlock) return nullptr;
-        return (const MaterialImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
     const ResolvedMaterial* MaterialScaffold::GetMaterial(MaterialGuid guid) const
     {
         const auto& data = ImmutableData();
-        auto i = LowerBound(data._materials, guid);
+        auto i = std::lower_bound(data._materials.begin(), data._materials.end(), guid, CompareFirst<MaterialGuid, ResolvedMaterial>());
         if (i!=data._materials.end() && i->first==guid)
             return &i->second;
         return nullptr;
@@ -424,7 +368,7 @@ namespace RenderCore { namespace Assets
     const char* MaterialScaffold::GetMaterialName(MaterialGuid guid) const
     {
         const auto& data = ImmutableData();
-        auto i = LowerBound(data._materialNames, guid);
+        auto i = std::lower_bound(data._materialNames.begin(), data._materialNames.end(), guid, CompareFirst<MaterialGuid, std::string>());
         if (i!=data._materialNames.end() && i->first==guid)
             return i->second.c_str();
         return nullptr;
@@ -439,23 +383,16 @@ namespace RenderCore { namespace Assets
     };
 
     MaterialScaffold::MaterialScaffold(const ::Assets::ChunkFileContainer& chunkFile)
-	: _filename(chunkFile.Filename())
-	, _depVal(chunkFile.GetDependencyValidation())
+	: _depVal(chunkFile.GetDependencyValidation())
+	, _filename(chunkFile.Filename())
     {
 		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(MaterialScaffoldChunkRequests));
 		assert(chunks.size() == 1);
 		_rawMemoryBlock = std::move(chunks[0]._buffer);
     }
 
-	MaterialScaffold::MaterialScaffold(const std::shared_ptr<::Assets::DeferredConstruction>& deferredConstruction)
-	: _deferredConstructor(deferredConstruction)
-	, _depVal(deferredConstruction->GetDependencyValidation())
-	{}
-
     MaterialScaffold::MaterialScaffold(MaterialScaffold&& moveFrom) never_throws
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-	, _deferredConstructor(std::move(moveFrom._deferredConstructor))
-	, _filename(std::move(moveFrom._filename))
 	, _depVal(moveFrom._depVal)
     {}
 
@@ -463,24 +400,14 @@ namespace RenderCore { namespace Assets
     {
 		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-		_deferredConstructor = std::move(moveFrom._deferredConstructor);
-		_filename = std::move(moveFrom._filename);
 		_depVal = moveFrom._depVal;
         return *this;
     }
 
     MaterialScaffold::~MaterialScaffold()
     {
-        auto* data = TryImmutableData();
-        if (data)
-            data->~MaterialImmutableData();
+		ImmutableData().~MaterialImmutableData();
     }
-
-	std::shared_ptr<::Assets::DeferredConstruction> MaterialScaffold::BeginDeferredConstruction(
-		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
-	{
-		return ::Assets::DefaultBeginDeferredConstruction<MaterialScaffold>(initializers, initializerCount);
-	}
 
 }}
 

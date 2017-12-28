@@ -31,6 +31,7 @@ namespace RenderCore { namespace Assets
 
         auto shaderSource = std::make_shared<LocalCompiledShaderSource>(
             Metal::CreateLowLevelShaderCompiler(*device),
+			nullptr,
             device->GetDesc());
         _shaderService->AddShaderSource(shaderSource);
 
