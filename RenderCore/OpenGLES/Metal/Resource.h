@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../ResourceDesc.h"
+#include "../../IDevice.h"
 #include "IndexedGLType.h"
 
 namespace RenderCore
@@ -12,7 +13,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 {
     class ObjectFactory;
 
-    class Resource
+    class Resource : public IResource
     {
     public:
         using Desc = ResourceDesc;
@@ -21,6 +22,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         const intrusive_ptr<OpenGL::Buffer>& GetBuffer() const  { return _underlyingBuffer; }
         const intrusive_ptr<OpenGL::Texture>& GetTexture() const  { return _underlyingTexture; }
+
+        virtual void*       QueryInterface(size_t guid);
 
         Resource(
             ObjectFactory& factory, const Desc& desc,

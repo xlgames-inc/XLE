@@ -12,6 +12,7 @@
         // // // //      Flexible interfaces configuration      // // // //
 #define FLEX_USE_VTABLE_PresentationChain    1
 #define FLEX_USE_VTABLE_Device               1
+#define FLEX_USE_VTABLE_Resource_            1
 
 namespace RenderCore
 {
@@ -21,9 +22,14 @@ namespace RenderCore
     #define FLEX_INTERFACE Device
 #include "FlexForward.h"
     #undef FLEX_INTERFACE
+    #define FLEX_INTERFACE Resource_
+#include "FlexForward.h"
+    #undef FLEX_INTERFACE
 
-	class Resource;
-	using ResourcePtr = std::shared_ptr<Resource>;
+	using Resource = IResource_;
+    using IResource = IResource_;
+	using ResourcePtr = std::shared_ptr<IResource>;
+    using IResourcePtr = std::shared_ptr<IResource>;
 	class ResourceDesc;
 	class SubResourceInitData;
 	class PresentationChainDesc;

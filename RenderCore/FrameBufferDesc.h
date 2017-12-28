@@ -8,14 +8,12 @@
 
 #include "Types_Forward.h"
 #include "ResourceDesc.h"
+#include "IDevice_Forward.h"
 #include "../Utility/IteratorUtils.h"
 #include <memory>
 
 namespace RenderCore
 {
-    class Resource;
-    using ResourcePtr = std::shared_ptr<Resource>;
-
     using AttachmentName = uint32;
 
     /// <summary>Attachments are part of a frame buffer, and typically represent a rendering surface</summary>

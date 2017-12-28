@@ -27,9 +27,6 @@ namespace RenderCore
         unsigned _frameId;
     };
 
-    class Resource;
-	using ResourcePtr = std::shared_ptr<Resource>;
-
 #define FLEX_INTERFACE ThreadContext
 /*-----------------*/ #include "FlexBegin.h" /*-----------------*/
 

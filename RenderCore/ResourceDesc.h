@@ -362,15 +362,16 @@ namespace RenderCore
     class TexturePitches
     {
     public:
-        unsigned _rowPitch, _slicePitch, _arrayPitch;
+        unsigned _rowPitch = 0u;
+        unsigned _slicePitch = 0u;
+        unsigned _arrayPitch = 0u;
     };
 
 	class SubResourceInitData
 	{
 	public:
-		const void*     _data;
-		size_t          _size;
-		TexturePitches  _pitches;
+		IteratorRange<const void*>  _data;
+		TexturePitches              _pitches;
 	};
 
     class Box2D

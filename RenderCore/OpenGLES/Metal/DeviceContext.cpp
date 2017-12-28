@@ -25,32 +25,22 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    void DeviceContext::Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset)
+    void GraphicsPipeline::Bind(const BoundInputLayout& inputLayout)
     {
-        assert(offset == 0);    // (not supported currently... But we could safe it up for the draw call)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib.GetUnderlying()->AsRawGLHandle());
-
-        // Note that Format::R32_UINT is only supported on OGLES3.0+
-        assert(indexFormat == Format::R32_UINT || indexFormat == Format::R16_UINT || indexFormat == Format::R8_UINT);
-        _indicesFormat = indexFormat;
+        inputLayout.Apply();
     }
 
-    void DeviceContext::Bind(const BoundInputLayout& inputLayout)
-    {
-        _savedInputLayout = inputLayout;
-    }
-
-    void DeviceContext::Bind(Topology topology)
+    void GraphicsPipeline::Bind(Topology topology)
     {
         _nativeTopology = AsGLenum(topology);
     }
 
-    void DeviceContext::Bind(const ShaderProgram& shaderProgram)
+    void GraphicsPipeline::Bind(const ShaderProgram& shaderProgram)
     {
         glUseProgram(shaderProgram.GetUnderlying()->AsRawGLHandle());
     }
 
-    void DeviceContext::Bind(const BlendState& blender)
+    void GraphicsPipeline::Bind(const BlendState& blender)
     {
         blender.Apply();
     }
@@ -70,7 +60,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         glDisable(GL_DITHER);       // (not supported in D3D11)
     }
 
-    void DeviceContext::Bind(const RasterizationDesc& desc)
+    void GraphicsPipeline::Bind(const RasterizationDesc& desc)
     {
         if (desc._cullMode != CullMode::None) {
             glEnable(GL_CULL_FACE);
@@ -81,7 +71,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         glFrontFace(AsGLenum(desc._frontFaceWinding));
     }
 
-    void DeviceContext::Bind(const DepthStencilDesc& desc)
+    void GraphicsPipeline::Bind(const DepthStencilDesc& desc)
     {
         glDepthFunc(AsGLenum(desc._depthTest));
         glDepthMask(desc._depthWrite ? GL_TRUE : GL_FALSE);
@@ -120,9 +110,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    void DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
+    void GraphicsPipeline::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
-        _savedInputLayout.Apply(0, _savedVertexBufferStride);    // (must come after binding vertex buffers)
         glDrawArrays(GLenum(_nativeTopology), startVertexLocation, vertexCount);
     }
 
@@ -138,10 +127,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         return glFormat;
     }
 
-    void DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
+    void GraphicsPipeline::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
-        _savedInputLayout.Apply(0, _savedVertexBufferStride);
         glDrawElements(
             GLenum(_nativeTopology), GLsizei(indexCount),
             AsGLIndexBufferType(_indicesFormat),

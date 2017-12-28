@@ -18,3 +18,6 @@
 #undef ICLASSNAME
 #undef IDESTRUCTOR
 #undef FLEX_INTERFACE
+
+#pragma GCC diagnostic pop
+#pragma warning(pop)

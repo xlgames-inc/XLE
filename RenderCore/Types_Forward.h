@@ -20,9 +20,6 @@
 
 namespace RenderCore 
 {
-    class Resource;
-	using ResourcePtr = std::shared_ptr<Resource>;
-
     class InputElementDesc;
 	using InputLayout = IteratorRange<const InputElementDesc*>;
 

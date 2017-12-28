@@ -50,7 +50,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     Buffer::Buffer( ObjectFactory& factory, const ResourceDesc& desc,
                     const void* initData, size_t initDataSize)
-    : Resource(factory, desc, SubResourceInitData { initData, initDataSize, {0u, 0u, 0u} })
+    : Resource(factory, desc, SubResourceInitData { {initData, PtrAdd(initData, initDataSize)}, {0u, 0u, 0u} })
     {}
 
     Buffer::Buffer(const intrusive_ptr<OpenGL::Buffer>& underlying)
@@ -73,53 +73,20 @@ namespace RenderCore { namespace Metal_OpenGLES
             "buf");
     }
 
-    VertexBuffer::VertexBuffer(ObjectFactory& factory, const void* data, size_t byteCount)
-    : Buffer(factory, BuildDesc(BindFlag::VertexBuffer, byteCount, data != nullptr), data, byteCount)
-    {}
-
-    VertexBuffer::VertexBuffer(const void* data, size_t byteCount)
-    : VertexBuffer(GetObjectFactory(), data, byteCount)
-    {}
-
-    VertexBuffer::VertexBuffer(ObjectFactory& factory, const ResourceDesc& desc) : Buffer(factory, desc)
-    {}
-
-    VertexBuffer::VertexBuffer(const intrusive_ptr<OpenGL::Buffer>& underlying)
-    : Buffer(underlying)
-    {}
-
-    VertexBuffer::VertexBuffer() {}
-
-    VertexBuffer::~VertexBuffer() {}
-
-    IndexBuffer::IndexBuffer(ObjectFactory& factory, const void* data, size_t byteCount)
-    : Buffer(factory, BuildDesc(BindFlag::IndexBuffer, byteCount, data != nullptr), data, byteCount)
-    {}
-
-    IndexBuffer::IndexBuffer(const void* data, size_t byteCount)
-    : IndexBuffer(GetObjectFactory(), data, byteCount)
-    {}
-
-    IndexBuffer::IndexBuffer(ObjectFactory& factory, const ResourceDesc& desc) : Buffer(factory, desc)
-    {}
-
-    IndexBuffer::IndexBuffer(const intrusive_ptr<OpenGL::Buffer>& underlying)
-    : Buffer(underlying)
-    {}
-
-    IndexBuffer::IndexBuffer() {}
-
-    IndexBuffer::~IndexBuffer() {}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    ConstantBuffer::ConstantBuffer(const void* data, size_t byteCount)
+    Resource MakeVertexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
     {
-        _underlying = std::make_shared<std::vector<uint8>>(
-            (const uint8*)data, 
-            (const uint8*)PtrAdd(data, byteCount));
+        return Resource(
+            factory,
+            BuildDesc(BindFlag::VertexBuffer, data.size(), true),
+            SubResourceInitData { data, {0u, 0u, 0u} });
     }
-
-    ConstantBuffer::~ConstantBuffer() {}
+    
+    Resource MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
+    {
+        return Resource(
+            factory,
+            BuildDesc(BindFlag::IndexBuffer, data.size(), true),
+            SubResourceInitData { data, {0u, 0u, 0u} });
+    }
 }}
 

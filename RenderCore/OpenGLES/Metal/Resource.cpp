@@ -48,6 +48,13 @@ namespace RenderCore { namespace Metal_OpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    void* Resource::QueryInterface(size_t guid)
+    {
+        if (guid == typeid(Resource).hash_code())
+            return this;
+        return nullptr;
+    }
+
     Resource::Resource(
         ObjectFactory& factory, const Desc& desc,
         const SubResourceInitData& initData)
@@ -64,7 +71,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             // upload data to opengl buffer...
             glBindBuffer(bindTarget, _underlyingBuffer->AsRawGLHandle());
-            glBufferData(bindTarget, std::max((GLsizeiptr)initData._size, (GLsizeiptr)desc._linearBufferDesc._sizeInBytes), initData._data, usageMode);
+            glBufferData(bindTarget, std::max((GLsizeiptr)initData._data.size(), (GLsizeiptr)desc._linearBufferDesc._sizeInBytes), initData._data.begin(), usageMode);
         } else {
             Throw(Exceptions::BasicLabel("Unsupported resource type in Resource constructor"));
         }

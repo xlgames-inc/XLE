@@ -2,6 +2,7 @@
 #include "Device_EAGL.h"
 #include "Metal/DeviceContext.h"
 #include "Metal/IndexedGLType.h"
+#include "Metal/Resource.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Core/Exceptions.h"
@@ -74,7 +75,8 @@ namespace RenderCore { namespace ImplOpenGLES
 
     ResourcePtr Device::CreateResource(const ResourceDesc& desc, const ResourceInitializer& init)
     {
-        return nullptr;
+        // hack -- only getting a single subresource here!
+        return std::make_shared<Metal_OpenGLES::Resource>(*_objectFactory, desc, init({0,0}));
     }
 
     DeviceDesc Device::GetDesc()
@@ -140,6 +142,7 @@ namespace RenderCore { namespace ImplOpenGLES
         static std::shared_ptr<PresentationChainDesc> dummy;
         return dummy;
     }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

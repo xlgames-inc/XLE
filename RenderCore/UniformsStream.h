@@ -5,7 +5,7 @@
 #pragma once
 
 #include "RenderUtils.h"        // (for SharedPkt)
-#include "Types_Forward.h"      // (for ResourcePtr)
+#include "IDevice_Forward.h"    // (for ResourcePtr)
 #include "../Utility/IteratorUtils.h"
 #include <vector>
 

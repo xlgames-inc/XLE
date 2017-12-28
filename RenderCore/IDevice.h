@@ -192,6 +192,30 @@ namespace RenderCore
 
 /*-----------------*/ #include "FlexEnd.h" /*-----------------*/
 
+#define FLEX_INTERFACE Resource_
+/*-----------------*/ #include "FlexBegin.h" /*-----------------*/
+
+        class ICLASSNAME(Resource_)
+        {
+        public:
+            IMETHOD virtual void*       QueryInterface(size_t guid) IPURE;
+
+            IDESTRUCTOR
+        };
+
+        #if !defined(FLEX_CONTEXT_Resource_)
+            #define FLEX_CONTEXT_Resource_               FLEX_CONTEXT_INTERFACE
+        #endif
+
+        #if defined(DOXYGEN)
+            typedef IResource_ Base_Resource_;
+        #endif
+
+        using Resource = IResource_;     // old naming compatibility
+        using IResource = IResource;
+
+/*-----------------*/ #include "FlexEnd.h" /*-----------------*/
+
 ////////////////////////////////////////////////////////////////////////////////
 }
 

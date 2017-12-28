@@ -5,9 +5,6 @@ namespace RenderCore { namespace Metal_OpenGLES {
 
     class DeviceContext;
     class Buffer;
-    class VertexBuffer;
-    class IndexBuffer;
-    class ConstantBuffer;
     class BoundInputLayout;
     class BoundUniforms;
     class Resource;

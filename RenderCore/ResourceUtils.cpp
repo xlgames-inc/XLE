@@ -60,10 +60,10 @@ namespace RenderCore
                 rows /= BlockCompDim;  // in block compressed formats, we're dealing with 4x4 blocks of texels
 
             // prevent reading off the end of our src data, or writing past our dst data
-            rows = std::min(rows, unsigned(srcData._size/sourceRowPitch));
+            rows = std::min(rows, unsigned(srcData._data.size()/sourceRowPitch));
             rows = std::min(rows, unsigned(destinationDataSize/dstPitches._rowPitch));
 
-            auto sourceData = srcData._data;
+            auto sourceData = srcData._data.begin();
             for (unsigned j = 0; j < rows; j++) {
                 assert((size_t(destination) + sourceRowPitch - size_t(originalDest)) <= size_t(originalDest) + destinationDataSize);
                 XlCopyMemory/*Align16*/(destination, sourceData, sourceRowPitch);
@@ -75,10 +75,10 @@ namespace RenderCore
 
         } else {
             int nPitch = ByteCount(mipMapDesc._width, 1, 1, 1, mipMapDesc._format);
-            assert(srcData._size % nPitch == 0); (void)nPitch;
-            assert(size_t(destination) + srcData._size <= size_t(originalDest) + destinationDataSize);
-            XlCopyMemory/*Align16*/((uint8*)destination, srcData._data, srcData._size);
-            copiedBytes = (unsigned)srcData._size;
+            assert(srcData._data.size() % nPitch == 0); (void)nPitch;
+            assert(size_t(destination) + srcData._data.size() <= size_t(originalDest) + destinationDataSize);
+            XlCopyMemory/*Align16*/((uint8*)destination, srcData._data.begin(), srcData._data.size());
+            copiedBytes = (unsigned)srcData._data.size();
         }
 
         return copiedBytes;
@@ -98,7 +98,7 @@ namespace RenderCore
         adjustedBox._top = std::min(adjustedBox._top, int(dstDesc._height));
         adjustedBox._bottom = std::min(adjustedBox._bottom, int(dstDesc._height));
 
-        auto* srcIterator = srcData._data;
+        auto* srcIterator = srcData._data.begin();
         if (adjustedBox._top < 0) {
             if (blockCompressed) {
                 assert((-adjustedBox._top)%BlockCompDim == 0);
@@ -147,7 +147,7 @@ namespace RenderCore
                 }
 
                 assert((size_t(dstStart) + copyBytes) <= (size_t(destination) + destinationDataSize));
-                assert((size_t(srcRowStart) + copyBytes) <= (size_t(srcData._data) + srcData._size));
+                assert((size_t(srcRowStart) + copyBytes) <= (size_t(srcData._data.end())));
                 XlCopyMemory(dstStart, srcRowStart, copyBytes);
                 totalCopiedBytes += (unsigned)copyBytes;
             }

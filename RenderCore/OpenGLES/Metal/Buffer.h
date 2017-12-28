@@ -33,7 +33,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         const UnderlyingType &      GetUnderlying() const { return GetBuffer(); }
         bool                        IsGood() const { return _underlyingBuffer.get() != nullptr; }
 
-        std::vector<uint8_t> Readback();
+        std::vector<uint8_t>        Readback();
 
         Buffer();
         Buffer( ObjectFactory& factory, const ResourceDesc& desc,
@@ -42,47 +42,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         ~Buffer();
     };
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class VertexBuffer : public Buffer
-    {
-    public:
-        VertexBuffer(const void* data, size_t byteCount);
-        VertexBuffer(ObjectFactory& factory, const void* data, size_t byteCount);
-        VertexBuffer(ObjectFactory& factory, const ResourceDesc& desc);
-        VertexBuffer(const intrusive_ptr<OpenGL::Buffer>& underlying);
-        VertexBuffer();
-        ~VertexBuffer();
-    };
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class IndexBuffer : public Buffer
-    {
-    public:
-        IndexBuffer(const void* data, size_t byteCount);
-        IndexBuffer(ObjectFactory& factory, const void* data, size_t byteCount);
-        IndexBuffer(ObjectFactory& factory, const ResourceDesc& desc);
-        IndexBuffer(const intrusive_ptr<OpenGL::Buffer>& underlying);
-        IndexBuffer();
-        ~IndexBuffer();
-    };
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class ConstantBuffer
-    {
-    public:
-        typedef std::shared_ptr<std::vector<uint8>>     UnderlyingType;
-        UnderlyingType                                  GetUnderlying() const { return _underlying; }
-
-        ConstantBuffer(const void* data, size_t byteCount);
-        ConstantBuffer(ObjectFactory& factory, const void* data, size_t byteCount);
-        ConstantBuffer(const intrusive_ptr<OpenGL::Buffer>& underlying);
-        ~ConstantBuffer();
-    private:
-        std::shared_ptr<std::vector<uint8>>    _underlying;
-    };
+    Resource MakeVertexBuffer(ObjectFactory& factory, IteratorRange<const void*>);
+    Resource MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*>);
 
 }}
 

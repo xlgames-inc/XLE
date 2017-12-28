@@ -6,7 +6,10 @@
 
 #include "FlexUtil.h"
 
+#pragma warning(push)
 #pragma warning(disable:4141)       // 'virtual' : used more than once
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wduplicate-decl-specifier"
 
 //
 //      pattern:

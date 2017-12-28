@@ -43,13 +43,13 @@ namespace RenderCore
         class ResourceList
         {
         public:
-            ResourceList(std::initializer_list<const Type> initializers);
-            ResourceList(unsigned offset, std::initializer_list<const Type> initializers);
+            ResourceList(std::initializer_list<Type> initializers);
+            ResourceList(unsigned offset, std::initializer_list<Type> initializers);
             template<typename Tuple> ResourceList(const Tuple& initializers);
             template<typename Tuple> ResourceList(unsigned offset, const Tuple& initializers);
 
-            typename Type::UnderlyingType       _buffers[Count];
-            unsigned                            _startingPoint;
+            const Type*     _buffers[Count];
+            unsigned        _startingPoint;
 
         private:
             template <int CountDown, int WriteTo, typename Tuple> struct Utility;
@@ -61,8 +61,8 @@ namespace RenderCore
         public:
             ResourceList() { _buffers = nullptr; _startingPoint = 0; }
 
-            typename Type::UnderlyingType*      _buffers;
-            unsigned                            _startingPoint;
+            const Type*     _buffers;
+            unsigned        _startingPoint;
         };
 
     #pragma warning(push)
@@ -70,24 +70,22 @@ namespace RenderCore
     #pragma warning(disable:4718)       // recursive call has no side effects, deleting
 
     template <typename Type, int Count>
-        ResourceList<Type,Count>::ResourceList(std::initializer_list<const Type> initializers)
+        ResourceList<Type,Count>::ResourceList(std::initializer_list<Type> initializers)
         {
             size_t size = std::min(initializers.size(), size_t(Count));
-            for (unsigned c=0; c<size; ++c) {
-                _buffers[c] = initializers.begin()[c].GetUnderlying();
-            }
-            std::fill(&_buffers[size], &_buffers[Count], Type::UnderlyingType(0));
+            for (unsigned c=0; c<size; ++c)
+                _buffers[c] = &initializers.begin()[c];
+            std::fill(&_buffers[size], &_buffers[Count], nullptr);
             _startingPoint = 0;
         }
 
     template <typename Type, int Count>
-        ResourceList<Type,Count>::ResourceList(unsigned offset, std::initializer_list<const Type> initializers)
+        ResourceList<Type,Count>::ResourceList(unsigned offset, std::initializer_list<Type> initializers)
         {
             size_t size = std::min(initializers.size(), size_t(Count));
-            for (unsigned c=0; c<size; ++c) {
+            for (unsigned c=0; c<size; ++c)
                 _buffers[c] = initializers.begin()[c].GetUnderlying();
-            }
-            std::fill(&_buffers[size], &_buffers[Count], Type::UnderlyingType(0));
+            std::fill(&_buffers[size], &_buffers[Count], nullptr);
             _startingPoint = offset;
         }
 
@@ -97,7 +95,7 @@ namespace RenderCore
         {
             const size_t size = (std::tuple_size<Tuple>::value < Count) ? (std::tuple_size<Tuple>::value) : Count;
             Utility<size, 0, Tuple>::InitializeFrom(_buffers, initializers);
-            std::fill(&_buffers[size], &_buffers[Count], typename Type::UnderlyingType());
+            std::fill(&_buffers[size], &_buffers[Count], nullptr);
             _startingPoint = 0;
         }
 
@@ -107,7 +105,7 @@ namespace RenderCore
         {
             const size_t size = (std::tuple_size<Tuple>::value < Count) ? (std::tuple_size<Tuple>::value) : Count;
             Utility<size, 0, Tuple>::InitializeFrom(_buffers, initializers);
-            std::fill(&_buffers[size], &_buffers[Count], Type::UnderlyingType());
+            std::fill(&_buffers[size], &_buffers[Count], nullptr);
             _startingPoint = offset;
         }
 
@@ -115,9 +113,9 @@ namespace RenderCore
         template <int CountDown, int WriteTo, typename Tuple>
             struct ResourceList<Type,Count>::Utility
             {
-                static void InitializeFrom(typename Type::UnderlyingType buffers[], const Tuple& initializers)
+                static void InitializeFrom(const Type* buffers[], const Tuple& initializers)
                 {
-                    buffers[WriteTo] = std::get<WriteTo>(initializers).GetUnderlying();
+                    buffers[WriteTo] = &std::get<WriteTo>(initializers);
                     Utility<CountDown-1, WriteTo+1, Tuple>::InitializeFrom(buffers, initializers);
                 }
             };
@@ -126,7 +124,7 @@ namespace RenderCore
         template <int WriteTo, typename Tuple>
             struct ResourceList<Type,Count>::Utility<0,WriteTo,Tuple>
             {
-                static void InitializeFrom(typename Type::UnderlyingType buffers[], const Tuple& initializers) {}
+                static void InitializeFrom(const Type* buffers[], const Tuple& initializers) {}
             };
 
     /// <summary>Constructs a new ResourceList object</summary>

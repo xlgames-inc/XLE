@@ -146,15 +146,16 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    void BoundInputLayout::Apply(const void* vertexBufferStart, unsigned vertexStride) const never_throws
+    void BoundInputLayout::Apply(const void* vertexBufferStart) const never_throws
     {
         for(auto i=_bindings.begin(); i!=_bindings.end(); ++i)
             glVertexAttribPointer( 
                 i->_attributeIndex, i->_size, i->_type, i->_isNormalized, 
-                vertexStride?vertexStride:i->_stride, 
+                i->_stride,
                 PtrAdd(vertexBufferStart, i->_offset));
 
         // set enable/disable flags --
+        // Note that this method cannot support more than 32 vertex attributes
         int maxVertexAttributes;
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertexAttributes);
 

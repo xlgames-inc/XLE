@@ -12,7 +12,9 @@
 #include "../IDeviceOpenGLES.h"
 #include "../../IDevice_Forward.h"
 #include "../../ResourceList.h"
+#include "../../Format.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
+#include <assert.h>
 #include "IncludeGLES.h"
 
 // typedef void*       EGLDisplay;
@@ -20,8 +22,6 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    class VertexBuffer;
-    class IndexBuffer;
     class ShaderResourceView;
     class SamplerState;
     class ConstantBuffer;
@@ -31,6 +31,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     class RasterizationDesc;
     class DepthStencilDesc;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class CommandList : public RefCountedObject
     {
@@ -42,26 +44,59 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     using CommandListPtr = intrusive_ptr<CommandList>;
 
-    class DeviceContext
+    class VertexBufferView
     {
     public:
-        template<int Count> void Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset);
+        const IResource*    _resource = nullptr;
+        unsigned            _offset = 0;
+
+        VertexBufferView(const IResource* res, unsigned offset = 0) : _resource(res), _offset(offset) {}
+        VertexBufferView(const IResourcePtr& res, unsigned offset = 0) : _resource(res.get()), _offset(offset) {}
+        VertexBufferView() {}
+    };
+
+    class IndexBufferView
+    {
+    public:
+        const IResource*    _resource = nullptr;
+        Format              _indexFormat = Format::R16_UINT;
+        unsigned            _offset = 0;
+
+        IndexBufferView(const IResource* res, Format indexFormat = Format::R16_UINT, unsigned offset = 0) : _resource(res), _indexFormat(indexFormat), _offset(offset) {}
+        IndexBufferView(const IResourcePtr& res, Format indexFormat = Format::R16_UINT, unsigned offset = 0) : _resource(res.get()), _indexFormat(indexFormat), _offset(offset) {}
+        IndexBufferView() {}
+    };
+
+    class GraphicsPipeline
+    {
+    public:
+        template<int Count> void Bind(const ResourceList<VertexBufferView, Count>& VBs);
+        void Bind(const IndexBufferView& IB);
+        void Bind(const BoundInputLayout& inputLayout);
+
         template<int Count> void BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void BindPS(const ResourceList<SamplerState, Count>& samplerStates);
         template<int Count> void BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        
-        void Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset=0);
-        void Bind(const BoundInputLayout& inputLayout);
-        void Bind(Topology topology);
         void Bind(const ShaderProgram& shaderProgram);
-        void Bind(const BlendState& blender);
 
+        void Bind(const BlendState& blender);
         void Bind(const RasterizationDesc& rasterizer);
         void Bind(const DepthStencilDesc& depthStencil);
+        void Bind(Topology topology);
 
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
 
+    protected:
+        unsigned            _nativeTopology;
+        Format              _indicesFormat;
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class DeviceContext : public GraphicsPipeline
+    {
+    public:
         void            BeginCommandList();
         CommandListPtr  ResolveCommandList();
         void            CommitCommandList(CommandList& commandList);
@@ -82,13 +117,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         DeviceContext& operator=(const DeviceContext&) = delete;
         ~DeviceContext();
     private:
-        unsigned            _nativeTopology;
-        Format              _indicesFormat;
         // EGL::Display        _display;
         // EGL::Context        _underlyingContext;
-        BoundInputLayout    _savedInputLayout;
-        unsigned            _savedVertexBufferStride;
-
         // DeviceContext(EGLDisplay display, EGLContext underlyingContext);
 
         friend class Device;
@@ -99,20 +129,35 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     #pragma warning(push)
     #pragma warning(disable:4127)       // conditional expression is constant
+
+    static RawGLHandle GetBufferRawGLHandle(const IResource& resource)
+    {
+        return static_cast<const Resource&>(resource).GetBuffer()->AsRawGLHandle();
+    }
     
-    template<int Count> void DeviceContext::Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset)
+    template<int Count> void GraphicsPipeline::Bind(const ResourceList<VertexBufferView, Count>& VBs)
     {
         static_assert(Count <= 1, "Cannot bind more than one vertex buffer in OpenGLES 2.0");
-
+        assert(VBs._startingPoint == 0);
         if (Count == 1) {
-            glBindBuffer(GL_ARRAY_BUFFER, VBs._buffers[0]->AsRawGLHandle());
-            _savedVertexBufferStride = stride;
+            assert(VBs._buffers[0]->_offset == 0);
+            glBindBuffer(GL_ARRAY_BUFFER, GetBufferRawGLHandle(*VBs._buffers[0]->_resource));
         }
+    }
+
+    inline void GraphicsPipeline::Bind(const IndexBufferView& IB)
+    {
+        assert(IB._offset == 0);    // (not supported currently... But we could safe it up for the draw call)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GetBufferRawGLHandle(*IB._resource));
+
+        // Note that Format::R32_UINT is only supported on OGLES3.0+
+        assert(IB._indexFormat == Format::R32_UINT || IB._indexFormat == Format::R16_UINT || IB._indexFormat == Format::R8_UINT);
+        _indicesFormat = IB._indexFormat;
     }
 
     #pragma warning(pop)
 
-    template<int Count> void DeviceContext::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources)
+    template<int Count> void GraphicsPipeline::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources)
     {
         for (int c=0; c<Count; ++c) {
             glActiveTexture(GL_TEXTURE0 + c + shaderResources._startingPoint);
@@ -120,14 +165,14 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    template<int Count> void DeviceContext::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
+    template<int Count> void GraphicsPipeline::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
     {
         for (int c=0; c<Count; ++c) {
             samplerStates._buffers[c].Apply(c+samplerStates._startingPoint);
         }
     }
 
-    template<int Count> void DeviceContext::BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void GraphicsPipeline::BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers)
     {
     }
 

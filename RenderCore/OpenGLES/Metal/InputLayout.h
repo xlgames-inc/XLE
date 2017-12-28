@@ -18,7 +18,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     class BoundInputLayout
     {
     public:
-        void Apply(const void* vertexBufferStart, unsigned vertexStride) const never_throws;
+        void Apply(const void* vertexBufferStart = nullptr) const never_throws;
 
         BoundInputLayout() : _attributeState(0) {}
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program);
