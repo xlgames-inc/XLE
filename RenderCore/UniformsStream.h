@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "RenderUtils.h"        // (for SharedPkt)
-#include "IDevice_Forward.h"    // (for ResourcePtr)
 #include "../Utility/IteratorUtils.h"
 #include <vector>
 
@@ -14,20 +12,7 @@
 namespace RenderCore 
 {
     class MiniInputElementDesc;
-    
-    class ConstantBufferView
-    {
-    public:
-        SharedPkt       _packet;
-        ResourcePtr     _prebuiltBuffer;
-        // flags / desc ?
-
-        ConstantBufferView() {}
-        ConstantBufferView(const SharedPkt& pkt) : _packet(pkt) {}
-        ConstantBufferView(SharedPkt&& pkt) : _packet(std::move(pkt)) {}
-        ConstantBufferView(const ResourcePtr& prebuilt) : _prebuiltBuffer(prebuilt) {}
-        ConstantBufferView(ResourcePtr&& prebuilt) : _prebuiltBuffer(std::move(prebuilt)) {}
-    };
+    class ConstantBufferView;
 
     class UniformsStream
     {

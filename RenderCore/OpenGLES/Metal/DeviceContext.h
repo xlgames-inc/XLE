@@ -13,6 +13,7 @@
 #include "../../IDevice_Forward.h"
 #include "../../ResourceList.h"
 #include "../../Format.h"
+#include "../../BufferView.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include <assert.h>
 #include "IncludeGLES.h"
@@ -43,29 +44,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     };
 
     using CommandListPtr = intrusive_ptr<CommandList>;
-
-    class VertexBufferView
-    {
-    public:
-        const IResource*    _resource = nullptr;
-        unsigned            _offset = 0;
-
-        VertexBufferView(const IResource* res, unsigned offset = 0) : _resource(res), _offset(offset) {}
-        VertexBufferView(const IResourcePtr& res, unsigned offset = 0) : _resource(res.get()), _offset(offset) {}
-        VertexBufferView() {}
-    };
-
-    class IndexBufferView
-    {
-    public:
-        const IResource*    _resource = nullptr;
-        Format              _indexFormat = Format::R16_UINT;
-        unsigned            _offset = 0;
-
-        IndexBufferView(const IResource* res, Format indexFormat = Format::R16_UINT, unsigned offset = 0) : _resource(res), _indexFormat(indexFormat), _offset(offset) {}
-        IndexBufferView(const IResourcePtr& res, Format indexFormat = Format::R16_UINT, unsigned offset = 0) : _resource(res.get()), _indexFormat(indexFormat), _offset(offset) {}
-        IndexBufferView() {}
-    };
 
     class GraphicsPipeline
     {

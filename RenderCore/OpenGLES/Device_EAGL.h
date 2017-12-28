@@ -38,7 +38,7 @@ namespace RenderCore { namespace ImplOpenGLES
     class ThreadContext : public Base_ThreadContext
     {
     public:
-        ResourcePtr BeginFrame(IPresentationChain& presentationChain);
+        IResourcePtr BeginFrame(IPresentationChain& presentationChain);
         void        Present(IPresentationChain& presentationChain) /*override*/;
 
         bool                        IsImmediate() const;
@@ -76,7 +76,7 @@ namespace RenderCore { namespace ImplOpenGLES
         std::unique_ptr<IThreadContext> CreateDeferredContext();
 
         using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
-        ResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init);
+        IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init);
         DeviceDesc GetDesc();
 
         Device();

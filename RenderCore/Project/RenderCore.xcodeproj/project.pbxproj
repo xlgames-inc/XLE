@@ -122,6 +122,7 @@
 		8F2D1B2F1FD61C6E0028A531 /* Types.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Types.h; sourceTree = "<group>"; };
 		8F54682E1FF4444E0058F307 /* UniformsStream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = UniformsStream.cpp; path = ../UniformsStream.cpp; sourceTree = "<group>"; };
 		8F54682F1FF4444F0058F307 /* UniformsStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = UniformsStream.h; path = ../UniformsStream.h; sourceTree = "<group>"; };
+		8F6177D01FF5A75C008515DE /* BufferView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BufferView.h; path = ../BufferView.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -146,6 +147,7 @@
 			isa = PBXGroup;
 			children = (
 				8F2D1AE11FD61B060028A531 /* Annotator.cpp */,
+				8F6177D01FF5A75C008515DE /* BufferView.h */,
 				8F2D1AC51FD619E60028A531 /* Config */,
 				8F2D1AD51FD61B050028A531 /* Documentation.h */,
 				8F2D1AE01FD61B060028A531 /* FlexBegin.h */,

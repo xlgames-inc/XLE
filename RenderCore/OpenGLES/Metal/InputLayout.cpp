@@ -11,6 +11,7 @@
 #include "ShaderResource.h"
 #include "../../Types.h"
 #include "../../Format.h"
+#include "../../BufferView.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/StringFormat.h"
 #include "../../../Utility/PtrUtils.h"

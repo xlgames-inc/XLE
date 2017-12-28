@@ -14,7 +14,7 @@
 namespace RenderCore { namespace ImplOpenGLES
 {
 
-    ResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain) { return nullptr; }
+    IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain) { return nullptr; }
 
     void        ThreadContext::Present(IPresentationChain& presentationChain) {}
 
@@ -73,7 +73,7 @@ namespace RenderCore { namespace ImplOpenGLES
         return nullptr;
     }
 
-    ResourcePtr Device::CreateResource(const ResourceDesc& desc, const ResourceInitializer& init)
+    IResourcePtr Device::CreateResource(const ResourceDesc& desc, const ResourceInitializer& init)
     {
         // hack -- only getting a single subresource here!
         return std::make_shared<Metal_OpenGLES::Resource>(*_objectFactory, desc, init({0,0}));
