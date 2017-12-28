@@ -14,6 +14,7 @@
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/StringFormat.h"
 #include "../../../Utility/PtrUtils.h"
+#include "../../../Utility/ArithmeticUtils.h"
 #include "IncludeGLES.h"
 
 #if defined(XLE_HAS_CONSOLE_RIG)
@@ -34,6 +35,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         const InputElementDesc* elements = layout.begin();
         size_t elementsCount = layout.size();
         _bindings.reserve(elementsCount);
+        _attributeState = 0;
 
         size_t vertexStride = 0;
         {
@@ -85,6 +87,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                         unsigned(vertexStride),
                         elementStart
                     });
+
+                assert(!(_attributeState & 1<<unsigned(attribute)));
+                _attributeState |= 1<<unsigned(attribute);
             }
 
             lastElementEnd = elementStart + elementSize;
@@ -94,6 +99,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     BoundInputLayout::BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& program)
     {
         _bindings.reserve(layout.size());
+        _attributeState = 0;
 
         auto vertexStride = CalculateVertexStride(layout, false);
         auto programHandle = program.GetUnderlying()->AsRawGLHandle();
@@ -134,25 +140,38 @@ namespace RenderCore { namespace Metal_OpenGLES
                     unsigned(vertexStride),
                     elementStart
                 });
+
+            assert(!(_attributeState & 1<<unsigned(a)));
+            _attributeState |= 1<<unsigned(a);
         }
     }
 
     void BoundInputLayout::Apply(const void* vertexBufferStart, unsigned vertexStride) const never_throws
     {
-        int maxVertexAttributes;
-        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertexAttributes);
-        for (int c=0; c<maxVertexAttributes; ++c) {
-            glDisableVertexAttribArray(c);
-        }
-
-        for(auto i=_bindings.begin(); i!=_bindings.end(); ++i) {
+        for(auto i=_bindings.begin(); i!=_bindings.end(); ++i)
             glVertexAttribPointer( 
                 i->_attributeIndex, i->_size, i->_type, i->_isNormalized, 
                 vertexStride?vertexStride:i->_stride, 
                 PtrAdd(vertexBufferStart, i->_offset));
 
-            glEnableVertexAttribArray(i->_attributeIndex);
-        }
+        // set enable/disable flags --
+        int maxVertexAttributes;
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertexAttributes);
+
+        int firstActive = xl_ctz4(_attributeState);
+        int lastActive = 32u - xl_clz4(_attributeState);
+
+        int c=0;
+        for (; c<firstActive; ++c)
+            glDisableVertexAttribArray(c);
+        for (; c<lastActive; ++c)
+            if (_attributeState & (1<<c)) {
+                glEnableVertexAttribArray(c);
+            } else {
+                glDisableVertexAttribArray(c);
+            }
+        for (; c<maxVertexAttributes; ++c)
+            glDisableVertexAttribArray(c);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,15 +188,36 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (!cb._commandGroup._commands.empty() && pkt.size() != 0)
                 Bind(context, cb._commandGroup, MakeIteratorRange(pkt.begin(), pkt.end()));
         }
+
         for (const auto&srv:_srvs) {
             assert(srv._stream < dimof(inputStreams));
             assert(srv._slot < inputStreams[srv._stream]->_resources.size());
             const auto& res = *inputStreams[srv._stream]->_resources[srv._slot];
             glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
-            // todo -- support different binding types (3D, cube, array, etc)
-            glBindTexture(GL_TEXTURE_2D, res.GetUnderlying()->AsRawGLHandle());
-            // todo -- support array uniforms
-            glUniform1i(srv._uniformLocation, srv._textureUnit);
+            glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
+        }
+
+        // Commit changes to texture uniforms
+        // This must be done separately to the texture binding, because when using array uniforms,
+        // a single uniform set operation can be used for multiple texture bindings
+        if (!_textureAssignmentCommands._commands.empty())
+            Bind(context, _textureAssignmentCommands, MakeIteratorRange(_textureAssignmentByteData));
+    }
+
+    static GLenum DimensionalityForUniformType(GLenum uniformType)
+    {
+        switch (uniformType) {
+        case GL_SAMPLER_2D:
+        case GL_SAMPLER_2D_SHADOW:
+        case GL_INT_SAMPLER_2D:
+        case GL_UNSIGNED_INT_SAMPLER_2D:
+            return GL_TEXTURE_2D;
+
+        case GL_SAMPLER_CUBE:
+            return GL_TEXTURE_CUBE_MAP;
+
+        default:
+            return GL_NONE;
         }
     }
 
@@ -192,6 +232,9 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         unsigned textureUnitAccumulator = 0;
 
+        struct UniformSet { int _location; unsigned _index, _value; GLenum _type; int _elementCount; };
+        std::vector<UniformSet> uniformSets;
+
         const UniformsStreamInterface* inputInterface[] = { &interface0, &interface1, &interface2 };
         auto streamCount = (unsigned)dimof(inputInterface);
         for (unsigned s=0; s<streamCount; ++s) {
@@ -204,13 +247,48 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             for (unsigned b=0; b<interf._srvBindings.size(); ++b) {
                 const auto& binding = interf._srvBindings[b];
-                auto uniformLocation = introspection.FindUniform(binding.second);
-                if (uniformLocation != ~0u) {
+                auto uniform = introspection.FindUniform(binding.second);
+                if (uniform._elementCount != 0) {
                     // assign a texture unit for this binding
                     auto textureUnit = textureUnitAccumulator++;
-                    _srvs.emplace_back(SRV{s, binding.first, uniformLocation, textureUnit});
+                    auto dim = DimensionalityForUniformType(uniform._type);
+                    assert(dim != GL_NONE);
+                    _srvs.emplace_back(SRV{s, binding.first, textureUnit, dim});
+
+                    // Record the command to set the uniform. Note that this
+                    // is made a little more complicated due to array uniforms.
+                    assert((binding.second - uniform._bindingName) < uniform._elementCount);
+                    uniformSets.push_back({uniform._location, unsigned(binding.second - uniform._bindingName), textureUnit, uniform._type, uniform._elementCount});
                 }
             }
+        }
+
+        // sort the uniform sets to collect up sequential sets on the same uniforms
+        std::sort(
+            uniformSets.begin(), uniformSets.end(),
+            [](const UniformSet& lhs, const UniformSet& rhs) {
+                if (lhs._location < rhs._location) return true;
+                if (lhs._location > rhs._location) return false;
+                return lhs._index < rhs._index;
+            });
+
+        // Now generate the set commands that will assign the uniforms as required
+        auto i = uniformSets.begin();
+        while (i!=uniformSets.end()) {
+            auto i2 = i+1;
+            while (i2 != uniformSets.end() && i2->_location == i->_location) { ++i2; };
+
+            // unsigned maxIndex = (i2-1)->_index;
+            unsigned elementCount = i->_elementCount;
+            auto dataOffsetStart = _textureAssignmentByteData.size();
+            _textureAssignmentByteData.resize(dataOffsetStart+sizeof(GLuint)*(elementCount+1), 0u);
+            GLuint* dst = (GLuint*)&_textureAssignmentByteData[dataOffsetStart];
+            for (auto q=i; q<i2; ++q)
+                dst[q->_index] = q->_value;
+            _textureAssignmentCommands._commands.push_back(
+                SetUniformCommandGroup::SetCommand{i->_location, i->_type, elementCount, dataOffsetStart});
+
+            i = i2;
         }
     }
 

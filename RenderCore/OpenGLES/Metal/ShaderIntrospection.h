@@ -26,10 +26,22 @@ namespace RenderCore { namespace Metal_OpenGLES
     class ShaderIntrospection
     {
     public:
-        using HashType = uint64; // ParameterBox::ParameterNameHash;
+        using HashType = uint64_t;
 
         SetUniformCommandGroup  MakeBinding(HashType uniformStructName, IteratorRange<const MiniInputElementDesc*> inputElements);
-        unsigned                FindUniform(HashType uniformName) const;
+
+        class Uniform
+        {
+        public:
+            HashType    _bindingName;
+            int         _location;
+            GLenum      _type;
+            int         _elementCount;
+
+            DEBUG_ONLY(std::string _name;)
+        };
+
+        Uniform                FindUniform(HashType uniformName) const;
 
         ShaderIntrospection(const ShaderProgram& shader);
         ~ShaderIntrospection();
@@ -37,26 +49,11 @@ namespace RenderCore { namespace Metal_OpenGLES
         class Struct
         {
         public:
-            class Uniform
-            {
-            public:
-                HashType    _bindingName;
-                int         _location;
-                GLenum      _type;
-                int         _count;
-
-                DEBUG_ONLY(std::string _name;)
-            };
-
             std::vector<Uniform> _uniforms;
         };
         std::vector<std::pair<HashType, Struct>> _structs;
     };
 
-    // SetUniformCommandGroup MakeBinding(const UnboundShaderUniformGroup& unbound, const Techniques::PredefinedCBLayout& layout);
-    // SetUniformCommandGroup MakeBinding(const UnboundShaderUniformGroup& unbound, IteratorRange<const MiniInputElementDesc*> inputElements);
     void Bind(DeviceContext& context, const SetUniformCommandGroup& uniforms, IteratorRange<const void*> data);
 
-
 }}
-

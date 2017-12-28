@@ -20,7 +20,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         void Apply(const void* vertexBufferStart, unsigned vertexStride) const never_throws;
 
-        BoundInputLayout() {}
+        BoundInputLayout() : _attributeState(0) {}
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program);
         BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& program);
     private:
@@ -35,6 +35,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             unsigned    _offset;
         };
         std::vector<Binding> _bindings;
+        uint32_t _attributeState;
     };
 
     class IPipelineLayout
@@ -62,8 +63,11 @@ namespace RenderCore { namespace Metal_OpenGLES
     private:
         struct CB { unsigned _stream, _slot; SetUniformCommandGroup _commandGroup; };
         std::vector<CB> _cbs;
-        struct SRV { unsigned _stream, _slot; unsigned _uniformLocation, _textureUnit; };
+        struct SRV { unsigned _stream, _slot; unsigned _textureUnit; GLenum _dimensionality; };
         std::vector<SRV> _srvs;
+
+        SetUniformCommandGroup  _textureAssignmentCommands;
+        std::vector<uint8_t>    _textureAssignmentByteData;
     };
 
 }}

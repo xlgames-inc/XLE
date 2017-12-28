@@ -23,12 +23,12 @@ namespace RenderCore { namespace Metal_OpenGLES
                                   [bindingName](const RenderCore::MiniInputElementDesc& e) { return e._semanticHash == bindingName; });
             if (b != inputElements.end()) {
                 // Check for compatibility of types.
-                assert(i._count == 1); // "Array uniforms within structs not currently supported");
+                assert(i._elementCount == 1); // "Array uniforms within structs not currently supported");
                 auto basicType = GLUniformTypeAsTypeDesc(i._type);
                 auto inputBasicType = RenderCore::AsImpliedType(b->_nativeFormat);
                 if (basicType == inputBasicType) {
                     auto offset = RenderCore::CalculateVertexStride({inputElements.begin(), b}, false);
-                    result._commands.push_back({i._location, i._type, (unsigned)i._count, offset });
+                    result._commands.push_back({i._location, i._type, (unsigned)i._elementCount, offset });
                 } else {
                     assert(0);
                     /*#if DEBUG
@@ -43,17 +43,30 @@ namespace RenderCore { namespace Metal_OpenGLES
         return result;
     }
 
-    unsigned ShaderIntrospection::FindUniform(HashType uniformName) const
+    auto ShaderIntrospection::FindUniform(HashType uniformName) const -> Uniform
     {
         auto globals = LowerBound(_structs, 0ull);
-        if (globals == _structs.end() || globals->first != 0) return ~0u;
+        if (globals == _structs.end() || globals->first != 0) return {0,0,0,0};
 
         auto i = std::find_if(
             globals->second._uniforms.begin(), globals->second._uniforms.end(),
-            [uniformName](const Struct::Uniform& u) { return u._bindingName == uniformName; });
-        if (i == globals->second._uniforms.end()) return ~0u;
+            [uniformName](const Uniform& u) { return (uniformName >= u._bindingName) && (uniformName < u._bindingName+u._elementCount); });
+        if (i == globals->second._uniforms.end()) return {0,0,0,0};
 
-        return (unsigned)i->_location;
+        return *i;
+    }
+
+    static uint64_t HashVariableName(StringSection<> name)
+    {
+        // If the variable name has array indexor syntax in there, we must strip it off
+        // the end of the name.
+        if (name.size() >= 2 && name[name.size()-1] == ']') {
+            auto i = &name[name.size()-2];
+            while (i > name.begin() && *i >= '0' && *i <= '9') --i;
+            if (*i == '[')
+                return HashVariableName(MakeStringSection(name.begin(), i));        // (this can strip off another one for mutli-dimensional arrays!)
+        }
+        return Hash64(name);
     }
 
     ShaderIntrospection::ShaderIntrospection(const ShaderProgram& program)
@@ -97,8 +110,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                     i = _structs.insert(i, std::make_pair(structNameHash, Struct{}));
 
                 i->second._uniforms.emplace_back(
-                    Struct::Uniform {
-                        Hash64(MakeStringSection(firstDot+1, fullName.end())),
+                    Uniform {
+                        HashVariableName(MakeStringSection(firstDot+1, fullName.end())),
                         location, type, size
 
                         #if defined(_DEBUG)
@@ -112,8 +125,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                     i = _structs.insert(i, std::make_pair(0, Struct{}));
 
                 i->second._uniforms.emplace_back(
-                    Struct::Uniform {
-                        Hash64(fullName),
+                    Uniform {
+                        HashVariableName(fullName),
                         location, type, size
 
                         #if defined(_DEBUG)
