@@ -19,7 +19,7 @@ namespace RenderCore
     public:
         // todo -- is there any way to shift ShaderResourceView down to RenderCore layer?
         IteratorRange<const ConstantBufferView*> _constantBuffers = {};
-        IteratorRange<const Metal::ShaderResourceView**> _resources = {};
+        IteratorRange<const Metal::ShaderResourceView*const*> _resources = {};
     };
 
     class UniformsStreamInterface

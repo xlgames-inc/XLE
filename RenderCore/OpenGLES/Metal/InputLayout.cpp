@@ -231,12 +231,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    bool BoundUniforms::IsConstantBufferBound(uint64_t hashName) const
-    {
-        auto i = std::lower_bound(_boundConstantBuffers.begin(), _boundConstantBuffers.end(), hashName);
-        return i!=_boundConstantBuffers.end() && *i == hashName;
-    }
-
     BoundUniforms::BoundUniforms(
         const ShaderProgram& shader,
         const IPipelineLayout& pipelineLayout,
@@ -244,6 +238,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         const UniformsStreamInterface& interface1,
         const UniformsStreamInterface& interface2)
     {
+        for (auto&v:_boundUniformBufferSlots) v = 0u;
+        for (auto&v:_boundResourceSlots) v = 0u;
+
         auto introspection = ShaderIntrospection(shader);
 
         unsigned textureUnitAccumulator = 0;
@@ -260,7 +257,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto cmdGroup = introspection.MakeBinding(binding.second._hashName, MakeIteratorRange(binding.second._elements));
                 if (!cmdGroup._commands.empty()) {
                     _cbs.emplace_back(CB{s, binding.first, std::move(cmdGroup)});
-                    _boundConstantBuffers.push_back(binding.second._hashName);
+                    _boundUniformBufferSlots[s] |= (1ull << uint64_t(binding.first));
                 }
             }
 
@@ -278,6 +275,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                     // is made a little more complicated due to array uniforms.
                     assert((binding.second - uniform._bindingName) < uniform._elementCount);
                     uniformSets.push_back({uniform._location, unsigned(binding.second - uniform._bindingName), textureUnit, uniform._type, uniform._elementCount});
+
+                    _boundResourceSlots[s] |= (1ull << uint64_t(binding.first));
                 }
             }
         }
@@ -309,8 +308,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             i = i2;
         }
-
-        std::sort(_boundConstantBuffers.begin(), _boundConstantBuffers.end());
     }
 
     BoundUniforms::~BoundUniforms() {}

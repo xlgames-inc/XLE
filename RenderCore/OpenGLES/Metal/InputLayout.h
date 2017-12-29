@@ -53,7 +53,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             const UniformsStream& stream1 = {},
             const UniformsStream& stream2 = {}) const;
 
-        bool IsConstantBufferBound(uint64_t hashName) const;
+        uint64_t _boundUniformBufferSlots[3];
+        uint64_t _boundResourceSlots[3];
 
         BoundUniforms(
             const ShaderProgram& shader,
@@ -70,8 +71,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         SetUniformCommandGroup  _textureAssignmentCommands;
         std::vector<uint8_t>    _textureAssignmentByteData;
-
-        std::vector<uint64_t>   _boundConstantBuffers;
     };
 
 }}
