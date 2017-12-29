@@ -60,18 +60,22 @@ namespace RenderCore { namespace Metal_OpenGLES
         const SubResourceInitData& initData)
     {
         if (desc._type == ResourceDesc::Type::LinearBuffer) {
-            _underlyingBuffer = factory.CreateBuffer();
-            assert(_underlyingBuffer->AsRawGLHandle() != 0); // "Failed to allocate buffer name in Magnesium::Buffer::Buffer");
+            if (desc._bindFlags & BindFlag::ConstantBuffer) {
+                _constantBuffer.insert(_constantBuffer.end(), (const uint8_t*)initData._data.begin(), (const uint8_t*)initData._data.end());
+            } else {
+                _underlyingBuffer = factory.CreateBuffer();
+                assert(_underlyingBuffer->AsRawGLHandle() != 0); // "Failed to allocate buffer name in Magnesium::Buffer::Buffer");
 
-            auto bindTarget = AsBufferTarget(desc._bindFlags);
-            assert(bindTarget != 0); // "Could not resolve buffer binding target for bind flags (0x%x)", bindFlags);
+                auto bindTarget = AsBufferTarget(desc._bindFlags);
+                assert(bindTarget != 0); // "Could not resolve buffer binding target for bind flags (0x%x)", bindFlags);
 
-            auto usageMode = AsUsageMode(desc._cpuAccess, desc._gpuAccess);
-            assert(bindTarget != 0); // "Could not resolve buffer usable mode for cpu access flags (0x%x) and gpu access flags (0x%x)", cpuAccess, gpuAccess);
+                auto usageMode = AsUsageMode(desc._cpuAccess, desc._gpuAccess);
+                assert(bindTarget != 0); // "Could not resolve buffer usable mode for cpu access flags (0x%x) and gpu access flags (0x%x)", cpuAccess, gpuAccess);
 
-            // upload data to opengl buffer...
-            glBindBuffer(bindTarget, _underlyingBuffer->AsRawGLHandle());
-            glBufferData(bindTarget, std::max((GLsizeiptr)initData._data.size(), (GLsizeiptr)desc._linearBufferDesc._sizeInBytes), initData._data.begin(), usageMode);
+                // upload data to opengl buffer...
+                glBindBuffer(bindTarget, _underlyingBuffer->AsRawGLHandle());
+                glBufferData(bindTarget, std::max((GLsizeiptr)initData._data.size(), (GLsizeiptr)desc._linearBufferDesc._sizeInBytes), initData._data.data(), usageMode);
+            }
         } else {
             Throw(Exceptions::BasicLabel("Unsupported resource type in Resource constructor"));
         }

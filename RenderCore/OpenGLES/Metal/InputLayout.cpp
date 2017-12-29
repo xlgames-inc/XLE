@@ -186,9 +186,17 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (const auto&cb:_cbs) {
             assert(cb._stream < dimof(inputStreams));
             assert(cb._slot < inputStreams[cb._stream]->_constantBuffers.size());
-            const auto& pkt = inputStreams[cb._stream]->_constantBuffers[cb._slot]._packet;
-            if (!cb._commandGroup._commands.empty() && pkt.size() != 0)
+            assert(!cb._commandGroup._commands.empty());
+
+            const auto& cbv = inputStreams[cb._stream]->_constantBuffers[cb._slot];
+            const auto& pkt = cbv._packet;
+            if (pkt.size() != 0) {
                 Bind(context, cb._commandGroup, MakeIteratorRange(pkt.begin(), pkt.end()));
+            } else {
+                const auto pkt2 = ((Resource*)cbv._prebuiltBuffer)->GetConstantBuffer();
+                if (pkt2.size() != 0)
+                    Bind(context, cb._commandGroup, pkt2);
+            }
         }
 
         for (const auto&srv:_srvs) {
@@ -223,6 +231,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
+    bool BoundUniforms::IsConstantBufferBound(uint64_t hashName) const
+    {
+        auto i = std::lower_bound(_boundConstantBuffers.begin(), _boundConstantBuffers.end(), hashName);
+        return i!=_boundConstantBuffers.end() && *i == hashName;
+    }
+
     BoundUniforms::BoundUniforms(
         const ShaderProgram& shader,
         const IPipelineLayout& pipelineLayout,
@@ -244,7 +258,10 @@ namespace RenderCore { namespace Metal_OpenGLES
             for (unsigned b=0; b<interf._cbBindings.size(); ++b) {
                 const auto& binding = interf._cbBindings[b];
                 auto cmdGroup = introspection.MakeBinding(binding.second._hashName, MakeIteratorRange(binding.second._elements));
-                _cbs.emplace_back(CB{s, binding.first, std::move(cmdGroup)});
+                if (!cmdGroup._commands.empty()) {
+                    _cbs.emplace_back(CB{s, binding.first, std::move(cmdGroup)});
+                    _boundConstantBuffers.push_back(binding.second._hashName);
+                }
             }
 
             for (unsigned b=0; b<interf._srvBindings.size(); ++b) {
@@ -292,6 +309,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             i = i2;
         }
+
+        std::sort(_boundConstantBuffers.begin(), _boundConstantBuffers.end());
     }
 
     BoundUniforms::~BoundUniforms() {}

@@ -10,6 +10,7 @@
 #include "../Utility/MiniHeap.h"
 #include "../Core/Exceptions.h"
 #include "../Core/Types.h"
+#include <type_traits>      // (for is_integral)
 
 namespace RenderCore
 {
@@ -96,7 +97,9 @@ namespace RenderCore
     SharedPkt MakeSharedPktSize(size_t size);
     SharedPkt MakeSharedPkt(const void* begin, const void* end);
 
-    template<typename T> SharedPkt MakeSharedPkt(const T& input)
+    template<typename T,
+        typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+        SharedPkt MakeSharedPkt(const T& input)
     {
         return MakeSharedPkt(&input, PtrAdd(&input, sizeof(T)));
     }

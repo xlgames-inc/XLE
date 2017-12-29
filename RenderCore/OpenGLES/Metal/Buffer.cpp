@@ -88,5 +88,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             BuildDesc(BindFlag::IndexBuffer, data.size(), true),
             SubResourceInitData { data, {0u, 0u, 0u} });
     }
+
+    Resource MakeConstantBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
+    {
+        return Resource(
+            factory,
+            BuildDesc(BindFlag::ConstantBuffer, data.size(), true),
+            SubResourceInitData { data, {0u, 0u, 0u} });
+    }
 }}
 

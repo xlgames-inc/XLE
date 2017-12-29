@@ -44,6 +44,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     Resource MakeVertexBuffer(ObjectFactory& factory, IteratorRange<const void*>);
     Resource MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*>);
+    Resource MakeConstantBuffer(ObjectFactory& factory, IteratorRange<const void*>);
 
 }}
 

@@ -155,6 +155,11 @@ namespace Utility
                 auto operator[](size_t index) const -> typename std::enable_if<!std::is_same<typename std::remove_const<I>::type, void*>::value, decltype(*std::declval<I>())>::type
                 { return this->first[index]; }
 
+            template<typename I=Iterator>
+                auto data() const -> typename std::enable_if<!std::is_same<typename std::remove_const<I>::type, void*>::value,
+                    decltype(&(*std::declval<I>()))>::type
+                { return &(*this->first); }
+
             IteratorRange() : std::pair<Iterator, Iterator>((Iterator)nullptr, (Iterator)nullptr) {}
             IteratorRange(Iterator f, Iterator s) : std::pair<Iterator, Iterator>(f, s) {}
 
@@ -164,6 +169,16 @@ namespace Utility
                         >::type* = nullptr>
                 IteratorRange(const std::pair<OtherIterator, OtherIterator>& copyFrom)
                     : std::pair<Iterator, Iterator>(copyFrom) {}
+
+            template<   typename OtherIterator,
+                        typename std::enable_if<
+                            std::is_constructible<std::pair<Iterator, Iterator>, const std::pair<OtherIterator, OtherIterator>&>::value
+                        >::type* = nullptr>
+                IteratorRange& operator=(const std::pair<OtherIterator, OtherIterator>& copyFrom)
+                {
+                    std::pair<Iterator, Iterator>::operator=(copyFrom);
+                    return *this;
+                }
         };
 
     template<typename Container>
