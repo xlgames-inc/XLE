@@ -195,9 +195,9 @@ namespace Utility
 		{
 			assert(pos >= _begin && pos < _end);
 			assert(OwnsHeapBlock());
-			for (auto i=pos; (i+1)!=_end; ++i) *i = std::move(*(i+1));
+			for (auto i= const_cast<iterator>(pos); (i+1)!=_end; ++i) *i = std::move(*(i+1));
 			--_end;
-			return pos;
+			return const_cast<iterator>(pos);
 		}
 
 		iterator erase(const_iterator first, const_iterator last) 

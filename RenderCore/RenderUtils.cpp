@@ -180,7 +180,7 @@ namespace RenderCore
         InputLayout PNTT = std::make_pair(Detail::PNTT_Elements, dimof(Detail::PNTT_Elements));
     }
 
-    unsigned CalculateVertexStride(IteratorRange<const InputElementDesc*> range, unsigned slot)
+    unsigned CalculateVertexStrideForSlot(IteratorRange<const InputElementDesc*> range, unsigned slot)
     {
             // note --  Assuming vertex elements are densely packed (which
             //          they usually are).

@@ -349,7 +349,7 @@ namespace RenderCore { namespace Assets
                 textureBindPoints, textureBindPointsCnt);
 
         result._vertexStride = 
-            CalculateVertexStride(inputDescForRender, &inputDescForRender[vertexElementForRenderCount], 0);
+            CalculateVertexStrideForSlot(MakeIteratorRange(inputDescForRender, &inputDescForRender[vertexElementForRenderCount]), 0u);
 
         result._iaAnimationHash = geo._animatedVertexElements._ia.BuildHash() ^ geo._skeletonBinding._ia.BuildHash();
         InitialiseSkinningVertexAssembly(result._iaAnimationHash, geo);

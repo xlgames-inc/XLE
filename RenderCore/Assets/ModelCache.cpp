@@ -16,6 +16,7 @@
 #include "../../Assets/AssetTraits.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/StringFormat.h"
 #include <map>
 
 namespace RenderCore { namespace Assets

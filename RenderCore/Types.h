@@ -52,7 +52,7 @@ namespace RenderCore
 
 	using InputLayout = std::pair<const InputElementDesc*, size_t>;
 
-    unsigned CalculateVertexStride(IteratorRange<const InputElementDesc*> elements, unsigned slot);
+    unsigned CalculateVertexStrideForSlot(IteratorRange<const InputElementDesc*> elements, unsigned slot);
     unsigned HasElement(IteratorRange<const InputElementDesc*> elements, const char elementSemantic[]);
     unsigned FindElement(IteratorRange<const InputElementDesc*> elements, const char elementSemantic[], unsigned semanticIndex = 0);
    

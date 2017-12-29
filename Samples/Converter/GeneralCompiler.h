@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/AssetUtils.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Core/Types.h"
 #include <memory>

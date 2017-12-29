@@ -46,7 +46,7 @@ namespace Converter
 		}
 
 		CompilerLibrary(StringSection<::Assets::ResChar> libraryName)
-			: _library(libraryName.AsString().c_str())
+			: _library(libraryName)
 		{
 			_createCompileOpFunction = nullptr;
 			_isAttached = _attemptedAttach = false;

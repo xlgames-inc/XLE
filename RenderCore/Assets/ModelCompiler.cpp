@@ -35,6 +35,7 @@ namespace RenderCore { namespace Assets
 	public:
 		void PerformCompile(
 			uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
+			StringSection<::Assets::ResChar> destinationFile,
 			::Assets::CompileFuture& compileMarker,
 			const ::Assets::IntermediateAssets::Store& destinationStore);
 		void AttachLibrary();
@@ -48,7 +49,7 @@ namespace RenderCore { namespace Assets
 		}
 
 		CompilerLibrary(StringSection<::Assets::ResChar> libraryName)
-			: _library(libraryName.AsString().c_str())
+			: _library(libraryName)
 		{
 			_createCompileOpFunction = nullptr;
 			_isAttached = _attemptedAttach = false;
@@ -80,7 +81,7 @@ namespace RenderCore { namespace Assets
         std::unique_ptr<::Assets::CompilationThread>	_thread;
 
 		void DiscoverLibraries();
-		void PerformCompile(::Assets::QueuedCompileOperation& op);
+		void PerformCompile(::Assets::QueuedCompileOperation& op, StringSection<::Assets::ResChar> destinationFile);
 
 		Pimpl() : _discoveryDone(false) {}
 		Pimpl(const Pimpl&) = delete;
@@ -124,7 +125,7 @@ namespace RenderCore { namespace Assets
 
     static void SerializeToFile(
 		IteratorRange<::Assets::NascentChunk*> chunks,
-        const char destinationFilename[],
+        StringSection<> destinationFilename,
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
             // Create the directory if we need to...
@@ -151,7 +152,7 @@ namespace RenderCore { namespace Assets
 
     static void SerializeToFileJustChunk(
 		IteratorRange<::Assets::NascentChunk*> chunks,
-        const char destinationFilename[],
+        StringSection<> destinationFilename,
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
         auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(destinationFilename, "wb");
@@ -163,6 +164,7 @@ namespace RenderCore { namespace Assets
 
     void CompilerLibrary::PerformCompile(
 		uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
+		StringSection<::Assets::ResChar> destinationFile,
 		::Assets::CompileFuture& compileMarker,
 		const ::Assets::IntermediateAssets::Store& destinationStore)
     {
@@ -176,52 +178,41 @@ namespace RenderCore { namespace Assets
 			bool requiresMerge = (typeCode == ModelCompiler::Type_AnimationSet) && XlFindChar(initializer, '*');
             if (!requiresMerge) {
 
-                TRY 
-                {
-                    const auto* destinationFile = compileMarker.GetLocator()._sourceID0;
-                    ::Assets::ResChar temp[MaxPath];
-                    if (typeCode == ModelCompiler::Type_RawMat) {
-                            // When building rawmat, a material name could be on the op._sourceID0
-                            // string. But we need to remove it from the path to find the real output
-                            // name.
-                        XlCopyString(temp, MakeFileNameSplitter(compileMarker.GetLocator()._sourceID0).AllExceptParameters());
-                        destinationFile = temp;
-                    }
+                /*	Pre-refactor code
+				const auto* destinationFile = compileMarker.GetLocator()._sourceID0;
+                ::Assets::ResChar temp[MaxPath];
+                if (typeCode == ModelCompiler::Type_RawMat) {
+                        // When building rawmat, a material name could be on the op._sourceID0
+                        // string. But we need to remove it from the path to find the real output
+                        // name.
+                    XlCopyString(temp, MakeFileNameSplitter(compileMarker.GetLocator()._sourceID0).AllExceptParameters());
+                    destinationFile = temp;
+                }*/
 
-                    auto model = (*_createCompileOpFunction)(initializer);
+                auto model = (*_createCompileOpFunction)(initializer);
 						
-					// look for the first target of the correct type
-					auto targetCount = model->TargetCount();
-					bool foundTarget = false;
-					for (unsigned t=0; t<targetCount; ++t)
-						if (model->GetTarget(t)._type == typeCode) {
-							auto chunks = model->SerializeTarget(t);
-							if (typeCode != ModelCompiler::Type_RawMat) {
-								SerializeToFile(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
-							} else 
-								SerializeToFileJustChunk(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
-							foundTarget = true;
-							break;
-						}
+				// look for the first target of the correct type
+				auto targetCount = model->TargetCount();
+				bool foundTarget = false;
+				for (unsigned t=0; t<targetCount; ++t)
+					if (model->GetTarget(t)._type == typeCode) {
+						auto chunks = model->SerializeTarget(t);
+						if (typeCode != ModelCompiler::Type_RawMat) {
+							SerializeToFile(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
+						} else 
+							SerializeToFileJustChunk(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
+						foundTarget = true;
+						break;
+					}
 
-					if (!foundTarget)
-						Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer));
+				if (!foundTarget)
+					Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer));
 
-                        // write new dependencies
-					auto splitName = MakeFileNameSplitter(initializer);
-                    std::vector<::Assets::DependentFileState> deps;
-                    deps.push_back(destinationStore.GetDependentFileState(splitName.AllExceptParameters()));
-					compileMarker.GetLocator()._dependencyValidation = destinationStore.WriteDependencies(destinationFile, splitName.DriveAndPath(), MakeIteratorRange(deps));
-        
-					compileMarker.SetState(::Assets::AssetState::Ready);
-
-                } CATCH(...) {
-                    if (!compileMarker.GetLocator()._dependencyValidation) {
-						compileMarker.GetLocator()._dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
-                        ::Assets::RegisterFileDependency(compileMarker.GetLocator()._dependencyValidation, MakeFileNameSplitter(initializer).AllExceptParameters());
-                    }
-                    throw;
-                } CATCH_END
+                    // write new dependencies
+				auto splitName = MakeFileNameSplitter(initializer);
+                std::vector<::Assets::DependentFileState> deps;
+                deps.push_back(destinationStore.GetDependentFileState(splitName.AllExceptParameters()));
+				compileMarker.SetState(::Assets::AssetState::Ready);
 
             }  else {
 
@@ -357,12 +348,12 @@ namespace RenderCore { namespace Assets
 
     std::shared_ptr<::Assets::IArtifact> ModelCompiler::Marker::GetExistingAsset() const
     {
-        ::Assets::IntermediateAssetLocator result;
-        MakeIntermediateName(result._sourceID0, dimof(result._sourceID0));
-        result._dependencyValidation = _store->MakeDependencyValidation(result._sourceID0);
+		::Assets::ResChar intermediateName[MaxPath];
+        MakeIntermediateName(intermediateName, dimof(intermediateName));
+		auto depVal = _store->MakeDependencyValidation(intermediateName);
         if (_typeCode == Type_RawMat)
-            XlCatString(result._sourceID0, MakeFileNameSplitter(_requestName).ParametersWithDivider());
-        return result;
+            XlCatString(intermediateName, MakeFileNameSplitter(_requestName).ParametersWithDivider());
+		return std::make_shared<::Assets::FileArtifact>(intermediateName, depVal);
     }
 
     std::shared_ptr<::Assets::CompileFuture> ModelCompiler::Marker::InvokeCompile() const
@@ -393,9 +384,10 @@ namespace RenderCore { namespace Assets
         auto backgroundOp = std::make_shared<::Assets::QueuedCompileOperation>();
         backgroundOp->SetInitializer(_requestName.c_str());
         XlCopyString(backgroundOp->_initializer0, _requestName);
-        MakeIntermediateName(backgroundOp->GetLocator()._sourceID0, dimof(backgroundOp->GetLocator()._sourceID0));
+		::Assets::ResChar intermediateName[MaxPath];
+        MakeIntermediateName(intermediateName, dimof(intermediateName));
         if (_typeCode == Type_RawMat)
-            XlCatString(backgroundOp->GetLocator()._sourceID0, splitRequest.ParametersWithDivider());
+            XlCatString(intermediateName, splitRequest.ParametersWithDivider());
         backgroundOp->_destinationStore = _store;
         backgroundOp->_typeCode = _typeCode;
 		backgroundOp->_compilerIndex = compilerIndex;
@@ -404,8 +396,9 @@ namespace RenderCore { namespace Assets
             ScopedLock(c->_pimpl->_threadLock);
             if (!c->_pimpl->_thread) {
                 auto* p = c->_pimpl.get();
+				std::string destinationFile = intermediateName;
                 c->_pimpl->_thread = std::make_unique<::Assets::CompilationThread>(
-                    [p](::Assets::QueuedCompileOperation& op) { p->PerformCompile(op); });
+                    [p, destinationFile](::Assets::QueuedCompileOperation& op) { p->PerformCompile(op, MakeStringSection(destinationFile)); });
             }
         }
         c->_pimpl->_thread->Push(backgroundOp);
@@ -464,10 +457,10 @@ namespace RenderCore { namespace Assets
 	}
     ModelCompiler::~ModelCompiler() {}
 
-	void ModelCompiler::Pimpl::PerformCompile(::Assets::QueuedCompileOperation& op)
+	void ModelCompiler::Pimpl::PerformCompile(::Assets::QueuedCompileOperation& op, StringSection<::Assets::ResChar> destinationFile)
 	{
 		assert(op._compilerIndex < _compilers.size());
-		_compilers[op._compilerIndex].PerformCompile(op._typeCode, op._initializer0, op, *op._destinationStore);
+		_compilers[op._compilerIndex].PerformCompile(op._typeCode, op._initializer0, destinationFile, op, *op._destinationStore);
 	}
 
 	void ModelCompiler::Pimpl::DiscoverLibraries()
