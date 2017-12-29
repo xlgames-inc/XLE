@@ -8,6 +8,7 @@
 #include "BlockSerializer.h"
 #include "DepVal.h"
 #include "IFileSystem.h"
+#include "MemoryFile.h"
 #include "../Utility/StringFormat.h"
 #include "../Core/Exceptions.h"
 
@@ -16,9 +17,17 @@ namespace Assets
     std::vector<AssetChunkResult> ChunkFileContainer::ResolveRequests(
         IteratorRange<const AssetChunkRequest*> requests) const
     {
-		auto file = MainFileSystem::OpenFileInterface(_filename.c_str(), "rb");
+		auto file = OpenFile();
         return ResolveRequests(*file, requests);
     }
+
+	std::shared_ptr<IFileInterface> ChunkFileContainer::OpenFile() const
+	{
+		std::shared_ptr<IFileInterface> result;
+		if (_blob)
+			return CreateMemoryFile(_blob);
+		return MainFileSystem::OpenFileInterface(_filename.c_str(), "rb");
+	}
 
     std::vector<AssetChunkResult> ChunkFileContainer::ResolveRequests(
         IFileInterface& file, IteratorRange<const AssetChunkRequest*> requests) const
@@ -84,6 +93,13 @@ namespace Assets
 		RegisterFileDependency(_validationCallback, MakeStringSection(_filename));
     }
 
+	ChunkFileContainer::ChunkFileContainer(const Blob& blob, const DepValPtr& depVal)
+	: _filename("<<in memory>>")
+	, _blob(blob), _validationCallback(depVal)
+	{			
+	}
+
+	ChunkFileContainer::ChunkFileContainer() {}
     ChunkFileContainer::~ChunkFileContainer() {}
 
 }

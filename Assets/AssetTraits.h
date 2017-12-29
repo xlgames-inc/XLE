@@ -26,8 +26,6 @@ namespace Assets
 	class ChunkFileContainer;
     class IArtifact;
 
-	using Blob = std::shared_ptr<std::vector<uint8>>;
-
 	namespace Internal
 	{
 		template <typename AssetType>

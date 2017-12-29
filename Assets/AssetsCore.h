@@ -9,6 +9,7 @@
 #include "../Core/Exceptions.h"
 #include <string>
 #include <memory>
+#include <vector>
 
 namespace Utility { template<typename CharType> class StringSection; }
 using namespace Utility;
@@ -17,6 +18,7 @@ namespace Assets
 {
     typedef char ResChar;
 	using rstring = std::basic_string<ResChar>;
+	using Blob = std::shared_ptr<std::vector<uint8_t>>;
 
     enum class AssetState { Pending, Ready, Invalid };
 

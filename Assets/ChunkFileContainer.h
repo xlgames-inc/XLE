@@ -66,13 +66,20 @@ namespace Assets
 		std::vector<AssetChunkResult> ResolveRequests(IteratorRange<const AssetChunkRequest*> requests) const;
         std::vector<AssetChunkResult> ResolveRequests(IFileInterface& file, IteratorRange<const AssetChunkRequest*> requests) const;
 
+		std::shared_ptr<IFileInterface> OpenFile() const;
+
 		ChunkFileContainer(StringSection<ResChar> assetTypeName);
+		ChunkFileContainer(const Blob& blob, const DepValPtr& depVal);
+		ChunkFileContainer();
         ~ChunkFileContainer();
 
-		ChunkFileContainer(const ChunkFileContainer&) = delete;
-		ChunkFileContainer& operator=(const ChunkFileContainer&) = delete;
+		ChunkFileContainer(const ChunkFileContainer&) = default;
+		ChunkFileContainer& operator=(const ChunkFileContainer&) = default;
+		ChunkFileContainer(ChunkFileContainer&&) never_throws = default;
+		ChunkFileContainer& operator=(ChunkFileContainer&&) never_throws = default;
     private:
         rstring			_filename;
+		Blob			_blob;
 		DepValPtr		_validationCallback;
     };
 

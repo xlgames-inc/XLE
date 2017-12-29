@@ -105,6 +105,10 @@ namespace RenderCore { namespace Assets
     std::pair<Float3, Float3>       ModelScaffold::GetStaticBoundingBox(unsigned) const { return ImmutableData()._boundingBox; }
     unsigned                        ModelScaffold::GetMaxLOD() const                    { return ImmutableData()._maxLOD; }
 
+	const ::Assets::DepValPtr&					ModelScaffold::GetDependencyValidation() const { return _chunkFile.GetDependencyValidation(); }
+	std::shared_ptr<::Assets::IFileInterface>	ModelScaffold::OpenFile() const { return _chunkFile.OpenFile(); }
+	const ::Assets::rstring&					ModelScaffold::Filename() const { return _chunkFile.Filename(); }
+
     static const ::Assets::AssetChunkRequest ModelScaffoldChunkRequests[]
     {
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_ModelScaffold, ModelScaffoldVersion, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
@@ -112,8 +116,7 @@ namespace RenderCore { namespace Assets
     };
     
     ModelScaffold::ModelScaffold(const ::Assets::ChunkFileContainer& chunkFile)
-	: _filename(chunkFile.Filename())
-	, _depVal(chunkFile.GetDependencyValidation())
+	: _chunkFile(chunkFile)
     {
         auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(ModelScaffoldChunkRequests));
 		assert(chunks.size() == 2);
@@ -124,8 +127,7 @@ namespace RenderCore { namespace Assets
     ModelScaffold::ModelScaffold(ModelScaffold&& moveFrom) never_throws
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
     , _largeBlocksOffset(moveFrom._largeBlocksOffset)
-	, _filename(std::move(moveFrom._filename))
-	, _depVal(std::move(moveFrom._depVal))
+	, _chunkFile(std::move(moveFrom._chunkFile))
     {}
 
     ModelScaffold& ModelScaffold::operator=(ModelScaffold&& moveFrom) never_throws
@@ -133,8 +135,7 @@ namespace RenderCore { namespace Assets
 		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
         _largeBlocksOffset = moveFrom._largeBlocksOffset;
-		_filename = std::move(moveFrom._filename);
-		_depVal = std::move(moveFrom._depVal);
+		_chunkFile = std::move(moveFrom._chunkFile);
         return *this;
     }
 
@@ -155,6 +156,9 @@ namespace RenderCore { namespace Assets
         return *(const ModelSupplementImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
+	const ::Assets::DepValPtr&					ModelSupplementScaffold::GetDependencyValidation() const { return _chunkFile.GetDependencyValidation(); }
+	std::shared_ptr<::Assets::IFileInterface>	ModelSupplementScaffold::OpenFile() const { return _chunkFile.OpenFile(); }
+
     static const ::Assets::AssetChunkRequest ModelSupplementScaffoldChunkRequests[]
     {
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_ModelScaffold, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
@@ -162,8 +166,7 @@ namespace RenderCore { namespace Assets
     };
     
     ModelSupplementScaffold::ModelSupplementScaffold(const ::Assets::ChunkFileContainer& chunkFile)
-	: _filename(chunkFile.Filename())
-	, _depVal(chunkFile.GetDependencyValidation())
+	: _chunkFile(chunkFile)
 	{
 		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(ModelSupplementScaffoldChunkRequests));
 		assert(chunks.size() == 2);
@@ -174,8 +177,7 @@ namespace RenderCore { namespace Assets
     ModelSupplementScaffold::ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom) never_throws
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
     , _largeBlocksOffset(moveFrom._largeBlocksOffset)
-	, _filename(std::move(moveFrom._filename))
-	, _depVal(moveFrom._depVal)
+	, _chunkFile(std::move(moveFrom._chunkFile))
     {}
 
     ModelSupplementScaffold& ModelSupplementScaffold::operator=(ModelSupplementScaffold&& moveFrom) never_throws
@@ -183,9 +185,8 @@ namespace RenderCore { namespace Assets
 		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
         _largeBlocksOffset = moveFrom._largeBlocksOffset;
-		_filename = std::move(moveFrom._filename);
-		_depVal = std::move(moveFrom._depVal);
-        return *this;
+		_chunkFile = std::move(moveFrom._chunkFile);
+		return *this;
     }
 
     ModelSupplementScaffold::~ModelSupplementScaffold()

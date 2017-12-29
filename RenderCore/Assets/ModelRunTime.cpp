@@ -139,7 +139,7 @@ namespace RenderCore { namespace Assets
             return false;       // didn't find any draw calls with good material information. This whole geo object can be ignored.
         }
 
-        static void LoadBlock(BasicFile& file, uint8 destination[], size_t fileOffset, size_t readSize)
+        static void LoadBlock(::Assets::IFileInterface& file, uint8 destination[], size_t fileOffset, size_t readSize)
         {
             file.Seek(fileOffset);
             file.Read(destination, 1, readSize);
@@ -447,7 +447,7 @@ namespace RenderCore { namespace Assets
 
         static void ReadImmediately(
             std::vector<uint8>& nascentBuffer,
-            BasicFile& file, unsigned largeBlocksOffset,
+            ::Assets::IFileInterface& file, unsigned largeBlocksOffset,
             IteratorRange<PendingGeoUpload*> uploads, unsigned supplementIndex = ~0u)
         {
             for (auto u=uploads.cbegin(); u!=uploads.cend(); ++u)
@@ -651,14 +651,14 @@ namespace RenderCore { namespace Assets
         nascentIB.resize(workingBuffers._ibSize);
 
         {
-			auto file = ::Assets::MainFileSystem::OpenBasicFile(scaffold.Filename(), "rb");
-            ReadImmediately(nascentIB, file, scaffold.LargeBlocksOffset(), MakeIteratorRange(workingBuffers._ibUploads));
-            ReadImmediately(nascentVB, file, scaffold.LargeBlocksOffset(), MakeIteratorRange(workingBuffers._vbUploads));
+			auto file = scaffold.OpenFile();
+            ReadImmediately(nascentIB, *file, scaffold.LargeBlocksOffset(), MakeIteratorRange(workingBuffers._ibUploads));
+            ReadImmediately(nascentVB, *file, scaffold.LargeBlocksOffset(), MakeIteratorRange(workingBuffers._vbUploads));
         }
 
         for (unsigned s=0; s<supplements.size(); ++s) {
-			auto file = ::Assets::MainFileSystem::OpenBasicFile(supplements[s]->Filename(), "rb");
-            ReadImmediately(nascentVB, file, supplements[s]->LargeBlocksOffset(), MakeIteratorRange(workingBuffers._vbUploads), s);
+			auto file = supplements[s]->OpenFile();
+            ReadImmediately(nascentVB, *file, supplements[s]->LargeBlocksOffset(), MakeIteratorRange(workingBuffers._vbUploads), s);
         }
 
             ////////////////////////////////////////////////////////////////////////

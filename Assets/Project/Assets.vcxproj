@@ -68,6 +68,7 @@
     <ClInclude Include="..\IFileSystem.h" />
     <ClInclude Include="..\IntermediateAssets.h" />
     <ClInclude Include="..\InvalidAssetManager.h" />
+    <ClInclude Include="..\MemoryFile.h" />
     <ClInclude Include="..\MountingTree.h" />
     <ClInclude Include="..\NascentChunkArray.h" />
     <ClInclude Include="..\OSFileSystem.h" />
@@ -94,6 +95,7 @@
     <ClCompile Include="..\MountingTree.cpp" />
     <ClCompile Include="..\NascentChunkArray.cpp" />
     <ClCompile Include="..\OSFileSystem.cpp" />
+    <ClCompile Include="..\MemoryFile.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

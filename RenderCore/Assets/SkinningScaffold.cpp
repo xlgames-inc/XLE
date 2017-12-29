@@ -320,14 +320,16 @@ namespace RenderCore { namespace Assets
         return *(const SkeletonMachine*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
+	const ::Assets::DepValPtr&					SkeletonScaffold::GetDependencyValidation() const { return _chunkFile.GetDependencyValidation(); }
+	std::shared_ptr<::Assets::IFileInterface>	SkeletonScaffold::OpenFile() const { return _chunkFile.OpenFile(); }
+
     static const ::Assets::AssetChunkRequest SkeletonScaffoldChunkRequests[]
     {
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_Skeleton, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
     };
     
     SkeletonScaffold::SkeletonScaffold(const ::Assets::ChunkFileContainer& chunkFile)
-	: _filename(chunkFile.Filename())
-	, _depVal(chunkFile.GetDependencyValidation())
+	: _chunkFile(chunkFile)
     {
 		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(SkeletonScaffoldChunkRequests));
 		assert(chunks.size() == 1);
@@ -336,16 +338,14 @@ namespace RenderCore { namespace Assets
 
     SkeletonScaffold::SkeletonScaffold(SkeletonScaffold&& moveFrom) never_throws
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-	, _filename(std::move(moveFrom._filename))
-	, _depVal(std::move(moveFrom._depVal))
+	, _chunkFile(std::move(moveFrom._chunkFile))
     {}
 
     SkeletonScaffold& SkeletonScaffold::operator=(SkeletonScaffold&& moveFrom) never_throws
     {
 		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-		_filename = std::move(moveFrom._filename);
-		_depVal = std::move(moveFrom._depVal);
+		_chunkFile = std::move(moveFrom._chunkFile);
         return *this;
     }
 
@@ -361,14 +361,16 @@ namespace RenderCore { namespace Assets
         return *(const AnimationImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
+	const ::Assets::DepValPtr&					AnimationSetScaffold::GetDependencyValidation() const { return _chunkFile.GetDependencyValidation(); }
+	std::shared_ptr<::Assets::IFileInterface>	AnimationSetScaffold::OpenFile() const { return _chunkFile.OpenFile(); }
+
     static const ::Assets::AssetChunkRequest AnimationSetScaffoldChunkRequests[]
     {
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_AnimationSet, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
     };
     
     AnimationSetScaffold::AnimationSetScaffold(const ::Assets::ChunkFileContainer& chunkFile)
-	: _filename(chunkFile.Filename())
-	, _depVal(chunkFile.GetDependencyValidation())
+	: _chunkFile(chunkFile)
     {
 		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(AnimationSetScaffoldChunkRequests));
 		assert(chunks.size() == 1);
@@ -377,16 +379,14 @@ namespace RenderCore { namespace Assets
 
     AnimationSetScaffold::AnimationSetScaffold(AnimationSetScaffold&& moveFrom) never_throws
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-	, _filename(std::move(moveFrom._filename))
-	, _depVal(std::move(moveFrom._depVal))
+	, _chunkFile(std::move(moveFrom._chunkFile))
     {}
 
     AnimationSetScaffold& AnimationSetScaffold::operator=(AnimationSetScaffold&& moveFrom) never_throws
     {
 		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-		_filename = std::move(moveFrom._filename);
-		_depVal = std::move(moveFrom._depVal);
+		_chunkFile = std::move(moveFrom._chunkFile);
         return *this;
     }
 

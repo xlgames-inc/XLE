@@ -21,7 +21,6 @@ namespace Assets
 	class IArtifact
 	{
 	public:
-		using Blob = std::shared_ptr<std::vector<uint8>>;
 		virtual Blob	GetBlob() const = 0;
 		virtual Blob	GetErrors() const = 0;
 		virtual ::Assets::DepValPtr GetDependencyValidation() const = 0;

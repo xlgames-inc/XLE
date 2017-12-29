@@ -437,6 +437,8 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
+	using Blob = ::Assets::Blob;
+
 	class ArchivedFileArtifact : public ::Assets::IArtifact
 	{
 	public:

@@ -63,6 +63,9 @@
     <ClInclude Include="..\AssetFuture.h">
       <Filter>AssetHeaps</Filter>
     </ClInclude>
+    <ClInclude Include="..\MemoryFile.h">
+      <Filter>FileSystems</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\AssetUtils.cpp" />
@@ -104,6 +107,9 @@
       <Filter>FileSystems</Filter>
     </ClCompile>
     <ClCompile Include="..\MountingTree.cpp">
+      <Filter>FileSystems</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MemoryFile.cpp">
       <Filter>FileSystems</Filter>
     </ClCompile>
   </ItemGroup>
