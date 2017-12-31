@@ -36,7 +36,7 @@ namespace ColladaConversion
 
     const NativeVBSettings NativeSettings = { true };       // use 16 bit floats
 
-    std::shared_ptr<std::vector<uint8>> GetParseDataSource();
+    ::Assets::Blob GetParseDataSource();
 
     class VertexSourceData : public IVertexSourceData
     {
@@ -60,7 +60,7 @@ namespace ColladaConversion
         FormatHint::BitField _formatHint;
         ProcessingFlags::BitField _processingFlags;
 
-        std::shared_ptr<std::vector<uint8>> _rawData;
+        ::Assets::Blob _rawData;
     };
 
     const void* VertexSourceData::GetData() const

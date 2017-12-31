@@ -44,7 +44,7 @@ namespace RenderCore { namespace Assets
         std::vector<std::basic_string<utf8>> _configurations;
 
 		RawMatConfigurations(
-			const std::shared_ptr<std::vector<uint8>>& locator,
+			const ::Assets::Blob& locator,
 			const ::Assets::DepValPtr& depVal);
 
         static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
@@ -55,7 +55,7 @@ namespace RenderCore { namespace Assets
     };
 
     RawMatConfigurations::RawMatConfigurations(
-		const std::shared_ptr<std::vector<uint8>>& blob,
+		const ::Assets::Blob& blob,
 		const ::Assets::DepValPtr& depVal)
     {
             //  Get associated "raw" material information. This is should contain the material information attached

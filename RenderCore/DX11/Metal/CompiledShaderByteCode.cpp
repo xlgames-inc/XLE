@@ -381,7 +381,7 @@ namespace RenderCore { namespace Metal_DX11
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<std::vector<uint8>> MakeBlob(StringSection<char> stringSection)
+    ::Assets::Blob MakeBlob(StringSection<char> stringSection)
     {
         auto result = std::make_shared<std::vector<uint8>>((const uint8*)stringSection.begin(), (const uint8*)stringSection.end());
         result->push_back(0);
@@ -389,8 +389,8 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     static void CreatePayloadFromBlobs(
-        /*out*/ std::shared_ptr<std::vector<uint8>>& payload,
-        /*out*/ std::shared_ptr<std::vector<uint8>>& errors,
+        /*out*/ ::Assets::Blob& payload,
+        /*out*/ ::Assets::Blob& errors,
         ID3DBlob* payloadBlob,
         ID3DBlob* errorsBlob,
         const ShaderService::ShaderHeader& hdr)
@@ -617,8 +617,8 @@ namespace RenderCore { namespace Metal_DX11
         ID3D11FunctionLinkingGraph* GetUnderlying() { return _graph.get(); }
 
         bool TryLink(
-            std::shared_ptr<std::vector<uint8>>& payload,
-            std::shared_ptr<std::vector<uint8>>& errors,
+			::Assets::Blob& payload,
+			::Assets::Blob& errors,
             std::vector<::Assets::DependentFileState>& dependencies,
             const char shaderModel[]);
 
@@ -718,8 +718,8 @@ namespace RenderCore { namespace Metal_DX11
     FunctionLinkingGraph::~FunctionLinkingGraph() {}
 
     bool FunctionLinkingGraph::TryLink(
-        std::shared_ptr<std::vector<uint8>>& payload,
-        std::shared_ptr<std::vector<uint8>>& errors,
+		::Assets::Blob& payload,
+		::Assets::Blob& errors,
         std::vector<::Assets::DependentFileState>& dependencies,
         const char shaderModel[])
     {
@@ -1231,8 +1231,8 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     bool D3DShaderCompiler::DoLowLevelCompile(
-        /*out*/ std::shared_ptr<std::vector<uint8>>& payload,
-        /*out*/ std::shared_ptr<std::vector<uint8>>& errors,
+        /*out*/ ::Assets::Blob& payload,
+        /*out*/ ::Assets::Blob& errors,
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
         const ShaderService::ResId& shaderPath,

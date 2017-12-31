@@ -81,7 +81,7 @@ namespace RenderCore
         class ILowLevelCompiler
         {
         public:
-            using Payload = std::shared_ptr<std::vector<uint8>>;
+            using Payload = ::Assets::Blob;
 
             virtual void AdaptShaderModel(
                 ResChar destination[], 
@@ -166,7 +166,7 @@ namespace RenderCore
 		ShaderStage		GetStage() const;
         bool            DynamicLinkingEnabled() const;
 
-		CompiledShaderByteCode(const std::shared_ptr<std::vector<uint8>>&, const ::Assets::DepValPtr&);
+		CompiledShaderByteCode(const ::Assets::Blob&, const ::Assets::DepValPtr&);
 		CompiledShaderByteCode();
         ~CompiledShaderByteCode();
 
@@ -180,8 +180,8 @@ namespace RenderCore
         static const uint64 CompileProcessType;
 
     private:
-        std::shared_ptr<std::vector<uint8>>		_shader;
-		::Assets::DepValPtr						_depVal;
+		::Assets::Blob			_shader;
+		::Assets::DepValPtr		_depVal;
     };
 }
 

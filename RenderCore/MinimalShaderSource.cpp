@@ -97,7 +97,7 @@ namespace RenderCore
         const ShaderService::ResId& resId,
 		StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
     {
-        using Payload = std::shared_ptr<std::vector<uint8>>;
+        using Payload = ::Assets::Blob;
         Payload payload, errors;
         std::vector<::Assets::DependentFileState> deps;
 

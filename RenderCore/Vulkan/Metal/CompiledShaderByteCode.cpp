@@ -244,7 +244,7 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     static void AppendErrors(
-        std::shared_ptr<std::vector<uint8>>& errors,
+        ::Assets::Blob& errors,
         glslang::TShader& shader)
     {
         auto infoLog = shader.getInfoLog();
@@ -264,8 +264,8 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     static bool GLSLtoSPV(
-        /*out*/ std::shared_ptr<std::vector<uint8>>& payload,
-        /*out*/ std::shared_ptr<std::vector<uint8>>& errors,
+        /*out*/ ::Assets::Blob& payload,
+        /*out*/ ::Assets::Blob& errors,
         EShLanguage shaderType,
         const char glslSource[]) 
     {
@@ -430,8 +430,8 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     bool HLSLToSPIRVCompiler::DoLowLevelCompile(
-        /*out*/ std::shared_ptr<std::vector<uint8>>& payload,
-        /*out*/ std::shared_ptr<std::vector<uint8>>& errors,
+        /*out*/ ::Assets::Blob& payload,
+        /*out*/ ::Assets::Blob& errors,
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
         const ShaderService::ResId& shaderPath,
@@ -442,7 +442,7 @@ namespace RenderCore { namespace Metal_Vulkan
         // But, let's go HLSL -> HLSL bytecode -> GLSL -> SPIR-V
 
         // First, attempt to compile the HLSL code into byte code (using D3D compilers)
-        std::shared_ptr<std::vector<uint8>> hlslBytecode;
+		::Assets::Blob hlslBytecode;
         bool hlslGood = _hlslCompiler->DoLowLevelCompile(
             hlslBytecode, errors, dependencies,
             sourceCode, sourceCodeLength, shaderPath, definesTable);

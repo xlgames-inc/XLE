@@ -49,7 +49,7 @@ namespace RenderCore { namespace Assets
         #endif
     {
     public:
-        using Payload = std::shared_ptr<std::vector<uint8>>;
+        using Payload = ::Assets::Blob;
         using ChainFn = std::function<void(
 			const ResId& shaderPath, const ::Assets::rstring& definesTable,
             ::Assets::AssetState, const Payload& payload, const Payload& errors,

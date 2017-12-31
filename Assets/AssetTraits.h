@@ -5,9 +5,6 @@
 #pragma once
 
 #include "AssetsCore.h"		// (for ResChar)
-// #include "AssetSetInternal.h"
-// #include "AssetUtils.h"
-// #include "ConfigFileContainer.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
 #include <assert.h>
@@ -68,7 +65,6 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 	#define ENABLE_IF(X) typename std::enable_if<X>::type* = nullptr
 
 	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_Formatter)>
@@ -100,6 +96,12 @@ namespace Assets
 	{
 		const auto& container = Internal::GetChunkFileContainer(initializer);
 		return std::make_unique<AssetType>(container);
+	}
+
+	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer)>
+		std::unique_ptr<AssetType> AutoConstructAsset(const ::Assets::Blob& blob, const ::Assets::DepValPtr& depVal)
+	{
+		return std::make_unique<AssetType>(ChunkFileContainer(blob, depVal));
 	}
 
 	template<typename AssetType, typename... Params, typename std::enable_if<std::is_constructible<AssetType, Params...>::value>::type* = nullptr>

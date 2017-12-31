@@ -23,14 +23,17 @@ namespace Assets
 
 	namespace Internal
 	{
+		// Note -- here's a useful pattern that can turn any expression in a SFINAE condition
+		// Taken from stack overflow -- https://stackoverflow.com/questions/257288/is-it-possible-to-write-a-template-to-check-for-a-functions-existence
+		// If the expression in the first decltype() is invalid, we will trigger SFINAE and fall back to std::false_type
 		template<typename T, typename... Params>
-			struct HasDirectAutoConstructAsset
-		{
-			template <class, class> class SubstFailure;
-			template<typename A, typename... P> static std::true_type Test(SubstFailure<A, decltype((std::unique_ptr<A>(*)(P...))&Assets::AutoConstructAsset<A>)>*);
-			template<typename A, typename... P> static std::false_type Test(...);
-			static const bool Result = decltype(Test<T, Params...>(0))::value;
-		};
+			static auto HasDirectAutoConstructAsset_Helper(int) -> decltype(::Assets::AutoConstructAsset<T>(std::declval<Params>()...), std::true_type{});
+
+		template<typename...>
+			static auto HasDirectAutoConstructAsset_Helper(...) -> std::false_type;
+
+		template<typename... Params>
+			struct HasDirectAutoConstructAsset : decltype(HasDirectAutoConstructAsset_Helper<Params...>(0)) {};
 	}
 	
 	// If we can construct an AssetType directly from the given parameters, then enable an implementation of
@@ -42,7 +45,7 @@ namespace Assets
 	// we don't need.
 	template<
 		typename AssetType, typename... Params, 
-		typename std::enable_if<Internal::HasDirectAutoConstructAsset<AssetType, Params...>::Result>::type* = nullptr>
+		typename std::enable_if<Internal::HasDirectAutoConstructAsset<AssetType, Params...>::value>::type* = nullptr>
 		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
 	{
 		TRY{
@@ -99,7 +102,7 @@ namespace Assets
 	template<
 		typename AssetType, typename... Params, 
 		typename std::enable_if<
-			Internal::AssetTraits<AssetType>::HasCompileProcessType && !Internal::HasDirectAutoConstructAsset<AssetType, Params...>::Result
+			Internal::AssetTraits<AssetType>::HasCompileProcessType && !Internal::HasDirectAutoConstructAsset<AssetType, Params...>::value
 			>::type* = nullptr>
 		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
 	{
