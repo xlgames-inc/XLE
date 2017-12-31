@@ -8,6 +8,11 @@
 #if defined(HAS_XLE_FONTS)
     #include "../../RenderOverlays/Font.h"
     #include "../../RenderCore/Techniques/ResourceBox.h"
+#else
+	namespace RenderOverlays
+	{
+		class TextStyle {};
+	}
 #endif
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/StringFormat.h"

@@ -257,7 +257,7 @@ namespace PlatformRig { namespace Overlays
                     DrawTextOptions(false, true));
                 context->DrawText(
                     AsPixelCoords(rect), &style, col, 
-                    TextAlignment::Left, name, nullptr);
+                    TextAlignment::Left, name);
 
                 if ((c+1) != dropDown->size())
                     context->DrawLine(ProjectionMode::P2D,

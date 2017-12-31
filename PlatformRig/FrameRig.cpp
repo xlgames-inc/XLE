@@ -18,6 +18,8 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 
+#include "../RenderOverlays/OverlayContext.h"
+
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/AssetServices.h"
 
@@ -143,7 +145,9 @@ namespace PlatformRig
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parserContext)
         {
-            _debugScreensSystem->Render(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+			auto viewportDims = device.GetStateDesc()._viewportDimensions;
+			_debugScreensSystem->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ { 0,0 },{ int(viewportDims[0]), int(viewportDims[1]) } });
         }
 
         void SetActivationState(bool) {}
@@ -460,7 +464,7 @@ namespace PlatformRig
                     if ((_subMenuOpen-1) == unsigned(c) || highlight) {
 
                             //  Draw the text name for this icon under the icon
-                        Coord nameWidth = (Coord)context.StringWidth(1.f, &tabHeader, categories[c], nullptr);
+                        Coord nameWidth = (Coord)context.StringWidth(1.f, &tabHeader, categories[c]);
                         rect = Rect(
                             pt - Coord2(std::max(iconSize[0], nameWidth), 0),
                             pt + Coord2(0, Coord(iconSize[1] + tabHeader._font->LineHeight())));
@@ -507,7 +511,7 @@ namespace PlatformRig
                 const auto screens = ds->GetWidgets();
                 for (auto i=screens.cbegin(); i!=screens.cend(); ++i) {
                     if (i->_name.find(categories[_subMenuOpen-1]) != std::string::npos) {
-                        unsigned width = (unsigned)context.StringWidth(1.f, &tabHeader, i->_name.c_str(), nullptr);
+                        unsigned width = (unsigned)context.StringWidth(1.f, &tabHeader, MakeStringSection(i->_name));
                         auto rect = screenListLayout.AllocateFullWidth(lineHeight);
                         rect._topLeft[0] = rect._bottomRight[0] - width;
 

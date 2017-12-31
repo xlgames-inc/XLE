@@ -647,6 +647,21 @@ namespace RenderOverlays
     }
 
 
+	std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>
+		MakeImmediateOverlayContext(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::NamedResources* namedRes,
+			const RenderCore::Techniques::ProjectionDesc& projDesc)
+	{
+		auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>(
+			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
+		#pragma push_macro("new")
+		#undef new
+			new(overlayContext.get()) ImmediateOverlayContext(threadContext, namedRes, projDesc);
+		#pragma pop_macro("new")
+		return overlayContext;
+	}
+
     IOverlayContext::~IOverlayContext() {}
 
 

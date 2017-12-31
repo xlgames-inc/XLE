@@ -12,8 +12,10 @@
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Types_Forward.h"
 #include "../Math/Matrix.h"
+#include "../Utility/MemoryUtils.h"
 #include "Font.h"
 #include <vector>
+#include <memory>
 
 #pragma warning(disable:4324)
 
@@ -122,6 +124,12 @@ namespace RenderOverlays
         unsigned                VertexSize(VertexFormat format);
         void                    PushDrawCall(const DrawCall& drawCall);
     };
+
+	std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>
+		MakeImmediateOverlayContext(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::NamedResources* namedRes = nullptr,
+			const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
 }
 
 

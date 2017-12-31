@@ -1203,15 +1203,8 @@ namespace SceneEngine
         using namespace RenderOverlays;
         using namespace RenderOverlays::DebuggingDisplay;
 
-        auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>(
-			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
-		#pragma push_macro("new")
-		#undef new
-			new(overlayContext.get()) ImmediateOverlayContext(context, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
-		#pragma pop_macro("new")
-
+		auto overlayContext = MakeImmediateOverlayContext(context, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
         overlayContext->CaptureState();
-
 
         TRY {
 
