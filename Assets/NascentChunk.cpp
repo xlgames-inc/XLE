@@ -2,7 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "NascentChunkArray.h"
+#include "NascentChunk.h"
 #include "BlockSerializer.h"
 
 namespace Assets
@@ -17,11 +17,16 @@ namespace Assets
 			&DestroyChunkArray);
 	}
 
-	std::vector<uint8> AsVector(const Serialization::NascentBlockSerializer& serializer)
+	::Assets::Blob AsBlob(IteratorRange<const void*> copyFrom)
+	{
+		return std::make_shared<std::vector<uint8_t>>((const uint8_t*)copyFrom.begin(), (const uint8_t*)copyFrom.end());
+	}
+
+	::Assets::Blob AsBlob(const Serialization::NascentBlockSerializer& serializer)
 	{
 		auto block = serializer.AsMemoryBlock();
 		size_t size = Serialization::Block_GetSize(block.get());
-		return std::vector<uint8>(block.get(), PtrAdd(block.get(), size));
+		return AsBlob(MakeIteratorRange(block.get(), PtrAdd(block.get(), size)));
 	}
 }
 

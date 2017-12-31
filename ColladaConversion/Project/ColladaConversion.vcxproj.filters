@@ -143,7 +143,6 @@
     <ClInclude Include="..\..\RenderCore\Assets\TransformationCommands.h">
       <Filter>GeoProc\CoreAssets</Filter>
     </ClInclude>
-    <ClInclude Include="..\DLLInterface.h" />
     <ClInclude Include="..\ConversionConfig.h">
       <Filter>ObjectConversion</Filter>
     </ClInclude>

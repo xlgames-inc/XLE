@@ -20,6 +20,7 @@ namespace Assets
 	class MountingTree;
 	class IFileInterface;
 	using IFileMonitor = Utility::OnChangeCallback;
+	using Blob = std::shared_ptr<std::vector<uint8_t>>;
 
 	static const FileShareMode::BitField FileShareMode_Default = FileShareMode::Read;
 
@@ -174,6 +175,7 @@ namespace Assets
 	T1(CharType) FileDesc TryGetDesc(IFileSystem& fs, StringSection<CharType> fn);
 
 	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult = nullptr);
+	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName);
 
 }
 

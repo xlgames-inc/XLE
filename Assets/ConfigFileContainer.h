@@ -61,13 +61,13 @@ namespace Assets
 		static std::unique_ptr<ConfigFileContainer> CreateNew(StringSection<ResChar> initialiser);
 
         ConfigFileContainer(StringSection<ResChar> initializer);
+		ConfigFileContainer(const Blob& blob, const DepValPtr& depVal);
         ~ConfigFileContainer();
 
         const std::shared_ptr<DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     protected:
-        std::shared_ptr<DependencyValidation> _validationCallback;
-		std::unique_ptr<uint8[]> _fileData;
-		size_t _fileSize;
+		Blob _fileData; 
+		std::shared_ptr<DependencyValidation> _validationCallback;		
     };
 
     template<typename CharType>

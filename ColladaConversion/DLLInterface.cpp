@@ -4,7 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "DLLInterface.h"
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"    // for AsString
 #include "ConversionConfig.h"
@@ -25,7 +24,7 @@
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Assets/RawMaterial.h"
 #include "../Assets/CompilerLibrary.h"
-#include "../Assets/NascentChunkArray.h"
+#include "../Assets/NascentChunk.h"
 #include "../Assets/IFileSystem.h"
 
 #include "../Utility/Streams/FileUtils.h"
@@ -58,10 +57,12 @@ namespace ColladaConversion
         std::shared_ptr<DocumentScaffold> _doc;
         ::ColladaConversion::URIResolveContext _resolveContext;
 		std::vector<TargetDesc> _targets;
+		std::shared_ptr<std::vector<::Assets::DependentFileState>> _dependencies;
 
 		unsigned	TargetCount() const;
 		TargetDesc	GetTarget(unsigned idx) const;
 		::Assets::NascentChunkArray	SerializeTarget(unsigned idx);
+		std::shared_ptr<std::vector<::Assets::DependentFileState>> GetDependencies() const;
 
 		ColladaCompileOp();
 		~ColladaCompileOp();
@@ -464,9 +465,9 @@ namespace ColladaConversion
             model._name.c_str(), Serialization::ChunkFile::SizeType(finalSize));
 
         return ::Assets::MakeNascentChunkArray({
-			::Assets::NascentChunk(
-                scaffoldChunk, 
-                std::vector<uint8>(strm.GetBuffer().Begin(), strm.GetBuffer().End()))
+			::Assets::NascentChunk{
+				scaffoldChunk,
+				::Assets::AsBlob(MakeIteratorRange(strm.GetBuffer().Begin(), strm.GetBuffer().End()))}
             });
     }
 
@@ -564,6 +565,11 @@ namespace ColladaConversion
 		}
 	}
 
+	std::shared_ptr<std::vector<::Assets::DependentFileState>> ColladaCompileOp::GetDependencies() const
+	{
+		return _dependencies;
+	}
+
 	ColladaCompileOp::ColladaCompileOp() {}
 	ColladaCompileOp::~ColladaCompileOp() {}
 
@@ -576,12 +582,19 @@ namespace ColladaConversion
 		auto split = MakeFileNameSplitter(identifier);
 		auto filePath = split.AllExceptParameters().AsString();
 
+		result->_dependencies = std::shared_ptr<std::vector<::Assets::DependentFileState>>(
+			new std::vector<::Assets::DependentFileState>,
+			[](const void* block) { delete (std::vector<::Assets::DependentFileState>*)block; });
+
 		result->_cfg = ImportConfiguration("colladaimport.cfg");
-		result->_fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(filePath.c_str(), 0, "r", FileShareMode::Read);
+		result->_fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath), 0, "r", FileShareMode::Read);
 		XmlInputStreamFormatter<utf8> formatter(
 			MemoryMappedInputStream(
 				result->_fileData.GetData(), 
 				PtrAdd(result->_fileData.GetData(), result->_fileData.GetSize())));
+
+		result->_dependencies->push_back({ MakeStringSection("colladaimport.cfg"), 0 });
+		result->_dependencies->push_back({ filePath, 0 });
 
 		result->_name = identifier.AsString();
 		result->_rootNode = split.Parameters().AsString();
@@ -640,17 +653,19 @@ dll_export ConsoleRig::LibVersionDesc GetVersionInformation()
     return result;
 }
 
-static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
+// static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
 
 dll_export void AttachLibrary(ConsoleRig::GlobalServices& services)
 {
-    s_attachRef = services.GetCrossModule().Attach<ConsoleRig::GlobalServices>();
+    // s_attachRef = services.GetCrossModule().Attach<ConsoleRig::GlobalServices>();
+	services.AttachCurrentModule();
     LogInfo << "Attached Collada Compiler DLL: {" << ColladaConversion::VersionString << "} -- {" << ColladaConversion::BuildDateString << "}";
 }
 
 dll_export void DetachLibrary()
 {
-    s_attachRef.Detach();
+    // s_attachRef.Detach();
+	ConsoleRig::GlobalServices::GetInstance().DetachCurrentModule();
     TerminateFileSystemMonitoring();
 }
 

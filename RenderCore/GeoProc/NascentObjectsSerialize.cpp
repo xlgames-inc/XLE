@@ -11,6 +11,8 @@
 #include "SkeletonRegistry.h"
 // #include "SCommandStream.h"
 #include "../Assets/AssetUtils.h"
+#include "../Assets/AssetsCore.h"
+#include "../Assets/NascentChunk.h"
 #include "../Assets/ModelImmutableData.h"      // just for RenderCore::Assets::SkeletonBinding
 #include "../Assets/RawAnimationCurve.h"
 #include "../../Assets/BlockSerializer.h"
@@ -22,15 +24,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static void SerializeSkin(
+	static ::Assets::Blob SerializeSkin(
 		Serialization::NascentBlockSerializer& serializer, 
-		std::vector<uint8>& largeResourcesBlock,
 		NascentGeometryObjects& objs)
 	{
+		auto result = std::make_shared<std::vector<uint8>>();
 		{
 			Serialization::NascentBlockSerializer tempBlock;
 			for (auto i = objs._rawGeos.begin(); i!=objs._rawGeos.end(); ++i) {
-				i->second.Serialize(tempBlock, largeResourcesBlock);
+				i->second.Serialize(tempBlock, *result);
 			}
 			serializer.SerializeSubBlock(tempBlock);
 			::Serialize(serializer, objs._rawGeos.size());
@@ -39,11 +41,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		{
 			Serialization::NascentBlockSerializer tempBlock;
 			for (auto i = objs._skinnedGeos.begin(); i!=objs._skinnedGeos.end(); ++i) {
-				i->second.Serialize(tempBlock, largeResourcesBlock);
+				i->second.Serialize(tempBlock, *result);
 			}
 			serializer.SerializeSubBlock(tempBlock);
 			::Serialize(serializer, objs._skinnedGeos.size());
 		}
+		return result;
 	}
 
     class DefaultPoseData
@@ -118,10 +121,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	::Assets::NascentChunkArray SerializeSkinToChunks(const char name[], NascentGeometryObjects& geoObjects, NascentModelCommandStream& cmdStream, NascentSkeleton& skeleton)
 	{
 		Serialization::NascentBlockSerializer serializer;
-		std::vector<uint8> largeResourcesBlock;
 
 		::Serialize(serializer, cmdStream);
-		SerializeSkin(serializer, largeResourcesBlock, geoObjects);
+		auto largeResourcesBlock = SerializeSkin(serializer, geoObjects);
 		::Serialize(serializer, skeleton);
 
 			// Generate the default transforms and serialize them out
@@ -144,21 +146,21 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		std::stringstream metricsStream;
 		TraceMetrics(metricsStream, geoObjects, cmdStream, skeleton);
 
-		auto scaffoldBlock = ::Assets::AsVector(serializer);
-		auto metricsBlock = ::Assets::AsVector(metricsStream);
+		auto scaffoldBlock = ::Assets::AsBlob(serializer);
+		auto metricsBlock = ::Assets::AsBlob(metricsStream);
 
 		Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-			RenderCore::Assets::ChunkType_ModelScaffold, ModelScaffoldVersion, name, unsigned(scaffoldBlock.size()));
+			RenderCore::Assets::ChunkType_ModelScaffold, ModelScaffoldVersion, name, unsigned(scaffoldBlock->size()));
 		Serialization::ChunkFile::ChunkHeader largeBlockChunk(
-			RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, name, (unsigned)largeResourcesBlock.size());
+			RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, name, (unsigned)largeResourcesBlock->size());
 		Serialization::ChunkFile::ChunkHeader metricsChunk(
-			RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock.size());
+			RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock->size());
 
 		return ::Assets::MakeNascentChunkArray(
 			{
-				::Assets::NascentChunk(scaffoldChunk, std::move(scaffoldBlock)),
-				::Assets::NascentChunk(largeBlockChunk, std::move(largeResourcesBlock)),
-				::Assets::NascentChunk(metricsChunk, std::move(metricsBlock))
+				::Assets::NascentChunk{scaffoldChunk, std::move(scaffoldBlock)},
+				::Assets::NascentChunk{largeBlockChunk, std::move(largeResourcesBlock)},
+				::Assets::NascentChunk{metricsChunk, std::move(metricsBlock)}
 			});
 	}
 
@@ -173,20 +175,20 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		const char name[], 
 		const NascentSkeleton& skeleton)
 	{
-		auto block = ::Assets::SerializeToVector(skeleton);
+		auto block = ::Assets::SerializeToBlob(skeleton);
 
 		std::stringstream metricsStream;
 		TraceMetrics(metricsStream, skeleton);
-		auto metricsBlock = ::Assets::AsVector(metricsStream);
+		auto metricsBlock = ::Assets::AsBlob(metricsStream);
 
 		Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-			RenderCore::Assets::ChunkType_Skeleton, 0, name, unsigned(block.size()));
+			RenderCore::Assets::ChunkType_Skeleton, 0, name, unsigned(block->size()));
 		Serialization::ChunkFile::ChunkHeader metricsChunk(
-			RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock.size());
+			RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock->size());
 
 		return ::Assets::MakeNascentChunkArray({
-			::Assets::NascentChunk(scaffoldChunk, std::move(block)),
-			::Assets::NascentChunk(metricsChunk, std::move(metricsBlock))
+			::Assets::NascentChunk{scaffoldChunk, std::move(block)},
+			::Assets::NascentChunk{metricsChunk, std::move(metricsBlock)}
 		});
 	}
 
@@ -201,12 +203,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		serializer.SerializeSubBlock(curves);
 		serializer.SerializeValue(curves.size());
 
-		auto block = ::Assets::AsVector(serializer);
+		auto block = ::Assets::AsBlob(serializer);
 
 		Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-			RenderCore::Assets::ChunkType_AnimationSet, 0, name, unsigned(block.size()));
+			RenderCore::Assets::ChunkType_AnimationSet, 0, name, unsigned(block->size()));
 
-		return ::Assets::MakeNascentChunkArray({::Assets::NascentChunk(scaffoldChunk, std::move(block))});
+		return ::Assets::MakeNascentChunkArray({::Assets::NascentChunk{scaffoldChunk, std::move(block)}});
 	}
 
 }}}

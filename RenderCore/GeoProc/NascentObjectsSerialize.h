@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "../Assets/NascentChunkArray.h"
+#include "../Assets/NascentChunk.h"
 #include "../../Utility/IteratorUtils.h"
 
 namespace RenderCore { namespace Assets { class RawAnimationCurve; }}

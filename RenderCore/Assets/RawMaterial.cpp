@@ -7,24 +7,14 @@
 #include "RawMaterial.h"
 #include "Material.h"
 #include "../Types.h"
-#if defined(HAS_XLE_FULLASSETS)
-    #include "../../Assets/Assets.h"
-    #include "../../Assets/IntermediateAssets.h"
-    #include "../../Assets/DeferredConstruction.h"
-#endif
-// #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/Assets.h"
+#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/DeferredConstruction.h"
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"
-
-#if defined(HAS_XLE_FULLASSETS)
-namespace Assets
-{
-    template<> uint64 GetCompileProcessType<::RenderCore::Assets::RawMaterial>() 
-        { return ConstHash64<'RawM', 'at'>::Value; }
-}
-#endif
 
 namespace RenderCore { namespace Assets
 {
@@ -315,7 +305,7 @@ namespace RenderCore { namespace Assets
     RawMaterial::RawMaterial(
 		InputStreamFormatter<utf8>& formatter, 
 		const ::Assets::DirectorySearchRules& searchRules, 
-		const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+		const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal), _searchRules(searchRules)
     {
         for (;;) {
@@ -448,7 +438,6 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-#if defined(HAS_XLE_FULLASSETS)
     static void AddDep(
         std::vector<::Assets::DependentFileState>& deps, 
         StringSection<::Assets::ResChar> filename)
@@ -466,11 +455,9 @@ namespace RenderCore { namespace Assets
     }
 
 	static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
-#endif
     
     auto RawMaterial::GetAsset(StringSection<::Assets::ResChar> initializer) -> const RawMaterial& 
     {
-#if defined(HAS_XLE_FULLASSETS)
         // There are actually 2 paths here... Normally the requested file is a
         // .material file -- in which case we can load it with a  
         // ::Assets::ConfigFileListContainer.
@@ -491,12 +478,9 @@ namespace RenderCore { namespace Assets
         } else {
             return ::Assets::GetAsset<RawMaterial>(initializer);
         }
-#else
-        return *(const RawMaterial*)nullptr;
-#endif
     }
 
-#if defined(HAS_XLE_FULLASSETS)
+#if defined(HAS_XLE_DIVERGENTASSET)
     auto RawMaterial::GetDivergentAsset(StringSection<::Assets::ResChar> initializer)
         -> const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>&
     {
@@ -531,10 +515,8 @@ namespace RenderCore { namespace Assets
         for (auto i=inheritted.cbegin(); i!=inheritted.cend(); ++i) {
             FileNameSplitter<::Assets::ResChar> splitName(i->c_str());
             
-#if defined(HAS_XLE_FULLASSETS)
                 // we still need to add a dependency, even if it's a missing file
             if (deps) AddDep(*deps, splitName.FullFilename());
-#endif
 
             auto& rawParams = GetAsset(i->c_str());
             auto state = rawParams.TryResolve(result, newSearchRules, deps);
@@ -545,14 +527,6 @@ namespace RenderCore { namespace Assets
         MergeInto(result);
 		return ::Assets::AssetState::Ready;
     }
-
-#if defined(HAS_XLE_FULLASSETS)
-	std::shared_ptr<::Assets::DeferredConstruction> RawMaterial::BeginDeferredConstruction(
-		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
-	{
-		return ::Assets::DefaultBeginDeferredConstruction<RawMaterial>(initializers, initializerCount);
-	}
-#endif
 
 }}
 

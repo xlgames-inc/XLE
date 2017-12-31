@@ -8,9 +8,10 @@
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/ParameterBox.h"
+#include "../../Utility/MemoryUtils.h"
 #include <memory>
 
-#if defined(HAS_XLE_FULLASSETS)
+#if defined(HAS_XLE_DIVERGENTASSET)
     #include "../../Assets/DivergentAsset.h"
 #endif
 
@@ -68,8 +69,7 @@ namespace RenderCore { namespace Assets
 			const ::Assets::DepValPtr& depVal);
         ~RawMaterial();
 
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
+		static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
 
         static const RawMaterial& GetAsset(StringSection<::Assets::ResChar> initializer);
         #if defined(HAS_XLE_DIVERGENTASSET)

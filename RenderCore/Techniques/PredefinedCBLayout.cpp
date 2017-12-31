@@ -7,14 +7,10 @@
 #include "PredefinedCBLayout.h"
 #include "../RenderUtils.h"
 #include "../ShaderLangUtil.h"
-#if defined(HAS_XLE_FULLASSETS)
-    #include "../../Assets/ConfigFileContainer.h"
-#endif
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/DepVal.h"
-#if defined(HAS_XLE_CONSOLE_RIG)
-    #include "../../ConsoleRig/Log.h"
-#endif
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/BitUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/StringUtils.h"
@@ -32,18 +28,16 @@ namespace RenderCore { namespace Techniques
         auto file = ::Assets::TryLoadFileAsMemoryBlock(initializer, &size);
         StringSection<char> configSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
 
-        #if defined(HAS_XLE_FULLASSETS)
-            // if it's a compound document, we're only going to extra the cb layout part
-            auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
-            if (!compoundDoc.empty()) {
-                auto i = std::find_if(
-                    compoundDoc.cbegin(), compoundDoc.cend(),
-                    [](const ::Assets::TextChunk<char>& chunk)
-                    { return XlEqString(chunk._type, "CBLayout"); });
-                if (i != compoundDoc.cend())
-                    configSection = i->_content;
-            }
-        #endif
+        // if it's a compound document, we're only going to extra the cb layout part
+        auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
+        if (!compoundDoc.empty()) {
+            auto i = std::find_if(
+                compoundDoc.cbegin(), compoundDoc.cend(),
+                [](const ::Assets::TextChunk<char>& chunk)
+                { return XlEqString(chunk._type, "CBLayout"); });
+            if (i != compoundDoc.cend())
+                configSection = i->_content;
+        }
 
         Parse(configSection);
 
@@ -86,9 +80,7 @@ namespace RenderCore { namespace Techniques
 
                 auto size = e._type.GetSize();
                 if (!size) {
-                    #if defined(HAS_XLE_CONSOLE_RIG)
-                        LogWarning << "Problem parsing type in PredefinedCBLayout. Type size is 0: " << std::string(lineStart, iterator);
-                    #endif
+                    Log(Warning) << "Problem parsing type in PredefinedCBLayout. Type size is 0: " << std::string(lineStart, iterator) << std::endl;
                     continue;
                 }
 
@@ -118,18 +110,14 @@ namespace RenderCore { namespace Techniques
                         if (castSuccess) {
                             _defaults.SetParameter(name.c_str(), buffer1, e._type);
                         } else {
-                            #if defined(HAS_XLE_CONSOLE_RIG)
-                                LogWarning << "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: " << std::string(lineStart, iterator);
-                            #endif
+                            Log(Warning) << "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: " << std::string(lineStart, iterator) << std::endl;
                         }
                     } else {
                         _defaults.SetParameter(name.c_str(), buffer0, defaultType);
                     }
                 }
             } else {
-                #if defined(HAS_XLE_CONSOLE_RIG)
-                    LogWarning << "Failed to parse line in PredefinedCBLayout: " << std::string(lineStart, iterator);
-                #endif
+                Log(Warning) << "Failed to parse line in PredefinedCBLayout: " << std::string(lineStart, iterator) << std::endl;
             }
         }
 

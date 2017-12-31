@@ -160,8 +160,6 @@ namespace Utility
 		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<utf8> filename);
 		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<utf16> filename);
 
-		std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(const char sourceFileName[], size_t* sizeResult);
-
 		namespace FindFilesFilter
 		{
 			enum Enum 

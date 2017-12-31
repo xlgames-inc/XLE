@@ -21,13 +21,16 @@ namespace Assets
 		~MemoryFile();
 	private:
 		Blob			_blob;
-		mutable size_t	_readPtr;
+		mutable size_t	_ptr;
 	};
 
 	size_t			MemoryFile::Write(const void * source, size_t size, size_t count) never_throws
 	{
-		assert(0);
-		return 0;
+		size_t finalSize = size * count;
+		if (!_blob) _blob = std::make_shared<std::vector<uint8_t>>();
+		_blob->insert(_blob->begin() + _ptr, (const uint8_t*)source, (const uint8_t*)PtrAdd(source, finalSize));
+		_ptr += finalSize;
+		return finalSize;
 	}
 
 	size_t			MemoryFile::Read(void * destination, size_t size, size_t count) const never_throws
@@ -35,15 +38,15 @@ namespace Assets
 		if (!size || !count) return 0;
 		if (!_blob) return 0;
 
-		ptrdiff_t spaceLeft = _blob->size() - _readPtr;
+		ptrdiff_t spaceLeft = _blob->size() - _ptr;
 		ptrdiff_t maxCount = spaceLeft / size;
 		ptrdiff_t finalCount = std::min(ptrdiff_t(count), maxCount);
 
 		std::memcpy(
 			destination,
-			PtrAdd(AsPointer(_blob->begin()), _readPtr),
+			PtrAdd(AsPointer(_blob->begin()), _ptr),
 			finalCount * size);
-		_readPtr += finalCount * size;
+		_ptr += finalCount * size;
 		return finalCount;
 	}
 
@@ -52,20 +55,20 @@ namespace Assets
 		ptrdiff_t newPtr = 0;
 		switch (anchor) {
 		case FileSeekAnchor::Start:		newPtr = seekOffset; break;
-		case FileSeekAnchor::Current:	newPtr = _readPtr + seekOffset; break;
+		case FileSeekAnchor::Current:	newPtr = _ptr + seekOffset; break;
 		case FileSeekAnchor::End:		newPtr = (_blob ? _blob->size() : 0) + seekOffset; break;
 		default:
 			assert(0);
 		}
 		newPtr = std::max(ptrdiff_t(0), newPtr);
 		newPtr = std::min(ptrdiff_t(_blob->size()), newPtr);
-		_readPtr = newPtr;
-		return _readPtr;
+		_ptr = newPtr;
+		return _ptr;
 	}
 
 	size_t			MemoryFile::TellP() const never_throws
 	{
-		return _readPtr;
+		return _ptr;
 	}
 
 	FileDesc		MemoryFile::GetDesc() const never_throws
@@ -80,7 +83,7 @@ namespace Assets
 
 	MemoryFile::MemoryFile(const Blob& blob)
 	: _blob(blob)
-	, _readPtr(0)
+	, _ptr(0)
 	{}
 
 	MemoryFile::~MemoryFile()

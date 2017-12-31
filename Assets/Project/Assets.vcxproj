@@ -70,7 +70,7 @@
     <ClInclude Include="..\InvalidAssetManager.h" />
     <ClInclude Include="..\MemoryFile.h" />
     <ClInclude Include="..\MountingTree.h" />
-    <ClInclude Include="..\NascentChunkArray.h" />
+    <ClInclude Include="..\NascentChunk.h" />
     <ClInclude Include="..\OSFileSystem.h" />
   </ItemGroup>
   <ItemGroup>
@@ -93,7 +93,7 @@
     <ClCompile Include="..\InvalidAssetManager.cpp" />
     <ClCompile Include="..\MainFileSystem.cpp" />
     <ClCompile Include="..\MountingTree.cpp" />
-    <ClCompile Include="..\NascentChunkArray.cpp" />
+    <ClCompile Include="..\NascentChunk.cpp" />
     <ClCompile Include="..\OSFileSystem.cpp" />
     <ClCompile Include="..\MemoryFile.cpp" />
   </ItemGroup>

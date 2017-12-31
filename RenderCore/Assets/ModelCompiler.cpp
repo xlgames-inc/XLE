@@ -5,15 +5,15 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ModelCompiler.h"
-#include "../../ColladaConversion/DLLInterface.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/CompilerHelper.h"
 #include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/NascentChunkArray.h"
+#include "../../Assets/NascentChunk.h"
 #include "../../Assets/CompilerLibrary.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/CompilationThread.h"
+#include "../../Assets/MemoryFile.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Threading/LockFree.h"
@@ -91,7 +91,7 @@ namespace RenderCore { namespace Assets
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static void BuildChunkFile(
-        BasicFile& file,
+        ::Assets::IFileInterface& file,
         IteratorRange<::Assets::NascentChunk*>& chunks,
         const ConsoleRig::LibVersionDesc& versionInfo,
         std::function<bool(const ::Assets::NascentChunk&)> predicate)
@@ -118,46 +118,44 @@ namespace RenderCore { namespace Assets
 
         for (const auto& c:chunks)
             if (predicate(c))
-                file.Write(AsPointer(c._data.begin()), c._data.size(), 1);
+                file.Write(AsPointer(c._data->begin()), c._data->size(), 1);
     }
 
     static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
 
     static void SerializeToFile(
+		::Assets::IFileInterface& mainFile,
 		IteratorRange<::Assets::NascentChunk*> chunks,
-        StringSection<> destinationFilename,
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
-            // Create the directory if we need to...
-        RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFilename).DriveAndPath());
-
             // We need to separate out chunks that will be written to
             // the main output file from chunks that will be written to
             // a metrics file.
 
-        {
-            auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(destinationFilename, "wb");
-            BuildChunkFile(outputFile, chunks, versionInfo,
-                [](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
-        }
+        BuildChunkFile(mainFile, chunks, versionInfo,
+            [](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
+	}
 
+	static void WriteMetrics(
+		StringSection<::Assets::ResChar> destinationFile,
+		IteratorRange<::Assets::NascentChunk*> chunks)
+	{
         for (const auto& c:chunks)
             if (c._hdr._type == ChunkType_Metrics) {
-                auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(
-                    StringMeld<MaxPath>() << destinationFilename << "-" << c._hdr._name,
-                    "wb");
-                outputFile.Write((const void*)AsPointer(c._data.cbegin()), 1, c._data.size());
+				auto metricsFile = ::Assets::MainFileSystem::OpenFileInterface(
+					StringMeld<MaxPath>() << destinationFile << "-" << c._hdr._name,
+					"wb");
+				metricsFile->Write((const void*)AsPointer(c._data->cbegin()), 1, c._data->size());
             }
     }
 
     static void SerializeToFileJustChunk(
+		::Assets::IFileInterface& mainFile,
 		IteratorRange<::Assets::NascentChunk*> chunks,
-        StringSection<> destinationFilename,
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
-        auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(destinationFilename, "wb");
 		for (const auto& c:chunks)
-            outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
+			mainFile.Write(AsPointer(c._data->begin()), c._data->size(), 1);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -178,19 +176,14 @@ namespace RenderCore { namespace Assets
 			bool requiresMerge = (typeCode == ModelCompiler::Type_AnimationSet) && XlFindChar(initializer, '*');
             if (!requiresMerge) {
 
-                /*	Pre-refactor code
-				const auto* destinationFile = compileMarker.GetLocator()._sourceID0;
-                ::Assets::ResChar temp[MaxPath];
-                if (typeCode == ModelCompiler::Type_RawMat) {
-                        // When building rawmat, a material name could be on the op._sourceID0
-                        // string. But we need to remove it from the path to find the real output
-                        // name.
-                    XlCopyString(temp, MakeFileNameSplitter(compileMarker.GetLocator()._sourceID0).AllExceptParameters());
-                    destinationFile = temp;
-                }*/
-
                 auto model = (*_createCompileOpFunction)(initializer);
-						
+
+				auto mainBlob = std::make_shared<std::vector<uint8_t>>();
+				auto mainFile = ::Assets::CreateMemoryFile(mainBlob);
+
+				// Create the directory if we need to...
+				RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFile).DriveAndPath());
+
 				// look for the first target of the correct type
 				auto targetCount = model->TargetCount();
 				bool foundTarget = false;
@@ -198,9 +191,10 @@ namespace RenderCore { namespace Assets
 					if (model->GetTarget(t)._type == typeCode) {
 						auto chunks = model->SerializeTarget(t);
 						if (typeCode != ModelCompiler::Type_RawMat) {
-							SerializeToFile(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
+							SerializeToFile(*mainFile, MakeIteratorRange(*chunks), libVersionDesc);
 						} else 
-							SerializeToFileJustChunk(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
+							SerializeToFileJustChunk(*mainFile, MakeIteratorRange(*chunks), libVersionDesc);
+						WriteMetrics(destinationFile, MakeIteratorRange(*chunks));
 						foundTarget = true;
 						break;
 					}
@@ -208,10 +202,17 @@ namespace RenderCore { namespace Assets
 				if (!foundTarget)
 					Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer));
 
-                    // write new dependencies
-				auto splitName = MakeFileNameSplitter(initializer);
-                std::vector<::Assets::DependentFileState> deps;
-                deps.push_back(destinationStore.GetDependentFileState(splitName.AllExceptParameters()));
+				{
+					auto dst = ::Assets::MainFileSystem::OpenFileInterface(destinationFile, "wb");
+					dst->Write(mainBlob->data(), mainBlob->size());
+				}
+
+				const auto& deps = *model->GetDependencies();
+				auto depVal = destinationStore.WriteDependencies(destinationFile, {}, MakeIteratorRange(deps));
+				compileMarker.AddArtifact(
+					"main",
+					std::make_shared<::Assets::BlobArtifact>(mainBlob, nullptr, depVal));
+
 				compileMarker.SetState(::Assets::AssetState::Ready);
 
             }  else {
@@ -351,8 +352,6 @@ namespace RenderCore { namespace Assets
 		::Assets::ResChar intermediateName[MaxPath];
         MakeIntermediateName(intermediateName, dimof(intermediateName));
 		auto depVal = _store->MakeDependencyValidation(intermediateName);
-        if (_typeCode == Type_RawMat)
-            XlCatString(intermediateName, MakeFileNameSplitter(_requestName).ParametersWithDivider());
 		return std::make_shared<::Assets::FileArtifact>(intermediateName, depVal);
     }
 
@@ -386,8 +385,6 @@ namespace RenderCore { namespace Assets
         XlCopyString(backgroundOp->_initializer0, _requestName);
 		::Assets::ResChar intermediateName[MaxPath];
         MakeIntermediateName(intermediateName, dimof(intermediateName));
-        if (_typeCode == Type_RawMat)
-            XlCatString(intermediateName, splitRequest.ParametersWithDivider());
         backgroundOp->_destinationStore = _store;
         backgroundOp->_typeCode = _typeCode;
 		backgroundOp->_compilerIndex = compilerIndex;

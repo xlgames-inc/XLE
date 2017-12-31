@@ -126,7 +126,6 @@
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\SkeletonRegistry.h" />
     <ClInclude Include="..\ConversionConfig.h" />
-    <ClInclude Include="..\DLLInterface.h" />
     <ClInclude Include="..\ScaffoldParsingUtil.h" />
     <ClInclude Include="..\SAnimation.h" />
     <ClInclude Include="..\Scaffold.h" />

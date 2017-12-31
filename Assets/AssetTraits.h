@@ -90,6 +90,17 @@ namespace Assets
 				container.GetDependencyValidation());
 		}
 	}
+
+	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_Formatter)>
+		std::unique_ptr<AssetType> AutoConstructAsset(const ::Assets::Blob& blob, const ::Assets::DepValPtr& depVal)
+	{
+		auto container = ConfigFileContainer<>(blob, depVal);
+		auto fmttr = container.GetRootFormatter();
+		return std::make_unique<AssetType>(
+			fmttr,
+			::Assets::DirectorySearchRules{},
+			container.GetDependencyValidation());
+	}
 	
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)

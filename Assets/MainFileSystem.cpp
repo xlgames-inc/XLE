@@ -295,9 +295,8 @@ namespace Assets
 			size_t size = file->TellP();
 			file->Seek(0);
 			if (size) {
-				auto result = std::make_unique<uint8[]>(size+1);
+				auto result = std::make_unique<uint8[]>(size);
 				file->Read(result.get(), 1, size);
-				result[size] = '\0';
 				if (sizeResult) {
 					*sizeResult = size;
 				}
@@ -307,6 +306,23 @@ namespace Assets
 
 		// on missing file (or failed load), we return the equivalent of an empty file
 		if (sizeResult) { *sizeResult = 0; }
+		return nullptr;
+	}
+
+	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName)
+	{
+		std::unique_ptr<IFileInterface> file;
+		if (MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read) == IFileSystem::IOReason::Success) {
+			file->Seek(0, FileSeekAnchor::End);
+			size_t size = file->TellP();
+			file->Seek(0);
+			if (size) {
+				auto result = std::make_shared<std::vector<uint8_t>>(size);
+				file->Read(result->data(), 1, size);
+				return result;
+			}
+		}
+
 		return nullptr;
 	}
 

@@ -10,7 +10,7 @@
 #include "../../Assets/CompilerHelper.h"
 #include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/NascentChunkArray.h"
+#include "../../Assets/NascentChunk.h"
 #include "../../Assets/CompilerLibrary.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
@@ -117,7 +117,7 @@ namespace Converter
 
         for (const auto& c:chunks)
             if (predicate(c))
-                file.Write(AsPointer(c._data.begin()), c._data.size(), 1);
+                file.Write(AsPointer(c._data->begin()), c._data->size(), 1);
     }
 
 	static void BuildChunkFile(
@@ -148,7 +148,7 @@ namespace Converter
 
         for (const auto& c:chunks)
             if (predicate(c))
-                file.insert(file.end(), c._data.begin(), c._data.end());
+                file.insert(file.end(), c._data->begin(), c._data->end());
     } 
 
     static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
@@ -168,7 +168,7 @@ namespace Converter
 
 		if (chunks.size() == 1 && chunks[0]._hdr._type == ChunkType_Text) {
 			auto outputFile = ::Assets::MainFileSystem::OpenFileInterface(destinationFilename, "wb");
-			outputFile->Write(AsPointer(chunks[0]._data.begin()), chunks[0]._data.size());
+			outputFile->Write(AsPointer(chunks[0]._data->begin()), chunks[0]._data->size());
 		} else {
 			{
 				auto outputFile = ::Assets::MainFileSystem::OpenFileInterface(destinationFilename, "wb");
@@ -181,17 +181,17 @@ namespace Converter
 					auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(
 						StringMeld<MaxPath>() << destinationFilename << "-" << c._hdr._name,
 						"wb");
-					outputFile.Write((const void*)AsPointer(c._data.cbegin()), 1, c._data.size());
+					outputFile.Write((const void*)AsPointer(c._data->cbegin()), 1, c._data->size());
 				}
 		}
     }
 
-	static ::Assets::IArtifact::Blob SerializeToBlob(
+	static ::Assets::Blob SerializeToBlob(
 		IteratorRange<::Assets::NascentChunk*> chunks,
         const ConsoleRig::LibVersionDesc& versionInfo)
 	{
 		if (chunks.size() == 1 && chunks[0]._hdr._type == ChunkType_Text) {
-			return std::make_shared<std::vector<uint8>>(chunks[0]._data.begin(), chunks[0]._data.end());
+			return std::make_shared<std::vector<uint8>>(chunks[0]._data->begin(), chunks[0]._data->end());
 		} else {
 			auto result = std::make_shared<std::vector<uint8>>();
 			BuildChunkFile(*result, chunks, versionInfo,
@@ -205,8 +205,8 @@ namespace Converter
 	class CompilerExceptionArtifact : public ::Assets::IArtifact
 	{
 	public:
-		Blob	GetBlob() const;
-		Blob	GetErrors() const;
+		::Assets::Blob	GetBlob() const;
+		::Assets::Blob	GetErrors() const;
 		::Assets::DepValPtr GetDependencyValidation() const;
 		CompilerExceptionArtifact(const ::Assets::DepValPtr& depVal);
 		~CompilerExceptionArtifact();
@@ -214,8 +214,8 @@ namespace Converter
 		::Assets::DepValPtr _depVal;
 	};
 
-	auto CompilerExceptionArtifact::GetBlob() const -> Blob { return nullptr; }
-	auto CompilerExceptionArtifact::GetErrors() const -> Blob  { return nullptr;  }
+	auto CompilerExceptionArtifact::GetBlob() const -> ::Assets::Blob { return nullptr; }
+	auto CompilerExceptionArtifact::GetErrors() const -> ::Assets::Blob  { return nullptr;  }
 	::Assets::DepValPtr CompilerExceptionArtifact::GetDependencyValidation() const { return _depVal; }
 	CompilerExceptionArtifact::CompilerExceptionArtifact(const ::Assets::DepValPtr& depVal) : _depVal(depVal) {}
 	CompilerExceptionArtifact::~CompilerExceptionArtifact() {}
@@ -271,7 +271,7 @@ namespace Converter
 							compileMarker.AddArtifact(target._name, artifact);
 						} else if (artifactType == GeneralCompiler::ArtifactType::Blob) {
 							auto blob = SerializeToBlob(MakeIteratorRange(*chunks), libVersionDesc);
-							auto artifact = std::make_shared<::Assets::BlobArtifact>(blob, ::Assets::IArtifact::Blob(), depVal);
+							auto artifact = std::make_shared<::Assets::BlobArtifact>(blob, ::Assets::Blob(), depVal);
 							compileMarker.AddArtifact(target._name, artifact);
 						} else {
 							Throw(::Exceptions::BasicLabel("Unsupported artifact type (%i)", artifactType));

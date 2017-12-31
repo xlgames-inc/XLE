@@ -22,16 +22,19 @@ namespace Assets
 	template<typename Formatter>
 		Formatter ConfigFileContainer<Formatter>::GetRootFormatter() const
 	{
-		return Formatter(MemoryMappedInputStream(_fileData.get(), PtrAdd(_fileData.get(), _fileSize)));
+		if (!_fileData) return Formatter {};
+		return Formatter(MemoryMappedInputStream(AsPointer(_fileData->begin()), AsPointer(_fileData->end())));
 	}
 
 	template<typename Formatter>
 		Formatter ConfigFileContainer<Formatter>::GetFormatter(StringSection<typename Formatter::value_type> configName) const
 	{
+		if (!_fileData) return Formatter {};
+
 		bool gotConfig = false;
 
 		// search through for the specific element we need (ignoring other elements)
-		Formatter formatter(MemoryMappedInputStream(_fileData.get(), PtrAdd(_fileData.get(), _fileSize)));
+		Formatter formatter(MemoryMappedInputStream(AsPointer(_fileData->begin()), AsPointer(_fileData->end())));
 
 		while (!gotConfig) {
 			switch (formatter.PeekNext()) {
@@ -72,8 +75,8 @@ namespace Assets
 	template<typename Formatter>
 		ConfigFileContainer<Formatter>::ConfigFileContainer(StringSection<ResChar> initializer)
 	{
-		_fileData = ::Assets::TryLoadFileAsMemoryBlock(initializer, &_fileSize);
-		if (_fileData.get() && _fileSize) {
+		_fileData = ::Assets::TryLoadFileAsBlob(initializer);
+		if (_fileData) {
 			Internal::MarkValid(initializer);
 		} else {
 			Internal::MarkInvalid(initializer, "Could not open file");
@@ -82,8 +85,14 @@ namespace Assets
 		RegisterFileDependency(_validationCallback, initializer);
 	}
 
+	template<typename Formatter>
+		ConfigFileContainer<Formatter>::ConfigFileContainer(const Blob& blob, const DepValPtr& depVal)
+	: _fileData(blob), _validationCallback(depVal)
+	{
+	}
+
 	template<typename Formatter> 
-		ConfigFileContainer<Formatter>::~ConfigFileContainer() {}
+		ConfigFileContainer<Formatter>::ConfigFileContainer<Formatter>::~ConfigFileContainer() {}
 
 	template<typename Formatter>
 		auto ConfigFileContainer<Formatter>::CreateNew(StringSection<ResChar> initialiser)

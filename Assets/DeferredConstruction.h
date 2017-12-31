@@ -46,7 +46,7 @@ namespace Assets
 	template<
 		typename AssetType, typename... Params, 
 		typename std::enable_if<Internal::HasDirectAutoConstructAsset<AssetType, Params...>::value>::type* = nullptr>
-		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
+		void AutoConstructToFutureDirect(AssetFuture<AssetType>& future, Params... initialisers)
 	{
 		TRY{
 			auto asset = AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
@@ -75,7 +75,7 @@ namespace Assets
 		auto existingArtifact = marker->GetExistingAsset();
 		if (existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
 			bool doRecompile = false;
-			AutoConstructToFuture(future, existingArtifact->GetBlob(), existingArtifact->GetDependencyValidation());
+			AutoConstructToFutureDirect(future, existingArtifact->GetBlob(), existingArtifact->GetDependencyValidation());
 			if (!doRecompile) return;
 		}
 
@@ -94,20 +94,26 @@ namespace Assets
 
 				assert(state == AssetState::Ready);
 				auto& artifact = *pendingCompile->GetArtifacts()[0].second;
-				AutoConstructToFuture(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation());
+				AutoConstructToFutureDirect(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation());
 				return false;
 			});
 	}
 
 	template<
 		typename AssetType, typename... Params, 
-		typename std::enable_if<
-			Internal::AssetTraits<AssetType>::HasCompileProcessType && !Internal::HasDirectAutoConstructAsset<AssetType, Params...>::value
-			>::type* = nullptr>
+		ENABLE_IF(Internal::AssetTraits<AssetType>::HasCompileProcessType)>
 		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
 	{
 		StringSection<ResChar> inits[] = { initialisers... };
 		DefaultCompilerConstruction<AssetType>(future, inits, dimof(inits));
+	}
+
+	template<
+		typename AssetType, typename... Params, 
+		ENABLE_IF(!Internal::AssetTraits<AssetType>::HasCompileProcessType)>
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
+	{
+		AutoConstructToFutureDirect(future, std::forward<Params>(initialisers)...);
 	}
 
 	#undef ENABLE_IF
