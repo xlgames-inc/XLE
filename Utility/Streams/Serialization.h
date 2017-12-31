@@ -329,8 +329,10 @@ namespace Utility
 		}
 
 		SerializableVector(const SerializableVector& copyFrom)
+			: SerializableVector()
 		{
-			insert(this->end(), copyFrom.begin(), copyFrom.end());
+			if (!copyFrom.empty())
+				insert(this->end(), copyFrom.begin(), copyFrom.end());
 		}
 
 		SerializableVector& operator=(const SerializableVector& copyFrom)

@@ -40,6 +40,7 @@
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
+#include "../../ConsoleRig/AttachableInternal.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
@@ -94,7 +95,10 @@ namespace Sample
                 clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
 
         auto assetServices = std::make_unique<::Assets::Services>(0);
+		assetServices->AttachCurrentModule();
+		ConsoleRig::GlobalServices::GetCrossModule().Publish(*assetServices);
         auto renderAssetServices = std::make_unique<RenderCore::Assets::Services>(renderDevice);
+		renderAssetServices->AttachCurrentModule();
 
             //  Tie in the window handler so we get presentation chain resizes, and give our
             //  window a title
@@ -222,7 +226,8 @@ namespace Sample
         assetServices->GetAssetSets().Clear();
         RenderOverlays::CleanupFontSystem();
 
-        renderAssetServices.reset();
+		renderAssetServices.reset();
+		ConsoleRig::GlobalServices::GetCrossModule().Withhold(*assetServices);
         assetServices.reset();
         TerminateFileSystemMonitoring();
     }

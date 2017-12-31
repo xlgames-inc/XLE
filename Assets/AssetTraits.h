@@ -92,7 +92,7 @@ namespace Assets
 	}
 	
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer)>
-		std::unique_ptr<AssetType> AutoConstructAsset(const ResChar initializer[])
+		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
 		const auto& container = Internal::GetChunkFileContainer(initializer);
 		return std::make_unique<AssetType>(container);

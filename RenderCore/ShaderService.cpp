@@ -53,7 +53,10 @@ namespace RenderCore
 
 	IteratorRange<const void*> CompiledShaderByteCode::GetByteCode() const
 	{
-		return MakeIteratorRange(*_shader);
+		if (!_shader || _shader->empty()) return {};
+		return MakeIteratorRange(
+			PtrAdd(AsPointer(_shader->begin()), sizeof(ShaderService::ShaderHeader)), 
+			AsPointer(_shader->end()));
 	}
 
     bool CompiledShaderByteCode::DynamicLinkingEnabled() const
@@ -183,5 +186,13 @@ namespace RenderCore
 
     ShaderService::IShaderSource::~IShaderSource() {}
     ShaderService::ILowLevelCompiler::~ILowLevelCompiler() {}
+
+
+	ShaderService::ShaderHeader::ShaderHeader(StringSection<char> shaderModel, bool dynamicLinkageEnabled)
+	: _version(Version)
+	, _dynamicLinkageEnabled(unsigned(dynamicLinkageEnabled))
+	{
+		XlCopyString(_shaderModel, shaderModel);
+	}
 }
 

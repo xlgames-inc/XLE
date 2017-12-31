@@ -59,9 +59,12 @@ namespace RenderCore
         {
         public:
             static const auto Version = 1u;
-            unsigned _version;
+            unsigned _version = Version;
 			char _shaderModel[8];
-            unsigned _dynamicLinkageEnabled;
+            unsigned _dynamicLinkageEnabled = false;
+
+			ShaderHeader() {}
+			ShaderHeader(StringSection<char> shaderModel, bool dynamicLinkageEnabled = false);
         };
 
         class IShaderSource

@@ -7,7 +7,7 @@
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"
 #include "ConversionConfig.h"
-#include "../RenderCore/Assets/Material.h"
+#include "../RenderCore/Assets/RawMaterial.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/Streams/PathUtils.h"

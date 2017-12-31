@@ -16,6 +16,7 @@
 #include "../Utility/IteratorUtils.h"
 #include "../ConsoleRig/Log.h"
 #include <queue>
+#include <cctype>
 
 namespace ColladaConversion
 {
@@ -273,11 +274,11 @@ namespace ColladaConversion
         return ParseEnum(section, table);
     }
 
-    ParameterSet::SamplerParameter::SamplerParameter(Formatter& formatter, Section sid, Section eleName)
+    ParameterSet::SamplerParameter::SamplerParameter(Formatter& formatter, Section sid, Section inputEleName)
         : SamplerParameter()
     {
         _sid = sid;
-        _type = eleName;
+        _type = inputEleName;
 
         ON_ELEMENT
             if (Is(eleName, u("instance_image"))) {
@@ -322,10 +323,10 @@ namespace ColladaConversion
 
     ParameterSet::SamplerParameter::~SamplerParameter() {}
 
-    ParameterSet::SurfaceParameter::SurfaceParameter(Formatter& formatter, Section sid, Section eleName)
+    ParameterSet::SurfaceParameter::SurfaceParameter(Formatter& formatter, Section sid, Section inputEleName)
     {
         _sid = sid;
-        _type = eleName;
+        _type = inputEleName;
 
             // <surface> is an important Collada 1.4.1 element. But it's depricated in Collada 1.5, 
             // and merged into other functionality.
@@ -391,13 +392,13 @@ namespace ColladaConversion
 
     ParameterSet::ParameterSet() {}
     ParameterSet::~ParameterSet() {}
-    ParameterSet::ParameterSet(ParameterSet&& moveFrom)
+    ParameterSet::ParameterSet(ParameterSet&& moveFrom) never_throws
     :   _parameters(std::move(moveFrom._parameters))
     ,   _samplerParameters(std::move(moveFrom._samplerParameters))
     ,   _surfaceParameters(std::move(moveFrom._surfaceParameters))
     {}
 
-    ParameterSet& ParameterSet::operator=(ParameterSet&& moveFrom)
+    ParameterSet& ParameterSet::operator=(ParameterSet&& moveFrom) never_throws
     {
         _parameters = std::move(moveFrom._parameters);
         _samplerParameters = std::move(moveFrom._samplerParameters);
@@ -427,7 +428,7 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    Effect::Profile::Profile(Profile&& moveFrom)
+    Effect::Profile::Profile(Profile&& moveFrom) never_throws
     : _params(std::move(moveFrom._params))
     , _profileType(std::move(moveFrom._profileType))
     , _shaderName(std::move(moveFrom._shaderName))
@@ -438,7 +439,7 @@ namespace ColladaConversion
     {
     }
 
-    auto Effect::Profile::operator=(Profile&& moveFrom) -> Profile&
+    auto Effect::Profile::operator=(Profile&& moveFrom) never_throws -> Profile&
     {
         _params = std::move(moveFrom._params);
         _profileType = std::move(moveFrom._profileType);
@@ -619,7 +620,7 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    Effect::Effect(Effect&& moveFrom)
+    Effect::Effect(Effect&& moveFrom) never_throws
     : _name(moveFrom._name)
     , _id(moveFrom._id)
     , _params(std::move(moveFrom._params))
@@ -627,7 +628,7 @@ namespace ColladaConversion
     , _extra(std::move(moveFrom._extra))
     {}
 
-    Effect& Effect::operator=(Effect&& moveFrom)
+    Effect& Effect::operator=(Effect&& moveFrom) never_throws
     {
         _name = moveFrom._name;
         _id = moveFrom._id;
@@ -756,7 +757,7 @@ namespace ColladaConversion
                 _stride = (unsigned)_paramCount;
         }
 
-        Accessor::Accessor(Accessor&& moveFrom)
+        Accessor::Accessor(Accessor&& moveFrom) never_throws
         : _paramsOverflow(std::move(_paramsOverflow))
         {
             _source = moveFrom._source;
@@ -766,7 +767,7 @@ namespace ColladaConversion
             _paramCount = moveFrom._paramCount;
         }
 
-        Accessor& Accessor::operator=(Accessor&& moveFrom)
+        Accessor& Accessor::operator=(Accessor&& moveFrom) never_throws
         {
             _source = moveFrom._source;
             _count = moveFrom._count;
@@ -1178,11 +1179,11 @@ namespace ColladaConversion
 
     
 
-    SkinController::SkinController(Formatter& formatter, Section id, Section name, DocumentScaffold& pub)
+    SkinController::SkinController(Formatter& formatter, Section id, Section inputName, DocumentScaffold& pub)
         : SkinController()
     {
         _id = id;
-        _name = name;
+        _name = inputName;
         _location = formatter.GetLocation();
 
         ON_ELEMENT
@@ -1242,7 +1243,7 @@ namespace ColladaConversion
     : _verticesWithWeightsCount(0)
     {}
 
-    SkinController::SkinController(SkinController&& moveFrom)
+    SkinController::SkinController(SkinController&& moveFrom) never_throws
     : _extra(std::move(moveFrom._extra))
     , _influenceInputs(std::move(moveFrom._influenceInputs))
     , _jointInputs(std::move(moveFrom._jointInputs))
@@ -1256,7 +1257,7 @@ namespace ColladaConversion
         _influences = moveFrom._influences;
     }
 
-    SkinController& SkinController::operator=(SkinController&& moveFrom)
+    SkinController& SkinController::operator=(SkinController&& moveFrom) never_throws
     {
         _baseMesh = moveFrom._baseMesh;
         _id = moveFrom._id;
@@ -1560,11 +1561,11 @@ namespace ColladaConversion
     }
 
     TransformationSet::TransformationSet() {}
-    TransformationSet::TransformationSet(TransformationSet&& moveFrom)
+    TransformationSet::TransformationSet(TransformationSet&& moveFrom) never_throws
     : _operations(std::move(moveFrom._operations))
     {}
 
-    TransformationSet& TransformationSet::operator=(TransformationSet&& moveFrom)
+    TransformationSet& TransformationSet::operator=(TransformationSet&& moveFrom) never_throws
     {
         _operations = std::move(moveFrom._operations);
         return *this;

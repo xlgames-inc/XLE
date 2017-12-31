@@ -815,7 +815,7 @@ namespace RenderCore { namespace Metal_DX11
 
         CreatePayloadFromBlobs(
             payload, errors, resultBlob.get(), errorsBlob1.get(), 
-            ShaderService::ShaderHeader { ShaderService::ShaderHeader::Version, false });
+            ShaderService::ShaderHeader { shaderModel });
 
         dependencies.insert(dependencies.end(), _depFiles.begin(), _depFiles.end());
         return true;
@@ -1349,7 +1349,7 @@ namespace RenderCore { namespace Metal_DX11
             CreatePayloadFromBlobs(
                 payload, errors, codeResult, errorResult, 
                 ShaderService::ShaderHeader {
-                    ShaderService::ShaderHeader::Version, shaderPath._dynamicLinkageEnabled
+                    shaderPath._shaderModel, shaderPath._dynamicLinkageEnabled
                 });
 
             dependencies = includeHandler.GetIncludeFiles();

@@ -7,7 +7,7 @@
 
 namespace Assets
 {
-	class MemoryFile
+	class MemoryFile : public IFileInterface
 	{
 	public:
 		size_t			Write(const void * source, size_t size, size_t count) never_throws;
@@ -85,6 +85,11 @@ namespace Assets
 
 	MemoryFile::~MemoryFile()
 	{
+	}
+
+	std::shared_ptr<IFileInterface> CreateMemoryFile(const Blob& blob)
+	{
+		return std::make_shared<MemoryFile>(blob);
 	}
 }
 

@@ -72,6 +72,9 @@
     <ClCompile Include="..\..\RenderCore\GeoProc\GeoProcUtil.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\RawMaterial.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Scaffold.h">
@@ -145,6 +148,9 @@
       <Filter>ObjectConversion</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\GeoProcUtil.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\Assets\RawMaterial.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
   </ItemGroup>

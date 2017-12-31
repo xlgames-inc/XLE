@@ -28,7 +28,7 @@ namespace RenderCore
 		// We can also have "implied" attachments. These are attachments that are referenced but not explicitly
         // declared. These only color, depth/stencil and resolve attachments can be implied. We must make some 
         // assumptions about format, layout, etc.
-        for (auto&p:subpasses) {
+        for (auto&p: _subpasses) {
             for (auto& a:p._output)
                 if (!HasAttachment(MakeIteratorRange(_attachments), a))
                     _attachments.push_back(

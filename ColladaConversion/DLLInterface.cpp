@@ -23,7 +23,7 @@
 
 #include "../RenderCore/Assets/ModelImmutableData.h"      // just for RenderCore::Assets::SkeletonBinding
 #include "../RenderCore/Assets/AssetUtils.h"
-#include "../RenderCore/Assets/Material.h"
+#include "../RenderCore/Assets/RawMaterial.h"
 #include "../Assets/CompilerLibrary.h"
 #include "../Assets/NascentChunkArray.h"
 #include "../Assets/IFileSystem.h"
@@ -38,6 +38,7 @@
 #include "../Utility/StringFormat.h"
 #include "../ConsoleRig/OutputStream.h"
 #include "../ConsoleRig/AttachableLibrary.h"
+#include "../ConsoleRig/AttachableInternal.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/Log.h"
 #include <memory>
@@ -643,7 +644,7 @@ static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
 
 dll_export void AttachLibrary(ConsoleRig::GlobalServices& services)
 {
-    s_attachRef = services.Attach();
+    s_attachRef = services.GetCrossModule().Attach<ConsoleRig::GlobalServices>();
     LogInfo << "Attached Collada Compiler DLL: {" << ColladaConversion::VersionString << "} -- {" << ColladaConversion::BuildDateString << "}";
 }
 

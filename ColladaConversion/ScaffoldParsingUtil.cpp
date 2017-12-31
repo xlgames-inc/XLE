@@ -6,7 +6,7 @@
 
 #include "ScaffoldParsingUtil.h"
 #include "../Utility/ArithmeticUtils.h"
-#include "../Math/Math.h"
+#include "../Math/XLEMath.h"
 
 namespace ColladaConversion
 {
