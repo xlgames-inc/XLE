@@ -205,6 +205,12 @@ namespace Utility
             return IteratorRange<ArrayElement*>(&c[0], &c[Count]);
         }
 
+	template<typename ArrayElement>
+		IteratorRange<const ArrayElement*> MakeIteratorRange(std::initializer_list<ArrayElement> initializers)
+		{
+			return IteratorRange<const ArrayElement*>(initializers.begin(), initializers.end());
+		}
+
 #pragma warning(push)
 #pragma warning(disable:4789)       // buffer '' of size 12 bytes will be overrun; 4 bytes will be written starting at offset 12
     /// We can initialize from anything that looks like a collection of unsigned values

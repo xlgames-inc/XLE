@@ -18,6 +18,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Format.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include <tuple>
 #include <type_traits>

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../Assets/AssetsCore.h"
+#include "../../Assets/AssetFuture.h"
 #include "../../Math/Vector.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Core/Types.h"
@@ -79,7 +80,7 @@ namespace RenderCore { namespace Assets
             SupplementRange supplements = SupplementRange(),
             unsigned LOD = 0); 
 
-        ModelScaffold*      GetModelScaffold(StringSection<ResChar> modelFilename);
+        auto				GetModelScaffold(StringSection<ResChar> modelFilename) -> ::Assets::FuturePtr<ModelScaffold>;
         SharedStateSet&     GetSharedStateSet();
 
         uint32              GetReloadId();

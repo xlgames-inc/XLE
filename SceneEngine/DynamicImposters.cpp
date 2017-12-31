@@ -1049,17 +1049,17 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::DynamicImposters::Con
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("ThresholdDistance"), DefaultGet(Obj, _thresholdDistance),  DefaultSet(Obj, _thresholdDistance));
-        props.Add(u("AngleQuant"), DefaultGet(Obj, _angleQuant),  DefaultSet(Obj, _angleQuant));
-        props.Add(u("CalibrationDistance"), DefaultGet(Obj, _calibrationDistance),  DefaultSet(Obj, _calibrationDistance));
-        props.Add(u("CalibrationFov"), 
+        props.Add("ThresholdDistance", DefaultGet(Obj, _thresholdDistance),  DefaultSet(Obj, _thresholdDistance));
+        props.Add("AngleQuant", DefaultGet(Obj, _angleQuant),  DefaultSet(Obj, _angleQuant));
+        props.Add("CalibrationDistance", DefaultGet(Obj, _calibrationDistance),  DefaultSet(Obj, _calibrationDistance));
+        props.Add("CalibrationFov", 
             [](const Obj& obj) { return Rad2Deg(obj._calibrationFov); }, 
             [](Obj& obj, float value) { obj._calibrationFov = Deg2Rad(value); });
-        props.Add(u("CalibrationPixels"), DefaultGet(Obj, _calibrationPixels),  DefaultSet(Obj, _calibrationPixels));
-        props.Add(u("MinDims"), DefaultGet(Obj, _minDims),  DefaultSet(Obj, _minDims));
-        props.Add(u("MaxDims"), DefaultGet(Obj, _maxDims),  DefaultSet(Obj, _maxDims));
-        props.Add(u("AltasSize"), DefaultGet(Obj, _altasSize),  DefaultSet(Obj, _altasSize));
-        props.Add(u("MaxSpriteCount"), DefaultGet(Obj, _maxSpriteCount),  DefaultSet(Obj, _maxSpriteCount));
+        props.Add("CalibrationPixels", DefaultGet(Obj, _calibrationPixels),  DefaultSet(Obj, _calibrationPixels));
+        props.Add("MinDims", DefaultGet(Obj, _minDims),  DefaultSet(Obj, _minDims));
+        props.Add("MaxDims", DefaultGet(Obj, _maxDims),  DefaultSet(Obj, _maxDims));
+        props.Add("AltasSize", DefaultGet(Obj, _altasSize),  DefaultSet(Obj, _altasSize));
+        props.Add("MaxSpriteCount", DefaultGet(Obj, _maxSpriteCount),  DefaultSet(Obj, _maxSpriteCount));
 
         init = true;
     }

@@ -10,25 +10,6 @@
 
 namespace RenderCore
 {
-    SubpassDesc::SubpassDesc()
-    : _depthStencil(Unused)
-    {
-    }
-
-    SubpassDesc::SubpassDesc(
-        IteratorRange<const AttachmentName*> output,
-        AttachmentName depthStencil,
-        IteratorRange<const AttachmentName*> input, 
-        IteratorRange<const AttachmentName*> preserve,
-        IteratorRange<const AttachmentName*> resolve)
-    : _input(input.begin(), input.end())
-    , _output(output.begin(), output.end())
-    , _depthStencil(depthStencil)
-    , _preserve(preserve.begin(), preserve.end())
-    , _resolve(resolve.begin(), resolve.end())
-    {
-    }
-
     static bool HasAttachment(
         IteratorRange<const AttachmentViewDesc*> attachments,
         AttachmentName name)
@@ -38,13 +19,13 @@ namespace RenderCore
         return false;
     }
 
-    FrameBufferDesc::FrameBufferDesc(
-        IteratorRange<const SubpassDesc*> subpasses,
-        IteratorRange<const AttachmentViewDesc*> attachments)
-    : _attachments(attachments.begin(), attachments.end())
-    , _subpasses(subpasses.begin(), subpasses.end())
-    {
-        // We can also have "implied" attachments. These are attachments that are referenced but not explicitly
+	FrameBufferDesc::FrameBufferDesc(
+		std::vector<SubpassDesc>&& subpasses,
+		std::vector<AttachmentViewDesc>&& attachments)
+	: _subpasses(std::move(subpasses))
+	, _attachments(std::move(attachments))
+	{
+		// We can also have "implied" attachments. These are attachments that are referenced but not explicitly
         // declared. These only color, depth/stencil and resolve attachments can be implied. We must make some 
         // assumptions about format, layout, etc.
         for (auto&p:subpasses) {
@@ -82,6 +63,14 @@ namespace RenderCore
         _hash = HashCombine(Hash64(AsPointer(_attachments.begin()), AsPointer(_attachments.end())), _hash);
         _hash = HashCombine(Hash64(AsPointer(_subpasses.begin()), AsPointer(_subpasses.end())), _hash);
     }
+
+    FrameBufferDesc::FrameBufferDesc(
+        IteratorRange<const SubpassDesc*> subpasses,
+        IteratorRange<const AttachmentViewDesc*> attachments)
+    : FrameBufferDesc(
+		std::vector<SubpassDesc>(subpasses.begin(), subpasses.end()),
+		std::vector<AttachmentViewDesc>(attachments.begin(), attachments.end()))
+    {}
 
 	FrameBufferDesc::FrameBufferDesc()
     : _hash(0)

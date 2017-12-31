@@ -80,19 +80,11 @@ namespace RenderCore
     {
     public:
         static const AttachmentName Unused = ~0u;
-        std::vector<AttachmentName> _output;
-        AttachmentName _depthStencil;
-        std::vector<AttachmentName> _input;
-        std::vector<AttachmentName> _preserve;
-        std::vector<AttachmentName> _resolve;
-
-        SubpassDesc();
-        SubpassDesc(
-            IteratorRange<const AttachmentName*> output,
-            AttachmentName depthStencil = Unused,
-            IteratorRange<const AttachmentName*> input = {}, 
-            IteratorRange<const AttachmentName*> preserve = {},
-            IteratorRange<const AttachmentName*> resolve = {});
+        std::vector<AttachmentName> _output = {};
+        AttachmentName _depthStencil = Unused;
+        std::vector<AttachmentName> _input = {};
+        std::vector<AttachmentName> _preserve = {};
+		std::vector<AttachmentName> _resolve = {};
     };
 
     class FrameBufferDesc
@@ -105,6 +97,9 @@ namespace RenderCore
 		FrameBufferDesc(
             IteratorRange<const SubpassDesc*> subpasses,
             IteratorRange<const AttachmentViewDesc*> attachments = IteratorRange<const AttachmentViewDesc*>());
+		FrameBufferDesc(
+			std::vector<SubpassDesc>&& subpasses,
+			std::vector<AttachmentViewDesc>&& attachments = std::vector<AttachmentViewDesc>());
 		FrameBufferDesc();
 		~FrameBufferDesc();
 

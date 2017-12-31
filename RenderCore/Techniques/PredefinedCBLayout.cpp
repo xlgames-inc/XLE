@@ -169,22 +169,6 @@ namespace RenderCore { namespace Techniques
         return HashCombine(Hash64(AsPointer(_elements.begin()), AsPointer(_elements.end())), _defaults.GetHash());
     }
 
-    PredefinedCBLayout::PredefinedCBLayout() {}
-    PredefinedCBLayout::PredefinedCBLayout(PredefinedCBLayout&& moveFrom) never_throws
-    : _elements(std::move(moveFrom._elements))
-    , _defaults(std::move(moveFrom._defaults))
-    , _cbSize(moveFrom._cbSize)
-    , _validationCallback(std::move(moveFrom._validationCallback))
-    {}
-
-    PredefinedCBLayout& PredefinedCBLayout::operator=(PredefinedCBLayout&& moveFrom) never_throws
-    {
-        _elements = std::move(moveFrom._elements);
-        _defaults = std::move(moveFrom._defaults);
-        _cbSize = moveFrom._cbSize;
-        _validationCallback = std::move(moveFrom._validationCallback);
-        return *this;
-    }
-    
+    PredefinedCBLayout::PredefinedCBLayout() {}    
     PredefinedCBLayout::~PredefinedCBLayout() {}
 }}

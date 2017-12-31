@@ -362,9 +362,9 @@ namespace SceneEngine
         
         simGrid._gridToWorld = 
             AsFloat4x4(
-                ScaleTranslation(
+                ScaleTranslation{
                     Expand(Float2(physicalMaxs - physicalMins), 1.f),
-                    Expand(physicalMins, physicalHeight)));
+                    Expand(physicalMins, physicalHeight)});
         simGrid._gridCoord = gridCoords;
 
         _pimpl->_simGrids.push_back(simGrid);
@@ -640,18 +640,18 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::ShallowSurface::Confi
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("GridPhysicalSize"),    DefaultGet(Obj, _gridPhysicalSize), DefaultSet(Obj, _gridPhysicalSize));
-        props.Add(u("GridDims"),            DefaultGet(Obj, _simGridDims),      DefaultSet(Obj, _simGridDims));
-        props.Add(u("SimGridCount"),        DefaultGet(Obj, _simGridCount),     DefaultSet(Obj, _simGridCount));
-        props.Add(u("BaseHeight"),          DefaultGet(Obj, _baseHeight),       DefaultSet(Obj, _baseHeight));
+        props.Add("GridPhysicalSize",    DefaultGet(Obj, _gridPhysicalSize), DefaultSet(Obj, _gridPhysicalSize));
+        props.Add("GridDims",            DefaultGet(Obj, _simGridDims),      DefaultSet(Obj, _simGridDims));
+        props.Add("SimGridCount",        DefaultGet(Obj, _simGridCount),     DefaultSet(Obj, _simGridCount));
+        props.Add("BaseHeight",          DefaultGet(Obj, _baseHeight),       DefaultSet(Obj, _baseHeight));
 
-        props.Add(u("SimMethod"),
+        props.Add("SimMethod",
             [](const Obj& obj) { return obj._usePipeModel ? 0 : 1; },
             [](Obj& obj, unsigned value) { obj._usePipeModel = (value==0); });
 
-        props.Add(u("RainQuantity"),            DefaultGet(Obj, _rainQuantity),         DefaultSet(Obj, _rainQuantity));
-        props.Add(u("EvaporationConstant"),     DefaultGet(Obj, _evaporationConstant),  DefaultSet(Obj, _evaporationConstant));
-        props.Add(u("PressureConstant"),        DefaultGet(Obj, _pressureConstant),     DefaultSet(Obj, _pressureConstant));
+        props.Add("RainQuantity",            DefaultGet(Obj, _rainQuantity),         DefaultSet(Obj, _rainQuantity));
+        props.Add("EvaporationConstant",     DefaultGet(Obj, _evaporationConstant),  DefaultSet(Obj, _evaporationConstant));
+        props.Add("PressureConstant",        DefaultGet(Obj, _pressureConstant),     DefaultSet(Obj, _pressureConstant));
 
         init = true;
     }
@@ -664,14 +664,14 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::ShallowSurface::Light
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("OpticalThicknessReciprocalColor"), DefaultGet(Obj, _opticalThicknessReciprocalColor), DefaultSet(Obj, _opticalThicknessReciprocalColor));
-        props.Add(u("OpticalThicknessReciprocalScalar"),  DefaultGet(Obj, _opticalThicknessReciprocalScalar),   DefaultSet(Obj, _opticalThicknessReciprocalScalar));
-        props.Add(u("FoamColor"),               DefaultGet(Obj, _foamColor),                DefaultSet(Obj, _foamColor));
-        props.Add(u("Specular"),                DefaultGet(Obj, _specular),                 DefaultSet(Obj, _specular));
-        props.Add(u("Roughness"),               DefaultGet(Obj, _roughness),                DefaultSet(Obj, _roughness));
-        props.Add(u("RefractiveIndex"),         DefaultGet(Obj, _refractiveIndex),          DefaultSet(Obj, _refractiveIndex));
-        props.Add(u("UpwellingScale"),          DefaultGet(Obj, _upwellingScale),           DefaultSet(Obj, _upwellingScale));
-        props.Add(u("SkyReflectionScale"),      DefaultGet(Obj, _skyReflectionScale),       DefaultSet(Obj, _skyReflectionScale));
+        props.Add("OpticalThicknessReciprocalColor", DefaultGet(Obj, _opticalThicknessReciprocalColor), DefaultSet(Obj, _opticalThicknessReciprocalColor));
+        props.Add("OpticalThicknessReciprocalScalar",  DefaultGet(Obj, _opticalThicknessReciprocalScalar),   DefaultSet(Obj, _opticalThicknessReciprocalScalar));
+        props.Add("FoamColor",               DefaultGet(Obj, _foamColor),                DefaultSet(Obj, _foamColor));
+        props.Add("Specular",                DefaultGet(Obj, _specular),                 DefaultSet(Obj, _specular));
+        props.Add("Roughness",               DefaultGet(Obj, _roughness),                DefaultSet(Obj, _roughness));
+        props.Add("RefractiveIndex",         DefaultGet(Obj, _refractiveIndex),          DefaultSet(Obj, _refractiveIndex));
+        props.Add("UpwellingScale",          DefaultGet(Obj, _upwellingScale),           DefaultSet(Obj, _upwellingScale));
+        props.Add("SkyReflectionScale",      DefaultGet(Obj, _skyReflectionScale),       DefaultSet(Obj, _skyReflectionScale));
         init = true;
     }
     return props;

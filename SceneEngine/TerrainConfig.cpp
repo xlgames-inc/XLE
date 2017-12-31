@@ -208,15 +208,15 @@ namespace SceneEngine
     Float4x4 TerrainCoordinateSystem::CellBasedToWorld() const
     {
         return AsFloat4x4(
-            ScaleTranslation(
-                Float3(_cellSizeInMeters, _cellSizeInMeters, 1.f), _terrainOffset));
+            ScaleTranslation{
+                Float3(_cellSizeInMeters, _cellSizeInMeters, 1.f), _terrainOffset});
     }
 
     Float4x4 TerrainCoordinateSystem::WorldToCellBased() const
     {
         return AsFloat4x4(
-            ScaleTranslation(
-                Float3(1.f/_cellSizeInMeters, 1.f/_cellSizeInMeters, 1.f), -_terrainOffset/_cellSizeInMeters));
+            ScaleTranslation{
+                Float3(1.f/_cellSizeInMeters, 1.f/_cellSizeInMeters, 1.f), -_terrainOffset/_cellSizeInMeters});
     }
 
     Float3      TerrainCoordinateSystem::TerrainOffset() const { return _terrainOffset; }

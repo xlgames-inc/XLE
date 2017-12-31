@@ -736,11 +736,11 @@ namespace SceneEngine
             _createGBuffer = FrameBufferDesc(
                 {
                     // render first to the gbuffer
-                    SubpassDesc(
-                        {IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals, IMainTargets::GBufferParameters}, 
-                        IMainTargets::MultisampledDepth)
+					SubpassDesc{
+						{IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals, IMainTargets::GBufferParameters},
+						IMainTargets::MultisampledDepth}
                 },
-                MakeIteratorRange(gbufferAttaches));
+				std::vector<AttachmentViewDesc>{&gbufferAttaches[0], &gbufferAttaches[4]});
             
         } else {
 
@@ -748,9 +748,9 @@ namespace SceneEngine
             _createGBuffer = FrameBufferDesc(
                 {
                     // render first to the gbuffer
-                    SubpassDesc({IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals}, IMainTargets::MultisampledDepth)
+					SubpassDesc{{IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals}, IMainTargets::MultisampledDepth}
                 },
-                MakeIteratorRange(gbufferAttaches, &gbufferAttaches[3]));
+				std::vector<AttachmentViewDesc>{&gbufferAttaches[0], &gbufferAttaches[3]});
         }
     }
 
@@ -993,7 +993,7 @@ namespace SceneEngine
 
             const bool hardwareSRGBDisabled = Tweakable("Tonemap_DisableHardwareSRGB", true);
             FrameBufferDesc applyToneMapping(
-                { SubpassDesc({IMainTargets::PresentationTarget_ToneMapWrite}) },
+				{ SubpassDesc{{IMainTargets::PresentationTarget_ToneMapWrite}} },
                 {
                     // We want to reuse the presentation target texture, except with the format modified for SRGB/Linear
                     {   IMainTargets::PresentationTarget, IMainTargets::PresentationTarget_ToneMapWrite,
@@ -1068,7 +1068,7 @@ namespace SceneEngine
 
         metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, float(frustum._width), float(frustum._height)));
 
-        parserContext.GetNamedResources().DefineAttachments(
+        AttachmentDesc attachments[] =
             {
                 {   IMainTargets::ShadowDepthMap + shadowFrustumIndex, 
                     AttachmentDesc::DimensionsMode::Absolute, float(frustum._width), float(frustum._height),
@@ -1076,10 +1076,12 @@ namespace SceneEngine
                     AsTypelessFormat(frustum._format),
                     TextureViewWindow::DepthStencil,
                     AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil }
-            });
+            };
+
+		parserContext.GetNamedResources().DefineAttachments(MakeIteratorRange(attachments));
 
         FrameBufferDesc resolveLighting(
-            { SubpassDesc({}, IMainTargets::ShadowDepthMap + shadowFrustumIndex) },
+			{ SubpassDesc{{}, IMainTargets::ShadowDepthMap + shadowFrustumIndex} },
             {
                 {   IMainTargets::ShadowDepthMap + shadowFrustumIndex, IMainTargets::ShadowDepthMap + shadowFrustumIndex, 
                     TextureViewWindow(),

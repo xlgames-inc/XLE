@@ -15,19 +15,19 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::VegetationSpawnConfig
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("BaseGridSpacing"),     DefaultGet(Obj, _baseGridSpacing),  DefaultSet(Obj, _baseGridSpacing));
-        props.Add(u("JitterAmount"),        DefaultGet(Obj, _jitterAmount),     DefaultSet(Obj, _jitterAmount));
-        props.Add(u("AlignToTerrainUp"),    DefaultGet(Obj, _alignToTerrainUp), DefaultSet(Obj, _alignToTerrainUp));
+        props.Add("BaseGridSpacing",     DefaultGet(Obj, _baseGridSpacing),  DefaultSet(Obj, _baseGridSpacing));
+        props.Add("JitterAmount",        DefaultGet(Obj, _jitterAmount),     DefaultSet(Obj, _jitterAmount));
+        props.Add("AlignToTerrainUp",    DefaultGet(Obj, _alignToTerrainUp), DefaultSet(Obj, _alignToTerrainUp));
 
         props.AddChildList<Obj::Material>(
-            u("Material"),
+            "Material",
             DefaultCreate(Obj, _materials),
             DefaultGetCount(Obj, _materials),
             DefaultGetChildByIndex(Obj, _materials),
             DefaultGetChildByKey(Obj, _materials));
 
         props.AddChildList<Obj::ObjectType>(
-            u("ObjectType"),
+            "ObjectType",
             DefaultCreate(Obj, _objectTypes),
             DefaultGetCount(Obj, _objectTypes),
             DefaultGetChildByIndex(Obj, _objectTypes),
@@ -44,8 +44,8 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::VegetationSpawnConfig
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("Model"), DefaultGet(Obj, _modelName), DefaultSet(Obj, _modelName));
-        props.Add(u("Material"), DefaultGet(Obj, _materialName), DefaultSet(Obj, _materialName));
+        props.Add("Model", DefaultGet(Obj, _modelName), DefaultSet(Obj, _modelName));
+        props.Add("Material", DefaultGet(Obj, _materialName), DefaultSet(Obj, _materialName));
         init = true;
     }
     return props;
@@ -57,9 +57,9 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::VegetationSpawnConfig
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("ObjectType"), DefaultGet(Obj, _objectType), DefaultSet(Obj, _objectType));
-        props.Add(u("MaxDrawDistance"), DefaultGet(Obj, _maxDrawDistance), DefaultSet(Obj, _maxDrawDistance));
-        props.Add(u("FrequencyWeight"), DefaultGet(Obj, _frequencyWeight), DefaultSet(Obj, _frequencyWeight));
+        props.Add("ObjectType", DefaultGet(Obj, _objectType), DefaultSet(Obj, _objectType));
+        props.Add("MaxDrawDistance", DefaultGet(Obj, _maxDrawDistance), DefaultSet(Obj, _maxDrawDistance));
+        props.Add("FrequencyWeight", DefaultGet(Obj, _frequencyWeight), DefaultSet(Obj, _frequencyWeight));
         init = true;
     }
     return props;
@@ -71,15 +71,15 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::VegetationSpawnConfig
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("NoSpawnWeight"), DefaultGet(Obj, _noSpawnWeight), DefaultSet(Obj, _noSpawnWeight));
-        props.Add(u("SuppressionThreshold"), DefaultGet(Obj, _suppressionThreshold), DefaultSet(Obj, _suppressionThreshold));
-        props.Add(u("SuppressionNoise"), DefaultGet(Obj, _suppressionNoise), DefaultSet(Obj, _suppressionNoise));
-        props.Add(u("SuppressionGain"), DefaultGet(Obj, _suppressionGain), DefaultSet(Obj, _suppressionGain));
-        props.Add(u("SuppressionLacunarity"), DefaultGet(Obj, _suppressionLacunarity), DefaultSet(Obj, _suppressionLacunarity));
-        props.Add(u("MaterialId"), DefaultGet(Obj, _materialId), DefaultSet(Obj, _materialId));
+        props.Add("NoSpawnWeight", DefaultGet(Obj, _noSpawnWeight), DefaultSet(Obj, _noSpawnWeight));
+        props.Add("SuppressionThreshold", DefaultGet(Obj, _suppressionThreshold), DefaultSet(Obj, _suppressionThreshold));
+        props.Add("SuppressionNoise", DefaultGet(Obj, _suppressionNoise), DefaultSet(Obj, _suppressionNoise));
+        props.Add("SuppressionGain", DefaultGet(Obj, _suppressionGain), DefaultSet(Obj, _suppressionGain));
+        props.Add("SuppressionLacunarity", DefaultGet(Obj, _suppressionLacunarity), DefaultSet(Obj, _suppressionLacunarity));
+        props.Add("MaterialId", DefaultGet(Obj, _materialId), DefaultSet(Obj, _materialId));
 
         props.AddChildList<SceneEngine::VegetationSpawnConfig::Bucket>(
-            u("Bucket"),
+            "Bucket",
             DefaultCreate(Obj, _buckets),
             DefaultGetCount(Obj, _buckets),
             DefaultGetChildByIndex(Obj, _buckets),

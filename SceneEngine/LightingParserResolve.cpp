@@ -369,17 +369,20 @@ namespace SceneEngine
             // This requires that we have the depth buffer bound as a DSV and a SRV at the same time... But we can explicitly
             // separately the "aspects" so the DSV has stencil, and the SRV has depth.
             // Perhaps we need an input attachment for the depth buffer in the second pass?
-            parserContext.GetNamedResources().DefineAttachments(
+            
+			AttachmentDesc attachments[] =
                 {{  IMainTargets::LightResolve, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
                     TextureViewWindow::Aspect::ColorLinear,
-                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget }});
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget }};
+			
+			parserContext.GetNamedResources().DefineAttachments(MakeIteratorRange(attachments));
 
             FrameBufferDesc resolveLighting(
                 {
-                    SubpassDesc({IMainTargets::LightResolve}, IMainTargets::MultisampledDepth),
-                    SubpassDesc({IMainTargets::LightResolve}, IMainTargets::MultisampledDepth_JustStencil)
+					SubpassDesc{{IMainTargets::LightResolve}, IMainTargets::MultisampledDepth},
+					SubpassDesc{{IMainTargets::LightResolve}, IMainTargets::MultisampledDepth_JustStencil}
                 },
                 {
                     {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth, TextureViewWindow(),

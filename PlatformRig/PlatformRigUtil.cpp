@@ -103,26 +103,26 @@ template<> const ClassAccessors& GetAccessors<PlatformRig::DefaultShadowFrustumS
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("FrustumCount"), DefaultGet(Obj, _frustumCount),  
+        props.Add("FrustumCount", DefaultGet(Obj, _frustumCount),  
             [](Obj& obj, unsigned value) { obj._frustumCount = Clamp(value, 1u, SceneEngine::MaxShadowTexturesPerLight); });
-        props.Add(u("MaxDistanceFromCamera"),  DefaultGet(Obj, _maxDistanceFromCamera),   DefaultSet(Obj, _maxDistanceFromCamera));
-        props.Add(u("FrustumSizeFactor"),   DefaultGet(Obj, _frustumSizeFactor),    DefaultSet(Obj, _frustumSizeFactor));
-        props.Add(u("FocusDistance"),   DefaultGet(Obj, _focusDistance),    DefaultSet(Obj, _focusDistance));
-        props.Add(u("Flags"),   DefaultGet(Obj, _flags),    DefaultSet(Obj, _flags));
-        props.Add(u("TextureSize"),   DefaultGet(Obj, _textureSize),    
+        props.Add("MaxDistanceFromCamera",  DefaultGet(Obj, _maxDistanceFromCamera),   DefaultSet(Obj, _maxDistanceFromCamera));
+        props.Add("FrustumSizeFactor",   DefaultGet(Obj, _frustumSizeFactor),    DefaultSet(Obj, _frustumSizeFactor));
+        props.Add("FocusDistance",   DefaultGet(Obj, _focusDistance),    DefaultSet(Obj, _focusDistance));
+        props.Add("Flags",   DefaultGet(Obj, _flags),    DefaultSet(Obj, _flags));
+        props.Add("TextureSize",   DefaultGet(Obj, _textureSize),    
             [](Obj& obj, unsigned value) { obj._textureSize = 1<<(IntegerLog2(value-1)+1); });  // ceil to a power of two
-        props.Add(u("SingleSidedSlopeScaledBias"),   DefaultGet(Obj, _slopeScaledBias),    DefaultSet(Obj, _slopeScaledBias));
-        props.Add(u("SingleSidedDepthBiasClamp"),   DefaultGet(Obj, _depthBiasClamp),    DefaultSet(Obj, _depthBiasClamp));
-        props.Add(u("SingleSidedRasterDepthBias"),   DefaultGet(Obj, _rasterDepthBias),    DefaultSet(Obj, _rasterDepthBias));
-        props.Add(u("DoubleSidedSlopeScaledBias"),   DefaultGet(Obj, _dsSlopeScaledBias),    DefaultSet(Obj, _dsSlopeScaledBias));
-        props.Add(u("DoubleSidedDepthBiasClamp"),   DefaultGet(Obj, _dsDepthBiasClamp),    DefaultSet(Obj, _dsDepthBiasClamp));
-        props.Add(u("DoubleSidedRasterDepthBias"),   DefaultGet(Obj, _dsRasterDepthBias),    DefaultSet(Obj, _dsRasterDepthBias));
-        props.Add(u("WorldSpaceResolveBias"),   DefaultGet(Obj, _worldSpaceResolveBias),    DefaultSet(Obj, _worldSpaceResolveBias));
-        props.Add(u("BlurAngleDegrees"),   
+        props.Add("SingleSidedSlopeScaledBias",   DefaultGet(Obj, _slopeScaledBias),    DefaultSet(Obj, _slopeScaledBias));
+        props.Add("SingleSidedDepthBiasClamp",   DefaultGet(Obj, _depthBiasClamp),    DefaultSet(Obj, _depthBiasClamp));
+        props.Add("SingleSidedRasterDepthBias",   DefaultGet(Obj, _rasterDepthBias),    DefaultSet(Obj, _rasterDepthBias));
+        props.Add("DoubleSidedSlopeScaledBias",   DefaultGet(Obj, _dsSlopeScaledBias),    DefaultSet(Obj, _dsSlopeScaledBias));
+        props.Add("DoubleSidedDepthBiasClamp",   DefaultGet(Obj, _dsDepthBiasClamp),    DefaultSet(Obj, _dsDepthBiasClamp));
+        props.Add("DoubleSidedRasterDepthBias",   DefaultGet(Obj, _dsRasterDepthBias),    DefaultSet(Obj, _dsRasterDepthBias));
+        props.Add("WorldSpaceResolveBias",   DefaultGet(Obj, _worldSpaceResolveBias),    DefaultSet(Obj, _worldSpaceResolveBias));
+        props.Add("BlurAngleDegrees",   
             [](const Obj& obj) { return Rad2Deg(XlATan(obj._tanBlurAngle)); },
             [](Obj& obj, float value) { obj._tanBlurAngle = XlTan(Deg2Rad(value)); } );
-        props.Add(u("MinBlurSearch"),   DefaultGet(Obj, _minBlurSearch),    DefaultSet(Obj, _minBlurSearch));
-        props.Add(u("MaxBlurSearch"),   DefaultGet(Obj, _maxBlurSearch),    DefaultSet(Obj, _maxBlurSearch));
+        props.Add("MinBlurSearch",   DefaultGet(Obj, _minBlurSearch),    DefaultSet(Obj, _minBlurSearch));
+        props.Add("MaxBlurSearch",   DefaultGet(Obj, _maxBlurSearch),    DefaultSet(Obj, _maxBlurSearch));
         init = true;
     }
     return props;

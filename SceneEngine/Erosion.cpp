@@ -431,17 +431,17 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::ErosionSimulation::Se
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("RainQuantityPerFrame"), DefaultGet(Obj, _rainQuantityPerFrame),  DefaultSet(Obj, _rainQuantityPerFrame));
-        props.Add(u("EvaporationConstant"), DefaultGet(Obj, _evaporationConstant),  DefaultSet(Obj, _evaporationConstant));
-        props.Add(u("PressureConstant"), DefaultGet(Obj, _pressureConstant),  DefaultSet(Obj, _pressureConstant));
-        props.Add(u("KConstant"), DefaultGet(Obj, _kConstant),  DefaultSet(Obj, _kConstant));
-        props.Add(u("ErosionRate"), DefaultGet(Obj, _erosionRate),  DefaultSet(Obj, _erosionRate));
-        props.Add(u("SettlingRate"), DefaultGet(Obj, _settlingRate),  DefaultSet(Obj, _settlingRate));
-        props.Add(u("MaxSediment"), DefaultGet(Obj, _maxSediment),  DefaultSet(Obj, _maxSediment));
-        props.Add(u("DepthMax"), DefaultGet(Obj, _depthMax),  DefaultSet(Obj, _depthMax));
-        props.Add(u("SedimentShiftScalar"), DefaultGet(Obj, _sedimentShiftScalar),  DefaultSet(Obj, _sedimentShiftScalar));
-        props.Add(u("ThermalSlopeAngle"), DefaultGet(Obj, _thermalSlopeAngle),  DefaultSet(Obj, _thermalSlopeAngle));
-        props.Add(u("ThermalErosionRate"), DefaultGet(Obj, _thermalErosionRate),  DefaultSet(Obj, _thermalErosionRate));
+        props.Add("RainQuantityPerFrame", DefaultGet(Obj, _rainQuantityPerFrame),  DefaultSet(Obj, _rainQuantityPerFrame));
+        props.Add("EvaporationConstant", DefaultGet(Obj, _evaporationConstant),  DefaultSet(Obj, _evaporationConstant));
+        props.Add("PressureConstant", DefaultGet(Obj, _pressureConstant),  DefaultSet(Obj, _pressureConstant));
+        props.Add("KConstant", DefaultGet(Obj, _kConstant),  DefaultSet(Obj, _kConstant));
+        props.Add("ErosionRate", DefaultGet(Obj, _erosionRate),  DefaultSet(Obj, _erosionRate));
+        props.Add("SettlingRate", DefaultGet(Obj, _settlingRate),  DefaultSet(Obj, _settlingRate));
+        props.Add("MaxSediment", DefaultGet(Obj, _maxSediment),  DefaultSet(Obj, _maxSediment));
+        props.Add("DepthMax", DefaultGet(Obj, _depthMax),  DefaultSet(Obj, _depthMax));
+        props.Add("SedimentShiftScalar", DefaultGet(Obj, _sedimentShiftScalar),  DefaultSet(Obj, _sedimentShiftScalar));
+        props.Add("ThermalSlopeAngle", DefaultGet(Obj, _thermalSlopeAngle),  DefaultSet(Obj, _thermalSlopeAngle));
+        props.Add("ThermalErosionRate", DefaultGet(Obj, _thermalErosionRate),  DefaultSet(Obj, _thermalErosionRate));
         init = true;
     }
     return props;

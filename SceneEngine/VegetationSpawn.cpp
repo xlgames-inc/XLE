@@ -28,6 +28,7 @@
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
 
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/FunctionUtils.h"

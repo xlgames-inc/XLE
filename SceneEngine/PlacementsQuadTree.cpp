@@ -526,6 +526,8 @@ namespace SceneEngine
         RenderOverlays::IOverlayContext& context, Layout& layout, 
         Interactables& interactables, InterfaceState& interfaceState)
     {
+		assert(0);	// broken because we can't access the device context via IOverlayContext anymore
+#if 0
         RenderCore::Metal::DeviceContext::Get(*context.GetDeviceContext())->Bind(Techniques::CommonResources()._dssDisable);
         static signed treeDepthFilter = -1;
         static bool drawObjects = false;
@@ -585,6 +587,7 @@ namespace SceneEngine
                 }
             }
         }
+#endif
     }
 
     bool    PlacementsQuadTreeDebugger::ProcessInput(

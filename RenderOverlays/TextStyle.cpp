@@ -4,6 +4,29 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "Font.h"
+
+namespace RenderOverlays
+{
+	TextStyle::TextStyle(Font& font, const DrawTextOptions& options) {}
+	TextStyle::~TextStyle() {}
+
+	float TextStyle::Draw(RenderCore::IThreadContext& threadContext,
+		float x, float y, const ucs4 text[], int maxLen,
+		float spaceExtra, float scale, float mx, float depth,
+		unsigned colorARGB, UI_TEXT_STATE textState, bool applyDescender, Quad* q) const 
+	{
+		return 0.f;
+	}
+
+	Float2		TextStyle::AlignText(const Quad& q, UiAlign align, const ucs4* text, int maxLen) { return Zero<Float2>(); }
+	Float2		TextStyle::AlignText(const Quad& q, UiAlign align, float width, float indent) { return Zero<Float2>(); }
+	float       TextStyle::StringWidth(const ucs4* text, int maxlen) { return 0.f; }
+	int         TextStyle::CharCountFromWidth(const ucs4* text, float width) { return 0; }
+	float       TextStyle::SetStringEllipis(const ucs4* inText, ucs4* outText, size_t outTextSize, float width) { return 0.f; }
+	float       TextStyle::CharWidth(ucs4 ch, ucs4 prev) { return 0.f; }
+}
+
 #if 0
 
 #include "Font.h"

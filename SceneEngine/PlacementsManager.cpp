@@ -390,12 +390,13 @@ namespace SceneEngine
         auto model = modelCache.GetModelScaffold(modelFilename);
         if (!model) return ::Assets::AssetState::Invalid;
 
-        ::Assets::AssetState state;
-        if (stallWhilePending)  { state = model->StallWhilePending(); } 
-        else                    { state = model->TryResolve(); }
-        if (state != ::Assets::AssetState::Ready) return state;
+		::Assets::AssetState state = model->GetAssetState();
+		if (stallWhilePending)
+			state = model->StallWhilePending();
 
-        result = model->GetStaticBoundingBox(LOD);
+		if (state != ::Assets::AssetState::Ready) return state;
+
+        result = model->Actualize()->GetStaticBoundingBox(LOD);
         return ::Assets::AssetState::Ready;
     }
 
@@ -1859,14 +1860,14 @@ namespace SceneEngine
     {
             // get the local bounding box for a model
             // ... but stall waiting for any pending resources
-        auto* model = _editorPimpl->_modelCache->GetModelScaffold(filename);
+        auto model = _editorPimpl->_modelCache->GetModelScaffold(filename);
         auto state = model->StallWhilePending();
         if (state != ::Assets::AssetState::Ready) {
             result = std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
             return false;
         }
 
-        result = model->GetStaticBoundingBox();
+        result = model->Actualize()->GetStaticBoundingBox();
         return true;
     }
 

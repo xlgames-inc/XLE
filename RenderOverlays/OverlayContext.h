@@ -41,13 +41,13 @@ namespace RenderOverlays
                                 ColorB color0, ColorB color1,
                                 const Float2& minTex0, const Float2& maxTex0, 
                                 const Float2& minTex1, const Float2& maxTex1,
-                                const std::string& pixelShader);
+								StringSection<char> pixelShader);
 
         void    DrawQuad(
             ProjectionMode::Enum proj, 
             const Float3& mins, const Float3& maxs, 
             ColorB color,
-            const std::string& pixelShader);
+            StringSection<char> pixelShader);
 
         void    DrawTexturedQuad(
             ProjectionMode::Enum proj, 
@@ -55,8 +55,8 @@ namespace RenderOverlays
             const std::string& texture,
             ColorB color, const Float2& minTex0, const Float2& maxTex0);
 
-        float   DrawText       (const std::tuple<Float3, Float3>& quad, TextStyle* textStyle, ColorB col, TextAlignment::Enum alignment, const char text[], va_list args);
-        float   StringWidth    (float scale, TextStyle* textStyle, const char text[], va_list args);
+        float   DrawText       (const std::tuple<Float3, Float3>& quad, TextStyle* textStyle, ColorB col, TextAlignment::Enum alignment, StringSection<char> text);
+        float   StringWidth    (float scale, TextStyle* textStyle, StringSection<char> text);
         float   TextHeight     (TextStyle* textStyle);
 
         void CaptureState();

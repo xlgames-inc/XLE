@@ -7,10 +7,6 @@
 #pragma once
 
 #include "IOverlayContext_Forward.h"
-#if defined(HAS_XLE_RENDERCORE_METAL)
-    #include "../RenderCore/IThreadContext.h"
-    #include "../RenderCore/Metal/Forward.h"        // for RenderCore::Metal::UniformsStream
-#endif
 #include "../Core/Types.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
@@ -20,10 +16,7 @@ namespace RenderCore { namespace Techniques { class ProjectionDesc; class NamedR
 
 namespace RenderOverlays
 {
-    class TextStyle
-    {
-    public:
-    };
+	class TextStyle;
 
     class ColorB
     {
@@ -144,13 +137,6 @@ namespace RenderOverlays
         virtual void    CaptureState    () = 0;
         virtual void    ReleaseState    () = 0;
         virtual void    SetState        (const OverlayState& state) = 0;
-
-#if defined(HAS_XLE_RENDERCORE_METAL)
-        virtual RenderCore::Techniques::ProjectionDesc      GetProjectionDesc() const = 0;
-        virtual const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const = 0;
-        virtual RenderCore::IThreadContext*                 GetDeviceContext() = 0;
-        virtual RenderCore::Techniques::NamedResources*     GetNamedResources() const = 0;
-#endif
 
         virtual ~IOverlayContext();
     };

@@ -14,24 +14,24 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::TerrainMaterialConfig
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("DiffuseDims"), DefaultGet(Obj, _diffuseDims),  DefaultSet(Obj, _diffuseDims));
-        props.Add(u("NormalDims"),  DefaultGet(Obj, _normalDims),   DefaultSet(Obj, _normalDims));
-        props.Add(u("ParamDims"),   DefaultGet(Obj, _paramDims),    DefaultSet(Obj, _paramDims));
+        props.Add("DiffuseDims", DefaultGet(Obj, _diffuseDims),  DefaultSet(Obj, _diffuseDims));
+        props.Add("NormalDims",  DefaultGet(Obj, _normalDims),   DefaultSet(Obj, _normalDims));
+        props.Add("ParamDims",   DefaultGet(Obj, _paramDims),    DefaultSet(Obj, _paramDims));
 
-        props.Add(u("Specular"),        DefaultGet(Obj, _specularParameter),    DefaultSet(Obj, _specularParameter));
-        props.Add(u("RoughnessMin"),    DefaultGet(Obj, _roughnessMin),         DefaultSet(Obj, _roughnessMin));
-        props.Add(u("RoughnessMax"),    DefaultGet(Obj, _roughnessMax),         DefaultSet(Obj, _roughnessMax));
-        props.Add(u("ShadowSoftness"),  DefaultGet(Obj, _shadowSoftness),       DefaultSet(Obj, _shadowSoftness));
+        props.Add("Specular",        DefaultGet(Obj, _specularParameter),    DefaultSet(Obj, _specularParameter));
+        props.Add("RoughnessMin",    DefaultGet(Obj, _roughnessMin),         DefaultSet(Obj, _roughnessMin));
+        props.Add("RoughnessMax",    DefaultGet(Obj, _roughnessMax),         DefaultSet(Obj, _roughnessMax));
+        props.Add("ShadowSoftness",  DefaultGet(Obj, _shadowSoftness),       DefaultSet(Obj, _shadowSoftness));
 
         props.AddChildList<Obj::GradFlagMaterial>(
-            u("GradFlagMaterial"),
+            "GradFlagMaterial",
             DefaultCreate(Obj, _gradFlagMaterials),
             DefaultGetCount(Obj, _gradFlagMaterials),
             DefaultGetChildByIndex(Obj, _gradFlagMaterials),
             DefaultGetChildByKey(Obj, _gradFlagMaterials));
 
         props.AddChildList<Obj::ProcTextureSetting>(
-            u("ProcTextureSetting"),
+            "ProcTextureSetting",
             DefaultCreate(Obj, _procTextures),
             DefaultGetCount(Obj, _procTextures),
             DefaultGetChildByIndex(Obj, _procTextures),
@@ -48,19 +48,23 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::TerrainMaterialConfig
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("MaterialId"),  DefaultGet(Obj, _id),   DefaultSet(Obj, _id));
-        props.Add(
-            u("Texture"),
+        props.Add("MaterialId",  DefaultGet(Obj, _id),   DefaultSet(Obj, _id));
+		assert(0);
+        /*
+			removed because this style of array not supported
+		props.Add(
+            "Texture",
             DefaultGetArray(Obj, _texture),
             DefaultSetArray(Obj, _texture),
             dimof(std::declval<Obj>()._texture));
         props.Add(
-            u("Mapping"), 
+            "Mapping", 
             DefaultGetArray(Obj, _mappingConstant),
             DefaultSetArray(Obj, _mappingConstant),
             dimof(std::declval<Obj>()._texture));
+		*/
         props.Add(
-            u("Key"), 
+            "Key", 
             [](const Obj& mat) { return mat._id; },
             nullptr);
 
@@ -75,14 +79,17 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::TerrainMaterialConfig
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("Name"), DefaultGet(Obj, _name), DefaultSet(Obj, _name));
-        props.Add(
-            u("Texture"),
+        props.Add("Name", DefaultGet(Obj, _name), DefaultSet(Obj, _name));
+		assert(0);
+		/*
+		props.Add(
+            "Texture",
             DefaultGetArray(Obj, _texture),
             DefaultSetArray(Obj, _texture),
             dimof(std::declval<Obj>()._texture));
-        props.Add(u("HGrid"), DefaultGet(Obj, _hgrid), DefaultSet(Obj, _hgrid));
-        props.Add(u("Gain"), DefaultGet(Obj, _gain), DefaultSet(Obj, _gain));
+		*/
+        props.Add("HGrid", DefaultGet(Obj, _hgrid), DefaultSet(Obj, _hgrid));
+        props.Add("Gain", DefaultGet(Obj, _gain), DefaultSet(Obj, _gain));
         init = true;
     }
     return props;

@@ -73,6 +73,7 @@ namespace Overlays
 
     SFDResources::~SFDResources() {}
 
+#if 0
     static void OverlayShadowFrustums(
         Metal::DeviceContext& devContext, 
         const RenderCore::Techniques::ProjectionDesc& mainCameraProjDesc,
@@ -117,11 +118,14 @@ namespace Overlays
 
         devContext.UnbindPS<Metal::ShaderResourceView>(4, 1);
     }
+#endif
 
     void ShadowFrustumDebugger::Render( 
         IOverlayContext& context, Layout& layout, 
         Interactables& interactables, InterfaceState& interfaceState)
     {
+		assert(0);	// this is broken because we can no longer access the projectionDesc, etc, via IOverlayContext
+#if 0
         assert(_scene.get());
 
         if (!_scene->GetShadowProjectionCount()) {
@@ -179,6 +183,7 @@ namespace Overlays
                 &context, projections._specialNearProjection,
                 cols[std::min((unsigned)dimof(cols), projections._normalProjCount)], 0x2);
         }
+#endif
     }
 
     bool ShadowFrustumDebugger::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)

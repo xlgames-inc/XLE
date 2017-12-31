@@ -227,7 +227,7 @@ namespace RenderCore { namespace Assets
         return ::Assets::AssetState::Ready;
     }
 
-    ModelScaffold* ModelCache::GetModelScaffold(StringSection<ResChar> modelFilename)
+    ::Assets::FuturePtr<ModelScaffold> ModelCache::GetModelScaffold(StringSection<ResChar> modelFilename)
     {
         auto hashedModelName = Hash64(modelFilename.begin(), modelFilename.end());
         auto modelFuture = _pimpl->_modelScaffolds.Get(hashedModelName);
@@ -237,7 +237,7 @@ namespace RenderCore { namespace Assets
             auto insertType = _pimpl->_modelScaffolds.Insert(hashedModelName, modelFuture);
             if (insertType == LRUCacheInsertType::EvictAndReplace) { ++_pimpl->_reloadId; }
         }
-        return modelFuture->TryActualize().get();
+        return modelFuture;
     }
 
     SharedStateSet& ModelCache::GetSharedStateSet() { return *_pimpl->_sharedStateSet; }

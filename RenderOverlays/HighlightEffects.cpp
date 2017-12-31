@@ -204,10 +204,12 @@ namespace RenderOverlays
         using namespace RenderCore;
         _pimpl = std::make_unique<Pimpl>(threadContext, namedRes);
 
-        namedRes.DefineAttachments({{
-            s_commonOffscreen, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
-            Format::R8G8B8A8_UNORM, TextureViewWindow::ColorLinear,
-            AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource}});
+		const AttachmentDesc attachments[] = { {
+			s_commonOffscreen, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
+			Format::R8G8B8A8_UNORM, TextureViewWindow::ColorLinear,
+			AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource} };
+
+        namedRes.DefineAttachments(MakeIteratorRange(attachments));
 
         const bool doDepthTest = true;
         FrameBufferDesc fbLayout = {

@@ -289,24 +289,24 @@ template<> const ClassAccessors& GetAccessors<Sample::AnimationNames>()
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("RunForward"),          DefaultGet(Obj, _runForward),       DefaultSet(Obj, _runForward));
-        props.Add(u("RunBack"),             DefaultGet(Obj, _runBack),          DefaultSet(Obj, _runBack));
-        props.Add(u("RunLeft"),             DefaultGet(Obj, _runLeft),          DefaultSet(Obj, _runLeft));
-        props.Add(u("RunRight"),            DefaultGet(Obj, _runRight),         DefaultSet(Obj, _runRight));
+        props.Add("RunForward",          DefaultGet(Obj, _runForward),       DefaultSet(Obj, _runForward));
+        props.Add("RunBack",             DefaultGet(Obj, _runBack),          DefaultSet(Obj, _runBack));
+        props.Add("RunLeft",             DefaultGet(Obj, _runLeft),          DefaultSet(Obj, _runLeft));
+        props.Add("RunRight",            DefaultGet(Obj, _runRight),         DefaultSet(Obj, _runRight));
 
-        props.Add(u("RunForward_ToIdle"),       DefaultGet(Obj, _runForward_ToIdle),    DefaultSet(Obj, _runForward_ToIdle));
-        props.Add(u("RunBack_ToIdle"),          DefaultGet(Obj, _runBack_ToIdle),       DefaultSet(Obj, _runBack_ToIdle));
-        props.Add(u("RunLeft_ToIdle"),          DefaultGet(Obj, _runLeft_ToIdle),       DefaultSet(Obj, _runLeft_ToIdle));
-        props.Add(u("RunRight_ToIdle"),         DefaultGet(Obj, _runRight_ToIdle),      DefaultSet(Obj, _runRight_ToIdle));
+        props.Add("RunForward_ToIdle",       DefaultGet(Obj, _runForward_ToIdle),    DefaultSet(Obj, _runForward_ToIdle));
+        props.Add("RunBack_ToIdle",          DefaultGet(Obj, _runBack_ToIdle),       DefaultSet(Obj, _runBack_ToIdle));
+        props.Add("RunLeft_ToIdle",          DefaultGet(Obj, _runLeft_ToIdle),       DefaultSet(Obj, _runLeft_ToIdle));
+        props.Add("RunRight_ToIdle",         DefaultGet(Obj, _runRight_ToIdle),      DefaultSet(Obj, _runRight_ToIdle));
 
-        props.Add(u("Idle"),            DefaultGet(Obj, _idle),     DefaultSet(Obj, _idle));
-        props.Add(u("Idle1"),           DefaultGet(Obj, _idle1),    DefaultSet(Obj, _idle1));
-        props.Add(u("Idle2"),           DefaultGet(Obj, _idle2),    DefaultSet(Obj, _idle2));
-        props.Add(u("Idle3"),           DefaultGet(Obj, _idle3),    DefaultSet(Obj, _idle3));
-        props.Add(u("Idle4"),           DefaultGet(Obj, _idle4),    DefaultSet(Obj, _idle4));
-        props.Add(u("Idle5"),           DefaultGet(Obj, _idle5),    DefaultSet(Obj, _idle5));
+        props.Add("Idle",            DefaultGet(Obj, _idle),     DefaultSet(Obj, _idle));
+        props.Add("Idle1",           DefaultGet(Obj, _idle1),    DefaultSet(Obj, _idle1));
+        props.Add("Idle2",           DefaultGet(Obj, _idle2),    DefaultSet(Obj, _idle2));
+        props.Add("Idle3",           DefaultGet(Obj, _idle3),    DefaultSet(Obj, _idle3));
+        props.Add("Idle4",           DefaultGet(Obj, _idle4),    DefaultSet(Obj, _idle4));
+        props.Add("Idle5",           DefaultGet(Obj, _idle5),    DefaultSet(Obj, _idle5));
 
-        props.Add(u("RootTransform"),   DefaultGet(Obj, _rootTransform),    DefaultSet(Obj, _rootTransform));
+        props.Add("RootTransform",   DefaultGet(Obj, _rootTransform),    DefaultSet(Obj, _rootTransform));
 
         init = true;
     }

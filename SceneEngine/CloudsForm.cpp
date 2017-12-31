@@ -4,10 +4,13 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define _SILENCE_CXX17_NEGATORS_DEPRECATION_WARNING
+
 #include "CloudsForm.h"
 #include "FluidHelper.h"
 #include "Fluid.h"
 #include "FluidAdvection.h"
+#include "../RenderCore/IThreadContext.h"
 #include "../Math/Noise.h"
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 
@@ -1301,38 +1304,38 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::CloudsForm2D::Setting
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("Viscosity"), DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
-        props.Add(u("CondensedDiffusionRate"), DefaultGet(Obj, _condensedDiffusionRate),  DefaultSet(Obj, _condensedDiffusionRate));
-        props.Add(u("VaporDiffusionRate"), DefaultGet(Obj, _vaporDiffusionRate),  DefaultSet(Obj, _vaporDiffusionRate));
-        props.Add(u("TemperatureDiffusionRate"), DefaultGet(Obj, _temperatureDiffusionRate),  DefaultSet(Obj, _temperatureDiffusionRate));
-        props.Add(u("DiffusionMethod"), DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
+        props.Add("Viscosity", DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
+        props.Add("CondensedDiffusionRate", DefaultGet(Obj, _condensedDiffusionRate),  DefaultSet(Obj, _condensedDiffusionRate));
+        props.Add("VaporDiffusionRate", DefaultGet(Obj, _vaporDiffusionRate),  DefaultSet(Obj, _vaporDiffusionRate));
+        props.Add("TemperatureDiffusionRate", DefaultGet(Obj, _temperatureDiffusionRate),  DefaultSet(Obj, _temperatureDiffusionRate));
+        props.Add("DiffusionMethod", DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
 
-        props.Add(u("AdvectionMethod"), DefaultGet(Obj, _advectionMethod),  DefaultSet(Obj, _advectionMethod));
-        props.Add(u("AdvectionSteps"), DefaultGet(Obj, _advectionSteps),  DefaultSet(Obj, _advectionSteps));
-        props.Add(u("InterpolationMethod"), DefaultGet(Obj, _interpolationMethod),  DefaultSet(Obj, _interpolationMethod));
+        props.Add("AdvectionMethod", DefaultGet(Obj, _advectionMethod),  DefaultSet(Obj, _advectionMethod));
+        props.Add("AdvectionSteps", DefaultGet(Obj, _advectionSteps),  DefaultSet(Obj, _advectionSteps));
+        props.Add("InterpolationMethod", DefaultGet(Obj, _interpolationMethod),  DefaultSet(Obj, _interpolationMethod));
 
-        props.Add(u("EnforceIncompressibility"), DefaultGet(Obj, _enforceIncompressibilityMethod),  DefaultSet(Obj, _enforceIncompressibilityMethod));
-        props.Add(u("VorticityConfinement"), DefaultGet(Obj, _vorticityConfinement),  DefaultSet(Obj, _vorticityConfinement));
-        props.Add(u("BuoyancyAlpha"), DefaultGet(Obj, _buoyancyAlpha),  DefaultSet(Obj, _buoyancyAlpha));
-        props.Add(u("BuoyancyBeta"), DefaultGet(Obj, _buoyancyBeta),  DefaultSet(Obj, _buoyancyBeta));
+        props.Add("EnforceIncompressibility", DefaultGet(Obj, _enforceIncompressibilityMethod),  DefaultSet(Obj, _enforceIncompressibilityMethod));
+        props.Add("VorticityConfinement", DefaultGet(Obj, _vorticityConfinement),  DefaultSet(Obj, _vorticityConfinement));
+        props.Add("BuoyancyAlpha", DefaultGet(Obj, _buoyancyAlpha),  DefaultSet(Obj, _buoyancyAlpha));
+        props.Add("BuoyancyBeta", DefaultGet(Obj, _buoyancyBeta),  DefaultSet(Obj, _buoyancyBeta));
 
-        props.Add(u("CrossWindSpeed"), DefaultGet(Obj, _crossWindSpeed),  DefaultSet(Obj, _crossWindSpeed));
-        props.Add(u("InputVapor"), DefaultGet(Obj, _inputVapor),  DefaultSet(Obj, _inputVapor));
-        props.Add(u("InputTemperature"), DefaultGet(Obj, _inputTemperature),  DefaultSet(Obj, _inputTemperature));
-        props.Add(u("InputUpdraft"), DefaultGet(Obj, _inputUpdraft),  DefaultSet(Obj, _inputUpdraft));
+        props.Add("CrossWindSpeed", DefaultGet(Obj, _crossWindSpeed),  DefaultSet(Obj, _crossWindSpeed));
+        props.Add("InputVapor", DefaultGet(Obj, _inputVapor),  DefaultSet(Obj, _inputVapor));
+        props.Add("InputTemperature", DefaultGet(Obj, _inputTemperature),  DefaultSet(Obj, _inputTemperature));
+        props.Add("InputUpdraft", DefaultGet(Obj, _inputUpdraft),  DefaultSet(Obj, _inputUpdraft));
 
-        props.Add(u("CondensationSpeed"), DefaultGet(Obj, _condensationSpeed),  DefaultSet(Obj, _condensationSpeed));
-        props.Add(u("TemperatureChangeSpeed"), DefaultGet(Obj, _temperatureChangeSpeed),  DefaultSet(Obj, _temperatureChangeSpeed));
-        props.Add(u("EvaporateThreshold"), DefaultGet(Obj, _evaporateThreshold),  DefaultSet(Obj, _evaporateThreshold));
+        props.Add("CondensationSpeed", DefaultGet(Obj, _condensationSpeed),  DefaultSet(Obj, _condensationSpeed));
+        props.Add("TemperatureChangeSpeed", DefaultGet(Obj, _temperatureChangeSpeed),  DefaultSet(Obj, _temperatureChangeSpeed));
+        props.Add("EvaporateThreshold", DefaultGet(Obj, _evaporateThreshold),  DefaultSet(Obj, _evaporateThreshold));
 
-        props.Add(u("AirTemperature"), 
+        props.Add("AirTemperature", 
             [](const Obj& obj) { return SceneEngine::KelvinToCelsius(obj._airTemperature); },  
             [](Obj& obj, float value) { obj._airTemperature = SceneEngine::CelsiusToKelvin(value); });
-        props.Add(u("RelativeHumidity"), DefaultGet(Obj, _relativeHumidity),  DefaultSet(Obj, _relativeHumidity));
-        props.Add(u("AltitudeMin"), DefaultGet(Obj, _altitudeMin),  DefaultSet(Obj, _altitudeMin));
-        props.Add(u("AltitudeMax"), DefaultGet(Obj, _altitudeMax),  DefaultSet(Obj, _altitudeMax));
-        props.Add(u("LapseRate"), DefaultGet(Obj, _lapseRate),  DefaultSet(Obj, _lapseRate));
-        props.Add(u("ObstructionType"), DefaultGet(Obj, _obstructionType),  DefaultSet(Obj, _obstructionType));
+        props.Add("RelativeHumidity", DefaultGet(Obj, _relativeHumidity),  DefaultSet(Obj, _relativeHumidity));
+        props.Add("AltitudeMin", DefaultGet(Obj, _altitudeMin),  DefaultSet(Obj, _altitudeMin));
+        props.Add("AltitudeMax", DefaultGet(Obj, _altitudeMax),  DefaultSet(Obj, _altitudeMax));
+        props.Add("LapseRate", DefaultGet(Obj, _lapseRate),  DefaultSet(Obj, _lapseRate));
+        props.Add("ObstructionType", DefaultGet(Obj, _obstructionType),  DefaultSet(Obj, _obstructionType));
         
         init = true;
     }
