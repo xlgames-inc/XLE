@@ -11,7 +11,6 @@
 #include "../../SceneEngine/LightInternal.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -20,6 +19,7 @@
 #include "../../RenderCore/Format.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringFormat.h"
 
@@ -88,7 +88,7 @@ namespace Overlays
         if (namedResources)
             depthSrv = namedResources->GetSRV(2u);
 
-        auto& res = Techniques::FindCachedBoxDep2<SFDResources>(
+        auto& res = ConsoleRig::FindCachedBoxDep2<SFDResources>(
             (projectionDesc._projections._mode == SceneEngine::ShadowProjectionDesc::Projections::Mode::Ortho)?2:1,
             projectionDesc._projections._useNearProj);
         devContext.Bind(*res._shader);

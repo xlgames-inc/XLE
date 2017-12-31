@@ -18,8 +18,8 @@
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Format.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
 #include "../Assets/Assets.h"
 #include "../Math/Matrix.h"
@@ -556,7 +556,7 @@ namespace SceneEngine
     {
         Metal::ViewportDesc mainViewportDesc(metalContext);
         float scale = doStepDown ? .5f : 1.f;
-        auto& refractionBox = Techniques::FindCachedBox2<RefractionsBuffer>(
+        auto& refractionBox = ConsoleRig::FindCachedBox2<RefractionsBuffer>(
             unsigned(mainViewportDesc.Width*scale), 
             unsigned(mainViewportDesc.Height*scale));
         refractionBox.Build(metalContext, parserContext, refractionStdDev);
@@ -611,7 +611,7 @@ namespace SceneEngine
             auto skyProjectionType = SkyTextureParts(parserContext.GetSceneParser()->GetGlobalLightingDesc()).BindPS(metalContext, 11);
 
             metalContext.BindPS(MakeResourceList(4,
-                Techniques::FindCachedBox2<WaterNoiseTexture>()._srv));
+				ConsoleRig::FindCachedBox2<WaterNoiseTexture>()._srv));
 
             for (auto i : _pimpl->_surfaces)
                 i->RenderDebugging(

@@ -16,11 +16,11 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
 #include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
 
@@ -565,7 +565,7 @@ namespace RenderOverlays
     {
                 // \todo --     we should cache the input layout result
                 //              (since it's just the same every time)
-        auto& box = Techniques::FindCachedBoxDep<ShaderBox>(
+        auto& box = ConsoleRig::FindCachedBoxDep<ShaderBox>(
             ShaderBox::Desc(topology, format, projMode, pixelShaderName));
 
         if (box._shaderProgram) {
@@ -616,7 +616,7 @@ namespace RenderOverlays
         IThreadContext& threadContext, 
         RenderCore::Techniques::NamedResources* namedRes,
         const Techniques::ProjectionDesc& projDesc)
-    : _font(Techniques::FindCachedBox2<DefaultFontBox>()._font)
+    : _font(ConsoleRig::FindCachedBox2<DefaultFontBox>()._font)
     , _defaultTextStyle(*_font.get())
     , _projDesc(projDesc)
     , _deviceContext(&threadContext)
@@ -674,10 +674,10 @@ namespace RenderOverlays
     const ColorB ColorB::Zero(0x0, 0x0, 0x0, 0x0);
 }
 
-namespace RenderCore { namespace Techniques
+namespace ConsoleRig
 {
     template<> uint64 CalculateCachedBoxHash(const RenderOverlays::ImmediateOverlayContext::ShaderBox::Desc& desc)
     {
         return (uint64(desc._format) << 32) ^ (uint64(desc._projMode) << 16) ^ uint64(desc._topology) ^ Hash64(desc._pixelShaderName);
     }
-}}
+}

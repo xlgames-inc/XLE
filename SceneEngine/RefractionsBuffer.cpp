@@ -7,7 +7,6 @@
 #include "RefractionsBuffer.h"
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/State.h"
@@ -17,6 +16,7 @@
 #include "../Assets/Assets.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../ConsoleRig/ResourceBox.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 #include "../RenderCore/DX11/Metal/Format.h"
@@ -196,7 +196,7 @@ namespace SceneEngine
                 BufferUploads::TextureSamples::Create());
 
                 //  Resolve into the new buffer
-            auto& box = Techniques::FindCachedBox<DuplicateDepthBuffer>(d);
+            auto& box = ConsoleRig::FindCachedBox<DuplicateDepthBuffer>(d);
 			#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
 				context->GetUnderlying()->ResolveSubresource(
 					Metal::UnderlyingResourcePtr(box._resource->GetUnderlying()).get(), 0, Metal::UnderlyingResourcePtr(&sourceDepthBuffer).get(), 0,
@@ -211,7 +211,7 @@ namespace SceneEngine
 				desc._textureDesc._samples);
 
                 //  Copy into the new buffer
-            auto& box = Techniques::FindCachedBox<DuplicateDepthBuffer>(d);
+            auto& box = ConsoleRig::FindCachedBox<DuplicateDepthBuffer>(d);
             Metal::Copy(*context, box._resource->GetUnderlying(), &sourceDepthBuffer);
             return box._srv;
 

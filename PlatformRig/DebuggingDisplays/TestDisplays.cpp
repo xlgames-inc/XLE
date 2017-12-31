@@ -730,8 +730,8 @@ namespace PlatformRig { namespace Overlays
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Assets/Services.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Assets/Assets.h"
 
 namespace PlatformRig { namespace Overlays
@@ -778,7 +778,7 @@ namespace PlatformRig { namespace Overlays
     {
 		assert(0);		// can no longer get the device context from IOverlayContext
 #if 0
-        auto& box = Techniques::FindCachedBox2<CRTBox>();
+        auto& box = ConsoleRig::FindCachedBox2<CRTBox>();
         auto metalContext = Metal::DeviceContext::Get(*context.GetDeviceContext());
 
         //

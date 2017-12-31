@@ -14,7 +14,6 @@
 #include "../RenderOverlays/Font.h"
 #include "../RenderOverlays/DebuggingDisplay.h"
 
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 
@@ -22,6 +21,8 @@
 
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/AssetServices.h"
+
+#include "../ConsoleRig/ResourceBox.h"
 
 #include "../Utility/TimeUtils.h"
 #include "../Utility/IntrusivePtr.h"
@@ -388,7 +389,7 @@ namespace PlatformRig
     void    FrameRigDisplay::Render(IOverlayContext& context, Layout& layout, 
                                     Interactables&interactables, InterfaceState& interfaceState)
     {
-        auto& res = RenderCore::Techniques::FindCachedBox<FrameRigResources>(FrameRigResources::Desc());
+        auto& res = ConsoleRig::FindCachedBox<FrameRigResources>(FrameRigResources::Desc());
 
         using namespace RenderOverlays;
         using namespace RenderOverlays::DebuggingDisplay;

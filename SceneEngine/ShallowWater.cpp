@@ -13,7 +13,6 @@
 #include "SurfaceHeightsProvider.h"
 
 #include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/State.h"
@@ -29,6 +28,7 @@
 #include "../Math/ProjectionMath.h"
 #include "../Math/Transformations.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/StringFormat.h"
 
@@ -1067,7 +1067,7 @@ namespace SceneEngine
         metalContext.Bind(Topology::TriangleList);
         metalContext.Bind(Techniques::CommonResources()._dssReadWrite);
 
-        auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(_gridDimension, _gridDimension, true));
+        auto& simplePatchBox = ConsoleRig::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(_gridDimension, _gridDimension, true));
         metalContext.Bind(simplePatchBox._simplePatchIndexBuffer, Format::R32_UINT);
 
         Metal::ConstantBuffer simulatingCB(nullptr, sizeof(CellConstants));
@@ -1131,7 +1131,7 @@ namespace SceneEngine
         metalContext.Bind(Topology::TriangleList);
         metalContext.Bind(Techniques::CommonResources()._dssReadWrite);
 
-        auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(
+        auto& simplePatchBox = ConsoleRig::FindCachedBox<SimplePatchBox>(
             SimplePatchBox::Desc(_gridDimension, _gridDimension, true));
         metalContext.Bind(simplePatchBox._simplePatchIndexBuffer, Format::R32_UINT);
 

@@ -5,9 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "BufferUploadDisplay.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderOverlays/OverlayUtils.h"
 #include "../../RenderOverlays/Font.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -228,7 +228,7 @@ namespace PlatformRig { namespace Overlays
             }
 
             TextStyle style(
-                *RenderCore::Techniques::FindCachedBox2<FontBox>()._font,
+                *ConsoleRig::FindCachedBox2<FontBox>()._font,
                 DrawTextOptions(false, true));
             context->DrawText(
                 AsPixelCoords(rect), &style, text, 
@@ -253,7 +253,7 @@ namespace PlatformRig { namespace Overlays
                     col = ColorB::White;
 
                 TextStyle style(
-                    *RenderCore::Techniques::FindCachedBox2<FontBox>()._smallFont,
+                    *ConsoleRig::FindCachedBox2<FontBox>()._smallFont,
                     DrawTextOptions(false, true));
                 context->DrawText(
                     AsPixelCoords(rect), &style, col, 

@@ -6,8 +6,8 @@
 
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringUtils.h"
 
 namespace Sample
@@ -80,7 +80,7 @@ namespace Sample
         const bool textRenderingMethod = 1;
 
         using namespace RenderOverlays;
-        auto& res = RenderCore::Techniques::FindCachedBox<RenderPostSceneResources>(RenderPostSceneResources::Desc(64));
+        auto& res = ConsoleRig::FindCachedBox<RenderPostSceneResources>(RenderPostSceneResources::Desc(64));
         TextStyle style(*res._font);
         ColorB col(0xffffffff);
 
@@ -94,7 +94,7 @@ namespace Sample
                 std::make_tuple(
                     Float3(0.f, 0.f, 0.f), 
                     Float3(float(contextStateDesc._viewportDimensions[0]), float(contextStateDesc._viewportDimensions[1]), 0.f)),
-                &style, col, TextAlignment::Center, text, nullptr);
+                &style, col, TextAlignment::Center, text);
 
         } else {
 

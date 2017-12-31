@@ -27,7 +27,6 @@
 #include "../../RenderCore/Assets/ModelRunTime.h"   // for aligning preview camera to model
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 
 #include "../../BufferUploads/IBufferUploads.h"
@@ -37,6 +36,7 @@
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/ConfigFileContainer.h"
 
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/PtrUtils.h"
 
 #include <memory>

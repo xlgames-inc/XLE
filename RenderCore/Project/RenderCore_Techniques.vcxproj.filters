@@ -2,7 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClInclude Include="..\Techniques\CommonResources.h" />
-    <ClInclude Include="..\Techniques\ResourceBox.h" />
     <ClInclude Include="..\Techniques\Techniques.h" />
     <ClInclude Include="..\Techniques\ParsingContext.h" />
     <ClInclude Include="..\Techniques\TechniqueUtils.h" />

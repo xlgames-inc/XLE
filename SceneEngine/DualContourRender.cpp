@@ -13,7 +13,6 @@
 
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
@@ -25,6 +24,7 @@
 #include "../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Math/Transformations.h"
 
 // #include "../RenderCore/Metal/DeviceContextImpl.h"
@@ -203,7 +203,7 @@ namespace SceneEngine
             // }
 
             auto& transparencyTargets = 
-                Techniques::FindCachedBox2<TransparencyTargetsBox>(
+				ConsoleRig::FindCachedBox2<TransparencyTargetsBox>(
                     unsigned(mainViewport.Width), unsigned(mainViewport.Height), false, true);
             OrderIndependentTransparency_ClearAndBind(*context, transparencyTargets, duplicatedDepthBuffer);
             context->Bind(Techniques::CommonResources()._dssReadOnly);  // never write to depth (even for very opaque pixels)

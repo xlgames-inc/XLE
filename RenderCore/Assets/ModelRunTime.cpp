@@ -15,7 +15,6 @@
 #include "AssetUtils.h" // for IsDXTNormalMap
 
 #include "../Techniques/Techniques.h"
-#include "../Techniques/ResourceBox.h"
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/CommonResources.h"
 #include "../Techniques/PredefinedCBLayout.h"
@@ -36,6 +35,7 @@
 #include "../../Math/Transformations.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Core/Exceptions.h"
 
 #include <string>
@@ -1026,7 +1026,7 @@ namespace RenderCore { namespace Assets
             const MeshToModel&  transforms,
             PreparedAnimation*  preparedAnimation) const
     {
-        auto& box = Techniques::FindCachedBox<ModelRenderingBox>(ModelRenderingBox::Desc());
+        auto& box = ConsoleRig::FindCachedBox<ModelRenderingBox>(ModelRenderingBox::Desc());
         const Metal::ConstantBuffer* pkts[] = { &box._localTransformBuffer, nullptr };
 
         unsigned currTextureSet = ~unsigned(0x0), currCB = ~unsigned(0x0), currGeoCall = ~unsigned(0x0);

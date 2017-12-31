@@ -17,9 +17,9 @@
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../ConsoleRig/ResourceBox.h"
 
 namespace GUILayer 
 {
@@ -61,7 +61,7 @@ namespace GUILayer
         const char text[] = "Hello World!... It's me, XLE!";
         
         using namespace RenderOverlays;
-        auto& res = RenderCore::Techniques::FindCachedBox<RenderPostSceneResources>(RenderPostSceneResources::Desc(64));
+        auto& res = ConsoleRig::FindCachedBox<RenderPostSceneResources>(RenderPostSceneResources::Desc(64));
         TextStyle style(*res._font);
         ColorB col(0xffffffff);
         

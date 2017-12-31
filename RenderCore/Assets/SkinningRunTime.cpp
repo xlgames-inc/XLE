@@ -23,11 +23,11 @@
 #include "../Metal/Resource.h"
 #include "../Metal/ObjectFactory.h"
 
-#include "../Techniques/ResourceBox.h"
 #include "../Techniques/Techniques.h"
 #include "../Techniques/TechniqueUtils.h"
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/CommonResources.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../ConsoleRig/Console.h"
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11
@@ -85,7 +85,7 @@ namespace RenderCore { namespace Assets
 
     SkinningBindingBox::SkinningBindingBox(const Desc& desc)
     {
-        auto& ai = Techniques::FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(desc._iaHash));
+        auto& ai = ConsoleRig::FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(desc._iaHash));
         const auto& skinningInputLayout = ai._elements;
 
         std::vector<InputElementDesc> skinningOutputLayout;
@@ -247,7 +247,7 @@ namespace RenderCore { namespace Assets
         uint64 inputAssemblyHash,
         const BoundSkinnedGeometry& scaffoldGeo)
     {
-        auto& iaBox = Techniques::FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(inputAssemblyHash));
+        auto& iaBox = ConsoleRig::FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(inputAssemblyHash));
         if (iaBox._elements.empty()) {
                 //  This hashed input assembly will contain both the full input assembly 
                 //  for preparing skinning (with the animated elements in slot 0, and 
@@ -375,7 +375,7 @@ namespace RenderCore { namespace Assets
 
             // fill in the "HashedInputAssemblies" box if necessary
         const auto& scaffold = *preparedAnimBinding._scaffold;
-        auto& bindingBox = Techniques::FindCachedBoxDep2<SkinningBindingBox>(
+        auto& bindingBox = ConsoleRig::FindCachedBoxDep2<SkinningBindingBox>(
             bindingType, preparedAnimBinding._iaAnimationHash, mesh._extraVbStride[SkinnedMesh::VertexStreams::AnimatedGeo]);
 
             ///////////////////////////////////////////////

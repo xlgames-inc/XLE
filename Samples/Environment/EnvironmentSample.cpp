@@ -29,7 +29,6 @@
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/PreparedScene.h"
 #include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../SceneEngine/PlacementsQuadTreeDebugger.h"
 #include "../../SceneEngine/IntersectionTest.h"
@@ -53,6 +52,7 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/GlobalServices.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 
@@ -383,7 +383,7 @@ namespace Sample
         if (!scene->GetPlayerCharacter()->IsPresent())
             StringMeldAppend(parserContext._stringHelpers->_errorString) << "No player CharacterSpawn detected. Press Tab to switch camera types.";
 
-        auto& usefulFonts = RenderCore::Techniques::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
+        auto& usefulFonts = ConsoleRig::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
         DrawPendingResources(context, parserContext, usefulFonts._defaultFont0.get());
 
         if (Tweakable("QuickMetrics", false))

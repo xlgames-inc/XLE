@@ -5,17 +5,11 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CommonResources.h"
-#include "ResourceBox.h"
 #include "TechniqueUtils.h" // just for sizeof(LocalTransformConstants)
+#include "../../ConsoleRig/ResourceBox.h"
 
 namespace RenderCore { namespace Techniques
 {
-    namespace Internal
-    {
-        std::vector<std::unique_ptr<IBoxTable>> BoxTables;
-        IBoxTable::~IBoxTable() {}
-    }
-
     CommonResourceBox::CommonResourceBox(const Desc&)
     {
         using namespace RenderCore::Metal;
@@ -44,13 +38,6 @@ namespace RenderCore { namespace Techniques
 
     CommonResourceBox& CommonResources()
     {
-        return FindCachedBox<CommonResourceBox>(CommonResourceBox::Desc());
+        return ConsoleRig::FindCachedBox<CommonResourceBox>(CommonResourceBox::Desc());
     }
-
-
-    void ResourceBoxes_Shutdown()
-    {
-        Internal::BoxTables = std::vector<std::unique_ptr<Internal::IBoxTable>>();
-    }
-
 }}

@@ -1178,7 +1178,7 @@ namespace SceneEngine
 
 #include "../RenderOverlays/OverlayContext.h"
 #include "../RenderOverlays/DebuggingDisplay.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringFormat.h"
 
 namespace SceneEngine
@@ -1212,7 +1212,7 @@ namespace SceneEngine
             Rect rect(Coord2(0,0), Coord2(maxCoords[0], maxCoords[1]));
             Layout completeLayout(rect);
 
-            auto& res = RenderCore::Techniques::FindCachedBox2<WidgetResources>();
+            auto& res = ConsoleRig::FindCachedBox2<WidgetResources>();
             TextStyle textStyle(*res._font);
             const auto lineHeight = 20u;
 

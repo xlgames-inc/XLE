@@ -12,11 +12,11 @@
 #include "../../SceneEngine/DualContour.h"
 #include "../../SceneEngine/DualContourRender.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
 
 #include "../../ConsoleRig/Console.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Math/Noise.h"
 #include "../../Math/Geometry.h"
@@ -150,7 +150,7 @@ namespace Sample
         CPUProfileEvent pEvnt("ExecuteScene", g_cpuProfiler);
 
         bool renderAsCloud = Tweakable("RenderAsCloud", false);
-        auto& box = RenderCore::Techniques::FindCachedBoxDep2<Test::DualContourTest>(Tweakable("GridDims", 256));
+        auto& box = ConsoleRig::FindCachedBoxDep2<Test::DualContourTest>(Tweakable("GridDims", 256));
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
 

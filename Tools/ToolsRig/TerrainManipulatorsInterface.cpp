@@ -12,7 +12,7 @@
 #include "../../Tools/ToolsRig/ManipulatorsUtil.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/OverlayUtils.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/IntrusivePtr.h"
 
 namespace ToolsRig
@@ -174,7 +174,7 @@ namespace ToolsRig
         auto boolParameters = manipulator.GetBoolParameters();
         auto statusText = manipulator.GetStatusText();
 
-        auto& res = RenderCore::Techniques::FindCachedBox<WidgetResources>(WidgetResources::Desc());
+        auto& res = ConsoleRig::FindCachedBox<WidgetResources>(WidgetResources::Desc());
 
         unsigned parameterCount = unsigned(1 + floatParameters.second + boolParameters.second); // (+1 for the selector control)
         if (!statusText.empty()) { ++parameterCount; }

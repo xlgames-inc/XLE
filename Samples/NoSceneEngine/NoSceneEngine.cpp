@@ -20,7 +20,6 @@
 #include "../../RenderCore/GPUProfiler.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/Assets/Services.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
@@ -31,6 +30,7 @@
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
@@ -513,7 +513,7 @@ namespace Sample
                 horizBlur.GetCompiledPixelShader().GetByteCode();
                 horizBlur.GetCompiledVertexShader().GetByteCode();
 
-                auto& box = RenderCore::Techniques::FindCachedBoxDep2<ModelTestBox>();
+                auto& box = ConsoleRig::FindCachedBoxDep2<ModelTestBox>();
 
                 auto captureMarker = box._sharedStateSet->CaptureState(
                     *metalContext, 
@@ -652,7 +652,7 @@ namespace Sample
 
                 // First, render gbuffer subpass
                 {
-                    auto& box = RenderCore::Techniques::FindCachedBoxDep2<ModelTestBox>();
+                    auto& box = ConsoleRig::FindCachedBoxDep2<ModelTestBox>();
                     auto captureMarker = box._sharedStateSet->CaptureState(
                         *metalContext, 
                         parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());

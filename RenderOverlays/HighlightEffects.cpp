@@ -12,10 +12,10 @@
 #include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Format.h"
 #include "../../Assets/Assets.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringFormat.h"
 
 namespace RenderOverlays
@@ -263,7 +263,7 @@ namespace RenderOverlays
         struct Constants { Float3 _color; unsigned _dummy; } constants = { outlineColor, 0 };
         SharedPkt pkts[] = { MakeSharedPkt(constants) };
 
-        auto& shaders = Techniques::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
+        auto& shaders = ConsoleRig::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
         shaders._drawHighlightUniforms.Apply(
             *metalContext, 
             Metal::UniformsStream(), 
@@ -293,7 +293,7 @@ namespace RenderOverlays
         struct Constants { Float4 _shadowColor; } constants = { shadowColor };
         SharedPkt pkts[] = { MakeSharedPkt(constants) };
 
-        auto& shaders = Techniques::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
+        auto& shaders = ConsoleRig::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
         shaders._drawShadowUniforms.Apply(
             *metalContext, 
             Metal::UniformsStream(), 

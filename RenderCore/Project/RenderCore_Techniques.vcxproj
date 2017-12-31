@@ -73,7 +73,6 @@
     <ClInclude Include="..\Techniques\RenderPass.h" />
     <ClInclude Include="..\Techniques\PredefinedCBLayout.h" />
     <ClInclude Include="..\Techniques\RenderStateResolver.h" />
-    <ClInclude Include="..\Techniques\ResourceBox.h" />
     <ClInclude Include="..\Techniques\ParsingContext.h" />
     <ClInclude Include="..\Techniques\TechniqueMaterial.h" />
     <ClInclude Include="..\Techniques\Techniques.h" />

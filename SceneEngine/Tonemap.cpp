@@ -10,7 +10,6 @@
 #include "SceneParser.h"
 #include "LightDesc.h"
 #include "GestaltResource.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/RenderPass.h"
@@ -27,6 +26,7 @@
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/ParameterBox.h"
 #include "../Utility/StringFormat.h"
@@ -560,7 +560,7 @@ namespace SceneEngine
         }
         auto desc = Metal::ExtractDesc(inputResource);
         auto sampleCount = desc._textureDesc._samples._sampleCount;
-        return Techniques::FindCachedBoxDep2<ToneMappingResources>(
+        return ConsoleRig::FindCachedBoxDep2<ToneMappingResources>(
             desc._textureDesc._width, desc._textureDesc._height, bloomBufferFormat, sampleCount, sampleCount>1);
     }
 
@@ -701,7 +701,7 @@ namespace SceneEngine
                         auto colorGradingSettings = BuildColorGradingShaderConstants(ColorGradingSettings());
 
                         bool enableBloom = !!(settings._flags & ToneMapSettings::Flags::EnableBloom) && Tweakable("DoBloom", true);
-                        auto& box = Techniques::FindCachedBoxDep2<ToneMapShaderBox>(
+                        auto& box = ConsoleRig::FindCachedBoxDep2<ToneMapShaderBox>(
                             Tweakable("ToneMapOperator", 1), enableBloom,
                             hardwareSRGBEnabled, doColorGrading, !!(colorGradingSettings._doLevelsAdustment), 
                             !!(colorGradingSettings._doSelectiveColor), !!(colorGradingSettings._doFilterColor));
@@ -908,7 +908,7 @@ namespace SceneEngine
                 //  
             unsigned blurBufferWidth = unsigned(viewport.Width/2);
             unsigned blurBufferHeight = unsigned(viewport.Height/2);
-            auto& resources = Techniques::FindCachedBoxDep2<AtmosphereBlurResources>(
+            auto& resources = ConsoleRig::FindCachedBoxDep2<AtmosphereBlurResources>(
                 blurBufferWidth, blurBufferHeight, Format::R16G16B16A16_FLOAT);
 
             Metal::ViewportDesc newViewport(0, 0, float(blurBufferWidth), float(blurBufferHeight), 0.f, 1.f);

@@ -880,9 +880,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		TryUnmap();
 	}
 
-	ResourceMap::ResourceMap(ResourceMap&& moveFrom)
+	ResourceMap::ResourceMap(ResourceMap&& moveFrom) never_throws
 	{
 		_data = moveFrom._data; moveFrom._data = nullptr;
+		_dataSize = moveFrom._dataSize; moveFrom._dataSize = 0;
 		_dev = moveFrom._dev; moveFrom._dev = nullptr;
 		_mem = moveFrom._mem; moveFrom._mem = nullptr;
         _pitches = moveFrom._pitches;
@@ -892,6 +893,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		TryUnmap();
 		_data = moveFrom._data; moveFrom._data = nullptr;
+		_dataSize = moveFrom._dataSize; moveFrom._dataSize = 0;
 		_dev = moveFrom._dev; moveFrom._dev = nullptr;
 		_mem = moveFrom._mem; moveFrom._mem = nullptr;
         _pitches = moveFrom._pitches;

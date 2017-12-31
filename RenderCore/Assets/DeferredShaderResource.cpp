@@ -24,7 +24,7 @@
 #include "../../Utility/Threading/CompletionThreadPool.h"
 #include "../../Foreign/tinyxml2-master/tinyxml2.h"
 
-#include "../Techniques/ResourceBox.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include <utility>
 
 #include "../../Core/WinAPI/IncludeWindows.h"
@@ -457,7 +457,7 @@ namespace RenderCore { namespace Assets
     {
         if (textureName.IsEmpty()) return false;
 
-        auto& cache = Techniques::FindCachedBox<CachedTextureFormats>(
+        auto& cache = ConsoleRig::FindCachedBox<CachedTextureFormats>(
             CachedTextureFormats::Desc());
 
         typedef CachedTextureFormats::Header Hdr;

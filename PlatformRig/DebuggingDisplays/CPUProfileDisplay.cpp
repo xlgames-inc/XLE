@@ -7,7 +7,7 @@
 #include "CPUProfileDisplay.h"
 #if defined(HAS_XLE_FONTS)
     #include "../../RenderOverlays/Font.h"
-    #include "../../RenderCore/Techniques/ResourceBox.h"
+    #include "../../ConsoleRig/ResourceBox.h"
 #else
 	namespace RenderOverlays
 	{
@@ -171,7 +171,7 @@ namespace PlatformRig { namespace Overlays
         Float3* divingLinesIterator = dividingLines;
 
 #if defined(HAS_XLE_FONTS)
-        auto& res = RenderCore::Techniques::FindCachedBox<DrawProfilerResources>(DrawProfilerResources::Desc());
+        auto& res = ConsoleRig::FindCachedBox<DrawProfilerResources>(DrawProfilerResources::Desc());
         TextStyle leftStyle(*res._leftFont); leftStyle._options.shadow = 0;
         TextStyle middleStyle(*res._middleFont); middleStyle._options.outline = 1; middleStyle._options.shadow = 0;
         TextStyle rightStyle(*res._rightFont);

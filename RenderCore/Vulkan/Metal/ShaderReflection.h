@@ -79,8 +79,7 @@ namespace RenderCore { namespace Metal_Vulkan
         };
         std::vector<std::pair<uint64, InputInterfaceElement>> _inputInterfaceQuickLookup;
 
-        SPIRVReflection(IteratorRange<const uint32*> byteCode);
-        SPIRVReflection(std::pair<const void*, size_t> byteCode);
+        SPIRVReflection(IteratorRange<const void*> byteCode);
         SPIRVReflection();
         ~SPIRVReflection();
 

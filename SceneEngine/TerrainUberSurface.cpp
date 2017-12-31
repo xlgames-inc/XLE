@@ -14,7 +14,6 @@
 #include "Erosion.h"
 #include "SurfaceHeightsProvider.h"
 
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/State.h"
@@ -26,6 +25,7 @@
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/DataPacket.h"
 
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Assets/IFileSystem.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/PtrUtils.h"
@@ -430,7 +430,7 @@ namespace SceneEngine
 	};
 }
 
-namespace RenderCore { namespace Techniques
+namespace ConsoleRig
 {
 	template <> uint64 CalculateCachedBoxHash(const SceneEngine::ApplyToolResources::Desc& desc)
 	{
@@ -439,7 +439,7 @@ namespace RenderCore { namespace Techniques
 			h = HashCombine(std::get<0>(p), h);
 		return h;
 	}
-}}
+}
 
 namespace SceneEngine
 {
@@ -478,7 +478,7 @@ namespace SceneEngine
             Metal::UnorderedAccessView uav(_pimpl->_gpucache[0]->ShareUnderlying());
             context->BindCS(RenderCore::MakeResourceList(uav));
 
-            auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+            auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
             context->BindCS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
             
             struct Parameters
@@ -492,7 +492,7 @@ namespace SceneEngine
                 adjMins, { 0, 0 }
             };
 
-			auto& box = Techniques::FindCachedBoxDep2<ApplyToolResources>(
+			auto& box = ConsoleRig::FindCachedBoxDep2<ApplyToolResources>(
 				shaderName, 
 				MakeIteratorRange(extraPackets, &extraPackets[extraPacketCount]));
             

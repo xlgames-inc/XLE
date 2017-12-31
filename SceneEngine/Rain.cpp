@@ -9,7 +9,6 @@
 #include "SceneParser.h"
 #include "SceneEngineUtils.h"
 #include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -24,6 +23,7 @@
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 
 namespace SceneEngine
 {
@@ -185,7 +185,7 @@ namespace SceneEngine
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             const unsigned particleCountWidth = 64;
-            auto& resources = Techniques::FindCachedBox<SimRainResources>(SimRainResources::Desc(particleCountWidth));
+            auto& resources = ConsoleRig::FindCachedBox<SimRainResources>(SimRainResources::Desc(particleCountWidth));
 
                 //  we need to run a compute shader to update the position of these particles
                 //  first, we have to unbind the depth buffer and create a shader resource view for it
@@ -324,7 +324,7 @@ namespace SceneEngine
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             const unsigned particleCountWidth = 128;
-            auto& resources = Techniques::FindCachedBox<SimRainResources>(SimRainResources::Desc(particleCountWidth));
+            auto& resources = ConsoleRig::FindCachedBox<SimRainResources>(SimRainResources::Desc(particleCountWidth));
 
                 //  we need to run a compute shader to update the position of these particles
                 //  first, we have to unbind the depth buffer and create a shader resource view for it

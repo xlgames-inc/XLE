@@ -64,6 +64,7 @@
     <ClInclude Include="..\Log.h" />
     <ClInclude Include="..\LogStartup.h" />
     <ClInclude Include="..\OutputStream.h" />
+    <ClInclude Include="..\ResourceBox.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

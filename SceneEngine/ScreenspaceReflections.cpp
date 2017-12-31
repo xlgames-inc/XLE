@@ -15,7 +15,6 @@
 #include "GestaltResource.h"
 
 #include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/TextureView.h"
@@ -27,10 +26,11 @@
 #include "../RenderCore/Format.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/DataPacket.h"
+#include "../ConsoleRig/ResourceBox.h"
+#include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
 
-#include "../ConsoleRig/Console.h"
 #include <random>
 
 namespace SceneEngine
@@ -286,7 +286,7 @@ namespace SceneEngine
             //
         using namespace RenderCore;
         auto cfg = GetConfig(width, height, useMsaaSamplers, gbufferParam.IsGood());
-        auto& res = Techniques::FindCachedBoxDep<ScreenSpaceReflectionsResources>(cfg);
+        auto& res = ConsoleRig::FindCachedBoxDep<ScreenSpaceReflectionsResources>(cfg);
 
         ProtectState protectState(
             *context,

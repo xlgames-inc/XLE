@@ -15,7 +15,6 @@
 #include "SceneEngineUtils.h"
 
 #include "../RenderCore/Techniques/TechniqueUtils.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -27,6 +26,7 @@
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Math/ProjectionMath.h"
@@ -290,7 +290,7 @@ namespace SceneEngine
             const auto drawWireframe = Tweakable("TerrainWireframe", false);
             const auto visLayer = Tweakable("TerrainVisCoverage", 0);
 
-            auto& box = Techniques::FindCachedBoxDep2<TerrainRenderingResources>(
+            auto& box = ConsoleRig::FindCachedBoxDep2<TerrainRenderingResources>(
                 mode, _coverageLayerIds, &_coverageLayerIds[_coverageLayerCount],
                 _coverageFmts, &_coverageFmts[_coverageLayerCount],
                 doExtraSmoothing, noisyTerrain, _encodedGradientFlags, 
@@ -333,7 +333,7 @@ namespace SceneEngine
             Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
             uniforms.Apply(*context, parserContext.GetGlobalUniformsStream(), UniformsStream());
 
-            auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(
+            auto& simplePatchBox = ConsoleRig::FindCachedBox<SimplePatchBox>(
                 SimplePatchBox::Desc(elementSize[0], elementSize[1], true));
             context->Bind(simplePatchBox._simplePatchIndexBuffer, Format::R32_UINT);
             context->Bind(Topology::TriangleList);
@@ -345,7 +345,7 @@ namespace SceneEngine
         context->Unbind<BoundInputLayout>();
             ////-////-/====/-////-////
 
-        auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+        auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
         context->BindVS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
         context->BindDS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
         context->BindVS(MakeResourceList(8, _tileConstantsBuffer));

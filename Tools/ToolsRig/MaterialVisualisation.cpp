@@ -16,7 +16,6 @@
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 
@@ -27,6 +26,7 @@
 
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../ConsoleRig/ResourceBox.h"
 
 #include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -135,7 +135,7 @@ namespace ToolsRig
                 if (!shaderProgram) return;
             
                 unsigned count;
-                const auto& cachedGeo = Techniques::FindCachedBox2<CachedVisGeo>();
+                const auto& cachedGeo = ConsoleRig::FindCachedBox2<CachedVisGeo>();
                 if (geoType == MaterialVisSettings::GeometryType::Sphere) {
                     metalContext.Bind(MakeResourceList(cachedGeo._sphereBuffer), sizeof(Internal::Vertex3D), 0);    
                     count = cachedGeo._sphereVCount;

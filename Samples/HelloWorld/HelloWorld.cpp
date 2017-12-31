@@ -20,7 +20,6 @@
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Assets/Services.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
@@ -41,6 +40,7 @@
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
@@ -220,7 +220,6 @@ namespace Sample
         mainScene.reset();
 
         assetServices->GetAssetSets().Clear();
-        RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
 
         renderAssetServices.reset();
@@ -269,7 +268,7 @@ namespace Sample
         bool hasPendingResources = false;
         {
             RenderCore::Techniques::RenderPassInstance rpi(
-                context, {{RenderCore::SubpassDesc({0})}},
+                context, RenderCore::FrameBufferDesc{{RenderCore::SubpassDesc{{0}}}},
                 0u, namedRes);
 
                 //  If we need to, we can render outside of the lighting parser.
@@ -301,7 +300,7 @@ namespace Sample
             debugSys.Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
         }
         debugSys.Register(
-            std::make_shared<PlatformRig::Overlays::CPUProfileDisplay>(&g_cpuProfiler), 
+            std::make_shared<PlatformRig::Overlays::HierarchicalProfilerDisplay>(&g_cpuProfiler),
             "[Profiler] CPU Profiler");
     }
 }

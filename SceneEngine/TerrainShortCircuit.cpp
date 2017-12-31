@@ -14,7 +14,6 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Format.h"
 
 #include "../BufferUploads/IBufferUploads.h"
@@ -22,6 +21,7 @@
 #include "../BufferUploads/ResourceLocator.h"
 
 #include "../ConsoleRig/IProgress.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Math/Transformations.h"
 #include "../Assets/Assets.h"
 #include "../Utility/StringFormat.h"
@@ -149,7 +149,7 @@ namespace SceneEngine
             unsigned filterType = Filter_Bilinear;
             if (format == Format::R8_UINT) filterType = Filter_Max;      // (use "max" filter for integer types)
 
-            auto& box = Techniques::FindCachedBoxDep2<ShortCircuitResources>(format, filterType, _gradientFlagsSettings._enable);
+            auto& box = ConsoleRig::FindCachedBoxDep2<ShortCircuitResources>(format, filterType, _gradientFlagsSettings._enable);
 
             const float heightOffsetValue = 5000.f; // (height values are shifted by this constant in the shader to get around issues with negative heights
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
@@ -202,7 +202,7 @@ namespace SceneEngine
             const unsigned threadGroupWidth = 6;
             if (format == Format::Unknown) {
                     // go via a midway buffer and handle the min/max quantization
-                auto& midwayBox = Techniques::FindCachedBox2<ShortCircuitMidwayBox>(UInt2(tile._width, tile._height));
+                auto& midwayBox = ConsoleRig::FindCachedBox2<ShortCircuitMidwayBox>(UInt2(tile._width, tile._height));
                 metalContext.BindCS(
                     MakeResourceList(1, midwayBox._midwayBuffer.UAV(), midwayBox._midwayGradFlags.UAV(), box._tileCoordsBuffer.UAV()));
 

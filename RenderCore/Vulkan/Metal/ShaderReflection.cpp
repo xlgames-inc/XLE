@@ -12,15 +12,11 @@
 #undef new
 #include <glslang/SPIRV/spirv.hpp>
 #include <glslang/SPIRV/doc.h>
-
-// #include <glslang/SPIRV/disassemble.h>
-// #include <sstream>
 #pragma pop_macro("new")
 
 namespace RenderCore { namespace Metal_Vulkan
 {
 
-    
     template<typename Id>
         void FillInBinding(
             std::vector<std::pair<Id, SPIRVReflection::Binding>>& bindings,
@@ -68,14 +64,14 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    SPIRVReflection::SPIRVReflection(IteratorRange<const uint32*> byteCode)
+    SPIRVReflection::SPIRVReflection(IteratorRange<const void*> byteCode)
     {
         _entryPoint._id = ~0x0u;
 
         using namespace spv;
         // spv::Parameterize();
 
-        auto* i = byteCode.begin() + 5;
+        auto* i = ((const uint32_t*)byteCode.begin()) + 5;
         while (i < byteCode.end()) {
             // Instruction wordCount and opcode
             unsigned int firstWord = *i;
@@ -303,14 +299,6 @@ namespace RenderCore { namespace Metal_Vulkan
         // (void)d;
     }
 
-    SPIRVReflection::SPIRVReflection(std::pair<const void*, size_t> byteCode)
-    : SPIRVReflection(
-        IteratorRange<const uint32*>(
-            (const uint32*)byteCode.first, 
-            (const uint32*)PtrAdd(byteCode.first, byteCode.second)))
-    {}
-
-
     SPIRVReflection::SPIRVReflection() {}
     SPIRVReflection::~SPIRVReflection() {}
 
@@ -345,7 +333,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return *this;
     }
 
-    SPIRVReflection::SPIRVReflection(SPIRVReflection&& moveFrom)
+    SPIRVReflection::SPIRVReflection(SPIRVReflection&& moveFrom) never_throws
     : _names(std::move(moveFrom._names))
     , _memberNames(std::move(moveFrom._memberNames))
     , _bindings(std::move(moveFrom._bindings))
@@ -360,7 +348,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     }
 
-    SPIRVReflection& SPIRVReflection::operator=(SPIRVReflection&& moveFrom)
+    SPIRVReflection& SPIRVReflection::operator=(SPIRVReflection&& moveFrom) never_throws
     {
         _names = std::move(moveFrom._names);
         _memberNames = std::move(moveFrom._memberNames);

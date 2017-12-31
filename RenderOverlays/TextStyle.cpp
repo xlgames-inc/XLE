@@ -55,7 +55,7 @@ namespace RenderOverlays
 #include "../RenderCore/Metal/InputLayout.h"
 
 #include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../ConsoleRig/ResourceBox.h"
 
 namespace RenderOverlays
 {
@@ -312,7 +312,7 @@ float   TextStyle::Draw(
         // VertexShader& vshader    = GetResource<VertexShader>(vertexShaderSource);
         // PixelShader& pshader     = GetResource<PixelShader>(pixelShaderSource);
 
-        auto& res = RenderCore::Techniques::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
+        auto& res = ConsoleRig::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
         renderer->Bind(res._boundInputLayout);     // have to bind a standard P2CT input layout
         renderer->Bind(*res._shaderProgram);
         renderer->Bind(Topology::TriangleList);

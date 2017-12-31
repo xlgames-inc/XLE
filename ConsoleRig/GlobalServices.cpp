@@ -8,6 +8,7 @@
 #include "AttachableInternal.h"
 #include "Log.h"
 #include "Console.h"
+#include "ResourceBox.h"
 #include "IProgress.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/OSFileSystem.h"
@@ -146,6 +147,8 @@ namespace ConsoleRig
         } else {
             Console::SetInstance(nullptr);
         }
+
+		ResourceBoxes_Shutdown();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -198,4 +201,18 @@ namespace ConsoleRig
 
     IStep::~IStep() {}
     IProgress::~IProgress() {}
+
+
+	namespace Internal
+	{
+		std::vector<std::unique_ptr<IBoxTable>> BoxTables;
+		IBoxTable::~IBoxTable() {}
+	}
+
+	void ResourceBoxes_Shutdown()
+	{
+		Internal::BoxTables = std::vector<std::unique_ptr<Internal::IBoxTable>>();
+	}
+
+
 }
