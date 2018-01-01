@@ -80,7 +80,14 @@ namespace Converter
 		ArtifactType						_artifactType;
 
 		void DiscoverLibraries();
-		void PerformCompile(::Assets::QueuedCompileOperation& op);
+		
+		::Assets::CompilationThread& GetThread()
+		{
+			ScopedLock(_threadLock);
+			if (!_thread)
+				_thread = std::make_unique<::Assets::CompilationThread>();
+			return *_thread;
+		}
 
 		Pimpl() : _discoveryDone(false), _artifactType(ArtifactType::Blob) {}
 		Pimpl(const Pimpl&) = delete;
@@ -381,22 +388,26 @@ namespace Converter
 		if (compilerIndex >= c->_pimpl->_compilers.size())
 			Throw(::Exceptions::BasicLabel("Could not find compiler to handle request (%s)", _requestName.c_str()));
 
-        auto backgroundOp = std::make_shared<::Assets::QueuedCompileOperation>();
+        auto backgroundOp = std::make_shared<::Assets::CompileFuture>();
         backgroundOp->SetInitializer(_requestName.c_str());
-        XlCopyString(backgroundOp->_initializer0, _requestName);
-        backgroundOp->_destinationStore = _store;
-        backgroundOp->_typeCode = _typeCode;
-		backgroundOp->_compilerIndex = compilerIndex;
 
-        {
-            ScopedLock(c->_pimpl->_threadLock);
-            if (!c->_pimpl->_thread) {
-                auto* p = c->_pimpl.get();
-                c->_pimpl->_thread = std::make_unique<::Assets::CompilationThread>(
-                    [p](::Assets::QueuedCompileOperation& op) { p->PerformCompile(op); });
-            }
-        }
-        c->_pimpl->_thread->Push(backgroundOp);
+		auto& thread = c->_pimpl->GetThread();
+		auto requestName = _requestName;
+		auto typeCode = _typeCode;
+		auto* store = _store;
+		auto compiler = _compiler;
+		thread.Push(
+			backgroundOp,
+			[compilerIndex, compiler, typeCode, requestName, store](::Assets::CompileFuture& op) {
+			auto c = compiler.lock();
+			if (!c) {
+				op.SetState(::Assets::AssetState::Invalid);
+				return;
+			}
+
+			assert(compilerIndex < c->_pimpl->_compilers.size());
+			c->_pimpl->_compilers[compilerIndex].PerformCompile(c->_pimpl->_artifactType, typeCode, MakeStringSection(requestName), op, *store);
+		});
         
         return std::move(backgroundOp);
     }
@@ -452,12 +463,6 @@ namespace Converter
 			MakeFileNameSplitter(processPath).DriveAndPath());
 	}
 	GeneralCompiler::~GeneralCompiler() {}
-
-	void GeneralCompiler::Pimpl::PerformCompile(::Assets::QueuedCompileOperation& op)
-	{
-		assert(op._compilerIndex < _compilers.size());
-		_compilers[op._compilerIndex].PerformCompile(_artifactType, op._typeCode, op._initializer0, op, *op._destinationStore);
-	}
 
 	void GeneralCompiler::Pimpl::DiscoverLibraries()
 	{

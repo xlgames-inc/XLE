@@ -81,7 +81,14 @@ namespace RenderCore { namespace Assets
         std::unique_ptr<::Assets::CompilationThread>	_thread;
 
 		void DiscoverLibraries();
-		void PerformCompile(::Assets::QueuedCompileOperation& op, StringSection<::Assets::ResChar> destinationFile);
+
+		::Assets::CompilationThread& GetThread()
+		{
+			ScopedLock(_threadLock);
+			if (!_thread)
+				_thread = std::make_unique<::Assets::CompilationThread>();
+			return *_thread;
+		}
 
 		Pimpl() : _discoveryDone(false) {}
 		Pimpl(const Pimpl&) = delete;
@@ -380,25 +387,30 @@ namespace RenderCore { namespace Assets
             //
             // However, with the new implementation, we could use one of the global thread pools
             // and it should be ok to queue up multiple compilations at the same time.
-        auto backgroundOp = std::make_shared<::Assets::QueuedCompileOperation>();
+        auto backgroundOp = std::make_shared<::Assets::CompileFuture>();
         backgroundOp->SetInitializer(_requestName.c_str());
-        XlCopyString(backgroundOp->_initializer0, _requestName);
-		::Assets::ResChar intermediateName[MaxPath];
-        MakeIntermediateName(intermediateName, dimof(intermediateName));
-        backgroundOp->_destinationStore = _store;
-        backgroundOp->_typeCode = _typeCode;
-		backgroundOp->_compilerIndex = compilerIndex;
 
-        {
-            ScopedLock(c->_pimpl->_threadLock);
-            if (!c->_pimpl->_thread) {
-                auto* p = c->_pimpl.get();
-				std::string destinationFile = intermediateName;
-                c->_pimpl->_thread = std::make_unique<::Assets::CompilationThread>(
-                    [p, destinationFile](::Assets::QueuedCompileOperation& op) { p->PerformCompile(op, MakeStringSection(destinationFile)); });
-            }
-        }
-        c->_pimpl->_thread->Push(backgroundOp);
+		::Assets::ResChar intermediateName[MaxPath];
+		MakeIntermediateName(intermediateName, dimof(intermediateName));
+
+        auto& thread = c->_pimpl->GetThread();
+		::Assets::rstring destinationFile = intermediateName;
+		auto requestName = _requestName;
+		auto typeCode = _typeCode;
+		auto* store = _store;
+		auto compiler = _compiler;
+        thread.Push(
+			backgroundOp,
+			[compilerIndex, compiler, typeCode, requestName, destinationFile, store](::Assets::CompileFuture& op) {
+				auto c = compiler.lock();
+				if (!c) {
+					op.SetState(::Assets::AssetState::Invalid);
+					return;
+				}
+
+				assert(compilerIndex < c->_pimpl->_compilers.size());
+				c->_pimpl->_compilers[compilerIndex].PerformCompile(typeCode, MakeStringSection(requestName), destinationFile, op, *store);
+			});
         
         return std::move(backgroundOp);
     }
@@ -453,12 +465,6 @@ namespace RenderCore { namespace Assets
 			MakeFileNameSplitter(processPath).DriveAndPath());
 	}
     ModelCompiler::~ModelCompiler() {}
-
-	void ModelCompiler::Pimpl::PerformCompile(::Assets::QueuedCompileOperation& op, StringSection<::Assets::ResChar> destinationFile)
-	{
-		assert(op._compilerIndex < _compilers.size());
-		_compilers[op._compilerIndex].PerformCompile(op._typeCode, op._initializer0, destinationFile, op, *op._destinationStore);
-	}
 
 	void ModelCompiler::Pimpl::DiscoverLibraries()
 	{

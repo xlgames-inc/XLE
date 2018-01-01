@@ -83,7 +83,7 @@ namespace Assets { namespace IntermediateAssets
 			while (d != dend && *s != '\0') *d++ = *s++;
 			s = f;
 			while (d != dend && s != depFileName.end()) *d++ = *s++;
-			*dend = '\0';
+			*d = '\0';
         }
 
     class RetainedFileRecord : public DependencyValidation

@@ -207,27 +207,6 @@ namespace RenderCore { namespace Assets
         return ::Assets::CompilerHelper::CompileResult { std::move(deps), std::string() };
     }
 
-    static void DoCompileMaterialScaffold(::Assets::QueuedCompileOperation& op, StringSection<::Assets::ResChar> destination)
-    {
-        TRY
-        {
-            auto compileResult = CompileMaterialScaffold(op._initializer0, op._initializer1, destination);
-            op._destinationStore->WriteDependencies(
-				destination, MakeStringSection(compileResult._baseDir),
-                MakeIteratorRange(compileResult._dependencies));
-
-            op.SetState(::Assets::AssetState::Ready);
-        } CATCH(const ::Assets::Exceptions::PendingAsset&) {
-            throw;
-        } CATCH(const std::exception& e) {
-			LogWarning << "Got exception while compiling material scaffold (" << e.what() << ")";
-			op.SetState(::Assets::AssetState::Invalid);
-		} CATCH(...) {
-			LogWarning << "Got unknown exception while compiling material scaffold";
-            op.SetState(::Assets::AssetState::Invalid);
-        } CATCH_END
-    }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class MaterialScaffoldCompiler::Pimpl
@@ -235,6 +214,14 @@ namespace RenderCore { namespace Assets
     public:
         Threading::Mutex _threadLock;
         std::unique_ptr<::Assets::CompilationThread> _thread;
+
+		::Assets::CompilationThread& GetThread()
+		{
+			ScopedLock(_threadLock);
+			if (!_thread)
+				_thread = std::make_unique<::Assets::CompilationThread>();
+			return *_thread;
+		}
     };
 
     class MatCompilerMarker : public ::Assets::ICompileMarker
@@ -281,29 +268,42 @@ namespace RenderCore { namespace Assets
         StringMeld<256,ResChar> debugInitializer;
         debugInitializer<< _materialFilename << "(material scaffold)";
 
-        auto backgroundOp = std::make_shared<QueuedCompileOperation>();
+        auto backgroundOp = std::make_shared<::Assets::CompileFuture>();
         backgroundOp->SetInitializer(debugInitializer);
-        XlCopyString(backgroundOp->_initializer0, _materialFilename);
-        XlCopyString(backgroundOp->_initializer1, _modelFilename);
-        backgroundOp->_destinationStore = _store;
 
-		{
-			ScopedLock(c->_pimpl->_threadLock);
-			if (!c->_pimpl->_thread) {
-				auto store = _store;
-				::Assets::rstring materialFilename = _materialFilename;
-				::Assets::rstring modelFilename = _modelFilename;
-				c->_pimpl->_thread = std::make_unique<CompilationThread>(
-					[store, materialFilename, modelFilename](QueuedCompileOperation& op) {
-						::Assets::ResChar intermediateName[MaxPath];
-						store->MakeIntermediateName(intermediateName, dimof(intermediateName), MakeStringSection(materialFilename));
-						StringMeldAppend(intermediateName, &intermediateName[dimof(intermediateName)])
-							<< "-" << MakeFileNameSplitter(modelFilename).FileAndExtension().AsString() << "-resmat";
-						DoCompileMaterialScaffold(op, MakeStringSection(intermediateName));
-					});
-			}
-		}
-		c->_pimpl->_thread->Push(backgroundOp);
+		::Assets::ResChar intermediateName[MaxPath];
+		_store->MakeIntermediateName(intermediateName, dimof(intermediateName), MakeStringSection(_materialFilename));
+		StringMeldAppend(intermediateName, &intermediateName[dimof(intermediateName)])
+			<< "-" << MakeFileNameSplitter(_modelFilename).FileAndExtension().AsString() << "-resmat";
+
+		auto& thread = c->_pimpl->GetThread();
+		::Assets::rstring destinationFile = intermediateName;
+		auto materialFilename = _materialFilename;
+		auto modelFilename = _modelFilename;
+		auto* store = _store;
+		auto compiler = _compiler;
+        thread.Push(
+			backgroundOp,
+			[materialFilename, modelFilename, destinationFile, store](::Assets::CompileFuture& op) {
+				TRY
+				{
+					auto compileResult = CompileMaterialScaffold(MakeStringSection(materialFilename), MakeStringSection(modelFilename), MakeStringSection(destinationFile));
+					store->WriteDependencies(
+						MakeStringSection(destinationFile), MakeStringSection(compileResult._baseDir),
+						MakeIteratorRange(compileResult._dependencies));
+
+					op.SetState(::Assets::AssetState::Ready);
+				} CATCH(const ::Assets::Exceptions::PendingAsset&) {
+					throw;
+				} CATCH(const std::exception& e) {
+					LogWarning << "Got exception while compiling material scaffold (" << e.what() << ")";
+					op.SetState(::Assets::AssetState::Invalid);
+				} CATCH(...) {
+					LogWarning << "Got unknown exception while compiling material scaffold";
+					op.SetState(::Assets::AssetState::Invalid);
+				} CATCH_END
+
+			});
 
         return std::move(backgroundOp);
     }

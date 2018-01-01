@@ -114,23 +114,25 @@ namespace Assets
 		// Copying into another buffer here is required for two reasons:
 		//		1. prepending the root dir
 		//		2. adding a null terminator to the end of the string
-		result.resize(2 + _rootUTF8.size() * sizeof(utf8) + filename.Length() * sizeof(utf8) + sizeof(utf8));
+		result.resize(2 + (_rootUTF8.size() + filename.Length() + 1) * sizeof(utf8));
 		auto* out = AsPointer(result.begin());
 		*(uint16*)out = 1;
-		std::copy(_rootUTF8.begin(), _rootUTF8.end(), (utf8*)PtrAdd(out, 2));
-		std::copy(filename.begin(), filename.end(), (utf8*)PtrAdd(out, 2 + _rootUTF8.size() * sizeof(utf8)));
-		*(utf8*)PtrAdd(out, 2 + _rootUTF8.size() * sizeof(utf8) + filename.Length() * sizeof(utf8)) = 0;
+		utf8* dst = (utf8*)PtrAdd(out, 2);
+		std::copy(_rootUTF8.begin(), _rootUTF8.end(), dst);
+		std::copy(filename.begin(), filename.end(), &dst[_rootUTF8.size()]);
+		dst[_rootUTF8.size() + filename.Length()] = 0;
 		return TranslateResult::Success;
 	}
 
 	auto FileSystem_OS::TryTranslate(Marker& result, StringSection<utf16> filename) -> TranslateResult
 	{
-		result.resize(2 + _rootUTF16.size() * sizeof(utf16) + filename.Length() * sizeof(utf16) + sizeof(utf16));
+		result.resize(2 + (_rootUTF16.size() + filename.Length() + 1) * sizeof(utf16));
 		auto* out = AsPointer(result.begin());
 		*(uint16*)out = 2;
-		std::copy(_rootUTF16.begin(), _rootUTF16.end(), (utf16*)PtrAdd(out, 2));
-		std::copy(filename.begin(), filename.end(), (utf16*)PtrAdd(out, 2 + _rootUTF16.size() * sizeof(utf16)));
-		*(utf16*)PtrAdd(out, 2 + _rootUTF16.size() * sizeof(utf16) + filename.Length() * sizeof(utf16)) = 0;
+		uint16* dst = (uint16*)PtrAdd(out, 2);
+		std::copy(_rootUTF16.begin(), _rootUTF16.end(), dst);
+		std::copy(filename.begin(), filename.end(), &dst[_rootUTF16.size()]);
+		dst[_rootUTF16.size() + filename.Length()] = 0;
 		return TranslateResult::Success;
 	}
 
