@@ -13,6 +13,7 @@ namespace RenderCore
 {
     class MiniInputElementDesc;
     class ConstantBufferView;
+    enum class Format;
 
     class UniformsStream
     {
@@ -22,6 +23,16 @@ namespace RenderCore
         IteratorRange<const Metal::ShaderResourceView*const*> _resources = {};
     };
 
+    class ConstantBufferElement
+    {
+    public:
+        uint64_t    _semanticHash = 0ull;
+        Format      _nativeFormat = Format(0);
+        unsigned    _arrayElementCount = 1u;
+    };
+
+    unsigned CalculateStride(IteratorRange<const ConstantBufferElement*>);
+
     class UniformsStreamInterface
     {
     public:
@@ -29,7 +40,7 @@ namespace RenderCore
         {
         public:
             uint64_t _hashName;
-            IteratorRange<const MiniInputElementDesc*> _elements = {};
+            IteratorRange<const ConstantBufferElement*> _elements = {};
         };
 
         void BindConstantBuffer(unsigned slot, const CBBinding& binding);
@@ -43,7 +54,7 @@ namespace RenderCore
         {
         public:
             uint64_t _hashName;
-            std::vector<MiniInputElementDesc> _elements;
+            std::vector<ConstantBufferElement> _elements;
         };
         using SlotIndex = unsigned;
         std::vector<std::pair<SlotIndex, SavedCBBinding>> _cbBindings;

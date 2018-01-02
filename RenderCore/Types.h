@@ -92,8 +92,8 @@ namespace RenderCore
     class MiniInputElementDesc
     {
     public:
-        uint64				_semanticHash;
-        RenderCore::Format	_nativeFormat;
+        uint64  _semanticHash;
+        Format	_nativeFormat;
         
         static const bool SerializeRaw = true;
     } attribute_packed;

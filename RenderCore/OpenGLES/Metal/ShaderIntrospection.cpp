@@ -2,16 +2,18 @@
 #include "ShaderIntrospection.h"
 #include "Shader.h"
 #include "Format.h"
-#include "IncludeGLES.h"
+#include "../../UniformsStream.h"        // (for ConstantBufferElement)
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Utility/MemoryUtils.h"
+
+#include "IncludeGLES.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
 
     SetUniformCommandGroup ShaderIntrospection::MakeBinding(
         HashType uniformStructName,
-        IteratorRange<const MiniInputElementDesc*> inputElements)
+        IteratorRange<const ConstantBufferElement*> inputElements)
     {
         SetUniformCommandGroup result;
         auto s = LowerBound(_structs, uniformStructName);
@@ -20,14 +22,14 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (const auto& i:s->second._uniforms) {
             auto bindingName = i._bindingName;
             auto b = std::find_if(inputElements.begin(), inputElements.end(),
-                                  [bindingName](const RenderCore::MiniInputElementDesc& e) { return e._semanticHash == bindingName; });
+                                  [bindingName](const ConstantBufferElement& e) { return e._semanticHash == bindingName; });
             if (b != inputElements.end()) {
                 // Check for compatibility of types.
-                assert(i._elementCount == 1); // "Array uniforms within structs not currently supported");
+                assert(i._elementCount == b->_arrayElementCount); // "Array uniforms within structs not currently supported");
                 auto basicType = GLUniformTypeAsTypeDesc(i._type);
-                auto inputBasicType = RenderCore::AsImpliedType(b->_nativeFormat);
+                auto inputBasicType = AsImpliedType(b->_nativeFormat);
                 if (basicType == inputBasicType) {
-                    auto offset = RenderCore::CalculateVertexStride({inputElements.begin(), b}, false);
+                    auto offset = CalculateStride({inputElements.begin(), b});
                     result._commands.push_back({i._location, i._type, (unsigned)i._elementCount, offset });
                 } else {
                     assert(0);
