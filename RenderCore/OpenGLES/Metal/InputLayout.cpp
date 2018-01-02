@@ -180,15 +180,17 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void BoundUniforms::Apply(
         DeviceContext& context,
-        const UniformsStream& stream0, const UniformsStream& stream1, const UniformsStream& stream2) const
+        unsigned streamIdx,
+        const UniformsStream& stream) const
     {
-        const UniformsStream* inputStreams[] = { &stream0, &stream1, &stream2 };
+        // this could be improved by ordering _cbs, _srvs by stream idx -- that way we wouldn't
+        // have to spend so much time searching through for the right bindings
         for (const auto&cb:_cbs) {
-            assert(cb._stream < dimof(inputStreams));
-            assert(cb._slot < inputStreams[cb._stream]->_constantBuffers.size());
+            if (cb._stream != streamIdx) continue;
+            assert(cb._slot < stream._constantBuffers.size());
             assert(!cb._commandGroup._commands.empty());
 
-            const auto& cbv = inputStreams[cb._stream]->_constantBuffers[cb._slot];
+            const auto& cbv = stream._constantBuffers[cb._slot];
             const auto& pkt = cbv._packet;
             if (pkt.size() != 0) {
                 Bind(context, cb._commandGroup, MakeIteratorRange(pkt.begin(), pkt.end()));
@@ -200,9 +202,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
 
         for (const auto&srv:_srvs) {
-            assert(srv._stream < dimof(inputStreams));
-            assert(srv._slot < inputStreams[srv._stream]->_resources.size());
-            const auto& res = *inputStreams[srv._stream]->_resources[srv._slot];
+            if (srv._stream != streamIdx) continue;
+            assert(srv._slot < stream._resources.size());
+            const auto& res = *stream._resources[srv._slot];
             glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
             glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
         }
@@ -210,7 +212,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         // Commit changes to texture uniforms
         // This must be done separately to the texture binding, because when using array uniforms,
         // a single uniform set operation can be used for multiple texture bindings
-        if (!_textureAssignmentCommands._commands.empty())
+        if (streamIdx == 0 && !_textureAssignmentCommands._commands.empty())
             Bind(context, _textureAssignmentCommands, MakeIteratorRange(_textureAssignmentByteData));
     }
 
@@ -231,12 +233,47 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static bool HasCBBinding(IteratorRange<const UniformsStreamInterface**> interfaces, uint64_t hash)
+    {
+        for (auto interf:interfaces) {
+            auto i = std::find_if(
+                interf->_cbBindings.begin(),
+                interf->_cbBindings.end(),
+                [hash](const std::pair<unsigned, UniformsStreamInterface::SavedCBBinding>& b) {
+                    return b.second._hashName == hash;
+                });
+            if (i!=interf->_cbBindings.end())
+                return true;
+        }
+        return false;
+    }
+
+    static bool HasSRVBinding(IteratorRange<const UniformsStreamInterface**> interfaces, uint64_t hash)
+    {
+        for (auto interf:interfaces) {
+            auto i = std::find_if(
+                interf->_srvBindings.begin(),
+                interf->_srvBindings.end(),
+                [hash](const std::pair<unsigned, uint64_t>& b) {
+                    return b.second == hash;
+                });
+            if (i!=interf->_srvBindings.end())
+                return true;
+        }
+        return false;
+    }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
     BoundUniforms::BoundUniforms(
         const ShaderProgram& shader,
         const IPipelineLayout& pipelineLayout,
         const UniformsStreamInterface& interface0,
         const UniformsStreamInterface& interface1,
-        const UniformsStreamInterface& interface2)
+        const UniformsStreamInterface& interface2,
+        const UniformsStreamInterface& interface3)
     {
         for (auto&v:_boundUniformBufferSlots) v = 0u;
         for (auto&v:_boundResourceSlots) v = 0u;
@@ -248,12 +285,16 @@ namespace RenderCore { namespace Metal_OpenGLES
         struct UniformSet { int _location; unsigned _index, _value; GLenum _type; int _elementCount; };
         std::vector<UniformSet> uniformSets;
 
-        const UniformsStreamInterface* inputInterface[] = { &interface0, &interface1, &interface2 };
+        const UniformsStreamInterface* inputInterface[] = { &interface0, &interface1, &interface2, &interface3 };
         auto streamCount = (unsigned)dimof(inputInterface);
         for (unsigned s=0; s<streamCount; ++s) {
             const UniformsStreamInterface& interf = *inputInterface[s];
             for (unsigned b=0; b<interf._cbBindings.size(); ++b) {
                 const auto& binding = interf._cbBindings[b];
+
+                // ensure it's not shadowed by a future binding
+                if (HasCBBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding.second._hashName)) continue;
+
                 auto cmdGroup = introspection.MakeBinding(binding.second._hashName, MakeIteratorRange(binding.second._elements));
                 if (!cmdGroup._commands.empty()) {
                     _cbs.emplace_back(CB{s, binding.first, std::move(cmdGroup)});
@@ -263,6 +304,10 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             for (unsigned b=0; b<interf._srvBindings.size(); ++b) {
                 const auto& binding = interf._srvBindings[b];
+
+                // ensure it's not shadowed by a future binding
+                if (HasSRVBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding.second)) continue;
+
                 auto uniform = introspection.FindUniform(binding.second);
                 if (uniform._elementCount != 0) {
                     // assign a texture unit for this binding

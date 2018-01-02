@@ -49,19 +49,19 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         void Apply(
             DeviceContext& context,
-            const UniformsStream& stream0, 
-            const UniformsStream& stream1 = {},
-            const UniformsStream& stream2 = {}) const;
+            unsigned streamIdx,
+            const UniformsStream& stream) const;
 
-        uint64_t _boundUniformBufferSlots[3];
-        uint64_t _boundResourceSlots[3];
+        uint64_t _boundUniformBufferSlots[4];
+        uint64_t _boundResourceSlots[4];
 
         BoundUniforms(
             const ShaderProgram& shader,
             const IPipelineLayout& pipelineLayout,
             const UniformsStreamInterface& interface0 = {},
             const UniformsStreamInterface& interface1 = {},
-            const UniformsStreamInterface& interface2 = {});
+            const UniformsStreamInterface& interface2 = {},
+            const UniformsStreamInterface& interface3 = {});
         ~BoundUniforms();
     private:
         struct CB { unsigned _stream, _slot; SetUniformCommandGroup _commandGroup; };
