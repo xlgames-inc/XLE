@@ -445,14 +445,14 @@ namespace SceneEngine
             _pimpl->_cfg._simGridDims);
         matParam.SetParameter((const utf8*)"MAT_DO_REFRACTION", int(refractionsEnable));
         matParam.SetParameter((const utf8*)"SKY_PROJECTION", skyProjType);
-        TechniqueMaterial simMaterial(
+        ShaderVariationSet simMaterial(
             InputLayout(nullptr, 0),
             {   ObjectCB::LocalTransform,
                 Hash64("ShallowWaterCellConstants"), Hash64("ShallowWaterLighting") },
             matParam);
 
         matParam.SetParameter((const utf8*)"SHALLOW_WATER_IS_SIMULATED", 0);
-        TechniqueMaterial unsimMaterial(
+        ShaderVariationSet unsimMaterial(
             InputLayout(nullptr, 0),
             { ObjectCB::LocalTransform, Hash64("ShallowWaterLighting") },
             matParam);

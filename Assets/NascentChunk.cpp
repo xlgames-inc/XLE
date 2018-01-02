@@ -4,6 +4,7 @@
 
 #include "NascentChunk.h"
 #include "BlockSerializer.h"
+#include "IFileSystem.h"
 
 namespace Assets
 {
@@ -28,5 +29,38 @@ namespace Assets
 		size_t size = Serialization::Block_GetSize(block.get());
 		return AsBlob(MakeIteratorRange(block.get(), PtrAdd(block.get(), size)));
 	}
+
+	void BuildChunkFile(
+        ::Assets::IFileInterface& file,
+        IteratorRange<::Assets::NascentChunk*> chunks,
+        const ConsoleRig::LibVersionDesc& versionInfo,
+        std::function<bool(const ::Assets::NascentChunk&)> predicate)
+    {
+        unsigned chunksForMainFile = 0;
+		for (const auto& c:chunks)
+            if (!predicate || predicate(c))
+                ++chunksForMainFile;
+
+        using namespace Serialization::ChunkFile;
+        auto header = MakeChunkFileHeader(
+            chunksForMainFile, 
+            versionInfo._versionString, versionInfo._buildDateString);
+        file.Write(&header, sizeof(header), 1);
+
+        unsigned trackingOffset = unsigned(file.TellP() + sizeof(ChunkHeader) * chunksForMainFile);
+        for (const auto& c:chunks)
+            if (!predicate || predicate(c)) {
+                auto hdr = c._hdr;
+                hdr._fileOffset = trackingOffset;
+				hdr._size = (Serialization::ChunkFile::SizeType)c._data->size();
+                file.Write(&hdr, sizeof(hdr), 1);
+                trackingOffset += hdr._size;
+            }
+
+        for (const auto& c:chunks)
+            if (!predicate || predicate(c))
+                file.Write(AsPointer(c._data->begin()), c._data->size(), 1);
+    }
+
 }
 

@@ -7,6 +7,7 @@
 #include "AssetsCore.h"
 #include "ChunkFile.h"
 #include "BlockSerializer.h"
+#include "../ConsoleRig/AttachableLibrary.h"	// (for LibVersionDesc)
 #include "../Utility/IteratorUtils.h"
 #include "../Core/Prefix.h"
 #include <vector>
@@ -43,4 +44,10 @@ namespace Assets
 		::Serialize(serializer, obj);
 		return AsBlob(serializer);
 	}
+
+	void BuildChunkFile(
+		IFileInterface& file,
+		IteratorRange<NascentChunk*> chunks,
+		const ConsoleRig::LibVersionDesc& versionInfo,
+		std::function<bool(const ::Assets::NascentChunk&)> predicate = {});
 }

@@ -6,7 +6,6 @@
 
 #include "ModelCompiler.h"
 #include "../../Assets/AssetUtils.h"
-#include "../../Assets/CompilerHelper.h"
 #include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/NascentChunk.h"
@@ -97,37 +96,6 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void BuildChunkFile(
-        ::Assets::IFileInterface& file,
-        IteratorRange<::Assets::NascentChunk*>& chunks,
-        const ConsoleRig::LibVersionDesc& versionInfo,
-        std::function<bool(const ::Assets::NascentChunk&)> predicate)
-    {
-        unsigned chunksForMainFile = 0;
-		for (const auto& c:chunks)
-            if (predicate(c))
-                ++chunksForMainFile;
-
-        using namespace Serialization::ChunkFile;
-        auto header = MakeChunkFileHeader(
-            chunksForMainFile, 
-            versionInfo._versionString, versionInfo._buildDateString);
-        file.Write(&header, sizeof(header), 1);
-
-        unsigned trackingOffset = unsigned(file.TellP() + sizeof(ChunkHeader) * chunksForMainFile);
-        for (const auto& c:chunks)
-            if (predicate(c)) {
-                auto hdr = c._hdr;
-                hdr._fileOffset = trackingOffset;
-                file.Write(&hdr, sizeof(c._hdr), 1);
-                trackingOffset += hdr._size;
-            }
-
-        for (const auto& c:chunks)
-            if (predicate(c))
-                file.Write(AsPointer(c._data->begin()), c._data->size(), 1);
-    }
-
     static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
 
     static void SerializeToFile(
@@ -139,7 +107,7 @@ namespace RenderCore { namespace Assets
             // the main output file from chunks that will be written to
             // a metrics file.
 
-        BuildChunkFile(mainFile, chunks, versionInfo,
+        ::Assets::BuildChunkFile(mainFile, chunks, versionInfo,
             [](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
 	}
 

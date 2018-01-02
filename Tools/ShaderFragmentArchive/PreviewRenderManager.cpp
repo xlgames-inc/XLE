@@ -25,7 +25,7 @@
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"   // for aligning preview camera to model
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
+#include "../../RenderCore/Techniques/ShaderVariationSet.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 
@@ -77,7 +77,7 @@ namespace ShaderPatcherLayer
             RenderCore::Metal::DeviceContext& metalContext,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
-            const RenderCore::Assets::ResolvedMaterial& mat,
+            const RenderCore::Techniques::Material& mat,
             const SystemConstants& sysConstants,
             const ::Assets::DirectorySearchRules& searchRules,
             const RenderCore::InputLayout& geoInputLayout);
@@ -127,7 +127,7 @@ namespace ShaderPatcherLayer
         RenderCore::Metal::DeviceContext& metalContext,
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
-        const RenderCore::Assets::ResolvedMaterial& mat,
+        const RenderCore::Techniques::Material& mat,
         const SystemConstants& sysConstants,
         const ::Assets::DirectorySearchRules& searchRules,
         const RenderCore::InputLayout& geoInputLayout)

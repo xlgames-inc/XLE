@@ -9,7 +9,7 @@
 #include "DynamicImposters.h"
 #include "PreparedScene.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
-#include "../RenderCore/Assets/Material.h"
+#include "../RenderCore/Assets/MaterialScaffold.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
 
 #include "../Assets/CompileAndAsyncManager.h"

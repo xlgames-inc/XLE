@@ -124,12 +124,12 @@ namespace RenderCore { namespace Techniques
     TechniqueInterface::~TechniqueInterface()
     {}
 
-    TechniqueInterface::TechniqueInterface(TechniqueInterface&& moveFrom)
+    TechniqueInterface::TechniqueInterface(TechniqueInterface&& moveFrom) never_throws
     {
         _pimpl = std::move(moveFrom._pimpl);
     }
 
-    TechniqueInterface&TechniqueInterface::operator=(TechniqueInterface&& moveFrom)
+    TechniqueInterface&TechniqueInterface::operator=(TechniqueInterface&& moveFrom) never_throws
     {
         _pimpl = std::move(moveFrom._pimpl);
         return *this;

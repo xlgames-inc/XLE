@@ -44,7 +44,7 @@ namespace SceneEngine
         Format _indexFormat;
         unsigned _indexCount;
 
-        Techniques::TechniqueMaterial _basicMaterial;
+        Techniques::ShaderVariationSet _basicMaterial;
         RenderCore::SharedPkt _materialConstants;
 
         std::shared_ptr<::Assets::DependencyValidation> _dependencyValidation;
@@ -289,7 +289,7 @@ namespace SceneEngine
         pimpl->_indexCount = (unsigned)ibDataCount;
 
         using namespace Techniques;
-        pimpl->_basicMaterial = TechniqueMaterial(
+        pimpl->_basicMaterial = ShaderVariationSet(
             GlobalInputLayouts::PN, 
             { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
             ParameterBox());
@@ -321,7 +321,7 @@ namespace SceneEngine
             using namespace RenderCore;
             using namespace RenderCore::Techniques;
 
-            TechniqueMaterial material(
+            ShaderVariationSet material(
                 GlobalInputLayouts::PN, 
                 { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
                 ParameterBox());

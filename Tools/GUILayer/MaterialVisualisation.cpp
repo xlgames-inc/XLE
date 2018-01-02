@@ -12,7 +12,7 @@
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
+#include "../../RenderCore/Techniques/ShaderVariationSet.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/StringFormat.h"

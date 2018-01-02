@@ -14,9 +14,31 @@
 
 namespace RenderCore { namespace Techniques
 {
+	Material::Material() { _techniqueConfig[0] = '\0'; }
+
+	Material::Material(Material&& moveFrom) never_throws
+	: _bindings(std::move(moveFrom._bindings))
+	, _matParams(std::move(moveFrom._matParams))
+	, _stateSet(moveFrom._stateSet)
+	, _constants(std::move(moveFrom._constants))
+	{
+		XlCopyString(_techniqueConfig, moveFrom._techniqueConfig);
+	}
+
+	Material& Material::operator=(Material&& moveFrom) never_throws
+	{
+		_bindings = std::move(moveFrom._bindings);
+		_matParams = std::move(moveFrom._matParams);
+		_stateSet = moveFrom._stateSet;
+		_constants = std::move(moveFrom._constants);
+		XlCopyString(_techniqueConfig, moveFrom._techniqueConfig);
+		return *this;
+	}
+
+
     static Techniques::TechniqueInterface MakeTechInterface(
         const InputLayout& inputLayout,
-        const std::initializer_list<uint64>& objectCBs)
+        const std::initializer_list<uint64_t>& objectCBs)
     {
         Techniques::TechniqueInterface techniqueInterface(inputLayout);
         Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
@@ -48,36 +70,21 @@ namespace RenderCore { namespace Techniques
         return std::move(result);
     }
 
-    TechniqueMaterial::TechniqueMaterial(
+    ShaderVariationSet::ShaderVariationSet(
         const InputLayout& inputLayout,
-        const std::initializer_list<uint64>& objectCBs,
+        const std::initializer_list<uint64_t>& objectCBs,
         ParameterBox materialParameters)
     : _materialParameters(std::move(materialParameters))
     , _techniqueInterface(MakeTechInterface(inputLayout, objectCBs))
     , _geometryParameters(TechParams_SetGeo(inputLayout))
     {}
 
-    TechniqueMaterial::TechniqueMaterial() {}
-    TechniqueMaterial::TechniqueMaterial(TechniqueMaterial&& moveFrom)
-    : _materialParameters(std::move(moveFrom._materialParameters))
-    , _geometryParameters(std::move(moveFrom._geometryParameters))
-    , _techniqueInterface(std::move(moveFrom._techniqueInterface))
-    {
-    }
+    ShaderVariationSet::ShaderVariationSet() {}
+    ShaderVariationSet::~ShaderVariationSet() {}
 
-    const TechniqueMaterial& TechniqueMaterial::operator=(TechniqueMaterial&& moveFrom)
-    {
-        _materialParameters = std::move(moveFrom._materialParameters);
-        _geometryParameters = std::move(moveFrom._geometryParameters);
-        _techniqueInterface = std::move(moveFrom._techniqueInterface);
-        return *this;
-    }
-
-    TechniqueMaterial::~TechniqueMaterial() {}
-
-    auto TechniqueMaterial::FindVariation(
+    auto ShaderVariationSet::FindVariation(
         ParsingContext& parsingContext,
-        unsigned techniqueIndex, StringSection<::Assets::ResChar> techniqueConfig) const -> Variation
+        unsigned techniqueIndex, StringSection<> techniqueConfig) const -> Variation
     {
         const ParameterBox* state[] = {
             &_geometryParameters, 
@@ -95,7 +102,7 @@ namespace RenderCore { namespace Techniques
         return result;
     }
 
-    const PredefinedCBLayout& TechniqueMaterial::GetCBLayout(StringSection<::Assets::ResChar> techniqueConfigName)
+    const PredefinedCBLayout& ShaderVariationSet::GetCBLayout(StringSection<> techniqueConfigName)
     {
         auto& techConfig = ::Assets::GetAssetDep<ShaderType>(techniqueConfigName);
         return techConfig.TechniqueCBLayout();

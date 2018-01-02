@@ -7,7 +7,6 @@
 #include "GeneralCompiler.h"
 #include "../../Assets/CompilationThread.h"
 #include "../../Assets/AssetUtils.h"
-#include "../../Assets/CompilerHelper.h"
 #include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/NascentChunk.h"

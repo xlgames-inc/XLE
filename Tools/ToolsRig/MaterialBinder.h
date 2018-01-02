@@ -12,8 +12,7 @@
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 
-namespace RenderCore { namespace Assets { class ResolvedMaterial; } }
-namespace RenderCore { namespace Techniques { class ParsingContext; class PredefinedCBLayout; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; class PredefinedCBLayout; class Material;  } }
 namespace Assets { class DirectorySearchRules; }
 
 namespace ToolsRig
@@ -43,7 +42,7 @@ namespace ToolsRig
             RenderCore::Metal::DeviceContext& metalContext,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
-            const RenderCore::Assets::ResolvedMaterial& mat,
+            const RenderCore::Techniques::Material& mat,
             const SystemConstants& sysConstants,
             const ::Assets::DirectorySearchRules& searchRules,
             const RenderCore::InputLayout& geoInputLayout) = 0;
@@ -53,7 +52,7 @@ namespace ToolsRig
         static void BindConstantsAndResources(
             RenderCore::Metal::DeviceContext& metalContext,
             RenderCore::Techniques::ParsingContext& parsingContext,
-            const RenderCore::Assets::ResolvedMaterial& mat,
+            const RenderCore::Techniques::Material& mat,
             const SystemConstants& sysConstants,
             const ::Assets::DirectorySearchRules& searchRules,
 			const RenderCore::Metal::BoundUniforms& boundLayout,
@@ -67,7 +66,7 @@ namespace ToolsRig
             RenderCore::Metal::DeviceContext& metalContext,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
-            const RenderCore::Assets::ResolvedMaterial& mat,
+            const RenderCore::Techniques::Material& mat,
             const SystemConstants& sysConstants,
             const ::Assets::DirectorySearchRules& searchRules,
             const RenderCore::InputLayout& geoInputLayout);

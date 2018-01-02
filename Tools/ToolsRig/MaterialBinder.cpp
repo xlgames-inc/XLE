@@ -10,7 +10,7 @@
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
+#include "../../RenderCore/Techniques/ShaderVariationSet.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
@@ -40,7 +40,7 @@ namespace ToolsRig
         RenderCore::Metal::DeviceContext& metalContext,
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
-        const RenderCore::Assets::ResolvedMaterial& mat,
+        const RenderCore::Techniques::Material& mat,
         const SystemConstants& sysConstants,
         const ::Assets::DirectorySearchRules& searchRules,
         const RenderCore::InputLayout& geoInputLayout)
@@ -49,7 +49,7 @@ namespace ToolsRig
         using namespace RenderCore::Techniques;
 
         ParameterBox materialParameters = RenderCore::Assets::TechParams_SetResHas(mat._matParams, mat._bindings, searchRules);
-        TechniqueMaterial material(geoInputLayout, {}, materialParameters);
+        ShaderVariationSet material(geoInputLayout, {}, materialParameters);
 
         auto variation = material.FindVariation(parserContext, techniqueIndex, _shaderTypeName.c_str());
         if (variation._shader._shaderProgram == nullptr) {
@@ -342,7 +342,7 @@ namespace ToolsRig
     void IMaterialBinder::BindConstantsAndResources(
         RenderCore::Metal::DeviceContext& metalContext,
         RenderCore::Techniques::ParsingContext& parsingContext,
-        const RenderCore::Assets::ResolvedMaterial& mat,
+        const RenderCore::Techniques::Material& mat,
         const SystemConstants& sysConstants,
         const ::Assets::DirectorySearchRules& searchRules,
 		const RenderCore::Metal::BoundUniforms& srcLayout,

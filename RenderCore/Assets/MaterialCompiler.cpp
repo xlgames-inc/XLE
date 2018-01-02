@@ -5,37 +5,28 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialCompiler.h"
-#include "ModelImmutableData.h"     // for MaterialImmutableData
-#include "Material.h"
 #include "RawMaterial.h"
+#include "MaterialScaffold.h"
+#include "../Techniques/TechniqueMaterial.h"
 #include "../../Assets/CompilationThread.h"
-#include "../../Assets/AssetUtils.h"
+#include "../../Assets/Assets.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
-#include "../../Assets/ChunkFileContainer.h"
-#include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/ConfigFileContainer.h"
-#include "../../Assets/CompilerHelper.h"
-#include "../../Assets/IFileSystem.h"
-#include "../../Assets/DeferredConstruction.h"
-#include "../../Assets/Assets.h"
+#include "../../Assets/MemoryFile.h"
+#include "../../Assets/NascentChunk.h"
+#include "../../Assets/InvalidAssetManager.h"
+#include "../../Assets/AssetServices.h"
 #include "../../ConsoleRig/Log.h"
-#include "../../Utility/IteratorUtils.h"
-#include "../../Utility/Streams/FileUtils.h"
-#include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
+#include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"
-#include "../../Utility/ExceptionLogging.h"
-#include "../../Utility/Conversion.h"
-#include "../../Utility/IteratorUtils.h"
 
 namespace RenderCore { extern char VersionString[]; extern char BuildDateString[]; }
 
 namespace RenderCore { namespace Assets
 {
-	static const unsigned ResolvedMat_ExpectedVersion = 1;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class RawMatConfigurations
@@ -77,7 +68,6 @@ namespace RenderCore { namespace Assets
         _validationCallback = depVal;
     }
 
-
     static void AddDep(
         std::vector<::Assets::DependentFileState>& deps,
         StringSection<::Assets::ResChar> newDep)
@@ -92,119 +82,165 @@ namespace RenderCore { namespace Assets
             deps.push_back(depState);
     }
 
-    static ::Assets::CompilerHelper::CompileResult CompileMaterialScaffold(
-        StringSection<::Assets::ResChar> sourceMaterial, StringSection<::Assets::ResChar> sourceModel,
-        StringSection<::Assets::ResChar> destination)
+	static void MergeIn_Stall(
+		Techniques::Material& result,
+		StringSection<> sourceMaterialName,
+        const ::Assets::DirectorySearchRules& searchRules,
+        std::vector<::Assets::DependentFileState>& deps)
     {
-            // Parameters must be stripped off the source model filename before we get here.
-            // the parameters are irrelevant to the compiler -- so if they stay on the request
-            // name, will we end up with multiple assets that are equivalent
-        assert(MakeFileNameSplitter(sourceModel).ParametersWithDivider().IsEmpty());
 
-            // note -- we can throw pending & invalid from here...
-        auto& modelMat = ::Assets::GetAssetComp<RawMatConfigurations>(sourceModel);
+            // resolve all of the inheritance options and generate a final 
+            // ResolvedMaterial object. We need to start at the bottom of the
+            // inheritance tree, and merge in new parameters as we come across them.
+
+			// we still need to add a dependency, even if it's a missing file
+		AddDep(deps, MakeFileNameSplitter(sourceMaterialName).FullFilename());
+
+		auto dependencyMat = ::Assets::MakeAsset<RawMaterial>(sourceMaterialName);
+		auto state = dependencyMat->StallWhilePending();
+		if (state == ::Assets::AssetState::Ready) {
+			auto source = dependencyMat->Actualize();
+
+			auto childSearchRules = source->GetDirectorySearchRules();
+			childSearchRules.Merge(searchRules);
+
+			for (const auto& child: source->ResolveInherited(searchRules))
+				MergeIn_Stall(result, child, childSearchRules, deps);
+
+			source->MergeInto(result);
+		}
+    }
+
+    static void CompileMaterialScaffold(
+        StringSection<::Assets::ResChar> sourceMaterial, StringSection<::Assets::ResChar> sourceModel,
+        StringSection<::Assets::ResChar> destinationFile,
+		::Assets::CompileFuture& compileMarker,
+		const ::Assets::IntermediateAssets::Store& destinationStore)
+    {
+		TRY
+		{
+
+				// Parameters must be stripped off the source model filename before we get here.
+				// the parameters are irrelevant to the compiler -- so if they stay on the request
+				// name, will we end up with multiple assets that are equivalent
+			assert(MakeFileNameSplitter(sourceModel).ParametersWithDivider().IsEmpty());
+
+			auto modelMatFuture = ::Assets::MakeAsset<RawMatConfigurations>(sourceModel);
+			auto modelMatState = modelMatFuture->StallWhilePending();
+			if (modelMatState == ::Assets::AssetState::Invalid)
+				Throw(::Exceptions::BasicLabel("Got invalid asset while loading material settings for model file (%s)", sourceModel.AsString().c_str()));
+			auto modelMat = modelMatFuture->Actualize();
             
-        std::vector<::Assets::DependentFileState> deps;
+			std::vector<::Assets::DependentFileState> deps;
 
-            //  for each configuration, we want to build a resolved material
-            //  Note that this is a bit crazy, because we're going to be loading
-            //  and re-parsing the same files over and over again!
-        SerializableVector<std::pair<MaterialGuid, ResolvedMaterial>> resolved;
-        SerializableVector<std::pair<MaterialGuid, std::string>> resolvedNames;
-        resolved.reserve(modelMat._configurations.size());
+				//  for each configuration, we want to build a resolved material
+				//  Note that this is a bit crazy, because we're going to be loading
+				//  and re-parsing the same files over and over again!
+			SerializableVector<std::pair<MaterialGuid, Techniques::Material>> resolved;
+			SerializableVector<std::pair<MaterialGuid, std::string>> resolvedNames;
+			resolved.reserve(modelMat->_configurations.size());
 
-        auto searchRules = ::Assets::DefaultDirectorySearchRules(sourceModel);
-        ::Assets::ResChar resolvedSourceMaterial[MaxPath];
-        ResolveMaterialFilename(resolvedSourceMaterial, dimof(resolvedSourceMaterial), searchRules, sourceMaterial);
-        searchRules.AddSearchDirectoryFromFilename(resolvedSourceMaterial);
+			auto searchRules = ::Assets::DefaultDirectorySearchRules(sourceModel);
+			::Assets::ResChar resolvedSourceMaterial[MaxPath];
+			ResolveMaterialFilename(resolvedSourceMaterial, dimof(resolvedSourceMaterial), searchRules, sourceMaterial);
+			searchRules.AddSearchDirectoryFromFilename(resolvedSourceMaterial);
 
-        AddDep(deps, sourceModel);        // we need need a dependency (even if it's a missing file)
+			AddDep(deps, sourceModel);        // we need need a dependency (even if it's a missing file)
 
-        using Meld = StringMeld<MaxPath, ::Assets::ResChar>;
-        for (auto i=modelMat._configurations.cbegin(); i!=modelMat._configurations.cend(); ++i) {
+			using Meld = StringMeld<MaxPath, ::Assets::ResChar>;
+			for (const auto& cfg:modelMat->_configurations) {
 
-            ResolvedMaterial resMat;
-            std::basic_stringstream<::Assets::ResChar> resName;
-            auto guid = MakeMaterialGuid(MakeStringSection(*i));
+				Techniques::Material resMat;
+				std::basic_stringstream<::Assets::ResChar> resName;
+				auto guid = MakeMaterialGuid(MakeStringSection(cfg));
 
-                // Our resolved material comes from 3 separate inputs:
-                //  1) model:configuration
-                //  2) material:*
-                //  3) material:configuration
-                //
-                // Some material information is actually stored in the model
-                // source data. This is just for art-pipeline convenience --
-                // generally texture assignments (and other settings) are 
-                // set in the model authoring tool (eg, 3DS Max). The .material
-                // files actually only provide overrides for settings that can't
-                // be set within 3rd party tools.
-                // 
-                // We don't combine the model and material information until
-                // this step -- this gives us some flexibility to use the same
-                // model with different material files. The material files can
-                // also override settings from 3DS Max (eg, change texture assignments
-                // etc). This provides a path for reusing the same model with
-                // different material settings (eg, when we want one thing to have
-                // a red version and a blue version)
+					// Our resolved material comes from 3 separate inputs:
+					//  1) model:configuration
+					//  2) material:*
+					//  3) material:configuration
+					//
+					// Some material information is actually stored in the model
+					// source data. This is just for art-pipeline convenience --
+					// generally texture assignments (and other settings) are 
+					// set in the model authoring tool (eg, 3DS Max). The .material
+					// files actually only provide overrides for settings that can't
+					// be set within 3rd party tools.
+					// 
+					// We don't combine the model and material information until
+					// this step -- this gives us some flexibility to use the same
+					// model with different material files. The material files can
+					// also override settings from 3DS Max (eg, change texture assignments
+					// etc). This provides a path for reusing the same model with
+					// different material settings (eg, when we want one thing to have
+					// a red version and a blue version)
             
-                // resolve in model:configuration
-            auto configName = Conversion::Convert<::Assets::rstring>(*i);
-            Meld meld; meld << sourceModel << ":" << configName;
-            resName << meld;
-            auto& rawMat = RawMaterial::GetAsset(meld);
-            auto subMatState = rawMat.TryResolve(resMat, searchRules, &deps);
+					// resolve in model:configuration
+				Meld meld; meld << sourceModel << ":" << Conversion::Convert<::Assets::rstring>(cfg);
+				resName << meld;
 
-			// Allow both "invalid" and "ready" assets to continue on. Invalid assets are
-			// treated as empty materials
-			if (subMatState == ::Assets::AssetState::Pending)
-				Throw(::Assets::Exceptions::PendingAsset(meld, "Sub material is pending"));
+				MergeIn_Stall(resMat, meld.AsStringSection(), searchRules, deps);
 
-            if (resolvedSourceMaterial[0] != '\0') {
-                AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
+				if (resolvedSourceMaterial[0] != '\0') {
+						// resolve in material:*
+					Meld starInit; starInit << resolvedSourceMaterial << ":*";
+					Meld configInit; configInit << resolvedSourceMaterial << ":" << Conversion::Convert<::Assets::rstring>(cfg);
+                
+					MergeIn_Stall(resMat, starInit.AsStringSection(), searchRules, deps);
+					MergeIn_Stall(resMat, configInit.AsStringSection(), searchRules, deps);
 
-                    // resolve in material:*
-                Meld starInit; starInit << resolvedSourceMaterial << ":*";
-                resName << ";" << starInit;
-                auto& starMat = RawMaterial::GetAsset(starInit);
-				subMatState = starMat.TryResolve(resMat, searchRules, &deps);
-				if (subMatState == ::Assets::AssetState::Pending)
-					Throw(::Assets::Exceptions::PendingAsset(starInit, "Sub material is pending"));
+					resName << ";" << starInit << ";" << configInit;
+				}
 
-                    // resolve in material:configuration
-                Meld configInit; configInit << resolvedSourceMaterial << ":" << Conversion::Convert<::Assets::rstring>(*i);
-                resName << ";" << configInit;
-                auto& configMat = RawMaterial::GetAsset(configInit);
-				subMatState = configMat.TryResolve(resMat, searchRules, &deps);
-				if (subMatState == ::Assets::AssetState::Pending)
-					Throw(::Assets::Exceptions::PendingAsset(configInit, "Sub material is pending"));
-            }
+				resolved.push_back(std::make_pair(guid, std::move(resMat)));
+				resolvedNames.push_back(std::make_pair(guid, resName.str()));
+			}
 
-            resolved.push_back(std::make_pair(guid, std::move(resMat)));
-            resolvedNames.push_back(std::make_pair(guid, resName.str()));
-        }
+			std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, Techniques::Material>());
+			std::sort(resolvedNames.begin(), resolvedNames.end(), CompareFirst<MaterialGuid, std::string>());
 
-        std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, ResolvedMaterial>());
-        std::sort(resolvedNames.begin(), resolvedNames.end(), CompareFirst<MaterialGuid, std::string>());
+				// "resolved" is now actually the data we want to write out
+			Serialization::NascentBlockSerializer blockSerializer;
+			::Serialize(blockSerializer, resolved);
+			::Serialize(blockSerializer, resolvedNames);
 
-            // "resolved" is now actually the data we want to write out
-        {
-            Serialization::NascentBlockSerializer blockSerializer;
-            ::Serialize(blockSerializer, resolved);
-            ::Serialize(blockSerializer, resolvedNames);
+			::Assets::NascentChunk chunks[] = {
+				{
+					Serialization::ChunkFile::ChunkHeader{ ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion, Meld() << sourceModel << "&" << sourceMaterial },
+					::Assets::AsBlob(blockSerializer)
+				}
+			};
 
-            auto blockSize = blockSerializer.Size();
-            auto block = blockSerializer.AsMemoryBlock();
+			auto mainBlob = std::make_shared<std::vector<uint8_t>>();
+			auto mainFile = ::Assets::CreateMemoryFile(mainBlob);
 
-            Serialization::ChunkFile::SimpleChunkFileWriter output(
-				::Assets::MainFileSystem::OpenBasicFile(destination, "wb"),
-                1, VersionString, BuildDateString);
+			::Assets::BuildChunkFile(
+				*mainFile, MakeIteratorRange(chunks),
+				{ RenderCore::VersionString, RenderCore::BuildDateString });
 
-            output.BeginChunk(ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion, Meld() << sourceModel << "&" << sourceMaterial);
-            output.Write(block.get(), 1, blockSize);
-            output.FinishCurrentChunk();
-        }
+			{
+				auto dst = ::Assets::MainFileSystem::OpenFileInterface(destinationFile, "wb");
+				dst->Write(mainBlob->data(), mainBlob->size());
+			}
 
-        return ::Assets::CompilerHelper::CompileResult { std::move(deps), std::string() };
+			auto depVal = destinationStore.WriteDependencies(destinationFile, {}, MakeIteratorRange(deps));
+			compileMarker.AddArtifact(
+				"main",
+				std::make_shared<::Assets::BlobArtifact>(mainBlob, nullptr, depVal));
+
+			compileMarker.SetState(::Assets::AssetState::Ready);
+
+		} CATCH(const std::exception& e) {
+			LogAlwaysError << "Caught exception while performing material compile. Exception details as follows:";
+			LogAlwaysError << e.what();
+			if (::Assets::Services::GetInvalidAssetMan())
+				::Assets::Services::GetInvalidAssetMan()->MarkInvalid(compileMarker.Initializer(), e.what());
+			compileMarker.SetState(::Assets::AssetState::Invalid);
+		} CATCH(...) {
+			if (::Assets::Services::GetInvalidAssetMan())
+				::Assets::Services::GetInvalidAssetMan()->MarkInvalid(compileMarker.Initializer(), "Unknown error");
+			compileMarker.SetState(::Assets::AssetState::Invalid);
+		} CATCH_END
+        
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -285,24 +321,9 @@ namespace RenderCore { namespace Assets
         thread.Push(
 			backgroundOp,
 			[materialFilename, modelFilename, destinationFile, store](::Assets::CompileFuture& op) {
-				TRY
-				{
-					auto compileResult = CompileMaterialScaffold(MakeStringSection(materialFilename), MakeStringSection(modelFilename), MakeStringSection(destinationFile));
-					store->WriteDependencies(
-						MakeStringSection(destinationFile), MakeStringSection(compileResult._baseDir),
-						MakeIteratorRange(compileResult._dependencies));
-
-					op.SetState(::Assets::AssetState::Ready);
-				} CATCH(const ::Assets::Exceptions::PendingAsset&) {
-					throw;
-				} CATCH(const std::exception& e) {
-					LogWarning << "Got exception while compiling material scaffold (" << e.what() << ")";
-					op.SetState(::Assets::AssetState::Invalid);
-				} CATCH(...) {
-					LogWarning << "Got unknown exception while compiling material scaffold";
-					op.SetState(::Assets::AssetState::Invalid);
-				} CATCH_END
-
+				CompileMaterialScaffold(
+					MakeStringSection(materialFilename), MakeStringSection(modelFilename), MakeStringSection(destinationFile),
+					op, *store);
 			});
 
         return std::move(backgroundOp);
@@ -350,64 +371,6 @@ namespace RenderCore { namespace Assets
     {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    const MaterialImmutableData& MaterialScaffold::ImmutableData() const
-    {
-        return *(const MaterialImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
-    }
-
-    const ResolvedMaterial* MaterialScaffold::GetMaterial(MaterialGuid guid) const
-    {
-        const auto& data = ImmutableData();
-        auto i = std::lower_bound(data._materials.begin(), data._materials.end(), guid, CompareFirst<MaterialGuid, ResolvedMaterial>());
-        if (i!=data._materials.end() && i->first==guid)
-            return &i->second;
-        return nullptr;
-    }
-
-    const char* MaterialScaffold::GetMaterialName(MaterialGuid guid) const
-    {
-        const auto& data = ImmutableData();
-        auto i = std::lower_bound(data._materialNames.begin(), data._materialNames.end(), guid, CompareFirst<MaterialGuid, std::string>());
-        if (i!=data._materialNames.end() && i->first==guid)
-            return i->second.c_str();
-        return nullptr;
-    }
-    
-    static const ::Assets::AssetChunkRequest MaterialScaffoldChunkRequests[]
-    {
-        ::Assets::AssetChunkRequest {
-            "Scaffold", ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion, 
-            ::Assets::AssetChunkRequest::DataType::BlockSerializer 
-        }
-    };
-
-    MaterialScaffold::MaterialScaffold(const ::Assets::ChunkFileContainer& chunkFile)
-	: _depVal(chunkFile.GetDependencyValidation())
-	, _filename(chunkFile.Filename())
-    {
-		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(MaterialScaffoldChunkRequests));
-		assert(chunks.size() == 1);
-		_rawMemoryBlock = std::move(chunks[0]._buffer);
-    }
-
-    MaterialScaffold::MaterialScaffold(MaterialScaffold&& moveFrom) never_throws
-    : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-	, _depVal(moveFrom._depVal)
-    {}
-
-    MaterialScaffold& MaterialScaffold::operator=(MaterialScaffold&& moveFrom) never_throws
-    {
-		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
-        _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-		_depVal = moveFrom._depVal;
-        return *this;
-    }
-
-    MaterialScaffold::~MaterialScaffold()
-    {
-		ImmutableData().~MaterialImmutableData();
-    }
 
 }}
 

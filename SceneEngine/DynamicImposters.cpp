@@ -215,7 +215,7 @@ namespace SceneEngine
         ImposterSpriteAtlas             _atlas;
 
             //// //// //// //// Rendering //// //// //// ////
-        Techniques::TechniqueMaterial   _material;
+        Techniques::ShaderVariationSet   _material;
         Metal::ConstantBuffer           _spriteTableCB;
         SharedStateSet*                 _sharedStateSet;
         std::shared_ptr<Techniques::IStateSetResolver> _stateRes;
@@ -1005,7 +1005,7 @@ namespace SceneEngine
         _pimpl->_evictionCounter = 0;
         _pimpl->_frameCounter = 0;
 
-        _pimpl->_material = Techniques::TechniqueMaterial(
+        _pimpl->_material = Techniques::ShaderVariationSet(
             InputLayout(s_inputLayout, dimof(s_inputLayout)),
             {Hash64("SpriteTable")}, ParameterBox());
         _pimpl->_stateRes = std::make_shared<CustomStateResolver>();

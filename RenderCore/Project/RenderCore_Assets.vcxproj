@@ -76,7 +76,7 @@
     <ClCompile Include="..\Assets\Services.cpp" />
     <ClCompile Include="..\Assets\ModelCompiler.cpp" />
     <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
-    <ClCompile Include="..\Assets\Material.cpp" />
+    <ClCompile Include="..\Assets\MaterialScaffold.cpp" />
     <ClCompile Include="..\Assets\MaterialCompiler.cpp" />
     <ClCompile Include="..\Assets\ModelRunTime.cpp" />
     <ClCompile Include="..\Assets\DelayedDrawCall.cpp" />
@@ -108,7 +108,7 @@
     <ClInclude Include="..\Assets\Services.h" />
     <ClInclude Include="..\Assets\ModelCompiler.h" />
     <ClInclude Include="..\Assets\DeferredShaderResource.h" />
-    <ClInclude Include="..\Assets\Material.h" />
+    <ClInclude Include="..\Assets\MaterialScaffold.h" />
     <ClInclude Include="..\Assets\MaterialCompiler.h" />
     <ClInclude Include="..\Assets\ModelRendererInternal.h" />
     <ClInclude Include="..\Assets\ModelRunTime.h" />

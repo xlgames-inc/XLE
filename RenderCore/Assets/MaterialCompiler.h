@@ -7,21 +7,16 @@
 #pragma once
 
 #include "../../Assets/IntermediateAssets.h"
-#include "../../Utility/MemoryUtils.h"
-#include "../../Core/Types.h"
+#include "../../Utility/StringUtils.h"
 #include <memory>
-
-namespace Assets { class DependencyValidation; class CompileFuture; }
 
 namespace RenderCore { namespace Assets
 {
-    static const uint64 ChunkType_ResolvedMat = ConstHash64<'ResM', 'at'>::Value;
-
     class MaterialScaffoldCompiler : public ::Assets::IntermediateAssets::IAssetCompiler, public std::enable_shared_from_this<MaterialScaffoldCompiler>
     {
     public:
         std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
-            uint64 typeCode, 
+            uint64_t typeCode, 
             const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& destinationStore);
 

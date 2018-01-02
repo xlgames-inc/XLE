@@ -17,9 +17,7 @@
 #include "../../Assets/AsyncLoadOperation.h"
 #include "../../Assets/IFileSystem.h"
 
-#if defined(XLE_HAS_CONSOLE_RIG)
-    #include "../../ConsoleRig/Log.h"
-#endif
+#include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -208,12 +206,9 @@ namespace RenderCore { namespace Assets
 				TRY {
 					_chain(_shaderPath, _definesTable, result, _payload, errors, MakeIteratorRange(_deps));
 				} CATCH (const std::bad_function_call& e) {
-					#if defined(XLE_HAS_CONSOLE_RIG)
-                        LogWarning
-                            << "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")" // << std::endl
-                            << "This may prevent the shader from being flushed to disk in it's compiled form. But the shader should still be useable";
-                    #endif
-					(void)e;
+                    Log(Warning)
+                        << "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")" << std::endl
+                        << "This may prevent the shader from being flushed to disk in it's compiled form. But the shader should still be useable" << std::endl;
 				} CATCH_END
 			}
 
@@ -310,7 +305,6 @@ namespace RenderCore { namespace Assets
 
     void ShaderCacheSet::LogStats(const ::Assets::IntermediateAssets::Store& intermediateStore)
     {
-#if defined(XLE_HAS_CONSOLE_RIG)
             // log statistics information for all shaders in all archive caches
         uint64 totalShaderSize = 0; // in bytes
         uint64 totalAllocationSpace = 0;
@@ -347,8 +341,8 @@ namespace RenderCore { namespace Assets
         std::regex extractShaderDetails("\\[([^\\]]*)\\]\\s*\\[([^\\]]*)\\]\\s*\\[([^\\]]*)\\]");
         std::regex extractIntructionCount("Instruction Count:\\s*(\\d+)");
 
-        LogInfo << "------------------------------------------------------------------------------------------";
-        LogInfo << "    Shader cache readout";
+        Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
+		Log(Verbose) << "    Shader cache readout" << std::endl;
 
         std::vector<std::pair<std::string, std::string>> extendedInfo;
         std::vector<std::pair<unsigned, std::string>> orderedByInstructionCount;
@@ -374,7 +368,7 @@ namespace RenderCore { namespace Assets
                 // write a short list of all shader objects stored in this archive
             float wasted = 0.f;
             if (totalAllocationSpace) { wasted = 1.f - (float(metrics._usedSpace) / float(metrics._allocatedFileSize)); }
-            LogInfo << " <<< Archive --- " << buffer << " (" << totalShaderSize / 1024 << "k, " << unsigned(100.f * wasted) << "% wasted) >>>";
+			Log(Verbose) << " <<< Archive --- " << buffer << " (" << totalShaderSize / 1024 << "k, " << unsigned(100.f * wasted) << "% wasted) >>>" << std::endl;
 
             for (auto b = metrics._blocks.cbegin(); b!=metrics._blocks.cend(); ++b) {
                 
@@ -384,7 +378,7 @@ namespace RenderCore { namespace Assets
                 std::smatch match;
                 bool a = std::regex_match(b->_attachedString, match, extractShaderDetails);
                 if (a && match.size() >= 4) {
-                    LogInfo << "    [" << b->_size/1024 << "k] [" << match[1] << "] [" << match[2] << "]";
+					Log(Verbose) << "    [" << b->_size/1024 << "k] [" << match[1] << "] [" << match[2] << "]" << std::endl;
 
                     auto idString = std::string("[") + match[1].str() + "][" + match[2].str() + "]";
                     extendedInfo.push_back(std::make_pair(idString, match[3]));
@@ -397,33 +391,32 @@ namespace RenderCore { namespace Assets
                         orderedByInstructionCount.push_back(std::make_pair(instructionCount, idString));
                     }
                 } else {
-                    LogInfo << "    [" << b->_size/1024 << "k] Unknown block";
+					Log(Verbose) << "    [" << b->_size/1024 << "k] Unknown block" << std::endl;
                 }
             }
         }
 
-        LogInfo << "------------------------------------------------------------------------------------------";
-        LogInfo << "    Ordered by instruction count";
+		Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
+		Log(Verbose) << "    Ordered by instruction count" << std::endl;
         std::sort(orderedByInstructionCount.begin(), orderedByInstructionCount.end(), CompareFirst<unsigned, std::string>());
         for (auto e=orderedByInstructionCount.cbegin(); e!=orderedByInstructionCount.cend(); ++e) {
-            LogInfo << "    " << e->first << " " << e->second;
+			Log(Verbose) << "    " << e->first << " " << e->second << std::endl;
         }
 
-        LogInfo << "------------------------------------------------------------------------------------------";
-        LogInfo << "    Shader cache extended info";
+		Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
+		Log(Verbose) << "    Shader cache extended info" << std::endl;
         for (auto e=extendedInfo.cbegin(); e!=extendedInfo.cend(); ++e) {
-            LogInfo << e->first;
-            LogInfo << e->second;
+			Log(Verbose) << e->first << std::endl;
+			Log(Verbose) << e->second << std::endl;
         }
 
-        LogInfo << "------------------------------------------------------------------------------------------";
-        LogInfo << "Total shader size: " << totalShaderSize;
-        LogInfo << "Total allocated space: " << totalAllocationSpace;
+		Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
+		Log(Verbose) << "Total shader size: " << totalShaderSize << std::endl;
+		Log(Verbose) << "Total allocated space: " << totalAllocationSpace << std::endl;
         if (totalAllocationSpace > 0) {
-            LogInfo << "Wasted part: " << 100.f * (1.0f - float(totalShaderSize) / float(totalAllocationSpace)) << "%";
+			Log(Verbose) << "Wasted part: " << 100.f * (1.0f - float(totalShaderSize) / float(totalAllocationSpace)) << "%" << std::endl;
         }
-        LogInfo << "------------------------------------------------------------------------------------------";
-#endif
+		Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
     }
 
     ShaderCacheSet::ShaderCacheSet(const DeviceDesc& devDesc)

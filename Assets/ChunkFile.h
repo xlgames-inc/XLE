@@ -43,7 +43,7 @@ namespace Serialization { namespace ChunkFile
         }
 
         ChunkHeader(TypeIdentifier type, unsigned version, 
-                    const char name[], SizeType size)
+                    const char name[], SizeType size = 0)
         {
             _type = type;
             _chunkVersion = version;

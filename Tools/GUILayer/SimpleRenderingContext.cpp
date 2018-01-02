@@ -20,7 +20,7 @@
 #include "../../RenderOverlays/HighlightEffects.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
+#include "../../RenderCore/Techniques/ShaderVariationSet.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/IDevice.h"
@@ -124,7 +124,7 @@ namespace GUILayer
             const auto techniqueIndex = 0u;
 
             static ParameterBox materialParameters({std::make_pair((const utf8*)"MAT_SKIP_LIGHTING_SCALE", "1")});
-            Techniques::TechniqueMaterial material(
+            Techniques::ShaderVariationSet material(
                 vf._inputLayout,
                 {Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants},
                 materialParameters);

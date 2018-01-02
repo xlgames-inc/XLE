@@ -10,7 +10,6 @@
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
-#include "../../Assets/CompilerHelper.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/MemoryUtils.h"
 #include <memory>

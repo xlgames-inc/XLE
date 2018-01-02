@@ -8,7 +8,7 @@
 #include "ModelRendererInternal.h"
 #include "DelayedDrawCall.h"
 #include "ModelImmutableData.h"
-#include "Material.h"
+#include "MaterialScaffold.h"
 #include "RawAnimationCurve.h"
 #include "SharedStateSet.h"
 #include "DeferredShaderResource.h"
@@ -18,6 +18,7 @@
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/CommonResources.h"
 #include "../Techniques/PredefinedCBLayout.h"
+#include "../Techniques/TechniqueMaterial.h"
 
 #include "../Metal/Buffer.h"
 #include "../Metal/State.h"

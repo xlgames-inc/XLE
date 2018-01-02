@@ -8,7 +8,7 @@
 
 #include "ModelVisualisation.h"
 #include "MaterialBinder.h"
-#include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/AssetUtils.h"
 
@@ -39,7 +39,7 @@ namespace ToolsRig
     class MaterialVisObject
     {
     public:
-        RenderCore::Assets::ResolvedMaterial _parameters;
+        RenderCore::Techniques::Material _parameters;
         ::Assets::DirectorySearchRules _searchRules;
         IMaterialBinder::SystemConstants _systemConstants;
         std::shared_ptr<IMaterialBinder> _materialBinder;

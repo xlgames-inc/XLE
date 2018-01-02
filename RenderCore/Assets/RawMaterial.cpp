@@ -5,8 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RawMaterial.h"
-#include "Material.h"
 #include "../Types.h"
+#include "../Techniques/TechniqueMaterial.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/DeferredConstruction.h"
@@ -250,27 +250,6 @@ namespace RenderCore { namespace Assets
 
     RawMaterial::RawMaterial() {}
 
-    void ResolveMaterialFilename(
-        ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
-        const ::Assets::DirectorySearchRules& searchRules, StringSection<char> baseMatName)
-    {
-        if (baseMatName.begin() != resolvedFile)
-            XlCopyString(resolvedFile, resolvedFileCount, baseMatName);
-        if (!XlExtension(resolvedFile))
-            XlCatString(resolvedFile, resolvedFileCount, ".material");
-        searchRules.ResolveFile(resolvedFile, resolvedFileCount, resolvedFile);
-    }
-
-    uint64 MakeMaterialGuid(StringSection<utf8> name)
-    {
-            //  If the material name is just a number, then we will use that
-            //  as the guid. Otherwise we hash the name.
-        const char* parseEnd = nullptr;
-        uint64 hashId = XlAtoI64((const char*)name.begin(), &parseEnd, 16);
-        if (!parseEnd || parseEnd != (const char*)name.end()) { hashId = Hash64(name.begin(), name.end()); }
-        return hashId;
-    }
-
     std::vector<::Assets::rstring> 
         DeserializeInheritList(InputStreamFormatter<utf8>& formatter)
     {
@@ -396,7 +375,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    void RawMaterial::MergeInto(ResolvedMaterial& dest) const
+    void RawMaterial::MergeInto(Techniques::Material& dest) const
     {
         dest._matParams.MergeIn(_matParamBox);
         dest._stateSet = Merge(dest._stateSet, _stateSet);
@@ -411,6 +390,17 @@ namespace RenderCore { namespace Assets
 
             XlCopyString(dest._techniqueConfig, _techniqueConfig);
         }
+    }
+
+	void ResolveMaterialFilename(
+        ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
+        const ::Assets::DirectorySearchRules& searchRules, StringSection<char> baseMatName)
+    {
+        if (baseMatName.begin() != resolvedFile)
+            XlCopyString(resolvedFile, resolvedFileCount, baseMatName);
+        if (!XlExtension(resolvedFile))
+            XlCatString(resolvedFile, resolvedFileCount, ".material");
+        searchRules.ResolveFile(resolvedFile, resolvedFileCount, resolvedFile);
     }
 
     auto RawMaterial::ResolveInherited(
@@ -438,22 +428,7 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    static void AddDep(
-        std::vector<::Assets::DependentFileState>& deps, 
-        StringSection<::Assets::ResChar> filename)
-    {
-            // we need to call "GetDependentFileState" first, because this can change the
-            // format of the filename. String compares alone aren't working well for us here
-        auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(filename);
-        auto existing = std::find_if(deps.cbegin(), deps.cend(),
-            [&](const ::Assets::DependentFileState& test) 
-            {
-                return !XlCompareStringI(test._filename.c_str(), depState._filename.c_str());
-            });
-        if (existing == deps.cend())
-            deps.push_back(depState);
-    }
-
+#if 0
 	static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
     
     auto RawMaterial::GetAsset(StringSection<::Assets::ResChar> initializer) -> const RawMaterial& 
@@ -479,6 +454,7 @@ namespace RenderCore { namespace Assets
             return ::Assets::GetAsset<RawMaterial>(initializer);
         }
     }
+#endif
 
 #if defined(HAS_XLE_DIVERGENTASSET)
     auto RawMaterial::GetDivergentAsset(StringSection<::Assets::ResChar> initializer)
@@ -496,6 +472,23 @@ namespace RenderCore { namespace Assets
 	std::unique_ptr<RawMaterial> RawMaterial::CreateNew(StringSection<::Assets::ResChar> initialiser)
 	{
 		return std::make_unique<RawMaterial>();
+	}
+
+#if 0
+	static void AddDep(
+		std::vector<::Assets::DependentFileState>& deps,
+		StringSection<::Assets::ResChar> filename)
+	{
+		// we need to call "GetDependentFileState" first, because this can change the
+		// format of the filename. String compares alone aren't working well for us here
+		auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(filename);
+		auto existing = std::find_if(deps.cbegin(), deps.cend(),
+			[&](const ::Assets::DependentFileState& test)
+		{
+			return !XlCompareStringI(test._filename.c_str(), depState._filename.c_str());
+		});
+		if (existing == deps.cend())
+			deps.push_back(depState);
 	}
 
     ::Assets::AssetState RawMaterial::TryResolve(
@@ -527,6 +520,7 @@ namespace RenderCore { namespace Assets
         MergeInto(result);
 		return ::Assets::AssetState::Ready;
     }
+#endif
 
 }}
 

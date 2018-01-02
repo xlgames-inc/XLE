@@ -23,10 +23,10 @@ namespace Assets
 }
 namespace Utility { class Data; }
 
+namespace RenderCore { namespace Techniques { class Material;  } }
+
 namespace RenderCore { namespace Assets
 {
-	class ResolvedMaterial;
-
     /// <summary>Pre-resolved material settings</summary>
     /// Materials are a hierachical set of properties. Each RawMaterial
     /// object can inherit from sub RawMaterials -- and it can either
@@ -42,23 +42,19 @@ namespace RenderCore { namespace Assets
     public:
         using AssetName = ::Assets::rstring;
         
-        ParameterBox _resourceBindings;
-        ParameterBox _matParamBox;
+        ParameterBox	_resourceBindings;
+        ParameterBox	_matParamBox;
         Techniques::RenderStateSet _stateSet;
-        ParameterBox _constants;
-        AssetName _techniqueConfig;
+        ParameterBox	_constants;
+        AssetName		_techniqueConfig;
 
         std::vector<AssetName> _inherit;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
+		void					MergeInto(Techniques::Material& dest) const; 
+		std::vector<AssetName>	ResolveInherited(const ::Assets::DirectorySearchRules& searchRules) const;
 
-        ::Assets::AssetState TryResolve(
-            ResolvedMaterial& result,
-			const ::Assets::DirectorySearchRules& searchRules,
-            std::vector<::Assets::DependentFileState>* deps = nullptr) const;
-
-        std::vector<AssetName> ResolveInherited(
-            const ::Assets::DirectorySearchRules& searchRules) const;
+		const std::shared_ptr<::Assets::DependencyValidation>&	GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DirectorySearchRules&					GetDirectorySearchRules() const { return _searchRules; }
 
         void Serialize(OutputStreamFormatter& formatter) const;
         
@@ -71,7 +67,6 @@ namespace RenderCore { namespace Assets
 
 		static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
 
-        static const RawMaterial& GetAsset(StringSection<::Assets::ResChar> initializer);
         #if defined(HAS_XLE_DIVERGENTASSET)
             static const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>& GetDivergentAsset(StringSection<::Assets::ResChar> initializer);
         #endif
@@ -80,8 +75,6 @@ namespace RenderCore { namespace Assets
     private:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
 		::Assets::DirectorySearchRules _searchRules;
-
-        void MergeInto(ResolvedMaterial& dest) const;
     };
 
     void ResolveMaterialFilename(

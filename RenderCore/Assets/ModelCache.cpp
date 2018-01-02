@@ -6,7 +6,7 @@
 
 #include "ModelCache.h"
 #include "ModelRunTime.h"
-#include "Material.h"
+#include "MaterialScaffold.h"
 #include "SharedStateSet.h"
 #include "Services.h"
 #include "../../Assets/Assets.h"

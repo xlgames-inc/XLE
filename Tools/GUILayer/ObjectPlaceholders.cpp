@@ -67,7 +67,7 @@ namespace GUILayer
 		Metal::VertexBuffer _vb;
 		Metal::IndexBuffer _ib;
 		std::vector<RenderCore::Assets::DrawCallDesc> _drawCalls;
-		TechniqueMaterial _material;
+		ShaderVariationSet _material;
 		unsigned _vbStride;
 		Format _ibFormat;
 		::Assets::DepValPtr _depVal;
@@ -140,7 +140,7 @@ namespace GUILayer
 		std::vector<InputElementDesc> eles;
 		for (const auto&i:geo._vb._ia._elements)
 			eles.push_back(InputElementDesc(i._semanticName, i._semanticIndex, i._nativeFormat, 0, i._alignedByteOffset));
-		_material = TechniqueMaterial(
+		_material = ShaderVariationSet(
 			std::make_pair(AsPointer(eles.cbegin()), eles.size()),
 			{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants }, ParameterBox());
 
@@ -163,11 +163,11 @@ namespace GUILayer
         Metal::VertexBuffer     _cubeVB;
         unsigned                _cubeVBCount;
         unsigned                _cubeVBStride;
-        TechniqueMaterial       _material;
-        TechniqueMaterial       _materialP;
-		TechniqueMaterial       _materialGenSphere;
-		TechniqueMaterial       _materialGenTube;
-		TechniqueMaterial       _materialGenRectangle;
+        ShaderVariationSet       _material;
+        ShaderVariationSet       _materialP;
+		ShaderVariationSet       _materialGenSphere;
+		ShaderVariationSet       _materialGenTube;
+		ShaderVariationSet       _materialGenRectangle;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
         VisGeoBox(const Desc&);
@@ -250,7 +250,7 @@ namespace GUILayer
     static void DrawSphereStandIn(
         Metal::DeviceContext& devContext, ParsingContext& parserContext, 
 		const ObjectParams& params, unsigned techniqueIndex, StringSection<::Assets::ResChar> technique,
-		const VisGeoBox& visBox, const TechniqueMaterial::Variation& fallbackShader)
+		const VisGeoBox& visBox, const ShaderVariationSet::Variation& fallbackShader)
     {
 		CATCH_ASSETS_BEGIN
 			auto& asset = ::Assets::GetAssetDep<SimpleModel>("game/model/simple/spherestandin.dae");
@@ -269,7 +269,7 @@ namespace GUILayer
 	static void DrawPointerStandIn(
 		Metal::DeviceContext& devContext, ParsingContext& parserContext,
 		const ObjectParams& params, unsigned techniqueIndex, StringSection<::Assets::ResChar> technique,
-		const VisGeoBox& visBox, const TechniqueMaterial::Variation& fallbackShader)
+		const VisGeoBox& visBox, const ShaderVariationSet::Variation& fallbackShader)
 	{
 		CATCH_ASSETS_BEGIN
 			auto& asset = ::Assets::GetAssetDep<SimpleModel>("game/model/simple/pointerstandin.dae");
@@ -288,8 +288,8 @@ namespace GUILayer
 	static void DrawGenObject(
 		Metal::DeviceContext& devContext, ParsingContext& parserContext, 
 		const ObjectParams& params,
-		const TechniqueMaterial::Variation& generatorShader, unsigned vertexCount,
-		const VisGeoBox& visBox, const TechniqueMaterial::Variation& fallbackShader)
+		const ShaderVariationSet::Variation& generatorShader, unsigned vertexCount,
+		const VisGeoBox& visBox, const ShaderVariationSet::Variation& fallbackShader)
 	{
 		if (generatorShader._shader._shaderProgram) {
 			generatorShader._shader.Apply(devContext, parserContext, { params._localTransform, generatorShader._cbLayout->BuildCBDataAsPkt(params._matParams) });
@@ -310,7 +310,7 @@ namespace GUILayer
         Metal::DeviceContext& devContext,
         ParsingContext& parserContext,
         const VisGeoBox& visBox,
-        const TechniqueMaterial::Variation& shader, const RetainedEntity& obj,
+        const ShaderVariationSet::Variation& shader, const RetainedEntity& obj,
         EntityInterface::RetainedEntities& objs)
     {
         static auto IndexListHash = ParameterBox::MakeParameterNameHash("IndexList");
@@ -399,7 +399,7 @@ namespace GUILayer
 						if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
 
 						auto shape = o->_properties.GetParameter(Parameters::Shape, 0u);
-						Techniques::TechniqueMaterial::Variation* var;
+						Techniques::ShaderVariationSet::Variation* var;
 						unsigned vertexCount = 12 * 12 * 6;	// (must agree with the shader!)
 						switch (shape) { 
 						case 2: var = &tubeShader; break;

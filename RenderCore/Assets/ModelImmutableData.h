@@ -12,10 +12,10 @@
 #include <vector>
 #include <utility>
 
+namespace RenderCore { namespace Techniques { class Material; } }
+
 namespace RenderCore { namespace Assets
 {
-	class ResolvedMaterial;
-        
     #pragma pack(push)
     #pragma pack(1)
 
@@ -46,7 +46,7 @@ namespace RenderCore { namespace Assets
     class MaterialImmutableData
     {
     public:
-        SerializableVector<std::pair<MaterialGuid, ResolvedMaterial>> _materials;
+        SerializableVector<std::pair<MaterialGuid, Techniques::Material>> _materials;
         SerializableVector<std::pair<MaterialGuid, std::string>> _materialNames;
     };
 
