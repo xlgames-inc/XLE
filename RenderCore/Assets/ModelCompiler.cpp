@@ -184,9 +184,12 @@ namespace RenderCore { namespace Assets
 
 				const auto& deps = *model->GetDependencies();
 				auto depVal = destinationStore.WriteDependencies(destinationFile, {}, MakeIteratorRange(deps));
+				::Assets::rstring requestParams;
+				if (typeCode == ModelCompiler::Type_RawMat)
+					requestParams = MakeFileNameSplitter(initializer).Parameters().AsString();
 				compileMarker.AddArtifact(
 					"main",
-					std::make_shared<::Assets::BlobArtifact>(mainBlob, nullptr, depVal));
+					std::make_shared<::Assets::BlobArtifact>(mainBlob, nullptr, depVal, requestParams));
 
 				compileMarker.SetState(::Assets::AssetState::Ready);
 
@@ -324,6 +327,15 @@ namespace RenderCore { namespace Assets
 
     std::shared_ptr<::Assets::IArtifact> ModelCompiler::Marker::GetExistingAsset() const
     {
+		if (_typeCode == ModelCompiler::Type_RawMat) {
+			auto splitRequest = MakeFileNameSplitter(_requestName);
+			if (XlEqStringI(splitRequest.Extension(), "material")) {
+				auto depVal = std::make_shared<::Assets::DependencyValidation>();
+				RegisterFileDependency(depVal, splitRequest.AllExceptParameters());
+				return std::make_shared<::Assets::FileArtifact>(_requestName, depVal);
+			}
+		}
+
 		::Assets::ResChar intermediateName[MaxPath];
         MakeIntermediateName(intermediateName, dimof(intermediateName));
 		auto depVal = _store->MakeDependencyValidation(intermediateName);

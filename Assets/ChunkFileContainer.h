@@ -69,7 +69,7 @@ namespace Assets
 		std::shared_ptr<IFileInterface> OpenFile() const;
 
 		ChunkFileContainer(StringSection<ResChar> assetTypeName);
-		ChunkFileContainer(const Blob& blob, const DepValPtr& depVal);
+		ChunkFileContainer(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar>);
 		ChunkFileContainer();
         ~ChunkFileContainer();
 

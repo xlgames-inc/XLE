@@ -36,7 +36,8 @@ namespace RenderCore { namespace Assets
 
 		RawMatConfigurations(
 			const ::Assets::Blob& locator,
-			const ::Assets::DepValPtr& depVal);
+			const ::Assets::DepValPtr& depVal,
+			StringSection<::Assets::ResChar> requestParameters);
 
         static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
 
@@ -47,7 +48,8 @@ namespace RenderCore { namespace Assets
 
     RawMatConfigurations::RawMatConfigurations(
 		const ::Assets::Blob& blob,
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DepValPtr& depVal,
+		StringSection<::Assets::ResChar>)
     {
             //  Get associated "raw" material information. This is should contain the material information attached
             //  to the geometry export (eg, .dae file).
@@ -56,7 +58,7 @@ namespace RenderCore { namespace Assets
             Throw(::Exceptions::BasicLabel("Missing or empty file"));
 
         InputStreamFormatter<utf8> formatter(
-            MemoryMappedInputStream(AsPointer(blob->begin()), AsPointer(blob->end())));
+            MemoryMappedInputStream(MakeIteratorRange(*blob)));
         Document<decltype(formatter)> doc(formatter);
             
         for (auto config=doc.FirstChild(); config; config=config.NextSibling()) {
@@ -94,7 +96,7 @@ namespace RenderCore { namespace Assets
             // inheritance tree, and merge in new parameters as we come across them.
 
 			// we still need to add a dependency, even if it's a missing file
-		AddDep(deps, MakeFileNameSplitter(sourceMaterialName).FullFilename());
+		AddDep(deps, MakeFileNameSplitter(sourceMaterialName).AllExceptParameters());
 
 		auto dependencyMat = ::Assets::MakeAsset<RawMaterial>(sourceMaterialName);
 		auto state = dependencyMat->StallWhilePending();
@@ -137,7 +139,7 @@ namespace RenderCore { namespace Assets
 				//  Note that this is a bit crazy, because we're going to be loading
 				//  and re-parsing the same files over and over again!
 			SerializableVector<std::pair<MaterialGuid, Techniques::Material>> resolved;
-			SerializableVector<std::pair<MaterialGuid, std::string>> resolvedNames;
+			SerializableVector<std::pair<MaterialGuid, SerializableVector<char>>> resolvedNames;
 			resolved.reserve(modelMat->_configurations.size());
 
 			auto searchRules = ::Assets::DefaultDirectorySearchRules(sourceModel);
@@ -192,11 +194,14 @@ namespace RenderCore { namespace Assets
 				}
 
 				resolved.push_back(std::make_pair(guid, std::move(resMat)));
-				resolvedNames.push_back(std::make_pair(guid, resName.str()));
+
+				auto resNameStr = resName.str();
+				SerializableVector<char> resNameVec(resNameStr.begin(), resNameStr.end());
+				resolvedNames.push_back(std::make_pair(guid, std::move(resNameVec)));
 			}
 
 			std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, Techniques::Material>());
-			std::sort(resolvedNames.begin(), resolvedNames.end(), CompareFirst<MaterialGuid, std::string>());
+			std::sort(resolvedNames.begin(), resolvedNames.end(), CompareFirst<MaterialGuid, SerializableVector<char>>());
 
 				// "resolved" is now actually the data we want to write out
 			Serialization::NascentBlockSerializer blockSerializer;

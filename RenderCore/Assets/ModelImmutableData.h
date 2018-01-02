@@ -47,7 +47,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         SerializableVector<std::pair<MaterialGuid, Techniques::Material>> _materials;
-        SerializableVector<std::pair<MaterialGuid, std::string>> _materialNames;
+        SerializableVector<std::pair<MaterialGuid, SerializableVector<char>>> _materialNames;
     };
 
     class ModelSupplementImmutableData

@@ -1904,8 +1904,7 @@ namespace SceneEngine
             _objects[objectIndex]._model.c_str(), _objects[objectIndex]._material.c_str());
         if (!scaff._material) return std::string();
 
-        auto res = scaff._material->GetMaterialName(materialGuid);
-        return res ? std::string(res) : std::string();
+        return scaff._material->GetMaterialName(materialGuid).AsString();
     }
 
     void    Transaction::SetObject(unsigned index, const ObjTransDef& newState)

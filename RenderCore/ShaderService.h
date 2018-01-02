@@ -169,7 +169,7 @@ namespace RenderCore
 		ShaderStage		GetStage() const;
         bool            DynamicLinkingEnabled() const;
 
-		CompiledShaderByteCode(const ::Assets::Blob&, const ::Assets::DepValPtr&);
+		CompiledShaderByteCode(const ::Assets::Blob&, const ::Assets::DepValPtr&, StringSection<::Assets::ResChar>);
 		CompiledShaderByteCode();
         ~CompiledShaderByteCode();
 

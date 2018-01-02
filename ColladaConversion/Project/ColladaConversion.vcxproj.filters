@@ -49,9 +49,6 @@
     <ClCompile Include="..\..\RenderCore\GeoProc\MeshDatabase.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\RenderCore\Assets\Material.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\RenderCore\Assets\RawAnimationCurve.cpp">
       <Filter>GeoProc\CoreAssets</Filter>
     </ClCompile>
@@ -73,6 +70,9 @@
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\RenderCore\Assets\RawMaterial.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\MaterialScaffold.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
   </ItemGroup>
@@ -134,9 +134,6 @@
     <ClInclude Include="..\..\RenderCore\GeoProc\MeshDatabase.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\RenderCore\Assets\Material.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\RenderCore\Assets\RawAnimationCurve.h">
       <Filter>GeoProc\CoreAssets</Filter>
     </ClInclude>
@@ -150,6 +147,9 @@
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\Assets\RawMaterial.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\Assets\MaterialScaffold.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
   </ItemGroup>

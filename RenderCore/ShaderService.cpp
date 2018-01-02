@@ -31,7 +31,7 @@ namespace RenderCore
 
     ShaderStage ShaderService::ResId::AsShaderStage() const { return RenderCore::AsShaderStage(_shaderModel); }
 
-	CompiledShaderByteCode::CompiledShaderByteCode(const ::Assets::Blob& shader, const ::Assets::DepValPtr& depVal) 
+	CompiledShaderByteCode::CompiledShaderByteCode(const ::Assets::Blob& shader, const ::Assets::DepValPtr& depVal, StringSection<Assets::ResChar>)
 	: _shader(shader)
 	, _depVal(depVal)
 	{

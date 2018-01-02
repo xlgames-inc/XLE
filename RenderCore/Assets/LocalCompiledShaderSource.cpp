@@ -438,6 +438,7 @@ namespace RenderCore { namespace Assets
 		Blob	GetBlob() const;
 		Blob	GetErrors() const;
 		::Assets::DepValPtr GetDependencyValidation() const;
+		StringSection<Assets::ResChar> GetRequestParameters() const { return {}; }
 		ArchivedFileArtifact(
 			const std::shared_ptr<::Assets::ArchiveCache>& archive, uint64 fileID, const ::Assets::DepValPtr& depVal,
 			const Blob& blob, const Blob& errors);

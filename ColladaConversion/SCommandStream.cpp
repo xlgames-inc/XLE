@@ -19,7 +19,7 @@
 #include "../RenderCore/GeoProc/SkeletonRegistry.h"
 #include "../RenderCore/GeoProc/GeoProcUtil.h"
 
-#include "../RenderCore/Assets/Material.h"  // for MakeMaterialGuid
+#include "../RenderCore/Assets/MaterialScaffold.h"  // for MakeMaterialGuid
 #include "../RenderCore/Format.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/MemoryUtils.h"

@@ -93,7 +93,7 @@ namespace Assets
 		RegisterFileDependency(_validationCallback, MakeStringSection(_filename));
     }
 
-	ChunkFileContainer::ChunkFileContainer(const Blob& blob, const DepValPtr& depVal)
+	ChunkFileContainer::ChunkFileContainer(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar>)
 	: _filename("<<in memory>>")
 	, _blob(blob), _validationCallback(depVal)
 	{			

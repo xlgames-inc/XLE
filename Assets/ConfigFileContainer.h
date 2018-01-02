@@ -61,7 +61,7 @@ namespace Assets
 		static std::unique_ptr<ConfigFileContainer> CreateNew(StringSection<ResChar> initialiser);
 
         ConfigFileContainer(StringSection<ResChar> initializer);
-		ConfigFileContainer(const Blob& blob, const DepValPtr& depVal);
+		ConfigFileContainer(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> = {});
         ~ConfigFileContainer();
 
         const std::shared_ptr<DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }

@@ -157,6 +157,8 @@ namespace RenderCore { namespace Techniques
         return HashCombine(Hash64(AsPointer(_elements.begin()), AsPointer(_elements.end())), _defaults.GetHash());
     }
 
-    PredefinedCBLayout::PredefinedCBLayout() {}    
+    PredefinedCBLayout::PredefinedCBLayout() 
+	: _cbSize(0)
+	{}    
     PredefinedCBLayout::~PredefinedCBLayout() {}
 }}

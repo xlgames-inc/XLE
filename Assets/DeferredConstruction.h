@@ -27,7 +27,7 @@ namespace Assets
 		// Taken from stack overflow -- https://stackoverflow.com/questions/257288/is-it-possible-to-write-a-template-to-check-for-a-functions-existence
 		// If the expression in the first decltype() is invalid, we will trigger SFINAE and fall back to std::false_type
 		template<typename T, typename... Params>
-			static auto HasDirectAutoConstructAsset_Helper(int) -> decltype(::Assets::AutoConstructAsset<T>(std::declval<Params>()...), std::true_type{});
+			static auto HasDirectAutoConstructAsset_Helper(int) -> decltype(AutoConstructAsset<T>(std::declval<Params>()...), std::true_type{});
 
 		template<typename...>
 			static auto HasDirectAutoConstructAsset_Helper(...) -> std::false_type;
@@ -75,7 +75,7 @@ namespace Assets
 		auto existingArtifact = marker->GetExistingAsset();
 		if (existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
 			bool doRecompile = false;
-			AutoConstructToFutureDirect(future, existingArtifact->GetBlob(), existingArtifact->GetDependencyValidation());
+			AutoConstructToFutureDirect(future, existingArtifact->GetBlob(), existingArtifact->GetDependencyValidation(), existingArtifact->GetRequestParameters());
 			if (!doRecompile) return;
 		}
 
@@ -94,7 +94,7 @@ namespace Assets
 
 				assert(state == AssetState::Ready);
 				auto& artifact = *pendingCompile->GetArtifacts()[0].second;
-				AutoConstructToFutureDirect(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation());
+				AutoConstructToFutureDirect(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation(), artifact.GetRequestParameters());
 				return false;
 			});
 	}

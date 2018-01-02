@@ -41,7 +41,7 @@ namespace RenderCore { namespace Assets
     public:
         const MaterialImmutableData&    ImmutableData() const;
         const Techniques::Material*		GetMaterial(MaterialGuid guid) const;
-        const char*                     GetMaterialName(MaterialGuid guid) const;
+        StringSection<>					GetMaterialName(MaterialGuid guid) const;
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 

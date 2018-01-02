@@ -86,7 +86,7 @@ namespace Assets
 	}
 
 	template<typename Formatter>
-		ConfigFileContainer<Formatter>::ConfigFileContainer(const Blob& blob, const DepValPtr& depVal)
+		ConfigFileContainer<Formatter>::ConfigFileContainer(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar>)
 	: _fileData(blob), _validationCallback(depVal)
 	{
 	}

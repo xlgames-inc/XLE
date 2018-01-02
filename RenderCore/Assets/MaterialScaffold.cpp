@@ -29,21 +29,21 @@ namespace RenderCore { namespace Assets
 		return nullptr;
 	}
 
-	const char* MaterialScaffold::GetMaterialName(MaterialGuid guid) const
+	StringSection<> MaterialScaffold::GetMaterialName(MaterialGuid guid) const
 	{
 		const auto& data = ImmutableData();
-		auto i = std::lower_bound(data._materialNames.begin(), data._materialNames.end(), guid, CompareFirst<MaterialGuid, std::string>());
+		auto i = std::lower_bound(data._materialNames.begin(), data._materialNames.end(), guid, CompareFirst<MaterialGuid, SerializableVector<char>>());
 		if (i != data._materialNames.end() && i->first == guid)
-			return i->second.c_str();
+			return MakeStringSection(i->second.begin(), i->second.end());
 		return nullptr;
 	}
 
 	static const ::Assets::AssetChunkRequest MaterialScaffoldChunkRequests[]
 	{
 		::Assets::AssetChunkRequest{
-		"Scaffold", ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion,
-		::Assets::AssetChunkRequest::DataType::BlockSerializer
-	}
+			"Scaffold", ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion,
+			::Assets::AssetChunkRequest::DataType::BlockSerializer
+		}
 	};
 
 	MaterialScaffold::MaterialScaffold(const ::Assets::ChunkFileContainer& chunkFile)

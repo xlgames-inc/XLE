@@ -92,13 +92,13 @@ namespace Assets
 	}
 
 	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_Formatter)>
-		std::unique_ptr<AssetType> AutoConstructAsset(const ::Assets::Blob& blob, const ::Assets::DepValPtr& depVal)
+		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> requestParameters = {})
 	{
 		auto container = ConfigFileContainer<>(blob, depVal);
-		auto fmttr = container.GetRootFormatter();
+		auto fmttr = requestParameters.IsEmpty() ? container.GetRootFormatter() : container.GetFormatter(MakeStringSection((const utf8*)requestParameters.begin(), (const utf8*)requestParameters.end()));
 		return std::make_unique<AssetType>(
 			fmttr,
-			::Assets::DirectorySearchRules{},
+			DirectorySearchRules{},
 			container.GetDependencyValidation());
 	}
 	
@@ -110,9 +110,9 @@ namespace Assets
 	}
 
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer)>
-		std::unique_ptr<AssetType> AutoConstructAsset(const ::Assets::Blob& blob, const ::Assets::DepValPtr& depVal)
+		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> requestParameters = {})
 	{
-		return std::make_unique<AssetType>(ChunkFileContainer(blob, depVal));
+		return std::make_unique<AssetType>(ChunkFileContainer(blob, depVal, requestParameters));
 	}
 
 	template<typename AssetType, typename... Params, typename std::enable_if<std::is_constructible<AssetType, Params...>::value>::type* = nullptr>

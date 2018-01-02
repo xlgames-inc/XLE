@@ -11,9 +11,7 @@
 
 #include "CompileAndAsyncManager.h"     // for ~CompileFuture -- remove
 
-#if defined(XLE_HAS_CONSOLE_RIG)
-    #include "../ConsoleRig/Log.h"
-#endif
+#include "../ConsoleRig/Log.h"
 #include "../Assets/AssetUtils.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/Data.h"
@@ -26,6 +24,8 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/ExceptionLogging.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/StringFormat.h"
+#include "../Utility/Streams/PathUtils.h"
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
     #include "../Core/WinAPI/IncludeWindows.h"
@@ -207,18 +207,14 @@ namespace Assets { namespace IntermediateAssets
                 }
 
                 if (!record->_state._timeMarker) {
-                    #if defined(XLE_HAS_CONSOLE_RIG)
-                        LogInfo
-                            << "Asset (" << intermediateFileName 
-                            << ") is invalidated because of missing dependency (" << depName << ")";
-                    #endif
+                    Log(Verbose)
+                        << "Asset (" << intermediateFileName 
+                        << ") is invalidated because of missing dependency (" << depName << ")" << std::endl;
                     return nullptr;
                 } else if (record->_state._timeMarker != ((uint64(dateHigh) << 32ull) | uint64(dateLow))) {
-                    #if defined(XLE_HAS_CONSOLE_RIG)
-                        LogInfo
-                            << "Asset (" << intermediateFileName 
-                            << ") is invalidated because of file data on dependency (" << depName << ")";
-                    #endif
+					Log(Verbose)
+                        << "Asset (" << intermediateFileName 
+                        << ") is invalidated because of file data on dependency (" << depName << ")" << std::endl;
                     return nullptr;
                 }
             }
@@ -449,13 +445,6 @@ namespace Assets { namespace IntermediateAssets
 
 namespace Assets
 {
-    /*IntermediateAssetLocator::IntermediateAssetLocator()
-    {
-        _sourceID0[0] = '\0';
-        _sourceID1 = 0;
-    }
-    IntermediateAssetLocator::~IntermediateAssetLocator() {}*/
-
 	IArtifact::~IArtifact() {}
 
 	void CompileFuture::AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact)
@@ -469,7 +458,8 @@ namespace Assets
 
 	auto FileArtifact::GetBlob() const -> Blob
 	{
-		auto file = ::Assets::MainFileSystem::OpenFileInterface(MakeStringSection(_filename), "rb");
+		auto splitter = MakeFileNameSplitter(_filename);
+		auto file = ::Assets::MainFileSystem::OpenFileInterface(splitter.AllExceptParameters(), "rb");
 		auto size = file->GetDesc()._size;
 		auto result = std::make_shared<std::vector<uint8>>(size);
 		file->Read(AsPointer(result->begin()), result->size());
@@ -478,6 +468,7 @@ namespace Assets
 
 	auto FileArtifact::GetErrors() const -> Blob { return nullptr; }
 	::Assets::DepValPtr FileArtifact::GetDependencyValidation() const { return _depVal; }
+	StringSection<ResChar>	FileArtifact::GetRequestParameters() const { return MakeFileNameSplitter(_filename).Parameters(); }
 	FileArtifact::FileArtifact(const ::Assets::rstring& filename, const ::Assets::DepValPtr& depVal)
 	: _filename(filename), _depVal(depVal) {}
 	FileArtifact::~FileArtifact() {}
@@ -486,8 +477,9 @@ namespace Assets
 	auto BlobArtifact::GetBlob() const -> Blob { return _blob; }
 	auto BlobArtifact::GetErrors() const -> Blob  { return _errors;  }
 	::Assets::DepValPtr BlobArtifact::GetDependencyValidation() const { return _depVal; }
-	BlobArtifact::BlobArtifact(const Blob& blob, const Blob& errors, const ::Assets::DepValPtr& depVal) 
-	: _blob(blob), _errors(errors), _depVal(depVal) {}
+	StringSection<ResChar>	BlobArtifact::GetRequestParameters() const { return MakeStringSection(_requestParams); }
+	BlobArtifact::BlobArtifact(const Blob& blob, const Blob& errors, const ::Assets::DepValPtr& depVal, const rstring& requestParams)
+	: _blob(blob), _errors(errors), _depVal(depVal), _requestParams(requestParams) {}
 	BlobArtifact::~BlobArtifact() {}
 
 }

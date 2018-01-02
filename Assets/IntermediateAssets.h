@@ -21,9 +21,10 @@ namespace Assets
 	class IArtifact
 	{
 	public:
-		virtual Blob	GetBlob() const = 0;
-		virtual Blob	GetErrors() const = 0;
-		virtual ::Assets::DepValPtr GetDependencyValidation() const = 0;
+		virtual Blob					GetBlob() const = 0;
+		virtual Blob					GetErrors() const = 0;
+		virtual DepValPtr				GetDependencyValidation() const = 0;
+		virtual StringSection<ResChar>	GetRequestParameters() const = 0;		// these are parameters that should be passed through to the asset when it's actually loaded from the blob
 		virtual ~IArtifact();
 	};
 
@@ -73,27 +74,30 @@ namespace Assets
 	class FileArtifact : public ::Assets::IArtifact
 	{
 	public:
-		Blob	GetBlob() const;
-		Blob	GetErrors() const;
-		::Assets::DepValPtr GetDependencyValidation() const;
+		Blob		GetBlob() const;
+		Blob		GetErrors() const;
+		DepValPtr	GetDependencyValidation() const;
+		StringSection<ResChar>	GetRequestParameters() const;
 		FileArtifact(const ::Assets::rstring& filename, const ::Assets::DepValPtr& depVal);
 		~FileArtifact();
 	private:
-		::Assets::rstring _filename;
-		::Assets::DepValPtr _depVal;
+		rstring _filename;
+		DepValPtr _depVal;
 	};
 
 	class BlobArtifact : public ::Assets::IArtifact
 	{
 	public:
-		Blob	GetBlob() const;
-		Blob	GetErrors() const;
-		::Assets::DepValPtr GetDependencyValidation() const;
-		BlobArtifact(const Blob& blob, const Blob& errors, const ::Assets::DepValPtr& depVal);
+		Blob		GetBlob() const;
+		Blob		GetErrors() const;
+		DepValPtr	GetDependencyValidation() const;
+		StringSection<ResChar>	GetRequestParameters() const;
+		BlobArtifact(const Blob& blob, const Blob& errors, const DepValPtr& depVal, const rstring& requestParams = {});
 		~BlobArtifact();
 	private:
 		Blob _blob, _errors;
-		::Assets::DepValPtr _depVal;
+		DepValPtr _depVal;
+		rstring _requestParams;
 	};
 }
 

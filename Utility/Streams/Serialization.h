@@ -202,8 +202,8 @@ namespace Utility
 
 		iterator erase(const_iterator first, const_iterator last) 
 		{
-			assert(first >= _begin && first < _end);
-			assert(last >= _begin && last < _end);
+			assert(first >= _begin && first <= _end);
+			assert(last >= _begin && last <= _end);
 			assert(first != last);
 			assert(OwnsHeapBlock());
 			auto cnt = last-first;
@@ -248,7 +248,6 @@ namespace Utility
 			iterator insert(const_iterator pos, InputIt first, InputIt last)
 		{
 			assert(pos >= _begin && pos <= _end);
-			assert(first!=last);
 			auto idx = pos - _begin;
 			auto cnt = std::distance(first, last);
 			if ((_end+cnt) > _capacity) {
