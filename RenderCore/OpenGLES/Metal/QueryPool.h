@@ -9,7 +9,9 @@
 #include <algorithm>
 #include <memory>
 
-// #define GPUANNOTATIONS_ENABLE
+#if defined(_DEBUG) && !defined(GPUANNOTATIONS_ENABLE)
+    #define GPUANNOTATIONS_ENABLE
+#endif
 
 namespace RenderCore { namespace Metal_OpenGLES
 {

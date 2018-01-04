@@ -69,9 +69,6 @@ namespace RenderCore
 
 	void    AnnotatorImpl::Event(IThreadContext& context, const char name[], EventTypes::BitField types)
 	{
-		if (_currentQueryFrameId == Metal::QueryPool::FrameId_Invalid)
-			return;
-
 		if (types & EventTypes::MarkerBegin) {
 			Metal::GPUAnnotation::Begin(*Metal::DeviceContext::Get(context), name);
 		} else if (types & EventTypes::MarkerEnd) {
@@ -80,6 +77,9 @@ namespace RenderCore
 
 		if (!(types & (EventTypes::ProfileBegin|EventTypes::ProfileEnd)))
 			return;
+
+        if (_currentQueryFrameId == Metal::QueryPool::FrameId_Invalid)
+            return;
 
 		auto metalContext = Metal::DeviceContext::Get(context);
 		EventInFlight newEvent;

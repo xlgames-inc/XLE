@@ -293,7 +293,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         #endif
     }
 
-    ObjectFactory::ObjectFactory(IDevice& device)
+    ObjectFactory::ObjectFactory()
     {
         assert(s_objectFactory_instance == nullptr);
         s_objectFactory_instance = this;

@@ -74,7 +74,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         signed  IndexedGLType_Release(RawGLHandle object) never_throws;
         void    ReportLeaks();
 
-        ObjectFactory(IDevice& device);
+        ObjectFactory();
         ~ObjectFactory();
 
         ObjectFactory& operator=(const ObjectFactory&) = delete;

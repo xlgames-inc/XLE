@@ -35,6 +35,8 @@ namespace RenderCore { namespace ImplOpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////
 
+    class Device;
+
     class ThreadContext : public Base_ThreadContext
     {
     public:
@@ -49,8 +51,12 @@ namespace RenderCore { namespace ImplOpenGLES
 
         IAnnotator&                 GetAnnotator();
 
-        ThreadContext();
+        ThreadContext(const std::shared_ptr<Device>& device);
         ~ThreadContext();
+
+    private:
+        std::weak_ptr<Device>   _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
+        std::unique_ptr<IAnnotator> _annotator;
     };
 
     class ThreadContextOpenGLES : public ThreadContext, public Base_ThreadContextOpenGLES
@@ -58,7 +64,7 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetUnderlying();
         virtual void*       QueryInterface(size_t guid);
-        ThreadContextOpenGLES();
+        ThreadContextOpenGLES(const std::shared_ptr<Device>& device);
         ~ThreadContextOpenGLES();
     private:
         std::shared_ptr<Metal_OpenGLES::DeviceContext> _deviceContext;
@@ -66,7 +72,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Device :  public Base_Device, noncopyable
+    class Device :  public Base_Device, public std::enable_shared_from_this<Device>
     {
     public:
         std::unique_ptr<IPresentationChain> CreatePresentationChain(const void* platformValue, unsigned width, unsigned height);

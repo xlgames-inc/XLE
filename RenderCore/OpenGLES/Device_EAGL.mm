@@ -3,6 +3,7 @@
 #include "Metal/DeviceContext.h"
 #include "Metal/IndexedGLType.h"
 #include "Metal/Resource.h"
+#include "../IAnnotator.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Core/Exceptions.h"
@@ -24,9 +25,20 @@ namespace RenderCore { namespace ImplOpenGLES
     void                        ThreadContext::IncrFrameId() {}
     void                        ThreadContext::InvalidateCachedState() const {}
 
-    IAnnotator&                 ThreadContext::GetAnnotator() { return *(IAnnotator*)nullptr; }
+    IAnnotator&                 ThreadContext::GetAnnotator()
+    {
+        if (!_annotator) {
+            auto d = _device.lock();
+            assert(d);
+            _annotator = CreateAnnotator(*d);
+        }
+        return *_annotator;
+    }
 
-    ThreadContext::ThreadContext() {}
+    ThreadContext::ThreadContext(const std::shared_ptr<Device>& device)
+    : _device(device)
+    {}
+
     ThreadContext::~ThreadContext() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,7 +56,8 @@ namespace RenderCore { namespace ImplOpenGLES
         return nullptr;
     }
 
-    ThreadContextOpenGLES::ThreadContextOpenGLES()
+    ThreadContextOpenGLES::ThreadContextOpenGLES(const std::shared_ptr<Device>& device)
+    : ThreadContext(device)
     {
         _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>();
     }
@@ -55,8 +68,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     Device::Device()
     {
-        _immediateContext = std::make_shared<ThreadContextOpenGLES>();
-        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(*this);
+        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>();
     }
 
     Device::~Device()
@@ -86,11 +98,13 @@ namespace RenderCore { namespace ImplOpenGLES
 
     std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()
     {
-        return std::make_unique<ThreadContextOpenGLES>();
+        return std::make_unique<ThreadContextOpenGLES>(shared_from_this());
     }
 
     std::shared_ptr<IThreadContext>   Device::GetImmediateContext()
     {
+        if (!_immediateContext)
+            _immediateContext = std::make_shared<ThreadContextOpenGLES>(shared_from_this());
         return _immediateContext;
     }
 
@@ -143,12 +157,11 @@ namespace RenderCore { namespace ImplOpenGLES
         return dummy;
     }
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    render_dll_export std::unique_ptr<IDevice> CreateDevice()
+    render_dll_export std::shared_ptr<IDevice> CreateDevice()
     {
-        return std::make_unique<DeviceOpenGLES>();
+        return std::make_shared<DeviceOpenGLES>();
     }
 
 }}
