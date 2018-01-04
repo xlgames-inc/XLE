@@ -46,19 +46,23 @@ namespace RenderCore
         void BindConstantBuffer(unsigned slot, const CBBinding& binding);
         void BindShaderResource(unsigned slot, uint64_t hashName);
 
+        uint64_t GetHash() const;
+
         UniformsStreamInterface();
         ~UniformsStreamInterface();
 
     ////////////////////////////////////////////////////////////////////////
-        struct SavedCBBinding
+        struct RetainedCBBinding
         {
         public:
-            uint64_t _hashName;
-            std::vector<ConstantBufferElement> _elements;
+            uint64_t _hashName = 0ull;
+            std::vector<ConstantBufferElement> _elements = {};
         };
-        using SlotIndex = unsigned;
-        std::vector<std::pair<SlotIndex, SavedCBBinding>> _cbBindings;
-        std::vector<std::pair<SlotIndex, uint64_t>> _srvBindings;
+        std::vector<RetainedCBBinding> _cbBindings;
+        std::vector<uint64_t> _srvBindings;
+
+    private:
+        mutable uint64_t _hash;
     };
     
 }

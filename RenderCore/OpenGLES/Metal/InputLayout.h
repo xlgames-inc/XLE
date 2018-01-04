@@ -62,7 +62,11 @@ namespace RenderCore { namespace Metal_OpenGLES
             const UniformsStreamInterface& interface1 = {},
             const UniformsStreamInterface& interface2 = {},
             const UniformsStreamInterface& interface3 = {});
+        BoundUniforms();
         ~BoundUniforms();
+
+        BoundUniforms(BoundUniforms&& moveFrom) never_throws;
+        BoundUniforms& operator=(BoundUniforms&& moveFrom) never_throws;
     private:
         struct CB { unsigned _stream, _slot; SetUniformCommandGroup _commandGroup; };
         std::vector<CB> _cbs;

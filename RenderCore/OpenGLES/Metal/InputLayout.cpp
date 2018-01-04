@@ -241,8 +241,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             auto i = std::find_if(
                 interf->_cbBindings.begin(),
                 interf->_cbBindings.end(),
-                [hash](const std::pair<unsigned, UniformsStreamInterface::SavedCBBinding>& b) {
-                    return b.second._hashName == hash;
+                [hash](const UniformsStreamInterface::RetainedCBBinding& b) {
+                    return b._hashName == hash;
                 });
             if (i!=interf->_cbBindings.end())
                 return true;
@@ -253,12 +253,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     static bool HasSRVBinding(IteratorRange<const UniformsStreamInterface**> interfaces, uint64_t hash)
     {
         for (auto interf:interfaces) {
-            auto i = std::find_if(
-                interf->_srvBindings.begin(),
-                interf->_srvBindings.end(),
-                [hash](const std::pair<unsigned, uint64_t>& b) {
-                    return b.second == hash;
-                });
+            auto i = std::find(interf->_srvBindings.begin(), interf->_srvBindings.end(), hash);
             if (i!=interf->_srvBindings.end())
                 return true;
         }
@@ -289,39 +284,41 @@ namespace RenderCore { namespace Metal_OpenGLES
         auto streamCount = (unsigned)dimof(inputInterface);
         for (unsigned s=0; s<streamCount; ++s) {
             const UniformsStreamInterface& interf = *inputInterface[s];
-            for (unsigned b=0; b<interf._cbBindings.size(); ++b) {
-                const auto& binding = interf._cbBindings[b];
+            for (unsigned slot=0; slot<interf._cbBindings.size(); ++slot) {
+                const auto& binding = interf._cbBindings[slot];
+                if (binding._elements.empty()) continue;
 
                 // ensure it's not shadowed by a future binding
-                if (HasCBBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding.second._hashName)) continue;
+                if (HasCBBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding._hashName)) continue;
 
-                auto cmdGroup = introspection.MakeBinding(binding.second._hashName, MakeIteratorRange(binding.second._elements));
+                auto cmdGroup = introspection.MakeBinding(binding._hashName, MakeIteratorRange(binding._elements));
                 if (!cmdGroup._commands.empty()) {
-                    _cbs.emplace_back(CB{s, binding.first, std::move(cmdGroup)});
-                    _boundUniformBufferSlots[s] |= (1ull << uint64_t(binding.first));
+                    _cbs.emplace_back(CB{s, slot, std::move(cmdGroup)});
+                    _boundUniformBufferSlots[s] |= (1ull << uint64_t(slot));
                 }
             }
 
-            for (unsigned b=0; b<interf._srvBindings.size(); ++b) {
-                const auto& binding = interf._srvBindings[b];
+            for (unsigned slot=0; slot<interf._srvBindings.size(); ++slot) {
+                auto binding = interf._srvBindings[slot];
+                if (!binding) continue;
 
                 // ensure it's not shadowed by a future binding
-                if (HasSRVBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding.second)) continue;
+                if (HasSRVBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding)) continue;
 
-                auto uniform = introspection.FindUniform(binding.second);
+                auto uniform = introspection.FindUniform(binding);
                 if (uniform._elementCount != 0) {
                     // assign a texture unit for this binding
                     auto textureUnit = textureUnitAccumulator++;
                     auto dim = DimensionalityForUniformType(uniform._type);
                     assert(dim != GL_NONE);
-                    _srvs.emplace_back(SRV{s, binding.first, textureUnit, dim});
+                    _srvs.emplace_back(SRV{s, slot, textureUnit, dim});
 
                     // Record the command to set the uniform. Note that this
                     // is made a little more complicated due to array uniforms.
-                    assert((binding.second - uniform._bindingName) < uniform._elementCount);
-                    uniformSets.push_back({uniform._location, unsigned(binding.second - uniform._bindingName), textureUnit, uniform._type, uniform._elementCount});
+                    assert((binding - uniform._bindingName) < uniform._elementCount);
+                    uniformSets.push_back({uniform._location, unsigned(binding - uniform._bindingName), textureUnit, uniform._type, uniform._elementCount});
 
-                    _boundResourceSlots[s] |= (1ull << uint64_t(binding.first));
+                    _boundResourceSlots[s] |= (1ull << uint64_t(slot));
                 }
             }
         }
@@ -356,6 +353,43 @@ namespace RenderCore { namespace Metal_OpenGLES
     }
 
     BoundUniforms::~BoundUniforms() {}
+
+    BoundUniforms::BoundUniforms()
+    {
+        for (unsigned c=0; c<dimof(_boundUniformBufferSlots); ++c) {
+            _boundUniformBufferSlots[c] = 0ull;
+            _boundResourceSlots[c] = 0ull;
+        }
+    }
+
+    BoundUniforms::BoundUniforms(BoundUniforms&& moveFrom) never_throws
+    : _cbs(std::move(moveFrom._cbs))
+    , _srvs(std::move(moveFrom._srvs))
+    , _textureAssignmentCommands(std::move(moveFrom._textureAssignmentCommands))
+    , _textureAssignmentByteData(std::move(moveFrom._textureAssignmentByteData))
+    {
+        for (unsigned c=0; c<dimof(_boundUniformBufferSlots); ++c) {
+            _boundUniformBufferSlots[c] = moveFrom._boundUniformBufferSlots[c];
+            _boundResourceSlots[c] = moveFrom._boundResourceSlots[c];
+            moveFrom._boundUniformBufferSlots[c] = 0ull;
+            moveFrom._boundResourceSlots[c] = 0ull;
+        }
+    }
+
+    BoundUniforms& BoundUniforms::operator=(BoundUniforms&& moveFrom) never_throws
+    {
+        _cbs = std::move(moveFrom._cbs);
+        _srvs = std::move(moveFrom._srvs);
+        _textureAssignmentCommands = std::move(moveFrom._textureAssignmentCommands);
+        _textureAssignmentByteData = std::move(moveFrom._textureAssignmentByteData);
+        for (unsigned c=0; c<dimof(_boundUniformBufferSlots); ++c) {
+            _boundUniformBufferSlots[c] = moveFrom._boundUniformBufferSlots[c];
+            _boundResourceSlots[c] = moveFrom._boundResourceSlots[c];
+            moveFrom._boundUniformBufferSlots[c] = 0ull;
+            moveFrom._boundResourceSlots[c] = 0ull;
+        }
+        return *this;
+    }
 
     IPipelineLayout::~IPipelineLayout() {}
 
