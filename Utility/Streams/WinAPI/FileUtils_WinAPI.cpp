@@ -474,7 +474,7 @@ namespace Utility
 				(const char*)filename, 
 				GetFileExInfoStandard,
 				&attribs);
-			return (result) ? AsFileAttributes(attribs) : FileAttributes{};
+			return (result) ? AsFileAttributes(attribs) : std::optional<FileAttributes>{};
 		}
 
 		std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[])
@@ -484,7 +484,7 @@ namespace Utility
 				(const wchar_t*)filename, 
 				GetFileExInfoStandard,
 				&attribs);
-			return (result) ? AsFileAttributes(attribs) : FileAttributes{};
+			return (result) ? AsFileAttributes(attribs) : std::optional<FileAttributes>{};
 		}
 
 		std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter)

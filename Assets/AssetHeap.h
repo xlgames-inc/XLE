@@ -44,11 +44,8 @@ namespace Assets
 		DefaultAssetHeap(const DefaultAssetHeap&) = delete;
 		DefaultAssetHeap& operator=(const DefaultAssetHeap&) = delete;
 	private:
-		Threading::Mutex _lock;
+		Threading::Mutex _lock;		
 		std::vector<std::pair<uint64_t, FuturePtr<AssetType>>> _assets;
-
-		template<typename... Params>
-			FuturePtr<AssetType> MakeFuture(Params...);
 	};
 
 	template<typename AssetType>
@@ -64,25 +61,25 @@ namespace Assets
 	{
 		auto hash = Internal::BuildHash(initialisers...);
 
-		ScopedLock(_lock);
-		auto i = LowerBound(_assets, hash);
-		if (i != _assets.end() && i->first == hash)
-			if (!IsInvalidated(*i->second))
-				return i->second;
+		FuturePtr<AssetType> newFuture;
+		{
+			ScopedLock(_lock);
+			auto i = LowerBound(_assets, hash);
+			if (i != _assets.end() && i->first == hash)
+				if (!IsInvalidated(*i->second))
+					return i->second;
 
-		auto newFuture = MakeFuture(std::forward<Params>(initialisers)...);
-		_assets.insert(i, {hash, newFuture});
+			auto stringInitializer = Internal::AsString(initialisers...);	// (used for tracking/debugging purposes)
+			newFuture = std::make_shared<AssetFuture<AssetType>>(stringInitializer);
+			_assets.insert(i, { hash, newFuture });
+		}
+
+		// note -- call AutoConstructToFuture outside of the mutex lock, because this operation can be expensive
+		// after the future has been constructed but before we complete AutoConstructToFuture, the asset is considered to be
+		// in "pending" state, and Actualize() will through a PendingAsset exception, so this should be thread-safe, even if
+		// another thread grabs the future before AutoConstructToFuture is done
+		AutoConstructToFuture<AssetType>(*newFuture, std::forward<Params>(initialisers)...);
 		return newFuture;
-	}
-
-	template<typename AssetType>
-		template<typename... Params>
-			auto DefaultAssetHeap<AssetType>::MakeFuture(Params... initialisers) -> FuturePtr<AssetType>
-	{
-		auto stringInitializer = Internal::AsString(initialisers...);	// (used for tracking/debugging purposes)
-		auto future = std::make_shared<AssetFuture<AssetType>>(stringInitializer);
-		AutoConstructToFuture<AssetType>(*future, std::forward<Params>(initialisers)...);
-		return future;
 	}
 
 	template<typename AssetType>
@@ -90,8 +87,6 @@ namespace Assets
 
 	template<typename AssetType>
 		DefaultAssetHeap<AssetType>::~DefaultAssetHeap() {}
-
-
 	
 	template<typename AssetType>
 		void            DefaultAssetHeap<AssetType>::Clear() {}
