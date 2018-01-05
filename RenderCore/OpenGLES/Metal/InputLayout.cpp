@@ -9,6 +9,7 @@
 #include "ShaderIntrospection.h"
 #include "Format.h"
 #include "ShaderResource.h"
+#include "PipelineLayout.h"
 #include "../../Types.h"
 #include "../../Format.h"
 #include "../../BufferView.h"
@@ -264,7 +265,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     BoundUniforms::BoundUniforms(
         const ShaderProgram& shader,
-        const IPipelineLayout& pipelineLayout,
+        const PipelineLayoutConfig& pipelineLayout,
         const UniformsStreamInterface& interface0,
         const UniformsStreamInterface& interface1,
         const UniformsStreamInterface& interface2,
@@ -308,7 +309,11 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto uniform = introspection.FindUniform(binding);
                 if (uniform._elementCount != 0) {
                     // assign a texture unit for this binding
-                    auto textureUnit = textureUnitAccumulator++;
+                    auto textureUnit = pipelineLayout.GetFixedTextureUnit(binding);
+                    if (textureUnit == ~0u) {
+                        textureUnit = pipelineLayout.GetFlexibleTextureUnit(textureUnitAccumulator);
+                        textureUnitAccumulator++;
+                    }
                     auto dim = DimensionalityForUniformType(uniform._type);
                     assert(dim != GL_NONE);
                     _srvs.emplace_back(SRV{s, slot, textureUnit, dim});
@@ -390,8 +395,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
         return *this;
     }
-
-    IPipelineLayout::~IPipelineLayout() {}
 
 }}
 

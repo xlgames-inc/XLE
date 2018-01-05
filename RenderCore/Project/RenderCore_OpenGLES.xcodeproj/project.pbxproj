@@ -41,6 +41,9 @@
 		8F2D1B8E1FD629380028A531 /* IncludeGLES.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B701FD629380028A531 /* IncludeGLES.h */; };
 		8F2D1B8F1FD629380028A531 /* IndexedGLType.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B711FD629380028A531 /* IndexedGLType.h */; };
 		8F2D1B901FD629380028A531 /* ShaderResource.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B721FD629380028A531 /* ShaderResource.h */; };
+		8F6576871FFEFA2B009052A0 /* PipelineLayout.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6576851FFEFA2A009052A0 /* PipelineLayout.h */; };
+		8F6576881FFEFA2B009052A0 /* PipelineLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6576861FFEFA2B009052A0 /* PipelineLayout.cpp */; };
+		8F6576891FFEFA31009052A0 /* PipelineLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6576861FFEFA2B009052A0 /* PipelineLayout.cpp */; };
 		8F8167061FDF32BE00284B80 /* Resource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F8167041FDF32BE00284B80 /* Resource.cpp */; };
 		8F8167081FDF4B4200284B80 /* Resource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F8167041FDF32BE00284B80 /* Resource.cpp */; };
 		8F81670B1FDF65CA00284B80 /* ShaderIntrospection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F81670A1FDF65CA00284B80 /* ShaderIntrospection.cpp */; };
@@ -92,6 +95,8 @@
 		8F2D1B701FD629380028A531 /* IncludeGLES.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IncludeGLES.h; path = ../OpenGLES/Metal/IncludeGLES.h; sourceTree = "<group>"; };
 		8F2D1B711FD629380028A531 /* IndexedGLType.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IndexedGLType.h; path = ../OpenGLES/Metal/IndexedGLType.h; sourceTree = "<group>"; };
 		8F2D1B721FD629380028A531 /* ShaderResource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ShaderResource.h; path = ../OpenGLES/Metal/ShaderResource.h; sourceTree = "<group>"; };
+		8F6576851FFEFA2A009052A0 /* PipelineLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PipelineLayout.h; path = ../OpenGLES/Metal/PipelineLayout.h; sourceTree = "<group>"; };
+		8F6576861FFEFA2B009052A0 /* PipelineLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = PipelineLayout.cpp; path = ../OpenGLES/Metal/PipelineLayout.cpp; sourceTree = "<group>"; };
 		8F8167041FDF32BE00284B80 /* Resource.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Resource.cpp; path = ../OpenGLES/Metal/Resource.cpp; sourceTree = "<group>"; };
 		8F8167091FDF612100284B80 /* ShaderIntrospection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ShaderIntrospection.h; path = ../OpenGLES/Metal/ShaderIntrospection.h; sourceTree = "<group>"; };
 		8F81670A1FDF65CA00284B80 /* ShaderIntrospection.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ShaderIntrospection.cpp; path = ../OpenGLES/Metal/ShaderIntrospection.cpp; sourceTree = "<group>"; };
@@ -119,6 +124,8 @@
 		8F212B461FD75FA600599B22 /* Metal */ = {
 			isa = PBXGroup;
 			children = (
+				8F6576861FFEFA2B009052A0 /* PipelineLayout.cpp */,
+				8F6576851FFEFA2A009052A0 /* PipelineLayout.h */,
 				8F2D1B601FD629360028A531 /* Buffer.cpp */,
 				8F2D1B621FD629360028A531 /* Buffer.h */,
 				8F2D1B6A1FD629370028A531 /* DeviceContext.cpp */,
@@ -198,6 +205,7 @@
 				8F2D1B741FD629380028A531 /* Types.h in Headers */,
 				8F2D1B801FD629380028A531 /* DeviceContext.h in Headers */,
 				8F212B4B1FD75FBF00599B22 /* Device_EGL.h in Headers */,
+				8F6576871FFEFA2B009052A0 /* PipelineLayout.h in Headers */,
 				8F2D1B831FD629380028A531 /* State.h in Headers */,
 				8F2D1B7D1FD629380028A531 /* Resource.h in Headers */,
 				8F2D1B771FD629380028A531 /* InputLayout.h in Headers */,
@@ -293,6 +301,7 @@
 				8F2D1B821FD629380028A531 /* State.cpp in Sources */,
 				8F2D1B7F1FD629380028A531 /* InputLayout.cpp in Sources */,
 				8F2D1B761FD629380028A531 /* Buffer.cpp in Sources */,
+				8F6576891FFEFA31009052A0 /* PipelineLayout.cpp in Sources */,
 				8F2D1B851FD629380028A531 /* DeviceContext.cpp in Sources */,
 				8F8167081FDF4B4200284B80 /* Resource.cpp in Sources */,
 				8F2D1B871FD629380028A531 /* QueryPool.cpp in Sources */,
@@ -312,6 +321,7 @@
 				8F2D1B811FD629380028A531 /* State.cpp in Sources */,
 				8F2D1B7E1FD629380028A531 /* InputLayout.cpp in Sources */,
 				8F2D1B751FD629380028A531 /* Buffer.cpp in Sources */,
+				8F6576881FFEFA2B009052A0 /* PipelineLayout.cpp in Sources */,
 				8F2D1B841FD629380028A531 /* DeviceContext.cpp in Sources */,
 				8F8167061FDF32BE00284B80 /* Resource.cpp in Sources */,
 				8F2D1B861FD629380028A531 /* QueryPool.cpp in Sources */,

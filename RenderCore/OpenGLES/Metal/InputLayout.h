@@ -14,6 +14,7 @@
 namespace RenderCore { namespace Metal_OpenGLES
 {
     class ShaderProgram;
+    class PipelineLayoutConfig;
 
     class BoundInputLayout
     {
@@ -38,12 +39,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         uint32_t _attributeState;
     };
 
-    class IPipelineLayout
-    {
-    public:
-        virtual ~IPipelineLayout();
-    };
-
     class BoundUniforms
     {
     public:
@@ -57,7 +52,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         BoundUniforms(
             const ShaderProgram& shader,
-            const IPipelineLayout& pipelineLayout,
+            const PipelineLayoutConfig& pipelineLayout,
             const UniformsStreamInterface& interface0 = {},
             const UniformsStreamInterface& interface1 = {},
             const UniformsStreamInterface& interface2 = {},
