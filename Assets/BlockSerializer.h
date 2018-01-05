@@ -68,7 +68,10 @@ namespace Serialization
 		template<typename Type>
             void    SerializeRaw    ( const SerializableVector<Type>& value );
 
-        template<typename Type>
+		template<typename Type, size_t Count>
+			void    SerializeRaw	( Type      (&type)[Count] ); 
+			
+		template<typename Type>
             void    SerializeRaw    ( Type      type );
 
         std::unique_ptr<uint8[]>        AsMemoryBlock() const;
@@ -221,6 +224,12 @@ namespace Serialization
             // serialize the vector using just a raw copy of the contents
         SerializeRawSubBlock(MakeIteratorRange(vector), Serialization::NascentBlockSerializer::SpecialBuffer::Vector);
     }
+
+	template<typename Type, size_t Count>
+		void    NascentBlockSerializer::SerializeRaw(Type(&type)[Count])
+	{
+		PushBackRaw(type, sizeof(Type)*Count);
+	}
 
     template<typename Type>
         void    NascentBlockSerializer::SerializeRaw(Type      type)
