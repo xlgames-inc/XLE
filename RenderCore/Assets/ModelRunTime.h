@@ -21,7 +21,7 @@
 #include <memory>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
-namespace Assets { class DirectorySearchRules; class ICompileMarker; class DependencyValidation; class DeferredConstruction; class ChunkFileContainer; class IFileInterface; }
+namespace Assets { class DirectorySearchRules; class ICompileMarker; class DependencyValidation; class ChunkFileContainer; class IFileInterface; }
 
 namespace RenderCore { namespace Assets
 {
@@ -77,28 +77,27 @@ namespace RenderCore { namespace Assets
     class ModelScaffold
     {
     public:
-        unsigned                        LargeBlocksOffset() const;
         const ModelCommandStream&       CommandStream() const;
         const ModelImmutableData&       ImmutableData() const;
         const SkeletonMachine&			EmbeddedSkeleton() const;
         std::pair<Float3, Float3>       GetStaticBoundingBox(unsigned lodIndex = 0) const;
         unsigned                        GetMaxLOD() const;
 
-		const ::Assets::DepValPtr&					GetDependencyValidation() const;
-		std::shared_ptr<::Assets::IFileInterface>	OpenFile() const;
-		const ::Assets::rstring&					Filename() const;
+		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal; }
+		std::shared_ptr<::Assets::IFileInterface>	OpenLargeBlocks() const;
 
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
+		static const ::Assets::AssetChunkRequest ChunkRequests[2];
 
-        ModelScaffold(const ::Assets::ChunkFileContainer& chunkFile);
+        ModelScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
         ModelScaffold(ModelScaffold&& moveFrom) never_throws;
         ModelScaffold& operator=(ModelScaffold&& moveFrom) never_throws;
         ~ModelScaffold();
 
     private:
-        std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
-        unsigned						_largeBlocksOffset;
-		::Assets::ChunkFileContainer	_chunkFile;
+        std::unique_ptr<uint8[], PODAlignedDeletor>		_rawMemoryBlock;
+		::Assets::AssetChunkReopenFunction				_largeBlocksReopen;
+		::Assets::DepValPtr								_depVal;
     };
     
     class PreparedAnimation;
@@ -241,20 +240,21 @@ namespace RenderCore { namespace Assets
         unsigned LargeBlocksOffset() const;
         const ModelSupplementImmutableData& ImmutableData() const;
 
-		const ::Assets::DepValPtr&					GetDependencyValidation() const;
-		std::shared_ptr<::Assets::IFileInterface>	OpenFile() const;
+		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal; }
+		std::shared_ptr<::Assets::IFileInterface>	OpenLargeBlocks() const;
 
-        ModelSupplementScaffold(const ::Assets::ChunkFileContainer& chunkFile);
+        ModelSupplementScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
         ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom) never_throws;
         ModelSupplementScaffold& operator=(ModelSupplementScaffold&& moveFrom) never_throws;
         ~ModelSupplementScaffold();
 
 		static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
+		static const ::Assets::AssetChunkRequest ChunkRequests[2];
 
     private:
-        std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
-        unsigned						_largeBlocksOffset;
-		::Assets::ChunkFileContainer	_chunkFile;
+        std::unique_ptr<uint8[], PODAlignedDeletor>	_rawMemoryBlock;
+		::Assets::AssetChunkReopenFunction			_largeBlocksReopen;
+		::Assets::DepValPtr							_depVal;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -290,19 +290,19 @@ namespace RenderCore { namespace Assets
     public:
         const SkeletonMachine&			GetTransformationMachine() const;
 
-		const ::Assets::DepValPtr&					GetDependencyValidation() const;
-		std::shared_ptr<::Assets::IFileInterface>	OpenFile() const;
+		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal;  }
 
         static const auto CompileProcessType = ConstHash64<'Skel', 'eton'>::Value;
+		static const ::Assets::AssetChunkRequest ChunkRequests[1];
 
-        SkeletonScaffold(const ::Assets::ChunkFileContainer& chunkFile);
+        SkeletonScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
         SkeletonScaffold(SkeletonScaffold&& moveFrom) never_throws;
         SkeletonScaffold& operator=(SkeletonScaffold&& moveFrom) never_throws;
         ~SkeletonScaffold();
 
     private:
         std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
-		::Assets::ChunkFileContainer	_chunkFile;
+		::Assets::DepValPtr _depVal;
     };
 
     /// <summary>Structural data for animation</summary>
@@ -317,19 +317,19 @@ namespace RenderCore { namespace Assets
     public:
         const AnimationImmutableData&   ImmutableData() const;
 
-		const ::Assets::DepValPtr&					GetDependencyValidation() const;
-		std::shared_ptr<::Assets::IFileInterface>	OpenFile() const;
+		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal; }
 
         static const auto CompileProcessType = ConstHash64<'Anim', 'Set'>::Value;
+		static const ::Assets::AssetChunkRequest ChunkRequests[1];
 
-        AnimationSetScaffold(const ::Assets::ChunkFileContainer& chunkFile);
+        AnimationSetScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
         AnimationSetScaffold(AnimationSetScaffold&& moveFrom) never_throws;
         AnimationSetScaffold& operator=(AnimationSetScaffold&& moveFrom) never_throws;
         ~AnimationSetScaffold();
 
     private:
         std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
-		::Assets::ChunkFileContainer	_chunkFile;
+		::Assets::DepValPtr _depVal;
     };
 
     /// <summary>Bind together a model, animation set and skeleton for rendering</summary>

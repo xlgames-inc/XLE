@@ -64,10 +64,8 @@ namespace Assets
             assert(i != chunks.end());
 
             AssetChunkResult chunkResult;
-            chunkResult._offset = i->_fileOffset;
-            chunkResult._size = i->_size;
-
-            if (r._dataType != AssetChunkRequest::DataType::DontLoad) {
+            if (	r._dataType == AssetChunkRequest::DataType::BlockSerializer
+				||	r._dataType == AssetChunkRequest::DataType::Raw) {
                 uint8* mem = (uint8*)XlMemAlign(i->_size, sizeof(uint64_t));
                 chunkResult._buffer = std::unique_ptr<uint8[], PODAlignedDeletor>(mem);
                 file.Seek(i->_fileOffset);
@@ -76,7 +74,20 @@ namespace Assets
                 // initialize with the block serializer (if requested)
                 if (r._dataType == AssetChunkRequest::DataType::BlockSerializer)
                     Serialization::Block_Initialize(chunkResult._buffer.get());
-            }
+            } else if (r._dataType == AssetChunkRequest::DataType::ReopenFunction) {
+				auto offset = i->_fileOffset;
+				auto blobCopy = _blob;
+				auto filenameCopy = _filename;
+				chunkResult._reopenFunction = [offset, blobCopy, filenameCopy]() -> std::shared_ptr<IFileInterface> {
+					std::shared_ptr<IFileInterface> result;
+					if (blobCopy) {
+						result = CreateMemoryFile(blobCopy);
+					} else 
+						result = MainFileSystem::OpenFileInterface(filenameCopy.c_str(), "rb");
+					result->Seek(offset);
+					return result;
+				};
+			}
 
             result.emplace_back(std::move(chunkResult));
         }

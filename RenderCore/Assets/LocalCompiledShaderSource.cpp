@@ -53,11 +53,8 @@ namespace RenderCore { namespace Assets
             ::Assets::AssetState, const Payload& payload, const Payload& errors,
             IteratorRange<const ::Assets::DependentFileState*>)>;
 
-        const Payload& Resolve(StringSection<::Assets::ResChar> initializer, const ::Assets::DepValPtr& depVal = nullptr) const;
-        ::Assets::AssetState TryResolve(Payload& result, const ::Assets::DepValPtr& depVal) const;
         Payload GetErrors() const;
 
-        ::Assets::AssetState StallWhilePending() const;
 		ShaderStage GetStage() const { return _shaderPath.AsShaderStage(); }
 
         const std::vector<::Assets::DependentFileState>& GetDependencies() const;
@@ -78,7 +75,6 @@ namespace RenderCore { namespace Assets
     protected:
         virtual void Complete(const void* buffer, size_t bufferSize);
 		virtual void OnFailure();
-        void CommitToArchive();
 
         Payload _payload;
         std::vector<::Assets::DependentFileState> _deps;
@@ -219,46 +215,7 @@ namespace RenderCore { namespace Assets
 		} CATCH_END
     }
 
-    auto ShaderCompileMarker::Resolve(
-        StringSection<::Assets::ResChar> initializer, 
-        const std::shared_ptr<::Assets::DependencyValidation>& depVal) const -> const Payload&
-    {
-        auto state = GetAssetState();
-        if (state == ::Assets::AssetState::Invalid)
-            Throw(::Assets::Exceptions::InvalidAsset(initializer, "Invalid shader code while resolving"));
-
-        if (state == ::Assets::AssetState::Pending) 
-            Throw(::Assets::Exceptions::PendingAsset(initializer, "Pending shader code while resolving"));
-
-        if (depVal)
-            for (const auto& i:_deps)
-                RegisterFileDependency(depVal, MakeStringSection(i._filename));
-
-        return _payload;
-    }
-
-    auto ShaderCompileMarker::TryResolve(
-        Payload& result,
-        const std::shared_ptr<::Assets::DependencyValidation>& depVal) const -> ::Assets::AssetState
-    {
-        auto state = GetAssetState();
-        if (state != ::Assets::AssetState::Ready)
-            return state;
-
-        if (depVal)
-            for (const auto& i:_deps)
-                RegisterFileDependency(depVal, MakeStringSection(i._filename));
-
-        result = _payload;
-        return ::Assets::AssetState::Ready;
-    }
-
     auto ShaderCompileMarker::GetErrors() const -> Payload { return Payload(); }
-
-    ::Assets::AssetState ShaderCompileMarker::StallWhilePending() const
-    {
-        return ::Assets::GenericFuture::StallWhilePending();
-    }
 
         ////////////////////////////////////////////////////////////
 

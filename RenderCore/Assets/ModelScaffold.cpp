@@ -90,12 +90,7 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    unsigned    ModelScaffold::LargeBlocksOffset() const            
-    { 
-        return _largeBlocksOffset; 
-    }
-
-    const ModelImmutableData&   ModelScaffold::ImmutableData() const                
+	const ModelImmutableData&   ModelScaffold::ImmutableData() const                
     {
         return *(const ModelImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
@@ -105,37 +100,34 @@ namespace RenderCore { namespace Assets
     std::pair<Float3, Float3>       ModelScaffold::GetStaticBoundingBox(unsigned) const { return ImmutableData()._boundingBox; }
     unsigned                        ModelScaffold::GetMaxLOD() const                    { return ImmutableData()._maxLOD; }
 
-	const ::Assets::DepValPtr&					ModelScaffold::GetDependencyValidation() const { return _chunkFile.GetDependencyValidation(); }
-	std::shared_ptr<::Assets::IFileInterface>	ModelScaffold::OpenFile() const { return _chunkFile.OpenFile(); }
-	const ::Assets::rstring&					ModelScaffold::Filename() const { return _chunkFile.Filename(); }
+	std::shared_ptr<::Assets::IFileInterface>	ModelScaffold::OpenLargeBlocks() const { return _largeBlocksReopen(); }
 
-    static const ::Assets::AssetChunkRequest ModelScaffoldChunkRequests[]
+    const ::Assets::AssetChunkRequest ModelScaffold::ChunkRequests[2]
     {
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_ModelScaffold, ModelScaffoldVersion, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
-        ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, ::Assets::AssetChunkRequest::DataType::DontLoad }
+        ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, ::Assets::AssetChunkRequest::DataType::ReopenFunction }
     };
     
-    ModelScaffold::ModelScaffold(const ::Assets::ChunkFileContainer& chunkFile)
-	: _chunkFile(chunkFile)
+    ModelScaffold::ModelScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
     {
-        auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(ModelScaffoldChunkRequests));
 		assert(chunks.size() == 2);
 		_rawMemoryBlock = std::move(chunks[0]._buffer);
-		_largeBlocksOffset = chunks[1]._offset;
+		_largeBlocksReopen = std::move(chunks[1]._reopenFunction);
+		_depVal = depVal;
     }
 
     ModelScaffold::ModelScaffold(ModelScaffold&& moveFrom) never_throws
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-    , _largeBlocksOffset(moveFrom._largeBlocksOffset)
-	, _chunkFile(std::move(moveFrom._chunkFile))
+    , _largeBlocksReopen(std::move(moveFrom._largeBlocksReopen))
+	, _depVal(std::move(moveFrom._depVal))
     {}
 
     ModelScaffold& ModelScaffold::operator=(ModelScaffold&& moveFrom) never_throws
     {
-		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
+		ImmutableData().~ModelImmutableData();
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-        _largeBlocksOffset = moveFrom._largeBlocksOffset;
-		_chunkFile = std::move(moveFrom._chunkFile);
+		_largeBlocksReopen = std::move(moveFrom._largeBlocksReopen);
+		_depVal = std::move(moveFrom._depVal);
         return *this;
     }
 
@@ -146,46 +138,39 @@ namespace RenderCore { namespace Assets
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-    unsigned    ModelSupplementScaffold::LargeBlocksOffset() const            
-    { 
-        return _largeBlocksOffset; 
-    }
-
     const ModelSupplementImmutableData&   ModelSupplementScaffold::ImmutableData() const                
     {
         return *(const ModelSupplementImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
-	const ::Assets::DepValPtr&					ModelSupplementScaffold::GetDependencyValidation() const { return _chunkFile.GetDependencyValidation(); }
-	std::shared_ptr<::Assets::IFileInterface>	ModelSupplementScaffold::OpenFile() const { return _chunkFile.OpenFile(); }
+	std::shared_ptr<::Assets::IFileInterface>	ModelSupplementScaffold::OpenLargeBlocks() const { return _largeBlocksReopen(); }
 
-    static const ::Assets::AssetChunkRequest ModelSupplementScaffoldChunkRequests[]
+    const ::Assets::AssetChunkRequest ModelSupplementScaffold::ChunkRequests[]
     {
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_ModelScaffold, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
-        ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, 0, ::Assets::AssetChunkRequest::DataType::DontLoad }
+        ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, 0, ::Assets::AssetChunkRequest::DataType::ReopenFunction }
     };
     
-    ModelSupplementScaffold::ModelSupplementScaffold(const ::Assets::ChunkFileContainer& chunkFile)
-	: _chunkFile(chunkFile)
+    ModelSupplementScaffold::ModelSupplementScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
+	: _depVal(depVal)
 	{
-		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(ModelSupplementScaffoldChunkRequests));
 		assert(chunks.size() == 2);
 		_rawMemoryBlock = std::move(chunks[0]._buffer);
-		_largeBlocksOffset = chunks[1]._offset;
+		_largeBlocksReopen = chunks[1]._reopenFunction;
 	}
 
     ModelSupplementScaffold::ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom) never_throws
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-    , _largeBlocksOffset(moveFrom._largeBlocksOffset)
-	, _chunkFile(std::move(moveFrom._chunkFile))
+    , _largeBlocksReopen(std::move(moveFrom._largeBlocksReopen))
+	, _depVal(std::move(moveFrom._depVal))
     {}
 
     ModelSupplementScaffold& ModelSupplementScaffold::operator=(ModelSupplementScaffold&& moveFrom) never_throws
     {
-		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
+		ImmutableData().~ModelSupplementImmutableData();
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-        _largeBlocksOffset = moveFrom._largeBlocksOffset;
-		_chunkFile = std::move(moveFrom._chunkFile);
+		_largeBlocksReopen = std::move(moveFrom._largeBlocksReopen);
+		_depVal = std::move(moveFrom._depVal);
 		return *this;
     }
 

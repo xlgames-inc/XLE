@@ -760,7 +760,7 @@ namespace SceneEngine
         const Float4x4& cameraToProjection) const
     {
         StringMeldAppend(parserContext._stringHelpers->_errorString)
-            << "Building dynamic imposter: (" << ob._scaffold->Filename() << ") angle (" << ob._XYangle << ")\n";
+            << "Building dynamic imposter: (" << /*ob._scaffold->Filename() <<*/ ") angle (" << ob._XYangle << ")\n";
 
         context.Clear(_atlas._tempDSV.DSV(), Metal::DeviceContext::ClearFilter::Depth|Metal::DeviceContext::ClearFilter::Stencil, 1.f, 0u);
 

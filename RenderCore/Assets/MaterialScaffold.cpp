@@ -38,7 +38,7 @@ namespace RenderCore { namespace Assets
 		return nullptr;
 	}
 
-	static const ::Assets::AssetChunkRequest MaterialScaffoldChunkRequests[]
+	const ::Assets::AssetChunkRequest MaterialScaffold::ChunkRequests[]
 	{
 		::Assets::AssetChunkRequest{
 			"Scaffold", ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion,
@@ -46,22 +46,21 @@ namespace RenderCore { namespace Assets
 		}
 	};
 
-	MaterialScaffold::MaterialScaffold(const ::Assets::ChunkFileContainer& chunkFile)
-		: _depVal(chunkFile.GetDependencyValidation())
+	MaterialScaffold::MaterialScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
+	: _depVal(depVal)
 	{
-		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(MaterialScaffoldChunkRequests));
 		assert(chunks.size() == 1);
 		_rawMemoryBlock = std::move(chunks[0]._buffer);
 	}
 
 	MaterialScaffold::MaterialScaffold(MaterialScaffold&& moveFrom) never_throws
-		: _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-		, _depVal(moveFrom._depVal)
+	: _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+	, _depVal(moveFrom._depVal)
 	{}
 
 	MaterialScaffold& MaterialScaffold::operator=(MaterialScaffold&& moveFrom) never_throws
 	{
-		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
+		ImmutableData().~MaterialImmutableData();
 		_rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
 		_depVal = moveFrom._depVal;
 		return *this;

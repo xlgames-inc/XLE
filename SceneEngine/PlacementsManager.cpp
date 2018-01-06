@@ -97,8 +97,9 @@ namespace SceneEngine
         void LogDetails(const char title[]) const;
 
 		const ::Assets::DepValPtr& GetDependencyValidation() const	{ return _dependencyValidation; }
+		static const ::Assets::AssetChunkRequest ChunkRequests[1];
 
-        Placements(const ::Assets::ChunkFileContainer& chunkFile);
+        Placements(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
         Placements();
         ~Placements();
     protected:
@@ -245,7 +246,7 @@ namespace SceneEngine
         }
     }
 
-    static const ::Assets::AssetChunkRequest PlacementsChunkRequests[]
+    const ::Assets::AssetChunkRequest Placements::ChunkRequests[]
     {
         ::Assets::AssetChunkRequest
         {
@@ -254,10 +255,9 @@ namespace SceneEngine
         }
     };
 
-    Placements::Placements(const ::Assets::ChunkFileContainer& chunkFile)
-	: _dependencyValidation(chunkFile.GetDependencyValidation())
+    Placements::Placements(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
+	: _dependencyValidation(depVal)
     {
-		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(PlacementsChunkRequests));
         assert(chunks.size() == 1);
 
             //
@@ -295,7 +295,7 @@ namespace SceneEngine
 
         #if defined(_DEBUG)
             if (!_objects.empty())
-                LogDetails(chunkFile.Filename().c_str());
+                LogDetails("<<unknown>>");
         #endif
     }
 
@@ -374,7 +374,7 @@ namespace SceneEngine
     void PlacementsCache::Item::Reload()
     {
         _placements.reset();
-        _placements = std::make_unique<Placements>(MakeStringSection(_filename));
+        _placements = ::Assets::AutoConstructAsset<Placements>(MakeStringSection(_filename));
     }
 
     PlacementsCache::PlacementsCache() {}

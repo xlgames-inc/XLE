@@ -18,9 +18,9 @@ namespace Assets
 {
 	template <typename Asset> class DivergentAsset;
 	template <typename Formatter> class ConfigFileContainer;
-	class DeferredConstruction;
 	class DirectorySearchRules;
 	class ChunkFileContainer;
+	class AssetChunkRequest;
     class IArtifact;
 
 	namespace Internal
@@ -45,14 +45,17 @@ namespace Assets
 				static const bool value = decltype(Test<TestSubject>(0))::value;
 			};
 
+			template<typename T> static auto HasChunkRequestsHelper(int) -> decltype(&T::ChunkRequests[0], std::true_type{});
+			template<typename...> static auto HasChunkRequestsHelper(...) -> std::false_type;
+
 		public:
 			using DivAsset = DivergentAsset<AssetType>;
 
-			static const bool Constructor_DeferredConstruction = std::is_constructible<AssetType, const std::shared_ptr<DeferredConstruction>&>::value;
 			static const bool Constructor_Formatter = std::is_constructible<AssetType, InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&>::value;
 			static const bool Constructor_ChunkFileContainer = std::is_constructible<AssetType, const ChunkFileContainer&>::value;
 
 			static const bool HasCompileProcessType = HasCompileProcessTypeHelper::value;
+			static const bool HasChunkRequests = decltype(HasChunkRequestsHelper<AssetType>(0))::value;
 		};
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -113,6 +116,21 @@ namespace Assets
 		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> requestParameters = {})
 	{
 		return std::make_unique<AssetType>(ChunkFileContainer(blob, depVal, requestParameters));
+	}
+
+	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasChunkRequests)>
+		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
+	{
+		const auto& container = Internal::GetChunkFileContainer(initializer);
+		auto chunks = container.ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
+		return std::make_unique<AssetType>(MakeIteratorRange(chunks), container.GetDependencyValidation());
+	}
+
+	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasChunkRequests)>
+		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> requestParameters = {})
+	{
+		auto chunks = ChunkFileContainer(blob, depVal, requestParameters).ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
+		return std::make_unique<AssetType>(MakeIteratorRange(chunks), depVal);
 	}
 
 	template<typename AssetType, typename... Params, typename std::enable_if<std::is_constructible<AssetType, Params...>::value>::type* = nullptr>

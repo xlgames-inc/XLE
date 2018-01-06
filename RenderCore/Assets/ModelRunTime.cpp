@@ -448,7 +448,7 @@ namespace RenderCore { namespace Assets
 
         static void ReadImmediately(
             std::vector<uint8>& nascentBuffer,
-            ::Assets::IFileInterface& file, unsigned largeBlocksOffset,
+            ::Assets::IFileInterface& file, size_t largeBlocksOffset,
             IteratorRange<PendingGeoUpload*> uploads, unsigned supplementIndex = ~0u)
         {
             for (auto u=uploads.cbegin(); u!=uploads.cend(); ++u)
@@ -652,14 +652,16 @@ namespace RenderCore { namespace Assets
         nascentIB.resize(workingBuffers._ibSize);
 
         {
-			auto file = scaffold.OpenFile();
-            ReadImmediately(nascentIB, *file, scaffold.LargeBlocksOffset(), MakeIteratorRange(workingBuffers._ibUploads));
-            ReadImmediately(nascentVB, *file, scaffold.LargeBlocksOffset(), MakeIteratorRange(workingBuffers._vbUploads));
+			auto file = scaffold.OpenLargeBlocks();
+			auto largeBlocksOffset = file->TellP();
+            ReadImmediately(nascentIB, *file, largeBlocksOffset, MakeIteratorRange(workingBuffers._ibUploads));
+            ReadImmediately(nascentVB, *file, largeBlocksOffset, MakeIteratorRange(workingBuffers._vbUploads));
         }
 
         for (unsigned s=0; s<supplements.size(); ++s) {
-			auto file = supplements[s]->OpenFile();
-            ReadImmediately(nascentVB, *file, supplements[s]->LargeBlocksOffset(), MakeIteratorRange(workingBuffers._vbUploads), s);
+			auto file = supplements[s]->OpenLargeBlocks();
+			auto largeBlocksOffset = file->TellP();
+            ReadImmediately(nascentVB, *file, largeBlocksOffset, MakeIteratorRange(workingBuffers._vbUploads), s);
         }
 
             ////////////////////////////////////////////////////////////////////////
@@ -1543,7 +1545,7 @@ namespace RenderCore { namespace Assets
 
     void ModelRenderer::LogReport() const
     {
-        LogInfo << "---<< Model Renderer: " << _pimpl->_scaffold->Filename() << " (LOD: " << _pimpl->_levelOfDetail << ") >>---";
+        LogInfo << "---<< Model Renderer (LOD: " << _pimpl->_levelOfDetail << ") >>---";
         LogInfo << "  [" << _pimpl->_meshes.size() << "] meshes";
         LogInfo << "  [" << _pimpl->_skinnedMeshes.size() << "] skinned meshes";
         LogInfo << "  [" << _pimpl->_constantBuffers.size() << "] constant buffers";

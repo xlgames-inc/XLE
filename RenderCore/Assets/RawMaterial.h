@@ -18,7 +18,6 @@
 namespace Assets 
 { 
     class DependencyValidation; class DirectorySearchRules; 
-	class DeferredConstruction;
 	class DependentFileState;
 }
 namespace Utility { class Data; }

@@ -21,7 +21,7 @@ namespace Assets
 {
 	class DependencyValidation; class DependentFileState; 
 	class CompileFuture; class ICompileMarker; 
-	class DeferredConstruction; class IArtifact;
+	class IArtifact;
 }
 
 namespace RenderCore

@@ -11,13 +11,14 @@
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/IteratorUtils.h"
 #include <memory>
 
 namespace Assets 
 { 
     class DependencyValidation;
-	class ChunkFileContainer;
-	class DeferredConstruction;
+	class AssetChunkResult;
+	class AssetChunkRequest;
 }
 namespace Utility { class Data; }
 
@@ -46,8 +47,9 @@ namespace RenderCore { namespace Assets
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
+		static const ::Assets::AssetChunkRequest ChunkRequests[1];
 
-        MaterialScaffold(const ::Assets::ChunkFileContainer& chunkFile);
+        MaterialScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
         MaterialScaffold(MaterialScaffold&& moveFrom) never_throws;
         MaterialScaffold& operator=(MaterialScaffold&& moveFrom) never_throws;
         ~MaterialScaffold();
