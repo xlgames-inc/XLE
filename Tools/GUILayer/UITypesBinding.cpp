@@ -11,7 +11,9 @@
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
-#include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../RenderCore/Assets/ModelCache.h"
+#include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../Assets/DivergentAsset.h"
 #include "../../Assets/AssetUtils.h"
@@ -169,7 +171,7 @@ namespace GUILayer
         if (scaffolds._material) {
             TRY {
                 auto nativeName = scaffolds._material->GetMaterialName(materialGuid);
-                if (nativeName)
+                if (!nativeName.IsEmpty())
                     return clix::marshalString<clix::E_UTF8>(nativeName);
             }
             CATCH (const ::Assets::Exceptions::PendingAsset&) { return "<<pending>>"; }

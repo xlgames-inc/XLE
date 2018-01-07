@@ -10,6 +10,9 @@
 #include "DepVal.h"
 #include "IFileSystem.h"
 #include "NascentChunk.h"		// (for AsBlob)
+#include "AssetServices.h"
+#include "CompileAndAsyncManager.h"
+#include "IntermediateAssets.h"		// (used in BeginCompileOperation)
 #include "../ConsoleRig/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
@@ -640,6 +643,18 @@ namespace Assets
 
 	ICompileOperation::~ICompileOperation() {}
 	ICompilerDesc::~ICompilerDesc() {}
+
+	namespace Internal
+	{
+		std::shared_ptr<ICompileMarker> BeginCompileOperation(
+			uint64_t typeCode, const StringSection<ResChar> initializers[],
+			unsigned initializerCount)
+		{
+			auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
+			auto& store = Services::GetAsyncMan().GetIntermediateStore();
+			return compilers.PrepareAsset(typeCode, initializers, initializerCount, store);
+		}
+	}
 
 }
 

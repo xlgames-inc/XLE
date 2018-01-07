@@ -8,7 +8,7 @@
 #include "../Types.h"
 #include "../Techniques/TechniqueMaterial.h"
 #include "../../Assets/Assets.h"
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
 #include "../../Assets/DeferredConstruction.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Utility/Streams/StreamFormatter.h"
@@ -521,6 +521,70 @@ namespace RenderCore { namespace Assets
 		return ::Assets::AssetState::Ready;
     }
 #endif
+
+
+    static void AddDep(
+        std::vector<::Assets::DependentFileState>& deps,
+        StringSection<::Assets::ResChar> newDep)
+    {
+            // we need to call "GetDependentFileState" first, because this can change the
+            // format of the filename. String compares alone aren't working well for us here
+        auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(newDep);
+        auto existing = std::find_if(
+            deps.cbegin(), deps.cend(),
+            [&](const ::Assets::DependentFileState& test) { return test._filename == depState._filename; });
+        if (existing == deps.cend())
+            deps.push_back(depState);
+    }
+
+	void MergeIn_Stall(
+		Techniques::Material& result,
+		StringSection<> sourceMaterialName,
+        const ::Assets::DirectorySearchRules& searchRules,
+        std::vector<::Assets::DependentFileState>& deps)
+    {
+
+            // resolve all of the inheritance options and generate a final 
+            // ResolvedMaterial object. We need to start at the bottom of the
+            // inheritance tree, and merge in new parameters as we come across them.
+
+			// we still need to add a dependency, even if it's a missing file
+		AddDep(deps, MakeFileNameSplitter(sourceMaterialName).AllExceptParameters());
+
+		auto dependencyMat = ::Assets::MakeAsset<RawMaterial>(sourceMaterialName);
+		auto state = dependencyMat->StallWhilePending();
+		if (state == ::Assets::AssetState::Ready) {
+			auto source = dependencyMat->Actualize();
+
+			auto childSearchRules = source->GetDirectorySearchRules();
+			childSearchRules.Merge(searchRules);
+
+			for (const auto& child: source->ResolveInherited(searchRules))
+				MergeIn_Stall(result, child, childSearchRules, deps);
+
+			source->MergeInto(result);
+		}
+    }
+
+	void MergeIn_Stall(
+		RenderCore::Techniques::Material& result,
+		const RenderCore::Assets::RawMaterial& src,
+		const ::Assets::DirectorySearchRules& searchRules)
+	{
+		auto childSearchRules = searchRules;
+		childSearchRules.Merge(src.GetDirectorySearchRules());
+
+		for (const auto& child : src.ResolveInherited(childSearchRules)) {
+			auto dependencyMat = ::Assets::MakeAsset<RenderCore::Assets::RawMaterial>(child);
+			auto state = dependencyMat->StallWhilePending();
+			if (state == ::Assets::AssetState::Ready) {
+				MergeIn_Stall(result, *dependencyMat->Actualize(), childSearchRules);
+			}
+		}
+
+		src.MergeInto(result);
+	}
+
 
 }}
 

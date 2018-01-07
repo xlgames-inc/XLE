@@ -8,7 +8,7 @@
 
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../RenderCore/Types_Forward.h"
-#include "../../Assets/Assets.h"
+#include "../../Assets/AssetsCore.h"		// (for ResChar)
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 

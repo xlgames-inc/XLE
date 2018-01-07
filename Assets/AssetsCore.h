@@ -16,7 +16,7 @@ using namespace Utility;
 
 namespace Assets
 {
-    typedef char ResChar;
+    using ResChar = char;
 	using rstring = std::basic_string<ResChar>;
 	using Blob = std::shared_ptr<std::vector<uint8_t>>;
 
@@ -24,6 +24,10 @@ namespace Assets
 
     class DependencyValidation;
     using DepValPtr = std::shared_ptr<DependencyValidation>;
+
+	template<typename AssetType> class AssetFuture;
+	template<typename AssetType>
+		using FuturePtr = std::shared_ptr<AssetFuture<AssetType>>;
 
 	Blob AsBlob(const std::exception& e);
 

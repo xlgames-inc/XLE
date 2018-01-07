@@ -27,6 +27,7 @@
 
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Assets/IFileSystem.h"
+#include "../Assets/Assets.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"

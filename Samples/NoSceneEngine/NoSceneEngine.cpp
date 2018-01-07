@@ -627,10 +627,10 @@ namespace Sample
             SubpassDesc subpasses[] = 
             {
                 // render to fbuffer
-                SubpassDesc({GBufferDiffuse, GBufferNormals, GBufferParams}, MainDepthStencil),
+				SubpassDesc{{GBufferDiffuse, GBufferNormals, GBufferParams}, MainDepthStencil},
                 // resolve lighting & resolve
-                SubpassDesc({LightingResolve}, SubpassDesc::Unused, {GBufferDiffuse, GBufferNormals, GBufferParams}, {}, {PresentationTarget})
-                // SubpassDesc({PresentationTarget}, SubpassDesc::Unused, {GBufferDiffuse}) // , {}, {PresentationTarget})
+				SubpassDesc{{LightingResolve}, SubpassDesc::Unused, {GBufferDiffuse, GBufferNormals, GBufferParams}, {}, {PresentationTarget}}
+                // SubpassDesc{{PresentationTarget}, SubpassDesc::Unused, {GBufferDiffuse}) // , {}, {PresentationTarget}}
             };
 
             FrameBufferDesc fbLayout(

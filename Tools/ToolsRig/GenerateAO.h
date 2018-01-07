@@ -10,7 +10,7 @@
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IAssetCompiler.h"
 #include "../../Utility/MemoryUtils.h"
 #include <memory>
 
@@ -78,7 +78,7 @@ namespace ToolsRig
         const ::Assets::DirectorySearchRules* searchRules);
 
     /// <summary>Compiler type for generating per-vertex AO supplement</summary>
-    class AOSupplementCompiler : public ::Assets::IntermediateAssets::IAssetCompiler, public std::enable_shared_from_this<AOSupplementCompiler>
+    class AOSupplementCompiler : public ::Assets::IAssetCompiler, public std::enable_shared_from_this<AOSupplementCompiler>
     {
     public:
         std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(

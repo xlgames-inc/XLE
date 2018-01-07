@@ -28,6 +28,7 @@
 #include "../Utility/IntrusivePtr.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Profiling/CPUProfiler.h"
+#include "../Utility/Threading/ThreadingUtils.h"
 
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/Console.h"

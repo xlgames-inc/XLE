@@ -16,6 +16,7 @@
 #include "../RenderCore/Format.h"
 #include "../Assets/AssetServices.h"
 #include "../Assets/CompileAndAsyncManager.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/StringFormat.h"

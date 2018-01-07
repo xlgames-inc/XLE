@@ -19,6 +19,7 @@
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/StringUtils.h"

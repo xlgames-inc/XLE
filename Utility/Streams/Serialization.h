@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 #include <cstdint>
+#include <algorithm>		// (for std::max)
 
 namespace Utility
 {

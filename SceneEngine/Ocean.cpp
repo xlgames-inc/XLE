@@ -33,6 +33,7 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../Assets/Assets.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Math/Geometry.h"
@@ -584,7 +585,7 @@ namespace SceneEngine
             }
 
         auto texture = GetBufferUploads().Transaction_Immediate(tDesc, pkt.get());
-        _srv = Metal::ShaderResourceView(texture->ShareUnderlying());
+        _srv = std::make_unique<Metal::ShaderResourceView>(texture->ShareUnderlying());
     }
 
         //   ================================================================================   //
@@ -703,7 +704,7 @@ namespace SceneEngine
                 //auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/defaultresources/waternoise.png");
                 auto& surfaceSpecularity = ConsoleRig::FindCachedBox2<WaterNoiseTexture>();
                 const ConstantBuffer* prebuiltBuffers[] = { &oceanMaterialConstants, &oceanGridConstants, &oceanRenderingConstants, &oceanLightingConstants };
-                const ShaderResourceView* srvs[]        = { &OceanReflectionResource, &surfaceSpecularity._srv };
+                const ShaderResourceView* srvs[]        = { &OceanReflectionResource, surfaceSpecularity._srv.get() };
                 variation._boundUniforms->Apply(
                     *context, 
                     parserContext.GetGlobalUniformsStream(),
@@ -737,7 +738,7 @@ namespace SceneEngine
         context->BindPS(MakeResourceList(3, 
             fftBuffer._foamQuantitySRV[OceanBufferCounter&1], 
             // ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/defaultresources/waternoise.png").GetShaderResource()
-			ConsoleRig::FindCachedBox2<WaterNoiseTexture>()._srv));
+			*ConsoleRig::FindCachedBox2<WaterNoiseTexture>()._srv));
         if (shallowWater) {
             shallowWater->BindForOceanRender(*context, OceanBufferCounter);
         }

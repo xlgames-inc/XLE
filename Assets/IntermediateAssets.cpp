@@ -7,12 +7,12 @@
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "IntermediateAssets.h"
+#include "IAssetCompiler.h"
 #include "IFileSystem.h"
-
-#include "CompileAndAsyncManager.h"     // for ~CompileFuture -- remove
+#include "DepVal.h"
+#include "AssetUtils.h"
 
 #include "../ConsoleRig/Log.h"
-#include "../Assets/AssetUtils.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/Data.h"
 #include "../Utility/Streams/PathUtils.h"
@@ -323,7 +323,7 @@ namespace Assets { namespace IntermediateAssets
 							if (XlEqString(compareVersion, (const utf8*)versionString)) {
 								// this branch is already present, and is good... so use it
 								goodBranchDir = std::string(baseDirectory) + "/" + findData.cFileName;
-                                _markerFile = std::move(markerFile);
+                                _markerFile = std::make_unique<BasicFile>(std::move(markerFile));
 								break;
 							}
 
@@ -353,8 +353,8 @@ namespace Assets { namespace IntermediateAssets
 
                         // Opening without sharing to prevent other instances of XLE apps from using
                         // the same directory.
-                    _markerFile = MainFileSystem::OpenBasicFile(buffer, "wb", 0);
-					auto stream = OpenFileOutput(_markerFile);
+                    _markerFile = std::make_unique<BasicFile>(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
+					auto stream = OpenFileOutput(*_markerFile);
                     OutputStreamFormatter formatter(*stream);
                     formatter.WriteAttribute(u("VersionString"), (const utf8*)versionString);
                     formatter.Flush();
@@ -382,69 +382,69 @@ namespace Assets { namespace IntermediateAssets
         temp.swap(RetainedRecords);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////
+	class CompilerSet::Pimpl
+	{
+	public:
+		std::vector<std::pair<uint64, std::shared_ptr<IAssetCompiler>>> _compilers;
+	};
 
-    class CompilerSet::Pimpl 
-    {
-    public:
-        std::vector<std::pair<uint64, std::shared_ptr<IAssetCompiler>>> _compilers;
-    };
+	void CompilerSet::AddCompiler(uint64 typeCode, const std::shared_ptr<IAssetCompiler>& processor)
+	{
+		auto i = LowerBound(_pimpl->_compilers, typeCode);
+		if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
+			i->second = processor;
+		}
+		else {
+			_pimpl->_compilers.insert(i, std::make_pair(typeCode, processor));
+		}
+	}
 
-    void CompilerSet::AddCompiler(uint64 typeCode, const std::shared_ptr<IAssetCompiler>& processor)
-    {
-        auto i = LowerBound(_pimpl->_compilers, typeCode);
-        if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
-            i->second = processor;
-        } else {
-            _pimpl->_compilers.insert(i, std::make_pair(typeCode, processor));
-        }
-    }
+	std::shared_ptr<ICompileMarker> CompilerSet::PrepareAsset(
+		uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
+		Store& store)
+	{
+		// look for a "processor" object with the given type code, and rebuild the file
+		// write the .deps file containing dependencies information
+		//  Note that there's a slight race condition type problem here. We are querying
+		//  the dependency files for their state after the processing has completed. So
+		//  if the dependency file changes state during processing, we might not recognize
+		//  that change properly. It's probably ignorable, however.
 
-    std::shared_ptr<ICompileMarker> CompilerSet::PrepareAsset(
-        uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
-        Store& store)
-    {
-            // look for a "processor" object with the given type code, and rebuild the file
-            // write the .deps file containing dependencies information
-            //  Note that there's a slight race condition type problem here. We are querying
-            //  the dependency files for their state after the processing has completed. So
-            //  if the dependency file changes state during processing, we might not recognize
-            //  that change properly. It's probably ignorable, however.
+		// note that ideally we want to be able to schedule this in the background
+		auto i = LowerBound(_pimpl->_compilers, typeCode);
+		if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
+			return i->second->PrepareAsset(typeCode, initializers, initializerCount, store);
+		}
+		else {
+			assert(0);  // couldn't find a processor for this asset type
+		}
 
-            // note that ideally we want to be able to schedule this in the background
-        auto i = LowerBound(_pimpl->_compilers, typeCode);
-        if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
-            return i->second->PrepareAsset(typeCode, initializers, initializerCount, store);
-        } else {
-            assert(0);  // couldn't find a processor for this asset type
-        }
+		return nullptr;
+	}
 
-        return nullptr;
-    }
+	void CompilerSet::StallOnPendingOperations(bool cancelAll)
+	{
+		for (auto i = _pimpl->_compilers.cbegin(); i != _pimpl->_compilers.cend(); ++i)
+			i->second->StallOnPendingOperations(cancelAll);
+	}
 
-    void CompilerSet::StallOnPendingOperations(bool cancelAll)
-    {
-        for (auto i=_pimpl->_compilers.cbegin(); i!=_pimpl->_compilers.cend(); ++i)
-            i->second->StallOnPendingOperations(cancelAll);
-    }
+	CompilerSet::CompilerSet()
+	{
+		auto pimpl = std::make_unique<Pimpl>();
+		_pimpl = std::move(pimpl);
+	}
 
-    CompilerSet::CompilerSet()
-    {
-        auto pimpl = std::make_unique<Pimpl>();
-        _pimpl = std::move(pimpl);
-    }
+	CompilerSet::~CompilerSet()
+	{
+	}
 
-    CompilerSet::~CompilerSet()
-    {
-    }
-
-    IAssetCompiler::~IAssetCompiler() {}
 }}
 
             ////////////////////////////////////////////////////////////
 
 namespace Assets
 {
+	IAssetCompiler::~IAssetCompiler() {}
 	IArtifact::~IArtifact() {}
 
 	void CompileFuture::AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact)

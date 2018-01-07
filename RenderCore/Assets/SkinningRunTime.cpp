@@ -27,6 +27,7 @@
 #include "../Techniques/TechniqueUtils.h"
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/CommonResources.h"
+#include "../../Assets/Assets.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../ConsoleRig/Console.h"
 

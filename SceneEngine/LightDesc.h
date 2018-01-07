@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../RenderCore/Types_Forward.h"
-#include "../Assets/Assets.h"
+#include "../Assets/AssetsCore.h"		// (for ResChar)
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"
 #include "../Core/Types.h"

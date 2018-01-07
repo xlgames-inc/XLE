@@ -9,15 +9,14 @@
 
 #include "Prefix.h"
 #include <exception>
-#include <string.h>
-#if !FEATURE_EXCEPTIONS
-    #include <stdlib.h>     // (for exit)
-#endif
-#include <stdarg.h>
-#include <cstdio>      // note -- could be avoided if we moved the constructor for BasicLabel into .cpp file
+#include <cstdarg>
+#include <cstdio>		// note -- could be avoided if we moved the constructor for BasicLabel into .cpp file
+#include <cstring>		// (for memcpy)
 
 #if FEATURE_EXCEPTIONS
     #include <type_traits>  // for std::is_base_of, used by exceptions
+#else
+	#include <stdlib.h>     // (for exit)
 #endif
 
 #if FEATURE_EXCEPTIONS
@@ -76,12 +75,12 @@ namespace Exceptions
 
     inline BasicLabel::BasicLabel(const BasicLabel& copyFrom) never_throws
     {
-        memcpy(_buffer, copyFrom._buffer, sizeof(_buffer));
+        std::memcpy(_buffer, copyFrom._buffer, sizeof(_buffer));
     }
 
     inline BasicLabel& BasicLabel::operator=(const BasicLabel& copyFrom) never_throws
     {
-        memcpy(_buffer, copyFrom._buffer, sizeof(_buffer));
+		std::memcpy(_buffer, copyFrom._buffer, sizeof(_buffer));
         return *this;
     }
 

@@ -7,8 +7,8 @@
 #pragma once
 
 #include "IOverlayContext.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/InputLayout.h"        // for ConstantBufferPacket
+#include "../RenderCore/RenderUtils.h"			// for SharedPkt
+#include "../RenderCore/Metal/InputLayout.h"	// for UniformsStream
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Types_Forward.h"
 #include "../Math/Matrix.h"
@@ -88,8 +88,8 @@ namespace RenderOverlays
 		std::shared_ptr<Font>	_font;
         TextStyle               _defaultTextStyle;
 
-        RenderCore::Metal::ConstantBufferPacket _viewportConstantBuffer;
-        RenderCore::Metal::ConstantBufferPacket _globalTransformConstantBuffer;
+        RenderCore::SharedPkt _viewportConstantBuffer;
+        RenderCore::SharedPkt _globalTransformConstantBuffer;
         RenderCore::Metal::UniformsStream _globalUniformsStream;
 
         RenderCore::Techniques::ProjectionDesc _projDesc;

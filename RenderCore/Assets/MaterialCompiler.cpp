@@ -17,6 +17,7 @@
 #include "../../Assets/NascentChunk.h"
 #include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/AssetServices.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
@@ -70,7 +71,7 @@ namespace RenderCore { namespace Assets
         _validationCallback = depVal;
     }
 
-    static void AddDep(
+	static void AddDep(
         std::vector<::Assets::DependentFileState>& deps,
         StringSection<::Assets::ResChar> newDep)
     {
@@ -82,35 +83,6 @@ namespace RenderCore { namespace Assets
             [&](const ::Assets::DependentFileState& test) { return test._filename == depState._filename; });
         if (existing == deps.cend())
             deps.push_back(depState);
-    }
-
-	static void MergeIn_Stall(
-		Techniques::Material& result,
-		StringSection<> sourceMaterialName,
-        const ::Assets::DirectorySearchRules& searchRules,
-        std::vector<::Assets::DependentFileState>& deps)
-    {
-
-            // resolve all of the inheritance options and generate a final 
-            // ResolvedMaterial object. We need to start at the bottom of the
-            // inheritance tree, and merge in new parameters as we come across them.
-
-			// we still need to add a dependency, even if it's a missing file
-		AddDep(deps, MakeFileNameSplitter(sourceMaterialName).AllExceptParameters());
-
-		auto dependencyMat = ::Assets::MakeAsset<RawMaterial>(sourceMaterialName);
-		auto state = dependencyMat->StallWhilePending();
-		if (state == ::Assets::AssetState::Ready) {
-			auto source = dependencyMat->Actualize();
-
-			auto childSearchRules = source->GetDirectorySearchRules();
-			childSearchRules.Merge(searchRules);
-
-			for (const auto& child: source->ResolveInherited(searchRules))
-				MergeIn_Stall(result, child, childSearchRules, deps);
-
-			source->MergeInto(result);
-		}
     }
 
     static void CompileMaterialScaffold(

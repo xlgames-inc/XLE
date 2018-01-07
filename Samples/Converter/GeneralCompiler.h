@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IAssetCompiler.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Core/Types.h"
@@ -15,7 +15,7 @@
 namespace Converter 
 {
 
-    class GeneralCompiler : public ::Assets::IntermediateAssets::IAssetCompiler, public std::enable_shared_from_this<GeneralCompiler>
+    class GeneralCompiler : public ::Assets::IAssetCompiler, public std::enable_shared_from_this<GeneralCompiler>
     {
     public:
         std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(

@@ -11,21 +11,15 @@
 #include "../RenderCore/Assets/SharedStateSet.h"
 #include "../RenderCore/Assets/MaterialScaffold.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
-
-#include "../Assets/CompileAndAsyncManager.h"
-#include "../Assets/IntermediateAssets.h"
-
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderCore/Assets/ModelCache.h"
 
 #include "../RenderCore/Techniques/ParsingContext.h"
 
-#include "../Assets/ChunkFileContainer.h"
-#include "../Assets/ChunkFile.h"
-#include "../Assets/DeferredConstruction.h"
-#include "../Assets/AssetUtils.h"
-#include "../Assets/InvalidAssetManager.h"
 #include "../Assets/IFileSystem.h"
+#include "../Assets/AssetTraits.h"
+#include "../Assets/DepVal.h"
+#include "../Assets/Assets.h"
 
 #include "../RenderCore/RenderUtils.h"
 
@@ -62,6 +56,7 @@ namespace SceneEngine
     using RenderCore::Assets::ModelScaffold;
     using RenderCore::Assets::MaterialScaffold;
     using RenderCore::Assets::ModelCache;
+	using RenderCore::Assets::ModelCacheModel;
     using RenderCore::Assets::DelayedDrawCall;
     using RenderCore::Assets::DelayedDrawCallSet;
 
@@ -670,7 +665,7 @@ namespace SceneEngine
         protected:
             uint64 _currentModel, _currentMaterial;
             unsigned _currentSupplements;
-            ModelCache::Model _current;
+            ModelCacheModel _current;
             float _maxDistanceSq;
             bool _currentModelRendered;
             DynamicImposters* _imposters;

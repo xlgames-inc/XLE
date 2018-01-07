@@ -611,7 +611,7 @@ namespace SceneEngine
             auto skyProjectionType = SkyTextureParts(parserContext.GetSceneParser()->GetGlobalLightingDesc()).BindPS(metalContext, 11);
 
             metalContext.BindPS(MakeResourceList(4,
-				ConsoleRig::FindCachedBox2<WaterNoiseTexture>()._srv));
+				*ConsoleRig::FindCachedBox2<WaterNoiseTexture>()._srv));
 
             for (auto i : _pimpl->_surfaces)
                 i->RenderDebugging(

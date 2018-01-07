@@ -10,7 +10,7 @@
 #include "InputLayout.h"
 #include "../../RenderUtils.h"
 #include "../../Format.h"
-#include "../../../Assets/IntermediateAssets.h"
+#include "../../../Assets/IAssetCompiler.h"
 #include "../../../Assets/Assets.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/StringFormat.h"

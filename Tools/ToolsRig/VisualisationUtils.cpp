@@ -9,6 +9,7 @@
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 
 namespace ToolsRig

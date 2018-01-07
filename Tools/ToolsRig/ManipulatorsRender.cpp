@@ -22,6 +22,7 @@
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderOverlays/HighlightEffects.h"
+#include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 #include "../../ConsoleRig/ResourceBox.h"
 

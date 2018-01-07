@@ -25,6 +25,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/ResourceUtils.h"
 #include "../RenderCore/IAnnotator.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/FunctionUtils.h"

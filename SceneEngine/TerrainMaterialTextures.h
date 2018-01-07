@@ -9,7 +9,7 @@
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../BufferUploads/ResourceLocator.h"
-#include "../../Assets/Assets.h"
+#include "../../Assets/AssetsCore.h"
 
 namespace SceneEngine
 {

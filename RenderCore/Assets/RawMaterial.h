@@ -80,5 +80,17 @@ namespace RenderCore { namespace Assets
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
         const ::Assets::DirectorySearchRules& searchRules, StringSection<char> baseMatName);
 
+
+	void MergeIn_Stall(
+		Techniques::Material& result,
+		StringSection<> sourceMaterialName,
+		const ::Assets::DirectorySearchRules& searchRules,
+		std::vector<::Assets::DependentFileState>& deps);
+
+	void MergeIn_Stall(
+		RenderCore::Techniques::Material& result,
+		const RenderCore::Assets::RawMaterial& src,
+		const ::Assets::DirectorySearchRules& searchRules);
+
 }}
 

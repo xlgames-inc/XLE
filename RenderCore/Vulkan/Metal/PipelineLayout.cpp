@@ -7,7 +7,8 @@
 #include "PipelineLayout.h"
 #include "ObjectFactory.h"
 #include "IncludeVulkan.h"
-#include "../../../Assets/IntermediateAssets.h"
+#include "../../../Assets/DepVal.h"
+#include "../../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Utility/Streams/StreamDOM.h"
 #include "../../../Utility/Streams/StreamFormatter.h"

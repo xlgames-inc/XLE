@@ -16,6 +16,7 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/TextureView.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringUtils.h"
 

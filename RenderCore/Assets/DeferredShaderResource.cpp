@@ -15,7 +15,8 @@
 #include "../../BufferUploads/DataPacket.h"
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/DepVal.h"
+#include "../../Assets/IntermediateAssets.h"	// (for MakeIntermediateName)
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/Log.h"

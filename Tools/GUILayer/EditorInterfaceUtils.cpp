@@ -27,10 +27,8 @@
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../Utility/StringUtils.h"
-#include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 #include "../ToolsRig/PlacementsManipulators.h"
-// #include "../../ConsoleRig/Log.h"        (can't include in Win32 managed code)
 
 using namespace System;
 using namespace System::Collections::Generic;

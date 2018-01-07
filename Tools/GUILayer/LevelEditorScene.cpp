@@ -33,6 +33,7 @@
 #include "../../SceneEngine/ShallowSurface.h"
 #include "../../SceneEngine/DynamicImposters.h"
 #include "../../SceneEngine/TerrainUberSurface.h"
+#include "../../RenderCore/Assets/ModelCache.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -244,6 +245,7 @@ namespace GUILayer
         EditorSceneManager::ExportResult PerformExport(System::Uri^ destFile) override
         {
             EditorSceneManager::ExportResult result;
+			result._success = false;
             TRY
             {
                 auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destFile->LocalPath);
@@ -368,6 +370,7 @@ namespace GUILayer
         EditorSceneManager::ExportResult PerformExport(System::Uri^ destFile) override
         {
             EditorSceneManager::ExportResult result;
+			result._success = false;
             TRY
             {
                 auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destFile->LocalPath);

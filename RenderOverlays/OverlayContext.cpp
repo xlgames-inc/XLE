@@ -19,6 +19,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringFormat.h"

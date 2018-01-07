@@ -7,10 +7,9 @@
 #pragma once
 
 #include "TerrainCoverageId.h"
-#include "../Assets/AssetUtils.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
-#include "../Assets/Assets.h"
+#include "../Assets/AssetsCore.h"
 #include "../Utility/UTFUtils.h"
 #include "../Core/Types.h"
 
@@ -20,6 +19,8 @@ namespace Utility
     class OutputStreamFormatter;
     class OutputStream;
 }
+
+namespace Assets { class DirectorySearchRules; }
 
 namespace SceneEngine
 {

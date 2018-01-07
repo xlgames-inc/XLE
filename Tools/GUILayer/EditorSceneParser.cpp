@@ -29,6 +29,7 @@
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/PreparedScene.h"
 
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/StringUtils.h"
 #include "../../ConsoleRig/Console.h"

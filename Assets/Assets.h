@@ -1,5 +1,9 @@
 #pragma once
 
+#if defined(__CLR_VER)
+	#error Assets.h cannot be included from a C++/CLR header (because <mutex> & <thread> cannot be included in C++/CLR, and these headers ultimately include that header)
+#endif
+
 #include "AssetSetManager.h"
 #include "AssetFuture.h"
 #include "AssetHeap.h"

@@ -32,6 +32,7 @@
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/CompilerHelper.h"
+#include "../../Assets/Assets.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"

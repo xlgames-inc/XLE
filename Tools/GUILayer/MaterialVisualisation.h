@@ -12,6 +12,7 @@
 #include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include "../ToolsRig/MaterialVisualisation.h"
+#include <memory>
 
 using namespace System::Collections::Generic;
 

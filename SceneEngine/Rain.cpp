@@ -19,6 +19,7 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../Assets/Assets.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"

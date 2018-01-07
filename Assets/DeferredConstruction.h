@@ -7,7 +7,7 @@
 #include "AssetsInternal.h"
 #include "AssetFuture.h"
 #include "AssetTraits.h"
-#include "IntermediateAssets.h"
+#include "IAssetCompiler.h"
 #include <memory>
 
 namespace Assets

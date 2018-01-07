@@ -13,6 +13,8 @@
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/CompilationThread.h"
 #include "../../Assets/MemoryFile.h"
+#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/DepVal.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Threading/LockFree.h"

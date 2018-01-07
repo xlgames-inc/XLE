@@ -105,7 +105,7 @@ namespace GUILayer
         {
         public:
             System::String^ _messages;
-            bool _success = false;
+            bool _success;
         };
 
         ref class PendingExport abstract

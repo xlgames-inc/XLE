@@ -22,6 +22,7 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Format.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../Assets/Assets.h"
 #include "../Math/Matrix.h"
 #include "../Math/Transformations.h"
 #include "../ConsoleRig/ResourceBox.h"

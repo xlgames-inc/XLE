@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IAssetCompiler.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Core/Types.h"
 #include <memory>
@@ -16,7 +16,7 @@ namespace Assets { class DirectorySearchRules; }
 namespace RenderCore { namespace Assets 
 {
 
-    class ModelCompiler : public ::Assets::IntermediateAssets::IAssetCompiler, public std::enable_shared_from_this<ModelCompiler>
+    class ModelCompiler : public ::Assets::IAssetCompiler, public std::enable_shared_from_this<ModelCompiler>
     {
     public:
         std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(

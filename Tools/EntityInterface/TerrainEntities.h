@@ -7,7 +7,7 @@
 #pragma once
 
 #include "EntityInterface.h"
-#include "../../Assets/Assets.h"
+#include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 #include "../../Utility/UTFUtils.h"
 #include <vector>

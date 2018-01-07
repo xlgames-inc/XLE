@@ -26,7 +26,9 @@
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/ModelUtils.h"
 #include "../../RenderCore/Format.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/HeapUtils.h"
@@ -55,6 +57,7 @@ namespace ToolsRig
     using RenderCore::Assets::MaterialScaffold;
     using RenderCore::Assets::SharedStateSet;
     using RenderCore::Assets::ModelCache;
+	using RenderCore::Assets::ModelCacheModel;
     using RenderCore::Assets::SkeletonMachine;
     using RenderCore::Assets::DelayedDrawCallSet;
 
@@ -213,7 +216,7 @@ namespace ToolsRig
         DelayedDrawCallSet _delayedDrawCalls;
     };
 
-    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelCache::Model& model)
+    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelCacheModel& model)
     {
         ModelVisSettings settings;
         *settings._camera = AlignCameraToBoundingBox(40.f, model._boundingBox);
@@ -225,7 +228,7 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static ModelCache::Model GetModel(
+    static ModelCacheModel GetModel(
         ModelCache& cache,
         ModelVisSettings& settings)
     {
@@ -257,7 +260,7 @@ namespace ToolsRig
         std::shared_ptr<ModelVisSettings> _settings;
         std::shared_ptr<VisEnvSettings> _envSettings;
 
-        ModelCache::Model GetModel() { return ToolsRig::GetModel(*_cache, *_settings); }
+        ModelCacheModel GetModel() { return ToolsRig::GetModel(*_cache, *_settings); }
     };
 
     auto ModelVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>

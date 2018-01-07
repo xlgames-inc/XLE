@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../RenderCore/Metal/Forward.h"
-#include "../Assets/Assets.h"
+#include "../Assets/AssetsCore.h"
 #include "../Utility/UTFUtils.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"

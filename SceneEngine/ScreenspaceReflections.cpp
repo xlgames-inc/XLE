@@ -26,6 +26,7 @@
 #include "../RenderCore/Format.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/DataPacket.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"

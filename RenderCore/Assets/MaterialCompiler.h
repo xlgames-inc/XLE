@@ -6,13 +6,13 @@
 
 #pragma once
 
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IAssetCompiler.h"
 #include "../../Utility/StringUtils.h"
 #include <memory>
 
 namespace RenderCore { namespace Assets
 {
-    class MaterialScaffoldCompiler : public ::Assets::IntermediateAssets::IAssetCompiler, public std::enable_shared_from_this<MaterialScaffoldCompiler>
+    class MaterialScaffoldCompiler : public ::Assets::IAssetCompiler, public std::enable_shared_from_this<MaterialScaffoldCompiler>
     {
     public:
         std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(

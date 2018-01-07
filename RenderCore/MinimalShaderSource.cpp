@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MinimalShaderSource.h"
-#include "../Assets/IntermediateAssets.h"
+#include "../Assets/IAssetCompiler.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/AssetUtils.h"
 #include "../Utility/Streams/FileUtils.h"

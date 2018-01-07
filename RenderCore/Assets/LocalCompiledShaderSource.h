@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../ShaderService.h"
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IAssetCompiler.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/Threading/Mutex.h"
 #include <vector>
@@ -41,7 +41,7 @@ namespace RenderCore { namespace Assets
     };
 
     class LocalCompiledShaderSource 
-        : public ::Assets::IntermediateAssets::IAssetCompiler
+        : public ::Assets::IAssetCompiler
         , public ShaderService::IShaderSource
         , public std::enable_shared_from_this<LocalCompiledShaderSource>
     {

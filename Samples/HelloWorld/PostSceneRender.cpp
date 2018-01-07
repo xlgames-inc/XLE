@@ -7,6 +7,8 @@
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/ResourceList.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringUtils.h"
 

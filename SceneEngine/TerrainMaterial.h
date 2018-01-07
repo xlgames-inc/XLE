@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../Assets/Assets.h"
+#include "../Assets/AssetsCore.h"
 #include "../Assets/AssetUtils.h"
 #include "../Math/Vector.h"
 #include "../Core/Types.h"

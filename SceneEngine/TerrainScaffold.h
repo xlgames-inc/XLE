@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../Assets/Assets.h"
+#include "../Assets/AssetsCore.h"
 #include "../Core/Types.h"
 #include "../Math/Matrix.h"
 #include <vector>

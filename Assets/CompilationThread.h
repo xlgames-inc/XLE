@@ -7,7 +7,7 @@
 #pragma once
 
 #include "AssetsCore.h"
-#include "IntermediateAssets.h"
+#include "IAssetCompiler.h"
 #include "../Utility/Threading/LockFree.h"
 #include <memory>
 #include <thread>

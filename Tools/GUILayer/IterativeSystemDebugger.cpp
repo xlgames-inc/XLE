@@ -422,13 +422,13 @@ namespace GUILayer
         _pimpl->_sim->Tick(_settings->DeltaTime, *_pimpl->_settings);
     }
 
-    void CFDIterativeSystem::OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton)
+    void CFDIterativeSystem::OnMouseMove(float px, float py, float velX, float velY, unsigned mouseButton)
     {
         if (!mouseButton) return;
 
         Float2 coords(
-            _pimpl->_sim->GetDimensions()[0] * x,
-            _pimpl->_sim->GetDimensions()[1] * (1.f-y));
+            _pimpl->_sim->GetDimensions()[0] * px,
+            _pimpl->_sim->GetDimensions()[1] * (1.f-py));
 
         auto radius = 4.f;
         auto radiusSq = radius*radius;
@@ -499,11 +499,11 @@ namespace GUILayer
         _pimpl->_sim->Tick(_settings->DeltaTime, *_pimpl->_settings);
     }
 
-    void CloudsIterativeSystem::OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton)
+    void CloudsIterativeSystem::OnMouseMove(float px, float py, float velX, float velY, unsigned mouseButton)
     {
         Float2 coords(
-            _pimpl->_sim->GetDimensions()[0] * x,
-            _pimpl->_sim->GetDimensions()[1] * (1.f-y));
+            _pimpl->_sim->GetDimensions()[0] * px,
+            _pimpl->_sim->GetDimensions()[1] * (1.f-py));
 
         if (mouseButton == 0) {
             _pimpl->_sim->OnMouseMove(coords);
@@ -575,7 +575,7 @@ namespace GUILayer
         _pimpl->_sim->Tick(_settings->DeltaTime, *_pimpl->_settings);
     }
 
-    void CFD3DIterativeSystem::OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton)
+    void CFD3DIterativeSystem::OnMouseMove(float px, float py, float velX, float velY, unsigned mouseButton)
     {
         if (mouseButton&(1<<0)) {
             auto dims = _pimpl->_sim->GetDimensions();
@@ -645,13 +645,13 @@ namespace GUILayer
         _pimpl->_sim->Tick(*_pimpl->_settings);
     }
 
-    void CFDRefIterativeSystem::OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton)
+    void CFDRefIterativeSystem::OnMouseMove(float px, float py, float velX, float velY, unsigned mouseButton)
     {
         if (!mouseButton) return;
 
         Float2 coords(
-            _pimpl->_sim->GetDimensions()[0] * x,
-            _pimpl->_sim->GetDimensions()[1] * (1.f-y));
+            _pimpl->_sim->GetDimensions()[0] * px,
+            _pimpl->_sim->GetDimensions()[1] * (1.f-py));
 
         auto radius = 10.f;
         auto radiusSq = radius*radius;

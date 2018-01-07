@@ -8,7 +8,7 @@
 
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"        // for CameraDesc
-#include "../Assets/Assets.h"   // for rstring
+#include "../Assets/AssetsCore.h"   // for rstring
 #include "../Core/Types.h"
 #include "../Math/Vector.h"
 #include <memory>

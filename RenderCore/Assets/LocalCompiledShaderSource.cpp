@@ -9,13 +9,14 @@
 
 #include "../IDevice.h"
 #include "../../Assets/ChunkFile.h"
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IAssetCompiler.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/ArchiveCache.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AsyncLoadOperation.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/IntermediateAssets.h"
 
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"

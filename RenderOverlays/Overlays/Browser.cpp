@@ -19,6 +19,7 @@
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Assets/ModelCache.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Types.h"
@@ -34,6 +35,7 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/Assets.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../Math/Transformations.h"
@@ -458,6 +460,7 @@ namespace Overlays
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     using RenderCore::Assets::ModelCache;
+	using RenderCore::Assets::ModelCacheModel;
 
     class ModelBrowser::Pimpl
     {
@@ -472,7 +475,7 @@ namespace Overlays
 
     static void RenderModel(
         RenderCore::IThreadContext& context, 
-        ModelCache::Model& model)
+        ModelCacheModel& model)
     {
             // Render the given model. Create a minimal version of the full rendering process:
             //      We need to create a LightingParserContext, and ISceneParser as well.

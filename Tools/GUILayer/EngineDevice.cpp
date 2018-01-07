@@ -14,7 +14,6 @@
 #include "../../PlatformRig/FrameRig.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Init.h"
-#include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../BufferUploads/IBufferUploads.h"
@@ -23,6 +22,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/MountingTree.h"
 #include "../../Assets/OSFileSystem.h"
@@ -62,7 +62,7 @@ namespace GUILayer
         _renderAssetsServices->InitModelCompilers();
 
             // add compiler for precalculated internal AO
-        auto& asyncMan = ::Assets::Services::GetAsyncMan();
+		auto& asyncMan = ::Assets::Services::GetAsyncMan();
         auto& compilers = asyncMan.GetIntermediateCompilers();
         auto aoGeoCompiler = std::make_shared<ToolsRig::AOSupplementCompiler>(_immediateContext);
         compilers.AddCompiler(
@@ -146,10 +146,10 @@ namespace GUILayer
         System::GC::WaitForPendingFinalizers();
         DelayedDeleteQueue::FlushQueue();
         
-        RenderCore::Techniques::ResourceBoxes_Shutdown();
+        ConsoleRig::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
-        if (_pimpl->GetAssetServices())
-            _pimpl->GetAssetServices()->GetAssetSets().Clear();
+        //if (_pimpl->GetAssetServices())
+        //    _pimpl->GetAssetServices()->GetAssetSets().Clear();
     }
 
     void EngineDevice::AddOnShutdown(IOnEngineShutdown^ callback)

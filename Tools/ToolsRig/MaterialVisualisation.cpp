@@ -24,8 +24,8 @@
 #include "../../RenderCore/Assets/ModelImmutableData.h"
 #include "../../RenderCore/Assets/ModelRendererInternal.h"      // for BuildLowLevelInputAssembly
 
-#include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/Assets.h"
 #include "../../ConsoleRig/ResourceBox.h"
 
 #include "../../RenderCore/IThreadContext.h"

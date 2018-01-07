@@ -11,12 +11,6 @@
 #include "../../Core/Types.h"
 #include "../../Core/SelectConfiguration.h"
 
-// Currently we have a problem including <thread> into C++/CLR files
-// This makes it difficult to use the standard library functions for things like CurrentThreadId()
-#if THREAD_LIBRARY == THREAD_LIBRARY_STDCPP
-	#include <thread>
-#endif
-
 /// \namespace Utility::Interlocked
 ///
 /// This namespace provides low-level utility functions for atomic operations.
@@ -269,6 +263,10 @@ namespace Utility
 
 using namespace Utility;
 
+// Currently we have a problem including <thread> into C++/CLR files
+// This makes it difficult to use the standard library functions for things like CurrentThreadId()
+#if !defined(__CLR_VER)
+
 #if THREAD_LIBRARY != THREAD_LIBRARY_STDCPP
 
         /////////////////////////////////////////////////////////////////////////////
@@ -311,6 +309,8 @@ using namespace Utility;
 
 #else
 
+	#include <thread>
+
     namespace Utility { namespace Threading {
         inline void YieldTimeSlice()			{ std::this_thread::yield(); }
         inline void Sleep(uint32 milliseconds)	{ std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds)); }
@@ -318,6 +318,8 @@ using namespace Utility;
         inline ThreadId CurrentThreadId()		{ return std::this_thread::get_id(); }
         inline void Pause()                     { std::this_thread::yield(); }
     }}
+
+#endif
 
 #endif
 

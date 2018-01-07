@@ -39,6 +39,7 @@
 #include "../RenderCore/Metal/QueryPool.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Math/Transformations.h"

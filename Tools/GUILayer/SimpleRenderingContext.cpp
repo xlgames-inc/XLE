@@ -20,7 +20,7 @@
 #include "../../RenderOverlays/HighlightEffects.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/ShaderVariationSet.h"
+#include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/IDevice.h"
@@ -34,7 +34,6 @@
 #include "../../Core/Types.h"
 #include <vector>
 
-#include "../../Assets/Assets.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../SceneEngine/LightingParserContext.h"
 
@@ -311,7 +310,7 @@ namespace GUILayer
             auto& threadContext = context->GetThreadContext();
             if (highlight == nullptr) {
                 CATCH_ASSETS_BEGIN
-                    ToolsRig::BinaryHighlight highlight(threadContext, context->GetParsingContext().GetNamedResources());
+                    ToolsRig::BinaryHighlight highlightRenderer(threadContext, context->GetParsingContext().GetNamedResources());
                     ToolsRig::Placements_RenderFiltered(
                         threadContext, context->GetParsingContext(), 
                         RenderCore::Techniques::TechniqueIndex::Forward,
@@ -321,7 +320,7 @@ namespace GUILayer
                     const Float3 highlightCol(.75f, .8f, 0.4f);
                     const unsigned overlayCol = 2;
 
-                    highlight.FinishWithOutlineAndOverlay(threadContext, highlightCol, overlayCol);
+					highlightRenderer.FinishWithOutlineAndOverlay(threadContext, highlightCol, overlayCol);
                 CATCH_ASSETS_END(context->GetParsingContext())
 
             } else {

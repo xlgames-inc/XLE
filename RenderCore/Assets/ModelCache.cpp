@@ -12,7 +12,6 @@
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
-#include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/AssetTraits.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
@@ -86,9 +85,9 @@ namespace RenderCore { namespace Assets
 
     auto ModelCache::GetScaffolds(
         StringSection<ResChar> modelFilename, 
-        StringSection<ResChar> materialFilename) -> Scaffolds
+        StringSection<ResChar> materialFilename) -> ModelCacheScaffolds
     {
-        Scaffolds result;
+		ModelCacheScaffolds result;
         result._hashedModelName = Hash64(modelFilename.begin(), modelFilename.end());
         auto modelFuture = _pimpl->_modelScaffolds.Get(result._hashedModelName);
         if (!modelFuture || modelFuture->IsOutOfDate()) {
@@ -166,7 +165,7 @@ namespace RenderCore { namespace Assets
     auto ModelCache::GetModel(
         StringSection<ResChar> modelFilename, StringSection<ResChar> materialFilename,
         IteratorRange<const SupplementGUID*> supplements,
-        unsigned LOD) -> Model
+        unsigned LOD) -> ModelCacheModel
     {
         auto scaffold = GetScaffolds(modelFilename, materialFilename);
         if (!scaffold._model || !scaffold._material)
@@ -204,7 +203,7 @@ namespace RenderCore { namespace Assets
 			boundingBox = boundingBoxI->second;
 		}
 
-        Model result;
+        ModelCacheModel result;
         result._renderer = renderer.get();
         result._sharedStateSet = _pimpl->_sharedStateSet.get();
         result._model = scaffold._model;

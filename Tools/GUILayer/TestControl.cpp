@@ -55,7 +55,7 @@ namespace GUILayer
             contextStateDesc._viewportDimensions[1], RenderCore::TextureSamples::Create()});
         namedRes.Bind(0u, presentationResource);
         RenderCore::Techniques::RenderPassInstance rpi(
-            context, {{RenderCore::SubpassDesc({0})}},
+            context, {{RenderCore::SubpassDesc{{0}}}},
             0u, namedRes);
 
         const char text[] = "Hello World!... It's me, XLE!";
@@ -79,7 +79,7 @@ namespace GUILayer
             std::make_tuple(
                 Float3(0.f, 0.f, 0.f), 
                 Float3(float(contextStateDesc._viewportDimensions[0]), float(contextStateDesc._viewportDimensions[1]), 0.f)),
-            &style, col, TextAlignment::Center, text, nullptr);
+            &style, col, TextAlignment::Center, text);
 
         return PlatformRig::FrameRig::RenderResult(false);
     }
