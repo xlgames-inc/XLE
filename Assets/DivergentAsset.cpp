@@ -50,10 +50,7 @@ namespace Assets
 	UndoQueue::UndoQueue() {}
 	UndoQueue::~UndoQueue() {}
 
-	DivergentAssetBase::DivergentAssetBase(std::weak_ptr<UndoQueue> undoQueue)
-	: _undoQueue(std::move(undoQueue))
-	{}
-
+	DivergentAssetBase::DivergentAssetBase() {}
 	DivergentAssetBase::~DivergentAssetBase() {}
 
 }

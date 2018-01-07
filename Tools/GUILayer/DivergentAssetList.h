@@ -6,13 +6,10 @@
 
 #pragma once
 
-#include "EngineDevice.h"
-#include "../../Core/Types.h"
-
 using namespace System;
 using namespace System::Collections::Generic;
 
-namespace Assets { class AssetSetManager; class UndoQueue; class IAssetSet; }
+namespace Assets { class AssetSetManager; class UndoQueue; class IDefaultAssetHeap; }
 
 namespace GUILayer
 {
@@ -34,8 +31,8 @@ namespace GUILayer
                 : _filename(filename), _oldFileData(oldFileData), _newFileData(newFileData), _action(Action::Save) {}
         };
 
-        void Add(const Assets::IAssetSet& set, uint64 id, Entry^ entry);
-        Entry^ GetEntry(const Assets::IAssetSet& set, uint64 id);
+        void Add(const ::Assets::IDefaultAssetHeap& set, uint64_t id, Entry^ entry);
+        Entry^ GetEntry(const ::Assets::IDefaultAssetHeap& set, uint64_t id);
 
 		ref class CommitResult
 		{
@@ -54,13 +51,15 @@ namespace GUILayer
         value class E
         {
         public:
-            const Assets::IAssetSet* _assetSet;
-            uint64 _id;
+            const ::Assets::IDefaultAssetHeap* _assetSet;
+			uint64_t _id;
             Entry^ _entry;
         };
         
         List<E>^   _entries;
     };
+
+	ref class EngineDevice;
 
     public ref class DivergentAssetList : public Aga::Controls::Tree::ITreeModel
     {
@@ -81,8 +80,8 @@ namespace GUILayer
         ~DivergentAssetList();
 
     protected:
-        Assets::AssetSetManager* _assetSets;
-        Assets::UndoQueue* _undoQueue;
+        ::Assets::AssetSetManager* _assetSets;
+		::Assets::UndoQueue* _undoQueue;
         PendingSaveList^ _saveList;
     };
 }
