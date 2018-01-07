@@ -172,13 +172,7 @@ namespace ToolsRig
         RenderCore::Assets::VertexData& vb, unsigned vertexStride)
     {
         auto buffer = std::make_unique<uint8[]>(vb._size);
-        
-        {
-            auto inputFile = ::Assets::MainFileSystem::OpenBasicFile(scaffold.Filename(), "rb");
-            inputFile.Seek(scaffold.LargeBlocksOffset() + vb._offset);
-            inputFile.Read(buffer.get(), vb._size, 1);
-        }
-
+		scaffold.OpenLargeBlocks()->Read(buffer.get(), vb._size, 1);
         Metal::VertexBuffer metalVB(buffer.get(), vb._size);
         metalContext.Bind(MakeResourceList(metalVB), vertexStride);
     }
@@ -192,12 +186,13 @@ namespace ToolsRig
         auto buffer = std::make_unique<uint8[]>(vb0._size + vb1._size);
         
         {
-            auto inputFile = ::Assets::MainFileSystem::OpenBasicFile(scaffold.Filename(), "rb");
-            inputFile.Seek(scaffold.LargeBlocksOffset() + vb0._offset);
-            inputFile.Read(buffer.get(), vb0._size, 1);
+			auto inputFile = scaffold.OpenLargeBlocks();
+			auto largeBlocksOffset = inputFile->TellP();
+            inputFile->Seek(largeBlocksOffset + vb0._offset);
+            inputFile->Read(buffer.get(), vb0._size, 1);
 
-            inputFile.Seek(scaffold.LargeBlocksOffset() + vb1._offset);
-            inputFile.Read(PtrAdd(buffer.get(), vb0._size), vb1._size, 1);
+            inputFile->Seek(largeBlocksOffset + vb1._offset);
+            inputFile->Read(PtrAdd(buffer.get(), vb0._size), vb1._size, 1);
         }
 
         Metal::VertexBuffer metalVB(buffer.get(), vb0._size + vb1._size);
@@ -215,9 +210,9 @@ namespace ToolsRig
         auto buffer = std::make_unique<uint8[]>(ib._size);
         
         {
-            auto inputFile = ::Assets::MainFileSystem::OpenBasicFile(scaffold.Filename().c_str(), "rb");
-            inputFile.Seek(scaffold.LargeBlocksOffset() + ib._offset);
-            inputFile.Read(buffer.get(), ib._size, 1);
+            auto inputFile = scaffold.OpenLargeBlocks();
+            inputFile->Seek(ib._offset, Utility::FileSeekAnchor::Current);
+            inputFile->Read(buffer.get(), ib._size, 1);
         }
 
         Metal::IndexBuffer metalIB(buffer.get(), ib._size);
@@ -244,8 +239,9 @@ namespace ToolsRig
         const ::Assets::ResChar* modelFile = _object->_previewModelFile.c_str();
         const uint64 boundMaterial = _object->_previewMaterialBinding;
 
-        const auto& model = ::Assets::GetAssetComp<ModelScaffold>(modelFile);
-        model.StallWhilePending();
+        auto modelFuture = ::Assets::MakeAsset<ModelScaffold>(modelFile);
+		modelFuture->StallWhilePending();
+		auto& model = *modelFuture->Actualize();
 
         // const auto& skeletonScaff = ::Assets::GetAssetComp<SkeletonScaffold>(modelFile);
         // skeletonScaff.StallWhilePending();
@@ -372,8 +368,9 @@ namespace ToolsRig
                     // this is more tricky... when using a model, we have to get the bounding box for the model
                 using namespace RenderCore::Assets;
                 const ::Assets::ResChar* modelFile = object._previewModelFile.c_str();
-                const auto& model = ::Assets::GetAssetComp<ModelScaffold>(modelFile);
-                model.StallWhilePending();
+                auto modelFuture = ::Assets::MakeAsset<ModelScaffold>(modelFile);
+                modelFuture->StallWhilePending();
+				const auto& model = *modelFuture->Actualize();
                 *settings._camera = AlignCameraToBoundingBox(settings._camera->_verticalFieldOfView, model.GetStaticBoundingBox());
             } else {
                     // just reset camera to the default

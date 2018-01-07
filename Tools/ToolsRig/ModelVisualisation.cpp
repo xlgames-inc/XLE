@@ -357,7 +357,7 @@ namespace ToolsRig
         if (_pimpl->_settings->_drawWireframe || _pimpl->_settings->_drawNormals) {
 
             Techniques::RenderPassInstance rpi(
-                context, FrameBufferDesc({RenderCore::SubpassDesc({0u}, 2u)}),
+                context, FrameBufferDesc({RenderCore::SubpassDesc{{0u}, 2u}}),
                 0u, parserContext.GetNamedResources());
 
             if (_pimpl->_settings->_drawWireframe) {
@@ -430,7 +430,7 @@ namespace ToolsRig
 
                 {
                     Techniques::RenderPassInstance rpi(
-                        context, FrameBufferDesc({SubpassDesc({0u})}),
+                        context, FrameBufferDesc({SubpassDesc{{0u}}}),
                         0u, parserContext.GetNamedResources());
                     ExecuteHighlightByStencil(
                         context, parserContext.GetNamedResources(), 

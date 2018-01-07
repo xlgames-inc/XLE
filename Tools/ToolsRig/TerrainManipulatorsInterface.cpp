@@ -198,7 +198,7 @@ namespace ToolsRig
         context.DrawText(
             std::make_tuple(Float3(float(headingRect._topLeft[0]), float(headingRect._topLeft[1]), 0.f), Float3(float(headingRect._bottomRight[0]), float(headingRect._bottomRight[1]), 0.f)),
             &font, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
-            title, nullptr);
+            title);
 
             //
             //      Draw controls for parameters. Starting with the float parameters
@@ -232,7 +232,7 @@ namespace ToolsRig
             _snprintf_s(buffer, _TRUNCATE, "%s = %5.1f", parameter._name, *p);
             context.DrawText(
                 std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-                nullptr, formatting._foreground, TextAlignment::Center, buffer, nullptr);
+                nullptr, formatting._foreground, TextAlignment::Center, buffer);
             
             DrawAndRegisterLeftRight(&context, interactables, interfaceState, rect, Id_CurFloatParametersLeft+c, Id_CurFloatParametersRight+c);
         }
@@ -258,7 +258,7 @@ namespace ToolsRig
 
             context.DrawText(
                 std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-                nullptr, formatting._foreground, TextAlignment::Center, buffer, nullptr);
+                nullptr, formatting._foreground, TextAlignment::Center, buffer);
         }
 
             //
@@ -269,7 +269,7 @@ namespace ToolsRig
             const auto rect = internalLayout.AllocateFullWidth(lineHeight);
             context.DrawText(
                 std::make_tuple(AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight)),
-                nullptr, headerColourNormal, TextAlignment::Center, statusText.c_str(), nullptr);
+                nullptr, headerColourNormal, TextAlignment::Center, statusText.c_str());
         }
 
             //

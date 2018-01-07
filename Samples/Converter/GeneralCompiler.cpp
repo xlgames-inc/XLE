@@ -12,6 +12,7 @@
 #include "../../Assets/NascentChunk.h"
 #include "../../Assets/CompilerLibrary.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/MemoryFile.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Threading/LockFree.h"
@@ -95,68 +96,6 @@ namespace Converter
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void BuildChunkFile(
-        ::Assets::IFileInterface& file,
-        IteratorRange<::Assets::NascentChunk*>& chunks,
-        const ConsoleRig::LibVersionDesc& versionInfo,
-        std::function<bool(const ::Assets::NascentChunk&)> predicate)
-    {
-        unsigned chunksForMainFile = 0;
-		for (const auto& c:chunks)
-            if (predicate(c))
-                ++chunksForMainFile;
-
-        using namespace Serialization::ChunkFile;
-        auto header = MakeChunkFileHeader(
-            chunksForMainFile, 
-            versionInfo._versionString, versionInfo._buildDateString);
-        file.Write(&header, sizeof(header), 1);
-
-        unsigned trackingOffset = unsigned(file.TellP() + sizeof(ChunkHeader) * chunksForMainFile);
-        for (const auto& c:chunks)
-            if (predicate(c)) {
-                auto hdr = c._hdr;
-                hdr._fileOffset = trackingOffset;
-                file.Write(&hdr, sizeof(c._hdr), 1);
-                trackingOffset += hdr._size;
-            }
-
-        for (const auto& c:chunks)
-            if (predicate(c))
-                file.Write(AsPointer(c._data->begin()), c._data->size(), 1);
-    }
-
-	static void BuildChunkFile(
-        std::vector<uint8>& file,
-        IteratorRange<::Assets::NascentChunk*>& chunks,
-        const ConsoleRig::LibVersionDesc& versionInfo,
-        std::function<bool(const ::Assets::NascentChunk&)> predicate)
-    {
-        unsigned chunksForMainFile = 0;
-		for (const auto& c:chunks)
-            if (predicate(c))
-                ++chunksForMainFile;
-
-        using namespace Serialization::ChunkFile;
-        auto header = MakeChunkFileHeader(
-            chunksForMainFile, 
-            versionInfo._versionString, versionInfo._buildDateString);
-        file.insert(file.end(), (const uint8*)&header, PtrAdd((const uint8*)&header, sizeof(header)));
-
-        unsigned trackingOffset = unsigned(file.size() + sizeof(ChunkHeader) * chunksForMainFile);
-        for (const auto& c:chunks)
-            if (predicate(c)) {
-                auto hdr = c._hdr;
-                hdr._fileOffset = trackingOffset;
-                file.insert(file.end(), (const uint8*)&hdr, PtrAdd((const uint8*)&hdr, sizeof(hdr)));
-                trackingOffset += hdr._size;
-            }
-
-        for (const auto& c:chunks)
-            if (predicate(c))
-                file.insert(file.end(), c._data->begin(), c._data->end());
-    } 
-
     static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
 	static const auto ChunkType_Text = ConstHash64<'Text'>::Value;
 
@@ -178,7 +117,7 @@ namespace Converter
 		} else {
 			{
 				auto outputFile = ::Assets::MainFileSystem::OpenFileInterface(destinationFilename, "wb");
-				BuildChunkFile(*outputFile, chunks, versionInfo,
+				BuildChunkFile(*outputFile, chunks, versionInfo, 
 					[](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
 			}
 
@@ -200,7 +139,8 @@ namespace Converter
 			return std::make_shared<std::vector<uint8>>(chunks[0]._data->begin(), chunks[0]._data->end());
 		} else {
 			auto result = std::make_shared<std::vector<uint8>>();
-			BuildChunkFile(*result, chunks, versionInfo,
+			auto file = ::Assets::CreateMemoryFile(result);
+			BuildChunkFile(*file, chunks, versionInfo,
 				[](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
 			return result;
 		}
@@ -214,6 +154,7 @@ namespace Converter
 		::Assets::Blob	GetBlob() const;
 		::Assets::Blob	GetErrors() const;
 		::Assets::DepValPtr GetDependencyValidation() const;
+		StringSection<::Assets::ResChar>	GetRequestParameters() const;
 		CompilerExceptionArtifact(const ::Assets::DepValPtr& depVal);
 		~CompilerExceptionArtifact();
 	private:
@@ -223,6 +164,7 @@ namespace Converter
 	auto CompilerExceptionArtifact::GetBlob() const -> ::Assets::Blob { return nullptr; }
 	auto CompilerExceptionArtifact::GetErrors() const -> ::Assets::Blob  { return nullptr;  }
 	::Assets::DepValPtr CompilerExceptionArtifact::GetDependencyValidation() const { return _depVal; }
+	StringSection<::Assets::ResChar>	CompilerExceptionArtifact::GetRequestParameters() const { return {}; }
 	CompilerExceptionArtifact::CompilerExceptionArtifact(const ::Assets::DepValPtr& depVal) : _depVal(depVal) {}
 	CompilerExceptionArtifact::~CompilerExceptionArtifact() {}
 
