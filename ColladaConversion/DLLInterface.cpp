@@ -241,7 +241,7 @@ namespace ColladaConversion
                 meld << nodes[c].GetName().AsString().c_str();
             }
 
-            Throw(::Assets::Exceptions::FormatError(meld.get()));
+            Throw(::Exceptions::BasicLabel(meld.get()));
         }
 
             // The skeleton joints won't be included in the skeleton
@@ -367,7 +367,7 @@ namespace ColladaConversion
         const auto* scene = model._doc->FindVisualScene(
             GuidReference(model._doc->_visualScene)._id);
         if (!scene)
-            Throw(::Assets::Exceptions::FormatError("No visual scene found"));
+            Throw(::Exceptions::BasicLabel("No visual scene found"));
 
         StringSection<utf8> startingNodeName;
         if (startingNode) startingNodeName = (const utf8*)startingNode;
@@ -394,7 +394,7 @@ namespace ColladaConversion
         const auto* scene = input._doc->FindVisualScene(
             GuidReference(input._doc->_visualScene)._id);
         if (!scene)
-            Throw(::Assets::Exceptions::FormatError("No visual scene found"));
+            Throw(::Exceptions::BasicLabel("No visual scene found"));
 
         SkeletonRegistry jointRefs;
         BuildSkeleton(_skeleton, scene->GetRootNode(), StringSection<utf8>(), jointRefs, true);

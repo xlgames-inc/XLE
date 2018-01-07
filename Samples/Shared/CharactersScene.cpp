@@ -231,7 +231,7 @@ namespace Sample
                     context, **si,
                     RenderCore::Assets::AnimationState(i->_time, i->_animation));
                 model.GetRenderer().PrepareAnimation(context, **si, model.GetPrepareMachine().GetSkeletonBinding());
-            } CATCH(const ::Assets::Exceptions::AssetException&) {
+            } CATCH(const ::Assets::Exceptions::RetrievalError&) {
             } CATCH_END
         }
     }

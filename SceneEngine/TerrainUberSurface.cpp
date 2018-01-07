@@ -65,8 +65,8 @@ namespace SceneEngine
         
         auto& hdr = *(TerrainUberHeader*)mappedFile.GetData();
         if (hdr._magic != TerrainUberHeader::Magic)
-            Throw(::Assets::Exceptions::InvalidAsset(
-                filename, "Uber surface file appears to be corrupt"));
+            Throw(::Exceptions::BasicLabel(
+                "Uber surface file appears to be corrupt (%s)", filename.AsString().c_str()));
 
         _width = hdr._width;
         _height = hdr._height;
@@ -77,8 +77,8 @@ namespace SceneEngine
         _sampleBytes = _format.GetSize();
 
         if (mappedFile.GetSize() < (sizeof(TerrainUberHeader) + hdr._width * hdr._height * _sampleBytes))
-            Throw(::Assets::Exceptions::InvalidAsset(
-                filename, "Uber surface file appears to be corrupt (it is smaller than it should be)"));
+            Throw(::Exceptions::BasicLabel(
+                "Uber surface file appears to be corrupt (it is smaller than it should be) (%s)", filename.AsString().c_str()));
 
         _mappedFile = std::move(mappedFile);
     }
@@ -120,8 +120,8 @@ namespace SceneEngine
             : TerrainUberSurfaceGeneric(filename)
         {
             if (!(_format == ImpliedTyping::TypeOf<Type>()))
-                Throw(::Assets::Exceptions::InvalidAsset(
-                    filename, "Uber surface format doesn't match expected type"));
+                Throw(::Exceptions::BasicLabel(
+                    "Uber surface format doesn't match expected type (%s)", filename.AsString().c_str()));
         }
 
     template <typename Type>

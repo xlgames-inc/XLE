@@ -58,10 +58,10 @@ namespace SceneEngine
 
         if (!IsPowerOfTwo(destinationDesc._textureDesc._width) || !IsPowerOfTwo(destinationDesc._textureDesc._height)) {
             // only power-of-two textures supported (too difficult to merge them into a atlas otherwise)
-            Throw(::Assets::Exceptions::InvalidAsset(sourceFile, "Expecting power of two texture for terrain texturing"));
+            Throw(::Exceptions::BasicLabel("Expecting power of two texture for terrain texturing (%s)", sourceFile));
         }
         if (destinationDesc._textureDesc._width != destinationDesc._textureDesc._height) {
-            Throw(::Assets::Exceptions::InvalidAsset(sourceFile, "Expecting square texture for terrain texturing"));
+            Throw(::Exceptions::BasicLabel("Expecting square texture for terrain texturing (%s)", sourceFile));
         }
 
         auto sourceDesc = Metal::ExtractDesc(inputRes);

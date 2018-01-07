@@ -24,8 +24,6 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    using ::Assets::Exceptions::FormatError;
-
     static const bool SkinNormals = true;
 
     NascentBoundSkinnedGeometry BindController(
@@ -118,7 +116,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             bucketStart[b] = bucketEnd[b] = indexAccumulator;
         }
         if (indexAccumulator != unifiedVertexCount) {
-            Throw(FormatError("Vertex count mismatch in node (%s)", nodeName));
+            Throw(::Exceptions::BasicLabel("Vertex count mismatch in node (%s)", nodeName));
         }
 
             //
@@ -158,7 +156,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         unsigned animatedVertexStride    = CalculateVertexSize(AsPointer(animatedVertexLayout.begin()), AsPointer(animatedVertexLayout.end()));
 
         if (!animatedVertexStride) {
-            Throw(FormatError("Could not find any animated vertex elements in skinning controller in node (%s). There must be a problem with vertex input semantics.", nodeName));
+            Throw(::Exceptions::BasicLabel("Could not find any animated vertex elements in skinning controller in node (%s). There must be a problem with vertex input semantics.", nodeName));
         }
                             
             //      Copy out those parts of the vertex buffer that are unanimated and animated
@@ -195,7 +193,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 (uint8*)newIndexBuffer.get(),
                 [&unifiedVertexReordering](uint8 inputIndex) -> uint8 { auto result = unifiedVertexReordering[inputIndex]; assert(result <= 0xff); return (uint8)result; });
         } else {
-            Throw(FormatError("Unrecognised index format when instantiating skin controller in node (%s).", nodeName));
+            Throw(::Exceptions::BasicLabel("Unrecognised index format when instantiating skin controller in node (%s).", nodeName));
         }
                                 
             //      We have to define the draw calls that perform the pre-skinning step

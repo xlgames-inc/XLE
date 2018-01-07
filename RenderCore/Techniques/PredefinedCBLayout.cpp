@@ -21,29 +21,35 @@ namespace RenderCore { namespace Techniques
 {
     PredefinedCBLayout::PredefinedCBLayout(StringSection<::Assets::ResChar> initializer)
     {
-        // Here, we will read a simple configuration file that will define the layout
-        // of a constant buffer. Sometimes we need to get the layout of a constant 
-        // buffer without compiling any shader code, or really touching the HLSL at all.
-        size_t size;
-        auto file = ::Assets::TryLoadFileAsMemoryBlock(initializer, &size);
-        StringSection<char> configSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
+		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
+		::Assets::RegisterFileDependency(_validationCallback, initializer);
 
-        // if it's a compound document, we're only going to extra the cb layout part
-        auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
-        if (!compoundDoc.empty()) {
-            auto i = std::find_if(
-                compoundDoc.cbegin(), compoundDoc.cend(),
-                [](const ::Assets::TextChunk<char>& chunk)
-                { return XlEqString(chunk._type, "CBLayout"); });
-            if (i != compoundDoc.cend())
-                configSection = i->_content;
-        }
+		TRY {
+			// Here, we will read a simple configuration file that will define the layout
+			// of a constant buffer. Sometimes we need to get the layout of a constant 
+			// buffer without compiling any shader code, or really touching the HLSL at all.
+			size_t size;
+			auto file = ::Assets::TryLoadFileAsMemoryBlock(initializer, &size);
+			StringSection<char> configSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
 
-        Parse(configSection);
+			// if it's a compound document, we're only going to extra the cb layout part
+			auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
+			if (!compoundDoc.empty()) {
+				auto i = std::find_if(
+					compoundDoc.cbegin(), compoundDoc.cend(),
+					[](const ::Assets::TextChunk<char>& chunk)
+					{ return XlEqString(chunk._type, "CBLayout"); });
+				if (i != compoundDoc.cend())
+					configSection = i->_content;
+			}
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_validationCallback, initializer);
-    }
+			Parse(configSection);
+		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, _validationCallback));
+		} CATCH (const std::exception& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, _validationCallback));
+		} CATCH_END
+	}
 
     PredefinedCBLayout::PredefinedCBLayout(StringSection<char> source, bool)
     {

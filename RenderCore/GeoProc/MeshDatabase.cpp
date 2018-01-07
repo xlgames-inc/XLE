@@ -21,8 +21,6 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    using ::Assets::Exceptions::FormatError;
-
     enum class ComponentType { Float32, Float16, UNorm8, UNorm16, SNorm8, SNorm16 };
     static std::pair<ComponentType, unsigned> BreakdownFormat(Format fmt);
     static unsigned short AsFloat16(float input);
@@ -274,7 +272,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 }
 
             } else {
-                Throw(FormatError("Error while copying vertex data. Unexpected format for destination parameter."));
+                Throw(std::runtime_error("Error while copying vertex data. Unexpected format for destination parameter."));
             }
         } else if (srcFormat.first == dstFormat.first &&  srcFormat.second == dstFormat.second) {
 
@@ -291,7 +289,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             }
 
         } else {
-            Throw(FormatError("Error while copying vertex data. Format not supported."));
+            Throw(std::runtime_error("Error while copying vertex data. Format not supported."));
         }
     }
 

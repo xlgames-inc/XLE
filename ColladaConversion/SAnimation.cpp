@@ -15,8 +15,6 @@
 
 namespace ColladaConversion
 {
-    using ::Assets::Exceptions::FormatError;
-
     class SidBreakdown
     {
     public:
@@ -359,7 +357,7 @@ namespace ColladaConversion
             case 3:     positionFormat = Format::R32G32B32_FLOAT; samplerType = AnimSamplerType::Float3; break;
             case 4:     positionFormat = Format::R32G32B32A32_FLOAT; samplerType = AnimSamplerType::Float4; break;
             case 16:    positionFormat = Format::Matrix4x4; samplerType = AnimSamplerType::Float4x4; break;
-            default:    Throw(FormatError("Out dimension in animation is invalid (%i). Expected 1, 3, 4 or 16.", outDimension));
+			default:    Throw(::Exceptions::BasicLabel("Out dimension in animation is invalid (%i). Expected 1, 3, 4 or 16.", outDimension));
             }
 
             if (firstChannel._inTangentsSource) inTangentFormat = positionFormat;

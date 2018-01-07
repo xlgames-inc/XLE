@@ -368,7 +368,7 @@ namespace Sample
 				vkContext->Draw((unsigned)cubeGeo.size());
 			}
         }
-        CATCH(const ::Assets::Exceptions::AssetException&) {}
+        CATCH(const ::Assets::Exceptions::RetrievalError&) {}
         CATCH_END
     }
 
@@ -531,7 +531,7 @@ namespace Sample
 
             }
         }
-        CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::RetrievalError& e) { parserContext.Process(e); }
         CATCH_END
     }
 
@@ -678,7 +678,7 @@ namespace Sample
             }
 
         }
-        CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::RetrievalError& e) { parserContext.Process(e); }
         CATCH_END
     }
 

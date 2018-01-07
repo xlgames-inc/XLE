@@ -632,7 +632,7 @@ namespace SceneEngine
                     RenderCore::Assets::MeshToModel(*model._model));
                 ModelRenderer::Sort(_drawCallSets[b]);
                 _drawCallSetDepVals[b] = model._renderer->GetDependencyValidation();
-            } CATCH(const ::Assets::Exceptions::AssetException&) {}
+            } CATCH(const ::Assets::Exceptions::RetrievalError&) {}
             CATCH_END
         }
 

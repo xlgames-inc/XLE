@@ -18,8 +18,6 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 { 
-    using ::Assets::Exceptions::FormatError;
-
     class NascentAnimationSet::Animation
     {
     public:

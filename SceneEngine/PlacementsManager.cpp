@@ -1696,7 +1696,7 @@ namespace SceneEngine
                         TransformPoint(worldToCell, rayEnd)), 
                     predicate);
             } 
-            CATCH (const ::Assets::Exceptions::AssetException&) {} 
+            CATCH (const ::Assets::Exceptions::RetrievalError&) {}
             CATCH_END
         }
 
@@ -1720,7 +1720,7 @@ namespace SceneEngine
             auto cellToProjection = Combine(i->_cellToWorld, worldToProjection);
 
             TRY { _pimpl->Find_FrustumIntersection(cellSet, result, *i, cellToProjection, predicate); } 
-            CATCH (const ::Assets::Exceptions::AssetException&) {} 
+            CATCH (const ::Assets::Exceptions::RetrievalError&) {}
             CATCH_END
         }
 
@@ -1764,7 +1764,7 @@ namespace SceneEngine
                 //  override placements associated with this cell. It's a little awkward
                 //  Note that we could use the quad tree to acceleration these tests.
             TRY { _pimpl->Find_BoxIntersection(cellSet, result, *i, cellSpaceBB, predicate); } 
-            CATCH (const ::Assets::Exceptions::AssetException&) {} 
+            CATCH (const ::Assets::Exceptions::RetrievalError&) {}
             CATCH_END
         }
 

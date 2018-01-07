@@ -571,7 +571,7 @@ namespace RenderCore { namespace Metal_DX11
         auto future = ::Assets::MakeAsset<CompiledShaderByteCode>(initializer, defines);
         auto state = future->StallWhilePending();
         if (state != ::Assets::AssetState::Ready)
-            Throw(::Assets::Exceptions::InvalidAsset(initializer, "Shader compile failure while building function linking module"));
+            Throw(::Exceptions::BasicLabel("Shader compile failure while building function linking module (%s)", initializer));
 		auto byteCode = future->Actualize();
         auto code = byteCode->GetByteCode();
 
@@ -580,7 +580,7 @@ namespace RenderCore { namespace Metal_DX11
         auto hresult = compiler->D3DLoadModule_Wrapper(code.begin(), code.size(), &rawModule);
         _module = moveptr(rawModule);
         if (!SUCCEEDED(hresult))
-            Throw(::Assets::Exceptions::InvalidAsset(initializer, "Failure while creating shader module from compiled shader byte code"));
+            Throw(::Exceptions::BasicLabel("Failure while creating shader module from compiled shader byte code (%s)", initializer));
 
         ID3D11LibraryReflection* reflectionRaw = nullptr;
         compiler->D3DReflectLibrary_Wrapper(code.begin(), code.size(), IID_ID3D11LibraryReflection, (void**)&reflectionRaw);
@@ -1627,8 +1627,7 @@ namespace RenderCore { namespace Metal_DX11
         ID3D::ShaderReflection* reflectionTemp = nullptr;
         HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.begin(), byteCode.size(), s_shaderReflectionInterfaceGuid, (void**)&reflectionTemp);
         if (!SUCCEEDED(hresult) || !reflectionTemp)
-            Throw(::Assets::Exceptions::InvalidAsset(
-                ""/*shaderCode.Initializer()*/, "Error while invoking low-level shader reflection"));
+            Throw(::Exceptions::BasicLabel("Error while invoking low-level shader reflection"));
         return moveptr(reflectionTemp);
     }
 

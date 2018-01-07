@@ -88,7 +88,12 @@ namespace Assets
 				if (state == AssetState::Pending) return true;
 
 				if (state == AssetState::Invalid) {
-					thatFuture.SetAsset(nullptr, {}, AssetState::Invalid);
+					auto artifacts = pendingCompile->GetArtifacts();
+					if (!artifacts.empty()) {
+						thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetErrors());
+					} else {
+						thatFuture.SetInvalidAsset(nullptr, nullptr);
+					}
 					return false;
 				}
 

@@ -171,7 +171,7 @@ namespace GUILayer
                     return result;
                 }
             }
-            CATCH(const ::Assets::Exceptions::AssetException&) {}
+            CATCH(const ::Assets::Exceptions::RetrievalError&) {}
             CATCH_END
 
             return nullptr;
@@ -215,7 +215,7 @@ namespace GUILayer
                     return result;
                 }
             }
-            CATCH(const ::Assets::Exceptions::AssetException&) {}
+            CATCH(const ::Assets::Exceptions::RetrievalError&) {}
             CATCH_END
 
             return nullptr;

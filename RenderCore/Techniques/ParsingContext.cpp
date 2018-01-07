@@ -30,7 +30,7 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    void ParsingContext::Process(const ::Assets::Exceptions::AssetException& e)
+    void ParsingContext::Process(const ::Assets::Exceptions::RetrievalError& e)
     {
             //  Handle a "invalid asset" and "pending asset" exception that 
             //  occurred during rendering. Normally this will just mean

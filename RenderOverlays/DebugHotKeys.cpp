@@ -8,11 +8,14 @@
 #include "DebuggingDisplay.h"
 #include "../Assets/Assets.h"
 #include "../Assets/IFileSystem.h"
+#include "../Assets/ConfigFileContainer.h"
+#include "../Assets/AssetUtils.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/StreamDOM.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/UTFUtils.h"
 #include "../Utility/Conversion.h"
 
 namespace RenderOverlays
@@ -34,20 +37,22 @@ namespace RenderOverlays
         const std::vector<std::pair<uint32, std::string>>& GetTable() const { return _table; }
         const ::Assets::DepValPtr& GetDependencyValidation() const { return _validationCallback; }
 
-        TableOfKeys(const char filename[]);
+        TableOfKeys(
+			InputStreamFormatter<utf8>& formatter,
+			const ::Assets::DirectorySearchRules&,
+			const ::Assets::DepValPtr& depVal);
         ~TableOfKeys();
     private:
         ::Assets::DepValPtr                             _validationCallback;
         std::vector<std::pair<uint32, std::string>>     _table;
     };
 
-    TableOfKeys::TableOfKeys(const char filename[])
+    TableOfKeys::TableOfKeys(
+		InputStreamFormatter<utf8>& formatter,
+		const ::Assets::DirectorySearchRules&,
+		const ::Assets::DepValPtr& depVal)
+	: _validationCallback(depVal)
     {
-        size_t fileSize = 0;
-        auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
-
-        InputStreamFormatter<utf8> formatter(
-                MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
         Document<InputStreamFormatter<utf8>> doc(formatter);
 
         auto attrib = doc.FirstAttribute();
@@ -65,9 +70,6 @@ namespace RenderOverlays
 
             attrib = attrib.Next();
         }
-
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterFileDependency(_validationCallback, filename);
     }
     TableOfKeys::~TableOfKeys() {}
 

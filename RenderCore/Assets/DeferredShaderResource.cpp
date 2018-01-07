@@ -241,17 +241,17 @@ namespace RenderCore { namespace Assets
     {
         if (!_pimpl->_srv.IsGood()) {
             if (_pimpl->_transaction == ~BufferUploads::TransactionID(0))
-                Throw(::Assets::Exceptions::InvalidAsset(Initializer(), "Unknown error during loading"));
+				Throw(::Assets::Exceptions::InvalidAsset(Initializer(), nullptr, {}));
 
             auto& bu = Services::GetBufferUploads();
             if (!bu.IsCompleted(_pimpl->_transaction))
-                Throw(::Assets::Exceptions::PendingAsset(Initializer(), ""));
+                Throw(::Assets::Exceptions::PendingAsset(Initializer()));
 
             auto state = TryResolve();
             if (state == ::Assets::AssetState::Invalid) {
-                Throw(::Assets::Exceptions::InvalidAsset(Initializer(), "Unknown error during loading"));
+				Throw(::Assets::Exceptions::InvalidAsset(Initializer(), nullptr, {}));
             } else if (state == ::Assets::AssetState::Pending)
-                Throw(::Assets::Exceptions::PendingAsset(Initializer(), ""));
+				Throw(::Assets::Exceptions::PendingAsset(Initializer()));
 
             assert(_pimpl->_srv.IsGood());
         }
@@ -396,7 +396,7 @@ namespace RenderCore { namespace Assets
             //  right srgb mode when creating a shader resource view
 
         if (!result)
-            Throw(::Assets::Exceptions::InvalidAsset(initializer, "Failure while attempting to load texture immediately"));
+            Throw(::Assets::Exceptions::ConstructionError(::Assets::Exceptions::ConstructionError::Reason::Unknown, nullptr, "Failure while attempting to load texture immediately"));
 
         auto desc = Metal::ExtractDesc(result->GetUnderlying());
         assert(desc._type == BufferDesc::Type::Texture);

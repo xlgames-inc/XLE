@@ -521,6 +521,12 @@ namespace Assets
 		}
     }
 
+	Blob AsBlob(const std::exception& e)
+	{
+		const char* w = e.what();
+		return AsBlob(MakeIteratorRange(w, XlStringEnd(w)));
+	}
+
 
     GenericFuture::GenericFuture(AssetState state) 
     : _state(state)

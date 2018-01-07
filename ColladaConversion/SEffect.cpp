@@ -120,7 +120,7 @@ namespace ColladaConversion
             // bind the texture in the "common" effects part
         auto* profile = effect.FindProfile(u("COMMON"));
         if (!profile)
-            Throw(::Assets::Exceptions::FormatError("Missing common profile in effect (%s)", AsString(effect.GetName()).c_str()));
+            Throw(::Exceptions::BasicLabel("Missing common profile in effect (%s)", AsString(effect.GetName()).c_str()));
 
         for (const auto& t:profile->_values) {
             auto& value = t.second;

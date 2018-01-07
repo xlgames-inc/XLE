@@ -144,7 +144,7 @@ namespace SceneEngine
             }
 
             if (!scaffoldChunk._fileOffset || !heightDataChunk._fileOffset) {
-                throw ::Assets::Exceptions::FormatError("Missing correct terrain chunks: %s", filename);
+                Throw(::Exceptions::BasicLabel("Missing correct terrain chunks: %s", filename));
             }
 
             CellDesc cellDesc;
@@ -176,9 +176,9 @@ namespace SceneEngine
                         for (unsigned x=0; x<(1u<<l); ++x) {
                             auto loadInfo = LoadNodeStructure(*file);
                             if (loadInfo._hdr._nodeHeaderVersion != 0) {
-                                throw ::Assets::Exceptions::FormatError(
+                                Throw(::Exceptions::BasicLabel(
                                     "Unexpected version number in terrain node file: %s (node header version: %i)", 
-                                    filename, loadInfo._hdr._nodeHeaderVersion);
+                                    filename, loadInfo._hdr._nodeHeaderVersion));
                             }
 
                             float compressionData[2] = { 0.f, 1.f };
@@ -230,6 +230,7 @@ namespace SceneEngine
             _nodeTextureByteCount = 0;
             _fieldCount = 0;
             auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
+			::Assets::RegisterFileDependency(validationCallback, filename);
 
             TRY {
                 auto file = ::Assets::MainFileSystem::OpenFileInterface(filename, "rb");
@@ -247,7 +248,7 @@ namespace SceneEngine
                 }
 
                 if (!scaffoldChunk._fileOffset || !coverageDataChunk._fileOffset) {
-                    throw ::Assets::Exceptions::FormatError("Missing correct terrain chunks: %s", filename);
+                    Throw(::Exceptions::BasicLabel("Missing correct terrain chunks: %s", filename));
                 }
 
                 CellDesc cellDesc;
@@ -280,14 +281,15 @@ namespace SceneEngine
                     }
                 }
 
-                ::Assets::RegisterFileDependency(validationCallback, filename);
-
                 _fieldCount = (unsigned)cellDesc._hdr._treeDepth;
                 _sourceFileName = filename;
                 _nodeFileOffsets = std::move(fileOffsetsBreadthFirst);
                 _validationCallback = std::move(validationCallback);
-            } 
-            CATCH (const Utility::Exceptions::IOException&) { Throw(::Assets::Exceptions::InvalidAsset(filename, "Missing terrain texture")); }
+            } CATCH(const ::Assets::Exceptions::ConstructionError& e) {
+				Throw(::Assets::Exceptions::ConstructionError(e, validationCallback));
+			} CATCH (const std::exception& e) {
+				Throw(::Assets::Exceptions::ConstructionError(e, validationCallback));
+			}
             CATCH_END
         }
 

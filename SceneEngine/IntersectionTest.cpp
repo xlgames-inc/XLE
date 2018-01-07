@@ -184,7 +184,7 @@ namespace SceneEngine
                         }
                     }
                 }
-                CATCH(const ::Assets::Exceptions::AssetException&) {} 
+                CATCH(const ::Assets::Exceptions::RetrievalError&) {}
                 CATCH_END
 
                 trans->Cancel();
@@ -202,7 +202,7 @@ namespace SceneEngine
                     result._type = (Type::Enum)(1<<uint32(c+firstExtraBit));
                 }
             } 
-            CATCH(const ::Assets::Exceptions::AssetException&) {} 
+            CATCH(const ::Assets::Exceptions::RetrievalError&) {}
             CATCH_END
         }
 
@@ -275,7 +275,7 @@ namespace SceneEngine
                         }
                     }
                 } 
-                CATCH(const ::Assets::Exceptions::AssetException&) {} 
+                CATCH(const ::Assets::Exceptions::RetrievalError&) {}
                 CATCH_END
 
                 trans->Cancel();

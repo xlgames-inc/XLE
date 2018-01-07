@@ -169,9 +169,9 @@ namespace Assets
 			auto chunks = ChunkFileContainer(blob, depVal, requestParameters).ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
 			return std::make_unique<AssetType>(MakeIteratorRange(chunks), depVal);
 		} CATCH (const Exceptions::ConstructionError& e) {
-			Throw(Exceptions::ConstructionError(e, container.GetDependencyValidation()));
+			Throw(Exceptions::ConstructionError(e, depVal));
 		} CATCH (const std::exception& e) {
-			Throw(Exceptions::ConstructionError(e, container.GetDependencyValidation()));
+			Throw(Exceptions::ConstructionError(e, depVal));
 		} CATCH_END
 	}
 

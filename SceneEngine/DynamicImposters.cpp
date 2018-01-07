@@ -332,7 +332,7 @@ namespace SceneEngine
                         ++_overflowCounter;
                         _preparedSpritesHeap.Deallocate(newIndex<<4, 1<<4);
                     }
-                } CATCH(const ::Assets::Exceptions::AssetException&e) {
+                } CATCH(const ::Assets::Exceptions::RetrievalError&e) {
                     parserContext.Process(e);
                     ++_pendingCounter;
                     _preparedSpritesHeap.Deallocate(newIndex<<4, 1<<4);
