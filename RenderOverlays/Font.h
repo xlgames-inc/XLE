@@ -10,11 +10,10 @@
 #include "../RenderCore/IDevice_Forward.h"
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
-#include "../Utility/Threading/ThreadingUtils.h"      // (for ReferenceCountedObject)
-#include "../Utility/IntrusivePtr.h"
 #include "../Utility/UTFUtils.h"
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
+#include <memory>
 
 namespace RenderOverlays
 {
@@ -40,7 +39,7 @@ namespace RenderOverlays
     // font
     #define FONT_IMAGE_TABLE_SIZE 16
 
-    class Font : public RefCountedObject
+    class Font : public std::enable_shared_from_this<Font>
     {
     public:
         Font();
@@ -77,7 +76,7 @@ namespace RenderOverlays
         virtual FontTexKind GetTexKind() = 0;
         virtual Float2     GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const = 0;
 
-        virtual intrusive_ptr<const Font> GetSubFont(ucs4 ch) const;
+        virtual std::shared_ptr<const Font> GetSubFont(ucs4 ch) const;
         virtual bool        IsMultiFontAdapter() const;
 
     protected:
@@ -95,7 +94,7 @@ namespace RenderOverlays
     int GetFontCount(FontTexKind kind);
     int GetFontFileCount();
 
-    intrusive_ptr<Font> GetX2Font(const char* path, int size, FontTexKind kind = FTK_GENERAL);
+    std::shared_ptr<Font> GetX2Font(const char* path, int size, FontTexKind kind = FTK_GENERAL);
 
     struct DrawTextOptions 
     {
@@ -144,7 +143,7 @@ namespace RenderOverlays
     {
     public:
         DrawTextOptions     _options;
-        intrusive_ptr<Font>    _font;
+        std::shared_ptr<Font>    _font;
 
         TextStyle(Font& font, const DrawTextOptions& options = DrawTextOptions());
         ~TextStyle();

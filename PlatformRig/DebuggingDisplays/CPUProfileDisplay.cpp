@@ -89,9 +89,9 @@ namespace PlatformRig { namespace Overlays
     {
     public:
         class Desc {};
-        intrusive_ptr<RenderOverlays::Font> _leftFont;
-        intrusive_ptr<RenderOverlays::Font> _middleFont;
-        intrusive_ptr<RenderOverlays::Font> _rightFont;
+		std::shared_ptr<RenderOverlays::Font> _leftFont;
+		std::shared_ptr<RenderOverlays::Font> _middleFont;
+		std::shared_ptr<RenderOverlays::Font> _rightFont;
 
         DrawProfilerResources(const Desc& desc)
         {

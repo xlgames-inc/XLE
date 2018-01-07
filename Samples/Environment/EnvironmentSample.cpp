@@ -109,8 +109,8 @@ namespace Sample
     public:
         class Desc {};
 
-        intrusive_ptr<RenderOverlays::Font> _defaultFont0;
-        intrusive_ptr<RenderOverlays::Font> _defaultFont1;
+		std::shared_ptr<RenderOverlays::Font> _defaultFont0;
+		std::shared_ptr<RenderOverlays::Font> _defaultFont1;
 
         UsefulFonts(const Desc&)
         {

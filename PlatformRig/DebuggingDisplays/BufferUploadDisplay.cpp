@@ -151,8 +151,8 @@ namespace PlatformRig { namespace Overlays
     {
     public:
         class Desc {};
-        intrusive_ptr<RenderOverlays::Font> _font;
-        intrusive_ptr<RenderOverlays::Font> _smallFont;
+        std::shared_ptr<RenderOverlays::Font> _font;
+		std::shared_ptr<RenderOverlays::Font> _smallFont;
         FontBox(const Desc&) 
             : _font(RenderOverlays::GetX2Font("OrbitronBlack", 18))
             , _smallFont(RenderOverlays::GetX2Font("Vera", 16)) {}

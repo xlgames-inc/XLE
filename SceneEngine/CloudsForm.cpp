@@ -1187,7 +1187,7 @@ namespace SceneEngine
     {
     public:
         class Desc {};
-        intrusive_ptr<RenderOverlays::Font> _font;
+		std::shared_ptr<RenderOverlays::Font> _font;
         WidgetResources(const Desc&);
     };
 

@@ -116,7 +116,7 @@ namespace Overlays
         std::unique_ptr<DirectoryQuery> _modelFiles;
         std::string     _baseDirectory;
         std::string     _currentDirectory;
-        intrusive_ptr<Font> _headingFont;
+		std::shared_ptr<Font> _headingFont;
         unsigned        _itemDimensions;
         std::string     _fileFilter;
         std::string     _headerName;

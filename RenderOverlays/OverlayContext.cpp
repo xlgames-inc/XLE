@@ -608,7 +608,7 @@ namespace RenderOverlays
     {
     public:
         class Desc {};
-        intrusive_ptr<Font> _font;
+        std::shared_ptr<Font> _font;
         DefaultFontBox(const Desc&) : _font(GetX2Font("Raleway", 16)) {}
     };
 

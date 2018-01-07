@@ -107,9 +107,9 @@ namespace PlatformRig
     public:
         class Desc {};
 
-        intrusive_ptr<RenderOverlays::Font> _frameRateFont;
-        intrusive_ptr<RenderOverlays::Font> _smallFrameRateFont;
-        intrusive_ptr<RenderOverlays::Font> _tabHeadingFont;
+		std::shared_ptr<RenderOverlays::Font> _frameRateFont;
+		std::shared_ptr<RenderOverlays::Font> _smallFrameRateFont;
+		std::shared_ptr<RenderOverlays::Font> _tabHeadingFont;
 
         FrameRigResources(const Desc&);
     };

@@ -34,7 +34,7 @@ namespace GUILayer
             unsigned _fontSize;
             Desc(unsigned fontSize) : _fontSize(fontSize) {}
         };
-        intrusive_ptr<RenderOverlays::Font> _font;
+		std::shared_ptr<RenderOverlays::Font> _font;
         RenderPostSceneResources(const Desc& desc);
     };
 

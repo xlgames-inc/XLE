@@ -147,7 +147,7 @@ namespace ToolsRig
     public:
         class Desc {};
 
-        intrusive_ptr<RenderOverlays::Font> _headingFont;
+		std::shared_ptr<RenderOverlays::Font> _headingFont;
         WidgetResources(const Desc&);
     };
 
