@@ -94,7 +94,6 @@
     <ClCompile Include="..\ManipulatorUtils.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\NativeManipulators.cpp" />
-    <ClCompile Include="..\ObjectPlaceholders.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
     <ClCompile Include="..\ManipulatorsLayer.cpp" />
     <ClCompile Include="..\TerrainLayer.cpp" />
@@ -124,7 +123,6 @@
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\ManipulatorsLayer.h" />
     <ClInclude Include="..\NativeManipulators.h" />
-    <ClInclude Include="..\ObjectPlaceholders.h" />
     <ClInclude Include="..\TerrainLayer.h" />
     <ClInclude Include="..\TestControl.h" />
     <ClInclude Include="..\UITypesBinding.h" />

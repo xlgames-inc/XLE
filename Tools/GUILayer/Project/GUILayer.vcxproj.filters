@@ -41,9 +41,6 @@
     <ClCompile Include="..\ManipulatorsLayer.cpp">
       <Filter>LevelEditor</Filter>
     </ClCompile>
-    <ClCompile Include="..\ObjectPlaceholders.cpp">
-      <Filter>LevelEditor</Filter>
-    </ClCompile>
     <ClCompile Include="..\EntityLayer.cpp">
       <Filter>LevelEditor</Filter>
     </ClCompile>
@@ -109,9 +106,6 @@
       <Filter>BasicControls</Filter>
     </ClInclude>
     <ClInclude Include="..\ManipulatorsLayer.h">
-      <Filter>LevelEditor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ObjectPlaceholders.h">
       <Filter>LevelEditor</Filter>
     </ClInclude>
     <ClInclude Include="..\EntityLayer.h">

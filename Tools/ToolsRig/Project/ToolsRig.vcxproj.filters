@@ -36,6 +36,7 @@
     <ClCompile Include="..\GenerateAO.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
+    <ClCompile Include="..\ObjectPlaceholders.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ModelVisualisation.h" />
@@ -79,6 +80,7 @@
     <ClInclude Include="..\GenerateAO.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
+    <ClInclude Include="..\ObjectPlaceholders.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Terrain">

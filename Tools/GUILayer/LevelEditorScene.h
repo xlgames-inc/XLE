@@ -28,7 +28,7 @@ namespace SceneEngine
     class DynamicImposters;
 }
 namespace Tools { class IManipulator; }
-namespace ToolsRig { class TerrainManipulatorContext; }
+namespace ToolsRig { class TerrainManipulatorContext; class ObjectPlaceholders; }
 
 namespace EntityInterface 
 { 
@@ -51,7 +51,6 @@ namespace GUILayer
     ref class TerrainManipulatorContext;
     interface class IProgress;
     class TerrainGob;
-    class ObjectPlaceholders;
 
     class EditorScene
     {
@@ -67,7 +66,7 @@ namespace GUILayer
         std::shared_ptr<SceneEngine::ShallowSurfaceManager>     _shallowSurfaceManager;
         std::shared_ptr<SceneEngine::DynamicImposters>          _dynamicImposters;
         std::shared_ptr<EntityInterface::RetainedEntities>      _flexObjects;
-        std::shared_ptr<ObjectPlaceholders>                     _placeholders;
+        std::shared_ptr<ToolsRig::ObjectPlaceholders>			_placeholders;
         std::vector<std::function<void()>>                      _prepareSteps;
 
         void    IncrementTime(float increment) { _currentTime += increment; }

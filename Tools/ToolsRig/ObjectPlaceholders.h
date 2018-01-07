@@ -16,7 +16,7 @@ namespace SceneEngine { class IIntersectionTester; }
 
 namespace EntityInterface { class RetainedEntities; }
 
-namespace GUILayer
+namespace ToolsRig
 {
     class ObjectPlaceholders : public std::enable_shared_from_this<ObjectPlaceholders>
     {

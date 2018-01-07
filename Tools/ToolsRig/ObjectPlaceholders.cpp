@@ -5,10 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ObjectPlaceholders.h"
-#include "ExportedNativeTypes.h"
+#include "VisualisationGeo.h"
 #include "../EntityInterface/RetainedEntities.h"
-#include "../ToolsRig/VisualisationGeo.h"
-#include "../../Utility/StringFormat.h"
 #include "../../RenderCore/Assets/ModelScaffoldInternal.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
@@ -20,7 +18,9 @@
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Buffer.h"
-#include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/ResourceList.h"
+#include "../../RenderCore/Format.h"
+#include "../../RenderCore/Types.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IFileSystem.h"
@@ -30,8 +30,9 @@
 #include "../../Math/Geometry.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/StringFormat.h"
 
-namespace GUILayer
+namespace ToolsRig
 {
     using namespace RenderCore;
     using namespace RenderCore::Techniques;
@@ -60,7 +61,7 @@ namespace GUILayer
 
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
-		SimpleModel(const RenderCore::Assets::RawGeometry& geo, StringSection<::Assets::ResChar> filename, unsigned largeBlocksOffset);
+		SimpleModel(const RenderCore::Assets::RawGeometry& geo, ::Assets::IFileInterface& largeBlocksFile);
 		SimpleModel(StringSection<::Assets::ResChar> filename);
 		~SimpleModel();
 	private:
@@ -72,7 +73,7 @@ namespace GUILayer
 		Format _ibFormat;
 		::Assets::DepValPtr _depVal;
 
-		void Build(const RenderCore::Assets::RawGeometry& geo, StringSection<::Assets::ResChar> filename, unsigned largeBlocksOffset);
+		void Build(const RenderCore::Assets::RawGeometry& geo, ::Assets::IFileInterface& largeBlocksFile);
 	};
 
 	void SimpleModel::Render(
@@ -105,7 +106,7 @@ namespace GUILayer
 		}
 	}
 
-	template<typename T> static T ReadFromFile(BasicFile& file, size_t size, size_t offset)
+	template<typename T> static T ReadFromFile(::Assets::IFileInterface& file, size_t size, size_t offset)
 	{
 		file.Seek(offset);
 		auto data = std::make_unique<uint8[]>(size);
@@ -113,25 +114,27 @@ namespace GUILayer
 		return T(data.get(), size);
 	}
 
-	SimpleModel::SimpleModel(const RenderCore::Assets::RawGeometry& geo, StringSection<::Assets::ResChar> filename, unsigned largeBlocksOffset)
+	SimpleModel::SimpleModel(const RenderCore::Assets::RawGeometry& geo, ::Assets::IFileInterface& largeBlocksFile)
 	{
-		Build(geo, filename, largeBlocksOffset);
+		Build(geo, largeBlocksFile);
 	}
 
 	SimpleModel::SimpleModel(StringSection<::Assets::ResChar> filename)
 	{
 		auto& scaffold = ::Assets::GetAssetComp<RenderCore::Assets::ModelScaffold>(filename);
-		if (scaffold.ImmutableData()._geoCount > 0)
-			Build(*scaffold.ImmutableData()._geos, scaffold.Filename().c_str(), scaffold.LargeBlocksOffset());
+		if (scaffold.ImmutableData()._geoCount > 0) {
+			auto largeBlocksFile = scaffold.OpenLargeBlocks();
+			Build(*scaffold.ImmutableData()._geos, *largeBlocksFile);
+		}
 		_depVal = scaffold.GetDependencyValidation();
 	}
 
-	void SimpleModel::Build(const RenderCore::Assets::RawGeometry& geo, StringSection<::Assets::ResChar> filename, unsigned largeBlocksOffset)
+	void SimpleModel::Build(const RenderCore::Assets::RawGeometry& geo, ::Assets::IFileInterface& largeBlocksFile)
 	{
 		// load the vertex buffer & index buffer from the geo input, and copy draw calls data
-		auto file = ::Assets::MainFileSystem::OpenBasicFile(filename, "rb");
-		_vb = ReadFromFile<Metal::VertexBuffer>(file, geo._vb._size, geo._vb._offset + largeBlocksOffset);
-		_ib = ReadFromFile<Metal::IndexBuffer>(file, geo._ib._size, geo._ib._offset + largeBlocksOffset);
+		auto largeBlocksOffset = largeBlocksFile.TellP();
+		_vb = ReadFromFile<Metal::VertexBuffer>(largeBlocksFile, geo._vb._size, geo._vb._offset + largeBlocksOffset);
+		_ib = ReadFromFile<Metal::IndexBuffer>(largeBlocksFile, geo._ib._size, geo._ib._offset + largeBlocksOffset);
 		_drawCalls.insert(_drawCalls.begin(), geo._drawCalls.cbegin(), geo._drawCalls.cend());
 		_vbStride = geo._vb._ia._vertexStride;
 		_ibFormat = geo._ib._format;
@@ -143,9 +146,6 @@ namespace GUILayer
 		_material = ShaderVariationSet(
 			std::make_pair(AsPointer(eles.cbegin()), eles.size()),
 			{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants }, ParameterBox());
-
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
-		::Assets::RegisterFileDependency(_depVal, filename);
 	}
 
 	SimpleModel::~SimpleModel() {}
@@ -367,7 +367,7 @@ namespace GUILayer
         ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
-        auto& visBox = FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
+        auto& visBox = ConsoleRig::FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
 
 		const auto* baseTechnique = "xleres/techniques/illum.tech";
 		if (Tweakable("DrawMarkers", true)) {
