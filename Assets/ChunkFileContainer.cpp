@@ -45,12 +45,15 @@ namespace Assets
                 chunks.begin(), chunks.end(), 
                 [&r](const ChunkHeader& c) { return c._type == r._type; });
             if (i == chunks.end())
-                Throw(::Assets::Exceptions::FormatError(
+                Throw(Exceptions::ConstructionError(
+					Exceptions::ConstructionError::Reason::MissingFile,
+					_validationCallback,
                     StringMeld<128>() << "Missing chunk (" << r._name << ")", _filename.c_str()));
 
             if (i->_chunkVersion != r._expectedVersion)
-                Throw(::Assets::Exceptions::FormatError(
-                    ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion,
+                Throw(::Assets::Exceptions::ConstructionError(
+					Exceptions::ConstructionError::Reason::UnsupportedVersion,
+					_validationCallback,
                     StringMeld<256>() 
                         << "Data chunk is incorrect version for chunk (" 
                         << r._name << ") expected: " << r._expectedVersion << ", got: " << i->_chunkVersion, 
@@ -78,14 +81,19 @@ namespace Assets
 				auto offset = i->_fileOffset;
 				auto blobCopy = _blob;
 				auto filenameCopy = _filename;
-				chunkResult._reopenFunction = [offset, blobCopy, filenameCopy]() -> std::shared_ptr<IFileInterface> {
-					std::shared_ptr<IFileInterface> result;
-					if (blobCopy) {
-						result = CreateMemoryFile(blobCopy);
-					} else 
-						result = MainFileSystem::OpenFileInterface(filenameCopy.c_str(), "rb");
-					result->Seek(offset);
-					return result;
+				auto depValCopy = _validationCallback;
+				chunkResult._reopenFunction = [offset, blobCopy, filenameCopy, depValCopy]() -> std::shared_ptr<IFileInterface> {
+					TRY {
+						std::shared_ptr<IFileInterface> result;
+						if (blobCopy) {
+							result = CreateMemoryFile(blobCopy);
+						} else 
+							result = MainFileSystem::OpenFileInterface(filenameCopy.c_str(), "rb");
+						result->Seek(offset);
+						return result;
+					} CATCH (const std::exception& e) {
+						Throw(Exceptions::ConstructionError(e, depValCopy));
+					} CATCH_END
 				};
 			}
 

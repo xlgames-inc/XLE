@@ -12,8 +12,6 @@
 
 namespace Assets
 {
-	inline std::string AsBlob(const std::exception& e) { return e.what(); }
-
 	namespace Internal 
 	{
 		std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
@@ -50,9 +48,11 @@ namespace Assets
 	{
 		TRY{
 			auto asset = AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
-			future.SetAsset(std::move(asset), {}, asset ? AssetState::Ready : AssetState::Invalid);
-		} CATCH(const std::exception& e) {
-			future.SetAsset(nullptr, AsBlob(e), AssetState::Invalid);
+			future.SetAsset(std::move(asset), {});
+		} CATCH (const Exceptions::ConstructionError& e) {
+			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
+		} CATCH (const std::exception& e) {
+			future.SetInvalidAsset(nullptr, AsBlob(e));
 		} CATCH_END
 	}
 
@@ -60,7 +60,7 @@ namespace Assets
 		static void DefaultCompilerConstruction(
 			AssetFuture<AssetType>& future,
 			const StringSection<ResChar> initializers[], unsigned initializerCount,
-			uint64 compileTypeCode = GetCompileProcessType<AssetType>())
+			uint64 compileTypeCode = AssetType::CompileProcessType)
 	{
 		// Begin a compilation operation via the registered compilers for this type.
 		// Our deferred constructor will wait for the completion of that compilation operation,

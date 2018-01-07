@@ -75,14 +75,12 @@ namespace Assets
 	template<typename Formatter>
 		ConfigFileContainer<Formatter>::ConfigFileContainer(StringSection<ResChar> initializer)
 	{
-		_fileData = ::Assets::TryLoadFileAsBlob(initializer);
-		if (_fileData) {
-			Internal::MarkValid(initializer);
-		} else {
-			Internal::MarkInvalid(initializer, "Could not open file");
-		}
 		_validationCallback = std::make_shared<DependencyValidation>();
 		RegisterFileDependency(_validationCallback, initializer);
+
+		_fileData = ::Assets::TryLoadFileAsBlob(initializer);
+		if (!_fileData)
+			Throw(Exceptions::ConstructionError(Exceptions::ConstructionError::Reason::MissingFile, _validationCallback, "Error loading config file container for %s", initializer.AsString().c_str()));
 	}
 
 	template<typename Formatter>

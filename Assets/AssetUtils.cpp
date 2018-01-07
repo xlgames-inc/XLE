@@ -9,9 +9,8 @@
 #include "AssetFuture.h"
 #include "DepVal.h"
 #include "IFileSystem.h"
-#if defined(HAS_XLE_CONSOLE_RIG)
-    #include "../ConsoleRig/Log.h"
-#endif
+#include "NascentChunk.h"		// (for AsBlob)
+#include "../ConsoleRig/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/MemoryUtils.h"
@@ -432,34 +431,32 @@ namespace Assets
 
     namespace Exceptions
     {
-        AssetException::AssetException(StringSection<ResChar> initializer, const char what[])
-        : ::Exceptions::BasicLabel(what) 
+		RetrievalError::RetrievalError(StringSection<ResChar> initializer) never_throws
         {
             XlCopyString(_initializer, dimof(_initializer), initializer); 
         }
 
-        InvalidAsset::InvalidAsset(StringSection<ResChar> initializer, const char what[]) 
-        : AssetException(initializer, what) 
+        InvalidAsset::InvalidAsset(StringSection<ResChar> initializer, const DepValPtr& depVal, const Blob& actualizationLog) never_throws
+        : RetrievalError(initializer)
+		, _depVal(depVal)
+		, _actualizationLog(actualizationLog)
         {
-                // Highlight cases where parameters are not filled in
-                // We particularly want to include a lot of debugging information
-                // with InvalidAsset exceptions -- because the user almost always
-                // needs to do something in response to them.
-            // assert(initializer[0] && what[0]);
         }
 
         bool InvalidAsset::CustomReport() const
         {
-            #if defined(HAS_XLE_CONSOLE_RIG)
-                LogAlwaysError << "Invalid asset (" << Initializer() << "):" << what();
-            #endif
+			if (_actualizationLog) {
+				Log(Error) << "Invalid asset (" << Initializer() << "):" << MakeStringSection((const char*)AsPointer(_actualizationLog->begin()), (const char*)AsPointer(_actualizationLog->end())) << std::endl;
+			} else {
+				Log(Error) << "Invalid asset (" << Initializer() << std::endl;
+			}
             return true;
         }
 
         auto InvalidAsset::State() const -> AssetState { return AssetState::Invalid; }
 
-        PendingAsset::PendingAsset(StringSection<ResChar> initializer, const char what[]) 
-        : AssetException(initializer, what) 
+        PendingAsset::PendingAsset(StringSection<ResChar> initializer) never_throws
+        : RetrievalError(initializer)
         {}
 
         bool PendingAsset::CustomReport() const
@@ -472,23 +469,56 @@ namespace Assets
 
         auto PendingAsset::State() const -> AssetState { return AssetState::Pending; }
 
-        FormatError::FormatError(const char format[], ...) never_throws
-        : _reason(Reason::FormatNotUnderstood)
-        {
-            va_list args;
-            va_start(args, format);
-            XlFormatStringV(_buffer, dimof(_buffer), format, args);
-            va_end(args);
-        }
+		bool ConstructionError::CustomReport() const
+		{
+			if (_actualizationLog) {
+				Log(Error) << "Error during asset construction:" << MakeStringSection((const char*)AsPointer(_actualizationLog->begin()), (const char*)AsPointer(_actualizationLog->end())) << std::endl;
+			}
+			else {
+				Log(Error) << "Error during asset construction (unspecified)" << std::endl;
+			}
+			return true;
+		}
 
-        FormatError::FormatError(Reason reason, const char format[], ...) never_throws
-        : _reason(reason)
-        {
-            va_list args;
-            va_start(args, format);
-            XlFormatStringV(_buffer, dimof(_buffer), format, args);
-            va_end(args);
-        }
+		ConstructionError::ConstructionError(Reason reason, const DepValPtr& depVal, const Blob& actualizationLog) never_throws
+		: _reason(reason), _depVal(depVal)
+		, _actualizationLog(actualizationLog)
+		{
+		}
+
+		ConstructionError::ConstructionError(Reason reason, const DepValPtr& depVal, const char format[], ...) never_throws
+		: _reason(reason), _depVal(depVal)
+		{
+			char buffer[512];
+			va_list args;
+			va_start(args, format);
+			std::vsnprintf(_buffer, dimof(_buffer), format, args);
+			va_end(args);
+
+			_actualizationLog = AsBlob(MakeIteratorRange(buffer, XlStringEnd(buffer)));
+		}
+
+		ConstructionError::ConstructionError(const std::exception& e, const DepValPtr& depVal) never_throws
+		: _reason(Reason::Unknown)
+		, _depVal(depVal)
+		, _actualizationLog(AsBlob(e))
+		{}
+
+		ConstructionError::ConstructionError(const ConstructionError& copyFrom, const DepValPtr& depVal) never_throws
+		: _reason(copyFrom._reason)
+		, _depVal(copyFrom._depVal)
+		, _actualizationLog(copyFrom._actualizationLog)
+		{
+			// merge the depvals by creating a tree
+			if (_depVal && depVal && _depVal != depVal) {
+				auto parentDepVal = std::make_shared<DependencyValidation>();
+				RegisterAssetDependency(parentDepVal, _depVal);
+				RegisterAssetDependency(parentDepVal, depVal);
+				_depVal = std::move(parentDepVal);
+			} else if (depVal) {
+				_depVal = depVal;
+			}
+		}
     }
 
 

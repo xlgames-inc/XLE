@@ -25,18 +25,24 @@ namespace Assets
     class DependencyValidation;
     using DepValPtr = std::shared_ptr<DependencyValidation>;
 
-    template<typename Type> uint64_t GetCompileProcessType() { return Type::CompileProcessType; }
+	Blob AsBlob(const std::exception& e);
 
     /// <summary>Exceptions related to rendering</summary>
     namespace Exceptions
     {
-        class AssetException : public ::Exceptions::BasicLabel
+		/// <summary>An error occurred while attempting to retreive and assert from an asset heap</summary>
+		/// This is usually caused by either an invalid asset, or an asset that is still pending.
+		///
+		/// This type of exception (including InvalidAsset and PendingAsset) should only be thrown
+		/// from an asset heap implementation. Asset types can use standard exceptions, or ConstructionError
+		/// to signal errors during asset construction.
+        class RetrievalError : public ::Exceptions::BasicLabel
         {
         public:
             const ResChar* Initializer() const { return _initializer; }
             virtual AssetState State() const = 0;
 
-            AssetException(StringSection<ResChar> initializer, const char what[]);
+			RetrievalError(StringSection<ResChar> initializer) never_throws;
         private:
             ResChar _initializer[512];
         };
@@ -48,13 +54,18 @@ namespace Assets
         /// The most common cause is due to a compile error in a shader. 
         /// If we attempt to use a shader with a compile error, it will throw
         /// a InvalidAsset exception.
-        class InvalidAsset : public AssetException
+        class InvalidAsset : public RetrievalError
         {
         public: 
             virtual bool CustomReport() const;
             virtual AssetState State() const;
+			const DepValPtr& GetDependencyValidation() const { return _depVal; }
+			const Blob& GetActualizationLog() const { return _actualizationLog; }
 
-            InvalidAsset(StringSection<ResChar> initializer, const char what[]);
+            InvalidAsset(StringSection<ResChar> initializer, const DepValPtr&, const Blob& actualizationLog) never_throws;
+		private:
+			DepValPtr _depVal;
+			Blob _actualizationLog;
         };
 
         /// <summary>An asset is still being loaded</summary>
@@ -64,32 +75,49 @@ namespace Assets
         /// For example, shader resources can take some time to compile. If we attempt
         /// to use the shader while it's still compiling, we'll get a PendingAsset
         /// exception.
-        class PendingAsset : public AssetException
+        class PendingAsset : public RetrievalError
         {
         public: 
             virtual bool CustomReport() const;
             virtual AssetState State() const;
 
-            PendingAsset(StringSection<ResChar> initializer, const char what[]);
+            PendingAsset(StringSection<ResChar> initializer) never_throws;
         };
 
-        class FormatError : public ::Exceptions::BasicLabel
+		/// <summary>An error occurred during the construction of an asset<summary>
+		/// This exception type includes some extra properties that are used by the asset system to
+		/// figure out how to handle the given error.
+		///
+		/// For example, the attached dependency validation can be used to monitor for file system 
+		/// changes, and reattempt if those files change.
+		///
+		/// Furthermore, on UnsupportedVersion errors, the system can attempt a recompile of the asset.
+        class ConstructionError : public ::Exceptions::BasicLabel
         {
         public:
             enum class Reason
             {
-                Success,
+				Unknown,
                 UnsupportedVersion,
-                FormatNotUnderstood
+                FormatNotUnderstood,
+				MissingFile
             };
 
-            Reason GetReason() const { return _reason; }
+            Reason				GetReason() const { return _reason; }
+			const DepValPtr&	GetDependencyValidation() const { return _depVal; }
+			const Blob&			GetActualizationLog() const { return _actualizationLog; }
 
-            FormatError(const char format[], ...) never_throws;
-            FormatError(Reason reason, const char format[], ...) never_throws;
+			virtual bool CustomReport() const;
+
+			ConstructionError(Reason reason, const DepValPtr&, const Blob& actualizationLog) never_throws;
+			ConstructionError(Reason reason, const DepValPtr&, const char format[], ...) never_throws;
+			ConstructionError(const std::exception&, const DepValPtr&) never_throws;
+			ConstructionError(const ConstructionError&, const DepValPtr&) never_throws;
 
         private:
-            Reason _reason;
+			Reason _reason;
+			DepValPtr _depVal;
+			Blob _actualizationLog;
         };
     }
 }

@@ -79,58 +79,100 @@ namespace Assets
 			char buffer[256];
 			XlCopyString(buffer, MakeStringSection(initializer.begin(), p));
 			const auto& container = Internal::GetConfigFileContainer(buffer);
-			auto fmttr = container.GetFormatter(MakeStringSection((const utf8*)(p+1), (const utf8*)initializer.end()));
-			return std::make_unique<AssetType>(
-				fmttr, 
-				DefaultDirectorySearchRules(buffer),
-				container.GetDependencyValidation());
+			TRY {
+				auto fmttr = container.GetFormatter(MakeStringSection((const utf8*)(p+1), (const utf8*)initializer.end()));
+				return std::make_unique<AssetType>(
+					fmttr, 
+					DefaultDirectorySearchRules(buffer),
+					container.GetDependencyValidation());
+			} CATCH (const Exceptions::ConstructionError& e) {
+				Throw(Exceptions::ConstructionError(e, container.GetDependencyValidation()));
+			} CATCH (const std::exception& e) {
+				Throw(Exceptions::ConstructionError(e, container.GetDependencyValidation()));
+			} CATCH_END
 		} else {
 			const auto& container = Internal::GetConfigFileContainer(initializer);
-			auto fmttr = container.GetRootFormatter();
-			return std::make_unique<AssetType>(
-				fmttr,
-				DefaultDirectorySearchRules(initializer),
-				container.GetDependencyValidation());
+			TRY { 
+				auto fmttr = container.GetRootFormatter();
+				return std::make_unique<AssetType>(
+					fmttr,
+					DefaultDirectorySearchRules(initializer),
+					container.GetDependencyValidation());
+			} CATCH (const Exceptions::ConstructionError& e) {
+				Throw(Exceptions::ConstructionError(e, container.GetDependencyValidation()));
+			} CATCH (const std::exception& e) {
+				Throw(Exceptions::ConstructionError(e, container.GetDependencyValidation()));
+			} CATCH_END
 		}
 	}
 
 	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_Formatter)>
 		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> requestParameters = {})
 	{
-		auto container = ConfigFileContainer<>(blob, depVal);
-		auto fmttr = requestParameters.IsEmpty() ? container.GetRootFormatter() : container.GetFormatter(MakeStringSection((const utf8*)requestParameters.begin(), (const utf8*)requestParameters.end()));
-		return std::make_unique<AssetType>(
-			fmttr,
-			DirectorySearchRules{},
-			container.GetDependencyValidation());
+		TRY {
+			auto container = ConfigFileContainer<>(blob, depVal);
+			auto fmttr = requestParameters.IsEmpty() ? container.GetRootFormatter() : container.GetFormatter(MakeStringSection((const utf8*)requestParameters.begin(), (const utf8*)requestParameters.end()));
+			return std::make_unique<AssetType>(
+				fmttr,
+				DirectorySearchRules{},
+				container.GetDependencyValidation());
+		} CATCH(const Exceptions::ConstructionError& e) {
+			Throw(Exceptions::ConstructionError(e, depVal));
+		} CATCH(const std::exception& e) {
+			Throw(Exceptions::ConstructionError(e, depVal));
+		} CATCH_END
 	}
 	
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
 		const auto& container = Internal::GetChunkFileContainer(initializer);
-		return std::make_unique<AssetType>(container);
+		TRY {
+			return std::make_unique<AssetType>(container);
+		} CATCH (const Exceptions::ConstructionError& e) {
+			Throw(Exceptions::ConstructionError(e, container.GetDependencyValidation()));
+		} CATCH (const std::exception& e) {
+			Throw(Exceptions::ConstructionError(e, container.GetDependencyValidation()));
+		} CATCH_END
 	}
 
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer)>
 		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> requestParameters = {})
 	{
-		return std::make_unique<AssetType>(ChunkFileContainer(blob, depVal, requestParameters));
+		TRY {
+			return std::make_unique<AssetType>(ChunkFileContainer(blob, depVal, requestParameters));
+		} CATCH (const Exceptions::ConstructionError& e) {
+			Throw(Exceptions::ConstructionError(e, depVal));
+		} CATCH (const std::exception& e) {
+			Throw(Exceptions::ConstructionError(e, depVal));
+		} CATCH_END
 	}
 
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasChunkRequests)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
 		const auto& container = Internal::GetChunkFileContainer(initializer);
-		auto chunks = container.ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
-		return std::make_unique<AssetType>(MakeIteratorRange(chunks), container.GetDependencyValidation());
+		TRY {
+			auto chunks = container.ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
+			return std::make_unique<AssetType>(MakeIteratorRange(chunks), container.GetDependencyValidation());
+		} CATCH (const Exceptions::ConstructionError& e) {
+			Throw(Exceptions::ConstructionError(e, container.GetDependencyValidation()));
+		} CATCH (const std::exception& e) {
+			Throw(Exceptions::ConstructionError(e, container.GetDependencyValidation()));
+		} CATCH_END
 	}
 
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasChunkRequests)>
 		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> requestParameters = {})
 	{
-		auto chunks = ChunkFileContainer(blob, depVal, requestParameters).ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
-		return std::make_unique<AssetType>(MakeIteratorRange(chunks), depVal);
+		TRY {
+			auto chunks = ChunkFileContainer(blob, depVal, requestParameters).ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
+			return std::make_unique<AssetType>(MakeIteratorRange(chunks), depVal);
+		} CATCH (const Exceptions::ConstructionError& e) {
+			Throw(Exceptions::ConstructionError(e, container.GetDependencyValidation()));
+		} CATCH (const std::exception& e) {
+			Throw(Exceptions::ConstructionError(e, container.GetDependencyValidation()));
+		} CATCH_END
 	}
 
 	template<typename AssetType, typename... Params, typename std::enable_if<std::is_constructible<AssetType, Params...>::value>::type* = nullptr>

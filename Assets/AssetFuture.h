@@ -44,7 +44,8 @@ namespace Assets
 		AssetFuture(AssetFuture&&) never_throws = default;
 		AssetFuture& operator=(AssetFuture&&) never_throws = default;
 
-		void SetAsset(std::unique_ptr<AssetType>&&, const std::string& msg, AssetState state);
+		void SetAsset(std::unique_ptr<AssetType>&&, const Blob& log);
+		void SetInvalidAsset(const DepValPtr& depVal, const Blob& log);
 		void SetPollingFunction(std::function<bool(AssetFuture<AssetType>&)>&&);
 		
 	private:
@@ -53,11 +54,13 @@ namespace Assets
 
 		AssetState			_state;
 		AssetPtr<AssetType> _actualized;
-		std::string			_actualizationMsg;
+		Blob				_actualizationLog;
+		DepValPtr			_actualizedDepVal;
 
 		AssetPtr<AssetType> _pending;
 		AssetState			_pendingState;
-		std::string			_pendingActualizationMsg;
+		Blob				_pendingActualizationLog;
+		DepValPtr			_pendingDepVal;
 
 		std::function<bool(AssetFuture<AssetType>&)> _pollingFunction;
 
@@ -106,16 +109,11 @@ namespace Assets
 		if (state == AssetState::Pending) {
 			// Note that the asset have have completed loading here -- but it may still be in it's "pending" state,
 			// waiting for a frame barrier. Let's include the pending state in the exception message to make it clearer. 
-			const char* exceptionMsg = "Still pending in actualization request";
-			switch (_pendingState) {
-			case AssetState::Invalid: "Still pending in actualization request (but pending invalid)"; break;
-			case AssetState::Ready: "Still pending in actualization request (but pending ready)"; break;
-			}
-			Throw(Exceptions::PendingAsset(MakeStringSection(_initializer), exceptionMsg));
+			Throw(Exceptions::PendingAsset(MakeStringSection(_initializer)));
 		}
 		
 		assert(state == AssetState::Invalid);
-		Throw(Exceptions::InvalidAsset(MakeStringSection(_initializer), _actualizationMsg.c_str()));
+		Throw(Exceptions::InvalidAsset(MakeStringSection(_initializer), _actualizedDepVal, _actualizationLog));
 	}
 
 	template<typename AssetType>
@@ -144,6 +142,7 @@ namespace Assets
 		if (_state == AssetState::Pending && _pendingState != AssetState::Pending) {
 			_actualized = std::move(_pending);
 			_actualizationMsg = std::move(_pendingActualizationMsg);
+			_actualizedDepVal = std::move(_pendingDepVal);
 			// Note that we must change "_state" last -- because another thread can access _actualized without a mutex lock
 			// when _state is set to AssetState::Ready
 			// we should also consider a cache flush here to ensure the CPU commits in the correct order
@@ -154,8 +153,9 @@ namespace Assets
 	template<typename AssetType>
 		bool			AssetFuture<AssetType>::IsOutOfDate() const
 	{
-		auto a = TryActualize();
-		return a && a->GetDependencyValidation()->GetValidationIndex() > 0;
+		auto state = _state;
+		if (state == AssetState::Pending) return false;
+		return _actualizedDepVal && _actualizedDepVal->GetValidationIndex() > 0;
 	}
 
 	template<typename AssetType>
@@ -203,7 +203,7 @@ namespace Assets
 				// same asset in the same frame -- in this case, the order can have side effects.
 				assert(that->_state == AssetState::Pending);
 				that->_actualized = std::move(that->_pending);
-				that->_actualizationMsg = std::move(that->_pendingActualizationMsg);
+				that->_actualizationLog = std::move(that->_pendingActualizationLog);
 				that->_state = that->_pendingState;
 				return that->_state;
 			}
@@ -212,13 +212,27 @@ namespace Assets
 	}
 
 	template<typename AssetType>
-		void AssetFuture<AssetType>::SetAsset(std::unique_ptr<AssetType>&& newAsset, const std::string& msg, AssetState state)
+		void AssetFuture<AssetType>::SetAsset(std::unique_ptr<AssetType>&& newAsset, const Blob& log)
 	{
 		{
 			ScopedLock(_lock);
 			_pending = std::move(newAsset);
-			_pendingState = state;
-			_pendingActualizationMsg = msg;
+			_pendingState = AssetState::Ready;
+			_pendingActualizationLog = log;
+			_pendingDepVal = _pending ? _pending->GetDependencyValidation() : nullptr;
+		}
+		_conditional.notify_all();
+	}
+
+	template<typename AssetType>
+		void AssetFuture<AssetType>::SetInvalidAsset(const DepValPtr& depVal, const Blob& log)
+	{
+		{
+			ScopedLock(_lock);
+			_pending = nullptr;
+			_pendingState = AssetState::Invalid;
+			_pendingActualizationLog = log;
+			_pendingDepVal = depVal;
 		}
 		_conditional.notify_all();
 	}
