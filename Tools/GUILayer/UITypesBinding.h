@@ -10,6 +10,7 @@
 #include "CLIXAutoPtr.h"
 #include "MarshalString.h"
 #include "../ToolsRig/ModelVisualisation.h"
+#include "../../Assets/DivergentAsset.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/SystemUtils.h"
 #include "../../Utility/ParameterBox.h"
@@ -20,12 +21,8 @@ using namespace System::Windows::Forms;
 using namespace System::Drawing::Design;
 using namespace System::Collections::Generic;
 
-namespace RenderCore { namespace Assets { class RawMaterial; class ResolvedMaterial; }}
-namespace Assets
-{
-    template<typename Type, typename Formatter>
-        class ConfigFileListContainer;
-}
+namespace RenderCore { namespace Assets { class RawMaterial; } }
+namespace RenderCore { namespace Techniques { class Material; } }
 
 namespace GUILayer
 {
@@ -352,7 +349,7 @@ namespace GUILayer
         const RenderCore::Assets::RawMaterial* GetUnderlying();
 
         String^ BuildInheritanceList();
-        void Resolve(RenderCore::Assets::ResolvedMaterial& destination);
+        void Resolve(RenderCore::Techniques::Material& destination);
 
         void AddInheritted(String^);
         void RemoveInheritted(String^);

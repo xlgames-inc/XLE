@@ -26,6 +26,7 @@
  
 #pragma once
  
+#include "DelayedDeleteQueue.h"
 #include <msclr\safebool.h>
 #include <assert.h>
 #include <memory>

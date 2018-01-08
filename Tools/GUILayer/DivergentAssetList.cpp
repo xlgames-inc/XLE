@@ -6,12 +6,14 @@
 
 #include "NativeEngineDevice.h"
 #include "DivergentAssetList.h"
+#include "EngineDevice.h"
 #include "ExportedNativeTypes.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/DivergentAsset.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/AssetServices.h"
+#include "../../Assets/AssetSetManager.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/StreamTypes.h"
@@ -20,8 +22,10 @@
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/Conversion.h"
 #include "MarshalString.h"
+#include "CLIXAutoPtr.h"
 
 #include "../../RenderCore/Assets/RawMaterial.h"
+#include <sstream>
 
 using namespace System::Collections::Generic;
 
@@ -34,10 +38,12 @@ namespace Assets
 	public:
 		virtual void            Clear() = 0;
 		virtual void            LogReport() const = 0;
+		virtual uint64_t		GetTypeCode() const = 0;
+		virtual std::string		GetTypeName() const = 0;
 
-		virtual unsigned        GetDivergentCount() const = 0;
-		virtual uint64          GetDivergentId(unsigned index) const = 0;
-		virtual bool            DivergentHasChanges(unsigned index) const = 0;
+		struct DivergentAssetRecord { uint64_t _id; rstring _identifier; bool _hasChanges; };
+		virtual std::vector<DivergentAssetRecord>	GetDivergentAssets() const = 0;
+		virtual const DivergentAssetBase* GetDivergentAsset(uint64_t id) const = 0;
 
 		virtual ~IDefaultAssetHeap();
 	};
@@ -68,9 +74,9 @@ namespace GUILayer
             }
         }
 
-        AssetItem(const ::Assets::IDefaultAssetHeap& set, uint64_t id) : _set(&set), _id(id)
+        AssetItem(const ::Assets::IDefaultAssetHeap& set, const ::Assets::rstring& label, uint64_t id) : _set(&set), _id(id)
         {
-            Label = clix::marshalString<clix::E_UTF8>(set.GetAssetName(id));
+            Label = clix::marshalString<clix::E_UTF8>(label);
             _pendingSave = nullptr;
         }
     };
@@ -132,8 +138,12 @@ namespace GUILayer
             }
         }
 
-        AssetTypeItem(const ::Assets::IDefaultAssetHeap& set) : _set(&set)
-        { 
+		using AssetList = std::vector<::Assets::IDefaultAssetHeap::DivergentAssetRecord>;
+		clix::shared_ptr<AssetList> _assetList;
+
+        AssetTypeItem(const ::Assets::IDefaultAssetHeap& set, const AssetList& assetsList) : _set(&set)
+        {
+			_assetList = std::make_shared<AssetList>(assetsList);
             _children = nullptr;
 			Label = GetAssetTypeName(set.GetTypeCode());
 			if (String::IsNullOrEmpty(Label))
@@ -176,10 +186,11 @@ namespace GUILayer
                 const auto* set = _assetSets->GetAssetSet(c);
                 if (!set) continue;
 
-                auto divCount = set->GetDivergentCount();
-                if (divCount > 0) {
-                    result->Add(gcnew AssetTypeItem(*set));
-                }
+                auto divAssets = set->GetDivergentAssets();
+				bool hasChangedAsset = false;
+				for (const auto&d : divAssets) if (d._hasChanges) { hasChangedAsset = true; break; }
+                if (hasChangedAsset)
+                    result->Add(gcnew AssetTypeItem(*set, divAssets));
             }
 
             return result;
@@ -193,16 +204,16 @@ namespace GUILayer
                     if (!item->_children) {
                             // expecting the list of divergent assets of this type
                         item->_children = gcnew List<AssetItem^>();
-                        auto divCount = item->_set->GetDivergentCount();
-                        for (unsigned d = 0; d < divCount; ++d) {
-                            if (!item->_set->DivergentHasChanges(d)) continue;
 
-                            auto assetId = item->_set->GetDivergentId(d);
-                            auto assetItem = gcnew AssetItem(*item->_set, assetId);
+						const auto& divAssets = *item->_assetList.get();
+                        for (const auto&d:divAssets) {
+                            if (!d._hasChanges) continue;
+
+                            auto assetItem = gcnew AssetItem(*item->_set, d._identifier, d._id);
 
                                 // if we have a "pending save" for this item
                                 // then we have to hook it up
-                            assetItem->_pendingSave = _saveList->GetEntry(*item->_set, assetId);
+                            assetItem->_pendingSave = _saveList->GetEntry(*item->_set, d._id);
 
                             item->_children->Add(assetItem);
                         }
@@ -213,6 +224,7 @@ namespace GUILayer
                 }
             }
 
+#if 0
             if (_undoQueue) {
                 auto item = dynamic_cast<AssetItem^>(lastItem);
                 if (item) {
@@ -235,6 +247,7 @@ namespace GUILayer
                     return result;
                 }
             }
+#endif
 
         }
 
@@ -292,19 +305,20 @@ namespace GUILayer
     PendingSaveList::~PendingSaveList()
     {}
 
-    static array<Byte>^ LoadOriginalFileAsByteArray(StringSection<> filename)
+#if 0
+	static array<Byte>^ TryLoadOriginalFileAsByteArray(StringSection<> filename)
     {
         TRY {
-            auto file = ::Assets::MainFileSystem::OpenBasicFile(filename, "rb");
+            auto file = ::Assets::MainFileSystem::OpenFileInterface(filename, "rb");
 
-            file.Seek(0, FileSeekAnchor::End);
-            size_t size = file.TellP();
-            file.Seek(0);
+            file->Seek(0, FileSeekAnchor::End);
+            size_t size = file->TellP();
+            file->Seek(0);
 
             auto block = gcnew array<Byte>(int(size));
             {
                 pin_ptr<unsigned char> pinned = &block[0];
-                file.Read((uint8*)pinned, 1, size);
+                file->Read((uint8*)pinned, 1, size);
             }
             return block;
         } CATCH(const std::exception& e) {
@@ -322,6 +336,32 @@ namespace GUILayer
 			return System::Text::Encoding::UTF8->GetBytes(builder->ToString());
 		} CATCH_END
     }
+#endif
+
+	static ::Assets::Blob TryLoadOriginalFileAsBlob(StringSection<> filename)
+	{
+		TRY{
+			auto file = ::Assets::MainFileSystem::OpenFileInterface(filename, "rb");
+
+			file->Seek(0, FileSeekAnchor::End);
+			size_t size = file->TellP();
+			file->Seek(0);
+
+			auto result = std::make_shared<std::vector<uint8_t>>(size);
+			file->Read(result->data(), size);
+			return result;
+		} CATCH(const std::exception& e) {
+			std::stringstream str;
+			str << "Error while opening input file " << filename.AsString() << ". Exception message follows: " << e.what();
+			auto s = str.str();
+			return ::Assets::AsBlob(MakeIteratorRange(s));
+		} CATCH(...) {
+			std::stringstream str;
+			str << "Error while opening input file " << filename.AsString() << ". Unknown exception type.";
+			auto s = str.str();
+			return ::Assets::AsBlob(MakeIteratorRange(s));
+		} CATCH_END
+	}
 
     array<Byte>^ AsByteArray(const uint8* begin, const uint8* end)
     {
@@ -331,6 +371,11 @@ namespace GUILayer
         Marshal::Copy(IntPtr(const_cast<uint8*>(begin)), result, 0, result->Length);
         return result;
     }
+
+	array<Byte>^ AsByteArray(const ::Assets::Blob& blob)
+	{
+		return AsByteArray((const uint8*)AsPointer(blob->begin()), (const uint8*)AsPointer(blob->end()));
+	}
 
     static auto DeserializeAllMaterials(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules)
         -> std::vector<std::pair<::Assets::rstring, RenderCore::Assets::RawMaterial>>
@@ -378,7 +423,7 @@ namespace GUILayer
 
     static void MergeAndSerialize(
         OutputStreamFormatter& output,
-        array<Byte>^ originalFile,
+        IteratorRange<const void*> originalFile,
         StringSection<::Assets::ResChar> filename,
         StringSection<::Assets::ResChar> section,
         const RenderCore::Assets::RawMaterial& mat)
@@ -389,11 +434,9 @@ namespace GUILayer
         using namespace RenderCore::Assets;
 
         std::vector<std::pair<::Assets::rstring, RenderCore::Assets::RawMaterial>> preMats;
-        if (originalFile->Length) {
+        if (!originalFile.empty()) {
             auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
-            pin_ptr<uint8> pinnedAddress(&originalFile[0]);
-            InputStreamFormatter<utf8> formatter(
-                MemoryMappedInputStream((const char*)pinnedAddress, PtrAdd((const char*)pinnedAddress, originalFile->Length)));
+            InputStreamFormatter<utf8> formatter(originalFile);
             preMats = DeserializeAllMaterials(formatter, searchRules);
         }
 
@@ -411,6 +454,33 @@ namespace GUILayer
         SerializeAllMaterials(output, preMats);
     }
 
+	struct AssetSaveEntry
+	{
+		::Assets::Blob		_originalFile;
+		::Assets::Blob		_newFile;
+		::Assets::rstring	_name;
+	};
+
+	static AssetSaveEntry BuildAssetSaveEntry(uint64_t typeCode, const StringSection<::Assets::ResChar> identifier, const ::Assets::DivergentAssetBase& divAsset)
+	{
+		// HACK -- special case for RawMaterial objects!
+		if (typeCode == typeid(::RenderCore::Assets::RawMaterial).hash_code()) {
+			auto splitName = MakeFileNameSplitter(identifier);
+			auto originalFile = TryLoadOriginalFileAsBlob(splitName.AllExceptParameters());
+
+			MemoryOutputStream<utf8> strm;
+			OutputStreamFormatter fmtter(strm);
+			MergeAndSerialize(fmtter, MakeIteratorRange(*originalFile),
+				splitName.AllExceptParameters(), splitName.Parameters(),
+				static_cast<const ::Assets::DivergentAsset<::RenderCore::Assets::RawMaterial>&>(divAsset).GetAsset());
+			auto newFile = ::Assets::AsBlob(MakeIteratorRange(strm.GetBuffer().Begin(), strm.GetBuffer().End()));
+
+			return AssetSaveEntry { std::move(originalFile), std::move(newFile), splitName.AllExceptParameters().AsString() };
+		}
+
+		return AssetSaveEntry {};
+	}
+
     PendingSaveList^ PendingSaveList::Create()
     {
         auto result = gcnew PendingSaveList();
@@ -425,31 +495,32 @@ namespace GUILayer
 
         #if 1 // defined(ASSETS_STORE_DIVERGENT)
 
-                    // HACK -- special case for RawMaterial objects!
-            using namespace RenderCore::Assets;
-            auto materials = ::Assets::Internal::GetAssetSet<RawMaterial>();
-            for (const auto& a:materials->_divergentAssets) {
-                auto asset = a.second;
-                auto hash = a.first;
-                if (!asset->HasChanges()) continue;
-            
-                auto targetFilename = asset->GetIdentifier()._targetFilename;
-                auto splitName = MakeFileNameSplitter(targetFilename);
-                auto originalFile = LoadOriginalFileAsByteArray(splitName.AllExceptParameters());
+                    
+			auto& setMan = ::Assets::GetAssetSetManager();
+			setMan.Lock();
+			try {
+				auto cnt = setMan.GetAssetSetCount();
+				for (unsigned c = 0; c < cnt; ++c) {
+					auto* set = setMan.GetAssetSet(c);
+					if (!set) continue;
 
-                MemoryOutputStream<utf8> strm;
-                OutputStreamFormatter fmtter(strm);
-                MergeAndSerialize(fmtter, originalFile, 
-                    splitName.AllExceptParameters(), splitName.Parameters(), 
-                    asset->GetAsset());
-                auto newFile = AsByteArray(strm.GetBuffer().Begin(), strm.GetBuffer().End());
+					auto divAssets = set->GetDivergentAssets();
+					for (const auto&div : divAssets) {
+						if (!div._hasChanges) continue;
+						auto saveEntry = BuildAssetSaveEntry(set->GetTypeCode(), MakeStringSection(div._identifier), *set->GetDivergentAsset(div._id));
+						if (!saveEntry._newFile || saveEntry._newFile->empty()) continue;
 
-                result->Add(
-                    *materials, hash,
-                    gcnew PendingSaveList::Entry(
-                        clix::marshalString<clix::E_UTF8>(splitName.AllExceptParameters()), 
-                        originalFile, newFile));
-            }
+						result->Add(
+							*set, div._id,
+							gcnew PendingSaveList::Entry(
+								clix::marshalString<clix::E_UTF8>(saveEntry._name),
+								AsByteArray(saveEntry._originalFile),
+								AsByteArray(saveEntry._newFile)));
+					}
+				}
+			} finally {
+				setMan.Unlock();
+			}
 
         #endif
 
@@ -458,7 +529,8 @@ namespace GUILayer
 
     auto PendingSaveList::Commit() -> CommitResult^
     {
-        #if 1 // defined(ASSETS_STORE_DIVERGENT)
+		assert(0);	// not implemented
+        #if 0 // defined(ASSETS_STORE_DIVERGENT)
 
 			auto errorMessages = gcnew System::Text::StringBuilder;
 
@@ -484,7 +556,7 @@ namespace GUILayer
                     //  only show changes related to this particular asset
                 auto targetFilename = asset->GetIdentifier()._targetFilename;
                 auto splitName = MakeFileNameSplitter(targetFilename);
-                auto originalFile = LoadOriginalFileAsByteArray(splitName.AllExceptParameters());
+                auto originalFile = TryLoadOriginalFileAsByteArray(splitName.AllExceptParameters());
             
                 MemoryOutputStream<utf8> strm;
                 OutputStreamFormatter fmtter(strm);
@@ -496,8 +568,8 @@ namespace GUILayer
                 TRY
                 {
 					{
-						auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(dstFile.c_str(), "wb");
-						outputFile.Write(strm.GetBuffer().Begin(), 1, size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin()));
+						auto outputFile = ::Assets::MainFileSystem::OpenFileInterface(dstFile.c_str(), "wb");
+						outputFile->Write(strm.GetBuffer().Begin(), 1, size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin()));
 					}
 
 					// abandon changes now to allow us to reload the asset from disk
@@ -528,17 +600,29 @@ namespace GUILayer
         #endif
     }
 
-    bool PendingSaveList::HasModifiedAssets()
+	bool PendingSaveList::HasModifiedAssets()
     {
         #if 1 // defined(ASSETS_STORE_DIVERGENT)
 
-            auto materials = ::Assets::Internal::GetAssetSet<RenderCore::Assets::RawMaterial>();
-            for (const auto&a:materials->_divergentAssets)
-                if (a.second->HasChanges()) return true;
+            auto& setMan = ::Assets::GetAssetSetManager();
+			setMan.Lock();
+			try {
+				auto cnt = setMan.GetAssetSetCount();
+				for (unsigned c = 0; c < cnt; ++c) {
+					auto* set = setMan.GetAssetSet(c);
+					if (!set) continue;
+
+					auto divAssets = set->GetDivergentAssets();
+					for (const auto&div : divAssets)
+						if (div._hasChanges) return true;
+				}
+			} finally {
+				setMan.Unlock();
+			}
 
         #endif
 
-        return true;
+        return false;
     }
 }
 

@@ -11,7 +11,7 @@
 #include <memory>
 #include <vector>
 
-namespace Utility { template<typename CharType> class StringSection; }
+namespace Utility { template<typename> class StringSection; template<typename> class IteratorRange; }
 using namespace Utility;
 
 namespace Assets
@@ -30,6 +30,7 @@ namespace Assets
 		using FuturePtr = std::shared_ptr<AssetFuture<AssetType>>;
 
 	Blob AsBlob(const std::exception& e);
+	Blob AsBlob(IteratorRange<const void*> copyFrom);
 
     /// <summary>Exceptions related to rendering</summary>
     namespace Exceptions

@@ -12,6 +12,7 @@
 
 namespace Assets
 {
+#if 0
     void DivergentAssetBase::AssetIdentifier::OnChange()
     {
         // We need to mark the target file invalidated.
@@ -33,17 +34,18 @@ namespace Assets
 
         Services::GetAsyncMan().GetIntermediateStore().ShadowFile(MakeStringSection(AsPointer(fn.cbegin()), AsPointer(end)));
     }
+#endif
 
 
-    ITransaction::ITransaction(StringSection<ResChar> name, uint64 assetId, uint64 typeCode, std::shared_ptr<UndoQueue> undoQueue)
+    ITransaction::ITransaction(const char transactionName[], const std::shared_ptr<UndoQueue>& undoQueue)
 	: _undoQueue(std::move(undoQueue))
-    , _name(name.AsString()), _assetId(assetId), _typeCode(typeCode)
+    , _transactionName(transactionName)
 	{}
 
 	ITransaction::~ITransaction()
 	{}
 
-	void UndoQueue::PushBack(std::shared_ptr<ITransaction> transaction) {}
+	void UndoQueue::PushBack(const std::shared_ptr<ITransaction>& transaction) {}
     std::shared_ptr<ITransaction> UndoQueue::GetTop() { return nullptr; }
     unsigned UndoQueue::GetCount() { return 0; }
     ITransaction* UndoQueue::GetTransaction(unsigned) { return nullptr; }

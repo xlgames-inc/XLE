@@ -10,15 +10,19 @@ namespace Assets
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class DivergentAssetBase;
+
 	class IDefaultAssetHeap
 	{
 	public:
 		virtual void            Clear() = 0;
 		virtual void            LogReport() const = 0;
+		virtual uint64_t		GetTypeCode() const = 0;
+		virtual std::string		GetTypeName() const = 0;
 
-		virtual unsigned        GetDivergentCount() const = 0;
-		virtual uint64          GetDivergentId(unsigned index) const = 0;
-		virtual bool            DivergentHasChanges(unsigned index) const = 0;
+		struct DivergentAssetRecord { uint64_t _id; rstring _identifier; bool _hasChanges; };
+		virtual std::vector<DivergentAssetRecord>	GetDivergentAssets() const = 0;
+		virtual const DivergentAssetBase* GetDivergentAsset(uint64_t id) const = 0;
 
 		virtual ~IDefaultAssetHeap();
 	};
@@ -34,10 +38,10 @@ namespace Assets
 
 		void            Clear();
 		void            LogReport() const;
-
-		unsigned        GetDivergentCount() const;
-		uint64          GetDivergentId(unsigned index) const;
-		bool            DivergentHasChanges(unsigned index) const;
+		uint64_t		GetTypeCode() const;
+		std::string		GetTypeName() const;
+		std::vector<DivergentAssetRecord>	GetDivergentAssets() const;
+		const DivergentAssetBase* GetDivergentAsset(uint64_t id) const;
 
 		DefaultAssetHeap();
 		~DefaultAssetHeap();
@@ -94,10 +98,27 @@ namespace Assets
 		void            DefaultAssetHeap<AssetType>::LogReport() const {}
 
 	template<typename AssetType>
-		unsigned        DefaultAssetHeap<AssetType>::GetDivergentCount() const { return 0; }
+		uint64_t		DefaultAssetHeap<AssetType>::GetTypeCode() const
+		{
+			return typeid(AssetType).hash_code();
+		}
+
 	template<typename AssetType>
-		uint64          DefaultAssetHeap<AssetType>::GetDivergentId(unsigned index) const { return 0u; }
+		std::string		DefaultAssetHeap<AssetType>::GetTypeName() const
+		{
+			return typeid(AssetType).name();
+		}
+
 	template<typename AssetType>
-		bool            DefaultAssetHeap<AssetType>::DivergentHasChanges(unsigned index) const { return false; }
+		auto	DefaultAssetHeap<AssetType>::GetDivergentAssets() const ->std::vector<DivergentAssetRecord>
+		{
+			return {};
+		}
+
+	template<typename AssetType>
+		const DivergentAssetBase* DefaultAssetHeap<AssetType>::GetDivergentAsset(uint64_t id) const
+		{
+			return nullptr;
+		}
 
 }

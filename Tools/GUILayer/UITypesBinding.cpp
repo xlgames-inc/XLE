@@ -450,14 +450,11 @@ namespace GUILayer
         return nullptr;
     }
 
-    void RawMaterial::Resolve(RenderCore::Assets::ResolvedMaterial& destination)
+    void RawMaterial::Resolve(RenderCore::Techniques::Material& destination)
     {
         if (!!_underlying) {
-            auto searchRules = Assets::DefaultDirectorySearchRules(
-                MakeStringSection(clix::marshalString<clix::E_UTF8>(Filename)));
-            auto state = _underlying->GetAsset().TryResolve(destination, searchRules);
-			assert(state == ::Assets::AssetState::Ready);
-			(void)state;
+			::Assets::DirectorySearchRules searchRules;
+			RenderCore::Assets::MergeIn_Stall(destination, _underlying->GetAsset(), searchRules);
         }
     }
 
@@ -541,13 +538,13 @@ namespace GUILayer
 		// If our transaction id doesn't match what we find in the divergent asset, it means
 		// that the the asset may have been modified from some other place. When this happens, 
 		// we have to dump the cached values in our BindingLists
-		auto underlyingTransId = _underlying->GetIdentifier()._transactionId;
+		/*auto underlyingTransId = _underlying->GetIdentifier()._transactionId;
 		if (underlyingTransId != _transId) {
 			_materialParameterBox = nullptr;
 			_shaderConstants = nullptr;
 			_resourceBindings = nullptr;
 			_transId = underlyingTransId;
-		}
+		}*/
 	}
 
     RawMaterial::RawMaterial(System::String^ initialiser)
@@ -555,7 +552,7 @@ namespace GUILayer
 		_transId = 0;
         _initializer = initialiser;
         auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
-        _underlying = RenderCore::Assets::RawMaterial::GetDivergentAsset(nativeInit.c_str());
+        _underlying = ::Assets::GetDivergentAsset<RenderCore::Assets::RawMaterial>(nativeInit.c_str());
         _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
     }
 

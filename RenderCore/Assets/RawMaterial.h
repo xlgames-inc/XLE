@@ -11,10 +11,6 @@
 #include "../../Utility/MemoryUtils.h"
 #include <memory>
 
-#if defined(HAS_XLE_DIVERGENTASSET)
-    #include "../../Assets/DivergentAsset.h"
-#endif
-
 namespace Assets 
 { 
     class DependencyValidation; class DirectorySearchRules; 
@@ -65,11 +61,6 @@ namespace RenderCore { namespace Assets
         ~RawMaterial();
 
 		static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
-
-        #if defined(HAS_XLE_DIVERGENTASSET)
-            static const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>& GetDivergentAsset(StringSection<::Assets::ResChar> initializer);
-        #endif
-		static std::unique_ptr<RawMaterial> CreateNew(StringSection<::Assets::ResChar> initialiser);
 
     private:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
