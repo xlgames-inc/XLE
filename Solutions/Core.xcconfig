@@ -29,6 +29,7 @@ OTHER_LDFLAGS = -ObjC
 FRAMEWORK_SEARCH_PATHS = $(inherited)
 HEADER_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/../.. $(PROJECT_DIR)/../../Foreign/cml-1_0_2 $(PROJECT_DIR)/../../Foreign/eigen
 EXCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = $(inherited)
+ALWAYS_SEARCH_USER_PATHS = NO
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
     //  C O D E   G E N E R A T I O N   //
@@ -48,7 +49,7 @@ CLANG_CXX_LIBRARY = libc++
     //  L A N G U A G E   M O D U L E S   //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CLANG_ENABLE_MODULES = YES
+CLANG_ENABLE_MODULES = NO
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
     //  L A N G U A G E   O B J   C   //
