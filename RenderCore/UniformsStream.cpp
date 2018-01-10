@@ -17,7 +17,7 @@ namespace RenderCore
 
         _cbBindings[slot] = RetainedCBBinding {
             binding._hashName,
-            std::vector<ConstantBufferElement>(binding._elements.begin(), binding._elements.end())
+            std::vector<ConstantBufferElementDesc>(binding._elements.begin(), binding._elements.end())
         };
         _hash = 0;
     }
@@ -48,7 +48,7 @@ namespace RenderCore
     UniformsStreamInterface::UniformsStreamInterface() : _hash(0) {}
     UniformsStreamInterface::~UniformsStreamInterface() {}
 
-    unsigned CalculateStride(IteratorRange<const ConstantBufferElement*> elements)
+    unsigned CalculateStride(IteratorRange<const ConstantBufferElementDesc*> elements)
     {
         // note -- following alignment rules suggested by Apple in OpenGL ES guide
         //          each element should be aligned to a multiple of 4 bytes (or a multiple of

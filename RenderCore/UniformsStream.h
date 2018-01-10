@@ -23,7 +23,7 @@ namespace RenderCore
         IteratorRange<const Metal::ShaderResourceView*const*> _resources = {};
     };
 
-    class ConstantBufferElement
+    class ConstantBufferElementDesc
     {
     public:
         uint64_t    _semanticHash = 0ull;
@@ -31,7 +31,7 @@ namespace RenderCore
         unsigned    _arrayElementCount = 1u;
     };
 
-    unsigned CalculateStride(IteratorRange<const ConstantBufferElement*>);
+    unsigned CalculateStride(IteratorRange<const ConstantBufferElementDesc*>);
 
     class UniformsStreamInterface
     {
@@ -40,7 +40,7 @@ namespace RenderCore
         {
         public:
             uint64_t _hashName;
-            IteratorRange<const ConstantBufferElement*> _elements = {};
+            IteratorRange<const ConstantBufferElementDesc*> _elements = {};
         };
 
         void BindConstantBuffer(unsigned slot, const CBBinding& binding);
@@ -56,7 +56,7 @@ namespace RenderCore
         {
         public:
             uint64_t _hashName = 0ull;
-            std::vector<ConstantBufferElement> _elements = {};
+            std::vector<ConstantBufferElementDesc> _elements = {};
         };
         std::vector<RetainedCBBinding> _cbBindings;
         std::vector<uint64_t> _srvBindings;

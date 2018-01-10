@@ -17,7 +17,7 @@ namespace RenderCore
         const IResource*    _prebuiltBuffer;
         // flags / desc ?
 
-        ConstantBufferView() {}
+        ConstantBufferView() : _prebuiltBuffer(nullptr) {}
         ConstantBufferView(const SharedPkt& pkt) : _packet(pkt) {}
         ConstantBufferView(SharedPkt&& pkt) : _packet(std::move(pkt)) {}
         ConstantBufferView(const IResourcePtr& prebuilt) : _prebuiltBuffer(prebuilt.get()) {}

@@ -2,7 +2,7 @@
 #include "ShaderIntrospection.h"
 #include "Shader.h"
 #include "Format.h"
-#include "../../UniformsStream.h"        // (for ConstantBufferElement)
+#include "../../UniformsStream.h"        // (for ConstantBufferElementDesc)
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 
@@ -13,7 +13,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     SetUniformCommandGroup ShaderIntrospection::MakeBinding(
         HashType uniformStructName,
-        IteratorRange<const ConstantBufferElement*> inputElements)
+        IteratorRange<const ConstantBufferElementDesc*> inputElements)
     {
         SetUniformCommandGroup result;
         auto s = LowerBound(_structs, uniformStructName);
@@ -22,7 +22,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (const auto& i:s->second._uniforms) {
             auto bindingName = i._bindingName;
             auto b = std::find_if(inputElements.begin(), inputElements.end(),
-                                  [bindingName](const ConstantBufferElement& e) { return e._semanticHash == bindingName; });
+                                  [bindingName](const ConstantBufferElementDesc& e) { return e._semanticHash == bindingName; });
             if (b != inputElements.end()) {
                 // Check for compatibility of types.
                 assert(i._elementCount == b->_arrayElementCount); // "Array uniforms within structs not currently supported");

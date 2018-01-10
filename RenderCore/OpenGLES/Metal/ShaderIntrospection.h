@@ -6,7 +6,7 @@
 #include "../../../Utility/ParameterBox.h"
 #include "../../../Utility/IteratorUtils.h"
 
-namespace RenderCore { class ConstantBufferElement; }
+namespace RenderCore { class ConstantBufferElementDesc; }
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
@@ -30,7 +30,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         using HashType = uint64_t;
 
-        SetUniformCommandGroup  MakeBinding(HashType uniformStructName, IteratorRange<const ConstantBufferElement*> inputElements);
+        SetUniformCommandGroup  MakeBinding(HashType uniformStructName, IteratorRange<const ConstantBufferElementDesc*> inputElements);
 
         class Uniform
         {
