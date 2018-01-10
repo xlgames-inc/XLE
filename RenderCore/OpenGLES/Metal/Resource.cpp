@@ -58,6 +58,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     Resource::Resource(
         ObjectFactory& factory, const Desc& desc,
         const SubResourceInitData& initData)
+    : _desc(desc)
     {
         if (desc._type == ResourceDesc::Type::LinearBuffer) {
             if (desc._bindFlags & BindFlag::ConstantBuffer) {

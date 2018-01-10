@@ -25,9 +25,10 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    void GraphicsPipeline::Bind(const BoundInputLayout& inputLayout)
+    void GraphicsPipeline::Bind(const VertexBufferView& vb, const BoundInputLayout& inputLayout)
     {
-        inputLayout.Apply();
+        inputLayout.Apply((const void*)(size_t)vb._offset);
+        glBindBuffer(GL_ARRAY_BUFFER, GetBufferRawGLHandle(*vb._resource));
     }
 
     void GraphicsPipeline::Bind(Topology topology)

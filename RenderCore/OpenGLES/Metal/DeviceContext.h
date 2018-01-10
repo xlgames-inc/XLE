@@ -50,7 +50,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         template<int Count> void Bind(const ResourceList<VertexBufferView, Count>& VBs);
         void Bind(const IndexBufferView& IB);
-        void Bind(const BoundInputLayout& inputLayout);
+        void Bind(const VertexBufferView& vb, const BoundInputLayout& inputLayout);
 
         template<int Count> void BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void BindPS(const ResourceList<SamplerState, Count>& samplerStates);
