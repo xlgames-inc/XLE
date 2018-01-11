@@ -367,6 +367,50 @@ namespace Utility
 
             return false;
         }
+        
+        
+        enum CastType CastType(TypeCat testType, TypeCat againstType) {
+            if (testType == againstType) {
+                return CastType::Equal;
+            }
+            
+            bool isWidening = false;
+            switch (againstType) {
+                case TypeCat::Bool:
+                case TypeCat::UInt8:
+                case TypeCat::UInt16:
+                case TypeCat::UInt32:
+                case TypeCat::UInt64:
+                    isWidening = (testType == TypeCat::Bool ||
+                            testType == TypeCat::UInt8 ||
+                            testType == TypeCat::UInt16 ||
+                            testType == TypeCat::UInt32 ||
+                            testType == TypeCat::UInt64) && (testType < againstType);
+                    break;
+                case TypeCat::Float:
+                case TypeCat::Double:
+                    isWidening = testType < againstType;
+                    break;
+                case TypeCat::Int8:
+                    isWidening = testType <= TypeCat::UInt8;
+                    break;
+                case TypeCat::Int16:
+                    isWidening = testType <= TypeCat::UInt16;
+                    break;
+                case TypeCat::Int32:
+                    isWidening = testType <= TypeCat::UInt32;
+                    break;
+                case TypeCat::Int64:
+                    isWidening = testType <= TypeCat::UInt64;
+                    break;
+                default:
+                    assert(false); // Unknown type
+                    isWidening = false;
+                    break;
+            }
+            
+            return isWidening ? CastType::Widening : CastType::Narrowing;
+        }
 
 
         template<typename CharType>
@@ -498,6 +542,8 @@ namespace Utility
                         subMatch.first, subMatch.second,
                         arrayElementPattern);
                     std::regex_iterator<const CharType*> rend;
+                    
+                    const auto &startIt = rit;
 
                     auto dstIterator = dest;
                     auto dstIteratorSize = ptrdiff_t(destSize);
@@ -532,7 +578,7 @@ namespace Utility
                             eleMatch.first, eleMatch.second,
                             dstIterator, dstIteratorSize);
 
-                        if (subType._type != cat) {
+                        if (CastType(subType._type, cat) != CastType::Narrowing) {
                             bool castSuccess = Cast(   
                                 dstIterator, size_t(dstIteratorSize), TypeDesc(cat),
                                 dstIterator, subType);
@@ -540,6 +586,32 @@ namespace Utility
                             // if (castSuccess) { LogWarning << "Mixed types in while parsing array in ImpliedTypes::Parse (cast success)"; }
                             // if (castSuccess) { LogWarning << "Mixed types in while parsing array in ImpliedTypes::Parse (cast failed)"; }
                             subType._type = cat;
+                        } else {
+                            // If the cast would narrow the type, we would corrupt the input
+                            // Therefore, instead we modify the type we are reading and cast
+                            // the previously read values to the new type
+                            assert(CastType(cat, subType._type) == CastType::Widening);
+                            const auto catType = TypeDesc(cat);
+                            const size_t cpySize = catType.GetSize() * count;
+                            std::unique_ptr<uint8[]> tempCpy = std::make_unique<uint8[]>(cpySize);
+                            auto tempCpyIterator = tempCpy.get();
+                            std::memcpy(tempCpy.get(), dest, cpySize);
+                            
+                            dstIterator = dest;
+                            assert(ptrdiff_t(destSize) - dstIteratorSize == cpySize);
+                            dstIteratorSize = ptrdiff_t(destSize);
+                            for (auto redoIt = startIt; redoIt != rit; ++redoIt) {
+                                bool castSuccess = Cast(dstIterator, size_t(dstIteratorSize), subType, tempCpyIterator, catType);
+                                assert(castSuccess);
+                                (void)castSuccess;
+                                
+                                dstIterator = PtrAdd(dstIterator, subType.GetSize());
+                                dstIteratorSize -= subType.GetSize();
+                                
+                                tempCpyIterator = tempCpyIterator + catType.GetSize();
+                            }
+                            
+                            cat = subType._type;
                         }
 
                         assert(subType._arrayCount <= 1);
