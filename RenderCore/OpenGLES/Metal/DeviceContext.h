@@ -66,8 +66,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
 
     protected:
-        unsigned            _nativeTopology;
-        Format              _indicesFormat;
+        unsigned    _nativeTopology;
+        unsigned    _indicesFormat;
+        unsigned    _indexFormatBytes;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -121,16 +122,6 @@ namespace RenderCore { namespace Metal_OpenGLES
             assert(VBs._buffers[0]->_offset == 0);
             glBindBuffer(GL_ARRAY_BUFFER, GetBufferRawGLHandle(*VBs._buffers[0]->_resource));
         }
-    }
-
-    inline void GraphicsPipeline::Bind(const IndexBufferView& IB)
-    {
-        assert(IB._offset == 0);    // (not supported currently... But we could safe it up for the draw call)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GetBufferRawGLHandle(*IB._resource));
-
-        // Note that Format::R32_UINT is only supported on OGLES3.0+
-        assert(IB._indexFormat == Format::R32_UINT || IB._indexFormat == Format::R16_UINT || IB._indexFormat == Format::R8_UINT);
-        _indicesFormat = IB._indexFormat;
     }
 
     #pragma warning(pop)

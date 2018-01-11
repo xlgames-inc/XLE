@@ -27,8 +27,31 @@ namespace RenderCore { namespace Metal_OpenGLES
 {
     void GraphicsPipeline::Bind(const VertexBufferView& vb, const BoundInputLayout& inputLayout)
     {
-        inputLayout.Apply((const void*)(size_t)vb._offset);
         glBindBuffer(GL_ARRAY_BUFFER, GetBufferRawGLHandle(*vb._resource));
+        inputLayout.Apply((const void*)(size_t)vb._offset);
+    }
+
+    static GLenum AsGLIndexBufferType(Format idxFormat)
+    {
+        GLenum glFormat = GL_UNSIGNED_SHORT;
+        switch (idxFormat) {
+        case Format::R8_UINT: glFormat = GL_UNSIGNED_BYTE; break;
+        case Format::R16_UINT: glFormat = GL_UNSIGNED_SHORT; break;
+        case Format::R32_UINT: glFormat = GL_UNSIGNED_INT; break;
+        default: assert(0);
+        }
+        return glFormat;
+    }
+
+    void GraphicsPipeline::Bind(const IndexBufferView& IB)
+    {
+        assert(IB._offset == 0);    // (not supported currently... But we could safe it up for the draw call)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GetBufferRawGLHandle(*IB._resource));
+
+        // Note that Format::R32_UINT is only supported on OGLES3.0+
+        assert(IB._indexFormat == Format::R32_UINT || IB._indexFormat == Format::R16_UINT || IB._indexFormat == Format::R8_UINT);
+        _indicesFormat = AsGLIndexBufferType(IB._indexFormat);
+        _indexFormatBytes = BitsPerPixel(IB._indexFormat) / 8;
     }
 
     void GraphicsPipeline::Bind(Topology topology)
@@ -116,25 +139,13 @@ namespace RenderCore { namespace Metal_OpenGLES
         glDrawArrays(GLenum(_nativeTopology), startVertexLocation, vertexCount);
     }
 
-    static GLenum AsGLIndexBufferType(Format idxFormat)
-    {
-        GLenum glFormat = GL_UNSIGNED_SHORT;
-        switch (idxFormat) {
-        case Format::R8_UINT: glFormat = GL_UNSIGNED_BYTE; break;
-        case Format::R16_UINT: glFormat = GL_UNSIGNED_SHORT; break;
-        case Format::R32_UINT: glFormat = GL_UNSIGNED_INT; break;
-        default: assert(0);
-        }
-        return glFormat;
-    }
-
     void GraphicsPipeline::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
         glDrawElements(
             GLenum(_nativeTopology), GLsizei(indexCount),
-            AsGLIndexBufferType(_indicesFormat),
-            (const void*)(size_t)(BitsPerPixel(_indicesFormat) * startIndexLocation / 8));
+            GLenum(_indicesFormat),
+            (const void*)(size_t)(_indexFormatBytes * startIndexLocation));
     }
 
 #if 0
@@ -151,7 +162,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     DeviceContext::DeviceContext()
     {
-        _indicesFormat = Format::R16_UINT;
+        _indicesFormat = AsGLIndexBufferType(Format::R16_UINT);
+        _indexFormatBytes = 2;
         _nativeTopology = GL_TRIANGLES;
     }
 
