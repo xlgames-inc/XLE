@@ -21,7 +21,7 @@ namespace RenderCore
         ConstantBufferView(const SharedPkt& pkt) : _packet(pkt) {}
         ConstantBufferView(SharedPkt&& pkt) : _packet(std::move(pkt)) {}
         ConstantBufferView(const IResourcePtr& prebuilt) : _prebuiltBuffer(prebuilt.get()) {}
-        ConstantBufferView(const IResource*& prebuilt) : _prebuiltBuffer(prebuilt) {}
+        ConstantBufferView(const IResource* prebuilt) : _prebuiltBuffer(prebuilt) {}
     };
 
     class VertexBufferView

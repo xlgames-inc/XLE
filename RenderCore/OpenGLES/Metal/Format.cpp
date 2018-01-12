@@ -77,18 +77,23 @@ namespace RenderCore { namespace Metal_OpenGLES
         case FormatPrefix::B8G8R8X8:
         case FormatPrefix::R8G8:
         case FormatPrefix::R8G8_B8G8:
-        case FormatPrefix::G8R8_G8B8:         return (type==FormatComponentType::SInt || type==FormatComponentType::SNorm) ? GL_BYTE : GL_UNSIGNED_BYTE;
+        case FormatPrefix::G8R8_G8B8:
+            return (type==FormatComponentType::SInt || type==FormatComponentType::SNorm) ? GL_BYTE : GL_UNSIGNED_BYTE;
 
         case FormatPrefix::R16:
         case FormatPrefix::D16:
         case FormatPrefix::R16G16:
-        case FormatPrefix::R16G16B16A16:      return (type==FormatComponentType::SInt || type==FormatComponentType::SNorm) ? GL_SHORT : GL_UNSIGNED_SHORT;
+        case FormatPrefix::R16G16B16A16:
+            if (type==FormatComponentType::Float || type == FormatComponentType::UnsignedFloat16 || type == FormatComponentType::SignedFloat16) return GL_FLOAT;
+            return (type==FormatComponentType::SInt || type==FormatComponentType::SNorm) ? GL_SHORT : GL_UNSIGNED_SHORT;
 
         case FormatPrefix::D32:
         case FormatPrefix::R32:
         case FormatPrefix::R32G32:
         case FormatPrefix::R32G32B32:
-        case FormatPrefix::R32G32B32A32:      return (type==FormatComponentType::Float) ? GL_FLOAT : GL_FIXED;
+        case FormatPrefix::R32G32B32A32:
+            if (type==FormatComponentType::Float) return GL_FLOAT;
+            return (type==FormatComponentType::SInt || type==FormatComponentType::SNorm) ? GL_INT : GL_UNSIGNED_INT;
 
         case FormatPrefix::A1:
         case FormatPrefix::R1:
