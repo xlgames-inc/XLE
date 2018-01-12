@@ -48,22 +48,5 @@ namespace RenderCore
     UniformsStreamInterface::UniformsStreamInterface() : _hash(0) {}
     UniformsStreamInterface::~UniformsStreamInterface() {}
 
-    unsigned CalculateStride(IteratorRange<const ConstantBufferElementDesc*> elements)
-    {
-        // note -- following alignment rules suggested by Apple in OpenGL ES guide
-        //          each element should be aligned to a multiple of 4 bytes (or a multiple of
-        //          it's component size, whichever is larger).
-        //          Note that this must affect the entire vertex stride, because we want the
-        //
-        if (elements.empty()) return 0;
-        unsigned result = 0;
-        for (auto i=elements.begin(); i<elements.end(); ++i) {
-            assert(i->_arrayElementCount != 0);
-            auto size = BitsPerPixel(i->_nativeFormat);
-            result += size * i->_arrayElementCount;
-        }
-        return result / 8;
-    }
-
 }
 

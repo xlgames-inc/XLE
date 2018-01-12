@@ -13,7 +13,7 @@
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/DepVal.h"
 #if defined(HAS_XLE_CONSOLE_RIG)
-    #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/Log.h"
 #endif
 #include "../../Utility/BitUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -82,6 +82,7 @@ namespace RenderCore { namespace Techniques
                 std::basic_string<utf8> name((const utf8*)match[2].first, (const utf8*)match[2].second);
                 // e._name = name;
                 e._hash = ParameterBox::MakeParameterNameHash(name);
+                e._hash64 = Hash64(AsPointer(name.begin()), AsPointer(name.end()));
                 e._type = ShaderLangTypeNameAsTypeDesc(MakeStringSection(match[1].str()));
 
                 auto size = e._type.GetSize();

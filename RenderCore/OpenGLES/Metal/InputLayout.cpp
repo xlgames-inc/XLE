@@ -284,7 +284,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         const UniformsStreamInterface* inputInterface[] = { &interface0, &interface1, &interface2, &interface3 };
         auto streamCount = (unsigned)dimof(inputInterface);
         for (unsigned s=0; s<streamCount; ++s) {
-            const UniformsStreamInterface& interf = *inputInterface[s];
+            const auto& interf = *inputInterface[s];
             for (unsigned slot=0; slot<interf._cbBindings.size(); ++slot) {
                 const auto& binding = interf._cbBindings[slot];
                 if (binding._elements.empty()) continue;

@@ -371,7 +371,7 @@ namespace RenderCore
 	{
 	public:
 		IteratorRange<const void*>  _data;
-		TexturePitches              _pitches;
+		TexturePitches              _pitches = {};
 	};
 
     class Box2D

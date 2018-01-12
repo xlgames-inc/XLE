@@ -28,10 +28,9 @@ namespace RenderCore
     public:
         uint64_t    _semanticHash = 0ull;
         Format      _nativeFormat = Format(0);
+        unsigned    _offset = 0u;
         unsigned    _arrayElementCount = 1u;
     };
-
-    unsigned CalculateStride(IteratorRange<const ConstantBufferElementDesc*>);
 
     class UniformsStreamInterface
     {

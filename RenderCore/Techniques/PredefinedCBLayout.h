@@ -21,6 +21,7 @@ namespace RenderCore { namespace Techniques
         {
         public:
             ParameterBox::ParameterNameHash _hash;
+            uint64_t _hash64;
             ImpliedTyping::TypeDesc _type;
             unsigned _offset;
         };

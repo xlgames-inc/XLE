@@ -29,8 +29,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto basicType = GLUniformTypeAsTypeDesc(i._type);
                 auto inputBasicType = AsImpliedType(b->_nativeFormat);
                 if (basicType == inputBasicType) {
-                    auto offset = CalculateStride({inputElements.begin(), b});
-                    result._commands.push_back({i._location, i._type, (unsigned)i._elementCount, offset });
+                    result._commands.push_back({i._location, i._type, (unsigned)i._elementCount, b->_offset });
                 } else {
                     assert(0);
                     /*#if DEBUG
