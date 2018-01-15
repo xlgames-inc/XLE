@@ -5,6 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ShaderReflection.h"
+
+#if defined(HAS_SPIRV_HEADERS)
+
 #include "../../../Utility/MemoryUtils.h"
 
 // Vulkan SDK includes -- 
@@ -302,67 +305,16 @@ namespace RenderCore { namespace Metal_Vulkan
     SPIRVReflection::SPIRVReflection() {}
     SPIRVReflection::~SPIRVReflection() {}
 
-    SPIRVReflection::SPIRVReflection(const SPIRVReflection& cloneFrom)
-    : _names(cloneFrom._names)
-    , _memberNames(cloneFrom._memberNames)
-    , _bindings(cloneFrom._bindings)
-    , _memberBindings(cloneFrom._memberBindings)
-    , _uniformQuickLookup(cloneFrom._uniformQuickLookup)
-    , _basicTypes(cloneFrom._basicTypes)
-    , _vectorTypes(cloneFrom._vectorTypes)
-    , _pointerTypes(cloneFrom._pointerTypes)
-    , _variables(cloneFrom._variables)
-    , _entryPoint(cloneFrom._entryPoint)
-    , _inputInterfaceQuickLookup(cloneFrom._inputInterfaceQuickLookup)
-    {
-    }
-
-    SPIRVReflection& SPIRVReflection::operator=(const SPIRVReflection& cloneFrom)
-    {
-        _names = cloneFrom._names;
-        _memberNames = cloneFrom._memberNames;
-        _bindings = cloneFrom._bindings;
-        _memberBindings = cloneFrom._memberBindings;
-        _uniformQuickLookup = cloneFrom._uniformQuickLookup;
-        _basicTypes = cloneFrom._basicTypes;
-        _vectorTypes = cloneFrom._vectorTypes;
-        _pointerTypes = cloneFrom._pointerTypes;
-        _variables = cloneFrom._variables;
-        _entryPoint = cloneFrom._entryPoint;
-        _inputInterfaceQuickLookup = cloneFrom._inputInterfaceQuickLookup;
-        return *this;
-    }
-
-    SPIRVReflection::SPIRVReflection(SPIRVReflection&& moveFrom) never_throws
-    : _names(std::move(moveFrom._names))
-    , _memberNames(std::move(moveFrom._memberNames))
-    , _bindings(std::move(moveFrom._bindings))
-    , _memberBindings(std::move(moveFrom._memberBindings))
-    , _uniformQuickLookup(std::move(moveFrom._uniformQuickLookup))
-    , _basicTypes(std::move(moveFrom._basicTypes))
-    , _vectorTypes(std::move(moveFrom._vectorTypes))
-    , _pointerTypes(std::move(moveFrom._pointerTypes))
-    , _variables(std::move(moveFrom._variables))
-    , _entryPoint(std::move(moveFrom._entryPoint))
-    , _inputInterfaceQuickLookup(std::move(moveFrom._inputInterfaceQuickLookup))
-    {
-    }
-
-    SPIRVReflection& SPIRVReflection::operator=(SPIRVReflection&& moveFrom) never_throws
-    {
-        _names = std::move(moveFrom._names);
-        _memberNames = std::move(moveFrom._memberNames);
-        _bindings = std::move(moveFrom._bindings);
-        _memberBindings = std::move(moveFrom._memberBindings);
-        _uniformQuickLookup = std::move(moveFrom._uniformQuickLookup);
-        _basicTypes = std::move(moveFrom._basicTypes);
-        _vectorTypes = std::move(moveFrom._vectorTypes);
-        _pointerTypes = std::move(moveFrom._pointerTypes);
-        _variables = std::move(moveFrom._variables);
-        _entryPoint = std::move(moveFrom._entryPoint);
-        _inputInterfaceQuickLookup = std::move(moveFrom._inputInterfaceQuickLookup);
-        return *this;
-    }
-
-
 }}
+
+#else
+
+namespace RenderCore { namespace Metal_Vulkan
+{
+
+    SPIRVReflection::SPIRVReflection(IteratorRange<const void*> byteCode) {}
+    SPIRVReflection::SPIRVReflection() {}
+    SPIRVReflection::~SPIRVReflection() {}
+}}
+
+#endif
