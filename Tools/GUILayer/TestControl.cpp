@@ -62,7 +62,7 @@ namespace GUILayer
         
         using namespace RenderOverlays;
         auto& res = ConsoleRig::FindCachedBox<RenderPostSceneResources>(RenderPostSceneResources::Desc(64));
-        TextStyle style(*res._font);
+        TextStyle style(res._font);
         ColorB col(0xffffffff);
         
             //      Render text using a IOverlayContext

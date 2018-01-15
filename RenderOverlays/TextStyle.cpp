@@ -8,7 +8,7 @@
 
 namespace RenderOverlays
 {
-	TextStyle::TextStyle(Font& font, const DrawTextOptions& options) {}
+	TextStyle::TextStyle(const std::shared_ptr<Font>& font, const DrawTextOptions& options) : _font(font), _options(options) {}
 	TextStyle::~TextStyle() {}
 
 	float TextStyle::Draw(RenderCore::IThreadContext& threadContext,
@@ -627,8 +627,8 @@ float TextStyle::CharWidth(ucs4 ch, ucs4 prev)
     return _font->CharWidth(ch, prev);
 }
 
-TextStyle::TextStyle(Font& font, const DrawTextOptions& options) 
-: _font(&font), _options(options)
+TextStyle::TextStyle(const std::shared_ptr<Font>& font, const DrawTextOptions& options)
+: _font(font), _options(options)
 {
 }
     

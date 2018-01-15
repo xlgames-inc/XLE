@@ -186,7 +186,7 @@ namespace SceneEngine
     void DrawPendingResources(   
         RenderCore::IThreadContext& context, 
         SceneEngine::LightingParserContext& parserContext, 
-        RenderOverlays::Font* font)
+        const std::shared_ptr<RenderOverlays::Font>& font)
     {
         if (    !parserContext._stringHelpers->_pendingAssets[0]
             &&  !parserContext._stringHelpers->_invalidAssets[0]
@@ -199,7 +199,7 @@ namespace SceneEngine
         }
 
         using namespace RenderOverlays;
-        TextStyle   style(*font); 
+        TextStyle   style(font); 
         Float2 textPosition(16.f, 16.f);
         float lineHeight = font->LineHeight();
         const UiAlign alignment = UIALIGN_TOP_LEFT;
@@ -274,14 +274,14 @@ namespace SceneEngine
     void DrawQuickMetrics(   
         RenderCore::IThreadContext& context, 
         SceneEngine::LightingParserContext& parserContext, 
-        RenderOverlays::Font* font)
+		const std::shared_ptr<RenderOverlays::Font>& font)
     {
         if (parserContext._stringHelpers->_quickMetrics[0]) {
             auto metalContext = Metal::DeviceContext::Get(context);
             metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
 
             using namespace RenderOverlays;
-            TextStyle style(*font);
+            TextStyle style(font);
             Float2 textPosition(16.f, 150.f);
             float lineHeight = font->LineHeight();
             const UiAlign alignment = UIALIGN_TOP_LEFT;

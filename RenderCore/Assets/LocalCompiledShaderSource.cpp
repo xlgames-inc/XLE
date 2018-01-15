@@ -463,6 +463,9 @@ namespace RenderCore { namespace Assets
         auto c = _compiler.lock();
         if (!c || CancelAllShaderCompiles) return nullptr;
 
+		if (XlEqString(_res._filename, "null"))
+			return std::make_shared<::Assets::BlobArtifact>(nullptr, nullptr, std::make_shared<::Assets::DependencyValidation>());
+
         ::Assets::ResChar archiveName[MaxPath], depName[MaxPath];
         auto archiveId = GetTarget(_res, _definesTable, archiveName, dimof(archiveName), depName, dimof(depName));
 
@@ -643,11 +646,6 @@ namespace RenderCore { namespace Assets
 
         auto shaderId = ShaderService::MakeResId(initializers[0], _compiler.get());
 		StringSection<ResChar> definesTable = (initializerCount > 1)?initializers[1]:StringSection<ResChar>();
-
-            // for a "null" shader, we must return nullptr
-        if (initializers[0].IsEmpty() || XlEqString(shaderId._filename, "null"))
-            return nullptr;
-
         return std::make_shared<Marker>(initializers[0], shaderId, definesTable, destinationStore, shared_from_this());
     }
 

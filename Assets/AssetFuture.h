@@ -45,7 +45,7 @@ namespace Assets
 		mutable Threading::Mutex		_lock;
 		mutable Threading::Conditional	_conditional;
 
-		AssetState			_state;
+		volatile AssetState _state;
 		AssetPtr<AssetType> _actualized;
 		Blob				_actualizationLog;
 		DepValPtr			_actualizedDepVal;
@@ -97,19 +97,23 @@ namespace Assets
 	template<typename AssetType>
 		void AssetFuture<AssetType>::OnFrameBarrier() 
 	{
+		auto state = _state;
+		if (state != AssetState::Pending) return;
+
 			// lock & swap the asset into the front buffer. We only do this during the "frame barrier" phase, to
 			// prevent assets from changing in the middle of a single frame.
 		std::unique_lock<decltype(_lock)> lock(_lock);
 		if (_pollingFunction) {
-			auto pollingFunction = std::move(that->_pollingFunction);
+			auto pollingFunction = std::move(_pollingFunction);
 			lock = {};
 			bool pollingResult = pollingFunction(*this);
 			lock = std::unique_lock<decltype(_lock)>(_lock);
+			assert(!_pollingFunction);
 			if (pollingResult) _pollingFunction = std::move(pollingFunction);
 		}
 		if (_state == AssetState::Pending && _pendingState != AssetState::Pending) {
 			_actualized = std::move(_pending);
-			_actualizationMsg = std::move(_pendingActualizationMsg);
+			_actualizationLog = std::move(_pendingActualizationLog);
 			_actualizedDepVal = std::move(_pendingDepVal);
 			// Note that we must change "_state" last -- because another thread can access _actualized without a mutex lock
 			// when _state is set to AssetState::Ready

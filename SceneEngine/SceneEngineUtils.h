@@ -139,11 +139,11 @@ namespace SceneEngine
     void DrawPendingResources(
         RenderCore::IThreadContext& context, 
         LightingParserContext& parserContext, 
-        RenderOverlays::Font* font);
+		const std::shared_ptr<RenderOverlays::Font>& font);
     void DrawQuickMetrics(   
         RenderCore::IThreadContext& context, 
         SceneEngine::LightingParserContext& parserContext, 
-        RenderOverlays::Font* font);
+		const std::shared_ptr<RenderOverlays::Font>& font);
 
     class FormatStack
     {

@@ -24,6 +24,8 @@ namespace Assets
 		virtual std::vector<DivergentAssetRecord>	GetDivergentAssets() const = 0;
 		virtual const DivergentAssetBase* GetDivergentAsset(uint64_t id) const = 0;
 
+		virtual void OnFrameBarrier() = 0;
+
 		virtual ~IDefaultAssetHeap();
 	};
 
@@ -42,6 +44,8 @@ namespace Assets
 		std::string		GetTypeName() const;
 		std::vector<DivergentAssetRecord>	GetDivergentAssets() const;
 		const DivergentAssetBase* GetDivergentAsset(uint64_t id) const;
+
+		void OnFrameBarrier();
 
 		DefaultAssetHeap();
 		~DefaultAssetHeap();
@@ -84,6 +88,14 @@ namespace Assets
 		// another thread grabs the future before AutoConstructToFuture is done
 		AutoConstructToFuture<AssetType>(*newFuture, std::forward<Params>(initialisers)...);
 		return newFuture;
+	}
+
+	template<typename AssetType>
+		void DefaultAssetHeap<AssetType>::OnFrameBarrier()
+	{
+		ScopedLock(_lock);
+		for (const auto&a:_assets)
+			a.second->OnFrameBarrier();
 	}
 
 	template<typename AssetType>

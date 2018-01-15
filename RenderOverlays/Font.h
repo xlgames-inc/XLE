@@ -142,10 +142,10 @@ namespace RenderOverlays
     class TextStyle
     {
     public:
-        DrawTextOptions     _options;
-        std::shared_ptr<Font>    _font;
+        DrawTextOptions			_options;
+        std::shared_ptr<Font>	_font;
 
-        TextStyle(Font& font, const DrawTextOptions& options = DrawTextOptions());
+        TextStyle(const std::shared_ptr<Font>& font, const DrawTextOptions& options = DrawTextOptions());
         ~TextStyle();
 
         float       Draw(   RenderCore::IThreadContext& threadContext, 

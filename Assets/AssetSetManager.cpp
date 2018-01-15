@@ -19,7 +19,6 @@ namespace Assets
 	{
 	public:
 		std::vector<std::pair<size_t, std::unique_ptr<IDefaultAssetHeap>>> _sets;
-		Threading::ThreadId _boundThreadId;
 		Threading::Mutex _lock;
 	};
 
@@ -56,11 +55,6 @@ namespace Assets
         }
     }
 
-	bool AssetSetManager::IsBoundThread() const
-	{
-		return _pimpl->_boundThreadId == Threading::CurrentThreadId();
-	}
-
     unsigned AssetSetManager::GetAssetSetCount()
     {
         return unsigned(_pimpl->_sets.size());
@@ -81,10 +75,16 @@ namespace Assets
         _pimpl->_lock.unlock();
     }
 
+	void AssetSetManager::OnFrameBarrier()
+	{
+		ScopedLock(_pimpl->_lock);
+		for (auto&set:_pimpl->_sets)
+			set.second->OnFrameBarrier();
+	}
+
     AssetSetManager::AssetSetManager()
     {
         auto pimpl = std::make_unique<Pimpl>();
-        pimpl->_boundThreadId = Threading::CurrentThreadId();
         _pimpl = std::move(pimpl);
     }
 

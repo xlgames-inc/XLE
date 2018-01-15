@@ -609,7 +609,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
         TextStyle style(
-            *ConsoleRig::FindCachedBox2<TableFontBox>()._headerFont,
+            ConsoleRig::FindCachedBox2<TableFontBox>()._headerFont,
             DrawTextOptions(false, true));
 
         Layout tempLayout(rect);
@@ -653,7 +653,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
         TextStyle style(
-            *ConsoleRig::FindCachedBox2<TableFontBox>()._valuesFont,
+            ConsoleRig::FindCachedBox2<TableFontBox>()._valuesFont,
             DrawTextOptions(true, false));
 
         Layout tempLayout(rect);

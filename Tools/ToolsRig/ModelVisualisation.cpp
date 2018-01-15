@@ -247,8 +247,8 @@ namespace ToolsRig
         }
 
         return cache.GetModel(
-            settings._modelName.c_str(), 
-            settings._materialName.c_str(),
+            MakeStringSection(settings._modelName), 
+			MakeStringSection(settings._materialName),
             MakeIteratorRange(supplements),
             settings._levelOfDetail);
     }
@@ -293,7 +293,7 @@ namespace ToolsRig
         const auto* envSettings = _pimpl->_envSettings.get();
         if (!envSettings)
             envSettings = &::Assets::GetAssetDep<VisEnvSettings>(
-                _pimpl->_settings->_envSettingsFile.c_str());
+                MakeStringSection(_pimpl->_settings->_envSettingsFile));
 
         ModelSceneParser sceneParser(
             *_pimpl->_settings, *envSettings,

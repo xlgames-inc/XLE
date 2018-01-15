@@ -228,7 +228,7 @@ namespace PlatformRig { namespace Overlays
             }
 
             TextStyle style(
-                *ConsoleRig::FindCachedBox2<FontBox>()._font,
+                ConsoleRig::FindCachedBox2<FontBox>()._font,
                 DrawTextOptions(false, true));
             context->DrawText(
                 AsPixelCoords(rect), &style, text, 
@@ -253,7 +253,7 @@ namespace PlatformRig { namespace Overlays
                     col = ColorB::White;
 
                 TextStyle style(
-                    *ConsoleRig::FindCachedBox2<FontBox>()._smallFont,
+                    ConsoleRig::FindCachedBox2<FontBox>()._smallFont,
                     DrawTextOptions(false, true));
                 context->DrawText(
                     AsPixelCoords(rect), &style, col, 

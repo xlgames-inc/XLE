@@ -19,6 +19,7 @@
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/ResourceBox.h"
+#include "../../ConsoleRig/AttachableInternal.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -92,7 +93,10 @@ namespace GUILayer
         _immediateContext = _renderDevice->GetImmediateContext();
 
         _assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
+		_assetServices->AttachCurrentModule();
+		ConsoleRig::GlobalServices::GetCrossModule().Publish(*_assetServices);
         _renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_renderDevice);
+		_renderAssetsServices->AttachCurrentModule();
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
     }
 

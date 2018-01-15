@@ -1213,7 +1213,7 @@ namespace SceneEngine
             Layout completeLayout(rect);
 
             auto& res = ConsoleRig::FindCachedBox2<WidgetResources>();
-            TextStyle textStyle(*res._font);
+            TextStyle textStyle(res._font);
             const auto lineHeight = 20u;
 
             UInt2 gridCoords(

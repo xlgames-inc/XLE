@@ -193,7 +193,7 @@ namespace ToolsRig
         DrawRectangleOutline(&context, Rect(controlsRect._topLeft + Coord2(2,2), controlsRect._bottomRight - Coord2(2,2)), 0.f, backgroundOutlineColour);
         interactables.Register(Interactables::Widget(controlsRect, Id_TotalRect));
 
-        TextStyle font(*res._headingFont);
+        TextStyle font(res._headingFont);
         const auto headingRect = internalLayout.AllocateFullWidth(25);
         context.DrawText(
             std::make_tuple(Float3(float(headingRect._topLeft[0]), float(headingRect._topLeft[1]), 0.f), Float3(float(headingRect._bottomRight[0]), float(headingRect._bottomRight[1]), 0.f)),

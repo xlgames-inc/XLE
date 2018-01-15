@@ -24,11 +24,10 @@ namespace Assets
         void Clear();
         void LogReport();
 
-        unsigned BoundThreadId() const;
-        bool IsBoundThread() const;
-
         unsigned GetAssetSetCount();
         const IDefaultAssetHeap* GetAssetSet(unsigned index);
+
+		void OnFrameBarrier();
 
         void Lock();
         void Unlock();

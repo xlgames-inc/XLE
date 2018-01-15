@@ -21,6 +21,7 @@
 
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/AssetServices.h"
+#include "../Assets/AssetSetManager.h"
 
 #include "../ConsoleRig/ResourceBox.h"
 
@@ -255,6 +256,8 @@ namespace PlatformRig
             Threading::YieldTimeSlice();    // this might be too extreme. We risk not getting execution back for a long while
         }
 
+		::Assets::GetAssetSetManager().OnFrameBarrier();
+
         FrameResult result;
         result._elapsedTime = frameElapsedTime;
         result._renderResult = renderRes;
@@ -424,12 +427,12 @@ namespace PlatformRig
 
         auto f = _frameRate->GetPerformanceStats();
 
-        TextStyle bigStyle(*res._frameRateFont);
+        TextStyle bigStyle(res._frameRateFont);
         DrawFormatText(
             &context, innerLayout.Allocate(Coord2(80, bigLineHeight)),
             &bigStyle, ColorB(0xffffffff), "%.1f", 1000.f / std::get<0>(f));
 
-        TextStyle smallStyle(*res._smallFrameRateFont);
+        TextStyle smallStyle(res._smallFrameRateFont);
         DrawFormatText(
             &context, innerLayout.Allocate(Coord2(rectWidth - 80 - innerLayout._paddingInternalBorder*2 - innerLayout._paddingBetweenAllocations, smallLineHeight * 2)),
             &smallStyle, ColorB(0xffffffff), "%.1f-%.1f", 1000.f / std::get<2>(f), 1000.f / std::get<1>(f));
@@ -444,7 +447,7 @@ namespace PlatformRig
 
         interactables.Register(Interactables::Widget(displayRect, Id_FrameRigDisplayMain));
 
-        TextStyle tabHeader(*res._tabHeadingFont);
+        TextStyle tabHeader(res._tabHeadingFont);
         // tabHeader._options.shadow = 0;
         // tabHeader._options.outline = 1;
 

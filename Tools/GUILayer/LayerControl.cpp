@@ -73,7 +73,7 @@ namespace GUILayer
             bool hasPendingMessage = lightingParserContext.HasPendingAssets() || lightingParserContext.HasInvalidAssets() || lightingParserContext.HasErrorString();
             if (hasPendingMessage) {
                 auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-                DrawPendingResources(context, lightingParserContext, defaultFont0.get());
+                DrawPendingResources(context, lightingParserContext, defaultFont0);
             }
             ///////////////////////////////////////////////////////////////////////
 

@@ -617,8 +617,7 @@ namespace RenderOverlays
         IThreadContext& threadContext, 
         RenderCore::Techniques::NamedResources* namedRes,
         const Techniques::ProjectionDesc& projDesc)
-    : _font(ConsoleRig::FindCachedBox2<DefaultFontBox>()._font)
-    , _defaultTextStyle(*_font.get())
+    : _defaultTextStyle(ConsoleRig::FindCachedBox2<DefaultFontBox>()._font)
     , _projDesc(projDesc)
     , _deviceContext(&threadContext)
     , _namedResources(namedRes)

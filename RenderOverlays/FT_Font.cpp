@@ -245,46 +245,6 @@ static void CheckTextureValidate(FT_Face face, int size, FontChar *fc, FontTexKi
     }
 }
 
-static void Register(const FontDef& def, FTFont* font)
-{
-    fontMap.insert(UiFontMap::value_type(def, font));
-}
-
-static void Deregister(FTFont* font)
-{
-    for (UiFontMap::const_iterator i=fontMap.cbegin(); i!=fontMap.cend(); ++i) {
-        if (i->second.get() == font) {
-            fontMap.erase(i);
-            return;
-        }
-    }
-}
-
-static void Register(const FontDef& def, FTFontGroup* fontGroup)
-{
-    if (fontGroup->GetTexKind() == FTK_DAMAGEDISPLAY) {
-        damageDisplayFontGroupMap.insert(UiFontGroupMap::value_type(def, fontGroup));
-    } else {
-        fontGroupMap.insert(UiFontGroupMap::value_type(def, fontGroup));
-    }
-}
-
-static void Deregister(FTFontGroup* fontGroup)
-{
-    for (UiFontGroupMap::const_iterator i=fontGroupMap.cbegin(); i!=fontGroupMap.cend(); ++i) {
-        if (i->second.get() == fontGroup) {
-            fontGroupMap.erase(i);
-            return;
-        }
-    }
-    for (UiFontGroupMap::const_iterator i=damageDisplayFontGroupMap.cbegin(); i!=damageDisplayFontGroupMap.cend(); ++i) {
-        if (i->second.get() == fontGroup) {
-            damageDisplayFontGroupMap.erase(i);
-            return;
-        }
-    }
-}
-
 FTFont::FTFont(FontTexKind kind)
 {
     _ascend = 0;
@@ -296,7 +256,6 @@ FTFont::FTFont(FontTexKind kind)
 FTFont::~FTFont()
 {
     NotifyDeletingFont(this, _texKind);
-    Deregister(this);
 
     if (_face) {
         FT_Done_Face(_face);
@@ -310,8 +269,6 @@ FTFont::~FTFont()
 
 bool FTFont::Init(const FontDef& fontDef)
 {
-    Deregister(this);
-
     FT_Error error;
 
     XlCopyString(_path, fontDef.path.c_str());
@@ -365,8 +322,6 @@ bool FTFont::Init(const FontDef& fontDef)
 
     FT_GlyphSlot slot = _face->glyph;
     _ascend = slot->bitmap_top;
-
-    Register(fontDef, this);
 
     return true;
 }
@@ -514,7 +469,6 @@ FTFontGroup::FTFontGroup(FontTexKind kind)
 
 FTFontGroup::~FTFontGroup()
 {
-    Deregister(this);
 }
 
 bool FTFontGroup::CheckMyFace(FT_Face face)
@@ -595,6 +549,8 @@ bool FTFontGroup::LoadDefaultFTFont(FTFontNameInfo &info, int size)
             // GameWarning("Failed to create freetype font '%s'", fd.path.c_str());
             return false;
         }
+
+		fontMap.insert(std::make_pair(fd, _defaultFTFont));
     }
 
     if (_defaultFTFont) {
@@ -623,7 +579,9 @@ void FTFontGroup::LoadSubFTFont(FTFontNameInfo &info, int size)
             if (!font->Init(fd)) {
                 font = nullptr;
                 // GameWarning("Failed to create freetype font '%s'", fd.path.c_str());
-            }
+			} else {
+				fontMap.insert(std::make_pair(fd, font));
+			}
         }
         
         if (font) {
@@ -708,7 +666,6 @@ bool FTFontGroup::Init(const FontDef& def)
         FTFontNameInfo info = (FTFontNameInfo)it->second;
         if (LoadDefaultFTFont(info, _size)) {
             LoadSubFTFont(info, _size);
-            Register(def, this);
             return true;
         }
     } else {
@@ -718,7 +675,6 @@ bool FTFontGroup::Init(const FontDef& def)
         fontNameInfo.insert(FTFontNameMap::value_type(_path, info));
         if (LoadDefaultFTFont(info, _size)) {
             LoadSubFTFont(info, _size);
-            Register(def, this);
             return true;
         }
     }
@@ -788,7 +744,9 @@ std::shared_ptr<FTFont> GetX2FTFont(const char* path, int size, FontTexKind kind
         return it->second;
     }
 
-    return LoadFTFont(fd, kind);
+	auto result = LoadFTFont(fd, kind);
+	curFontGroupMap->insert(std::make_pair(fd, result));
+	return result;
 }
 
 bool InitFTFontSystem()

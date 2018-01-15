@@ -35,7 +35,7 @@ namespace RenderCore
 	: _shader(shader)
 	, _depVal(depVal)
 	{
-		if (!_shader->empty()) {
+		if (_shader && !_shader->empty()) {
 			if (_shader->size() < sizeof(ShaderService::ShaderHeader))
 				Throw(::Exceptions::BasicLabel("Shader byte code is too small for shader header"));
 			const auto& hdr = *(const ShaderService::ShaderHeader*)_shader->data();

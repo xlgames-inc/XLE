@@ -238,7 +238,7 @@ namespace Overlays
             interactables.Register(Interactables::Widget(toolBoxLayout.GetMaximumSize(), Id_TotalRect));
 
             const auto headingRect = toolBoxLayout.AllocateFullWidth(25);
-            TextStyle font(*_pimpl->_headingFont);
+            TextStyle font(_pimpl->_headingFont);
             context.DrawText(
                 std::make_tuple(Float3(float(headingRect._topLeft[0]), float(headingRect._topLeft[1]), 0.f), Float3(float(headingRect._bottomRight[0]), float(headingRect._bottomRight[1]), 0.f)),
                 &font, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
