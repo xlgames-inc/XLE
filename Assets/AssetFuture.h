@@ -25,6 +25,7 @@ namespace Assets
 
 		void			OnFrameBarrier();
 		bool			IsOutOfDate() const;
+		void			SimulateChange();
 		
 		AssetState		GetAssetState() const;
 		AssetState		StallWhilePending() const;
@@ -37,7 +38,7 @@ namespace Assets
 		AssetFuture(AssetFuture&&) never_throws = default;
 		AssetFuture& operator=(AssetFuture&&) never_throws = default;
 
-		void SetAsset(std::unique_ptr<AssetType>&&, const Blob& log);
+		void SetAsset(AssetPtr<AssetType>&&, const Blob& log);
 		void SetInvalidAsset(const DepValPtr& depVal, const Blob& log);
 		void SetPollingFunction(std::function<bool(AssetFuture<AssetType>&)>&&);
 		
@@ -72,8 +73,6 @@ namespace Assets
 		if (state == AssetState::Ready)
 			return _actualized;	// once the state is set to "Ready" neither it nor _actualized can change -- so we've safe to access it without a lock
 
-		ScopedLock(_lock); 
-		
 		if (state == AssetState::Pending) {
 			// Note that the asset have have completed loading here -- but it may still be in it's "pending" state,
 			// waiting for a frame barrier. Let's include the pending state in the exception message to make it clearer. 
@@ -131,6 +130,19 @@ namespace Assets
 	}
 
 	template<typename AssetType>
+		void			AssetFuture<AssetType>::SimulateChange()
+	{
+		auto state = _state;
+		if (state == AssetState::Ready || state == AssetState::Invalid) {
+			if (_actualizedDepVal)
+				_actualizedDepVal->OnChange();
+			return;
+		}
+
+		// else, still pending -- can't do anything right now
+	}
+
+	template<typename AssetType>
 		AssetState		AssetFuture<AssetType>::GetAssetState() const
 	{
 		return _state;
@@ -184,7 +196,7 @@ namespace Assets
 	}
 
 	template<typename AssetType>
-		void AssetFuture<AssetType>::SetAsset(std::unique_ptr<AssetType>&& newAsset, const Blob& log)
+		void AssetFuture<AssetType>::SetAsset(AssetPtr<AssetType>&& newAsset, const Blob& log)
 	{
 		{
 			ScopedLock(_lock);
@@ -214,6 +226,8 @@ namespace Assets
 	{
 		ScopedLock(_lock);
 		assert(!_pollingFunction);
+		assert(_state == AssetState::Pending);
+		assert(_pendingState == AssetState::Pending && !_pending);
 		_pollingFunction = std::move(newFunction);
 	}
 

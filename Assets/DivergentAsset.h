@@ -74,6 +74,7 @@ namespace Assets
 	class DivergentAssetBase
 	{
 	public:
+		virtual bool HasChanges() const = 0;
 		DivergentAssetBase();
 		virtual ~DivergentAssetBase();
 	};
@@ -82,22 +83,22 @@ namespace Assets
 		class DivergentAsset : public DivergentAssetBase
 	{
 	public:
-		const Asset& GetAsset() const;
+		const std::shared_ptr<Asset>& GetWorkingAsset() const { return _workingCopy; }
+		const std::shared_ptr<Asset>& GetPristineCopy() const { return _pristineCopy; }
 
-        bool HasChanges() const { return _workingCopy!=nullptr; }
 		TransactionId AbandonChanges();
+		bool HasChanges() const { return _hasChanges; }
 
         std::shared_ptr<DivergentTransaction<Asset>> Transaction_Begin(const char name[], const std::shared_ptr<UndoQueue>& undoQueue = nullptr);
 
 		DivergentAsset(const std::shared_ptr<Asset>& pristineCopy);
 		~DivergentAsset();
 	protected:
-		std::shared_ptr<Asset>				_pristineCopy;
-		std::shared_ptr<Asset>				_workingCopy;
+		std::shared_ptr<Asset>	_pristineCopy;
+		std::shared_ptr<Asset>	_workingCopy;
+		bool					_hasChanges;
 
         std::shared_ptr<DivergentTransaction<Asset>> _lastTransaction;
-
-		const Asset& GetPristineCopy() const;
 	};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -163,25 +164,8 @@ namespace Assets
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template<typename Asset>
-		const Asset& DivergentAsset<Asset>::GetAsset() const
-	{
-		if (_workingCopy) return *_workingCopy.get();
-		return GetPristineCopy();
-	}
-
-	template<typename Asset>
-		const Asset& DivergentAsset<Asset>::GetPristineCopy() const
-	{
-		return *_pristineCopy;
-	}
-
-	template<typename Asset>
 		std::shared_ptr<DivergentTransaction<Asset>> DivergentAsset<Asset>::Transaction_Begin(const char name[], const std::shared_ptr<UndoQueue>& undoQueue)
 	{
-		if (!_workingCopy) {
-			_workingCopy = std::make_shared<Asset>(GetPristineCopy());
-		}
-
             // If we have a "_lastTransaction" and that transaction is on the top of the undoqueue
             // and the name of that transaction matches the name for this new transaction,
             // then we can combine them together and just reuse the same one.
@@ -207,6 +191,7 @@ namespace Assets
             _lastTransaction = std::make_shared<DivergentTransaction<Asset>>(
                 name, _workingCopy, undoQueue);
         }
+		_hasChanges = true;
         return _lastTransaction;
 	}
 
@@ -225,13 +210,41 @@ namespace Assets
 	template<typename Asset>
 		DivergentAsset<Asset>::DivergentAsset(const std::shared_ptr<Asset>& pristineCopy)
 	: _pristineCopy(pristineCopy)
+	, _hasChanges(false)
 	{
+		_workingCopy = std::make_shared<Asset>(*_pristineCopy);
 	}
 
 	template<typename Asset>
 		DivergentAsset<Asset>::~DivergentAsset() {}
 
-	template<typename Asset, typename... Params>
-		std::shared_ptr<DivergentAsset<Asset>> GetDivergentAsset(Params...);
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class DivergentAssetManager
+	{
+	public:
+		struct Record
+		{
+			uint64_t	_typeCode;
+			uint64_t	_idInAssetHeap;
+			rstring		_identifier;
+			bool		_hasChanges;
+		};
+		auto	GetAssets() const ->std::vector<Record>;
+		auto	GetAsset(uint64_t typeCode, uint64_t id) const -> std::shared_ptr<DivergentAssetBase>;
+		void	AddAsset(uint64_t typeCode, uint64_t id, const rstring& identifier, const std::shared_ptr<DivergentAssetBase>&);
+
+		DivergentAssetManager(); 
+		~DivergentAssetManager();
+	private:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
+	};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	template<typename AssetType, typename... Params>
+		std::shared_ptr<DivergentAsset<AssetType>> CreateDivergentAsset(Params... params);
+
 }
 

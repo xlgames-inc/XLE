@@ -40,10 +40,7 @@ namespace Assets
 		virtual void            LogReport() const = 0;
 		virtual uint64_t		GetTypeCode() const = 0;
 		virtual std::string		GetTypeName() const = 0;
-
-		struct DivergentAssetRecord { uint64_t _id; rstring _identifier; bool _hasChanges; };
-		virtual std::vector<DivergentAssetRecord>	GetDivergentAssets() const = 0;
-		virtual const DivergentAssetBase* GetDivergentAsset(uint64_t id) const = 0;
+		virtual void			OnFrameBarrier() = 0;
 
 		virtual ~IDefaultAssetHeap();
 	};
@@ -138,7 +135,7 @@ namespace GUILayer
             }
         }
 
-		using AssetList = std::vector<::Assets::IDefaultAssetHeap::DivergentAssetRecord>;
+		using AssetList = std::vector<::Assets::DivergentAssetManager::Record>;
 		clix::shared_ptr<AssetList> _assetList;
 
         AssetTypeItem(const ::Assets::IDefaultAssetHeap& set, const AssetList& assetsList) : _set(&set)
@@ -181,7 +178,8 @@ namespace GUILayer
             auto result = gcnew List<AssetTypeItem^>();
 
                 // root node should be the list of asset types that have divergent assets
-            auto count = _assetSets->GetAssetSetCount();
+            /*
+			auto count = _assetSets->GetAssetSetCount();
             for (unsigned c = 0; c < count; ++c) {
                 const auto* set = _assetSets->GetAssetSet(c);
                 if (!set) continue;
@@ -192,6 +190,15 @@ namespace GUILayer
                 if (hasChangedAsset)
                     result->Add(gcnew AssetTypeItem(*set, divAssets));
             }
+			*/
+
+			auto divAssets = ::Assets::Services::GetDivergentAssetMan().GetDivergentAssets();
+			for (const auto&d:divAssets.GetDivergentAssets()) {
+				if (!d._hasChanges) continue;
+
+				auto divAsset = divAssets.GetAsset(d._typeCode, d._idInAssetHeap);
+				divAsset->
+			}
 
             return result;
 
@@ -472,7 +479,7 @@ namespace GUILayer
 			OutputStreamFormatter fmtter(strm);
 			MergeAndSerialize(fmtter, MakeIteratorRange(*originalFile),
 				splitName.AllExceptParameters(), splitName.Parameters(),
-				static_cast<const ::Assets::DivergentAsset<::RenderCore::Assets::RawMaterial>&>(divAsset).GetAsset());
+				*static_cast<const ::Assets::DivergentAsset<::RenderCore::Assets::RawMaterial>&>(divAsset).GetWorkingAsset());
 			auto newFile = ::Assets::AsBlob(MakeIteratorRange(strm.GetBuffer().Begin(), strm.GetBuffer().End()));
 
 			return AssetSaveEntry { std::move(originalFile), std::move(newFile), splitName.AllExceptParameters().AsString() };

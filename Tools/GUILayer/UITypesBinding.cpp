@@ -323,7 +323,7 @@ namespace GUILayer
         if (!_underlying) { return nullptr; }
 		CheckBindingInvalidation();
         if (!_materialParameterBox) {
-            _materialParameterBox = BindingConv::AsBindingList(_underlying->GetAsset()._matParamBox);
+            _materialParameterBox = BindingConv::AsBindingList(_underlying->GetWorkingAsset()->_matParamBox);
             _materialParameterBox->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ParameterBox_Changed);
@@ -338,7 +338,7 @@ namespace GUILayer
         if (!_underlying) { return nullptr; }
 		CheckBindingInvalidation();
         if (!_shaderConstants) {
-            _shaderConstants = BindingConv::AsBindingList(_underlying->GetAsset()._constants);
+            _shaderConstants = BindingConv::AsBindingList(_underlying->GetWorkingAsset()->_constants);
             _shaderConstants->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ParameterBox_Changed);
@@ -353,7 +353,7 @@ namespace GUILayer
         if (!_underlying) { return nullptr; }
 		CheckBindingInvalidation();
         if (!_resourceBindings) {
-            _resourceBindings = BindingConv::AsBindingList(_underlying->GetAsset()._resourceBindings);
+            _resourceBindings = BindingConv::AsBindingList(_underlying->GetWorkingAsset()->_resourceBindings);
             _resourceBindings->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ResourceBinding_Changed);
@@ -435,7 +435,7 @@ namespace GUILayer
     System::String^ RawMaterial::BuildInheritanceList()
     {
         if (!!_underlying) {
-            auto& asset = _underlying->GetAsset();
+            auto& asset = *_underlying->GetWorkingAsset();
             auto searchRules = ::Assets::DefaultDirectorySearchRules(
                 MakeStringSection(clix::marshalString<clix::E_UTF8>(Filename)));
             
@@ -454,7 +454,7 @@ namespace GUILayer
     {
         if (!!_underlying) {
 			::Assets::DirectorySearchRules searchRules;
-			RenderCore::Assets::MergeIn_Stall(destination, _underlying->GetAsset(), searchRules);
+			RenderCore::Assets::MergeIn_Stall(destination, *_underlying->GetWorkingAsset(), searchRules);
         }
     }
 
@@ -481,15 +481,15 @@ namespace GUILayer
 
     const RenderCore::Assets::RawMaterial* RawMaterial::GetUnderlying() 
     { 
-        return (!!_underlying) ? &_underlying->GetAsset() : nullptr; 
+        return (!!_underlying) ? _underlying->GetWorkingAsset().get() : nullptr; 
     }
 
-    String^ RawMaterial::TechniqueConfig::get() { return clix::marshalString<clix::E_UTF8>(_underlying->GetAsset()._techniqueConfig); }
+    String^ RawMaterial::TechniqueConfig::get() { return clix::marshalString<clix::E_UTF8>(_underlying->GetWorkingAsset()->_techniqueConfig); }
 
     void RawMaterial::TechniqueConfig::set(String^ value)
     {
         auto native = Conversion::Convert<::Assets::rstring>(clix::marshalString<clix::E_UTF8>(value));
-        if (_underlying->GetAsset()._techniqueConfig != native) {
+        if (_underlying->GetWorkingAsset()->_techniqueConfig != native) {
 			CheckBindingInvalidation();
             auto transaction = _underlying->Transaction_Begin("Technique Config");
             if (transaction) {
@@ -552,7 +552,7 @@ namespace GUILayer
 		_transId = 0;
         _initializer = initialiser;
         auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
-        _underlying = ::Assets::GetDivergentAsset<RenderCore::Assets::RawMaterial>(nativeInit.c_str());
+        _underlying = ::Assets::CreateDivergentAsset<RenderCore::Assets::RawMaterial>(MakeStringSection(nativeInit));
         _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
     }
 
@@ -566,7 +566,7 @@ namespace GUILayer
 
     auto RenderStateSet::DoubleSided::get() -> CheckState
     {
-        auto& stateSet = _underlying->GetAsset()._stateSet;
+        auto& stateSet = _underlying->GetWorkingAsset()->_stateSet;
         if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::DoubleSided) {
             if (stateSet._doubleSided) return CheckState::Checked;
             else return CheckState::Unchecked;
@@ -590,7 +590,7 @@ namespace GUILayer
 
     CheckState RenderStateSet::Wireframe::get()
     {
-        auto& stateSet = _underlying->GetAsset()._stateSet;
+        auto& stateSet = _underlying->GetWorkingAsset()->_stateSet;
         if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::Wireframe) {
             if (stateSet._wireframe) return CheckState::Checked;
             else return CheckState::Unchecked;
@@ -686,7 +686,7 @@ namespace GUILayer
 
     auto RenderStateSet::StandardBlendMode::get() -> StandardBlendModes
     {
-        const auto& underlying = _underlying->GetAsset();
+        const auto& underlying = *_underlying->GetWorkingAsset();
         return AsStandardBlendMode(underlying._stateSet);
     }
     

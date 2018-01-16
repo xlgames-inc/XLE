@@ -9,6 +9,7 @@
 #include "CompileAndAsyncManager.h"
 #include "IntermediateAssets.h"		// (for ShadowFile)
 #include "AssetServices.h"
+#include "../Utility/Threading/Mutex.h"
 
 namespace Assets
 {
@@ -54,6 +55,77 @@ namespace Assets
 
 	DivergentAssetBase::DivergentAssetBase() {}
 	DivergentAssetBase::~DivergentAssetBase() {}
+
+
+	class DivergentAssetManager::Pimpl
+	{
+	public:
+		struct Id { uint64_t _typeCode; uint64_t _idInAssetHeap; };
+		struct Asset
+		{
+			rstring _identifier;
+			std::shared_ptr<DivergentAssetBase> _asset;
+		};
+
+		std::vector<std::pair<Id, Asset>> _assets;
+
+		Threading::Mutex _lock;
+
+		friend bool operator<(const Id& lhs, const Id& rhs)
+		{
+			if (lhs._typeCode < rhs._typeCode) return true;
+			if (lhs._typeCode > rhs._typeCode) return false;
+			return lhs._idInAssetHeap < rhs._idInAssetHeap;
+		}
+
+		friend bool operator==(const Id& lhs, const Id& rhs)
+		{
+			return lhs._typeCode == rhs._typeCode && lhs._idInAssetHeap == rhs._idInAssetHeap;
+		}
+	};
+
+	auto DivergentAssetManager::GetAssets() const -> std::vector<Record>
+	{
+		ScopedLock(_pimpl->_lock);
+		std::vector<Record> result;
+		for (const auto&p : _pimpl->_assets) {
+			result.push_back(Record{
+				p.first._typeCode, p.first._idInAssetHeap,
+				p.second._identifier, p.second._asset->HasChanges() });
+		}
+		return result;
+	}
+
+	std::shared_ptr<DivergentAssetBase> DivergentAssetManager::GetAsset(uint64_t typeCode, uint64_t id) const
+	{
+		ScopedLock(_pimpl->_lock);
+		auto s = Pimpl::Id{ typeCode, id };
+		auto i = LowerBound(_pimpl->_assets, s);
+		if (i != _pimpl->_assets.end() && i->first == s)
+			return i->second._asset;
+		return nullptr;
+	}
+
+	void DivergentAssetManager::AddAsset(
+		uint64_t typeCode, uint64_t id, const rstring& identifier, 
+		const std::shared_ptr<DivergentAssetBase>& asset)
+	{
+		ScopedLock(_pimpl->_lock);
+		auto s = Pimpl::Id{ typeCode, id };
+		auto i = LowerBound(_pimpl->_assets, s);
+		if (i != _pimpl->_assets.end() && i->first == s) {
+			i->second = { identifier, asset };
+		} else {
+			_pimpl->_assets.insert(i, {s, Pimpl::Asset{ identifier, asset }});
+		}
+	}
+
+	DivergentAssetManager::DivergentAssetManager()
+	{
+		_pimpl = std::make_unique<Pimpl>();
+	}
+
+	DivergentAssetManager::~DivergentAssetManager() {}
 
 }
 

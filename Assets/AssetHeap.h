@@ -8,8 +8,6 @@
 
 namespace Assets
 {
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 	class DivergentAssetBase;
 
 	class IDefaultAssetHeap
@@ -19,12 +17,7 @@ namespace Assets
 		virtual void            LogReport() const = 0;
 		virtual uint64_t		GetTypeCode() const = 0;
 		virtual std::string		GetTypeName() const = 0;
-
-		struct DivergentAssetRecord { uint64_t _id; rstring _identifier; bool _hasChanges; };
-		virtual std::vector<DivergentAssetRecord>	GetDivergentAssets() const = 0;
-		virtual const DivergentAssetBase* GetDivergentAsset(uint64_t id) const = 0;
-
-		virtual void OnFrameBarrier() = 0;
+		virtual void			OnFrameBarrier() = 0;
 
 		virtual ~IDefaultAssetHeap();
 	};
@@ -38,14 +31,14 @@ namespace Assets
 		template<typename... Params>
 			FuturePtr<AssetType> Get(Params...);
 
+		template<typename... Params>
+			uint64_t SetShadowingAsset(AssetPtr<AssetType>&& newShadowingAsset, Params...);
+
 		void            Clear();
 		void            LogReport() const;
 		uint64_t		GetTypeCode() const;
 		std::string		GetTypeName() const;
-		std::vector<DivergentAssetRecord>	GetDivergentAssets() const;
-		const DivergentAssetBase* GetDivergentAsset(uint64_t id) const;
-
-		void OnFrameBarrier();
+		void			OnFrameBarrier();
 
 		DefaultAssetHeap();
 		~DefaultAssetHeap();
@@ -54,6 +47,7 @@ namespace Assets
 	private:
 		Threading::Mutex _lock;		
 		std::vector<std::pair<uint64_t, FuturePtr<AssetType>>> _assets;
+		std::vector<std::pair<uint64_t, FuturePtr<AssetType>>> _shadowingAssets;
 	};
 
 	template<typename AssetType>
@@ -72,6 +66,10 @@ namespace Assets
 		FuturePtr<AssetType> newFuture;
 		{
 			ScopedLock(_lock);
+			auto shadowing = LowerBound(_shadowingAssets, hash);
+			if (shadowing != _shadowingAssets.end() && shadowing->first == hash)
+				return shadowing->second;
+
 			auto i = LowerBound(_assets, hash);
 			if (i != _assets.end() && i->first == hash)
 				if (!IsInvalidated(*i->second))
@@ -91,10 +89,44 @@ namespace Assets
 	}
 
 	template<typename AssetType>
+		template<typename... Params>
+			uint64_t DefaultAssetHeap<AssetType>::SetShadowingAsset(AssetPtr<AssetType>&& newShadowingAsset, Params... initialisers)
+	{
+		auto hash = Internal::BuildHash(initialisers...);
+
+		ScopedLock(_lock);
+		auto shadowing = LowerBound(_shadowingAssets, hash);
+		if (shadowing != _shadowingAssets.end() && shadowing->first == hash) {
+			shadowing->second->SimulateChange(); 
+			if (newShadowingAsset) {
+				shadowing->second->SetAsset(std::move(newShadowingAsset), nullptr);
+			} else {
+				_shadowingAssets.erase(shadowing);
+			}
+			return hash;
+		}
+
+		if (newShadowingAsset) {
+			auto stringInitializer = Internal::AsString(initialisers...);	// (used for tracking/debugging purposes)
+			auto newShadowingFuture = std::make_shared<AssetFuture<AssetType>>(stringInitializer);
+			newShadowingFuture->SetAsset(std::move(newShadowingAsset), nullptr);
+			_shadowingAssets.emplace(shadowing, std::make_pair(hash, std::move(newShadowingFuture)));
+		}
+
+		auto i = LowerBound(_assets, hash);
+		if (i != _assets.end() && i->first == hash)
+			i->second->SimulateChange();
+
+		return hash;
+	}
+
+	template<typename AssetType>
 		void DefaultAssetHeap<AssetType>::OnFrameBarrier()
 	{
 		ScopedLock(_lock);
 		for (const auto&a:_assets)
+			a.second->OnFrameBarrier();
+		for (const auto&a: _shadowingAssets)
 			a.second->OnFrameBarrier();
 	}
 
@@ -119,18 +151,6 @@ namespace Assets
 		std::string		DefaultAssetHeap<AssetType>::GetTypeName() const
 		{
 			return typeid(AssetType).name();
-		}
-
-	template<typename AssetType>
-		auto	DefaultAssetHeap<AssetType>::GetDivergentAssets() const ->std::vector<DivergentAssetRecord>
-		{
-			return {};
-		}
-
-	template<typename AssetType>
-		const DivergentAssetBase* DefaultAssetHeap<AssetType>::GetDivergentAsset(uint64_t id) const
-		{
-			return nullptr;
 		}
 
 }
