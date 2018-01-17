@@ -115,6 +115,7 @@
 		8FD85D9F1EA688D1009BD9B0 /* UTFUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D541EA688D1009BD9B0 /* UTFUtils.cpp */; };
 		8FD85DA01EA688D1009BD9B0 /* UTFUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D551EA688D1009BD9B0 /* UTFUtils.h */; };
 		8FD85DA11EA688D1009BD9B0 /* xl_snprintf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D561EA688D1009BD9B0 /* xl_snprintf.cpp */; };
+		AF7478B1200ED5FC00F891DB /* PlatformHacks.h in Headers */ = {isa = PBXBuildFile; fileRef = AF7478B0200ED5FC00F891DB /* PlatformHacks.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -213,6 +214,7 @@
 		8FD85D541EA688D1009BD9B0 /* UTFUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = UTFUtils.cpp; path = ../UTFUtils.cpp; sourceTree = "<group>"; };
 		8FD85D551EA688D1009BD9B0 /* UTFUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = UTFUtils.h; path = ../UTFUtils.h; sourceTree = "<group>"; };
 		8FD85D561EA688D1009BD9B0 /* xl_snprintf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xl_snprintf.cpp; path = ../xl_snprintf.cpp; sourceTree = "<group>"; };
+		AF7478B0200ED5FC00F891DB /* PlatformHacks.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PlatformHacks.h; path = ../PlatformHacks.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -275,6 +277,7 @@
 				8FD85D211EA688D1009BD9B0 /* MiniHeap.h */,
 				8FD85D221EA688D1009BD9B0 /* MiscImplementation.cpp */,
 				8FD85D231EA688D1009BD9B0 /* Mixins.h */,
+				AF7478B0200ED5FC00F891DB /* PlatformHacks.h */,
 				8FD85D241EA688D1009BD9B0 /* ParameterBox.cpp */,
 				8FD85D251EA688D1009BD9B0 /* ParameterBox.h */,
 				8FD85D261EA688D1009BD9B0 /* ParameterPackUtils.h */,
@@ -423,6 +426,7 @@
 				8FD85D8F1EA688D1009BD9B0 /* StreamUtils.h in Headers */,
 				8FD85D6F1EA688D1009BD9B0 /* ClassAccessorsImpl.h in Headers */,
 				8FD85D6C1EA688D1009BD9B0 /* AccessorSerialize.h in Headers */,
+				AF7478B1200ED5FC00F891DB /* PlatformHacks.h in Headers */,
 				8FD85D8E1EA688D1009BD9B0 /* XmlStreamFormatter.h in Headers */,
 				8FD85D611EA688D1009BD9B0 /* ExposeStreamOp.h in Headers */,
 				8FD85D891EA688D1009BD9B0 /* StreamFormatter.h in Headers */,

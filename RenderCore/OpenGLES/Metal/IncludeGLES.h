@@ -4,5 +4,11 @@
 
 #pragma once
 
-#import <OpenGLES/ES3/gl.h>
-#import <OpenGLES/ES3/glext.h>
+#include "../../../Utility/PlatformHacks.h"
+
+#ifdef HACK_PLATFORM_IOS
+    #import <OpenGLES/ES3/gl.h>
+    #import <OpenGLES/ES3/glext.h>
+#else
+    #import <OpenGL/gl.h>
+#endif

@@ -165,6 +165,7 @@
 		8FA3F7621EDD157B003EF623 /* FiniteResourceHeap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B7B1EA6C5D500DEC600 /* FiniteResourceHeap.cpp */; };
 		8FA3F7641EDD157B003EF623 /* GenericGridPartitioning.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B7D1EA6C5D500DEC600 /* GenericGridPartitioning.cpp */; };
 		8FA3F7661EDD157B003EF623 /* GenericQuadTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B7F1EA6C5D500DEC600 /* GenericQuadTree.cpp */; };
+		AF7478AF200ED2B700F891DB /* IncludeGLES.h in Headers */ = {isa = PBXBuildFile; fileRef = AF7478AE200ED2B700F891DB /* IncludeGLES.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -290,6 +291,7 @@
 		8F9418591FDA01FE00DADA27 /* LocalCompiledShaderSource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = LocalCompiledShaderSource.cpp; path = ../../RenderCore/Assets/LocalCompiledShaderSource.cpp; sourceTree = "<group>"; };
 		8F94185A1FDA01FE00DADA27 /* LocalCompiledShaderSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LocalCompiledShaderSource.h; path = ../../RenderCore/Assets/LocalCompiledShaderSource.h; sourceTree = "<group>"; };
 		8FA3F7321EDD14E4003EF623 /* libXLESubsetIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libXLESubsetIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		AF7478AE200ED2B700F891DB /* IncludeGLES.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IncludeGLES.h; path = ../../RenderCore/OpenGLES/Metal/IncludeGLES.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -428,6 +430,7 @@
 			isa = PBXGroup;
 			children = (
 				8F707B8C1EA6C72800DEC600 /* Detail */,
+				AF7478AE200ED2B700F891DB /* IncludeGLES.h */,
 			);
 			name = Metal;
 			sourceTree = "<group>";
@@ -565,6 +568,7 @@
 			files = (
 				8F9418071FDA01DC00DADA27 /* lapi.h in Headers */,
 				8F94182C1FDA01DC00DADA27 /* lfunc.h in Headers */,
+				AF7478AF200ED2B700F891DB /* IncludeGLES.h in Headers */,
 				8F9418001FDA01DC00DADA27 /* ltm.h in Headers */,
 				8F9418541FDA01DC00DADA27 /* lgc.h in Headers */,
 				8F94181E1FDA01DC00DADA27 /* lvm.h in Headers */,
