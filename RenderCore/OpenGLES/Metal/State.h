@@ -55,11 +55,21 @@ namespace RenderCore { namespace Metal_OpenGLES
     class SamplerState
     {
     public:
-        SamplerState();
-        void Apply(unsigned samplerIndex) const never_throws;
+        SamplerState(   FilterMode filter = FilterMode::Trilinear,
+                        AddressMode addressU = AddressMode::Wrap,
+                        AddressMode addressV = AddressMode::Wrap,
+                        AddressMode addressW = AddressMode::Wrap,
+                        CompareOp comparison = CompareOp::Never,
+                        bool enableMipmapping = true);
+        void Apply(unsigned bindingTarget) const never_throws;
 
         typedef SamplerState UnderlyingType;
         UnderlyingType GetUnderlying() const never_throws { return *this; }
+
+    private:
+        unsigned _minFilter, _maxFilter;
+        unsigned _wrapS, _wrapT, _wrapR;
+        unsigned _compareMode, _compareFunc;
     };
 
     class BlendState

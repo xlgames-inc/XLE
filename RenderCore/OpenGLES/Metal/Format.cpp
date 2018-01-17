@@ -84,7 +84,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         case FormatPrefix::D16:
         case FormatPrefix::R16G16:
         case FormatPrefix::R16G16B16A16:
-            if (type==FormatComponentType::Float || type == FormatComponentType::UnsignedFloat16 || type == FormatComponentType::SignedFloat16) return GL_FLOAT;
+            if (type==FormatComponentType::Float || type == FormatComponentType::UnsignedFloat16 || type == FormatComponentType::SignedFloat16) return GL_HALF_FLOAT;
             return (type==FormatComponentType::SInt || type==FormatComponentType::SNorm) ? GL_SHORT : GL_UNSIGNED_SHORT;
 
         case FormatPrefix::D32:

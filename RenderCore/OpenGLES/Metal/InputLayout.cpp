@@ -10,6 +10,7 @@
 #include "Format.h"
 #include "ShaderResource.h"
 #include "PipelineLayout.h"
+#include "State.h"
 #include "../../Types.h"
 #include "../../Format.h"
 #include "../../BufferView.h"
@@ -206,8 +207,14 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (srv._stream != streamIdx) continue;
             assert(srv._slot < stream._resources.size());
             const auto& res = *stream._resources[srv._slot];
+            const auto& sampler = *stream._samplers[srv._slot];
+
             glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
+            GLenum otherTarget = (srv._dimensionality == GL_TEXTURE_2D) ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D;
+            glBindTexture(otherTarget, 0);
+
             glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
+            sampler.Apply(srv._dimensionality);
         }
 
         // Commit changes to texture uniforms
