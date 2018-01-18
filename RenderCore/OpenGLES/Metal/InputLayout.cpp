@@ -214,7 +214,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             glBindTexture(otherTarget, 0);
 
             glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
-            sampler.Apply(srv._dimensionality);
+            sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
         }
 
         // Commit changes to texture uniforms

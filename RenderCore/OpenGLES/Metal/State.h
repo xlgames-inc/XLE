@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "IndexedGLType.h"
 #include "../../Types.h"
 #include "../../../Core/Exceptions.h"
 
@@ -59,9 +60,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                         AddressMode addressU = AddressMode::Wrap,
                         AddressMode addressV = AddressMode::Wrap,
                         AddressMode addressW = AddressMode::Wrap,
-                        CompareOp comparison = CompareOp::Never,
-                        bool enableMipmapping = true);
-        void Apply(unsigned bindingTarget) const never_throws;
+                        CompareOp comparison = CompareOp::Never);
+
+        void Apply(unsigned textureUnit, unsigned bindingTarget, bool enableMipmaps) const never_throws;
 
         typedef SamplerState UnderlyingType;
         UnderlyingType GetUnderlying() const never_throws { return *this; }
@@ -70,6 +71,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         unsigned _minFilter, _maxFilter;
         unsigned _wrapS, _wrapT, _wrapR;
         unsigned _compareMode, _compareFunc;
+
+        intrusive_ptr<OpenGL::Sampler> _prebuiltSamplerMipmaps;
+        intrusive_ptr<OpenGL::Sampler> _prebuiltSamplerNoMipmaps;
     };
 
     class BlendState

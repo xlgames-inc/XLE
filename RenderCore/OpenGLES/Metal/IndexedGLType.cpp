@@ -78,6 +78,14 @@ namespace RenderCore { namespace Metal_OpenGLES
         return intrusive_ptr<GlObject<GlObject_Type::Buffer> >(temp);
     }
 
+    intrusive_ptr<GlObject<GlObject_Type::Sampler> >             ObjectFactory::CreateSampler()
+    {
+        RawGLHandle result = RawGLHandle_Invalid;
+        glGenSamplers(1, &result);
+        auto temp = (GlObject<GlObject_Type::Sampler>*)(size_t)result;
+        return intrusive_ptr<GlObject<GlObject_Type::Sampler> >(temp);
+    }
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     namespace Detail
@@ -132,6 +140,11 @@ namespace RenderCore { namespace Metal_OpenGLES
                 (*GetGLWrappers()->DeleteRenderbuffers)(1, &object);
             }
         }
+
+        template<> void Destroy<GlObject_Type::Sampler>(RawGLHandle object)
+        {
+            glDeleteSamplers(1, (GLuint*)&object);
+        }
     }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -172,6 +185,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     template class GlObject<GlObject_Type::FrameBuffer>;
     template class GlObject<GlObject_Type::Buffer>;
     template class GlObject<GlObject_Type::Resource>;
+    template class GlObject<GlObject_Type::Sampler>;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -244,6 +258,15 @@ namespace RenderCore { namespace Metal_OpenGLES
             return (GlObject<GlObject_Type::Buffer>*)(this);
         } else {
             return (GlObject<GlObject_Type::Buffer>*)RawGLHandle_Invalid;
+        }
+    }
+
+    template<> template<> const GlObject<GlObject_Type::Sampler>*          GlObject<GlObject_Type::Sampler>::ResourceCast() const never_throws
+    {
+        if (glIsSampler(AsRawGLHandle())) {
+            return (GlObject<GlObject_Type::Sampler>*)(this);
+        } else {
+            return (GlObject<GlObject_Type::Sampler>*)RawGLHandle_Invalid;
         }
     }
 

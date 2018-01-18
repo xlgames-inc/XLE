@@ -10,16 +10,30 @@
 namespace RenderCore { namespace Metal_OpenGLES
 {
 
-    void SamplerState::Apply(unsigned bindingTarget) const never_throws
+    void SamplerState::Apply(unsigned textureUnit, unsigned bindingTarget, bool enableMipmaps) const never_throws
     {
-        glTexParameteri(bindingTarget, GL_TEXTURE_MIN_FILTER, _minFilter);
-        glTexParameteri(bindingTarget, GL_TEXTURE_MAG_FILTER, _maxFilter);
-        glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_S, _wrapS);
-        glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_T, _wrapT);
-        glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_R, _wrapR);
+        if (_prebuiltSamplerMipmaps) {
+            glBindSampler(textureUnit, enableMipmaps ? _prebuiltSamplerMipmaps->AsRawGLHandle() : _prebuiltSamplerNoMipmaps->AsRawGLHandle());
+        } else {
+            #if defined(_DEBUG)
+                // expecting GL_ACTIVE_TEXTURE to be already set to the expected texture unit
+                // (which will normally be the case when binding texture, then sampler)
+                GLint activeTexture = 0;
+                glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
+                assert(activeTexture == GL_TEXTURE0 + textureUnit);
+            #endif
 
-        glTexParameteri(bindingTarget, GL_TEXTURE_COMPARE_MODE, _compareMode);
-        glTexParameteri(bindingTarget, GL_TEXTURE_COMPARE_FUNC, _compareFunc);
+            glBindSampler(textureUnit, 0);
+
+            glTexParameteri(bindingTarget, GL_TEXTURE_MIN_FILTER, enableMipmaps ? _minFilter : _maxFilter);
+            glTexParameteri(bindingTarget, GL_TEXTURE_MAG_FILTER, _maxFilter);
+            glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_S, _wrapS);
+            glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_T, _wrapT);
+            glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_R, _wrapR);
+
+            glTexParameteri(bindingTarget, GL_TEXTURE_COMPARE_MODE, _compareMode);
+            glTexParameteri(bindingTarget, GL_TEXTURE_COMPARE_FUNC, _compareFunc);
+        }
 
         // (border color set elsewhere. Anisotrophy requires an extension)
     }
@@ -37,71 +51,73 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
+    static GLenum AsGLenum(CompareOp comparison)
+    {
+        switch (comparison) {
+        case CompareOp::Less:           return GL_LESS;
+        case CompareOp::Equal:          return GL_EQUAL;
+        case CompareOp::LessEqual:      return GL_LEQUAL;
+        case CompareOp::Greater:        return GL_GREATER;
+        case CompareOp::NotEqual:       return GL_NOTEQUAL;
+        case CompareOp::GreaterEqual:   return GL_GEQUAL;
+        case CompareOp::Always:         return GL_ALWAYS;
+        default:
+        case CompareOp::Never:          return GL_NEVER;
+        }
+    }
+
     SamplerState::SamplerState(
         FilterMode filter,
         AddressMode addressU, AddressMode addressV, AddressMode addressW,
-        CompareOp comparison,
-        bool enableMipmapping)
+        CompareOp comparison)
     {
         switch (filter) {
         case FilterMode::Bilinear:
         case FilterMode::ComparisonBilinear:
-            _minFilter = enableMipmapping ? GL_LINEAR_MIPMAP_NEAREST : GL_LINEAR;
+            _minFilter = GL_LINEAR_MIPMAP_NEAREST;
             _maxFilter = GL_LINEAR;
             break;
 
         case FilterMode::Trilinear:
         case FilterMode::Anisotropic:
-            _minFilter = GL_LINEAR_MIPMAP_NEAREST;
+            _minFilter = GL_LINEAR_MIPMAP_LINEAR;
             _maxFilter = GL_LINEAR;
             break;
 
         default:
         case FilterMode::Point:
-            _minFilter = enableMipmapping ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST;
+            _minFilter = GL_NEAREST_MIPMAP_NEAREST;
             _maxFilter = GL_NEAREST;
             break;
         }
 
-        _compareMode = GL_COMPARE_REF_TO_TEXTURE;
-        switch (comparison) {
-        case CompareOp::Less:
-            _compareFunc = GL_LESS;
-            break;
-
-        case CompareOp::Equal:
-            _compareFunc = GL_EQUAL;
-            break;
-
-        case CompareOp::LessEqual:
-            _compareFunc = GL_LEQUAL;
-            break;
-
-        case CompareOp::Greater:
-            _compareFunc = GL_GREATER;
-            break;
-
-        case CompareOp::NotEqual:
-            _compareFunc = GL_NOTEQUAL;
-            break;
-
-        case CompareOp::GreaterEqual:
-            _compareFunc = GL_GEQUAL;
-            break;
-
-        case CompareOp::Always:
-            _compareFunc = GL_ALWAYS;
-            break;
-
-        case CompareOp::Never:
-            _compareMode = GL_NONE;
-            _compareFunc = GL_NEVER;
-            break;
-        }
+        _compareFunc = AsGLenum(comparison);
+        _compareMode = (filter == FilterMode::ComparisonBilinear) ? GL_COMPARE_REF_TO_TEXTURE : GL_NONE;
 
         _wrapS = AsGLenum(addressU);
         _wrapT = AsGLenum(addressV);
         _wrapR = AsGLenum(addressW);
+
+        auto& objectFactory = GetObjectFactory();
+        _prebuiltSamplerMipmaps = objectFactory.CreateSampler();
+        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _minFilter);
+        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);
+        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_S, _wrapS);
+        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_T, _wrapT);
+        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_R, _wrapR);
+
+        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_MODE, _compareMode);
+        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_FUNC, _compareFunc);
+
+        _prebuiltSamplerNoMipmaps = objectFactory.CreateSampler();
+        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _maxFilter);
+        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);
+        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_S, _wrapS);
+        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_T, _wrapT);
+        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_R, _wrapR);
+
+        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_MODE, _compareMode);
+        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_FUNC, _compareFunc);
     }
 
     BlendState::BlendState() {}

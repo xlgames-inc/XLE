@@ -18,9 +18,13 @@ namespace RenderCore { namespace Metal_OpenGLES
         using UnderlyingType = intrusive_ptr<OpenGL::Texture>;
         const UnderlyingType &      GetUnderlying() const { return GetTexture(); }
         bool                        IsGood() const { return _underlyingTexture.get() != nullptr; }
+        bool                        HasMipMaps() const { return _hasMipMaps; }
 
         ShaderResourceView();
-        ShaderResourceView(const intrusive_ptr<OpenGL::Texture>& underlyingTexture);
+        ShaderResourceView(const intrusive_ptr<OpenGL::Texture>& underlyingTexture, bool hasMipMaps = true);
+
+    private:
+        bool _hasMipMaps;
     };
 
 }}

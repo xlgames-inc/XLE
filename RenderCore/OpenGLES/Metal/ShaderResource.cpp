@@ -10,16 +10,13 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    ShaderResourceView::ShaderResourceView()
+    ShaderResourceView::ShaderResourceView() {}
+    ShaderResourceView::ShaderResourceView(const intrusive_ptr<OpenGL::Texture>& underlyingTexture, bool hasMipMaps)
+    : _hasMipMaps(hasMipMaps)
     {
-    }
-
-    ShaderResourceView::ShaderResourceView(const intrusive_ptr<OpenGL::Texture>& underlyingTexture)
-    {
-        if (!glIsTexture(underlyingTexture->AsRawGLHandle())) {
+        if (!glIsTexture(underlyingTexture->AsRawGLHandle()))
             Throw(Exceptions::GenericFailure("Binding non-texture to shader resource view"));
-        } else {
-            _underlyingTexture = underlyingTexture;
-        }
+
+        _underlyingTexture = underlyingTexture;
     }
 }}
