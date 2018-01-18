@@ -344,9 +344,14 @@ namespace RenderCore { namespace Metal_OpenGLES
                 return lhs._index < rhs._index;
             });
 
+        if (!uniformSets.empty()) {
+            for (auto i=uniformSets.begin(); (i+1)!=uniformSets.end(); ++i) {
+                assert(i->_location != (i+1)->_location || i->_index != (i+1)->_index);
+            }
+        }
+
         // Now generate the set commands that will assign the uniforms as required
-        auto i = uniformSets.begin();
-        while (i!=uniformSets.end()) {
+        for (auto i = uniformSets.begin(); i!=uniformSets.end();) {
             auto i2 = i+1;
             while (i2 != uniformSets.end() && i2->_location == i->_location) { ++i2; };
 
@@ -355,8 +360,10 @@ namespace RenderCore { namespace Metal_OpenGLES
             auto dataOffsetStart = _textureAssignmentByteData.size();
             _textureAssignmentByteData.resize(dataOffsetStart+sizeof(GLuint)*(elementCount+1), 0u);
             GLuint* dst = (GLuint*)&_textureAssignmentByteData[dataOffsetStart];
-            for (auto q=i; q<i2; ++q)
+            for (auto q=i; q<i2; ++q) {
+                assert(q->_index < elementCount);
                 dst[q->_index] = q->_value;
+            }
             _textureAssignmentCommands._commands.push_back(
                 SetUniformCommandGroup::SetCommand{i->_location, i->_type, elementCount, dataOffsetStart});
 

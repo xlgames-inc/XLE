@@ -20,6 +20,7 @@
 #include "../Utility/StringUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/Conversion.h"
+#include "../Core/SelectConfiguration.h"
 #include <assert.h>
 #include <random>
 
@@ -89,8 +90,14 @@ namespace ConsoleRig
         _logConfigFile = "log.cfg";
         _setWorkingDir = true;
         _redirectCout = true;
-        _longTaskThreadPoolCount = 4;
-        _shortTaskThreadPoolCount = 2;
+        // Hack -- these thread pools are only useful/efficient on windows
+        #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+            _longTaskThreadPoolCount = 4;
+            _shortTaskThreadPoolCount = 2;
+        #else
+            _longTaskThreadPoolCount = 0;
+            _shortTaskThreadPoolCount = 0;
+        #endif
     }
 
     StartupConfig::StartupConfig(const char applicationName[]) : StartupConfig()
@@ -161,8 +168,10 @@ namespace ConsoleRig
 
     GlobalServices::GlobalServices(const StartupConfig& cfg)
     {
-        _shortTaskPool = std::make_unique<CompletionThreadPool>(cfg._shortTaskThreadPoolCount);
-        _longTaskPool = std::make_unique<CompletionThreadPool>(cfg._longTaskThreadPoolCount);
+        if (cfg._shortTaskThreadPoolCount)
+            _shortTaskPool = std::make_unique<CompletionThreadPool>(cfg._shortTaskThreadPoolCount);
+        if (cfg._longTaskThreadPoolCount)
+            _longTaskPool = std::make_unique<CompletionThreadPool>(cfg._longTaskThreadPoolCount);
 
         _crossModule = std::make_shared<CrossModule>();
         MainRig_Startup(cfg, _crossModule->_services);

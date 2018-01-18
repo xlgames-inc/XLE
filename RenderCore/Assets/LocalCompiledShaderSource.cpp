@@ -66,8 +66,7 @@ namespace RenderCore { namespace Assets
 
         void Enqueue(
             const ResId& shaderPath, const ::Assets::rstring& definesTable, 
-            ChainFn chain = nullptr,
-            const std::shared_ptr<::Assets::DependencyValidation>& depVal = nullptr);
+            ChainFn chain = nullptr);
         void Enqueue(
             StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
             StringSection<char> shaderModel, StringSection<ResChar> definesTable);
@@ -78,7 +77,7 @@ namespace RenderCore { namespace Assets
         ShaderCompileMarker(ShaderCompileMarker&) = delete;
         ShaderCompileMarker& operator=(const ShaderCompileMarker&) = delete;
     protected:
-        virtual void Complete(const void* buffer, size_t bufferSize);
+        virtual void Complete(const void* buffer, size_t bufferSize, IteratorRange<const ::Assets::DependentFileState*> preprocessorDeps);
 		virtual void OnFailure();
         void CommitToArchive();
 
@@ -100,8 +99,7 @@ namespace RenderCore { namespace Assets
 
     void ShaderCompileMarker::Enqueue(
         const ResId& shaderPath, const ::Assets::rstring& definesTable, 
-        ChainFn chain,
-        const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+        ChainFn chain)
     {
         _shaderPath = shaderPath;
         _definesTable = definesTable;
@@ -127,15 +125,18 @@ namespace RenderCore { namespace Assets
                 auto preprocessedOutput = _preprocessor->RunPreprocessor(_shaderPath._filename);
                 if (!preprocessedOutput._processedSource.empty()) {
                     static_assert(sizeof(decltype(preprocessedOutput._processedSource)::value_type) == 1, "Expecting single byte character for size calculation");
-                    Complete(preprocessedOutput._processedSource.data(), preprocessedOutput._processedSource.size());
+                    Complete(
+                        preprocessedOutput._processedSource.data(), preprocessedOutput._processedSource.size(),
+                        MakeIteratorRange(preprocessedOutput._dependencies));
                 } else {
                     OnFailure();
                 }
             } else {
+                auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(_shaderPath._filename);
                 size_t fileSize = 0;
                 auto fileData = ::Assets::TryLoadFileAsMemoryBlock(_shaderPath._filename, &fileSize);
                 if (fileData.get() && fileSize) {
-                    Complete(fileData.get(), fileSize);
+                    Complete(fileData.get(), fileSize, MakeIteratorRange(&depState, &depState+1));
                 } else {
                     OnFailure();
                 }
@@ -158,9 +159,9 @@ namespace RenderCore { namespace Assets
             auto sharedToThis = std::static_pointer_cast<ShaderCompileMarker>(shared_from_this());
             std::string sourceCopy = shaderInMemory.AsString();
             ConsoleRig::GlobalServices::GetLongTaskThreadPool().Enqueue(
-                [sourceCopy, sharedToThis]() { sharedToThis->Complete(AsPointer(sourceCopy.cbegin()), sourceCopy.size()); });
+                [sourceCopy, sharedToThis]() { sharedToThis->Complete(AsPointer(sourceCopy.cbegin()), sourceCopy.size(), {}); });
         } else {
-            Complete(shaderInMemory.begin(), shaderInMemory.size());
+            Complete(shaderInMemory.begin(), shaderInMemory.size(), {});
         }
     }
 
@@ -178,7 +179,7 @@ namespace RenderCore { namespace Assets
 		SetState(::Assets::AssetState::Invalid);
 	}
 
-    void ShaderCompileMarker::Complete(const void* buffer, size_t bufferSize)
+    void ShaderCompileMarker::Complete(const void* buffer, size_t bufferSize, IteratorRange<const ::Assets::DependentFileState*> preprocessorDeps)
     {
         if (CancelAllShaderCompiles) {
 			OnFailure();
@@ -189,6 +190,7 @@ namespace RenderCore { namespace Assets
 			Payload errors;
 			_payload.reset();
 			_deps.clear();
+            _deps.insert(_deps.end(), preprocessorDeps.begin(), preprocessorDeps.end());
 
 			auto success = _compiler->DoLowLevelCompile(
 				_payload, errors, _deps,

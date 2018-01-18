@@ -132,7 +132,13 @@ namespace Assets
 				deferredConstruction = AssetType::BeginDeferredConstruction(inits, dimof(inits));
 				i = assetSet->_deferredConstructions.insert(i, std::make_pair(hash, deferredConstruction));
 			} else {
-				deferredConstruction = i->second;
+                if (false) { // i->second->GetDependencyValidation()->GetValidationIndex() == 0) {
+				    deferredConstruction = i->second;
+                } else {
+                    StringSection<ResChar> inits[] = { initialisers... };
+                    deferredConstruction = AssetType::BeginDeferredConstruction(inits, dimof(inits));
+                    i->second = deferredConstruction;
+                }
 			}
 		}
 
@@ -158,7 +164,13 @@ namespace Assets
 				deferredConstruction = AssetType::BeginDeferredConstruction(inits, dimof(inits));
 				i = assetSet->_deferredConstructions.insert(i, std::make_pair(hash, deferredConstruction));
 			} else {
-				deferredConstruction = i->second;
+                if (false) { // i->second->GetDependencyValidation()->GetValidationIndex() == 0) {
+                    deferredConstruction = i->second;
+                } else {
+                    StringSection<ResChar> inits[] = { initialisers... };
+                    deferredConstruction = AssetType::BeginDeferredConstruction(inits, dimof(inits));
+                    i->second = deferredConstruction;
+                }
 			}
 		}
 

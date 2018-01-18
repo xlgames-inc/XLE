@@ -131,9 +131,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             return false;
         }
 
-        uint64_t hashCode = HashCombine(
-            Hash64(shaderSourcePointers[0], PtrAdd(shaderSourcePointers[0], shaderSourceLengths[0])),
-            Hash64(shaderSourcePointers[1], PtrAdd(shaderSourcePointers[1], shaderSourceLengths[1])));
+        uint64_t hashCode = DefaultSeed64;
+        for (unsigned c=0; c<dimof(shaderSourcePointers); ++c)
+            hashCode = Hash64(shaderSourcePointers[c], PtrAdd(shaderSourcePointers[c], shaderSourceLengths[c]), hashCode);
         s_compiledShaders.emplace(std::make_pair(hashCode, std::move(newShader)));
 
         struct OutputBlob

@@ -35,6 +35,7 @@ namespace RenderCore { namespace Assets
             };
             std::string _processedSource;
             std::vector<LineMarker> _lineMarkers;
+            std::vector<::Assets::DependentFileState> _dependencies;
         };
 
         virtual SourceCodeWithRemapping RunPreprocessor(const char filename[]) = 0;
