@@ -148,7 +148,7 @@ namespace Utility
             Iterator cend() const       { return this->second; }
             bool empty() const          { return this->first == this->second; }
 			size_t size() const			{ return Internal::IteratorDifference(this->first, this->second); }
-
+#pragma GCC diagnostic ignored "-Wvoid-ptr-dereference"
 			template<typename I=Iterator, typename std::enable_if<!std::is_same<typename std::remove_const<I>::type, void*>::value>::type* = nullptr>
 				decltype(*std::declval<Iterator>()) operator[](size_t index) const { return this->first[index]; }
 
