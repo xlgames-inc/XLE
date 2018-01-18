@@ -234,7 +234,8 @@ namespace Serialization
         ((uint32*)dst)[0] = (uint32)value;
         ((uint32*)dst)[1] = (uint32)(value >> 32ull);
     }
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshorten-64-to-32"
     void        Block_Initialize(void* block, const void* base)
     {
         if (!base) { base = block; }
@@ -262,6 +263,7 @@ namespace Serialization
             }
         }
     }
+#pragma GCC diagnostic pop
 
     #if !defined(DEBUG_NEW)
         #define new DEBUG_NEW
@@ -271,13 +273,14 @@ namespace Serialization
     {
         return PtrAdd(blockStart, sizeof(Header));
     }
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshorten-64-to-32"
     size_t          Block_GetSize(const void* block)
     {
         const Header& h = *(const Header*)block;
         return h._rawMemorySize + h._internalPointerCount * sizeof(NascentBlockSerializer::InternalPointer) + sizeof(Header);
     }
-
+#pragma GCC diagnostic pop
     std::unique_ptr<uint8[]>  Block_Duplicate(const void* block)
     {
         size_t size = Block_GetSize(block);

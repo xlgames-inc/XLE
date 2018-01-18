@@ -308,6 +308,7 @@ namespace RenderCore { namespace Assets
             case Blob::EndElement:
             case Blob::None:
                 return result;
+            default:;
             }
         }
     }
@@ -359,6 +360,7 @@ namespace RenderCore { namespace Assets
             case Blob::EndElement:
             case Blob::None:
                 return;
+            default:;
             }
         }
     }
@@ -492,7 +494,10 @@ namespace RenderCore { namespace Assets
             return ::Assets::GetAsset<RawMaterial>(initializer);
         }
 #else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnull-dereference"
         return *(const RawMaterial*)nullptr;
+#pragma GCC diagnostic pop
 #endif
     }
 

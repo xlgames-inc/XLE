@@ -87,7 +87,7 @@ namespace RenderCore { namespace Assets
 		const ::Assets::rstring&		Filename() const { return _filename; }
 		::Assets::AssetState			TryResolve() const;
 		::Assets::AssetState			StallWhilePending() const;
-
+#pragma GCC diagnostic ignored "-Wmultichar"
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
 
         MaterialScaffold(const ::Assets::ChunkFileContainer& chunkFile);

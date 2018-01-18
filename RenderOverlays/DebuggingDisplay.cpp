@@ -178,7 +178,6 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
         const Rect upButton = coordinates.UpArrow();
         const Rect downButton = coordinates.DownArrow();
-        const Rect scrollArea = coordinates.ScrollArea();
 
         DrawFilledElipse(context, upButton, fillColour);
         DrawFilledElipse(context, downButton, fillColour);
@@ -1003,7 +1002,8 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 }
 
             }
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshorten-64-to-32"
             const InteractableId backButtonId = InteractableId_Make("PanelControls_BackButton");
             if (topMostWidget >= backButtonId && topMostWidget < backButtonId + _panels.size()) {
                 if (!_panels[topMostWidget-backButtonId]._backButton.empty()) {
@@ -1012,6 +1012,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
                     return true;
                 }
             }
+#pragma GCC diagnostic pop
 
             const InteractableId nameDropDownWidgetId = InteractableId_Make("PanelControls_NameDropDownWidget");
             if (topMostWidget >= nameDropDownWidgetId && topMostWidget < (nameDropDownWidgetId + _panels.size() * _widgets.size())) {

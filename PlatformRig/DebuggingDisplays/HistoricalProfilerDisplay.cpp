@@ -11,8 +11,6 @@ namespace PlatformRig { namespace Overlays
     using namespace RenderOverlays;
     using namespace RenderOverlays::DebuggingDisplay;
 
-    static const unsigned DurationHistoryLength = 64u;
-
     static float AsMilliseconds(uint64 profilerTime)
     {
         static float freqMult = 1000.f / GetPerformanceCounterFrequency();
