@@ -308,7 +308,8 @@ namespace RenderCore { namespace Assets
             case Blob::EndElement:
             case Blob::None:
                 return result;
-            default:;
+            default:
+                assert(0);
             }
         }
     }
@@ -360,7 +361,8 @@ namespace RenderCore { namespace Assets
             case Blob::EndElement:
             case Blob::None:
                 return;
-            default:;
+            default:
+                assert(0);
             }
         }
     }

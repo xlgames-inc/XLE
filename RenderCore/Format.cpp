@@ -95,7 +95,8 @@ namespace RenderCore
 
         case R8G8_B8G8: 
         case G8R8_G8B8:         return FormatComponents::RGB;
-            default:;
+        default:
+            assert(0);
         }
 
         switch (format) {
@@ -108,7 +109,8 @@ namespace RenderCore
 
         case Format::S8_UINT:
             return FormatComponents::Stencil;
-        default:;
+        default:
+            assert(0);
         }
 
         return FormatComponents::Unknown;
@@ -249,7 +251,8 @@ namespace RenderCore
         case Format::B8G8R8A8_UNORM: return Format::B8G8R8A8_UNORM_SRGB;
         case Format::B8G8R8X8_TYPELESS:
         case Format::B8G8R8X8_UNORM: return Format::B8G8R8X8_UNORM_SRGB;
-            default:;
+        default:
+            assert(0);
         }
         return inputFormat; // no linear/srgb version of this format exists
     }
@@ -272,7 +275,8 @@ namespace RenderCore
         case Format::B8G8R8A8_UNORM_SRGB: return Format::B8G8R8A8_UNORM;
         case Format::B8G8R8X8_TYPELESS:
         case Format::B8G8R8X8_UNORM_SRGB: return Format::B8G8R8X8_UNORM;
-            default:;
+        default:
+            assert(0);
         }
         return inputFormat; // no linear/srgb version of this format exists
     }
@@ -315,7 +319,8 @@ namespace RenderCore
         case Format::R32_SINT: return Format::R32_TYPELESS;
 
         case Format::S8_UINT: return Format::R8_TYPELESS;
-            default:;
+        default:
+            assert(0);
         }
         return inputFormat; // no linear/srgb version of this format exists
     }
@@ -335,7 +340,8 @@ namespace RenderCore
         case Format::R8_TYPELESS:
         case Format::R8_UINT:
             return Format::S8_UINT;
-            default:;
+        default:
+            assert(0);
         }
         return inputFormat;
     }
@@ -351,7 +357,8 @@ namespace RenderCore
         case Format::R32_TYPELESS:
         case Format::D32_FLOAT:
             return Format::R32_FLOAT;
-            default:;
+        default:
+            assert(0);
         }
         return inputFormat;
     }
@@ -367,7 +374,8 @@ namespace RenderCore
         case Format::R8_TYPELESS:
         case Format::S8_UINT:
             return Format::R8_UINT;
-            default:;
+        default:
+            assert(0);
         }
         return inputFormat;
     }
@@ -453,7 +461,8 @@ namespace RenderCore
                 if (type._arrayCount == 3) return Format::R32G32B32_UINT;
                 if (type._arrayCount == 4) return Format::R32G32B32A32_UINT;
                 break;
-                default:;
+            default:
+                assert(0);
             }
         } else if (norm == ShaderNormalizationMode::Normalized) {
             switch (type._type) {
@@ -480,7 +489,8 @@ namespace RenderCore
                 if (type._arrayCount == 2) return Format::R16G16_UNORM;
                 if (type._arrayCount == 4) return Format::R16G16B16A16_UNORM;
                 break;
-                default:;
+            default:
+                assert(0);
             }
         } else if (norm == ShaderNormalizationMode::Float) {
             switch (type._type) {
@@ -490,7 +500,8 @@ namespace RenderCore
                 if (type._arrayCount == 2) return Format::R16G16_FLOAT;
                 if (type._arrayCount == 4) return Format::R16G16B16A16_FLOAT;
                 break;
-                default:;
+            default:
+                assert(0);
             }
         }
 
@@ -542,7 +553,8 @@ namespace RenderCore
 		case Format::R16_FLOAT: return TypeDesc(TypeCat::UInt16, 1);
 		case Format::R16G16_FLOAT: return TypeDesc(TypeCat::UInt16, 2);
 		case Format::R16G16B16A16_FLOAT: return TypeDesc(TypeCat::UInt16, 4);
-            default:;
+        default:
+            assert(0);
 		}
 		return TypeCat::Void;
 	}

@@ -1002,17 +1002,16 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 }
 
             }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshorten-64-to-32"
+
             const InteractableId backButtonId = InteractableId_Make("PanelControls_BackButton");
             if (topMostWidget >= backButtonId && topMostWidget < backButtonId + _panels.size()) {
-                if (!_panels[topMostWidget-backButtonId]._backButton.empty()) {
-                    SwitchToScreen(topMostWidget-backButtonId, _panels[topMostWidget-backButtonId]._backButton.c_str());
-                    _panels[topMostWidget-backButtonId]._backButton = std::string();
+                unsigned panelIndex = (unsigned)(topMostWidget-backButtonId);
+                if (!_panels[panelIndex]._backButton.empty()) {
+                    SwitchToScreen(panelIndex, _panels[panelIndex]._backButton.c_str());
+                    _panels[panelIndex]._backButton = std::string();
                     return true;
                 }
             }
-#pragma GCC diagnostic pop
 
             const InteractableId nameDropDownWidgetId = InteractableId_Make("PanelControls_NameDropDownWidget");
             if (topMostWidget >= nameDropDownWidgetId && topMostWidget < (nameDropDownWidgetId + _panels.size() * _widgets.size())) {

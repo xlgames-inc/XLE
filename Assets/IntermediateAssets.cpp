@@ -277,7 +277,7 @@ namespace Assets { namespace IntermediateAssets
             //  that matches the version string.
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-
+        ResChar buffer[MaxPath];
 		if (!universal) {
 			_snprintf_s(buffer, _TRUNCATE, "%s/%s_*", baseDirectory, configString);
 

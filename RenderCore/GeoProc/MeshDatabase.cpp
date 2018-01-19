@@ -1050,7 +1050,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             assert(prec==8 || prec==16);
             componentType = (prec == 16) ? ComponentType::UNorm16 : ComponentType::UNorm8;
             break;
-            default:;
+        default:
+            assert(0);
         }
 
         return std::make_pair(componentType, componentCount);
