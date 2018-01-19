@@ -10,7 +10,7 @@
 #include "CLIXAutoPtr.h"
 #include "MarshalString.h"
 #include "../ToolsRig/ModelVisualisation.h"
-#include "../../Assets/DivergentAsset.h"
+#include "../ToolsRig/DivergentAsset.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/SystemUtils.h"
 #include "../../Utility/ParameterBox.h"
@@ -315,7 +315,7 @@ namespace GUILayer
 
         virtual event System::ComponentModel::PropertyChangedEventHandler^ PropertyChanged;
 
-        using NativeConfig = ::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>;
+        using NativeConfig = ToolsRig::DivergentAsset<RenderCore::Assets::RawMaterial>;
         RenderStateSet(std::shared_ptr<NativeConfig> underlying);
         ~RenderStateSet();
     protected:
@@ -362,7 +362,7 @@ namespace GUILayer
 
         ~RawMaterial();
     private:
-        using NativeConfig = ::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>;
+        using NativeConfig = ToolsRig::DivergentAsset<RenderCore::Assets::RawMaterial>;
         clix::shared_ptr<NativeConfig> _underlying;
 
         RenderStateSet^ _renderStateSet;

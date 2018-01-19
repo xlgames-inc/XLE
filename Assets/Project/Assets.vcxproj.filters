@@ -47,9 +47,6 @@
     <ClInclude Include="..\DeferredConstruction.h">
       <Filter>AssetHeaps</Filter>
     </ClInclude>
-    <ClInclude Include="..\DivergentAsset.h">
-      <Filter>AssetHeaps</Filter>
-    </ClInclude>
     <ClInclude Include="..\OSFileSystem.h">
       <Filter>FileSystems</Filter>
     </ClInclude>
@@ -98,9 +95,6 @@
       <Filter>CompileAndAsync</Filter>
     </ClCompile>
     <ClCompile Include="..\DeferredConstruction.cpp">
-      <Filter>AssetHeaps</Filter>
-    </ClCompile>
-    <ClCompile Include="..\DivergentAsset.cpp">
       <Filter>AssetHeaps</Filter>
     </ClCompile>
     <ClCompile Include="..\OSFileSystem.cpp">

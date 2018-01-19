@@ -6,12 +6,11 @@
 
 #include "DivergentAsset.h"
 
-#include "CompileAndAsyncManager.h"
-#include "IntermediateAssets.h"		// (for ShadowFile)
-#include "AssetServices.h"
+#include "../../Assets/CompileAndAsyncManager.h"
+#include "../../Assets/AssetServices.h"
 #include "../Utility/Threading/Mutex.h"
 
-namespace Assets
+namespace ToolsRig
 {
 #if 0
     void DivergentAssetBase::AssetIdentifier::OnChange()
@@ -63,7 +62,7 @@ namespace Assets
 		struct Id { uint64_t _typeCode; uint64_t _idInAssetHeap; };
 		struct Asset
 		{
-			rstring _identifier;
+			::Assets::rstring _identifier;
 			std::shared_ptr<DivergentAssetBase> _asset;
 		};
 
@@ -107,7 +106,7 @@ namespace Assets
 	}
 
 	void DivergentAssetManager::AddAsset(
-		uint64_t typeCode, uint64_t id, const rstring& identifier, 
+		uint64_t typeCode, uint64_t id, const ::Assets::rstring& identifier,
 		const std::shared_ptr<DivergentAssetBase>& asset)
 	{
 		ScopedLock(_pimpl->_lock);
@@ -120,12 +119,56 @@ namespace Assets
 		}
 	}
 
+	DivergentAssetManager* DivergentAssetManager::s_instance = nullptr;
+
 	DivergentAssetManager::DivergentAssetManager()
 	{
+		assert(!s_instance);
+		s_instance = this;
 		_pimpl = std::make_unique<Pimpl>();
 	}
 
-	DivergentAssetManager::~DivergentAssetManager() {}
+	DivergentAssetManager::~DivergentAssetManager() 
+	{
+		assert(s_instance == this);
+		s_instance = nullptr;
+	}
+
+}
+
+
+
+#include "../../RenderCore/Assets/RawMaterial.h"
+#include "../../Assets/AssetServices.h"
+#include "../../Assets/AssetSetManager.h"
+#include "../../Assets/AssetHeap.h"
+#include "../../Assets/ConfigFileContainer.h"
+#include "../../Utility/StringFormat.h"
+
+namespace ToolsRig
+{
+
+	template<typename AssetType, typename... Params>
+		std::shared_ptr<DivergentAsset<AssetType>> CreateDivergentAsset(Params... params)
+	{
+		auto& set = ::Assets::GetAssetSetManager().GetSetForType<AssetType>();
+
+		auto originalFuture = set.Get(params...);
+		originalFuture->StallWhilePending();
+
+		auto divergentAsset = std::make_shared<DivergentAsset<AssetType>>(originalFuture->Actualize());
+		auto workingAsset = divergentAsset->GetWorkingAsset();
+		auto idInAssetHeap = set.SetShadowingAsset(std::move(workingAsset), params...);
+
+		auto stringInitializer = ::Assets::Internal::AsString(params...);
+		DivergentAssetManager::GetInstance().AddAsset(
+			typeid(AssetType).hash_code(), idInAssetHeap, stringInitializer,
+			divergentAsset);
+
+		return divergentAsset;
+	}
+
+	template std::shared_ptr<DivergentAsset<RenderCore::Assets::RawMaterial>> CreateDivergentAsset(StringSection<char>);
 
 }
 

@@ -11,11 +11,11 @@
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
+#include "../ToolsRig/DivergentAsset.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/ModelCache.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Metal/State.h"
-#include "../../Assets/DivergentAsset.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/InvalidAssetManager.h"
@@ -552,7 +552,7 @@ namespace GUILayer
 		_transId = 0;
         _initializer = initialiser;
         auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
-        _underlying = ::Assets::CreateDivergentAsset<RenderCore::Assets::RawMaterial>(MakeStringSection(nativeInit));
+        _underlying = ToolsRig::CreateDivergentAsset<RenderCore::Assets::RawMaterial>(MakeStringSection(nativeInit));
         _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
     }
 

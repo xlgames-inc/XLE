@@ -32,39 +32,3 @@ namespace Assets
 
 #endif
 
-
-#include "../Utility/StringFormat.h"
-#include "DivergentAsset.h"
-#include "AssetServices.h"
-#include "AssetSetManager.h"
-#include "AssetHeap.h"
-#include "../RenderCore/Assets/RawMaterial.h"
-#include "ConfigFileContainer.h"
-
-namespace Assets
-{
-
-	template<typename AssetType, typename... Params>
-		std::shared_ptr<DivergentAsset<AssetType>> CreateDivergentAsset(Params... params)
-	{
-		auto& set = GetAssetSetManager().GetSetForType<AssetType>();
-
-		auto originalFuture = set.Get(params...);
-		originalFuture->StallWhilePending();
-
-		auto divergentAsset = std::make_shared<DivergentAsset<AssetType>>(originalFuture->Actualize());
-		auto workingAsset = divergentAsset->GetWorkingAsset();
-		auto idInAssetHeap = set.SetShadowingAsset(std::move(workingAsset), params...);
-
-		auto stringInitializer = Internal::AsString(params...);
-		Services::GetDivergentAssetMan().AddAsset(
-			typeid(AssetType).hash_code(), idInAssetHeap, stringInitializer,
-			divergentAsset);
-
-		return divergentAsset;
-	}
-
-	template std::shared_ptr<DivergentAsset<RenderCore::Assets::RawMaterial>> CreateDivergentAsset(StringSection<char>);
-
-}
-

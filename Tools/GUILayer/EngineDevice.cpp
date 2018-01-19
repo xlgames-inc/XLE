@@ -10,6 +10,7 @@
 #include "WindowRigInternal.h"
 #include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
+#include "../ToolsRig/DivergentAsset.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../RenderCore/IDevice.h"
@@ -97,11 +98,13 @@ namespace GUILayer
 		ConsoleRig::GlobalServices::GetCrossModule().Publish(*_assetServices);
         _renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_renderDevice);
 		_renderAssetsServices->AttachCurrentModule();
+		_divAssets = std::make_unique<ToolsRig::DivergentAssetManager>();
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
     }
 
     NativeEngineDevice::~NativeEngineDevice()
     {
+		_divAssets.reset();
         _renderAssetsServices.reset();
         _assetServices.reset();
         _immediateContext.reset();

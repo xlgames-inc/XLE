@@ -81,6 +81,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\BasicManipulators.cpp" />
+    <ClCompile Include="..\DivergentAsset.cpp" />
     <ClCompile Include="..\GenerateAO.cpp" />
     <ClCompile Include="..\ManipulatorsRender.cpp" />
     <ClCompile Include="..\MaterialBinder.cpp" />
@@ -99,6 +100,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BasicManipulators.h" />
+    <ClInclude Include="..\DivergentAsset.h" />
     <ClInclude Include="..\GenerateAO.h" />
     <ClInclude Include="..\IManipulator.h" />
     <ClInclude Include="..\ManipulatorsRender.h" />

@@ -11,6 +11,7 @@
 #include <memory>
 
 namespace RenderCore { namespace Assets { class Services; } }
+namespace ToolsRig { class DivergentAssetManager; }
 
 namespace GUILayer
 {
@@ -39,6 +40,7 @@ namespace GUILayer
         std::unique_ptr<ConsoleRig::Console> _console;
         std::unique_ptr<RenderCore::Assets::Services> _renderAssetsServices;
         std::unique_ptr<ConsoleRig::GlobalServices> _services;
+		std::unique_ptr<ToolsRig::DivergentAssetManager> _divAssets;
         int _creationThreadId;
     };
 }

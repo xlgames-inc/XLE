@@ -6,13 +6,13 @@
 
 #pragma once
 
-#include "DepVal.h"
-#include "AssetsCore.h"
-#include "../Utility/IteratorUtils.h"
+#include "../../Assets/DepVal.h"
+#include "../../Assets/AssetsCore.h"
+#include "../../Utility/IteratorUtils.h"
 #include <memory>
 #include <string>
 
-namespace Assets
+namespace ToolsRig
 {
     typedef char ResChar;
 
@@ -227,18 +227,22 @@ namespace Assets
 		{
 			uint64_t	_typeCode;
 			uint64_t	_idInAssetHeap;
-			rstring		_identifier;
+			::Assets::rstring		_identifier;
 			bool		_hasChanges;
 		};
 		auto	GetAssets() const -> std::vector<Record>;
 		auto	GetAsset(uint64_t typeCode, uint64_t id) const -> std::shared_ptr<DivergentAssetBase>;
-		void	AddAsset(uint64_t typeCode, uint64_t id, const rstring& identifier, const std::shared_ptr<DivergentAssetBase>&);
+		void	AddAsset(uint64_t typeCode, uint64_t id, const ::Assets::rstring& identifier, const std::shared_ptr<DivergentAssetBase>&);
+
+		static DivergentAssetManager& GetInstance() { return *s_instance; }
 
 		DivergentAssetManager(); 
 		~DivergentAssetManager();
 	private:
 		class Pimpl;
 		std::unique_ptr<Pimpl> _pimpl;
+
+		static DivergentAssetManager* s_instance;
 	};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

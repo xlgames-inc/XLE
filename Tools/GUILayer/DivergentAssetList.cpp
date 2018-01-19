@@ -8,8 +8,8 @@
 #include "DivergentAssetList.h"
 #include "EngineDevice.h"
 #include "ExportedNativeTypes.h"
+#include "../ToolsRig/DivergentAsset.h"
 #include "../../Assets/CompileAndAsyncManager.h"
-#include "../../Assets/DivergentAsset.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/AssetServices.h"
@@ -101,7 +101,7 @@ namespace GUILayer
             }
         }
 
-        AssetItem(const ::Assets::DivergentAssetManager::Record& record, PendingSaveList::Entry^ pendingSave) 
+        AssetItem(const ::ToolsRig::DivergentAssetManager::Record& record, PendingSaveList::Entry^ pendingSave) 
 		: _idInAssetHeap(record._idInAssetHeap)
 		, _pendingSave(pendingSave)
         {
@@ -158,7 +158,7 @@ namespace GUILayer
     public:
         property virtual System::String^ Label;
 
-        TransactionItem(const ::Assets::ITransaction& transaction)
+        TransactionItem(const ToolsRig::ITransaction& transaction)
         {
             Label = clix::marshalString<clix::E_UTF8>(transaction.GetName());
         }
@@ -180,7 +180,7 @@ namespace GUILayer
 
             auto result = gcnew List<AssetTypeItem^>();
 
-			auto divAssets = ::Assets::Services::GetDivergentAssetMan().GetAssets();
+			auto divAssets = ToolsRig::DivergentAssetManager::GetInstance().GetAssets();
 			for (const auto&d:divAssets) {
 				if (!d._hasChanges) continue;
 
@@ -447,7 +447,7 @@ namespace GUILayer
 		::Assets::rstring	_name;
 	};
 
-	static AssetSaveEntry BuildAssetSaveEntry(uint64_t typeCode, const StringSection<::Assets::ResChar> identifier, const ::Assets::DivergentAssetBase& divAsset)
+	static AssetSaveEntry BuildAssetSaveEntry(uint64_t typeCode, const StringSection<::Assets::ResChar> identifier, const ToolsRig::DivergentAssetBase& divAsset)
 	{
 		// HACK -- special case for RawMaterial objects!
 		if (typeCode == typeid(::RenderCore::Assets::RawMaterial).hash_code()) {
@@ -458,7 +458,7 @@ namespace GUILayer
 			OutputStreamFormatter fmtter(strm);
 			MergeAndSerialize(fmtter, MakeIteratorRange(*originalFile),
 				splitName.AllExceptParameters(), splitName.Parameters(),
-				*static_cast<const ::Assets::DivergentAsset<::RenderCore::Assets::RawMaterial>&>(divAsset).GetWorkingAsset());
+				*static_cast<const ToolsRig::DivergentAsset<::RenderCore::Assets::RawMaterial>&>(divAsset).GetWorkingAsset());
 			auto newFile = ::Assets::AsBlob(MakeIteratorRange(strm.GetBuffer().Begin(), strm.GetBuffer().End()));
 
 			return AssetSaveEntry { std::move(originalFile), std::move(newFile), splitName.AllExceptParameters().AsString() };
@@ -479,7 +479,7 @@ namespace GUILayer
             //  should serialise quickly... But if we have many large
             //  assets, this could get expensive quickly!
 
-		auto& divAssetMan = ::Assets::Services::GetDivergentAssetMan();
+		auto& divAssetMan = ToolsRig::DivergentAssetManager::GetInstance();
 		for (const auto&d : divAssetMan.GetAssets()) {
 			if (!d._hasChanges) continue;
 
@@ -573,7 +573,7 @@ namespace GUILayer
 
 	bool PendingSaveList::HasModifiedAssets()
     {
-		auto& divAssetMan = ::Assets::Services::GetDivergentAssetMan();
+		auto& divAssetMan = ToolsRig::DivergentAssetManager::GetInstance();
 		for (const auto&d : divAssetMan.GetAssets())
 			if (!d._hasChanges) return true;
 		return false;

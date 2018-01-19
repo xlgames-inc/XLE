@@ -63,7 +63,6 @@
     <ClInclude Include="..\CompilerLibrary.h" />
     <ClInclude Include="..\ConfigFileContainer.h" />
     <ClInclude Include="..\DeferredConstruction.h" />
-    <ClInclude Include="..\DivergentAsset.h" />
     <ClInclude Include="..\AssetServices.h" />
     <ClInclude Include="..\GenericFuture.h" />
     <ClInclude Include="..\IAssetCompiler.h" />
@@ -89,7 +88,6 @@
     <ClCompile Include="..\CompileAndAsyncManager.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
     <ClCompile Include="..\DeferredConstruction.cpp" />
-    <ClCompile Include="..\DivergentAsset.cpp" />
     <ClCompile Include="..\AssetServices.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />
     <ClCompile Include="..\InvalidAssetManager.cpp" />

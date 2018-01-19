@@ -14,7 +14,6 @@ namespace Assets
     class AssetSetManager;
     class CompileAndAsyncManager;
     class InvalidAssetManager;
-	class DivergentAssetManager;
 
     template<typename Type>
         class AttachableSingleton
@@ -37,7 +36,6 @@ namespace Assets
         static AssetSetManager& GetAssetSets() { return *GetInstance()._assetSets; }
         static CompileAndAsyncManager& GetAsyncMan() { return *GetInstance()._asyncMan; }
         static InvalidAssetManager* GetInvalidAssetMan() { return s_instance?s_instance->_invalidAssetMan.get():nullptr; }
-		static DivergentAssetManager& GetDivergentAssetMan() { return *GetInstance()._divAssetMan; }
 
         struct Flags 
         {
@@ -57,7 +55,6 @@ namespace Assets
         std::unique_ptr<AssetSetManager>		_assetSets;
         std::unique_ptr<CompileAndAsyncManager> _asyncMan;
         std::unique_ptr<InvalidAssetManager>	_invalidAssetMan;
-		std::unique_ptr<DivergentAssetManager>	_divAssetMan;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
