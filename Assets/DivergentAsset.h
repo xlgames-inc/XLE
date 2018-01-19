@@ -230,7 +230,7 @@ namespace Assets
 			rstring		_identifier;
 			bool		_hasChanges;
 		};
-		auto	GetAssets() const ->std::vector<Record>;
+		auto	GetAssets() const -> std::vector<Record>;
 		auto	GetAsset(uint64_t typeCode, uint64_t id) const -> std::shared_ptr<DivergentAssetBase>;
 		void	AddAsset(uint64_t typeCode, uint64_t id, const rstring& identifier, const std::shared_ptr<DivergentAssetBase>&);
 

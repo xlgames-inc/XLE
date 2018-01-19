@@ -31,8 +31,8 @@ namespace GUILayer
                 : _filename(filename), _oldFileData(oldFileData), _newFileData(newFileData), _action(Action::Save) {}
         };
 
-        void Add(const ::Assets::IDefaultAssetHeap& set, uint64_t id, Entry^ entry);
-        Entry^ GetEntry(const ::Assets::IDefaultAssetHeap& set, uint64_t id);
+        void Add(uint64_t typeCode, uint64_t id, Entry^ entry);
+        Entry^ GetEntry(uint64_t typeCode, uint64_t id);
 
 		ref class CommitResult
 		{
@@ -51,7 +51,7 @@ namespace GUILayer
         value class E
         {
         public:
-            const ::Assets::IDefaultAssetHeap* _assetSet;
+            uint64_t _typeCode;
 			uint64_t _id;
             Entry^ _entry;
         };

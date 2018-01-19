@@ -57,7 +57,7 @@ namespace Assets
 		auto idInAssetHeap = set.SetShadowingAsset(std::move(workingAsset), params...);
 
 		auto stringInitializer = Internal::AsString(params...);
-		Services::GetDivergentAssetMan().AddDivergentAsset(
+		Services::GetDivergentAssetMan().AddAsset(
 			typeid(AssetType).hash_code(), idInAssetHeap, stringInitializer,
 			divergentAsset);
 

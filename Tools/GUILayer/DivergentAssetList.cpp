@@ -29,6 +29,7 @@
 
 using namespace System::Collections::Generic;
 
+#if 0
 namespace Assets
 {
 	///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -45,39 +46,10 @@ namespace Assets
 		virtual ~IDefaultAssetHeap();
 	};
 }
+#endif
 
 namespace GUILayer
 {
-    public ref class AssetItem
-    {
-    public:
-        property virtual System::String^ Label;
-
-        const ::Assets::IDefaultAssetHeap* _set; 
-        uint64_t _id;
-
-        PendingSaveList::Entry^ _pendingSave;
-        property virtual PendingSaveList::Action Action
-        {
-			PendingSaveList::Action get()
-            { 
-                return _pendingSave ? _pendingSave->_action : PendingSaveList::Action::Ignore;
-            }
-            void set(PendingSaveList::Action action)
-            {
-                if (_pendingSave) {
-                    _pendingSave->_action = action; 
-                }
-            }
-        }
-
-        AssetItem(const ::Assets::IDefaultAssetHeap& set, const ::Assets::rstring& label, uint64_t id) : _set(&set), _id(id)
-        {
-            Label = clix::marshalString<clix::E_UTF8>(label);
-            _pendingSave = nullptr;
-        }
-    };
-
 	static String^ GetAssetTypeName(uint64_t typeCode)
 	{
 		using MatType = RenderCore::Assets::RawMaterial;
@@ -106,13 +78,44 @@ namespace GUILayer
 		return nullptr;
 	}
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    public ref class AssetItem
+    {
+    public:
+        property virtual System::String^ Label;
+		PendingSaveList::Entry^ _pendingSave; 
+		uint64_t _idInAssetHeap;
+        
+        property virtual PendingSaveList::Action Action
+        {
+			PendingSaveList::Action get()
+            { 
+                return _pendingSave ? _pendingSave->_action : PendingSaveList::Action::Ignore;
+            }
+            void set(PendingSaveList::Action action)
+            {
+                if (_pendingSave) {
+                    _pendingSave->_action = action; 
+                }
+            }
+        }
+
+        AssetItem(const ::Assets::DivergentAssetManager::Record& record, PendingSaveList::Entry^ pendingSave) 
+		: _idInAssetHeap(record._idInAssetHeap)
+		, _pendingSave(pendingSave)
+        {
+            Label = clix::marshalString<clix::E_UTF8>(record._identifier);
+        }
+    };
+
     public ref class AssetTypeItem
     {
     public:
         property virtual System::String^ Label;
 		property virtual System::Drawing::Image^ Icon;
 
-        const ::Assets::IDefaultAssetHeap* _set;
+		uint64_t _typeCode;
         List<AssetItem^>^ _children;
 
 		PendingSaveList::Action _action;
@@ -135,20 +138,20 @@ namespace GUILayer
             }
         }
 
-		using AssetList = std::vector<::Assets::DivergentAssetManager::Record>;
-		clix::shared_ptr<AssetList> _assetList;
-
-        AssetTypeItem(const ::Assets::IDefaultAssetHeap& set, const AssetList& assetsList) : _set(&set)
+        AssetTypeItem(uint64_t typeCode)
+		: _typeCode(typeCode)
         {
-			_assetList = std::make_shared<AssetList>(assetsList);
-            _children = nullptr;
-			Label = GetAssetTypeName(set.GetTypeCode());
+            _children = gcnew List<AssetItem^>();
+			Label = GetAssetTypeName(typeCode);
 			if (String::IsNullOrEmpty(Label))
-				Label = clix::marshalString<clix::E_UTF8>(set.GetTypeName());
-			Icon = GetAssetTypeImage(set.GetTypeCode());
+				// Label = clix::marshalString<clix::E_UTF8>(set.GetTypeName());
+				Label = Convert::ToString(typeCode);
+			Icon = GetAssetTypeImage(typeCode);
             _action = PendingSaveList::Action::Save;
         }
     };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public ref class TransactionItem
     {
@@ -177,27 +180,22 @@ namespace GUILayer
 
             auto result = gcnew List<AssetTypeItem^>();
 
-                // root node should be the list of asset types that have divergent assets
-            /*
-			auto count = _assetSets->GetAssetSetCount();
-            for (unsigned c = 0; c < count; ++c) {
-                const auto* set = _assetSets->GetAssetSet(c);
-                if (!set) continue;
-
-                auto divAssets = set->GetDivergentAssets();
-				bool hasChangedAsset = false;
-				for (const auto&d : divAssets) if (d._hasChanges) { hasChangedAsset = true; break; }
-                if (hasChangedAsset)
-                    result->Add(gcnew AssetTypeItem(*set, divAssets));
-            }
-			*/
-
-			auto divAssets = ::Assets::Services::GetDivergentAssetMan().GetDivergentAssets();
-			for (const auto&d:divAssets.GetDivergentAssets()) {
+			auto divAssets = ::Assets::Services::GetDivergentAssetMan().GetAssets();
+			for (const auto&d:divAssets) {
 				if (!d._hasChanges) continue;
 
-				auto divAsset = divAssets.GetAsset(d._typeCode, d._idInAssetHeap);
-				divAsset->
+				AssetTypeItem^ item = nullptr;
+				for each (AssetTypeItem^ i in result) {
+					if (i->_typeCode == d._typeCode) {
+						item = i;
+						break;
+					}
+				}
+				if (!item) {
+					item = gcnew AssetTypeItem(d._typeCode);
+					result->Add(item);
+				}
+				item->_children->Add(gcnew AssetItem(d, _saveList->GetEntry(d._typeCode, d._idInAssetHeap)));
 			}
 
             return result;
@@ -208,26 +206,7 @@ namespace GUILayer
             {
                 auto item = dynamic_cast<AssetTypeItem^>(lastItem);
                 if (item) {
-                    if (!item->_children) {
-                            // expecting the list of divergent assets of this type
-                        item->_children = gcnew List<AssetItem^>();
-
-						const auto& divAssets = *item->_assetList.get();
-                        for (const auto&d:divAssets) {
-                            if (!d._hasChanges) continue;
-
-                            auto assetItem = gcnew AssetItem(*item->_set, d._identifier, d._id);
-
-                                // if we have a "pending save" for this item
-                                // then we have to hook it up
-                            assetItem->_pendingSave = _saveList->GetEntry(*item->_set, d._id);
-
-                            item->_children->Add(assetItem);
-                        }
-                    }
-
-
-                    return item->_children;
+					return item->_children;
                 }
             }
 
@@ -279,25 +258,25 @@ namespace GUILayer
  
 
 
-    void PendingSaveList::Add(const ::Assets::IDefaultAssetHeap& set, uint64_t id, Entry^ entry)
+    void PendingSaveList::Add(uint64_t typeCode, uint64_t id, Entry^ entry)
     {
         for each(auto e in _entries)
-            if (e._assetSet == &set && e._id == id) {
+            if (e._typeCode == typeCode && e._id == id) {
                 assert(0);
                 return;
             }
         
         auto e = gcnew E();
-        e->_assetSet = &set;
+        e->_typeCode = typeCode;
         e->_id = id;
         e->_entry = entry;
         _entries->Add(*e);
     }
 
-    auto PendingSaveList::GetEntry(const ::Assets::IDefaultAssetHeap& set, uint64_t id) -> Entry^
+    auto PendingSaveList::GetEntry(uint64_t typeCode, uint64_t id) -> Entry^
     {
         for each(auto e in _entries)
-            if (e._assetSet == &set && e._id == id) {
+            if (e._typeCode == typeCode && e._id == id) {
                 return e._entry;
             }
 
@@ -500,36 +479,21 @@ namespace GUILayer
             //  should serialise quickly... But if we have many large
             //  assets, this could get expensive quickly!
 
-        #if 1 // defined(ASSETS_STORE_DIVERGENT)
+		auto& divAssetMan = ::Assets::Services::GetDivergentAssetMan();
+		for (const auto&d : divAssetMan.GetAssets()) {
+			if (!d._hasChanges) continue;
 
-                    
-			auto& setMan = ::Assets::GetAssetSetManager();
-			setMan.Lock();
-			try {
-				auto cnt = setMan.GetAssetSetCount();
-				for (unsigned c = 0; c < cnt; ++c) {
-					auto* set = setMan.GetAssetSet(c);
-					if (!set) continue;
+			auto asset = divAssetMan.GetAsset(d._typeCode, d._idInAssetHeap);
+			auto saveEntry = BuildAssetSaveEntry(d._typeCode, MakeStringSection(d._identifier), *asset);
+			if (!saveEntry._newFile || saveEntry._newFile->empty()) continue;
 
-					auto divAssets = set->GetDivergentAssets();
-					for (const auto&div : divAssets) {
-						if (!div._hasChanges) continue;
-						auto saveEntry = BuildAssetSaveEntry(set->GetTypeCode(), MakeStringSection(div._identifier), *set->GetDivergentAsset(div._id));
-						if (!saveEntry._newFile || saveEntry._newFile->empty()) continue;
-
-						result->Add(
-							*set, div._id,
-							gcnew PendingSaveList::Entry(
-								clix::marshalString<clix::E_UTF8>(saveEntry._name),
-								AsByteArray(saveEntry._originalFile),
-								AsByteArray(saveEntry._newFile)));
-					}
-				}
-			} finally {
-				setMan.Unlock();
-			}
-
-        #endif
+			result->Add(
+				d._typeCode, d._idInAssetHeap,
+				gcnew PendingSaveList::Entry(
+					clix::marshalString<clix::E_UTF8>(saveEntry._name),
+					AsByteArray(saveEntry._originalFile),
+					AsByteArray(saveEntry._newFile)));
+		}
 
         return result;
     }
@@ -609,27 +573,10 @@ namespace GUILayer
 
 	bool PendingSaveList::HasModifiedAssets()
     {
-        #if 1 // defined(ASSETS_STORE_DIVERGENT)
-
-            auto& setMan = ::Assets::GetAssetSetManager();
-			setMan.Lock();
-			try {
-				auto cnt = setMan.GetAssetSetCount();
-				for (unsigned c = 0; c < cnt; ++c) {
-					auto* set = setMan.GetAssetSet(c);
-					if (!set) continue;
-
-					auto divAssets = set->GetDivergentAssets();
-					for (const auto&div : divAssets)
-						if (div._hasChanges) return true;
-				}
-			} finally {
-				setMan.Unlock();
-			}
-
-        #endif
-
-        return false;
+		auto& divAssetMan = ::Assets::Services::GetDivergentAssetMan();
+		for (const auto&d : divAssetMan.GetAssets())
+			if (!d._hasChanges) return true;
+		return false;
     }
 }
 
