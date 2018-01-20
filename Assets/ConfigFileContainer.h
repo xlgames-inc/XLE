@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "InvalidAssetManager.h"
 #include "../Assets/IFileSystem.h"
+#include "../Assets/AssetsCore.h"		// (for ResChar)
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/PathUtils.h"

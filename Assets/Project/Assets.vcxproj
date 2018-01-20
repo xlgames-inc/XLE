@@ -68,7 +68,6 @@
     <ClInclude Include="..\IAssetCompiler.h" />
     <ClInclude Include="..\IFileSystem.h" />
     <ClInclude Include="..\IntermediateAssets.h" />
-    <ClInclude Include="..\InvalidAssetManager.h" />
     <ClInclude Include="..\MemoryFile.h" />
     <ClInclude Include="..\MountingTree.h" />
     <ClInclude Include="..\NascentChunk.h" />
@@ -90,7 +89,6 @@
     <ClCompile Include="..\DeferredConstruction.cpp" />
     <ClCompile Include="..\AssetServices.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />
-    <ClCompile Include="..\InvalidAssetManager.cpp" />
     <ClCompile Include="..\MainFileSystem.cpp" />
     <ClCompile Include="..\MountingTree.cpp" />
     <ClCompile Include="..\NascentChunk.cpp" />

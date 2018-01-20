@@ -11,7 +11,6 @@
 #include "../../ShaderLangUtil.h"
 #include "../../../Assets/IAssetCompiler.h"
 #include "../../../Assets/AssetUtils.h"
-#include "../../../Assets/InvalidAssetManager.h"
 #include "../../../Assets/ConfigFileContainer.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/Assets.h"
@@ -318,29 +317,8 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////
 
-    #define RECORD_INVALID_ASSETS
-    #if defined(RECORD_INVALID_ASSETS)
-
-        static void RegisterInvalidAsset(const ::Assets::ResChar assetName[], const std::basic_string<::Assets::ResChar>& errorString)
-        {
-            if (::Assets::Services::GetInvalidAssetMan())
-                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(assetName, errorString);
-        }
-
-        static void RegisterValidAsset(const ::Assets::ResChar assetName[])
-        {
-            if (::Assets::Services::GetInvalidAssetMan())
-                ::Assets::Services::GetInvalidAssetMan()->MarkValid(assetName);
-        }
-
-    #else
-
-        static void RegisterInvalidAsset(const ResChar resourceName[], const std::basic_string<ResChar>& errorString) {}
-        static void RegisterValidAsset(const ResChar resourceName[]) {}
-
-    #endif
-
-    static const char* AsString(HRESULT reason)
+    /*
+	static const char* AsString(HRESULT reason)
     {
         switch (reason) {
         case D3D11_ERROR_FILE_NOT_FOUND: return "File not found";
@@ -348,37 +326,7 @@ namespace RenderCore { namespace Metal_DX11
         default: return "General failure";
         }
     }
-
-    static void MarkInvalid(
-        const ShaderService::ResId& shaderPath,
-        HRESULT hresult,
-        const ShaderService::ILowLevelCompiler::Payload& errorsBlob)
-    {
-        StringMeld<MaxPath, ::Assets::ResChar> initializer;
-        initializer << shaderPath._filename << ':' << shaderPath._entryPoint << ':' << shaderPath._shaderModel;
-
-        std::basic_stringstream<::Assets::ResChar> stream;
-        stream << "Encountered errors while compiling shader: " << initializer << " (" << AsString(hresult) << ")" << std::endl;
-
-        if (errorsBlob && !errorsBlob->empty()) {
-            const auto* errors = (const char*)AsPointer(errorsBlob->cbegin());
-            stream << "Errors as follows:" << std::endl;
-            stream << errors;
-
-            LogInfo << "Shader errors while compiling (" << shaderPath._filename << ":" << shaderPath._entryPoint << ")";
-            LogInfo << errors;
-        } else {
-            stream << "(no extra data)" << std::endl;
-        }
-
-        RegisterInvalidAsset(initializer, stream.str());
-    }
-  
-    static void MarkValid(const ShaderService::ResId& shaderPath)
-    {
-        RegisterValidAsset(
-            StringMeld<MaxPath, ::Assets::ResChar>() << shaderPath._filename << ':' << shaderPath._entryPoint << ':' << shaderPath._shaderModel);
-    }
+	*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1311,10 +1259,7 @@ namespace RenderCore { namespace Metal_DX11
                 }
             
                 FunctionLinkingGraph flg(finalSection, shortenedModel, definesTable, ::Assets::DefaultDirectorySearchRules(shaderPath._filename));
-                bool linkResult = flg.TryLink(payload, errors, dependencies, shaderModel);
-                if (linkResult) { MarkValid(shaderPath); }
-                else            { MarkInvalid(shaderPath, S_FALSE, errors); }
-                return linkResult;
+                return flg.TryLink(payload, errors, dependencies, shaderModel);
 
             } catch (const std::exception& e) {
 
@@ -1322,7 +1267,6 @@ namespace RenderCore { namespace Metal_DX11
                     // step. We can get parsing errors here, as well as linking errors
                 auto* what = e.what();
                 errors = std::make_shared<std::vector<uint8>>(what, XlStringEnd(what)+1);
-                MarkInvalid(shaderPath, S_FALSE, errors);
                 return false;
 
             }
@@ -1356,9 +1300,6 @@ namespace RenderCore { namespace Metal_DX11
             dependencies = includeHandler.GetIncludeFiles();
             dependencies.push_back(
                 ::Assets::IntermediateAssets::Store::GetDependentFileState(shaderPath._filename));   // also need a dependency for the base file
-
-            if (SUCCEEDED(hresult)) { MarkValid(shaderPath); }
-            else                    { MarkInvalid(shaderPath, hresult, errors); }
 
             return SUCCEEDED(hresult);
 

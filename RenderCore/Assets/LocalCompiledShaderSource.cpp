@@ -180,7 +180,7 @@ namespace RenderCore { namespace Assets
             return;
         }
 
-		TRY {
+		// TRY {
 			Payload errors;
 			_payload.reset();
 			_deps.clear();
@@ -199,21 +199,14 @@ namespace RenderCore { namespace Assets
 				// object. We need to call chain explicitly in order to release
 				// this object (otherwise we end up with a cyclic reference that
 				// doesn't get broken, and a leak)
-			if (_chain) {
-				TRY {
-					_chain(_shaderPath, _definesTable, result, _payload, errors, MakeIteratorRange(_deps));
-				} CATCH (const std::bad_function_call& e) {
-                    Log(Warning)
-                        << "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")" << std::endl
-                        << "This may prevent the shader from being flushed to disk in it's compiled form. But the shader should still be useable" << std::endl;
-				} CATCH_END
-			}
+			if (_chain)
+				_chain(_shaderPath, _definesTable, result, _payload, errors, MakeIteratorRange(_deps));
 
-			SetState(result);
-		} CATCH(...) {
-			SetState(::Assets::AssetState::Invalid);
-			throw;
-		} CATCH_END
+			// SetState(result);
+		// } CATCH(...) {
+		//	SetState(::Assets::AssetState::Invalid);
+		//	throw;
+		// } CATCH_END
     }
 
     auto ShaderCompileMarker::GetErrors() const -> Payload { return Payload(); }
@@ -590,6 +583,10 @@ namespace RenderCore { namespace Assets
                 marker->SetState(newState);
 
                 c->RemoveCompileOperation(*tempPtr);
+
+				if (newState == ::Assets::AssetState::Invalid)
+					Throw(::Assets::Exceptions::ConstructionError(
+						::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood, depVal, errors));
             });
 
         return std::move(marker);

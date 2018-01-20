@@ -221,10 +221,10 @@ namespace PlatformRig
         {
             if (Tweakable("FrameRigStats", false) && (_pimpl->_frameRenderCount % 64) == (64-1)) {
                 auto f = _pimpl->_frameRate.GetPerformanceStats();
-                Log(Verbose) << "Ave FPS: " << 1000.f / std::get<0>(f);
+                Log(Verbose) << "Ave FPS: " << 1000.f / std::get<0>(f) << std::endl;
                     // todo -- we should get a rolling average of these values
                 if (_pimpl->_prevFrameAllocationCount._allocationCount) {
-					Log(Verbose) << "(" << _pimpl->_prevFrameAllocationCount._freeCount << ") frees and (" << _pimpl->_prevFrameAllocationCount._allocationCount << ") allocs during frame. Ave alloc: (" << _pimpl->_prevFrameAllocationCount._allocationsSize / _pimpl->_prevFrameAllocationCount._allocationCount << ").";
+					Log(Verbose) << "(" << _pimpl->_prevFrameAllocationCount._freeCount << ") frees and (" << _pimpl->_prevFrameAllocationCount._allocationCount << ") allocs during frame. Ave alloc: (" << _pimpl->_prevFrameAllocationCount._allocationsSize / _pimpl->_prevFrameAllocationCount._allocationCount << ")." << std::endl;
                 }
             }
         }
@@ -296,15 +296,15 @@ namespace PlatformRig
 
         _pimpl->_mainOverlaySys->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem));
 
-		Log(Verbose) << "---- Beginning FrameRig ------------------------------------------------------------------";
+		Log(Verbose) << "---- Beginning FrameRig ------------------------------------------------------------------" << std::endl;
         auto accAlloc = AccumulatedAllocations::GetInstance();
         if (accAlloc) {
             auto acc = accAlloc->GetAndClear();
             if (acc._allocationCount)
-                LogInfo << "(" << acc._freeCount << ") frees and (" << acc._allocationCount << ") allocs during startup. Ave alloc: (" << acc._allocationsSize / acc._allocationCount << ").";
+                LogInfo << "(" << acc._freeCount << ") frees and (" << acc._allocationCount << ") allocs during startup. Ave alloc: (" << acc._allocationsSize / acc._allocationCount << ")." << std::endl;
             auto metrics = accAlloc->GetCurrentHeapMetrics();
             if (metrics._blockCount)
-                LogInfo << "(" << metrics._blockCount << ") active normal block allocations in (" << metrics._usage / (1024.f*1024.f) << "M bytes). Ave: (" << metrics._usage / metrics._blockCount << ").";
+                LogInfo << "(" << metrics._blockCount << ") active normal block allocations in (" << metrics._usage / (1024.f*1024.f) << "M bytes). Ave: (" << metrics._usage / metrics._blockCount << ")." << std::endl;
         }
 
         if (isMainFrameRig) {

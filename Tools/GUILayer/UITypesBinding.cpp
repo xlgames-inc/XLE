@@ -18,13 +18,29 @@
 #include "../../RenderCore/Metal/State.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/InvalidAssetManager.h"
+#include "../../Assets/AssetSetManager.h"
+#include "../../Assets/AssetsCore.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../RenderCore/Techniques/RenderStateResolver.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Conversion.h"
 #include <msclr/auto_gcroot.h>
 #include <iomanip>
+
+namespace Assets
+{
+	// hack -- duplicate this from AssetHeap.h (because we can't include that due to <mutex> problem with C++/CLR
+	class AssetHeapRecord
+	{
+	public:
+		rstring		_initializer;
+		AssetState	_state;
+		DepValPtr	_depVal;
+		Blob		_actualizationLog;
+		uint64_t	_typeCode;
+		uint64_t	_idInAssetHeap;
+	};
+}
 
 namespace GUILayer
 {
@@ -757,41 +773,31 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void InvokeChangeEvent(gcroot<InvalidAssetList^> ptr)
+	InvalidAssetList::InvalidAssetList()
     {
-        return ptr->RaiseChangeEvent();
-    }
-
-    InvalidAssetList::InvalidAssetList()
-    {
-        _eventId = 0;
-
-            // get the list of assets from the underlying manager
-        if (::Assets::Services::GetInvalidAssetMan()) {
-            auto& man = *::Assets::Services::GetInvalidAssetMan();
-            gcroot<InvalidAssetList^> ptrToThis = this;
-            _eventId = man.AddOnChangeEvent(std::bind(InvokeChangeEvent, ptrToThis));
-        }
     }
 
     InvalidAssetList::~InvalidAssetList()
     {
-        if (::Assets::Services::GetInvalidAssetMan())
-            ::Assets::Services::GetInvalidAssetMan()->RemoveOnChangeEvent(_eventId);
     }
 
     IEnumerable<Tuple<String^, String^>^>^ InvalidAssetList::AssetList::get() 
     { 
         auto result = gcnew List<Tuple<String^, String^>^>();
-        result->Clear();
-        if (::Assets::Services::GetInvalidAssetMan()) {
-            auto list = ::Assets::Services::GetInvalidAssetMan()->GetAssets();
-            for (const auto& i : list) {
-                result->Add(gcnew Tuple<String^, String^>(
-                    clix::marshalString<clix::E_UTF8>(i._name),
-                    clix::marshalString<clix::E_UTF8>(i._errorString)));
-            }
+
+		auto records = ::Assets::Services::GetAssetSets().LogRecords();
+        for (const auto& i : records) {
+			if (i._state != ::Assets::AssetState::Invalid) continue;
+
+			std::string logStr(
+				(const char*)AsPointer(i._actualizationLog->begin()),
+				(const char*)AsPointer(i._actualizationLog->end()));
+
+            result->Add(gcnew Tuple<String^, String^>(
+                clix::marshalString<clix::E_UTF8>(i._initializer),
+                clix::marshalString<clix::E_UTF8>(logStr)));
         }
+
         return result;
     }
 
@@ -802,7 +808,8 @@ namespace GUILayer
 
     bool InvalidAssetList::HasInvalidAssets()
     {
-        return ::Assets::Services::GetInvalidAssetMan() ? ::Assets::Services::GetInvalidAssetMan()->HasInvalidAssets() : false;
+		// no way to check if there are actually invalid assets now
+		return true;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -30,7 +30,9 @@ namespace Assets
 		AssetState		GetAssetState() const;
 		AssetState		StallWhilePending() const;
 
-		const std::string&     Initializer() const { return _initializer; }
+		const std::string&		Initializer() const { return _initializer; }
+		const DepValPtr&		GetDependencyValidation() const { return _actualizedDepVal; }
+		const Blob&				GetActualizationLog() const { return _actualizationLog; }
 
 		explicit AssetFuture(const std::string& initializer);
 		~AssetFuture();
@@ -188,6 +190,7 @@ namespace Assets
 				assert(that->_state == AssetState::Pending);
 				that->_actualized = std::move(that->_pending);
 				that->_actualizationLog = std::move(that->_pendingActualizationLog);
+				that->_actualizedDepVal = std::move(that->_pendingDepVal);
 				that->_state = that->_pendingState;
 				return that->_state;
 			}

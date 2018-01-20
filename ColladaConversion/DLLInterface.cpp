@@ -593,8 +593,8 @@ namespace ColladaConversion
 				result->_fileData.GetData(), 
 				PtrAdd(result->_fileData.GetData(), result->_fileData.GetSize())));
 
-		result->_dependencies->push_back({ MakeStringSection("colladaimport.cfg"), 0 });
-		result->_dependencies->push_back({ filePath, 0 });
+		result->_dependencies->push_back({ MakeStringSection("colladaimport.cfg"), ::Assets::MainFileSystem::TryGetDesc("colladaimport.cfg")._modificationTime });
+		result->_dependencies->push_back({ filePath, ::Assets::MainFileSystem::TryGetDesc(filePath)._modificationTime });
 
 		result->_name = identifier.AsString();
 		result->_rootNode = split.Parameters().AsString();

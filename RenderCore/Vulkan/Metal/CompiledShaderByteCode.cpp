@@ -12,7 +12,6 @@
 #include "../../ShaderService.h"
 #include "../../ShaderLangUtil.h"
 #include "../../../Assets/AssetServices.h"
-#include "../../../Assets/InvalidAssetManager.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Utility/StringUtils.h"
 

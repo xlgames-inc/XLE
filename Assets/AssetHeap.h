@@ -10,14 +10,26 @@ namespace Assets
 {
 	class DivergentAssetBase;
 
+	class AssetHeapRecord
+	{
+	public:
+		rstring		_initializer;
+		AssetState	_state;
+		DepValPtr	_depVal;
+		Blob		_actualizationLog; 
+		uint64_t	_typeCode;
+		uint64_t	_idInAssetHeap;
+	};
+
 	class IDefaultAssetHeap
 	{
 	public:
-		virtual void            Clear() = 0;
-		virtual void            LogReport() const = 0;
+		virtual void			OnFrameBarrier() = 0; 
 		virtual uint64_t		GetTypeCode() const = 0;
 		virtual std::string		GetTypeName() const = 0;
-		virtual void			OnFrameBarrier() = 0;
+		virtual void            Clear() = 0;
+
+		virtual std::vector<AssetHeapRecord>	LogRecords() const = 0;
 
 		virtual ~IDefaultAssetHeap();
 	};
@@ -35,17 +47,18 @@ namespace Assets
 			uint64_t SetShadowingAsset(AssetPtr<AssetType>&& newShadowingAsset, Params...);
 
 		void            Clear();
-		void            LogReport() const;
 		uint64_t		GetTypeCode() const;
 		std::string		GetTypeName() const;
 		void			OnFrameBarrier();
+
+		std::vector<AssetHeapRecord>		LogRecords() const;
 
 		DefaultAssetHeap();
 		~DefaultAssetHeap();
 		DefaultAssetHeap(const DefaultAssetHeap&) = delete;
 		DefaultAssetHeap& operator=(const DefaultAssetHeap&) = delete;
 	private:
-		Threading::Mutex _lock;		
+		mutable Threading::Mutex _lock;		
 		std::vector<std::pair<uint64_t, FuturePtr<AssetType>>> _assets;
 		std::vector<std::pair<uint64_t, FuturePtr<AssetType>>> _shadowingAssets;
 	};
@@ -53,8 +66,9 @@ namespace Assets
 	template<typename AssetType>
 		static bool IsInvalidated(const AssetFuture<AssetType>& future)
 	{
-		if (future.GetAssetState() != AssetState::Ready) return false;
-		return future.Actualize()->GetDependencyValidation()->GetValidationIndex() > 0;
+		auto state = future.GetAssetState();
+		if (state == AssetState::Pending) return false;
+		return future.GetDependencyValidation()->GetValidationIndex() > 0;
 	}
 
 	template<typename AssetType>
@@ -77,7 +91,10 @@ namespace Assets
 
 			auto stringInitializer = Internal::AsString(initialisers...);	// (used for tracking/debugging purposes)
 			newFuture = std::make_shared<AssetFuture<AssetType>>(stringInitializer);
-			_assets.insert(i, { hash, newFuture });
+			if (i != _assets.end() && i->first == hash) {
+				i->second = newFuture;
+			} else 
+				_assets.insert(i, { hash, newFuture });
 		}
 
 		// note -- call AutoConstructToFuture outside of the mutex lock, because this operation can be expensive
@@ -138,8 +155,20 @@ namespace Assets
 	
 	template<typename AssetType>
 		void            DefaultAssetHeap<AssetType>::Clear() {}
+
 	template<typename AssetType>
-		void            DefaultAssetHeap<AssetType>::LogReport() const {}
+		auto DefaultAssetHeap<AssetType>::LogRecords() const -> std::vector<AssetHeapRecord>
+	{
+		ScopedLock(_lock);
+		std::vector<AssetHeapRecord> result;
+		result.reserve(_assets.size() + _shadowingAssets.size());
+		auto typeCode = GetTypeCode();
+		for (const auto&a : _assets)
+			result.push_back({ a.second->Initializer(), a.second->GetAssetState(), a.second->GetDependencyValidation(), a.second->GetActualizationLog(), typeCode, a.first });
+		for (const auto&a : _shadowingAssets)
+			result.push_back({ a.second->Initializer(), a.second->GetAssetState(), a.second->GetDependencyValidation(), a.second->GetActualizationLog(), typeCode, a.first });
+		return result;
+	}
 
 	template<typename AssetType>
 		uint64_t		DefaultAssetHeap<AssetType>::GetTypeCode() const

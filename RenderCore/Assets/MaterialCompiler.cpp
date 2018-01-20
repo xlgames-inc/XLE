@@ -15,7 +15,6 @@
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/MemoryFile.h"
 #include "../../Assets/NascentChunk.h"
-#include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../ConsoleRig/Log.h"
@@ -209,12 +208,12 @@ namespace RenderCore { namespace Assets
 		} CATCH(const std::exception& e) {
 			LogAlwaysError << "Caught exception while performing material compile. Exception details as follows:";
 			LogAlwaysError << e.what();
-			if (::Assets::Services::GetInvalidAssetMan())
-				::Assets::Services::GetInvalidAssetMan()->MarkInvalid(compileMarker.Initializer(), e.what());
+//			if (::Assets::Services::GetInvalidAssetMan())
+//				::Assets::Services::GetInvalidAssetMan()->MarkInvalid(compileMarker.Initializer(), e.what());
 			compileMarker.SetState(::Assets::AssetState::Invalid);
 		} CATCH(...) {
-			if (::Assets::Services::GetInvalidAssetMan())
-				::Assets::Services::GetInvalidAssetMan()->MarkInvalid(compileMarker.Initializer(), "Unknown error");
+//			if (::Assets::Services::GetInvalidAssetMan())
+//				::Assets::Services::GetInvalidAssetMan()->MarkInvalid(compileMarker.Initializer(), "Unknown error");
 			compileMarker.SetState(::Assets::AssetState::Invalid);
 		} CATCH_END
         

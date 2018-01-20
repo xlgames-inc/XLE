@@ -13,7 +13,6 @@
 #include "../Metal/DeviceContext.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/Assets.h"
@@ -458,8 +457,6 @@ namespace RenderCore { namespace Techniques
 		const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal)
     {
-		// todo -- register in ::Assets::Services::GetInvalidAssetMan() if we 
-		//		get a parse failure
 		std::vector<::Assets::DepValPtr> inherited;
             
             //  each top-level entry is a "Setting", which can contain parameter
@@ -680,20 +677,8 @@ namespace RenderCore { namespace Techniques
 						configSection = i->_content;
 				}
 
-				TRY
-				{
-					Formatter formatter(MemoryMappedInputStream(configSection.begin(), configSection.end()));
-					ParseConfigFile(formatter, resourceName, searchRules, inheritedAssets);
-					if (::Assets::Services::GetInvalidAssetMan())
-						::Assets::Services::GetInvalidAssetMan()->MarkValid(resourceName);
-				}
-				CATCH (const FormatException& e)
-				{
-					if (::Assets::Services::GetInvalidAssetMan())
-						::Assets::Services::GetInvalidAssetMan()->MarkInvalid(resourceName, e.what());
-					throw;
-				}
-				CATCH_END
+				Formatter formatter(MemoryMappedInputStream(configSection.begin(), configSection.end()));
+				ParseConfigFile(formatter, resourceName, searchRules, inheritedAssets);
 
 					// Do some patch-up after parsing...
 					// we want to replace <.> with the name of the asset

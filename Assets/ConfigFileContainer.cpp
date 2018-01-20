@@ -202,21 +202,6 @@ namespace Assets
     //  working currently
     template std::vector<TextChunk<char>> ReadCompoundTextDocument(StringSection<char>);
 
-    namespace Internal
-    {
-        void MarkInvalid(StringSection<ResChar> initializer, const char reason[])
-        {
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkInvalid(initializer, reason);
-        }
-
-        void MarkValid(StringSection<ResChar> initializer)
-        {
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkValid(initializer);
-        }
-    }
-
 	template class ConfigFileContainer<InputStreamFormatter<utf8>>;
 	template class ConfigFileContainer<InputStreamFormatter<utf16>>;
 }

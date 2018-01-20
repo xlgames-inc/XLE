@@ -10,7 +10,6 @@
 #include "TerrainScaffold.h"
 #include "../Assets/Assets.h"
 #include "../Assets/AssetServices.h"
-#include "../Assets/InvalidAssetManager.h"
 #include "../Assets/IFileSystem.h"
 #include "../Math/Transformations.h"
 #include "../Utility/Streams/StreamFormatter.h"

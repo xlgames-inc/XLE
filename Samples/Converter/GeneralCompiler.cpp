@@ -7,7 +7,6 @@
 #include "GeneralCompiler.h"
 #include "../../Assets/CompilationThread.h"
 #include "../../Assets/AssetUtils.h"
-#include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/NascentChunk.h"
 #include "../../Assets/CompilerLibrary.h"
@@ -244,12 +243,12 @@ namespace Converter
         } CATCH(const std::exception& e) {
             LogAlwaysError << "Caught exception while performing general compiler conversion. Exception details as follows:";
             LogAlwaysError << e.what();
-            if (::Assets::Services::GetInvalidAssetMan())
-                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(initializer, e.what());
+//            if (::Assets::Services::GetInvalidAssetMan())
+//                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(initializer, e.what());
 			compileMarker.SetState(::Assets::AssetState::Invalid);
         } CATCH(...) {
-            if (::Assets::Services::GetInvalidAssetMan())
-                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(initializer, "Unknown error");
+//            if (::Assets::Services::GetInvalidAssetMan())
+//                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(initializer, "Unknown error");
 			compileMarker.SetState(::Assets::AssetState::Invalid);
         } CATCH_END
     }

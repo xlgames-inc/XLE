@@ -46,7 +46,7 @@ namespace Assets
 		typename std::enable_if<Internal::HasDirectAutoConstructAsset<AssetType, Params...>::value>::type* = nullptr>
 		void AutoConstructToFutureDirect(AssetFuture<AssetType>& future, Params... initialisers)
 	{
-		TRY{
+		TRY {
 			auto asset = AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
 			future.SetAsset(std::move(asset), {});
 		} CATCH (const Exceptions::ConstructionError& e) {
@@ -79,29 +79,36 @@ namespace Assets
 			if (!doRecompile) return;
 		}
 
-		auto pendingCompile = marker->InvokeCompile();
-		// We must poll the compile operation every frame, and construct the asset when it is ready. Note that we're
-		// still going to end up constructing the asset in the main thread.
-		future.SetPollingFunction(
-			[pendingCompile](AssetFuture<AssetType>& thatFuture) -> bool {
-				auto state = pendingCompile->GetAssetState();
-				if (state == AssetState::Pending) return true;
+		TRY { 
+			auto pendingCompile = marker->InvokeCompile();
 
-				if (state == AssetState::Invalid) {
-					auto artifacts = pendingCompile->GetArtifacts();
-					if (!artifacts.empty()) {
-						thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetErrors());
-					} else {
-						thatFuture.SetInvalidAsset(nullptr, nullptr);
+			// We must poll the compile operation every frame, and construct the asset when it is ready. Note that we're
+			// still going to end up constructing the asset in the main thread.
+			future.SetPollingFunction(
+				[pendingCompile](AssetFuture<AssetType>& thatFuture) -> bool {
+					auto state = pendingCompile->GetAssetState();
+					if (state == AssetState::Pending) return true;
+
+					if (state == AssetState::Invalid) {
+						auto artifacts = pendingCompile->GetArtifacts();
+						if (!artifacts.empty()) {
+							thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetErrors());
+						} else {
+							thatFuture.SetInvalidAsset(nullptr, nullptr);
+						}
+						return false;
 					}
-					return false;
-				}
 
-				assert(state == AssetState::Ready);
-				auto& artifact = *pendingCompile->GetArtifacts()[0].second;
-				AutoConstructToFutureDirect(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation(), artifact.GetRequestParameters());
-				return false;
-			});
+					assert(state == AssetState::Ready);
+					auto& artifact = *pendingCompile->GetArtifacts()[0].second;
+					AutoConstructToFutureDirect(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation(), artifact.GetRequestParameters());
+					return false;
+				});
+		} CATCH(const Exceptions::ConstructionError& e) {
+			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
+		} CATCH(const std::exception& e) {
+			future.SetInvalidAsset(nullptr, AsBlob(e));
+		} CATCH_END
 	}
 
 	template<

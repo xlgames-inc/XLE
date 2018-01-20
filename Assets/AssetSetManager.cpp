@@ -48,11 +48,15 @@ namespace Assets
         }
     }
 
-    void AssetSetManager::LogReport()
+	std::vector<AssetHeapRecord> AssetSetManager::LogRecords() const
     {
-        for (auto i=_pimpl->_sets.begin(); i!=_pimpl->_sets.end(); ++i) {
-            i->second->LogReport();
-        }
+		ScopedLock(_pimpl->_lock);
+		std::vector<AssetHeapRecord> result;
+		for (auto&set : _pimpl->_sets) {
+			auto records = set.second->LogRecords();
+			result.insert(result.end(), records.begin(), records.end());
+		}
+		return result;
     }
 
     unsigned AssetSetManager::GetAssetSetCount()

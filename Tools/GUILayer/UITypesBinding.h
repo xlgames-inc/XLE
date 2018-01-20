@@ -391,15 +391,12 @@ namespace GUILayer
             IEnumerable<Tuple<String^, String^>^>^ get();
         }
 
-        static bool HasInvalidAssets();
-
-        delegate void OnChange();
-        event OnChange^ _onChange;
-        void RaiseChangeEvent();
+        static bool			HasInvalidAssets();
+        delegate void		OnChange();
+        event OnChange^		_onChange;
+        void				RaiseChangeEvent();
 
         InvalidAssetList();
         ~InvalidAssetList();
-    protected:
-        unsigned _eventId;
     };
 }

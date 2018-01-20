@@ -9,10 +9,12 @@
 #include "../Core/Types.h"
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace Assets
 {
 	class IDefaultAssetHeap;
+	class AssetHeapRecord;
     template <typename AssetType> class DefaultAssetHeap;
 
     class AssetSetManager
@@ -22,7 +24,7 @@ namespace Assets
 			DefaultAssetHeap<Type>& GetSetForType();
 
         void Clear();
-        void LogReport();
+        std::vector<AssetHeapRecord> LogRecords() const;
 
         unsigned GetAssetSetCount();
         const IDefaultAssetHeap* GetAssetSet(unsigned index);
