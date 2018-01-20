@@ -20,7 +20,16 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     std::tuple<GLint, GLenum, bool> AsVertexAttributePointer(Format fmt);
     Format VertexAttributePointerAsFormat(GLint size, GLenum type, bool normalized);
-    std::pair<GLenum, GLenum> AsTexelFormatType(Format fmt);
+
+    struct glPixelFormat
+    {
+        GLenum _format;
+        GLenum _type;
+        GLenum _internalFormat;     // (the sized/compressed format)
+    };
+
+    glPixelFormat AsTexelFormatType(Format fmt);
+
     ImpliedTyping::TypeDesc GLUniformTypeAsTypeDesc(GLenum glType);
     Format SizedInternalFormatAsRenderCoreFormat(GLenum sizedInternalFormat);
     GLenum AsGLenum(Topology topology);

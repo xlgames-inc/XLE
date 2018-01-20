@@ -38,6 +38,11 @@ namespace RenderCore
             R9G9B9E5, R8G8_B8G8, G8R8_G8B8,
             BC1, BC2, BC3, BC4, BC5, BC6H, BC7,
             B5G6R5, B5G5R5A1, B8G8R8A8, B8G8R8X8,
+
+            RGB_PVRTC1_2BPP, RGB_PVRTC1_4BPP, RGBA_PVRTC1_2BPP, RGBA_PVRTC1_4BPP,
+            RGBA_PVRTC2_2BPP, RGBA_PVRTC2_4BPP,
+            RGB_ETC1, RGB_ETC2, RGBA_ETC2, RGBA1_ETC2,
+
             Unknown
         };
     }
@@ -97,6 +102,18 @@ namespace RenderCore
 
         case R8G8_B8G8: 
         case G8R8_G8B8:         return FormatComponents::RGB;
+
+        case RGB_PVRTC1_2BPP:
+        case RGB_PVRTC1_4BPP:
+        case RGB_ETC1:
+        case RGB_ETC2:          return FormatComponents::RGB;
+
+        case RGBA_PVRTC1_2BPP:
+        case RGBA_PVRTC1_4BPP:
+        case RGBA_PVRTC2_2BPP:
+        case RGBA_PVRTC2_4BPP:
+        case RGBA_ETC2:
+        case RGBA1_ETC2:        return FormatComponents::RGBAlpha;
         }
 
         switch (format) {
@@ -180,6 +197,18 @@ namespace RenderCore
         case BC5:   return 8;
         case BC6H:  return 16;
         case BC7:   return 8;   // (can be used for higher precision data)
+
+        case RGB_PVRTC1_2BPP:
+        case RGB_PVRTC1_4BPP:
+        case RGBA_PVRTC1_2BPP:
+        case RGBA_PVRTC1_4BPP:
+        case RGBA_PVRTC2_2BPP:
+        case RGBA_PVRTC2_4BPP:
+        case RGB_ETC1:
+        case RGB_ETC2:
+        case RGBA_ETC2:
+        case RGBA1_ETC2: return 8;
+
         default:
             return GetComponentPrecision(format);
         }
@@ -249,6 +278,36 @@ namespace RenderCore
         case Format::B8G8R8A8_UNORM: return Format::B8G8R8A8_UNORM_SRGB;
         case Format::B8G8R8X8_TYPELESS:
         case Format::B8G8R8X8_UNORM: return Format::B8G8R8X8_UNORM_SRGB;
+
+        case Format::RGB_PVRTC1_2BPP_TYPELESS:
+        case Format::RGB_PVRTC1_2BPP_UNORM: return Format::RGB_PVRTC1_2BPP_UNORM_SRGB;
+
+        case Format::RGBA_PVRTC1_2BPP_TYPELESS:
+        case Format::RGBA_PVRTC1_2BPP_UNORM: return Format::RGBA_PVRTC1_2BPP_UNORM_SRGB;
+
+        case Format::RGB_PVRTC1_4BPP_TYPELESS:
+        case Format::RGB_PVRTC1_4BPP_UNORM: return Format::RGB_PVRTC1_4BPP_UNORM_SRGB;
+
+        case Format::RGBA_PVRTC1_4BPP_TYPELESS:
+        case Format::RGBA_PVRTC1_4BPP_UNORM: return Format::RGBA_PVRTC1_4BPP_UNORM_SRGB;
+
+        case Format::RGBA_PVRTC2_2BPP_TYPELESS:
+        case Format::RGBA_PVRTC2_2BPP_UNORM: return Format::RGBA_PVRTC2_2BPP_UNORM_SRGB;
+
+        case Format::RGBA_PVRTC2_4BPP_TYPELESS:
+        case Format::RGBA_PVRTC2_4BPP_UNORM: return Format::RGBA_PVRTC2_4BPP_UNORM_SRGB;
+
+        case Format::RGB_ETC1_TYPELESS:
+        case Format::RGB_ETC1_UNORM: return Format::RGB_ETC1_UNORM_SRGB;
+
+        case Format::RGB_ETC2_TYPELESS:
+        case Format::RGB_ETC2_UNORM: return Format::RGB_ETC2_UNORM_SRGB;
+
+        case Format::RGBA_ETC2_TYPELESS:
+        case Format::RGBA_ETC2_UNORM: return Format::RGBA_ETC2_UNORM_SRGB;
+
+        case Format::RGBA1_ETC2_TYPELESS:
+        case Format::RGBA1_ETC2_UNORM: return Format::RGBA1_ETC2_UNORM_SRGB;
         }
         return inputFormat; // no linear/srgb version of this format exists
     }
@@ -271,6 +330,36 @@ namespace RenderCore
         case Format::B8G8R8A8_UNORM_SRGB: return Format::B8G8R8A8_UNORM;
         case Format::B8G8R8X8_TYPELESS:
         case Format::B8G8R8X8_UNORM_SRGB: return Format::B8G8R8X8_UNORM;
+
+        case Format::RGB_PVRTC1_2BPP_TYPELESS:
+        case Format::RGB_PVRTC1_2BPP_UNORM_SRGB: return Format::RGB_PVRTC1_2BPP_UNORM;
+
+        case Format::RGBA_PVRTC1_2BPP_TYPELESS:
+        case Format::RGBA_PVRTC1_2BPP_UNORM_SRGB: return Format::RGBA_PVRTC1_2BPP_UNORM;
+
+        case Format::RGB_PVRTC1_4BPP_TYPELESS:
+        case Format::RGB_PVRTC1_4BPP_UNORM_SRGB: return Format::RGB_PVRTC1_4BPP_UNORM;
+
+        case Format::RGBA_PVRTC1_4BPP_TYPELESS:
+        case Format::RGBA_PVRTC1_4BPP_UNORM_SRGB: return Format::RGBA_PVRTC1_4BPP_UNORM;
+
+        case Format::RGBA_PVRTC2_2BPP_TYPELESS:
+        case Format::RGBA_PVRTC2_2BPP_UNORM_SRGB: return Format::RGBA_PVRTC2_2BPP_UNORM;
+
+        case Format::RGBA_PVRTC2_4BPP_TYPELESS:
+        case Format::RGBA_PVRTC2_4BPP_UNORM_SRGB: return Format::RGBA_PVRTC2_4BPP_UNORM;
+
+        case Format::RGB_ETC1_TYPELESS:
+        case Format::RGB_ETC1_UNORM_SRGB: return Format::RGB_ETC1_UNORM;
+
+        case Format::RGB_ETC2_TYPELESS:
+        case Format::RGB_ETC2_UNORM_SRGB: return Format::RGB_ETC2_UNORM;
+
+        case Format::RGBA_ETC2_TYPELESS:
+        case Format::RGBA_ETC2_UNORM_SRGB: return Format::RGBA_ETC2_UNORM;
+
+        case Format::RGBA1_ETC2_TYPELESS:
+        case Format::RGBA1_ETC2_UNORM_SRGB: return Format::RGBA1_ETC2_UNORM;
         }
         return inputFormat; // no linear/srgb version of this format exists
     }
@@ -313,6 +402,36 @@ namespace RenderCore
         case Format::R32_SINT: return Format::R32_TYPELESS;
 
         case Format::S8_UINT: return Format::R8_TYPELESS;
+
+        case Format::RGB_PVRTC1_2BPP_UNORM:
+        case Format::RGB_PVRTC1_2BPP_UNORM_SRGB: return Format::RGB_PVRTC1_2BPP_TYPELESS;
+
+        case Format::RGBA_PVRTC1_2BPP_UNORM:
+        case Format::RGBA_PVRTC1_2BPP_UNORM_SRGB: return Format::RGBA_PVRTC1_2BPP_TYPELESS;
+
+        case Format::RGB_PVRTC1_4BPP_UNORM:
+        case Format::RGB_PVRTC1_4BPP_UNORM_SRGB: return Format::RGB_PVRTC1_4BPP_TYPELESS;
+
+        case Format::RGBA_PVRTC1_4BPP_UNORM:
+        case Format::RGBA_PVRTC1_4BPP_UNORM_SRGB: return Format::RGBA_PVRTC1_4BPP_TYPELESS;
+
+        case Format::RGBA_PVRTC2_2BPP_UNORM:
+        case Format::RGBA_PVRTC2_2BPP_UNORM_SRGB: return Format::RGBA_PVRTC2_2BPP_TYPELESS;
+
+        case Format::RGBA_PVRTC2_4BPP_UNORM:
+        case Format::RGBA_PVRTC2_4BPP_UNORM_SRGB: return Format::RGBA_PVRTC2_4BPP_TYPELESS;
+
+        case Format::RGB_ETC1_UNORM:
+        case Format::RGB_ETC1_UNORM_SRGB: return Format::RGB_ETC1_TYPELESS;
+
+        case Format::RGB_ETC2_UNORM:
+        case Format::RGB_ETC2_UNORM_SRGB: return Format::RGB_ETC2_TYPELESS;
+
+        case Format::RGBA_ETC2_UNORM:
+        case Format::RGBA_ETC2_UNORM_SRGB: return Format::RGBA_ETC2_TYPELESS;
+
+        case Format::RGBA1_ETC2_UNORM:
+        case Format::RGBA1_ETC2_UNORM_SRGB: return Format::RGBA1_ETC2_TYPELESS;
         }
         return inputFormat; // no linear/srgb version of this format exists
     }
@@ -390,6 +509,36 @@ namespace RenderCore
         case Format::B8G8R8X8_UNORM:
         case Format::B8G8R8X8_UNORM_SRGB: 
         case Format::B8G8R8X8_TYPELESS:
+        case Format::RGB_PVRTC1_2BPP_UNORM:
+        case Format::RGB_PVRTC1_2BPP_UNORM_SRGB:
+        case Format::RGB_PVRTC1_2BPP_TYPELESS:
+        case Format::RGBA_PVRTC1_2BPP_UNORM:
+        case Format::RGBA_PVRTC1_2BPP_UNORM_SRGB:
+        case Format::RGBA_PVRTC1_2BPP_TYPELESS:
+        case Format::RGB_PVRTC1_4BPP_UNORM:
+        case Format::RGB_PVRTC1_4BPP_UNORM_SRGB:
+        case Format::RGB_PVRTC1_4BPP_TYPELESS:
+        case Format::RGBA_PVRTC1_4BPP_UNORM:
+        case Format::RGBA_PVRTC1_4BPP_UNORM_SRGB:
+        case Format::RGBA_PVRTC1_4BPP_TYPELESS:
+        case Format::RGBA_PVRTC2_2BPP_UNORM:
+        case Format::RGBA_PVRTC2_2BPP_UNORM_SRGB:
+        case Format::RGBA_PVRTC2_2BPP_TYPELESS:
+        case Format::RGBA_PVRTC2_4BPP_UNORM:
+        case Format::RGBA_PVRTC2_4BPP_UNORM_SRGB:
+        case Format::RGBA_PVRTC2_4BPP_TYPELESS:
+        case Format::RGB_ETC1_UNORM:
+        case Format::RGB_ETC1_UNORM_SRGB:
+        case Format::RGB_ETC1_TYPELESS:
+        case Format::RGB_ETC2_UNORM:
+        case Format::RGB_ETC2_UNORM_SRGB:
+        case Format::RGB_ETC2_TYPELESS:
+        case Format::RGBA_ETC2_UNORM:
+        case Format::RGBA_ETC2_UNORM_SRGB:
+        case Format::RGBA_ETC2_TYPELESS:
+        case Format::RGBA1_ETC2_UNORM:
+        case Format::RGBA1_ETC2_UNORM_SRGB:
+        case Format::RGBA1_ETC2_TYPELESS:
             return true;
 
         default: return false;

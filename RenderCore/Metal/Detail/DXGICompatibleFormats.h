@@ -150,3 +150,43 @@ _EXP( B8G8R8X8,       UNORM_SRGB, None,               8*4 )
     //    DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM  = 89,
     //
 
+_EXP( RGB_PVRTC1_2BPP,      TYPELESS,   BlockCompression,   2 )
+_EXP( RGB_PVRTC1_2BPP,      UNORM,      BlockCompression,   2 )
+_EXP( RGB_PVRTC1_2BPP,      UNORM_SRGB, BlockCompression,   2 )
+
+_EXP( RGBA_PVRTC1_2BPP,     TYPELESS,   BlockCompression,   2 )
+_EXP( RGBA_PVRTC1_2BPP,     UNORM,      BlockCompression,   2 )
+_EXP( RGBA_PVRTC1_2BPP,     UNORM_SRGB, BlockCompression,   2 )
+
+_EXP( RGB_PVRTC1_4BPP,      TYPELESS,   BlockCompression,   4 )
+_EXP( RGB_PVRTC1_4BPP,      UNORM,      BlockCompression,   4 )
+_EXP( RGB_PVRTC1_4BPP,      UNORM_SRGB, BlockCompression,   4 )
+
+_EXP( RGBA_PVRTC1_4BPP,     TYPELESS,   BlockCompression,   4 )
+_EXP( RGBA_PVRTC1_4BPP,     UNORM,      BlockCompression,   4 )
+_EXP( RGBA_PVRTC1_4BPP,     UNORM_SRGB, BlockCompression,   4 )
+
+_EXP( RGBA_PVRTC2_2BPP,     TYPELESS,   BlockCompression,   2 )
+_EXP( RGBA_PVRTC2_2BPP,     UNORM,      BlockCompression,   2 )
+_EXP( RGBA_PVRTC2_2BPP,     UNORM_SRGB, BlockCompression,   2 )
+
+_EXP( RGBA_PVRTC2_4BPP,     TYPELESS,   BlockCompression,   4 )
+_EXP( RGBA_PVRTC2_4BPP,     UNORM,      BlockCompression,   4 )
+_EXP( RGBA_PVRTC2_4BPP,     UNORM_SRGB, BlockCompression,   4 )
+
+_EXP( RGB_ETC1,     TYPELESS,   BlockCompression,   4 )
+_EXP( RGB_ETC1,     UNORM,      BlockCompression,   4 )
+_EXP( RGB_ETC1,     UNORM_SRGB, BlockCompression,   4 )
+
+_EXP( RGB_ETC2,     TYPELESS,   BlockCompression,   4 )
+_EXP( RGB_ETC2,     UNORM,      BlockCompression,   4 )
+_EXP( RGB_ETC2,     UNORM_SRGB, BlockCompression,   4 )
+
+_EXP( RGBA_ETC2,     TYPELESS,   BlockCompression,   4 )
+_EXP( RGBA_ETC2,     UNORM,      BlockCompression,   4 )
+_EXP( RGBA_ETC2,     UNORM_SRGB, BlockCompression,   4 )
+
+_EXP( RGBA1_ETC2,     TYPELESS,   BlockCompression,   4 )
+_EXP( RGBA1_ETC2,     UNORM,      BlockCompression,   4 )
+_EXP( RGBA1_ETC2,     UNORM_SRGB, BlockCompression,   4 )
+

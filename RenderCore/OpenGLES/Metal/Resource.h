@@ -30,6 +30,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         Resource(
             ObjectFactory& factory, const Desc& desc,
             const SubResourceInitData& initData = SubResourceInitData{});
+        Resource(
+            ObjectFactory& factory, const Desc& desc,
+            const IDevice::ResourceInitializer& initData);
         Resource();
         ~Resource();
     protected:

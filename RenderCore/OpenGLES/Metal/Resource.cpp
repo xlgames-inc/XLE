@@ -1,6 +1,10 @@
 
 #include "Resource.h"
+#include "Format.h"
+#include "../../ResourceUtils.h"
 #include "IncludeGLES.h"
+
+#include "../../../../CoreServices/GLWrappers.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
@@ -55,12 +59,23 @@ namespace RenderCore { namespace Metal_OpenGLES
         return nullptr;
     }
 
+
     Resource::Resource(
         ObjectFactory& factory, const Desc& desc,
         const SubResourceInitData& initData)
+    : Resource(factory, desc, [&initData](SubResourceId subRes) {
+            assert(subRes._mip == 0 && subRes._arrayLayer == 0);
+            return initData;
+        })
+    {}
+
+    Resource::Resource(
+        ObjectFactory& factory, const Desc& desc,
+        const IDevice::ResourceInitializer& initializer)
     : _desc(desc)
     {
         if (desc._type == ResourceDesc::Type::LinearBuffer) {
+            auto initData = initializer({0,0});
             if (desc._bindFlags & BindFlag::ConstantBuffer) {
                 _constantBuffer.insert(_constantBuffer.end(), (const uint8_t*)initData._data.begin(), (const uint8_t*)initData._data.end());
             } else {
@@ -75,10 +90,83 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 // upload data to opengl buffer...
                 glBindBuffer(bindTarget, _underlyingBuffer->AsRawGLHandle());
-                glBufferData(bindTarget, std::max((GLsizeiptr)initData._data.size(), (GLsizeiptr)desc._linearBufferDesc._sizeInBytes), initData._data.data(), usageMode);
+                (*GetGLWrappers()->BufferData)(bindTarget, std::max((GLsizeiptr)initData._data.size(), (GLsizeiptr)desc._linearBufferDesc._sizeInBytes), initData._data.data(), usageMode);
             }
         } else {
-            Throw(Exceptions::BasicLabel("Unsupported resource type in Resource constructor"));
+
+            auto fmt = AsTexelFormatType(desc._textureDesc._format);
+
+            _underlyingTexture = factory.CreateTexture();
+
+            if (    desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D
+                ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
+                ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
+
+                auto bindTarget = GL_TEXTURE_2D;
+                bool useTexStorage = true;
+                if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
+                    assert(desc._textureDesc._height == 1);
+                    assert(desc._textureDesc._arrayCount <= 1);
+                } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D) {
+                    assert(desc._textureDesc._arrayCount <= 1);
+                } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
+                    assert(desc._textureDesc._arrayCount == 6);
+                    bindTarget = GL_TEXTURE_CUBE_MAP;
+                }
+
+                GLint prevTexture;
+                glGetIntegerv((bindTarget == GL_TEXTURE_2D) ? GL_TEXTURE_BINDING_2D : GL_TEXTURE_BINDING_CUBE_MAP, &prevTexture);
+
+                glBindTexture(bindTarget, _underlyingTexture->AsRawGLHandle());
+                if (useTexStorage)
+                    (*GetGLWrappers()->TexStorage2D)(bindTarget, desc._textureDesc._mipCount, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
+
+                if (initializer) {
+                    for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
+                        auto mipWidth = std::max(desc._textureDesc._width  >> m, 1u);
+                        auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
+                        auto subRes = initializer({m, 0});
+                        if (fmt._type != 0) {
+                            (*GetGLWrappers()->TexImage2D)(
+                                bindTarget,
+                                m, fmt._internalFormat,
+                                mipWidth, mipHeight, 0,
+                                fmt._format, fmt._type,
+                                subRes._data.begin());
+                        } else {
+                            (*GetGLWrappers()->CompressedTexImage2D)(
+                                bindTarget,
+                                m, fmt._internalFormat,
+                                mipWidth, mipHeight, 0,
+                                (GLsizei)subRes._data.size(),
+                                subRes._data.begin());
+                        }
+                    }
+                } else {
+                    assert(fmt._type != 0);
+                    for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
+                        auto mipWidth = std::max(desc._textureDesc._width  >> m, 1u);
+                        auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
+                        (*GetGLWrappers()->TexImage2D)(
+                            bindTarget,
+                            m, fmt._internalFormat,
+                            mipWidth, mipHeight, 0,
+                            fmt._format, fmt._type,
+                            nullptr);
+                    }
+                }
+
+                glTexParameteri(bindTarget, GL_TEXTURE_MIN_FILTER, (desc._textureDesc._mipCount > 1) ? GL_LINEAR_MIPMAP_NEAREST : GL_LINEAR);
+                glTexParameteri(bindTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(bindTarget, GL_TEXTURE_WRAP_S, GL_REPEAT);
+                glTexParameteri(bindTarget, GL_TEXTURE_WRAP_T, GL_REPEAT);
+                glTexParameteri(bindTarget, GL_TEXTURE_WRAP_R, GL_REPEAT);
+                glBindTexture(bindTarget, prevTexture);
+
+            } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
+                assert(0);  // not supported yet
+            }
+
         }
     }
 

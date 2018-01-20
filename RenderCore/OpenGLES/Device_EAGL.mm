@@ -88,7 +88,7 @@ namespace RenderCore { namespace ImplOpenGLES
     IResourcePtr Device::CreateResource(const ResourceDesc& desc, const ResourceInitializer& init)
     {
         // hack -- only getting a single subresource here!
-        return std::make_shared<Metal_OpenGLES::Resource>(*_objectFactory, desc, init({0,0}));
+        return std::make_shared<Metal_OpenGLES::Resource>(*_objectFactory, desc, init);
     }
 
     DeviceDesc Device::GetDesc()
