@@ -8,8 +8,6 @@
 
 #include "Techniques.h"
 #include "RenderStateResolver.h"
-#include "../../Assets/AssetsCore.h"		// (for ResChar)
-#include "../../Utility/ParameterBox.h"
 
 namespace RenderCore { namespace Techniques
 {
@@ -52,44 +50,6 @@ namespace RenderCore { namespace Techniques
     };
 
     #pragma pack(pop)
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class PredefinedCBLayout; 
-	
-	/// <summary>Utility call for selecting a shader variation matching a given interface</summary>
-	class ShaderVariationSet
-    {
-    public:
-        ParameterBox _materialParameters;
-        ParameterBox _geometryParameters;
-        TechniqueInterface _techniqueInterface;
-
-        class Variation
-        {
-        public:
-            ResolvedShader      _shader;
-            const PredefinedCBLayout* _cbLayout;
-        };
-
-        Variation FindVariation(
-            ParsingContext& parsingContext,
-            unsigned techniqueIndex,
-            StringSection<> techniqueConfig) const;
-
-        const PredefinedCBLayout& GetCBLayout(StringSection<> techniqueConfig);
-
-        ShaderVariationSet(
-            const InputLayout& inputLayout,
-            const std::initializer_list<uint64_t>& objectCBs,
-            const ParameterBox& materialParameters);
-        ShaderVariationSet();
-        ShaderVariationSet(ShaderVariationSet&& moveFrom) never_throws = default;
-        ShaderVariationSet& operator=(ShaderVariationSet&& moveFrom) never_throws = default;
-        ~ShaderVariationSet();
-    };
-
-    ParameterBox TechParams_SetGeo(const InputLayout& inputLayout);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

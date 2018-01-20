@@ -14,10 +14,10 @@
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
+#include "../../RenderCore/Assets/ShaderVariationSet.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/Format.h"
@@ -244,7 +244,7 @@ namespace ToolsRig
 
         const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
 
-        Techniques::ShaderVariationSet _materialGenCylinder;
+        RenderCore::Assets::ShaderVariationSet _materialGenCylinder;
 
         ManipulatorResBox(const Desc&);
     private:

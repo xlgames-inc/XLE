@@ -90,6 +90,7 @@
     <ClCompile Include="..\Assets\MaterialScaffold.cpp">
       <Filter>Assets\Material</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\ShaderVariationSet.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\SharedStateSet.h" />
@@ -176,5 +177,6 @@
     <ClInclude Include="..\Assets\MaterialScaffold.h">
       <Filter>Assets\Material</Filter>
     </ClInclude>
+    <ClInclude Include="..\Assets\ShaderVariationSet.h" />
   </ItemGroup>
 </Project>

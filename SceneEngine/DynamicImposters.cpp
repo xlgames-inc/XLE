@@ -16,12 +16,12 @@
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
-#include "../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Techniques/CompiledRenderStateSet.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
+#include "../RenderCore/Assets/ShaderVariationSet.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -215,7 +215,7 @@ namespace SceneEngine
         ImposterSpriteAtlas             _atlas;
 
             //// //// //// //// Rendering //// //// //// ////
-        Techniques::ShaderVariationSet   _material;
+        RenderCore::Assets::ShaderVariationSet   _material;
         Metal::ConstantBuffer           _spriteTableCB;
         SharedStateSet*                 _sharedStateSet;
         std::shared_ptr<Techniques::IStateSetResolver> _stateRes;
@@ -1005,7 +1005,7 @@ namespace SceneEngine
         _pimpl->_evictionCounter = 0;
         _pimpl->_frameCounter = 0;
 
-        _pimpl->_material = Techniques::ShaderVariationSet(
+        _pimpl->_material = RenderCore::Assets::ShaderVariationSet(
             InputLayout(s_inputLayout, dimof(s_inputLayout)),
             {Hash64("SpriteTable")}, ParameterBox());
         _pimpl->_stateRes = std::make_shared<CustomStateResolver>();

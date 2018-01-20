@@ -81,6 +81,7 @@
     <ClCompile Include="..\Assets\ModelRunTime.cpp" />
     <ClCompile Include="..\Assets\DelayedDrawCall.cpp" />
     <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
+    <ClCompile Include="..\Assets\ShaderVariationSet.cpp" />
     <ClCompile Include="..\Assets\SharedStateSet.cpp" />
     <ClCompile Include="..\Assets\SkinningRunTime.cpp" />
     <ClCompile Include="..\Assets\SkinningScaffold.cpp" />
@@ -114,6 +115,7 @@
     <ClInclude Include="..\Assets\ModelRunTime.h" />
     <ClInclude Include="..\Assets\DelayedDrawCall.h" />
     <ClInclude Include="..\Assets\LocalCompiledShaderSource.h" />
+    <ClInclude Include="..\Assets\ShaderVariationSet.h" />
     <ClInclude Include="..\Assets\SharedStateSet.h" />
     <ClInclude Include="..\Assets\SkeletonScaffoldInternal.h" />
     <ClInclude Include="..\Assets\TransformationCommands.h" />

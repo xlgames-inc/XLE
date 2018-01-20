@@ -10,8 +10,9 @@
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
+#include "../../RenderCore/Assets/ShaderVariationSet.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
@@ -50,7 +51,7 @@ namespace ToolsRig
         using namespace RenderCore::Techniques;
 
         ParameterBox materialParameters = RenderCore::Assets::TechParams_SetResHas(mat._matParams, mat._bindings, searchRules);
-        ShaderVariationSet material(geoInputLayout, {}, materialParameters);
+        RenderCore::Assets::ShaderVariationSet material(geoInputLayout, {}, materialParameters);
 
         auto variation = material.FindVariation(parserContext, techniqueIndex, _shaderTypeName.c_str());
         if (variation._shader._shaderProgram == nullptr) {

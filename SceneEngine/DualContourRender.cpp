@@ -17,11 +17,11 @@
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Assets/ShaderVariationSet.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -44,7 +44,7 @@ namespace SceneEngine
         Format _indexFormat;
         unsigned _indexCount;
 
-        Techniques::ShaderVariationSet _basicMaterial;
+        RenderCore::Assets::ShaderVariationSet _basicMaterial;
         RenderCore::SharedPkt _materialConstants;
 
         std::shared_ptr<::Assets::DependencyValidation> _dependencyValidation;
@@ -289,7 +289,7 @@ namespace SceneEngine
         pimpl->_indexCount = (unsigned)ibDataCount;
 
         using namespace Techniques;
-        pimpl->_basicMaterial = ShaderVariationSet(
+        pimpl->_basicMaterial = RenderCore::Assets::ShaderVariationSet(
             GlobalInputLayouts::PN, 
             { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
             ParameterBox());
@@ -321,7 +321,7 @@ namespace SceneEngine
             using namespace RenderCore;
             using namespace RenderCore::Techniques;
 
-            ShaderVariationSet material(
+            RenderCore::Assets::ShaderVariationSet material(
                 GlobalInputLayouts::PN, 
                 { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
                 ParameterBox());
