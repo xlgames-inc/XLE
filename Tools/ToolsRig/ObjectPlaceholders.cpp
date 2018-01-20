@@ -390,9 +390,9 @@ namespace ToolsRig
 			}
 
 			if (!_areaLightAnnotation.empty()) {
-				auto sphereShader = visBox._materialGenSphere.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech"); 
-				auto tubeShader = visBox._materialGenTube.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech"); 
-				auto rectangleShader = visBox._materialGenRectangle.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech");
+				auto sphereShader = visBox._materialGenSphere.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight"); 
+				auto tubeShader = visBox._materialGenTube.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight"); 
+				auto rectangleShader = visBox._materialGenRectangle.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight");
 				for (auto a = _areaLightAnnotation.cbegin(); a != _areaLightAnnotation.cend(); ++a) {
 					auto objects = _objects->FindEntitiesOfType(a->_typeId);
 					for (const auto&o : objects) {
@@ -416,7 +416,7 @@ namespace ToolsRig
 
 		}
 
-        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "xleres/techniques/meshmarker.tech");
+        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "meshmarker");
         if (shaderP._shader._shaderProgram) {
             for (const auto&a:_triMeshAnnotations) {
                 auto objects = _objects->FindEntitiesOfType(a._typeId);

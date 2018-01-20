@@ -19,12 +19,12 @@ namespace ToolsRig
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 	class UndoQueue;
 
-	class ITransaction
+	class IDivergentTransaction
 	{
 	public:
 		const std::string& GetName() const { return _transactionName; }
-		ITransaction(const char transactionName[], const std::shared_ptr<UndoQueue>& undoQueue);
-		virtual ~ITransaction();
+		IDivergentTransaction(const char transactionName[], const std::shared_ptr<UndoQueue>& undoQueue);
+		virtual ~IDivergentTransaction();
 	protected:
 		std::weak_ptr<UndoQueue> _undoQueue;
 		std::string _transactionName;
@@ -33,11 +33,11 @@ namespace ToolsRig
 	class UndoQueue
 	{
 	public:
-		void PushBack(const std::shared_ptr<ITransaction>& transaction);
-        std::shared_ptr<ITransaction> GetTop();
+		void PushBack(const std::shared_ptr<IDivergentTransaction>& transaction);
+        std::shared_ptr<IDivergentTransaction> GetTop();
 
         unsigned GetCount();
-        ITransaction* GetTransaction(unsigned index);
+		IDivergentTransaction* GetTransaction(unsigned index);
 
 		UndoQueue();
 		~UndoQueue();
@@ -46,7 +46,7 @@ namespace ToolsRig
 	using TransactionId = uint32_t;
 
 	template <typename Asset>
-		class DivergentTransaction : public ITransaction
+		class DivergentTransaction : public IDivergentTransaction
 	{
 	public:
 		Asset& GetAsset();
@@ -56,14 +56,13 @@ namespace ToolsRig
 
 		DivergentTransaction(
 			const char transactionName[],
-			const std::shared_ptr<Asset>& workingCopy,
+			const std::shared_ptr<Asset>& destinationCopy,
 			const std::shared_ptr<UndoQueue>& undoQueue);
 		virtual ~DivergentTransaction();
 
 	protected:
 		std::shared_ptr<Asset> _transactionCopy;
-		std::shared_ptr<Asset> _liveCopy;
-        std::shared_ptr<Asset> _originalCopy;
+		std::shared_ptr<Asset> _destinationCopy;
 
 		enum class State { NoAction, Modified, Committed };
 		State _state;
@@ -71,16 +70,17 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class DivergentAssetBase
+	class IDivergentAsset
 	{
 	public:
 		virtual bool HasChanges() const = 0;
-		DivergentAssetBase();
-		virtual ~DivergentAssetBase();
+		virtual TransactionId AbandonChanges() = 0;
+		IDivergentAsset();
+		virtual ~IDivergentAsset();
 	};
 
 	template <typename Asset>
-		class DivergentAsset : public DivergentAssetBase
+		class DivergentAsset : public IDivergentAsset
 	{
 	public:
 		const std::shared_ptr<Asset>& GetWorkingAsset() const { return _workingCopy; }
@@ -108,7 +108,7 @@ namespace ToolsRig
 	{
 		_state = State::Modified;
 		if (!_transactionCopy)
-			_transactionCopy = std::make_shared<Asset>(*_liveCopy.get());
+			_transactionCopy = std::make_shared<Asset>(*_destinationCopy.get());
 		return *_transactionCopy.get();
 	}
 
@@ -116,17 +116,12 @@ namespace ToolsRig
 		TransactionId    DivergentTransaction<Asset>::Commit()
 	{
 		if (_transactionCopy) {
-            Asset temp = std::move(*_liveCopy);
-            *_liveCopy = std::move(*_transactionCopy);
-            if (!_originalCopy)
-                _originalCopy = std::move(_transactionCopy);
-			_transactionCopy.reset();
-            *_originalCopy = std::move(temp);
+			auto triggerDepVal = _destinationCopy->GetDependencyValidation();
+
+            *_destinationCopy = std::move(*_transactionCopy);
 			_state = State::Committed;
 
-			// auto newId = ++_identifer->_transactionId;
-            const_cast<::Assets::DependencyValidation*>(_liveCopy->GetDependencyValidation().get())->OnChange();
-            // _identifer->OnChange();
+            const_cast<::Assets::DependencyValidation*>(triggerDepVal.get())->OnChange();
 			return 0u; // newId
 		}
 		return ~0u;
@@ -135,23 +130,18 @@ namespace ToolsRig
 	template<typename Asset>
 		void    DivergentTransaction<Asset>::Cancel()
 	{
-		if (_originalCopy) {
-            *_liveCopy = std::move(*_originalCopy);
-		}
-
         _transactionCopy.reset();
-        _originalCopy.reset();
 		_state = State::NoAction;
 	}
 
 	template<typename Asset>
 		DivergentTransaction<Asset>::DivergentTransaction(
 			const char transactionName[],
-			const std::shared_ptr<Asset>& workingCopy,
+			const std::shared_ptr<Asset>& destinationCopy,
 			const std::shared_ptr<UndoQueue>& undoQueue)
-        : ITransaction(transactionName, undoQueue)
-        , _liveCopy(workingCopy)
-		, _state(State::NoAction)
+    : IDivergentTransaction(transactionName, undoQueue)
+    , _destinationCopy(destinationCopy)
+	, _state(State::NoAction)
 	{
 	}
 
@@ -199,12 +189,12 @@ namespace ToolsRig
 		TransactionId DivergentAsset<Asset>::AbandonChanges()
 	{
 		_lastTransaction.reset();
-		_workingCopy.reset();
-		auto newId = ++_identifier->_transactionId;
-		// kick the pristine version to encourage a reload from disk now
-		const_cast<::Assets::DependencyValidation*>(GetPristineCopy().GetDependencyValidation().get())->OnChange();
-		_identifier->OnChange();
-		return newId;
+		
+		auto triggerDepVal = _workingCopy->GetDependencyValidation();
+		*_workingCopy = std::move(*_pristineCopy);
+
+		const_cast<::Assets::DependencyValidation*>(triggerDepVal.get())->OnChange();
+		return 0u; // newId;
 	}
 
 	template<typename Asset>
@@ -231,8 +221,8 @@ namespace ToolsRig
 			bool		_hasChanges;
 		};
 		auto	GetAssets() const -> std::vector<Record>;
-		auto	GetAsset(uint64_t typeCode, uint64_t id) const -> std::shared_ptr<DivergentAssetBase>;
-		void	AddAsset(uint64_t typeCode, uint64_t id, const ::Assets::rstring& identifier, const std::shared_ptr<DivergentAssetBase>&);
+		auto	GetAsset(uint64_t typeCode, uint64_t id) const -> std::shared_ptr<IDivergentAsset>;
+		void	AddAsset(uint64_t typeCode, uint64_t id, const ::Assets::rstring& identifier, const std::shared_ptr<IDivergentAsset>&);
 
 		static DivergentAssetManager& GetInstance() { return *s_instance; }
 

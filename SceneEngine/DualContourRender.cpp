@@ -326,7 +326,7 @@ namespace SceneEngine
                 { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
                 ParameterBox());
 
-            auto shader = material.FindVariation(parserContext, techniqueIndex, "xleres/techniques/illum.tech");
+            auto shader = material.FindVariation(parserContext, techniqueIndex, "illum");
             if (shader._shader._shaderProgram) {
                 shader._shader.Apply(
                     *context, parserContext, 

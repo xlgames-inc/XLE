@@ -47,24 +47,16 @@ namespace GUILayer
             std::make_shared<ToolsRig::MaterialVisObject>());
 
         auto& resMat = visObject->_parameters;
-        auto searchRules = visObject->_searchRules;
+        auto& searchRules = visObject->_searchRules;
         
-        if (_config) {
-                // also grab the directory with the preview model in it
-			auto previewModel = clix::marshalString<clix::E_UTF8>(_previewModel);
-            searchRules.AddSearchDirectoryFromFilename(MakeStringSection(previewModel));
+		auto previewModel = clix::marshalString<clix::E_UTF8>(_previewModel);
+		searchRules.AddSearchDirectoryFromFilename(MakeStringSection(previewModel));
 
-            for each(auto c in _config) {
+        if (_config)
+            for each(auto c in _config)
 				RenderCore::Assets::MergeIn_Stall(resMat, *c->GetUnderlying(), searchRules);
-			}
-        }
 
         const ::Assets::ResChar* shader = (resMat._techniqueConfig[0]) ? resMat._techniqueConfig : "illum";
-        ::Assets::ResChar resolvedShader[MaxPath];
-        XlCopyString(resolvedShader, shader);
-        XlCatString(resolvedShader, ".tech");
-        RenderCore::Assets::Services::GetTechniqueConfigDirs().ResolveFile(resolvedShader, resolvedShader);
-
         visObject->_materialBinder = std::make_shared<ToolsRig::MaterialBinder>(shader);
         visObject->_previewModelFile = clix::marshalString<clix::E_UTF8>(_previewModel);
         visObject->_previewMaterialBinding = _materialBinding;

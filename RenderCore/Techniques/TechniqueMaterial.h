@@ -82,7 +82,7 @@ namespace RenderCore { namespace Techniques
         ShaderVariationSet(
             const InputLayout& inputLayout,
             const std::initializer_list<uint64_t>& objectCBs,
-            ParameterBox materialParameters);
+            const ParameterBox& materialParameters);
         ShaderVariationSet();
         ShaderVariationSet(ShaderVariationSet&& moveFrom) never_throws = default;
         ShaderVariationSet& operator=(ShaderVariationSet&& moveFrom) never_throws = default;

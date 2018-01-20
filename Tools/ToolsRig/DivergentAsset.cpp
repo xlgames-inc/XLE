@@ -37,23 +37,23 @@ namespace ToolsRig
 #endif
 
 
-    ITransaction::ITransaction(const char transactionName[], const std::shared_ptr<UndoQueue>& undoQueue)
+    IDivergentTransaction::IDivergentTransaction(const char transactionName[], const std::shared_ptr<UndoQueue>& undoQueue)
 	: _undoQueue(std::move(undoQueue))
     , _transactionName(transactionName)
 	{}
 
-	ITransaction::~ITransaction()
+	IDivergentTransaction::~IDivergentTransaction()
 	{}
 
-	void UndoQueue::PushBack(const std::shared_ptr<ITransaction>& transaction) {}
-    std::shared_ptr<ITransaction> UndoQueue::GetTop() { return nullptr; }
+	void UndoQueue::PushBack(const std::shared_ptr<IDivergentTransaction>& transaction) {}
+    std::shared_ptr<IDivergentTransaction> UndoQueue::GetTop() { return nullptr; }
     unsigned UndoQueue::GetCount() { return 0; }
-    ITransaction* UndoQueue::GetTransaction(unsigned) { return nullptr; }
+	IDivergentTransaction* UndoQueue::GetTransaction(unsigned) { return nullptr; }
 	UndoQueue::UndoQueue() {}
 	UndoQueue::~UndoQueue() {}
 
-	DivergentAssetBase::DivergentAssetBase() {}
-	DivergentAssetBase::~DivergentAssetBase() {}
+	IDivergentAsset::IDivergentAsset() {}
+	IDivergentAsset::~IDivergentAsset() {}
 
 
 	class DivergentAssetManager::Pimpl
@@ -63,7 +63,7 @@ namespace ToolsRig
 		struct Asset
 		{
 			::Assets::rstring _identifier;
-			std::shared_ptr<DivergentAssetBase> _asset;
+			std::shared_ptr<IDivergentAsset> _asset;
 		};
 
 		std::vector<std::pair<Id, Asset>> _assets;
@@ -95,7 +95,7 @@ namespace ToolsRig
 		return result;
 	}
 
-	std::shared_ptr<DivergentAssetBase> DivergentAssetManager::GetAsset(uint64_t typeCode, uint64_t id) const
+	std::shared_ptr<IDivergentAsset> DivergentAssetManager::GetAsset(uint64_t typeCode, uint64_t id) const
 	{
 		ScopedLock(_pimpl->_lock);
 		auto s = Pimpl::Id{ typeCode, id };
@@ -107,7 +107,7 @@ namespace ToolsRig
 
 	void DivergentAssetManager::AddAsset(
 		uint64_t typeCode, uint64_t id, const ::Assets::rstring& identifier,
-		const std::shared_ptr<DivergentAssetBase>& asset)
+		const std::shared_ptr<IDivergentAsset>& asset)
 	{
 		ScopedLock(_pimpl->_lock);
 		auto s = Pimpl::Id{ typeCode, id };

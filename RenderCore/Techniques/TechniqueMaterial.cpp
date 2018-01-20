@@ -12,6 +12,8 @@
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"
 
+#include "../Assets/Services.h"
+
 namespace RenderCore { namespace Techniques
 {
 	Material::Material() { _techniqueConfig[0] = '\0'; }
@@ -73,7 +75,7 @@ namespace RenderCore { namespace Techniques
     ShaderVariationSet::ShaderVariationSet(
         const InputLayout& inputLayout,
         const std::initializer_list<uint64_t>& objectCBs,
-        ParameterBox materialParameters)
+        const ParameterBox& materialParameters)
     : _materialParameters(std::move(materialParameters))
     , _techniqueInterface(MakeTechInterface(inputLayout, objectCBs))
     , _geometryParameters(TechParams_SetGeo(inputLayout))
@@ -92,8 +94,16 @@ namespace RenderCore { namespace Techniques
             &parsingContext.GetTechniqueContext()._runtimeState, 
             &_materialParameters
         };
+		
+		const auto& searchDirs = RenderCore::Assets::Services::GetTechniqueConfigDirs();
 
-        auto& techConfig = ::Assets::GetAssetDep<ShaderType>(techniqueConfig);
+		assert(!XlFindStringI(techniqueConfig, ".tech"));
+		::Assets::ResChar resName[MaxPath];
+		XlCopyString(resName, techniqueConfig);
+		XlCatString(resName, ".tech");
+		searchDirs.ResolveFile(resName, dimof(resName), resName);
+
+        auto& techConfig = ::Assets::GetAssetDep<ShaderType>(MakeStringSection(resName));
 
         Variation result;
         result._cbLayout = nullptr;

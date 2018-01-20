@@ -102,7 +102,7 @@ namespace ToolsRig
         return 0;
     }
 
-#if GFXAPI_GFXAPI_DX11
+#if GFXAPI_ACTIVE == GFXAPI_DX11
     static void WriteParameter(
         RenderCore::SharedPkt& result,
         const ParameterBox& constants,
@@ -128,7 +128,7 @@ namespace ToolsRig
 
                 if (!result.size()) {
                     result = RenderCore::MakeSharedPktSize(bufferSize);
-                    std::fill((uint8*)result.begin(), (uint8*)result.end(), 0);
+                    std::fill((uint8*)result.begin(), (uint8*)result.end(), (uint8)0);
                 }
 
                 constants.GetParameter(
@@ -162,10 +162,10 @@ namespace ToolsRig
 
         D3D11_SHADER_DESC shaderDesc;
         reflection->GetDesc(&shaderDesc);
-        for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
+        for (unsigned r=0; r<shaderDesc.BoundResources; ++r) {
 
             D3D11_SHADER_INPUT_BIND_DESC bindDesc;
-            reflection->GetResourceBindingDesc(c, &bindDesc);
+            reflection->GetResourceBindingDesc(r, &bindDesc);
 
             if (bindDesc.Type == D3D10_SIT_CBUFFER) {
                 auto cbuffer = reflection->GetConstantBufferByName(bindDesc.Name);
@@ -206,7 +206,7 @@ namespace ToolsRig
                                             buffer, PtrAdd(buffer, std::min(sizeof(buffer), (size_t)(bufferDesc.Size - variableDesc.StartOffset))))) {
 
                                             result = RenderCore::MakeSharedPktSize(bufferDesc.Size);
-                                            std::fill((uint8*)result.begin(), (uint8*)result.end(), 0);
+                                            std::fill((uint8*)result.begin(), (uint8*)result.end(), (uint8)0);
                                             XlCopyMemory(PtrAdd(result.begin(), variableDesc.StartOffset), buffer, size);
                                         }
                                     } else {

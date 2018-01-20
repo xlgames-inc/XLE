@@ -29,25 +29,6 @@
 
 using namespace System::Collections::Generic;
 
-#if 0
-namespace Assets
-{
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class IDefaultAssetHeap
-	{
-	public:
-		virtual void            Clear() = 0;
-		virtual void            LogReport() const = 0;
-		virtual uint64_t		GetTypeCode() const = 0;
-		virtual std::string		GetTypeName() const = 0;
-		virtual void			OnFrameBarrier() = 0;
-
-		virtual ~IDefaultAssetHeap();
-	};
-}
-#endif
-
 namespace GUILayer
 {
 	static String^ GetAssetTypeName(uint64_t typeCode)
@@ -158,7 +139,7 @@ namespace GUILayer
     public:
         property virtual System::String^ Label;
 
-        TransactionItem(const ToolsRig::ITransaction& transaction)
+        TransactionItem(const ToolsRig::IDivergentTransaction& transaction)
         {
             Label = clix::marshalString<clix::E_UTF8>(transaction.GetName());
         }
@@ -291,39 +272,6 @@ namespace GUILayer
     PendingSaveList::~PendingSaveList()
     {}
 
-#if 0
-	static array<Byte>^ TryLoadOriginalFileAsByteArray(StringSection<> filename)
-    {
-        TRY {
-            auto file = ::Assets::MainFileSystem::OpenFileInterface(filename, "rb");
-
-            file->Seek(0, FileSeekAnchor::End);
-            size_t size = file->TellP();
-            file->Seek(0);
-
-            auto block = gcnew array<Byte>(int(size));
-            {
-                pin_ptr<unsigned char> pinned = &block[0];
-                file->Read((uint8*)pinned, 1, size);
-            }
-            return block;
-        } CATCH(const std::exception& e) {
-			auto builder = gcnew System::Text::StringBuilder();
-			builder->Append("Error while opening input file ");
-			builder->Append(clix::marshalString<clix::E_UTF8>(filename.AsString()));
-			builder->AppendLine(". Exception message follows:");
-			builder->AppendLine(clix::marshalString<clix::E_UTF8>(e.what()));
-			return System::Text::Encoding::UTF8->GetBytes(builder->ToString());
-        } CATCH(...) {
-			auto builder = gcnew System::Text::StringBuilder();
-			builder->Append("Error while opening input file ");
-			builder->Append(clix::marshalString<clix::E_UTF8>(filename.AsString()));
-			builder->AppendLine(". Unknown exception type.");
-			return System::Text::Encoding::UTF8->GetBytes(builder->ToString());
-		} CATCH_END
-    }
-#endif
-
 	static ::Assets::Blob TryLoadOriginalFileAsBlob(StringSection<> filename)
 	{
 		TRY{
@@ -447,10 +395,16 @@ namespace GUILayer
 		::Assets::rstring	_name;
 	};
 
-	static AssetSaveEntry BuildAssetSaveEntry(uint64_t typeCode, const StringSection<::Assets::ResChar> identifier, const ToolsRig::DivergentAssetBase& divAsset)
+	template<typename Asset>
+		const std::shared_ptr<Asset>& GetWorkingCopy(const ToolsRig::IDivergentAsset& divAsset)
+		{
+			return checked_cast<const ToolsRig::DivergentAsset<Asset>*>(&divAsset)->GetWorkingAsset();
+		}
+
+	static AssetSaveEntry BuildAssetSaveEntry(uint64_t typeCode, const StringSection<::Assets::ResChar> identifier, const ToolsRig::IDivergentAsset& divAsset)
 	{
 		// HACK -- special case for RawMaterial objects!
-		if (typeCode == typeid(::RenderCore::Assets::RawMaterial).hash_code()) {
+		if (typeCode == typeid(RenderCore::Assets::RawMaterial).hash_code()) {
 			auto splitName = MakeFileNameSplitter(identifier);
 			auto originalFile = TryLoadOriginalFileAsBlob(splitName.AllExceptParameters());
 
@@ -458,7 +412,7 @@ namespace GUILayer
 			OutputStreamFormatter fmtter(strm);
 			MergeAndSerialize(fmtter, MakeIteratorRange(*originalFile),
 				splitName.AllExceptParameters(), splitName.Parameters(),
-				*static_cast<const ToolsRig::DivergentAsset<::RenderCore::Assets::RawMaterial>&>(divAsset).GetWorkingAsset());
+				*GetWorkingCopy<RenderCore::Assets::RawMaterial>(divAsset));
 			auto newFile = ::Assets::AsBlob(MakeIteratorRange(strm.GetBuffer().Begin(), strm.GetBuffer().End()));
 
 			return AssetSaveEntry { std::move(originalFile), std::move(newFile), splitName.AllExceptParameters().AsString() };
@@ -500,75 +454,59 @@ namespace GUILayer
 
     auto PendingSaveList::Commit() -> CommitResult^
     {
-		assert(0);	// not implemented
-        #if 0 // defined(ASSETS_STORE_DIVERGENT)
+		std::stringstream errorMessages;
 
-			auto errorMessages = gcnew System::Text::StringBuilder;
+		using namespace RenderCore::Assets;
+		auto& divAssetMan = ToolsRig::DivergentAssetManager::GetInstance();
+		for (const auto&d : divAssetMan.GetAssets()) {
+			if (!d._hasChanges) continue;
 
-            using namespace RenderCore::Assets;
-            auto materials = ::Assets::Internal::GetAssetSet<RawMaterial>();
-			for (const auto& a:materials->_divergentAssets) {
-                auto asset = a.second;
-                auto hash = a.first;
-				if (!asset->HasChanges()) continue;
+			// only RawMaterial objects supported here currently
+			if (d._typeCode != typeid(RawMaterial).hash_code())
+				continue;
 
-                auto entry = GetEntry(*materials, hash);
-                if (!entry || entry->_action == Action::Ignore) continue;
+            auto entry = GetEntry(d._typeCode, d._idInAssetHeap);
+            if (!entry || entry->_action == Action::Ignore) continue;
 
-				if (entry->_action == Action::Abandon) {
-					asset->AbandonChanges();
-					continue;
-				}
+			auto asset = divAssetMan.GetAsset(d._typeCode, d._idInAssetHeap);
+			if (entry->_action == Action::Abandon) {
+				asset->AbandonChanges();
+				continue;
+			}
 
-				assert(entry->_action == Action::Save);
+			assert(entry->_action == Action::Save);
             
-                    //  Sometimes mutliple assets will write to different parts of the same
-                    //  file. It's a bit wierd, but we want the before and after parts to
-                    //  only show changes related to this particular asset
-                auto targetFilename = asset->GetIdentifier()._targetFilename;
-                auto splitName = MakeFileNameSplitter(targetFilename);
-                auto originalFile = TryLoadOriginalFileAsByteArray(splitName.AllExceptParameters());
+                //  Sometimes mutliple assets will write to different parts of the same
+                //  file. It's a bit wierd, but we want the before and after parts to
+                //  only show changes related to this particular asset
+			auto filename = MakeStringSection(d._identifier);
+            auto splitName = MakeFileNameSplitter(filename);
+            auto originalFile = TryLoadOriginalFileAsBlob(splitName.AllExceptParameters());
             
-                MemoryOutputStream<utf8> strm;
-                OutputStreamFormatter fmtter(strm);
-                MergeAndSerialize(fmtter, originalFile, 
-                    splitName.AllExceptParameters(), splitName.Parameters(), 
-                    asset->GetAsset());
+            MemoryOutputStream<utf8> strm;
+            OutputStreamFormatter fmtter(strm);
+            MergeAndSerialize(fmtter, MakeIteratorRange(*originalFile), 
+                splitName.AllExceptParameters(), splitName.Parameters(), 
+				*GetWorkingCopy<RawMaterial>(*asset));
 
-				auto dstFile = splitName.AllExceptParameters().AsString();
-                TRY
-                {
-					{
-						auto outputFile = ::Assets::MainFileSystem::OpenFileInterface(dstFile.c_str(), "wb");
-						outputFile->Write(strm.GetBuffer().Begin(), 1, size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin()));
-					}
+			auto dstFile = splitName.AllExceptParameters().AsString();
+            TRY
+            {
+				auto outputFile = ::Assets::MainFileSystem::OpenFileInterface(dstFile.c_str(), "wb");
+				outputFile->Write(strm.GetBuffer().Begin(), 1, size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin()));
 
-					// abandon changes now to allow us to reload the asset from disk
-					asset->AbandonChanges();
-					continue;
-                } CATCH(const std::exception& e) {
-					errorMessages->Append("Error while writing to file: ");
-					errorMessages->Append(clix::marshalString<clix::E_UTF8>(dstFile));
-					errorMessages->AppendLine(". Exception message follows:");
-					errorMessages->AppendLine(clix::marshalString<clix::E_UTF8>(e.what()));
-				} CATCH (...) {
-					errorMessages->Append("Error while writing to file: ");
-					errorMessages->Append(clix::marshalString<clix::E_UTF8>(dstFile));
-					errorMessages->AppendLine(". Unknown exception type.");
-                } CATCH_END
-            }
+				// abandon changes now to allow us to reload the asset from disk
+				// asset->AbandonChanges();
+            } CATCH(const std::exception& e) {
+				errorMessages << "Error while opening input file " << filename << ". Exception message follows: " << std::endl << e.what() << std::endl;
+			} CATCH (...) {
+				errorMessages << "Error while opening input file " << filename.AsString() << ". Unknown exception type." << std::endl;
+            } CATCH_END
+        }
 
-			auto result = gcnew CommitResult;
-			result->ErrorMessages = errorMessages->ToString();
-			return result;
-
-		#else
-
-			auto result = gcnew CommitResult;
-			result->ErrorMessages = "Divergent asset behaviour is disabled in this build.";
-			return result;
-
-        #endif
+		auto result = gcnew CommitResult;
+		result->ErrorMessages = clix::marshalString<clix::E_UTF8>(errorMessages.str());
+		return result;
     }
 
 	bool PendingSaveList::HasModifiedAssets()
