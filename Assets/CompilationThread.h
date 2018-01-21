@@ -13,6 +13,8 @@
 #include <thread>
 #include <functional>
 
+namespace Utility { class ThreadPool; }
+
 namespace Assets 
 {
     /// <summary>Used by the compiler types to manage background operations</summary>
@@ -41,5 +43,10 @@ namespace Assets
 
         void ThreadFunction();
     };
+
+	void QueueCompileOperation(
+		const std::shared_ptr<::Assets::CompileFuture>& future,
+		std::function<void(::Assets::CompileFuture&)>&& operation);
+		
 }
 

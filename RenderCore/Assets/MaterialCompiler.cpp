@@ -9,19 +9,17 @@
 #include "MaterialScaffold.h"
 #include "../Techniques/TechniqueMaterial.h"
 #include "../../Assets/CompilationThread.h"
-#include "../../Assets/Assets.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
-#include "../../Assets/ConfigFileContainer.h"
-#include "../../Assets/MemoryFile.h"
+#include "../../Assets/Assets.h"
 #include "../../Assets/NascentChunk.h"
-#include "../../Assets/AssetServices.h"
 #include "../../Assets/IntermediateAssets.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../Assets/MemoryFile.h"
+#include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
-#include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"
+
 
 namespace RenderCore { extern char VersionString[]; extern char BuildDateString[]; }
 
@@ -101,8 +99,16 @@ namespace RenderCore { namespace Assets
 
 			auto modelMatFuture = ::Assets::MakeAsset<RawMatConfigurations>(sourceModel);
 			auto modelMatState = modelMatFuture->StallWhilePending();
-			if (modelMatState == ::Assets::AssetState::Invalid)
-				Throw(::Exceptions::BasicLabel("Got invalid asset while loading material settings for model file (%s)", sourceModel.AsString().c_str()));
+			if (modelMatState == ::Assets::AssetState::Invalid) {
+				// auto depVal = std::make_shared<::Assets::DependencyValidation>();
+				// ::Assets::RegisterFileDependency(depVal, sourceModel);
+				Throw(::Assets::Exceptions::ConstructionError(
+					::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood,
+					modelMatFuture->GetDependencyValidation(),
+					// depVal,
+					"Failed while loading material information from source model (%s)", sourceModel.AsString().c_str()));
+			}
+
 			auto modelMat = modelMatFuture->Actualize();
 
 				//  for each configuration, we want to build a resolved material
@@ -204,34 +210,20 @@ namespace RenderCore { namespace Assets
 
 			compileMarker.SetState(::Assets::AssetState::Ready);
 
+		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(deps))));
 		} CATCH(const std::exception& e) {
-			auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(::Assets::AsBlob(e), ::Assets::AsDepValPtr(MakeIteratorRange(deps)));
-			compileMarker.AddArtifact("exception", artifact);
-			compileMarker.SetState(::Assets::AssetState::Invalid);
+			Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(deps))));
 		} CATCH(...) {
-			auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(nullptr, ::Assets::AsDepValPtr(MakeIteratorRange(deps)));
-			compileMarker.AddArtifact("exception", artifact);
-			compileMarker.SetState(::Assets::AssetState::Invalid);
+			Throw(::Assets::Exceptions::ConstructionError(
+				::Assets::Exceptions::ConstructionError::Reason::Unknown,
+				::Assets::AsDepVal(MakeIteratorRange(deps)),
+				"%s", "unknown exception"));
 		} CATCH_END
         
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class MaterialScaffoldCompiler::Pimpl
-    {
-    public:
-        Threading::Mutex _threadLock;
-        std::unique_ptr<::Assets::CompilationThread> _thread;
-
-		::Assets::CompilationThread& GetThread()
-		{
-			ScopedLock(_threadLock);
-			if (!_thread)
-				_thread = std::make_unique<::Assets::CompilationThread>();
-			return *_thread;
-		}
-    };
 
     class MatCompilerMarker : public ::Assets::ICompileMarker
     {
@@ -242,11 +234,10 @@ namespace RenderCore { namespace Assets
 
         MatCompilerMarker(
             ::Assets::rstring materialFilename, ::Assets::rstring modelFilename,
-            const ::Assets::IntermediateAssets::Store& store,
-            std::shared_ptr<MaterialScaffoldCompiler> compiler);
+            const ::Assets::IntermediateAssets::Store& store);
         ~MatCompilerMarker();
     private:
-        std::weak_ptr<MaterialScaffoldCompiler> _compiler;
+        std::weak_ptr<::Assets::CompilationThread> _thread;
         ::Assets::rstring _materialFilename, _modelFilename;
         const ::Assets::IntermediateAssets::Store* _store;
 
@@ -270,9 +261,6 @@ namespace RenderCore { namespace Assets
 
     std::shared_ptr<::Assets::CompileFuture> MatCompilerMarker::InvokeCompile() const
     {
-        auto c = _compiler.lock();
-        if (!c) return nullptr;
-
         using namespace ::Assets;
         StringMeld<256,ResChar> debugInitializer;
         debugInitializer<< _materialFilename << "(material scaffold)";
@@ -281,17 +269,13 @@ namespace RenderCore { namespace Assets
         backgroundOp->SetInitializer(debugInitializer);
 
 		::Assets::ResChar intermediateName[MaxPath];
-		_store->MakeIntermediateName(intermediateName, dimof(intermediateName), MakeStringSection(_materialFilename));
-		StringMeldAppend(intermediateName, &intermediateName[dimof(intermediateName)])
-			<< "-" << MakeFileNameSplitter(_modelFilename).FileAndExtension().AsString() << "-resmat";
+		GetIntermediateName(intermediateName, dimof(intermediateName));
 
-		auto& thread = c->_pimpl->GetThread();
 		::Assets::rstring destinationFile = intermediateName;
 		auto materialFilename = _materialFilename;
 		auto modelFilename = _modelFilename;
 		auto* store = _store;
-		auto compiler = _compiler;
-        thread.Push(
+		QueueCompileOperation(
 			backgroundOp,
 			[materialFilename, modelFilename, destinationFile, store](::Assets::CompileFuture& op) {
 				CompileMaterialScaffold(
@@ -299,7 +283,7 @@ namespace RenderCore { namespace Assets
 					op, *store);
 			});
 
-        return std::move(backgroundOp);
+        return backgroundOp;
     }
 
     StringSection<::Assets::ResChar> MatCompilerMarker::Initializer() const
@@ -309,9 +293,8 @@ namespace RenderCore { namespace Assets
 
     MatCompilerMarker::MatCompilerMarker(
         ::Assets::rstring materialFilename, ::Assets::rstring modelFilename,
-        const ::Assets::IntermediateAssets::Store& store,
-        std::shared_ptr<MaterialScaffoldCompiler> compiler)
-    : _materialFilename(materialFilename), _modelFilename(modelFilename), _compiler(std::move(compiler)), _store(&store) {}
+        const ::Assets::IntermediateAssets::Store& store)
+    : _materialFilename(materialFilename), _modelFilename(modelFilename), _store(&store) {}
     MatCompilerMarker::~MatCompilerMarker() {}
 
     std::shared_ptr<::Assets::ICompileMarker> MaterialScaffoldCompiler::PrepareAsset(
@@ -323,22 +306,13 @@ namespace RenderCore { namespace Assets
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in MaterialScaffoldCompiler. Material filename first, then model filename"));
 
         const auto materialFilename = initializers[0], modelFilename = initializers[1];
-        return std::make_shared<MatCompilerMarker>(materialFilename.AsString(), modelFilename.AsString(), store, shared_from_this());
+        return std::make_shared<MatCompilerMarker>(materialFilename.AsString(), modelFilename.AsString(), store);
     }
 
-    void MaterialScaffoldCompiler::StallOnPendingOperations(bool cancelAll)
-    {
-        {
-            ScopedLock(_pimpl->_threadLock);
-            if (!_pimpl->_thread) return;
-        }
-        _pimpl->_thread->StallOnPendingOperations(cancelAll);
-    }
+	void MaterialScaffoldCompiler::StallOnPendingOperations(bool cancelAll) {}
 
-    MaterialScaffoldCompiler::MaterialScaffoldCompiler()
-    {
-        _pimpl = std::make_unique<Pimpl>();
-    }
+	MaterialScaffoldCompiler::MaterialScaffoldCompiler()
+    {}
 
     MaterialScaffoldCompiler::~MaterialScaffoldCompiler()
     {}

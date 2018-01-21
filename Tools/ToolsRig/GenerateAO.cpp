@@ -16,7 +16,6 @@
 #include "../../RenderCore/Assets/ModelImmutableData.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
-#include "../../RenderCore/Assets/CompilationThread.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -33,6 +32,8 @@
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/CompilerHelper.h"
 #include "../../Assets/Assets.h"
+#include "../../Assets/CompilationThread.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -764,12 +765,13 @@ namespace ToolsRig
     {
     public:
         Result::Enum Update();
-        using Op = RenderCore::Assets::QueuedCompileOperation;
+        using Op = ::Assets::CompileFuture;
         PollingOp(
 			std::shared_ptr<Pimpl> pimpl, std::shared_ptr<Op> queuedOp, 
 			const std::string& modelFilename,
 			const std::string& materialFilename,
-			const std::string& destinationFilename);
+			const std::string& destinationFilename,
+			const ::Assets::IntermediateAssets::Store& store);
         ~PollingOp();
     private:
         std::weak_ptr<Pimpl> _pimpl;
@@ -777,6 +779,7 @@ namespace ToolsRig
 		std::string _modelFilename;
 		std::string _materialFilename;
 		std::string _destinationFilename;
+		const ::Assets::IntermediateAssets::Store* _store;
     };
 
     auto AOSupplementCompiler::PollingOp::Update() -> Result::Enum
@@ -792,7 +795,7 @@ namespace ToolsRig
 			auto compileResult = p->PerformCompile(
 				MakeStringSection(_modelFilename), MakeStringSection(_materialFilename),
 				MakeStringSection(_destinationFilename));
-            auto depVal = _queuedOp->_destinationStore->WriteDependencies(
+            auto depVal = _store->WriteDependencies(
                 MakeStringSection(_destinationFilename), MakeStringSection(compileResult._baseDir), 
                 MakeIteratorRange(compileResult._dependencies));
 			_queuedOp->AddArtifact("main", std::make_shared<::Assets::FileArtifact>(_destinationFilename, depVal));
@@ -811,15 +814,17 @@ namespace ToolsRig
 
     AOSupplementCompiler::PollingOp::PollingOp(
         std::shared_ptr<Pimpl> pimpl,
-        std::shared_ptr<RenderCore::Assets::QueuedCompileOperation> queuedOp,
+        std::shared_ptr<::Assets::CompileFuture> queuedOp,
 		const std::string& modelFilename,
 		const std::string& materialFilename,
-		const std::string& destinationFilename)
+		const std::string& destinationFilename,
+		const ::Assets::IntermediateAssets::Store& store)
     : _pimpl(std::move(pimpl))
     , _queuedOp(std::move(queuedOp))
 	, _modelFilename(modelFilename)
 	, _materialFilename(materialFilename)
 	, _destinationFilename(destinationFilename)
+	, _store(&store)
     {}
 
     AOSupplementCompiler::PollingOp::~PollingOp() {}
@@ -862,23 +867,23 @@ namespace ToolsRig
         auto c = _compiler.lock();
         if (!c) return nullptr;
 
-        using QueuedOp = RenderCore::Assets::QueuedCompileOperation;
+        using QueuedOp = ::Assets::CompileFuture;
 
             // Because the we're using the immediate context, we must run in a foreground
             // thread. We can't push into a background thread here...
 
         auto backgroundOp = std::make_shared<QueuedOp>();
-        backgroundOp->SetInitializer(_initializer.c_str());
+        /*backgroundOp->SetInitializer(_initializer.c_str());
         XlCopyString(backgroundOp->_initializer0, _modelFilename);
         XlCopyString(backgroundOp->_initializer1, _materialFilename);
         backgroundOp->_destinationStore = _store;
-        backgroundOp->_typeCode = _typeCode;
+        backgroundOp->_typeCode = _typeCode;*/
 
 		::Assets::ResChar intermediateName[MaxPath];
 		MakeIntermediateName(intermediateName, dimof(intermediateName));
 
         ::Assets::Services::GetAsyncMan().Add(
-            std::make_shared<PollingOp>(c->_pimpl, backgroundOp, _modelFilename, _materialFilename, intermediateName));
+            std::make_shared<PollingOp>(c->_pimpl, backgroundOp, _modelFilename, _materialFilename, intermediateName, *_store));
         return std::move(backgroundOp);
     }
 

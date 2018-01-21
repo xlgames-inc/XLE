@@ -495,7 +495,7 @@ namespace Assets
 			char buffer[512];
 			va_list args;
 			va_start(args, format);
-			std::vsnprintf(_buffer, dimof(_buffer), format, args);
+			std::vsnprintf(buffer, dimof(buffer), format, args);
 			va_end(args);
 
 			_actualizationLog = AsBlob(MakeIteratorRange(buffer, XlStringEnd(buffer)));
@@ -640,7 +640,7 @@ namespace Assets
                 (const ::Assets::ResChar*)src.end()));
     }
 
-	DepValPtr AsDepValPtr(IteratorRange<const DependentFileState*> deps)
+	DepValPtr AsDepVal(IteratorRange<const DependentFileState*> deps)
 	{
 		auto result = std::make_shared<DependencyValidation>();
 		for (const auto& i : deps)

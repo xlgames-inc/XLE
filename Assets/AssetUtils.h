@@ -67,7 +67,7 @@ namespace Assets
 		: _filename(filename), _timeMarker(timeMarker), _status(Status::Normal) {}
     };
 
-	DepValPtr AsDepValPtr(IteratorRange<const DependentFileState*> deps);
+	DepValPtr AsDepVal(IteratorRange<const DependentFileState*> deps);
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 

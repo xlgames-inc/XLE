@@ -19,17 +19,11 @@ namespace RenderCore { namespace Assets
             uint64_t typeCode, 
             const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& destinationStore);
-
-        void StallOnPendingOperations(bool cancelAll);
+		
+		void StallOnPendingOperations(bool cancelAll);
 
         MaterialScaffoldCompiler();
         ~MaterialScaffoldCompiler();
-
-    protected:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-
-        friend class MatCompilerMarker;
     };
 
 }}

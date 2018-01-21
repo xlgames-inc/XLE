@@ -586,15 +586,15 @@ namespace ColladaConversion
 			new std::vector<::Assets::DependentFileState>,
 			[](const void* block) { delete (std::vector<::Assets::DependentFileState>*)block; });
 
+		result->_dependencies->push_back({ MakeStringSection("colladaimport.cfg"), ::Assets::MainFileSystem::TryGetDesc("colladaimport.cfg")._modificationTime });
+		result->_dependencies->push_back({ filePath, ::Assets::MainFileSystem::TryGetDesc(filePath)._modificationTime });
+
 		result->_cfg = ImportConfiguration("colladaimport.cfg");
 		result->_fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath), 0, "r", FileShareMode::Read);
 		XmlInputStreamFormatter<utf8> formatter(
 			MemoryMappedInputStream(
-				result->_fileData.GetData(), 
+				result->_fileData.GetData(),
 				PtrAdd(result->_fileData.GetData(), result->_fileData.GetSize())));
-
-		result->_dependencies->push_back({ MakeStringSection("colladaimport.cfg"), ::Assets::MainFileSystem::TryGetDesc("colladaimport.cfg")._modificationTime });
-		result->_dependencies->push_back({ filePath, ::Assets::MainFileSystem::TryGetDesc(filePath)._modificationTime });
 
 		result->_name = identifier.AsString();
 		result->_rootNode = split.Parameters().AsString();

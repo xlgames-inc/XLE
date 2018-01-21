@@ -47,6 +47,7 @@ namespace BufferUploads { namespace PlatformInterface
 
         //////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
     #if GFXAPI_ACTIVE == GFXAPI_DX11
         intrusive_ptr<ID3D::Query> Query_CreateEvent(Metal::ObjectFactory& factory);
         bool    Query_IsEventTriggered(ID3D::DeviceContext* context, ID3D::Query* query);
@@ -168,7 +169,19 @@ namespace BufferUploads { namespace PlatformInterface
     GPUEventStack::Query::~Query()
     {}      // just a place for so the intrusive_ptr destructor code doesn't get compiled into multiple source files
 
+#else
 
+	void        GPUEventStack::TriggerEvent(RenderCore::Metal::DeviceContext* context, EventID event) {}
+	void        GPUEventStack::Update(RenderCore::Metal::DeviceContext* context) {}
+	auto		GPUEventStack::GetLastCompletedEvent() const -> EventID { return 0; }
+
+	void        GPUEventStack::OnLostDevice() {}
+	void        GPUEventStack::OnDeviceReset() {}
+
+	GPUEventStack::GPUEventStack(RenderCore::IDevice& device) {}
+	GPUEventStack::~GPUEventStack() {}
+
+#endif
 
     ////////////////////////////////////////////////////////////////////////////////
 

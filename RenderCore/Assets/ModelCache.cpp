@@ -108,21 +108,11 @@ namespace RenderCore { namespace Assets
             if (materialFuture || insertType == LRUCacheInsertType::EvictAndReplace) ++_pimpl->_reloadId;
         }
 
-		if (modelFuture) {
-			auto state = modelFuture->GetAssetState();
-			if (state == ::Assets::AssetState::Invalid)
-				Throw(::Exceptions::BasicLabel("Got invalid model in ModelCache::GetScaffolds"));
-			if (state == ::Assets::AssetState::Ready)
-				result._model = modelFuture->Actualize().get();
-		}
+		if (modelFuture)
+			result._model = modelFuture->TryActualize().get();
 
-		if (materialFuture) {
-			auto state = materialFuture->GetAssetState();
-			if (state == ::Assets::AssetState::Invalid)
-				Throw(::Exceptions::BasicLabel("Got invalid material in ModelCache::GetScaffolds"));
-			if (state == ::Assets::AssetState::Ready)
-				result._material = materialFuture->Actualize().get();
-		}
+		if (materialFuture)
+			result._material = materialFuture->TryActualize().get();
 
         return result;
     }
@@ -168,8 +158,9 @@ namespace RenderCore { namespace Assets
         unsigned LOD) -> ModelCacheModel
     {
         auto scaffold = GetScaffolds(modelFilename, materialFilename);
-        if (!scaffold._model || !scaffold._material)
-            Throw(::Assets::Exceptions::PendingAsset(modelFilename));
+		if (!scaffold._model || !scaffold._material)
+			// Throw(::Assets::Exceptions::PendingAsset(modelFilename));
+			return ModelCacheModel{};
 
         auto maxLOD = scaffold._model->GetMaxLOD();
         LOD = std::min(LOD, maxLOD);

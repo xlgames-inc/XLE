@@ -101,6 +101,7 @@ namespace BufferUploads { namespace PlatformInterface
     UnderlyingDeviceContext::ResourceInitializer AsResourceInitializer(DataPacket& pkt);
 
         /////////////////////////////////////////////////////////////////////
+#if 0
     class GPUEventStack
     {
     public:
@@ -133,6 +134,23 @@ namespace BufferUploads { namespace PlatformInterface
 
         RenderCore::Metal::ObjectFactory* _objFactory;
     };
+#else
+	class GPUEventStack
+	{
+	public:
+		typedef unsigned    EventID;
+
+		void        TriggerEvent(RenderCore::Metal::DeviceContext* context, EventID event);
+		void        Update(RenderCore::Metal::DeviceContext* context);
+		EventID     GetLastCompletedEvent() const;
+
+		void        OnLostDevice();
+		void        OnDeviceReset();
+
+		GPUEventStack(RenderCore::IDevice& device);
+		~GPUEventStack();
+	};
+#endif
 
         ///////////////////////////////////////////////////////////////////
 

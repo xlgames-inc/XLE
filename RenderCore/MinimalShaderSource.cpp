@@ -98,7 +98,7 @@ namespace RenderCore
             shaderInMemory, size, resId, definesTable);
 
 		auto result = std::make_shared<::Assets::CompileFuture>();
-        auto depVal = AsDepValPtr(MakeIteratorRange(deps));
+        auto depVal = AsDepVal(MakeIteratorRange(deps));
 		result->AddArtifact("main", std::make_shared<Assets::BlobArtifact>(payload, std::move(depVal)));
 		result->AddArtifact("log", std::make_shared<Assets::BlobArtifact>(errors, std::move(depVal)));
 		result->SetState(success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid);

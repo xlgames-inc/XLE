@@ -51,6 +51,7 @@ namespace RenderCore { namespace Assets
 		CompilerLibrary(StringSection<::Assets::ResChar> libraryName)
 			: _library(libraryName)
 		{
+			_libraryName = libraryName.AsString();
 			_createCompileOpFunction = nullptr;
 			_isAttached = _attemptedAttach = false;
 		}
@@ -77,18 +78,7 @@ namespace RenderCore { namespace Assets
 		bool								_discoveryDone;
 		::Assets::DirectorySearchRules		_librarySearchRules;
 
-        Threading::Mutex					_threadLock;   // (used while initialising _thread for the first time)
-        std::unique_ptr<::Assets::CompilationThread>	_thread;
-
 		void DiscoverLibraries();
-
-		::Assets::CompilationThread& GetThread()
-		{
-			ScopedLock(_threadLock);
-			if (!_thread)
-				_thread = std::make_unique<::Assets::CompilationThread>();
-			return *_thread;
-		}
 
 		Pimpl() : _discoveryDone(false) {}
 		Pimpl(const Pimpl&) = delete;
@@ -134,6 +124,22 @@ namespace RenderCore { namespace Assets
 			mainFile.Write(AsPointer(c._data->begin()), c._data->size(), 1);
     }
 
+	static ::Assets::DepValPtr MakeDepVal(
+		IteratorRange<const ::Assets::DependentFileState*> deps,
+		StringSection<::Assets::ResChar> initializer,
+		StringSection<::Assets::ResChar> libraryName)
+	{
+		::Assets::DepValPtr depVal;
+		if (!deps.empty()) {
+			depVal = ::Assets::AsDepVal(deps);
+		} else {
+			depVal = std::make_shared<::Assets::DependencyValidation>();
+			::Assets::RegisterFileDependency(depVal, MakeFileNameSplitter(initializer).AllExceptParameters());
+		}
+		::Assets::RegisterFileDependency(depVal, libraryName);
+		return depVal;
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void CompilerLibrary::PerformCompile(
@@ -142,18 +148,25 @@ namespace RenderCore { namespace Assets
 		::Assets::CompileFuture& compileMarker,
 		const ::Assets::IntermediateAssets::Store& destinationStore)
     {
-        TRY
-        {
-            AttachLibrary();
+        AttachLibrary();
 
-            ConsoleRig::LibVersionDesc libVersionDesc;
-            _library.TryGetVersion(libVersionDesc);
+        ConsoleRig::LibVersionDesc libVersionDesc;
+        _library.TryGetVersion(libVersionDesc);
 
+		std::vector<::Assets::DependentFileState> deps;
+
+		TRY
+		{
 			bool requiresMerge = (typeCode == ModelCompiler::Type_AnimationSet) && XlFindChar(initializer, '*');
-            if (!requiresMerge) {
+			if (!requiresMerge) {
 
-                auto model = (*_createCompileOpFunction)(initializer);
+				auto model = (*_createCompileOpFunction)(initializer);
+				if (!model)
+					Throw(::Exceptions::BasicLabel("Compiler library returned null to compile request on %s", initializer.AsString().c_str()));
 
+				deps = *model->GetDependencies();
+
+			
 				auto mainBlob = std::make_shared<std::vector<uint8_t>>();
 				auto mainFile = ::Assets::CreateMemoryFile(mainBlob);
 
@@ -183,7 +196,6 @@ namespace RenderCore { namespace Assets
 					dst->Write(mainBlob->data(), mainBlob->size());
 				}
 
-				const auto& deps = *model->GetDependencies();
 				auto depVal = destinationStore.WriteDependencies(destinationFile, {}, MakeIteratorRange(deps));
 				::Assets::rstring requestParams;
 				if (typeCode == ModelCompiler::Type_RawMat)
@@ -194,7 +206,7 @@ namespace RenderCore { namespace Assets
 
 				compileMarker.SetState(::Assets::AssetState::Ready);
 
-            }  else {
+			}  else {
 
 				assert(0);	// broken when generalizing animation set serialization functionality.
 							// We now need to do the merging in this module; just serialize animations from single
@@ -203,56 +215,56 @@ namespace RenderCore { namespace Assets
 				if (!_extractAnimationsFn || !_serializeAnimationSetFn || !_createAnimationSetFn)
 					Throw(::Exceptions::BasicLabel("Could not execute animation conversion operation because this compiler library doesn't provide an interface for animations"));
 
-                    //  source for the animation set should actually be a directory name, and
-                    //  we'll use all of the dae files in that directory as animation inputs
-                auto sourceFiles = RawFS::FindFiles(initializer.AsString() + "/*.dae");
-                std::vector<::Assets::DependentFileState> deps;
+					//  source for the animation set should actually be a directory name, and
+					//  we'll use all of the dae files in that directory as animation inputs
+				auto sourceFiles = RawFS::FindFiles(initializer.AsString() + "/*.dae");
+				std::vector<::Assets::DependentFileState> deps;
 
-                auto mergedAnimationSet = (*_createAnimationSetFn)("mergedanim");
-                for (auto i=sourceFiles.begin(); i!=sourceFiles.end(); ++i) {
-                    char baseName[MaxPath]; // get the base name of the file (without the extension)
-                    XlBasename(baseName, dimof(baseName), i->c_str());
-                    XlChopExtension(baseName);
+				auto mergedAnimationSet = (*_createAnimationSetFn)("mergedanim");
+				for (auto i=sourceFiles.begin(); i!=sourceFiles.end(); ++i) {
+					char baseName[MaxPath]; // get the base name of the file (without the extension)
+					XlBasename(baseName, dimof(baseName), i->c_str());
+					XlChopExtension(baseName);
 
-                    TRY {
-                            //
-                            //      First; load the animation file as a model
-                            //          note that this will do geometry processing; etc -- but all that geometry
-                            //          information will be ignored.
-                            //
-                        auto model = (*_createCompileOpFunction)(i->c_str());
+					TRY {
+							//
+							//      First; load the animation file as a model
+							//          note that this will do geometry processing; etc -- but all that geometry
+							//          information will be ignored.
+							//
+						auto model = (*_createCompileOpFunction)(i->c_str());
 
-                            //
-                            //      Now, merge the animation data into 
-                        (*_extractAnimationsFn)(*mergedAnimationSet.get(), *model.get(), baseName);
-                    } CATCH (const std::exception& e) {
-                            // on exception, ignore this animation file and move on to the next
-                        LogAlwaysError << "Exception while processing animation: (" << baseName << "). Exception is: (" << e.what() << ")";
-                    } CATCH_END
+							//
+							//      Now, merge the animation data into 
+						(*_extractAnimationsFn)(*mergedAnimationSet.get(), *model.get(), baseName);
+					} CATCH (const std::exception& e) {
+							// on exception, ignore this animation file and move on to the next
+						LogAlwaysError << "Exception while processing animation: (" << baseName << "). Exception is: (" << e.what() << ")";
+					} CATCH_END
 
-                    deps.push_back(destinationStore.GetDependentFileState(i->c_str()));
-                }
+					deps.push_back(destinationStore.GetDependentFileState(i->c_str()));
+				}
 
 				auto chunks = (*_serializeAnimationSetFn)(*mergedAnimationSet);
-                SerializeToFile(MakeIteratorRange(*chunks), compileMarker.GetLocator()._sourceID0, libVersionDesc);
+				SerializeToFile(MakeIteratorRange(*chunks), compileMarker.GetLocator()._sourceID0, libVersionDesc);
 
 				compileMarker.GetLocator()._dependencyValidation = destinationStore.WriteDependencies(compileMarker.GetLocator()._sourceID0, splitName.DriveAndPath(), MakeIteratorRange(deps));
-                if (::Assets::Services::GetInvalidAssetMan())
-                    ::Assets::Services::GetInvalidAssetMan()->MarkValid(initializer);
+				if (::Assets::Services::GetInvalidAssetMan())
+					::Assets::Services::GetInvalidAssetMan()->MarkValid(initializer);
 				compileMarker.SetState(::Assets::AssetState::Ready);
 #endif
-            }
-        } CATCH(const std::exception& e) {
-            LogAlwaysError << "Caught exception while performing Collada conversion. Exception details as follows:";
-            LogAlwaysError << e.what();
-            //if (::Assets::Services::GetInvalidAssetMan())
-            //    ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(initializer, e.what());
-			compileMarker.SetState(::Assets::AssetState::Invalid);
-        } CATCH(...) {
-//            if (::Assets::Services::GetInvalidAssetMan())
-//                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(initializer, "Unknown error");
-			compileMarker.SetState(::Assets::AssetState::Invalid);
-        } CATCH_END
+
+			}
+		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, MakeDepVal(MakeIteratorRange(deps), initializer, MakeStringSection(_libraryName))));
+		} CATCH(const std::exception& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, MakeDepVal(MakeIteratorRange(deps), initializer, MakeStringSection(_libraryName))));
+		} CATCH(...) {
+			Throw(::Assets::Exceptions::ConstructionError(
+				::Assets::Exceptions::ConstructionError::Reason::Unknown,
+				MakeDepVal(MakeIteratorRange(deps), initializer, MakeStringSection(_libraryName)),
+				"%s", "unknown exception"));
+		} CATCH_END
     }
 
 	void CompilerLibrary::AttachLibrary()
@@ -376,13 +388,12 @@ namespace RenderCore { namespace Assets
 		::Assets::ResChar intermediateName[MaxPath];
 		MakeIntermediateName(intermediateName, dimof(intermediateName));
 
-        auto& thread = c->_pimpl->GetThread();
 		::Assets::rstring destinationFile = intermediateName;
 		auto requestName = _requestName;
 		auto typeCode = _typeCode;
 		auto* store = _store;
 		auto compiler = _compiler;
-        thread.Push(
+		QueueCompileOperation(
 			backgroundOp,
 			[compilerIndex, compiler, typeCode, requestName, destinationFile, store](::Assets::CompileFuture& op) {
 				auto c = compiler.lock();
@@ -422,11 +433,6 @@ namespace RenderCore { namespace Assets
 
     void ModelCompiler::StallOnPendingOperations(bool cancelAll)
     {
-        {
-            ScopedLock(_pimpl->_threadLock);
-            if (!_pimpl->_thread) return;
-        }
-        _pimpl->_thread->StallOnPendingOperations(cancelAll);
     }
 
 	void ModelCompiler::AddLibrarySearchDirectories(const ::Assets::DirectorySearchRules& directories)

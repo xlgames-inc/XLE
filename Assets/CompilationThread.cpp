@@ -6,6 +6,8 @@
 
 #include "CompilationThread.h"
 #include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/GlobalServices.h"
+#include "../Utility/Threading/CompletionThreadPool.h"
 
 namespace Assets 
 {
@@ -49,12 +51,22 @@ namespace Assets
                     // new request get processed first.
                     _delayedQueue.push(Element{future, std::move(fn)});
                 }
+				CATCH (const ::Assets::Exceptions::ConstructionError& e)
+				{
+					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(e.GetActualizationLog(), e.GetDependencyValidation());
+					future->AddArtifact("exception", artifact);
+					future->SetState(::Assets::AssetState::Invalid);
+				}
                 CATCH (const std::exception& e)
                 {
-                    Log(Warning) << "Got exception while in asset compilation thread" << std::endl;
-					Log(Warning) << "Asset: " << future->Initializer() << std::endl;
-					Log(Warning) << "    " << e.what() << std::endl;
+					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(::Assets::AsBlob(e), nullptr);
+					future->AddArtifact("exception", artifact);
+					future->SetState(::Assets::AssetState::Invalid);
                 }
+				CATCH (...)
+				{
+					future->SetState(::Assets::AssetState::Invalid);
+				}
                 CATCH_END
 
             } else if (_delayedQueue.try_front(op)) {
@@ -80,12 +92,22 @@ namespace Assets
                     // new request get processed first.
 					_delayedQueue.push(Element{ future, std::move(fn) });
                 }
-                CATCH (const std::exception& e)
-                {
-                    Log(Warning) << "Got exception while in asset compilation thread" << std::endl;
-					Log(Warning) << "Asset: " << future->Initializer() << std::endl;
-					Log(Warning) << "    " << e.what() << std::endl;
-                }
+				CATCH (const ::Assets::Exceptions::ConstructionError& e)
+				{
+					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(e.GetActualizationLog(), e.GetDependencyValidation());
+					future->AddArtifact("exception", artifact);
+					future->SetState(::Assets::AssetState::Invalid);
+				}
+				CATCH (const std::exception& e)
+				{
+					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(::Assets::AsBlob(e), nullptr);
+					future->AddArtifact("exception", artifact);
+					future->SetState(::Assets::AssetState::Invalid);
+				}
+				CATCH (...)
+				{
+					future->SetState(::Assets::AssetState::Invalid);
+				}
                 CATCH_END
 
             } else {
@@ -111,6 +133,37 @@ namespace Assets
         XlCloseSyncObject(_events[0]);
         XlCloseSyncObject(_events[1]);
     }
+
+	void QueueCompileOperation(
+		const std::shared_ptr<::Assets::CompileFuture>& future,
+		std::function<void(::Assets::CompileFuture&)>&& operation)
+	{
+		auto fn = std::move(operation);
+		ConsoleRig::GlobalServices::GetLongTaskThreadPool().EnqueueBasic(
+			[future, fn]() {
+				TRY
+				{
+					fn(*future);
+				}
+				CATCH(const ::Assets::Exceptions::ConstructionError& e)
+				{
+					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(e.GetActualizationLog(), e.GetDependencyValidation());
+					future->AddArtifact("exception", artifact);
+					future->SetState(::Assets::AssetState::Invalid);
+				}
+				CATCH(const std::exception& e)
+				{
+					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(::Assets::AsBlob(e), nullptr);
+					future->AddArtifact("exception", artifact);
+					future->SetState(::Assets::AssetState::Invalid);
+				}
+				CATCH(...)
+				{
+					future->SetState(::Assets::AssetState::Invalid);
+				}
+				CATCH_END
+		});
+	}
 
 }
 

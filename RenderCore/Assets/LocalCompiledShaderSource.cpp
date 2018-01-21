@@ -567,7 +567,7 @@ namespace RenderCore { namespace Assets
                 }
 
 					// Create the artifact and add it to the compile marker
-				auto depVal = AsDepValPtr(deps);
+				auto depVal = AsDepVal(deps);
 				auto artifact = std::make_shared<::Assets::BlobArtifact>(payload, depVal);
 				marker->AddArtifact("main", artifact);
 				marker->AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
