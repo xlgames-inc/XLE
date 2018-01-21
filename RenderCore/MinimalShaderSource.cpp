@@ -15,14 +15,6 @@
 namespace RenderCore
 {
 
-	static ::Assets::DepValPtr AsDepValPtr(IteratorRange<const ::Assets::DependentFileState*> deps)
-	{
-		auto result = std::make_shared<::Assets::DependencyValidation>();
-		for (const auto& i:deps)
-			::Assets::RegisterFileDependency(result, MakeStringSection(i._filename));
-		return result;
-	}
-
 #if 0
 	class MinimalShaderSource::PendingMarker : public ::Assets::CompileFuture
 	{
@@ -107,7 +99,8 @@ namespace RenderCore
 
 		auto result = std::make_shared<::Assets::CompileFuture>();
         auto depVal = AsDepValPtr(MakeIteratorRange(deps));
-		result->AddArtifact("main", std::make_shared<Assets::BlobArtifact>(errors, payload, std::move(depVal)));
+		result->AddArtifact("main", std::make_shared<Assets::BlobArtifact>(payload, std::move(depVal)));
+		result->AddArtifact("log", std::make_shared<Assets::BlobArtifact>(errors, std::move(depVal)));
 		result->SetState(success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid);
 		return result;
     }

@@ -286,7 +286,7 @@ namespace Sample
                 //  during the render. Here, we can render them as a short list...
             hasPendingResources = lightingParserContext.HasPendingAssets();
             auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-            DrawPendingResources(context, lightingParserContext, defaultFont0.get());
+            DrawPendingResources(context, lightingParserContext, defaultFont0);
 
             if (overlaySys) {
                 overlaySys->RenderWidgets(context, lightingParserContext);

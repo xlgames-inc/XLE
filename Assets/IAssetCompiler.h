@@ -15,7 +15,6 @@ namespace Assets
 	{
 	public:
 		virtual Blob					GetBlob() const = 0;
-		virtual Blob					GetErrors() const = 0;
 		virtual DepValPtr				GetDependencyValidation() const = 0;
 		virtual StringSection<ResChar>	GetRequestParameters() const = 0;		// these are parameters that should be passed through to the asset when it's actually loaded from the blob
 		virtual ~IArtifact();
@@ -86,29 +85,41 @@ namespace Assets
 	{
 	public:
 		Blob		GetBlob() const;
-		Blob		GetErrors() const;
 		DepValPtr	GetDependencyValidation() const;
 		StringSection<ResChar>	GetRequestParameters() const;
-		FileArtifact(const ::Assets::rstring& filename, const ::Assets::DepValPtr& depVal);
+		FileArtifact(const rstring& filename, const DepValPtr& depVal);
 		~FileArtifact();
 	private:
 		rstring _filename;
 		DepValPtr _depVal;
+		rstring _params;
 	};
 
 	class BlobArtifact : public IArtifact
 	{
 	public:
 		Blob		GetBlob() const;
-		Blob		GetErrors() const;
 		DepValPtr	GetDependencyValidation() const;
 		StringSection<ResChar>	GetRequestParameters() const;
-		BlobArtifact(const Blob& blob, const Blob& errors, const DepValPtr& depVal, const rstring& requestParams = {});
+		BlobArtifact(const Blob& blob, const DepValPtr& depVal, const rstring& requestParams = {});
 		~BlobArtifact();
 	private:
-		Blob _blob, _errors;
+		Blob _blob;
 		DepValPtr _depVal;
 		rstring _requestParams;
+	};
+
+	class CompilerExceptionArtifact : public ::Assets::IArtifact
+	{
+	public:
+		Blob		GetBlob() const;
+		DepValPtr	GetDependencyValidation() const;
+		StringSection<::Assets::ResChar>	GetRequestParameters() const;
+		CompilerExceptionArtifact(const ::Assets::Blob& log, const ::Assets::DepValPtr& depVal);
+		~CompilerExceptionArtifact();
+	private:
+		::Assets::Blob _log;
+		::Assets::DepValPtr _depVal;
 	};
 
 }

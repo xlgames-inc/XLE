@@ -190,7 +190,7 @@ namespace RenderCore { namespace Assets
 					requestParams = MakeFileNameSplitter(initializer).Parameters().AsString();
 				compileMarker.AddArtifact(
 					"main",
-					std::make_shared<::Assets::BlobArtifact>(mainBlob, nullptr, depVal, requestParams));
+					std::make_shared<::Assets::BlobArtifact>(mainBlob, depVal, requestParams));
 
 				compileMarker.SetState(::Assets::AssetState::Ready);
 
@@ -328,8 +328,8 @@ namespace RenderCore { namespace Assets
 
     std::shared_ptr<::Assets::IArtifact> ModelCompiler::Marker::GetExistingAsset() const
     {
+		auto splitRequest = MakeFileNameSplitter(_requestName);
 		if (_typeCode == ModelCompiler::Type_RawMat) {
-			auto splitRequest = MakeFileNameSplitter(_requestName);
 			if (XlEqStringI(splitRequest.Extension(), "material")) {
 				auto depVal = std::make_shared<::Assets::DependencyValidation>();
 				RegisterFileDependency(depVal, splitRequest.AllExceptParameters());
@@ -340,6 +340,8 @@ namespace RenderCore { namespace Assets
 		::Assets::ResChar intermediateName[MaxPath];
         MakeIntermediateName(intermediateName, dimof(intermediateName));
 		auto depVal = _store->MakeDependencyValidation(intermediateName);
+		if (_typeCode == ModelCompiler::Type_RawMat)
+			XlCatString(intermediateName, splitRequest.ParametersWithDivider());
 		return std::make_shared<::Assets::FileArtifact>(intermediateName, depVal);
     }
 

@@ -106,6 +106,7 @@ namespace GUILayer
     {
 		_divAssets.reset();
         _renderAssetsServices.reset();
+		_assetServices->DetachCurrentModule();
         _assetServices.reset();
         _immediateContext.reset();
         _renderDevice.reset();

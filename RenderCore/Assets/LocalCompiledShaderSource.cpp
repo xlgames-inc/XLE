@@ -457,7 +457,7 @@ namespace RenderCore { namespace Assets
         if (!c || CancelAllShaderCompiles) return nullptr;
 
 		if (XlEqString(_res._filename, "null"))
-			return std::make_shared<::Assets::BlobArtifact>(nullptr, nullptr, std::make_shared<::Assets::DependencyValidation>());
+			return std::make_shared<::Assets::BlobArtifact>(nullptr, std::make_shared<::Assets::DependencyValidation>());
 
         ::Assets::ResChar archiveName[MaxPath], depName[MaxPath];
         auto archiveId = GetTarget(_res, _definesTable, archiveName, dimof(archiveName), depName, dimof(depName));
@@ -490,14 +490,6 @@ namespace RenderCore { namespace Assets
             Interlocked::Decrement(&_activeCompileCount);
         }
     }
-
-	static ::Assets::DepValPtr AsDepValPtr(IteratorRange<const ::Assets::DependentFileState*> deps)
-	{
-		auto result = std::make_shared<::Assets::DependencyValidation>();
-		for (const auto& i:deps)
-			::Assets::RegisterFileDependency(result, MakeStringSection(i._filename));
-		return result;
-	}
 
     std::shared_ptr<::Assets::CompileFuture> LocalCompiledShaderSource::Marker::InvokeCompile() const
     {
@@ -576,8 +568,9 @@ namespace RenderCore { namespace Assets
 
 					// Create the artifact and add it to the compile marker
 				auto depVal = AsDepValPtr(deps);
-				auto artifact = std::make_shared<::Assets::BlobArtifact>(payload, errors, depVal);
+				auto artifact = std::make_shared<::Assets::BlobArtifact>(payload, depVal);
 				marker->AddArtifact("main", artifact);
+				marker->AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
 
                     // give the CompileFuture object the same state
                 marker->SetState(newState);

@@ -466,7 +466,6 @@ namespace Assets
 		return result;
 	}
 
-	auto FileArtifact::GetErrors() const -> Blob { return nullptr; }
 	::Assets::DepValPtr FileArtifact::GetDependencyValidation() const { return _depVal; }
 	StringSection<ResChar>	FileArtifact::GetRequestParameters() const { return MakeFileNameSplitter(_filename).Parameters(); }
 	FileArtifact::FileArtifact(const ::Assets::rstring& filename, const ::Assets::DepValPtr& depVal)
@@ -475,11 +474,16 @@ namespace Assets
 
 
 	auto BlobArtifact::GetBlob() const -> Blob { return _blob; }
-	auto BlobArtifact::GetErrors() const -> Blob  { return _errors;  }
 	::Assets::DepValPtr BlobArtifact::GetDependencyValidation() const { return _depVal; }
 	StringSection<ResChar>	BlobArtifact::GetRequestParameters() const { return MakeStringSection(_requestParams); }
-	BlobArtifact::BlobArtifact(const Blob& blob, const Blob& errors, const ::Assets::DepValPtr& depVal, const rstring& requestParams)
-	: _blob(blob), _errors(errors), _depVal(depVal), _requestParams(requestParams) {}
+	BlobArtifact::BlobArtifact(const Blob& blob, const ::Assets::DepValPtr& depVal, const rstring& requestParams)
+	: _blob(blob), _depVal(depVal), _requestParams(requestParams) {}
 	BlobArtifact::~BlobArtifact() {}
+
+	auto CompilerExceptionArtifact::GetBlob() const -> ::Assets::Blob { return _log; }
+	::Assets::DepValPtr CompilerExceptionArtifact::GetDependencyValidation() const { return _depVal; }
+	StringSection<::Assets::ResChar>	CompilerExceptionArtifact::GetRequestParameters() const { return {}; }
+	CompilerExceptionArtifact::CompilerExceptionArtifact(const ::Assets::Blob& log, const ::Assets::DepValPtr& depVal) : _log(log), _depVal(depVal) {}
+	CompilerExceptionArtifact::~CompilerExceptionArtifact() {}
 
 }

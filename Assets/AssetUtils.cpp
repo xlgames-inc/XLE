@@ -640,6 +640,13 @@ namespace Assets
                 (const ::Assets::ResChar*)src.end()));
     }
 
+	DepValPtr AsDepValPtr(IteratorRange<const DependentFileState*> deps)
+	{
+		auto result = std::make_shared<DependencyValidation>();
+		for (const auto& i : deps)
+			::Assets::RegisterFileDependency(result, MakeStringSection(i._filename));
+		return result;
+	}
 
 	ICompileOperation::~ICompileOperation() {}
 	ICompilerDesc::~ICompilerDesc() {}

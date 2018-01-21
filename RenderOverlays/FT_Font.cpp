@@ -885,9 +885,9 @@ bool LoadFontConfigFile()
 
 void CleanupFTFontSystem()
 {
-    assert(fontGroupMap.empty());
-    assert(damageDisplayFontGroupMap.empty());
-    assert(fontMap.empty());
+	fontGroupMap.clear();
+	damageDisplayFontGroupMap.clear();
+	fontMap.clear();
 
     fontTexMgr = nullptr;
     damageDisplayFontTexMgr = nullptr;

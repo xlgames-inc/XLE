@@ -147,28 +147,6 @@ namespace Converter
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class CompilerExceptionArtifact : public ::Assets::IArtifact
-	{
-	public:
-		::Assets::Blob	GetBlob() const;
-		::Assets::Blob	GetErrors() const;
-		::Assets::DepValPtr GetDependencyValidation() const;
-		StringSection<::Assets::ResChar>	GetRequestParameters() const;
-		CompilerExceptionArtifact(const ::Assets::DepValPtr& depVal);
-		~CompilerExceptionArtifact();
-	private:
-		::Assets::DepValPtr _depVal;
-	};
-
-	auto CompilerExceptionArtifact::GetBlob() const -> ::Assets::Blob { return nullptr; }
-	auto CompilerExceptionArtifact::GetErrors() const -> ::Assets::Blob  { return nullptr;  }
-	::Assets::DepValPtr CompilerExceptionArtifact::GetDependencyValidation() const { return _depVal; }
-	StringSection<::Assets::ResChar>	CompilerExceptionArtifact::GetRequestParameters() const { return {}; }
-	CompilerExceptionArtifact::CompilerExceptionArtifact(const ::Assets::DepValPtr& depVal) : _depVal(depVal) {}
-	CompilerExceptionArtifact::~CompilerExceptionArtifact() {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
     void CompilerLibrary::PerformCompile(
 		GeneralCompiler::ArtifactType artifactType,
 		uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
@@ -218,7 +196,7 @@ namespace Converter
 							compileMarker.AddArtifact(target._name, artifact);
 						} else if (artifactType == GeneralCompiler::ArtifactType::Blob) {
 							auto blob = SerializeToBlob(MakeIteratorRange(*chunks), libVersionDesc);
-							auto artifact = std::make_shared<::Assets::BlobArtifact>(blob, ::Assets::Blob(), depVal);
+							auto artifact = std::make_shared<::Assets::BlobArtifact>(blob, depVal);
 							compileMarker.AddArtifact(target._name, artifact);
 						} else {
 							Throw(::Exceptions::BasicLabel("Unsupported artifact type (%i)", artifactType));
@@ -234,9 +212,9 @@ namespace Converter
 				compileMarker.SetState(::Assets::AssetState::Ready);
 
             } CATCH(...) {
-				auto artifact = std::make_shared<CompilerExceptionArtifact>(depVal);
-				compileMarker.AddArtifact("Exception", artifact);
-                throw;
+				auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(nullptr, depVal);
+				compileMarker.AddArtifact("exception", artifact);
+				compileMarker.SetState(::Assets::AssetState::Invalid);
             } CATCH_END
 
 

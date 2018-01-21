@@ -90,6 +90,7 @@ namespace RenderCore { namespace Assets
 		::Assets::CompileFuture& compileMarker,
 		const ::Assets::IntermediateAssets::Store& destinationStore)
     {
+		std::vector<::Assets::DependentFileState> deps;
 		TRY
 		{
 
@@ -103,8 +104,6 @@ namespace RenderCore { namespace Assets
 			if (modelMatState == ::Assets::AssetState::Invalid)
 				Throw(::Exceptions::BasicLabel("Got invalid asset while loading material settings for model file (%s)", sourceModel.AsString().c_str()));
 			auto modelMat = modelMatFuture->Actualize();
-            
-			std::vector<::Assets::DependentFileState> deps;
 
 				//  for each configuration, we want to build a resolved material
 				//  Note that this is a bit crazy, because we're going to be loading
@@ -201,19 +200,17 @@ namespace RenderCore { namespace Assets
 			auto depVal = destinationStore.WriteDependencies(destinationFile, {}, MakeIteratorRange(deps));
 			compileMarker.AddArtifact(
 				"main",
-				std::make_shared<::Assets::BlobArtifact>(mainBlob, nullptr, depVal));
+				std::make_shared<::Assets::BlobArtifact>(mainBlob, depVal));
 
 			compileMarker.SetState(::Assets::AssetState::Ready);
 
 		} CATCH(const std::exception& e) {
-			LogAlwaysError << "Caught exception while performing material compile. Exception details as follows:";
-			LogAlwaysError << e.what();
-//			if (::Assets::Services::GetInvalidAssetMan())
-//				::Assets::Services::GetInvalidAssetMan()->MarkInvalid(compileMarker.Initializer(), e.what());
+			auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(::Assets::AsBlob(e), ::Assets::AsDepValPtr(MakeIteratorRange(deps)));
+			compileMarker.AddArtifact("exception", artifact);
 			compileMarker.SetState(::Assets::AssetState::Invalid);
 		} CATCH(...) {
-//			if (::Assets::Services::GetInvalidAssetMan())
-//				::Assets::Services::GetInvalidAssetMan()->MarkInvalid(compileMarker.Initializer(), "Unknown error");
+			auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(nullptr, ::Assets::AsDepValPtr(MakeIteratorRange(deps)));
+			compileMarker.AddArtifact("exception", artifact);
 			compileMarker.SetState(::Assets::AssetState::Invalid);
 		} CATCH_END
         

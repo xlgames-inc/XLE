@@ -92,7 +92,7 @@ namespace Assets
 					if (state == AssetState::Invalid) {
 						auto artifacts = pendingCompile->GetArtifacts();
 						if (!artifacts.empty()) {
-							thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetErrors());
+							thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetBlob());
 						} else {
 							thatFuture.SetInvalidAsset(nullptr, nullptr);
 						}
