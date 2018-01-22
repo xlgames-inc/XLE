@@ -96,7 +96,7 @@ namespace RenderCore
         case R8G8_B8G8: 
         case G8R8_G8B8:         return FormatComponents::RGB;
         default:
-            assert(0);
+            ;
         }
 
         switch (format) {
@@ -110,7 +110,7 @@ namespace RenderCore
         case Format::S8_UINT:
             return FormatComponents::Stencil;
         default:
-            assert(0);
+            ;
         }
 
         return FormatComponents::Unknown;
