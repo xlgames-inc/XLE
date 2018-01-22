@@ -142,6 +142,16 @@ namespace RenderCore { namespace Metal_OpenGLES
             (const void*)(size_t)(_indexFormatBytes * startIndexLocation));
     }
 
+    void GraphicsPipeline::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
+    {
+        assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
+        glDrawElementsInstanced(
+            GLenum(_nativeTopology), GLsizei(indexCount),
+            GLenum(_indicesFormat),
+            (const void*)(size_t)(_indexFormatBytes * startIndexLocation),
+            instanceCount);
+    }
+
 #if 0
     DeviceContext::DeviceContext(EGLDisplay display, EGLContext underlyingContext)
     :       _display(display)
