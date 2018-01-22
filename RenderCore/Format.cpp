@@ -185,32 +185,41 @@ namespace RenderCore
         return componentCount ? bpp / componentCount : bpp;
     }
 
-    unsigned    GetDecompressedComponentPrecision(Format format)
+    CompressionParameters    GetCompressionParameters(Format format)
     {
         FormatPrefix::Enum prefix = GetPrefix(format);
         using namespace FormatPrefix;
         switch (prefix) {
-        case BC1:
+        case BC1:   return CompressionParameters { 4, 4, 4, 8 };
         case BC2:
         case BC3:
         case BC4:
-        case BC5:   return 8;
-        case BC6H:  return 16;
-        case BC7:   return 8;   // (can be used for higher precision data)
-
-        case RGB_PVRTC1_2BPP:
-        case RGB_PVRTC1_4BPP:
-        case RGBA_PVRTC1_2BPP:
-        case RGBA_PVRTC1_4BPP:
-        case RGBA_PVRTC2_2BPP:
-        case RGBA_PVRTC2_4BPP:
+        case BC5:
+        case BC7:   // (can be used for higher precision data)
         case RGB_ETC1:
         case RGB_ETC2:
         case RGBA_ETC2:
-        case RGBA1_ETC2: return 8;
+        case RGBA1_ETC2:
+            return CompressionParameters { 4, 4, 8, 8 };
+        case BC6H:
+            return CompressionParameters { 4, 4, 8, 16 };
+
+        case RGB_PVRTC1_2BPP:
+        case RGBA_PVRTC1_2BPP:
+            return CompressionParameters { 16, 8, 32, 8 };
+
+        case RGB_PVRTC1_4BPP:
+        case RGBA_PVRTC1_4BPP:
+            return CompressionParameters { 8, 8, 32, 8 };
+
+        case RGBA_PVRTC2_2BPP:
+            return CompressionParameters { 8, 4, 8, 8 };
+
+        case RGBA_PVRTC2_4BPP:
+            return CompressionParameters { 4, 4, 8, 8 };
 
         default:
-            return GetComponentPrecision(format);
+            return CompressionParameters { 1, 1, BitsPerPixel(format)/8, GetComponentPrecision(format) };
         }
     }
 

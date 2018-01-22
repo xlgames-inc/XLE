@@ -64,8 +64,15 @@ namespace RenderCore
     auto        GetComponentType(Format format) -> FormatComponentType;
     unsigned    BitsPerPixel(Format format);
     unsigned    GetComponentPrecision(Format format);
-    unsigned    GetDecompressedComponentPrecision(Format format);
     unsigned    GetComponentCount(FormatComponents components);
+
+    struct CompressionParameters
+    {
+        unsigned _blockWidth, _blockHeight;
+        unsigned _blockBytes;
+        unsigned _decompressionPrecision;
+    };
+    CompressionParameters    GetCompressionParameters(Format format);
 
 	Format FindFormat(
         FormatCompressionType compression, 

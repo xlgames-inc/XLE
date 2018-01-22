@@ -22,16 +22,6 @@ namespace RenderCore
                 ;
     }
 
-    static const unsigned BlockCompDim = 4;
-    static unsigned    RoundBCDim(unsigned input)
-    {
-        auto result = (input + 3) & ~3;
-        assert(!(result%BlockCompDim));
-        return result;
-    }
-
-    static bool IsBlockCompressed(Format format) { return GetCompressionType(format) == FormatCompressionType::BlockCompression; }
-
     unsigned CopyMipLevel(
         void* destination, size_t destinationDataSize, TexturePitches dstPitches,
         const TextureDesc& mipMapDesc,
@@ -54,10 +44,11 @@ namespace RenderCore
             //     rows = mipMapDesc._height;
             // }
 
+            auto compressionParam = GetCompressionParameters(mipMapDesc._format);
+
             auto sourceRowPitch = srcData._pitches._rowPitch;
             auto rows = mipMapDesc._height;
-            if (IsBlockCompressed(mipMapDesc._format))
-                rows /= BlockCompDim;  // in block compressed formats, we're dealing with 4x4 blocks of texels
+            rows /= compressionParam._blockHeight;  // in block compressed formats, we're dealing with 4x4 blocks of texels
 
             // prevent reading off the end of our src data, or writing past our dst data
             rows = std::min(rows, unsigned(srcData._data.size()/sourceRowPitch));
@@ -92,7 +83,8 @@ namespace RenderCore
     {
         // note -- we could simplify this by dividing widths and box dimensions by 4 when it's BlockCompressed
         //          (ie, just treat it as a smaller texture with larger pixels)
-        auto blockCompressed = IsBlockCompressed(dstDesc._format);
+        auto compressionParam = GetCompressionParameters(dstDesc._format);
+        assert(compressionParam._blockHeight != 0);
 
         Box2D adjustedBox = dst2D;
         adjustedBox._top = std::min(adjustedBox._top, int(dstDesc._height));
@@ -100,19 +92,14 @@ namespace RenderCore
 
         auto* srcIterator = srcData._data.begin();
         if (adjustedBox._top < 0) {
-            if (blockCompressed) {
-                assert((-adjustedBox._top)%BlockCompDim == 0);
-                srcIterator = PtrAdd(srcIterator, (-adjustedBox._top)/BlockCompDim * srcData._pitches._rowPitch);
-            } else {
-                srcIterator = PtrAdd(srcIterator, -adjustedBox._top * srcData._pitches._rowPitch);
-            }
+            assert((-adjustedBox._top)%compressionParam._blockHeight == 0);
+            srcIterator = PtrAdd(srcIterator, (-adjustedBox._top)/compressionParam._blockHeight * srcData._pitches._rowPitch);
             adjustedBox._top = 0;
         }
 
         if (adjustedBox._bottom <= adjustedBox._top) return 0 ;
 
-        if (blockCompressed)
-            assert(adjustedBox._top%BlockCompDim == 0);
+        assert(adjustedBox._top%compressionParam._blockHeight == 0);
 
         auto bbp = BitsPerPixel(dstDesc._format);
 
@@ -124,12 +111,8 @@ namespace RenderCore
             auto* srcRowStart = srcIterator;
 
             if (left < 0) {
-                if (blockCompressed) {
-                    assert((-left)%BlockCompDim==0);
-                    srcRowStart = PtrAdd(srcRowStart, (-left) / BlockCompDim * bbp * BlockCompDim * BlockCompDim / 8);
-                } else {
-                    srcRowStart = PtrAdd(srcRowStart, (-left) * bbp / 8);
-                }
+                assert((-left)%compressionParam._blockWidth==0);
+                srcRowStart = PtrAdd(srcRowStart, (-left) / compressionParam._blockWidth * bbp * compressionParam._blockWidth * compressionParam._blockHeight / 8);
                 left = 0;
             }
             right = std::min(right, int(dstDesc._width));
@@ -137,14 +120,9 @@ namespace RenderCore
             if (left < right) {
 
                 void* dstStart; size_t copyBytes;
-                if (blockCompressed) {
-                    assert(left%BlockCompDim==0 && right%BlockCompDim == 0);
-                    dstStart = PtrAdd(dstRowStart, left / BlockCompDim * bbp * BlockCompDim * BlockCompDim / 8);
-                    copyBytes = (right - left) / BlockCompDim * bbp * BlockCompDim * BlockCompDim / 8;
-                } else {
-                    dstStart = PtrAdd(dstRowStart, left * bbp / 8);
-                    copyBytes = (right - left) * bbp / 8;
-                }
+                assert(left%compressionParam._blockWidth==0 && right%compressionParam._blockWidth == 0);
+                dstStart = PtrAdd(dstRowStart, left / compressionParam._blockWidth * bbp * compressionParam._blockWidth * compressionParam._blockHeight / 8);
+                copyBytes = (right - left) / compressionParam._blockWidth * bbp * compressionParam._blockWidth * compressionParam._blockHeight / 8;
 
                 assert((size_t(dstStart) + copyBytes) <= (size_t(destination) + destinationDataSize));
                 assert((size_t(srcRowStart) + copyBytes) <= (size_t(srcData._data.end())));
@@ -152,7 +130,7 @@ namespace RenderCore
                 totalCopiedBytes += (unsigned)copyBytes;
             }
 
-            r += blockCompressed ? BlockCompDim : 1;
+            r += compressionParam._blockHeight;
             srcIterator = PtrAdd(srcIterator, srcData._pitches._rowPitch);
         }
 
@@ -162,14 +140,11 @@ namespace RenderCore
     TextureDesc  CalculateMipMapDesc(const TextureDesc& topMostMipDesc, unsigned mipMapIndex)
     {
         assert(mipMapIndex<topMostMipDesc._mipCount);
+        auto compressionParam = GetCompressionParameters(topMostMipDesc._format);
         TextureDesc result = topMostMipDesc;
-        result._width    = std::max(result._width  >> mipMapIndex, 1u); 
-        result._height   = std::max(result._height >> mipMapIndex, 1u);
-        if (IsBlockCompressed(topMostMipDesc._format)) { 
-            result._width = RoundBCDim(result._width);
-            result._height = RoundBCDim(result._height);
-        }
-        //result._depth  = std::max(minDimension, result._depth>>mipMapIndex); 
+        result._width    = std::max(result._width  >> mipMapIndex, compressionParam._blockWidth);
+        result._height   = std::max(result._height >> mipMapIndex, compressionParam._blockHeight);
+        result._depth    = std::max(result._depth  >> mipMapIndex, 1u);
         result._mipCount -= uint8(mipMapIndex);
         return result;
     }
@@ -179,16 +154,16 @@ namespace RenderCore
         if (format == Format::Unknown)
             return 0;
 
-        const bool blockCompressed = IsBlockCompressed(format);
+        auto compressionParam = GetCompressionParameters(format);
         const auto bbp = BitsPerPixel(format);
 
         mipCount = std::max(mipCount, 1u);
         unsigned result = 0;
-        if (blockCompressed) {
+        if (compressionParam._blockWidth > 1 || compressionParam._blockHeight > 1) {
             for (unsigned mipIterator = 0; mipIterator < mipCount; ++mipIterator) {
-                auto blockWidth = std::max((width + BlockCompDim - 1u) / BlockCompDim, 1u);
-                auto blockHeight = std::max((height + BlockCompDim - 1u) / BlockCompDim, 1u);
-                result += blockWidth * blockHeight * std::max(depth, 1u) * bbp * 16u / 8u;
+                auto blockWidth = std::max((width + compressionParam._blockWidth - 1u) / compressionParam._blockWidth, 1u);
+                auto blockHeight = std::max((height + compressionParam._blockHeight - 1u) / compressionParam._blockHeight, 1u);
+                result += blockWidth * blockHeight * std::max(depth, 1u) * compressionParam._blockBytes;
                 width >>= 1; height >>= 1; depth >>= 1;
             }
         } else {
@@ -237,18 +212,18 @@ namespace RenderCore
         if (tDesc._format == Format::Unknown)
             return mipOffset;
 
-        const bool blockCompressed = IsBlockCompressed(tDesc._format);
+        auto compressionParam = GetCompressionParameters(tDesc._format);
         const auto bbp = BitsPerPixel(tDesc._format);
 
         auto width = tDesc._width, height = tDesc._height, depth = tDesc._depth;
         auto mipCount = std::max(1u, (unsigned)tDesc._mipCount);
 
         auto workingOffset = 0;
-        if (blockCompressed) {
+        if (compressionParam._blockWidth > 1 || compressionParam._blockHeight > 1) {
             for (unsigned mipIterator = 0; mipIterator < mipCount; ++mipIterator) {
-                auto blockWidth = std::max((width + BlockCompDim - 1u) / BlockCompDim, 1u);
-                auto blockHeight = std::max((height + BlockCompDim - 1u) / BlockCompDim, 1u);
-                auto mipSize = blockWidth * blockHeight * std::max(depth, 1u) * bbp * 16u / 8u;
+                auto blockWidth = std::max((width + compressionParam._blockWidth - 1u) / compressionParam._blockWidth, 1u);
+                auto blockHeight = std::max((height + compressionParam._blockHeight - 1u) / compressionParam._blockHeight, 1u);
+                auto mipSize = blockWidth * blockHeight * std::max(depth, 1u) * compressionParam._blockBytes;
                 
                 if (mipIterator == mipIndex) {
                     mipOffset._offset = workingOffset;
@@ -291,12 +266,10 @@ namespace RenderCore
             //  row pitch calculation is a little platform-specific here...
             //  (eg, DX9 and DX11 use different systems)
             //  Perhaps this could be moved into the platform interface layer
-        bool isDXT = GetCompressionType(desc._format) 
-            == RenderCore::FormatCompressionType::BlockCompression;
-        if (isDXT) {
-            result._rowPitch = ByteCount(
-                RoundBCDim(desc._width), BlockCompDim, 1, 1, 
-                desc._format);
+        auto compressionParam = GetCompressionParameters(desc._format);
+        if (compressionParam._blockWidth > 1 || compressionParam._blockHeight > 1) {
+            auto blockWidth = std::max((desc._width + compressionParam._blockWidth - 1u) / compressionParam._blockWidth, 1u);
+            result._rowPitch = compressionParam._blockBytes * blockWidth;
         } else {
             result._rowPitch = ByteCount(
                 desc._width, 1, 1, 1, 

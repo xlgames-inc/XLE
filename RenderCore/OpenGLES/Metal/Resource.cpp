@@ -69,6 +69,23 @@ namespace RenderCore { namespace Metal_OpenGLES
         })
     {}
 
+    static void checkError()
+    {
+        auto error = glGetError();
+        assert(error == GL_NO_ERROR);
+    }
+
+    static GLenum AsBindingQuery(GLenum binding)
+    {
+        switch (binding) {
+        case GL_TEXTURE_2D:         return GL_TEXTURE_BINDING_2D;
+        case GL_TEXTURE_3D:         return GL_TEXTURE_BINDING_3D;
+        case GL_TEXTURE_CUBE_MAP:   return GL_TEXTURE_BINDING_CUBE_MAP;
+        default:                    return 0;
+        }
+    }
+
+
     Resource::Resource(
         ObjectFactory& factory, const Desc& desc,
         const IDevice::ResourceInitializer& initializer)
@@ -94,6 +111,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         } else {
 
+            checkError();
+
             auto fmt = AsTexelFormatType(desc._textureDesc._format);
 
             _underlyingTexture = factory.CreateTexture();
@@ -109,51 +128,83 @@ namespace RenderCore { namespace Metal_OpenGLES
                     assert(desc._textureDesc._arrayCount <= 1);
                 } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D) {
                     assert(desc._textureDesc._arrayCount <= 1);
+                } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
+                    assert(desc._textureDesc._arrayCount <= 1);
+                    bindTarget = GL_TEXTURE_3D;
                 } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
                     assert(desc._textureDesc._arrayCount == 6);
                     bindTarget = GL_TEXTURE_CUBE_MAP;
                 }
 
                 GLint prevTexture;
-                glGetIntegerv((bindTarget == GL_TEXTURE_2D) ? GL_TEXTURE_BINDING_2D : GL_TEXTURE_BINDING_CUBE_MAP, &prevTexture);
+                glGetIntegerv(AsBindingQuery(bindTarget), &prevTexture);
+
+                checkError();
 
                 glBindTexture(bindTarget, _underlyingTexture->AsRawGLHandle());
-                if (useTexStorage)
-                    (*GetGLWrappers()->TexStorage2D)(bindTarget, desc._textureDesc._mipCount, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
+                checkError();
 
-                if (initializer) {
-                    for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
-                        auto mipWidth = std::max(desc._textureDesc._width  >> m, 1u);
-                        auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
-                        auto subRes = initializer({m, 0});
-                        if (fmt._type != 0) {
-                            (*GetGLWrappers()->TexImage2D)(
-                                bindTarget,
-                                m, fmt._internalFormat,
-                                mipWidth, mipHeight, 0,
-                                fmt._format, fmt._type,
-                                subRes._data.begin());
-                        } else {
-                            (*GetGLWrappers()->CompressedTexImage2D)(
-                                bindTarget,
-                                m, fmt._internalFormat,
-                                mipWidth, mipHeight, 0,
-                                (GLsizei)subRes._data.size(),
-                                subRes._data.begin());
+                if (!initializer && useTexStorage) {
+                    (*GetGLWrappers()->TexStorage2D)(bindTarget, desc._textureDesc._mipCount, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
+                } else {
+
+                    // If we're uploading a cubemap, we must iterate through all of the faces
+                    // and use a binding target for each face.
+                    // Otherwise we only have a single face, which is going to be the main
+                    // binding target.
+                    GLenum faceBinding[] = {
+                        GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+                        GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+                        GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+                        GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+                        GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+                        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z };
+                    unsigned faceCount = dimof(faceBinding);
+
+                    if (desc._textureDesc._dimensionality != TextureDesc::Dimensionality::CubeMap) {
+                        faceBinding[0] = bindTarget;
+                        faceCount = 1;
+                    }
+
+                    for (unsigned f=0; f<faceCount; ++f) {
+                        if (initializer) {
+                            for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
+                                auto mipWidth  = std::max(desc._textureDesc._width >> m, 1u);
+                                auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
+                                auto subRes = initializer({m, f});
+                                if (fmt._type != 0) {
+                                    (*GetGLWrappers()->TexImage2D)(
+                                        faceBinding[f],
+                                        m, fmt._internalFormat,
+                                        mipWidth, mipHeight, 0,
+                                        fmt._format, fmt._type,
+                                        subRes._data.begin());
+                                } else {
+                                    (*GetGLWrappers()->CompressedTexImage2D)(
+                                        faceBinding[f],
+                                        m, fmt._internalFormat,
+                                        mipWidth, mipHeight, 0,
+                                        (GLsizei)subRes._data.size(),
+                                        subRes._data.begin());
+                                }
+                                checkError();
+                            }
+                        } else  {
+                            assert(fmt._type != 0);
+                            for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
+                                auto mipWidth  = std::max(desc._textureDesc._width >> m, 1u);
+                                auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
+                                (*GetGLWrappers()->TexImage2D)(
+                                    faceBinding[f],
+                                    m, fmt._internalFormat,
+                                    mipWidth, mipHeight, 0,
+                                    fmt._format, fmt._type,
+                                    nullptr);
+                                checkError();
+                            }
                         }
                     }
-                } else {
-                    assert(fmt._type != 0);
-                    for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
-                        auto mipWidth = std::max(desc._textureDesc._width  >> m, 1u);
-                        auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
-                        (*GetGLWrappers()->TexImage2D)(
-                            bindTarget,
-                            m, fmt._internalFormat,
-                            mipWidth, mipHeight, 0,
-                            fmt._format, fmt._type,
-                            nullptr);
-                    }
+
                 }
 
                 glTexParameteri(bindTarget, GL_TEXTURE_MIN_FILTER, (desc._textureDesc._mipCount > 1) ? GL_LINEAR_MIPMAP_NEAREST : GL_LINEAR);
@@ -162,6 +213,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                 glTexParameteri(bindTarget, GL_TEXTURE_WRAP_T, GL_REPEAT);
                 glTexParameteri(bindTarget, GL_TEXTURE_WRAP_R, GL_REPEAT);
                 glBindTexture(bindTarget, prevTexture);
+
+                checkError();
 
             } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
                 assert(0);  // not supported yet
