@@ -51,6 +51,16 @@ namespace RenderCore { namespace Metal_OpenGLES
         FaceWinding     _frontFaceWinding = FaceWinding::CCW;
     };
 
+    /// Similar to ?
+    class SamplerStateDesc
+    {
+    public:
+        RenderCore::FilterMode _filter = RenderCore::FilterMode::Trilinear;
+        RenderCore::AddressMode _addressU = RenderCore::AddressMode::Wrap;
+        RenderCore::AddressMode _addressV = RenderCore::AddressMode::Wrap;
+        RenderCore::CompareOp _comparison = RenderCore::CompareOp::Never;
+    };
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class SamplerState

@@ -13,6 +13,7 @@ namespace RenderCore { namespace Metal_OpenGLES {
     class StencilDesc;
     class DepthStencilDesc;
     class RasterizationDesc;
+    class SamplerStateDesc;
     class SamplerState;
     class BlendState;
     class ViewportDesc;
