@@ -63,7 +63,7 @@ namespace ConsoleRig
 
     template <typename Box, typename... Params> Box& FindCachedBox2(Params... params)
     {
-        return FindCachedBox<Box>(Box::Desc(std::forward<Params>(params)...));
+        return FindCachedBox<Box>(typename Box::Desc(std::forward<Params>(params)...));
     }
 
     template <typename Box> Box& FindCachedBoxDep(const typename Box::Desc& desc)

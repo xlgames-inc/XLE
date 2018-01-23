@@ -39,6 +39,7 @@ namespace Assets
     {
     public:
         std::unique_ptr<uint8[], PODAlignedDeletor> _buffer;
+        size_t                                      _bufferSize = 0;
 		AssetChunkReopenFunction					_reopenFunction;
     };
 

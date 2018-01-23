@@ -6,14 +6,16 @@
 
 #pragma once
 
-#include "../Assets/IFileSystem.h"
 #include "../Assets/AssetsCore.h"		// (for ResChar)
 #include "../Utility/Streams/StreamFormatter.h"
-#include "../Utility/Streams/FileUtils.h"
-#include "../Utility/Streams/PathUtils.h"
 #include "../Utility/StringFormat.h"
 #include <memory>
 #include <vector>
+
+namespace Utility
+{
+    template<typename> class InputStreamFormatter;
+}
 
 namespace Assets
 {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AssetsCore.h"
+#include "DepVal.h"
 #include "GenericFuture.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Threading/ThreadingUtils.h"		// (for Threading::YieldTimeSlice() below)
@@ -37,8 +38,8 @@ namespace Assets
 		explicit AssetFuture(const std::string& initializer);
 		~AssetFuture();
 
-		AssetFuture(AssetFuture&&) never_throws = default;
-		AssetFuture& operator=(AssetFuture&&) never_throws = default;
+		AssetFuture(AssetFuture&&) = default;
+		AssetFuture& operator=(AssetFuture&&) = default;
 
 		void SetAsset(AssetPtr<AssetType>&&, const Blob& log);
 		void SetInvalidAsset(const DepValPtr& depVal, const Blob& log);

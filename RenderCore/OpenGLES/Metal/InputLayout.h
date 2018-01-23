@@ -11,7 +11,7 @@
 #include "../../../Utility/IteratorUtils.h"
 #include <vector>
 
-namespace RenderCore { class VertexBufferView; }
+namespace RenderCore { class VertexBufferView; class SharedPkt; }
 
 namespace RenderCore { namespace Metal_OpenGLES
 {

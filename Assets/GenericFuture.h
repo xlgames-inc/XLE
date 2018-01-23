@@ -5,6 +5,7 @@
 #pragma once
 
 #include "AssetsCore.h"
+#include "../Core/Prefix.h"     // (for DEBUG_ONLY)
 
 namespace Assets
 {
@@ -17,7 +18,7 @@ namespace Assets
 		virtual ~IAsyncMarker();
 	};
 
-    class GenericFuture : public IAsyncMarker, public std::enable_shared_from_this<GenericFuture>
+    class GenericFuture : public IAsyncMarker
     {
     public:
         AssetState		GetAssetState() const { return _state; }

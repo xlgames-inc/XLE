@@ -8,6 +8,7 @@
 
 #include "AssetsCore.h"
 #include "../Utility/IteratorUtils.h"
+#include "../Utility/StringUtils.h"
 
 namespace Assets
 {

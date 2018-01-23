@@ -71,6 +71,7 @@ namespace Assets
 				||	r._dataType == AssetChunkRequest::DataType::Raw) {
                 uint8* mem = (uint8*)XlMemAlign(i->_size, sizeof(uint64_t));
                 chunkResult._buffer = std::unique_ptr<uint8[], PODAlignedDeletor>(mem);
+                chunkResult._bufferSize = i->_size;
                 file.Seek(i->_fileOffset);
                 file.Read(chunkResult._buffer.get(), i->_size);
 

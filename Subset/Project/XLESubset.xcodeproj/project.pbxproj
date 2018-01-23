@@ -7,6 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8F2DB6162017F1DF009F52AB /* TechniqueMaterial.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6142017F1DF009F52AB /* TechniqueMaterial.cpp */; };
+		8F2DB6172017F1DF009F52AB /* TechniqueMaterial.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2DB6152017F1DF009F52AB /* TechniqueMaterial.h */; };
+		8F2DB61B2017F403009F52AB /* TechniqueMaterial.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6142017F1DF009F52AB /* TechniqueMaterial.cpp */; };
+		8F2DB6232017F894009F52AB /* Log.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2DB61F2017F894009F52AB /* Log.h */; };
+		8F2DB6242017F894009F52AB /* Log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6202017F894009F52AB /* Log.cpp */; };
+		8F2DB6252017F894009F52AB /* LogStartup.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2DB6212017F894009F52AB /* LogStartup.h */; };
+		8F2DB6262017F894009F52AB /* LogUtil.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2DB6222017F894009F52AB /* LogUtil.h */; };
+		8F2DB6272017F8C2009F52AB /* Log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6202017F894009F52AB /* Log.cpp */; };
+		8F2DB62A2017F9D1009F52AB /* Font_Dummy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6292017F9D1009F52AB /* Font_Dummy.cpp */; };
+		8F2DB62B2017F9D1009F52AB /* Font_Dummy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6292017F9D1009F52AB /* Font_Dummy.cpp */; };
 		8F707B6B1EA6C4BE00DEC600 /* CPUProfileDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B691EA6C4BE00DEC600 /* CPUProfileDisplay.cpp */; };
 		8F707B6C1EA6C4BE00DEC600 /* CPUProfileDisplay.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707B6A1EA6C4BE00DEC600 /* CPUProfileDisplay.h */; };
 		8F707B731EA6C59100DEC600 /* DebuggingDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B6E1EA6C59100DEC600 /* DebuggingDisplay.cpp */; };
@@ -22,8 +32,6 @@
 		8F707B861EA6C5D500DEC600 /* GenericGridPartitioning.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707B7E1EA6C5D500DEC600 /* GenericGridPartitioning.h */; };
 		8F707B871EA6C5D500DEC600 /* GenericQuadTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B7F1EA6C5D500DEC600 /* GenericQuadTree.cpp */; };
 		8F707B881EA6C5D500DEC600 /* GenericQuadTree.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707B801EA6C5D500DEC600 /* GenericQuadTree.h */; };
-		8F707BA81EA6C75C00DEC600 /* Material.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BA41EA6C75C00DEC600 /* Material.cpp */; };
-		8F707BA91EA6C75C00DEC600 /* Material.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707BA51EA6C75C00DEC600 /* Material.h */; };
 		8F707BAA1EA6C75C00DEC600 /* RawMaterial.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BA61EA6C75C00DEC600 /* RawMaterial.cpp */; };
 		8F707BAB1EA6C75C00DEC600 /* RawMaterial.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707BA71EA6C75C00DEC600 /* RawMaterial.h */; };
 		8F707BAE1EA6C76800DEC600 /* DXGICompatibleFormats.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707BAC1EA6C76800DEC600 /* DXGICompatibleFormats.h */; };
@@ -149,7 +157,6 @@
 		8FA3F7411EDD157B003EF623 /* GeometryAlgorithm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707C671EA6D25700DEC600 /* GeometryAlgorithm.cpp */; };
 		8FA3F7431EDD157B003EF623 /* GeoProcUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707C691EA6D25700DEC600 /* GeoProcUtil.cpp */; };
 		8FA3F7451EDD157B003EF623 /* MeshDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707C6B1EA6D25700DEC600 /* MeshDatabase.cpp */; };
-		8FA3F7471EDD157B003EF623 /* Material.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BA41EA6C75C00DEC600 /* Material.cpp */; };
 		8FA3F7491EDD157B003EF623 /* RawMaterial.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BA61EA6C75C00DEC600 /* RawMaterial.cpp */; };
 		8FA3F74D1EDD157B003EF623 /* PredefinedCBLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BB01EA6C78400DEC600 /* PredefinedCBLayout.cpp */; };
 		8FA3F75B1EDD157B003EF623 /* DebuggingDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B6E1EA6C59100DEC600 /* DebuggingDisplay.cpp */; };
@@ -173,6 +180,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		8F2DB6142017F1DF009F52AB /* TechniqueMaterial.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = TechniqueMaterial.cpp; path = ../../RenderCore/Techniques/TechniqueMaterial.cpp; sourceTree = "<group>"; };
+		8F2DB6152017F1DF009F52AB /* TechniqueMaterial.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TechniqueMaterial.h; path = ../../RenderCore/Techniques/TechniqueMaterial.h; sourceTree = "<group>"; };
+		8F2DB61F2017F894009F52AB /* Log.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Log.h; path = ../../ConsoleRig/Log.h; sourceTree = "<group>"; };
+		8F2DB6202017F894009F52AB /* Log.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Log.cpp; path = ../../ConsoleRig/Log.cpp; sourceTree = "<group>"; };
+		8F2DB6212017F894009F52AB /* LogStartup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LogStartup.h; path = ../../ConsoleRig/LogStartup.h; sourceTree = "<group>"; };
+		8F2DB6222017F894009F52AB /* LogUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LogUtil.h; path = ../../ConsoleRig/LogUtil.h; sourceTree = "<group>"; };
+		8F2DB6292017F9D1009F52AB /* Font_Dummy.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Font_Dummy.cpp; path = ../../RenderOverlays/Font_Dummy.cpp; sourceTree = "<group>"; };
 		8F707B5B1EA6C41F00DEC600 /* libXLESubsetMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libXLESubsetMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F707B631EA6C45300DEC600 /* Core.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
 		8F707B641EA6C45300DEC600 /* CoreDebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
@@ -193,8 +207,6 @@
 		8F707B7E1EA6C5D500DEC600 /* GenericGridPartitioning.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GenericGridPartitioning.h; path = ../../SceneEngine/GenericGridPartitioning.h; sourceTree = "<group>"; };
 		8F707B7F1EA6C5D500DEC600 /* GenericQuadTree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = GenericQuadTree.cpp; path = ../../SceneEngine/GenericQuadTree.cpp; sourceTree = "<group>"; };
 		8F707B801EA6C5D500DEC600 /* GenericQuadTree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GenericQuadTree.h; path = ../../SceneEngine/GenericQuadTree.h; sourceTree = "<group>"; };
-		8F707BA41EA6C75C00DEC600 /* Material.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Material.cpp; path = ../../RenderCore/Assets/Material.cpp; sourceTree = "<group>"; };
-		8F707BA51EA6C75C00DEC600 /* Material.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Material.h; path = ../../RenderCore/Assets/Material.h; sourceTree = "<group>"; };
 		8F707BA61EA6C75C00DEC600 /* RawMaterial.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RawMaterial.cpp; path = ../../RenderCore/Assets/RawMaterial.cpp; sourceTree = "<group>"; };
 		8F707BA71EA6C75C00DEC600 /* RawMaterial.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RawMaterial.h; path = ../../RenderCore/Assets/RawMaterial.h; sourceTree = "<group>"; };
 		8F707BAC1EA6C76800DEC600 /* DXGICompatibleFormats.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DXGICompatibleFormats.h; path = ../../RenderCore/Metal/Detail/DXGICompatibleFormats.h; sourceTree = "<group>"; };
@@ -298,10 +310,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		8F2DB61E2017F87B009F52AB /* ConsoleRig */ = {
+			isa = PBXGroup;
+			children = (
+				8F2DB6202017F894009F52AB /* Log.cpp */,
+				8F2DB61F2017F894009F52AB /* Log.h */,
+				8F2DB6212017F894009F52AB /* LogStartup.h */,
+				8F2DB6222017F894009F52AB /* LogUtil.h */,
+			);
+			name = ConsoleRig;
+			sourceTree = "<group>";
+		};
 		8F707B521EA6C41F00DEC600 = {
 			isa = PBXGroup;
 			children = (
 				8F707B621EA6C44300DEC600 /* Config */,
+				8F2DB61E2017F87B009F52AB /* ConsoleRig */,
 				8F707BDE1EA6CAB200DEC600 /* Foreign */,
 				8F707B671EA6C4A900DEC600 /* PlatformRig */,
 				8F707B5C1EA6C41F00DEC600 /* Products */,
@@ -355,6 +379,7 @@
 			children = (
 				8F707B6E1EA6C59100DEC600 /* DebuggingDisplay.cpp */,
 				8F707B6F1EA6C59100DEC600 /* DebuggingDisplay.h */,
+				8F2DB6292017F9D1009F52AB /* Font_Dummy.cpp */,
 				8F707B701EA6C59100DEC600 /* IOverlayContext_Forward.h */,
 				8F707B711EA6C59100DEC600 /* IOverlayContext.cpp */,
 				8F707B721EA6C59100DEC600 /* IOverlayContext.h */,
@@ -393,8 +418,6 @@
 			children = (
 				8F9418591FDA01FE00DADA27 /* LocalCompiledShaderSource.cpp */,
 				8F94185A1FDA01FE00DADA27 /* LocalCompiledShaderSource.h */,
-				8F707BA41EA6C75C00DEC600 /* Material.cpp */,
-				8F707BA51EA6C75C00DEC600 /* Material.h */,
 				8F707BA61EA6C75C00DEC600 /* RawMaterial.cpp */,
 				8F707BA71EA6C75C00DEC600 /* RawMaterial.h */,
 			);
@@ -421,6 +444,8 @@
 		8F707B8D1EA6C72D00DEC600 /* Techniques */ = {
 			isa = PBXGroup;
 			children = (
+				8F2DB6142017F1DF009F52AB /* TechniqueMaterial.cpp */,
+				8F2DB6152017F1DF009F52AB /* TechniqueMaterial.h */,
 				8F707BB01EA6C78400DEC600 /* PredefinedCBLayout.cpp */,
 				8F707BB11EA6C78400DEC600 /* PredefinedCBLayout.h */,
 				8F707BB21EA6C78400DEC600 /* RenderStateResolver.h */,
@@ -561,6 +586,7 @@
 				8F707B821EA6C5D500DEC600 /* DualContour.h in Headers */,
 				8F9418041FDA01DC00DADA27 /* lobject.h in Headers */,
 				8F94181D1FDA01DC00DADA27 /* luaconf.h in Headers */,
+				8F2DB6262017F894009F52AB /* LogUtil.h in Headers */,
 				8F707BAB1EA6C75C00DEC600 /* RawMaterial.h in Headers */,
 				8F94182A1FDA01DC00DADA27 /* llex.h in Headers */,
 				8F9418261FDA01DC00DADA27 /* ltable.h in Headers */,
@@ -573,6 +599,7 @@
 				8F707BB41EA6C78400DEC600 /* PredefinedCBLayout.h in Headers */,
 				8F707BB51EA6C78400DEC600 /* RenderStateResolver.h in Headers */,
 				8F9418581FDA01DC00DADA27 /* lualib.h in Headers */,
+				8F2DB6252017F894009F52AB /* LogStartup.h in Headers */,
 				8F707C801EA6D25700DEC600 /* GeoProcUtil.h in Headers */,
 				8F9418561FDA01DC00DADA27 /* lzio.h in Headers */,
 				8F707B6C1EA6C4BE00DEC600 /* CPUProfileDisplay.h in Headers */,
@@ -583,8 +610,9 @@
 				8F707B771EA6C59100DEC600 /* IOverlayContext.h in Headers */,
 				8F707B881EA6C5D500DEC600 /* GenericQuadTree.h in Headers */,
 				8F94181F1FDA01DC00DADA27 /* lundump.h in Headers */,
-				8F707BA91EA6C75C00DEC600 /* Material.h in Headers */,
+				8F2DB6232017F894009F52AB /* Log.h in Headers */,
 				8F88060C1FA3F62200AB9E4F /* HistoricalProfilerDisplay.h in Headers */,
+				8F2DB6172017F1DF009F52AB /* TechniqueMaterial.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -684,7 +712,9 @@
 				8F9418411FDA01DC00DADA27 /* loslib.c in Sources */,
 				8F9418121FDA01DC00DADA27 /* lgc.c in Sources */,
 				8F707B6B1EA6C4BE00DEC600 /* CPUProfileDisplay.cpp in Sources */,
+				8F2DB6242017F894009F52AB /* Log.cpp in Sources */,
 				8F707B831EA6C5D500DEC600 /* FiniteResourceHeap.cpp in Sources */,
+				8F2DB62A2017F9D1009F52AB /* Font_Dummy.cpp in Sources */,
 				8F88060A1FA3F62200AB9E4F /* HistoricalProfilerDisplay.cpp in Sources */,
 				8F94180A1FDA01DC00DADA27 /* lobject.c in Sources */,
 				8F94180C1FDA01DC00DADA27 /* lcorolib.c in Sources */,
@@ -702,13 +732,13 @@
 				8F9418051FDA01DC00DADA27 /* lvm.c in Sources */,
 				8F9418521FDA01DC00DADA27 /* lstate.c in Sources */,
 				8F707B871EA6C5D500DEC600 /* GenericQuadTree.cpp in Sources */,
+				8F2DB6162017F1DF009F52AB /* TechniqueMaterial.cpp in Sources */,
 				8F9418441FDA01DC00DADA27 /* ldump.c in Sources */,
 				8F9418311FDA01DC00DADA27 /* lparser.c in Sources */,
 				8F9418241FDA01DC00DADA27 /* lua.c in Sources */,
 				8F707B761EA6C59100DEC600 /* IOverlayContext.cpp in Sources */,
 				8F94182D1FDA01DC00DADA27 /* lcode.c in Sources */,
 				8F9418141FDA01DC00DADA27 /* ltablib.c in Sources */,
-				8F707BA81EA6C75C00DEC600 /* Material.cpp in Sources */,
 				8F9418101FDA01DC00DADA27 /* linit.c in Sources */,
 				8F707BE51EA6CB0A00DEC600 /* MurmurHash2.cpp in Sources */,
 				8F9418461FDA01DC00DADA27 /* lbaselib.c in Sources */,
@@ -743,7 +773,9 @@
 				8F9418421FDA01DC00DADA27 /* loslib.c in Sources */,
 				8F9418131FDA01DC00DADA27 /* lgc.c in Sources */,
 				8FA3F7411EDD157B003EF623 /* GeometryAlgorithm.cpp in Sources */,
+				8F2DB6272017F8C2009F52AB /* Log.cpp in Sources */,
 				8FA3F7431EDD157B003EF623 /* GeoProcUtil.cpp in Sources */,
+				8F2DB62B2017F9D1009F52AB /* Font_Dummy.cpp in Sources */,
 				8F88060B1FA3F62200AB9E4F /* HistoricalProfilerDisplay.cpp in Sources */,
 				8F94180B1FDA01DC00DADA27 /* lobject.c in Sources */,
 				8F94180D1FDA01DC00DADA27 /* lcorolib.c in Sources */,
@@ -754,7 +786,6 @@
 				8F9418231FDA01DC00DADA27 /* lauxlib.c in Sources */,
 				8F94181C1FDA01DC00DADA27 /* ltable.c in Sources */,
 				8F9418091FDA01DC00DADA27 /* lctype.c in Sources */,
-				8FA3F7471EDD157B003EF623 /* Material.cpp in Sources */,
 				8F9418401FDA01DC00DADA27 /* ldo.c in Sources */,
 				8FA3F7491EDD157B003EF623 /* RawMaterial.cpp in Sources */,
 				8F9418291FDA01DC00DADA27 /* lstrlib.c in Sources */,
@@ -762,6 +793,7 @@
 				8F9418531FDA01DC00DADA27 /* lstate.c in Sources */,
 				8FA3F74D1EDD157B003EF623 /* PredefinedCBLayout.cpp in Sources */,
 				8F9418451FDA01DC00DADA27 /* ldump.c in Sources */,
+				8F2DB61B2017F403009F52AB /* TechniqueMaterial.cpp in Sources */,
 				8F9418321FDA01DC00DADA27 /* lparser.c in Sources */,
 				8F9418251FDA01DC00DADA27 /* lua.c in Sources */,
 				8FA3F75B1EDD157B003EF623 /* DebuggingDisplay.cpp in Sources */,

@@ -230,10 +230,11 @@ namespace Assets
 			if (!attrib)
 				return FileDesc { std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 
+            auto attribv = *attrib;
 			return FileDesc
 				{
 					str, FileDesc::State::Normal,
-					attrib.value()._lastWriteTime, attrib.value()._size
+					attribv._lastWriteTime, attribv._size
 				};
 		} else if (type == 2) {
 			std::basic_string<ucs2> str((const ucs2*)PtrAdd(AsPointer(marker.begin()), 2));
@@ -241,10 +242,11 @@ namespace Assets
 			if (!attrib)
 				return FileDesc { std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 
-			return FileDesc
+			auto attribv = *attrib;
+            return FileDesc
 				{
 					Conversion::Convert<std::basic_string<utf8>>(str), FileDesc::State::Normal,
-					attrib.value()._lastWriteTime, attrib.value()._size
+					attribv._lastWriteTime, attribv._size
 				};
 		} 
 
@@ -258,11 +260,10 @@ namespace Assets
 
 			// primitive utf8 -> utf16 conversion
 			// todo -- better implementation
-			std::basic_stringstream<utf16> str;
+            _rootUTF16.reserve(root.size());
 			for (const auto*i = root.begin(); i<root.end();)
-				str << (utf16)utf8_nextchar(i, root.end());
-			str << (utf16)'/';
-			_rootUTF16 = str.str();
+				_rootUTF16.push_back((utf16)utf8_nextchar(i, root.end()));
+			_rootUTF16.push_back((utf16)'/');
 		}
 	}
 

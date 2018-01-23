@@ -50,12 +50,19 @@
     #include <condition_variable>
 	#include <shared_mutex>
 
+        // Note -- std::shared_timed_mutex is not available on IOS versions before 10.0, even if the compiler
+        //          has C++14 support. We need to look for different solutions for this target
+    #define HAS_READ_WRITE_MUTEX  (PLATFORMOS_TARGET != PLATFORMOS_IOS) || (__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_10_0)
+
     namespace Utility { namespace Threading
     {
         using Mutex = std::mutex;
         using RecursiveMutex = std::recursive_mutex;
-        using ReadWriteMutex = std::shared_timed_mutex;
         using Conditional = std::condition_variable;
+
+        #if HAS_READ_WRITE_MUTEX
+            using ReadWriteMutex = std::shared_timed_mutex;
+        #endif
     }}
     using namespace Utility;
 

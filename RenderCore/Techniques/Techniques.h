@@ -64,7 +64,7 @@ namespace RenderCore { namespace Techniques
         void Apply(
             Metal::DeviceContext& devContext,
             ParsingContext& parserContext,
-            const std::initializer_list<Metal::ConstantBufferPacket>& pkts) const;
+            const std::initializer_list<SharedPkt>& pkts) const;
 
         ResolvedShader();
     };

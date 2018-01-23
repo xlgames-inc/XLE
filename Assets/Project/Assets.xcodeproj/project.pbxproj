@@ -38,19 +38,27 @@
 		8F044C681EA6B13E0074D6A4 /* ConfigFileContainer.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C391EA6B13E0074D6A4 /* ConfigFileContainer.h */; };
 		8F044C691EA6B13E0074D6A4 /* DeferredConstruction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C3A1EA6B13E0074D6A4 /* DeferredConstruction.cpp */; };
 		8F044C6A1EA6B13E0074D6A4 /* DeferredConstruction.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C3B1EA6B13E0074D6A4 /* DeferredConstruction.h */; };
-		8F044C6B1EA6B13E0074D6A4 /* DivergentAsset.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C3C1EA6B13E0074D6A4 /* DivergentAsset.cpp */; };
-		8F044C6C1EA6B13E0074D6A4 /* DivergentAsset.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C3D1EA6B13E0074D6A4 /* DivergentAsset.h */; };
 		8F044C6D1EA6B13E0074D6A4 /* IFileSystem.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C3E1EA6B13E0074D6A4 /* IFileSystem.h */; };
 		8F044C6E1EA6B13E0074D6A4 /* IntermediateAssets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C3F1EA6B13E0074D6A4 /* IntermediateAssets.cpp */; };
 		8F044C6F1EA6B13E0074D6A4 /* IntermediateAssets.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C401EA6B13E0074D6A4 /* IntermediateAssets.h */; };
-		8F044C701EA6B13E0074D6A4 /* InvalidAssetManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C411EA6B13E0074D6A4 /* InvalidAssetManager.cpp */; };
-		8F044C711EA6B13E0074D6A4 /* InvalidAssetManager.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C421EA6B13E0074D6A4 /* InvalidAssetManager.h */; };
 		8F044C721EA6B13E0074D6A4 /* MainFileSystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C431EA6B13E0074D6A4 /* MainFileSystem.cpp */; };
 		8F044C731EA6B13E0074D6A4 /* MountingTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C441EA6B13E0074D6A4 /* MountingTree.cpp */; };
 		8F044C741EA6B13E0074D6A4 /* MountingTree.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C451EA6B13E0074D6A4 /* MountingTree.h */; };
-		8F044C751EA6B13E0074D6A4 /* NascentChunkArray.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C461EA6B13E0074D6A4 /* NascentChunkArray.cpp */; };
-		8F044C761EA6B13E0074D6A4 /* NascentChunkArray.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C471EA6B13E0074D6A4 /* NascentChunkArray.h */; };
 		8F044C781EA6B13E0074D6A4 /* OSFileSystem.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C491EA6B13E0074D6A4 /* OSFileSystem.h */; };
+		8F2DB6182017F3F4009F52AB /* MemoryFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6A9E252017F13400B76C43 /* MemoryFile.cpp */; };
+		8F2DB6192017F3F4009F52AB /* NascentChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6A9E262017F13400B76C43 /* NascentChunk.cpp */; };
+		8F2DB61A2017F3F4009F52AB /* OSFileSystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6A9E282017F13500B76C43 /* OSFileSystem.cpp */; };
+		8F6A9E302017F13600B76C43 /* MemoryFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6A9E252017F13400B76C43 /* MemoryFile.cpp */; };
+		8F6A9E312017F13600B76C43 /* NascentChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6A9E262017F13400B76C43 /* NascentChunk.cpp */; };
+		8F6A9E322017F13600B76C43 /* NascentChunk.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6A9E272017F13500B76C43 /* NascentChunk.h */; };
+		8F6A9E332017F13600B76C43 /* OSFileSystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6A9E282017F13500B76C43 /* OSFileSystem.cpp */; };
+		8F6A9E342017F13600B76C43 /* AssetFuture.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6A9E292017F13500B76C43 /* AssetFuture.h */; };
+		8F6A9E352017F13600B76C43 /* AssetHeap.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6A9E2A2017F13500B76C43 /* AssetHeap.h */; };
+		8F6A9E362017F13600B76C43 /* AsyncLoadOperation.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6A9E2B2017F13500B76C43 /* AsyncLoadOperation.h */; };
+		8F6A9E372017F13600B76C43 /* DepVal.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6A9E2C2017F13500B76C43 /* DepVal.h */; };
+		8F6A9E382017F13600B76C43 /* GenericFuture.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6A9E2D2017F13600B76C43 /* GenericFuture.h */; };
+		8F6A9E392017F13600B76C43 /* IAssetCompiler.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6A9E2E2017F13600B76C43 /* IAssetCompiler.h */; };
+		8F6A9E3A2017F13600B76C43 /* MemoryFile.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6A9E2F2017F13600B76C43 /* MemoryFile.h */; };
 		8FA3F77C1EDD171E003EF623 /* ArchiveCache.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C1B1EA6B13E0074D6A4 /* ArchiveCache.cpp */; };
 		8FA3F77E1EDD171E003EF623 /* Assets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C1D1EA6B13E0074D6A4 /* Assets.cpp */; };
 		8FA3F7811EDD171E003EF623 /* AssetServices.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C201EA6B13E0074D6A4 /* AssetServices.cpp */; };
@@ -64,12 +72,9 @@
 		8FA3F7931EDD171E003EF623 /* CompileAndAsyncManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C341EA6B13E0074D6A4 /* CompileAndAsyncManager.cpp */; };
 		8FA3F79B1EDD171E003EF623 /* ConfigFileContainer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C381EA6B13E0074D6A4 /* ConfigFileContainer.cpp */; };
 		8FA3F79D1EDD171E003EF623 /* DeferredConstruction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C3A1EA6B13E0074D6A4 /* DeferredConstruction.cpp */; };
-		8FA3F79F1EDD171E003EF623 /* DivergentAsset.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C3C1EA6B13E0074D6A4 /* DivergentAsset.cpp */; };
 		8FA3F7A21EDD171E003EF623 /* IntermediateAssets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C3F1EA6B13E0074D6A4 /* IntermediateAssets.cpp */; };
-		8FA3F7A41EDD171E003EF623 /* InvalidAssetManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C411EA6B13E0074D6A4 /* InvalidAssetManager.cpp */; };
 		8FA3F7A61EDD171E003EF623 /* MainFileSystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C431EA6B13E0074D6A4 /* MainFileSystem.cpp */; };
 		8FA3F7A71EDD171E003EF623 /* MountingTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C441EA6B13E0074D6A4 /* MountingTree.cpp */; };
-		8FA3F7A91EDD171E003EF623 /* NascentChunkArray.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C461EA6B13E0074D6A4 /* NascentChunkArray.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -117,23 +122,28 @@
 		8F044C391EA6B13E0074D6A4 /* ConfigFileContainer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ConfigFileContainer.h; path = ../ConfigFileContainer.h; sourceTree = "<group>"; };
 		8F044C3A1EA6B13E0074D6A4 /* DeferredConstruction.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DeferredConstruction.cpp; path = ../DeferredConstruction.cpp; sourceTree = "<group>"; };
 		8F044C3B1EA6B13E0074D6A4 /* DeferredConstruction.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DeferredConstruction.h; path = ../DeferredConstruction.h; sourceTree = "<group>"; };
-		8F044C3C1EA6B13E0074D6A4 /* DivergentAsset.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DivergentAsset.cpp; path = ../DivergentAsset.cpp; sourceTree = "<group>"; };
-		8F044C3D1EA6B13E0074D6A4 /* DivergentAsset.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DivergentAsset.h; path = ../DivergentAsset.h; sourceTree = "<group>"; };
 		8F044C3E1EA6B13E0074D6A4 /* IFileSystem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IFileSystem.h; path = ../IFileSystem.h; sourceTree = "<group>"; };
 		8F044C3F1EA6B13E0074D6A4 /* IntermediateAssets.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = IntermediateAssets.cpp; path = ../IntermediateAssets.cpp; sourceTree = "<group>"; };
 		8F044C401EA6B13E0074D6A4 /* IntermediateAssets.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IntermediateAssets.h; path = ../IntermediateAssets.h; sourceTree = "<group>"; };
-		8F044C411EA6B13E0074D6A4 /* InvalidAssetManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = InvalidAssetManager.cpp; path = ../InvalidAssetManager.cpp; sourceTree = "<group>"; };
-		8F044C421EA6B13E0074D6A4 /* InvalidAssetManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = InvalidAssetManager.h; path = ../InvalidAssetManager.h; sourceTree = "<group>"; };
 		8F044C431EA6B13E0074D6A4 /* MainFileSystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MainFileSystem.cpp; path = ../MainFileSystem.cpp; sourceTree = "<group>"; };
 		8F044C441EA6B13E0074D6A4 /* MountingTree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MountingTree.cpp; path = ../MountingTree.cpp; sourceTree = "<group>"; };
 		8F044C451EA6B13E0074D6A4 /* MountingTree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MountingTree.h; path = ../MountingTree.h; sourceTree = "<group>"; };
-		8F044C461EA6B13E0074D6A4 /* NascentChunkArray.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NascentChunkArray.cpp; path = ../NascentChunkArray.cpp; sourceTree = "<group>"; };
-		8F044C471EA6B13E0074D6A4 /* NascentChunkArray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NascentChunkArray.h; path = ../NascentChunkArray.h; sourceTree = "<group>"; };
 		8F044C491EA6B13E0074D6A4 /* OSFileSystem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OSFileSystem.h; path = ../OSFileSystem.h; sourceTree = "<group>"; };
 		8F044C791EA6B15A0074D6A4 /* Core.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
 		8F044C7A1EA6B15A0074D6A4 /* CoreDebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
 		8F044C7B1EA6B15A0074D6A4 /* CoreRelease.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
 		8F044C7C1EA6B15A0074D6A4 /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
+		8F6A9E252017F13400B76C43 /* MemoryFile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MemoryFile.cpp; path = ../MemoryFile.cpp; sourceTree = "<group>"; };
+		8F6A9E262017F13400B76C43 /* NascentChunk.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NascentChunk.cpp; path = ../NascentChunk.cpp; sourceTree = "<group>"; };
+		8F6A9E272017F13500B76C43 /* NascentChunk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NascentChunk.h; path = ../NascentChunk.h; sourceTree = "<group>"; };
+		8F6A9E282017F13500B76C43 /* OSFileSystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = OSFileSystem.cpp; path = ../OSFileSystem.cpp; sourceTree = "<group>"; };
+		8F6A9E292017F13500B76C43 /* AssetFuture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AssetFuture.h; path = ../AssetFuture.h; sourceTree = "<group>"; };
+		8F6A9E2A2017F13500B76C43 /* AssetHeap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AssetHeap.h; path = ../AssetHeap.h; sourceTree = "<group>"; };
+		8F6A9E2B2017F13500B76C43 /* AsyncLoadOperation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AsyncLoadOperation.h; path = ../AsyncLoadOperation.h; sourceTree = "<group>"; };
+		8F6A9E2C2017F13500B76C43 /* DepVal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DepVal.h; path = ../DepVal.h; sourceTree = "<group>"; };
+		8F6A9E2D2017F13600B76C43 /* GenericFuture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GenericFuture.h; path = ../GenericFuture.h; sourceTree = "<group>"; };
+		8F6A9E2E2017F13600B76C43 /* IAssetCompiler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IAssetCompiler.h; path = ../IAssetCompiler.h; sourceTree = "<group>"; };
+		8F6A9E2F2017F13600B76C43 /* MemoryFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MemoryFile.h; path = ../MemoryFile.h; sourceTree = "<group>"; };
 		8FA3F7731EDD16E3003EF623 /* libAssetsIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libAssetsIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -160,6 +170,8 @@
 			children = (
 				8F044C1B1EA6B13E0074D6A4 /* ArchiveCache.cpp */,
 				8F044C1C1EA6B13E0074D6A4 /* ArchiveCache.h */,
+				8F6A9E292017F13500B76C43 /* AssetFuture.h */,
+				8F6A9E2A2017F13500B76C43 /* AssetHeap.h */,
 				8F044C1D1EA6B13E0074D6A4 /* Assets.cpp */,
 				8F044C1E1EA6B13E0074D6A4 /* Assets.h */,
 				8F044C1F1EA6B13E0074D6A4 /* AssetsCore.h */,
@@ -173,6 +185,7 @@
 				8F044C271EA6B13E0074D6A4 /* AssetTraits.h */,
 				8F044C281EA6B13E0074D6A4 /* AssetUtils.cpp */,
 				8F044C291EA6B13E0074D6A4 /* AssetUtils.h */,
+				8F6A9E2B2017F13500B76C43 /* AsyncLoadOperation.h */,
 				8F044C2C1EA6B13E0074D6A4 /* BlockSerializer.cpp */,
 				8F044C2D1EA6B13E0074D6A4 /* BlockSerializer.h */,
 				8F044C2E1EA6B13E0074D6A4 /* ChunkFile.cpp */,
@@ -190,18 +203,20 @@
 				8F044C391EA6B13E0074D6A4 /* ConfigFileContainer.h */,
 				8F044C3A1EA6B13E0074D6A4 /* DeferredConstruction.cpp */,
 				8F044C3B1EA6B13E0074D6A4 /* DeferredConstruction.h */,
-				8F044C3C1EA6B13E0074D6A4 /* DivergentAsset.cpp */,
-				8F044C3D1EA6B13E0074D6A4 /* DivergentAsset.h */,
+				8F6A9E2C2017F13500B76C43 /* DepVal.h */,
+				8F6A9E2D2017F13600B76C43 /* GenericFuture.h */,
+				8F6A9E2E2017F13600B76C43 /* IAssetCompiler.h */,
 				8F044C3E1EA6B13E0074D6A4 /* IFileSystem.h */,
 				8F044C3F1EA6B13E0074D6A4 /* IntermediateAssets.cpp */,
 				8F044C401EA6B13E0074D6A4 /* IntermediateAssets.h */,
-				8F044C411EA6B13E0074D6A4 /* InvalidAssetManager.cpp */,
-				8F044C421EA6B13E0074D6A4 /* InvalidAssetManager.h */,
 				8F044C431EA6B13E0074D6A4 /* MainFileSystem.cpp */,
+				8F6A9E252017F13400B76C43 /* MemoryFile.cpp */,
+				8F6A9E2F2017F13600B76C43 /* MemoryFile.h */,
 				8F044C441EA6B13E0074D6A4 /* MountingTree.cpp */,
 				8F044C451EA6B13E0074D6A4 /* MountingTree.h */,
-				8F044C461EA6B13E0074D6A4 /* NascentChunkArray.cpp */,
-				8F044C471EA6B13E0074D6A4 /* NascentChunkArray.h */,
+				8F6A9E262017F13400B76C43 /* NascentChunk.cpp */,
+				8F6A9E272017F13500B76C43 /* NascentChunk.h */,
+				8F6A9E282017F13500B76C43 /* OSFileSystem.cpp */,
 				8F044C491EA6B13E0074D6A4 /* OSFileSystem.h */,
 				8F044BB21EA6B0890074D6A4 /* Products */,
 			);
@@ -235,30 +250,35 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F044C581EA6B13E0074D6A4 /* AssetUtils.h in Headers */,
-				8F044C761EA6B13E0074D6A4 /* NascentChunkArray.h in Headers */,
 				8F044C651EA6B13E0074D6A4 /* CompilerHelper.h in Headers */,
-				8F044C6C1EA6B13E0074D6A4 /* DivergentAsset.h in Headers */,
 				8F044C6D1EA6B13E0074D6A4 /* IFileSystem.h in Headers */,
+				8F6A9E362017F13600B76C43 /* AsyncLoadOperation.h in Headers */,
+				8F6A9E392017F13600B76C43 /* IAssetCompiler.h in Headers */,
 				8F044C641EA6B13E0074D6A4 /* CompileAndAsyncManager.h in Headers */,
 				8F044C741EA6B13E0074D6A4 /* MountingTree.h in Headers */,
 				8F044C6A1EA6B13E0074D6A4 /* DeferredConstruction.h in Headers */,
+				8F6A9E352017F13600B76C43 /* AssetHeap.h in Headers */,
 				8F044C531EA6B13E0074D6A4 /* AssetSetManager.h in Headers */,
 				8F044C681EA6B13E0074D6A4 /* ConfigFileContainer.h in Headers */,
 				8F044C621EA6B13E0074D6A4 /* CompilationThread.h in Headers */,
 				8F044C5E1EA6B13E0074D6A4 /* ChunkFile.h in Headers */,
-				8F044C711EA6B13E0074D6A4 /* InvalidAssetManager.h in Headers */,
 				8F044C541EA6B13E0074D6A4 /* AssetsInternal.h in Headers */,
 				8F044C561EA6B13E0074D6A4 /* AssetTraits.h in Headers */,
 				8F044C511EA6B13E0074D6A4 /* AssetSetInternal.h in Headers */,
 				8F044C781EA6B13E0074D6A4 /* OSFileSystem.h in Headers */,
 				8F044C5C1EA6B13E0074D6A4 /* BlockSerializer.h in Headers */,
 				8F044C4B1EA6B13E0074D6A4 /* ArchiveCache.h in Headers */,
+				8F6A9E322017F13600B76C43 /* NascentChunk.h in Headers */,
 				8F044C661EA6B13E0074D6A4 /* CompilerLibrary.h in Headers */,
 				8F044C601EA6B13E0074D6A4 /* ChunkFileContainer.h in Headers */,
+				8F6A9E382017F13600B76C43 /* GenericFuture.h in Headers */,
 				8F044C501EA6B13E0074D6A4 /* AssetServices.h in Headers */,
 				8F044C4D1EA6B13E0074D6A4 /* Assets.h in Headers */,
 				8F044C6F1EA6B13E0074D6A4 /* IntermediateAssets.h in Headers */,
+				8F6A9E342017F13600B76C43 /* AssetFuture.h in Headers */,
+				8F6A9E3A2017F13600B76C43 /* MemoryFile.h in Headers */,
 				8F044C4E1EA6B13E0074D6A4 /* AssetsCore.h in Headers */,
+				8F6A9E372017F13600B76C43 /* DepVal.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -343,7 +363,6 @@
 			files = (
 				8F044C5D1EA6B13E0074D6A4 /* ChunkFile.cpp in Sources */,
 				8F044C611EA6B13E0074D6A4 /* CompilationThread.cpp in Sources */,
-				8F044C751EA6B13E0074D6A4 /* NascentChunkArray.cpp in Sources */,
 				8F044C571EA6B13E0074D6A4 /* AssetUtils.cpp in Sources */,
 				8F044C5B1EA6B13E0074D6A4 /* BlockSerializer.cpp in Sources */,
 				8F044C5F1EA6B13E0074D6A4 /* ChunkFileContainer.cpp in Sources */,
@@ -351,15 +370,16 @@
 				8F044C4C1EA6B13E0074D6A4 /* Assets.cpp in Sources */,
 				8F044C4F1EA6B13E0074D6A4 /* AssetServices.cpp in Sources */,
 				8F044C551EA6B13E0074D6A4 /* AssetTraits.cpp in Sources */,
-				8F044C6B1EA6B13E0074D6A4 /* DivergentAsset.cpp in Sources */,
 				8F044C631EA6B13E0074D6A4 /* CompileAndAsyncManager.cpp in Sources */,
-				8F044C701EA6B13E0074D6A4 /* InvalidAssetManager.cpp in Sources */,
+				8F6A9E302017F13600B76C43 /* MemoryFile.cpp in Sources */,
 				8F044C731EA6B13E0074D6A4 /* MountingTree.cpp in Sources */,
+				8F6A9E312017F13600B76C43 /* NascentChunk.cpp in Sources */,
 				8F044C691EA6B13E0074D6A4 /* DeferredConstruction.cpp in Sources */,
 				8F044C671EA6B13E0074D6A4 /* ConfigFileContainer.cpp in Sources */,
 				8F044C721EA6B13E0074D6A4 /* MainFileSystem.cpp in Sources */,
 				8F044C4A1EA6B13E0074D6A4 /* ArchiveCache.cpp in Sources */,
 				8F044C521EA6B13E0074D6A4 /* AssetSetManager.cpp in Sources */,
+				8F6A9E332017F13600B76C43 /* OSFileSystem.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -377,15 +397,15 @@
 				8FA3F78D1EDD171E003EF623 /* ChunkFile.cpp in Sources */,
 				8FA3F78F1EDD171E003EF623 /* ChunkFileContainer.cpp in Sources */,
 				8FA3F7911EDD171E003EF623 /* CompilationThread.cpp in Sources */,
+				8F2DB6182017F3F4009F52AB /* MemoryFile.cpp in Sources */,
 				8FA3F7931EDD171E003EF623 /* CompileAndAsyncManager.cpp in Sources */,
+				8F2DB6192017F3F4009F52AB /* NascentChunk.cpp in Sources */,
 				8FA3F79B1EDD171E003EF623 /* ConfigFileContainer.cpp in Sources */,
 				8FA3F79D1EDD171E003EF623 /* DeferredConstruction.cpp in Sources */,
-				8FA3F79F1EDD171E003EF623 /* DivergentAsset.cpp in Sources */,
 				8FA3F7A21EDD171E003EF623 /* IntermediateAssets.cpp in Sources */,
-				8FA3F7A41EDD171E003EF623 /* InvalidAssetManager.cpp in Sources */,
 				8FA3F7A61EDD171E003EF623 /* MainFileSystem.cpp in Sources */,
 				8FA3F7A71EDD171E003EF623 /* MountingTree.cpp in Sources */,
-				8FA3F7A91EDD171E003EF623 /* NascentChunkArray.cpp in Sources */,
+				8F2DB61A2017F3F4009F52AB /* OSFileSystem.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

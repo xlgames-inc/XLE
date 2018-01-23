@@ -151,10 +151,11 @@ namespace RenderCore { namespace Assets
         _chain = nullptr;
 
         if (constant_expression<CompileInBackground>::result()) {
-            auto sharedToThis = std::static_pointer_cast<ShaderCompileMarker>(shared_from_this());
+            assert(0);
+            /*auto sharedToThis = std::static_pointer_cast<ShaderCompileMarker>(shared_from_this());
             std::string sourceCopy = shaderInMemory.AsString();
             ConsoleRig::GlobalServices::GetLongTaskThreadPool().Enqueue(
-                [sourceCopy, sharedToThis]() { sharedToThis->Complete(AsPointer(sourceCopy.cbegin()), sourceCopy.size(), {}); });
+                [sourceCopy, sharedToThis]() { sharedToThis->Complete(AsPointer(sourceCopy.cbegin()), sourceCopy.size(), {}); });*/
         } else {
             Complete(shaderInMemory.begin(), shaderInMemory.size(), {});
         }
@@ -584,7 +585,7 @@ namespace RenderCore { namespace Assets
 						::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood, depVal, errors));
             });
 
-        return std::move(marker);
+        return marker;
     }
 
     StringSection<::Assets::ResChar> LocalCompiledShaderSource::Marker::Initializer() const

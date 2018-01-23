@@ -143,7 +143,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         };
         payload = std::make_shared<std::vector<uint8>>(sizeof(OutputBlob));
         OutputBlob& output = *(OutputBlob*)payload->data();
-        output._hdr = ShaderService::ShaderHeader { ShaderService::ShaderHeader::Version, false };
+        output._hdr = ShaderService::ShaderHeader { shaderPath._shaderModel, false };
         output._hashCode = hashCode;
         return true;
     }
@@ -168,9 +168,13 @@ namespace RenderCore { namespace Metal_OpenGLES
         auto vsByteCode = vertexShader.GetByteCode();
         auto fsByteCode = fragmentShader.GetByteCode();
 
-        assert(vsByteCode.second == sizeof(uint64_t) && fsByteCode.second == sizeof(uint64_t));
+        assert(vsByteCode.size() == sizeof(uint64_t) && fsByteCode.size() == sizeof(uint64_t));
         const auto& vs = OGLESShaderCompiler::s_compiledShaders[*(uint64_t*)vsByteCode.first];
         const auto& fs = OGLESShaderCompiler::s_compiledShaders[*(uint64_t*)fsByteCode.first];
+
+        _depVal = std::make_shared<Assets::DependencyValidation>();
+        Assets::RegisterAssetDependency(_depVal, vertexShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_depVal, fragmentShader.GetDependencyValidation());
 
         auto newProgramIndex = GetObjectFactory().CreateShaderProgram();
         glAttachShader  (newProgramIndex->AsRawGLHandle(), vs->AsRawGLHandle());
@@ -180,27 +184,26 @@ namespace RenderCore { namespace Metal_OpenGLES
         GLint linkStatus = 0;
         glGetProgramiv   (newProgramIndex->AsRawGLHandle(), GL_LINK_STATUS, &linkStatus);
         if (!linkStatus) {
-            #if defined(_DEBUG)
-                GLint infoLen = 0;
-                glGetProgramiv(newProgramIndex->AsRawGLHandle(), GL_INFO_LOG_LENGTH, &infoLen);
-                if ( infoLen > 1 ) {
-                    auto infoLog = std::make_unique<GLchar[]>(sizeof(char) * infoLen);
-                    glGetProgramInfoLog(newProgramIndex->AsRawGLHandle(), infoLen, nullptr, infoLog.get());
 
-                    #if defined(XLE_HAS_CONSOLE_RIG)
-                        LogWarning << (const char*)infoLog.get();
-                    #endif
-                }
-            #endif
+            GLint infoLen = 0;
+            ::Assets::Blob errorsLog;
+            glGetProgramiv(newProgramIndex->AsRawGLHandle(), GL_INFO_LOG_LENGTH, &infoLen);
+            if ( infoLen > 1 ) {
+                errorsLog = std::make_shared<std::vector<uint8_t>>(sizeof(char) * infoLen);
+                glGetProgramInfoLog(newProgramIndex->AsRawGLHandle(), infoLen, nullptr, (GLchar*)errorsLog->data());
 
-            Throw(Assets::Exceptions::InvalidAsset("", ""));
+                #if defined(XLE_HAS_CONSOLE_RIG)
+                    LogWarning << (const char*)errorsLog->data();
+                #endif
+            }
+
+            Throw(::Assets::Exceptions::ConstructionError(
+                ::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood,
+                _depVal,
+                errorsLog));
         }
 
         _underlying = std::move(newProgramIndex);
-
-        _depVal = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_depVal, vertexShader.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_depVal, fragmentShader.GetDependencyValidation());
 
         _guid = g_nextShaderProgramGUID++;
     }

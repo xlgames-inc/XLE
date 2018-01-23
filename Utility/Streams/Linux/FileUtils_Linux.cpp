@@ -6,13 +6,13 @@ namespace Utility
 {
 	namespace RawFS
 	{
-		bool DoesFileExist(const char filename[])
+		bool DoesFileExist(StringSection<char> filename)
 		{
 			assert(0);
 			return false;
 		}
 
-		bool DoesDirectoryExist(const char filename[])
+		bool DoesDirectoryExist(StringSection<char> filename)
 		{
 			assert(0);
 			return false;

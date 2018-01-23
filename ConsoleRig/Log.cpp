@@ -280,7 +280,6 @@ namespace ConsoleRig
 
     LogCentral::~LogCentral() 
     {
-        snprintf(buffer, dimof(buffer), format, args);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -350,13 +349,4 @@ ConsoleRig::MessageTarget<> Debug("Debug");
 ConsoleRig::MessageTarget<> Verbose("Verbose");
 
 
-#elif PLATFORMOS_TARGET == PLATFORMOS_LINUX
 
-namespace el { namespace base { namespace utils
-{
-    void DateTime::gettimeofday(struct timeval *tv) {
-      ::gettimeofday((struct ::timeval*)tv, nullptr);
-    }
-}}}
-
-#endif

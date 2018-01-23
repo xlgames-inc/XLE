@@ -82,15 +82,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     }
     
     Resource MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
-
-    VertexBuffer::VertexBuffer(const void* data, size_t byteCount)
-    : VertexBuffer(GetObjectFactory(), data, byteCount)
-    {}
-
-    VertexBuffer::VertexBuffer(const intrusive_ptr<OpenGL::Buffer>& underlying)
-    : Buffer(underlying)
-    {}
-
     {
         return Resource(
             factory,

@@ -7,6 +7,7 @@
 #include "ConfigFileContainer.h"
 #include "AssetServices.h"
 #include "Assets.h"
+#include "IFileSystem.h"
 #include "../Utility/StringUtils.h"
 #include <regex>
 
